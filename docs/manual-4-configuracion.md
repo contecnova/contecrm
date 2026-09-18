@@ -94,6 +94,27 @@ En producción, las migraciones van en un paso **separado del arranque**
 (`APLICAR_MIGRACIONES=false`): si dos réplicas migran a la vez, la segunda se
 encuentra el esquema a medias.
 
+### Sembrar datos: una parte por servicio
+
+Cualquier script que toque varios servicios hay que ejecutarlo **donde tenga
+permisos**. El rol de `tenancy` no puede leer el esquema de `identity`, así que
+un sembrador que intente las dos cosas desde un sitio falla con «relation
+"usuarios" does not exist» — que no es un error del script, sino el aislamiento
+funcionando:
+
+```bash
+# 1. El tenant, desde el servicio que lo posee
+docker compose exec tenancy python scripts/sembrar_demo.py --parte tenant
+
+# 2. El usuario, desde el suyo
+docker compose exec -e TENANT_DEMO=<id> identity \
+  python scripts/sembrar_demo.py --parte usuario
+```
+
+En desarrollo local, donde el rol es superusuario, `./setup.sh demo` lo hace de
+una vez. Es la misma diferencia que con RLS: lo que en local pasa
+inadvertidamente, en producción está impedido.
+
 ## Operación diaria
 
 ### Salud

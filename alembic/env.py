@@ -119,7 +119,22 @@ def run_migrations_online() -> None:
     conectable = engine_from_config(seccion, prefix="sqlalchemy.", poolclass=pool.NullPool)
 
     with conectable.connect() as conexion:
-        conexion.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{ESQUEMA}"'))
+        # Se comprueba ANTES de crear, en vez de confiar en `IF NOT EXISTS`.
+        # Postgres verifica el privilegio CREATE sobre la base **aunque el
+        # esquema ya exista**, así que `CREATE SCHEMA IF NOT EXISTS` falla con
+        # «permission denied for database» contra el rol de migración de un
+        # despliegue real — donde los esquemas los crea `deploy/crear-bases.sh`
+        # y el rol de servicio, a propósito, no puede crear esquemas nuevos.
+        #
+        # Se descubrió levantando la pila con Docker: en local el rol es
+        # superusuario y el problema no aparece. Es justo la diferencia por la
+        # que el manual insiste en probar con Docker antes de dar algo por bueno.
+        existe = conexion.execute(
+            text("SELECT 1 FROM pg_namespace WHERE nspname = :esquema"),
+            {"esquema": ESQUEMA},
+        ).first()
+        if not existe:
+            conexion.execute(text(f'CREATE SCHEMA "{ESQUEMA}"'))
         conexion.execute(text(f'SET search_path TO "{ESQUEMA}", public'))
         conexion.commit()
 

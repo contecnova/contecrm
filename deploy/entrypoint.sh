@@ -48,12 +48,25 @@ except Exception:
 case "$MODO" in
   servicio)
     esperar_a_postgres
-    if [[ "${APLICAR_MIGRACIONES:-false}" == "true" ]]; then
+    if [[ "${APLICAR_MIGRACIONES:-false}" == "true" && "$SERVICIO" != "gateway" ]]; then
       # Solo en desarrollo. En producción las aplica un paso aparte, antes de
       # levantar nada: si dos réplicas migran a la vez, la segunda se encuentra
       # el esquema a medias.
+      #
+      # El gateway se excluye porque no tiene modelos propios —su estado es la
+      # tabla de rutas, que viene de la configuración—, así que migrarlo sería
+      # una llamada que no hace nada y que exige privilegios que no necesita.
       echo "Aplicando migraciones de ${SERVICIO}…"
-      alembic -x servicio="$SERVICIO" upgrade head
+      # Se llama al envoltorio, NO a `alembic` directamente. Alembic construye
+      # su directorio de versiones desde `alembic.ini`, donde no hay
+      # `version_locations`: buscaría en `alembic/versions/` —que está vacío,
+      # porque cada servicio tiene su subcarpeta— y no encontraría ninguna
+      # revisión. El resultado era silencioso y peor que un error: los
+      # contenedores arrancaban «bien», sin una sola tabla creada, y el fallo
+      # aparecía mucho después en la primera consulta.
+      python scripts/migrar.py "$SERVICIO" upgrade head
+      # Y las políticas de aislamiento, que una tabla nueva no trae puestas.
+      python scripts/aplicar_rls.py "$SERVICIO"
     fi
     PUERTO="${SERVICE_PORT:-8000}"
     WORKERS="${UVICORN_WORKERS:-1}"
@@ -66,7 +79,8 @@ case "$MODO" in
     ;;
   migrar)
     esperar_a_postgres
-    exec alembic -x servicio="$SERVICIO" upgrade head
+    python scripts/migrar.py "$SERVICIO" upgrade head
+    exec python scripts/aplicar_rls.py "$SERVICIO"
     ;;
   worker)
     esperar_a_postgres
