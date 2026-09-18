@@ -49,6 +49,7 @@ def crear_servicio(
     nombre: str,
     descripcion: str = "",
     routers: list[APIRouter] | None = None,
+    routers_sin_prefijo: list[APIRouter] | None = None,
     version: str = "0.1.0",
     al_arrancar: Callable[[], Any] | None = None,
     al_parar: Callable[[], Any] | None = None,
@@ -62,6 +63,13 @@ def crear_servicio(
     bus al arrancar. Declararlos aquí y no en el arranque del módulo evita el
     error clásico de suscribirse en tiempo de importación: en las pruebas, eso
     deja consumidores vivos entre casos.
+
+    `routers_sin_prefijo` monta rutas TAL CUAL, sin anteponer `api_prefix`. Lo
+    usa el gateway, que reenvía `/api/{ruta}` entera y por tanto no puede
+    llevar el prefijo dos veces — con él, el proxy escucharía en
+    `/api/v1/api/v1/...` y ninguna petición real llegaría. Es la única
+    excepción prevista; cualquier otro servicio que lo necesite debería
+    explicar por qué.
     """
     import os
 
@@ -175,6 +183,8 @@ def crear_servicio(
 
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
+    for router in routers_sin_prefijo or []:
+        app.include_router(router)
 
     return app
 
