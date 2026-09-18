@@ -1,0 +1,181 @@
+"""Contratos del servicio de identidad."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, Field
+
+
+class Credenciales(BaseModel):
+    email: EmailStr
+    contrasena: str = Field(..., min_length=1, max_length=256)
+    tenant: str = Field(
+        ...,
+        description=(
+            "Slug o identificador del tenant. Es obligatorio porque la misma "
+            "persona puede pertenecer a varios y sus permisos son distintos en "
+            "cada uno"
+        ),
+    )
+    codigo_mfa: str = Field("", max_length=16, description="TOTP o código de recuperación")
+
+
+class Tokens(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "Bearer"
+    expires_in: int = Field(..., description="Segundos de validez del token de acceso")
+
+
+class Renovar(BaseModel):
+    refresh_token: str
+
+
+class CrearUsuario(BaseModel):
+    email: EmailStr
+    nombre: str = Field(..., min_length=1, max_length=200)
+    roles: list[str] = Field(default_factory=lambda: ["usuario"])
+    contrasena: str | None = Field(
+        None,
+        min_length=12,
+        description=(
+            "Opcional. Sin contraseña, el usuario solo puede entrar por el "
+            "proveedor de identidad del tenant — que es como se fuerza el SSO"
+        ),
+    )
+
+
+class UsuarioOut(BaseModel):
+    id: UUID
+    email: str
+    nombre: str
+    activo: bool
+    mfa_activo: bool
+    es_plataforma: bool
+    ultimo_acceso_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class MembresiaOut(BaseModel):
+    tenant_id: UUID
+    roles: list[str] = []
+    business_unit_id: UUID | None = None
+    superior_id: UUID | None = None
+    activa: bool
+
+    model_config = {"from_attributes": True}
+
+
+class YoOut(BaseModel):
+    """Identidad efectiva del portador del token.
+
+    Devuelve los permisos ya resueltos para que un frontend headless pueda
+    decidir qué enseña sin reimplementar la resolución de roles — que es como se
+    acaba enseñando un botón que el backend luego rechaza.
+    """
+
+    usuario: UsuarioOut
+    tenant_id: UUID | None
+    roles: list[str] = []
+    permisos: list[str] = []
+    suplantado_por: UUID | None = None
+
+
+class ActivarMfa(BaseModel):
+    codigo: str = Field(..., min_length=6, max_length=6)
+
+
+class MfaIniciada(BaseModel):
+    secreto: str
+    uri_otpauth: str = Field(..., description="Para generar el código QR en el cliente")
+    codigos_recuperacion: list[str] = Field(
+        ..., description="Se enseñan UNA vez. Después solo se guarda su hash"
+    )
+
+
+class CrearClaveApi(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=120)
+    scopes: list[str] = Field(default_factory=list, examples=[["account:read", "opportunity:read"]])
+    rol: str = "integracion"
+    dias: int | None = Field(None, ge=0, le=3650, description="0 = sin caducidad (desaconsejado)")
+    ips_permitidas: list[str] = Field(default_factory=list)
+
+
+class ClaveApiCreada(BaseModel):
+    id: UUID
+    nombre: str
+    prefijo: str
+    secreto: str = Field(..., description="Se muestra UNA sola vez. Guárdalo ahora")
+    expira_at: datetime | None = None
+
+
+class ClaveApiOut(BaseModel):
+    id: UUID
+    nombre: str
+    prefijo: str
+    rol: str
+    scopes: list[str] = []
+    expira_at: datetime | None = None
+    revocada_at: datetime | None = None
+    ultimo_uso_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class SesionOut(BaseModel):
+    id: UUID
+    ip: str | None = None
+    user_agent: str | None = None
+    creada_at: datetime
+    ultima_actividad_at: datetime
+    expira_at: datetime
+    revocada_at: datetime | None = None
+    actor_real_id: UUID | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class Suplantar(BaseModel):
+    usuario_id: UUID
+    motivo: str = Field(
+        ...,
+        min_length=10,
+        description=(
+            "Queda en la auditoría del tenant y es lo que hace defendible el "
+            "acceso. Diez caracteres mínimo: «ticket 4312, el cliente no puede "
+            "cerrar una oportunidad»"
+        ),
+    )
+
+
+class CrearRol(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=80)
+    descripcion: str = ""
+    permisos: list[str] = Field(default_factory=list, examples=[["opportunity:read"]])
+    hereda_de: str | None = None
+
+
+class RolOut(BaseModel):
+    id: UUID
+    nombre: str
+    descripcion: str
+    permisos: list[str] = []
+    hereda_de: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class ExplicarPermiso(BaseModel):
+    """Entrada del explicador de permisos (CRM-00.05.02.11)."""
+
+    usuario_id: UUID
+    objeto: str = Field(..., examples=["opportunity"])
+    accion: str = Field(..., examples=["write"])
+    registro: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Campos del registro concreto, para evaluar las políticas ABAC",
+    )

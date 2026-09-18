@@ -14,6 +14,10 @@ uvicorn[standard]==0.32.1
 pydantic==2.10.4
 pydantic-settings>=2.14.0,<3
 python-multipart==0.0.20
+# Validación real de direcciones de correo en los esquemas (`EmailStr`). Sin
+# esto, pydantic acepta cualquier cadena con arroba, y un correo mal escrito no
+# se detecta hasta que rebota el primer envío.
+email-validator==2.2.0
 
 # ── Datos ─────────────────────────────────────────────────────────────────
 sqlalchemy==2.0.36
