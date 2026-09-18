@@ -89,19 +89,25 @@ def _construir_engine() -> Engine:
 
 
 def _instalar_hooks_rls(engine: Engine) -> None:
-    @event.listens_for(engine, "checkin")
-    def _limpiar_guc(dbapi_conn: Any, _record: Any) -> None:
-        """Al devolver la conexión al pool, olvida el tenant.
-
-        Best-effort: una conexión rota no debe hacer fallar el checkin, porque
-        entonces la conexión no vuelve al pool y se acaban agotando.
-        """
-        try:
-            cur = dbapi_conn.cursor()
-            cur.execute(f"SET {GUC_TENANT} TO DEFAULT")
-            cur.close()
-        except Exception:  # noqa: BLE001 — ver docstring: fallar aquí agota el pool
-            pass
+    # NO hay limpieza del GUC al devolver la conexión al pool, y es una decisión
+    # medida, no un olvido:
+    #
+    #   * No hace falta. El GUC se fija con `set_config(..., is_local => true)`,
+    #     que lo ata a la TRANSACCIÓN: desaparece al hacer commit o rollback, así
+    #     que no puede sobrevivir a la devolución de la conexión. Y aunque
+    #     sobreviviera, `_aplicar_guc` lo reescribe al empezar CADA transacción
+    #     —también cuando no hay tenant, donde escribe cadena vacía—, de modo que
+    #     un valor heredado nunca llega a poder leerse.
+    #   * Y rompe. Ejecutar un `SET` en el evento `checkin` deja la conexión en
+    #     estado INTRANS *después* del reset del pool, y el siguiente checkout
+    #     falla con «can't change autocommit now: connection in transaction
+    #     status INTRANS». Se comprobó con psycopg 3 al escribir la suite del
+    #     motor de procesos: nueve pruebas en rojo por una limpieza que no
+    #     limpiaba nada.
+    #
+    # Lo que de verdad garantiza que no se filtre el tenant entre peticiones es
+    # `_aplicar_guc`, y hay una prueba de aislamiento que lo comprueba contra un
+    # Postgres real reutilizando conexiones del pool.
 
     @event.listens_for(Session, "after_begin")
     def _aplicar_guc(session: Session, _transaction: Any, connection: Any) -> None:
