@@ -71,6 +71,20 @@ AVISOS: dict[str, dict[str, Any]] = {
         "destinatario_campo": "asignado_a",
         "suscribir_destinatario": True,
     },
+    "record.commented": {
+        # El objeto del comentario lo dice el propio evento, así que este aviso
+        # no tiene un `objeto_tipo` fijo como los demás: se lee de `data`.
+        "objeto_tipo": None,
+        "campo_id": "objeto_id",
+        "titulo": "Nuevo comentario",
+        "cuerpo_campo": "extracto",
+        # A quien mencionan se le avisa y se le suscribe, aunque no siguiera el
+        # registro: nombrar a alguien para que se entere y que luego no se
+        # entere de la respuesta sería absurdo.
+        "destinatarios_campo": "menciones",
+        "sumar_a_seguidores": True,
+        "suscribir_destinatario": True,
+    },
     "opportunity.stage.changed": {
         "objeto_tipo": "oportunidad",
         "campo_id": "oportunidad_id",
@@ -83,6 +97,74 @@ AVISOS: dict[str, dict[str, Any]] = {
         "prioridad": "alta",
     },
 }
+
+
+def _destinatarios(regla: dict[str, Any], datos: dict[str, Any]) -> list[UUID]:
+    """Quién recibe el aviso, cuando el evento lo dice explícitamente.
+
+    Los identificadores mal formados se descartan con aviso en vez de tumbar el
+    consumidor: un comentario con una mención corrupta no puede impedir que se
+    avise a los demás, y el evento se reintentaría en bucle para siempre.
+    """
+    bruto = datos.get(regla.get("destinatarios_campo", "")) or datos.get(
+        regla.get("destinatario_campo", "")
+    )
+    if not bruto:
+        return []
+    valores = bruto if isinstance(bruto, list) else [bruto]
+    salida: list[UUID] = []
+    for valor in valores:
+        try:
+            salida.append(UUID(str(valor)))
+        except (ValueError, AttributeError, TypeError):
+            logger.warning("notificacion.destinatario_invalido", valor=str(valor)[:80])
+    return list(dict.fromkeys(salida))
+
+
+def _activos(db: Any, usuarios: list[UUID], tenant_id: UUID) -> list[UUID]:
+    """Descarta a quien ya no está, y deja escrito por qué.
+
+    Portado de `contecmind/app/services/annotations.py`, que lo aprendió antes:
+    mencionar a alguien de baja creaba un aviso que no iba a leer nadie, y quien
+    escribió el comentario se quedaba esperando una respuesta que no iba a
+    llegar. Y el motivo del descarte se registra porque «¿por qué no le llegó?»
+    es la pregunta que viene detrás, siempre.
+
+    Una sola consulta para todos los mencionados, no una por cada uno: el N+1
+    de `db.get(Usuario)` dentro del bucle es el mismo fallo que allí se corrigió
+    en una auditoría.
+    """
+    if not usuarios:
+        return []
+    from sqlalchemy import select as _select
+
+    from services.identity.modelos import Membresia, Usuario
+
+    filas = (
+        db.execute(
+            _select(Usuario.id)
+            .join(Membresia, Membresia.usuario_id == Usuario.id)
+            .where(
+                Usuario.id.in_(usuarios),
+                Usuario.activo.is_(True),
+                Membresia.tenant_id == tenant_id,
+                Membresia.activa.is_(True),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    validos = set(filas)
+    for descartado in (u for u in usuarios if u not in validos):
+        logger.info(
+            "notificacion.mencion_descartada",
+            motivo="usuario_inactivo_o_sin_membresia",
+            usuario=str(descartado),
+        )
+    # Se conserva el ORDEN de entrada: la lista se enseña, y reordenarla haría
+    # que el mismo comentario se viera distinto en cada carga.
+    return [u for u in usuarios if u in validos]
 
 
 async def consumir_evento(mensaje: Any) -> None:
@@ -118,19 +200,42 @@ async def consumir_evento(mensaje: Any) -> None:
     actor = datos.get("actor_id") or getattr(mensaje, "actor_id", None)
     excluir = [UUID(str(actor))] if actor else []
 
+    # El tipo de objeto puede venir fijo en la regla o en el propio evento (un
+    # comentario cuelga de lo que sea).
+    objeto_tipo = regla["objeto_tipo"] or str(datos.get("objeto_tipo") or "")
+    if not objeto_tipo:
+        logger.warning("notificacion.evento_sin_tipo_objeto", tipo=tipo)
+        return
+
     with con_contexto(tenant_id=tenant_id, origen="bus"), unidad_de_trabajo(tenant_id) as uow:
         explicitos: list[UUID] | None = None
-        destinatario = datos.get(regla.get("destinatario_campo", ""))
-        if destinatario:
-            explicitos = [UUID(str(destinatario))]
+        destinatarios = _activos(uow.db, _destinatarios(regla, datos), tenant_id)
+        if destinatarios:
+            explicitos = destinatarios
             if regla.get("suscribir_destinatario"):
-                seguir(
-                    uow.db,
-                    tenant_id=tenant_id,
-                    usuario_id=explicitos[0],
-                    objeto_tipo=regla["objeto_tipo"],
-                    objeto_id=objeto_id,
-                    motivo="propietario",
+                for quien in destinatarios:
+                    seguir(
+                        uow.db,
+                        tenant_id=tenant_id,
+                        usuario_id=quien,
+                        objeto_tipo=objeto_tipo,
+                        objeto_id=objeto_id,
+                        motivo="mencion" if regla.get("sumar_a_seguidores") else "propietario",
+                    )
+            if regla.get("sumar_a_seguidores"):
+                # Los mencionados se AÑADEN a quien ya seguía el registro, no lo
+                # sustituyen: un comentario interesa a todo el hilo, y avisar
+                # solo a los nombrados dejaría fuera al responsable del caso.
+                explicitos = list(
+                    dict.fromkeys(
+                        destinatarios
+                        + seguidores(
+                            uow.db,
+                            tenant_id=tenant_id,
+                            objeto_tipo=objeto_tipo,
+                            objeto_id=objeto_id,
+                        )
+                    )
                 )
 
         notificar(
@@ -138,8 +243,10 @@ async def consumir_evento(mensaje: Any) -> None:
             tenant_id=tenant_id,
             tipo=tipo or "",
             titulo=regla["titulo"],
-            cuerpo=regla.get("cuerpo", ""),
-            objeto_tipo=regla["objeto_tipo"],
+            cuerpo=str(datos.get(regla["cuerpo_campo"], ""))
+            if regla.get("cuerpo_campo")
+            else regla.get("cuerpo", ""),
+            objeto_tipo=objeto_tipo,
             objeto_id=objeto_id,
             prioridad=regla.get("prioridad", "normal"),
             datos=datos,

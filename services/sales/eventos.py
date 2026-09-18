@@ -85,3 +85,16 @@ OPPORTUNITY_REOPENED = registrar(
         campos=("oportunidad_id", "estado_previo", "motivo"),
     )
 )
+LEAD_ASSIGNED = registrar(
+    TipoEvento(
+        tipo="lead.assigned",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "El enrutamiento ha asignado un lead a alguien. Lleva la regla que "
+            "ganó: quien reciba el evento puede explicar el reparto sin "
+            "volver a preguntar"
+        ),
+        campos=("lead_id", "asignado_a", "regla"),
+    )
+)

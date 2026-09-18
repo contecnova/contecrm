@@ -67,3 +67,13 @@ class _LimitsSettings(BaseSettings):
     # Cadena máxima de automatizaciones que se disparan unas a otras
     # (CRM-00.03.03.06).
     automatizacion_max_cascada: int = Field(5, ge=1, le=100)
+
+    # ── Colaboración (CRM-06.02.01.01) ────────────────────────────────────
+    # Longitud máxima de un comentario. 10.000 caracteres son unas tres páginas:
+    # de sobra para explicar un caso, y un tope que impide que alguien pegue un
+    # contrato entero en una nota y lo convierta en la fila más pesada de la
+    # tabla.
+    comentario_max_caracteres: int = Field(10_000, ge=100, le=1_000_000)
+    # Menciones por comentario. Sin tope, un solo comentario puede generar un
+    # aviso para toda la empresa.
+    comentario_max_menciones: int = Field(20, ge=1, le=500)

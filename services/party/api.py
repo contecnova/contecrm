@@ -8,6 +8,7 @@ from uuid import UUID
 
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
+from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from fastapi import APIRouter, Depends, Query, status
@@ -765,6 +766,9 @@ def importar_cuentas(
 router_adjuntos = crear_router_adjuntos({"cuenta", "contacto", "actividad"})
 
 
+router_comentarios = crear_router_comentarios({"cuenta", "contacto", "actividad"})
+
+
 ROUTERS = [
     router_admin,
     router_cuentas,
@@ -773,4 +777,5 @@ ROUTERS = [
     router_calidad,
     router_derechos,
     router_adjuntos,
+    router_comentarios,
 ]

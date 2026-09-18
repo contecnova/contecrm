@@ -217,6 +217,21 @@ RECORD_DELETED = registrar(
         campos=("objeto", "registro_id", "definitivo"),
     )
 )
+RECORD_COMMENTED = registrar(
+    TipoEvento(
+        tipo="record.commented",
+        version=1,
+        # Productor `core` porque lo emite el router compartido de comentarios,
+        # montado por el servicio dueño de cada registro. Atribuirlo a `party` o
+        # a `sales` sería mentir en la mitad de los casos.
+        productor="core",
+        descripcion=(
+            "Alguien ha comentado un registro. Lleva las menciones resueltas "
+            "para que quien avisa no tenga que volver a leer el texto"
+        ),
+        campos=("comentario_id", "objeto_tipo", "objeto_id", "hilo_id", "autor_id", "menciones"),
+    )
+)
 SCHEMA_CHANGED = registrar(
     TipoEvento(
         tipo="metadata.schema.changed",

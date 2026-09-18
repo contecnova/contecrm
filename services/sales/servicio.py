@@ -23,6 +23,7 @@ from services.sales.modelos import (
     Oportunidad,
     Pipeline,
 )
+from services.sales.origen import registrar_alta
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,10 @@ def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
     )
     uow.db.add(lead)
     uow.db.flush()
+
+    # Trazabilidad de origen (CRM-01.01.03.06). Antes del enrutamiento, porque
+    # una regla puede repartir por campaña y necesita el origen ya resuelto.
+    registrar_alta(uow.db, lead, tenant_id=tenant_id)
 
     # Enrutamiento automático (CRM-01.01.03.04). Solo si nadie lo trae asignado:
     # una asignación explícita —un comercial que da de alta su propio contacto—

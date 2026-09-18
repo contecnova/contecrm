@@ -62,6 +62,23 @@ def _c(*args: Any, **kwargs: Any) -> ClaveAjuste:
 CLAVES: dict[str, ClaveAjuste] = {
     c.clave: c
     for c in (
+        # Colaboración (CRM-06.02.01.01)
+        _c(
+            "comentario_max_caracteres",
+            "int",
+            "Longitud máxima de un comentario",
+            minimo=100,
+            maximo=1_000_000,
+            campo_settings="comentario_max_caracteres",
+        ),
+        _c(
+            "comentario_max_menciones",
+            "int",
+            "Menciones permitidas en un solo comentario",
+            minimo=1,
+            maximo=500,
+            campo_settings="comentario_max_menciones",
+        ),
         # Adjuntos y almacenamiento (CRM-06.01.01.05)
         _c(
             "adjunto_max_mb",

@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -26,7 +26,7 @@ from crmcore.datos.adjuntos import (
     verificar_enlace,
 )
 from crmcore.errors import ErrorValidacion, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 
 
 class AdjuntoOut(BaseModel):
@@ -91,6 +91,7 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         response_model=AdjuntoOut,
         status_code=status.HTTP_201_CREATED,
         summary="Subir un fichero",
+        dependencies=[Depends(exige_permiso("adjunto:subir"))],
         description=(
             "Con `documento_id` crea una **versión nueva** del documento y deja "
             "la anterior accesible. Sin él, un documento nuevo. Dos ficheros "
@@ -211,6 +212,7 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         "/{objeto_tipo}/{adjunto_id}/enlace",
         response_model=dict,
         summary="Generar un enlace firmado",
+        dependencies=[Depends(exige_permiso("adjunto:enlace"))],
     )
     def generar_enlace(
         objeto_tipo: str, adjunto_id: UUID, db: DbDep, principal: AutenticadoDep
@@ -224,7 +226,10 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         }
 
     @router.delete(
-        "/{objeto_tipo}/{adjunto_id}", response_model=AdjuntoOut, summary="Borrar un adjunto"
+        "/{objeto_tipo}/{adjunto_id}",
+        response_model=AdjuntoOut,
+        summary="Borrar un adjunto",
+        dependencies=[Depends(exige_permiso("adjunto:borrar"))],
     )
     def borrar_adjunto(
         objeto_tipo: str, adjunto_id: UUID, uow: UowDep, principal: AutenticadoDep

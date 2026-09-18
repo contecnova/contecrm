@@ -737,3 +737,86 @@ reparto sobre un lead inventado sin escribir nada ni mover el turno real.
 
 Una asignación explícita manda sobre las reglas: si el comercial da de alta su
 propio contacto, sabe algo que las reglas no saben.
+
+---
+
+## 12. Colaboración sobre el registro (fase 1)
+
+### Comentarios, hilos y menciones
+
+La conversación sobre un cliente ocurre igualmente: en el correo, en el chat o
+de viva voz. Si ocurre fuera del CRM se pierde, y con ella el motivo por el que
+se hizo el descuento, quién dijo que llamaría y qué respondió el cliente.
+Traerla dentro (CRM-06.02.01.01) es lo que convierte la ficha en algo que
+explica el caso y no en un formulario.
+
+**Las menciones se extraen del texto**, que se escribe
+`@[Nombre](identificador)`. No se mandan en una lista aparte porque habría dos
+fuentes de verdad: en cuanto alguien edite el texto quitando una mención,
+seguiría notificando a quien ya no aparece. Y el formato lleva identificador
+además del nombre porque guardar solo el nombre rompería las menciones antiguas
+al renombrar a alguien, y guardar solo el identificador dejaría el texto
+ilegible.
+
+**Mencionar a alguien lo suscribe** al registro: nombrar a un compañero para que
+se entere y que luego no se entere de la respuesta sería absurdo. Desde ahí
+puede silenciarlo como cualquier otro seguimiento. Los mencionados **se suman** a
+quien ya seguía el registro, no lo sustituyen: avisar solo a los nombrados
+dejaría fuera al responsable del caso.
+
+Una mención a alguien de baja **no genera aviso**, y el descarte queda
+registrado con su motivo — porque «¿por qué no le llegó?» es la pregunta que
+viene detrás. Es un detalle portado de `contecmind`, junto con la consulta única
+que evita un `SELECT` por mención.
+
+Los hilos se agrupan: una conversación leída como lista plana de mensajes
+ordenados por fecha no se entiende en cuanto hay dos temas a la vez, que es
+siempre. Un hilo se puede dar por **resuelto**, para que la ficha no acumule
+preguntas abiertas que ya nadie va a contestar.
+
+Un comentario **interno** no sale nunca hacia el cliente: ni al portal, ni en un
+correo automático, ni en una exportación. El filtro vive en el módulo y no en
+quien llama, porque la decisión de qué ve un externo no puede depender de que
+cada sitio se acuerde.
+
+Un comentario **no se borra: se marca**, y su texto deja de devolverse. Marcarlo
+y seguir mandando el cuerpo sería un borrado de mentira —cualquiera que mire la
+respuesta de la API lo lee igual—, y borrarlo de verdad dejaría las respuestas
+colgando de la nada. Editar deja marca: alguien contestó a lo que ponía antes, y
+sin la marca esa respuesta parece no venir a cuento.
+
+### Trazabilidad de origen
+
+«¿Qué campaña trajo a este cliente?» se contesta mal casi siempre por el mismo
+motivo: se guarda **un** origen, el de la última visita, porque es el que llega
+en la petición donde se envió el formulario. Con eso, todo el mérito se lo lleva
+la búsqueda de marca —la última visita antes de convertir suele ser «buscó
+nuestro nombre»— y las campañas que de verdad descubrieron al cliente parecen no
+servir para nada.
+
+Por eso se guardan **todos los toques** (CRM-01.01.03.06) y se conservan aparte
+el primero y el último. El primero explica cómo llegó; el último, qué lo cerró.
+
+Los toques anónimos se enlazan con el lead **en el momento de identificarlo**, a
+través de un identificador de visitante propio. Es el único momento en que el
+recorrido anterior se puede recuperar: un minuto después se ha perdido, porque
+nadie vuelve a mirar los toques huérfanos. La ventana hacia atrás es un ajuste
+(`origen_ventana_dias`, 90 días por defecto): en obra o industria, entre la
+primera visita y el formulario pasan meses.
+
+El **primer toque es inmutable**. Un toque posterior no lo reescribe por mucho
+que llegue con mejor información, y el `origen` del lead sale de él: la pregunta
+es de dónde salió el cliente, no qué fue lo último que hizo.
+
+`GET /origen/campanas` da las dos cifras por campaña —leads por primer toque y
+por último—, y esa es la gracia: enseñarlas juntas es lo que hace visible que la
+marca se lleva los cierres mientras otra campaña trajo a la gente. **No es un
+modelo de atribución**: no reparte el mérito, lo cuenta desde dos puntos de
+vista. Los modelos —lineal, en U, en W, por decaimiento— son CRM-02.02.01.06 y
+llegan con marketing en la fase 4; lo que se hace ahora es guardar el dato con
+la forma que van a necesitar, porque sin el recorrido completo no habría nada
+que repartir.
+
+Nada de esto es por proveedor: los parámetros son los `utm_*`, que son un
+estándar de hecho, y los identificadores de clic van en un diccionario abierto.
+No hay una lista de redes conocidas que ampliar cada vez que aparece una nueva.

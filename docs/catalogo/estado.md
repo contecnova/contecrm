@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 27 en-curso · ✅ 124 hecho · ⬜ 376 pendiente
+**527 capacidades**: 🔧 27 en-curso · ✅ 126 hecho · ⬜ 374 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -339,7 +339,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · 🔧 7 · ✅ 23 · ⬜ 22
+52 capacidades · 🔧 7 · ✅ 24 · ⬜ 21
 
 ### 1.1 Modelo de parties
 
@@ -382,7 +382,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.03.03` | Deduplicación en el momento de la captura contra leads y contactos existentes | C | 1 | party | ✅ | — |
 | `CRM-01.01.03.04` | Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin) | C | 1 | sales | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill) |
 | `CRM-01.01.03.05` | Estados y motivos de descarte normalizados con reciclaje posterior | C | 1 | sales | ✅ | — |
-| `CRM-01.01.03.06` | Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch | C | 1 | marketing | ⬜ | — |
+| `CRM-01.01.03.06` | Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch | C | 1 | sales | ✅ | — |
 | `CRM-01.01.03.07` | SLA de primera respuesta con alertas y escalado | A | 1 | sales | ✅ | contecflow-PSA:app/services/sla_service.py |
 
 #### CRM-01.01.04 · Calidad y gobierno del dato
@@ -856,7 +856,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-12 capacidades · 🔧 2 · ⬜ 10
+12 capacidades · 🔧 2 · ✅ 1 · ⬜ 9
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -877,7 +877,7 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ⬜ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
+| `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ✅ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
 | `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | 🔧 | contecmind:app/services/notifications.py + app/models/notification.py |
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |

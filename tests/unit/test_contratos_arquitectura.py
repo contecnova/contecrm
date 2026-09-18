@@ -221,11 +221,20 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
     }
 
+    # Los routers COMPARTIDOS del núcleo también escriben, y montarlos desde
+    # varios servicios no los exime: al contrario, un agujero ahí sale
+    # multiplicado por todos los servicios que los monten. Mirar solo
+    # `services/*/api.py` era un punto ciego, y se descubrió al montar los de
+    # adjuntos y comentarios: seis rutas de escritura sin permiso que el gate
+    # daba por buenas.
+    ficheros = [SERVICIOS_DIR / s / "api.py" for s in SERVICIOS]
+    ficheros += sorted((RAIZ / "packages" / "crmcore" / "crmcore" / "http").glob("*_router.py"))
+
     sin_permiso: list[str] = []
-    for servicio in SERVICIOS:
-        fichero = SERVICIOS_DIR / servicio / "api.py"
+    for fichero in ficheros:
         if not fichero.exists():
             continue
+        etiqueta = f"{fichero.parent.name}/{fichero.name}"
         arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
         for nodo in ast.walk(arbol):
             if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -243,7 +252,7 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
                 # declarada, y más restrictiva que cualquier permiso.
                 if "PlataformaDep" in ast.unparse(nodo.args):
                     continue
-                sin_permiso.append(f"{servicio}/api.py::{nodo.name}")
+                sin_permiso.append(f"{etiqueta}::{nodo.name}")
 
     assert not sin_permiso, (
         "Rutas de escritura sin permiso declarado:\n  "

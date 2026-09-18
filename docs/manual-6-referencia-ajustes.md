@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**124 ajustes** en total, de los cuales **40** son editables en caliente por tenant.
+**126 ajustes** en total, de los cuales **42** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -135,6 +135,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `PROCESO_MAX_PROFUNDIDAD` | — | `10` | 1–100 |  |
 | `PROCESO_MAX_DURACION_H` | 🔥 `proceso_max_duracion_h` | `720` | 1–8760 |  |
 | `AUTOMATIZACION_MAX_CASCADA` | 🔥 `automatizacion_max_cascada` | `5` | 1–100 | Cadena máxima de automatizaciones que se disparan unas a otras (CRM-00.03.03.06). |
+| `COMENTARIO_MAX_CARACTERES` | 🔥 `comentario_max_caracteres` | `10000` | 100–1000000 | Longitud máxima de un comentario. 10.000 caracteres son unas tres páginas: de sobra para explicar un caso, y un tope que impide que alguien pegue un contrato entero en una nota y lo convierta en la fila más pesada de la tabla. |
+| `COMENTARIO_MAX_MENCIONES` | 🔥 `comentario_max_menciones` | `20` | 1–500 | Menciones por comentario. Sin tope, un solo comentario puede generar un aviso para toda la empresa. |
 
 ## Observabilidad y auditoría
 

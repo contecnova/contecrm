@@ -44,6 +44,7 @@ PREFIJOS: dict[str, str] = {
     "pipelines": "sales",
     "pipeline": "sales",
     "lead-routing": "sales",
+    "origen": "sales",
     "sharing-rules": "identity",
     "notificaciones": "identity",
     "seguimientos": "identity",
@@ -57,6 +58,16 @@ PREFIJOS: dict[str, str] = {
 # justo después (`/api/v1/adjuntos/<tipo>/...`), así que el destino se decide
 # por él. Sin esto, todos los adjuntos irían al primer servicio que casara y los
 # de oportunidad se pedirían a `party`, que no los tiene.
+# Lo mismo pasa con los comentarios: la conversación la guarda el servicio dueño
+# del registro, y el tipo va en la ruta por eso.
+OBJETOS_COMENTARIO: dict[str, str] = {
+    "cuenta": "party",
+    "contacto": "party",
+    "actividad": "party",
+    "lead": "sales",
+    "oportunidad": "sales",
+}
+
 OBJETOS_ADJUNTO: dict[str, str] = {
     "cuenta": "party",
     "contacto": "party",
@@ -97,6 +108,8 @@ def servicio_de(ruta: str) -> str | None:
     partes = [p for p in ruta.split("/") if p]
     # `/api/v1/<recurso>/...` → el recurso es el tercer segmento.
     if len(partes) >= 3 and partes[0] == "api":
+        if partes[2] == "comentarios":
+            return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":
             # Un tipo de objeto desconocido devuelve `None` y el gateway
             # responde 404, que es lo correcto: no hay servicio que lo tenga.

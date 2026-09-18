@@ -132,6 +132,13 @@ ROLES_BASE: dict[str, Rol] = {
                 "activity:write",
                 "note:read",
                 "note:write",
+                # Comentar y adjuntar es lo que hace cualquiera que trabaje una
+                # ficha; negárselo al rol básico convierte la colaboración en un
+                # privilegio y la conversación se vuelve al correo.
+                "comentario:escribir",
+                "comentario:resolver",
+                "adjunto:subir",
+                "adjunto:enlace",
             }
         ),
         descripcion="Acceso de lectura al CRM y gestión de su propia actividad",
@@ -150,6 +157,12 @@ ROLES_BASE: dict[str, Rol] = {
                 "opportunity:write",
                 "quote:read",
                 "quote:write",
+                "toque:registrar",
+                # Retirar un adjunto o un comentario ajeno no es de todos: el
+                # autor edita el suyo por la comprobación de dentro, y borrar
+                # es una acción que deja hueco en una conversación.
+                "adjunto:borrar",
+                "comentario:borrar",
             }
         ),
         descripcion="Gestiona sus cuentas, contactos, leads y oportunidades",

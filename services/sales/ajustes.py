@@ -28,6 +28,12 @@ class AjustesSales(Settings):
     # propia carga y enrutar 50.000 filas una a una sería absurdo.
     lead_enrutar_al_crear: bool = True
 
+    # ── Trazabilidad de origen (CRM-01.01.03.06) ──────────────────────────
+    # Cuánto se remonta la búsqueda de toques anónimos al identificar a un
+    # visitante. 90 días vale para una venta de ciclo medio; en obra o industria
+    # se queda corto, y por eso es un ajuste y no una constante.
+    origen_ventana_dias: int = Field(90, ge=1, le=1825)
+
     # ── Ciclo del lead ────────────────────────────────────────────────────
     # Días tras los que un lead descartado vuelve a la cola de reciclaje.
     lead_dias_reciclaje: int = Field(180, ge=0, le=3650)
@@ -70,6 +76,14 @@ registrar_claves(
             tipo="bool",
             descripcion="Aplicar las reglas de enrutamiento al dar de alta un lead",
             campo_settings="lead_enrutar_al_crear",
+        ),
+        ClaveAjuste(
+            clave="origen_ventana_dias",
+            tipo="int",
+            descripcion="Días hacia atrás que se recuperan los toques de un visitante anónimo",
+            minimo=1,
+            maximo=1825,
+            campo_settings="origen_ventana_dias",
         ),
         ClaveAjuste(
             clave="lead_dias_reciclaje",

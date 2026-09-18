@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.errors import Conflicto, NoEncontrado
+from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
+from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from fastapi import APIRouter, Depends, Query, status
@@ -14,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.sales import enrutamiento as enr
+from services.sales import origen as org
 from services.sales import servicio as svc
 from services.sales.esquemas import (
     ActualizarOportunidad,
@@ -745,6 +748,122 @@ def probar_reglas(ejemplo: dict, db: DbDep, principal: AutenticadoDep) -> Any:
 router_adjuntos = crear_router_adjuntos({"lead", "oportunidad", "linea_oportunidad"})
 
 
+# ── Trazabilidad de origen (CRM-01.01.03.06) ──────────────────────────────
+
+router_origen = APIRouter(prefix="/origen", tags=["origen"])
+
+
+class RegistrarToque(BaseModel):
+    lead_id: UUID | None = None
+    visitante_id: str | None = Field(
+        None,
+        max_length=80,
+        description=(
+            "Identificador propio del visitante (cookie de primera parte). Es el "
+            "hilo que une lo que pasó antes de identificarse con lo que pasó "
+            "después; sin él, el primer toque se pierde siempre."
+        ),
+    )
+    canal: str = Field("web", max_length=40)
+    ocurrio_at: datetime | None = None
+    # Los `utm_*` y cualquier otro parámetro. Lo que no se reconoce no se tira:
+    # se guarda como identificador de clic, sin lista de redes conocidas.
+    parametros: dict[str, Any] = Field(
+        default_factory=dict,
+        examples=[
+            {
+                "utm_source": "google",
+                "utm_medium": "cpc",
+                "utm_campaign": "obra-2026",
+                "gclid": "Cj0KC...",
+                "landing": "https://ejemplo.es/precios",
+            }
+        ],
+    )
+
+
+@router_origen.post(
+    "/toques",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Anotar un toque",
+    # Permiso propio y estrecho: quien anota toques suele ser el script del
+    # sitio web o el sistema de campañas, no una persona. Con `lead:write` haría
+    # falta darle a ese script permiso para escribir leads, que es muchísimo más
+    # de lo que necesita.
+    dependencies=[Depends(exige_permiso("toque:registrar"))],
+    description=(
+        "Un toque es una interacción atribuible: una visita, un clic, la "
+        "apertura de un correo, una feria. Se anota con lead o con visitante "
+        "anónimo; el anónimo se enlaza solo cuando esa persona se identifica."
+    ),
+)
+def anotar_toque(datos: RegistrarToque, uow: UowDep, principal: AutenticadoDep) -> Any:
+    if datos.lead_id is None and not datos.visitante_id:
+        raise ErrorValidacion(
+            "Un toque necesita un lead o un identificador de visitante",
+            error_code="sales.toque_sin_sujeto",
+        )
+    toque = org.registrar_toque(
+        uow.db,
+        tenant_id=principal.tenant_id,
+        lead_id=datos.lead_id,
+        visitante_id=datos.visitante_id,
+        ocurrio_at=datos.ocurrio_at,
+        canal=datos.canal,
+        **datos.parametros,
+    )
+    return {"id": str(toque.id), "lead_id": str(toque.lead_id) if toque.lead_id else None}
+
+
+@router_origen.get(
+    "/leads/{lead_id}/recorrido",
+    response_model=dict,
+    summary="El recorrido completo de un lead",
+    description=(
+        "En orden cronológico, porque se lee como una historia: «llegó por un "
+        "anuncio, volvió por un correo, cerró buscando la marca». Se devuelven "
+        "además el primer y el último toque por separado: el primero explica "
+        "cómo llegó y el último qué lo cerró, y ninguno de los dos se puede "
+        "reconstruir después."
+    ),
+)
+def ver_recorrido(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    lead = svc._lead(db, lead_id)
+    toques = org.recorrido(db, tenant_id=principal.tenant_id, lead_id=lead_id)
+    return {
+        "lead_id": str(lead_id),
+        "toques": toques,
+        "primer_toque": lead.primer_toque or None,
+        "ultimo_toque": lead.ultimo_toque or None,
+        "total": len(toques),
+    }
+
+
+@router_origen.get(
+    "/campanas",
+    response_model=list[dict],
+    summary="Leads por campaña, por primer y por último toque",
+    description=(
+        "Las **dos** cifras, a propósito. Con solo la del último toque, la "
+        "búsqueda de marca se lleva todo el mérito y las campañas que "
+        "descubrieron al cliente parecen no servir para nada. No es un modelo "
+        "de atribución: no reparte el mérito, lo cuenta desde dos puntos de "
+        "vista. Los modelos llegan con marketing."
+    ),
+)
+def leads_por_campana(
+    db: DbDep,
+    principal: AutenticadoDep,
+    dias: int = Query(90, ge=1, le=3650, description="Ventana hacia atrás, en días"),
+) -> Any:
+    desde = datetime.now(timezone.utc) - timedelta(days=dias)
+    return org.por_campana(db, tenant_id=principal.tenant_id, desde=desde)
+
+
+router_comentarios = crear_router_comentarios({"lead", "oportunidad"})
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -752,4 +871,6 @@ ROUTERS = [
     router_pipeline_vista,
     router_enrutamiento,
     router_adjuntos,
+    router_origen,
+    router_comentarios,
 ]

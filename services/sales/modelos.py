@@ -383,12 +383,15 @@ class CompetidorEnOportunidad(Base, TimestampMixin):
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
+from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 
 from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento  # noqa: E402
+from services.sales.origen import Toque  # noqa: E402
 
 __all__ = [
     "Adjunto",
+    "Comentario",
     "CambioEtapa",
     "CompetidorEnOportunidad",
     "DescargaAdjunto",
@@ -400,4 +403,5 @@ __all__ = [
     "Pipeline",
     "RegistroEnrutamiento",
     "ReglaEnrutamiento",
+    "Toque",
 ]

@@ -431,7 +431,7 @@ modulos:
               - {id: CRM-01.01.03.03, c: C, fase: 1, svc: party, estado: hecho, t: "Deduplicación en el momento de la captura contra leads y contactos existentes"}
               - {id: CRM-01.01.03.04, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill)", t: "Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin)"}
               - {id: CRM-01.01.03.05, c: C, fase: 1, svc: sales, estado: hecho, t: "Estados y motivos de descarte normalizados con reciclaje posterior"}
-              - {id: CRM-01.01.03.06, c: C, fase: 1, svc: marketing, estado: pendiente, t: "Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch"}
+              - {id: CRM-01.01.03.06, c: C, fase: 1, svc: sales, estado: hecho, t: "Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch"}
               - {id: CRM-01.01.03.07, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py", t: "SLA de primera respuesta con alertas y escalado"}
           - id: CRM-01.01.04
             nombre: Calidad y gobierno del dato
@@ -872,7 +872,7 @@ modulos:
           - id: CRM-06.02.01
             nombre: Colaboración
             capacidades:
-              - {id: CRM-06.02.01.01, c: A, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/", t: "Menciones, comentarios y hilos sobre registros"}
+              - {id: CRM-06.02.01.01, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/", t: "Menciones, comentarios y hilos sobre registros"}
               - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
               - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
               - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: pendiente, t: "Modo offline con cola de cambios y resolución de conflictos"}
@@ -975,6 +975,7 @@ anexo_b_eventos:
   - {type: lead.created, fase: 1, svc: sales}
   - {type: lead.qualified, fase: 1, svc: sales}
   - {type: lead.converted, fase: 1, svc: sales}
+  - {type: lead.assigned, fase: 1, svc: sales}
   - {type: account.created, fase: 1, svc: party}
   - {type: account.merged, fase: 1, svc: party}
   - {type: contact.consent.changed, fase: 1, svc: party}
@@ -982,6 +983,7 @@ anexo_b_eventos:
   - {type: opportunity.stage.changed, fase: 1, svc: sales}
   - {type: opportunity.won, fase: 1, svc: sales}
   - {type: opportunity.lost, fase: 1, svc: sales}
+  - {type: record.commented, fase: 1, svc: core}
   - {type: quote.sent, fase: 2, svc: sales}
   - {type: quote.accepted, fase: 2, svc: sales}
   - {type: order.submitted, fase: 2, svc: sales}
