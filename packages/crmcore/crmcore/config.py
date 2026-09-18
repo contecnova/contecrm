@@ -24,6 +24,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from crmcore.config_parts import (
+    _AlmacenSettings,
     _AppSettings,
     _AuthSettings,
     _BusSettings,
@@ -51,6 +52,7 @@ PLACEHOLDERS_INSEGUROS: frozenset[str] = frozenset(
 
 class Settings(
     _AppSettings,
+    _AlmacenSettings,
     _DbSettings,
     _TenancySettings,
     _BusSettings,
@@ -148,6 +150,19 @@ class Settings(
             # Aviso, no error: hay despliegues donde el gateway solo atiende a
             # integraciones máquina-a-máquina y no necesita ningún origen.
             pass
+        if self.storage_backend == "local":
+            problemas.append(
+                "STORAGE_BACKEND=local en producción: los adjuntos irían al disco "
+                "del contenedor, así que cada réplica vería solo los suyos y un "
+                "redespliegue los perdería. Usa s3 (vale cualquier compatible)."
+            )
+        if self.storage_backend == "s3" and not self.storage_s3_bucket:
+            problemas.append("STORAGE_BACKEND=s3 sin STORAGE_S3_BUCKET: no hay dónde escribir")
+        if self.adjunto_exigir_analisis and not self.adjunto_analizador_url:
+            problemas.append(
+                "ADJUNTO_EXIGIR_ANALISIS activo sin ADJUNTO_ANALIZADOR_URL: ningún "
+                "adjunto pasaría el análisis y no se podría descargar ninguno"
+            )
         if self.byok_enabled and not self.encryption_key.get_secret_value():
             problemas.append(
                 "BYOK activo sin ENCRYPTION_KEY: la clave del tenant se guarda "

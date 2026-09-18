@@ -14,6 +14,7 @@ from crmcore.logging import get_logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from services.sales.enrutamiento import enrutar
 from services.sales.modelos import (
     CambioEtapa,
     Etapa,
@@ -55,11 +56,32 @@ def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
     uow.db.add(lead)
     uow.db.flush()
 
+    # Enrutamiento automático (CRM-01.01.03.04). Solo si nadie lo trae asignado:
+    # una asignación explícita —un comercial que da de alta su propio contacto—
+    # manda sobre las reglas, porque quien lo escribe sabe algo que las reglas
+    # no saben.
+    registro = None
+    if lead.owner_id is None and bool(rt.efectivo("lead_enrutar_al_crear", uow.db)):
+        registro = enrutar(uow.db, lead, tenant_id=tenant_id)
+
     uow.emitir(
         "lead.created",
         subject=("lead", lead.id),
         data={"lead_id": str(lead.id), "origen": lead.origen or ""},
     )
+    if registro is not None and registro.asignado_a is not None:
+        uow.emitir(
+            "lead.assigned",
+            subject=("lead", lead.id),
+            data={
+                "lead_id": str(lead.id),
+                "asignado_a": str(registro.asignado_a),
+                "regla": registro.regla_nombre or "",
+            },
+            # La asignación de un lead concreto a un dueño concreto es el hecho:
+            # si el consumidor lo recibe dos veces, es la misma asignación.
+            dedup_key=f"lead.assigned:{lead.id}:{registro.asignado_a}",
+        )
     return lead
 
 

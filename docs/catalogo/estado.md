@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 23 en-curso · ✅ 115 hecho · ⬜ 389 pendiente
+**527 capacidades**: 🔧 27 en-curso · ✅ 124 hecho · ⬜ 376 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 15 · ✅ 83 · ⬜ 102
+200 capacidades · 🔧 16 · ✅ 84 · ⬜ 100
 
 ### 0.1 Multi-tenancy
 
@@ -277,7 +277,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.01` | RBAC con roles, perfiles y conjuntos de permisos acumulables | C | 0 | identity | ✅ | contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom) |
 | `CRM-00.05.02.02` | Jerarquía de roles con visibilidad ascendente sobre subordinados | C | 0 | identity | ✅ | — |
 | `CRM-00.05.02.03` | Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto) | C | 0 | identity | 🔧 | contecweb:app/services/abac.py (394) + abac_enforce.py |
-| `CRM-00.05.02.04` | Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal | C | 1 | identity | ⬜ | contecweb:app/services/share_links.py (477 líneas) |
+| `CRM-00.05.02.04` | Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal | C | 1 | identity | 🔧 | contecweb:app/services/share_links.py (477 líneas) |
 | `CRM-00.05.02.05` | ABAC: decisiones basadas en atributos de usuario, registro y contexto | A | 0 | identity | ✅ | contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py |
 | `CRM-00.05.02.06` | Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless | A | 0 | identity | ⬜ | — |
 | `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ⬜ | — |
@@ -331,7 +331,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.02.01` | Backups automáticos con RPO y RTO comprometidos por tier | C | 0 | ops | ⬜ | contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup* |
 | `CRM-00.06.02.02` | Point-in-time recovery a nivel de tenant, no solo de clúster | A | 0 | ops | ⬜ | — |
 | `CRM-00.06.02.03` | Restauración selectiva de registros o de objetos concretos | A | 0 | ops | ⬜ | contecmind:app/api/admin_backup.py (restauración selectiva) |
-| `CRM-00.06.02.04` | Papelera de reciclaje con retención y restauración en cascada de relaciones | C | 1 | core | ⬜ | — |
+| `CRM-00.06.02.04` | Papelera de reciclaje con retención y restauración en cascada de relaciones | C | 1 | core | ✅ | — |
 | `CRM-00.06.02.05` | Alta disponibilidad multi-AZ y plan de recuperación multi-región | A | 0 | infra | ⬜ | — |
 | `CRM-00.06.02.06` | Pruebas de DR periódicas documentadas | A | 0 | ops | ⬜ | contecmind:scripts/test_restore_integrity.sh |
 | `CRM-00.06.02.07` | Modo degradado: lectura disponible aunque la escritura esté afectada | A | 0 | core | ⬜ | contecmind:app/core/degradation.py (270 líneas) |
@@ -339,7 +339,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · 🔧 7 · ✅ 22 · ⬜ 23
+52 capacidades · 🔧 7 · ✅ 23 · ⬜ 22
 
 ### 1.1 Modelo de parties
 
@@ -380,7 +380,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.03.01` | Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad | C | 1 | sales | ✅ | — |
 | `CRM-01.01.03.02` | Captura multicanal: formularios, web, importación, API, eventos, listas, chat | C | 1 | sales | 🔧 | contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py |
 | `CRM-01.01.03.03` | Deduplicación en el momento de la captura contra leads y contactos existentes | C | 1 | party | ✅ | — |
-| `CRM-01.01.03.04` | Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin) | C | 1 | sales | ⬜ | contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill) |
+| `CRM-01.01.03.04` | Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin) | C | 1 | sales | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill) |
 | `CRM-01.01.03.05` | Estados y motivos de descarte normalizados con reciclaje posterior | C | 1 | sales | ✅ | — |
 | `CRM-01.01.03.06` | Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch | C | 1 | marketing | ⬜ | — |
 | `CRM-01.01.03.07` | SLA de primera respuesta con alertas y escalado | A | 1 | sales | ✅ | contecflow-PSA:app/services/sla_service.py |
@@ -856,7 +856,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-12 capacidades · ⬜ 12
+12 capacidades · 🔧 2 · ⬜ 10
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -868,7 +868,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | ⬜ | contecmind:extension/ (complemento de navegador) |
 | `CRM-06.01.01.03` | Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat | A | 2 | integration | ⬜ | contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py |
 | `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ⬜ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
+| `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | 🔧 | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
 | `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ⬜ | contecmind:app/services/generated_documents.py + templates.py |
 
 ### 6.2 Colaboración y movilidad
@@ -878,7 +878,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ⬜ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
-| `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | ⬜ | contecmind:app/services/notifications.py + app/models/notification.py |
+| `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | 🔧 | contecmind:app/services/notifications.py + app/models/notification.py |
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
@@ -886,7 +886,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · 🔧 1 · ✅ 2 · ⬜ 22
+25 capacidades · 🔧 2 · ✅ 9 · ⬜ 14
 
 ### 7.1 Administración funcional
 
@@ -894,14 +894,14 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.01.01.01` | Consola de administración completa, replicada al 100 % por API | C | 1 | core | ⬜ | contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol) |
-| `CRM-07.01.01.02` | Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad | C | 1 | identity | ⬜ | contecmind:app/services/users.py + app/api/admin_users.py |
-| `CRM-07.01.01.03` | Valores de lista globales, taxonomías y catálogos maestros | C | 1 | metadata | ⬜ | contecweb:app/services/custom_fields.py (valores de lista) |
-| `CRM-07.01.01.04` | Plantillas de correo, de documento y de notificación | C | 1 | core | ⬜ | contecmind:app/services/templates.py + email.py |
-| `CRM-07.01.01.05` | Calendarios laborales, festivos y husos horarios | C | 1 | core | ⬜ | contecpos:services/agenda (calendarios laborales) |
-| `CRM-07.01.01.06` | Gestión de monedas, tipos de cambio y conversión histórica | A | 2 | core | ⬜ | contecflow-PSA:app/services/exchange_rate_service.py + currency_rates_service.py + app/models/money.py |
-| `CRM-07.01.01.07` | Duplicación y transferencia masiva de propiedad de registros | C | 1 | core | ⬜ | — |
-| `CRM-07.01.01.08` | Herramientas de importación/exportación masiva con validación previa y reversión | C | 1 | core | ⬜ | contecmind:app/api/admin_ingest.py (importación con validación previa) |
+| `CRM-07.01.01.01` | Consola de administración completa, replicada al 100 % por API | C | 1 | core | 🔧 | contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol) |
+| `CRM-07.01.01.02` | Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad | C | 1 | identity | ✅ | contecmind:app/services/users.py + app/api/admin_users.py |
+| `CRM-07.01.01.03` | Valores de lista globales, taxonomías y catálogos maestros | C | 1 | metadata | ✅ | contecweb:app/services/custom_fields.py (valores de lista) |
+| `CRM-07.01.01.04` | Plantillas de correo, de documento y de notificación | C | 1 | core | ✅ | contecmind:app/services/templates.py + email.py |
+| `CRM-07.01.01.05` | Calendarios laborales, festivos y husos horarios | C | 1 | core | ✅ | contecpos:services/agenda (calendarios laborales) |
+| `CRM-07.01.01.06` | Gestión de monedas, tipos de cambio y conversión histórica | A | 2 | core | ✅ | contecflow-PSA:app/services/exchange_rate_service.py + currency_rates_service.py + app/models/money.py |
+| `CRM-07.01.01.07` | Duplicación y transferencia masiva de propiedad de registros | C | 1 | core | ✅ | — |
+| `CRM-07.01.01.08` | Herramientas de importación/exportación masiva con validación previa y reversión | C | 1 | core | ✅ | contecmind:app/api/admin_ingest.py (importación con validación previa) |
 
 ### 7.2 Ciclo de vida de la aplicación (ALM)
 

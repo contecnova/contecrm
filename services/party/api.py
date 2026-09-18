@@ -6,13 +6,14 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.audit.chain import registrar
-from crmcore.errors import NoEncontrado
+from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
+from services.party import administracion as admin
 from services.party import duplicados
 from services.party import servicio as svc
 from services.party.esquemas import (
@@ -153,10 +154,7 @@ def actualizar_cuenta(cuenta_id: UUID, datos: ActualizarCuenta, uow: UowDep) -> 
     ),
 )
 def borrar_cuenta(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> None:
-    cuenta = svc._cuenta(db, cuenta_id)
-    cuenta.deleted_at = datetime.now(timezone.utc)
-    cuenta.deleted_by = principal.id
-    registrar(db, accion="cuenta.borrada", objeto="cuenta", objeto_id=cuenta_id)
+    admin.borrar_cuenta(db, cuenta_id, por=principal.id)
 
 
 @router_cuentas.get(
@@ -639,10 +637,140 @@ def _solicitud_out(solicitud: SolicitudDerechos) -> dict[str, Any]:
     }
 
 
+# ── Administración: papelera, importación y transferencia ─────────────────
+
+router_admin = APIRouter(prefix="/party-admin", tags=["administración de party"])
+
+
+@router_admin.get(
+    "/papelera",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("account:delete"))],
+    summary="Qué hay en la papelera y cuánto queda para que sea irrecuperable",
+    description=(
+        "Incluye los días que faltan para la purga, que es el dato que importa "
+        "a quien está buscando algo que borró sin querer."
+    ),
+)
+def listar_papelera(
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: str = Query("", description="cuenta, contacto…"),
+    limite: int = Query(50, ge=1, le=200),
+) -> Any:
+    return admin.listar_papelera(db, principal.tenant_id, objeto=objeto, limite=limite)
+
+
+@router_admin.post(
+    "/papelera/{entrada_id}/restaurar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:delete"))],
+    summary="Restaurar un registro y lo que se borró con él",
+    description=(
+        "En cascada: si no se devolviera todo, quedaría una ficha viva con la "
+        "mitad de su historia perdida — peor que no restaurar, porque parece "
+        "completa."
+    ),
+)
+def restaurar_papelera(entrada_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    entrada = admin.restaurar_entrada(db, entrada_id, por=principal.id)
+    return {
+        "restaurado": True,
+        "objeto": entrada.objeto,
+        "registro_id": str(entrada.registro_id),
+        "en_cascada": sum(len(v) for v in (entrada.cascada or {}).values()),
+    }
+
+
+@router_admin.post(
+    "/papelera/purgar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:purge"))],
+    summary="Destruir definitivamente lo que ya pasó su plazo",
+    description=(
+        "**Irreversible.** Exige motivo y queda auditado: destruye datos de un "
+        "cliente y tiene que poder demostrarse cuándo y por qué se hizo."
+    ),
+)
+def purgar_papelera(motivo: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    if len(motivo.strip()) < 10:
+        raise ErrorValidacion(
+            "La purga exige un motivo escrito de al menos 10 caracteres",
+            error_code="papelera.motivo_requerido",
+        )
+    return {"purgados": admin.purgar_vencidos(db, principal.tenant_id, motivo=motivo)}
+
+
+@router_admin.post(
+    "/transferir-propiedad",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:admin"))],
+    summary="Traspasar todo lo de una persona a otra",
+    description=(
+        "La operación que hace falta cuando alguien deja la empresa. Con "
+        "`simular=true` cuenta sin tocar nada: quien la ejecuta necesita ver "
+        "cuánto va a mover antes de moverlo."
+    ),
+)
+def transferir_propiedad(
+    de_usuario: UUID,
+    a_usuario: UUID,
+    motivo: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    simular: bool = Query(True),
+) -> Any:
+    if not simular and len(motivo.strip()) < 5:
+        raise ErrorValidacion(
+            "La transferencia exige un motivo escrito",
+            error_code="party.transferencia_sin_motivo",
+        )
+    movidos = admin.transferir(
+        db,
+        tenant_id=principal.tenant_id,
+        de_usuario=de_usuario,
+        a_usuario=a_usuario,
+        motivo=motivo,
+        simular=simular,
+    )
+    return {"simulado": simular, "movidos": movidos, "total": sum(movidos.values())}
+
+
+@router_admin.post(
+    "/importar/cuentas",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:import"))],
+    summary="Importar cuentas desde filas",
+    description=(
+        "**Simula por defecto.** La operación destructiva se pide a propósito: "
+        "quien llame por error con un fichero de prueba recibe un informe, no un "
+        "maestro de clientes contaminado. Al actualizar, rellena huecos y no "
+        "pisa lo que ya hay."
+    ),
+)
+def importar_cuentas(
+    filas: list[dict[str, Any]],
+    db: DbDep,
+    _: AutenticadoDep,
+    simular: bool = Query(True),
+    actualizar: bool = Query(False),
+) -> Any:
+    informe = admin.importar_cuentas(db, filas, simular=simular, actualizar=actualizar)
+    return informe.a_dict()
+
+
+# Adjuntos de los objetos que este servicio posee. La lista blanca impide que
+# `party` guarde en su esquema ficheros de una oportunidad, que es de `sales`:
+# quedarían invisibles desde donde vive el registro.
+router_adjuntos = crear_router_adjuntos({"cuenta", "contacto", "actividad"})
+
+
 ROUTERS = [
+    router_admin,
     router_cuentas,
     router_contactos,
     router_actividades,
     router_calidad,
     router_derechos,
+    router_adjuntos,
 ]

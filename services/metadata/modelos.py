@@ -153,7 +153,7 @@ class Layout(Base, TimestampMixin):
 
 
 class ValorLista(Base, TimestampMixin):
-    """Valor de una lista maestra, compartida entre objetos.
+    """Valor de una lista maestra, compartida entre objetos (CRM-07.01.01.03).
 
     Las listas globales (sectores, países, motivos de pérdida) se definen una
     vez y las usan varios campos. Sin esto, cada campo de tipo lista guardaría

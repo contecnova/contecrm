@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**122 ajustes** en total, de los cuales **32** son editables en caliente por tenant.
+**124 ajustes** en total, de los cuales **40** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -57,6 +57,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `QUOTA_CORREOS_POR_DIA` | 🔥 `quota_correos_por_dia` | `0` | ≥ 0 |  |
 | `QUOTA_WORKFLOWS_CONCURRENTES` | 🔥 `quota_workflows_concurrentes` | `100` | 0–1000000 |  |
 | `QUOTA_TOKENS_IA_POR_DIA` | 🔥 `quota_tokens_ia_por_dia` | `0` | ≥ 0 |  |
+| `LICENCIAS_MAXIMAS` | — | `0` | 0–1000000 | Usuarios activos que admite el plan. 0 = sin límite, que es lo razonable en un despliegue on-premise de un solo cliente. |
 | `QUOTA_AVISO_PCT` | 🔥 `quota_aviso_pct` | `80` | 1–100 | Porcentaje de consumo a partir del cual se avisa al tenant de que se acerca al límite (CRM-00.01.06.06). Avisar al 100 % es avisar tarde. |
 | `ONBOARDING_ENABLED` | — | `False` |  | Alta autoservicio. Apagada por defecto: un despliegue empresarial da de alta a sus tenants por API o por consola, y dejar abierto el alta pública en una instalación privada es una superficie regalada. |
 
@@ -169,6 +170,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `DLP_ENABLED` | — | `True` |  |  |
 | `DLP_EXPORT_FILAS_AVISO` | 🔥 `dlp_export_filas_aviso` | `5000` | 1–10000000 | Filas a partir de las cuales una exportación se considera masiva: se audita siempre y, según política, se bloquea o pide aprobación. |
 | `DLP_EXPORT_FILAS_BLOQUEO` | 🔥 `dlp_export_filas_bloqueo` | `100000` | 0–100000000 |  |
+| `PAPELERA_DIAS_RETENCION` | 🔥 `papelera_dias_retencion` | `30` | 1–3650 | Días que un registro borrado se conserva antes de poder destruirse. Un mes es el plazo con el que casi todos los errores humanos se detectan: quien borró algo por error lo echa en falta en la siguiente revisión mensual. |
 | `HSTS_MAX_AGE` | — | `31536000` | 0–63072000 | HSTS en segundos. 0 = no se envía. Un año es el valor que piden las listas de precarga. |
 | `TRUST_PROXY_HEADERS` | — | `False` |  | Confiar en las cabeceras de proxy (X-Forwarded-For). Solo debe activarse si de verdad hay un proxy delante: si no, cualquiera falsea su IP y se salta el rate limiting y las listas de permitidos. |
 | `TRUSTED_PROXIES` | — | *(vacío)* |  | Redes desde las que se aceptan esas cabeceras, separadas por comas. |

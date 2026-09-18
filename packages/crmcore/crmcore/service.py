@@ -187,6 +187,13 @@ def crear_servicio(
     for router in routers_sin_prefijo or []:
         app.include_router(router)
 
+    # Al final, cuando ya están todos los routers: la superficie se calcula
+    # sobre las rutas montadas, así que montarla antes devolvería una lista
+    # vacía (CRM-07.01.01.01).
+    from crmcore.http.superficie import montar_superficie
+
+    montar_superficie(app, nombre, s.api_prefix)
+
     return app
 
 

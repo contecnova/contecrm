@@ -6,11 +6,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.errors import Conflicto, NoEncontrado
+from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from services.sales import enrutamiento as enr
 from services.sales import servicio as svc
 from services.sales.esquemas import (
     ActualizarOportunidad,
@@ -554,4 +557,199 @@ def motivos_perdida() -> Any:
     return sorted(svc.MOTIVOS_PERDIDA)
 
 
-ROUTERS = [router_leads, router_pipelines, router_oportunidades, router_pipeline_vista]
+# ── Reglas de enrutamiento de leads (CRM-01.01.03.04) ─────────────────────
+
+router_enrutamiento = APIRouter(prefix="/lead-routing", tags=["enrutamiento de leads"])
+
+
+class CondicionEntrada(BaseModel):
+    atributo: str = Field(..., description="Ruta: lead.pais, lead.utm.source, lead.campos.sector")
+    operador: str = Field(
+        ..., description="=, !=, >, >=, <, <=, en, no_en, contiene, vacio, no_vacio"
+    )
+    valor: Any = None
+
+
+class CrearRegla(BaseModel):
+    nombre: str = Field(..., max_length=150)
+    descripcion: str = ""
+    prioridad: int = Field(100, ge=0, le=10_000)
+    condiciones: list[CondicionEntrada]
+    combinacion: str = Field("todas", pattern="^(todas|alguna)$")
+    estrategia: str = Field("round_robin")
+    candidatos: list[UUID] = Field(default_factory=list)
+    cola: str | None = Field(None, max_length=80)
+    activa: bool = True
+
+
+class ReglaOut(BaseModel):
+    id: UUID
+    nombre: str
+    descripcion: str
+    prioridad: int
+    activa: bool
+    condiciones: list[Any]
+    combinacion: str
+    estrategia: str
+    candidatos: list[Any]
+    cola: str | None
+
+    model_config = {"from_attributes": True}
+
+
+@router_enrutamiento.get(
+    "/estrategias",
+    response_model=dict,
+    summary="Estrategias de reparto disponibles",
+)
+def estrategias() -> Any:
+    return enr.ESTRATEGIAS
+
+
+@router_enrutamiento.get("/reglas", response_model=list[ReglaOut], summary="Listar reglas")
+def listar_reglas(db: DbDep, _: AutenticadoDep) -> Any:
+    return (
+        db.execute(
+            select(enr.ReglaEnrutamiento).order_by(
+                enr.ReglaEnrutamiento.prioridad, enr.ReglaEnrutamiento.nombre
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
+@router_enrutamiento.post(
+    "/reglas",
+    response_model=ReglaOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear una regla de enrutamiento",
+    description=(
+        "Valida la regla antes de guardarla: operadores, estrategia y que "
+        "tenga a quién asignar. Una regla mal formada no se puede rechazar "
+        "cuando entra el lead —allí no hay nadie delante—, así que se rechaza aquí."
+    ),
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+)
+def crear_regla(datos: CrearRegla, uow: UowDep) -> Any:
+    bruto = datos.model_dump(mode="json")
+    enr.validar_regla(bruto)
+    fila = enr.ReglaEnrutamiento(tenant_id=uow.tenant_id, **bruto)
+    uow.db.add(fila)
+    uow.db.flush()
+    return fila
+
+
+@router_enrutamiento.patch(
+    "/reglas/{regla_id}",
+    response_model=ReglaOut,
+    summary="Editar una regla",
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+)
+def editar_regla(regla_id: UUID, datos: dict, uow: UowDep) -> Any:
+    fila = uow.db.get(enr.ReglaEnrutamiento, regla_id)
+    if fila is None:
+        raise NoEncontrado("Regla no encontrada", error_code="sales.regla_no_existe")
+    permitidos = {
+        "nombre",
+        "descripcion",
+        "prioridad",
+        "condiciones",
+        "combinacion",
+        "estrategia",
+        "candidatos",
+        "cola",
+        "activa",
+    }
+    cambios = {k: v for k, v in datos.items() if k in permitidos}
+    # Se valida la regla RESULTANTE, no el parche: cambiar solo la estrategia
+    # puede dejarla sin destino, y validar el parche aislado no lo vería.
+    resultante = {
+        "estrategia": fila.estrategia,
+        "combinacion": fila.combinacion,
+        "condiciones": fila.condiciones,
+        "candidatos": fila.candidatos,
+        "cola": fila.cola,
+        **cambios,
+    }
+    enr.validar_regla(resultante)
+    for campo, valor in cambios.items():
+        setattr(fila, campo, valor)
+    return fila
+
+
+@router_enrutamiento.get(
+    "/leads/{lead_id}/explicacion",
+    response_model=list[dict],
+    summary="Por qué este lead cayó donde cayó",
+    description=(
+        "Devuelve las decisiones de reparto del lead con las reglas evaluadas "
+        "y el motivo por el que cada una no encajó. Es la respuesta a «¿por qué "
+        "no me llegó a mí?»."
+    ),
+)
+def explicacion(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    return enr.explicar(db, lead_id, principal.tenant_id)
+
+
+@router_enrutamiento.post(
+    "/reglas/probar",
+    response_model=dict,
+    summary="Probar las reglas contra un lead de ejemplo, sin guardar nada",
+    description=(
+        "Simula el reparto sobre datos inventados y devuelve qué regla ganaría. "
+        "No escribe: es para ajustar las reglas antes de que entren leads de "
+        "verdad, que es cuando equivocarse cuesta caro."
+    ),
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+)
+def probar_reglas(ejemplo: dict, db: DbDep, principal: AutenticadoDep) -> Any:
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    campos = {
+        "id": uuid4(),
+        "pais": None,
+        "origen": None,
+        "estado": "nuevo",
+        "empresa": None,
+        "email": None,
+        "cargo": None,
+        "campana_id": None,
+        "utm": {},
+        "campos": {},
+        "owner_id": None,
+        "asignado_at": None,
+    }
+    campos.update({k: v for k, v in ejemplo.items() if k in campos})
+    falso = SimpleNamespace(**campos)
+
+    # Se evalúa dentro de un savepoint que se deshace siempre: `enrutar` escribe
+    # la traza y avanza el cursor del round-robin, y una prueba que mueve el
+    # turno real haría que probar cambiara el reparto de los leads siguientes.
+    punto = db.begin_nested()
+    try:
+        registro = enr.enrutar(db, falso, tenant_id=principal.tenant_id)
+        salida = {
+            "regla": registro.regla_nombre,
+            "asignaria_a": str(registro.asignado_a) if registro.asignado_a else None,
+            "cola": registro.cola,
+            "estrategia": registro.estrategia,
+            "evaluadas": registro.evaluadas,
+        }
+    finally:
+        punto.rollback()
+    return salida
+
+
+router_adjuntos = crear_router_adjuntos({"lead", "oportunidad", "linea_oportunidad"})
+
+
+ROUTERS = [
+    router_leads,
+    router_pipelines,
+    router_oportunidades,
+    router_pipeline_vista,
+    router_enrutamiento,
+    router_adjuntos,
+]

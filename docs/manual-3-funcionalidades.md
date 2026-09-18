@@ -330,6 +330,10 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.05.03.03` Enmascaramiento | Función lista | Aplicarla en la serialización por rol |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
+| `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
+| `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
+| `CRM-06.02.01.02` Seguimiento y notificaciones | Suscripciones, preferencias por tipo y canal, agrupación, franja de silencio y la bandeja de la aplicación | El repartidor que entrega por correo, push y SMS: hoy las notificaciones se crean y se leen en la bandeja, pero nada sale del sistema |
+| `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 
 ---
 
@@ -490,3 +494,246 @@ dato que explica por qué el trimestre no salió como se dijo.
 Las solicitudes (CRM-07.03.01.03) se registran con su **plazo legal calculado al
 recibirlas**, no al empezar a tramitarlas: el reloj corre desde que llegan, y
 contar desde que alguien las mira sería incumplir sin enterarse.
+
+---
+
+## 10. Administración del tenant (fase 1)
+
+Lo transversal: lo que no es de ventas ni de clientes, pero sin lo cual ninguno
+de los dos funciona bien.
+
+### Papelera de reciclaje
+
+Borrar una cuenta con diez años de historia es casi siempre un error humano, y
+es irreversible. Aquí **no se borra: se marca** (CRM-00.06.02.04), y la purga
+definitiva la hace una tarea pasado el plazo de retención.
+
+Lo que hace que esto valga de algo es la **cascada**: al borrar una cuenta se
+marcan también sus actividades, y al restaurarla vuelven **exactamente las que
+se fueron**, ni una más. La entrada de papelera guarda la lista de lo que
+arrastró; sin ella, restaurar traería también lo que ya estaba borrado por otro
+motivo, y la ficha volvería con datos que nadie esperaba.
+
+Qué cuelga de qué se declara en **un solo sitio** por servicio
+(`services/party/administracion.py`). Una tabla nueva que cuelgue de la cuenta y
+no esté en esa lista sobreviviría al borrado y quedaría huérfana: visible en
+listados, apuntando a algo que ya no está.
+
+### Transferencia masiva e importación
+
+La **transferencia de propiedad** (CRM-07.01.01.07) mueve de golpe todo lo de
+una persona a otra: es lo que se ejecuta cuando alguien se va de la empresa, y
+hacerlo a mano garantiza que algo se queda sin dueño.
+
+La **importación** (CRM-07.01.01.08) **simula por defecto**. Primero valida
+todas las filas y enseña qué va a pasar —cuántas altas, cuántas
+actualizaciones, qué errores y en qué fila—, y solo después, con una segunda
+llamada explícita, escribe. Una importación que empieza a escribir y falla a la
+mitad deja un maestro de clientes en un estado que nadie sabe describir.
+
+Se devuelven como mucho 200 errores. No es pereza: un informe con 40.000
+errores no lo lee nadie y sí revienta el navegador. Con los doscientos primeros
+se ve el patrón, que es lo que hay que corregir.
+
+### Usuarios, licencias y bajas
+
+La gestión de usuarios (CRM-07.01.01.02) cubre el alta, los roles, el recuento
+de **licencias** contra el tope del plan y la baja.
+
+Dar de baja a alguien desactiva su membresía, **corta sus sesiones** —no espera
+a que caduquen— y **avisa de lo que hay que transferir**. La transferencia en sí
+la hace cada servicio sobre sus objetos: el maestro de cuentas no es de
+identidad, y sus permisos de base de datos se lo impiden. Esa separación es a
+propósito: es la misma que evita que un fallo en identidad pueda escribir en la
+base de clientes.
+
+### Compartición: quién ve qué
+
+El permiso dice si alguien puede leer cuentas; la **compartición**
+(CRM-00.05.02.04) dice **cuáles**. Cinco vías que solo **suman**, nunca restan:
+propietario, jerarquía de mando, equipo de la cuenta, criterio («todas las del
+País Vasco con el equipo de Bilbao») y compartición manual con caducidad.
+
+Que solo sumen es lo que permite responder a «¿por qué ve esto?» con una lista
+de motivos —«es suyo **y además** se lo compartieron»— en vez de con «ejecuta el
+motor y mira qué sale». Y la caducidad es lo que impide que
+«compártemelo para revisar la propuesta» se convierta en un acceso permanente.
+
+Las condiciones usan **la misma gramática que las políticas de permisos y que
+las reglas de enrutamiento**: `{atributo, operador, valor}`. Una sola sintaxis
+en todo el producto, para que quien aprende a escribir una condición sepa
+escribirlas todas.
+
+### Plantillas
+
+Las plantillas de correo, documento y notificación (CRM-07.01.01.04) se
+versionan y tienen **idioma**: un tenant que opera en tres países necesita la
+misma plantilla en tres idiomas, y tenerlas como tres plantillas sueltas hace
+que se desincronicen en cuanto alguien cambia una.
+
+La sustitución es de texto y **nada más**: sin condicionales, bucles ni
+expresiones. Una plantilla es dato del tenant, y un motor con lógica sería
+ejecutar código del cliente dentro del servidor de correo. Para lo que necesita
+lógica está la automatización, que sí está acotada y auditada.
+
+Lo que falta se queda **visible** (`{{nombre}}`) en vez de vaciarse: un hueco en
+blanco pasa desapercibido y se manda; un `{{nombre}}` en mitad del texto se ve.
+Y `POST /plantillas/{id}/previsualizar` dice qué variables quedarían sin
+resolver **antes** del envío, que es cuando todavía se puede arreglar.
+
+### Calendarios laborales
+
+Un SLA de «4 horas» tiene que significar cuatro horas **laborables**
+(CRM-07.01.01.05). Contando horas de reloj, un aviso entrado el viernes a las
+18:00 se incumple el sábado a las 22:00, cuando no había nadie.
+
+El horario se declara **por día de la semana y con varios tramos**, porque la
+jornada partida existe y es lo normal en varios sectores: con un solo intervalo
+por día, la hora de comer contaría como laborable. Los festivos pueden ser de
+fecha fija o **anuales** (Navidad sí, Semana Santa no), y los anuales se
+comparan por día y mes sin el año.
+
+`GET /calendarios/{id}/vencimiento?horas=4` calcula el vencimiento saltando
+noches, fines de semana y festivos. Se expone para que cualquier servicio lo use
+en vez de reimplementarlo, que es como acaban existiendo tres calendarios que no
+coinciden.
+
+### Monedas y tipos de cambio
+
+Los tipos de cambio se guardan **con fecha y con histórico**, no solo el último
+(CRM-07.01.01.06). Una oportunidad cerrada en marzo tiene que seguir valiendo lo
+que valía en marzo: convertirla siempre al cambio de hoy hace que el histórico
+de ventas se mueva solo y que dos informes del mismo trimestre den números
+distintos según cuándo se sacaron.
+
+La conversión usa el tipo **más reciente que no sea posterior** a la fecha
+pedida, nunca el más cercano: un cambio publicado al día siguiente no existía
+cuando se cerró la operación. Si falta el par directo se calcula con el inverso,
+que es exacto: quien carga EUR→USD rara vez carga también USD→EUR.
+
+La carga es genérica: `PUT /monedas/cambios` con un `origen` libre. Cualquier
+fuente —el BCE, un proveedor de pago, un fichero del ERP— entra por ahí. No hay
+un conector por proveedor, y no lo habrá.
+
+### Valores de lista globales
+
+Las listas maestras (CRM-07.01.01.03) —sectores, países, motivos de pérdida— se
+definen una vez y las usan varios campos. Sin esto, cada campo de tipo lista
+guardaría sus propias opciones y cambiar «motivo de pérdida» obligaría a
+tocarlas todas.
+
+Un valor **se desactiva, no se borra**: los registros históricos que lo usan
+tienen que seguir enseñando su etiqueta. Un valor borrado convierte el histórico
+en códigos sin significado.
+
+### Adjuntos y gestión documental
+
+Los ficheros van al **almacén** (`crmcore.almacen`), no a la base: un `bytea` de
+25 MB por adjunto infla los backups y convierte cada `pg_dump` en una hora. El
+almacén es local o S3 —vale cualquier compatible, porque lo que se configura es
+el endpoint y no el proveedor—, y en producción el arranque **avisa** si se
+dejó en local: cada réplica vería solo sus ficheros y un redespliegue los
+perdería.
+
+Subir un fichero con el mismo nombre **crea una versión nueva** y la anterior
+sigue accesible. En un CRM el «contrato_final_v2.pdf» existe precisamente
+porque el sistema no versionaba.
+
+La deduplicación es por contenido (SHA-256) y, a diferencia de la de cuentas
+—donde la clave canónica es un *candidato* y nunca una prueba—, aquí es
+**exacta**: dos ficheros con el mismo hash son el mismo fichero. Nunca cruza
+tenants, aunque el hash coincida: compartir el objeto haría que borrarlo en un
+cliente afectara al otro.
+
+Las extensiones se controlan con **lista blanca, no negra**. Una lista negra
+siempre se queda corta —basta una extensión nueva— y lo que está en juego es
+ejecutar algo en el navegador de quien descargue. Por lo mismo, la descarga
+sale siempre como `attachment` con `nosniff`: servir en línea un fichero subido
+por un usuario es servir su HTML desde el dominio del CRM, con la sesión de
+quien lo abre.
+
+Cada descarga queda registrada. Es lo primero que pide una investigación de
+fuga de datos y no se puede reconstruir después.
+
+Los **enlaces firmados** existen para los `<img src>` y para los enlaces de un
+correo, donde no se pueden poner cabeceras. Caducan pronto y llevan el usuario
+dentro, así que reenviar el enlace no borra el rastro de quién lo pidió.
+
+### Seguir registros y recibir avisos
+
+«Avísame cuando cambie esto» (CRM-06.02.01.02) es lo que hace que un CRM se use:
+sin ello la gente entra a mirar si ha pasado algo y, como casi nunca ha pasado,
+deja de entrar.
+
+Los avisos **se agrupan**: una oportunidad que cambia cinco veces en diez
+minutos genera **una** notificación. Sin agrupar, la bandeja se convierte en
+ruido y se silencia entera — que es la forma de perder el canal para siempre,
+incluido lo que sí importaba.
+
+Las preferencias son por **tipo de evento × canal**, y la del tipo exacto gana
+sobre la genérica `*`. Así se puede decir «nada de correo salvo los casos
+escalados», que es la petición habitual y con la genérica ganando sería
+inexpresable. La franja de silencio **retiene**, no descarta: lo que pasó de
+noche sigue habiendo pasado, y lo urgente la atraviesa.
+
+Al propietario de un registro no se le desuscribe: **se le silencia**. No puede
+dejar de ser responsable de lo suyo, pero sí dejar de recibir avisos; borrar la
+suscripción haría que volviera sola al siguiente cambio y el usuario viviría un
+bucle de «ya he dicho que no».
+
+Los servicios **no escriben** en la bandeja: emiten sus eventos y el consumidor
+de identidad los traduce. `party` no puede insertar en el esquema de `identity`
+—el rol de base de datos no se lo permite—, y eso además hace que notificar no
+pueda tumbar la operación que lo provocó.
+
+### La superficie de administración
+
+«La consola está replicada al 100 % por API» (CRM-07.01.01.01) es una promesa
+que se incumple sola: basta que alguien añada una pantalla con una acción que
+solo la consola sabe hacer.
+
+Por eso **cada servicio publica `GET /api/v1/superficie`**: todas sus
+operaciones con método, ruta, permiso exigido y si son de administración. La
+consola se construye leyendo eso, así que no puede existir una acción de consola
+que no sea una llamada de esa lista — por construcción, no por disciplina. Se
+monta sola en `crear_servicio`, como la salud: si dependiera de que cada
+servicio se acuerde, faltaría justo en el que menos se mira.
+
+---
+
+## 11. Enrutamiento de leads (fase 1)
+
+Un lead que entra y se queda sin dueño es un lead perdido: no sale en la lista
+de nadie. El enrutamiento (CRM-01.01.03.04) decide quién lo atiende en el
+momento en que entra, y deja escrito **por qué**.
+
+Las reglas se evalúan por prioridad y gana **la primera que encaja**, no la
+mejor. Con un sistema de puntos, «¿por qué ganó esta?» no tiene respuesta corta,
+y un reparto que no se puede explicar se desactiva en la primera discusión.
+
+Cuatro estrategias de reparto: por turnos (*round robin*), al de menos carga, al
+primero disponible y a uno fijo. El turno vive **en la fila de la regla**, no en
+memoria del proceso: con el contador en memoria, dos réplicas del servicio
+empezarían las dos en cero y le darían todo al primer candidato. Y el desempate
+por carga es por el orden declarado, no al azar, para que dos ejecuciones
+iguales den el mismo resultado.
+
+Tres decisiones que evitan fallos concretos:
+
+- **Una regla sin condiciones válidas no encaja con nada.** Lo contrario
+  —tratarla como comodín— haría que una errata en su única condición convirtiera
+  una regla específica en la que se lleva todos los leads.
+- **Una regla que encaja pero no tiene a quién asignar no bloquea a las
+  siguientes.** Es lo que pasa en agosto con un equipo de vacaciones.
+- **Siempre hay traza, incluso cuando no se asigna.** Lo que ninguna regla
+  reclama va a la cola `sin_asignar` con la lista de reglas evaluadas y el
+  motivo por el que cada una no encajó. Silenciarlo es como se acumulan leads
+  que nadie ve.
+
+Las reglas se validan **al guardarlas**, no al aplicarlas: cuando entra un lead
+no hay nadie delante a quien devolverle un error, y lo único que cabe allí es
+descartar la regla y seguir. `POST /lead-routing/reglas/probar` simula el
+reparto sobre un lead inventado sin escribir nada ni mover el turno real.
+
+Una asignación explícita manda sobre las reglas: si el comercial da de alta su
+propio contacto, sabe algo que las reglas no saben.

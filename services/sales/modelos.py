@@ -369,3 +369,35 @@ class CompetidorEnOportunidad(Base, TimestampMixin):
         UniqueConstraint("oportunidad_id", "nombre", name="uq_competidor_oportunidad"),
         Index("ix_competidores_tenant", "tenant_id", "oportunidad_id"),
     )
+
+
+# ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
+#
+# Se importan aquí, y no solo donde se usan, porque `modelos.py` es lo que lee
+# el generador de migraciones (`alembic/env.py`) y la fixture de pruebas para
+# saber qué tablas tiene este servicio. Un modelo compartido que no aparezca
+# aquí sencillamente **no se migra**: el código lo usa, la tabla no existe, y el
+# fallo sale la primera vez que alguien lo ejerce en producción.
+#
+# Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
+# comunes guarda este servicio en su esquema. Descubrirlas automáticamente
+# acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
+from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+
+from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento  # noqa: E402
+
+__all__ = [
+    "Adjunto",
+    "CambioEtapa",
+    "CompetidorEnOportunidad",
+    "DescargaAdjunto",
+    "EntradaPapelera",
+    "Etapa",
+    "Lead",
+    "LineaOportunidad",
+    "Oportunidad",
+    "Pipeline",
+    "RegistroEnrutamiento",
+    "ReglaEnrutamiento",
+]

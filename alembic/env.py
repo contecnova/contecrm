@@ -106,7 +106,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         version_table_schema=ESQUEMA,
-        include_schemas=True,
+        include_schemas=False,
         dialect_opts={"paramstyle": "named"},
     )
     with context.begin_transaction():
@@ -142,7 +142,17 @@ def run_migrations_online() -> None:
             connection=conexion,
             target_metadata=target_metadata,
             version_table_schema=ESQUEMA,
-            include_schemas=True,
+            # **False, y es la diferencia entre una migración correcta y una que
+            # borra la base.** Los modelos no declaran esquema —lo pone el
+            # `search_path`, que es lo que permite que el mismo modelo viva en
+            # `identity` en producción y en un esquema efímero en las pruebas—.
+            # Con `include_schemas=True`, Alembic refleja las tablas
+            # cualificadas (`identity.sesiones`) y las compara con unas de
+            # metadatos sin esquema (`sesiones`): no casa ninguna, así que
+            # propone BORRAR todas las existentes y crearlas de nuevo. La
+            # primera migración salió bien porque la base estaba vacía y no
+            # había nada que borrar; la segunda llevaba trece `drop_table`.
+            include_schemas=False,
             # Compara tipos y defaults de servidor: sin esto, `--autogenerate`
             # no detecta que una columna cambió de VARCHAR(80) a VARCHAR(200) y
             # la migración pasa por buena mientras la base sigue como estaba.
@@ -175,6 +185,10 @@ def _solo_mi_esquema(objeto, nombre, tipo, reflejado, comparar_con) -> bool:  # 
     **Las tablas de otros esquemas.** Todos los servicios comparten base, así
     que sin filtro `--autogenerate` propone borrar las tablas de los demás. El
     resultado sería una migración de un servicio que destruye el trabajo de otro.
+    Con `include_schemas=False` la reflexión ya se queda en el esquema del
+    `search_path`, pero el filtro se mantiene: es la red que protege del día que
+    alguien vuelva a poner `include_schemas=True` sin entender por qué estaba a
+    `False`.
     """
     if nombre == "alembic_version":
         return False

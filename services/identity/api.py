@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import date, datetime, timezone
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.config import get_settings
 from crmcore.errors import NoAutenticado, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.identity import servicio as svc
@@ -32,6 +33,7 @@ from services.identity.esquemas import (
     YoOut,
 )
 from services.identity.modelos import ClaveApi, Membresia, RolTenant, Sesion, Usuario
+from services.identity.notificaciones import ROUTERS_NOTIFICACION
 
 router_auth = APIRouter(prefix="/auth", tags=["autenticación"])
 
@@ -483,4 +485,229 @@ def _sesion_del_token(request: Request) -> UUID | None:
         return None
 
 
-ROUTERS = [router_auth, router_usuarios, router_roles, router_sesiones, router_claves]
+# ── Compartición (CRM-00.05.02.04) ────────────────────────────────────────
+
+router_comparticion = APIRouter(prefix="/sharing-rules", tags=["compartición"])
+
+
+class CrearReglaComparticion(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=200)
+    objeto: str = Field(..., examples=["account", "opportunity"])
+    condiciones: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Misma gramática que ABAC y las automatizaciones. **Vacío comparte "
+            "TODO el objeto**: es legítimo, pero es la forma más fácil de abrir "
+            "de más sin darse cuenta"
+        ),
+        examples=[[{"atributo": "provincia", "op": "=", "valor": "Bizkaia"}]],
+    )
+    combinacion: Literal["todas", "alguna"] = "todas"
+    destino_tipo: Literal["usuario", "rol", "unidad_negocio"]
+    destino_id: str
+    acceso: Literal["lectura", "escritura"] = "lectura"
+    activa: bool = True
+
+
+class CompartirRegistro(BaseModel):
+    objeto: str
+    registro_id: UUID
+    usuario_id: UUID
+    acceso: Literal["lectura", "escritura"] = "lectura"
+    hasta: date | None = Field(
+        None,
+        description=(
+            "Caducidad. Sin ella, «compártemelo para revisar la propuesta» se "
+            "convierte en un acceso permanente"
+        ),
+    )
+    motivo: str = ""
+
+
+@router_comparticion.post(
+    "",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("sharing:write"))],
+    summary="Crear una regla de compartición por criterio",
+)
+def crear_regla_comparticion(
+    datos: CrearReglaComparticion, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.identity.comparticion import ReglaComparticion
+
+    regla = ReglaComparticion(tenant_id=principal.tenant_id, **datos.model_dump())
+    db.add(regla)
+    db.flush()
+    return {"id": str(regla.id), "nombre": regla.nombre, "objeto": regla.objeto}
+
+
+@router_comparticion.get(
+    "",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("sharing:read"))],
+    summary="Reglas de compartición del tenant",
+)
+def listar_reglas_comparticion(
+    db: DbDep, principal: AutenticadoDep, objeto: str = Query("")
+) -> Any:
+    from services.identity.comparticion import ReglaComparticion
+
+    consulta = select(ReglaComparticion).where(ReglaComparticion.tenant_id == principal.tenant_id)
+    if objeto:
+        consulta = consulta.where(ReglaComparticion.objeto == objeto)
+    return [
+        {
+            "id": str(r.id),
+            "nombre": r.nombre,
+            "objeto": r.objeto,
+            "destino": f"{r.destino_tipo}:{r.destino_id}",
+            "acceso": r.acceso,
+            "condiciones": r.condiciones,
+            "activa": r.activa,
+        }
+        for r in db.execute(consulta.order_by(ReglaComparticion.nombre)).scalars().all()
+    ]
+
+
+@router_comparticion.post(
+    "/compartir",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("sharing:write"))],
+    summary="Compartir un registro concreto con alguien",
+)
+def compartir_registro(datos: CompartirRegistro, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.identity import comparticion as comp
+
+    fila = comp.compartir(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto=datos.objeto,
+        registro_id=datos.registro_id,
+        usuario_id=datos.usuario_id,
+        acceso=datos.acceso,
+        hasta=datos.hasta,
+        motivo=datos.motivo,
+        por=principal.id,
+    )
+    db.flush()
+    return {"id": str(fila.id), "hasta": fila.hasta.isoformat() if fila.hasta else None}
+
+
+@router_comparticion.post(
+    "/explicar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("sharing:read"))],
+    summary="Por qué un usuario ve (o no ve) un registro",
+    description=(
+        "Devuelve **todos** los motivos, no el primero: quitar una compartición "
+        "no cambia nada si además era el propietario, y quien administra "
+        "necesita verlo antes de tocar."
+    ),
+)
+def explicar_visibilidad(
+    usuario_id: UUID,
+    objeto: str,
+    registro: dict[str, Any],
+    db: DbDep,
+    principal: AutenticadoDep,
+) -> Any:
+    from services.identity import comparticion as comp
+
+    return comp.visibilidad_de(
+        db,
+        tenant_id=principal.tenant_id,
+        usuario_id=usuario_id,
+        objeto=objeto,
+        registro=registro,
+    ).a_dict()
+
+
+# ── Gestión de usuarios (CRM-07.01.01.02) ─────────────────────────────────
+
+
+class DesactivarUsuario(BaseModel):
+    motivo: str = Field(..., min_length=5)
+    transferir_a: UUID | None = Field(
+        None,
+        description=(
+            "A quién pasan sus registros. Sin esto, sus cuentas quedan sin "
+            "dueño: invisibles para las reglas de visibilidad por propietario, "
+            "sin que nadie las haya borrado"
+        ),
+    )
+
+
+@router_usuarios.post(
+    "/{usuario_id}/desactivar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:write"))],
+    summary="Dar de baja a un usuario",
+    description=(
+        "Desactiva la membresía, corta sus sesiones y **avisa** de lo que hay "
+        "que transferir. La transferencia en sí la hace cada servicio sobre sus "
+        "objetos: el maestro de cuentas no es de identidad y sus permisos de "
+        "base de datos lo impiden."
+    ),
+)
+def desactivar_usuario(
+    usuario_id: UUID, datos: DesactivarUsuario, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    svc.desactivar_usuario(uow, usuario_id, principal.tenant_id, via="manual")
+    return {
+        "desactivado": True,
+        "usuario_id": str(usuario_id),
+        "transferir_a": str(datos.transferir_a) if datos.transferir_a else None,
+        "siguiente_paso": (
+            "llama a POST /party-admin/transferir-propiedad y al equivalente de "
+            "cada servicio con objetos con propietario"
+            if datos.transferir_a
+            else "sus registros se quedan sin propietario: decide a quién pasan"
+        ),
+    }
+
+
+@router_usuarios.get(
+    "/licencias",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Consumo de licencias del tenant",
+    description=(
+        "Usuarios activos frente al tope del plan. El tope lo decide `tenancy`; "
+        "aquí se cuenta quién ocupa una."
+    ),
+)
+def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import func as _f
+
+    activos = db.execute(
+        select(_f.count())
+        .select_from(Membresia)
+        .join(Usuario, Usuario.id == Membresia.usuario_id)
+        .where(
+            Membresia.tenant_id == principal.tenant_id,
+            Membresia.activa.is_(True),
+            Usuario.activo.is_(True),
+        )
+    ).scalar_one()
+    from crmcore.runtime import settings as rt
+
+    tope = int(rt.efectivo("licencias_maximas", db) or 0)
+    return {
+        "activos": int(activos),
+        "tope": tope,
+        "disponibles": max(0, tope - int(activos)) if tope else None,
+        "sin_limite": tope == 0,
+    }
+
+
+ROUTERS = [
+    router_auth,
+    router_usuarios,
+    router_roles,
+    router_sesiones,
+    router_claves,
+    router_comparticion,
+    *ROUTERS_NOTIFICACION,
+]

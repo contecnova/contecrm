@@ -14,6 +14,7 @@ número que cambia el comportamiento es configuración, y la configuración se
 edita sin volver a desplegar.
 """
 
+from crmcore.config_parts._almacen import _AlmacenSettings
 from crmcore.config_parts._app import _AppSettings
 from crmcore.config_parts._auth import _AuthSettings
 from crmcore.config_parts._bus import _BusSettings
@@ -24,6 +25,7 @@ from crmcore.config_parts._security import _SecuritySettings
 from crmcore.config_parts._tenancy import _TenancySettings
 
 __all__ = [
+    "_AlmacenSettings",
     "_AppSettings",
     "_AuthSettings",
     "_BusSettings",

@@ -42,6 +42,12 @@ class _SecuritySettings(BaseSettings):
     dlp_export_filas_aviso: int = Field(5_000, ge=1, le=10_000_000)
     dlp_export_filas_bloqueo: int = Field(100_000, ge=0, le=100_000_000)
 
+    # ── Papelera (CRM-00.06.02.04) ────────────────────────────────────────
+    # Días que un registro borrado se conserva antes de poder destruirse. Un mes
+    # es el plazo con el que casi todos los errores humanos se detectan: quien
+    # borró algo por error lo echa en falta en la siguiente revisión mensual.
+    papelera_dias_retencion: int = Field(30, ge=1, le=3650)
+
     # ── Cabeceras de seguridad ────────────────────────────────────────────
     # HSTS en segundos. 0 = no se envía. Un año es el valor que piden las
     # listas de precarga.

@@ -22,6 +22,11 @@ class AjustesSales(Settings):
     # reasignar automáticamente puede quitarle un lead a quien ya lo estaba
     # trabajando por teléfono sin registrarlo.
     lead_reasignar_al_incumplir_sla: bool = False
+    # Enrutar el lead por reglas al darlo de alta (CRM-01.01.03.04). Encendido:
+    # un lead sin dueño no sale en la lista de nadie y se pierde. Se puede
+    # apagar durante una importación masiva, donde el reparto lo decide la
+    # propia carga y enrutar 50.000 filas una a una sería absurdo.
+    lead_enrutar_al_crear: bool = True
 
     # ── Ciclo del lead ────────────────────────────────────────────────────
     # Días tras los que un lead descartado vuelve a la cola de reciclaje.
@@ -59,6 +64,12 @@ registrar_claves(
             tipo="bool",
             descripcion="Reasignar automáticamente el lead si se incumple el SLA",
             campo_settings="lead_reasignar_al_incumplir_sla",
+        ),
+        ClaveAjuste(
+            clave="lead_enrutar_al_crear",
+            tipo="bool",
+            descripcion="Aplicar las reglas de enrutamiento al dar de alta un lead",
+            campo_settings="lead_enrutar_al_crear",
         ),
         ClaveAjuste(
             clave="lead_dias_reciclaje",

@@ -223,3 +223,37 @@ class Consumo(Base):
         UniqueConstraint("tenant_id", "metrica", "periodo", name="uq_consumo_periodo"),
         Index("ix_consumo_metrica", "tenant_id", "metrica", "periodo"),
     )
+
+
+# ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
+#
+# Se importan aquí, y no solo donde se usan, porque `modelos.py` es lo que lee
+# el generador de migraciones (`alembic/env.py`) y la fixture de pruebas para
+# saber qué tablas tiene este servicio. Un modelo compartido que no aparezca
+# aquí sencillamente **no se migra**: el código lo usa, la tabla no existe, y el
+# fallo sale la primera vez que alguien lo ejerce en producción.
+#
+# Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
+# comunes guarda este servicio en su esquema. Descubrirlas automáticamente
+# acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+
+from services.tenancy.catalogos import (  # noqa: E402
+    CalendarioLaboral,
+    Festivo,
+    Plantilla,
+    TipoCambio,
+)
+
+__all__ = [
+    "CalendarioLaboral",
+    "Consumo",
+    "EntradaPapelera",
+    "FeatureFlag",
+    "Festivo",
+    "Plan",
+    "Plantilla",
+    "Tenant",
+    "TipoCambio",
+    "UnidadNegocio",
+]

@@ -114,6 +114,9 @@ def _importar_todos_los_modelos() -> None:
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",
+        "crmcore.datos.adjuntos",
+        "crmcore.datos.papelera",
+        "crmcore.datos.seguimiento",
         "services.tenancy.modelos",
         "services.identity.modelos",
         "services.orchestrator.modelos",
@@ -123,6 +126,9 @@ def _importar_todos_los_modelos() -> None:
         "services.eventing.modelos",
         "services.party.modelos",
         "services.sales.modelos",
+        "services.sales.enrutamiento",
+        "services.tenancy.catalogos",
+        "services.identity.comparticion",
     ]
     for modulo in modulos:
         try:

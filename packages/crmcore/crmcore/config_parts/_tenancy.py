@@ -48,6 +48,9 @@ class _TenancySettings(BaseSettings):
     quota_correos_por_dia: int = Field(0, ge=0)
     quota_workflows_concurrentes: int = Field(100, ge=0, le=1_000_000)
     quota_tokens_ia_por_dia: int = Field(0, ge=0)
+    # Usuarios activos que admite el plan. 0 = sin límite, que es lo razonable
+    # en un despliegue on-premise de un solo cliente.
+    licencias_maximas: int = Field(0, ge=0, le=1_000_000)
 
     # Porcentaje de consumo a partir del cual se avisa al tenant de que se
     # acerca al límite (CRM-00.01.06.06). Avisar al 100 % es avisar tarde.

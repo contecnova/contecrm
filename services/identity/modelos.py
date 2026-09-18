@@ -252,3 +252,39 @@ class ProveedorIdentidad(Base, TimestampMixin):
     jit_provisioning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (UniqueConstraint("tenant_id", "nombre", name="uq_idp_nombre"),)
+
+
+# ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
+#
+# Se importan aquí, y no solo donde se usan, porque `modelos.py` es lo que lee
+# el generador de migraciones (`alembic/env.py`) y la fixture de pruebas para
+# saber qué tablas tiene este servicio. Un modelo compartido que no aparezca
+# aquí sencillamente **no se migra**: el código lo usa, la tabla no existe, y el
+# fallo sale la primera vez que alguien lo ejerce en producción.
+#
+# Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
+# comunes guarda este servicio en su esquema. Descubrirlas automáticamente
+# acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+from crmcore.datos.seguimiento import (  # noqa: E402
+    Notificacion,
+    PreferenciaNotificacion,
+    Seguimiento,
+)
+
+from services.identity.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
+
+__all__ = [
+    "ClaveApi",
+    "ComparticionManual",
+    "EntradaPapelera",
+    "Membresia",
+    "Notificacion",
+    "PreferenciaNotificacion",
+    "ProveedorIdentidad",
+    "ReglaComparticion",
+    "RolTenant",
+    "Seguimiento",
+    "Sesion",
+    "Usuario",
+]

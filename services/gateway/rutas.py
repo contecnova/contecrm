@@ -38,10 +38,32 @@ PREFIJOS: dict[str, str] = {
     "activities": "party",
     "data-quality": "party",
     "data-subject-requests": "party",
+    "party-admin": "party",
     "leads": "sales",
     "opportunities": "sales",
     "pipelines": "sales",
     "pipeline": "sales",
+    "lead-routing": "sales",
+    "sharing-rules": "identity",
+    "notificaciones": "identity",
+    "seguimientos": "identity",
+    "plantillas": "tenancy",
+    "calendarios": "tenancy",
+    "monedas": "tenancy",
+}
+
+# Los adjuntos los guarda el servicio dueño del objeto, y `party` y `sales`
+# publican los dos el mismo prefijo `/adjuntos`. La ruta lleva el tipo de objeto
+# justo después (`/api/v1/adjuntos/<tipo>/...`), así que el destino se decide
+# por él. Sin esto, todos los adjuntos irían al primer servicio que casara y los
+# de oportunidad se pedirían a `party`, que no los tiene.
+OBJETOS_ADJUNTO: dict[str, str] = {
+    "cuenta": "party",
+    "contacto": "party",
+    "actividad": "party",
+    "lead": "sales",
+    "oportunidad": "sales",
+    "linea_oportunidad": "sales",
 }
 
 
@@ -75,5 +97,9 @@ def servicio_de(ruta: str) -> str | None:
     partes = [p for p in ruta.split("/") if p]
     # `/api/v1/<recurso>/...` → el recurso es el tercer segmento.
     if len(partes) >= 3 and partes[0] == "api":
+        if partes[2] == "adjuntos":
+            # Un tipo de objeto desconocido devuelve `None` y el gateway
+            # responde 404, que es lo correcto: no hay servicio que lo tenga.
+            return OBJETOS_ADJUNTO.get(partes[3]) if len(partes) >= 4 else None
         return PREFIJOS.get(partes[2])
     return None

@@ -62,6 +62,59 @@ def _c(*args: Any, **kwargs: Any) -> ClaveAjuste:
 CLAVES: dict[str, ClaveAjuste] = {
     c.clave: c
     for c in (
+        # Adjuntos y almacenamiento (CRM-06.01.01.05)
+        _c(
+            "adjunto_max_mb",
+            "int",
+            "Tamaño máximo por fichero adjunto, en MB",
+            minimo=1,
+            maximo=5_000,
+            campo_settings="adjunto_max_mb",
+        ),
+        _c(
+            "adjunto_extensiones",
+            "json",
+            "Extensiones admitidas (lista blanca)",
+            campo_settings="adjunto_extensiones",
+            sensible=True,
+        ),
+        _c(
+            "adjunto_deduplicar",
+            "bool",
+            "Guardar una sola copia de dos ficheros idénticos",
+            campo_settings="adjunto_deduplicar",
+        ),
+        _c(
+            "adjunto_max_versiones",
+            "int",
+            "Versiones que se conservan de un documento (0 = todas)",
+            minimo=0,
+            maximo=1_000,
+            campo_settings="adjunto_max_versiones",
+        ),
+        _c(
+            "adjunto_enlace_ttl_s",
+            "int",
+            "Segundos que vive un enlace de descarga firmado",
+            minimo=30,
+            maximo=86_400,
+            campo_settings="adjunto_enlace_ttl_s",
+            sensible=True,
+        ),
+        _c(
+            "adjunto_exigir_analisis",
+            "bool",
+            "No entregar un adjunto que no haya pasado el antivirus",
+            campo_settings="adjunto_exigir_analisis",
+            sensible=True,
+        ),
+        _c(
+            "adjunto_analizador_url",
+            "str",
+            "URL del analizador antivirus (vacío = sin análisis)",
+            campo_settings="adjunto_analizador_url",
+            sensible=True,
+        ),
         # Límites y cuotas
         _c(
             "rate_limit_por_tenant",
@@ -246,6 +299,16 @@ CLAVES: dict[str, ClaveAjuste] = {
             minimo=1,
             maximo=100,
             campo_settings="automatizacion_max_cascada",
+            sensible=True,
+        ),
+        # Papelera (CRM-00.06.02.04)
+        _c(
+            "papelera_dias_retencion",
+            "int",
+            "Días que un registro borrado se conserva antes de poder purgarse",
+            minimo=1,
+            maximo=3650,
+            campo_settings="papelera_dias_retencion",
             sensible=True,
         ),
         # Protección del dato

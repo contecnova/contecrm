@@ -333,7 +333,7 @@ modulos:
               - {id: CRM-00.05.02.01, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom)", t: "RBAC con roles, perfiles y conjuntos de permisos acumulables"}
               - {id: CRM-00.05.02.02, c: C, fase: 0, svc: identity, estado: hecho, t: "Jerarquía de roles con visibilidad ascendente sobre subordinados"}
               - {id: CRM-00.05.02.03, c: C, fase: 0, svc: identity, estado: en-curso, reutiliza: "contecweb:app/services/abac.py (394) + abac_enforce.py", t: "Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto)"}
-              - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
+              - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: en-curso, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
               - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
               - {id: CRM-00.05.02.06, c: A, fase: 0, svc: identity, estado: pendiente, t: "Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless"}
               - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
@@ -385,7 +385,7 @@ modulos:
               - {id: CRM-00.06.02.01, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup*", t: "Backups automáticos con RPO y RTO comprometidos por tier"}
               - {id: CRM-00.06.02.02, c: A, fase: 0, svc: ops, estado: pendiente, t: "Point-in-time recovery a nivel de tenant, no solo de clúster"}
               - {id: CRM-00.06.02.03, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:app/api/admin_backup.py (restauración selectiva)", t: "Restauración selectiva de registros o de objetos concretos"}
-              - {id: CRM-00.06.02.04, c: C, fase: 1, svc: core, estado: pendiente, t: "Papelera de reciclaje con retención y restauración en cascada de relaciones"}
+              - {id: CRM-00.06.02.04, c: C, fase: 1, svc: core, estado: hecho, t: "Papelera de reciclaje con retención y restauración en cascada de relaciones"}
               - {id: CRM-00.06.02.05, c: A, fase: 0, svc: infra, estado: pendiente, t: "Alta disponibilidad multi-AZ y plan de recuperación multi-región"}
               - {id: CRM-00.06.02.06, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "Pruebas de DR periódicas documentadas"}
               - {id: CRM-00.06.02.07, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/degradation.py (270 líneas)", t: "Modo degradado: lectura disponible aunque la escritura esté afectada"}
@@ -429,7 +429,7 @@ modulos:
               - {id: CRM-01.01.03.01, c: C, fase: 1, svc: sales, estado: hecho, t: "Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad"}
               - {id: CRM-01.01.03.02, c: C, fase: 1, svc: sales, estado: en-curso, reutiliza: "contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py", t: "Captura multicanal: formularios, web, importación, API, eventos, listas, chat"}
               - {id: CRM-01.01.03.03, c: C, fase: 1, svc: party, estado: hecho, t: "Deduplicación en el momento de la captura contra leads y contactos existentes"}
-              - {id: CRM-01.01.03.04, c: C, fase: 1, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill)", t: "Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin)"}
+              - {id: CRM-01.01.03.04, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill)", t: "Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin)"}
               - {id: CRM-01.01.03.05, c: C, fase: 1, svc: sales, estado: hecho, t: "Estados y motivos de descarte normalizados con reciclaje posterior"}
               - {id: CRM-01.01.03.06, c: C, fase: 1, svc: marketing, estado: pendiente, t: "Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch"}
               - {id: CRM-01.01.03.07, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py", t: "SLA de primera respuesta con alertas y escalado"}
@@ -864,7 +864,7 @@ modulos:
               - {id: CRM-06.01.01.02, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:extension/ (complemento de navegador)", t: "Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo"}
               - {id: CRM-06.01.01.03, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py", t: "Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat"}
               - {id: CRM-06.01.01.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro automático de reuniones y de asistentes"}
-              - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
+              - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
               - {id: CRM-06.01.01.06, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/generated_documents.py + templates.py", t: "Generación documental desde plantillas (propuesta, contrato, acta)"}
       - id: "6.2"
         nombre: Colaboración y movilidad
@@ -873,7 +873,7 @@ modulos:
             nombre: Colaboración
             capacidades:
               - {id: CRM-06.02.01.01, c: A, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/", t: "Menciones, comentarios y hilos sobre registros"}
-              - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
+              - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
               - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
               - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: pendiente, t: "Modo offline con cola de cambios y resolución de conflictos"}
               - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: pendiente, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}
@@ -888,14 +888,14 @@ modulos:
           - id: CRM-07.01.01
             nombre: Consola de administración
             capacidades:
-              - {id: CRM-07.01.01.01, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol)", t: "Consola de administración completa, replicada al 100 % por API"}
-              - {id: CRM-07.01.01.02, c: C, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/users.py + app/api/admin_users.py", t: "Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad"}
-              - {id: CRM-07.01.01.03, c: C, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecweb:app/services/custom_fields.py (valores de lista)", t: "Valores de lista globales, taxonomías y catálogos maestros"}
-              - {id: CRM-07.01.01.04, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/templates.py + email.py", t: "Plantillas de correo, de documento y de notificación"}
-              - {id: CRM-07.01.01.05, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecpos:services/agenda (calendarios laborales)", t: "Calendarios laborales, festivos y husos horarios"}
-              - {id: CRM-07.01.01.06, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/exchange_rate_service.py + currency_rates_service.py + app/models/money.py", t: "Gestión de monedas, tipos de cambio y conversión histórica"}
-              - {id: CRM-07.01.01.07, c: C, fase: 1, svc: core, estado: pendiente, t: "Duplicación y transferencia masiva de propiedad de registros"}
-              - {id: CRM-07.01.01.08, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/api/admin_ingest.py (importación con validación previa)", t: "Herramientas de importación/exportación masiva con validación previa y reversión"}
+              - {id: CRM-07.01.01.01, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol)", t: "Consola de administración completa, replicada al 100 % por API"}
+              - {id: CRM-07.01.01.02, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/users.py + app/api/admin_users.py", t: "Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad"}
+              - {id: CRM-07.01.01.03, c: C, fase: 1, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (valores de lista)", t: "Valores de lista globales, taxonomías y catálogos maestros"}
+              - {id: CRM-07.01.01.04, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/templates.py + email.py", t: "Plantillas de correo, de documento y de notificación"}
+              - {id: CRM-07.01.01.05, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecpos:services/agenda (calendarios laborales)", t: "Calendarios laborales, festivos y husos horarios"}
+              - {id: CRM-07.01.01.06, c: A, fase: 2, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/exchange_rate_service.py + currency_rates_service.py + app/models/money.py", t: "Gestión de monedas, tipos de cambio y conversión histórica"}
+              - {id: CRM-07.01.01.07, c: C, fase: 1, svc: core, estado: hecho, t: "Duplicación y transferencia masiva de propiedad de registros"}
+              - {id: CRM-07.01.01.08, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/api/admin_ingest.py (importación con validación previa)", t: "Herramientas de importación/exportación masiva con validación previa y reversión"}
       - id: "7.2"
         nombre: Ciclo de vida de la aplicación (ALM)
         funciones:
