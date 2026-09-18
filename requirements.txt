@@ -1,0 +1,52 @@
+# Dependencias de RUNTIME de todos los servicios.
+#
+# Versiones fijadas con `==` en lo que toca el camino crítico (web, datos, bus)
+# y con rango en lo que solo aporta comodidad. El criterio: si una subida menor
+# puede cambiar el comportamiento en producción, se fija.
+#
+# Lo específico de un servicio va en `services/<nombre>/requirements.txt`, que
+# se instala ADEMÁS de este. Así el gateway no arrastra el motor de plantillas
+# del servicio de documentos ni al revés.
+
+# ── Web ───────────────────────────────────────────────────────────────────
+fastapi>=0.136.3,<0.140
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pydantic-settings>=2.14.0,<3
+python-multipart==0.0.20
+
+# ── Datos ─────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.36
+alembic==1.14.0
+# psycopg 3: el driver mantenido. `binary` evita compilar en la máquina.
+psycopg[binary]==3.2.3
+
+# ── Bus ───────────────────────────────────────────────────────────────────
+# NATS JetStream en producción; Redis Streams como alternativa donde ya hay
+# Redis. Los dos se instalan porque el backend se elige por configuración
+# (BUS_BACKEND) y un despliegue no debería tener que reconstruir la imagen
+# para cambiar de bus.
+nats-py==2.9.0
+redis==5.2.1
+
+# ── Identidad ─────────────────────────────────────────────────────────────
+# argon2 para contraseñas: es lo que recomienda OWASP y no arrastra el límite
+# de 72 bytes de bcrypt.
+argon2-cffi==23.1.0
+pyjwt==2.10.1
+cryptography==44.0.0
+
+# ── Cliente HTTP ──────────────────────────────────────────────────────────
+httpx==0.28.1
+
+# ── Observabilidad ────────────────────────────────────────────────────────
+structlog==24.4.0
+prometheus-client==0.21.1
+
+# ── Utilidades ────────────────────────────────────────────────────────────
+# UUIDv7: identificadores ordenables en el tiempo y no enumerables
+# (CRM-00.01.02.07). Sin esto, un id secuencial invita a probar el siguiente.
+uuid6==2024.7.10
+python-dateutil==2.9.0.post0
+pyyaml==6.0.2
+orjson==3.10.12

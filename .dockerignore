@@ -1,0 +1,20 @@
+# Lo que NO entra en la imagen. Cada línea ahorra tamaño y, algunas, riesgo.
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+# `.env` fuera de la imagen: un secreto dentro de una capa de imagen queda ahí
+# para siempre, lo lee cualquiera que pueda hacer `docker save`, y sobrevive a
+# borrarlo en una capa posterior.
+.env
+.env.*
+data/
+var/
+logs/
+docs/
+tests/
+*.md

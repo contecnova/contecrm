@@ -1,0 +1,25 @@
+# Entorno
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Configuración local: `.env` lleva secretos reales y NUNCA se commitea.
+# Lo que se versiona es `.env.example`, que documenta cada clave con su
+# explicación y valores de ejemplo seguros.
+.env
+.env.local
+.env.*.local
+
+# Datos y salidas locales
+data/
+var/
+logs/
+*.log
+
+# Sistema
+.DS_Store

@@ -1,0 +1,289 @@
+"""Factoría de servicios: la única forma de crear una aplicación en contecrm.
+
+Un servicio no monta su FastAPI a mano. Llama a `crear_servicio()` y recibe una
+aplicación que ya trae, sin poder desactivarlo:
+
+  * el contexto de tenant y la correlación de peticiones,
+  * los errores en formato Problem Details,
+  * las métricas, la salud y el `/metrics`,
+  * el guard de aislamiento en la capa ORM,
+  * el bus conectado y el relevo del outbox corriendo,
+  * la comprobación de secretos y de rol de base de datos al arrancar.
+
+**Por qué imponerlo desde aquí.** Si cada servicio montara sus middlewares,
+tarde o temprano uno se dejaría el de tenant —o lo pondría en el orden que no
+es— y el fallo no se vería hasta que dos clientes se vieran los datos. Lo
+transversal tiene que ser lo que pasa por defecto, y saltárselo tiene que
+costar escribirlo.
+
+    from crmcore.service import crear_servicio
+
+    app = crear_servicio(
+        nombre="identity",
+        descripcion="Usuarios, roles, sesiones y federación",
+        routers=[usuarios.router, roles.router],
+    )
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+from typing import Any
+
+from fastapi import APIRouter, FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+from crmcore.logging import get_logger, setup_logging
+
+logger = get_logger(__name__)
+
+# Estado del proceso, para que readiness pueda decir POR QUÉ no está listo en
+# vez de un "no" sin explicación, que obliga a leer logs para triar.
+_estado: dict[str, Any] = {"bus": None, "relevo": None, "listo": False, "motivos": []}
+
+
+def crear_servicio(
+    *,
+    nombre: str,
+    descripcion: str = "",
+    routers: list[APIRouter] | None = None,
+    version: str = "0.1.0",
+    al_arrancar: Callable[[], Any] | None = None,
+    al_parar: Callable[[], Any] | None = None,
+    consumidores: list[tuple[str, Any, str]] | None = None,
+    necesita_bus: bool = True,
+    necesita_db: bool = True,
+) -> FastAPI:
+    """Construye la aplicación de un servicio.
+
+    `consumidores` son tuplas `(patrón, manejador, grupo)` que se suscriben al
+    bus al arrancar. Declararlos aquí y no en el arranque del módulo evita el
+    error clásico de suscribirse en tiempo de importación: en las pruebas, eso
+    deja consumidores vivos entre casos.
+    """
+    import os
+
+    # El nombre del servicio tiene que estar en el entorno ANTES de leer la
+    # configuración, porque de él dependen el esquema de base de datos, la
+    # etiqueta de las métricas y el nombre del consumidor durable.
+    os.environ.setdefault("SERVICE_NAME", nombre)
+    if os.environ.get("SERVICE_NAME") != nombre:
+        os.environ["SERVICE_NAME"] = nombre
+
+    from crmcore.config import get_settings, limpiar_cache_settings
+
+    limpiar_cache_settings()
+    s = get_settings()
+    setup_logging()
+
+    problemas = s.verificar_para_produccion()
+    if problemas:
+        # Se listan todos y se corta. Arrancar en producción con la clave de
+        # firma de ejemplo es peor que no arrancar: parece que funciona.
+        for p in problemas:
+            logger.error("arranque.config_insegura", problema=p)
+        raise RuntimeError(
+            "Configuración insegura para producción:\n  - " + "\n  - ".join(problemas)
+        )
+
+    @asynccontextmanager
+    async def ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
+        logger.info("servicio.arranca", servicio=nombre, version=version, env=s.env)
+
+        if necesita_db:
+            from crmcore.db.session import get_engine, verificar_rol_sin_bypass
+            from crmcore.tenancy.guard import instalar_guard
+
+            instalar_guard()
+            for aviso in verificar_rol_sin_bypass(get_engine()):
+                # Error y no excepción: en desarrollo se trabaja a menudo con el
+                # rol de administrador, y negarse a arrancar haría imposible el
+                # ciclo local. En producción lo convierte en fallo el gate de
+                # despliegue, que sí puede exigirlo.
+                logger.error("arranque.rls_sin_garantia", problema=aviso)
+
+        if necesita_bus:
+            from crmcore.bus.base import crear_bus
+
+            try:
+                bus = await crear_bus(nombre)
+                _estado["bus"] = bus
+                for patron, manejador, grupo in consumidores or []:
+                    await bus.suscribir(patron, manejador, grupo=grupo)
+
+                if s.outbox_enabled:
+                    from crmcore.bus.outbox import Relevo
+
+                    relevo = Relevo(bus)
+                    _estado["relevo"] = asyncio.create_task(
+                        relevo.correr(), name=f"outbox-{nombre}"
+                    )
+                    _estado["relevo_obj"] = relevo
+            except Exception as exc:  # noqa: BLE001 — sin bus se sirve degradado
+                # El servicio arranca igual: las lecturas siguen funcionando y
+                # las escrituras dejan el evento en la tabla de salida, que se
+                # publicará cuando el bus vuelva. Caerse aquí convertiría una
+                # avería del bus en una caída total del CRM.
+                _estado["motivos"].append(f"bus no disponible: {exc}")
+                logger.error("arranque.bus_no_disponible", error=str(exc)[:300])
+
+        if al_arrancar:
+            resultado = al_arrancar()
+            if asyncio.iscoroutine(resultado):
+                await resultado
+
+        _estado["listo"] = True
+        logger.info("servicio.listo", servicio=nombre, puerto=s.service_port)
+        try:
+            yield
+        finally:
+            _estado["listo"] = False
+            logger.info("servicio.para", servicio=nombre)
+            if al_parar:
+                resultado = al_parar()
+                if asyncio.iscoroutine(resultado):
+                    await resultado
+            relevo_obj = _estado.get("relevo_obj")
+            if relevo_obj:
+                relevo_obj.parar()
+            tarea = _estado.get("relevo")
+            if tarea:
+                tarea.cancel()
+            bus = _estado.get("bus")
+            if bus:
+                await bus.cerrar()
+
+    app = FastAPI(
+        title=f"{s.app_name} · {nombre}",
+        description=descripcion,
+        version=version,
+        lifespan=ciclo_de_vida,
+        # La documentación cuelga del prefijo de versión para que `v1` y `v2`
+        # puedan convivir con sus esquemas separados.
+        docs_url=f"{s.api_prefix}/docs" if s.api_docs_enabled else None,
+        redoc_url=None,
+        openapi_url=f"{s.api_prefix}/openapi.json" if s.api_docs_enabled else None,
+    )
+
+    _montar_middlewares(app, s)
+    from crmcore.http.problems import registrar_manejadores
+
+    registrar_manejadores(app)
+    _montar_salud(app, nombre, version)
+
+    for router in routers or []:
+        app.include_router(router, prefix=s.api_prefix)
+
+    return app
+
+
+def _montar_middlewares(app: FastAPI, s: Any) -> None:
+    """Monta los middlewares en el orden correcto.
+
+    Starlette ejecuta el ÚLTIMO añadido como el más externo, así que se añaden
+    del más interno al más externo: límites → tiempos → contexto. El contexto
+    tiene que ser el más externo porque todo lo demás necesita el `request_id`.
+    """
+    from crmcore.http.middleware import (
+        ContextoMiddleware,
+        LimitesMiddleware,
+        TiemposMiddleware,
+    )
+
+    app.add_middleware(LimitesMiddleware)
+    app.add_middleware(TiemposMiddleware)
+    app.add_middleware(ContextoMiddleware)
+
+    if s.origenes_cors:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=s.origenes_cors,
+            allow_credentials=True,
+            allow_methods=["*"],
+            # Las cabeceras del contrato se listan para que un navegador pueda
+            # leerlas: sin `expose_headers`, el JavaScript del cliente no ve ni
+            # el ETag ni el identificador de petición, y se queda sin poder
+            # hacer concurrencia optimista ni citar el id en un soporte.
+            allow_headers=["*"],
+            expose_headers=["ETag", "X-Request-Id", "Retry-After", "Sunset", "Location"],
+        )
+
+
+def _montar_salud(app: FastAPI, nombre: str, version: str) -> None:
+    """Endpoints de salud y métricas.
+
+    `/health/live` y `/health/ready` son cosas distintas y confundirlas cuesta
+    caro: si el liveness comprobara la base de datos, una caída de Postgres
+    haría que el orquestador matara y recreara todos los servicios sanos, y al
+    volver se encontrarían la base igual de caída pero ya sin caché ni
+    conexiones. El liveness dice «este proceso no está colgado»; el readiness
+    dice «puede atender ahora mismo».
+    """
+
+    @app.get("/health/live", tags=["salud"], summary="El proceso responde")
+    async def live() -> dict[str, str]:
+        return {"estado": "vivo", "servicio": nombre, "version": version}
+
+    @app.get("/health/ready", tags=["salud"], summary="Puede atender peticiones")
+    async def ready(response: Response) -> dict[str, Any]:
+        from crmcore.config import get_settings
+
+        s = get_settings()
+        comprobaciones: dict[str, Any] = {}
+        ok = True
+
+        try:
+            from sqlalchemy import text
+
+            from crmcore.db.session import get_engine
+
+            with get_engine().connect() as conn:
+                conn.execute(text("SELECT 1"))
+            comprobaciones["db"] = "ok"
+        except Exception as exc:  # noqa: BLE001 — el readiness informa, no lanza
+            comprobaciones["db"] = f"error: {str(exc)[:160]}"
+            ok = False
+
+        bus = _estado.get("bus")
+        if bus is not None:
+            try:
+                comprobaciones["bus"] = "ok" if await bus.ping() else "sin conexión"
+                ok = ok and comprobaciones["bus"] == "ok"
+            except Exception as exc:  # noqa: BLE001 — el readiness informa, no lanza
+                comprobaciones["bus"] = f"error: {str(exc)[:160]}"
+                ok = False
+        elif s.outbox_enabled:
+            # Sin bus el servicio atiende igual, pero los eventos se acumulan.
+            # Se dice, sin marcarlo como no listo: sacarlo del balanceo no
+            # arreglaría nada y dejaría al cliente sin servicio.
+            comprobaciones["bus"] = "no conectado (los eventos esperan en la tabla de salida)"
+
+        if not _estado["listo"]:
+            ok = False
+            comprobaciones["arranque"] = "en curso"
+
+        response.status_code = 200 if ok else 503
+        return {"estado": "listo" if ok else "no listo", "comprobaciones": comprobaciones}
+
+    @app.get("/health", tags=["salud"], summary="Alias de readiness")
+    async def health(response: Response) -> dict[str, Any]:
+        return await ready(response)
+
+    from crmcore.config import get_settings
+
+    if get_settings().metrics_enabled:
+
+        @app.get(get_settings().metrics_path, include_in_schema=False)
+        async def metricas() -> Response:
+            from crmcore.obs.metrics import exportar
+
+            return Response(
+                content=exportar(), media_type="text/plain; version=0.0.4; charset=utf-8"
+            )
+
+
+def bus_actual() -> Any:
+    """Bus del proceso, para quien necesite publicar fuera de una petición."""
+    return _estado.get("bus")

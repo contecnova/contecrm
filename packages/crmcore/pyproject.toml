@@ -1,0 +1,20 @@
+# Librería compartida por todos los servicios. Se instala editable
+# (`pip install -e packages/crmcore`) para que un cambio aquí se vea al instante
+# en los servicios sin reinstalar nada.
+#
+# Por qué es un paquete y no una carpeta importada por ruta: el gate
+# `test_layering_contract.py` comprueba que un servicio NO importe módulos de
+# otro servicio, y eso solo se puede afirmar si lo común es una dependencia
+# declarada y lo demás no está en el path.
+[project]
+name = "crmcore"
+version = "0.1.0"
+description = "Núcleo transversal de contecrm: multi-tenancy, contratos, bus, observabilidad"
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["crmcore*"]

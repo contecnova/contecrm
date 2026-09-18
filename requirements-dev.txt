@@ -1,0 +1,24 @@
+# Herramientas de DESARROLLO. Ningún módulo de `packages/` ni de `services/`
+# las importa, y la imagen de producción no las lleva.
+#
+#     pip install -r requirements-dev.txt
+#
+# `pgserver` trae los binarios de PostgreSQL 16 dentro del wheel: da un Postgres
+# de verdad sin Docker y sin permisos de administrador. Existe por una razón
+# concreta — el gate de `pre-push` corre las pruebas que necesitan base de
+# datos, y en una máquina sin Docker eso lo volvería inpasable, con lo que la
+# única forma de empujar sería `--no-verify` y entonces no correría NINGÚN gate.
+
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+# Cliente HTTP de pruebas para FastAPI.
+httpx==0.28.1
+# Postgres embebido para la suite marcada `db`.
+pgserver==0.1.4
+ruff==0.8.4
+mypy==1.14.0
+pre-commit==4.0.1
+# Sitio de documentación navegable.
+mkdocs==1.6.1
+mkdocs-material==9.5.49
