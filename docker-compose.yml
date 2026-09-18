@@ -1,0 +1,260 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  contecrm — desarrollo con contenedores
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Dos formas legítimas de levantar esto en local:
+#
+#   ./setup.sh arrancar        sin Docker. Python en la máquina, Postgres
+#                              embebido y bus en memoria. Arranca en segundos y
+#                              recarga al guardar. Es lo de programar.
+#
+#   docker compose up -d       con Docker. Postgres y NATS de verdad, que es lo
+#                              que hay en producción. Es lo de reproducir un
+#                              fallo que «solo pasa en el servidor» y lo de
+#                              probar migraciones y aislamiento de verdad.
+#
+# La diferencia importa y no es cosmética: el Postgres embebido corre como
+# superusuario, y un superusuario **se salta las políticas de RLS aunque estén
+# en FORCE**. Un fallo de aislamiento entre tenants solo se reproduce aquí.
+#
+# ── Uso ────────────────────────────────────────────────────────────────────
+#
+#   docker compose up -d                          solo la infraestructura
+#   docker compose --profile app up -d            infra + los ocho servicios
+#   docker compose --profile ops up -d            + Prometheus y Grafana
+#   docker compose logs -f tenancy                seguir uno
+#   docker compose down                           parar sin borrar datos
+#   docker compose down -v                        ¡destructivo!
+#
+# Por defecto `up -d` levanta SOLO la infraestructura, para poder usar el
+# Postgres y el NATS de Docker con los servicios corriendo en la máquina.
+#
+# ── Esto no es producción ──────────────────────────────────────────────────
+# Las contraseñas están en claro, los puertos se publican en el loopback y se
+# aplican migraciones al arrancar. Para producción está `deploy/compose.prod.yml`,
+# que exige cada secreto del entorno, no publica nada y migra en un paso aparte.
+
+name: contecrm-dev
+
+# ── Piezas comunes ─────────────────────────────────────────────────────────
+x-servicio: &servicio
+  build:
+    context: .
+    target: servicio
+  image: ${CRM_IMAGEN:-contecrm:dev}
+  restart: unless-stopped
+  profiles: [app]
+  env_file:
+    - path: .env
+      required: false
+  environment: &entorno
+    ENV: dev
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # Lo que decide este compose —qué base, qué bus, qué hosts— gana sobre el
+    # `.env` del repositorio a propósito: si no, un `.env` con `localhost`
+    # dejaría los contenedores hablando consigo mismos.
+    SERVICE_HOST: 0.0.0.0
+    SERVICE_PORT: "8000"
+    BUS_BACKEND: nats
+    NATS_URL: nats://nats:4222
+    REDIS_URL: redis://redis:6379/0
+    # En desarrollo cada servicio aplica sus migraciones al arrancar. En
+    # producción no: las aplica un paso aparte para que dos réplicas no migren
+    # a la vez.
+    APLICAR_MIGRACIONES: "true"
+    SECRET_KEY: ${SECRET_KEY:-desarrollo-local-no-usar-en-produccion}
+    TENANT_ROOT_DOMAIN: ${TENANT_ROOT_DOMAIN:-}
+    RLS_ENABLED: "true"
+    METRICS_ENABLED: "true"
+  depends_on:
+    postgres: { condition: service_healthy }
+    nats: { condition: service_started }
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/live"]
+    interval: 10s
+    timeout: 3s
+    retries: 10
+    start_period: 20s
+
+services:
+  # ── Infraestructura ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine@sha256:3c5c8892d184f738f4fe282d14ddaa613a38f00f4189d2d94725ebe6f2909ddb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contecrm
+      POSTGRES_PASSWORD: contecrm_dev_only
+      POSTGRES_DB: contecrm
+    ports:
+      # Al loopback y no a 0.0.0.0: publicarlo en todas las interfaces expone la
+      # base a la red del sitio en el que estés trabajando.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+      # El MISMO script que en producción, a propósito: si el esquema de
+      # permisos por servicio falla, tiene que fallar también aquí.
+      - ./deploy/crear-bases.sh:/docker-entrypoint-initdb.d/10-crear-bases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contecrm -d contecrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  nats:
+    image: nats:2-alpine@sha256:ac8f88a6494bffc2c2a5289a0ca61cb28a9145c11ba5677cf24265d07f46d8d4
+    restart: unless-stopped
+    # `-js` activa JetStream. Sin él no hay persistencia ni consumidores
+    # durables: los eventos publicados mientras un servicio está caído se
+    # pierden, y eso convierte el outbox en inútil justo cuando hace falta.
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    volumes:
+      - datos_nats:/data
+
+  redis:
+    image: redis:7-alpine@sha256:520775a41a63e77e06c73e35d2fd9cc15921a609516818796b4ecbb813078bc7
+    restart: unless-stopped
+    # `appendonly` para que los contadores de rate limiting sobrevivan a un
+    # reinicio: sin persistencia, reiniciar Redis regala a todo el mundo una
+    # ventana entera de peticiones.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - datos_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Servicios ────────────────────────────────────────────────────────────
+  # El puerto de cada uno se publica en el loopback para poder llamarlos
+  # directamente al depurar. En producción solo el gateway está expuesto.
+  tenancy:
+    <<: *servicio
+    command: ["servicio", "tenancy"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: tenancy
+      DATABASE_URL: postgresql+psycopg://crm_tenancy_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_tenancy_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8001:8000"]
+
+  identity:
+    <<: *servicio
+    command: ["servicio", "identity"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: identity
+      DATABASE_URL: postgresql+psycopg://crm_identity_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_identity_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8002:8000"]
+
+  metadata:
+    <<: *servicio
+    command: ["servicio", "metadata"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: metadata
+      DATABASE_URL: postgresql+psycopg://crm_metadata_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_metadata_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8003:8000"]
+
+  orchestrator:
+    <<: *servicio
+    command: ["servicio", "orchestrator"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: orchestrator
+      DATABASE_URL: postgresql+psycopg://crm_orchestrator_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_orchestrator_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8004:8000"]
+
+  automation:
+    <<: *servicio
+    command: ["servicio", "automation"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: automation
+      DATABASE_URL: postgresql+psycopg://crm_automation_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_automation_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8005:8000"]
+
+  integration:
+    <<: *servicio
+    command: ["servicio", "integration"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: integration
+      DATABASE_URL: postgresql+psycopg://crm_integration_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_integration_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8006:8000"]
+
+  eventing:
+    <<: *servicio
+    command: ["servicio", "eventing"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: eventing
+      DATABASE_URL: postgresql+psycopg://crm_eventing_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_eventing_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8007:8000"]
+
+  gateway:
+    <<: *servicio
+    command: ["servicio", "gateway"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: gateway
+      DATABASE_URL: postgresql+psycopg://crm_gateway_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_gateway_mig:contecrm_dev_only@postgres:5432/contecrm
+      # El gateway es el único que conoce a los demás. Los servicios NO se
+      # llaman entre sí por HTTP salvo por esta tabla de rutas: lo normal entre
+      # ellos es el bus, que no crea acoplamiento temporal.
+      RUTAS_SERVICIOS: >-
+        tenancy=http://tenancy:8000,identity=http://identity:8000,
+        metadata=http://metadata:8000,orchestrator=http://orchestrator:8000,
+        automation=http://automation:8000,integration=http://integration:8000,
+        eventing=http://eventing:8000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports: ["127.0.0.1:${GATEWAY_PORT:-8080}:8000"]
+
+  # ── Observabilidad ───────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
+    profiles: [ops]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/alertas.yml:/etc/prometheus/alertas.yml:ro
+      - datos_prometheus:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+
+  grafana:
+    image: grafana/grafana:11.3.1@sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c
+    profiles: [ops]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - datos_grafana:/var/lib/grafana
+      - ./ops/grafana:/etc/grafana/provisioning:ro
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  # Los datos irremplazables se declaran con nombre para que sobrevivan a un
+  # `docker compose down` (sin `-v`). Postgres es el sistema entero; NATS, los
+  # eventos aún no entregados.
+  datos_postgres:
+  datos_nats:
+  datos_redis:
+  datos_prometheus:
+  datos_grafana:

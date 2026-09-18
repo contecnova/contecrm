@@ -16,7 +16,7 @@ class _AppSettings(BaseSettings):
     #
     # No tiene default útil a propósito: un proceso que no sabe qué servicio es
     # produce telemetría inservible y, peor, podría conectarse al esquema
-    # equivocado. `crmcore.service.create_service()` lo exige.
+    # equivocado. `crmcore.service.crear_servicio()` lo exige.
     service_name: str = ""
     service_version: str = "0.1.0"
 
