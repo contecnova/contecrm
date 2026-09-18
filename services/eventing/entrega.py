@@ -9,9 +9,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-import httpx
 from crmcore.events.envelope import Evento
 from crmcore.logging import get_logger
+from crmcore.red import cliente_seguro_async
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -117,7 +117,13 @@ async def entregar(
     )
     inicio = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=s.webhook_timeout_s, follow_redirects=False) as cli:
+        # Cliente con guard de SSRF: la URL la escribe el cliente, así que sin
+        # él un webhook contra `169.254.169.254` se lleva las credenciales de la
+        # máquina, y uno contra `postgres:5432` escanea la red desde dentro. Se
+        # valida en cada entrega y no solo al darla de alta: el DNS del dominio
+        # puede cambiar después, y el que se registró apuntando fuera puede
+        # apuntar dentro mañana.
+        async with cliente_seguro_async(timeout=s.webhook_timeout_s, follow_redirects=False) as cli:
             respuesta = await cli.post(suscripcion.url, content=cuerpo, headers=cabeceras)
         registro.codigo_http = respuesta.status_code
         # Se guarda un recorte de la respuesta: lo justo para depurar con el

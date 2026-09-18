@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 27 en-curso · ✅ 130 hecho · ⬜ 370 pendiente
+**527 capacidades**: 🔧 27 en-curso · ✅ 134 hecho · ⬜ 366 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 87 · ⬜ 97
+200 capacidades · 🔧 16 · ✅ 91 · ⬜ 93
 
 ### 0.1 Multi-tenancy
 
@@ -259,10 +259,10 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.05.01.01` | OAuth 2.1 / OIDC como mecanismo primario, con PKCE | C | 0 | identity | ⬜ | contecmind:app/core/oidc.py + app/api/auth.py; contecweb:app/services/sso.py |
-| `CRM-00.05.01.02` | SAML 2.0 para SSO empresarial | C | 0 | identity | ⬜ | contecweb:app/services/saml.py + contecmind:app/services/saml.py |
-| `CRM-00.05.01.03` | SSO por tenant con múltiples proveedores de identidad simultáneos | A | 0 | identity | ⬜ | contecmind:app/services/oidc_mappings.py |
-| `CRM-00.05.01.04` | Federación y Just-In-Time provisioning de usuarios | A | 0 | identity | ⬜ | contecmind:app/services/oidc.py (JIT provisioning) |
+| `CRM-00.05.01.01` | OAuth 2.1 / OIDC como mecanismo primario, con PKCE | C | 0 | identity | ✅ | contecmind:app/core/oidc.py + app/api/auth.py; contecweb:app/services/sso.py |
+| `CRM-00.05.01.02` | SAML 2.0 para SSO empresarial | C | 0 | identity | ✅ | contecweb:app/services/saml.py + contecmind:app/services/saml.py |
+| `CRM-00.05.01.03` | SSO por tenant con múltiples proveedores de identidad simultáneos | A | 0 | identity | ✅ | contecmind:app/services/oidc_mappings.py |
+| `CRM-00.05.01.04` | Federación y Just-In-Time provisioning de usuarios | A | 0 | identity | ✅ | contecmind:app/services/oidc.py (JIT provisioning) |
 | `CRM-00.05.01.05` | SCIM 2.0 para aprovisionamiento y desaprovisionamiento automático | A | 0 | identity | ⬜ | contecweb:app/services/scim.py (699 líneas) + contecflow-PSA:app/services/scim_service.py |
 | `CRM-00.05.01.06` | MFA obligatoria configurable por rol, con TOTP, push, WebAuthn/passkeys | C | 0 | identity | ✅ | contecweb:app/services/mfa.py + contecmind:app/services/{mfa,webauthn}.py |
 | `CRM-00.05.01.07` | Credenciales máquina: client credentials, service accounts, claves con scope y caducidad | C | 0 | identity | ✅ | contecflow-PSA:app/models/oauth_apps.py |

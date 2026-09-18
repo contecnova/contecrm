@@ -62,6 +62,33 @@ def _c(*args: Any, **kwargs: Any) -> ClaveAjuste:
 CLAVES: dict[str, ClaveAjuste] = {
     c.clave: c
     for c in (
+        # SSO (CRM-00.05.01.01, .02)
+        _c(
+            "oidc_cache_ttl_s",
+            "int",
+            "Segundos que se cachean el descubrimiento y las claves del proveedor",
+            minimo=10,
+            maximo=86_400,
+            campo_settings="oidc_cache_ttl_s",
+        ),
+        _c(
+            "sso_estado_ttl_s",
+            "int",
+            "Segundos que vive un inicio de sesión a medias",
+            minimo=60,
+            maximo=3_600,
+            campo_settings="sso_estado_ttl_s",
+            sensible=True,
+        ),
+        # Salidas de red (CRM-00.01.01.08, webhooks, conector)
+        _c(
+            "url_guard_hosts_permitidos",
+            "str",
+            "Hosts internos admitidos para salidas del servidor, separados por comas",
+            campo_settings="url_guard_hosts_permitidos",
+            minimo_ambito="global",
+            sensible=True,
+        ),
         # Colaboración (CRM-06.02.01.01)
         _c(
             "comentario_max_caracteres",

@@ -35,6 +35,7 @@ from typing import Any
 import httpx
 from crmcore.errors import ErrorDependencia, ErrorValidacion, PeticionMalFormada
 from crmcore.logging import get_logger
+from crmcore.red import cliente_seguro_async
 
 logger = get_logger(__name__)
 
@@ -202,7 +203,8 @@ async def _token_oauth2(config: dict[str, Any], secretos: dict[str, str], *, ten
     if config.get("oauth_scope"):
         datos["scope"] = str(config["oauth_scope"])
 
-    async with httpx.AsyncClient(timeout=20.0) as cli:
+    # Con guard: la URL del servidor de tokens la configura el tenant.
+    async with cliente_seguro_async(timeout=20.0) as cli:
         respuesta = await cli.post(url, data=datos)
     if respuesta.status_code >= 400:
         # `PeticionMalFormada` y no `ErrorDependencia`: unas credenciales
@@ -264,7 +266,11 @@ async def ejecutar(
     crudos = 0
     paginas = 0
 
-    async with httpx.AsyncClient(timeout=timeout_s, follow_redirects=True) as cli:
+    # `follow_redirects=True` hace el guard todavía más necesario: sin él, un
+    # servidor que responda 302 hacia `169.254.169.254` salta cualquier
+    # validación hecha solo sobre la URL inicial. El transporte revalida **cada
+    # salto**, no solo el primero.
+    async with cliente_seguro_async(timeout=timeout_s, follow_redirects=True) as cli:
         siguiente_url: str | None = url
         while siguiente_url and paginas < max_paginas:
             try:

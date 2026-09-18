@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.identity import servicio as svc
+from services.identity.api_sso import router_idp, router_sso
 from services.identity.esquemas import (
     ActivarMfa,
     ClaveApiCreada,
@@ -710,4 +711,6 @@ ROUTERS = [
     router_claves,
     router_comparticion,
     *ROUTERS_NOTIFICACION,
+    router_sso,
+    router_idp,
 ]

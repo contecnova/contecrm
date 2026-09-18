@@ -448,3 +448,41 @@ def test_no_hay_nombres_de_indice_duplicados() -> None:
     nombres = [i.name for tabla in Base.metadata.tables.values() for i in tabla.indexes]
     repetidos = sorted({n for n, c in Counter(nombres).items() if c > 1})
     assert not repetidos, f"Nombres de índice repetidos: {repetidos}"
+
+
+def test_ningun_cliente_http_crudo_fuera_del_guard() -> None:
+    """Toda salida HTTP del servidor pasa por el guard de SSRF.
+
+    Un `httpx.AsyncClient(...)` construido a mano en un camino que busca una URL
+    del tenant es el agujero de vuelta, y no se ve en una revisión: la línea es
+    idéntica a la correcta salvo por el nombre de la función.
+
+    La excepción es el gateway, que reenvía a **nuestros propios** servicios por
+    nombres de red internos —justo los que el guard bloquea— y cuya lista de
+    destinos sale de la configuración del despliegue, no del tenant.
+    """
+    exentos = {
+        "gateway/api.py": "reenvía a los servicios internos del propio despliegue",
+    }
+
+    crudos: list[str] = []
+    for fichero in [
+        *sorted(SERVICIOS_DIR.rglob("*.py")),
+        *sorted((RAIZ / "packages" / "crmcore" / "crmcore").rglob("*.py")),
+    ]:
+        if "__pycache__" in str(fichero) or fichero.parent.name == "red":
+            continue
+        etiqueta = f"{fichero.parent.name}/{fichero.name}"
+        if etiqueta in exentos:
+            continue
+        texto = fichero.read_text(encoding="utf-8")
+        if "httpx.AsyncClient(" in texto or "httpx.Client(" in texto:
+            crudos.append(etiqueta)
+
+    assert not crudos, (
+        "Clientes HTTP sin guard de SSRF:\n  "
+        + "\n  ".join(crudos)
+        + "\n\nUsa `crmcore.red.cliente_seguro` o `cliente_seguro_async`. Si el "
+        "destino es un servicio interno del despliegue, añádelo a `exentos` con "
+        "su motivo."
+    )

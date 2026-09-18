@@ -911,3 +911,112 @@ El **certificado de destrucción** recoge las dos partes, va encadenado por hash
 como el registro de auditoría y **sobrevive al tenant**: es lo único que queda
 cuando ya no queda nada. Un cliente que pregunta dos años después «¿seguís
 teniendo mis datos?» necesita una respuesta que no sea «creemos que no».
+
+---
+
+## 14. Entrar con el proveedor de identidad de la empresa
+
+Nadie quiere una contraseña más. En una empresa mediana, el CRM es el sistema
+número once, y la única forma de que las bajas de personal se apliquen de verdad
+es que el CRM no tenga su propia lista de usuarios que alguien tenga que
+acordarse de actualizar.
+
+### OIDC con PKCE
+
+El mecanismo primario (CRM-00.05.01.01) es el flujo de código con **PKCE
+siempre**, incluso habiendo secreto de cliente: OAuth 2.1 lo exige para todos
+los clientes y no solo para los públicos. Sin PKCE, quien intercepte el código
+de autorización —en el log de un proxy, en el historial del navegador, en una
+cabecera `Referer`— puede canjearlo. Con él hace falta además el verificador,
+que no sale nunca de este servidor. El método `plain` no se ofrece: convierte
+PKCE en un adorno, porque reto y verificador serían el mismo valor.
+
+El `estado` y el `nonce` son cosas distintas y hacen falta las dos: el estado
+ata la respuesta a la petición que la inició, y el nonce ata el token de
+identidad a ese mismo flujo.
+
+El **estado del flujo va a la base de datos, no a la caché**. Entre la ida y la
+vuelta pasan minutos y la vuelta la puede atender otra réplica; con la caché en
+memoria, el inicio de sesión fallaría siempre y solo en producción. Y es de **un
+solo uso**: se borra al consumirlo, porque si no, quien capture la respuesta la
+reenvía y entra. El `state` se guarda **hasheado**, porque viaja en la URL y
+acaba en logs.
+
+Tres controles que, si fallan, no se notan —y por eso están portados tal cual de
+`contecmind`, donde ya pasaron por auditoría:
+
+- **Una clave que no case con el `kid` del token no se sustituye por la primera
+  de la lista.** Hacerlo enmascara una rotación de claves o una configuración
+  cruzada entre tenants, y deja pasar un token firmado con otra clave. Si no
+  encaja ninguna, se refresca el JWKS una vez; y se distingue «el proveedor no
+  devuelve ninguna clave» de «ninguna sirve», porque en el primer caso el
+  problema es el IdP y con un mensaje genérico el operador busca donde no es.
+- **Solo algoritmos asimétricos**, cruzados con los que el propio proveedor
+  anuncia. Admitir uno simétrico permitiría firmar el token con la clave pública
+  del IdP —que es pública— haciéndola pasar por secreto compartido.
+- **El emisor sale del documento de descubrimiento**, no de la URL configurada:
+  es el que el proveedor dice ser, que es contra el que hay que comparar. Y se
+  exigen `exp`, `iat`, `iss`, `aud` y `sub`; sin `sub`, el token no identifica a
+  nadie.
+
+Las cachés de descubrimiento y de claves son **por proveedor**, no por proceso:
+con una sola caché global, el segundo tenant se validaría contra las claves del
+primero.
+
+### SAML 2.0
+
+Para el SSO empresarial que todavía va por SAML (CRM-00.05.01.02). Lo importante
+es lo que **no** se hace: **no se valida la firma XML a mano**. Comprobar bien
+una firma XML —canonicalización, referencias, transformaciones, envoltura— es un
+campo de minas conocido, y una implementación propia que funciona con las
+aserciones de prueba es exactamente por donde se cuela una falsificada. Lo hace
+`python3-saml`.
+
+Esa librería necesita `libxmlsec1` compilada en el sistema, así que es un
+**extra opcional** (`requirements-saml.txt`): ponerla en las dependencias
+obligaría a compilarla en todas las instalaciones, incluidas las que usan OIDC o
+no usan SSO. Sin ella, estos endpoints responden 503 diciendo exactamente qué
+falta y cómo instalarlo.
+
+Se exige **aserción firmada** (`wantAssertionsSigned`), y hay pruebas que
+comprueban que se rechaza la sin firmar, la firmada con otra clave y la
+manipulada después de firmar. El host contra el que se valida el destinatario
+sale de **nuestra** URL configurada y no de las cabeceras de la petición: `Host`
+y `X-Forwarded-Host` las pone quien llama.
+
+### Varios proveedores a la vez, y altas automáticas
+
+Un tenant puede tener **varios proveedores simultáneos** (CRM-00.05.01.03) —dos
+correos tras una fusión, empleados por Entra ID y partners por Google—, y el
+dominio del correo decide a cuál va cada quien. Preguntárselo al usuario sería
+una pregunta que nadie sabe contestar.
+
+El **alta automática** (CRM-00.05.01.04) crea el usuario la primera vez que
+entra, **sin contraseña local**: es lo que hace que forzar SSO sea de verdad,
+porque sin credencial propia no hay forma de saltarse el IdP corporativo.
+
+Los **roles se recalculan en cada entrada** a partir de los grupos del
+proveedor. Si solo se asignaran al crear el usuario, quien cambia de
+departamento conservaría los permisos antiguos para siempre. El mapeo gobierna
+únicamente los roles que él mismo concede: los que un administrador puso a mano
+en el CRM no se tocan. Y un grupo sin correspondencia **no da rol** — lo
+contrario convertiría crear un grupo en el IdP en conceder acceso al CRM.
+
+### Todas las salidas del servidor, con guard
+
+La URL del proveedor la escribe el cliente, igual que la de un webhook o la de
+un ERP en el conector. Sin guard, configurar un IdP en `169.254.169.254` es una
+forma cómoda de leer los metadatos del proveedor de nube, y apuntarlo a
+`postgres:5432` permite escanear la red interna desde dentro — con la salida en
+el cuerpo de la respuesta que el propio CRM guarda para depurar.
+
+Por eso **toda salida HTTP pasa por `crmcore.red`**: esquemas admitidos,
+credenciales embebidas rechazadas, rangos privados y de metadatos bloqueados, y
+un host que no resuelve **falla cerrado**. El transporte revalida **cada
+salto**, no solo el primero —el conector sigue redirecciones, así que un 302
+hacia dentro sería el agujero de vuelta—, y **fija la IP validada** conservando
+el nombre para el TLS, lo que cierra la ventana del *DNS rebinding*. Un gate de
+arquitectura falla si aparece un cliente HTTP construido a mano fuera de ahí.
+
+Hay un escape configurado para las instalaciones con el IdP o el ERP en la red
+interna, porque negarlo obligaría a apagar el guard entero.

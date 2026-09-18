@@ -10,6 +10,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.red import exigir
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -24,7 +25,10 @@ class CrearSuscripcion(BaseModel):
         pattern=r"^https://.+",
         description=(
             "Solo HTTPS. Un webhook lleva datos de negocio firmados; por HTTP "
-            "plano, cualquiera en el camino los lee"
+            "plano, cualquiera en el camino los lee. Además se comprueba que no "
+            "apunte a la red interna ni a los metadatos del proveedor de nube: "
+            "se rechaza al darlo de alta, para que el error salga delante de "
+            "quien lo está configurando y no en un log a las tres de la mañana"
         ),
     )
     eventos: list[str] = Field(
@@ -117,6 +121,12 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
             error_code="webhook.eventos_desconocidos",
             detalle={"desconocidos": desconocidos, "disponibles": sorted(conocidos)[:50]},
         )
+
+    # Se comprueba ya al darla de alta, además de en cada entrega: así el error
+    # sale delante de quien está configurando el webhook y no en un log de
+    # entregas fallidas. En la entrega se vuelve a comprobar porque el DNS de un
+    # dominio puede cambiar después.
+    exigir(datos.url)
 
     secreto = secrets.token_urlsafe(32)
     suscripcion = Suscripcion(tenant_id=principal.tenant_id, secreto=secreto, **datos.model_dump())

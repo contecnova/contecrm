@@ -67,3 +67,18 @@ class _AuthSettings(BaseSettings):
     suplantacion_enabled: bool = True
     suplantacion_max_minutos: int = Field(60, ge=5, le=1440)
     suplantacion_exige_motivo: bool = True
+
+    # ── SSO por proveedor externo (CRM-00.05.01.01, .02) ──────────────────
+    # Cuánto se cachean el documento de descubrimiento y las claves de un
+    # proveedor. Cinco minutos: lo bastante para no consultar al IdP en cada
+    # inicio de sesión, y lo bastante poco para que una rotación de claves se
+    # recoja sola sin tocar nada.
+    oidc_cache_ttl_s: int = Field(300, ge=10, le=86_400)
+    # Margen de reloj admitido al validar la vigencia de un token. Los relojes
+    # del IdP y del servidor no van sincronizados al milisegundo, y sin margen
+    # un token recién emitido puede parecer futuro.
+    sso_margen_reloj_s: int = Field(60, ge=0, le=600)
+    # Cuánto vive un inicio de sesión a medias —el estado entre que se manda al
+    # usuario al IdP y vuelve—. Cinco minutos basta para escribir una
+    # contraseña y pasar el segundo factor; más deja la ventana abierta.
+    sso_estado_ttl_s: int = Field(300, ge=60, le=3_600)

@@ -58,3 +58,13 @@ class _SecuritySettings(BaseSettings):
     trust_proxy_headers: bool = False
     # Redes desde las que se aceptan esas cabeceras, separadas por comas.
     trusted_proxies: str = ""
+
+    # ── Salidas de red y SSRF ─────────────────────────────────────────────
+    # Hosts internos que el operador admite pese a estar en rango privado,
+    # separados por comas. Existe porque hay instalaciones con el IdP o el ERP
+    # en la red interna, y negarlo obligaría a apagar el guard entero.
+    url_guard_hosts_permitidos: str = ""
+    # Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite
+    # tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS
+    # que no contesta colgaría el hilo que atiende la petición.
+    url_guard_dns_timeout_s: float = Field(3.0, ge=0.1, le=30.0)

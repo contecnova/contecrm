@@ -132,6 +132,7 @@ def _importar_todos_los_modelos() -> None:
         "services.tenancy.catalogos",
         "services.tenancy.baja",
         "services.identity.comparticion",
+        "services.identity.sso",
     ]
     for modulo in modulos:
         try:

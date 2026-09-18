@@ -1,0 +1,16 @@
+# Extra OPCIONAL: SAML 2.0 como proveedor de servicio (CRM-00.05.01.02).
+#
+# No está en `requirements.txt` a propósito. `xmlsec` necesita `libxmlsec1`
+# compilada en el sistema, así que ponerla ahí obligaría a instalarla y
+# compilarla en TODAS las instalaciones —incluidas las que usan OIDC, que son la
+# mayoría, y las que no usan SSO—. Sin ella, los endpoints SAML responden 503
+# diciendo exactamente qué falta.
+#
+# En Debian o Ubuntu, antes de instalar:
+#     apt-get install libxmlsec1-dev pkg-config
+# En macOS:
+#     brew install libxmlsec1
+#
+# Y después:
+#     pip install -r requirements-saml.txt
+python3-saml==1.16.0

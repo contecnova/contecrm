@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**131 ajustes** en total, de los cuales **42** son editables en caliente por tenant.
+**136 ajustes** en total, de los cuales **45** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -107,6 +107,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SUPLANTACION_ENABLED` | 🔥 `suplantacion_enabled` | `True` |  | El soporte puede entrar como un usuario del tenant, pero: con motivo escrito, con caducidad corta y dejando rastro en la auditoría. Sin las tres cosas, es un agujero con buena intención. |
 | `SUPLANTACION_MAX_MINUTOS` | 🔥 `suplantacion_max_minutos` | `60` | 5–1440 |  |
 | `SUPLANTACION_EXIGE_MOTIVO` | — | `True` |  |  |
+| `OIDC_CACHE_TTL_S` | 🔥 `oidc_cache_ttl_s` | `300` | 10–86400 | Cuánto se cachean el documento de descubrimiento y las claves de un proveedor. Cinco minutos: lo bastante para no consultar al IdP en cada inicio de sesión, y lo bastante poco para que una rotación de claves se recoja sola sin tocar nada. |
+| `SSO_MARGEN_RELOJ_S` | — | `60` | 0–600 | Margen de reloj admitido al validar la vigencia de un token. Los relojes del IdP y del servidor no van sincronizados al milisegundo, y sin margen un token recién emitido puede parecer futuro. |
+| `SSO_ESTADO_TTL_S` | 🔥 `sso_estado_ttl_s` | `300` | 60–3600 | Cuánto vive un inicio de sesión a medias —el estado entre que se manda al usuario al IdP y vuelve—. Cinco minutos basta para escribir una contraseña y pasar el segundo factor; más deja la ventana abierta. |
 
 ## Límites, resiliencia y topes de proceso
 
@@ -181,3 +184,5 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `HSTS_MAX_AGE` | — | `31536000` | 0–63072000 | HSTS en segundos. 0 = no se envía. Un año es el valor que piden las listas de precarga. |
 | `TRUST_PROXY_HEADERS` | — | `False` |  | Confiar en las cabeceras de proxy (X-Forwarded-For). Solo debe activarse si de verdad hay un proxy delante: si no, cualquiera falsea su IP y se salta el rate limiting y las listas de permitidos. |
 | `TRUSTED_PROXIES` | — | *(vacío)* |  | Redes desde las que se aceptan esas cabeceras, separadas por comas. |
+| `URL_GUARD_HOSTS_PERMITIDOS` | 🔥 `url_guard_hosts_permitidos` | *(vacío)* |  | Hosts internos que el operador admite pese a estar en rango privado, separados por comas. Existe porque hay instalaciones con el IdP o el ERP en la red interna, y negarlo obligaría a apagar el guard entero. |
+| `URL_GUARD_DNS_TIMEOUT_S` | — | `3.0` | 0.1–30.0 | Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS que no contesta colgaría el hilo que atiende la petición. |
