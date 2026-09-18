@@ -77,6 +77,12 @@ GATES: list[Gate] = [
         "la matriz de trazabilidad está regenerada desde el catálogo",
     ),
     Gate(
+        "hoja-estado",
+        [PY, "scripts/gen_hoja_estado.py", "--check"],
+        "fast",
+        "la hoja web de estado refleja el catálogo y el manual",
+    ),
+    Gate(
         "arquitectura",
         [PY, "-m", "pytest", "tests/unit/test_contratos_arquitectura.py", "-q", "--no-header"],
         "fast",

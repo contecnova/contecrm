@@ -1,0 +1,547 @@
+<title>Catálogo contecrm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --papel: #fbfaf7;
+    --superficie: #ffffff;
+    --superficie-2: #f3f1ec;
+    --tinta: #17191e;
+    --tinta-2: #4a4740;
+    --tinta-3: #78736a;
+    --linea: #ded9cf;
+    --linea-fuerte: #c6bfb1;
+    --acento: #28457a;
+    --acento-suave: #e3e9f4;
+    --hecho: #2f6b4a;
+    --hecho-fondo: #e2efe7;
+    --curso: #8a5a12;
+    --curso-fondo: #f7ecd9;
+    --pendiente: #6b675f;
+    --pendiente-fondo: #eeebe4;
+    --sombra: 0 1px 2px rgba(23, 25, 30, .06);
+  }
+  :root:not([data-theme="light"]) {
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel: #14161a;
+      --superficie: #1b1e23;
+      --superficie-2: #23262c;
+      --tinta: #edeae4;
+      --tinta-2: #b6b1a7;
+      --tinta-3: #8b857a;
+      --linea: #2f333a;
+      --linea-fuerte: #454a53;
+      --acento: #8fb0e8;
+      --acento-suave: #1e2836;
+      --hecho: #79c79c;
+      --hecho-fondo: #1a2b22;
+      --curso: #dcae63;
+      --curso-fondo: #2c2415;
+      --pendiente: #918b80;
+      --pendiente-fondo: #23262c;
+      --sombra: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel: #14161a;
+    --superficie: #1b1e23;
+    --superficie-2: #23262c;
+    --tinta: #edeae4;
+    --tinta-2: #b6b1a7;
+    --tinta-3: #8b857a;
+    --linea: #2f333a;
+    --linea-fuerte: #454a53;
+    --acento: #8fb0e8;
+    --acento-suave: #1e2836;
+    --hecho: #79c79c;
+    --hecho-fondo: #1a2b22;
+    --curso: #dcae63;
+    --curso-fondo: #2c2415;
+    --pendiente: #918b80;
+    --pendiente-fondo: #23262c;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 64px;
+  }
+  .envoltorio { max-width: 1180px; margin-inline: auto; }
+
+  /* ── Cabecera ─────────────────────────────────────────────── */
+  header.principal { padding-block: 40px 28px; border-bottom: 2px solid var(--tinta); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--tinta-3); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: clamp(30px, 5vw, 46px); font-weight: 600; line-height: 1.1;
+    margin: 0 0 12px; text-wrap: balance; letter-spacing: -.015em;
+  }
+  .entradilla { color: var(--tinta-2); max-width: 62ch; margin: 0; }
+  .entradilla + .entradilla { margin-top: 10px; }
+
+  /* ── Resumen ──────────────────────────────────────────────── */
+  .resumen { display: grid; gap: 28px; padding-block: 28px; border-bottom: 1px solid var(--linea); }
+  @media (min-width: 760px) { .resumen { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); align-items: start; } }
+
+  .totales { display: flex; flex-direction: column; gap: 4px; }
+  .cifra {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 52px; font-weight: 600; line-height: 1; letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .cifra small { font-size: 22px; color: var(--tinta-3); font-weight: 400; }
+  .rotulo { font-size: 13px; color: var(--tinta-3); }
+
+  .barra {
+    display: flex; height: 10px; border-radius: 2px; overflow: hidden;
+    background: var(--pendiente-fondo); margin-block: 14px 10px;
+  }
+  .barra i { display: block; height: 100%; }
+  .barra .b-hecho { background: var(--hecho); }
+  .barra .b-curso { background: var(--curso); }
+
+  .leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--tinta-2); }
+  .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .punto { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ── Fases ────────────────────────────────────────────────── */
+  .fases { display: grid; gap: 2px; }
+  .fase {
+    display: grid; gap: 4px 14px; padding: 10px 0;
+    grid-template-columns: 28px minmax(0, 1fr);
+    border-bottom: 1px solid var(--linea);
+  }
+  .fase:last-child { border-bottom: 0; }
+  .fase-n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; font-weight: 600; color: var(--tinta-3);
+    padding-top: 2px;
+  }
+  .fase-cab { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+  .fase-nombre { font-weight: 600; }
+  .fase-cifras {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums;
+  }
+  .fase-alcance { font-size: 13px; color: var(--tinta-3); grid-column: 2; }
+  .fase .barra { margin-block: 6px 2px; height: 6px; grid-column: 2; }
+
+  /* ── Filtros ──────────────────────────────────────────────── */
+  .filtros {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--papel); border-bottom: 1px solid var(--linea-fuerte);
+    padding-block: 12px; margin-block: 0 4px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .filtros select, .filtros input {
+    font: inherit; font-size: 13px; color: var(--tinta);
+    background: var(--superficie); border: 1px solid var(--linea-fuerte);
+    border-radius: 3px; padding: 6px 9px; min-width: 0;
+  }
+  .filtros input { flex: 1 1 200px; }
+  .filtros select:focus-visible, .filtros input:focus-visible, .filtros button:focus-visible,
+  .grupo-cab:focus-visible {
+    outline: 2px solid var(--acento); outline-offset: 1px;
+  }
+  .filtros button {
+    font: inherit; font-size: 13px; cursor: pointer; color: var(--tinta-2);
+    background: none; border: 1px solid transparent; border-radius: 3px; padding: 6px 9px;
+  }
+  .filtros button:hover { color: var(--tinta); background: var(--superficie-2); }
+  .contador {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums;
+    margin-inline-start: auto; white-space: nowrap;
+  }
+
+  /* ── Lista ────────────────────────────────────────────────── */
+  .grupo { border-bottom: 1px solid var(--linea); }
+  .grupo-cab {
+    width: 100%; text-align: left; font: inherit; cursor: pointer;
+    background: none; border: 0; padding: 14px 0 12px; color: inherit;
+    display: flex; gap: 10px; align-items: baseline;
+  }
+  .grupo-cab h2 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 17px; font-weight: 600; margin: 0; flex: 1;
+  }
+  .grupo-cifras {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums;
+  }
+  .flecha { color: var(--tinta-3); font-size: 11px; width: 10px; }
+
+  .seccion-rot {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--tinta-3); padding: 14px 0 6px; border-top: 1px dotted var(--linea);
+  }
+  .grupo > .cuerpo > .seccion-rot:first-child { border-top: 0; padding-top: 4px; }
+
+  .cap {
+    display: grid; gap: 2px 12px; padding: 9px 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    border-top: 1px solid var(--linea);
+  }
+  .cap:first-of-type { border-top: 0; }
+  .cap-id {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px; color: var(--tinta-3); padding-top: 3px; white-space: nowrap;
+  }
+  .cap-t { margin: 0; }
+  .cap-meta {
+    grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px;
+    align-items: center; margin-top: 4px;
+  }
+  @media (max-width: 560px) {
+    .cap { grid-template-columns: minmax(0, 1fr); }
+    .cap-meta { grid-column: 1; }
+  }
+
+  .pil {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 2px; white-space: nowrap;
+  }
+  .e-hecho { background: var(--hecho-fondo); color: var(--hecho); }
+  .e-en-curso { background: var(--curso-fondo); color: var(--curso); }
+  .e-pendiente { background: var(--pendiente-fondo); color: var(--pendiente); }
+  .svc { background: var(--acento-suave); color: var(--acento); }
+  /* La criticidad se marca con un filete a la izquierda, no con otra píldora:
+     con cuatro pastillas seguidas ya no se distingue ninguna. */
+  .crit {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; font-weight: 600; color: var(--tinta-3);
+    border-left: 2px solid var(--linea-fuerte); padding-left: 6px;
+  }
+  .crit-C { border-left-color: var(--acento); color: var(--acento); }
+
+  .medias {
+    grid-column: 2; margin-top: 6px; font-size: 13px; color: var(--tinta-2);
+    background: var(--curso-fondo); border-radius: 3px; padding: 8px 10px;
+    display: grid; gap: 3px;
+  }
+  @media (max-width: 560px) { .medias { grid-column: 1; } }
+  .medias b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--curso); font-weight: 600; margin-inline-end: 6px;
+  }
+  .reutiliza {
+    grid-column: 2; margin-top: 4px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; color: var(--tinta-3); word-break: break-word;
+  }
+  @media (max-width: 560px) { .reutiliza { grid-column: 1; } }
+
+  .vacio { padding: 40px 0; color: var(--tinta-3); text-align: center; }
+
+  /* ── Anexos ───────────────────────────────────────────────── */
+  section.anexo { padding-block: 32px 0; }
+  section.anexo h2 {
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 20px; font-weight: 600; margin: 0 0 6px;
+  }
+  section.anexo p { color: var(--tinta-2); max-width: 62ch; margin: 0 0 16px; }
+  .eventos { display: grid; gap: 0; }
+  .evento {
+    display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline;
+    padding: 7px 0; border-top: 1px solid var(--linea);
+  }
+  .evento code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px; flex: 1 1 220px;
+  }
+  .pie {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--linea);
+    font-size: 12.5px; color: var(--tinta-3);
+  }
+  .pie code { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="envoltorio">
+  <header class="principal">
+    <p class="eyebrow">contecrm · catálogo funcional</p>
+    <h1>Qué está hecho y qué falta</h1>
+    <p class="entradilla">
+      Las <strong id="n-total">—</strong> capacidades del CRM, con su estado real.
+      Se genera desde <code>docs/catalogo/catalogo.yaml</code>, que es la fuente de
+      verdad del alcance.
+    </p>
+    <p class="entradilla">
+      Una capacidad solo está <em>hecha</em> cuando cumple el enunciado completo,
+      hay una prueba que la cita por su identificador y está explicada en el
+      manual. Un gate local lo comprueba en cada commit, así que este estado no
+      es una opinión: si algo aquí dice «hecho», se puede ir del identificador al
+      código que lo implementa.
+    </p>
+  </header>
+
+  <div class="resumen">
+    <div class="totales">
+      <div class="cifra"><span id="pct-hecho">—</span><small>%</small></div>
+      <div class="rotulo">del catálogo completo</div>
+      <div class="barra" id="barra-global" role="img" aria-label="Progreso global"></div>
+      <div class="leyenda">
+        <span><i class="punto" style="background:var(--hecho)"></i><span id="n-hecho">—</span> hecho</span>
+        <span><i class="punto" style="background:var(--curso)"></i><span id="n-curso">—</span> en curso</span>
+        <span><i class="punto" style="background:var(--linea-fuerte)"></i><span id="n-pend">—</span> pendiente</span>
+      </div>
+    </div>
+    <div class="fases" id="fases"></div>
+  </div>
+
+  <div class="filtros">
+    <select id="f-fase" aria-label="Fase"></select>
+    <select id="f-estado" aria-label="Estado"></select>
+    <select id="f-crit" aria-label="Criticidad"></select>
+    <select id="f-svc" aria-label="Servicio"></select>
+    <input id="f-texto" type="search" placeholder="Buscar por texto o identificador…" aria-label="Buscar">
+    <button id="f-limpiar" type="button">Limpiar</button>
+    <span class="contador" id="contador">—</span>
+  </div>
+
+  <main id="lista"></main>
+
+  <section class="anexo">
+    <h2>Contrato de eventos</h2>
+    <p>
+      Lo que el CRM publica hacia fuera. Es el contrato con quien integre: un
+      evento prometido y no emitido es una integración que nunca recibe nada, y
+      un equipo buscando el fallo en su lado.
+    </p>
+    <div class="eventos" id="eventos"></div>
+  </section>
+
+  <section class="anexo">
+    <h2>Restricciones transversales</h2>
+    <p>
+      No son capacidades: son condiciones que toda capacidad tiene que cumplir.
+      Cada una tiene un gate que falla si se incumple.
+    </p>
+    <div class="eventos" id="restricciones"></div>
+  </section>
+
+  <p class="pie">
+    Generada el <span id="generado">—</span> desde la versión <span id="version">—</span> del catálogo.
+    Para regenerarla: <code>python scripts/gen_hoja_estado.py</code>.
+  </p>
+</div>
+
+<script>
+  const DATOS = /*__DATOS__*/null;
+
+  const $ = (s) => document.querySelector(s);
+  const ESTADOS = ["hecho", "en-curso", "pendiente"];
+  const ROTULO_ESTADO = { "hecho": "hecho", "en-curso": "en curso", "pendiente": "pendiente" };
+
+  function cuenta(caps) {
+    const c = { hecho: 0, "en-curso": 0, pendiente: 0 };
+    for (const x of caps) c[x.estado] = (c[x.estado] || 0) + 1;
+    return c;
+  }
+
+  function barra(caps) {
+    const c = cuenta(caps), t = caps.length || 1;
+    return `<i class="b-hecho" style="width:${(c.hecho / t) * 100}%"></i>` +
+           `<i class="b-curso" style="width:${(c["en-curso"] / t) * 100}%"></i>`;
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"]/g, (m) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+  }
+
+  // ── Resumen ──────────────────────────────────────────────────
+  function pintarResumen() {
+    const caps = DATOS.capacidades, c = cuenta(caps);
+    $("#n-total").textContent = caps.length;
+    $("#n-hecho").textContent = c.hecho;
+    $("#n-curso").textContent = c["en-curso"];
+    $("#n-pend").textContent = c.pendiente;
+    $("#pct-hecho").textContent = Math.round((c.hecho / caps.length) * 100);
+    $("#barra-global").innerHTML = barra(caps);
+    $("#generado").textContent = DATOS.generado;
+    $("#version").textContent = DATOS.version;
+
+    $("#fases").innerHTML = Object.entries(DATOS.fases).map(([n, f]) => {
+      const suyas = caps.filter((x) => String(x.fase) === n);
+      const cc = cuenta(suyas);
+      return `<div class="fase">
+        <div class="fase-n">F${esc(n)}</div>
+        <div class="fase-cab">
+          <span class="fase-nombre">${esc(f.nombre)}</span>
+          <span class="fase-cifras">${cc.hecho}/${suyas.length}</span>
+        </div>
+        <div class="barra">${barra(suyas)}</div>
+        <div class="fase-alcance">${esc(f.alcance)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  // ── Filtros ──────────────────────────────────────────────────
+  const CLAVES = ["f-fase", "f-estado", "f-crit", "f-svc", "f-texto"];
+
+  function opciones(sel, etiqueta, valores) {
+    sel.innerHTML = `<option value="">${etiqueta}</option>` +
+      valores.map(([v, r]) => `<option value="${esc(v)}">${esc(r)}</option>`).join("");
+  }
+
+  function prepararFiltros() {
+    const caps = DATOS.capacidades;
+    opciones($("#f-fase"), "Todas las fases",
+      Object.entries(DATOS.fases).map(([n, f]) => [n, `F${n} · ${f.nombre}`]));
+    opciones($("#f-estado"), "Cualquier estado",
+      ESTADOS.map((e) => [e, ROTULO_ESTADO[e]]));
+    opciones($("#f-crit"), "Cualquier criticidad",
+      Object.entries(DATOS.criticidades).map(([k, v]) => [k, v]));
+    opciones($("#f-svc"), "Cualquier servicio",
+      [...new Set(caps.map((c) => c.svc))].sort().map((s) => [s, s]));
+
+    // Los filtros elegidos se recuerdan en este navegador. Es una comodidad
+    // por lector, no estado compartido: quien abra el enlace en otro sitio
+    // parte de la vista completa, que es la correcta por defecto.
+    try {
+      const guardado = JSON.parse(localStorage.getItem("contecrm.filtros") || "{}");
+      for (const k of CLAVES) if (guardado[k]) $("#" + k).value = guardado[k];
+    } catch (e) { /* almacenamiento bloqueado: se parte de la vista completa */ }
+
+    for (const k of CLAVES) {
+      $("#" + k).addEventListener("input", () => { guardar(); pintarLista(); });
+    }
+    $("#f-limpiar").addEventListener("click", () => {
+      for (const k of CLAVES) $("#" + k).value = "";
+      guardar(); pintarLista();
+    });
+  }
+
+  function guardar() {
+    try {
+      const v = {};
+      for (const k of CLAVES) v[k] = $("#" + k).value;
+      localStorage.setItem("contecrm.filtros", JSON.stringify(v));
+    } catch (e) { /* sin almacenamiento, los filtros valen para esta sesión */ }
+  }
+
+  function filtradas() {
+    const fase = $("#f-fase").value, estado = $("#f-estado").value;
+    const crit = $("#f-crit").value, svc = $("#f-svc").value;
+    const texto = $("#f-texto").value.trim().toLowerCase();
+    return DATOS.capacidades.filter((c) =>
+      (!fase || String(c.fase) === fase) &&
+      (!estado || c.estado === estado) &&
+      (!crit || c.c === crit) &&
+      (!svc || c.svc === svc) &&
+      (!texto || (c.t + " " + c.id + " " + c.funcion + " " + c.seccion).toLowerCase().includes(texto))
+    );
+  }
+
+  // ── Lista ────────────────────────────────────────────────────
+  const cerrados = new Set();
+
+  function pintarLista() {
+    const caps = filtradas();
+    const c = cuenta(caps);
+    $("#contador").textContent =
+      `${caps.length} · ${c.hecho} hecho · ${c["en-curso"]} en curso · ${c.pendiente} pendiente`;
+
+    if (!caps.length) {
+      $("#lista").innerHTML = `<p class="vacio">Ninguna capacidad cumple ese filtro.</p>`;
+      return;
+    }
+
+    const porModulo = new Map();
+    for (const cap of caps) {
+      if (!porModulo.has(cap.modulo)) porModulo.set(cap.modulo, new Map());
+      const secs = porModulo.get(cap.modulo);
+      if (!secs.has(cap.seccion)) secs.set(cap.seccion, []);
+      secs.get(cap.seccion).push(cap);
+    }
+
+    $("#lista").innerHTML = [...porModulo].map(([modulo, secs]) => {
+      const suyas = [...secs.values()].flat();
+      const cc = cuenta(suyas);
+      const abierto = !cerrados.has(modulo);
+      const cuerpo = [...secs].map(([seccion, lista]) =>
+        `<div class="seccion-rot">${esc(seccion)}</div>` + lista.map(fila).join("")
+      ).join("");
+      return `<div class="grupo">
+        <button class="grupo-cab" type="button" data-modulo="${esc(modulo)}" aria-expanded="${abierto}">
+          <span class="flecha">${abierto ? "▾" : "▸"}</span>
+          <h2>${esc(modulo)}</h2>
+          <span class="grupo-cifras">${cc.hecho}/${suyas.length}</span>
+        </button>
+        <div class="cuerpo"${abierto ? "" : " hidden"}>${cuerpo}</div>
+      </div>`;
+    }).join("");
+
+    for (const b of document.querySelectorAll(".grupo-cab")) {
+      b.addEventListener("click", () => {
+        const m = b.dataset.modulo;
+        cerrados.has(m) ? cerrados.delete(m) : cerrados.add(m);
+        pintarLista();
+      });
+    }
+  }
+
+  function fila(c) {
+    const medias = (c.hay || c.falta)
+      ? `<div class="medias">
+           ${c.hay ? `<div><b>hay</b>${esc(c.hay)}</div>` : ""}
+           ${c.falta ? `<div><b>falta</b>${esc(c.falta)}</div>` : ""}
+         </div>` : "";
+    const reutiliza = c.reutiliza
+      ? `<div class="reutiliza">reutiliza · ${esc(c.reutiliza)}</div>` : "";
+    return `<article class="cap">
+      <div class="cap-id">${esc(c.id)}</div>
+      <p class="cap-t">${esc(c.t)}</p>
+      <div class="cap-meta">
+        <span class="pil e-${esc(c.estado)}">${esc(ROTULO_ESTADO[c.estado] || c.estado)}</span>
+        <span class="pil svc">${esc(c.svc)}</span>
+        <span class="crit crit-${esc(c.c)}" title="${esc(DATOS.criticidades[c.c] || "")}">${esc(c.c)}</span>
+        <span class="crit" style="border-left-color:transparent;padding-left:0">F${esc(c.fase)}</span>
+      </div>
+      ${medias}
+      ${reutiliza}
+    </article>`;
+  }
+
+  // ── Anexos ───────────────────────────────────────────────────
+  function pintarAnexos() {
+    $("#eventos").innerHTML = DATOS.eventos.map((e) =>
+      `<div class="evento">
+         <code>${esc(e.type)}</code>
+         <span class="pil svc">${esc(e.svc)}</span>
+         <span class="crit" style="border-left-color:transparent;padding-left:0">F${esc(e.fase)}</span>
+       </div>`).join("");
+
+    $("#restricciones").innerHTML = DATOS.restricciones.map((r) =>
+      `<div class="evento">
+         <code>${esc(r.id)}</code>
+         <span style="flex:2 1 320px"><strong>${esc(r.nombre || "")}</strong> — ${esc(r.enunciado || "")}</span>
+         <span class="crit" style="border-left-color:transparent;padding-left:0">${esc(r.gate || "")}</span>
+       </div>`).join("");
+  }
+
+  pintarResumen();
+  prepararFiltros();
+  pintarLista();
+  pintarAnexos();
+</script>

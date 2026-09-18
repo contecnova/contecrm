@@ -55,3 +55,14 @@ con nombre y apellidos al final del [Manual III](manual-3-funcionalidades.md).
 | `eventing` | Webhooks, catálogo de eventos, replay, cola de fallidos |
 | `party` | Cuentas, contactos, actividades, calidad del dato y consentimientos |
 | `sales` | Leads, pipelines y oportunidades |
+
+## Estado del proyecto
+
+La hoja de estado (`docs/hoja-estado.html`) enseña las 527 capacidades con su
+estado real, filtrables por fase, servicio, criticidad y texto, y dice de cada
+capacidad «en curso» qué hay y qué falta.
+
+Se **genera** desde el catálogo y desde este manual —`python
+scripts/gen_hoja_estado.py`— y un gate del preflight falla si se queda
+desfasada. Editarla a mano no serviría de nada: la siguiente regeneración la
+pisaría, y esa es precisamente la garantía de que dice la verdad.

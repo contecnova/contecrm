@@ -334,6 +334,14 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-06.02.01.02` Seguimiento y notificaciones | Suscripciones, preferencias por tipo y canal, agrupación, franja de silencio y la bandeja de la aplicación | El repartidor que entrega por correo, push y SMS: hoy las notificaciones se crean y se leen en la bandeja, pero nada sale del sistema |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
+| `CRM-01.01.01.04` Relaciones no jerárquicas | Modelo y tabla: partner, competidor, proveedor, prescriptor, separados de la jerarquía | La API para crearlas y consultarlas |
+| `CRM-01.01.01.05` Direcciones tipificadas | Varias por cuenta o contacto, con tipo y principal, y su API | Validación postal y geocodificación |
+| `CRM-01.01.01.06` Identificadores fiscales | Varios por cuenta y validación del NIF/CIF español | El resto de países y la comprobación contra VIES |
+| `CRM-01.01.01.10` Equipo de cuenta | Modelo con roles (owner, KAM, técnico, soporte, financiero) y nivel de acceso | Su API, y que pertenecer al equipo cuente como vía de compartición en los listados |
+| `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
+| `CRM-01.01.04.10` Validación de contacto | Normalización de teléfono, formato de correo y puntuación de calidad | El estado de verificación real —rebote de correo, SMS— y la validación de dirección |
+| `CRM-01.02.01.02` Gestión de actividades | Actividades con propietario, vencimiento y cierre | Delegación, recordatorios y la vista de vencidas |
+| `CRM-07.03.01.03` Derechos del interesado | Registro de la solicitud con el plazo legal calculado al recibirla, y su API | La ejecución (exportar o borrar los datos) y la evidencia de haberlo hecho |
 
 ---
 
