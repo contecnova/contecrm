@@ -9,8 +9,10 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from services.metadata import relaciones as rel
 from services.metadata.esquemas import (
     CampoOut,
     CrearCampo,
@@ -334,6 +336,154 @@ def desactivar_valor(lista: str, valor: str, db: DbDep, principal: AutenticadoDe
         raise NoEncontrado("El valor no existe", error_code="metadata.valor_no_encontrado")
     fila.activo = False
     return fila
+
+
+# ── Relaciones entre objetos (CRM-00.04.01.03) ────────────────────────────
+
+
+class CrearRelacion(BaseModel):
+    nombre: str = Field(..., max_length=80)
+    etiqueta: str = Field(..., max_length=200)
+    nombre_inverso: str = Field(
+        "",
+        max_length=80,
+        description=(
+            "Cómo se llama vista desde el otro lado. Sin esto, la ficha del "
+            "destino enseña «relaciones» sin nombre: desde la cuenta se llama "
+            "«contactos» y desde el contacto, «cuentas»."
+        ),
+    )
+    descripcion: str = ""
+    origen: str = Field(..., max_length=80)
+    destino: str | None = Field(None, max_length=80)
+    destinos: list[str] = Field(
+        default_factory=list, description="Tipos admitidos, solo en las polimórficas"
+    )
+    tipo: str = Field(
+        "referencia", description="referencia | maestro_detalle | jerarquica | polimorfica"
+    )
+    cardinalidad: str = Field("1:N", description="1:1 | 1:N | N:M")
+    al_borrar: str = Field("restringir", description="restringir | cascada | desvincular")
+    obligatoria: bool = False
+    via: str | None = Field(None, description="Objeto intermedio de una N:M")
+    activa: bool = True
+
+
+class RelacionOut(BaseModel):
+    id: UUID
+    nombre: str
+    etiqueta: str
+    nombre_inverso: str
+    origen: str
+    destino: str | None
+    destinos: list[Any]
+    tipo: str
+    cardinalidad: str
+    al_borrar: str
+    obligatoria: bool
+    via: str | None
+    activa: bool
+
+    model_config = {"from_attributes": True}
+
+
+@router.get(
+    "/relaciones/tipos",
+    response_model=dict,
+    summary="Tipos de relación y qué implica cada uno",
+    description=(
+        "No son etiquetas: cada tipo impone reglas distintas. Una "
+        "maestro-detalle es siempre 1:N, obligatoria y en cascada, porque eso "
+        "es lo que significa; dejar elegirlo la convertiría en una referencia "
+        "con otro nombre."
+    ),
+)
+def tipos_relacion() -> Any:
+    return {
+        "tipos": rel.TIPOS,
+        "cardinalidades": list(rel.CARDINALIDADES),
+        "al_borrar": rel.AL_BORRAR,
+    }
+
+
+@router.get("/relaciones", response_model=list[RelacionOut], summary="Relaciones declaradas")
+def listar_relaciones(db: DbDep, principal: AutenticadoDep) -> Any:
+    return list(
+        db.execute(
+            select(rel.RelacionDefinida)
+            .where(rel.RelacionDefinida.tenant_id == principal.tenant_id)
+            .order_by(rel.RelacionDefinida.origen, rel.RelacionDefinida.nombre)
+        )
+        .scalars()
+        .all()
+    )
+
+
+@router.post(
+    "/relaciones",
+    response_model=RelacionOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Declarar una relación entre objetos",
+    description=(
+        "Devuelve **todos** los problemas de coherencia a la vez, no el "
+        "primero: quien modela un objeto agradece ver de una vez las tres cosas "
+        "que no encajan en vez de corregir una, reenviar y descubrir la "
+        "siguiente."
+    ),
+)
+def crear_relacion(datos: CrearRelacion, db: DbDep, principal: AutenticadoDep) -> Any:
+    return rel.crear(db, tenant_id=principal.tenant_id, datos=datos.model_dump())
+
+
+@router.post(
+    "/relaciones/validar",
+    response_model=dict,
+    summary="Comprobar una relación sin declararla",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    description=(
+        "Para el editor de modelo: enseña si encaja antes de guardarla. Cada "
+        "regla que se comprueba aquí es una que, si no se comprueba, se "
+        "descubre con datos dentro — y entonces arreglarla es una migración."
+    ),
+)
+def validar_relacion(datos: CrearRelacion, _: AutenticadoDep) -> Any:
+    problemas = rel.validar(datos.model_dump())
+    return {"valida": not problemas, "problemas": problemas}
+
+
+@router.get(
+    "/relaciones/grafo",
+    response_model=dict,
+    summary="El mapa de relaciones del tenant",
+    description=(
+        "Lo necesita cualquier interfaz dirigida por metadatos: sin el grafo, "
+        "una pantalla no puede ofrecer «ver los contactos de esta cuenta» sin "
+        "que alguien lo haya programado a mano, que es justo lo que un modelo "
+        "extensible viene a evitar."
+    ),
+)
+def grafo_relaciones(db: DbDep, principal: AutenticadoDep) -> Any:
+    return rel.grafo(db, principal.tenant_id)
+
+
+@router.get(
+    "/objetos/{objeto}/plan-de-borrado",
+    response_model=list[dict],
+    summary="Qué se rompe si borro este objeto",
+    description=(
+        "Hay que poder contestarlo **antes** de borrar. Lo que impide va "
+        "primero: enterrarlo entre veinte cascadas hace que se lea el listado y "
+        "se pase por alto justo lo que bloquea.\n\n"
+        "Solo mira las relaciones **declaradas**: lo que un servicio arrastre "
+        "por su cuenta —la cascada de la papelera, una clave ajena— no sale "
+        "aquí, y se dice en vez de fingir que esta es la lista completa."
+    ),
+)
+def plan_de_borrado(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    return [
+        p.a_dict() for p in rel.plan_de_borrado(db, tenant_id=principal.tenant_id, objeto=objeto)
+    ]
 
 
 ROUTERS = [router]

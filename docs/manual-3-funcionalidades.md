@@ -8,7 +8,7 @@ prueba que lo sostiene.
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 527 capacidades está en
+> el estado completo de las 536 capacidades está en
 > [el estado del catálogo](catalogo/estado.md), donde 86 constan como hechas.
 
 ---
@@ -1083,3 +1083,110 @@ dato**, no en una tabla central. Los permisos de base de datos impiden —a
 propósito— que un servicio escriba en el esquema de otro, así que un bloqueo
 central no lo podría consultar la purga de `party`. Uno que cubra todo el tenant
 se pone en cada servicio, igual que con la papelera.
+
+---
+
+## 16. Relaciones entre objetos del modelo
+
+Un modelo de datos extensible no es una lista de objetos con campos: es un
+**grafo**. Sin declarar las relaciones (CRM-00.04.01.03), cada una vive escondida
+dentro de un campo de tipo referencia y nadie puede responder a «¿qué se rompe si
+borro esta cuenta?» — que es justo la pregunta que hay que contestar **antes** de
+borrarla.
+
+Los tipos no son etiquetas. Cada uno impone reglas, y validarlas al declarar la
+relación es lo que evita descubrirlas cuando ya hay cien mil registros, momento
+en el que corregirlas deja de ser configuración y pasa a ser una migración:
+
+- **Maestro-detalle** es siempre 1:N, obligatoria y en cascada. No son opciones:
+  es lo que la palabra significa. El detalle **no existe** sin su maestro —se
+  borra con él y hereda su visibilidad—, y confundirla con una referencia deja
+  líneas de pedido huérfanas apuntando a un pedido que ya no está.
+- **Jerárquica** va de un objeto a sí mismo, nunca es N:M —cada nodo tendría
+  varios padres y consolidar daría totales repetidos— y **no borra en cascada**,
+  porque borrar la matriz se llevaría el grupo entero sin que nadie lo haya
+  pedido.
+- **Polimórfica** necesita al menos dos destinos (con uno es una referencia
+  normal), no puede ser N:M —la tabla intermedia tendría que apuntar a tipos
+  distintos por fila— y no cascadea, porque habría que hacerlo sobre tipos
+  distintos, cada uno con sus reglas.
+- **N:M** necesita un objeto intermedio, y ahí es donde viven los datos de la
+  propia relación: el rol de un contacto en una cuenta, la fecha desde la que un
+  socio lo es.
+
+La validación devuelve **todos** los problemas, no el primero: quien modela un
+objeto agradece ver de una vez las tres cosas que no encajan en vez de corregir
+una, reenviar y descubrir la siguiente.
+
+`GET /metadata/objetos/{objeto}/plan-de-borrado` dice qué arrastra, qué
+desvincula y qué impide borrar, con **lo que impide primero** — enterrarlo entre
+veinte cascadas hace que se lea el listado y se pase por alto justo lo que
+bloquea. Solo mira las relaciones declaradas, y se dice: lo que un servicio
+arrastre por su cuenta no sale ahí.
+
+La comprobación de ciclos vive aquí y la usa `party` para la jerarquía de
+cuentas, pasándole cómo subir por los padres. Tenerla escrita dos veces
+garantizaría que un día una de las dos se corrigiera y la otra no.
+
+---
+
+## 17. Explotación y reporting: contecintelligence, sin salir del CRM
+
+**Es un requisito, no una opción** (restricción transversal RT-4). Informes,
+cuadros de mando, consultas analíticas y preguntas en lenguaje natural **no se
+reimplementan aquí**: los resuelve `contecintelligence`, consumido de forma
+frontless. contecrm pone la pantalla y el contexto; las consultas las responde su
+API delegada. El usuario no sale nunca de contecrm.
+
+### Por qué así
+
+Un motor de informes serio —constructor sin código, uniones entre fuentes,
+filtros cruzados, campos calculados, instantáneas históricas, respeto de la
+seguridad del dato en cada fila— es un producto entero. Ya existe uno en casa,
+con su modelo semántico, su chat, sus visualizaciones y su API pensada
+explícitamente para integrarse en otra aplicación. Escribir un segundo motor aquí
+no daría nada que no exista y garantizaría dos verdades distintas: el mismo dato
+respondería una cosa en el CRM y otra en el panel de dirección.
+
+Y la decisión se incumple sola si no se vigila. No hace falta mala fe: basta que
+alguien necesite «un informe rápido» y escriba un generador de SQL en un rincón.
+Por eso RT-4 tiene **gate**: `tests/unit/test_explotacion_delegada.py` comprueba
+que la restricción sigue declarada, que cada capacidad de informes y de cuadros
+de mando dice que se delega —sin esa marca, quien la coja para implementarla lee
+un enunciado que pide construir un motor—, y que no aparece ningún módulo con
+pinta de motor propio ni SQL compuesto por interpolación de texto.
+
+### Cómo se conecta
+
+`contecintelligence` publica su contrato y define dos pasos deliberadamente
+separados, y esa separación es la parte que importa:
+
+1. **En el servidor de contecrm**, la credencial de aplicación se canja por un
+   **token de usuario final** que nombra el tenant, la persona, su rol y sus
+   alcances, y dura minutos (CRM-05.01.04.01). La credencial de aplicación puede
+   representar a *todos* los tenants: si bajara al navegador sería la llave de
+   todos.
+2. **En la pantalla**, ese token corto es el único que viaja
+   (CRM-05.01.04.03).
+
+Cada tenant de contecrm se corresponde con una organización de
+`contecintelligence`, creada al provisionar (CRM-05.01.04.02). Quién pertenece a
+qué **lo dice el servidor**, no el navegador: si lo dijera un identificador en la
+URL, el aislamiento valdría lo que valga el JavaScript de esa pantalla.
+
+### Lo que no se delega
+
+**La política de acceso sigue siendo del CRM.** Una consulta analítica no puede
+devolver más de lo que ese usuario ve en la ficha (CRM-05.01.04.05): los
+permisos, las reglas de compartición y el enmascaramiento por sensibilidad se
+propagan en el token y en la descripción de la fuente. Una explotación que ve
+más que la aplicación es una fuga con otro nombre.
+
+**Y el CRM no depende de ella para operar** (CRM-05.01.04.08). Si
+`contecintelligence` no responde, la pantalla de explotación lo dice y el resto
+del CRM sigue funcionando. Atar el alta de un cliente a que el motor analítico
+esté vivo sería convertir una herramienta de consulta en una dependencia crítica.
+
+Queda declarado en el catálogo como el grupo **CRM-05.01.04**, de la fase 2 —
+junto con el resto de la explotación, que es cuando el CRM tiene datos que
+merezca la pena explotar.

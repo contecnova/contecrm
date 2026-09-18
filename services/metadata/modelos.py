@@ -178,3 +178,19 @@ class ValorLista(Base, TimestampMixin):
         UniqueConstraint("tenant_id", "lista", "valor", name="uq_valor_lista"),
         Index("ix_valores_lista", "tenant_id", "lista", "activo"),
     )
+
+
+# ── Tablas declaradas en otro módulo de este mismo servicio ───────────────
+#
+# `modelos.py` es lo que leen el generador de migraciones y la fixture de
+# pruebas. Un modelo que no aparezca aquí sencillamente no se migra.
+from services.metadata.relaciones import RelacionDefinida  # noqa: E402
+
+__all__ = [
+    "CampoDefinido",
+    "Layout",
+    "ObjetoDefinido",
+    "RelacionDefinida",
+    "ReglaValidacion",
+    "ValorLista",
+]

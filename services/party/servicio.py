@@ -233,27 +233,20 @@ def enlazar_jerarquia(
     que cualquier recorrido —consolidar importes, calcular visibilidad— no
     termine nunca, y el síntoma es una petición colgada, no un error claro.
     """
-    if cuenta_id == padre_id:
-        raise Conflicto(
-            "Una cuenta no puede ser su propia matriz", error_code="party.jerarquia_ciclo"
-        )
+    # La comprobación de ciclos vive en el núcleo —la usan varios servicios, y
+    # uno no puede importar de otro— y aquí solo se le dice cómo subir por los
+    # padres de ESTA jerarquía.
+    from crmcore.datos.jerarquia import comprobar_ciclo
 
-    # Se sube por los padres del padre buscando la propia cuenta.
-    actual: UUID | None = padre_id
-    visitados: set[UUID] = set()
-    while actual and actual not in visitados:
-        visitados.add(actual)
-        if actual == cuenta_id:
-            raise Conflicto(
-                "Ese enlace crearía un ciclo en la jerarquía",
-                error_code="party.jerarquia_ciclo",
-                detalle={"jerarquia": jerarquia},
-            )
-        actual = db.execute(
+    def _padre_de(id_cuenta: UUID) -> UUID | None:
+        return db.execute(
             select(JerarquiaCuenta.padre_id).where(
-                JerarquiaCuenta.cuenta_id == actual, JerarquiaCuenta.jerarquia == jerarquia
+                JerarquiaCuenta.cuenta_id == id_cuenta,
+                JerarquiaCuenta.jerarquia == jerarquia,
             )
         ).scalar_one_or_none()
+
+    comprobar_ciclo(_padre_de, hijo=cuenta_id, nuevo_padre=padre_id)
 
     cuenta = _cuenta(db, cuenta_id)
     existente = db.execute(

@@ -73,6 +73,16 @@ restricciones_transversales:
       Cada capacidad es tenant-aware por defecto — datos, configuración,
       metadatos, cuotas, extensiones, claves y observabilidad.
     gate: tests/integration/test_rls_aislamiento.py
+  - id: RT-4
+    nombre: Explotación delegada en contecintelligence
+    enunciado: >-
+      La explotación del dato —informes, cuadros de mando, consultas analíticas y
+      preguntas en lenguaje natural— NO se reimplementa aquí: la resuelve
+      contecintelligence, consumido de forma frontless. contecrm expone las
+      pantallas y el contexto; las consultas las responde contecintelligence a
+      través de su API delegada, con el tenant, el usuario y sus permisos
+      propagados. El usuario no sale nunca de contecrm.
+    gate: tests/unit/test_explotacion_delegada.py
 
 modulos:
   - id: "0"
@@ -289,7 +299,7 @@ modulos:
             capacidades:
               - {id: CRM-00.04.01.01, c: C, fase: 0, svc: metadata, estado: hecho, t: "Objetos personalizados por tenant con ciclo de vida completo (CRUD, API, permisos, auditoría)"}
               - {id: CRM-00.04.01.02, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py", t: "Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado"}
-              - {id: CRM-00.04.01.03, c: C, fase: 0, svc: metadata, estado: pendiente, t: "Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada"}
+              - {id: CRM-00.04.01.03, c: C, fase: 0, svc: metadata, estado: hecho, t: "Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada"}
               - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Campos calculados y rollups agregados sobre hijos"}
               - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
               - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: hecho, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
@@ -787,24 +797,36 @@ modulos:
           - id: CRM-05.01.01
             nombre: Motor de informes
             capacidades:
-              - {id: CRM-05.01.01.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/report_builder_service.py + bi_report_builder_v2_service.py", t: "Constructor de informes por el usuario final, sin código"}
-              - {id: CRM-05.01.01.02, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_query_builder_service.py + olap/", t: "Informes tabulares, agrupados, matriciales y de unión de fuentes"}
-              - {id: CRM-05.01.01.03, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Filtros dinámicos, filtros de ejecución y filtros cruzados"}
-              - {id: CRM-05.01.01.04, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Campos calculados, fórmulas de resumen y agrupaciones por periodo"}
-              - {id: CRM-05.01.01.05, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_data_versioning_service.py", t: "Informes históricos con instantáneas periódicas (trending)"}
-              - {id: CRM-05.01.01.06, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/scheduled_reports.py + bi_report_delivery_service.py", t: "Programación y distribución automática por correo o a un destino externo"}
-              - {id: CRM-05.01.01.07, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{bi_export_service,exportador_tabular}.py", t: "Exportación a CSV, Excel y PDF con control de permisos y volumen"}
-              - {id: CRM-05.01.01.08, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_governance_service.py", t: "Seguridad del dato respetada en el informe (nunca expone más de lo permitido)"}
-              - {id: CRM-05.01.01.09, c: A, fase: 2, svc: analytics, estado: pendiente, t: "API de informes para consumir resultados desde cualquier frontend"}
+              - {id: CRM-05.01.01.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Constructor de informes por el usuario final, sin código"}
+              - {id: CRM-05.01.01.02, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Informes tabulares, agrupados, matriciales y de unión de fuentes"}
+              - {id: CRM-05.01.01.03, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Filtros dinámicos, filtros de ejecución y filtros cruzados", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.01.04, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Campos calculados, fórmulas de resumen y agrupaciones por periodo", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.01.05, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Informes históricos con instantáneas periódicas (trending)"}
+              - {id: CRM-05.01.01.06, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Programación y distribución automática por correo o a un destino externo"}
+              - {id: CRM-05.01.01.07, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: la consulta la resuelve él) + contecflow-PSA:app/services/bi_export_service.py (generación del fichero)", t: "Exportación a CSV, Excel y PDF con control de permisos y volumen"}
+              - {id: CRM-05.01.01.08, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Seguridad del dato respetada en el informe (nunca expone más de lo permitido)"}
+              - {id: CRM-05.01.01.09, c: A, fase: 2, svc: analytics, estado: pendiente, t: "API de informes para consumir resultados desde cualquier frontend", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
           - id: CRM-05.01.02
             nombre: Cuadros de mando
             capacidades:
-              - {id: CRM-05.01.02.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/dashboard_service.py + bi_platform_service.py", t: "Dashboards configurables por rol, equipo y usuario"}
-              - {id: CRM-05.01.02.02, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto"}
-              - {id: CRM-05.01.02.03, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Filtros globales y drill-down hasta el registro"}
-              - {id: CRM-05.01.02.04, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Dashboards dinámicos que muestran los datos del usuario que los abre"}
-              - {id: CRM-05.01.02.05, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_smart_alerts/ + bi_anomaly_service.py", t: "Suscripción, alertas por umbral y notificación de anomalías"}
-              - {id: CRM-05.01.02.06, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_embed_service.py + bi_tokens_service.py", t: "Embebido de dashboards en aplicaciones externas con SSO"}
+              - {id: CRM-05.01.02.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Dashboards configurables por rol, equipo y usuario"}
+              - {id: CRM-05.01.02.02, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.03, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Filtros globales y drill-down hasta el registro", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.04, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Dashboards dinámicos que muestran los datos del usuario que los abre", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.05, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Suscripción, alertas por umbral y notificación de anomalías"}
+              - {id: CRM-05.01.02.06, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Embebido de dashboards en aplicaciones externas con SSO"}
+          - id: CRM-05.01.04
+            nombre: Explotación delegada en contecintelligence
+            capacidades:
+              - {id: CRM-05.01.04.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence:sdk (canje de credencial por token de usuario final)", t: "Canje en el servidor de la credencial de aplicación por un token de usuario final con tenant, sujeto, rol y alcances"}
+              - {id: CRM-05.01.04.02, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence:/api/admin/apps (mapeo de organizaciones)", t: "Correspondencia entre cada tenant de contecrm y su organización en contecintelligence, creada al provisionar"}
+              - {id: CRM-05.01.04.03, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Pantalla de explotación dentro de contecrm: se pregunta y se ven tablas y gráficos sin salir del CRM"}
+              - {id: CRM-05.01.04.04, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Registro del CRM como fuente consultable, descrita en lenguaje natural y mantenida al día con el modelo"}
+              - {id: CRM-05.01.04.05, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Propagacion de permisos y comparticion: la consulta analitica nunca devuelve mas de lo que el usuario ve en el CRM"}
+              - {id: CRM-05.01.04.06, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM"}
+              - {id: CRM-05.01.04.07, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió"}
+              - {id: CRM-05.01.04.08, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
+              - {id: CRM-05.01.04.09, c: A, fase: 5, svc: analytics, estado: pendiente, t: "Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro"}
           - id: CRM-05.01.03
             nombre: Analítica avanzada
             capacidades:

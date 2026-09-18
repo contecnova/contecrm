@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 27 en-curso · ✅ 136 hecho · ⬜ 364 pendiente
+**536 capacidades**: 🔧 27 en-curso · ✅ 137 hecho · ⬜ 372 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 91 · ⬜ 93
+200 capacidades · 🔧 16 · ✅ 92 · ⬜ 92
 
 ### 0.1 Multi-tenancy
 
@@ -232,7 +232,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.04.01.01` | Objetos personalizados por tenant con ciclo de vida completo (CRUD, API, permisos, auditoría) | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.02` | Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado | C | 0 | metadata | ✅ | contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py |
-| `CRM-00.04.01.03` | Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada | C | 0 | metadata | ⬜ | — |
+| `CRM-00.04.01.03` | Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.04` | Campos calculados y rollups agregados sobre hijos | A | 1 | metadata | ⬜ | — |
 | `CRM-00.04.01.05` | Registros de tipo (record types) con layouts y valores de lista distintos | A | 1 | metadata | ⬜ | contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio) |
 | `CRM-00.04.01.06` | Validaciones declarativas a nivel de campo, registro y transición de estado | C | 0 | metadata | ✅ | — |
@@ -773,7 +773,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-45 capacidades · ⬜ 45
+54 capacidades · ⬜ 54
 
 ### 5.1 Reporting y BI
 
@@ -781,26 +781,40 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.01.01.01` | Constructor de informes por el usuario final, sin código | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/report_builder_service.py + bi_report_builder_v2_service.py |
-| `CRM-05.01.01.02` | Informes tabulares, agrupados, matriciales y de unión de fuentes | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_query_builder_service.py + olap/ |
-| `CRM-05.01.01.03` | Filtros dinámicos, filtros de ejecución y filtros cruzados | C | 2 | analytics | ⬜ | — |
-| `CRM-05.01.01.04` | Campos calculados, fórmulas de resumen y agrupaciones por periodo | A | 2 | analytics | ⬜ | — |
-| `CRM-05.01.01.05` | Informes históricos con instantáneas periódicas (trending) | A | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_data_versioning_service.py |
-| `CRM-05.01.01.06` | Programación y distribución automática por correo o a un destino externo | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/scheduled_reports.py + bi_report_delivery_service.py |
-| `CRM-05.01.01.07` | Exportación a CSV, Excel y PDF con control de permisos y volumen | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/{bi_export_service,exportador_tabular}.py |
-| `CRM-05.01.01.08` | Seguridad del dato respetada en el informe (nunca expone más de lo permitido) | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_governance_service.py |
-| `CRM-05.01.01.09` | API de informes para consumir resultados desde cualquier frontend | A | 2 | analytics | ⬜ | — |
+| `CRM-05.01.01.01` | Constructor de informes por el usuario final, sin código | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.02` | Informes tabulares, agrupados, matriciales y de unión de fuentes | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.03` | Filtros dinámicos, filtros de ejecución y filtros cruzados | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.04` | Campos calculados, fórmulas de resumen y agrupaciones por periodo | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.05` | Informes históricos con instantáneas periódicas (trending) | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.06` | Programación y distribución automática por correo o a un destino externo | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.07` | Exportación a CSV, Excel y PDF con control de permisos y volumen | C | 2 | analytics | ⬜ | contecintelligence (RT-4: la consulta la resuelve él) + contecflow-PSA:app/services/bi_export_service.py (generación del fichero) |
+| `CRM-05.01.01.08` | Seguridad del dato respetada en el informe (nunca expone más de lo permitido) | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.09` | API de informes para consumir resultados desde cualquier frontend | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
 
 #### CRM-05.01.02 · Cuadros de mando
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.01.02.01` | Dashboards configurables por rol, equipo y usuario | C | 2 | analytics | ⬜ | contecflow-PSA:app/services/dashboard_service.py + bi_platform_service.py |
-| `CRM-05.01.02.02` | Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto | C | 2 | analytics | ⬜ | — |
-| `CRM-05.01.02.03` | Filtros globales y drill-down hasta el registro | A | 2 | analytics | ⬜ | — |
-| `CRM-05.01.02.04` | Dashboards dinámicos que muestran los datos del usuario que los abre | A | 2 | analytics | ⬜ | — |
-| `CRM-05.01.02.05` | Suscripción, alertas por umbral y notificación de anomalías | A | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_smart_alerts/ + bi_anomaly_service.py |
-| `CRM-05.01.02.06` | Embebido de dashboards en aplicaciones externas con SSO | A | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_embed_service.py + bi_tokens_service.py |
+| `CRM-05.01.02.01` | Dashboards configurables por rol, equipo y usuario | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.02` | Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.03` | Filtros globales y drill-down hasta el registro | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.04` | Dashboards dinámicos que muestran los datos del usuario que los abre | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.05` | Suscripción, alertas por umbral y notificación de anomalías | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.06` | Embebido de dashboards en aplicaciones externas con SSO | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+
+#### CRM-05.01.04 · Explotación delegada en contecintelligence
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-05.01.04.01` | Canje en el servidor de la credencial de aplicación por un token de usuario final con tenant, sujeto, rol y alcances | C | 2 | analytics | ⬜ | contecintelligence:sdk (canje de credencial por token de usuario final) |
+| `CRM-05.01.04.02` | Correspondencia entre cada tenant de contecrm y su organización en contecintelligence, creada al provisionar | C | 2 | analytics | ⬜ | contecintelligence:/api/admin/apps (mapeo de organizaciones) |
+| `CRM-05.01.04.03` | Pantalla de explotación dentro de contecrm: se pregunta y se ven tablas y gráficos sin salir del CRM | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.04` | Registro del CRM como fuente consultable, descrita en lenguaje natural y mantenida al día con el modelo | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.05` | Propagacion de permisos y comparticion: la consulta analitica nunca devuelve mas de lo que el usuario ve en el CRM | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.06` | Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM | A | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.07` | Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió | A | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.08` | Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa | A | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.09` | Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro | A | 5 | analytics | ⬜ | — |
 
 #### CRM-05.01.03 · Analítica avanzada
 
