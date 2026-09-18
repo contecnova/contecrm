@@ -294,10 +294,24 @@ def purgar(
 
 
 def _hay_legal_hold(db: Session, entrada: EntradaPapelera) -> bool:
-    """Si una retención legal impide destruir este registro (CRM-07.03.01.06).
+    """Si un bloqueo legal impide destruir este registro (CRM-07.03.01.06).
 
-    Hoy devuelve siempre `False` porque el servicio de legal hold llega en una
-    fase posterior — y se dice aquí en vez de omitirlo, para que nadie dé por
-    hecho que la protección ya está puesta.
+    Se consulta **por registro** y no una vez por purga: un bloqueo sobre la
+    cuenta de un cliente con el que hay pleito no debe impedir purgar el resto
+    de la papelera, que puede ser el 99 %.
+
+    Es lo que convierte el bloqueo en una protección de verdad: sin esta
+    llamada, poner un bloqueo no haría nada y nadie se enteraría hasta que
+    hiciera falta enseñar lo que ya no está.
     """
-    return False
+    from crmcore.datos.retencion import bajo_bloqueo
+
+    return (
+        bajo_bloqueo(
+            db,
+            tenant_id=entrada.tenant_id,
+            objeto=entrada.objeto,
+            objeto_id=entrada.registro_id,
+        )
+        is not None
+    )

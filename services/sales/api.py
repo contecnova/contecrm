@@ -11,6 +11,7 @@ from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -864,6 +865,12 @@ def leads_por_campana(
 router_comentarios = crear_router_comentarios({"lead", "oportunidad"})
 
 
+# Las clases de dato de este servicio se declaran al importar su módulo.
+from services.sales import retencion as _retencion  # noqa: E402,F401
+
+router_retencion = crear_router_retencion()
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -873,4 +880,5 @@ ROUTERS = [
     router_adjuntos,
     router_origen,
     router_comentarios,
+    router_retencion,
 ]

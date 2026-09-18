@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 27 en-curso · ✅ 134 hecho · ⬜ 366 pendiente
+**527 capacidades**: 🔧 27 en-curso · ✅ 136 hecho · ⬜ 364 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -886,7 +886,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · 🔧 2 · ✅ 9 · ⬜ 14
+25 capacidades · 🔧 2 · ✅ 11 · ⬜ 12
 
 ### 7.1 Administración funcional
 
@@ -925,12 +925,12 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.03.01.01` | Políticas de retención y eliminación automática por tipo de dato | C | 0 | core | ⬜ | contecmind:scripts/audit_purge.py + purge_old_conversations.py |
+| `CRM-07.03.01.01` | Políticas de retención y eliminación automática por tipo de dato | C | 0 | core | ✅ | contecmind:scripts/audit_purge.py + purge_old_conversations.py |
 | `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ⬜ | — |
 | `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | 🔧 | contecflow-PSA:app/services/bi_gdpr_service.py |
 | `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ⬜ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
 | `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ⬜ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
-| `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ⬜ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
+| `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ✅ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
 | `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ⬜ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ⬜ | — |
 

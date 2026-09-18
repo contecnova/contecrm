@@ -1020,3 +1020,66 @@ arquitectura falla si aparece un cliente HTTP construido a mano fuera de ahí.
 
 Hay un escape configurado para las instalaciones con el IdP o el ERP en la red
 interna, porque negarlo obligaría a apagar el guard entero.
+
+---
+
+## 15. Cuánto se guarda cada cosa, y cuándo no se puede borrar
+
+### Retención con borrado automático
+
+Guardar todo para siempre no es prudencia: es incumplimiento. El RGPD exige no
+conservar datos personales más de lo necesario, y una base que solo crece acaba
+costando más en copias de seguridad que en servidores.
+
+La retención (CRM-07.03.01.01) se declara **por clase de dato**, y cada servicio
+declara las suyas con su modelo y su campo de fecha. Ese campo importa: **no
+siempre es la fecha de creación**. Una actividad se retiene desde que se
+completó, porque contar desde la creación borraría una tarea abierta de hace
+tres años que sigue siendo lo único pendiente de ese cliente.
+
+Tres decisiones que protegen del error caro:
+
+- **No decidir no puede significar destruir.** Todas las clases se declaran con
+  cero días, que significa «indefinidamente». El plazo lo fija el tenant, que es
+  quien conoce su obligación: los plazos de un fabricante de automoción no son
+  los de una agencia de marketing, y acertar por él sería destruir datos ajenos
+  con una suposición.
+- **Simula por defecto**, como la importación masiva. Lo que enseña cuántas
+  filas se va a llevar por delante hay que poder verlo antes, no después.
+- **Se comprueba al declarar la clase**, no al purgar, que el modelo tiene los
+  campos que dice usar. Descubrirlo al purgar sería un error en mitad de una
+  tarea nocturna, con la mitad de las clases ya procesadas, nadie delante y la
+  clase rota sin purgar en silencio hasta que alguien mire los logs.
+
+Cada purga queda **auditada con su recuento**: el día que faltan diez mil filas,
+la pregunta es si las borró la retención o alguien, y sin el apunte no hay
+respuesta.
+
+### Bloqueo legal
+
+Va junto a la retención porque separarlos es un problema legal (CRM-07.03.01.06):
+una purga que no consulta los bloqueos borra, puntualmente y sin que nadie se
+entere, justo la prueba que un juzgado acaba de pedir.
+
+El ámbito va de lo general a lo concreto: sin objeto cubre todo lo del servicio;
+con objeto, ese tipo; con objeto e identificador, ese registro — que es el caso
+real, la cuenta y el histórico del cliente con el que hay pleito.
+
+Poner y levantar un bloqueo **exigen motivo escrito**, y la fila no se borra al
+levantarlo. Un bloqueo puede durar años y sobrevivir a quien lo puso: «¿por qué
+no se puede borrar esto?» es una pregunta que alguien hará cuando esa persona ya
+no esté, y «¿desde cuándo y hasta cuándo estuvo bloqueado?» hay que poder
+contestarla después.
+
+La purga por retención **se abstiene entera** ante un bloqueo que cubra su clase.
+Afinar cuál de cien mil registros cubre el bloqueo cuesta más que esperar a que
+se levante, y equivocarse en esa criba borra justo lo que había que conservar.
+La papelera, en cambio, lo consulta **registro a registro**: un bloqueo sobre la
+cuenta de un cliente con pleito no debe impedir purgar el resto, que puede ser
+el 99 %.
+
+Los bloqueos y las políticas viven **en el esquema del servicio que guarda el
+dato**, no en una tabla central. Los permisos de base de datos impiden —a
+propósito— que un servicio escriba en el esquema de otro, así que un bloqueo
+central no lo podría consultar la purga de `party`. Uno que cubra todo el tenant
+se pone en cada servicio, igual que con la papelera.

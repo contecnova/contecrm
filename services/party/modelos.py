@@ -605,6 +605,7 @@ class SolicitudDerechos(Base, TimestampMixin):
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 
 __all__ = [
     "Actividad",
@@ -615,7 +616,9 @@ __all__ = [
     "Cuenta",
     "DescargaAdjunto",
     "Direccion",
+    "BloqueoLegal",
     "EntradaPapelera",
+    "PoliticaRetencion",
     "Fusion",
     "IdentificadorFiscal",
     "JerarquiaCuenta",

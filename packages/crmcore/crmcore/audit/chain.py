@@ -52,6 +52,19 @@ EXIGEN_MOTIVO: frozenset[str] = frozenset(
 )
 
 
+def _en_utc(momento: datetime) -> str:
+    """El instante, siempre en UTC y en texto.
+
+    Normalizar la zona es obligatorio, y costó descubrirlo: Postgres devuelve un
+    `timestamptz` con el **desfase de la sesión** —`+02:00` en un servidor
+    español—, no en UTC. El mismo instante daba dos textos distintos según si el
+    apunte se acababa de escribir o se había releído de la base, así que el hash
+    recalculado no coincidía nunca y el verificador declaraba rota una cadena
+    intacta. Eso es peor que no verificar: es que nadie se crea el verificador.
+    """
+    return momento.astimezone(timezone.utc).isoformat()
+
+
 def _hash_apunte(datos: dict[str, Any], hash_previo: str) -> str:
     """Hash del contenido más el enlace al anterior.
 
@@ -108,6 +121,7 @@ def registrar(
 
     secuencia = (ultimo.secuencia + 1) if ultimo else 1
     hash_previo = ultimo.hash if ultimo else HASH_GENESIS
+    momento = datetime.now(timezone.utc)
 
     contenido = {
         "secuencia": secuencia,
@@ -123,7 +137,7 @@ def registrar(
         # Se fija aquí y no con `now()` del servidor porque el hash tiene que
         # calcularse sobre el mismo valor que se guarda, y el del servidor no se
         # conoce hasta después del INSERT.
-        "momento": datetime.now(timezone.utc).isoformat(),
+        "momento": _en_utc(momento),
     }
 
     apunte = ApunteAuditoria(
@@ -142,8 +156,26 @@ def registrar(
         motivo=motivo,
         hash_previo=hash_previo,
         hash=_hash_apunte(contenido, hash_previo),
+        # El MISMO instante que entró en el hash. Antes el hash llevaba un
+        # `momento` que no se guardaba en ninguna parte —la columna la rellenaba
+        # `now()` del servidor, con otro valor—, así que el contenido de un
+        # apunte no se podía recalcular y `verificar` no podía detectar que
+        # alguien lo hubiera editado. Comprobaba los enlaces y la secuencia, que
+        # cazan un borrado o una inserción, pero no una modificación en su sitio.
+        created_at=momento,
     )
     db.add(apunte)
+    # Se vuelca aquí, y no es opcional. La sesión va con `autoflush=False`, así
+    # que sin este flush la consulta del apunte anterior —la de arriba— no vería
+    # los que se hayan añadido antes en esta misma transacción: dos apuntes
+    # tomarían la MISMA secuencia y el índice único reventaría al confirmar, con
+    # un error de clave duplicada a kilómetros del sitio que lo causó.
+    #
+    # Pasa en cuanto una operación audita dos veces, que es lo normal: una
+    # fusión de cuentas anota el hecho y el deshacer, un bloqueo legal se pone y
+    # se levanta, una baja de usuario audita la desactivación y el corte de
+    # sesiones.
+    db.flush()
     return apunte
 
 
@@ -191,6 +223,29 @@ def registrar_cambios(
     return filas
 
 
+def _contenido_de(apunte: ApunteAuditoria) -> dict[str, Any]:
+    """Reconstruye, desde la fila guardada, lo que se firmó al escribirla.
+
+    Tiene que dar **exactamente** el mismo diccionario que construyó
+    `registrar`: cualquier campo de más, de menos o con otro nombre haría que la
+    verificación fallara con la cadena intacta, que es la peor forma de fallar
+    —la que hace que nadie se crea el verificador—.
+    """
+    return {
+        "secuencia": apunte.secuencia,
+        "tenant_id": str(apunte.tenant_id),
+        "accion": apunte.accion,
+        "objeto": apunte.objeto,
+        "objeto_id": apunte.objeto_id,
+        "actor_id": str(apunte.actor_id) if apunte.actor_id else None,
+        "actor_real_id": str(apunte.actor_real_id) if apunte.actor_real_id else None,
+        "origen": apunte.origen,
+        "datos": apunte.datos or {},
+        "motivo": apunte.motivo,
+        "momento": _en_utc(apunte.created_at),
+    }
+
+
 def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]:
     """Recorre la cadena de un tenant y dice si está intacta.
 
@@ -229,6 +284,21 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
                 "apuntes": len(apuntes),
                 "rota_en": apunte.secuencia,
                 "motivo": "el enlace con el apunte anterior no coincide",
+            }
+        # Se **recalcula** el hash desde el contenido guardado. Comprobar solo
+        # los enlaces caza un borrado o una inserción, pero no una modificación
+        # en su sitio: alguien que cambie el motivo o el actor de un apunte
+        # dejaría la cadena aparentemente intacta. En un despliegue real el
+        # trigger `auditoria_solo_insercion` impide el UPDATE, pero la cadena
+        # existe justo para lo que el trigger no alcanza —un acceso directo a la
+        # base, una copia de seguridad manipulada—, y sin esta comprobación no
+        # servía para eso.
+        if _hash_apunte(_contenido_de(apunte), apunte.hash_previo) != apunte.hash:
+            return {
+                "intacta": False,
+                "apuntes": len(apuntes),
+                "rota_en": apunte.secuencia,
+                "motivo": "el contenido del apunte no corresponde a su hash: se ha alterado",
             }
         esperado_previo = apunte.hash
         esperada_secuencia += 1

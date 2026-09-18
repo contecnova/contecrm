@@ -266,6 +266,7 @@ class ProveedorIdentidad(Base, TimestampMixin):
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 from crmcore.datos.seguimiento import (  # noqa: E402
     Notificacion,
     PreferenciaNotificacion,
@@ -279,7 +280,9 @@ __all__ = [
     "ClaveApi",
     "ComparticionManual",
     "EstadoSSO",
+    "BloqueoLegal",
     "EntradaPapelera",
+    "PoliticaRetencion",
     "Membresia",
     "Notificacion",
     "PreferenciaNotificacion",

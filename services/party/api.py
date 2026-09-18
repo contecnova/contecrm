@@ -11,6 +11,7 @@ from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
@@ -769,6 +770,12 @@ router_adjuntos = crear_router_adjuntos({"cuenta", "contacto", "actividad"})
 router_comentarios = crear_router_comentarios({"cuenta", "contacto", "actividad"})
 
 
+# Las clases de dato de este servicio se declaran al importar su módulo.
+from services.party import retencion as _retencion  # noqa: E402,F401
+
+router_retencion = crear_router_retencion()
+
+
 ROUTERS = [
     router_admin,
     router_cuentas,
@@ -778,4 +785,5 @@ ROUTERS = [
     router_derechos,
     router_adjuntos,
     router_comentarios,
+    router_retencion,
 ]

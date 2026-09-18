@@ -237,6 +237,7 @@ class Consumo(Base):
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
+from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 
 from services.tenancy.baja import CertificadoDestruccion, Exportacion  # noqa: E402
 from services.tenancy.catalogos import (  # noqa: E402
@@ -250,7 +251,9 @@ __all__ = [
     "CalendarioLaboral",
     "CertificadoDestruccion",
     "Consumo",
+    "BloqueoLegal",
     "EntradaPapelera",
+    "PoliticaRetencion",
     "Exportacion",
     "FeatureFlag",
     "Festivo",
