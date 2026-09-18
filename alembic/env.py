@@ -1,0 +1,174 @@
+"""Entorno de Alembic, con un esquema y una cadena de versiones por servicio.
+
+Se ejecuta con `-x servicio=<nombre>`, y de ahí salen tres cosas:
+
+  * el **esquema** sobre el que se migra (`search_path`),
+  * la **carpeta de versiones** de ese servicio,
+  * la **conexión**, que usa el rol de migración (`DATABASE_ADMIN_URL`) y no el
+    de la aplicación — que no tiene DDL a propósito.
+
+`version_table_schema` va al esquema del servicio: si la tabla de versiones
+fuera común, dos servicios se pisarían el histórico y una migración de ventas
+parecería aplicada en soporte.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from logging.config import fileConfig
+from pathlib import Path
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool, text
+
+RAIZ = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(RAIZ))
+sys.path.insert(0, str(RAIZ / "packages" / "crmcore"))
+
+config = context.config
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+SERVICIO = context.get_x_argument(as_dictionary=True).get("servicio") or os.environ.get(
+    "SERVICE_NAME", ""
+)
+if not SERVICIO:
+    raise SystemExit(
+        "Falta el servicio. Usa:  alembic -x servicio=tenancy upgrade head\n"
+        "Sin él no se sabe qué esquema migrar, y migrar el equivocado es peor "
+        "que no migrar."
+    )
+
+os.environ["SERVICE_NAME"] = SERVICIO
+
+# Cada servicio tiene su carpeta de versiones. Es lo que hace que sus cadenas de
+# migración sean independientes: el servicio de ventas puede ir por la revisión
+# 40 y el de soporte por la 3 sin que ninguno espere al otro.
+_VERSIONES = RAIZ / "alembic" / "versions" / SERVICIO
+_VERSIONES.mkdir(parents=True, exist_ok=True)
+config.set_main_option("version_locations", str(_VERSIONES))
+config.set_main_option("servicio", SERVICIO)
+
+# Los modelos se importan DESPUÉS de fijar el servicio: algunos leen la
+# configuración al importarse.
+from crmcore.config import get_settings, limpiar_cache_settings  # noqa: E402
+from crmcore.db.base import Base  # noqa: E402
+
+# La configuración se cachea por proceso, y `scripts/migrar.py --todos` migra
+# los siete servicios en UNO. Sin limpiar la caché, los seis siguientes leerían
+# el `service_name` del primero y escribirían su tabla de versiones en el
+# esquema equivocado —«relation "tenancy.alembic_version" does not exist»— o,
+# peor, migrarían el esquema de otro servicio sin avisar.
+limpiar_cache_settings()
+
+
+def _importar_modelos(servicio: str) -> None:
+    """Importa los modelos comunes y los del servicio que se migra.
+
+    Solo los suyos: si se importaran los de todos, `--autogenerate` intentaría
+    crear en este esquema las tablas de los demás servicios, que es exactamente
+    lo contrario de la propiedad exclusiva de datos.
+    """
+    import importlib
+
+    comunes = [
+        "crmcore.audit.modelos",
+        "crmcore.bus.modelos",
+        "crmcore.http.idempotency",
+        "crmcore.runtime.settings",
+    ]
+    for modulo in [*comunes, f"services.{servicio}.modelos"]:
+        try:
+            importlib.import_module(modulo)
+        except ModuleNotFoundError as exc:
+            # El gateway no tiene modelos propios y es correcto que no los
+            # tenga: su estado es la tabla de rutas, que viene de configuración.
+            if f"services.{servicio}.modelos" not in str(exc):
+                raise
+
+
+_importar_modelos(SERVICIO)
+target_metadata = Base.metadata
+
+_settings = get_settings()
+ESQUEMA = _settings.esquema_resuelto
+# El rol de migración, no el de la aplicación. Si no está configurado se cae al
+# de la aplicación y fallará con «permission denied», que es un error claro y
+# mejor que migrar con un rol que no debería poder.
+URL = _settings.database_admin_url or _settings.database_url
+
+
+def run_migrations_offline() -> None:
+    context.configure(
+        url=URL,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        version_table_schema=ESQUEMA,
+        include_schemas=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online() -> None:
+    seccion = config.get_section(config.config_ini_section) or {}
+    seccion["sqlalchemy.url"] = URL
+    conectable = engine_from_config(seccion, prefix="sqlalchemy.", poolclass=pool.NullPool)
+
+    with conectable.connect() as conexion:
+        conexion.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{ESQUEMA}"'))
+        conexion.execute(text(f'SET search_path TO "{ESQUEMA}", public'))
+        conexion.commit()
+
+        context.configure(
+            connection=conexion,
+            target_metadata=target_metadata,
+            version_table_schema=ESQUEMA,
+            include_schemas=True,
+            # Compara tipos y defaults de servidor: sin esto, `--autogenerate`
+            # no detecta que una columna cambió de VARCHAR(80) a VARCHAR(200) y
+            # la migración pasa por buena mientras la base sigue como estaba.
+            compare_type=True,
+            compare_server_default=True,
+            include_object=_solo_mi_esquema,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        # Commit explícito. Con SQLAlchemy 2.0 y una conexión propia, salir del
+        # bloque de Alembic no basta: la transacción de la conexión queda sin
+        # confirmar y al cerrar se revierte TODO —esquema incluido—, con el
+        # agravante de que Alembic informa de un upgrade correcto que en
+        # realidad no ha persistido nada.
+        conexion.commit()
+
+
+def _solo_mi_esquema(objeto, nombre, tipo, reflejado, comparar_con) -> bool:  # noqa: ANN001
+    """Qué entra en `--autogenerate`.
+
+    Dos exclusiones, y las dos vienen de haberlo roto antes:
+
+    **La tabla de versiones de Alembic.** Con `include_schemas=True`, la ve
+    reflejada y, como no está en los metadatos, propone borrarla. La primera
+    tanda de migraciones generadas aquí llevaba un `op.drop_table('alembic_version')`
+    al final: la migración se aplicaba, se borraba a sí misma el registro y
+    fallaba al anotarse con «relation "…alembic_version" does not exist». Se
+    aplicaba «bien» y no persistía nada.
+
+    **Las tablas de otros esquemas.** Todos los servicios comparten base, así
+    que sin filtro `--autogenerate` propone borrar las tablas de los demás. El
+    resultado sería una migración de un servicio que destruye el trabajo de otro.
+    """
+    if nombre == "alembic_version":
+        return False
+    if tipo == "table":
+        esquema = getattr(objeto, "schema", None)
+        return esquema in (None, ESQUEMA)
+    return True
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
