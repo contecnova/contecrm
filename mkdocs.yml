@@ -1,0 +1,56 @@
+# Sitio de documentación navegable.
+#
+#   pip install mkdocs mkdocs-material && mkdocs serve
+#
+# El manual son seis páginas por audiencia, no un documento monolítico. En otras
+# soluciones de la casa el README creció hasta las 9.800 líneas y acabó siendo
+# donde vivía todo: imposible de navegar y, por tanto, sin leer.
+site_name: contecrm — Documentación
+site_description: CRM empresarial headless, orquestado y multi-tenant
+theme:
+  name: material
+  language: es
+  features: [navigation.sections, navigation.top, content.code.copy, search.suggest]
+
+nav:
+  - Inicio: index.md
+  - Manual:
+      - I — Empezar a usar la solución: manual-1-empezar.md
+      - II — Qué puede hacer cada perfil: manual-2-perfiles.md
+      - III — Referencia funcional: manual-3-funcionalidades.md
+      - IV — Configuración y operación: manual-4-configuracion.md
+      - V — Arquitectura y referencia técnica: manual-5-arquitectura.md
+      - VI — Referencia de ajustes: manual-6-referencia-ajustes.md
+  - Alcance:
+      - Resumen del catálogo: catalogo/resumen.md
+      - Estado de las 527 capacidades: catalogo/estado.md
+      - Qué se reutiliza de la casa: REUTILIZACION.md
+  # Este repositorio renuncia a CI y lo sustituye por gates locales. Un sistema
+  # que sustituye a la CI y no está documentado depende de que alguien se
+  # acuerde, así que tiene su propia página en el menú.
+  - Desarrollo:
+      - Gates locales (en lugar de CI): QUALITY_GATES.md
+
+validation:
+  links:
+    anchors: warn
+    # El manual enlaza a propósito ficheros de CÓDIGO (`../services/...`) que
+    # resuelven al leer el repositorio y que mkdocs no puede resolver porque no
+    # forman parte del sitio. Con `warn` y `--strict`, esos enlaces correctos
+    # abortarían la construcción.
+    not_found: info
+    absolute_links: warn
+    unrecognized_links: warn
+
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+  - def_list
+  # El `toc` de Python-Markdown quita los acentos al generar los ids
+  # (`configuración` → `configuracion`), mientras GitHub los conserva. Sin este
+  # slugify, los enlaces internos escritos en estilo GitHub no resuelven en el
+  # sitio.
+  - toc:
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+      permalink: true

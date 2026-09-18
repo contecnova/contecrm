@@ -23,3 +23,6 @@ logs/
 
 # Sistema
 .DS_Store
+
+# Sitio de documentación generado por mkdocs
+site/

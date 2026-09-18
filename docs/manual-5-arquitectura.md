@@ -1,0 +1,216 @@
+# Manual V — Arquitectura y referencia técnica
+
+Para quien va a tocar el código o va a evaluar si esto aguanta lo que promete.
+
+## La forma del sistema
+
+```
+                        ┌──────────────┐
+   cliente ─── HTTPS ──▶│   gateway    │  tenant · identidad · límites · rutas
+                        └──────┬───────┘
+                               │ HTTP con identidad FIRMADA
+       ┌───────────┬───────────┼───────────┬───────────┐
+       ▼           ▼           ▼           ▼           ▼
+   tenancy     identity    metadata   orchestrator  automation …
+       │           │           │           │           │
+       └───────────┴─────┬─────┴───────────┴───────────┘
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+       Postgres (un esquema      NATS JetStream
+        y un rol por servicio)   (subject por tenant)
+```
+
+Ocho servicios, cada uno con **su esquema y su rol de base de datos**. Entre
+ellos se hablan **por el bus**, no por HTTP: una llamada síncrona entre servicios
+crea acoplamiento temporal, y entonces la caída de identidad es la caída de
+ventas. La única excepción es el gateway, que por definición llama a todos.
+
+## Las tres decisiones que lo ordenan todo
+
+### 1. Lo transversal se impone, no se pide
+
+Un servicio no monta su aplicación: llama a `crmcore.service.crear_servicio()` y
+recibe una que ya trae el contexto de tenant, los límites, el formato de errores,
+las métricas y el guard de aislamiento. Si cada servicio los montara, tarde o
+temprano uno se dejaría el de tenant —o lo pondría en el orden que no es— y el
+fallo no se vería hasta que dos clientes se vieran los datos.
+
+Hay un gate que comprueba que ningún servicio instancia `FastAPI` directamente.
+
+### 2. El aislamiento por tenant tiene tres capas, no una
+
+| Capa | Qué cubre | Qué NO cubre |
+|---|---|---|
+| **RLS en Postgres** | Todo, incluido SQL crudo | Un rol SUPERUSER o con BYPASSRLS se la salta |
+| **Guard ORM** | SELECT/UPDATE/DELETE del ORM | Sentencias Core o `text()` |
+| **Filtros explícitos** | Lo que el servicio decida | Lo que se olvide |
+
+Cada una cubre el hueco de la anterior, y ninguna sobra. La primera es la dura;
+la segunda falla antes y explica mejor, y funciona en pruebas sin Postgres; la
+tercera es la que hace legible el código.
+
+**Toda tabla de negocio lleva `tenant_id`, sin excepciones no justificadas.** Es
+la corrección deliberada de una limitación conocida de `contecmind`, donde 58 de
+107 modelos lo tienen y el resto depende de filtros de propiedad: funciona y está
+auditado, pero significa que las dos redes automáticas comparten punto ciego,
+porque las dos seleccionan tablas por esa columna. Aquí la columna es
+obligatoria, las cuatro excepciones están justificadas por escrito y hay un gate
+que lo comprueba.
+
+### 3. El contexto se fija en middleware ASGI puro
+
+Y esto no es una preferencia de estilo. `BaseHTTPMiddleware` de Starlette ejecuta
+la aplicación de debajo en **otra tarea de asyncio**, que hereda una *copia* del
+contexto: lo que fije el middleware no lo ve el endpoint. Como lo que se fija es
+el tenant, usar el middleware cómodo significaría que el aislamiento no llega a
+la consulta.
+
+Además, la fuente **autoritativa** para la base de datos no es el contextvar sino
+`session.info["tenant_id"]`, que se fija al abrir la sesión. El contextvar sirve
+para logs, métricas y auditoría, y para el código sin petición (trabajos de fondo
+y consumidores del bus).
+
+## El camino de una escritura
+
+1. El **gateway** resuelve el tenant, autentica, aplica los límites y reenvía con
+   la identidad firmada.
+2. El **middleware de contexto** del servicio fija tenant, usuario y correlación.
+3. La **dependencia de sesión** abre una sesión atada a ese tenant; de ahí salen
+   el `SET app.current_tenant` y el guard ORM.
+4. El **servicio** valida, escribe y, en la **misma transacción**, encola el
+   evento en la tabla de salida y añade el apunte de auditoría.
+5. Al cerrar, todo se confirma junto: o está el cambio, el evento y la traza, o
+   no está ninguno de los tres.
+6. El **relevo del outbox** publica el evento al bus, con reintentos.
+7. El servicio de **eventos** lo entrega a los webhooks suscritos, firmado.
+
+El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
+oportunidad ganada en la base y nadie enterado.
+
+## Las preguntas de verificación, respondidas
+
+El catálogo funcional trae un anexo de preguntas para distinguir un CRM
+genuinamente headless y multi-tenant de uno que solo lo declara. Aquí van
+respondidas sobre este sistema, con dónde mirar.
+
+**¿Existe alguna función que no pueda ejecutarse por API?**
+No, y no puede haberla: no hay interfaz todavía, y el gate
+`tests/unit/test_headless_contract.py` exige que toda ruta esté documentada y
+que ninguna operación de escritura declare solo el camino feliz. Cuando llegue
+la interfaz, el gate que hará falta —comparar lo que llama la UI con las rutas
+públicas— está anotado como pendiente de la fase 1.
+
+**¿La UI consume las mismas APIs públicas o endpoints privilegiados?**
+Consumirá las mismas. Los servicios solo aceptan identidad propagada y firmada
+por el gateway, o un token propio; no hay una vía privilegiada distinta.
+
+**¿Cómo se propaga y se fuerza el `tenant_id`? ¿Hay RLS o solo filtrado en la
+aplicación?**
+Hay RLS en el motor, con `FORCE`, `USING` y `WITH CHECK`. El código está en
+`crmcore/db/rls.py` y lo usan **el despliegue y la prueba**, así que lo que se
+prueba es lo que se despliega. Se verifica con un rol sin privilegios en
+`tests/integration/test_rls_aislamiento.py`: con superusuario, una prueba de RLS
+pasa siempre y no demuestra nada.
+
+**¿Qué pasa si un tenant importa diez millones de registros?**
+El rate limiting y las cuotas lo cortan antes de tocar la base. El bus reparte
+por *subject* de tenant, así que su avalancha no bloquea la entrega de los demás.
+Lo que **falta** y está dicho: bulkheads y colas de prioridad por tier
+(CRM-00.01.06.03), que están configurados pero no implementados.
+
+**¿Las automatizaciones y workflows son reanudables tras una caída?**
+Sí. El estado del proceso se vuelca en la base **en cada paso**, con el paso
+siguiente. Si el worker muere, otro toma la instancia —con `FOR UPDATE SKIP
+LOCKED` y bloqueo con caducidad— y sigue donde estaba. Hay una prueba que lo
+comprueba usando un motor distinto, que es lo que de verdad pasa: no comparte
+nada en memoria, solo lo que hay en la base.
+
+**¿Cómo se compensa un proceso multi-servicio que falla a mitad?**
+Con compensaciones declaradas por paso, ejecutadas en orden inverso. La prueba
+`test_saga_compensa_en_orden_inverso` reproduce justo el caso del catálogo:
+pedido creado en el CRM y rechazado en el ERP. Si una compensación falla, se
+sigue con las demás y la instancia queda `fallida` con el detalle: parar en la
+primera dejaría los pasos anteriores sin deshacer.
+
+**¿La validación está disponible antes de enviar?**
+Sí: `POST /metadata/objetos/{objeto}/validar` ejecuta **el mismo código** que al
+guardar. Dos implementaciones acabarían divergiendo, y el cliente recibiría un
+«válido» seguido de un error.
+
+**¿Los webhooks garantizan orden, deduplicación y replay?**
+Orden **por entidad** (el *subject* lleva tenant y tipo), no global.
+Deduplicación por `dedup_key`, que deriva del hecho y no de la publicación.
+Replay por ventana de tiempo desde el archivo de eventos. La entrega es
+at-least-once y está dicho en el manual del integrador: deduplicar es su parte
+del contrato.
+
+**¿Se pueden desplegar cambios de configuración desde Git con revisión y
+rollback?**
+Parcialmente, y se dice: la configuración de entorno sí (es un fichero), y los
+ajustes en caliente quedan versionados en la auditoría. La configuración como
+código con promoción entre entornos (CRM-07.02.01.03 y .04) está **pendiente**.
+
+**¿La exportación incluye metadatos, configuración, adjuntos e histórico?**
+**Pendiente** (CRM-00.01.03.05). Hoy se exporta por API recurso a recurso; el
+paquete de offboarding verificable no está.
+
+**¿Los modelos de IA se entrenan con datos del tenant?**
+No hay IA todavía (fase 5). El compromiso está en el catálogo como
+CRM-05.02.02.09 y la arquitectura lo permite: la inferencia por región y el
+modelo por tenant son ajustes, no ramas de código.
+
+**¿El coste escala por usuario, por llamada, por registro o por evento?**
+La medición está: `crm_*` en Prometheus y la tabla de consumo por tenant y
+periodo, exportable. Qué se factura es una decisión comercial, no técnica.
+
+## Mapa del código
+
+```
+packages/crmcore/crmcore/     lo transversal; ningún servicio puede saltárselo
+  config.py, config_parts/    122 ajustes, uno por concepto, con su porqué
+  tenancy/                    contexto, resolución, guard ORM
+  db/                         sesión con RLS, base declarativa, unidad de trabajo
+  bus/                        transporte (NATS/Redis/memoria) + outbox + inbox
+  events/                     sobre de evento y catálogo con AsyncAPI
+  http/                       middleware ASGI, Problem Details, cursor, ETag…
+  authz/                      principal, RBAC, ABAC explicable
+  audit/                      cadena de hash e historial de campo
+  security/                   cifrado de campo con separación por propósito
+  runtime/                    ajustes en caliente con jerarquía de ámbitos
+  obs/                        métricas con tope de cardinalidad
+  service.py                  la factoría: la única forma de crear un servicio
+
+services/<nombre>/            un servicio: modelos, lógica, api, main
+alembic/versions/<servicio>/  una cadena de migraciones por servicio
+deploy/                       roles y esquemas, RLS, imagen, entrypoint
+scripts/                      migrar, RLS, gates, generadores de documentación
+tests/unit/                   contratos de arquitectura, motor, trazabilidad
+tests/integration/            aislamiento real contra Postgres
+```
+
+## Convenciones
+
+- **Código en inglés, comentarios y documentación en castellano.** Es la
+  convención de la casa (`contecmind`, `contecweb`, `contecflow-PSA`).
+- **Un comentario explica por qué, no qué.** Si dice lo que ya dice el código,
+  sobra; si explica una decisión, una medición o un fallo que se evitó, se queda.
+- **Cero valores a fuego.** Todo umbral es un campo de `Settings` con rango y con
+  el porqué de su valor por defecto.
+- **Todo error de dominio lleva `error_code`.** Hay un gate que lo exige: sin él,
+  el cliente solo tiene el texto en castellano para distinguir un error de otro.
+- **Nada se declara hecho sin prueba y sin manual.** Lo comprueba el gate de
+  trazabilidad del catálogo.
+
+## Lo que sabemos que falta
+
+No está escondido: las 15 capacidades a medias están listadas con su detalle al
+final del [Manual III](manual-3-funcionalidades.md), y el estado completo de las
+527 en [el catálogo](catalogo/estado.md). Lo más relevante para quien evalúe hoy:
+
+- **Idempotencia y ETag** están implementados como módulo y **no enganchados**
+  ruta por ruta.
+- **Trazas OpenTelemetry**: el contexto se propaga, falta el exportador.
+- **Bulkheads y colas por tier**: configurados, no implementados.
+- **Copias de seguridad y recuperación**: documentadas como procedimiento, sin
+  automatización propia.
