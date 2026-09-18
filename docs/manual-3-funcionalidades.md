@@ -828,3 +828,86 @@ que repartir.
 Nada de esto es por proveedor: los parámetros son los `utm_*`, que son un
 estándar de hecho, y los identificadores de clic van en un diccionario abierto.
 No hay una lista de redes conocidas que ampliar cada vez que aparece una nueva.
+
+---
+
+## 13. Aislamiento fuera de la base, y la baja del cliente
+
+Todo lo anterior descansa en que Postgres, con RLS, no deja que un tenant vea
+las filas de otro. Pero **ni la caché ni el almacén de ficheros pasan por RLS**,
+y son las dos vías más silenciosas por las que un cliente acaba viendo el dato
+de otro.
+
+### Caché con el tenant dentro de la clave
+
+Basta una clave construida sin el tenant —`cuenta:{id}`, `ajustes:activos`—
+para que la respuesta del primero que pregunte se le sirva al siguiente, sin
+error, sin log y sin forma de notarlo hasta que alguien lo cuenta.
+
+Por eso (CRM-00.01.01.07) **quien llama no construye claves**: pide un espacio
+de nombres y unas partes, y la clave la fabrica el módulo con el tenant delante.
+Saltarse el aislamiento no es difícil: es que no hay forma de expresarlo. Sin
+tenant, la llamada **falla** en vez de caer a una clave global «por si acaso» —
+un fallo al escribir el código sale infinitamente más barato que un dato cruzado
+en producción. Para lo que de verdad es de la plataforma —el catálogo de
+eventos, la tabla de países— hay una llamada distinta y ruidosa, `global_=True`,
+que obliga a haberlo decidido.
+
+**La purga de un tenant es O(1).** La clave lleva un número de generación; purgar
+es incrementarlo, y todas las entradas anteriores dejan de ser alcanzables de
+golpe. Recorrer el espacio de claves buscando un prefijo sería O(N) sobre la
+instancia entera y, con `KEYS`, además bloquearía a Redis: un cliente dándose de
+baja congelaría el sistema para todos los demás. De ahí la otra regla —**toda
+entrada caduca**—, porque lo que la purga deja inalcanzable sigue ocupando
+memoria hasta que el TTL lo recoja.
+
+Y como cada módulo puede tener además su propia caché en proceso, hay un
+**registro de invalidadores** (traído de `contecmind`, donde nació para romper
+una dependencia circular): purgar un tenant llama a todos. Sin él, la purga
+vaciaba la caché compartida mientras cada réplica seguía sirviendo sus ajustes
+desde memoria.
+
+### Ficheros bajo el prefijo del tenant
+
+En el almacén (CRM-00.01.01.08) toda clave se construye con el tenant delante,
+así que los ficheros de cada cliente viven bajo su propio prefijo y se pueden
+borrar todos de golpe. Sin ese prefijo obligatorio, dar de baja a un cliente
+exigiría recorrer la tabla de adjuntos, y lo que no estuviera en ella —un
+huérfano, el resto de una migración— se quedaría ahí para siempre.
+
+### Irse con los datos, y que conste que se borraron
+
+La exportación (CRM-08.02.01.05) y la baja (CRM-00.01.03.05) son **la misma
+máquina**, y están juntas por eso: la exportación que se entrega a quien se va es
+la misma que puede pedir cuando no se va. Separarlas haría que la de la baja —la
+que de verdad importa— se ejercitara una vez al año, y lo que no se ejercita no
+funciona.
+
+El formato es **JSON Lines**: una fila por línea, un fichero por objeto, un
+manifiesto con el recuento y el SHA-256 de cada uno, y un `LEEME.md` que explica
+cómo comprobarlo y cómo leerlo sin tener este producto delante. Un volcado en
+formato propietario no es portabilidad: es un rehén con otro nombre. Y no un
+JSON único, porque un millón de cuentas en un solo array no se puede leer sin
+cargarlo entero en memoria, ni al generarlo ni al abrirlo.
+
+El orden de la baja es **exportar, verificar, entregar, esperar, destruir**, y
+las tres condiciones que bloquean la destrucción no son opcionales:
+
+1. El tenant tiene que estar **en baja**. Destruir los datos de uno activo no es
+   mantenimiento, es un incidente.
+2. Tiene que haber pasado la **ventana de recuperación** de treinta días. Es la
+   que convierte un error administrativo en algo reparable.
+3. Tiene que existir una exportación **verificada**, no solo completa.
+   «Completa» significa que se escribió; «verificada», que se ha **releído del
+   almacén** y los hashes cuadran. Un fallo de escritura silencioso —disco lleno,
+   objeto truncado— solo se ve leyendo de vuelta, y es justo antes de destruir
+   los originales cuando hay que saberlo.
+
+Lo que destruye este módulo es lo que no vive en la base: la caché y el almacén.
+Las filas las borra cada servicio en su esquema, porque los permisos de base de
+datos impiden —a propósito— que uno escriba en el de otro.
+
+El **certificado de destrucción** recoge las dos partes, va encadenado por hash
+como el registro de auditoría y **sobrevive al tenant**: es lo único que queda
+cuando ya no queda nada. Un cliente que pregunta dos años después «¿seguís
+teniendo mis datos?» necesita una respuesta que no sea «creemos que no».

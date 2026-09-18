@@ -92,8 +92,8 @@ modulos:
               - {id: CRM-00.01.01.04, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers"}
               - {id: CRM-00.01.01.05, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Política de bring your own database / despliegue en la infraestructura del cliente"}
               - {id: CRM-00.01.01.06, c: A, fase: 0, svc: core, estado: pendiente, t: "Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier"}
-              - {id: CRM-00.01.01.07, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/cache_registry.py", t: "Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva"}
-              - {id: CRM-00.01.01.08, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/storage.py (S3/MinIO, URLs firmadas)", t: "Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta"}
+              - {id: CRM-00.01.01.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/cache_registry.py", t: "Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva"}
+              - {id: CRM-00.01.01.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py (S3/MinIO, URLs firmadas)", t: "Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta"}
               - {id: CRM-00.01.01.09, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/search (filtro forzado por tenant)", t: "Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor)"}
               - {id: CRM-00.01.01.10, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts (subjects por tenant)", t: "Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado"}
 
@@ -115,7 +115,7 @@ modulos:
               - {id: CRM-00.01.03.02, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/onboarding_guide.py", t: "Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos"}
               - {id: CRM-00.01.03.03, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Clonado de tenant (para sandbox, demo, pre-producción)"}
               - {id: CRM-00.01.03.04, c: C, fase: 0, svc: tenancy, estado: hecho, t: "Suspensión, reactivación y congelación en modo solo lectura"}
-              - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción"}
+              - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción"}
               - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
               - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
               - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
@@ -951,7 +951,7 @@ modulos:
               - {id: CRM-08.02.01.02, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "RPO/RTO comprometidos y verificados"}
               - {id: CRM-08.02.01.03, c: C, fase: 0, svc: infra, estado: pendiente, t: "Ventanas de mantenimiento anunciadas y, preferentemente, sin corte"}
               - {id: CRM-08.02.01.04, c: C, fase: 0, svc: docs, estado: pendiente, t: "Política de soporte: niveles, horarios, tiempos de respuesta y escalado"}
-              - {id: CRM-08.02.01.05, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/exports.py + app/api/exports.py", t: "Portabilidad: exportación completa del tenant en formato abierto y documentado"}
+              - {id: CRM-08.02.01.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py + app/api/exports.py", t: "Portabilidad: exportación completa del tenant en formato abierto y documentado"}
               - {id: CRM-08.02.01.06, c: A, fase: 0, svc: docs, estado: pendiente, t: "Reversibilidad y plan de salida contractual"}
 
 # ── ANEXO A — Catálogo mínimo de recursos de API ───────────────────────────

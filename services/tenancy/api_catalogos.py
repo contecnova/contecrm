@@ -13,7 +13,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.errors import Conflicto, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.deps import (
+    AutenticadoDep,
+    DbDep,
+    PlataformaDep,
+    UowDep,
+    exige_permiso,
+)
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -388,4 +394,185 @@ def convertir_importe(
     }
 
 
-ROUTERS_CATALOGOS = [router_plantillas, router_calendarios, router_monedas]
+# ── Baja y portabilidad (CRM-00.01.03.05, CRM-08.02.01.05) ────────────────
+
+router_baja = APIRouter(prefix="/tenants", tags=["baja y portabilidad"])
+
+
+class ExportacionOut(BaseModel):
+    id: UUID
+    motivo: str
+    estado: str
+    formato: str
+    version_formato: int
+    total_filas: int
+    sha256: str | None
+    uri: str | None
+    manifiesto: dict[str, Any]
+    error: str | None
+
+    model_config = {"from_attributes": True}
+
+
+@router_baja.post(
+    "/{tenant_id}/exportacion",
+    response_model=ExportacionOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Exportar los datos del tenant",
+    description=(
+        "Vuelca en JSON Lines, con un manifiesto que lleva el recuento y el "
+        "SHA-256 de cada fichero y un LEEME que explica cómo leerlo sin tener "
+        "este producto delante. La misma exportación sirve para la "
+        "portabilidad y para la baja: separarlas haría que la de la baja se "
+        "ejercitara una vez al año, y lo que no se ejercita no funciona.\n\n"
+        "Exporta **los objetos de este servicio**. La exportación completa de "
+        "un tenant es la unión de la de cada servicio, porque los permisos de "
+        "base de datos impiden —a propósito— que uno lea el esquema de otro."
+    ),
+    dependencies=[Depends(exige_permiso("tenant:exportar"))],
+)
+def exportar_tenant(
+    tenant_id: UUID,
+    uow: UowDep,
+    principal: AutenticadoDep,
+    motivo: str = Query("portabilidad", pattern="^(portabilidad|baja)$"),
+) -> Any:
+    from services.tenancy.baja import exportar
+    from services.tenancy.modelos import Consumo, FeatureFlag, UnidadNegocio
+
+    return exportar(
+        uow.db,
+        tenant_id=tenant_id,
+        tablas={
+            "unidades_negocio": UnidadNegocio,
+            "feature_flags": FeatureFlag,
+            "consumo": Consumo,
+            "plantillas": Plantilla,
+            "calendarios_laborales": CalendarioLaboral,
+            "festivos": Festivo,
+            "tipos_cambio": TipoCambio,
+        },
+        motivo=motivo,
+        por=principal.id,
+    )
+
+
+@router_baja.post(
+    "/{tenant_id}/exportacion/{exportacion_id}/verificar",
+    response_model=ExportacionOut,
+    summary="Verificar una exportación releyéndola del almacén",
+    description=(
+        "No comprueba lo que se escribió: **relee** y recalcula los hashes. Es "
+        "la diferencia entre «creemos que se exportó» y «hemos comprobado que "
+        "está ahí», y es justo antes de destruir los originales cuando hay que "
+        "saberlo."
+    ),
+    dependencies=[Depends(exige_permiso("tenant:exportar"))],
+)
+def verificar_exportacion(tenant_id: UUID, exportacion_id: UUID, uow: UowDep) -> Any:
+    from services.tenancy.baja import verificar
+
+    return verificar(uow.db, exportacion_id)
+
+
+@router_baja.get(
+    "/{tenant_id}/exportaciones",
+    response_model=list[ExportacionOut],
+    summary="Exportaciones del tenant",
+)
+def listar_exportaciones(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    from services.tenancy.baja import Exportacion
+
+    return list(
+        db.execute(
+            select(Exportacion)
+            .where(Exportacion.tenant_id == tenant_id)
+            .order_by(Exportacion.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+class DestruirDatos(BaseModel):
+    exportacion_id: UUID = Field(
+        ...,
+        description=(
+            "La exportación verificada que justifica la destrucción. Sin ella no "
+            "hay nada que entregar ni nada que certificar."
+        ),
+    )
+    confirmacion: str = Field(
+        ...,
+        description="El slug del tenant, escrito a mano. No es burocracia: es irreversible.",
+    )
+
+
+class CertificadoOut(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    tenant_slug: str
+    exportacion_id: UUID | None
+    exportacion_sha256: str | None
+    alcance: dict[str, Any]
+    hash: str
+
+    model_config = {"from_attributes": True}
+
+
+@router_baja.post(
+    "/{tenant_id}/destruir-datos",
+    response_model=CertificadoOut,
+    summary="Destruir los datos del tenant y emitir el certificado",
+    description=(
+        "Irreversible. Exige que el tenant esté en baja, que haya pasado la "
+        "ventana de recuperación y que exista una exportación **verificada**.\n\n"
+        "Destruye lo que no vive en la base —la caché y el almacén de "
+        "ficheros—; las filas las borra cada servicio en su esquema, porque los "
+        "permisos de base de datos impiden que uno escriba en el de otro. El "
+        "certificado, encadenado como el registro de auditoría, recoge las dos "
+        "partes y sobrevive al tenant: es lo único que queda cuando ya no queda "
+        "nada."
+    ),
+)
+def destruir_datos(
+    tenant_id: UUID, datos: DestruirDatos, uow: UowDep, principal: PlataformaDep
+) -> Any:
+    from services.tenancy.baja import destruir
+    from services.tenancy.modelos import Tenant
+
+    tenant = uow.db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
+    if datos.confirmacion != tenant.slug:
+        raise Conflicto(
+            "La confirmación no coincide con el identificador del tenant",
+            error_code="tenant.confirmacion_no_coincide",
+        )
+    return destruir(uow.db, tenant=tenant, exportacion_id=datos.exportacion_id, por=principal.id)
+
+
+@router_baja.get(
+    "/{tenant_id}/certificados",
+    response_model=list[CertificadoOut],
+    summary="Certificados de destrucción",
+    description=(
+        "Sobreviven al tenant. Un cliente que pregunta dos años después «¿seguís "
+        "teniendo mis datos?» necesita una respuesta que no sea «creemos que no»."
+    ),
+)
+def certificados(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    from services.tenancy.baja import CertificadoDestruccion
+
+    return list(
+        db.execute(
+            select(CertificadoDestruccion)
+            .where(CertificadoDestruccion.tenant_id == tenant_id)
+            .order_by(CertificadoDestruccion.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+ROUTERS_CATALOGOS = [router_plantillas, router_calendarios, router_monedas, router_baja]

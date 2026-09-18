@@ -245,6 +245,24 @@ def invalidar(ambito: str = "", ambito_id: str = "") -> None:
             _cache.clear()
 
 
+def _invalidar_por_tenant(tenant_id: str | None) -> None:
+    """Invalidador registrado en el registro de cachés del núcleo.
+
+    Vacía la caché ENTERA aunque se purgue un solo tenant. Es deliberado: las
+    entradas se guardan por ámbito (`tenant:<id>`, `bu:<id>`, `usuario:<id>`),
+    así que purgar de verdad lo de un tenant exigiría saber qué unidades y qué
+    usuarios son suyos, que es información de otro servicio. Vaciar de más
+    cuesta unas consultas; vaciar de menos deja dato de un cliente dado de baja
+    sirviéndose desde memoria.
+    """
+    invalidar()
+
+
+from crmcore.cache.registro import registrar as _registrar_invalidador  # noqa: E402
+
+_registrar_invalidador("runtime.settings", _invalidar_por_tenant)
+
+
 def valores_efectivos(db: Session) -> dict[str, Any]:
     """Todos los ajustes con su valor efectivo y de dónde sale.
 

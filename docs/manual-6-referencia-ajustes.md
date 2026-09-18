@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**126 ajustes** en total, de los cuales **42** son editables en caliente por tenant.
+**131 ajustes** en total, de los cuales **42** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -137,6 +137,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `AUTOMATIZACION_MAX_CASCADA` | 🔥 `automatizacion_max_cascada` | `5` | 1–100 | Cadena máxima de automatizaciones que se disparan unas a otras (CRM-00.03.03.06). |
 | `COMENTARIO_MAX_CARACTERES` | 🔥 `comentario_max_caracteres` | `10000` | 100–1000000 | Longitud máxima de un comentario. 10.000 caracteres son unas tres páginas: de sobra para explicar un caso, y un tope que impide que alguien pegue un contrato entero en una nota y lo convierta en la fila más pesada de la tabla. |
 | `COMENTARIO_MAX_MENCIONES` | 🔥 `comentario_max_menciones` | `20` | 1–500 | Menciones por comentario. Sin tope, un solo comentario puede generar un aviso para toda la empresa. |
+| `CACHE_BACKEND` | — | `memoria` |  | `memoria` o `redis`. En memoria vale para desarrollo y para las pruebas; con más de una réplica deja de valer, porque cada proceso tendría la suya y una purga en uno no alcanzaría a los demás. El arranque avisa. |
+| `CACHE_URL` | — | *(vacío)* |  |  |
+| `CACHE_TTL_S` | — | `300` | 1–86400 | TTL por defecto de una entrada. Cinco minutos: suficiente para absorber la ráfaga de una pantalla que pide lo mismo diez veces, y lo bastante corto para que un dato cambiado desde otra vía no se quede pegado. |
+| `CACHE_TTL_MAX_S` | — | `3600` | 1–604800 | Tope duro. Una entrada con un TTL enorme mantiene ocupada la memoria de lo ya invalidado por una purga, que no borra: hace inalcanzable. |
+| `CACHE_TTL_GENERACION_S` | — | `5` | 0–300 | Segundos que cada proceso recuerda la generación de un tenant sin volver a preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo purgado: es el precio explícito de no pagar un viaje de red por lectura. |
 
 ## Observabilidad y auditoría
 

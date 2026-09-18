@@ -150,6 +150,14 @@ class Settings(
             # Aviso, no error: hay despliegues donde el gateway solo atiende a
             # integraciones máquina-a-máquina y no necesita ningún origen.
             pass
+        if self.cache_backend == "memoria":
+            problemas.append(
+                "CACHE_BACKEND=memoria en producción: cada réplica tendría su "
+                "propia caché y purgar la de un tenant no alcanzaría a las demás, "
+                "así que seguirían sirviendo dato invalidado. Usa redis."
+            )
+        if self.cache_backend == "redis" and not self.cache_url:
+            problemas.append("CACHE_BACKEND=redis sin CACHE_URL: no hay a dónde conectar")
         if self.storage_backend == "local":
             problemas.append(
                 "STORAGE_BACKEND=local en producción: los adjuntos irían al disco "

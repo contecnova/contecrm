@@ -130,6 +130,7 @@ def _importar_todos_los_modelos() -> None:
         "services.sales.enrutamiento",
         "services.sales.origen",
         "services.tenancy.catalogos",
+        "services.tenancy.baja",
         "services.identity.comparticion",
     ]
     for modulo in modulos:

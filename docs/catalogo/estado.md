@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 27 en-curso · ✅ 126 hecho · ⬜ 374 pendiente
+**527 capacidades**: 🔧 27 en-curso · ✅ 130 hecho · ⬜ 370 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 84 · ⬜ 100
+200 capacidades · 🔧 16 · ✅ 87 · ⬜ 97
 
 ### 0.1 Multi-tenancy
 
@@ -27,8 +27,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.01.04` | Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers | A | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.01.05` | Política de bring your own database / despliegue en la infraestructura del cliente | D | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.01.06` | Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier | A | 0 | core | ⬜ | — |
-| `CRM-00.01.01.07` | Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva | C | 0 | core | ⬜ | contecmind:app/core/cache_registry.py |
-| `CRM-00.01.01.08` | Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta | C | 0 | core | ⬜ | contecmind:app/core/storage.py (S3/MinIO, URLs firmadas) |
+| `CRM-00.01.01.07` | Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva | C | 0 | core | ✅ | contecmind:app/core/cache_registry.py |
+| `CRM-00.01.01.08` | Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta | C | 0 | core | ✅ | contecmind:app/core/storage.py (S3/MinIO, URLs firmadas) |
 | `CRM-00.01.01.09` | Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor) | C | 0 | core | ⬜ | contecmind:app/core/search (filtro forzado por tenant) |
 | `CRM-00.01.01.10` | Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado | A | 0 | core | ✅ | contecpos:packages/common/src/bus.ts (subjects por tenant) |
 
@@ -52,7 +52,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.03.02` | Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos | A | 0 | tenancy | ⬜ | contecmind:app/services/onboarding_guide.py |
 | `CRM-00.01.03.03` | Clonado de tenant (para sandbox, demo, pre-producción) | A | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.03.04` | Suspensión, reactivación y congelación en modo solo lectura | C | 0 | tenancy | ✅ | — |
-| `CRM-00.01.03.05` | Offboarding con exportación completa verificable y certificado de destrucción | C | 0 | tenancy | ⬜ | contecmind:app/services/exports.py |
+| `CRM-00.01.03.05` | Offboarding con exportación completa verificable y certificado de destrucción | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py |
 | `CRM-00.01.03.06` | Fusión de tenants (M&A) y escisión de un tenant en dos | D | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.03.07` | Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding | A | 0 | tenancy | ✅ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
 | `CRM-00.01.03.08` | Sub-tenants / business units con herencia configurable de configuración y datos | A | 0 | tenancy | ✅ | contecflow-PSA:app/services/organizations_service.py |
@@ -936,7 +936,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 8 — Requisitos no funcionales
 
-12 capacidades · ✅ 1 · ⬜ 11
+12 capacidades · ✅ 2 · ⬜ 10
 
 ### 8.1 Rendimiento y escala
 
@@ -961,5 +961,5 @@ puede decir que algo está hecho si no lo está.
 | `CRM-08.02.01.02` | RPO/RTO comprometidos y verificados | C | 0 | ops | ⬜ | contecmind:scripts/test_restore_integrity.sh |
 | `CRM-08.02.01.03` | Ventanas de mantenimiento anunciadas y, preferentemente, sin corte | C | 0 | infra | ⬜ | — |
 | `CRM-08.02.01.04` | Política de soporte: niveles, horarios, tiempos de respuesta y escalado | C | 0 | docs | ⬜ | — |
-| `CRM-08.02.01.05` | Portabilidad: exportación completa del tenant en formato abierto y documentado | C | 0 | tenancy | ⬜ | contecmind:app/services/exports.py + app/api/exports.py |
+| `CRM-08.02.01.05` | Portabilidad: exportación completa del tenant en formato abierto y documentado | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py + app/api/exports.py |
 | `CRM-08.02.01.06` | Reversibilidad y plan de salida contractual | A | 0 | docs | ⬜ | — |

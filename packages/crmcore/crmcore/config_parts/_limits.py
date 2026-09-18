@@ -77,3 +77,21 @@ class _LimitsSettings(BaseSettings):
     # Menciones por comentario. Sin tope, un solo comentario puede generar un
     # aviso para toda la empresa.
     comentario_max_menciones: int = Field(20, ge=1, le=500)
+
+    # ── Caché (CRM-00.01.01.07) ───────────────────────────────────────────
+    # `memoria` o `redis`. En memoria vale para desarrollo y para las pruebas;
+    # con más de una réplica deja de valer, porque cada proceso tendría la suya
+    # y una purga en uno no alcanzaría a los demás. El arranque avisa.
+    cache_backend: str = Field("memoria", pattern="^(memoria|redis)$")
+    cache_url: str = ""
+    # TTL por defecto de una entrada. Cinco minutos: suficiente para absorber la
+    # ráfaga de una pantalla que pide lo mismo diez veces, y lo bastante corto
+    # para que un dato cambiado desde otra vía no se quede pegado.
+    cache_ttl_s: int = Field(300, ge=1, le=86_400)
+    # Tope duro. Una entrada con un TTL enorme mantiene ocupada la memoria de lo
+    # ya invalidado por una purga, que no borra: hace inalcanzable.
+    cache_ttl_max_s: int = Field(3_600, ge=1, le=604_800)
+    # Segundos que cada proceso recuerda la generación de un tenant sin volver a
+    # preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo
+    # purgado: es el precio explícito de no pagar un viaje de red por lectura.
+    cache_ttl_generacion_s: int = Field(5, ge=0, le=300)

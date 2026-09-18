@@ -24,6 +24,7 @@ class Almacen(Protocol):
     def leer_rango(self, uri: str, *, inicio: int, fin: int) -> bytes: ...
     def uri_de(self, clave: str) -> str: ...
     def ruta_para_leer(self, uri: str) -> Path | None: ...
+    def borrar_prefijo(self, prefijo: str) -> int: ...
 
 
 class AlmacenLocal:
@@ -119,6 +120,22 @@ class AlmacenLocal:
         except ValueError:
             raise
         return ruta if ruta.exists() and ruta.is_file() else None
+
+    def borrar_prefijo(self, prefijo: str) -> int:
+        """Borra todo lo que cuelgue de un prefijo. Devuelve cuántos ficheros.
+
+        Pasa por el MISMO guard de path traversal que el resto: un prefijo con
+        `..` borraría fuera de la base, y de todas las operaciones de esta clase
+        esta es en la que equivocarse es irreversible.
+        """
+        import shutil
+
+        objetivo = self._bajo_base(prefijo, sujeto=prefijo)
+        if not objetivo.exists() or not objetivo.is_dir():
+            return 0
+        borrados = sum(1 for f in objetivo.rglob("*") if f.is_file())
+        shutil.rmtree(objetivo)
+        return borrados
 
 
 class AlmacenS3:
@@ -222,6 +239,25 @@ class AlmacenS3:
         # En S3 no hay ruta local; quien sirve el fichero lo hace por stream.
         return None
 
+    def borrar_prefijo(self, prefijo: str) -> int:
+        """Borra un prefijo entero, paginando y en lotes de mil.
+
+        Paginado porque `list_objects_v2` devuelve como mucho mil claves por
+        llamada y quedarse con la primera página dejaría la mayor parte del
+        prefijo sin borrar — con el agravante de que la operación informaría de
+        éxito. Un tenant grande tiene decenas de miles de ficheros.
+        """
+        completo = self._clave_completa(prefijo).rstrip("/") + "/"
+        borrados = 0
+        paginador = self._cliente.get_paginator("list_objects_v2")
+        for pagina in paginador.paginate(Bucket=self.bucket, Prefix=completo):
+            claves = [{"Key": o["Key"]} for o in pagina.get("Contents", [])]
+            if not claves:
+                continue
+            self._cliente.delete_objects(Bucket=self.bucket, Delete={"Objects": claves})
+            borrados += len(claves)
+        return borrados
+
 
 _almacen: Almacen | None = None
 _cerrojo = Lock()
@@ -267,3 +303,25 @@ def reset_almacen() -> None:
     global _almacen
     with _cerrojo:
         _almacen = None
+
+
+def purgar_tenant(tenant_id: str) -> int:
+    """Borra del almacén TODOS los ficheros de un tenant (CRM-00.01.01.08).
+
+    Es lo que hace que la baja de un cliente sea de verdad. Funciona porque cada
+    clave se construye con el tenant delante (`<tenant>/<hash>/…`): sin ese
+    prefijo obligatorio, dar de baja a un cliente exigiría recorrer la tabla de
+    adjuntos, y lo que no estuviera en la tabla —un huérfano, un resto de una
+    migración— se quedaría en el almacén para siempre.
+
+    Irreversible y sin papelera: quien llama tiene que haberlo decidido. Se
+    registra con el recuento, que es la única prueba de qué se destruyó.
+    """
+    borrados = get_almacen().borrar_prefijo(str(tenant_id))
+    logger.warning(
+        "almacen.tenant_purgado",
+        tenant=str(tenant_id),
+        ficheros=borrados,
+        aviso="borrado definitivo, sin papelera",
+    )
+    return borrados
