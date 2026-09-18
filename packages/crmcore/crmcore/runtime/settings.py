@@ -65,6 +65,24 @@ class AjusteRuntime(Base):
 _cache: dict[str, tuple[float, dict[str, Any]]] = {}
 _lock = threading.Lock()
 
+# Proveedor de los ajustes PROPIOS del servicio. Sin esto, `efectivo()` solo
+# miraba el `Settings` común, y un ajuste declarado por un servicio —el umbral
+# de deduplicación, por ejemplo— resolvía a `None` cuando nadie lo había fijado
+# en la base: el código lo interpretaba como «desactivado» y la deduplicación
+# por identificador fiscal no se aplicaba nunca. Se descubrió con la prueba de
+# duplicados, no leyendo el código.
+_ajustes_servicio: Any = None
+
+
+def registrar_ajustes_servicio(proveedor: Any) -> None:
+    """Declara de dónde salen los ajustes propios de este servicio.
+
+    `proveedor` es un invocable sin argumentos que devuelve el objeto de
+    configuración del servicio (normalmente su `ajustes()` cacheado).
+    """
+    global _ajustes_servicio
+    _ajustes_servicio = proveedor
+
 
 def _clave_cache(ambito: str, ambito_id: str) -> str:
     return f"{ambito}:{ambito_id}"
@@ -109,6 +127,13 @@ def efectivo(clave: str, db: Session | None = None, *, default: Any = None) -> A
     por_defecto = default
     if por_defecto is None and decl and decl.campo_settings:
         por_defecto = getattr(s, decl.campo_settings, None)
+        if por_defecto is None and _ajustes_servicio is not None:
+            # El ajuste lo declara el servicio, no el núcleo: se busca en su
+            # propia configuración antes de darlo por inexistente.
+            try:
+                por_defecto = getattr(_ajustes_servicio(), decl.campo_settings, None)
+            except Exception:  # noqa: BLE001 — leer un default nunca debe romper la petición
+                por_defecto = None
 
     if db is None:
         return por_defecto

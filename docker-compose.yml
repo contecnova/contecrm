@@ -203,6 +203,26 @@ services:
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_eventing_mig:contecrm_dev_only@postgres:5432/contecrm
     ports: ["127.0.0.1:8007:8000"]
 
+  party:
+    <<: *servicio
+    command: ["servicio", "party"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: party
+      DATABASE_URL: postgresql+psycopg://crm_party_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_party_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8008:8000"]
+
+  sales:
+    <<: *servicio
+    command: ["servicio", "sales"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: sales
+      DATABASE_URL: postgresql+psycopg://crm_sales_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_sales_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8009:8000"]
+
   gateway:
     <<: *servicio
     command: ["servicio", "gateway"]
@@ -218,7 +238,8 @@ services:
         tenancy=http://tenancy:8000,identity=http://identity:8000,
         metadata=http://metadata:8000,orchestrator=http://orchestrator:8000,
         automation=http://automation:8000,integration=http://integration:8000,
-        eventing=http://eventing:8000
+        eventing=http://eventing:8000,party=http://party:8000,
+        sales=http://sales:8000
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports: ["127.0.0.1:${GATEWAY_PORT:-8080}:8000"]
 

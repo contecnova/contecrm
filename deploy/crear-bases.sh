@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-SERVICIOS="${CRM_SERVICIOS:-tenancy identity metadata orchestrator automation integration eventing gateway}"
+SERVICIOS="${CRM_SERVICIOS:-tenancy identity metadata orchestrator automation integration eventing gateway party sales}"
 DB="${POSTGRES_DB:-contecrm}"
 ADMIN="${POSTGRES_USER:-contecrm}"
 

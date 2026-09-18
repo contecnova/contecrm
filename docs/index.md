@@ -37,7 +37,8 @@ trazabilidad y el gate que impide declarar hecho lo que no lo está.
 - **[Estado de las 527 capacidades](catalogo/estado.md)**
 - **[Qué se reutiliza de las otras soluciones de la casa](REUTILIZACION.md)**
 
-La fase 0 —la plataforma— es la que está en marcha. Lo que está a medias se dice
+Las fases 0 (plataforma) y 1 (núcleo de datos de cliente y ventas básica) son
+las que están en marcha. Lo que está a medias se dice
 con nombre y apellidos al final del [Manual III](manual-3-funcionalidades.md).
 
 ## Servicios
@@ -52,3 +53,5 @@ con nombre y apellidos al final del [Manual III](manual-3-funcionalidades.md).
 | `automation` | Reglas «cuando X, si Y, entonces Z» |
 | `integration` | Conectores declarativos con sistemas externos |
 | `eventing` | Webhooks, catálogo de eventos, replay, cola de fallidos |
+| `party` | Cuentas, contactos, actividades, calidad del dato y consentimientos |
+| `sales` | Leads, pipelines y oportunidades |

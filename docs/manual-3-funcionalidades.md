@@ -330,3 +330,163 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.05.03.03` Enmascaramiento | Función lista | Aplicarla en la serialización por rol |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
+
+---
+
+## 8. Cuentas, contactos y actividades (fase 1)
+
+### Cuentas
+
+La ficha de cuenta (CRM-01.01.01.01) reúne lo fiscal, lo comercial y lo
+operativo, y admite **varios identificadores fiscales** (CRM-01.01.01.06): un
+grupo con filiales en varios países tiene uno por país, y una sola columna
+obliga a elegir cuál se guarda — normalmente el del país de quien dio de alta la
+ficha.
+
+Los **papeles no son excluyentes**: la misma empresa puede ser cliente de una
+división y proveedor de otra. Por eso son una lista y no un campo `tipo`; con un
+solo tipo habría que duplicarla.
+
+**Jerarquías multinivel** (CRM-01.01.01.02) y, sobre todo, **varias a la vez**
+(CRM-01.01.01.03): legal, comercial, de facturación y de entrega. No coinciden,
+y modelarlas como una sola obliga a elegir cuál se pierde — la que se pierde
+acaba viviendo en una hoja de cálculo. Enlazar dos cuentas comprueba que no se
+forme un ciclo: un ciclo haría que consolidar importes no terminara nunca, y el
+síntoma sería una petición colgada, no un error.
+
+La **segmentación** (CRM-01.01.01.07) guarda el código de sector **con su
+esquema** —CNAE, NAICS o SIC—, porque un número sin decir de qué tabla es no se
+puede cruzar con nada.
+
+### Contactos
+
+Ficha con múltiples canales (CRM-01.01.02.01) y **relación N:M con las cuentas**
+(CRM-01.01.02.02): una persona puede serlo de varias empresas, con papel
+distinto en cada una. El vínculo tiene **vigencia**: cuando alguien cambia de
+trabajo no se borra, se cierra — así el histórico de la cuenta sigue teniendo
+sentido (quién firmó aquel contrato) y el contacto conserva su recorrido.
+
+Las **preferencias de contacto** (CRM-01.01.02.05) incluyen canal, idioma,
+horario y frecuencia máxima. No es cortesía: en muchos países forma parte del
+cumplimiento y en todos evita quemar al contacto.
+
+Los **consentimientos** (CRM-01.01.02.06) se guardan por finalidad y canal, con
+su base legal y **con la prueba**: de dónde vino, cuándo y con qué texto. Cada
+cambio es una fila nueva, nunca una actualización — la historia completa es lo
+que demuestra que en el momento del envío había permiso, y sobrescribir deja al
+sistema sin defensa justo cuando hace falta.
+
+Hay una llamada específica para lo que marketing tiene que preguntar antes de
+cada envío: **¿se puede contactar hoy por este canal y esta finalidad?**. Mira,
+en este orden, el interruptor global de la ficha, la caducidad y el último
+apunte.
+
+### Calidad del dato
+
+Es la parte donde un fallo silencioso hace más daño, y por eso la regla está
+escrita en el código: **una clave canónica igual es un candidato, no una
+prueba**.
+
+- **Normalización** (CRM-01.01.04.04): razón social sin forma jurídica,
+  teléfonos a E.164, dominios sin `www`. Con dos límites deliberados: un país
+  desconocido **no** recibe prefijo inventado —un número formalmente válido que
+  llama a otro sitio es peor que uno sin normalizar— y el correo **no** pierde
+  las etiquetas ni los puntos, porque esa equivalencia solo vale en algunos
+  proveedores y junta buzones reales en un dominio corporativo.
+- **Detección de duplicados** (CRM-01.01.04.01) en el momento de la captura
+  (CRM-01.01.03.03) y por lotes, con **coincidencia difusa**
+  (CRM-01.01.04.02) que combina parecido de caracteres y solapamiento de
+  palabras: una errata y un cambio de orden fallan en medidas distintas.
+- Solo **el identificador fiscal** (en cuentas) y **el correo** (en contactos)
+  bloquean un alta. El resto se propone, con **por qué** se propone: «mismo NIF»
+  y «nombre parecido» llevan a decisiones distintas.
+- **Fusión** (CRM-01.01.04.03) con selección de campo superviviente y
+  reparentado de todo lo que colgaba. La ficha absorbida **no se borra**: hay
+  documentos y sistemas externos que guardan su identificador. Y se puede
+  deshacer, con un aviso honesto: se restauran los campos, **no** las relaciones
+  —al reparentar se pierde de cuál venía cada una, y repartirlas a ojo sería
+  peor que dejarlas juntas.
+- **Puntuación de completitud** por registro (CRM-01.01.04.05), que devuelve el
+  número **y qué falta**: «45» no dice qué hacer y «45, falta NIF y dirección»
+  sí.
+
+### Vista 360 y actividades
+
+El **timeline unificado** (CRM-01.01.05.01) reúne el **historial completo de
+interacciones** de una cuenta o un contacto (CRM-01.01.02.08), y el **perfil
+consultable por API** (CRM-01.01.05.03) es lo que consume cualquier frontend. Declaran
+explícitamente qué métricas **todavía no** están disponibles, para que un
+consumidor distinga «no hay datos» de «este CRM no lo tiene aún».
+
+Las **actividades** (CRM-01.02.01.01) son un solo modelo para tarea, llamada,
+reunión, nota y visita — no cinco tablas—, precisamente para que el timeline
+pueda ordenarlas sin una unión que crece con cada tipo nuevo. Se cuelgan de
+cualquier objeto, incluidos los propios del tenant (CRM-01.02.01.03).
+
+---
+
+## 9. Leads y oportunidades (fase 1)
+
+### Leads
+
+El lead tiene **ciclo de vida propio** (CRM-01.01.03.01) y no entra en el
+maestro de clientes hasta que se cualifica: meter ahí la basura de captación
+—formularios a medias, correos de prueba— hace que el maestro deje de ser fiable
+justo para lo que se usa, que es facturar y decidir.
+
+El **SLA de primera respuesta** (CRM-01.01.03.07) corre **desde que entra el
+lead**, no desde que se asigna. Contarlo desde la asignación permitiría cumplirlo
+siempre sin más que asignar tarde. La primera respuesta es idempotente: la
+primera es la que cuenta, y sobrescribirla maquillaría el incumplimiento.
+
+Los **motivos de descarte** son de lista cerrada (CRM-01.01.03.05) porque lo que
+se quiere es contar: «sin presupuesto» y «fuera de perfil» llevan a acciones
+distintas y en texto libre no se pueden agrupar. Y todo descarte programa su
+**reciclaje**: un «ahora no» no es un no para siempre.
+
+Al **convertir**, el lead se conserva apuntando a la cuenta, el contacto y la
+oportunidad que generó. Sin esa traza, «¿de dónde salió este cliente?» no tiene
+respuesta y la atribución es una estimación.
+
+### Oportunidades
+
+La oportunidad (CRM-03.01.01.01) lleva importe, moneda, fecha de cierre,
+probabilidad y etapa. El importe es **decimal exacto**, nunca coma flotante: un
+importe en `float` acumula error y acaba dando un total que no cuadra con la
+suma de sus líneas. Y expone el **ponderado** —importe por probabilidad— además
+del bruto, no en su lugar: el bruto dice cuánto hay sobre la mesa y el ponderado
+cuánto se espera cerrar, y confundirlos es el origen de la mitad de las
+discusiones sobre una previsión.
+
+- **Varios pipelines** (CRM-03.01.01.02): la venta de proyecto no tiene las
+  mismas etapas que la de mantenimiento, y forzar una sola deja la mitad de las
+  oportunidades en una etapa que no significa nada para ellas.
+- **Criterios de salida por etapa** (CRM-03.01.01.03). Son lo que distingue un
+  pipeline útil de una lista de colores: sin ellos una oportunidad llega a
+  «negociación» sin importe ni fecha, y el pipeline suma números que nadie se
+  cree. Se pueden saltar para cargar históricos, y queda constancia.
+- **Líneas de producto** (CRM-03.01.01.05) con cantidad, precio y descuento. La
+  descripción y el precio se **copian** del catálogo: si mañana sube el precio,
+  esta oportunidad tiene que seguir diciendo lo que se ofreció. El importe de la
+  cabecera sigue a las líneas, porque uno que no cuadra con ellas deja el
+  pipeline sin credibilidad.
+- **Competidores con posicionamiento** (CRM-03.01.01.09): saber que se perdió
+  contra X es útil; saber que se perdió **por precio** y no por producto es lo
+  que cambia la estrategia.
+- **Antigüedad y estancamiento** (CRM-03.01.01.12) con umbral **por etapa**:
+  tres semanas en «negociación» puede ser normal y en «primer contacto» no.
+- **Bloqueo tras el cierre** (CRM-03.01.01.14). Una oportunidad cerrada no se
+  edita: sus números ya están en un informe que alguien ha mirado y quizá en una
+  comisión pagada. Reabrirla es explícito, exige motivo, queda auditado y
+  **emite su propio evento**, para que quien consumió el cierre —la previsión,
+  las comisiones, el pedido que se creó— pueda deshacerlo.
+
+El historial de cambios de etapa guarda el **importe y la fecha de cierre en el
+momento de cada cambio**: sin eso no se puede medir el deslizamiento, que es el
+dato que explica por qué el trimestre no salió como se dijo.
+
+### Derechos del interesado
+
+Las solicitudes (CRM-07.03.01.03) se registran con su **plazo legal calculado al
+recibirlas**, no al empezar a tramitarlas: el reloj corre desde que llegan, y
+contar desde que alguien las mira sería incumplir sin enterarse.

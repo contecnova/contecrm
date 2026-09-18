@@ -14,8 +14,9 @@ auditado endpoint a endpoint y hay pruebas que lo sostienen — pero significa q
 las dos redes automáticas (RLS y el guard ORM) comparten el mismo punto ciego,
 porque las dos seleccionan las tablas por el mismo predicado: tener la columna.
 
-Aquí la columna es obligatoria, y hay un gate (`test_tenant_scope_contract.py`)
-que falla si aparece una tabla de negocio sin ella. El coste es una columna
+Aquí la columna es obligatoria, y hay un gate
+(`tests/unit/test_contratos_arquitectura.py`) que falla si aparece una tabla de
+negocio sin ella. El coste es una columna
 redundante en las tablas hijas; la ganancia es que las dos redes cubren el 100 %
 y no hay que razonar tabla por tabla nunca más.
 """
@@ -56,17 +57,51 @@ class Base(DeclarativeBase):
 
     metadata = MetaData(naming_convention=CONVENCION_NOMBRES)
 
-    def a_dict(self, excluir: set[str] | None = None) -> dict[str, Any]:
+    def a_dict(
+        self, excluir: set[str] | None = None, *, json_seguro: bool = False
+    ) -> dict[str, Any]:
         """Volcado plano de las columnas. Para auditoría y para el historial.
 
         No serializa relaciones a propósito: el historial de campo registra
         columnas, y recorrer relaciones aquí dispararía cargas perezosas en
         mitad de un `after_flush`.
+
+        `json_seguro=True` convierte lo que JSONB no admite —UUID, fechas,
+        Decimal— a texto. Hace falta siempre que el volcado se vaya a **guardar**
+        en una columna JSONB, como el estado previo de una fusión: sin esto salta
+        un «Object of type UUID is not JSON serializable» en mitad de la
+        operación, después de haber reparentado ya media docena de tablas.
         """
         excluir = excluir or set()
-        return {
+        datos = {
             c.name: getattr(self, c.name) for c in self.__table__.columns if c.name not in excluir
         }
+        return {k: _a_json(v) for k, v in datos.items()} if json_seguro else datos
+
+
+def _a_json(valor: Any) -> Any:
+    """Convierte un valor de columna a algo que JSONB admita.
+
+    Los tipos que aparecen de verdad en este modelo: UUID, `datetime`, `date` y
+    `Decimal`. El resto pasa tal cual, y si algún día aparece otro no
+    serializable, el fallo será explícito al guardarlo y no silencioso.
+    """
+    from datetime import date as _date
+    from decimal import Decimal as _Decimal
+
+    if isinstance(valor, UUID):
+        return str(valor)
+    if isinstance(valor, (datetime, _date)):
+        return valor.isoformat()
+    if isinstance(valor, _Decimal):
+        # Texto y no `float`: convertir un importe a coma flotante pierde
+        # precisión, y estos volcados se usan para restaurar una ficha.
+        return str(valor)
+    if isinstance(valor, (list, tuple)):
+        return [_a_json(v) for v in valor]
+    if isinstance(valor, dict):
+        return {k: _a_json(v) for k, v in valor.items()}
+    return valor
 
 
 def _ahora() -> datetime:
@@ -83,15 +118,27 @@ class IdMixin:
 
 
 class TenantMixin:
-    """`tenant_id` obligatorio, indexado y no nulo.
+    """`tenant_id` obligatorio y no nulo.
 
     Es la columna sobre la que trabajan RLS (`deploy/sql/rls.sql`) y el guard
     ORM (`crmcore.tenancy.guard`). Que sea NOT NULL es parte de la garantía: una
     fila con tenant nulo sería visible desde cualquier tenant bajo una política
     permisiva, y ese es exactamente el agujero que se quiere cerrar.
+
+    **No lleva índice propio, y es deliberado.** Como RLS añade
+    `tenant_id = <actual>` a TODA consulta, la columna aparece siempre como
+    primer predicado — y un índice compuesto que empiece por `tenant_id` sirve
+    para eso y además para el resto de la consulta. El índice de una sola
+    columna sería redundante con él: mismo uso, y un índice más que mantener en
+    cada escritura.
+
+    Se midió al montar el servicio de cuentas: había **14 índices de una sola
+    columna** ya cubiertos por un compuesto. Lo que garantiza que cada tabla
+    tenga ese compuesto no es la disciplina, sino el gate
+    `test_toda_tabla_con_tenant_tiene_indice_por_tenant`.
     """
 
-    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
 
 
 class TimestampMixin:

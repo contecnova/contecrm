@@ -363,3 +363,79 @@ def test_los_ajustes_siempre_filtran_por_ambito() -> None:
         "Consultas a `ajustes_runtime` sin acotar ámbito y sujeto:\n  "
         + "\n  ".join(consultas_sospechosas)
     )
+
+
+def test_toda_tabla_con_tenant_tiene_indice_por_tenant() -> None:
+    """Cada tabla con `tenant_id` tiene un índice que empieza por esa columna.
+
+    RLS añade `tenant_id = <actual>` a **toda** consulta, así que sin un índice
+    que empiece por ahí cada lectura es un recorrido completo filtrado después
+    —y con volumen, eso es la diferencia entre una lista instantánea y una que
+    tarda segundos.
+
+    El índice de una sola columna que creaba antes el mixin se quitó por
+    redundante: había 14 ya cubiertos por un compuesto, y cada índice de más se
+    paga en cada escritura. Este gate es lo que sustituye a aquel automatismo.
+    """
+    import importlib
+
+    for modulo in [
+        "crmcore.audit.modelos",
+        "crmcore.bus.modelos",
+        "crmcore.http.idempotency",
+        "crmcore.runtime.settings",
+        *[f"services.{s}.modelos" for s in SERVICIOS],
+    ]:
+        try:
+            importlib.import_module(modulo)
+        except ModuleNotFoundError:
+            continue
+
+    from crmcore.db.base import Base
+
+    sin_indice: list[str] = []
+    for tabla in Base.metadata.tables.values():
+        if "tenant_id" not in tabla.columns:
+            continue
+        por_indice = any(
+            list(i.columns) and list(i.columns)[0].name == "tenant_id" for i in tabla.indexes
+        )
+        # La clave primaria también sirve cuando incluye el tenant: la búsqueda
+        # exacta por clave ya usa ese índice.
+        por_pk = "tenant_id" in [c.name for c in tabla.primary_key.columns]
+        if not (por_indice or por_pk):
+            sin_indice.append(tabla.name)
+
+    assert not sin_indice, (
+        "Tablas con `tenant_id` sin índice que empiece por esa columna:\n  "
+        + "\n  ".join(sin_indice)
+    )
+
+
+def test_no_hay_nombres_de_indice_duplicados() -> None:
+    """Dos índices con el mismo nombre rompen la creación del esquema entero.
+
+    Pasó al añadir el servicio de cuentas: un índice compuesto declarado a mano
+    se llamaba igual que el que `index=True` genera en la columna, y el esquema
+    no se podía crear —ni en pruebas ni en un despliegue nuevo—.
+    """
+    import importlib
+    from collections import Counter
+
+    for modulo in [
+        "crmcore.audit.modelos",
+        "crmcore.bus.modelos",
+        "crmcore.http.idempotency",
+        "crmcore.runtime.settings",
+        *[f"services.{s}.modelos" for s in SERVICIOS],
+    ]:
+        try:
+            importlib.import_module(modulo)
+        except ModuleNotFoundError:
+            continue
+
+    from crmcore.db.base import Base
+
+    nombres = [i.name for tabla in Base.metadata.tables.values() for i in tabla.indexes]
+    repetidos = sorted({n for n, c in Counter(nombres).items() if c > 1})
+    assert not repetidos, f"Nombres de índice repetidos: {repetidos}"

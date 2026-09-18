@@ -37,6 +37,8 @@ SERVICIOS = [
     "automation",
     "integration",
     "eventing",
+    "party",
+    "sales",
 ]
 
 

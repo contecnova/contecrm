@@ -121,6 +121,8 @@ def _importar_todos_los_modelos() -> None:
         "services.automation.modelos",
         "services.integration.modelos",
         "services.eventing.modelos",
+        "services.party.modelos",
+        "services.sales.modelos",
     ]
     for modulo in modulos:
         try:

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**527 capacidades**: 🔧 15 en-curso · ✅ 86 hecho · ⬜ 426 pendiente
+**527 capacidades**: 🔧 23 en-curso · ✅ 115 hecho · ⬜ 389 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -339,7 +339,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · ⬜ 52
+52 capacidades · 🔧 7 · ✅ 22 · ⬜ 23
 
 ### 1.1 Modelo de parties
 
@@ -347,16 +347,16 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.01.01.01` | Ficha de cuenta con datos fiscales, comerciales, operativos y financieros | C | 1 | party | ⬜ | contecflow-PSA:app/models/clients.py + app/services/client_service.py; contecweb:app/services/suppliers.py |
-| `CRM-01.01.01.02` | Jerarquías de cuenta multinivel (grupo, matriz, filial, delegación, centro) | C | 1 | party | ⬜ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
-| `CRM-01.01.01.03` | Jerarquías múltiples y simultáneas: legal, comercial, de facturación, de entrega | A | 1 | party | ⬜ | — |
-| `CRM-01.01.01.04` | Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor) | A | 1 | party | ⬜ | — |
-| `CRM-01.01.01.05` | Múltiples direcciones tipificadas con validación y geocodificación | C | 1 | party | ⬜ | — |
-| `CRM-01.01.01.06` | Múltiples identificadores fiscales y validación contra registros oficiales (VIES) | A | 1 | party | ⬜ | contecweb:app/services/prueba_de_identidad.py (validación contra registros) |
-| `CRM-01.01.01.07` | Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida | C | 1 | party | ⬜ | — |
+| `CRM-01.01.01.01` | Ficha de cuenta con datos fiscales, comerciales, operativos y financieros | C | 1 | party | ✅ | contecflow-PSA:app/models/clients.py + app/services/client_service.py; contecweb:app/services/suppliers.py |
+| `CRM-01.01.01.02` | Jerarquías de cuenta multinivel (grupo, matriz, filial, delegación, centro) | C | 1 | party | ✅ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
+| `CRM-01.01.01.03` | Jerarquías múltiples y simultáneas: legal, comercial, de facturación, de entrega | A | 1 | party | ✅ | — |
+| `CRM-01.01.01.04` | Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor) | A | 1 | party | 🔧 | — |
+| `CRM-01.01.01.05` | Múltiples direcciones tipificadas con validación y geocodificación | C | 1 | party | 🔧 | — |
+| `CRM-01.01.01.06` | Múltiples identificadores fiscales y validación contra registros oficiales (VIES) | A | 1 | party | 🔧 | contecweb:app/services/prueba_de_identidad.py (validación contra registros) |
+| `CRM-01.01.01.07` | Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida | C | 1 | party | ✅ | — |
 | `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
 | `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
-| `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | ⬜ | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
+| `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | 🔧 | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
 | `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ⬜ | — |
 | `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ⬜ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
 
@@ -364,49 +364,49 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.01.02.01` | Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes) | C | 1 | party | ⬜ | — |
-| `CRM-01.01.02.02` | Relación N:M contacto–cuenta con rol, vigencia y contacto principal | A | 1 | party | ⬜ | — |
+| `CRM-01.01.02.01` | Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes) | C | 1 | party | ✅ | — |
+| `CRM-01.01.02.02` | Relación N:M contacto–cuenta con rol, vigencia y contacto principal | A | 1 | party | ✅ | — |
 | `CRM-01.01.02.03` | Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor) | A | 2 | party | ⬜ | — |
 | `CRM-01.01.02.04` | Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián | A | 2 | sales | ⬜ | — |
-| `CRM-01.01.02.05` | Preferencias de contacto: canal, frecuencia, idioma, horario | C | 1 | party | ⬜ | — |
-| `CRM-01.01.02.06` | Consentimientos y bases legales por finalidad y canal | C | 1 | party | ⬜ | contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py |
+| `CRM-01.01.02.05` | Preferencias de contacto: canal, frecuencia, idioma, horario | C | 1 | party | ✅ | — |
+| `CRM-01.01.02.06` | Consentimientos y bases legales por finalidad y canal | C | 1 | party | ✅ | contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py |
 | `CRM-01.01.02.07` | Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto | D | 4 | party | ⬜ | — |
-| `CRM-01.01.02.08` | Historial completo de interacciones unificado | C | 1 | party | ⬜ | contecmind:app/services/timeline.py |
+| `CRM-01.01.02.08` | Historial completo de interacciones unificado | C | 1 | party | ✅ | contecmind:app/services/timeline.py |
 
 #### CRM-01.01.03 · Leads y captación
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.01.03.01` | Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad | C | 1 | sales | ⬜ | — |
-| `CRM-01.01.03.02` | Captura multicanal: formularios, web, importación, API, eventos, listas, chat | C | 1 | sales | ⬜ | contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py |
-| `CRM-01.01.03.03` | Deduplicación en el momento de la captura contra leads y contactos existentes | C | 1 | party | ⬜ | — |
+| `CRM-01.01.03.01` | Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad | C | 1 | sales | ✅ | — |
+| `CRM-01.01.03.02` | Captura multicanal: formularios, web, importación, API, eventos, listas, chat | C | 1 | sales | 🔧 | contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py |
+| `CRM-01.01.03.03` | Deduplicación en el momento de la captura contra leads y contactos existentes | C | 1 | party | ✅ | — |
 | `CRM-01.01.03.04` | Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin) | C | 1 | sales | ⬜ | contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill) |
-| `CRM-01.01.03.05` | Estados y motivos de descarte normalizados con reciclaje posterior | C | 1 | sales | ⬜ | — |
+| `CRM-01.01.03.05` | Estados y motivos de descarte normalizados con reciclaje posterior | C | 1 | sales | ✅ | — |
 | `CRM-01.01.03.06` | Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch | C | 1 | marketing | ⬜ | — |
-| `CRM-01.01.03.07` | SLA de primera respuesta con alertas y escalado | A | 1 | sales | ⬜ | contecflow-PSA:app/services/sla_service.py |
+| `CRM-01.01.03.07` | SLA de primera respuesta con alertas y escalado | A | 1 | sales | ✅ | contecflow-PSA:app/services/sla_service.py |
 
 #### CRM-01.01.04 · Calidad y gobierno del dato
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.01.04.01` | Detección de duplicados en tiempo real y por lotes, con reglas configurables | C | 1 | party | ⬜ | — |
-| `CRM-01.01.04.02` | Coincidencia difusa (fuzzy matching) con umbrales ajustables por objeto | A | 1 | party | ⬜ | contecweb:app/services/normalization/ (coincidencia difusa) |
-| `CRM-01.01.04.03` | Asistente de fusión con selección de campo superviviente y reparentado de relaciones | C | 1 | party | ⬜ | — |
-| `CRM-01.01.04.04` | Normalización automática (direcciones, teléfonos E.164, razón social, correo) | A | 1 | party | ⬜ | contecweb:app/services/normalization/ |
-| `CRM-01.01.04.05` | Reglas de completitud y puntuación de calidad por registro | A | 1 | party | ⬜ | contecmind:app/services/quality_baseline.py + quality_sampler.py |
+| `CRM-01.01.04.01` | Detección de duplicados en tiempo real y por lotes, con reglas configurables | C | 1 | party | ✅ | — |
+| `CRM-01.01.04.02` | Coincidencia difusa (fuzzy matching) con umbrales ajustables por objeto | A | 1 | party | ✅ | contecweb:app/services/normalization/ (coincidencia difusa) |
+| `CRM-01.01.04.03` | Asistente de fusión con selección de campo superviviente y reparentado de relaciones | C | 1 | party | ✅ | — |
+| `CRM-01.01.04.04` | Normalización automática (direcciones, teléfonos E.164, razón social, correo) | A | 1 | party | ✅ | contecweb:app/services/normalization/ |
+| `CRM-01.01.04.05` | Reglas de completitud y puntuación de calidad por registro | A | 1 | party | ✅ | contecmind:app/services/quality_baseline.py + quality_sampler.py |
 | `CRM-01.01.04.06` | Golden record / survivorship rules en escenarios multi-fuente | A | 2 | party | ⬜ | — |
 | `CRM-01.01.04.07` | Linaje del dato: de qué sistema y en qué momento llegó cada valor | A | 2 | party | ⬜ | contecweb (linaje del dato por fuente) |
 | `CRM-01.01.04.08` | Stewardship: cola de excepciones de calidad asignable a responsables | A | 2 | party | ⬜ | contecmind:app/services/gap_tasks.py (cola de excepciones asignable) |
 | `CRM-01.01.04.09` | Enriquecimiento programado y detección de datos obsoletos | A | 4 | party | ⬜ | contecmind:app/services/freshness.py |
-| `CRM-01.01.04.10` | Validación de correo, teléfono y dirección con estado de verificación | A | 1 | party | ⬜ | — |
+| `CRM-01.01.04.10` | Validación de correo, teléfono y dirección con estado de verificación | A | 1 | party | 🔧 | — |
 
 #### CRM-01.01.05 · Vista 360 e identidad
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.01.05.01` | Timeline unificado de todas las interacciones y transacciones | C | 1 | party | ⬜ | contecmind:app/services/timeline.py |
+| `CRM-01.01.05.01` | Timeline unificado de todas las interacciones y transacciones | C | 1 | party | ✅ | contecmind:app/services/timeline.py |
 | `CRM-01.01.05.02` | Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP) | A | 4 | party | ⬜ | — |
-| `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ⬜ | — |
+| `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ✅ | — |
 | `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ⬜ | — |
 | `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
 | `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ⬜ | — |
@@ -418,9 +418,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-01.02.01.01` | Tareas, eventos, llamadas, notas y visitas con modelo común de actividad | C | 1 | party | ⬜ | contecflow-PSA:app/models/activity.py + app/services/activity_service.py |
-| `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | ⬜ | — |
-| `CRM-01.02.01.03` | Relación polimórfica de la actividad con cualquier objeto | C | 1 | party | ⬜ | — |
+| `CRM-01.02.01.01` | Tareas, eventos, llamadas, notas y visitas con modelo común de actividad | C | 1 | party | ✅ | contecflow-PSA:app/models/activity.py + app/services/activity_service.py |
+| `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | 🔧 | — |
+| `CRM-01.02.01.03` | Relación polimórfica de la actividad con cualquier objeto | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ⬜ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
 | `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ⬜ | contecmind:app/core/transcribe.py + app/services/audio_overview |
 | `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ⬜ | — |
@@ -535,7 +535,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ⬜ 65
+65 capacidades · ✅ 7 · ⬜ 58
 
 ### 3.1 Pipeline y oportunidades
 
@@ -543,20 +543,20 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.01.01.01` | Oportunidad con importe, moneda, fecha de cierre, probabilidad y etapa | C | 1 | sales | ⬜ | contecflow-PSA:app/models/pipeline.py (311) + app/services/pipeline_service.py |
-| `CRM-03.01.01.02` | Múltiples pipelines por línea de negocio, producto, canal o región | C | 1 | sales | ⬜ | contecflow-PSA:app/services/pipeline_stages_service.py |
-| `CRM-03.01.01.03` | Etapas configurables con criterios de salida obligatorios y checklist | A | 1 | sales | ⬜ | contecflow-PSA:app/services/pipeline_stages_service.py |
+| `CRM-03.01.01.01` | Oportunidad con importe, moneda, fecha de cierre, probabilidad y etapa | C | 1 | sales | ✅ | contecflow-PSA:app/models/pipeline.py (311) + app/services/pipeline_service.py |
+| `CRM-03.01.01.02` | Múltiples pipelines por línea de negocio, producto, canal o región | C | 1 | sales | ✅ | contecflow-PSA:app/services/pipeline_stages_service.py |
+| `CRM-03.01.01.03` | Etapas configurables con criterios de salida obligatorios y checklist | A | 1 | sales | ✅ | contecflow-PSA:app/services/pipeline_stages_service.py |
 | `CRM-03.01.01.04` | Probabilidad por etapa, ajustable manualmente y por modelo predictivo | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.05` | Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento | C | 1 | sales | ⬜ | contecweb:app/services/catalog + contecpos:services/catalogo |
+| `CRM-03.01.01.05` | Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento | C | 1 | sales | ✅ | contecweb:app/services/catalog + contecpos:services/catalogo |
 | `CRM-03.01.01.06` | Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py |
 | `CRM-03.01.01.07` | Planificación de ingresos por periodos (revenue schedule) | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py |
 | `CRM-03.01.01.08` | Split de oportunidad entre varios comerciales (overlay, crédito, equipo) | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.09` | Competidores presentes, posicionamiento y motivo de pérdida estructurado | A | 1 | sales | ⬜ | — |
+| `CRM-03.01.01.09` | Competidores presentes, posicionamiento y motivo de pérdida estructurado | A | 1 | sales | ✅ | — |
 | `CRM-03.01.01.10` | Buying group / mapa de decisión asociado a la oportunidad | A | 2 | sales | ⬜ | — |
 | `CRM-03.01.01.11` | Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.12` | Antigüedad por etapa, estancamiento y alertas de inactividad | C | 1 | sales | ⬜ | contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa) |
+| `CRM-03.01.01.12` | Antigüedad por etapa, estancamiento y alertas de inactividad | C | 1 | sales | ✅ | contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa) |
 | `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ⬜ | — |
+| `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ✅ | — |
 
 #### CRM-03.01.02 · Metodologías de venta
 
@@ -886,7 +886,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · ✅ 2 · ⬜ 23
+25 capacidades · 🔧 1 · ✅ 2 · ⬜ 22
 
 ### 7.1 Administración funcional
 
@@ -927,7 +927,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-07.03.01.01` | Políticas de retención y eliminación automática por tipo de dato | C | 0 | core | ⬜ | contecmind:scripts/audit_purge.py + purge_old_conversations.py |
 | `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ⬜ | — |
-| `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | ⬜ | contecflow-PSA:app/services/bi_gdpr_service.py |
+| `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | 🔧 | contecflow-PSA:app/services/bi_gdpr_service.py |
 | `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ⬜ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
 | `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ⬜ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
 | `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ⬜ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |

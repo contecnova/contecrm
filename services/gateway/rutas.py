@@ -32,6 +32,16 @@ PREFIJOS: dict[str, str] = {
     "integraciones": "integration",
     "webhooks": "eventing",
     "eventos": "eventing",
+    # Fase 1 — núcleo de datos de cliente y ventas
+    "accounts": "party",
+    "contacts": "party",
+    "activities": "party",
+    "data-quality": "party",
+    "data-subject-requests": "party",
+    "leads": "sales",
+    "opportunities": "sales",
+    "pipelines": "sales",
+    "pipeline": "sales",
 }
 
 

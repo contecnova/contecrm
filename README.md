@@ -45,6 +45,7 @@ dice con nombre y apellidos al final del
      ┌──────────┬────┴─────┬──────────┬──────────┐
      ▼          ▼          ▼          ▼          ▼
   tenancy   identity   metadata  orchestrator  automation  integration  eventing
+                              party      sales
      └──────────┴──────────┴──────────┴──────────┘
                            │
                  Postgres (un esquema y un rol por servicio)

@@ -319,6 +319,30 @@ CLAVES: dict[str, ClaveAjuste] = {
 }
 
 
+def registrar_claves(nuevas: list[ClaveAjuste]) -> None:
+    """Añade ajustes propios de un servicio al catálogo en caliente.
+
+    Los ajustes transversales viven en este módulo; los de un dominio concreto
+    —los umbrales de deduplicación, por ejemplo— los declara su servicio y los
+    registra al importarse. Sin esta vía, o se mete todo aquí (y el núcleo acaba
+    sabiendo de cuentas y oportunidades) o el servicio se inventa su propio
+    mecanismo de configuración, que es peor: dos sitios donde mirar cuando algo
+    no se aplica.
+
+    Rechaza redefinir una clave existente con otro tipo: dos servicios que usen
+    el mismo nombre para cosas distintas producirían un valor que significa una
+    cosa al escribirlo y otra al leerlo.
+    """
+    for clave in nuevas:
+        previa = CLAVES.get(clave.clave)
+        if previa is not None and previa.tipo != clave.tipo:
+            raise ValueError(
+                f"El ajuste «{clave.clave}» ya está declarado con tipo "
+                f"«{previa.tipo}» y se intenta registrar como «{clave.tipo}»"
+            )
+        CLAVES[clave.clave] = clave
+
+
 def validar(clave: str, valor: Any) -> Any:
     """Valida y convierte un valor contra la declaración de su clave.
 
