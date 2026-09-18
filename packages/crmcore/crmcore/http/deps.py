@@ -39,6 +39,12 @@ logger = get_logger(__name__)
 H_TENANT = "x-crm-tenant"
 H_USER = "x-crm-user"
 H_PERMISOS = "x-crm-permisos"
+# Los roles viajan ADEMÁS de los permisos, y no son redundantes: hay decisiones
+# que se toman por rol y no por permiso —una tarea humana asignada a
+# «responsable_ventas» la coge quien tenga ese rol—. Sin propagarlos, esa
+# bandeja sale vacía aunque el usuario tenga el rol: se descubrió probando el
+# ciclo completo de una aprobación.
+H_ROLES = "x-crm-roles"
 H_SCOPES = "x-crm-scopes"
 H_ACTOR_REAL = "x-crm-actor-real"
 H_PLATAFORMA = "x-crm-plataforma"
@@ -79,7 +85,7 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
         return False
     valores = {
         h: request.headers.get(h, "")
-        for h in (H_TENANT, H_USER, H_PERMISOS, H_SCOPES, H_ACTOR_REAL, H_PLATAFORMA)
+        for h in (H_TENANT, H_USER, H_PERMISOS, H_ROLES, H_SCOPES, H_ACTOR_REAL, H_PLATAFORMA)
     }
     esperada = hmac.new(
         secreto.encode(), _material(valores, momento).encode(), hashlib.sha256
@@ -158,6 +164,7 @@ def _principal_de_cabeceras(request: Request) -> Principal:
         tenant_id=_uuid(H_TENANT),
         actor_real_id=_uuid(H_ACTOR_REAL),
         permisos=frozenset(p for p in request.headers.get(H_PERMISOS, "").split(",") if p),
+        roles=frozenset(r for r in request.headers.get(H_ROLES, "").split(",") if r),
         scopes=frozenset(p for p in request.headers.get(H_SCOPES, "").split(",") if p),
         es_admin_plataforma=request.headers.get(H_PLATAFORMA, "") == "1",
     )
@@ -203,9 +210,7 @@ PrincipalDep = Annotated[Principal, Depends(contexto_autenticado)]
 def exige_autenticacion(principal: PrincipalDep) -> Principal:
     """Endpoint que exige identidad, sea del tipo que sea."""
     if principal.es_anonimo:
-        raise NoAutenticado(
-            "Esta operación exige autenticación", error_code="auth.requerida"
-        )
+        raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
     return principal
 
 

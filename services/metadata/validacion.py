@@ -96,9 +96,7 @@ def _fecha(valor: Any, r: dict[str, Any]) -> str:
 def _lista(valor: Any, r: dict[str, Any]) -> str:
     opciones = [str(o) for o in (r.get("opciones") or [])]
     if opciones and str(valor) not in opciones:
-        raise _Invalido(
-            "no es una de las opciones admitidas", {"opciones": opciones[:50]}
-        )
+        raise _Invalido("no es una de las opciones admitidas", {"opciones": opciones[:50]})
     return str(valor)
 
 

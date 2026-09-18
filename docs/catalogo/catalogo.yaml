@@ -66,13 +66,13 @@ restricciones_transversales:
       Los procesos de negocio son composiciones explícitas y observables de
       servicios, no lógica enterrada en controladores ni en triggers de base de
       datos.
-    gate: tests/unit/test_layering_contract.py
+    gate: tests/unit/test_contratos_arquitectura.py
   - id: RT-3
     nombre: Multi-tenant
     enunciado: >-
       Cada capacidad es tenant-aware por defecto — datos, configuración,
       metadatos, cuotas, extensiones, claves y observabilidad.
-    gate: tests/unit/test_tenant_scope_contract.py
+    gate: tests/integration/test_rls_aislamiento.py
 
 modulos:
   - id: "0"
@@ -86,7 +86,7 @@ modulos:
           - id: CRM-00.01.01
             nombre: Modelo de aislamiento
             capacidades:
-              - {id: CRM-00.01.01.01, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/db/tenant_guard.py + alembic/versions/0119_rls.py", t: "Aislamiento lógico — esquema compartido con discriminador tenant_id en toda entidad"}
+              - {id: CRM-00.01.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/tenant_guard.py + alembic/versions/0119_rls.py", t: "Aislamiento lógico — esquema compartido con discriminador tenant_id en toda entidad"}
               - {id: CRM-00.01.01.02, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:deploy/crear-bases.sh (un esquema y un rol por servicio)", t: "Aislamiento por esquema — un esquema por tenant sobre instancia compartida"}
               - {id: CRM-00.01.01.03, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Aislamiento físico — base de datos o clúster dedicado por tenant"}
               - {id: CRM-00.01.01.04, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers"}
@@ -95,45 +95,45 @@ modulos:
               - {id: CRM-00.01.01.07, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/cache_registry.py", t: "Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva"}
               - {id: CRM-00.01.01.08, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/storage.py (S3/MinIO, URLs firmadas)", t: "Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta"}
               - {id: CRM-00.01.01.09, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/search (filtro forzado por tenant)", t: "Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor)"}
-              - {id: CRM-00.01.01.10, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/common/src/bus.ts (subjects por tenant)", t: "Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado"}
+              - {id: CRM-00.01.01.10, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts (subjects por tenant)", t: "Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado"}
 
           - id: CRM-00.01.02
             nombre: Garantías de no fuga de datos (tenant safety)
             capacidades:
-              - {id: CRM-00.01.02.01, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:alembic/versions/0119_rls.py + deploy/sql/rls_app_role.sql", t: "Row-Level Security aplicada en el motor de datos, no solo en el ORM"}
-              - {id: CRM-00.01.02.02, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/tenant_context.py + app/db/session.py (_rls_apply_on_begin)", t: "Contexto de tenant propagado por todo el stack (cabecera → token → contexto de ejecución → conexión)"}
-              - {id: CRM-00.01.02.03, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_tenant_scope_contract.py", t: "Prohibición estructural de consultas sin predicado de tenant (interceptor / linter / test de arquitectura)"}
-              - {id: CRM-00.01.02.04, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_tenant_guard_contract.py", t: "Tests automatizados de cross-tenant leakage en cada pipeline local (aquí: gate de pre-push, no CI)"}
-              - {id: CRM-00.01.02.05, c: A, fase: 0, svc: core, estado: pendiente, t: "Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403)"}
-              - {id: CRM-00.01.02.06, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/audit.py (justificación obligatoria)", t: "Auditoría de acceso cruzado por personal de soporte, con justificación obligatoria"}
-              - {id: CRM-00.01.02.07, c: A, fase: 0, svc: core, estado: pendiente, t: "Detección de identificadores globales enumerables; uso de ULID/UUIDv7 opacos"}
+              - {id: CRM-00.01.02.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:alembic/versions/0119_rls.py + deploy/sql/rls_app_role.sql", t: "Row-Level Security aplicada en el motor de datos, no solo en el ORM"}
+              - {id: CRM-00.01.02.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/tenant_context.py + app/db/session.py (_rls_apply_on_begin)", t: "Contexto de tenant propagado por todo el stack (cabecera → token → contexto de ejecución → conexión)"}
+              - {id: CRM-00.01.02.03, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:tests/unit/test_tenant_scope_contract.py", t: "Prohibición estructural de consultas sin predicado de tenant (interceptor / linter / test de arquitectura)"}
+              - {id: CRM-00.01.02.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:tests/unit/test_tenant_guard_contract.py", t: "Tests automatizados de cross-tenant leakage en cada pipeline local (aquí: gate de pre-push, no CI)"}
+              - {id: CRM-00.01.02.05, c: A, fase: 0, svc: core, estado: en-curso, t: "Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403)"}
+              - {id: CRM-00.01.02.06, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/audit.py (justificación obligatoria)", t: "Auditoría de acceso cruzado por personal de soporte, con justificación obligatoria"}
+              - {id: CRM-00.01.02.07, c: A, fase: 0, svc: core, estado: hecho, t: "Detección de identificadores globales enumerables; uso de ULID/UUIDv7 opacos"}
 
           - id: CRM-00.01.03
             nombre: Ciclo de vida del tenant
             capacidades:
-              - {id: CRM-00.01.03.01, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/tenants.py + app/services/onboarding.py", t: "Provisioning automatizado (API + autoservicio) con plantilla de datos semilla"}
+              - {id: CRM-00.01.03.01, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/tenants.py + app/services/onboarding.py", t: "Provisioning automatizado (API + autoservicio) con plantilla de datos semilla"}
               - {id: CRM-00.01.03.02, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/onboarding_guide.py", t: "Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos"}
               - {id: CRM-00.01.03.03, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Clonado de tenant (para sandbox, demo, pre-producción)"}
-              - {id: CRM-00.01.03.04, c: C, fase: 0, svc: tenancy, estado: pendiente, t: "Suspensión, reactivación y congelación en modo solo lectura"}
+              - {id: CRM-00.01.03.04, c: C, fase: 0, svc: tenancy, estado: hecho, t: "Suspensión, reactivación y congelación en modo solo lectura"}
               - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción"}
               - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
-              - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
-              - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
+              - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
+              - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
               - {id: CRM-00.01.03.09, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Migración entre regiones con ventana de solo lectura y verificación de integridad"}
               - {id: CRM-00.01.03.10, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Migración entre tiers de aislamiento sin downtime perceptible"}
 
           - id: CRM-00.01.04
             nombre: Configuración y metadatos por tenant
             capacidades:
-              - {id: CRM-00.01.04.01, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/runtime_settings*.py (7 módulos, 986 ajustes) + contecpos:packages/common/src/ajustes.ts", t: "Capa de configuración jerárquica: global → tier → tenant → BU → usuario"}
+              - {id: CRM-00.01.04.01, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/runtime_settings*.py (7 módulos, 986 ajustes) + contecpos:packages/common/src/ajustes.ts", t: "Capa de configuración jerárquica: global → tier → tenant → BU → usuario"}
               - {id: CRM-00.01.04.02, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Versionado de la configuración con diff y rollback"}
-              - {id: CRM-00.01.04.03, c: C, fase: 0, svc: metadata, estado: pendiente, reutiliza: "contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py", t: "Modelo de datos extensible por tenant sin afectar a los demás"}
-              - {id: CRM-00.01.04.04, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/entitlements.py", t: "Feature flags por tenant, por usuario y por porcentaje de tráfico"}
-              - {id: CRM-00.01.04.05, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes", t: "Catálogo de planes/entitlements que activa capacidades declarativamente"}
+              - {id: CRM-00.01.04.03, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py", t: "Modelo de datos extensible por tenant sin afectar a los demás"}
+              - {id: CRM-00.01.04.04, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py", t: "Feature flags por tenant, por usuario y por porcentaje de tráfico"}
+              - {id: CRM-00.01.04.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes", t: "Catálogo de planes/entitlements que activa capacidades declarativamente"}
               - {id: CRM-00.01.04.06, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/branding_service.py", t: "Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío"}
-              - {id: CRM-00.01.04.07, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/i18n_labels.py + languages.py", t: "Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional"}
-              - {id: CRM-00.01.04.08, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py", t: "Gestión de secretos y claves de integración por tenant (vault segmentado)"}
-              - {id: CRM-00.01.04.09, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py", t: "BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación"}
+              - {id: CRM-00.01.04.07, c: C, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/i18n_labels.py + languages.py", t: "Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional"}
+              - {id: CRM-00.01.04.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py", t: "Gestión de secretos y claves de integración por tenant (vault segmentado)"}
+              - {id: CRM-00.01.04.09, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py", t: "BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación"}
 
           - id: CRM-00.01.05
             nombre: Residencia, soberanía y cumplimiento por tenant
@@ -147,13 +147,13 @@ modulos:
           - id: CRM-00.01.06
             nombre: Cuotas, límites y equidad (noisy neighbour)
             capacidades:
-              - {id: CRM-00.01.06.01, c: C, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecmind:app/core/rate_limit.py (508 líneas, por tenant/usuario/endpoint)", t: "Rate limiting por tenant, por API key, por usuario y por endpoint"}
-              - {id: CRM-00.01.06.02, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/entitlements.py (cuotas) + metering.py", t: "Cuotas de almacenamiento, registros, llamadas API, correos, workflows y tokens de IA"}
+              - {id: CRM-00.01.06.01, c: C, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:app/core/rate_limit.py (508 líneas, por tenant/usuario/endpoint)", t: "Rate limiting por tenant, por API key, por usuario y por endpoint"}
+              - {id: CRM-00.01.06.02, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py (cuotas) + metering.py", t: "Cuotas de almacenamiento, registros, llamadas API, correos, workflows y tokens de IA"}
               - {id: CRM-00.01.06.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/circuit_breaker.py", t: "Aislamiento de carga: bulkheads, circuit breakers y colas de prioridad por tier"}
               - {id: CRM-00.01.06.04, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/degradation.py", t: "Backpressure y degradación elegante bajo saturación (diferir lo no crítico)"}
               - {id: CRM-00.01.06.05, c: A, fase: 0, svc: gateway, estado: pendiente, t: "Detección de tenants anómalos y throttling adaptativo automático"}
-              - {id: CRM-00.01.06.06, c: C, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/metering.py + app/api/admin_observability.py", t: "Panel de consumo por tenant con alertas de aproximación al límite"}
-              - {id: CRM-00.01.06.07, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/metering.py", t: "Medición para facturación (metering) exportable a sistema de billing"}
+              - {id: CRM-00.01.06.06, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py + app/api/admin_observability.py", t: "Panel de consumo por tenant con alertas de aproximación al límite"}
+              - {id: CRM-00.01.06.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py", t: "Medición para facturación (metering) exportable a sistema de billing"}
 
       - id: "0.2"
         nombre: Arquitectura headless / API-first
@@ -162,40 +162,40 @@ modulos:
           - id: CRM-00.02.01
             nombre: Contratos de API
             capacidades:
-              - {id: CRM-00.02.01.01, c: C, fase: 0, svc: core, estado: pendiente, t: "API REST completa: todo lo que hace la UI es posible por API, sin excepciones"}
+              - {id: CRM-00.02.01.01, c: C, fase: 0, svc: core, estado: hecho, t: "API REST completa: todo lo que hace la UI es posible por API, sin excepciones"}
               - {id: CRM-00.02.01.02, c: A, fase: 1, svc: gateway, estado: pendiente, t: "API GraphQL para lectura compuesta y agregación en una llamada"}
               - {id: CRM-00.02.01.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/contracts (buf + protobuf)", t: "gRPC / protobuf para comunicación interna y clientes de alto rendimiento"}
-              - {id: CRM-00.02.01.04, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:scripts/dump_openapi.py", t: "Especificación OpenAPI 3.x generada desde el código, no mantenida a mano"}
-              - {id: CRM-00.02.01.05, c: C, fase: 0, svc: core, estado: pendiente, t: "Versionado explícito (URI o cabecera) con política de deprecación publicada"}
-              - {id: CRM-00.02.01.06, c: C, fase: 0, svc: core, estado: pendiente, t: "Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor"}
-              - {id: CRM-00.02.01.07, c: A, fase: 0, svc: core, estado: pendiente, t: "Sunset headers y avisos de deprecación proactivos a los consumidores"}
-              - {id: CRM-00.02.01.08, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/idempotency.py (238 líneas)", t: "Idempotencia mediante Idempotency-Key en todas las operaciones de escritura"}
-              - {id: CRM-00.02.01.09, c: C, fase: 0, svc: core, estado: pendiente, t: "Concurrencia optimista: ETag / If-Match / versión de registro"}
-              - {id: CRM-00.02.01.10, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/pagination_service.py", t: "Paginación por cursor estable, filtrado, ordenación y proyección de campos"}
-              - {id: CRM-00.02.01.11, c: C, fase: 0, svc: core, estado: pendiente, t: "Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales"}
-              - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: pendiente, t: "API asíncrona para cargas largas: job ID, polling y callback"}
+              - {id: CRM-00.02.01.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:scripts/dump_openapi.py", t: "Especificación OpenAPI 3.x generada desde el código, no mantenida a mano"}
+              - {id: CRM-00.02.01.05, c: C, fase: 0, svc: core, estado: hecho, t: "Versionado explícito (URI o cabecera) con política de deprecación publicada"}
+              - {id: CRM-00.02.01.06, c: C, fase: 0, svc: core, estado: hecho, t: "Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor"}
+              - {id: CRM-00.02.01.07, c: A, fase: 0, svc: core, estado: hecho, t: "Sunset headers y avisos de deprecación proactivos a los consumidores"}
+              - {id: CRM-00.02.01.08, c: C, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/idempotency.py (238 líneas)", t: "Idempotencia mediante Idempotency-Key en todas las operaciones de escritura"}
+              - {id: CRM-00.02.01.09, c: C, fase: 0, svc: core, estado: en-curso, t: "Concurrencia optimista: ETag / If-Match / versión de registro"}
+              - {id: CRM-00.02.01.10, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/pagination_service.py", t: "Paginación por cursor estable, filtrado, ordenación y proyección de campos"}
+              - {id: CRM-00.02.01.11, c: C, fase: 0, svc: core, estado: en-curso, t: "Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales"}
+              - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: en-curso, t: "API asíncrona para cargas largas: job ID, polling y callback"}
               - {id: CRM-00.02.01.13, c: A, fase: 0, svc: core, estado: pendiente, t: "Batch/composite requests (varias operaciones en una llamada, transaccionales o no)"}
-              - {id: CRM-00.02.01.14, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py", t: "Errores normalizados (RFC 9457 Problem Details) con código estable y correlación"}
+              - {id: CRM-00.02.01.14, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py", t: "Errores normalizados (RFC 9457 Problem Details) con código estable y correlación"}
               - {id: CRM-00.02.01.15, c: A, fase: 0, svc: gateway, estado: pendiente, t: "Sandbox de API con datos sintéticos y consola interactiva"}
 
           - id: CRM-00.02.02
             nombre: Eventos y notificaciones salientes
             capacidades:
-              - {id: CRM-00.02.02.01, c: C, fase: 0, svc: eventing, estado: pendiente, reutiliza: "contecweb:app/services/webhooks.py (528 líneas) + contecmind:app/services/webhooks.py", t: "Webhooks configurables por tenant, con filtros por tipo de evento y por condición"}
-              - {id: CRM-00.02.02.02, c: C, fase: 0, svc: eventing, estado: pendiente, reutiliza: "contecweb:app/services/webhooks.py (firma HMAC + anti-replay)", t: "Firma HMAC, timestamp y protección anti-replay"}
-              - {id: CRM-00.02.02.03, c: C, fase: 0, svc: eventing, estado: pendiente, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Reintentos con backoff exponencial, DLQ y reenvío manual desde consola"}
-              - {id: CRM-00.02.02.04, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/common/src/outbox.ts", t: "Garantía at-least-once + clave de deduplicación en el payload"}
-              - {id: CRM-00.02.02.05, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/common/src/bus.ts (NATS JetStream, subjects por tenant)", t: "Streaming de eventos (Kafka / Pub-Sub / Kinesis) con topic por tenant o partición"}
+              - {id: CRM-00.02.02.01, c: C, fase: 0, svc: eventing, estado: hecho, reutiliza: "contecweb:app/services/webhooks.py (528 líneas) + contecmind:app/services/webhooks.py", t: "Webhooks configurables por tenant, con filtros por tipo de evento y por condición"}
+              - {id: CRM-00.02.02.02, c: C, fase: 0, svc: eventing, estado: hecho, reutiliza: "contecweb:app/services/webhooks.py (firma HMAC + anti-replay)", t: "Firma HMAC, timestamp y protección anti-replay"}
+              - {id: CRM-00.02.02.03, c: C, fase: 0, svc: eventing, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Reintentos con backoff exponencial, DLQ y reenvío manual desde consola"}
+              - {id: CRM-00.02.02.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/outbox.ts", t: "Garantía at-least-once + clave de deduplicación en el payload"}
+              - {id: CRM-00.02.02.05, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts (NATS JetStream, subjects por tenant)", t: "Streaming de eventos (Kafka / Pub-Sub / Kinesis) con topic por tenant o partición"}
               - {id: CRM-00.02.02.06, c: A, fase: 5, svc: eventing, estado: pendiente, t: "Change Data Capture del modelo de datos hacia el data lake del cliente"}
-              - {id: CRM-00.02.02.07, c: A, fase: 0, svc: eventing, estado: pendiente, t: "Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry"}
+              - {id: CRM-00.02.02.07, c: A, fase: 0, svc: eventing, estado: hecho, t: "Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry"}
               - {id: CRM-00.02.02.08, c: A, fase: 0, svc: core, estado: pendiente, t: "Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad)"}
-              - {id: CRM-00.02.02.09, c: A, fase: 0, svc: eventing, estado: pendiente, t: "Replay de eventos históricos desde un punto en el tiempo"}
+              - {id: CRM-00.02.02.09, c: A, fase: 0, svc: eventing, estado: hecho, t: "Replay de eventos históricos desde un punto en el tiempo"}
               - {id: CRM-00.02.02.10, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py", t: "Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint"}
 
           - id: CRM-00.02.03
             nombre: Desacoplamiento de la presentación
             capacidades:
-              - {id: CRM-00.02.03.01, c: C, fase: 0, svc: core, estado: pendiente, t: "Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad"}
+              - {id: CRM-00.02.03.01, c: C, fase: 0, svc: core, estado: hecho, t: "Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad"}
               - {id: CRM-00.02.03.02, c: A, fase: 1, svc: core, estado: pendiente, t: "UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue)"}
               - {id: CRM-00.02.03.03, c: A, fase: 1, svc: gateway, estado: pendiente, t: "Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco"}
               - {id: CRM-00.02.03.04, c: A, fase: 1, svc: core, estado: pendiente, t: "SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go"}
@@ -209,13 +209,13 @@ modulos:
           - id: CRM-00.02.04
             nombre: Gateway y capa de acceso
             capacidades:
-              - {id: CRM-00.02.04.01, c: C, fase: 0, svc: gateway, estado: pendiente, t: "API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant"}
-              - {id: CRM-00.02.04.02, c: C, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py)", t: "Resolución de tenant por subdominio, cabecera, claim del token o clave de API"}
+              - {id: CRM-00.02.04.01, c: C, fase: 0, svc: gateway, estado: hecho, t: "API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant"}
+              - {id: CRM-00.02.04.02, c: C, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py)", t: "Resolución de tenant por subdominio, cabecera, claim del token o clave de API"}
               - {id: CRM-00.02.04.03, c: A, fase: 0, svc: gateway, estado: pendiente, t: "mTLS para integraciones máquina-a-máquina críticas"}
               - {id: CRM-00.02.04.04, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecweb:app/services/security_rules.py", t: "IP allowlisting por tenant y por credencial"}
               - {id: CRM-00.02.04.05, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecmind:app/core/cache_registry.py", t: "Cacheo configurable con invalidación por evento y aislamiento por tenant"}
               - {id: CRM-00.02.04.06, c: A, fase: 1, svc: gateway, estado: pendiente, reutiliza: "contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py", t: "Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas"}
-              - {id: CRM-00.02.04.07, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/middleware.py (X-Request-Id) + tracing.py", t: "Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable"}
+              - {id: CRM-00.02.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/middleware.py (X-Request-Id) + tracing.py", t: "Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable"}
 
       - id: "0.3"
         nombre: Orquestación de servicios y procesos
@@ -224,44 +224,44 @@ modulos:
           - id: CRM-00.03.01
             nombre: Descomposición en servicios
             capacidades:
-              - {id: CRM-00.03.01.01, c: C, fase: 0, svc: infra, estado: pendiente, reutiliza: "contecpos:services/* (14 servicios por capacidad)", t: "Servicios delimitados por capacidad de negocio (party, sales, service, marketing, billing-interface)"}
-              - {id: CRM-00.03.01.02, c: C, fase: 0, svc: infra, estado: pendiente, reutiliza: "contecpos:deploy/crear-bases.sh (una base y un rol por servicio)", t: "Propiedad exclusiva de datos por servicio; prohibida la lectura directa de la BD ajena"}
+              - {id: CRM-00.03.01.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecpos:services/* (14 servicios por capacidad)", t: "Servicios delimitados por capacidad de negocio (party, sales, service, marketing, billing-interface)"}
+              - {id: CRM-00.03.01.02, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecpos:deploy/crear-bases.sh (una base y un rol por servicio)", t: "Propiedad exclusiva de datos por servicio; prohibida la lectura directa de la BD ajena"}
               - {id: CRM-00.03.01.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/contracts (buf)", t: "Contratos internos versionados y verificados por contract testing (consumer-driven)"}
               - {id: CRM-00.03.01.04, c: A, fase: 0, svc: docs, estado: pendiente, t: "Service registry / catálogo interno con owner, SLO, dependencias y runbook"}
               - {id: CRM-00.03.01.05, c: A, fase: 2, svc: infra, estado: pendiente, t: "Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red"}
-              - {id: CRM-00.03.01.06, c: A, fase: 0, svc: infra, estado: pendiente, t: "Despliegue independiente por servicio, sin ventanas de release coordinadas"}
+              - {id: CRM-00.03.01.06, c: A, fase: 0, svc: infra, estado: hecho, t: "Despliegue independiente por servicio, sin ventanas de release coordinadas"}
               - {id: CRM-00.03.01.07, c: A, fase: 2, svc: integration, estado: pendiente, t: "Strangler pattern soportado para convivir con CRM heredado durante la migración"}
 
           - id: CRM-00.03.02
             nombre: Motor de orquestación de procesos
             capacidades:
-              - {id: CRM-00.03.02.01, c: C, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecmind:app/services/workflows.py + workflow_checkpoints.py + app/models/workflow_run.py", t: "Motor de workflow persistente y duradero (reanuda tras caída, sin perder estado)"}
+              - {id: CRM-00.03.02.01, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/services/workflows.py + workflow_checkpoints.py + app/models/workflow_run.py", t: "Motor de workflow persistente y duradero (reanuda tras caída, sin perder estado)"}
               - {id: CRM-00.03.02.02, c: A, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/models/bpmn_process.py + app/services/bpmn_process_service.py; contecmind:app/services/bpmn.py", t: "Modelado visual de procesos (BPMN 2.0 o equivalente) más definición como código"}
-              - {id: CRM-00.03.02.03, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Orquestación (saga orquestada con coordinador central)"}
-              - {id: CRM-00.03.02.04, c: A, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecpos:packages/common/src/bus.ts + outbox.ts", t: "Coreografía por eventos para flujos de bajo acoplamiento"}
-              - {id: CRM-00.03.02.05, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Compensaciones explícitas por paso (rollback semántico de sagas)"}
-              - {id: CRM-00.03.02.06, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/common/src/outbox.ts", t: "Transactional outbox / inbox para consistencia entre BD y bus de eventos"}
-              - {id: CRM-00.03.02.07, c: C, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecmind:app/tasks/_cron.py + app/core/scheduler.py", t: "Timers, esperas, fechas límite y escalados temporales dentro del proceso"}
-              - {id: CRM-00.03.02.08, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Sub-procesos, procesos reutilizables y llamadas entre procesos"}
-              - {id: CRM-00.03.02.09, c: C, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/ (motor multi-etapa + SoD + SLA + delegación); contecweb:app/services/approvals/engine.py", t: "Tareas humanas: asignación, bandeja de tareas, reasignación, delegación, SLA"}
-              - {id: CRM-00.03.02.10, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
-              - {id: CRM-00.03.02.11, c: C, fase: 0, svc: orchestrator, estado: pendiente, t: "Instancias de proceso consultables: estado, historial, variables, punto de fallo"}
-              - {id: CRM-00.03.02.12, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Reintento, salto de paso y edición de variables en caliente por un administrador"}
+              - {id: CRM-00.03.02.03, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Orquestación (saga orquestada con coordinador central)"}
+              - {id: CRM-00.03.02.04, c: A, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts + outbox.ts", t: "Coreografía por eventos para flujos de bajo acoplamiento"}
+              - {id: CRM-00.03.02.05, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Compensaciones explícitas por paso (rollback semántico de sagas)"}
+              - {id: CRM-00.03.02.06, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/outbox.ts", t: "Transactional outbox / inbox para consistencia entre BD y bus de eventos"}
+              - {id: CRM-00.03.02.07, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/tasks/_cron.py + app/core/scheduler.py", t: "Timers, esperas, fechas límite y escalados temporales dentro del proceso"}
+              - {id: CRM-00.03.02.08, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Sub-procesos, procesos reutilizables y llamadas entre procesos"}
+              - {id: CRM-00.03.02.09, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (motor multi-etapa + SoD + SLA + delegación); contecweb:app/services/approvals/engine.py", t: "Tareas humanas: asignación, bandeja de tareas, reasignación, delegación, SLA"}
+              - {id: CRM-00.03.02.10, c: A, fase: 0, svc: orchestrator, estado: en-curso, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
+              - {id: CRM-00.03.02.11, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Instancias de proceso consultables: estado, historial, variables, punto de fallo"}
+              - {id: CRM-00.03.02.12, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Reintento, salto de paso y edición de variables en caliente por un administrador"}
               - {id: CRM-00.03.02.13, c: D, fase: 2, svc: orchestrator, estado: pendiente, t: "Migración de instancias en vuelo a una nueva versión del proceso"}
-              - {id: CRM-00.03.02.14, c: A, fase: 0, svc: orchestrator, estado: pendiente, t: "Simulación y pruebas de proceso con datos de ejemplo antes de publicar"}
-              - {id: CRM-00.03.02.15, c: C, fase: 0, svc: orchestrator, estado: pendiente, t: "Multi-tenancy del motor: definiciones y aislamiento de ejecución por tenant"}
-              - {id: CRM-00.03.02.16, c: C, fase: 0, svc: orchestrator, estado: pendiente, t: "Límites de recursión, bucles y ejecución para evitar procesos desbocados"}
+              - {id: CRM-00.03.02.14, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Simulación y pruebas de proceso con datos de ejemplo antes de publicar"}
+              - {id: CRM-00.03.02.15, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Multi-tenancy del motor: definiciones y aislamiento de ejecución por tenant"}
+              - {id: CRM-00.03.02.16, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Límites de recursión, bucles y ejecución para evitar procesos desbocados"}
 
           - id: CRM-00.03.03
             nombre: Automatización declarativa para negocio (low-code)
             capacidades:
-              - {id: CRM-00.03.03.01, c: C, fase: 0, svc: automation, estado: pendiente, reutiliza: "contecflow-PSA:app/models/automations.py + app/services/automations_service.py", t: "Constructor de automatizaciones tipo cuando ocurre X, si Y, entonces Z"}
-              - {id: CRM-00.03.03.02, c: C, fase: 0, svc: automation, estado: pendiente, reutiliza: "contecflow-PSA:app/services/automations_service.py (disparadores)", t: "Disparadores: creación, modificación de campo, eliminación, evento entrante, webhook, programado, manual"}
-              - {id: CRM-00.03.03.03, c: C, fase: 0, svc: automation, estado: pendiente, t: "Acciones: crear/actualizar registro, notificar, llamar API externa, lanzar proceso, asignar, calcular"}
+              - {id: CRM-00.03.03.01, c: C, fase: 0, svc: automation, estado: hecho, reutiliza: "contecflow-PSA:app/models/automations.py + app/services/automations_service.py", t: "Constructor de automatizaciones tipo cuando ocurre X, si Y, entonces Z"}
+              - {id: CRM-00.03.03.02, c: C, fase: 0, svc: automation, estado: hecho, reutiliza: "contecflow-PSA:app/services/automations_service.py (disparadores)", t: "Disparadores: creación, modificación de campo, eliminación, evento entrante, webhook, programado, manual"}
+              - {id: CRM-00.03.03.03, c: C, fase: 0, svc: automation, estado: en-curso, t: "Acciones: crear/actualizar registro, notificar, llamar API externa, lanzar proceso, asignar, calcular"}
               - {id: CRM-00.03.03.04, c: A, fase: 0, svc: automation, estado: pendiente, t: "Ramificaciones, bucles sobre colecciones y variables de flujo"}
-              - {id: CRM-00.03.03.05, c: C, fase: 0, svc: automation, estado: pendiente, t: "Ejecución inmediata vs. diferida vs. programada"}
-              - {id: CRM-00.03.03.06, c: C, fase: 0, svc: automation, estado: pendiente, t: "Gestión de orden de ejecución y prevención de bucles infinitos entre reglas"}
-              - {id: CRM-00.03.03.07, c: A, fase: 0, svc: automation, estado: pendiente, t: "Depurador con ejecución paso a paso y log de decisiones por registro"}
+              - {id: CRM-00.03.03.05, c: C, fase: 0, svc: automation, estado: hecho, t: "Ejecución inmediata vs. diferida vs. programada"}
+              - {id: CRM-00.03.03.06, c: C, fase: 0, svc: automation, estado: hecho, t: "Gestión de orden de ejecución y prevención de bucles infinitos entre reglas"}
+              - {id: CRM-00.03.03.07, c: A, fase: 0, svc: automation, estado: hecho, t: "Depurador con ejecución paso a paso y log de decisiones por registro"}
               - {id: CRM-00.03.03.08, c: A, fase: 0, svc: automation, estado: pendiente, t: "Entorno de pruebas y despliegue de automatizaciones entre entornos"}
               - {id: CRM-00.03.03.09, c: A, fase: 1, svc: automation, estado: pendiente, t: "Biblioteca de plantillas de automatización por industria"}
 
@@ -269,12 +269,12 @@ modulos:
             nombre: Integración y conectividad
             capacidades:
               - {id: CRM-00.03.04.01, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{salesforce,stripe,jira,git,m365,slack}_service.py; contecweb:app/services/supplier_api", t: "Conectores nativos: ERP, facturación, firma electrónica, telefonía, mensajería"}
-              - {id: CRM-00.03.04.02, c: A, fase: 0, svc: integration, estado: pendiente, reutiliza: "contecweb:app/connectors/api + base.py (conector HTTP genérico, verificado 2026-09-14)", t: "Conector genérico HTTP/REST configurable sin código (auth, mapeo, paginación)"}
+              - {id: CRM-00.03.04.02, c: A, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/connectors/api + base.py (conector HTTP genérico, verificado 2026-09-14)", t: "Conector genérico HTTP/REST configurable sin código (auth, mapeo, paginación)"}
               - {id: CRM-00.03.04.03, c: A, fase: 2, svc: integration, estado: pendiente, t: "Soporte SOAP, SFTP, ficheros planos, EDI y colas AMQP para entornos legacy"}
-              - {id: CRM-00.03.04.04, c: A, fase: 0, svc: integration, estado: pendiente, reutiliza: "contecweb:app/services/normalization/", t: "Motor de transformación y mapeo de datos con funciones y validación"}
-              - {id: CRM-00.03.04.05, c: C, fase: 0, svc: integration, estado: pendiente, reutiliza: "contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py", t: "Gestión de credenciales por conexión con rotación y prueba de conectividad"}
-              - {id: CRM-00.03.04.06, c: C, fase: 0, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/services/integration_test_service.py", t: "Monitor de integraciones: ejecuciones, errores, reproceso, alertas"}
-              - {id: CRM-00.03.04.07, c: C, fase: 0, svc: integration, estado: pendiente, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Cola de mensajes fallidos con corrección y reenvío asistido"}
+              - {id: CRM-00.03.04.04, c: A, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/normalization/", t: "Motor de transformación y mapeo de datos con funciones y validación"}
+              - {id: CRM-00.03.04.05, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py", t: "Gestión de credenciales por conexión con rotación y prueba de conectividad"}
+              - {id: CRM-00.03.04.06, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/integration_test_service.py", t: "Monitor de integraciones: ejecuciones, errores, reproceso, alertas"}
+              - {id: CRM-00.03.04.07, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Cola de mensajes fallidos con corrección y reenvío asistido"}
               - {id: CRM-00.03.04.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Sincronización bidireccional con resolución de conflictos configurable"}
               - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
               - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
@@ -287,14 +287,14 @@ modulos:
           - id: CRM-00.04.01
             nombre: Modelo de datos configurable
             capacidades:
-              - {id: CRM-00.04.01.01, c: C, fase: 0, svc: metadata, estado: pendiente, t: "Objetos personalizados por tenant con ciclo de vida completo (CRUD, API, permisos, auditoría)"}
-              - {id: CRM-00.04.01.02, c: C, fase: 0, svc: metadata, estado: pendiente, reutiliza: "contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py", t: "Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado"}
+              - {id: CRM-00.04.01.01, c: C, fase: 0, svc: metadata, estado: hecho, t: "Objetos personalizados por tenant con ciclo de vida completo (CRUD, API, permisos, auditoría)"}
+              - {id: CRM-00.04.01.02, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py", t: "Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado"}
               - {id: CRM-00.04.01.03, c: C, fase: 0, svc: metadata, estado: pendiente, t: "Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada"}
               - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Campos calculados y rollups agregados sobre hijos"}
               - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
-              - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: pendiente, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
-              - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Máquinas de estado configurables por objeto"}
-              - {id: CRM-00.04.01.08, c: C, fase: 0, svc: metadata, estado: pendiente, t: "Esquema expuesto vía API de metadatos (describe) para clientes headless"}
+              - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: hecho, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
+              - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: en-curso, t: "Máquinas de estado configurables por objeto"}
+              - {id: CRM-00.04.01.08, c: C, fase: 0, svc: metadata, estado: hecho, t: "Esquema expuesto vía API de metadatos (describe) para clientes headless"}
               - {id: CRM-00.04.01.09, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos"}
               - {id: CRM-00.04.01.10, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso"}
 
@@ -321,33 +321,33 @@ modulos:
               - {id: CRM-00.05.01.03, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/oidc_mappings.py", t: "SSO por tenant con múltiples proveedores de identidad simultáneos"}
               - {id: CRM-00.05.01.04, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/oidc.py (JIT provisioning)", t: "Federación y Just-In-Time provisioning de usuarios"}
               - {id: CRM-00.05.01.05, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/scim.py (699 líneas) + contecflow-PSA:app/services/scim_service.py", t: "SCIM 2.0 para aprovisionamiento y desaprovisionamiento automático"}
-              - {id: CRM-00.05.01.06, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/mfa.py + contecmind:app/services/{mfa,webauthn}.py", t: "MFA obligatoria configurable por rol, con TOTP, push, WebAuthn/passkeys"}
-              - {id: CRM-00.05.01.07, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecflow-PSA:app/models/oauth_apps.py", t: "Credenciales máquina: client credentials, service accounts, claves con scope y caducidad"}
-              - {id: CRM-00.05.01.08, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py", t: "Gestión de sesiones: duración, sesiones concurrentes, revocación remota"}
+              - {id: CRM-00.05.01.06, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/mfa.py + contecmind:app/services/{mfa,webauthn}.py", t: "MFA obligatoria configurable por rol, con TOTP, push, WebAuthn/passkeys"}
+              - {id: CRM-00.05.01.07, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/models/oauth_apps.py", t: "Credenciales máquina: client credentials, service accounts, claves con scope y caducidad"}
+              - {id: CRM-00.05.01.08, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py", t: "Gestión de sesiones: duración, sesiones concurrentes, revocación remota"}
               - {id: CRM-00.05.01.09, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/security_rules.py", t: "Políticas de acceso contextual: IP, dispositivo, geolocalización, horario"}
               - {id: CRM-00.05.01.10, c: A, fase: 3, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py", t: "Identidad de clientes externos (portal) separada de la de empleados (CIAM)"}
 
           - id: CRM-00.05.02
             nombre: Autorización
             capacidades:
-              - {id: CRM-00.05.02.01, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom)", t: "RBAC con roles, perfiles y conjuntos de permisos acumulables"}
-              - {id: CRM-00.05.02.02, c: C, fase: 0, svc: identity, estado: pendiente, t: "Jerarquía de roles con visibilidad ascendente sobre subordinados"}
-              - {id: CRM-00.05.02.03, c: C, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/abac.py (394) + abac_enforce.py", t: "Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto)"}
+              - {id: CRM-00.05.02.01, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom)", t: "RBAC con roles, perfiles y conjuntos de permisos acumulables"}
+              - {id: CRM-00.05.02.02, c: C, fase: 0, svc: identity, estado: hecho, t: "Jerarquía de roles con visibilidad ascendente sobre subordinados"}
+              - {id: CRM-00.05.02.03, c: C, fase: 0, svc: identity, estado: en-curso, reutiliza: "contecweb:app/services/abac.py (394) + abac_enforce.py", t: "Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto)"}
               - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
-              - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
+              - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
               - {id: CRM-00.05.02.06, c: A, fase: 0, svc: identity, estado: pendiente, t: "Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless"}
               - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
               - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
               - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: pendiente, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
-              - {id: CRM-00.05.02.10, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/sesion_cedida.py (suplantación auditada)", t: "Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría"}
-              - {id: CRM-00.05.02.11, c: D, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/access_explainer.py + access_simulator.py", t: "Explicador de permisos: por qué este usuario ve este registro"}
+              - {id: CRM-00.05.02.10, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sesion_cedida.py (suplantación auditada)", t: "Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría"}
+              - {id: CRM-00.05.02.11, c: D, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/access_explainer.py + access_simulator.py", t: "Explicador de permisos: por qué este usuario ve este registro"}
 
           - id: CRM-00.05.03
             nombre: Protección del dato
             capacidades:
-              - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: pendiente, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
-              - {id: CRM-00.05.03.02, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/db/encrypted_text.py + app/core/crypto.py", t: "Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional"}
-              - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
+              - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: en-curso, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
+              - {id: CRM-00.05.03.02, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/encrypted_text.py + app/core/crypto.py", t: "Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional"}
+              - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
               - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: pendiente, t: "Tokenización de datos de pago o identificadores fiscales"}
               - {id: CRM-00.05.03.05, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/pii.py", t: "Anonimización y pseudonimización para entornos no productivos"}
               - {id: CRM-00.05.03.06, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/security_signals.py", t: "DLP: control de exportaciones masivas, alertas y bloqueo por política"}
@@ -357,9 +357,9 @@ modulos:
           - id: CRM-00.05.04
             nombre: Auditoría y trazabilidad
             capacidades:
-              - {id: CRM-00.05.04.01, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/audit.py (668, hash-chain) + deploy/sql/audit_immutable.sql; contecweb:app/services/audit_chain.py", t: "Audit trail inmutable de accesos, cambios, exportaciones y acciones administrativas"}
-              - {id: CRM-00.05.04.02, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (historial de campo)", t: "Historial de campo con valor anterior, valor nuevo, autor, origen (UI/API/automatización) y timestamp"}
-              - {id: CRM-00.05.04.03, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Auditoría de cambios de configuración y de permisos"}
+              - {id: CRM-00.05.04.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/audit.py (668, hash-chain) + deploy/sql/audit_immutable.sql; contecweb:app/services/audit_chain.py", t: "Audit trail inmutable de accesos, cambios, exportaciones y acciones administrativas"}
+              - {id: CRM-00.05.04.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (historial de campo)", t: "Historial de campo con valor anterior, valor nuevo, autor, origen (UI/API/automatización) y timestamp"}
+              - {id: CRM-00.05.04.03, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Auditoría de cambios de configuración y de permisos"}
               - {id: CRM-00.05.04.04, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:scripts/audit_purge.py", t: "Retención configurable del log y exportación a SIEM"}
               - {id: CRM-00.05.04.05, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/api/admin_audit.py", t: "Consulta y alertado sobre el audit trail desde la propia plataforma"}
               - {id: CRM-00.05.04.06, c: D, fase: 2, svc: core, estado: pendiente, t: "Event sourcing opcional en agregados críticos para reconstrucción de estado"}
@@ -371,12 +371,12 @@ modulos:
           - id: CRM-00.06.01
             nombre: Telemetría
             capacidades:
-              - {id: CRM-00.06.01.01, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/logging.py (structlog + redacción PII)", t: "Logs estructurados con tenant_id, trace_id, user_id y correlación extremo a extremo"}
-              - {id: CRM-00.06.01.02, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/metrics.py (577 líneas, Prometheus)", t: "Métricas por tenant: latencia, throughput, tasa de error, saturación"}
-              - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
+              - {id: CRM-00.06.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/logging.py (structlog + redacción PII)", t: "Logs estructurados con tenant_id, trace_id, user_id y correlación extremo a extremo"}
+              - {id: CRM-00.06.01.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (577 líneas, Prometheus)", t: "Métricas por tenant: latencia, throughput, tasa de error, saturación"}
+              - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
               - {id: CRM-00.06.01.04, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/prometheus/governance_alerts.yml", t: "SLO y error budget definidos por servicio y por tier de cliente"}
               - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
-              - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
+              - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: en-curso, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
               - {id: CRM-00.06.01.07, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Auditoría de rendimiento por consulta y detección de queries degradadas por tenant"}
 
           - id: CRM-00.06.02
@@ -902,11 +902,11 @@ modulos:
           - id: CRM-07.02.01
             nombre: Entornos y despliegue
             capacidades:
-              - {id: CRM-07.02.01.01, c: C, fase: 0, svc: infra, estado: pendiente, reutiliza: "contecmind:setup.sh (perfiles dev/prodlike) + docker-compose.yml", t: "Entornos separados: desarrollo, pruebas, UAT, producción"}
+              - {id: CRM-07.02.01.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:setup.sh (perfiles dev/prodlike) + docker-compose.yml", t: "Entornos separados: desarrollo, pruebas, UAT, producción"}
               - {id: CRM-07.02.01.02, c: A, fase: 1, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/pii.py (anonimización)", t: "Sandboxes con copia parcial o total de datos y anonimización opcional"}
               - {id: CRM-07.02.01.03, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecmind:app/services/environment_profiles.py", t: "Empaquetado de cambios y despliegue promocionable entre entornos"}
               - {id: CRM-07.02.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Configuración como código con control de versiones (Git) y revisión"}
-              - {id: CRM-07.02.01.05, c: A, fase: 0, svc: infra, estado: pendiente, reutiliza: "contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI)", t: "Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto)"}
+              - {id: CRM-07.02.01.05, c: A, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI)", t: "Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto)"}
               - {id: CRM-07.02.01.06, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Detección de cambios en producción fuera del pipeline (drift)"}
               - {id: CRM-07.02.01.07, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Rollback de despliegues y de configuraciones"}
               - {id: CRM-07.02.01.08, c: C, fase: 0, svc: docs, estado: pendiente, reutiliza: "contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py", t: "Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión"}
@@ -935,7 +935,7 @@ modulos:
           - id: CRM-08.01.01
             nombre: Rendimiento
             capacidades:
-              - {id: CRM-08.01.01.01, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/metrics.py (histogramas por endpoint y tenant)", t: "Objetivos de latencia: p95 y p99 por tipo de operación, medidos por tenant"}
+              - {id: CRM-08.01.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (histogramas por endpoint y tenant)", t: "Objetivos de latencia: p95 y p99 por tipo de operación, medidos por tenant"}
               - {id: CRM-08.01.01.02, c: A, fase: 0, svc: infra, estado: pendiente, t: "Escalado horizontal independiente por servicio"}
               - {id: CRM-08.01.01.03, c: C, fase: 0, svc: docs, estado: pendiente, t: "Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s"}
               - {id: CRM-08.01.01.04, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:scripts/split_concurrent_indexes.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Estrategia de particionado y archivado para objetos de alto volumen"}

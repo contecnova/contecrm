@@ -63,78 +63,258 @@ CLAVES: dict[str, ClaveAjuste] = {
     c.clave: c
     for c in (
         # Límites y cuotas
-        _c("rate_limit_por_tenant", "int", "Peticiones por ventana y tenant",
-           minimo=0, maximo=10_000_000, campo_settings="rate_limit_por_tenant", sensible=True),
-        _c("rate_limit_por_usuario", "int", "Peticiones por ventana y usuario",
-           minimo=0, maximo=1_000_000, campo_settings="rate_limit_por_usuario"),
-        _c("quota_api_calls_por_minuto", "int", "Llamadas a la API por minuto",
-           minimo=0, campo_settings="quota_api_calls_por_minuto", sensible=True),
-        _c("quota_registros", "int", "Máximo de registros del tenant (0 = sin límite)",
-           minimo=0, campo_settings="quota_registros", sensible=True),
-        _c("quota_almacenamiento_mb", "int", "Almacenamiento máximo en MB (0 = sin límite)",
-           minimo=0, campo_settings="quota_almacenamiento_mb", sensible=True),
-        _c("quota_correos_por_dia", "int", "Correos salientes por día (0 = sin límite)",
-           minimo=0, campo_settings="quota_correos_por_dia"),
-        _c("quota_workflows_concurrentes", "int", "Procesos simultáneos por tenant",
-           minimo=0, campo_settings="quota_workflows_concurrentes"),
-        _c("quota_tokens_ia_por_dia", "int", "Tokens de IA por día (0 = sin límite)",
-           minimo=0, campo_settings="quota_tokens_ia_por_dia", sensible=True),
-        _c("quota_aviso_pct", "int", "Porcentaje de consumo que dispara el aviso",
-           minimo=1, maximo=100, campo_settings="quota_aviso_pct"),
+        _c(
+            "rate_limit_por_tenant",
+            "int",
+            "Peticiones por ventana y tenant",
+            minimo=0,
+            maximo=10_000_000,
+            campo_settings="rate_limit_por_tenant",
+            sensible=True,
+        ),
+        _c(
+            "rate_limit_por_usuario",
+            "int",
+            "Peticiones por ventana y usuario",
+            minimo=0,
+            maximo=1_000_000,
+            campo_settings="rate_limit_por_usuario",
+        ),
+        _c(
+            "quota_api_calls_por_minuto",
+            "int",
+            "Llamadas a la API por minuto",
+            minimo=0,
+            campo_settings="quota_api_calls_por_minuto",
+            sensible=True,
+        ),
+        _c(
+            "quota_registros",
+            "int",
+            "Máximo de registros del tenant (0 = sin límite)",
+            minimo=0,
+            campo_settings="quota_registros",
+            sensible=True,
+        ),
+        _c(
+            "quota_almacenamiento_mb",
+            "int",
+            "Almacenamiento máximo en MB (0 = sin límite)",
+            minimo=0,
+            campo_settings="quota_almacenamiento_mb",
+            sensible=True,
+        ),
+        _c(
+            "quota_correos_por_dia",
+            "int",
+            "Correos salientes por día (0 = sin límite)",
+            minimo=0,
+            campo_settings="quota_correos_por_dia",
+        ),
+        _c(
+            "quota_workflows_concurrentes",
+            "int",
+            "Procesos simultáneos por tenant",
+            minimo=0,
+            campo_settings="quota_workflows_concurrentes",
+        ),
+        _c(
+            "quota_tokens_ia_por_dia",
+            "int",
+            "Tokens de IA por día (0 = sin límite)",
+            minimo=0,
+            campo_settings="quota_tokens_ia_por_dia",
+            sensible=True,
+        ),
+        _c(
+            "quota_aviso_pct",
+            "int",
+            "Porcentaje de consumo que dispara el aviso",
+            minimo=1,
+            maximo=100,
+            campo_settings="quota_aviso_pct",
+        ),
         # Paginación y operaciones masivas
-        _c("page_max_size", "int", "Tamaño máximo de página",
-           minimo=1, maximo=10_000, campo_settings="page_max_size"),
-        _c("bulk_max_items", "int", "Elementos máximos en una operación masiva",
-           minimo=1, maximo=100_000, campo_settings="bulk_max_items"),
+        _c(
+            "page_max_size",
+            "int",
+            "Tamaño máximo de página",
+            minimo=1,
+            maximo=10_000,
+            campo_settings="page_max_size",
+        ),
+        _c(
+            "bulk_max_items",
+            "int",
+            "Elementos máximos en una operación masiva",
+            minimo=1,
+            maximo=100_000,
+            campo_settings="bulk_max_items",
+        ),
         # Identidad
-        _c("mfa_obligatoria", "bool", "Exigir MFA a todos los usuarios del tenant",
-           campo_settings="mfa_obligatoria", sensible=True),
-        _c("sesiones_max_por_usuario", "int", "Sesiones simultáneas (0 = sin límite)",
-           minimo=0, maximo=1000, campo_settings="sesiones_max_por_usuario"),
-        _c("sesion_inactividad_minutos", "int", "Cierre de sesión por inactividad",
-           minimo=5, maximo=10_080, campo_settings="sesion_inactividad_minutos"),
-        _c("login_max_intentos", "int", "Intentos fallidos antes de bloquear",
-           minimo=1, maximo=100, campo_settings="login_max_intentos", sensible=True),
-        _c("suplantacion_enabled", "bool", "Permitir que soporte suplante a un usuario",
-           campo_settings="suplantacion_enabled", sensible=True),
-        _c("suplantacion_max_minutos", "int", "Duración máxima de una suplantación",
-           minimo=5, maximo=1440, campo_settings="suplantacion_max_minutos"),
+        _c(
+            "mfa_obligatoria",
+            "bool",
+            "Exigir MFA a todos los usuarios del tenant",
+            campo_settings="mfa_obligatoria",
+            sensible=True,
+        ),
+        _c(
+            "sesiones_max_por_usuario",
+            "int",
+            "Sesiones simultáneas (0 = sin límite)",
+            minimo=0,
+            maximo=1000,
+            campo_settings="sesiones_max_por_usuario",
+        ),
+        _c(
+            "sesion_inactividad_minutos",
+            "int",
+            "Cierre de sesión por inactividad",
+            minimo=5,
+            maximo=10_080,
+            campo_settings="sesion_inactividad_minutos",
+        ),
+        _c(
+            "login_max_intentos",
+            "int",
+            "Intentos fallidos antes de bloquear",
+            minimo=1,
+            maximo=100,
+            campo_settings="login_max_intentos",
+            sensible=True,
+        ),
+        _c(
+            "suplantacion_enabled",
+            "bool",
+            "Permitir que soporte suplante a un usuario",
+            campo_settings="suplantacion_enabled",
+            sensible=True,
+        ),
+        _c(
+            "suplantacion_max_minutos",
+            "int",
+            "Duración máxima de una suplantación",
+            minimo=5,
+            maximo=1440,
+            campo_settings="suplantacion_max_minutos",
+        ),
         # Eventos y webhooks
-        _c("webhooks_enabled", "bool", "Entregar eventos a los webhooks del tenant",
-           campo_settings="webhooks_enabled"),
-        _c("webhook_max_intentos", "int", "Reintentos antes de la cola de fallidos",
-           minimo=1, maximo=50, campo_settings="webhook_max_intentos"),
-        _c("webhook_timeout_s", "float", "Espera máxima de un webhook",
-           minimo=0.5, maximo=120.0, campo_settings="webhook_timeout_s"),
+        _c(
+            "webhooks_enabled",
+            "bool",
+            "Entregar eventos a los webhooks del tenant",
+            campo_settings="webhooks_enabled",
+        ),
+        _c(
+            "webhook_max_intentos",
+            "int",
+            "Reintentos antes de la cola de fallidos",
+            minimo=1,
+            maximo=50,
+            campo_settings="webhook_max_intentos",
+        ),
+        _c(
+            "webhook_timeout_s",
+            "float",
+            "Espera máxima de un webhook",
+            minimo=0.5,
+            maximo=120.0,
+            campo_settings="webhook_timeout_s",
+        ),
         # Procesos y automatizaciones
-        _c("proceso_max_pasos", "int", "Pasos máximos de una instancia de proceso",
-           minimo=1, maximo=1_000_000, campo_settings="proceso_max_pasos"),
-        _c("proceso_max_duracion_h", "int", "Duración máxima de un proceso, en horas",
-           minimo=1, maximo=8760, campo_settings="proceso_max_duracion_h"),
-        _c("automatizacion_max_cascada", "int",
-           "Automatizaciones encadenadas antes de cortar la cascada",
-           minimo=1, maximo=100, campo_settings="automatizacion_max_cascada", sensible=True),
+        _c(
+            "proceso_max_pasos",
+            "int",
+            "Pasos máximos de una instancia de proceso",
+            minimo=1,
+            maximo=1_000_000,
+            campo_settings="proceso_max_pasos",
+        ),
+        _c(
+            "proceso_max_duracion_h",
+            "int",
+            "Duración máxima de un proceso, en horas",
+            minimo=1,
+            maximo=8760,
+            campo_settings="proceso_max_duracion_h",
+        ),
+        _c(
+            "automatizacion_max_cascada",
+            "int",
+            "Automatizaciones encadenadas antes de cortar la cascada",
+            minimo=1,
+            maximo=100,
+            campo_settings="automatizacion_max_cascada",
+            sensible=True,
+        ),
         # Protección del dato
-        _c("masking_enabled", "bool", "Enmascarar datos sensibles según el rol",
-           campo_settings="masking_enabled", sensible=True),
-        _c("dlp_export_filas_aviso", "int", "Filas a partir de las que se audita la exportación",
-           minimo=1, campo_settings="dlp_export_filas_aviso"),
-        _c("dlp_export_filas_bloqueo", "int",
-           "Filas a partir de las que se bloquea la exportación (0 = no bloquear)",
-           minimo=0, campo_settings="dlp_export_filas_bloqueo", sensible=True),
-        _c("audit_retencion_dias", "int", "Días que se conserva la traza de auditoría",
-           minimo=30, maximo=36_500, campo_settings="audit_retencion_dias", sensible=True),
+        _c(
+            "masking_enabled",
+            "bool",
+            "Enmascarar datos sensibles según el rol",
+            campo_settings="masking_enabled",
+            sensible=True,
+        ),
+        _c(
+            "dlp_export_filas_aviso",
+            "int",
+            "Filas a partir de las que se audita la exportación",
+            minimo=1,
+            campo_settings="dlp_export_filas_aviso",
+        ),
+        _c(
+            "dlp_export_filas_bloqueo",
+            "int",
+            "Filas a partir de las que se bloquea la exportación (0 = no bloquear)",
+            minimo=0,
+            campo_settings="dlp_export_filas_bloqueo",
+            sensible=True,
+        ),
+        _c(
+            "audit_retencion_dias",
+            "int",
+            "Días que se conserva la traza de auditoría",
+            minimo=30,
+            maximo=36_500,
+            campo_settings="audit_retencion_dias",
+            sensible=True,
+        ),
         # Localización, con preferencia por usuario
-        _c("idioma", "str", "Idioma por defecto de la interfaz y los correos",
-           minimo_ambito="usuario", opciones=("es", "en", "ca", "fr", "pt", "de")),
-        _c("zona_horaria", "str", "Zona horaria para fechas y calendarios laborales",
-           minimo_ambito="usuario"),
-        _c("moneda_funcional", "str", "Moneda en la que se consolidan los importes",
-           minimo_ambito="tenant"),
-        _c("formato_fecha", "str", "Formato de fecha en interfaces y documentos",
-           minimo_ambito="usuario", opciones=("dd/mm/aaaa", "mm/dd/aaaa", "aaaa-mm-dd")),
-        _c("primer_dia_semana", "int", "Primer día de la semana (0 = lunes)",
-           minimo=0, maximo=6, minimo_ambito="usuario"),
+        _c(
+            "idioma",
+            "str",
+            "Idioma por defecto de la interfaz y los correos",
+            minimo_ambito="usuario",
+            opciones=("es", "en", "ca", "fr", "pt", "de"),
+        ),
+        _c(
+            "zona_horaria",
+            "str",
+            "Zona horaria para fechas y calendarios laborales",
+            minimo_ambito="usuario",
+        ),
+        _c(
+            "moneda_funcional",
+            "str",
+            "Moneda en la que se consolidan los importes",
+            minimo_ambito="tenant",
+        ),
+        _c(
+            "formato_fecha",
+            "str",
+            "Formato de fecha en interfaces y documentos",
+            minimo_ambito="usuario",
+            opciones=("dd/mm/aaaa", "mm/dd/aaaa", "aaaa-mm-dd"),
+        ),
+        _c(
+            "primer_dia_semana",
+            "int",
+            "Primer día de la semana (0 = lunes)",
+            minimo=0,
+            maximo=6,
+            minimo_ambito="usuario",
+        ),
     )
 }
 
@@ -158,7 +338,9 @@ def validar(clave: str, valor: Any) -> Any:
     try:
         if decl.tipo == "bool":
             convertido: Any = (
-                valor if isinstance(valor, bool) else str(valor).lower() in ("1", "true", "sí", "si")
+                valor
+                if isinstance(valor, bool)
+                else str(valor).lower() in ("1", "true", "sí", "si")
             )
         elif decl.tipo == "int":
             convertido = int(valor)
@@ -175,13 +357,21 @@ def validar(clave: str, valor: Any) -> Any:
             detalle={"tipo_esperado": decl.tipo, "recibido": str(valor)[:80]},
         )
 
-    if decl.minimo is not None and isinstance(convertido, (int, float)) and convertido < decl.minimo:
+    if (
+        decl.minimo is not None
+        and isinstance(convertido, (int, float))
+        and convertido < decl.minimo
+    ):
         raise ErrorValidacion(
             f"El ajuste «{clave}» no puede ser menor que {decl.minimo}",
             error_code="ajustes.fuera_de_rango",
             detalle={"minimo": decl.minimo, "maximo": decl.maximo},
         )
-    if decl.maximo is not None and isinstance(convertido, (int, float)) and convertido > decl.maximo:
+    if (
+        decl.maximo is not None
+        and isinstance(convertido, (int, float))
+        and convertido > decl.maximo
+    ):
         raise ErrorValidacion(
             f"El ajuste «{clave}» no puede ser mayor que {decl.maximo}",
             error_code="ajustes.fuera_de_rango",

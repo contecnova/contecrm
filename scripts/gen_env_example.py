@@ -113,7 +113,10 @@ def generar() -> str:
         arbol = ast.parse(fuente)
 
         partes.append("")
-        partes.append(f"# ── {TITULOS.get(modulo, modulo)} " + "─" * max(0, 60 - len(TITULOS.get(modulo, modulo))))
+        partes.append(
+            f"# ── {TITULOS.get(modulo, modulo)} "
+            + "─" * max(0, 60 - len(TITULOS.get(modulo, modulo)))
+        )
         partes.append("")
 
         for clase in [n for n in arbol.body if isinstance(n, ast.ClassDef)]:

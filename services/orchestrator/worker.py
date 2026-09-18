@@ -29,9 +29,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
+from crmcore.logging import get_logger, setup_logging
 from sqlalchemy import or_, select
 
-from crmcore.logging import get_logger, setup_logging
 from services.orchestrator.modelos import InstanciaProceso, TareaHumana
 from services.orchestrator.motor import Motor
 

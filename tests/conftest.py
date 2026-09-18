@@ -65,7 +65,6 @@ def db(postgres_uri: str, request: pytest.FixtureRequest) -> Iterator[Any]:
     siguiente por el motivo equivocado.
     """
     import sqlalchemy as sa
-
     from crmcore.config import limpiar_cache_settings
     from crmcore.db.base import Base
     from crmcore.db.session import reset_engine

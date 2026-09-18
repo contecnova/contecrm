@@ -21,10 +21,10 @@ import time
 from typing import Any
 from uuid import UUID
 
+from crmcore.logging import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmcore.logging import get_logger
 from services.automation.modelos import Automatizacion, EjecucionAutomatizacion
 
 logger = get_logger(__name__)
@@ -88,9 +88,7 @@ def aplicables(
     # que han cambiado. Es lo que evita que «cuando cambie la etapa» se dispare
     # al corregir un teléfono.
     return [
-        r
-        for r in reglas
-        if not r.campos_vigilados or (set(r.campos_vigilados) & campos_cambiados)
+        r for r in reglas if not r.campos_vigilados or (set(r.campos_vigilados) & campos_cambiados)
     ]
 
 
@@ -125,9 +123,7 @@ def evaluar_condiciones(
 
     if not resultados:
         return True, decisiones
-    cumple_todo = (
-        all(resultados) if regla.combinacion == "todas" else any(resultados)
-    )
+    cumple_todo = all(resultados) if regla.combinacion == "todas" else any(resultados)
     return cumple_todo, decisiones
 
 

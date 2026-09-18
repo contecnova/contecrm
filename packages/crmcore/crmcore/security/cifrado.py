@@ -120,9 +120,7 @@ def cifrar_dict(valores: dict[str, Any], *, proposito: str = "credenciales") -> 
     return {k: cifrar(str(v), proposito=proposito) for k, v in valores.items()}
 
 
-def descifrar_dict(
-    valores: dict[str, Any], *, proposito: str = "credenciales"
-) -> dict[str, str]:
+def descifrar_dict(valores: dict[str, Any], *, proposito: str = "credenciales") -> dict[str, str]:
     return {k: descifrar(str(v), proposito=proposito) for k, v in valores.items()}
 
 

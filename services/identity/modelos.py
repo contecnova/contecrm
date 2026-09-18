@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -21,9 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
 
 
 class Usuario(Base, TimestampMixin):
@@ -70,9 +69,7 @@ class Usuario(Base, TimestampMixin):
 
     # ── Bloqueo por intentos ──────────────────────────────────────────────
     intentos_fallidos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    bloqueado_hasta: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ultimo_acceso_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

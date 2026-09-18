@@ -5,6 +5,7 @@ aplicación que ya trae, sin poder desactivarlo:
 
   * el contexto de tenant y la correlación de peticiones,
   * los errores en formato Problem Details,
+  * el contrato OpenAPI generado del código (CRM-00.02.01.04),
   * las métricas, la salud y el `/metrics`,
   * el guard de aislamiento en la capa ORM,
   * el bus conectado y el relevo del outbox corriendo,

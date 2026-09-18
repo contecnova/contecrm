@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -20,9 +22,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
 
 
 class Suscripcion(Base, TimestampMixin):
@@ -56,12 +55,8 @@ class Suscripcion(Base, TimestampMixin):
     # muerto, y seguir intentándolo cada minuto es tráfico y ruido: pasado el
     # tope se desactiva sola y se avisa.
     fallos_consecutivos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    desactivada_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    ultimo_exito_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    desactivada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ultimo_exito_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (Index("ix_suscripciones_activas", "tenant_id", "activa"),)
 
@@ -131,6 +126,4 @@ class EventoArchivado(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    __table_args__ = (
-        Index("ix_archivados_busqueda", "tenant_id", "tipo", "occurred_at"),
-    )
+    __table_args__ = (Index("ix_archivados_busqueda", "tenant_id", "tipo", "occurred_at"),)

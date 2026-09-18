@@ -142,9 +142,7 @@ class Settings(
             )
         for marcador in PLACEHOLDERS_INSEGUROS:
             if marcador and marcador in self.database_url:
-                problemas.append(
-                    f"DATABASE_URL contiene la credencial de desarrollo «{marcador}»"
-                )
+                problemas.append(f"DATABASE_URL contiene la credencial de desarrollo «{marcador}»")
                 break
         if self.api_docs_enabled and not self.origenes_cors and self.service_name == "gateway":
             # Aviso, no error: hay despliegues donde el gateway solo atiende a

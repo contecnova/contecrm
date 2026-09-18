@@ -165,9 +165,7 @@ ROLES_BASE: dict[str, Rol] = {
     "agente_soporte": Rol(
         nombre="agente_soporte",
         hereda_de="usuario",
-        permisos=frozenset(
-            {"case:read", "case:write", "knowledge:read", "entitlement:read"}
-        ),
+        permisos=frozenset({"case:read", "case:write", "knowledge:read", "entitlement:read"}),
         descripcion="Atiende casos y consulta el conocimiento",
         es_sistema=True,
     ),

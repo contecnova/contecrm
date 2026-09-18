@@ -1,5 +1,8 @@
 """Gateway: la única puerta de entrada.
 
+Implementa CRM-00.02.04.01 (gateway con autenticación, autorización, límites y
+enrutado por tenant).
+
 Hace cuatro cosas y ninguna es de negocio:
 
   1. **Resuelve el tenant** (subdominio, cabecera, token o clave de API) y

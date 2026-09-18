@@ -1,0 +1,365 @@
+"""Gates de arquitectura: invariantes que no se pueden dejar a la disciplina.
+
+Son pruebas normales, no hooks, y eso es a propósito: corren con `pytest`, salen
+en el resumen y no hacen falta dos mecanismos para lo mismo.
+
+Cada una fija una invariante que, de romperse, no daría ningún síntoma inmediato
+—y ese es justo el tipo de fallo que hay que atrapar con una prueba, no con una
+revisión.
+"""
+
+from __future__ import annotations
+
+import ast
+import re
+from pathlib import Path
+
+import pytest
+
+RAIZ = Path(__file__).resolve().parents[2]
+SERVICIOS_DIR = RAIZ / "services"
+CORE_DIR = RAIZ / "packages" / "crmcore" / "crmcore"
+
+SERVICIOS = sorted(
+    p.name for p in SERVICIOS_DIR.iterdir() if p.is_dir() and not p.name.startswith("_")
+)
+
+
+def _modulos(directorio: Path) -> list[Path]:
+    return [p for p in directorio.rglob("*.py") if "__pycache__" not in str(p)]
+
+
+# ── Aislamiento entre servicios ───────────────────────────────────────────
+
+
+def test_ningun_servicio_importa_modulos_de_otro() -> None:
+    """Un servicio no puede importar código de otro servicio.
+
+    Si pudiera, la separación sería decorativa: desplegar uno obligaría a
+    desplegar el otro, y la «propiedad exclusiva de datos» se saltaría por la
+    vía de importar sus modelos.
+
+    La única excepción admitida es importar del **motor de procesos** los
+    ayudantes de evaluación de condiciones (`services.orchestrator.motor`), que
+    son lógica pura sin estado y que de otro modo estarían duplicados en tres
+    sitios. Está aquí escrito para que sea una decisión y no un descuido.
+    """
+    excepciones = {
+        ("automation", "orchestrator"),
+        ("metadata", "orchestrator"),
+        ("eventing", "orchestrator"),
+    }
+    infracciones: list[str] = []
+
+    for servicio in SERVICIOS:
+        for fichero in _modulos(SERVICIOS_DIR / servicio):
+            arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+            for nodo in ast.walk(arbol):
+                modulo = ""
+                if isinstance(nodo, ast.ImportFrom) and nodo.module:
+                    modulo = nodo.module
+                elif isinstance(nodo, ast.Import):
+                    modulo = nodo.names[0].name
+                if not modulo.startswith("services."):
+                    continue
+                ajeno = modulo.split(".")[1]
+                if ajeno == servicio or (servicio, ajeno) in excepciones:
+                    continue
+                infracciones.append(
+                    f"{fichero.relative_to(RAIZ)} importa «{modulo}» (servicio «{ajeno}»)"
+                )
+
+    assert not infracciones, "Servicios acoplados:\n  " + "\n  ".join(infracciones)
+
+
+def test_el_nucleo_no_importa_servicios() -> None:
+    """`crmcore` no puede depender de ningún servicio.
+
+    Es lo que mantiene la dirección de la dependencia: los servicios usan el
+    núcleo, no al revés. Un solo import en sentido contrario convierte el
+    núcleo en un monolito con otro nombre.
+    """
+    infracciones = [
+        f"{f.relative_to(RAIZ)}: {linea.strip()}"
+        for f in _modulos(CORE_DIR)
+        for linea in f.read_text(encoding="utf-8").splitlines()
+        if re.match(r"\s*(from|import)\s+services\.", linea)
+    ]
+    assert not infracciones, "El núcleo depende de servicios:\n  " + "\n  ".join(infracciones)
+
+
+# ── Multi-tenancy ─────────────────────────────────────────────────────────
+
+# Tablas que legítimamente NO llevan `tenant_id`, con su motivo. Añadir una a
+# esta lista tiene que costar escribir por qué: cada excepción es un punto ciego
+# para las dos redes de aislamiento (RLS y el guard ORM), que seleccionan las
+# tablas por esa misma columna.
+SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
+    "tenants": "ES el registro de tenants; filtrarla por sí misma impediría resolverlos",
+    "usuarios": (
+        "una persona puede pertenecer a varios tenants sin duplicar identidad; "
+        "quien acota es `membresias`, y las consultas de usuarios unen por ella"
+    ),
+    "planes": "catálogo comercial común a todos los tenants",
+    "alembic_version": "tabla de control de migraciones, no de negocio",
+    "ajustes_runtime": (
+        "guarda valores de CINCO ámbitos a la vez (global, tier, tenant, unidad "
+        "de negocio y usuario), y los dos primeros no pertenecen a ningún "
+        "tenant. Una columna `tenant_id` NOT NULL no podría representarlos, y "
+        "una nullable rompería la garantía que este gate defiende. El "
+        "aislamiento lo da la clave primaria (clave, ambito, ambito_id): una "
+        "lectura SIEMPRE fija los dos últimos, y eso lo comprueba "
+        "`test_los_ajustes_siempre_filtran_por_ambito`"
+    ),
+}
+
+
+def test_toda_tabla_de_negocio_lleva_tenant_id() -> None:
+    """Sin excepciones no justificadas (ver `crmcore.db.base`).
+
+    Es la corrección deliberada de una limitación conocida de contecmind, donde
+    58 de 107 modelos tienen `tenant_id` y el resto depende de filtros de
+    propiedad. Funciona y está auditado, pero significa que las dos redes
+    automáticas comparten punto ciego. Aquí la columna es obligatoria y esto lo
+    comprueba.
+    """
+    import importlib
+
+    for modulo in [
+        "crmcore.audit.modelos",
+        "crmcore.bus.modelos",
+        "crmcore.http.idempotency",
+        "crmcore.runtime.settings",
+        *[f"services.{s}.modelos" for s in SERVICIOS],
+    ]:
+        try:
+            importlib.import_module(modulo)
+        except ModuleNotFoundError:
+            continue
+
+    from crmcore.db.base import Base
+
+    sin_tenant: list[str] = []
+    for mapper in Base.registry.mappers:
+        tabla = mapper.local_table
+        if tabla is None:
+            continue
+        nombre = tabla.name
+        if nombre in SIN_TENANT_JUSTIFICADAS:
+            continue
+        if "tenant_id" not in tabla.columns:
+            sin_tenant.append(f"{nombre} ({mapper.class_.__name__})")
+
+    assert not sin_tenant, (
+        "Tablas de negocio sin `tenant_id`:\n  "
+        + "\n  ".join(sin_tenant)
+        + "\n\nSi alguna es legítima, añádela a SIN_TENANT_JUSTIFICADAS con su motivo."
+    )
+
+
+def test_tenant_id_es_obligatorio_donde_existe() -> None:
+    """`tenant_id` NOT NULL: una fila con tenant nulo sería visible desde todos.
+
+    Las excepciones son las tablas de infraestructura del bus, donde hay eventos
+    de plataforma sin tenant (el alta de un tenant, por ejemplo).
+    """
+    import importlib
+
+    for modulo in [
+        "crmcore.audit.modelos",
+        "crmcore.bus.modelos",
+        *[f"services.{s}.modelos" for s in SERVICIOS],
+    ]:
+        try:
+            importlib.import_module(modulo)
+        except ModuleNotFoundError:
+            continue
+
+    from crmcore.db.base import Base
+
+    nullables_justificados = {
+        "eventos_salientes",
+        "eventos_entrantes",
+        "eventos_fallidos",
+        "feature_flags",
+    }
+    malos: list[str] = []
+    for mapper in Base.registry.mappers:
+        tabla = mapper.local_table
+        if tabla is None or "tenant_id" not in tabla.columns:
+            continue
+        if tabla.name in nullables_justificados:
+            continue
+        if tabla.columns["tenant_id"].nullable:
+            malos.append(tabla.name)
+
+    assert not malos, f"Tablas con `tenant_id` nullable: {malos}"
+
+
+# ── Contrato de API ───────────────────────────────────────────────────────
+
+
+def test_toda_ruta_de_escritura_exige_permiso() -> None:
+    """Ninguna ruta que escribe puede quedarse sin comprobación de permiso.
+
+    Se comprueba sobre el ÁRBOL del código y no ejecutando la aplicación,
+    porque lo que interesa es que el permiso esté declarado en la ruta
+    (`dependencies=[Depends(exige_permiso(...))]`) y no escondido dentro de la
+    función: una comprobación escondida no se puede auditar sin ejecutarla.
+    """
+    # Rutas de escritura que legítimamente no exigen permiso previo, con motivo.
+    exentas = {
+        "login": "es la ruta que otorga identidad; exigir permiso sería circular",
+        "refrescar": "valida el token de refresco, que es su propia credencial",
+        "logout": "cerrar la propia sesión solo exige tenerla",
+        "iniciar_mfa": "el usuario configura su propio segundo factor",
+        "activar_mfa": "ídem",
+        "cerrar_sesion": "cierra una sesión propia; la comprobación va dentro",
+        "responder": "la asignación de la tarea ES el permiso; se comprueba dentro",
+        "delegar": "ídem: solo puede delegar quien la tiene asignada",
+        "suplantar": "la comprobación es «ser personal de plataforma», dentro del servicio",
+        "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
+    }
+
+    sin_permiso: list[str] = []
+    for servicio in SERVICIOS:
+        fichero = SERVICIOS_DIR / servicio / "api.py"
+        if not fichero.exists():
+            continue
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for deco in nodo.decorator_list:
+                if not isinstance(deco, ast.Call):
+                    continue
+                metodo = getattr(deco.func, "attr", "")
+                if metodo not in ("post", "put", "patch", "delete", "api_route"):
+                    continue
+                texto = ast.unparse(deco)
+                if "exige_permiso" in texto or nodo.name in exentas:
+                    continue
+                # `PlataformaDep` en los argumentos también es una comprobación
+                # declarada, y más restrictiva que cualquier permiso.
+                if "PlataformaDep" in ast.unparse(nodo.args):
+                    continue
+                sin_permiso.append(f"{servicio}/api.py::{nodo.name}")
+
+    assert not sin_permiso, (
+        "Rutas de escritura sin permiso declarado:\n  "
+        + "\n  ".join(sin_permiso)
+        + "\n\nSi alguna es legítima, añádela a `exentas` con su motivo."
+    )
+
+
+def test_los_errores_de_dominio_tienen_codigo_estable() -> None:
+    """Todo `raise` de un error de dominio lleva `error_code`.
+
+    Sin él, el cliente solo tiene el texto en castellano para distinguir un
+    error de otro, y cualquier cambio de redacción le rompe la integración.
+    """
+    from crmcore.errors import CrmError
+
+    nombres_error = {c.__name__ for c in [CrmError, *CrmError.__subclasses__()]} | {
+        sc.__name__ for c in CrmError.__subclasses__() for sc in c.__subclasses__()
+    }
+
+    sin_codigo: list[str] = []
+    for fichero in [*_modulos(SERVICIOS_DIR), *_modulos(CORE_DIR)]:
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.Raise) or not isinstance(nodo.exc, ast.Call):
+                continue
+            nombre = getattr(nodo.exc.func, "id", "") or getattr(nodo.exc.func, "attr", "")
+            if nombre not in nombres_error:
+                continue
+            if not any(kw.arg == "error_code" for kw in nodo.exc.keywords):
+                sin_codigo.append(f"{fichero.relative_to(RAIZ)}:{nodo.lineno} {nombre}")
+
+    assert not sin_codigo, "Errores de dominio sin `error_code`:\n  " + "\n  ".join(sin_codigo)
+
+
+# ── Cero hardcodeado ──────────────────────────────────────────────────────
+
+
+def test_no_hay_urls_ni_credenciales_escritas_en_el_codigo() -> None:
+    """Nada de endpoints ni credenciales a fuego: van a configuración.
+
+    Una URL escrita en el código solo se cambia redesplegando, y cada
+    instalación es distinta.
+    """
+    # La URL tiene que parecer una URL REAL —con dominio y extensión— para que
+    # no salten los patrones de validación (`^https://.+`) ni los mensajes de
+    # error que citan el esquema («debe empezar por http:// o https://»). La
+    # primera versión de este gate los marcaba, y un gate con falsos positivos
+    # se acaba desactivando, que es peor que no tenerlo.
+    patrones = [
+        (
+            re.compile(
+                r"https?://(?!localhost|127\.0\.0\.1|example\.|contecrm\.dev|schemas?\.|www\.w3)"
+                r"[a-z0-9][a-z0-9.-]*\.[a-z]{2,}"
+            ),
+            "URL externa",
+        ),
+        (
+            re.compile(r"(password|contrasena|secret)\s*=\s*[\"'][^\"']{8,}[\"']", re.I),
+            "credencial",
+        ),
+    ]
+    hallazgos: list[str] = []
+    for fichero in [*_modulos(SERVICIOS_DIR), *_modulos(CORE_DIR)]:
+        for n, linea in enumerate(fichero.read_text(encoding="utf-8").splitlines(), 1):
+            desnuda = linea.strip()
+            # Los comentarios y las cadenas de documentación explican, no
+            # ejecutan: una URL en un ejemplo del docstring es documentación.
+            if desnuda.startswith(("#", '"', "'", "*")):
+                continue
+            for patron, que in patrones:
+                if patron.search(linea):
+                    hallazgos.append(f"{fichero.relative_to(RAIZ)}:{n} {que}: {desnuda[:80]}")
+    assert not hallazgos, "Valores a fuego en el código:\n  " + "\n  ".join(hallazgos)
+
+
+@pytest.mark.parametrize("servicio", SERVICIOS)
+def test_cada_servicio_usa_la_factoria(servicio: str) -> None:
+    """Ningún servicio monta su FastAPI a mano.
+
+    Si lo hiciera, se saltaría el contexto de tenant, los límites, el formato de
+    errores y las métricas — y el fallo no se vería hasta que dos clientes se
+    vieran los datos.
+    """
+    main = SERVICIOS_DIR / servicio / "main.py"
+    if not main.exists():
+        pytest.skip(f"«{servicio}» no tiene punto de entrada propio")
+    fuente = main.read_text(encoding="utf-8")
+    assert "crear_servicio(" in fuente, f"«{servicio}» no usa crmcore.service.crear_servicio"
+    assert "FastAPI(" not in fuente, f"«{servicio}» instancia FastAPI directamente"
+
+
+def test_los_ajustes_siempre_filtran_por_ambito() -> None:
+    """`ajustes_runtime` no lleva `tenant_id`, así que su aislamiento depende de
+    que toda lectura fije ámbito Y sujeto del ámbito.
+
+    Esta prueba es la contrapartida de esa excepción: sin ella, la excepción
+    sería una promesa. Comprueba que no queda ninguna consulta a la tabla que
+    filtre solo por clave — que es como se leería la configuración de otro
+    tenant sin enterarse.
+    """
+    fuente = (CORE_DIR / "runtime" / "settings.py").read_text(encoding="utf-8")
+    arbol = ast.parse(fuente)
+
+    consultas_sospechosas: list[str] = []
+    for nodo in ast.walk(arbol):
+        if not isinstance(nodo, ast.Call):
+            continue
+        texto = ast.unparse(nodo)
+        if "AjusteRuntime" not in texto or ".where(" not in texto:
+            continue
+        # Toda consulta sobre la tabla tiene que acotar por ámbito y por sujeto.
+        if "AjusteRuntime.ambito" not in texto or "AjusteRuntime.ambito_id" not in texto:
+            consultas_sospechosas.append(texto[:160])
+
+    assert not consultas_sospechosas, (
+        "Consultas a `ajustes_runtime` sin acotar ámbito y sujeto:\n  "
+        + "\n  ".join(consultas_sospechosas)
+    )

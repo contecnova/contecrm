@@ -149,9 +149,7 @@ class BusRedis(Bus):
             await manejador(evento)
             await self._r.xack(clave, grupo, msg_id)
         except Exception as exc:  # noqa: BLE001 — sin ack: se reclamará y reintentará
-            logger.warning(
-                "bus_redis.manejador_fallido", tipo=evento.type, error=str(exc)[:200]
-            )
+            logger.warning("bus_redis.manejador_fallido", tipo=evento.type, error=str(exc)[:200])
 
     async def _reclamar_abandonados(
         self,

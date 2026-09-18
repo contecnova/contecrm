@@ -8,9 +8,25 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 TIPOS_CAMPO = Literal[
-    "texto", "texto_largo", "numero", "moneda", "porcentaje", "fecha", "fecha_hora",
-    "booleano", "lista", "lista_multiple", "formula", "lookup", "geolocalizacion",
-    "json", "fichero", "cifrado", "email", "telefono", "url",
+    "texto",
+    "texto_largo",
+    "numero",
+    "moneda",
+    "porcentaje",
+    "fecha",
+    "fecha_hora",
+    "booleano",
+    "lista",
+    "lista_multiple",
+    "formula",
+    "lookup",
+    "geolocalizacion",
+    "json",
+    "fichero",
+    "cifrado",
+    "email",
+    "telefono",
+    "url",
 ]
 
 

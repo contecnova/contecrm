@@ -10,11 +10,11 @@ from typing import Any
 from uuid import UUID
 
 import httpx
+from crmcore.events.envelope import Evento
+from crmcore.logging import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmcore.events.envelope import Evento
-from crmcore.logging import get_logger
 from services.eventing.modelos import Entrega, Suscripcion
 
 logger = get_logger(__name__)
@@ -66,8 +66,7 @@ def coincide(suscripcion: Suscripcion, evento: Evento) -> bool:
 
     patrones = suscripcion.eventos or []
     encaja = any(
-        evento.type == p or (p.endswith("*") and evento.type.startswith(p[:-1]))
-        for p in patrones
+        evento.type == p or (p.endswith("*") and evento.type.startswith(p[:-1])) for p in patrones
     )
     if not encaja:
         return False
@@ -153,9 +152,7 @@ async def entregar(
     return registro
 
 
-def _programar_reintento(
-    registro: Entrega, suscripcion: Suscripcion, intento: int, s: Any
-) -> None:
+def _programar_reintento(registro: Entrega, suscripcion: Suscripcion, intento: int, s: Any) -> None:
     """Backoff exponencial, o descarte si se agotaron los intentos."""
     if intento >= s.webhook_max_intentos:
         registro.resultado = "descartado"

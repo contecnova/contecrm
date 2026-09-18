@@ -163,7 +163,7 @@ def aplicar_orden_y_cursor(
     # El identificador siempre al final del orden: sin él, dos filas con el
     # mismo valor pueden salir en distinto orden entre dos consultas y el cursor
     # se salta o repite justo ahí.
-    col_id = getattr(modelo, "id")
+    col_id = modelo.id
     consulta = consulta.order_by(*[c[0] for c in columnas], col_id.asc())
 
     if not params.cursor:
@@ -208,7 +208,7 @@ def construir_pagina(
         ultima = items[-1]
         siguiente = Cursor(
             valores=[getattr(ultima, c.lstrip("-+")) for c in campos_orden],
-            id=str(getattr(ultima, "id")),
+            id=str(ultima.id),
             orden=params.orden,
         ).codificar()
     return Pagina(items=items, siguiente=siguiente)

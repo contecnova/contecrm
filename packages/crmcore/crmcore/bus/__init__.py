@@ -1,5 +1,9 @@
 """Bus de eventos: transporte, garantía de entrega y deduplicación.
 
+Es también el soporte de la coreografía por eventos (CRM-00.03.02.04): un
+servicio publica lo que ha pasado y quien tenga algo que hacer se suscribe, sin
+que el productor sepa quién le escucha.
+
 Tres piezas que se reparten el trabajo:
 
   * `base`/`nats_js`/`redis_streams`/`memoria` — el **transporte**.

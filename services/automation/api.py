@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
+from crmcore.audit.chain import registrar
+from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from crmcore.audit.chain import registrar
-from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from services.automation import motor
 from services.automation.modelos import Automatizacion, EjecucionAutomatizacion
 
@@ -117,6 +117,7 @@ def crear(datos: CrearAutomatizacion, db: DbDep, principal: AutenticadoDep) -> A
 
     regla = Automatizacion(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(regla)
+    db.flush()
     registrar(
         db,
         accion="automatizacion.creada",
@@ -139,9 +140,7 @@ def listar(
     objetivo: str = Query(""),
     solo_activas: bool = Query(False),
 ) -> Any:
-    consulta = select(Automatizacion).where(
-        Automatizacion.tenant_id == principal.tenant_id
-    )
+    consulta = select(Automatizacion).where(Automatizacion.tenant_id == principal.tenant_id)
     if objetivo:
         consulta = consulta.where(Automatizacion.objetivo == objetivo)
     if solo_activas:
@@ -168,9 +167,7 @@ def probar(
 ) -> Any:
     regla = db.get(Automatizacion, regla_id)
     if regla is None or regla.tenant_id != principal.tenant_id:
-        raise NoEncontrado(
-            "La automatización no existe", error_code="automatizacion.no_encontrada"
-        )
+        raise NoEncontrado("La automatización no existe", error_code="automatizacion.no_encontrada")
     cumple, decisiones = motor.evaluar_condiciones(regla, datos.valores)
     return {
         "se_dispararia": cumple,
@@ -185,14 +182,10 @@ def probar(
     dependencies=[Depends(exige_permiso("automation:write"))],
     summary="Activar o desactivar una regla",
 )
-def activar(
-    regla_id: UUID, activa: bool, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def activar(regla_id: UUID, activa: bool, db: DbDep, principal: AutenticadoDep) -> Any:
     regla = db.get(Automatizacion, regla_id)
     if regla is None or regla.tenant_id != principal.tenant_id:
-        raise NoEncontrado(
-            "La automatización no existe", error_code="automatizacion.no_encontrada"
-        )
+        raise NoEncontrado("La automatización no existe", error_code="automatizacion.no_encontrada")
     regla.activa = activa
     registrar(
         db,
@@ -245,9 +238,7 @@ def ejecuciones(
         "cuando un dato tiene un valor raro y hay que averiguar quién lo puso."
     ),
 )
-def por_registro(
-    objeto: str, registro_id: str, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def por_registro(objeto: str, registro_id: str, db: DbDep, principal: AutenticadoDep) -> Any:
     return list(
         db.execute(
             select(EjecucionAutomatizacion)

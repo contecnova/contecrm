@@ -1,5 +1,9 @@
 """Servicio de metadatos: el modelo de datos que cada tenant se define.
 
+Cubre CRM-00.01.04.03 (modelo de datos extensible por tenant sin afectar a los
+demás), CRM-00.04.01.01 (objetos propios con ciclo de vida completo) y
+CRM-00.04.01.06 (validaciones declarativas).
+
 Dos cosas que en la mayoría de CRM son la misma y aquí no:
 
   * **El esquema es dato, no DDL.** Cuando un tenant añade un campo, no se

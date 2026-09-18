@@ -7,13 +7,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.audit.chain import registrar
+from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from crmcore.audit.chain import registrar
-from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from services.eventing.modelos import Entrega, EventoArchivado, Suscripcion
 
 
@@ -107,9 +107,7 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
     from crmcore.events.catalogo import todos
 
     conocidos = {t.tipo for t in todos()}
-    desconocidos = [
-        e for e in datos.eventos if not e.endswith("*") and e not in conocidos
-    ]
+    desconocidos = [e for e in datos.eventos if not e.endswith("*") and e not in conocidos]
     if desconocidos:
         # Se rechaza en vez de aceptar en silencio: una suscripción a un evento
         # mal escrito no falla nunca, simplemente no llega nada, y el integrador
@@ -121,9 +119,7 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
         )
 
     secreto = secrets.token_urlsafe(32)
-    suscripcion = Suscripcion(
-        tenant_id=principal.tenant_id, secreto=secreto, **datos.model_dump()
-    )
+    suscripcion = Suscripcion(tenant_id=principal.tenant_id, secreto=secreto, **datos.model_dump())
     db.add(suscripcion)
     db.flush()
     registrar(
@@ -197,9 +193,7 @@ def entregas(
 def reactivar(suscripcion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     suscripcion = db.get(Suscripcion, suscripcion_id)
     if suscripcion is None or suscripcion.tenant_id != principal.tenant_id:
-        raise NoEncontrado(
-            "La suscripción no existe", error_code="webhook.no_encontrada"
-        )
+        raise NoEncontrado("La suscripción no existe", error_code="webhook.no_encontrada")
     suscripcion.activa = True
     suscripcion.fallos_consecutivos = 0
     suscripcion.desactivada_at = None
@@ -217,14 +211,10 @@ def reactivar(suscripcion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any
         "que procese dos veces lo que sí recibió."
     ),
 )
-def replay(
-    suscripcion_id: UUID, datos: PedirReplay, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def replay(suscripcion_id: UUID, datos: PedirReplay, db: DbDep, principal: AutenticadoDep) -> Any:
     suscripcion = db.get(Suscripcion, suscripcion_id)
     if suscripcion is None or suscripcion.tenant_id != principal.tenant_id:
-        raise NoEncontrado(
-            "La suscripción no existe", error_code="webhook.no_encontrada"
-        )
+        raise NoEncontrado("La suscripción no existe", error_code="webhook.no_encontrada")
     if datos.hasta and datos.hasta <= datos.desde:
         raise ErrorValidacion(
             "La ventana de replay está al revés",
@@ -242,7 +232,9 @@ def replay(
 
     # Tope de seguridad: un replay de un año entero a un endpoint lento es una
     # denegación de servicio autoinfligida, y además al integrador.
-    archivados = list(db.execute(consulta.order_by(EventoArchivado.occurred_at).limit(5000)).scalars().all())
+    archivados = list(
+        db.execute(consulta.order_by(EventoArchivado.occurred_at).limit(5000)).scalars().all()
+    )
     for archivado in archivados:
         db.add(
             Entrega(
@@ -313,7 +305,9 @@ def asyncapi() -> Response:
 
     s = get_settings()
     documento = a_asyncapi(f"{s.app_name} — eventos de dominio", s.service_version)
-    return Response(content=json.dumps(documento, ensure_ascii=False), media_type="application/json")
+    return Response(
+        content=json.dumps(documento, ensure_ascii=False), media_type="application/json"
+    )
 
 
 @router_catalogo.get(
@@ -328,9 +322,7 @@ def archivo(
     tipo: str = Query(""),
     limite: int = Query(100, ge=1, le=1000),
 ) -> Any:
-    consulta = select(EventoArchivado).where(
-        EventoArchivado.tenant_id == principal.tenant_id
-    )
+    consulta = select(EventoArchivado).where(EventoArchivado.tenant_id == principal.tenant_id)
     if tipo:
         consulta = consulta.where(EventoArchivado.tipo == tipo)
     filas = (
@@ -352,7 +344,9 @@ router_dlq = APIRouter(prefix="/eventos/fallidos", tags=["cola de fallidos"])
     dependencies=[Depends(exige_permiso("event:read"))],
     summary="Eventos que agotaron sus reintentos",
 )
-def listar_fallidos(db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, le=200)) -> Any:
+def listar_fallidos(
+    db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, le=200)
+) -> Any:
     from crmcore.bus.modelos import EventoFallido
 
     filas = (

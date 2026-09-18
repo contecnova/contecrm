@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
-
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
+
 from services.metadata.esquemas import (
     CampoOut,
     CrearCampo,
@@ -80,6 +80,7 @@ def crear_objeto(datos: CrearObjeto, db: DbDep, principal: AutenticadoDep) -> An
         **datos.model_dump(exclude={"etiqueta_plural"}),
     )
     db.add(objeto)
+    db.flush()
     registrar(
         db,
         accion="metadata.objeto_creado",
@@ -140,9 +141,7 @@ def describe(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
         .scalars()
         .all()
     )
-    layouts = list(
-        db.execute(select(Layout).where(Layout.objeto_id == objeto.id)).scalars().all()
-    )
+    layouts = list(db.execute(select(Layout).where(Layout.objeto_id == objeto.id)).scalars().all())
     return DescribeOut(
         objeto=ObjetoOut.model_validate(objeto),
         campos=[CampoOut.model_validate(c) for c in campos],
@@ -168,9 +167,7 @@ def describe(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
     dependencies=[Depends(exige_permiso("metadata:write"))],
     summary="Añadir un campo a un objeto",
 )
-def crear_campo(
-    nombre: str, datos: CrearCampo, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def crear_campo(nombre: str, datos: CrearCampo, db: DbDep, principal: AutenticadoDep) -> Any:
     objeto = _objeto(db, principal.tenant_id, nombre)
     if db.execute(
         select(CampoDefinido.id).where(
@@ -181,10 +178,9 @@ def crear_campo(
             "Ya existe un campo con ese nombre en el objeto",
             error_code="metadata.campo_duplicado",
         )
-    campo = CampoDefinido(
-        tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump()
-    )
+    campo = CampoDefinido(tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump())
     db.add(campo)
+    db.flush()
     registrar(
         db,
         accion="metadata.campo_creado",
@@ -206,9 +202,7 @@ def crear_campo(
         "integraciones que aún lo mandan."
     ),
 )
-def deprecar_campo(
-    nombre: str, campo: str, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def deprecar_campo(nombre: str, campo: str, db: DbDep, principal: AutenticadoDep) -> Any:
     objeto = _objeto(db, principal.tenant_id, nombre)
     fila = db.execute(
         select(CampoDefinido).where(
@@ -235,6 +229,10 @@ def deprecar_campo(
 @router.post(
     "/objetos/{nombre}/validar",
     response_model=ResultadoValidacion,
+    # Es un POST que no escribe, pero sí exige permiso de LECTURA sobre los
+    # metadatos: la respuesta revela qué campos existen, cuáles son obligatorios
+    # y qué reglas hay, que es el esquema del tenant.
+    dependencies=[Depends(exige_permiso("metadata:read"))],
     summary="Validar un registro sin guardarlo",
     description=(
         "Ejecuta **las mismas** reglas que al guardar. Un frontend puede "
@@ -242,9 +240,7 @@ def deprecar_campo(
         "acaban divergiendo del servidor."
     ),
 )
-def validar(
-    nombre: str, datos: ValidarRegistro, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def validar(nombre: str, datos: ValidarRegistro, db: DbDep, principal: AutenticadoDep) -> Any:
     objeto = _objeto(db, principal.tenant_id, nombre)
     campos = list(
         db.execute(select(CampoDefinido).where(CampoDefinido.objeto_id == objeto.id))
@@ -256,9 +252,7 @@ def validar(
         .scalars()
         .all()
     )
-    valores, errores = validar_registro(
-        campos, datos.datos, reglas=reglas, parcial=datos.parcial
-    )
+    valores, errores = validar_registro(campos, datos.datos, reglas=reglas, parcial=datos.parcial)
     return ResultadoValidacion(valido=not errores, errores=errores, valores=valores)
 
 
@@ -269,14 +263,13 @@ def validar(
     dependencies=[Depends(exige_permiso("metadata:write"))],
     summary="Crear una regla de validación",
 )
-def crear_regla(
-    nombre: str, datos: CrearRegla, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def crear_regla(nombre: str, datos: CrearRegla, db: DbDep, principal: AutenticadoDep) -> Any:
     objeto = _objeto(db, principal.tenant_id, nombre)
     regla = ReglaValidacion(
         tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump()
     )
     db.add(regla)
+    db.flush()
     return regla
 
 
@@ -311,11 +304,10 @@ def valores_lista(
     dependencies=[Depends(exige_permiso("metadata:write"))],
     summary="Añadir un valor a una lista maestra",
 )
-def crear_valor(
-    lista: str, datos: CrearValorLista, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def crear_valor(lista: str, datos: CrearValorLista, db: DbDep, principal: AutenticadoDep) -> Any:
     fila = ValorLista(tenant_id=principal.tenant_id, lista=lista, **datos.model_dump())
     db.add(fila)
+    db.flush()
     return fila
 
 
@@ -330,9 +322,7 @@ def crear_valor(
         "histórico en códigos sin significado."
     ),
 )
-def desactivar_valor(
-    lista: str, valor: str, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def desactivar_valor(lista: str, valor: str, db: DbDep, principal: AutenticadoDep) -> Any:
     fila = db.execute(
         select(ValorLista).where(
             ValorLista.tenant_id == principal.tenant_id,

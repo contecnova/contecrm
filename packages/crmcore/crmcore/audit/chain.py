@@ -221,9 +221,7 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
                 "intacta": False,
                 "apuntes": len(apuntes),
                 "rota_en": apunte.secuencia,
-                "motivo": (
-                    f"falta el apunte {esperada_secuencia}: se ha borrado una fila"
-                ),
+                "motivo": (f"falta el apunte {esperada_secuencia}: se ha borrado una fila"),
             }
         if apunte.hash_previo != esperado_previo:
             return {

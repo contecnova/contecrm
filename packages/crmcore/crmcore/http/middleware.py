@@ -42,7 +42,7 @@ def _cabecera(scope: Scope, nombre: str) -> str:
 
 
 class ContextoMiddleware:
-    """Fija el contexto de la petición y propaga la correlación.
+    """Fija el contexto de la petición y propaga la correlación (CRM-00.02.04.07).
 
     Resuelve la pista de tenant (cabecera o subdominio) pero **no concede acceso
     con ella**: la identidad autoritativa la establece la capa de autenticación,
@@ -208,8 +208,8 @@ class LimitesMiddleware:
             return
 
         if s.rate_limit_enabled:
-            from crmcore.http.rate_limit import comprobar_limites
             from crmcore.errors import LimiteExcedido
+            from crmcore.http.rate_limit import comprobar_limites
 
             try:
                 await comprobar_limites(scope)

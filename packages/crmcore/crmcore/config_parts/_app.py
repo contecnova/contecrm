@@ -20,6 +20,9 @@ class _AppSettings(BaseSettings):
     service_name: str = ""
     service_version: str = "0.1.0"
 
+    # Entorno de ejecución (CRM-07.02.01.01: desarrollo, pruebas, UAT y
+    # producción son despliegues separados, distinguidos por este valor).
+    #
     # "prod" por defecto para que un despliegue que se olvide de poner ENV pase
     # por la verificación estricta de secretos en vez de saltársela (el error
     # seguro es fallar al arrancar, no arrancar inseguro).

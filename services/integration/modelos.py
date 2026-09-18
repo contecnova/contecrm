@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -21,9 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
 
 
 class Conexion(Base, TimestampMixin):

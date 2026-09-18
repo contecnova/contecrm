@@ -142,10 +142,7 @@ def verificar_rol_sin_bypass(engine: Engine) -> list[str]:
     try:
         with engine.connect() as conn:
             fila = conn.execute(
-                text(
-                    "SELECT rolsuper, rolbypassrls FROM pg_roles "
-                    "WHERE rolname = current_user"
-                )
+                text("SELECT rolsuper, rolbypassrls FROM pg_roles " "WHERE rolname = current_user")
             ).first()
     except Exception as exc:  # noqa: BLE001 — sin base no se puede verificar; lo dirá el readiness
         logger.warning("rls.verificacion_imposible", error=str(exc)[:200])

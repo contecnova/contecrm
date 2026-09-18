@@ -6,12 +6,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore.config import get_settings
+from crmcore.errors import NoAutenticado, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 
-from crmcore.config import get_settings
-from crmcore.errors import NoAutenticado, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, PrincipalDep, UowDep, exige_permiso
 from services.identity import servicio as svc
 from services.identity.esquemas import (
     ActivarMfa,
@@ -46,22 +46,35 @@ router_auth = APIRouter(prefix="/auth", tags=["autenticación"])
         "tengan que consultarlos en cada petición."
     ),
 )
-def login(datos: Credenciales, request: Request, db: DbDep) -> Any:
+def login(datos: Credenciales, request: Request) -> Any:
+    # El login NO puede usar la dependencia de sesión habitual: esa sesión se
+    # ata al tenant del principal autenticado, y aquí todavía no hay ninguno.
+    # La primera versión de esta ruta lo hacía, y el resultado era un 500
+    # («se ha abierto una sesión sin tenant») en la única ruta por la que se
+    # entra al sistema. Se descubrió arrancándolo, no leyéndolo.
+    #
+    # El tenant sale del cuerpo de la petición, que es una PISTA sin firmar: no
+    # concede acceso por sí sola. Lo que concede acceso es que exista una
+    # membresía activa de ese usuario en ese tenant, y eso lo comprueba
+    # `svc.autenticar`.
+    from crmcore.db.session import sesion
+
     tenant_id = _resolver_tenant(datos.tenant)
-    usuario = svc.autenticar(
-        db,
-        email=datos.email,
-        contrasena=datos.contrasena,
-        tenant_id=tenant_id,
-        codigo_mfa=datos.codigo_mfa,
-    )
-    _sesion, acceso, refresco = svc.crear_sesion(
-        db,
-        usuario=usuario,
-        tenant_id=tenant_id,
-        ip=request.client.host if request.client else "",
-        user_agent=request.headers.get("user-agent", ""),
-    )
+    with sesion(tenant_id) as db:
+        usuario = svc.autenticar(
+            db,
+            email=datos.email,
+            contrasena=datos.contrasena,
+            tenant_id=tenant_id,
+            codigo_mfa=datos.codigo_mfa,
+        )
+        _sesion, acceso, refresco = svc.crear_sesion(
+            db,
+            usuario=usuario,
+            tenant_id=tenant_id,
+            ip=request.client.host if request.client else "",
+            user_agent=request.headers.get("user-agent", ""),
+        )
     return Tokens(
         access_token=acceso,
         refresh_token=refresco,
@@ -79,8 +92,16 @@ def login(datos: Credenciales, request: Request, db: DbDep) -> Any:
         "una copia en circulación."
     ),
 )
-def refrescar(datos: Renovar, db: DbDep) -> Any:
-    acceso, refresco = svc.renovar(db, datos.refresh_token)
+def refrescar(datos: Renovar) -> Any:
+    # Igual que el login: aquí aún no hay identidad. Además, el tenant no se
+    # puede pedir —el cliente solo tiene el token de refresco—, así que la
+    # sesión es de sistema y la acotación la hace el propio token: solo
+    # encuentra la fila cuyo hash coincide, que es la del usuario que lo
+    # obtuvo. El refresco ES la credencial.
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        acceso, refresco = svc.renovar(db, datos.refresh_token)
     return Tokens(
         access_token=acceso,
         refresh_token=refresco,
@@ -237,6 +258,7 @@ def listar_roles(db: DbDep, principal: AutenticadoDep) -> Any:
 def crear_rol(datos: CrearRol, db: DbDep, principal: AutenticadoDep) -> Any:
     rol = RolTenant(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(rol)
+    db.flush()
     return rol
 
 
@@ -267,7 +289,9 @@ def explicar(datos: ExplicarPermiso, db: DbDep, principal: AutenticadoDep) -> An
     ambito = {
         "usuario": {
             "id": str(datos.usuario_id),
-            "business_unit_id": str(membresia.business_unit_id) if membresia and membresia.business_unit_id else None,
+            "business_unit_id": str(membresia.business_unit_id)
+            if membresia and membresia.business_unit_id
+            else None,
             **(membresia.atributos if membresia else {}),
         },
         "registro": datos.registro,

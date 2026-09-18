@@ -1,5 +1,8 @@
 """Segunda red de aislamiento, en la capa ORM.
 
+Implementa CRM-00.01.02.03 (prohibición estructural de consultas sin predicado
+de tenant).
+
 RLS en el motor es la garantía dura. Este guard es la red que va **por delante**
 de ella, y existe por tres razones que no cubre RLS:
 

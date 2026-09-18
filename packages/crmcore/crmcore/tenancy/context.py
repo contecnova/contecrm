@@ -144,9 +144,7 @@ def contexto_sistema(origen: str = "sistema") -> Iterator[ContextoPeticion]:
     Para migraciones, tareas de mantenimiento y arranque. Es explícito y ruidoso
     a propósito: saltarse el filtro de tenant tiene que costar escribirlo.
     """
-    token = _contexto.set(
-        ContextoPeticion(origen=origen, es_admin_plataforma=True)
-    )
+    token = _contexto.set(ContextoPeticion(origen=origen, es_admin_plataforma=True))
     try:
         yield _contexto.get()
     finally:

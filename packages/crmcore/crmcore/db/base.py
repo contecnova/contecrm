@@ -65,9 +65,7 @@ class Base(DeclarativeBase):
         """
         excluir = excluir or set()
         return {
-            c.name: getattr(self, c.name)
-            for c in self.__table__.columns
-            if c.name not in excluir
+            c.name: getattr(self, c.name) for c in self.__table__.columns if c.name not in excluir
         }
 
 
@@ -81,9 +79,7 @@ def _ahora() -> datetime:
 class IdMixin:
     """Clave primaria UUIDv7 (ver `crmcore.ids` para el porqué)."""
 
-    id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), primary_key=True, default=nuevo_id
-    )
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
 
 
 class TenantMixin:
@@ -95,9 +91,7 @@ class TenantMixin:
     permisiva, y ese es exactamente el agujero que se quiere cerrar.
     """
 
-    tenant_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), nullable=False, index=True
-    )
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
 
 
 class TimestampMixin:

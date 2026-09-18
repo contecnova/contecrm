@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Request, Response
-
 from crmcore.config import get_settings
 from crmcore.errors import NoDisponible, NoEncontrado
 from crmcore.http.deps import PrincipalDep
 from crmcore.logging import get_logger
+from fastapi import APIRouter, Request, Response
+
 from services.gateway import proxy, rutas
 
 logger = get_logger(__name__)

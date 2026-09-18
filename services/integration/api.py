@@ -7,13 +7,13 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore.audit.chain import registrar
+from crmcore.errors import Conflicto, CrmError, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from crmcore.audit.chain import registrar
-from crmcore.errors import Conflicto, CrmError, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from services.integration import conector
 from services.integration.modelos import Conexion, Credencial, Ejecucion, Operacion
 
@@ -81,7 +81,11 @@ class CrearOperacion(BaseModel):
                 "metodo": "GET",
                 "ruta": "/customers",
                 "ruta_resultados": "data.items",
-                "paginacion": {"estilo": "cursor", "ruta_cursor": "meta.next", "param_cursor": "cursor"},
+                "paginacion": {
+                    "estilo": "cursor",
+                    "ruta_cursor": "meta.next",
+                    "param_cursor": "cursor",
+                },
                 "mapeo": {
                     "nombre": ["legal_name", "name"],
                     "nif": "tax_id",
@@ -166,6 +170,7 @@ def crear_conexion(datos: CrearConexion, db: DbDep, principal: AutenticadoDep) -
         )
     conexion = Conexion(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(conexion)
+    db.flush()
     registrar(
         db,
         accion="integracion.conexion_creada",
@@ -277,7 +282,9 @@ async def probar(conexion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any
             tenant_id=str(principal.tenant_id),
         )
         conexion.prueba_ok = True
-        conexion.prueba_detalle = f"{resultado['registros'] and len(resultado['registros'])} registros"
+        conexion.prueba_detalle = (
+            f"{resultado['registros'] and len(resultado['registros'])} registros"
+        )
     except CrmError as exc:
         conexion.prueba_ok = False
         conexion.prueba_detalle = f"{exc.error_code}: {exc.mensaje}"[:500]
@@ -300,6 +307,7 @@ def crear_operacion(
         tenant_id=principal.tenant_id, conexion_id=conexion.id, **datos.model_dump()
     )
     db.add(operacion)
+    db.flush()
     return operacion
 
 
@@ -319,9 +327,7 @@ async def invocar(
 ) -> Any:
     conexion = _conexion(db, principal.tenant_id, conexion_id)
     operacion = db.execute(
-        select(Operacion).where(
-            Operacion.conexion_id == conexion.id, Operacion.clave == clave
-        )
+        select(Operacion).where(Operacion.conexion_id == conexion.id, Operacion.clave == clave)
     ).scalar_one_or_none()
     if operacion is None:
         raise NoEncontrado(
@@ -381,9 +387,7 @@ def ejecuciones(
     if resultado:
         consulta = consulta.where(Ejecucion.resultado == resultado)
     return list(
-        db.execute(consulta.order_by(Ejecucion.created_at.desc()).limit(limite))
-        .scalars()
-        .all()
+        db.execute(consulta.order_by(Ejecucion.created_at.desc()).limit(limite)).scalars().all()
     )
 
 

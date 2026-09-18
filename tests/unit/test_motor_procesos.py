@@ -16,7 +16,9 @@ from services.orchestrator.modelos import DefinicionProceso, InstanciaProceso, P
 from services.orchestrator.motor import Motor, validar_definicion
 
 
-def _publicar(db: Any, tenant_id: UUID, clave: str, definicion: dict[str, Any]) -> DefinicionProceso:
+def _publicar(
+    db: Any, tenant_id: UUID, clave: str, definicion: dict[str, Any]
+) -> DefinicionProceso:
     fila = DefinicionProceso(
         tenant_id=tenant_id,
         clave=clave,
@@ -101,7 +103,9 @@ def test_proceso_lineal_se_completa(db: Any, tenant_id: UUID) -> None:
     )
 
     motor = Motor(db, invocadores={"crear_pedido": crear_pedido})
-    instancia = motor.arrancar(tenant_id=tenant_id, clave="venta", variables={"oportunidad_id": "OP-9"})
+    instancia = motor.arrancar(
+        tenant_id=tenant_id, clave="venta", variables={"oportunidad_id": "OP-9"}
+    )
     motor.avanzar(instancia)
 
     assert instancia.estado == "completada"
@@ -149,6 +153,7 @@ def test_decision_elige_rama_por_importe(db: Any, tenant_id: UUID) -> None:
 def test_tarea_humana_detiene_y_reanuda(db: Any, tenant_id: UUID) -> None:
     """CRM-00.03.02.09: el proceso espera a una persona sin consumir nada."""
     from crmcore.ids import nuevo_id
+
     from services.orchestrator.modelos import TareaHumana
 
     _publicar(
@@ -194,6 +199,7 @@ def test_tarea_humana_detiene_y_reanuda(db: Any, tenant_id: UUID) -> None:
 def test_respuesta_no_valida_se_rechaza(db: Any, tenant_id: UUID) -> None:
     from crmcore.errors import ErrorValidacion
     from crmcore.ids import nuevo_id
+
     from services.orchestrator.modelos import TareaHumana
 
     _publicar(
@@ -339,9 +345,7 @@ def test_compensacion_incompleta_deja_la_instancia_fallida(db: Any, tenant_id: U
             },
         },
     )
-    motor = Motor(
-        db, invocadores={"paso_a": paso_a, "paso_b": paso_b, "comp_a": comp_a}
-    )
+    motor = Motor(db, invocadores={"paso_a": paso_a, "paso_b": paso_b, "comp_a": comp_a})
     instancia = motor.arrancar(tenant_id=tenant_id, clave="frágil")
     motor.avanzar(instancia)
 

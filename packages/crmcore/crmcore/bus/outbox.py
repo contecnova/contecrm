@@ -114,9 +114,7 @@ class Relevo:
                 # significa que hay más esperando.
                 continue
             try:
-                await asyncio.wait_for(
-                    _despertador.wait(), timeout=s.outbox_intervalo_s
-                )
+                await asyncio.wait_for(_despertador.wait(), timeout=s.outbox_intervalo_s)
                 _despertador.clear()
             except asyncio.TimeoutError:
                 pass

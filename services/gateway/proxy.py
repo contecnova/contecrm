@@ -21,7 +21,6 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-
 from crmcore.errors import NoDisponible, TiempoAgotado
 from crmcore.logging import get_logger
 
@@ -42,6 +41,7 @@ NO_REENVIAR = frozenset(
         "x-crm-tenant",
         "x-crm-user",
         "x-crm-permisos",
+        "x-crm-roles",
         "x-crm-scopes",
         "x-crm-actor-real",
         "x-crm-plataforma",
@@ -77,9 +77,7 @@ async def reenviar(
         )
     except httpx.TimeoutException:
         logger.warning("gateway.timeout", destino=destino)
-        raise TiempoAgotado(
-            "El servicio no ha respondido a tiempo", error_code="gateway.timeout"
-        )
+        raise TiempoAgotado("El servicio no ha respondido a tiempo", error_code="gateway.timeout")
     except httpx.HTTPError as exc:
         logger.error("gateway.servicio_inalcanzable", destino=destino, error=str(exc)[:200])
         raise NoDisponible(
@@ -94,6 +92,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_ACTOR_REAL,
         H_PERMISOS,
         H_PLATAFORMA,
+        H_ROLES,
         H_SCOPES,
         H_TENANT,
         H_USER,
@@ -104,6 +103,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_TENANT: str(principal.tenant_id or ""),
         H_USER: str(principal.id or ""),
         H_PERMISOS: ",".join(sorted(principal.permisos)),
+        H_ROLES: ",".join(sorted(principal.roles)),
         H_SCOPES: ",".join(sorted(principal.scopes)),
         H_ACTOR_REAL: str(principal.actor_real_id or ""),
         H_PLATAFORMA: "1" if principal.es_admin_plataforma else "",

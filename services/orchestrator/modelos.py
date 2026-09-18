@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -21,9 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
 
 
 class DefinicionProceso(Base, TimestampMixin):
@@ -65,7 +64,7 @@ class DefinicionProceso(Base, TimestampMixin):
 
 
 class InstanciaProceso(Base, TimestampMixin):
-    """Una ejecución concreta de un proceso.
+    """Una ejecución concreta de un proceso, siempre de un tenant (CRM-00.03.02.15).
 
     `variables` es el estado del proceso y se persiste en **cada paso**, no al
     final. Ese es todo el truco de la durabilidad: si el proceso muere entre el
@@ -132,8 +131,10 @@ class PasoEjecutado(Base):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     instancia_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("instancias_proceso.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PgUUID(as_uuid=True),
+        ForeignKey("instancias_proceso.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     paso: Mapped[str] = mapped_column(String(120), nullable=False)
     tipo: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -168,8 +169,10 @@ class TareaHumana(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     instancia_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("instancias_proceso.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PgUUID(as_uuid=True),
+        ForeignKey("instancias_proceso.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     paso: Mapped[str] = mapped_column(String(120), nullable=False)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False)

@@ -10,9 +10,6 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
-
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import (
     AutenticadoDep,
@@ -23,6 +20,9 @@ from crmcore.http.deps import (
 )
 from crmcore.http.pagination import ParametrosPagina, construir_pagina
 from crmcore.runtime import settings as rt
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
+
 from services.tenancy import servicio as svc
 from services.tenancy.esquemas import (
     CambiarEstado,
@@ -86,9 +86,7 @@ def obtener_tenant(tenant_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any
     tenant = db.get(Tenant, tenant_id)
     # 404 y no 403 cuando se pregunta por un tenant ajeno (CRM-00.01.02.05): un
     # 403 confirmaría que ese identificador existe, y eso ya es información.
-    if tenant is None or (
-        not principal.es_admin_plataforma and principal.tenant_id != tenant_id
-    ):
+    if tenant is None or (not principal.es_admin_plataforma and principal.tenant_id != tenant_id):
         raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
     return tenant
 
@@ -102,9 +100,7 @@ def obtener_tenant(tenant_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any
         "motivo escrito en todo lo que degrada el servicio."
     ),
 )
-def cambiar_estado(
-    tenant_id: UUID, datos: CambiarEstado, uow: UowDep, _: PlataformaDep
-) -> Any:
+def cambiar_estado(tenant_id: UUID, datos: CambiarEstado, uow: UowDep, _: PlataformaDep) -> Any:
     return svc.cambiar_estado(uow, tenant_id, nuevo=datos.estado, motivo=datos.motivo)
 
 
@@ -147,9 +143,7 @@ router_planes = APIRouter(prefix="/planes", tags=["planes"])
 @router_planes.get("", response_model=list[PlanOut], summary="Planes disponibles")
 def listar_planes(db: DbDep, _: AutenticadoDep) -> Any:
     return list(
-        db.execute(select(Plan).where(Plan.activo.is_(True)).order_by(Plan.codigo))
-        .scalars()
-        .all()
+        db.execute(select(Plan).where(Plan.activo.is_(True)).order_by(Plan.codigo)).scalars().all()
     )
 
 
@@ -175,9 +169,7 @@ router_flags = APIRouter(prefix="/flags", tags=["feature flags"])
 def estado_flag(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
     return {
         "clave": clave,
-        "activo": svc.flag_activo(
-            db, clave, tenant_id=principal.tenant_id, user_id=principal.id
-        ),
+        "activo": svc.flag_activo(db, clave, tenant_id=principal.tenant_id, user_id=principal.id),
     }
 
 
@@ -198,6 +190,7 @@ def fijar_flag(clave: str, datos: FijarFlag, db: DbDep, principal: AutenticadoDe
     if flag is None:
         flag = FeatureFlag(clave=clave, tenant_id=principal.tenant_id)
         db.add(flag)
+        db.flush()
     flag.activo = datos.activo
     flag.porcentaje = datos.porcentaje
     flag.descripcion = datos.descripcion
@@ -229,12 +222,8 @@ def listar_ajustes(db: DbDep, _: AutenticadoDep) -> Any:
     dependencies=[Depends(exige_permiso("tenant:write"))],
     summary="Fijar un ajuste",
 )
-def fijar_ajuste(
-    clave: str, datos: FijarAjuste, db: DbDep, principal: AutenticadoDep
-) -> Any:
-    ambito_id = datos.ambito_id or (
-        str(principal.tenant_id) if datos.ambito == "tenant" else ""
-    )
+def fijar_ajuste(clave: str, datos: FijarAjuste, db: DbDep, principal: AutenticadoDep) -> Any:
+    ambito_id = datos.ambito_id or (str(principal.tenant_id) if datos.ambito == "tenant" else "")
     valor = rt.fijar(
         db, clave, datos.valor, ambito=datos.ambito, ambito_id=ambito_id, por=principal.id
     )
@@ -249,8 +238,7 @@ def fijar_ajuste(
     response_model=list[ConsumoOut],
     summary="Consumo del periodo frente a los topes",
     description=(
-        "Alimenta el panel de consumo del tenant y los avisos de aproximación "
-        "al límite."
+        "Alimenta el panel de consumo del tenant y los avisos de aproximación " "al límite."
     ),
 )
 def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:

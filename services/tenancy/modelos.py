@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -22,9 +24,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
 
 
 class Tenant(Base, TimestampMixin):
@@ -174,7 +173,7 @@ class Plan(Base, TimestampMixin):
 
 
 class FeatureFlag(Base, TimestampMixin):
-    """Interruptor de funcionalidad por tenant, usuario o porcentaje.
+    """Interruptor de funcionalidad por tenant, usuario o porcentaje (CRM-00.01.04.04).
 
     Distinto de una capacidad de plan, aunque se parezcan: la capacidad es
     **comercial** (lo que el cliente ha contratado) y el flag es **técnico** (si
@@ -196,9 +195,7 @@ class FeatureFlag(Base, TimestampMixin):
     porcentaje: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        UniqueConstraint("clave", "tenant_id", "user_id", name="uq_flag_ambito"),
-    )
+    __table_args__ = (UniqueConstraint("clave", "tenant_id", "user_id", name="uq_flag_ambito"),)
 
 
 class Consumo(Base):

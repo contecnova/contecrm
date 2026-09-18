@@ -15,15 +15,15 @@ from uuid import UUID
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from crmcore.audit.chain import registrar
 from crmcore.authz.rbac import ROLES_BASE, Rol, resolver_permisos
 from crmcore.config import get_settings
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado, Prohibido
 from crmcore.logging import get_logger
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from services.identity.modelos import ClaveApi, Membresia, RolTenant, Sesion, Usuario
 
 logger = get_logger(__name__)
@@ -135,9 +135,7 @@ def autenticar(
         # El mismo mensaje tanto si el correo no existe como si la contraseña es
         # incorrecta: distinguirlos convierte el formulario de acceso en un
         # comprobador de qué correos están dados de alta.
-        raise NoAutenticado(
-            "Credenciales incorrectas", error_code="auth.credenciales_invalidas"
-        )
+        raise NoAutenticado("Credenciales incorrectas", error_code="auth.credenciales_invalidas")
 
     if not usuario.activo:
         raise Prohibido("La cuenta está desactivada", error_code="auth.cuenta_inactiva")
@@ -146,9 +144,7 @@ def autenticar(
     if membresia is None or not membresia.activa:
         # Otra vez el mismo mensaje: decir «existes pero no perteneces a este
         # tenant» confirmaría la existencia de la cuenta a quien no debe saberlo.
-        raise NoAutenticado(
-            "Credenciales incorrectas", error_code="auth.credenciales_invalidas"
-        )
+        raise NoAutenticado("Credenciales incorrectas", error_code="auth.credenciales_invalidas")
 
     from crmcore.runtime import settings as rt
 
@@ -160,9 +156,7 @@ def autenticar(
                 error_code="auth.mfa_no_configurada",
             )
         if not codigo_mfa:
-            raise NoAutenticado(
-                "Falta el código de doble factor", error_code="auth.mfa_requerida"
-            )
+            raise NoAutenticado("Falta el código de doble factor", error_code="auth.mfa_requerida")
         if not _verificar_segundo_factor(db, usuario, codigo_mfa):
             _anotar_fallo(db, usuario, s.login_max_intentos, s.login_bloqueo_minutos)
             raise NoAutenticado(
@@ -402,9 +396,7 @@ def _revocar_todas(db: Session, usuario_id: UUID, *, motivo: str) -> int:
     ahora = datetime.now(timezone.utc)
     sesiones = (
         db.execute(
-            select(Sesion).where(
-                Sesion.usuario_id == usuario_id, Sesion.revocada_at.is_(None)
-            )
+            select(Sesion).where(Sesion.usuario_id == usuario_id, Sesion.revocada_at.is_(None))
         )
         .scalars()
         .all()
@@ -512,6 +504,11 @@ def crear_clave_api(
         creada_por=creada_por,
     )
     db.add(clave)
+    # Volcado antes de auditar: el identificador lo asigna SQLAlchemy en el
+    # flush, así que sin esto el apunte de auditoría quedaba con `objeto_id`
+    # nulo — y una traza que no dice sobre QUÉ clave se actuó no sirve para
+    # nada el día que haga falta.
+    db.flush()
     registrar(
         db,
         accion="clave_api.creada",
@@ -557,9 +554,7 @@ def crear_usuario(
 ) -> Usuario:
     """Alta de usuario y su membresía en el tenant."""
     email = email.strip().lower()
-    usuario = uow.db.execute(
-        select(Usuario).where(Usuario.email == email)
-    ).scalar_one_or_none()
+    usuario = uow.db.execute(select(Usuario).where(Usuario.email == email)).scalar_one_or_none()
 
     if usuario is None:
         usuario = Usuario(
@@ -570,9 +565,7 @@ def crear_usuario(
         uow.db.add(usuario)
         uow.db.flush()
     elif _membresia(uow.db, usuario.id, tenant_id) is not None:
-        raise Conflicto(
-            "Ese usuario ya pertenece a este tenant", error_code="usuario.ya_existe"
-        )
+        raise Conflicto("Ese usuario ya pertenece a este tenant", error_code="usuario.ya_existe")
 
     uow.db.add(Membresia(tenant_id=tenant_id, usuario_id=usuario.id, roles=roles))
     registrar(

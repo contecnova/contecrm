@@ -33,7 +33,6 @@ import time
 from typing import Any
 
 import httpx
-
 from crmcore.errors import ErrorDependencia, ErrorValidacion, PeticionMalFormada
 from crmcore.logging import get_logger
 
@@ -182,9 +181,7 @@ async def cabeceras_auth(
     )
 
 
-async def _token_oauth2(
-    config: dict[str, Any], secretos: dict[str, str], *, tenant_id: str
-) -> str:
+async def _token_oauth2(config: dict[str, Any], secretos: dict[str, str], *, tenant_id: str) -> str:
     """Token de cliente, cacheado por tenant y credencial."""
     clave_cache = (tenant_id, secretos.get("client_id", ""))
     guardado = _tokens.get(clave_cache)
@@ -252,7 +249,10 @@ async def ejecutar(
 
     cabeceras = {
         "Accept": "application/json",
-        **{str(k): plantilla(str(v), parametros) for k, v in (conexion.get("cabeceras") or {}).items()},
+        **{
+            str(k): plantilla(str(v), parametros)
+            for k, v in (conexion.get("cabeceras") or {}).items()
+        },
         **await cabeceras_auth(conexion, secretos, tenant_id=tenant_id),
     }
     query = _renderizar(operacion.get("query") or {}, parametros)
@@ -379,7 +379,7 @@ def _siguiente_pagina(
 
 
 def mapear(filas: list[Any], operacion: dict[str, Any]) -> list[dict[str, Any]]:
-    """Traduce los registros de la API a los campos de contecrm."""
+    """Traduce los registros de la API a los campos de contecrm (CRM-00.03.04.04)."""
     mapeo = operacion.get("mapeo") or {}
     if not mapeo:
         # Sin mapeo declarado se devuelve tal cual. Sirve para explorar una API

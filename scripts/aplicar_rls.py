@@ -22,16 +22,20 @@ sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "packages" / "crmcore"))
 
 SERVICIOS = [
-    "tenancy", "identity", "metadata", "orchestrator",
-    "automation", "integration", "eventing",
+    "tenancy",
+    "identity",
+    "metadata",
+    "orchestrator",
+    "automation",
+    "integration",
+    "eventing",
 ]
 
 
 def _procesar(servicio: str, comprobar: bool) -> int:
-    from sqlalchemy import create_engine
-
     from crmcore.config import get_settings, limpiar_cache_settings
     from crmcore.db.rls import aplicar_politicas, tablas_sin_politica
+    from sqlalchemy import create_engine
 
     os.environ["SERVICE_NAME"] = servicio
     limpiar_cache_settings()
@@ -63,7 +67,9 @@ def _procesar(servicio: str, comprobar: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("servicio", nargs="?", choices=SERVICIOS)
     parser.add_argument("--todos", action="store_true")
     parser.add_argument(

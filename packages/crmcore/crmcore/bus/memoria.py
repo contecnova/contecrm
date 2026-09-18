@@ -71,9 +71,7 @@ class BusEnMemoria(Bus):
         _suscriptores[patron].append((grupo, manejador))
 
         async def _cancelar() -> None:
-            _suscriptores[patron] = [
-                (g, m) for g, m in _suscriptores[patron] if m is not manejador
-            ]
+            _suscriptores[patron] = [(g, m) for g, m in _suscriptores[patron] if m is not manejador]
 
         return Suscripcion(patron=patron, grupo=grupo, cancelar=_cancelar)
 

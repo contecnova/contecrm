@@ -1,4 +1,4 @@
-"""ABAC: decisiones por atributos, y sobre todo, **explicables**.
+"""ABAC: decisiones por atributos, y sobre todo, **explicables** (CRM-00.05.02.05).
 
 RBAC responde «¿puede leer cuentas?». ABAC responde lo que de verdad pregunta un
 CRM: «¿puede leer ESTA cuenta?». La diferencia son los atributos —del que
@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Callable
-from uuid import UUID
 
 # Operadores admitidos en una condición. Es una lista cerrada a propósito: si
 # una política pudiera llamar a cualquier función, evaluarla sería ejecutar
@@ -77,8 +76,7 @@ class Condicion:
 
     def explicar(self, ambito: dict[str, Any]) -> str:
         return (
-            f"{self.atributo} ({_leer(ambito, self.atributo)!r}) "
-            f"{self.operador} {self.valor!r}"
+            f"{self.atributo} ({_leer(ambito, self.atributo)!r}) " f"{self.operador} {self.valor!r}"
         )
 
 
@@ -101,8 +99,10 @@ class Politica:
     descripcion: str = ""
 
     def aplica_a(self, objeto: str, accion: str) -> bool:
-        return self.activa and self.objeto in (objeto, "*") and (
-            accion in self.acciones or "*" in self.acciones
+        return (
+            self.activa
+            and self.objeto in (objeto, "*")
+            and (accion in self.acciones or "*" in self.acciones)
         )
 
     def evaluar(self, ambito: dict[str, Any]) -> bool:
@@ -182,9 +182,7 @@ def _leer(ambito: dict[str, Any], ruta: str) -> Any:
     return actual
 
 
-def ambito_estandar(
-    *, registro: Any = None, extra: dict[str, Any] | None = None
-) -> dict[str, Any]:
+def ambito_estandar(*, registro: Any = None, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """Ámbito con usuario, contexto y registro, listo para evaluar."""
     from datetime import datetime, timezone
 
@@ -233,9 +231,7 @@ POLITICAS_EJEMPLO: list[Politica] = [
         nombre="misma_unidad_de_negocio",
         objeto="account",
         acciones=frozenset({"read", "write"}),
-        condiciones=(
-            Condicion("registro.business_unit_id", "=", "@usuario.business_unit_id"),
-        ),
+        condiciones=(Condicion("registro.business_unit_id", "=", "@usuario.business_unit_id"),),
         descripcion="Cada unidad de negocio ve solo sus cuentas",
         activa=False,
     ),

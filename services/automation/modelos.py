@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -22,12 +24,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
-
 
 class Automatizacion(Base, TimestampMixin):
-    """Una regla: disparador, condiciones y acciones."""
+    """Una regla: disparador, condiciones y acciones.
+
+    Cubre CRM-00.03.03.01 (constructor «cuando X, si Y, entonces Z»),
+    CRM-00.03.03.02 (los siete tipos de disparador) y CRM-00.03.03.05
+    (inmediata, diferida o programada).
+    """
 
     __tablename__ = "automatizaciones"
 

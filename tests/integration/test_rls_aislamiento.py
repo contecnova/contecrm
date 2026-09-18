@@ -1,6 +1,7 @@
 """Aislamiento entre tenants, comprobado contra Postgres de verdad.
 
-Cubre CRM-00.01.01.01, CRM-00.01.02.01 y CRM-00.01.02.02. Es la prueba más
+Cubre CRM-00.01.01.01, CRM-00.01.02.01, CRM-00.01.02.02 y CRM-00.01.02.04
+(pruebas automatizadas de fuga entre tenants en el gate de pre-push). Es la prueba más
 importante del repositorio: si esto falla, todo lo demás da igual.
 
 **Se ejecuta con un rol sin privilegios**, y eso no es un detalle: un SUPERUSER

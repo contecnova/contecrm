@@ -54,7 +54,7 @@ repite entero — y por eso **los pasos tienen que ser idempotentes**, lo que se
 consigue pasando la clave de idempotencia de la instancia y el paso a la
 operación invocada.
 
-── Compensación ──────────────────────────────────────────────────────────────
+── Saga orquestada y compensación (CRM-00.03.02.03, .05) ─────────────────────
 
 Cada paso puede declarar cómo se deshace. Al fallar definitivamente, el motor
 recorre hacia atrás los pasos ya ejecutados y ejecuta sus compensaciones en
@@ -71,10 +71,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 from uuid import UUID
 
-from sqlalchemy.orm import Session
-
 from crmcore.errors import ErrorValidacion
 from crmcore.logging import get_logger
+from sqlalchemy.orm import Session
+
 from services.orchestrator.modelos import (
     DefinicionProceso,
     InstanciaProceso,
@@ -270,9 +270,8 @@ class Motor:
         profundidad: int = 0,
     ) -> InstanciaProceso:
         """Crea una instancia de la última versión publicada."""
-        from sqlalchemy import select
-
         from crmcore.config import get_settings
+        from sqlalchemy import select
 
         if profundidad > get_settings().proceso_max_profundidad:
             raise ErrorValidacion(
@@ -422,6 +421,9 @@ class Motor:
             return paso.get("si_no") or paso.get("siguiente")
 
         if tipo == "espera":
+            # Temporizadores y esperas (CRM-00.03.02.07). Mientras espera, la
+            # instancia no consume nada: solo tiene una fecha de despertar que
+            # el planificador consulta por índice.
             segundos = int(resolver(paso.get("segundos", 0), instancia.variables) or 0)
             hasta = resolver(paso.get("hasta"), instancia.variables)
             despertar = (
@@ -494,9 +496,7 @@ class Motor:
     ) -> str | None:
         """Crea la tarea humana y detiene el proceso hasta que se responda."""
         horas = paso.get("vence_en_horas")
-        vence = (
-            datetime.now(timezone.utc) + timedelta(hours=int(horas)) if horas else None
-        )
+        vence = datetime.now(timezone.utc) + timedelta(hours=int(horas)) if horas else None
         asignada_a = resolver(paso.get("asignada_a"), instancia.variables)
         tarea = TareaHumana(
             tenant_id=instancia.tenant_id,
@@ -564,7 +564,7 @@ class Motor:
             # Backoff exponencial acotado a diez minutos: más allá, un proceso
             # de negocio esperando media hora entre reintentos es peor que uno
             # que falla y avisa.
-            espera = min(2 ** intentos_previos * 5, 600)
+            espera = min(2**intentos_previos * 5, 600)
             instancia.estado = "ejecutando"
             instancia.despertar_at = datetime.now(timezone.utc) + timedelta(seconds=espera)
             instancia.error = str(exc)[:1000]

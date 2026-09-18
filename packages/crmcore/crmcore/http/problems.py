@@ -108,9 +108,7 @@ async def manejar_http(request: Request, exc: StarletteHTTPException) -> JSONRes
     }
     cls = POR_CODIGO.get(por_estado.get(exc.status_code, ""), CrmError)
     err = cls(str(exc.detail) if exc.detail else "Error")
-    problema = err.a_problema(
-        instancia=str(request.url.path), request_id=_request_id(request)
-    )
+    problema = err.a_problema(instancia=str(request.url.path), request_id=_request_id(request))
     problema["status"] = exc.status_code
     return _respuesta(problema, exc.status_code, dict(getattr(exc, "headers", None) or {}))
 

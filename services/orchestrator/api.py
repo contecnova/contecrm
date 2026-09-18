@@ -6,12 +6,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
-
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
+
 from services.orchestrator import motor as mtr
 from services.orchestrator.esquemas import (
     ArrancarProceso,
@@ -75,6 +75,10 @@ def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) ->
         estado="publicada",
     )
     db.add(definicion)
+    # Volcado ANTES de auditar y de devolverla: el identificador lo asigna
+    # SQLAlchemy en el flush, así que sin esto el apunte de auditoría se
+    # guardaría con `objeto_id` nulo y la respuesta saldría sin id.
+    db.flush()
     registrar(
         db,
         accion="proceso.publicado",
@@ -222,9 +226,7 @@ def listar_instancias(
     origen_id: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
 ) -> Any:
-    consulta = select(InstanciaProceso).where(
-        InstanciaProceso.tenant_id == principal.tenant_id
-    )
+    consulta = select(InstanciaProceso).where(InstanciaProceso.tenant_id == principal.tenant_id)
     if estado:
         consulta = consulta.where(InstanciaProceso.estado == estado)
     if clave:
@@ -293,9 +295,7 @@ def reintentar(instancia_id: UUID, db: DbDep) -> Any:
     instancia.estado = "ejecutando"
     instancia.error = None
     instancia.despertar_at = datetime.now(timezone.utc)
-    registrar(
-        db, accion="proceso.reintentado", objeto="instancia_proceso", objeto_id=instancia.id
-    )
+    registrar(db, accion="proceso.reintentado", objeto="instancia_proceso", objeto_id=instancia.id)
     return instancia
 
 
@@ -372,9 +372,7 @@ def bandeja(
     response_model=InstanciaOut,
     summary="Responder una tarea y reanudar el proceso",
 )
-def responder(
-    tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def responder(tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: AutenticadoDep) -> Any:
     tarea = db.get(TareaHumana, tarea_id)
     if tarea is None or tarea.tenant_id != principal.tenant_id:
         raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
@@ -406,9 +404,7 @@ def responder(
     response_model=TareaOut,
     summary="Delegar una tarea en otra persona",
 )
-def delegar(
-    tarea_id: UUID, usuario_id: UUID, db: DbDep, principal: AutenticadoDep
-) -> Any:
+def delegar(tarea_id: UUID, usuario_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     tarea = db.get(TareaHumana, tarea_id)
     if tarea is None or tarea.tenant_id != principal.tenant_id:
         raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")

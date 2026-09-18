@@ -1,0 +1,72 @@
+# Gates de git. Este repositorio NO tiene CI por decisión de proyecto: lo que en
+# otro repositorio comprobaría un servidor, aquí lo comprueba esta máquina.
+#
+# Instalación, obligatoria:
+#
+#     pre-commit install
+#
+# `default_install_hook_types` instala los DOS tipos de una vez. Sin esa línea,
+# `pre-commit install` solo pone el de commit y el de pre-push —que es el que
+# corre la suite— no llega a existir, con lo que el gate más importante nunca
+# se ejecuta y nadie se entera.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  # ── Por commit: barato o se acaba puenteando con --no-verify ────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Los `.patch` y los `.md` quedan fuera: en un diff, un espacio de
+        # contexto es significativo, y en markdown dos espacios finales son un
+        # salto de línea.
+        exclude: '\.(patch|diff|md)$'
+      - id: end-of-file-fixer
+        exclude: '\.(patch|diff)$'
+      - id: check-yaml
+        exclude: '^docs/catalogo/catalogo\.yaml$'
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=512]
+
+  - repo: local
+    hooks:
+      - id: env-example
+        name: .env.example al día con los Settings
+        entry: python scripts/gen_env_example.py --check
+        language: system
+        pass_filenames: false
+        files: '^packages/crmcore/crmcore/config'
+
+      - id: catalogo
+        name: matriz de trazabilidad regenerada
+        entry: python scripts/gen_catalogo_md.py --check
+        language: system
+        pass_filenames: false
+        files: '^docs/catalogo/catalogo\.yaml$'
+
+      - id: arquitectura
+        name: contratos de arquitectura (acoplamiento, tenant, permisos)
+        entry: python -m pytest tests/unit/test_contratos_arquitectura.py -q --no-header
+        language: system
+        pass_filenames: false
+        files: '^(services|packages)/.*\.py$'
+
+      # ── Por push: la suite entera ───────────────────────────────────────
+      - id: preflight
+        name: preflight --tests (gates + suite completa)
+        entry: python scripts/preflight.py --tests
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -14,14 +14,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session
-
 from crmcore.audit.chain import registrar
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.logging import get_logger
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
+
 from services.tenancy.modelos import Consumo, FeatureFlag, Plan, Tenant, UnidadNegocio
 
 logger = get_logger(__name__)
@@ -326,9 +326,7 @@ def medir(
     return int(fila)
 
 
-def consumo_actual(
-    db: Session, tenant_id: UUID, metrica: str, *, granularidad: str = "mes"
-) -> int:
+def consumo_actual(db: Session, tenant_id: UUID, metrica: str, *, granularidad: str = "mes") -> int:
     valor = db.execute(
         select(Consumo.valor).where(
             Consumo.tenant_id == tenant_id,
@@ -402,9 +400,7 @@ def comprobar_cuota(
                 "pct": round(pct, 1),
             },
         )
-        logger.warning(
-            "cuota.umbral_alcanzado", metrica=metrica, pct=round(pct, 1), limite=limite
-        )
+        logger.warning("cuota.umbral_alcanzado", metrica=metrica, pct=round(pct, 1), limite=limite)
     return {"limite": limite, "consumido": consumido, "pct": round(pct, 1)}
 
 
@@ -427,4 +423,8 @@ def crear_unidad(
         tenant_id=tenant_id, codigo=codigo.strip(), nombre=nombre.strip(), padre_id=padre_id
     )
     db.add(unidad)
+    # Volcado antes de devolverla: los valores por defecto (id, fechas) los pone
+    # SQLAlchemy en el flush, y quien la serializa corre ANTES del commit. Sin
+    # esto, la respuesta sale con `id: null` y un 500 al validarla.
+    db.flush()
     return unidad

@@ -14,6 +14,9 @@ memoria, con la carpeta del servicio ya puesta.
 
 También evita el error que más caro sale con este esquema: olvidar el
 `-x servicio=` y migrar el esquema equivocado.
+
+Que cada servicio tenga su cadena de migraciones es lo que hace posible el
+despliegue independiente (CRM-00.03.01.06): ninguno espera al de otro.
 """
 
 from __future__ import annotations
@@ -92,7 +95,7 @@ def main() -> int:
     # `tenancy upgrade head` tienen distinto número de piezas, y obligar a
     # recordar cuál va dónde es una forma tonta de que alguien migre el esquema
     # equivocado.
-    parser.add_argument("partes", nargs="*", help=f"[servicio] comando [argumento]")
+    parser.add_argument("partes", nargs="*", help="[servicio] comando [argumento]")
     parser.add_argument("-m", "--mensaje", default="cambios")
     parser.add_argument("--todos", action="store_true", help="aplica a todos los servicios")
     args = parser.parse_args()
@@ -120,9 +123,7 @@ def main() -> int:
         return peor
 
     if not servicio:
-        parser.error(
-            f"indica un servicio ({', '.join(SERVICIOS)}) o usa --todos"
-        )
+        parser.error(f"indica un servicio ({', '.join(SERVICIOS)}) o usa --todos")
     return ejecutar(servicio, comando, argumento, args.mensaje)
 
 
