@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**539 capacidades**: 🔧 27 en-curso · ✅ 138 hecho · ⬜ 374 pendiente
+**539 capacidades**: 🔧 27 en-curso · ✅ 148 hecho · ⬜ 364 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 93 · ⬜ 91
+200 capacidades · 🔧 16 · ✅ 96 · ⬜ 88
 
 ### 0.1 Multi-tenancy
 
@@ -81,7 +81,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.05.02` | Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs) | A | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.05.03` | Control de subprocesadores y trazabilidad de transferencias internacionales | A | 0 | tenancy | ⬜ | contecmind:docs/COMPLIANCE.md |
 | `CRM-00.01.05.04` | Modo sin salida de datos para IA: inferencia en región o modelo dedicado | A | 5 | core | ⬜ | contecmind:app/core/inference_gate.py + model_router.py |
-| `CRM-00.01.05.05` | Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales | C | 0 | docs | ⬜ | contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md |
+| `CRM-00.01.05.05` | Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales | C | 0 | docs | ✅ | contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md |
 
 #### CRM-00.01.06 · Cuotas, límites y equidad (noisy neighbour)
 
@@ -320,7 +320,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.01.02` | Métricas por tenant: latencia, throughput, tasa de error, saturación | C | 0 | core | ✅ | contecmind:app/core/metrics.py (577 líneas, Prometheus) |
 | `CRM-00.06.01.03` | Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones | A | 0 | core | 🔧 | contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts |
 | `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ⬜ | contecmind:ops/prometheus/governance_alerts.yml |
-| `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ⬜ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
+| `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ✅ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
 | `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | 🔧 | contecmind:app/services/health_monitor.py + app/api/admin_health.py |
 | `CRM-00.06.01.07` | Auditoría de rendimiento por consulta y detección de queries degradadas por tenant | A | 0 | core | ⬜ | contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md |
 
@@ -328,7 +328,7 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.06.02.01` | Backups automáticos con RPO y RTO comprometidos por tier | C | 0 | ops | ⬜ | contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup* |
+| `CRM-00.06.02.01` | Backups automáticos con RPO y RTO comprometidos por tier | C | 0 | ops | ✅ | contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup* |
 | `CRM-00.06.02.02` | Point-in-time recovery a nivel de tenant, no solo de clúster | A | 0 | ops | ⬜ | — |
 | `CRM-00.06.02.03` | Restauración selectiva de registros o de objetos concretos | A | 0 | ops | ⬜ | contecmind:app/api/admin_backup.py (restauración selectiva) |
 | `CRM-00.06.02.04` | Papelera de reciclaje con retención y restauración en cascada de relaciones | C | 1 | core | ✅ | — |
@@ -903,7 +903,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · 🔧 2 · ✅ 11 · ⬜ 12
+25 capacidades · 🔧 2 · ✅ 12 · ⬜ 11
 
 ### 7.1 Administración funcional
 
@@ -933,7 +933,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.02.01.05` | Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto) | A | 0 | infra | ✅ | contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI) |
 | `CRM-07.02.01.06` | Detección de cambios en producción fuera del pipeline (drift) | A | 1 | metadata | ⬜ | — |
 | `CRM-07.02.01.07` | Rollback de despliegues y de configuraciones | A | 1 | metadata | ⬜ | — |
-| `CRM-07.02.01.08` | Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión | C | 0 | docs | ⬜ | contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py |
+| `CRM-07.02.01.08` | Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión | C | 0 | docs | ✅ | contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py |
 | `CRM-07.02.01.09` | Paquetes instalables por tenant y gestión de dependencias | A | 6 | metadata | ⬜ | contecflow-PSA:app/services/marketplace_service.py |
 
 ### 7.3 Gobierno y cumplimiento
@@ -953,7 +953,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 8 — Requisitos no funcionales
 
-12 capacidades · ✅ 2 · ⬜ 10
+12 capacidades · ✅ 8 · ⬜ 4
 
 ### 8.1 Rendimiento y escala
 
@@ -963,9 +963,9 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-08.01.01.01` | Objetivos de latencia: p95 y p99 por tipo de operación, medidos por tenant | C | 0 | core | ✅ | contecmind:app/core/metrics.py (histogramas por endpoint y tenant) |
 | `CRM-08.01.01.02` | Escalado horizontal independiente por servicio | A | 0 | infra | ⬜ | — |
-| `CRM-08.01.01.03` | Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s | C | 0 | docs | ⬜ | — |
+| `CRM-08.01.01.03` | Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s | C | 0 | docs | ✅ | — |
 | `CRM-08.01.01.04` | Estrategia de particionado y archivado para objetos de alto volumen | A | 2 | core | ⬜ | contecmind:scripts/split_concurrent_indexes.py + contecflow-PSA:docs/INDEX_TUNING.md |
-| `CRM-08.01.01.05` | Pruebas de carga reproducibles y publicadas | A | 0 | ops | ⬜ | contecmind:scripts/load_test.py |
+| `CRM-08.01.01.05` | Pruebas de carga reproducibles y publicadas | A | 0 | ops | ✅ | contecmind:scripts/load_test.py |
 | `CRM-08.01.01.06` | Degradación controlada del servicio no crítico bajo pico | A | 0 | core | ⬜ | contecmind:app/core/degradation.py |
 
 ### 8.2 Compromisos de servicio
@@ -974,9 +974,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-08.02.01.01` | SLA de disponibilidad por tier con penalizaciones | C | 0 | docs | ⬜ | — |
-| `CRM-08.02.01.02` | RPO/RTO comprometidos y verificados | C | 0 | ops | ⬜ | contecmind:scripts/test_restore_integrity.sh |
-| `CRM-08.02.01.03` | Ventanas de mantenimiento anunciadas y, preferentemente, sin corte | C | 0 | infra | ⬜ | — |
-| `CRM-08.02.01.04` | Política de soporte: niveles, horarios, tiempos de respuesta y escalado | C | 0 | docs | ⬜ | — |
+| `CRM-08.02.01.01` | SLA de disponibilidad por tier con penalizaciones | C | 0 | docs | ✅ | — |
+| `CRM-08.02.01.02` | RPO/RTO comprometidos y verificados | C | 0 | ops | ✅ | contecmind:scripts/test_restore_integrity.sh |
+| `CRM-08.02.01.03` | Ventanas de mantenimiento anunciadas y, preferentemente, sin corte | C | 0 | infra | ✅ | — |
+| `CRM-08.02.01.04` | Política de soporte: niveles, horarios, tiempos de respuesta y escalado | C | 0 | docs | ✅ | — |
 | `CRM-08.02.01.05` | Portabilidad: exportación completa del tenant en formato abierto y documentado | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py + app/api/exports.py |
 | `CRM-08.02.01.06` | Reversibilidad y plan de salida contractual | A | 0 | docs | ⬜ | — |

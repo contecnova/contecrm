@@ -88,6 +88,14 @@ def test_lo_declarado_hecho_esta_citado_en_el_codigo(catalogo: dict) -> None:
     Es lo que convierte el catálogo en trazabilidad de verdad: desde el ID se
     llega al sitio donde está implementado o probado. Sin esto, «hecho» es una
     opinión.
+
+    **Las capacidades de `docs` quedan fuera de esta comprobación, y solo esas.**
+    Un SLA, una política de soporte o un cuadro de cumplimiento no tienen código
+    que citar: el entregable *es* el documento. Exigirles una cita en el código
+    llevaría a poner el identificador en un comentario cualquiera para callar al
+    gate, que es peor que no comprobarlo — parecería trazado y no lo estaría.
+    Siguen sujetas a la comprobación siguiente, que exige que estén escritas en
+    un manual a mano.
     """
     fuentes = [
         *(RAIZ / "packages").rglob("*.py"),
@@ -104,7 +112,7 @@ def test_lo_declarado_hecho_esta_citado_en_el_codigo(catalogo: dict) -> None:
     sin_citar = [
         c["id"]
         for c in _capacidades(catalogo)
-        if c.get("estado") == "hecho" and c["id"] not in texto
+        if c.get("estado") == "hecho" and c.get("svc") != "docs" and c["id"] not in texto
     ]
     assert not sin_citar, (
         "Capacidades marcadas «hecho» que no se citan en ningún sitio del "

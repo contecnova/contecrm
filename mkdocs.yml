@@ -23,11 +23,23 @@ nav:
       - VI — Referencia de ajustes: manual-6-referencia-ajustes.md
   - Alcance:
       - Resumen del catálogo: catalogo/resumen.md
-      - Estado de las 527 capacidades: catalogo/estado.md
+      - Estado de las 539 capacidades: catalogo/estado.md
       - Qué se reutiliza de la casa: REUTILIZACION.md
   # Este repositorio renuncia a CI y lo sustituye por gates locales. Un sistema
   # que sustituye a la CI y no está documentado depende de que alguien se
   # acuerde, así que tiene su propia página en el menú.
+  # Los runbooks van en el menú y no escondidos en una carpeta: se leen en un
+  # incidente, y en un incidente nadie navega por el repositorio.
+  - Operación:
+      - Runbooks — qué hacer cuando salta una alerta: runbooks/index.md
+      - ServicioCaido: runbooks/servicio-caido.md
+      - ErroresDeServidor: runbooks/errores-de-servidor.md
+      - LatenciaAlta: runbooks/latencia-alta.md
+      - TablaDeSalidaAtascada: runbooks/tabla-de-salida-atascada.md
+      - EventosFallando: runbooks/eventos-fallando.md
+      - TenantCercaDeSuCuota: runbooks/tenant-cerca-de-su-cuota.md
+      - DemasiadosRechazosPorLimite: runbooks/demasiados-rechazos-por-limite.md
+      - ExplotacionNoDisponible: runbooks/explotacion-no-disponible.md
   - Desarrollo:
       - Gates locales (en lugar de CI): QUALITY_GATES.md
 

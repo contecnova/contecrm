@@ -212,10 +212,128 @@ Lo que hay que copiar, y por qué:
 |---|---|
 | Postgres (todos los esquemas) | Es el sistema entero: datos, configuración, auditoría y estado de los procesos |
 | Volumen de NATS | Los eventos aún no entregados |
+| Almacén de ficheros (S3 o disco) | Los adjuntos no están en la base: una copia de Postgres no los trae |
 | `.env` / gestor de secretos | Sin `ENCRYPTION_KEY` **los datos cifrados no se recuperan**, por muy buena que sea la copia de la base |
 
 Ese último punto es el que más veces se descubre tarde: una copia de la base sin
-la clave de cifrado es una copia de la que no se puede restaurar lo sensible.
+la clave de cifrado es una copia de la que no se puede restaurar lo sensible. Por
+eso el script **no** copia la clave, y lo dice en el manifiesto: una copia de la
+base junto a la clave que la descifra es un solo fichero que lo entrega todo.
+
+### Hacerlas y, sobre todo, verificarlas (CRM-00.06.02.01)
+
+```bash
+python scripts/respaldar.py copiar    --destino /var/backups/contecrm
+python scripts/respaldar.py verificar /var/backups/contecrm/2026-09-19T03-00
+python scripts/respaldar.py listar    --destino /var/backups/contecrm
+```
+
+**Una copia que no se ha restaurado nunca no es una copia: es un fichero.** Por
+eso `verificar` no comprueba el hash y se queda ahí — eso solo demuestra que el
+fichero no se ha estropeado. Lo **restaura de verdad** sobre una base efímera,
+cuenta las tablas, cuenta filas y **mide cuánto ha tardado**. Ese número es el
+RTO real de esta copia y de esta máquina; un RTO escrito en un contrato sin
+haberlo medido nunca es una cifra inventada.
+
+`listar` dice cuántos minutos hace de la última copia, que es el **RPO actual**:
+los datos que se perderían si la base se fuera ahora mismo.
+
+Al escribir esto, el propio verificador tenía un fallo que lo hacía inútil:
+aceptaba el código de salida de `pg_restore` sin mirarlo, así que con una opción
+mal escrita el restore no hacía nada y la verificación lo daba por bueno. Ahora
+el código de salida se informa pero **no decide**: lo que decide es que haya
+tablas y que tengan filas.
+
+## Compromisos de servicio: RPO, RTO y disponibilidad (CRM-08.02.01.01, CRM-08.02.01.02)
+
+Están en la **configuración**, no en un documento: un compromiso que solo vive en
+un PDF no lo comprueba nadie. Aquí los lee el sistema y los publica la API, así
+que el número que se le enseña al cliente es el mismo que se vigila.
+
+| Tier | RPO | RTO | Disponibilidad | Parada al mes |
+|---|---|---|---|---|
+| Estándar | 24 h | 8 h | 99,5 % | 3 h 39 min |
+| Premium | 4 h | 2 h | 99,9 % | 43 min |
+| Enterprise | 15 min | 30 min | 99,95 % | 21 min |
+
+Los valores por defecto son **deliberadamente conservadores**. Un RPO de quince
+minutos exige archivado continuo del WAL: si esa infraestructura no está montada,
+el número es una promesa que se incumple el día que hace falta. Subirlos es una
+decisión de negocio con coste, y así es como debe tomarse.
+
+Lo mismo con la disponibilidad: prometer 99,99 % son cuatro minutos de parada al
+mes, y eso exige multi-región activo-activo. Sin eso montado, el número es falso.
+
+## Alertas y qué hacer con ellas (CRM-00.06.01.05)
+
+Las reglas están en `ops/prometheus/alertas.yml` y **cada una enlaza su
+runbook** (`docs/runbooks/`). No es una convención: hay un gate
+(`tests/unit/test_alertas_con_runbook.py`) que falla si una alerta apunta a un
+runbook que no existe, si un runbook queda huérfano, si a una alerta le falta la
+gravedad o el `for`, o si vigila una métrica que el código no publica — que es el
+fallo más silencioso de todos, porque parece que hay cobertura y no la hay.
+
+Una alerta sin instrucciones despierta a alguien a las tres de la mañana para que
+averigüe desde cero qué significa. Lo que pasa después, siempre, es que se
+silencia — y una alerta silenciada deja el sistema peor que si no existiera,
+porque ahora además hay quien cree que está cubierto.
+
+Los runbooks siguen todos la misma estructura, y el orden es parte del gate:
+**qué significa** (quien lo abre de madrugada no tiene contexto), **cuánto
+corre**, **qué mirar** y **qué hacer**. Diagnóstico antes que acción: la mitad de
+los incidentes se empeoran actuando sobre el síntoma equivocado.
+
+Dos rutas de aviso y no cinco: lo crítico despierta a alguien, lo demás espera a
+la mañana. Una escala de cinco niveles obliga a decidir en cada alerta cuál es, y
+ante la duda se acaba poniendo el intermedio, que ni despierta ni se revisa.
+
+## Volumetría: qué aguanta esto (CRM-08.01.01.03, CRM-08.01.01.05)
+
+Medida, no estimada (`docs/volumetria.json`):
+
+```bash
+python scripts/medir_volumetria.py --cuentas 50000
+```
+
+Sobre 20.000 cuentas, en un portátil arm64 con Postgres embebido:
+
+| Qué | Medido |
+|---|---|
+| Alta de cuentas por lotes | 23.000 /s |
+| Indexado para búsqueda | 970 /s |
+| Búsqueda de texto (mediana / p95) | 2,8 / 3,3 ms |
+| Listado paginado con filtro (mediana / p95) | 3,1 / 3,6 ms |
+| Tamaño de la base | 31 MB |
+
+**Son un suelo comparable entre versiones, no una promesa de capacidad.** No hay
+red, ni concurrencia real, ni el coste del gateway. Sirven para responder «¿esto
+ha empeorado?», que es la pregunta que se puede contestar con honestidad sin un
+entorno de carga dedicado.
+
+Y la medición ya sirvió para encontrar algo: la búsqueda tardaba **81 ms** en vez
+de 2,8. No era el índice —se comprobó con `EXPLAIN` que sí se usaba—, eran las
+**estadísticas sin actualizar** tras la carga masiva: el planificador creía que
+la tabla estaba vacía. Treinta veces más lento por eso. Ahora la importación
+masiva hace `ANALYZE` al terminar, porque autovacuum acabaría haciéndolo pero
+puede tardar minutos — los mismos minutos en los que quien acaba de importar
+concluye que el sistema no aguanta su volumen.
+
+## Ventanas de mantenimiento (CRM-08.02.01.03)
+
+El estado `solo_lectura` de un tenant existe justo para esto: permite mantener
+—una migración larga, una reindexación— sin cortar el servicio. Quien consulta
+sigue trabajando; quien escribe recibe un 409 que **dice qué pasa y hasta
+cuándo**, en vez de un error genérico.
+
+Se pone y se quita por API, con motivo obligatorio, y queda auditado:
+
+```bash
+curl -X POST .../api/v1/tenants/<id>/estado \
+  -d '{"nuevo":"solo_lectura","motivo":"Migración del índice, hasta las 06:00"}'
+```
+
+Lo normal es que no haga falta cortar nada: las migraciones son por servicio y se
+aplican por separado, y los despliegues no exigen parar la pila entera.
 
 ## Rotar la clave de cifrado
 
@@ -226,3 +344,68 @@ ENCRYPTION_KEY=<la nueva>
 
 Con las dos puestas, lo escrito con la anterior se sigue descifrando mientras se
 recifra. Sin esa convivencia, rotar exigiría una ventana de parada.
+
+## Política de soporte y gestión de versiones (CRM-08.02.01.04, CRM-07.02.01.08)
+
+Lo que un cliente tiene derecho a esperar, escrito antes de que lo pregunte.
+
+### Niveles y tiempos de respuesta
+
+| Gravedad | Qué es | Respuesta | Horario |
+|---|---|---|---|
+| **Crítica** | El servicio no está disponible, o hay riesgo de pérdida de datos | 1 h | 24×7 |
+| **Alta** | Una función principal no funciona y no hay forma de rodearla | 4 h laborables | Horario laboral |
+| **Media** | Algo falla pero hay manera de seguir trabajando | 1 día laborable | Horario laboral |
+| **Baja** | Consulta, mejora, cosmética | 3 días laborables | Horario laboral |
+
+«Respuesta» es **respuesta**, no resolución. Prometer un plazo de resolución para
+un fallo que aún no se ha diagnosticado es prometer lo que no se sabe: lo honesto
+es comprometerse a que alguien lo esté mirando, y a decir qué se sabe y cuándo se
+volverá a informar.
+
+La gravedad la propone quien abre el caso y la confirma quien lo atiende. Si no
+coinciden, manda la más alta hasta que se aclare: discutir la gravedad de algo
+que está caído es la peor forma de empezar.
+
+### Escalado
+
+Si no hay respuesta en el plazo, el caso sube solo: responsable de soporte →
+responsable técnico → dirección. El escalado es **automático por tiempo**, no
+por insistencia del cliente — depender de que alguien se queje fuerte premia a
+quien más ruido hace, no a quien peor lo está pasando.
+
+### Versiones del proveedor
+
+| | Qué |
+|---|---|
+| **Cadencia** | Una versión menor al mes; correcciones cuando hagan falta |
+| **Aviso** | 15 días naturales antes de una versión menor; inmediato para una corrección de seguridad |
+| **Previsualización** | La versión está disponible en el entorno de pruebas del cliente **antes** de llegar a producción |
+| **Compatibilidad** | La API `v1` no rompe. Un campo se puede añadir; quitarlo o cambiarle el tipo exige `v2` conviviendo con `v1` |
+| **Retirada** | Un endpoint deprecado sigue vivo **12 meses** y responde con la cabecera `Sunset` |
+| **Vuelta atrás** | Toda versión se puede revertir. Una migración que no se pueda revertir sin pérdida se anuncia como tal, aparte |
+
+La previsualización no es un extra: es lo que convierte «hemos actualizado y se
+ha roto algo» en «lo vimos en pruebas la semana pasada». Sin ella, cada versión
+del proveedor es un riesgo que asume el cliente sin poder medirlo.
+
+## Cumplimiento: qué se puede demostrar y qué no (CRM-00.01.05.05)
+
+Esta tabla es deliberadamente incómoda. Un cuadro de cumplimiento donde todo está
+en verde no lo cree nadie, y con razón.
+
+| Marco | Qué aporta el producto | Qué **no** aporta |
+|---|---|---|
+| **RGPD** | Base legal y consentimiento por finalidad y canal, derechos del interesado con plazos, retención configurable, borrado y exportación, registro de tratamientos, cifrado de campo, auditoría inmutable | El RAT completo y el análisis de impacto son del responsable del tratamiento, no del software |
+| **ENS** | Trazabilidad, control de acceso, cifrado, copias verificadas, segregación por tenant | La categorización del sistema y la declaración de aplicabilidad son de la organización que lo despliega |
+| **ISO 27001** | Controles técnicos: acceso, registro, cifrado, copias, gestión de vulnerabilidades por dependencias fijadas | El SGSI —políticas, formación, auditoría interna— no es un producto |
+| **SOC 2 Tipo II** | Evidencia técnica: auditoría encadenada, control de cambios por migraciones, alertas con runbook | El informe lo emite un auditor sobre un periodo observado; el producto aporta las evidencias |
+
+La diferencia entre **cumplir** y **poder demostrar que se cumple** es donde se
+caen la mayoría de los proyectos. Aquí se ha construido pensando en lo segundo:
+la cadena de auditoría se verifica sola, las copias se restauran de verdad, las
+alertas llevan instrucciones y el catálogo dice el estado real de cada capacidad
+con una prueba que lo respalda.
+
+Lo que ninguna de esas cuatro cosas da es una certificación. La certificación la
+obtiene la organización que despliega, con este producto dentro de su alcance.

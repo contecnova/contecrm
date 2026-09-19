@@ -23,6 +23,7 @@ from crmcore.config_parts._intelligence import _IntelligenceSettings
 from crmcore.config_parts._limits import _LimitsSettings
 from crmcore.config_parts._obs import _ObsSettings
 from crmcore.config_parts._security import _SecuritySettings
+from crmcore.config_parts._servicio import _ServicioSettings
 from crmcore.config_parts._tenancy import _TenancySettings
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     "_LimitsSettings",
     "_ObsSettings",
     "_SecuritySettings",
+    "_ServicioSettings",
     "_TenancySettings",
 ]

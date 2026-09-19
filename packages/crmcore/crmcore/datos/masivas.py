@@ -164,6 +164,10 @@ class PlanImportacion:
     # nada: un fichero al que le falta una columna entera es un error del
     # fichero, no de sus filas, y decirlo cien mil veces no ayuda.
     columnas_obligatorias: tuple[str, ...] = ()
+    # El modelo, solo para poder hacer `ANALYZE` sobre su tabla al terminar. Es
+    # opcional porque no todo plan escribe en una sola tabla; sin él, la carga
+    # funciona igual pero las consultas van lentas hasta que pase autovacuum.
+    modelo: type | None = None
 
 
 def importar(
@@ -257,7 +261,33 @@ def importar(
             actualizados=informe.actualizados,
             fallidos=informe.fallidos,
         )
+        if plan.modelo is not None:
+            _actualizar_estadisticas(db, plan.modelo)
     return informe
+
+
+def _actualizar_estadisticas(db: Session, modelo: type) -> None:
+    """`ANALYZE` sobre la tabla recién cargada.
+
+    **No es cosmético.** Tras una importación grande, el planificador sigue
+    creyendo que la tabla está como estaba y descarta los índices: se midió una
+    búsqueda pasando de 2,8 ms a 81 ms sobre los mismos 20.000 documentos, solo
+    por estadísticas viejas. Autovacuum acabaría haciéndolo, pero puede tardar
+    minutos — los mismos minutos en los que quien acaba de importar concluye que
+    el sistema no aguanta su volumen.
+
+    Un fallo aquí no puede tumbar la importación: los datos ya están dentro, y
+    lo único que se pierde es que las consultas vayan lentas un rato.
+    """
+    from sqlalchemy import text as _text
+
+    tabla = getattr(modelo, "__tablename__", "")
+    if not tabla:
+        return
+    try:
+        db.execute(_text(f'ANALYZE "{tabla}"'))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("datos.analyze_fallido", tabla=tabla, error=str(exc)[:200])
 
 
 def exportar(

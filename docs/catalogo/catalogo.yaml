@@ -156,7 +156,7 @@ modulos:
               - {id: CRM-00.01.05.02, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs)"}
               - {id: CRM-00.01.05.03, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:docs/COMPLIANCE.md", t: "Control de subprocesadores y trazabilidad de transferencias internacionales"}
               - {id: CRM-00.01.05.04, c: A, fase: 5, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/inference_gate.py + model_router.py", t: "Modo sin salida de datos para IA: inferencia en región o modelo dedicado"}
-              - {id: CRM-00.01.05.05, c: C, fase: 0, svc: docs, estado: pendiente, reutiliza: "contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md", t: "Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales"}
+              - {id: CRM-00.01.05.05, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md", t: "Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales"}
 
           - id: CRM-00.01.06
             nombre: Cuotas, límites y equidad (noisy neighbour)
@@ -389,14 +389,14 @@ modulos:
               - {id: CRM-00.06.01.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (577 líneas, Prometheus)", t: "Métricas por tenant: latencia, throughput, tasa de error, saturación"}
               - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
               - {id: CRM-00.06.01.04, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/prometheus/governance_alerts.yml", t: "SLO y error budget definidos por servicio y por tier de cliente"}
-              - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
+              - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
               - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: en-curso, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
               - {id: CRM-00.06.01.07, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Auditoría de rendimiento por consulta y detección de queries degradadas por tenant"}
 
           - id: CRM-00.06.02
             nombre: Continuidad y resiliencia
             capacidades:
-              - {id: CRM-00.06.02.01, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup*", t: "Backups automáticos con RPO y RTO comprometidos por tier"}
+              - {id: CRM-00.06.02.01, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup*", t: "Backups automáticos con RPO y RTO comprometidos por tier"}
               - {id: CRM-00.06.02.02, c: A, fase: 0, svc: ops, estado: pendiente, t: "Point-in-time recovery a nivel de tenant, no solo de clúster"}
               - {id: CRM-00.06.02.03, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:app/api/admin_backup.py (restauración selectiva)", t: "Restauración selectiva de registros o de objetos concretos"}
               - {id: CRM-00.06.02.04, c: C, fase: 1, svc: core, estado: hecho, t: "Papelera de reciclaje con retención y restauración en cascada de relaciones"}
@@ -938,7 +938,7 @@ modulos:
               - {id: CRM-07.02.01.05, c: A, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI)", t: "Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto)"}
               - {id: CRM-07.02.01.06, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Detección de cambios en producción fuera del pipeline (drift)"}
               - {id: CRM-07.02.01.07, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Rollback de despliegues y de configuraciones"}
-              - {id: CRM-07.02.01.08, c: C, fase: 0, svc: docs, estado: pendiente, reutiliza: "contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py", t: "Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión"}
+              - {id: CRM-07.02.01.08, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py", t: "Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión"}
               - {id: CRM-07.02.01.09, c: A, fase: 6, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/marketplace_service.py", t: "Paquetes instalables por tenant y gestión de dependencias"}
       - id: "7.3"
         nombre: Gobierno y cumplimiento
@@ -966,9 +966,9 @@ modulos:
             capacidades:
               - {id: CRM-08.01.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (histogramas por endpoint y tenant)", t: "Objetivos de latencia: p95 y p99 por tipo de operación, medidos por tenant"}
               - {id: CRM-08.01.01.02, c: A, fase: 0, svc: infra, estado: pendiente, t: "Escalado horizontal independiente por servicio"}
-              - {id: CRM-08.01.01.03, c: C, fase: 0, svc: docs, estado: pendiente, t: "Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s"}
+              - {id: CRM-08.01.01.03, c: C, fase: 0, svc: docs, estado: hecho, t: "Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s"}
               - {id: CRM-08.01.01.04, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:scripts/split_concurrent_indexes.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Estrategia de particionado y archivado para objetos de alto volumen"}
-              - {id: CRM-08.01.01.05, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/load_test.py", t: "Pruebas de carga reproducibles y publicadas"}
+              - {id: CRM-08.01.01.05, c: A, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/load_test.py", t: "Pruebas de carga reproducibles y publicadas"}
               - {id: CRM-08.01.01.06, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/degradation.py", t: "Degradación controlada del servicio no crítico bajo pico"}
       - id: "8.2"
         nombre: Compromisos de servicio
@@ -976,10 +976,10 @@ modulos:
           - id: CRM-08.02.01
             nombre: Compromisos
             capacidades:
-              - {id: CRM-08.02.01.01, c: C, fase: 0, svc: docs, estado: pendiente, t: "SLA de disponibilidad por tier con penalizaciones"}
-              - {id: CRM-08.02.01.02, c: C, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "RPO/RTO comprometidos y verificados"}
-              - {id: CRM-08.02.01.03, c: C, fase: 0, svc: infra, estado: pendiente, t: "Ventanas de mantenimiento anunciadas y, preferentemente, sin corte"}
-              - {id: CRM-08.02.01.04, c: C, fase: 0, svc: docs, estado: pendiente, t: "Política de soporte: niveles, horarios, tiempos de respuesta y escalado"}
+              - {id: CRM-08.02.01.01, c: C, fase: 0, svc: docs, estado: hecho, t: "SLA de disponibilidad por tier con penalizaciones"}
+              - {id: CRM-08.02.01.02, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "RPO/RTO comprometidos y verificados"}
+              - {id: CRM-08.02.01.03, c: C, fase: 0, svc: infra, estado: hecho, t: "Ventanas de mantenimiento anunciadas y, preferentemente, sin corte"}
+              - {id: CRM-08.02.01.04, c: C, fase: 0, svc: docs, estado: hecho, t: "Política de soporte: niveles, horarios, tiempos de respuesta y escalado"}
               - {id: CRM-08.02.01.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py + app/api/exports.py", t: "Portabilidad: exportación completa del tenant en formato abierto y documentado"}
               - {id: CRM-08.02.01.06, c: A, fase: 0, svc: docs, estado: pendiente, t: "Reversibilidad y plan de salida contractual"}
 

@@ -1,0 +1,52 @@
+# Recogida de métricas de contecrm.
+#
+# Un solo Prometheus para toda la pila. Cada servicio publica `/metrics` en su
+# puerto interno, así que se listan por nombre de red de Docker: en un
+# despliegue sobre máquinas, esto se sustituye por descubrimiento de servicios y
+# lo único que cambia es esta sección.
+global:
+  scrape_interval: 15s
+  # El plazo tiene que ser MENOR que el intervalo: si no, una recogida lenta se
+  # solapa con la siguiente y Prometheus acumula peticiones contra un servicio
+  # que ya va justo.
+  scrape_timeout: 10s
+  external_labels:
+    entorno: ${ENV:-dev}
+
+rule_files:
+  - /etc/prometheus/alertas.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: contecrm
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - tenancy:8000
+          - identity:8000
+          - metadata:8000
+          - orchestrator:8000
+          - automation:8000
+          - integration:8000
+          - eventing:8000
+          - party:8000
+          - sales:8000
+          - analytics:8000
+          - gateway:8000
+    relabel_configs:
+      # El nombre del servicio sale del destino y no de una etiqueta escrita a
+      # mano: así no hay forma de que un servicio nuevo llegue con la etiqueta
+      # del que se copió, que es el error que hace que dos servicios compartan
+      # gráfica y nadie lo note.
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: servicio
+        replacement: "$1"
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -6,29 +6,29 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 200 | 93 | 16 | 91 |
+| 0 — Plataforma y arquitectura transversal | 200 | 96 | 16 | 88 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 52 | 24 | 7 | 21 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
 | 4 — Servicio y atención al cliente | 62 | 0 | 0 | 62 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
 | 6 — Productividad y colaboración | 12 | 1 | 2 | 9 |
-| 7 — Administración, ALM y gobierno | 25 | 11 | 2 | 12 |
-| 8 — Requisitos no funcionales | 12 | 2 | 0 | 10 |
+| 7 — Administración, ALM y gobierno | 25 | 12 | 2 | 11 |
+| 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
 ## Por criticidad
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 182 | 100 |
-| A — Avanzado | 318 | 36 |
+| C — Core | 182 | 109 |
+| A — Avanzado | 318 | 37 |
 | D — Diferencial | 39 | 2 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 180 | 97 |
+| 0 · Cimientos | Módulo 0 completo | 180 | 107 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 73 | 40 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 105 | 1 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 47 | 0 |

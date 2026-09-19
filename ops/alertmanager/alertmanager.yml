@@ -1,0 +1,34 @@
+# Encaminamiento de alertas.
+#
+# Dos rutas y no cinco: lo crítico despierta a alguien, lo demás espera a la
+# mañana. Una escala de cinco niveles obliga a decidir en cada alerta cuál es, y
+# con la duda se acaba poniendo el intermedio, que no despierta a nadie y tampoco
+# se revisa.
+route:
+  receiver: registro
+  group_by: [alertname, servicio]
+  # Se agrupa 30 s antes de mandar: cuando cae un servicio saltan tres alertas a
+  # la vez y mandar tres avisos del mismo incidente entrena a ignorarlos.
+  group_wait: 30s
+  group_interval: 5m
+  # Repetir cada 4 h y no cada 10 min: una alerta que se repite sin parar se
+  # silencia, y silenciada ya no avisa de nada.
+  repeat_interval: 4h
+  routes:
+    - matchers: [severidad = "critica"]
+      receiver: guardia
+      repeat_interval: 1h
+
+receivers:
+  # Por defecto solo registra. Configurar un destino real —correo, chat,
+  # teléfono— es del despliegue y va aquí; dejar puesto un destino de ejemplo
+  # haría que las alertas de un cliente acabaran en el chat de otro.
+  - name: registro
+  - name: guardia
+
+inhibit_rules:
+  # Si el servicio está caído, no hace falta avisar además de que va lento: es
+  # la misma incidencia contada dos veces.
+  - source_matchers: [alertname = "ServicioCaido"]
+    target_matchers: [alertname =~ "LatenciaAlta|ErroresDeServidor"]
+    equal: [servicio]

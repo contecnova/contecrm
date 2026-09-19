@@ -202,6 +202,11 @@ def cambiar_estado(
 def exigir_operativo(db: Session, tenant_id: UUID, *, escritura: bool) -> Tenant:
     """Comprueba que el tenant puede operar. Lo llama el gateway en cada petición.
 
+    El estado `solo_lectura` es lo que hace posible una ventana de mantenimiento
+    sin corte (CRM-08.02.01.03): quien consulta sigue trabajando y quien escribe
+    recibe un 409 que dice qué pasa, en vez de un error genérico o una pantalla
+    que no responde.
+
     Se separan lectura y escritura porque el estado `solo_lectura` es la razón
     de ser de esta función: permite cortar las escrituras sin cortar el acceso.
     """

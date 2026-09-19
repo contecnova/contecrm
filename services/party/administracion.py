@@ -276,6 +276,7 @@ PLAN_CUENTAS = PlanImportacion(
     crear=_crear_cuenta,
     actualizar=_actualizar_cuenta,
     columnas_obligatorias=("nombre",),
+    modelo=Cuenta,
 )
 
 

@@ -33,6 +33,7 @@ from crmcore.config_parts import (
     _LimitsSettings,
     _ObsSettings,
     _SecuritySettings,
+    _ServicioSettings,
     _TenancySettings,
 )
 
@@ -62,6 +63,7 @@ class Settings(
     _LimitsSettings,
     _ObsSettings,
     _SecuritySettings,
+    _ServicioSettings,
     BaseSettings,
 ):
     """Ajustes comunes a todos los servicios.

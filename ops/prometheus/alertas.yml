@@ -1,0 +1,132 @@
+# Alertas de contecrm.
+#
+# **Toda alerta lleva su runbook.** Una alerta sin instrucciones despierta a
+# alguien a las tres de la mañana para que averigüe desde cero qué significa, y
+# lo que pasa después es que se silencia. Hay un gate
+# (`tests/unit/test_alertas_con_runbook.py`) que falla si una alerta no enlaza
+# un runbook que exista.
+#
+# Y toda alerta dice **qué hacer**, no solo qué pasa: «la tabla de salida se
+# está atascando» es un hecho; «los eventos dejarán de entregarse y hay que
+# mirar el bus» es accionable.
+groups:
+  - name: disponibilidad
+    rules:
+      - alert: ServicioCaido
+        expr: up{job="contecrm"} == 0
+        for: 2m
+        labels:
+          severidad: critica
+        annotations:
+          resumen: "El servicio {{ $labels.servicio }} no responde"
+          descripcion: >-
+            Prometheus lleva 2 minutos sin poder recoger métricas de
+            {{ $labels.servicio }}. Si es el gateway, el CRM está caído para
+            todos; si es otro, lo que está caído es su parte.
+          runbook_url: "https://contecrm/docs/runbooks/servicio-caido"
+
+      - alert: ErroresDeServidor
+        expr: |
+          sum by (servicio) (rate(crm_http_peticiones_total{status=~"5.."}[5m]))
+          /
+          sum by (servicio) (rate(crm_http_peticiones_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severidad: critica
+        annotations:
+          resumen: "Más del 5 % de las peticiones a {{ $labels.servicio }} fallan"
+          descripcion: >-
+            Uno de cada veinte usuarios está viendo un error. El umbral es del
+            5 % y no del 1 % porque por debajo de eso el ruido de un despliegue
+            dispararía la alerta cada semana.
+          runbook_url: "https://contecrm/docs/runbooks/errores-de-servidor"
+
+      - alert: LatenciaAlta
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (servicio, le) (rate(crm_http_duracion_segundos_bucket[5m]))
+          ) > 2
+        for: 10m
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: "{{ $labels.servicio }} tarda más de 2 s en el percentil 95"
+          descripcion: >-
+            Una de cada veinte peticiones tarda más de dos segundos. Se mide el
+            percentil 95 y no la media porque la media la esconde: con noventa
+            peticiones de 50 ms, diez de diez segundos dan una media de un
+            segundo que parece aceptable.
+          runbook_url: "https://contecrm/docs/runbooks/latencia-alta"
+
+  - name: entrega-de-eventos
+    rules:
+      - alert: TablaDeSalidaAtascada
+        expr: crm_outbox_antiguedad_segundos > 300
+        for: 5m
+        labels:
+          severidad: critica
+        annotations:
+          resumen: "Hay eventos sin publicar desde hace más de 5 minutos en {{ $labels.servicio }}"
+          descripcion: >-
+            La antigüedad del pendiente más viejo dice mucho más que cuántos
+            hay: mil eventos publicándose sin parar es normal, uno atascado
+            desde hace una hora es un incidente. Nada de lo que dependa de
+            eventos —webhooks, avisos, automatizaciones— está ocurriendo.
+          runbook_url: "https://contecrm/docs/runbooks/tabla-de-salida-atascada"
+
+      - alert: EventosFallando
+        expr: |
+          sum by (servicio) (rate(crm_eventos_consumidos_total{resultado="error"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: "Los consumidores de {{ $labels.servicio }} están fallando"
+          descripcion: >-
+            Los eventos se reintentan, así que esto no se pierde de inmediato —
+            pero lo que se reintenta sin parar acaba en la cola de fallidos, y de
+            ahí no sale solo.
+          runbook_url: "https://contecrm/docs/runbooks/eventos-fallando"
+
+  - name: cuotas-y-limites
+    rules:
+      - alert: TenantCercaDeSuCuota
+        expr: crm_cuota_consumida_pct > 90
+        for: 15m
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: "{{ $labels.tenant }} lleva el {{ $value | printf \"%.0f\" }} % de su cuota de {{ $labels.cuota }}"
+          descripcion: >-
+            Es una alerta COMERCIAL antes que técnica: el cliente va a chocar con
+            un tope y hay que hablar con él antes de que le pase, no después.
+          runbook_url: "https://contecrm/docs/runbooks/tenant-cerca-de-su-cuota"
+
+      - alert: DemasiadosRechazosPorLimite
+        expr: sum by (servicio, dimension) (rate(crm_limites_aplicados_total[5m])) > 1
+        for: 10m
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: "Se están rechazando peticiones por límite de {{ $labels.dimension }}"
+          descripcion: >-
+            O un cliente se ha desbocado —una integración en bucle— o el límite
+            se ha quedado corto para su uso normal. Las dos cosas se arreglan,
+            pero de forma distinta.
+          runbook_url: "https://contecrm/docs/runbooks/demasiados-rechazos-por-limite"
+
+  - name: explotacion
+    rules:
+      - alert: ExplotacionNoDisponible
+        expr: up{servicio="analytics"} == 0
+        for: 5m
+        labels:
+          severidad: aviso
+        annotations:
+          resumen: "El servicio de explotación no responde"
+          descripcion: >-
+            Los informes y los cuadros de mando no funcionan. El CRM operativo
+            sí: la explotación está desacoplada a propósito (RT-4), así que esto
+            es un aviso y no una emergencia.
+          runbook_url: "https://contecrm/docs/runbooks/explotacion-no-disponible"

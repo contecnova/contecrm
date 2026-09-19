@@ -1,0 +1,21 @@
+{
+  "medido_at": "2026-09-19T03:15:22.451202+00:00",
+  "cuentas": 20000,
+  "maquina": {
+    "sistema": "Darwin",
+    "procesador": "arm64",
+    "python": "3.12.7"
+  },
+  "aviso": "Medido contra un Postgres embebido en una sola máquina, sin red ni concurrencia. Son un SUELO comparable entre versiones, no una promesa de capacidad en producción.",
+  "medidas": {
+    "altas_por_segundo": 23373,
+    "alta_total_s": 0.9,
+    "indexadas_por_segundo": 969,
+    "documentos_indexados": 20000,
+    "busqueda_ms_mediana": 2.8,
+    "busqueda_ms_p95": 3.3,
+    "listado_ms_mediana": 3.1,
+    "listado_ms_p95": 3.6,
+    "tamano_base": "31 MB"
+  }
+}
