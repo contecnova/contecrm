@@ -29,12 +29,12 @@ No son declaraciones: cada una tiene un gate que falla si se rompe.
 
 ## Estado
 
-El alcance está en un [catálogo funcional](catalogo/catalogo.yaml) de **539
+El alcance está en un [catálogo funcional](catalogo/catalogo.yaml) de **555
 capacidades** con identificador estable, del que salen el manual, la matriz de
 trazabilidad y el gate que impide declarar hecho lo que no lo está.
 
 - **[Resumen por módulo, criticidad y fase](catalogo/resumen.md)**
-- **[Estado de las 539 capacidades](catalogo/estado.md)**
+- **[Estado de las 555 capacidades](catalogo/estado.md)**
 - **[Qué se reutiliza de las otras soluciones de la casa](REUTILIZACION.md)**
 
 Las fases 0 (plataforma) y 1 (núcleo de datos de cliente y ventas básica) son
@@ -58,7 +58,7 @@ con nombre y apellidos al final del [Manual III](manual-3-funcionalidades.md).
 
 ## Estado del proyecto
 
-La hoja de estado (`docs/hoja-estado.html`) enseña las 539 capacidades con su
+La hoja de estado (`docs/hoja-estado.html`) enseña las 555 capacidades con su
 estado real, filtrables por fase, servicio, criticidad y texto, y dice de cada
 capacidad «en curso» qué hay y qué falta.
 

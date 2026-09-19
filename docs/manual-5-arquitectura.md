@@ -206,7 +206,7 @@ tests/integration/            aislamiento real contra Postgres
 
 No está escondido: las 15 capacidades a medias están listadas con su detalle al
 final del [Manual III](manual-3-funcionalidades.md), y el estado completo de las
-539 en [el catálogo](catalogo/estado.md). Lo más relevante para quien evalúe hoy:
+555 en [el catálogo](catalogo/estado.md). Lo más relevante para quien evalúe hoy:
 
 - **Idempotencia y ETag** están implementados como módulo y **no enganchados**
   ruta por ruta.

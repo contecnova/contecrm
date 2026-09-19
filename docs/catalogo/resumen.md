@@ -6,7 +6,7 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 200 | 102 | 10 | 88 |
+| 0 — Plataforma y arquitectura transversal | 216 | 102 | 10 | 104 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 52 | 24 | 7 | 21 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
@@ -20,17 +20,17 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 182 | 113 |
-| A — Avanzado | 318 | 40 |
+| C — Core | 196 | 113 |
+| A — Avanzado | 320 | 40 |
 | D — Diferencial | 39 | 2 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 180 | 114 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 73 | 40 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 105 | 1 |
+| 0 · Cimientos | Módulo 0 completo | 179 | 114 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 79 | 40 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 116 | 1 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 47 | 0 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 55 | 0 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 49 | 0 |
@@ -38,12 +38,12 @@
 
 ## Reutilización
 
-**299 de 539** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**304 de 555** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|
 | contecmind | 130 |
-| contecflow-PSA | 89 |
+| contecflow-PSA | 94 |
 | contecweb | 38 |
 | contecpos | 20 |
 | contecintelligence (RT-4 | 15 |

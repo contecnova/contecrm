@@ -250,7 +250,7 @@ modulos:
             nombre: Motor de orquestación de procesos
             capacidades:
               - {id: CRM-00.03.02.01, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/services/workflows.py + workflow_checkpoints.py + app/models/workflow_run.py", t: "Motor de workflow persistente y duradero (reanuda tras caída, sin perder estado)"}
-              - {id: CRM-00.03.02.02, c: A, fase: 0, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/models/bpmn_process.py + app/services/bpmn_process_service.py; contecmind:app/services/bpmn.py", t: "Modelado visual de procesos (BPMN 2.0 o equivalente) más definición como código"}
+              - {id: CRM-00.03.02.02, c: C, fase: 1, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/models/bpmn_process.py + app/services/bpmn_process_service.py; contecmind:app/services/bpmn.py", t: "Modelado visual de procesos (BPMN 2.0 o equivalente) más definición como código"}
               - {id: CRM-00.03.02.03, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Orquestación (saga orquestada con coordinador central)"}
               - {id: CRM-00.03.02.04, c: A, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts + outbox.ts", t: "Coreografía por eventos para flujos de bajo acoplamiento"}
               - {id: CRM-00.03.02.05, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Compensaciones explícitas por paso (rollback semántico de sagas)"}
@@ -258,7 +258,7 @@ modulos:
               - {id: CRM-00.03.02.07, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/tasks/_cron.py + app/core/scheduler.py", t: "Timers, esperas, fechas límite y escalados temporales dentro del proceso"}
               - {id: CRM-00.03.02.08, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Sub-procesos, procesos reutilizables y llamadas entre procesos"}
               - {id: CRM-00.03.02.09, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (motor multi-etapa + SoD + SLA + delegación); contecweb:app/services/approvals/engine.py", t: "Tareas humanas: asignación, bandeja de tareas, reasignación, delegación, SLA"}
-              - {id: CRM-00.03.02.10, c: A, fase: 0, svc: orchestrator, estado: en-curso, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
+              - {id: CRM-00.03.02.10, c: C, fase: 0, svc: orchestrator, estado: en-curso, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
               - {id: CRM-00.03.02.11, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Instancias de proceso consultables: estado, historial, variables, punto de fallo"}
               - {id: CRM-00.03.02.12, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Reintento, salto de paso y edición de variables en caliente por un administrador"}
               - {id: CRM-00.03.02.13, c: D, fase: 2, svc: orchestrator, estado: pendiente, t: "Migración de instancias en vuelo a una nueva versión del proceso"}
@@ -293,6 +293,26 @@ modulos:
               - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
               - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
               - {id: CRM-00.03.04.11, c: D, fase: 6, svc: integration, estado: pendiente, t: "Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA"}
+
+          - id: CRM-00.03.05
+            nombre: Workflows de negocio — aprobaciones, escalados y revisiones
+            capacidades:
+              - {id: CRM-00.03.05.01, c: C, fase: 1, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/models/workflow_designer.py (lienzo de nodos y versiones)", t: "Editor gráfico de flujos: el lienzo de nodos y conexiones ES la definición, no un dibujo que la documenta"}
+              - {id: CRM-00.03.05.02, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "La misma definición como gráfico y como código (JSON/YAML), intercambiables sin pérdida ni segunda fuente de verdad"}
+              - {id: CRM-00.03.05.03, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible"}
+              - {id: CRM-00.03.05.04, c: C, fase: 1, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/workflows.py (simulate_workflow)", t: "Simulación con datos reales antes de publicar: qué ruta seguiría, quién aprobaría y cuánto tardaría"}
+              - {id: CRM-00.03.05.05, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión"}
+              - {id: CRM-00.03.05.06, c: C, fase: 2, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/requests.py (quórum y decisiones)", t: "Aprobaciones en cadena y en paralelo con quórum configurable: todos, mayoría, cualquiera, N de M"}
+              - {id: CRM-00.03.05.07, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Resolución del aprobador por regla: jerarquía de mando, importe, unidad de negocio, rol o campo del registro"}
+              - {id: CRM-00.03.05.08, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Delegación y sustitución por ausencia con vigencia, sin perder la traza de quién decidió de verdad"}
+              - {id: CRM-00.03.05.09, c: C, fase: 2, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/timeouts.py", t: "Escalado por tiempo, por inactividad y por jerarquía, con aviso antes de escalar y no solo después"}
+              - {id: CRM-00.03.05.10, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Reaprobación automática cuando cambia lo aprobado: un descuento aprobado que sube vuelve a aprobación"}
+              - {id: CRM-00.03.05.11, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Aprobación automática bajo umbral, registrada como tal: quién la habría tenido que dar y por qué no hizo falta"}
+              - {id: CRM-00.03.05.12, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Decidir desde el correo o el móvil sin entrar al CRM, con enlace firmado de un solo uso y caducidad"}
+              - {id: CRM-00.03.05.13, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Bandeja unificada de lo que me toca decidir, con el contexto suficiente para decidir sin abrir el registro"}
+              - {id: CRM-00.03.05.14, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Vista de la instancia sobre el propio gráfico: por dónde va, qué queda y dónde falló"}
+              - {id: CRM-00.03.05.15, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero"}
+              - {id: CRM-00.03.05.16, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/analytics.py", t: "Analítica del flujo: dónde se atasca, cuánto tarda cada paso y quién es el cuello de botella"}
 
       - id: "0.4"
         nombre: Extensibilidad y modelo de datos

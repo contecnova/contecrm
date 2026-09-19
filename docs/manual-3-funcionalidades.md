@@ -8,7 +8,7 @@ prueba que lo sostiene.
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 539 capacidades está en
+> el estado completo de las 555 capacidades está en
 > [el estado del catálogo](catalogo/estado.md), donde 86 constan como hechas.
 
 ---
@@ -1600,3 +1600,180 @@ declarada tiene ejecutor — declarar una sin él es peor que no declararla.
 
 Y una regla que emita un evento que no está en el catálogo se rechaza: nadie lo
 consumiría, así que la regla parecería funcionar sin hacer nada.
+
+---
+
+## 23. Workflows de negocio: aprobaciones, escalados y revisiones (requisito, fases 1–2)
+
+> **Estado honesto: nada de esta sección está construido todavía.** Las dieciséis
+> capacidades del grupo `CRM-00.03.05` están en `pendiente`, doce de ellas
+> críticas. Esto es el requisito escrito y razonado, no una descripción de
+> funcionamiento. Lo que sí existe hoy es el motor sobre el que se van a montar,
+> descrito en [Motor de procesos](#motor-de-procesos).
+
+En un CRM el workflow no es una utilidad más. Es donde vive la política de la
+empresa: quién puede firmar un descuento, a partir de qué importe hace falta una
+segunda firma, qué pasa cuando el que tiene que firmar está de vacaciones y qué
+pasa cuando nadie firma en tres días. Si eso no se puede definir sin abrir un
+editor de código, la política acaba viviendo en la cabeza de tres personas y en
+un hilo de correo.
+
+### Qué se hace distinto respecto a contecflow
+
+En `contecflow-PSA` la pieza existe y funciona, pero está **repartida en tres
+sitios que no son el mismo**:
+
+| Pieza | Dónde vive en contecflow | Qué ejecuta |
+| --- | --- | --- |
+| Motor de procesos | `app/services/bpmn_process_service.py` | Procesos BPMN |
+| Motor de aprobaciones | `app/services/approval_engine/` | Aprobaciones, quórum, plazos |
+| Diseñador visual | `app/models/workflow_designer.py` | Lienzos, versiones |
+
+Son tres motores con tres modelos de estado, tres sitios donde mirar cuando algo
+se queda parado y tres sitios donde arreglarlo. Una aprobación atascada no
+aparece en la vista de instancias del proceso, porque el proceso no sabe que
+existe.
+
+En contecrm hay **un solo motor**. Una aprobación es un proceso duradero como
+cualquier otro: una tarea humana (`CRM-00.03.02.09`) con un temporizador
+(`CRM-00.03.02.07`) y una ruta de compensación. Eso no es una decisión estética:
+
+- La bandeja de tareas humanas ya existe, con asignación por rol, delegación y
+  plazo. Una aprobación entra ahí sin inventar una bandeja paralela.
+- El rescate de instancias atascadas (`CRM-00.03.02.12`) sirve igual para una
+  aprobación colgada. No hay que escribir un segundo rescate.
+- La vista de instancia con entrada y salida de cada paso
+  (`CRM-00.03.02.11`) ya responde «¿por dónde va esto?» sin una consulta
+  distinta para las aprobaciones.
+- Los límites por tenant (`CRM-00.03.02.16`) se aplican solos.
+
+Lo que sí se porta de contecflow es lo que allí está bien resuelto y no depende
+de su arquitectura: el cálculo de quórum y delegación de
+`approval_engine/requests.py`, los plazos de `timeouts.py`, la simulación de
+`workflows.py` y el modelo de versiones borrador/publicado/archivado de
+`workflow_designer.py`. Está anotado capacidad a capacidad en el campo
+`reutiliza` del catálogo, para que no se reescriba por descuido.
+
+### El lienzo **es** la definición
+
+`CRM-00.03.05.01` y `CRM-00.03.05.02` dicen la misma cosa desde dos lados, y es
+la decisión que más consecuencias tiene.
+
+Lo habitual es tener una definición en JSON y, al lado, un dibujo que la
+documenta. En cuanto alguien toca el JSON, el dibujo miente, y como el dibujo es
+lo que mira negocio, negocio trabaja sobre algo falso.
+
+Aquí el gráfico y el texto son **dos vistas de la misma estructura**. Se edita
+arrastrando nodos o se edita el YAML, y no hay conversión con pérdida entre una
+y otra: la posición de los nodos se guarda como metadato del nodo, no como un
+fichero de dibujo aparte. Un cambio en el YAML mueve el gráfico y al revés.
+
+El coste de esta decisión, dicho por delante: obliga a que **todo** lo
+expresable en el motor sea expresable en el lienzo. No se puede añadir un tipo
+de paso que solo se configure por código, porque entonces el gráfico volvería a
+mentir. Es una restricción permanente sobre el motor, no una tarea que se
+termina.
+
+### Validar y simular antes de publicar, no después
+
+`CRM-00.03.05.03` valida la estructura: nodos a los que no llega ninguna ruta,
+ciclos sin condición de salida, ramas que no apuntan a nada, tareas humanas cuya
+regla de asignación no puede resolver a nadie en este tenant. Es la clase de
+error que, sin validación previa, se descubre con una instancia real parada y un
+cliente esperando.
+
+`CRM-00.03.05.04` va más allá y es lo que de verdad cambia cómo se trabaja:
+**simular con datos reales**. Se elige una oportunidad concreta que ya existe y
+el sistema dice qué ruta habría seguido, quién habría tenido que aprobar y
+cuánto habría tardado con los plazos configurados —sin ejecutar nada, sin
+notificar a nadie, sin tocar el registro.
+
+Quien define la política puede así responder «¿y si subo el umbral a 15.000?»
+probándolo contra las últimas doscientas oportunidades, en vez de publicándolo y
+esperando a ver qué pasa.
+
+### Versionado: las instancias en vuelo no cambian de reglas
+
+`CRM-00.03.05.05`. Borrador, publicado, archivado. Y la regla que importa: una
+instancia que empezó con la versión 3 **termina con la versión 3**, aunque se
+publique la 4 mientras corre.
+
+Lo contrario —que todas las instancias salten a la versión nueva— parece más
+limpio y es indefendible: alguien aprobó un paso bajo unas condiciones y el paso
+siguiente se evaluaría con otras. Cuando alguien pregunte por qué se aprobó
+aquello, la definición que se le enseñe tiene que ser la que estuvo vigente.
+
+### Aprobaciones: quién, cuántos y qué pasa si no contestan
+
+- **Cadena y paralelo con quórum configurable** (`CRM-00.03.05.06`): todos,
+  mayoría, cualquiera, N de M. Cuatro modos porque los cuatro se usan; ofrecer
+  solo «todos» obliga a modelar el resto con ramas y el gráfico se vuelve
+  ilegible.
+- **Aprobador resuelto por regla** (`CRM-00.03.05.07`): jerarquía de mando,
+  importe, unidad de negocio, rol, o un campo del propio registro. Nunca una
+  persona escrita a mano en la definición: el día que esa persona se va, todos
+  los flujos que la nombran se rompen a la vez.
+- **Delegación y sustitución por ausencia** (`CRM-00.03.05.08`) con vigencia. Y
+  la traza guarda **quién decidió de verdad**, no el nombre del titular. Una
+  aprobación firmada por un sustituto es válida; una aprobación que parece
+  firmada por quien no estaba, no.
+- **Escalado** (`CRM-00.03.05.09`) por tiempo, por inactividad y por jerarquía,
+  **con aviso antes de escalar**. Escalar sin avisar convierte al sistema en
+  algo contra lo que se trabaja: la gente descubre que su decisión se le ha
+  quitado. Con aviso, el escalado es una consecuencia anunciada.
+- **Reaprobación al cambiar lo aprobado** (`CRM-00.03.05.10`). Un descuento del
+  10 % aprobado que se edita al 25 % vuelve a aprobación. Sin esto, la
+  aprobación es un trámite que se hace pronto y se esquiva después, y todo el
+  control es teatro.
+- **Aprobación automática bajo umbral** (`CRM-00.03.05.11`), **registrada como
+  tal**: consta quién habría tenido que aprobarlo y por qué no hizo falta. Un
+  hueco en la traza y una aprobación automática se parecen demasiado como para
+  no distinguirlos explícitamente.
+
+### Decidir donde está la gente
+
+`CRM-00.03.05.12`: aprobar o rechazar desde el correo o el móvil, sin entrar al
+CRM, con **enlace firmado de un solo uso y con caducidad**. Un comercial de
+visita no abre el CRM para desbloquear un descuento; si la única forma de
+decidir es entrar, la decisión se retrasa hasta la noche.
+
+Firmado y de un solo uso porque el enlace viaja por correo: sin firma, cualquiera
+que lo reenvíe aprueba; sin un solo uso, el mismo enlace vale para la siguiente
+vez que se pida lo mismo.
+
+`CRM-00.03.05.13` es la otra mitad: una **bandeja única** de todo lo que me toca
+decidir, con el contexto suficiente en la propia bandeja —importe, margen,
+cliente, qué se pide y por qué— para decidir sin abrir el registro. Una bandeja
+que obliga a abrir cada elemento no ahorra nada.
+
+### Ver la instancia sobre el gráfico, y medir el flujo
+
+`CRM-00.03.05.14`: el estado de una instancia se enseña **sobre el mismo lienzo**
+que se dibujó, con el camino recorrido marcado, el nodo actual y lo que queda.
+Es la consecuencia natural de que el lienzo sea la definición: si lo fuera solo a
+medias, haría falta una segunda pantalla que contase lo mismo de otra forma.
+
+`CRM-00.03.05.16`, en `analytics` y por tanto resuelto vía contecintelligence
+([sección 17](#17-explotación-y-reporting-contecintelligence-sin-salir-del-crm)):
+dónde se atasca el flujo, cuánto tarda cada paso y quién es el cuello de
+botella. Sin esta medida, los plazos se ajustan por intuición.
+
+Y `CRM-00.03.05.15`, plantillas por sector clonables: nadie debería empezar un
+flujo de aprobación de descuentos desde un lienzo vacío.
+
+### Qué falta, y qué ya está
+
+Una dependencia real y una que no lo es, dichas ahora para no descubrirlas a
+mitad:
+
+1. `CRM-00.03.05.12` (decidir desde el correo) **no se puede entregar** hasta que
+   exista el repartidor de notificaciones, el mismo que falta para
+   `enviar_correo` en las automatizaciones. Ambas cosas se destraban a la vez, y
+   hasta entonces la capacidad se queda en `pendiente` aunque el resto del grupo
+   avance.
+2. La resolución de aprobador por jerarquía (`CRM-00.03.05.07`) **no bloquea
+   nada**: la jerarquía de mando ya existe. Es `superior_id` en la membresía del
+   tenant (`services/identity/modelos.py`), que es de donde sale la visibilidad
+   ascendente de `CRM-00.05.02.02`, y está en la membresía y no en el usuario
+   porque la misma persona puede ser responsable en un tenant y colaborador en
+   otro. La detección de ciclos está en `crmcore/datos/jerarquia.py`.
