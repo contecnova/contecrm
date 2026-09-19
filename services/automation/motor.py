@@ -32,13 +32,20 @@ logger = get_logger(__name__)
 # Acciones admitidas. Lista cerrada: una automatización es dato del tenant, así
 # que no puede ejecutar nada que no esté aquí. Añadir una acción es una decisión
 # de producto, no algo que se cuele en una configuración.
+# Toda acción de esta lista TIENE ejecutor (`services.automation.ejecutores`), y
+# hay un gate que lo comprueba. Declarar una acción sin ejecutor es peor que no
+# declararla: la regla se guarda, se valida, se simula y al ejecutarse falla —o,
+# antes de esto, no hacía nada en silencio.
+#
+# `enviar_correo` estuvo aquí y se ha retirado: no hay con qué enviar hasta que
+# exista el repartidor de notificaciones (CRM-06.02.01.02). Una acción que no
+# puede ejecutarse entera no se ofrece.
 ACCIONES = frozenset(
     {
         "crear_registro",
         "actualizar_registro",
         "asignar",
         "notificar",
-        "enviar_correo",
         "llamar_api",
         "lanzar_proceso",
         "emitir_evento",

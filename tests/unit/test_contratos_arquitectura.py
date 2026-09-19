@@ -572,3 +572,26 @@ def test_todo_listado_de_objeto_sensible_proyecta_su_ordenacion() -> None:
         + "\n  ".join(faltan)
         + "\n\nPasa `objeto=` y `principal=` a `aplicar_orden_y_cursor`."
     )
+
+
+def test_toda_accion_de_automatizacion_tiene_ejecutor() -> None:
+    """Una acción declarada sin ejecutor es peor que no declararla.
+
+    La regla se guarda, se valida, se simula y al ejecutarse falla — o, como
+    pasó aquí durante meses, no hace nada en silencio. `enviar_correo` estuvo en
+    la lista sin que hubiera con qué enviar.
+    """
+    from services.automation.ejecutores import construir
+    from services.automation.motor import ACCIONES
+
+    class _UowFalsa:
+        tenant_id = None
+
+        def emitir(self, *_a: object, **_k: object) -> None:
+            pass
+
+    faltan = ACCIONES - set(construir(_UowFalsa()))
+    assert not faltan, (
+        f"Acciones declaradas sin ejecutor: {sorted(faltan)}. "
+        "O se implementa el ejecutor, o se quita la acción de la lista."
+    )

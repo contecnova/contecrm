@@ -271,7 +271,7 @@ modulos:
             capacidades:
               - {id: CRM-00.03.03.01, c: C, fase: 0, svc: automation, estado: hecho, reutiliza: "contecflow-PSA:app/models/automations.py + app/services/automations_service.py", t: "Constructor de automatizaciones tipo cuando ocurre X, si Y, entonces Z"}
               - {id: CRM-00.03.03.02, c: C, fase: 0, svc: automation, estado: hecho, reutiliza: "contecflow-PSA:app/services/automations_service.py (disparadores)", t: "Disparadores: creación, modificación de campo, eliminación, evento entrante, webhook, programado, manual"}
-              - {id: CRM-00.03.03.03, c: C, fase: 0, svc: automation, estado: en-curso, t: "Acciones: crear/actualizar registro, notificar, llamar API externa, lanzar proceso, asignar, calcular"}
+              - {id: CRM-00.03.03.03, c: C, fase: 0, svc: automation, estado: hecho, t: "Acciones: crear/actualizar registro, notificar, llamar API externa, lanzar proceso, asignar, calcular"}
               - {id: CRM-00.03.03.04, c: A, fase: 0, svc: automation, estado: pendiente, t: "Ramificaciones, bucles sobre colecciones y variables de flujo"}
               - {id: CRM-00.03.03.05, c: C, fase: 0, svc: automation, estado: hecho, t: "Ejecución inmediata vs. diferida vs. programada"}
               - {id: CRM-00.03.03.06, c: C, fase: 0, svc: automation, estado: hecho, t: "Gestión de orden de ejecución y prevención de bucles infinitos entre reglas"}

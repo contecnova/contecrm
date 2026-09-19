@@ -321,7 +321,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.02.01.11` Operaciones masivas | Topes definidos y validados | El endpoint por recurso, con informe parcial |
 | `CRM-00.02.01.12` API asíncrona | El motor de procesos cubre el trabajo largo | La API de *jobs* con id, sondeo y callback |
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
-| `CRM-00.03.03.03` Acciones de automatización | Declaradas y validadas contra una lista cerrada | Los ejecutores de negocio (llegan con la fase 1) |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
@@ -1528,3 +1527,76 @@ El motor es compartido: `tenancy` tenía su propia tabla de transiciones con su
 comprobación a mano, y al pasarla al motor ganó lo que le faltaba —restricción
 por tenant, auditoría automática y el mismo mensaje de error que el resto del
 sistema— sin cambiar una sola de sus reglas.
+
+---
+
+## 22. Las automatizaciones, ejecutándose de verdad
+
+Las reglas se guardaban, se validaban contra una lista cerrada de acciones y se
+podían simular. Lo que no pasaba es que hicieran nada: el motor llamaba a unos
+ejecutores que **nadie inyectaba**, y la función que dispara las reglas **no la
+llamaba nadie** (CRM-00.03.03.03).
+
+### Piden, no escriben
+
+Una automatización que crea una tarea o asigna un lead está pidiendo escribir en
+el esquema de otro servicio, y los permisos de base de datos lo impiden — a
+propósito, porque es lo que mantiene la propiedad exclusiva del dato. Así que
+los ejecutores **emiten comandos** y el servicio dueño los atiende.
+
+Un **comando** no es un evento con otro nombre: un evento dice lo que ha pasado
+y no espera nada; un comando pide que pase algo, tiene destinatario único, y
+perderlo significa que el trabajo no se hizo. Van por la tabla de salida como
+los eventos, así que si la transacción se deshace la orden no sale — lo
+contrario daría el caso de una regla creando una tarea por un registro que al
+final no se guardó.
+
+La única acción que se ejecuta en el sitio es **llamar a una API externa**: no
+hay otro servicio dueño de «internet». Va por el guard de SSRF y con plazo
+corto, porque corre dentro de la petición que disparó la regla.
+
+### Lo que un comando puede tocar lo decide el dueño del objeto
+
+Y esta es la parte que importa. Cada servicio declara **qué campos** admite por
+comando:
+
+| Objeto | Una regla puede | No puede |
+|---|---|---|
+| Actividad | crearla entera | — |
+| Cuenta | ciclo de vida, clasificación, tier, sector | nombre, NIF, propietario |
+| Lead | puntuación, origen, campaña | **estado** |
+| Oportunidad | probabilidad, fecha de cierre, descripción | **estado**, importe |
+
+Sin esa lista blanca, quien puede editar reglas podría hacer **por regla lo que
+no puede hacer por API**: fijar el propietario de cualquier registro, o cambiar
+un estado saltándose la máquina que exige motivo. Sería una escalada de
+privilegios disfrazada de configuración. Y la declara el dueño, no quien manda
+el comando — por la misma razón por la que un banco no deja que el ordenante
+decida qué campos de la cuenta de destino se modifican.
+
+Los campos descartados se registran con nombre. Ignorarlos en silencio haría que
+una regla mal configurada «funcionara» sin hacer lo que su autor cree.
+
+### Se disparan con los eventos de dominio
+
+No con una llamada de `party` a `automation`, y por tres razones: ataría sus
+despliegues, una caída del motor de reglas impediría dar de alta clientes, y una
+automatización no debe retrasar la operación que la dispara — quien guarda una
+cuenta espera a que se guarde su cuenta. Con eventos, además, si el motor está
+caído las reglas se ejecutan al volver en vez de perderse.
+
+El precio, dicho: entre que se guarda el registro y se ejecuta la regla pasa
+alrededor de un segundo. Para «asigna este lead» es irrelevante; lo que tenga
+que estar hecho antes de responder al usuario no es una automatización, es una
+regla de negocio del propio servicio.
+
+### Lo que no se puede ejecutar entero, no se ofrece
+
+`enviar_correo` estaba en la lista de acciones admitidas y **no había con qué
+enviar**. Una regla que lo usara se habría guardado, validado y ejecutado «bien»
+sin que saliera ningún correo. Está fuera de la lista hasta que exista el
+repartidor de notificaciones, y hay un gate que comprueba que toda acción
+declarada tiene ejecutor — declarar una sin él es peor que no declararla.
+
+Y una regla que emita un evento que no está en el catálogo se rechaza: nadie lo
+consumiría, así que la regla parecería funcionar sin hacer nada.
