@@ -113,7 +113,20 @@ def crear_cuenta(
         subject=("cuenta", cuenta.id),
         data={"cuenta_id": str(cuenta.id), "nombre": cuenta.nombre},
     )
+    _indexar(uow.db, "cuenta", cuenta)
     return cuenta
+
+
+def _indexar(db: Session, objeto: str, fila: Any) -> None:
+    """Pone el registro en el índice de búsqueda.
+
+    Se hace al escribir y no con una tarea nocturna: quien acaba de crear una
+    cuenta la busca a los diez segundos, y un índice con un día de retraso se
+    percibe —con razón— como que la búsqueda no funciona.
+    """
+    from services.party import indexacion
+
+    {"cuenta": indexacion.indexar_cuenta, "contacto": indexacion.indexar_contacto}[objeto](db, fila)
 
 
 def actualizar_cuenta(uow: UnidadDeTrabajo, cuenta_id: UUID, cambios: dict[str, Any]) -> Cuenta:
@@ -137,6 +150,9 @@ def actualizar_cuenta(uow: UnidadDeTrabajo, cuenta_id: UUID, cambios: dict[str, 
     registrar_cambios(
         uow.db, objeto="cuenta", objeto_id=cuenta.id, anterior=anterior, nuevo=cuenta.a_dict()
     )
+    # Reindexar al editar: si no, la búsqueda sigue encontrando el nombre
+    # viejo y no el nuevo, que es peor que no encontrar nada.
+    _indexar(uow.db, "cuenta", cuenta)
     return cuenta
 
 
@@ -379,6 +395,7 @@ def crear_contacto(
         objeto_id=contacto.id,
         datos={"nombre": completo, "cuenta_id": str(cuenta_id) if cuenta_id else None},
     )
+    _indexar(uow.db, "contacto", contacto)
     return contacto
 
 

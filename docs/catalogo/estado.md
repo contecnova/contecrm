@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**536 capacidades**: 🔧 27 en-curso · ✅ 137 hecho · ⬜ 372 pendiente
+**539 capacidades**: 🔧 27 en-curso · ✅ 138 hecho · ⬜ 374 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 92 · ⬜ 92
+200 capacidades · 🔧 16 · ✅ 93 · ⬜ 91
 
 ### 0.1 Multi-tenancy
 
@@ -29,7 +29,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.01.06` | Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier | A | 0 | core | ⬜ | — |
 | `CRM-00.01.01.07` | Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva | C | 0 | core | ✅ | contecmind:app/core/cache_registry.py |
 | `CRM-00.01.01.08` | Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta | C | 0 | core | ✅ | contecmind:app/core/storage.py (S3/MinIO, URLs firmadas) |
-| `CRM-00.01.01.09` | Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor) | C | 0 | core | ⬜ | contecmind:app/core/search (filtro forzado por tenant) |
+| `CRM-00.01.01.09` | Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor) | C | 0 | core | ✅ | contecmind:app/core/search (filtro forzado por tenant) |
 | `CRM-00.01.01.10` | Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado | A | 0 | core | ✅ | contecpos:packages/common/src/bus.ts (subjects por tenant) |
 
 #### CRM-00.01.02 · Garantías de no fuga de datos (tenant safety)
@@ -773,7 +773,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-54 capacidades · ⬜ 54
+57 capacidades · ⬜ 57
 
 ### 5.1 Reporting y BI
 
@@ -814,6 +814,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-05.01.04.06` | Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM | A | 2 | analytics | ⬜ | — |
 | `CRM-05.01.04.07` | Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió | A | 2 | analytics | ⬜ | — |
 | `CRM-05.01.04.08` | Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa | A | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.10` | contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.11` | Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.12` | Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM | A | 2 | analytics | ⬜ | — |
 | `CRM-05.01.04.09` | Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro | A | 5 | analytics | ⬜ | — |
 
 #### CRM-05.01.03 · Analítica avanzada

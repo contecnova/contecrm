@@ -113,6 +113,12 @@ GATES: list[Gate] = [
         "aislamiento entre tenants, motor de procesos y persistencia",
     ),
     Gate(
+        "migraciones",
+        [PY, "scripts/migraciones_locales.py", "comprobar"],
+        "tests",
+        "ningún modelo cambiado se ha quedado sin su migración",
+    ),
+    Gate(
         "docs",
         [PY, "-m", "mkdocs", "build", "--strict", "--quiet"],
         "todo",

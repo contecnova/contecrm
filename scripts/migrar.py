@@ -29,17 +29,28 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
-SERVICIOS = [
-    "tenancy",
-    "identity",
-    "metadata",
-    "orchestrator",
-    "automation",
-    "integration",
-    "eventing",
-    "party",
-    "sales",
-]
+
+def _servicios_con_modelos() -> list[str]:
+    """Los servicios que tienen tablas, leídos del árbol.
+
+    Escrita a mano, esta lista se queda desfasada en cuanto alguien añade un
+    servicio: lo normal es acordarse de crear la carpeta de migraciones y
+    olvidarse de esta constante, y entonces `--todos` salta ese servicio **en
+    silencio** y su esquema se queda sin migrar hasta que algo falla en
+    producción.
+
+    El criterio es tener `modelos.py`: un servicio sin tablas —el gateway— no
+    tiene nada que migrar, y pedirle una migración solo produce ruido.
+    """
+    servicios = RAIZ / "services"
+    return sorted(
+        p.name
+        for p in servicios.iterdir()
+        if p.is_dir() and not p.name.startswith("_") and (p / "modelos.py").exists()
+    )
+
+
+SERVICIOS = _servicios_con_modelos()
 
 
 def _config(servicio: str):  # noqa: ANN202 — alembic.config.Config, import perezoso

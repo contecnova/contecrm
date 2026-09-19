@@ -8,6 +8,7 @@ from uuid import UUID
 
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
+from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
@@ -871,6 +872,11 @@ from services.sales import retencion as _retencion  # noqa: E402,F401
 router_retencion = crear_router_retencion()
 
 
+from services.sales.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E402
+
+router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES)
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -881,4 +887,5 @@ ROUTERS = [
     router_origen,
     router_comentarios,
     router_retencion,
+    router_busqueda,
 ]

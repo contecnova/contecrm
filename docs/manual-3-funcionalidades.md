@@ -8,7 +8,7 @@ prueba que lo sostiene.
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 536 capacidades está en
+> el estado completo de las 539 capacidades está en
 > [el estado del catálogo](catalogo/estado.md), donde 86 constan como hechas.
 
 ---
@@ -1187,6 +1187,110 @@ más que la aplicación es una fuga con otro nombre.
 del CRM sigue funcionando. Atar el alta de un cliente a que el motor analítico
 esté vivo sería convertir una herramienta de consulta en una dependencia crítica.
 
+### Es una dependencia de despliegue, no una integración opcional
+
+Sin `contecintelligence` no hay explotación. Así que **la pila lo levanta con
+ella, o se le da la dirección de uno ya en marcha y alcanzable**
+(CRM-05.01.04.10), y eso se comprueba **al arrancar** (CRM-05.01.04.11), no la
+primera vez que alguien abre un informe: un fallo descubierto ahí aparece
+delante de un usuario, días después de desplegar y lejos de quien puede
+arreglarlo.
+
+En la práctica:
+
+```bash
+# Levantarlo con la pila
+docker compose --profile app --profile bi up
+
+# O usar uno que ya está en marcha, que es lo normal en una instalación
+# con varias soluciones de la casa
+CI_BASE_URL=http://10.0.0.20:8000 docker compose --profile app up
+```
+
+Va en su propio perfil (`bi`) por eso último: quien ya tiene un
+`contecintelligence` no debería levantar un segundo, con su base y su
+mantenimiento, para acabar teniendo dos modelos semánticos del mismo negocio.
+
+Arrancar en producción **falla** si la explotación está activa y falta la
+dirección o la credencial, con el motivo dicho entero. Y si esta instalación de
+verdad no va a usar informes, se apaga con `CI_ENABLED=false`: lo que no vale es
+tenerla encendida y sin configurar.
+
+Lo que **no** hace es impedir que el CRM arranque si `contecintelligence` no
+responde. El CRM operativo no puede depender de la herramienta de consulta:
+atar el alta de un cliente a que el motor analítico esté vivo sería convertir
+una herramienta en una dependencia crítica. Se avisa bien alto, la explotación
+queda degradada y `GET /analitica/estado` lo dice — que es lo que una pantalla
+mira antes de ofrecer informes, porque enseñar el botón y que falle al pulsarlo
+es peor que decir de entrada que no están disponibles. Quien prefiera lo
+contrario lo enciende con `CI_OBLIGATORIO_PARA_ARRANCAR`.
+
+### El servicio `analytics`
+
+Es la puerta, y **no calcula nada**. Guarda a qué organización de
+`contecintelligence` corresponde cada tenant —el mapeo es suyo, y es el control
+que impide que un token diga pertenecer a un cliente cualquiera—, canja el token
+corto, registra qué se ha preguntado y dice si la integración está viva.
+
+Los informes **no pasan por él**: los pide el navegador directamente con ese
+token. Eso es lo que hace que la explotación sea frontless de verdad y no un
+proxy que reimplementa media API ajena — y de paso, que la carga de una consulta
+pesada no atraviese el CRM.
+
+El rol que se manda sale de los permisos que la persona tiene aquí, y se traduce
+**a la baja**: ante la duda, el rol que menos ve. Equivocarse hacia arriba en una
+herramienta que responde con tablas enteras es enseñar de una vez lo que en el
+CRM se ve ficha a ficha.
+
 Queda declarado en el catálogo como el grupo **CRM-05.01.04**, de la fase 2 —
 junto con el resto de la explotación, que es cuando el CRM tiene datos que
 merezca la pena explotar.
+
+---
+
+## 18. Buscar, sin ver lo de otro
+
+El índice de búsqueda es la tercera vía silenciosa por la que un cliente acaba
+viendo el dato de otro, después de la caché y del almacén de ficheros. Y es la
+peor de las tres, porque un buscador **está hecho para encontrar**: una fuga aquí
+no espera a que alguien acierte con un identificador — le sirve al primero que
+teclee «acuerdo marco» los contratos de todos los clientes.
+
+Hay dos formas válidas de evitarlo (CRM-00.01.01.09): **un índice por tenant** o
+**un filtro por tenant que imponga el motor**. Lo que no vale es un índice
+compartido donde el filtro lo ponga quien consulta: basta una consulta escrita
+deprisa para que falte, y el resultado no da error — devuelve de más.
+
+Aquí se hace con la búsqueda de texto de Postgres, y el aislamiento sale de donde
+ya está: la tabla del índice lleva `tenant_id`, **RLS la cubre como a cualquier
+otra**, el filtro va explícito en cada consulta, y la firma obliga a pasar el
+tenant. Tres redes, y ninguna depende de que quien escribe la consulta se
+acuerde.
+
+**Por qué Postgres y no un motor aparte.** Un buscador dedicado es otra pieza que
+desplegar, vigilar, respaldar y aislar — y el aislamiento habría que construirlo
+entero, porque estos motores no traen RLS. Con el volumen de un CRM mediano, el
+texto completo de Postgres llega de sobra. El día que no llegue, el protocolo
+está ahí para meter otro backend sin tocar a quien lo llama; lo que no se hace es
+escribirlo hoy «por si acaso», porque un backend sin usuarios es un backend sin
+probar.
+
+Tres detalles que se notan al usarlo:
+
+- **Se indexa al escribir, no de noche.** Quien acaba de crear una cuenta la
+  busca a los diez segundos, y un índice con un día de retraso se percibe —con
+  razón— como que la búsqueda no funciona. Editar reindexa: si no, sigue
+  encontrándose el nombre viejo, que es peor que no encontrar nada.
+- **Se acepta lo que la gente escribe de verdad**: comillas para una frase,
+  `-palabra` para excluir. Y un paréntesis suelto no revienta — devolver un
+  error de sintaxis a quien solo estaba buscando un cliente no tiene sentido.
+- **Lo que se borra sale del índice.** Si no, sigue apareciendo y al pincharlo da
+  un 404, que es peor que no encontrarlo porque confirma que existe.
+
+La **búsqueda global** —la que mira en todo el CRM a la vez— la compone el
+gateway preguntando a cada servicio y ordenando por relevancia. Así ningún
+servicio necesita leer el esquema de otro, y el aislamiento de cada índice sigue
+siendo el de sus datos. Un servicio que no responda **no hace fallar la
+búsqueda**: se devuelve lo que haya y se dice cuáles faltan, porque media
+respuesta útil vale más que un error — y ocultar que falta la mitad sería peor
+que las dos cosas.

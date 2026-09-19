@@ -170,6 +170,23 @@ def run_migrations_online() -> None:
         conexion.commit()
 
 
+# Índices que `--autogenerate` NO puede comparar, con su motivo.
+#
+# Postgres **normaliza** la expresión de un índice al guardarla: lo que se
+# escribe como `to_tsvector('spanish', a || ' ' || b)` vuelve como
+# `to_tsvector('spanish'::regconfig, (((a)::text || ' '::text) || ...))`. La
+# comparación con lo que dice el modelo no coincide **nunca**, así que Alembic
+# propone borrarlo y recrearlo en cada generación: el ruido acabaría haciendo
+# que nadie mire lo que propone, que es peor que no generar nada.
+#
+# La lista es de nombres y está aquí a la vista, no es una regla que excluya
+# «los índices raros»: lo que no se compara hay que saber cuál es. Añadir o
+# cambiar uno de estos exige escribir la migración a mano.
+INDICES_NO_COMPARABLES = {
+    "ix_indice_texto",  # GIN sobre to_tsvector(...) del índice de búsqueda
+}
+
+
 def _solo_mi_esquema(objeto, nombre, tipo, reflejado, comparar_con) -> bool:  # noqa: ANN001
     """Qué entra en `--autogenerate`.
 
@@ -191,6 +208,8 @@ def _solo_mi_esquema(objeto, nombre, tipo, reflejado, comparar_con) -> bool:  # 
     `False`.
     """
     if nombre == "alembic_version":
+        return False
+    if tipo == "index" and nombre in INDICES_NO_COMPARABLES:
         return False
     if tipo == "table":
         esquema = getattr(objeto, "schema", None)

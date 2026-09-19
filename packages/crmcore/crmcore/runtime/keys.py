@@ -80,6 +80,21 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="sso_estado_ttl_s",
             sensible=True,
         ),
+        # Búsqueda (CRM-00.01.01.09)
+        _c(
+            "busqueda_idioma",
+            "str",
+            "Idioma con el que se derivan las palabras al buscar",
+            campo_settings="busqueda_idioma",
+        ),
+        _c(
+            "busqueda_max_resultados",
+            "int",
+            "Resultados devueltos por consulta",
+            minimo=1,
+            maximo=200,
+            campo_settings="busqueda_max_resultados",
+        ),
         # Salidas de red (CRM-00.01.01.08, webhooks, conector)
         _c(
             "url_guard_hosts_permitidos",

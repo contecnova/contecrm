@@ -29,6 +29,7 @@ from crmcore.config_parts import (
     _AuthSettings,
     _BusSettings,
     _DbSettings,
+    _IntelligenceSettings,
     _LimitsSettings,
     _ObsSettings,
     _SecuritySettings,
@@ -53,6 +54,7 @@ PLACEHOLDERS_INSEGUROS: frozenset[str] = frozenset(
 class Settings(
     _AppSettings,
     _AlmacenSettings,
+    _IntelligenceSettings,
     _DbSettings,
     _TenancySettings,
     _BusSettings,
@@ -150,6 +152,27 @@ class Settings(
             # Aviso, no error: hay despliegues donde el gateway solo atiende a
             # integraciones máquina-a-máquina y no necesita ningún origen.
             pass
+        if self.ci_enabled:
+            # RT-4: la explotación la resuelve contecintelligence, así que es
+            # una dependencia de despliegue. Sin dirección no hay informes, y
+            # eso tiene que decirse al arrancar y no cuando alguien abra el
+            # primero.
+            if not self.ci_base_url:
+                problemas.append(
+                    "CI_ENABLED está activo y falta CI_BASE_URL: la explotación del "
+                    "dato la resuelve contecintelligence (RT-4), así que hay que "
+                    "levantarlo con la pila o dar la dirección de uno ya en marcha. "
+                    "Si esta instalación no va a usar informes, pon CI_ENABLED=false."
+                )
+            if not self.ci_client_id or not (
+                self.ci_client_secret.get_secret_value() if self.ci_client_secret else ""
+            ):
+                problemas.append(
+                    "Faltan CI_CLIENT_ID o CI_CLIENT_SECRET: sin credencial de "
+                    "aplicación no se puede canjear el token de usuario final, y "
+                    "sin ese canje la única alternativa sería bajar la credencial "
+                    "al navegador, que es la llave de todos los tenants"
+                )
         if self.cache_backend == "memoria":
             problemas.append(
                 "CACHE_BACKEND=memoria en producción: cada réplica tendría su "

@@ -82,6 +82,10 @@ restricciones_transversales:
       pantallas y el contexto; las consultas las responde contecintelligence a
       través de su API delegada, con el tenant, el usuario y sus permisos
       propagados. El usuario no sale nunca de contecrm.
+      contecintelligence es por tanto una DEPENDENCIA DE DESPLIEGUE: la pila de
+      contecrm lo levanta con ella, o se le da la dirección de uno ya en marcha y
+      alcanzable. Sin él no hay explotación, y eso se comprueba al arrancar en
+      vez de descubrirse la primera vez que alguien abre un informe.
     gate: tests/unit/test_explotacion_delegada.py
 
 modulos:
@@ -104,7 +108,7 @@ modulos:
               - {id: CRM-00.01.01.06, c: A, fase: 0, svc: core, estado: pendiente, t: "Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier"}
               - {id: CRM-00.01.01.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/cache_registry.py", t: "Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva"}
               - {id: CRM-00.01.01.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py (S3/MinIO, URLs firmadas)", t: "Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta"}
-              - {id: CRM-00.01.01.09, c: C, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/search (filtro forzado por tenant)", t: "Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor)"}
+              - {id: CRM-00.01.01.09, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/search (filtro forzado por tenant)", t: "Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor)"}
               - {id: CRM-00.01.01.10, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts (subjects por tenant)", t: "Aislamiento de colas y streams: partición o topic por tenant para evitar bloqueo cruzado"}
 
           - id: CRM-00.01.02
@@ -826,6 +830,9 @@ modulos:
               - {id: CRM-05.01.04.06, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM"}
               - {id: CRM-05.01.04.07, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió"}
               - {id: CRM-05.01.04.08, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
+              - {id: CRM-05.01.04.10, c: C, fase: 2, svc: analytics, estado: pendiente, t: "contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha"}
+              - {id: CRM-05.01.04.11, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe"}
+              - {id: CRM-05.01.04.12, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM"}
               - {id: CRM-05.01.04.09, c: A, fase: 5, svc: analytics, estado: pendiente, t: "Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro"}
           - id: CRM-05.01.03
             nombre: Analítica avanzada

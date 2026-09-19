@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**136 ajustes** en total, de los cuales **45** son editables en caliente por tenant.
+**138 ajustes** en total, de los cuales **47** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -145,6 +145,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CACHE_TTL_S` | — | `300` | 1–86400 | TTL por defecto de una entrada. Cinco minutos: suficiente para absorber la ráfaga de una pantalla que pide lo mismo diez veces, y lo bastante corto para que un dato cambiado desde otra vía no se quede pegado. |
 | `CACHE_TTL_MAX_S` | — | `3600` | 1–604800 | Tope duro. Una entrada con un TTL enorme mantiene ocupada la memoria de lo ya invalidado por una purga, que no borra: hace inalcanzable. |
 | `CACHE_TTL_GENERACION_S` | — | `5` | 0–300 | Segundos que cada proceso recuerda la generación de un tenant sin volver a preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo purgado: es el precio explícito de no pagar un viaje de red por lectura. |
+| `BUSQUEDA_IDIOMA` | 🔥 `busqueda_idioma` | `spanish` |  | Configuración de texto de Postgres, que decide cómo se derivan las palabras. Con la equivocada, «facturas» no encuentra «factura» y la búsqueda parece rota sin que nada falle. Va por tenant porque un cliente portugués no busca igual que uno español. |
+| `BUSQUEDA_MAX_RESULTADOS` | 🔥 `busqueda_max_resultados` | `20` | 1–200 | Resultados por consulta. Más de una pantalla no se mira, y pedir mil obliga a Postgres a ordenar mil por relevancia para tirar novecientos. |
 
 ## Observabilidad y auditoría
 

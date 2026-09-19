@@ -7,9 +7,9 @@ from typing import Any
 import httpx
 from crmcore.config import get_settings
 from crmcore.errors import NoDisponible, NoEncontrado
-from crmcore.http.deps import PrincipalDep
+from crmcore.http.deps import AutenticadoDep, PrincipalDep
 from crmcore.logging import get_logger
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 
 from services.gateway import proxy, rutas
 
@@ -138,6 +138,81 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         },
         media_type=respuesta.headers.get("content-type"),
     )
+
+
+@router.get(
+    "/buscar",
+    summary="Buscar en todo el CRM",
+    description=(
+        "Pregunta a cada servicio por su índice y junta los resultados por "
+        "relevancia. La búsqueda global se compone aquí y no en un índice "
+        "compartido: así ningún servicio necesita leer el esquema de otro, y el "
+        "aislamiento de cada índice sigue siendo el mismo que el de sus datos.\n\n"
+        "Un servicio que no responda **no hace fallar la búsqueda**: se devuelve "
+        "lo que haya y se dice cuáles faltan. Media respuesta útil vale más que "
+        "un error, y ocultar que falta la mitad sería peor que las dos cosas."
+    ),
+)
+async def buscar_global(
+    peticion: Request,
+    principal: AutenticadoDep,
+    q: str = Query(..., min_length=1, max_length=300),
+    limite: int = Query(20, ge=1, le=100),
+) -> Any:
+    """Reparte la consulta entre los servicios que tienen índice."""
+    import asyncio
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    # Los servicios con índice. Se declara la lista en vez de preguntar a todos:
+    # el gateway ya sabe quién tiene búsqueda, y llamar a los diez para que
+    # siete devuelvan 404 multiplica por tres el tiempo de cada consulta.
+    con_indice = [s for s in ("party", "sales") if s in _destinos]
+
+    cabeceras = {
+        k: v
+        for k, v in peticion.headers.items()
+        if k.lower().startswith("x-") or k.lower() == "authorization"
+    }
+
+    async def _preguntar(servicio: str) -> tuple[str, list[dict[str, Any]] | None]:
+        destino = _destinos[servicio]
+        try:
+            respuesta = await _cliente.get(
+                f"{destino.url_base}/api/v1/buscar",
+                params={"q": q, "limite": limite},
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                return servicio, None
+            return servicio, list(respuesta.json().get("resultados") or [])
+        except Exception:  # noqa: BLE001 — un servicio caído no puede tumbar la búsqueda
+            return servicio, None
+
+    respuestas = await asyncio.gather(*(_preguntar(s) for s in con_indice))
+
+    resultados: list[dict[str, Any]] = []
+    fallidos: list[str] = []
+    for servicio, filas in respuestas:
+        if filas is None:
+            fallidos.append(servicio)
+            continue
+        for fila in filas:
+            resultados.append({**fila, "servicio": servicio})
+
+    resultados.sort(key=lambda r: float(r.get("relevancia") or 0), reverse=True)
+    if fallidos:
+        logger.warning("gateway.busqueda_parcial", servicios_caidos=fallidos)
+    return {
+        "consulta": q,
+        "total": len(resultados[:limite]),
+        "resultados": resultados[:limite],
+        # Se dice siempre, aunque esté vacío: quien lo consume tiene que poder
+        # distinguir «no hay resultados» de «no hemos podido preguntar».
+        "servicios_sin_responder": fallidos,
+    }
 
 
 ROUTERS = [router]

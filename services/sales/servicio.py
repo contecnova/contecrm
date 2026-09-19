@@ -61,6 +61,10 @@ def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
     # una regla puede repartir por campaña y necesita el origen ya resuelto.
     registrar_alta(uow.db, lead, tenant_id=tenant_id)
 
+    from services.sales.indexacion import indexar_lead
+
+    indexar_lead(uow.db, lead)
+
     # Enrutamiento automático (CRM-01.01.03.04). Solo si nadie lo trae asignado:
     # una asignación explícita —un comercial que da de alta su propio contacto—
     # manda sobre las reglas, porque quien lo escribe sabe algo que las reglas
@@ -376,6 +380,9 @@ def crear_oportunidad_nueva(
             "moneda": oportunidad.moneda,
         },
     )
+    from services.sales.indexacion import indexar_oportunidad
+
+    indexar_oportunidad(uow.db, oportunidad)
     return oportunidad
 
 

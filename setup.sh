@@ -40,7 +40,7 @@ titulo(){ echo -e "\n${VERDE}── $* ${FIN}"; }
 PY=".venv/bin/python"
 PIP=".venv/bin/pip"
 VAR="var"                 # pid, logs y datos locales; está en .gitignore
-SERVICIOS=(tenancy identity metadata orchestrator automation integration eventing party sales gateway)
+SERVICIOS=(tenancy identity metadata orchestrator automation integration eventing party sales analytics gateway)
 
 # Puertos locales. El gateway es el único que hace falta conocer: los demás
 # están detrás de él y se publican solo para poder llamarlos al depurar.
@@ -59,6 +59,7 @@ puerto_de() {
     eventing)     echo 8007 ;;
     party)        echo 8008 ;;
     sales)        echo 8009 ;;
+    analytics)    echo 8010 ;;
     gateway)      echo "${GATEWAY_PORT:-8080}" ;;
     *)            echo 0 ;;
   esac

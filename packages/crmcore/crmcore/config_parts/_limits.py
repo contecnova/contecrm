@@ -95,3 +95,13 @@ class _LimitsSettings(BaseSettings):
     # preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo
     # purgado: es el precio explícito de no pagar un viaje de red por lectura.
     cache_ttl_generacion_s: int = Field(5, ge=0, le=300)
+
+    # ── Búsqueda (CRM-00.01.01.09) ────────────────────────────────────────
+    # Configuración de texto de Postgres, que decide cómo se derivan las
+    # palabras. Con la equivocada, «facturas» no encuentra «factura» y la
+    # búsqueda parece rota sin que nada falle. Va por tenant porque un cliente
+    # portugués no busca igual que uno español.
+    busqueda_idioma: str = "spanish"
+    # Resultados por consulta. Más de una pantalla no se mira, y pedir mil
+    # obliga a Postgres a ordenar mil por relevancia para tirar novecientos.
+    busqueda_max_resultados: int = Field(20, ge=1, le=200)

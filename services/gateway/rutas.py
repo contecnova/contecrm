@@ -45,6 +45,7 @@ PREFIJOS: dict[str, str] = {
     "pipeline": "sales",
     "lead-routing": "sales",
     "origen": "sales",
+    "analitica": "analytics",
     "sharing-rules": "identity",
     "notificaciones": "identity",
     "seguimientos": "identity",

@@ -19,6 +19,7 @@ from crmcore.config_parts._app import _AppSettings
 from crmcore.config_parts._auth import _AuthSettings
 from crmcore.config_parts._bus import _BusSettings
 from crmcore.config_parts._db import _DbSettings
+from crmcore.config_parts._intelligence import _IntelligenceSettings
 from crmcore.config_parts._limits import _LimitsSettings
 from crmcore.config_parts._obs import _ObsSettings
 from crmcore.config_parts._security import _SecuritySettings
@@ -30,6 +31,7 @@ __all__ = [
     "_AuthSettings",
     "_BusSettings",
     "_DbSettings",
+    "_IntelligenceSettings",
     "_LimitsSettings",
     "_ObsSettings",
     "_SecuritySettings",
