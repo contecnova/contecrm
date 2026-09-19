@@ -63,6 +63,10 @@ class ContextoPeticion:
     actor_real_id: UUID | None = None
     request_id: str = ""
     trace_id: str = ""
+    # El `traceparent` completo de W3C, no solo su trace_id. Hace falta entero
+    # para propagarlo a la siguiente llamada: con solo el trace_id habría que
+    # inventarse el span padre, y el árbol de la traza saldría plano.
+    traceparent: str = ""
     # api | ui | automatizacion | orquestador | bus | cli | sistema.
     # Es lo que rellena el «origen» del historial de campo (CRM-00.05.04.02):
     # sin esto, un cambio hecho por una automatización parece hecho a mano.

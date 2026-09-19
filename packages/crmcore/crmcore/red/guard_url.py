@@ -171,6 +171,14 @@ def _preparar(peticion: httpx.Request) -> None:
     caída. En un guard de seguridad, la simplicidad del pin vale más que el
     reintento.
     """
+    # El contexto de traza se inyecta en TODA salida, incluida la permitida por
+    # lista blanca y cada redirección: es la mitad que suele faltar, y sin ella
+    # cada servicio traza su trozo y acabamos con cinco trazas de un salto en
+    # vez de una de cinco. El identificador de traza no es un secreto —el
+    # estándar W3C está pensado para atravesar organizaciones—, así que no hay
+    # motivo para tratar distinto a un sistema externo.
+    _propagar_traza(peticion)
+
     host = peticion.url.host
     if host and host.lower() in _permitidos():
         return
@@ -201,6 +209,18 @@ def _preparar(peticion: httpx.Request) -> None:
         peticion.url = peticion.url.copy_with(host=veredicto.ips[0])
         peticion.headers["Host"] = cabecera
         peticion.extensions = {**peticion.extensions, "sni_hostname": host}
+
+
+def _propagar_traza(peticion: httpx.Request) -> None:
+    from crmcore.obs import trazas
+
+    cabeceras: dict[str, str] = {}
+    trazas.inyectar(cabeceras)
+    for clave, valor in cabeceras.items():
+        # `setdefault`: si quien construyó la petición ya puso un `traceparent`
+        # a mano, manda el suyo. Pisarlo rompería el caso de reenviar una
+        # petición conservando su traza original.
+        peticion.headers.setdefault(clave, valor)
 
 
 class _TransporteFijado(httpx.HTTPTransport):

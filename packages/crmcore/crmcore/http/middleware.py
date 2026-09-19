@@ -26,6 +26,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from crmcore.obs import trazas
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,15 @@ def _cabecera(scope: Scope, nombre: str) -> str:
         if clave == objetivo:
             return valor.decode("latin-1")
     return ""
+
+
+def _cabeceras(scope: Scope) -> dict[str, str]:
+    """Todas las cabeceras como diccionario, para el extractor de propagación.
+
+    OpenTelemetry espera un mapa, y el `scope` ASGI trae una lista de pares de
+    bytes. Se construye solo cuando hay que extraer contexto.
+    """
+    return {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
 
 
 class ContextoMiddleware:
@@ -84,6 +94,7 @@ class ContextoMiddleware:
             tenant_slug=pista,
             request_id=request_id,
             trace_id=trace_id,
+            traceparent=traceparent,
             origen="api",
         )
         token = fijar_contexto(ctx)
@@ -92,8 +103,14 @@ class ContextoMiddleware:
             if message["type"] == "http.response.start":
                 cabeceras = list(message.get("headers", []))
                 cabeceras.append((b"x-request-id", request_id.encode()))
-                if traceparent:
-                    cabeceras.append((b"traceparent", traceparent.encode()))
+                # Se devuelve el `traceparent` del tramo en curso si hay
+                # exportador, y el entrante si no. Devolver el entrante cuando
+                # sí se traza daría al cliente el identificador del padre y no
+                # el del tramo que acaba de ejecutarse, que es el que querría
+                # buscar en el visor.
+                saliente = trazas.traceparent_actual() or traceparent
+                if saliente:
+                    cabeceras.append((b"traceparent", saliente.encode()))
                 # Aviso de retirada de la versión de API, si hay fecha anunciada
                 # (CRM-00.02.01.07). Va en TODA respuesta: es el único canal que
                 # el integrador ya está leyendo.
@@ -104,7 +121,20 @@ class ContextoMiddleware:
             await send(message)
 
         try:
-            await self.app(scope, receive, send_con_correlacion)
+            # El tramo raíz continúa la traza de quien llama, y con el
+            # exportador apagado no cuesta nada: `span_entrante` devuelve un
+            # contexto vacío sin importar OpenTelemetry.
+            with trazas.span_entrante(
+                f"{scope.get('method', 'GET')} {scope.get('path', '/')}",
+                _cabeceras(scope),
+                **{
+                    "http.request.method": scope.get("method", ""),
+                    "url.path": scope.get("path", ""),
+                    "crm.request_id": request_id,
+                    "crm.tenant_slug": pista or None,
+                },
+            ):
+                await self.app(scope, receive, send_con_correlacion)
         finally:
             restaurar_contexto(token)
 

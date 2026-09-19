@@ -35,8 +35,15 @@ class _ObsSettings(BaseSettings):
     metrics_max_tenants: int = Field(200, ge=1, le=10_000)
 
     # ── Trazas (CRM-00.06.01.03) ──────────────────────────────────────────
+    # Apagado por defecto. Encenderlo SIN el paquete instalado impide arrancar,
+    # a propósito: arrancar en silencio sin trazas es el fallo que se descubre
+    # el día que hace falta la traza.
     tracing_enabled: bool = False
-    otel_endpoint: str = "http://localhost:4317"
+    # Por defecto el puerto OTLP/HTTP del colector (4318). El de gRPC es el 4317.
+    otel_endpoint: str = "http://localhost:4318/v1/traces"
+    # `http` no arrastra `grpcio` y atraviesa proxies corporativos sin
+    # configurar nada; `grpc` es el que piden algunos colectores.
+    otel_protocolo: Literal["http", "grpc"] = "http"
     # Fracción de peticiones trazadas (0..1). 1.0 en desarrollo; en producción
     # se baja porque el coste es real y una muestra basta para ver la forma.
     otel_sample_ratio: float = Field(0.1, ge=0.0, le=1.0)

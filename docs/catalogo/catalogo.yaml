@@ -258,7 +258,7 @@ modulos:
               - {id: CRM-00.03.02.07, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/tasks/_cron.py + app/core/scheduler.py", t: "Timers, esperas, fechas límite y escalados temporales dentro del proceso"}
               - {id: CRM-00.03.02.08, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Sub-procesos, procesos reutilizables y llamadas entre procesos"}
               - {id: CRM-00.03.02.09, c: C, fase: 0, svc: orchestrator, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (motor multi-etapa + SoD + SLA + delegación); contecweb:app/services/approvals/engine.py", t: "Tareas humanas: asignación, bandeja de tareas, reasignación, delegación, SLA"}
-              - {id: CRM-00.03.02.10, c: C, fase: 0, svc: orchestrator, estado: en-curso, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
+              - {id: CRM-00.03.02.10, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
               - {id: CRM-00.03.02.11, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Instancias de proceso consultables: estado, historial, variables, punto de fallo"}
               - {id: CRM-00.03.02.12, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Reintento, salto de paso y edición de variables en caliente por un administrador"}
               - {id: CRM-00.03.02.13, c: D, fase: 2, svc: orchestrator, estado: pendiente, t: "Migración de instancias en vuelo a una nueva versión del proceso"}
@@ -407,7 +407,7 @@ modulos:
             capacidades:
               - {id: CRM-00.06.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/logging.py (structlog + redacción PII)", t: "Logs estructurados con tenant_id, trace_id, user_id y correlación extremo a extremo"}
               - {id: CRM-00.06.01.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (577 líneas, Prometheus)", t: "Métricas por tenant: latencia, throughput, tasa de error, saturación"}
-              - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
+              - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
               - {id: CRM-00.06.01.04, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/prometheus/governance_alerts.yml", t: "SLO y error budget definidos por servicio y por tier de cliente"}
               - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
               - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: en-curso, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}

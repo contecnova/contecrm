@@ -422,4 +422,117 @@ def delegar(tarea_id: UUID, usuario_id: UUID, db: DbDep, principal: AutenticadoD
     return tarea
 
 
-ROUTERS = [router_def, router_inst, router_tareas]
+# ── Tablas de decisión (CRM-00.03.02.10) ──────────────────────────────────
+
+router_tablas = APIRouter(prefix="/tablas-decision", tags=["tablas de decisión"])
+
+
+@router_tablas.get(
+    "",
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Listar las tablas de decisión del tenant",
+)
+def listar_tablas(db: DbDep) -> Any:
+    from services.orchestrator.modelos import TablaDecision
+
+    filas = db.execute(select(TablaDecision).order_by(TablaDecision.clave)).scalars().all()
+    return {
+        "items": [
+            {
+                "clave": t.clave,
+                "nombre": t.nombre,
+                "politica": t.politica,
+                "activa": t.activa,
+                "reglas": len(t.reglas or []),
+            }
+            for t in filas
+        ]
+    }
+
+
+@router_tablas.get(
+    "/{clave}",
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Ver una tabla de decisión",
+)
+def ver_tabla(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.orchestrator import decision as dec
+
+    tabla = dec.leer(db, principal.tenant_id, clave)
+    return {
+        "clave": tabla.clave,
+        "nombre": tabla.nombre,
+        "politica": tabla.politica,
+        "activa": tabla.activa,
+        "entradas": tabla.entradas,
+        "salidas": tabla.salidas,
+        "reglas": tabla.reglas,
+    }
+
+
+@router_tablas.put(
+    "/{clave}",
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Crear o reemplazar una tabla de decisión",
+    description=(
+        "Valida la tabla antes de guardarla y devuelve el análisis de huecos y "
+        "solapes. Publicar con avisos es una decisión legítima —a veces el "
+        "hueco es un caso que no existe— pero queda registrada."
+    ),
+)
+def guardar_tabla(clave: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.orchestrator import decision as dec
+
+    datos = {**cuerpo, "clave": clave}
+    tabla = dec.guardar(db, principal.tenant_id, datos)
+    registrar(
+        db,
+        accion="tabla_decision.guardada",
+        objeto="tabla_decision",
+        objeto_id=tabla.id,
+        datos={"clave": clave, "reglas": len(tabla.reglas or [])},
+    )
+    return {"clave": tabla.clave, "analisis": dec.analizar(datos)}
+
+
+@router_tablas.post(
+    "/{clave}/evaluar",
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Evaluar la tabla con unas variables y ver por qué sale lo que sale",
+    description=(
+        "Devuelve el resultado **y la explicación**: qué reglas casaron, cuáles "
+        "no y en qué condición fallaron. Es de solo lectura: no ejecuta nada."
+    ),
+)
+def evaluar_tabla(
+    clave: str, variables: dict[str, Any], db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.orchestrator import decision as dec
+
+    return dec.decidir(db, principal.tenant_id, clave, variables).a_dict()
+
+
+@router_tablas.post(
+    "/validar",
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Validar y analizar una tabla sin guardarla",
+    description=(
+        "Para probar una tabla antes de publicarla: problemas de forma, huecos "
+        "de cobertura, solapes y reglas que nunca podrán casar."
+    ),
+)
+def validar_tabla(cuerpo: dict[str, Any]) -> Any:
+    from services.orchestrator import decision as dec
+
+    problemas = dec.validar(cuerpo)
+    return {
+        "valida": not problemas,
+        "problemas": problemas,
+        # El análisis solo tiene sentido sobre una tabla bien formada: sobre una
+        # con reglas que apuntan a entradas inexistentes diría cosas que no
+        # significan nada.
+        "analisis": dec.analizar(cuerpo) if not problemas else None,
+    }
+
+
+ROUTERS = [router_def, router_inst, router_tareas, router_tablas]

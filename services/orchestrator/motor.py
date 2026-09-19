@@ -73,6 +73,7 @@ from uuid import UUID
 
 from crmcore.errors import ErrorValidacion
 from crmcore.logging import get_logger
+from crmcore.obs import trazas
 from sqlalchemy.orm import Session
 
 from services.orchestrator.modelos import (
@@ -85,7 +86,22 @@ from services.orchestrator.modelos import (
 logger = get_logger(__name__)
 
 TIPOS_PASO = frozenset(
-    {"servicio", "decision", "humano", "espera", "evento", "subproceso", "paralelo", "fin"}
+    {
+        "servicio",
+        "decision",
+        # `tabla` es una decisión que vive FUERA del proceso, en una tabla que
+        # edita negocio (CRM-00.03.02.10). La diferencia con `decision` no es
+        # técnica: una condición escrita en el proceso la cambia quien publica
+        # el proceso, y la política de aprobaciones cambia cada trimestre sin
+        # que el flujo cambie.
+        "tabla",
+        "humano",
+        "espera",
+        "evento",
+        "subproceso",
+        "paralelo",
+        "fin",
+    }
 )
 
 # Operadores de las condiciones. Lista cerrada por la misma razón que en ABAC:
@@ -201,6 +217,15 @@ def validar_definicion(definicion: dict[str, Any]) -> list[str]:
 
         if tipo == "servicio" and not paso.get("operacion"):
             problemas.append(f"«{nombre}» es de tipo servicio y no declara operación")
+        if tipo == "tabla":
+            if not paso.get("tabla"):
+                problemas.append(f"«{nombre}» es un paso de tabla y no dice qué tabla")
+            # Las rutas de un paso de tabla se eligen por el valor de una salida.
+            # Sin decir cuál, el paso no sabría con qué comparar las rutas.
+            if paso.get("rutas") and not paso.get("segun"):
+                problemas.append(
+                    f"«{nombre}» declara rutas y no dice por qué salida enrutar (`segun`)"
+                )
         if tipo == "humano" and not paso.get("rutas"):
             problemas.append(f"«{nombre}» es una tarea humana y no declara rutas de respuesta")
         if tipo == "fin" and paso.get("siguiente"):
@@ -357,7 +382,20 @@ class Motor:
 
             inicio = time.perf_counter()
             try:
-                siguiente = self._ejecutar_paso(instancia, str(nombre), paso)
+                # Un tramo por paso (CRM-00.06.01.03). Es lo que la traza de la
+                # petición no puede dar: una orquestación que tarda dos días no
+                # sucede dentro de la llamada que la arrancó, y es donde está
+                # casi todo el tiempo que nadie se explica.
+                with trazas.span(
+                    f"proceso.{paso.get('tipo')}",
+                    **{
+                        "crm.proceso": definicion.clave,
+                        "crm.instancia_id": str(instancia.id),
+                        "crm.paso": str(nombre),
+                        "crm.intento": instancia.pasos_ejecutados + 1,
+                    },
+                ):
+                    siguiente = self._ejecutar_paso(instancia, str(nombre), paso)
             except _Espera as espera:
                 # No es un error: el proceso se detiene a propósito, esperando
                 # un temporizador, una persona o un evento.
@@ -420,6 +458,9 @@ class Motor:
                     return condicion.get("entonces")
             return paso.get("si_no") or paso.get("siguiente")
 
+        if tipo == "tabla":
+            return self._paso_tabla(instancia, nombre, paso)
+
         if tipo == "espera":
             # Temporizadores y esperas (CRM-00.03.02.07). Mientras espera, la
             # instancia no consume nada: solo tiene una fecha de despertar que
@@ -465,6 +506,54 @@ class Motor:
         raise ErrorValidacion(
             f"Tipo de paso no soportado: «{tipo}»", error_code="proceso.tipo_no_soportado"
         )
+
+    def _paso_tabla(
+        self, instancia: InstanciaProceso, nombre: str, paso: dict[str, Any]
+    ) -> str | None:
+        """Consulta una tabla de decisión y sigue por donde diga.
+
+        Las salidas se vuelcan en las variables de la instancia bajo la clave
+        que diga `guardar_en` (por defecto, el nombre del paso). Así el paso
+        siguiente las usa como cualquier otra variable, y el historial de la
+        instancia guarda **qué decidió la tabla y por qué**: sin eso, dentro de
+        seis meses nadie podrá explicar por qué aquel expediente fue al director
+        y no al responsable de zona, porque la tabla ya habrá cambiado.
+        """
+        from services.orchestrator.decision import decidir
+
+        decision = decidir(
+            self.db,
+            instancia.tenant_id,
+            str(paso.get("tabla")),
+            instancia.variables,
+        )
+        destino = str(paso.get("guardar_en") or nombre)
+        instancia.variables = {
+            **instancia.variables,
+            destino: decision.salidas,
+            # La explicación va aparte y con prefijo: es para auditar, no para
+            # que una condición posterior la lea por error como si fuera dato.
+            f"_{destino}_explicacion": decision.a_dict(),
+        }
+
+        rutas = paso.get("rutas") or {}
+        if rutas:
+            segun = str(paso.get("segun"))
+            valor = decision.salidas.get(segun)
+            elegida = rutas.get(str(valor))
+            if elegida:
+                return elegida
+            # Una salida sin ruta no se trata como «sigue recto»: casi siempre
+            # es que alguien añadió un valor a la tabla y no la rama que le
+            # corresponde, y seguir recto lo escondería.
+            if paso.get("si_no"):
+                return str(paso["si_no"])
+            raise ErrorValidacion(
+                f"«{nombre}»: la tabla decidió «{valor}» y no hay ruta para ese valor",
+                error_code="proceso.tabla_sin_ruta",
+                detalle={"salida": segun, "valor": valor, "rutas": sorted(rutas)},
+            )
+        return paso.get("siguiente")
 
     def _paso_servicio(
         self, instancia: InstanciaProceso, nombre: str, paso: dict[str, Any]

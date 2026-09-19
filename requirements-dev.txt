@@ -22,3 +22,9 @@ pre-commit==4.0.1
 # Sitio de documentación navegable.
 mkdocs==1.6.1
 mkdocs-material==9.5.49
+
+# El extra opcional de trazas (`requirements-otel.txt`) se instala en desarrollo
+# para que la suite pruebe el camino ENCENDIDO y no solo el apagado. Sin esto,
+# las pruebas de trazas comprobarían que no hacer nada no rompe nada, que es
+# justo lo que no hace falta comprobar.
+-r requirements-otel.txt

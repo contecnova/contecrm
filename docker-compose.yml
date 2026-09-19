@@ -347,6 +347,28 @@ services:
       - datos_prometheus:/prometheus
     ports: ["127.0.0.1:9090:9090"]
 
+  # Colector y almacén de trazas (CRM-00.06.01.03). Perfil `ops`, como
+  # Prometheus: una instalación que ya tiene colector apunta `OTEL_ENDPOINT` al
+  # suyo y no levanta este.
+  #
+  #     docker compose --profile app --profile ops up
+  #     TRACING_ENABLED=true docker compose --profile app up   # con colector propio
+  tempo:
+    image: grafana/tempo:2.6.1@sha256:ef4384fce6e8ad22b95b243d8fc165628cda655376fd50e7850536ad89d71d50
+    profiles: [ops]
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./ops/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - datos_tempo:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+      # Se publican en localhost para poder trazar un servicio que se ejecute
+      # fuera de compose, que es como se depura de verdad: el servicio en el
+      # IDE y el resto de la pila en contenedores.
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:4317:4317"
+
   grafana:
     image: grafana/grafana:11.3.1@sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c
     profiles: [ops]
@@ -358,7 +380,7 @@ services:
       - datos_grafana:/var/lib/grafana
       - ./ops/grafana:/etc/grafana/provisioning:ro
     ports: ["127.0.0.1:3000:3000"]
-    depends_on: [prometheus]
+    depends_on: [prometheus, tempo]
 
 volumes:
   # Los datos irremplazables se declaran con nombre para que sobrevivan a un
@@ -369,3 +391,4 @@ volumes:
   datos_redis:
   datos_prometheus:
   datos_grafana:
+  datos_tempo:

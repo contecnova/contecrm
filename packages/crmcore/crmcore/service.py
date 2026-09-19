@@ -101,6 +101,13 @@ def crear_servicio(
     async def ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
         logger.info("servicio.arranca", servicio=nombre, version=version, env=s.env)
 
+        # Antes que nada, para que el propio arranque se pueda trazar. Si
+        # `TRACING_ENABLED` está puesto y OpenTelemetry no está instalado, esto
+        # LANZA y el servicio no arranca: ver `crmcore.obs.trazas`.
+        from crmcore.obs import trazas
+
+        trazas.configurar(nombre, version)
+
         if necesita_db:
             from crmcore.db.session import get_engine, verificar_rol_sin_bypass
             from crmcore.tenancy.guard import instalar_guard

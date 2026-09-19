@@ -318,9 +318,7 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.01.02.05` Tenant fuzzing | Varias rutas responden 404 —y no 403— ante un identificador ajeno | La suite sistemática que lo pruebe en **todas** |
 | `CRM-00.01.04.07` Localización por tenant | Idioma, zona horaria y moneda guardados | Aplicarlos en formatos, calendarios y envíos |
 | `CRM-00.01.04.09` BYOK / CMEK | Rotación con clave anterior | Clave aportada y revocable por el cliente |
-| `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
-| `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
 | `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
@@ -1939,3 +1937,180 @@ escucha en ningún puerto — se habría quedado `unhealthy` para siempre y
 `restart: unless-stopped` lo habría reiniciado en bucle. Y sin aplicar
 migraciones, porque las aplica el servicio HTTP del mismo esquema: dos procesos
 migrando a la vez es la forma habitual de dejar un `alembic` a medias.
+
+---
+
+## 25. Tablas de decisión: la política de negocio como dato
+
+`CRM-00.03.02.10`. El modelo ya estaba; lo que faltaba era todo lo que hace que
+una tabla de decisión sirva para algo más que sustituir un `if` por un JSON.
+
+Una tabla dice cosas como «si el descuento pasa del 25 %, aprueba el director».
+La diferencia con escribir esa condición dentro del proceso no es técnica: la
+condición del proceso la cambia quien publica el proceso, y **la política de
+aprobaciones cambia cada trimestre sin que el flujo cambie**.
+
+### Cinco políticas de aciertos, y por qué hay que declarar una
+
+Sin declararla, dos reglas que casan a la vez dan un resultado que depende del
+orden de lectura de la base — y por tanto puede cambiar entre dos ejecuciones
+idénticas sin que nadie haya tocado nada.
+
+| Política | Qué hace | Cuándo |
+|---|---|---|
+| `unica` | Exactamente una debe casar; si casan dos, **error** | Quién aprueba, qué tipo impositivo se aplica: donde una ambigüedad no es aceptable |
+| `primera` | Gana la primera por orden de la tabla | Lo habitual: las reglas se leen como una escalera |
+| `prioridad` | Gana la de mayor prioridad declarada | Cuando el orden de lectura no es el de importancia |
+| `cualquiera` | Pueden casar varias, pero **deben coincidir** en la salida | Varias razones para la misma decisión |
+| `todas` | Acumula las salidas de todas las que casen | Etiquetar, avisar a varios |
+
+Con `prioridad`, a igual prioridad gana siempre la primera escrita. El desempate
+estable es el punto: sin él, dos ejecuciones idénticas pueden dar cosas
+distintas.
+
+### La explicación, no solo el resultado
+
+Una tabla que devuelve «director» y no dice por qué es tan opaca como el `if`
+que venía a sustituir. Evaluar devuelve las entradas resueltas, qué reglas
+casaron y —lo que de verdad se pregunta— **en qué condición falló cada una que
+no casó**:
+
+```json
+{ "salidas": { "aprobador": "comercial" }, "por_defecto": true,
+  "entradas": { "importe": 1000, "descuento": 5 },
+  "reglas": [
+    { "nombre": "descuento alto", "caso": false,
+      "fallo_en": { "entrada": "descuento", "operador": ">",
+                    "esperado": 25, "encontrado": 5 } } ] }
+```
+
+`por_defecto: true` dice que no casó nada y se usó el valor por defecto de la
+columna. «No casó nada» y «casó la regla que da ese valor» son cosas distintas,
+y en una auditoría la diferencia importa.
+
+### El análisis: huecos, solapes y reglas muertas
+
+Es lo que separa una tabla de decisión de una lista de `if`. Antes de publicar
+—`POST /tablas-decision/validar`, sin guardar nada— se busca:
+
+- **Huecos**: tramos que ninguna regla cubre. Si además no hay valor por defecto
+  ni una regla que case siempre, se marca `sin_red_de_seguridad`: ese hueco deja
+  la decisión sin respuesta, y se descubre normalmente con un expediente parado.
+- **Solapes**: pares de reglas que pueden casar a la vez. Bajo `unica` es un
+  error en cuanto pase.
+- **Reglas inalcanzables**: bajo `primera`, la que casa siempre que casaría otra
+  anterior es código muerto.
+
+**Lo que el análisis NO hace, dicho por delante:** no es un demostrador. Razona
+sobre intervalos numéricos y sobre igualdades de texto —de lo que están hechas
+casi todas las tablas reales— y se declara **indeciso** sobre lo demás
+(`contiene`, `en` con listas variables, condiciones que comparan contra otra
+variable del contexto) en vez de afirmar una cobertura que no puede demostrar.
+El informe trae esos casos con nombre y apellidos en `indecidibles`. Un
+analizador que dice «completa» cuando no lo sabe es peor que no tenerlo.
+
+También es conservador con los bordes: `<= 1000` y `> 1000` se declaran
+solapadas aunque solo se toquen en el punto exacto. Un falso positivo se
+descarta mirando; un falso negativo se descubre en producción.
+
+### El paso `tabla` en el motor de procesos
+
+```yaml
+quien_aprueba:
+  tipo: tabla
+  tabla: aprobacion_descuento
+  segun: aprobador          # por qué salida se enruta
+  rutas:
+    director: pedir_firma_direccion
+    comercial: continuar
+```
+
+Las salidas quedan en las variables de la instancia, y **la explicación
+completa** queda en `_quien_aprueba_explicacion`. Sin eso, dentro de seis meses
+nadie podrá decir por qué aquel expediente fue al director: la tabla ya habrá
+cambiado.
+
+Dos negativas deliberadas: una salida sin ruta **falla** en vez de seguir recto
+—casi siempre es que alguien añadió un valor a la tabla y no la rama que le
+toca, y seguir recto lo escondería—, y una tabla desactivada no se evalúa
+devolviendo su valor por defecto, porque eso haría que un proceso siguiera
+funcionando «bien» con la política equivocada.
+
+Y la validación de la definición rechaza publicar un paso de tabla sin tabla, o
+con rutas y sin `segun`: sin `segun` el paso no sabría con qué comparar las
+rutas y elegiría siempre la rama de escape.
+
+---
+
+## 26. Trazas distribuidas: del pico de latencia a la línea de log
+
+`CRM-00.06.01.03`. El contexto de traza ya viajaba —el middleware leía
+`traceparent`, lo propagaba y lo metía en cada línea de log—. Lo que faltaba era
+el **exportador**: mandar los tramos a un colector para ver dónde se fue el
+tiempo entre cinco servicios, que es la pregunta que los logs no contestan.
+
+### Encenderlas sin el paquete impide arrancar
+
+Es la decisión central y conviene entenderla antes que nada. OpenTelemetry es un
+extra opcional (`requirements-otel.txt`): el SDK y el exportador suman unos
+veinte megabytes y varias dependencias transitivas, y la mayoría de
+instalaciones no tienen colector.
+
+Pero si se pone `TRACING_ENABLED=true` **sin** el paquete, el servicio no
+arranca y dice las dos salidas: instalarlo o apagarlo. Lo contrario —arrancar
+con las trazas apagadas en silencio porque falta una dependencia— es el fallo
+que se descubre el día que hace falta la traza y no está. `TRACING_ENABLED=true`
+es una promesa; si no se puede cumplir, hay que decirlo cuando se hace.
+
+Apagadas, el coste es cero: no hay un solo `import opentelemetry` en el camino
+caliente. `span()` devuelve un contexto vacío. Una biblioteca de observabilidad
+que penaliza a quien no la usa acaba desactivada por otro motivo.
+
+### Qué se traza
+
+- **La petición HTTP**, que es la unidad que el usuario percibe.
+- **Cada paso de un proceso**, con la clave del proceso, la instancia y el paso.
+  Una orquestación que tarda dos días no sucede dentro de la llamada que la
+  arrancó, y es donde se pierde el tiempo de verdad.
+- **Toda salida de red**, porque se inyecta en el guard de salidas
+  (`crmcore.red`), que es por donde pasan todas las llamadas del servidor
+  incluidas las redirecciones. Esa es la mitad que suele faltar: sin ella cada
+  servicio traza su trozo y acabamos con cinco trazas de un salto en vez de una
+  de cinco.
+
+### Tres decisiones dentro
+
+**El muestreo respeta a quien empezó la traza** (`ParentBased`). Volver a
+muestrear por nuestra cuenta produciría trazas con agujeros —el tramo del
+servicio A está y el del B no—, que es peor que no tener traza, porque parece un
+fallo del sistema.
+
+**Un `traceparent` puesto a mano no se pisa.** Reenviar una petición conservando
+su traza original es un caso legítimo.
+
+**El tracer sale del proveedor que construimos**, no del global de
+OpenTelemetry. El global solo se puede fijar una vez por proceso y los intentos
+siguientes se ignoran con un aviso; tomándolo del nuestro, los tramos van
+siempre al colector configurado aunque otra biblioteca haya fijado el global
+antes. Se fija el global igualmente, como mejor esfuerzo, para que una
+biblioteca auto-instrumentada emita al mismo sitio.
+
+### La pila de observabilidad, y un hueco que salió al montarla
+
+El perfil `ops` levanta ahora **Tempo** además de Prometheus y Grafana, con los
+dos receptores OTLP (HTTP en 4318, gRPC en 4317) publicados en `localhost` para
+poder trazar un servicio que se ejecute fuera de compose — que es como se depura
+de verdad: el servicio en el IDE y el resto de la pila en contenedores.
+
+```
+docker compose --profile app --profile ops up
+```
+
+Quien ya tenga colector apunta `OTEL_ENDPOINT` al suyo y no levanta este.
+
+Y el hueco: **el compose montaba `./ops/grafana` como directorio de provisión y
+el directorio no existía**. Grafana arrancaba sin ninguna fuente de datos y
+había que darlas de alta a mano en cada entorno. Ahora se provisionan
+Prometheus y Tempo, enlazadas entre sí: se ve un pico de latencia, se salta a la
+traza que lo explica y de ahí al servicio, sin cambiar de pantalla ni copiar
+identificadores a mano.

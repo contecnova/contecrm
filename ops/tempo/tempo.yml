@@ -1,0 +1,42 @@
+# Tempo: el colector y almacén de trazas del perfil `ops` (CRM-00.06.01.03).
+#
+# Se eligió Tempo y no Jaeger por una razón práctica: Grafana ya está en esta
+# pila, y Tempo se consulta desde la misma pantalla en la que se miran las
+# métricas. Poder saltar de un pico de latencia a la traza que lo explica sin
+# cambiar de herramienta es la mitad del valor de tener trazas.
+#
+# Guarda en disco local y sin autenticación: es una pila de desarrollo. Para
+# producción, apuntar `OTEL_ENDPOINT` al colector de la casa y no levantar esto.
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        # Los dos, para que cambiar `OTEL_PROTOCOLO` no obligue a tocar nada
+        # más. El de la pila es `http`, que es el que atraviesa proxies.
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+ingester:
+  # Corto a propósito: en desarrollo se quiere ver la traza recién hecha, no
+  # esperar a que se cierre un bloque de cinco minutos.
+  max_block_duration: 30s
+
+compactor:
+  compaction:
+    # Retención. Una traza es útil mientras alguien investiga; a los tres días
+    # ya nadie la mira y solo ocupa disco.
+    block_retention: 72h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/blocks
+    wal:
+      path: /var/tempo/wal

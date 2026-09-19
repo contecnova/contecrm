@@ -1,0 +1,20 @@
+# Extra OPCIONAL: exportación de trazas a un colector (CRM-00.06.01.03).
+#
+# No está en `requirements.txt` a propósito, por la misma razón que SAML: la
+# mayoría de instalaciones no tienen colector, y la correlación por
+# `traceparent` en los logs —que sí funciona siempre— cubre el caso normal. El
+# SDK y el exportador suman unos veinte megabytes y varias dependencias
+# transitivas que no hay motivo para imponer.
+#
+#     pip install -r requirements-otel.txt
+#     TRACING_ENABLED=true
+#
+# Si se enciende `TRACING_ENABLED` sin esto instalado, el servicio **no
+# arranca** y dice qué falta. Es deliberado: una promesa de trazabilidad que se
+# incumple en silencio es peor que no hacerla.
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp-proto-http==1.27.0
+
+# Solo si el colector exige gRPC (OTEL_PROTOCOLO=grpc). Arrastra `grpcio`, que
+# compila y pesa; por eso está comentado y no es el defecto.
+# opentelemetry-exporter-otlp-proto-grpc==1.27.0

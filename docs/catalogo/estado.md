@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 19 en-curso · ✅ 157 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 17 en-curso · ✅ 159 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · 🔧 8 · ✅ 104 · ⬜ 104
+216 capacidades · 🔧 6 · ✅ 106 · ⬜ 104
 
 ### 0.1 Multi-tenancy
 
@@ -186,7 +186,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.02.07` | Timers, esperas, fechas límite y escalados temporales dentro del proceso | C | 0 | orchestrator | ✅ | contecmind:app/tasks/_cron.py + app/core/scheduler.py |
 | `CRM-00.03.02.08` | Sub-procesos, procesos reutilizables y llamadas entre procesos | A | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.09` | Tareas humanas: asignación, bandeja de tareas, reasignación, delegación, SLA | C | 0 | orchestrator | ✅ | contecmind:app/services/approval_engine/ (motor multi-etapa + SoD + SLA + delegación); contecweb:app/services/approvals/engine.py |
-| `CRM-00.03.02.10` | Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio | C | 0 | orchestrator | 🔧 | — |
+| `CRM-00.03.02.10` | Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio | C | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.11` | Instancias de proceso consultables: estado, historial, variables, punto de fallo | C | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.12` | Reintento, salto de paso y edición de variables en caliente por un administrador | A | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.13` | Migración de instancias en vuelo a una nueva versión del proceso | D | 2 | orchestrator | ⬜ | — |
@@ -339,7 +339,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.06.01.01` | Logs estructurados con tenant_id, trace_id, user_id y correlación extremo a extremo | C | 0 | core | ✅ | contecmind:app/core/logging.py (structlog + redacción PII) |
 | `CRM-00.06.01.02` | Métricas por tenant: latencia, throughput, tasa de error, saturación | C | 0 | core | ✅ | contecmind:app/core/metrics.py (577 líneas, Prometheus) |
-| `CRM-00.06.01.03` | Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones | A | 0 | core | 🔧 | contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts |
+| `CRM-00.06.01.03` | Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones | A | 0 | core | ✅ | contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts |
 | `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ⬜ | contecmind:ops/prometheus/governance_alerts.yml |
 | `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ✅ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
 | `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | 🔧 | contecmind:app/services/health_monitor.py + app/api/admin_health.py |

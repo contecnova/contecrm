@@ -1,0 +1,41 @@
+# Fuentes de datos de Grafana, provisionadas al arrancar.
+#
+# El compose montaba `./ops/grafana` como directorio de provisión y el
+# directorio **no existía**: Grafana arrancaba sin ninguna fuente y había que
+# darla de alta a mano en cada entorno. Se descubrió al añadir Tempo.
+#
+# Lo que hace que esto valga más que la suma de sus partes es `tracesToLogs` y
+# el enlace desde Prometheus: se ve un pico de latencia, se salta a la traza que
+# lo explica y de ahí al log de ese servicio, sin cambiar de pantalla ni copiar
+# identificadores a mano.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      # De una traza a las métricas del mismo servicio: el salto que contesta
+      # «¿esto le pasa solo a esta petición o a todas?».
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags:
+          - key: service.name
+            value: service
+      nodeGraph:
+        enabled: true
+      # El identificador de correlación que este CRM pone en cada tramo. Es el
+      # mismo que aparece en cada línea de log, así que sirve de puente entre
+      # los dos mundos.
+      search:
+        hide: false
