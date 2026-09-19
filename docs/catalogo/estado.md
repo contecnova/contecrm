@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 16 en-curso · ✅ 160 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 12 en-curso · ✅ 164 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · 🔧 5 · ✅ 107 · ⬜ 104
+216 capacidades · 🔧 1 · ✅ 111 · ⬜ 104
 
 ### 0.1 Multi-tenancy
 
@@ -69,9 +69,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.04.04` | Feature flags por tenant, por usuario y por porcentaje de tráfico | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py |
 | `CRM-00.01.04.05` | Catálogo de planes/entitlements que activa capacidades declarativamente | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes |
 | `CRM-00.01.04.06` | Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío | A | 0 | tenancy | ⬜ | contecflow-PSA:app/services/branding_service.py |
-| `CRM-00.01.04.07` | Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional | C | 0 | core | 🔧 | contecmind:app/services/i18n_labels.py + languages.py |
+| `CRM-00.01.04.07` | Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional | C | 0 | core | ✅ | contecmind:app/services/i18n_labels.py + languages.py |
 | `CRM-00.01.04.08` | Gestión de secretos y claves de integración por tenant (vault segmentado) | C | 0 | core | ✅ | contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py |
-| `CRM-00.01.04.09` | BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación | A | 0 | core | 🔧 | contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py |
+| `CRM-00.01.04.09` | BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación | A | 0 | core | ✅ | contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py |
 
 #### CRM-00.01.05 · Residencia, soberanía y cumplimiento por tenant
 
@@ -311,7 +311,7 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.05.03.01` | Cifrado en tránsito (TLS 1.3) y en reposo | C | 0 | infra | 🔧 | contecmind:deploy/nginx + docs/PENTEST_HARDENING.md |
+| `CRM-00.05.03.01` | Cifrado en tránsito (TLS 1.3) y en reposo | C | 0 | infra | ✅ | contecmind:deploy/nginx + docs/PENTEST_HARDENING.md |
 | `CRM-00.05.03.02` | Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional | A | 0 | core | ✅ | contecmind:app/db/encrypted_text.py + app/core/crypto.py |
 | `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | ✅ | contecmind:app/services/pii.py + sensitive_policy.py |
 | `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ⬜ | — |
@@ -342,7 +342,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.01.03` | Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones | A | 0 | core | ✅ | contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts |
 | `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ⬜ | contecmind:ops/prometheus/governance_alerts.yml |
 | `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ✅ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
-| `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | 🔧 | contecmind:app/services/health_monitor.py + app/api/admin_health.py |
+| `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | ✅ | contecmind:app/services/health_monitor.py + app/api/admin_health.py |
 | `CRM-00.06.01.07` | Auditoría de rendimiento por consulta y detección de queries degradadas por tenant | A | 0 | core | ⬜ | contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md |
 
 #### CRM-00.06.02 · Continuidad y resiliencia

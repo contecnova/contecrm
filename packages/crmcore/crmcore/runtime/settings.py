@@ -18,6 +18,7 @@ instantáneo y el TTL es la red por si se pierde el evento.
 
 from __future__ import annotations
 
+import hashlib
 import threading
 import time
 from datetime import datetime
@@ -159,6 +160,34 @@ def efectivo(clave: str, db: Session | None = None, *, default: Any = None) -> A
     return por_defecto
 
 
+AJUSTE_CAMBIADO = "configuracion.ajuste_cambiado"
+
+
+def _declarar_evento() -> None:
+    """Declara el evento de cambio de ajuste en el catálogo, una sola vez.
+
+    Se declara aquí y no en el `eventos.py` de un servicio porque el productor
+    es el núcleo: lo emite cualquier servicio en el que se escriba un ajuste, y
+    darle dueño a uno concreto sería mentir sobre quién lo publica.
+    """
+    from crmcore.events.catalogo import TipoEvento, obtener, registrar
+
+    if obtener(AJUSTE_CAMBIADO) is not None:
+        return
+    registrar(
+        TipoEvento(
+            tipo=AJUSTE_CAMBIADO,
+            version=1,
+            productor="core",
+            descripcion=(
+                "Un ajuste en caliente ha cambiado de valor en un ámbito. "
+                "Lo consumen TODOS los servicios para replicarlo en su esquema"
+            ),
+            campos=("clave", "ambito", "ambito_id", "valor", "quitado"),
+        )
+    )
+
+
 def fijar(
     db: Session,
     clave: str,
@@ -214,6 +243,7 @@ def fijar(
             "sensible": bool(CLAVES[clave].sensible),
         },
     )
+    _propagar(db, clave=clave, ambito=ambito, ambito_id=ambito_id, valor=convertido)
     invalidar(ambito, ambito_id)
     return convertido
 
@@ -229,14 +259,155 @@ def quitar(db: Session, clave: str, *, ambito: Ambito = "tenant", ambito_id: str
             AjusteRuntime.ambito_id == ambito_id,
         )
     )
+    _propagar(db, clave=clave, ambito=ambito, ambito_id=ambito_id, valor=None, quitado=True)
     invalidar(ambito, ambito_id)
+
+
+def _propagar(
+    db: Session,
+    *,
+    clave: str,
+    ambito: str,
+    ambito_id: str,
+    valor: Any,
+    quitado: bool = False,
+) -> None:
+    """Publica el cambio para que lo apliquen los demás servicios.
+
+    **Esto faltaba, y era un fallo de los que no se ven.** La tabla
+    `ajustes_runtime` vive en el esquema de CADA servicio —ninguno lee el de
+    otro— así que un ajuste escrito desde la consola de administración se
+    guardaba solo en el esquema de `tenancy`. `party` seguía formateando las
+    fechas con el valor de `.env` para siempre, y el administrador veía su
+    cambio guardado. Nadie lo llamaba avería: simplemente no pasaba nada.
+
+    El comentario de `invalidar` decía que las réplicas se enteraban «por el
+    evento `ajuste.cambiado` del bus», y ese evento **no lo emitía nadie**: solo
+    existía como acción de auditoría con ese nombre.
+
+    Va por la tabla de salida, en la misma transacción que la escritura: o se
+    guarda el ajuste y sale el evento, o no pasa ninguna de las dos cosas.
+    """
+    from crmcore.bus.outbox import encolar
+    from crmcore.tenancy.context import contexto_actual
+
+    _declarar_evento()
+    tenant_id = contexto_actual().tenant_id
+    if ambito == "tenant" and ambito_id:
+        # El ámbito manda sobre el contexto: un administrador de plataforma
+        # puede fijar un ajuste de un tenant desde fuera de él, y el evento
+        # tiene que ir marcado con el tenant afectado, no con el del que escribe.
+        try:
+            tenant_id = UUID(str(ambito_id))
+        except ValueError:
+            pass
+    encolar(
+        db,
+        tenant_id=tenant_id,
+        tipo=AJUSTE_CAMBIADO,
+        subject_tipo="ajuste",
+        subject_id=clave,
+        data={
+            "clave": clave,
+            "ambito": ambito,
+            "ambito_id": ambito_id,
+            "valor": valor,
+            "quitado": quitado,
+        },
+        # La clave de deduplicación sale del HECHO, no del instante: dos
+        # escrituras del mismo valor en el mismo ámbito son el mismo hecho, y
+        # aplicarlo dos veces es inocuo pero anotarlo dos veces confunde.
+        #
+        # Va resumida porque la columna son 64 caracteres y el hecho en claro
+        # —clave, ámbito, sujeto y valor— se pasa enseguida: un ajuste con un
+        # valor largo, como la política de sensibilidad, ocupa cientos. El
+        # prefijo se deja legible para poder buscar en la cola a ojo.
+        dedup_key="cfg:"
+        + hashlib.sha256(f"{ambito}|{ambito_id}|{clave}|{valor!r}|{quitado}".encode()).hexdigest()[
+            :56
+        ],
+    )
+
+
+async def consumir_ajuste(mensaje: Any) -> None:
+    """Aplica en ESTE servicio un ajuste cambiado en otro.
+
+    Lo registra `crear_servicio` en todos los servicios, sin que ninguno tenga
+    que acordarse: un servicio que no lo consumiera se quedaría con la
+    configuración de su `.env` mientras el resto del sistema usa la del cliente,
+    y esa divergencia es de las que tardan semanas en atribuirse.
+
+    Es idempotente: escribe el valor tal cual y vacía su caché. Recibirlo dos
+    veces —la entrega es at-least-once— deja el mismo estado.
+    """
+    # El mensaje llega como `Evento` desde NATS y como diccionario desde el bus
+    # en memoria. Se admiten los dos, y del diccionario se saca `data` si lo
+    # trae: tratarlo entero como el contenido dejaba el consumidor sin hacer
+    # nada y sin decirlo, que es el peor resultado posible para algo que
+    # replica configuración.
+    if isinstance(mensaje, dict):
+        datos = mensaje.get("data") if isinstance(mensaje.get("data"), dict) else mensaje
+    else:
+        datos = getattr(mensaje, "data", None) or {}
+    clave = str(datos.get("clave") or "")
+    if clave not in CLAVES:
+        # Una clave que este servicio no conoce: una versión más nueva la
+        # declaró. Se ignora sin ruido en vez de fallar, porque fallar llenaría
+        # la cola de mensajes correctos.
+        return
+
+    ambito = str(datos.get("ambito") or "tenant")
+    ambito_id = str(datos.get("ambito_id") or "")
+    from crmcore.db.uow import unidad_de_trabajo
+
+    with unidad_de_trabajo(sistema=True) as uow:
+        _aplicar_local(
+            uow.db,
+            clave=clave,
+            ambito=ambito,
+            ambito_id=ambito_id,
+            valor=datos.get("valor"),
+            quitado=bool(datos.get("quitado")),
+        )
+    invalidar(ambito, ambito_id)
+
+
+def _aplicar_local(
+    db: Session, *, clave: str, ambito: str, ambito_id: str, valor: Any, quitado: bool
+) -> None:
+    """Escribe el valor recibido SIN volver a propagarlo.
+
+    Separado de `fijar` a propósito: si el consumidor llamara a `fijar`, cada
+    servicio reemitiría el evento al aplicarlo y el bus entraría en un bucle que
+    crece con el número de servicios.
+    """
+    from sqlalchemy import delete
+
+    if quitado:
+        db.execute(
+            delete(AjusteRuntime).where(
+                AjusteRuntime.clave == clave,
+                AjusteRuntime.ambito == ambito,
+                AjusteRuntime.ambito_id == ambito_id,
+            )
+        )
+        return
+    db.execute(
+        pg_insert(AjusteRuntime)
+        .values(clave=clave, ambito=ambito, ambito_id=ambito_id, valor=valor)
+        .on_conflict_do_update(
+            index_elements=["clave", "ambito", "ambito_id"],
+            set_={"valor": valor, "updated_at": func.now()},
+        )
+    )
 
 
 def invalidar(ambito: str = "", ambito_id: str = "") -> None:
     """Invalida la caché local. Sin argumentos, la vacía entera.
 
-    Invalida **este proceso**. Las demás réplicas se enteran por el evento
-    `ajuste.cambiado` del bus, y si el evento se pierde, por el TTL.
+    Invalida **este proceso**. Los demás —otras réplicas y otros servicios— se
+    enteran por el evento `configuracion.ajuste_cambiado`, que ahora se emite de
+    verdad (ver `_propagar`); y si el evento se pierde, por el TTL.
     """
     with _lock:
         if ambito:

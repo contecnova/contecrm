@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from services.tenancy import servicio as svc
+from services.tenancy.api_byok import ROUTERS_BYOK
 from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.esquemas import (
     CambiarEstado,
@@ -271,4 +272,11 @@ def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     return salida
 
 
-ROUTERS = [router, router_planes, router_flags, router_ajustes, *ROUTERS_CATALOGOS]
+ROUTERS = [
+    router,
+    router_planes,
+    router_flags,
+    router_ajustes,
+    *ROUTERS_CATALOGOS,
+    *ROUTERS_BYOK,
+]

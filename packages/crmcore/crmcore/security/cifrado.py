@@ -44,12 +44,27 @@ logger = get_logger(__name__)
 # convivir con datos antiguos sin cifrar durante una migración, y saber de un
 # vistazo si una columna está cifrada de verdad.
 PREFIJO = "enc:v1:"
+# Propósito reservado: el sobre del material BYOK. Ver `_clave_del_tenant`.
+PROPOSITO_SOBRE = "byok"
 NONCE_BYTES = 12  # tamaño estándar de GCM; otro tamaño degrada la seguridad
 
 
-def _clave(proposito: str, *, previa: bool = False) -> bytes:
-    """Deriva la clave de 32 bytes para un propósito concreto."""
+def _clave(proposito: str, *, previa: bool = False, db: Any = None) -> bytes:
+    """Deriva la clave de 32 bytes para un propósito concreto.
+
+    Con BYOK activo (CRM-00.01.04.09) la clave sale del material que aportó el
+    tenant, envuelto con la maestra. Sin BYOK —o para un tenant que no lo usa—
+    sale solo de la maestra, que es el camino de siempre.
+
+    Si el tenant **revocó** su clave, esto lanza en vez de caer a la maestra.
+    Caer sería seguir descifrando datos que el cliente mandó hacer ilegibles.
+    """
     from crmcore.config import get_settings
+
+    if not previa:
+        propia = _clave_del_tenant(proposito, db)
+        if propia is not None:
+            return propia
 
     s = get_settings()
     maestra = (
@@ -68,16 +83,57 @@ def _clave(proposito: str, *, previa: bool = False) -> bytes:
     return hashlib.sha256(f"{proposito}|{maestra}".encode()).digest()
 
 
-def cifrar(valor: str, *, proposito: str = "general") -> str:
+def _clave_del_tenant(proposito: str, db: Any) -> bytes | None:
+    """La clave BYOK del tenant en curso, si la hay.
+
+    La sesión se resuelve sola cuando no se pasa: el cifrado se invoca desde
+    sitios que no la tienen a mano —un validador de Pydantic, un `before_flush`—
+    y obligar a pasarla por todos ellos habría significado tocar treinta
+    llamadas para una funcionalidad que la mayoría de instalaciones no enciende.
+    Cuando BYOK está apagado esto ni siquiera abre una sesión.
+    """
+    from crmcore.config import get_settings
+
+    if not get_settings().byok_enabled:
+        return None
+    if proposito == PROPOSITO_SOBRE:
+        # El sobre que guarda el material del cliente se cifra SIEMPRE con la
+        # maestra, por definición: es lo que envuelve a la clave del cliente, no
+        # puede depender de ella.
+        #
+        # Sin esta línea, abrir el sobre pedía la clave del tenant, que exigía
+        # abrir el sobre, que pedía la clave... Cada vuelta abría una sesión
+        # nueva y el fallo aparecía como «QueuePool limit reached», que manda a
+        # buscar una fuga de conexiones en el sitio equivocado.
+        return None
+
+    from crmcore.security.byok import clave_efectiva
+    from crmcore.tenancy.context import contexto_actual
+
+    tenant_id = contexto_actual().tenant_id
+    if tenant_id is None:
+        return None
+    if db is None:
+        from crmcore.db.session import nueva_sesion
+
+        db = nueva_sesion(tenant_id)
+        try:
+            return clave_efectiva(db, tenant_id, proposito)
+        finally:
+            db.close()
+    return clave_efectiva(db, tenant_id, proposito)
+
+
+def cifrar(valor: str, *, proposito: str = "general", db: Any = None) -> str:
     """Cifra un valor. Devuelve `enc:v1:<base64(nonce+cifrado)>`."""
     if valor == "":
         return ""
     nonce = os.urandom(NONCE_BYTES)
-    cifrado = AESGCM(_clave(proposito)).encrypt(nonce, valor.encode(), proposito.encode())
+    cifrado = AESGCM(_clave(proposito, db=db)).encrypt(nonce, valor.encode(), proposito.encode())
     return PREFIJO + base64.b64encode(nonce + cifrado).decode()
 
 
-def descifrar(valor: str, *, proposito: str = "general") -> str:
+def descifrar(valor: str, *, proposito: str = "general", db: Any = None) -> str:
     """Descifra un valor. Si no lleva la marca, lo devuelve tal cual.
 
     Devolver el valor sin marca en vez de fallar permite convivir con datos
@@ -91,7 +147,7 @@ def descifrar(valor: str, *, proposito: str = "general") -> str:
     crudo = base64.b64decode(valor[len(PREFIJO) :])
     nonce, cifrado = crudo[:NONCE_BYTES], crudo[NONCE_BYTES:]
     try:
-        return AESGCM(_clave(proposito)).decrypt(nonce, cifrado, proposito.encode()).decode()
+        return AESGCM(_clave(proposito, db=db)).decrypt(nonce, cifrado, proposito.encode()).decode()
     except InvalidTag:
         # Puede ser un valor cifrado con la clave anterior (rotación en curso) o
         # un valor manipulado. Se prueba con la anterior antes de rendirse.

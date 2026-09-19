@@ -29,6 +29,7 @@ from services.tenancy.catalogos import (
     Festivo,
     Plantilla,
     TipoCambio,
+    _clave_formato,
     convertir,
     es_laborable,
     fijar_tipo_cambio,
@@ -155,7 +156,7 @@ def previsualizar(plantilla_id: UUID, cuerpo: PruebaPlantilla, db: DbDep, _: Aut
     fila = db.get(Plantilla, plantilla_id)
     if fila is None:
         raise NoEncontrado("Plantilla no encontrada", error_code="tenancy.plantilla_no_existe")
-    asunto, texto = render(fila, cuerpo.datos)
+    asunto, texto = render(fila, cuerpo.datos, db=db)
     faltan = sorted(
         set(variables_sin_resolver(fila.asunto or "", cuerpo.datos))
         | set(variables_sin_resolver(fila.cuerpo or "", cuerpo.datos))
@@ -583,4 +584,56 @@ def certificados(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     )
 
 
-ROUTERS_CATALOGOS = [router_plantillas, router_calendarios, router_monedas, router_baja]
+# ── Localización (CRM-00.01.04.07) ────────────────────────────────────────
+
+router_localizacion = APIRouter(prefix="/localizacion", tags=["localizacion"])
+
+
+@router_localizacion.get(
+    "",
+    summary="Cómo se escriben aquí las fechas, los números y los importes",
+    description=(
+        "Las preferencias **ya resueltas** por la jerarquía global → tier → "
+        "tenant → unidad → usuario, con un ejemplo de cada una.\n\n"
+        "Existe porque el CRM es headless: si cada frontend resolviera los "
+        "ajustes por su cuenta, la web y el móvil acabarían escribiendo la "
+        "misma fecha de dos maneras. Los ejemplos no son decorativos — son el "
+        "contrato: un cliente puede comprobar que su formateo coincide con el "
+        "del servidor sin implementar la jerarquía."
+    ),
+)
+def localizacion(db: DbDep, _: AutenticadoDep) -> Any:
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    from crmcore import i18n
+
+    loc = i18n.resolver(db)
+    muestra = datetime(2026, 9, 18, 23, 30, tzinfo=timezone.utc)
+    return {
+        "idioma": loc.idioma,
+        "zona_horaria": str(loc.zona),
+        "formato_fecha": _clave_formato(loc),
+        "moneda_funcional": loc.moneda,
+        "primer_dia_semana": loc.primer_dia,
+        "dias_de_la_semana": loc.dias_de_la_semana(),
+        "ejemplos": {
+            # El instante es a las 23:30 UTC a propósito: en media Europa ya es
+            # el día siguiente, así que el ejemplo enseña si el huso se está
+            # aplicando de verdad o solo se está recortando la cadena.
+            "instante_utc": muestra.isoformat(),
+            "fecha": loc.fecha(muestra),
+            "fecha_hora": loc.fecha_hora(muestra),
+            "numero": loc.numero(Decimal("1234567.5")),
+            "importe": loc.importe(Decimal("1234567.5")),
+        },
+    }
+
+
+ROUTERS_CATALOGOS = [
+    router_plantillas,
+    router_calendarios,
+    router_monedas,
+    router_baja,
+    router_localizacion,
+]

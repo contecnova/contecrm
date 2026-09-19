@@ -82,6 +82,15 @@ def _construir_engine() -> Engine:
             # extensiones. Es lo que impide que un servicio lea por descuido una
             # tabla homónima de otro.
             "options": f"-csearch_path={s.esquema_resuelto},public",
+            # Cifrado en tránsito con la base (CRM-00.05.03.01). Va aquí y no
+            # en la URL para que sea **un ajuste**, revisable en un sitio, en
+            # vez de un parámetro escondido en una cadena de conexión que cada
+            # entorno escribe a su manera — que es como acaba habiendo uno en
+            # producción sin `sslmode` y nadie lo ve.
+            #
+            # Si la URL ya trae `sslmode`, manda ella: hay despliegues donde la
+            # cadena la genera el proveedor de la base y no se puede tocar.
+            **({} if "sslmode" in s.database_url else {"sslmode": s.db_sslmode}),
         },
     )
     _instalar_hooks_rls(engine)

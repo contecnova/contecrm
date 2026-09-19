@@ -145,9 +145,9 @@ modulos:
               - {id: CRM-00.01.04.04, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py", t: "Feature flags por tenant, por usuario y por porcentaje de tráfico"}
               - {id: CRM-00.01.04.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes", t: "Catálogo de planes/entitlements que activa capacidades declarativamente"}
               - {id: CRM-00.01.04.06, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/branding_service.py", t: "Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío"}
-              - {id: CRM-00.01.04.07, c: C, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/i18n_labels.py + languages.py", t: "Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional"}
+              - {id: CRM-00.01.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/i18n_labels.py + languages.py", t: "Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional"}
               - {id: CRM-00.01.04.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py", t: "Gestión de secretos y claves de integración por tenant (vault segmentado)"}
-              - {id: CRM-00.01.04.09, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py", t: "BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación"}
+              - {id: CRM-00.01.04.09, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py", t: "BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación"}
 
           - id: CRM-00.01.05
             nombre: Residencia, soberanía y cumplimiento por tenant
@@ -379,7 +379,7 @@ modulos:
           - id: CRM-00.05.03
             nombre: Protección del dato
             capacidades:
-              - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: en-curso, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
+              - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
               - {id: CRM-00.05.03.02, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/encrypted_text.py + app/core/crypto.py", t: "Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional"}
               - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
               - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: pendiente, t: "Tokenización de datos de pago o identificadores fiscales"}
@@ -410,7 +410,7 @@ modulos:
               - {id: CRM-00.06.01.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts", t: "Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones"}
               - {id: CRM-00.06.01.04, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/prometheus/governance_alerts.yml", t: "SLO y error budget definidos por servicio y por tier de cliente"}
               - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
-              - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: en-curso, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
+              - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
               - {id: CRM-00.06.01.07, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Auditoría de rendimiento por consulta y detección de queries degradadas por tenant"}
 
           - id: CRM-00.06.02

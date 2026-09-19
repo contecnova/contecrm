@@ -127,6 +127,19 @@ class Settings(
     def proxies_de_confianza(self) -> list[str]:
         return [p.strip() for p in self.trusted_proxies.split(",") if p.strip()]
 
+    @property
+    def tls_efectivo(self) -> bool:
+        """Si hay que exigir HTTPS. `None` = encendido salvo en desarrollo.
+
+        El defecto va por entorno y no a `True` fijo porque en desarrollo se
+        trabaja contra `http://localhost` y un `True` fijo haría imposible el
+        ciclo local — que es exactamente cómo acaban desactivándose estas cosas
+        en el `.env` de producción por copiar el de alguien.
+        """
+        if self.tls_exigido is not None:
+            return bool(self.tls_exigido)
+        return self.env not in ("dev", "test")
+
     # ── Comprobaciones de arranque ────────────────────────────────────────
 
     def verificar_para_produccion(self) -> list[str]:
@@ -200,6 +213,39 @@ class Settings(
             problemas.append(
                 "BYOK activo sin ENCRYPTION_KEY: la clave del tenant se guarda "
                 "cifrada con la maestra, y no hay maestra"
+            )
+        # ── Cifrado en tránsito y en reposo (CRM-00.05.03.01) ─────────────
+        # Se falla al arrancar y no se avisa: un despliegue que habla con la
+        # base en claro no es «menos seguro», es un despliegue en el que
+        # cualquiera con acceso a la red lee y modifica los datos de todos los
+        # clientes. Y eso no se nota nunca desde dentro.
+        if self.db_sslmode in ("disable", "allow", "prefer"):
+            problemas.append(
+                f"DB_SSLMODE={self.db_sslmode} en producción: la conexión con Postgres "
+                "puede acabar en claro. Usa `require` como mínimo, y `verify-full` "
+                "si el certificado es verificable — es lo único que impide un "
+                "intermediario dentro de la propia red"
+            )
+        if not self.encryption_key.get_secret_value():
+            problemas.append(
+                "Falta ENCRYPTION_KEY en producción: los campos que el modelo declara "
+                "sensibles no se pueden cifrar, así que no se pueden ni escribir"
+            )
+        if self.hsts_max_age == 0:
+            problemas.append(
+                "HSTS_MAX_AGE=0 en producción: sin HSTS, la primera petición de cada "
+                "navegador puede ir por HTTP y ser interceptada antes de que exista "
+                "la sesión"
+            )
+        if self.tls_exigido is False:
+            problemas.append(
+                "TLS_EXIGIDO=false en producción: se aceptarían peticiones por HTTP, "
+                "con las credenciales y los datos del cliente en claro"
+            )
+        if self.storage_backend == "s3" and not self.storage_s3_ssl:
+            problemas.append(
+                "STORAGE_S3_SSL=false en producción: los adjuntos viajarían en claro "
+                "hacia el almacén, y ahí es donde están los contratos"
             )
         if self.trust_proxy_headers and not self.proxies_de_confianza:
             problemas.append(

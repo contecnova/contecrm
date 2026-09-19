@@ -139,6 +139,91 @@ class ContextoMiddleware:
             restaurar_contexto(token)
 
 
+class CifradoEnTransitoMiddleware:
+    """HSTS, cabeceras de seguridad y rechazo de HTTP en claro (CRM-00.05.03.01).
+
+    `HSTS_MAX_AGE` **estaba configurado y no se aplicaba en ninguna respuesta**:
+    el ajuste existía, se documentaba, y ninguna cabecera salía. Es el mismo
+    modo de fallo que una preferencia de idioma que no se aplica — nadie lo
+    llama avería porque no hay error, simplemente no pasa nada. Aquí sí pasa.
+
+    Qué hace, y por qué cada cosa:
+
+      * **HSTS**: le dice al navegador que no vuelva a hablar con este dominio
+        por HTTP. Sin él, la primera petición de cada navegador puede ir en
+        claro y ser interceptada antes de que exista la sesión.
+      * **Rechaza HTTP** cuando `TLS_EXIGIDO`. Se responde 403 y no se redirige:
+        una redirección a HTTPS llega después de que la credencial ya haya
+        viajado en claro, así que «arregla» la siguiente petición y no la que
+        importa.
+      * **`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`**: el
+        mínimo que evita que una respuesta de esta API se interprete como otra
+        cosa, se embeba en un marco ajeno o filtre la URL completa —con sus
+        identificadores— al navegar fuera.
+
+    El esquema real se lee de `X-Forwarded-Proto` **solo si hay proxy de
+    confianza declarado**. Sin esa condición, cualquiera mandaría la cabecera y
+    se saltaría la comprobación entera.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        from crmcore.config import get_settings
+
+        s = get_settings()
+        if s.tls_efectivo and scope.get("path") not in RUTAS_INFRAESTRUCTURA:
+            if not _es_https(scope, s):
+                from crmcore.errors import Prohibido
+
+                await _responder_error(
+                    send,
+                    Prohibido(
+                        "Esta instalación solo atiende por HTTPS: una petición en "
+                        "claro lleva la credencial y los datos del cliente a la vista",
+                        error_code="http.tls_requerido",
+                    ),
+                    scope,
+                )
+                return
+
+        async def send_con_cabeceras(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                cabeceras = list(message.get("headers", []))
+                if s.hsts_max_age > 0:
+                    cabeceras.append(
+                        (
+                            b"strict-transport-security",
+                            f"max-age={s.hsts_max_age}; includeSubDomains".encode(),
+                        )
+                    )
+                cabeceras.append((b"x-content-type-options", b"nosniff"))
+                cabeceras.append((b"x-frame-options", b"DENY"))
+                cabeceras.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                message["headers"] = cabeceras
+            await send(message)
+
+        await self.app(scope, receive, send_con_cabeceras)
+
+
+def _es_https(scope: Scope, s: Any) -> bool:
+    """Si la petición llegó cifrada de verdad.
+
+    `X-Forwarded-Proto` solo se cree cuando hay proxy de confianza declarado:
+    sin esa condición, cualquiera manda la cabecera y se salta la comprobación.
+    """
+    if scope.get("scheme") == "https":
+        return True
+    if s.trust_proxy_headers and s.proxies_de_confianza:
+        return _cabecera(scope, "x-forwarded-proto").lower() == "https"
+    return False
+
+
 class TiemposMiddleware:
     """Mide, registra y publica la duración de cada petición.
 

@@ -126,7 +126,25 @@ def crear_servicio(
             try:
                 bus = await crear_bus(nombre)
                 _estado["bus"] = bus
-                for patron, manejador, grupo in consumidores or []:
+                # La réplica de ajustes la escucha TODO servicio, y se
+                # suscribe aquí para que ninguno pueda olvidarse: la tabla
+                # `ajustes_runtime` vive en el esquema de cada uno, así que un
+                # servicio que no consuma este evento se queda con la
+                # configuración de su `.env` mientras el resto usa la del
+                # cliente. Esa divergencia tarda semanas en atribuirse.
+                from crmcore.runtime.settings import AJUSTE_CAMBIADO, consumir_ajuste
+                from crmcore.security.byok import CLAVE_CAMBIADA, consumir_clave
+
+                suscripciones = [
+                    (AJUSTE_CAMBIADO, consumir_ajuste, f"{nombre}-ajustes"),
+                    # La clave propia del tenant (BYOK) se replica igual y por
+                    # la misma razón: si un servicio no la tuviera, seguiría
+                    # cifrando con la maestra y revocarla no dejaría ilegible
+                    # nada — el único modo de fallo inaceptable de BYOK.
+                    (CLAVE_CAMBIADA, consumir_clave, f"{nombre}-byok"),
+                    *(consumidores or []),
+                ]
+                for patron, manejador, grupo in suscripciones:
                     await bus.suscribir(patron, manejador, grupo=grupo)
 
                 if s.outbox_enabled:
@@ -196,6 +214,15 @@ def crear_servicio(
     registrar_manejadores(app)
     _montar_salud(app, nombre, version)
 
+    if necesita_db:
+        # La página de estado del tenant (CRM-00.06.01.06) la publica TODO
+        # servicio con base de datos, y se monta aquí para que ninguno pueda
+        # olvidarse: si faltara en uno, la página del cliente tendría un agujero
+        # sin decirlo, que es peor que no tener página.
+        from crmcore.http.estado_router import crear_router_estado
+
+        app.include_router(crear_router_estado(nombre), prefix=s.api_prefix)
+
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
     for router in routers_sin_prefijo or []:
@@ -222,6 +249,7 @@ def _montar_middlewares(app: FastAPI, s: Any) -> None:
     # contexto con tenant, que es lo que la clave de idempotencia necesita.
     from crmcore.http.etag import ETagMiddleware
     from crmcore.http.middleware import (
+        CifradoEnTransitoMiddleware,
         ContextoMiddleware,
         IdempotenciaMiddleware,
         LimitesMiddleware,
@@ -234,6 +262,9 @@ def _montar_middlewares(app: FastAPI, s: Any) -> None:
     app.add_middleware(ETagMiddleware)
     app.add_middleware(LimitesMiddleware)
     app.add_middleware(TiemposMiddleware)
+    # El más externo después del contexto: una respuesta que no pase por aquí
+    # sale sin HSTS, y una petición en claro que no pase por aquí ya ha viajado.
+    app.add_middleware(CifradoEnTransitoMiddleware)
     app.add_middleware(ContextoMiddleware)
 
     if s.origenes_cors:

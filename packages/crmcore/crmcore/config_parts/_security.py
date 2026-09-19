@@ -48,6 +48,28 @@ class _SecuritySettings(BaseSettings):
     # borró algo por error lo echa en falta en la siguiente revisión mensual.
     papelera_dias_retencion: int = Field(30, ge=1, le=3650)
 
+    # ── Cifrado en tránsito (CRM-00.05.03.01) ─────────────────────────────
+    # Exigir que la petición haya llegado por HTTPS. Se comprueba con el
+    # esquema real o con `X-Forwarded-Proto` cuando hay proxy de confianza.
+    # `None` = encendido fuera de desarrollo, que es lo que casi siempre se
+    # quiere y nadie se acuerda de activar.
+    tls_exigido: bool | None = None
+    # Versión mínima de TLS que el despliegue promete. No la aplica este
+    # proceso —la termina el proxy o el balanceador— pero SÍ se comprueba con
+    # `scripts/verificar_cifrado.py` contra el despliegue real. Declararla sin
+    # medirla sería una promesa sin respaldo.
+    tls_version_minima: str = Field("1.3", pattern=r"^1\.[23]$")
+    # Modo SSL de la conexión con Postgres. `require` cifra; `verify-full`
+    # además comprueba el certificado, que es lo que impide un intermediario
+    # dentro de la propia red. En producción se exige al menos `require`.
+    db_sslmode: str = Field(
+        "prefer", pattern="^(disable|allow|prefer|require|verify-ca|verify-full)$"
+    )
+    # TLS hacia el bus y hacia la caché. Van aparte porque en muchas
+    # instalaciones el bus está en la misma red y la caché no, o al revés.
+    bus_tls: bool = False
+    cache_tls: bool = False
+
     # ── Cabeceras de seguridad ────────────────────────────────────────────
     # HSTS en segundos. 0 = no se envía. Un año es el valor que piden las
     # listas de precarga.

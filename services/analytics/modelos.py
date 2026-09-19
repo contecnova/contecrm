@@ -83,8 +83,10 @@ class ConsultaAnalitica(Base):
 
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
+from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 __all__ = [
+    "ClaveTenant",
     "BloqueoLegal",
     "ConsultaAnalitica",
     "OrganizacionExterna",

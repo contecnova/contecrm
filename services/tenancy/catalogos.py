@@ -82,8 +82,15 @@ class Plantilla(Base, TimestampMixin):
     )
 
 
-def render(plantilla: Plantilla, datos: dict[str, Any]) -> tuple[str, str]:
-    """Sustituye `{{variable}}` en asunto y cuerpo.
+def render(plantilla: Plantilla, datos: dict[str, Any], *, db: Any = None) -> tuple[str, str]:
+    """Sustituye `{{variable}}` en asunto y cuerpo, con los formatos del tenant.
+
+    Las fechas y los importes se localizan ANTES de sustituir (CRM-00.01.04.07).
+    Sin eso, un correo generado desde una plantilla enseña
+    `2026-09-19 07:00:00+00:00` en mitad de una frase — que es la forma más
+    rápida de que un cliente deje de confiar en los avisos automáticos. El
+    idioma de la plantilla manda sobre el del contexto cuando lo declara: quien
+    eligió la plantilla en portugués quiere las fechas en portugués.
 
     Sustitución de texto y **nada más**: sin condicionales, bucles ni expresiones.
     Una plantilla es dato del tenant, y un motor con lógica sería ejecutar código
@@ -95,6 +102,19 @@ def render(plantilla: Plantilla, datos: dict[str, Any]) -> tuple[str, str]:
     mitad del texto se ve y se corrige.
     """
     import re
+
+    from crmcore import i18n
+
+    loc = i18n.resolver(db)
+    if plantilla.idioma and plantilla.idioma != loc.idioma:
+        loc = i18n.Localizacion(
+            idioma=plantilla.idioma,
+            zona=str(loc.zona),
+            formato_fecha=_clave_formato(loc),
+            moneda=loc.moneda,
+            primer_dia=loc.primer_dia,
+        )
+    datos = i18n.formatear_valores(datos, loc)
 
     def _sustituir(texto: str) -> str:
         def _uno(m: "re.Match[str]") -> str:
@@ -112,6 +132,21 @@ def render(plantilla: Plantilla, datos: dict[str, Any]) -> tuple[str, str]:
         return re.sub(r"\{\{\s*([\w.]+)\s*\}\}", _uno, texto)
 
     return _sustituir(plantilla.asunto or ""), _sustituir(plantilla.cuerpo or "")
+
+
+def _clave_formato(loc: Any) -> str:
+    """La clave de ajuste que corresponde al patrón ya resuelto.
+
+    Se necesita para reconstruir una localización con otro idioma sin perder el
+    formato de fecha que eligió el tenant: cambiar de idioma no debe cambiar
+    cómo se escribe una fecha, que es una decisión aparte.
+    """
+    from crmcore.i18n import FORMATO_FECHA_POR_DEFECTO, FORMATOS_FECHA
+
+    for clave, patron in FORMATOS_FECHA.items():
+        if patron == loc.formato_fecha:
+            return clave
+    return FORMATO_FECHA_POR_DEFECTO
 
 
 def variables_sin_resolver(texto: str, datos: dict[str, Any]) -> list[str]:

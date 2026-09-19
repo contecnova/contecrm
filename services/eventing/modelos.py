@@ -127,3 +127,9 @@ class EventoArchivado(Base):
     )
 
     __table_args__ = (Index("ix_archivados_busqueda", "tenant_id", "tipo", "occurred_at"),)
+
+
+# Tabla común: la clave propia del tenant (BYOK, CRM-00.01.04.09) se replica
+# al esquema de cada servicio, porque cada uno cifra y descifra los campos de sus
+# propias tablas dentro de sus transacciones.
+from crmcore.security.byok import ClaveTenant  # noqa: E402,F401

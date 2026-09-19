@@ -273,11 +273,13 @@ from crmcore.datos.seguimiento import (  # noqa: E402
     PreferenciaNotificacion,
     Seguimiento,
 )
+from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 from services.identity.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
 from services.identity.sso import EstadoSSO  # noqa: E402
 
 __all__ = [
+    "ClaveTenant",
     "ClaveApi",
     "ComparticionManual",
     "EstadoSSO",

@@ -83,6 +83,73 @@ async def servicios(_: PrincipalDep) -> Any:
     return salida
 
 
+@router.get(
+    "/estado",
+    summary="Cómo va MI CRM ahora mismo",
+    description=(
+        "La página de estado privada de este tenant: junta lo que publica cada "
+        "servicio sobre **sus** componentes y devuelve una sola vista.\n\n"
+        "Se compone en vez de calcularse en un sitio porque ningún servicio "
+        "lee las tablas de otro: el estado de los webhooks lo sabe `eventing` y "
+        "el de las cuotas lo sabe `tenancy`. Cada uno publica lo suyo.\n\n"
+        "Solo dice lo de este tenant. Ni cuántos hay, ni cómo van los demás, ni "
+        "qué versión corre cada réplica: una página de estado que filtra la "
+        "forma de la plataforma es un mapa para quien quiera atacarla."
+    ),
+)
+async def estado_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
+    import asyncio
+    from datetime import datetime, timezone
+
+    from crmcore.config import get_settings
+    from crmcore.datos.estado import _peor
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _preguntar(nombre: str) -> list[dict[str, Any]]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return [
+                {**componente, "servicio": nombre}
+                for componente in respuesta.json().get("componentes", [])
+            ]
+        except Exception:  # noqa: BLE001 — un servicio caído es información, no un error
+            # No se filtra el mensaje: el de un error de conexión lleva host y
+            # puerto, y esta página la ve el cliente.
+            return [
+                {
+                    "servicio": nombre,
+                    "componente": nombre,
+                    "estado": "caido",
+                    "detalle": "El servicio no responde",
+                }
+            ]
+
+    # En paralelo: en serie, diez servicios con cinco segundos de plazo son
+    # cincuenta segundos de espera en el peor caso — justo cuando algo va mal y
+    # el cliente más necesita la página.
+    respuestas = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    componentes: list[dict[str, Any]] = [c for lote in respuestas for c in lote]
+
+    return {
+        "estado": _peor([c["estado"] for c in componentes]) if componentes else "caido",
+        "consultado_at": datetime.now(timezone.utc).isoformat(),
+        "componentes": componentes,
+        "cacheado": False,
+    }
+
+
 @router_proxy.api_route(
     "/api/{ruta:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],

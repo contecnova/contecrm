@@ -138,3 +138,9 @@ class Ejecucion(Base):
         Index("ix_ejecuciones_conexion", "tenant_id", "conexion_id", "created_at"),
         Index("ix_ejecuciones_resultado", "tenant_id", "resultado", "created_at"),
     )
+
+
+# Tabla común: la clave propia del tenant (BYOK, CRM-00.01.04.09) se replica
+# al esquema de cada servicio, porque cada uno cifra y descifra los campos de sus
+# propias tablas dentro de sus transacciones.
+from crmcore.security.byok import ClaveTenant  # noqa: E402,F401

@@ -233,3 +233,9 @@ class TablaDecision(Base, TimestampMixin):
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_tabla_decision"),)
+
+
+# Tabla común: la clave propia del tenant (BYOK, CRM-00.01.04.09) se replica
+# al esquema de cada servicio, porque cada uno cifra y descifra los campos de sus
+# propias tablas dentro de sus transacciones.
+from crmcore.security.byok import ClaveTenant  # noqa: E402,F401

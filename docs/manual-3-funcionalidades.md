@@ -315,10 +315,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
-| `CRM-00.01.04.07` Localización por tenant | Idioma, zona horaria y moneda guardados | Aplicarlos en formatos, calendarios y envíos |
-| `CRM-00.01.04.09` BYOK / CMEK | Rotación con clave anterior | Clave aportada y revocable por el cliente |
-| `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
-| `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
 | `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-06.02.01.02` Seguimiento y notificaciones | Suscripciones, preferencias por tipo y canal, agrupación, franja de silencio y la bandeja de la aplicación | El repartidor que entrega por correo, push y SMS: hoy las notificaciones se crean y se leen en la bandeja, pero nada sale del sistema |
@@ -2207,3 +2203,150 @@ Para un campo numérico de verdad sensible, lo que corresponde es declararlo
 `oculto` en la columna y que su esquema lo admita ausente — una decisión
 explícita de quien define el objeto, no un efecto lateral de que su rol no
 estuviera en una tabla.
+
+---
+
+## 28. Lo que el cliente configura y ahora sí se aplica
+
+Cuatro capacidades que cierran la fase 0, y las cuatro comparten el mismo modo
+de fallo: **un ajuste configurado y no aplicado**. El cliente lo configura, lo ve
+guardado, y no pasa nada. Nadie lo llama avería porque no hay error.
+
+### Localización por tenant (`CRM-00.01.04.07`)
+
+El idioma, la zona horaria, el formato de fecha, el primer día de la semana y la
+moneda funcional ya se guardaban con su jerarquía global → tier → tenant →
+unidad → usuario. Faltaba aplicarlos.
+
+Ahora `crmcore.i18n` resuelve las preferencias del contexto y formatea al
+**salir**, nunca al guardar: en la base un instante es UTC y un importe es un
+número. Guardar «19/09/2026» convierte un dato en una presentación, y el día que
+el cliente cambie de formato ya no se puede recuperar.
+
+Tres detalles que importan más de lo que parecen:
+
+- **La fecha se calcula en la zona, no recortando la cadena.** Un instante UTC
+  de las 23:30 del día 18 es el 19 en Madrid y el 18 en Nueva York. En un
+  vencimiento de SLA, ese día decide si se incumplió.
+- **Sin dependencias nuevas.** `zoneinfo` es estándar y el formateo de números
+  son veinte líneas. Traer `babel` significaba el CLDR entero —decenas de
+  megabytes— para cinco idiomas y tres formatos que aquí decide la
+  configuración, no la región.
+- **Una zona inválida cae a UTC y avisa.** Un ajuste mal escrito por un
+  administrador no puede impedir que salga un correo, pero tampoco puede pasar
+  callado, porque entonces nadie lo corrige.
+
+Se aplica en los envíos (el render de plantillas, con el idioma de la plantilla
+mandando sobre el del contexto) y se publica en `GET /api/v1/localizacion`, con
+**ejemplos que son el contrato**: un frontend comprueba con ellos que su
+formateo coincide con el del servidor sin reimplementar la jerarquía.
+
+#### Y un agujero que salió al montarlo: los ajustes no salían de su servicio
+
+`ajustes_runtime` vive en el esquema de **cada** servicio y ninguno lee el de
+otro. Un ajuste escrito desde la consola se guardaba solo en el esquema de
+`tenancy`, y `party` seguía formateando con el valor de `.env` para siempre.
+
+Peor: el comentario del código decía que las réplicas se enteraban «por el
+evento `ajuste.cambiado` del bus». **Ese evento no lo emitía nadie** — solo
+existía como acción de auditoría con ese nombre. Ahora se emite de verdad por la
+tabla de salida, en la misma transacción que la escritura, y todo servicio lo
+consume sin que ninguno tenga que acordarse: lo registra la factoría.
+
+### BYOK / CMEK (`CRM-00.01.04.09`)
+
+Lo que compra un cliente con BYOK no es cifrado —eso ya lo tiene—: compra
+**poder apagarlo**. Revoca su clave y sus datos dejan de ser legibles para todo
+el mundo, nosotros incluidos, sin depender de que nadie ejecute un borrado ni de
+que se purgue una copia de seguridad.
+
+- **Sobre cerrado.** El material del cliente se envuelve con la maestra del
+  despliegue. Para descifrar hacen falta las dos: ni una copia de la base sin la
+  maestra sirve, ni la maestra sin el sobre.
+- **Revocar borra el sobre**, no lo marca. Dejar el material con una bandera
+  convierte la garantía en un `UPDATE` de distancia. Y se revocan **todas** las
+  versiones: dejar viva una antigua haría que lo cifrado con ella siguiera
+  legible y la revocación sería un gesto.
+- **Irreversible a propósito.** Exige confirmación explícita y un motivo
+  escrito, porque dentro de un año alguien preguntará por qué esos datos no se
+  leen. Y no se puede registrar una clave nueva después: aceptarla daría a
+  entender que lo revocado se recupera.
+- **Ninguna ruta devuelve el material.** Ni a un administrador de plataforma.
+  Una API que puede leer la clave del cliente convierte todo el BYOK en
+  decoración. Hay una prueba que lo comprueba **sobre el árbol del código**, para
+  impedir que alguien escriba esa ruta, no solo que hoy no exista.
+- **Genérico.** No hay código de ningún proveedor. El material lo aporta el
+  cliente por API o lo trae un gestor externo; enchufar un KMS concreto es
+  escribir un proveedor, no tocar esto.
+
+Dicho por delante y sin adornos: **esto no protege del proceso vivo.** Mientras
+el servicio corre y la clave está activa, el material está en memoria. BYOK
+protege de quien lee el disco, la copia de seguridad o la base parada. Para lo
+otro hace falta un HSM.
+
+La clave se replica a todos los servicios por evento, igual que los ajustes y
+por la misma razón: si un servicio no la tuviera, seguiría cifrando con la
+maestra y revocar no dejaría ilegible nada — el único modo de fallo inaceptable
+de esta funcionalidad.
+
+### Cifrado en tránsito y en reposo (`CRM-00.05.03.01`)
+
+`HSTS_MAX_AGE` estaba configurado, documentado, y **no salía en ninguna
+respuesta**. Ahora hay un middleware que aplica HSTS y las tres cabeceras
+mínimas, y que **rechaza HTTP en claro** cuando el despliegue lo declara.
+
+Se responde 403 y no se redirige, que es la diferencia que importa: una
+redirección a HTTPS llega después de que la credencial ya haya viajado en claro,
+así que arregla la petición siguiente y no la que importa. La cabecera
+`X-Forwarded-Proto` solo se cree si hay proxy de confianza declarado — sin esa
+condición, cualquiera la manda y se salta la comprobación entera.
+
+En producción, el arranque **se niega** con la base en claro (`DB_SSLMODE` por
+debajo de `require`), sin `ENCRYPTION_KEY`, con HSTS a cero, con `TLS_EXIGIDO`
+apagado o con el almacén de adjuntos sin SSL. No es «menos seguro»: es un
+despliegue donde cualquiera con acceso a la red lee y modifica los datos de
+todos los clientes, y eso no se nota nunca desde dentro.
+
+Y como una garantía declarada y no medida es una frase en un documento,
+`scripts/verificar_cifrado.py` la **mide contra el despliegue real**: negocia TLS
+y comprueba la versión, comprueba que **rechaza** las versiones viejas —que
+negocie 1.3 con un cliente moderno no dice nada si sigue aceptando 1.0 con uno
+antiguo, porque el atacante elige el cliente—, comprueba las cabeceras, que HTTP
+en claro no se atiende, y le pregunta a la propia conexión de Postgres si está
+cifrada.
+
+Lo que ese script **no** comprueba, y lo dice él mismo: el cifrado del disco y
+el de las copias. Eso lo da la infraestructura, y su verificación es una lista
+del Manual de operación firmada por quien despliega. Afirmar aquí que están
+cifrados sería inventárselo.
+
+### Página de estado privada del tenant (`CRM-00.06.01.06`)
+
+`GET /api/v1/estado`. Cuando algo va lento, la primera pregunta del cliente es
+«¿somos nosotros o sois vosotros?», y sin respuesta abre un ticket, espera y
+desconfía.
+
+Dice, con **sus** datos: si la base responde, cuántos eventos suyos esperan a
+salir, si sus webhooks están fallando o desactivados, si está tocando sus
+límites —la causa más frecuente de lentitud percibida sin avería— y si su clave
+de cifrado está revocada, que es la única forma de que quien vea errores de
+descifrado entienda que no es una avería sino una decisión suya.
+
+- **Se calcula en vivo.** Una página cacheada cinco minutos enseña «todo bien»
+  mientras el cliente mira una pantalla que no carga, y eso destruye más
+  confianza que no tener página.
+- **Degradado y caído se distinguen.** Meterlo todo en «con incidencias» obliga
+  a llamar igual para saber cuál de las dos cosas está pasando.
+- **Solo lo suyo.** Ni cuántos tenants hay, ni cómo van los demás, ni qué
+  versión corre cada réplica. Una página de estado que filtra la forma de la
+  plataforma es un mapa para quien quiera atacarla, y hay una prueba que busca
+  esas filtraciones en la respuesta.
+
+**Se compone, no se calcula en un sitio**, y esto lo decidió el gate de
+arquitectura: la primera versión la calculaba entera en `tenancy` consultando de
+paso las suscripciones de `eventing`, y el gate la paró con razón — ningún
+servicio lee las tablas de otro. Ahora cada servicio registra sus componentes y
+publica su página, el gateway pregunta a todos **en paralelo** —en serie, diez
+servicios con cinco segundos de plazo son cincuenta segundos de espera justo
+cuando algo va mal— y devuelve una sola vista. Un servicio que no responde sale
+como caído, sin filtrar el mensaje del error, que lleva host y puerto.

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**146 ajustes** en total, de los cuales **52** son editables en caliente por tenant.
+**152 ajustes** en total, de los cuales **52** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -167,8 +167,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `METRICS_PATH` | — | `/metrics` |  |  |
 | `METRICS_POR_TENANT` | — | `True` |  | Etiquetar las métricas con el tenant. Da visibilidad por cliente, que es lo que pide el catálogo, pero multiplica las series por el número de tenants: con miles de tenants hay que apagarlo o muestrear. |
 | `METRICS_MAX_TENANTS` | — | `200` | 1–10000 | Tope de tenants distintos etiquetados. Pasado el tope, el resto se agrupa en `otros`. Es lo que evita que la cardinalidad tumbe a Prometheus. |
-| `TRACING_ENABLED` | — | `False` |  |  |
-| `OTEL_ENDPOINT` | — | `http://localhost:4317` |  |  |
+| `TRACING_ENABLED` | — | `False` |  | Apagado por defecto. Encenderlo SIN el paquete instalado impide arrancar, a propósito: arrancar en silencio sin trazas es el fallo que se descubre el día que hace falta la traza. |
+| `OTEL_ENDPOINT` | — | `http://localhost:4318/v1/traces` |  | Por defecto el puerto OTLP/HTTP del colector (4318). El de gRPC es el 4317. |
+| `OTEL_PROTOCOLO` | — | `http` |  | `http` no arrastra `grpcio` y atraviesa proxies corporativos sin configurar nada; `grpc` es el que piden algunos colectores. |
 | `OTEL_SAMPLE_RATIO` | — | `0.1` | 0.0–1.0 | Fracción de peticiones trazadas (0..1). 1.0 en desarrollo; en producción se baja porque el coste es real y una muestra basta para ver la forma. |
 | `AUDIT_ENABLED` | — | `True` |  |  |
 | `AUDIT_HASH_CHAIN` | — | `True` |  | Encadenar cada apunte con el hash del anterior. Convierte el log en verificable: si alguien borra o edita una fila, la cadena se rompe y se puede demostrar. Cuesta un hash por apunte. |
@@ -190,6 +191,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `DLP_EXPORT_FILAS_AVISO` | 🔥 `dlp_export_filas_aviso` | `5000` | 1–10000000 | Filas a partir de las cuales una exportación se considera masiva: se audita siempre y, según política, se bloquea o pide aprobación. |
 | `DLP_EXPORT_FILAS_BLOQUEO` | 🔥 `dlp_export_filas_bloqueo` | `100000` | 0–100000000 |  |
 | `PAPELERA_DIAS_RETENCION` | 🔥 `papelera_dias_retencion` | `30` | 1–3650 | Días que un registro borrado se conserva antes de poder destruirse. Un mes es el plazo con el que casi todos los errores humanos se detectan: quien borró algo por error lo echa en falta en la siguiente revisión mensual. |
+| `TLS_EXIGIDO` | — | *(vacío)* |  | Exigir que la petición haya llegado por HTTPS. Se comprueba con el esquema real o con `X-Forwarded-Proto` cuando hay proxy de confianza. `None` = encendido fuera de desarrollo, que es lo que casi siempre se quiere y nadie se acuerda de activar. |
+| `TLS_VERSION_MINIMA` | — | `1.3` |  | Versión mínima de TLS que el despliegue promete. No la aplica este proceso —la termina el proxy o el balanceador— pero SÍ se comprueba con `scripts/verificar_cifrado.py` contra el despliegue real. Declararla sin medirla sería una promesa sin respaldo. |
+| `DB_SSLMODE` | — | `prefer` |  | Modo SSL de la conexión con Postgres. `require` cifra; `verify-full` además comprueba el certificado, que es lo que impide un intermediario dentro de la propia red. En producción se exige al menos `require`. |
+| `BUS_TLS` | — | `False` |  | TLS hacia el bus y hacia la caché. Van aparte porque en muchas instalaciones el bus está en la misma red y la caché no, o al revés. |
+| `CACHE_TLS` | — | `False` |  |  |
 | `HSTS_MAX_AGE` | — | `31536000` | 0–63072000 | HSTS en segundos. 0 = no se envía. Un año es el valor que piden las listas de precarga. |
 | `TRUST_PROXY_HEADERS` | — | `False` |  | Confiar en las cabeceras de proxy (X-Forwarded-For). Solo debe activarse si de verdad hay un proxy delante: si no, cualquiera falsea su IP y se salta el rate limiting y las listas de permitidos. |
 | `TRUSTED_PROXIES` | — | *(vacío)* |  | Redes desde las que se aceptan esas cabeceras, separadas por comas. |
