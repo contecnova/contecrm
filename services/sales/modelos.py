@@ -382,6 +382,7 @@ class CompetidorEnOportunidad(Base, TimestampMixin):
 # Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
@@ -400,6 +401,7 @@ __all__ = [
     "BloqueoLegal",
     "DocumentoIndexado",
     "EntradaPapelera",
+    "PoliticaCampo",
     "PoliticaRetencion",
     "Etapa",
     "Lead",

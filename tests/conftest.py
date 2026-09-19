@@ -119,6 +119,7 @@ def _importar_todos_los_modelos() -> None:
         "crmcore.datos.retencion",
         "crmcore.datos.jerarquia",
         "crmcore.busqueda",
+        "crmcore.authz.proyeccion",
         "crmcore.datos.papelera",
         "crmcore.datos.seguimiento",
         "services.tenancy.modelos",

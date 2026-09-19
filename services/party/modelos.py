@@ -73,8 +73,12 @@ class Cuenta(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     sector_esquema: Mapped[str | None] = mapped_column(String(10), nullable=True)
     sector_codigo: Mapped[str | None] = mapped_column(String(20), nullable=True)
     tamano: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    empleados: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    facturacion_anual: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    empleados: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, info={"sensibilidad": "confidencial"}
+    )
+    facturacion_anual: Mapped[Decimal | None] = mapped_column(
+        Numeric(18, 2), nullable=True, info={"sensibilidad": "confidencial"}
+    )
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
     # Clasificación comercial: tier (oro/plata/bronce) y ABC por valor.
     tier: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -82,8 +86,12 @@ class Cuenta(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     # ── Contacto y web ────────────────────────────────────────────────────
     web: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    telefono: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    telefono: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
+    email: Mapped[str | None] = mapped_column(
+        String(320), nullable=True, info={"sensibilidad": "personal"}
+    )
     # Dominio de correo, derivado de la web o del correo. Es la segunda señal
     # más fiable para detectar duplicados después del identificador fiscal.
     dominio: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
@@ -311,10 +319,18 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     departamento: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
     # ── Canales (CRM-01.01.02.01) ─────────────────────────────────────────
-    email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
-    email_secundario: Mapped[str | None] = mapped_column(String(320), nullable=True)
-    telefono: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    movil: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    email: Mapped[str | None] = mapped_column(
+        String(320), nullable=True, index=True, info={"sensibilidad": "personal"}
+    )
+    email_secundario: Mapped[str | None] = mapped_column(
+        String(320), nullable=True, info={"sensibilidad": "personal"}
+    )
+    telefono: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
+    movil: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
     # Canales que no son teléfono ni correo: LinkedIn, WhatsApp, Teams…
     # En JSONB porque la lista cambia con la moda y una columna por red obliga a
     # migrar el esquema cada vez que aparece una.
@@ -602,6 +618,7 @@ class SolicitudDerechos(Base, TimestampMixin):
 # Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
@@ -620,6 +637,7 @@ __all__ = [
     "BloqueoLegal",
     "DocumentoIndexado",
     "EntradaPapelera",
+    "PoliticaCampo",
     "PoliticaRetencion",
     "Fusion",
     "IdentificadorFiscal",

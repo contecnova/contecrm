@@ -486,3 +486,41 @@ def test_ningun_cliente_http_crudo_fuera_del_guard() -> None:
         "destino es un servicio interno del despliegue, añádelo a `exentos` con "
         "su motivo."
     )
+
+
+def test_las_fichas_de_datos_personales_pasan_por_la_proyeccion() -> None:
+    """Un endpoint que devuelve un registro con campos sensibles los proyecta.
+
+    El permiso por objeto dice si alguien puede leer cuentas; la proyección dice
+    qué columnas ve. Sin ella, dar lectura del maestro de clientes es darlo todo,
+    y este gate existe porque la llamada es de una línea y se olvida.
+
+    Se comprueba sobre los endpoints que devuelven un modelo con columnas
+    declaradas sensibles: no sobre todos, porque un listado de etiquetas o un
+    conteo no tienen nada que proyectar y exigírselo enseñaría a añadir la
+    llamada sin pensar, que es como se acaba enmascarando lo que no toca.
+    """
+    # Endpoints que devuelven la ficha completa de un objeto con datos
+    # personales. Se nombran porque son pocos y porque la lista, leída, dice
+    # exactamente dónde sale dato sensible por la API.
+    exigidos = {
+        "party/api.py": {"obtener_cuenta", "obtener_contacto"},
+    }
+
+    faltan: list[str] = []
+    for fichero_rel, funciones in exigidos.items():
+        fichero = SERVICIOS_DIR / fichero_rel
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if nodo.name not in funciones:
+                continue
+            if "proyectar_para" not in ast.unparse(nodo):
+                faltan.append(f"{fichero_rel}::{nodo.name}")
+
+    assert not faltan, (
+        "Endpoints que devuelven datos personales sin proyectarlos:\n  "
+        + "\n  ".join(faltan)
+        + "\n\nUsa `proyectar_para(principal, db, objeto=..., modelo=...)`."
+    )

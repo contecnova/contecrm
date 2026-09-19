@@ -323,9 +323,8 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
 | `CRM-00.03.03.03` Acciones de automatización | Declaradas y validadas contra una lista cerrada | Los ejecutores de negocio (llegan con la fase 1) |
 | `CRM-00.04.01.07` Máquinas de estado | Declarables por objeto | Forzarlas en la escritura |
-| `CRM-00.05.02.03` Permisos por campo | Permisos por objeto y clasificación de sensibilidad | El filtro en la serialización |
+| `CRM-00.05.02.03` Permisos por campo (salida) | Proyección por sensibilidad y rol al serializar, con excepciones por campo | Aplicarla también a los FILTROS: hoy un campo oculto todavía se puede usar para acotar una búsqueda |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
-| `CRM-00.05.03.03` Enmascaramiento | Función lista | Aplicarla en la serialización por rol |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
 | `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
@@ -1359,3 +1358,94 @@ proyección de campos son la misma versión del mismo recurso.
 Un `If-Match` desfasado responde **409**, no 412: lo que ha pasado es un
 conflicto de edición —alguien guardó entre tu lectura y tu escritura—, y el
 cliente necesita releer y reintentar, no concluir que su petición era inválida.
+
+---
+
+## 20. Qué campos ve cada quien
+
+El permiso por objeto dice si alguien puede leer cuentas. Este dice **qué
+columnas** de una cuenta ve, y en qué estado (CRM-00.05.02.03). Sin ello, dar
+acceso de lectura al maestro de clientes es darlo todo —el teléfono del
+contacto, la facturación, el identificador fiscal— y la única alternativa
+práctica acaba siendo no dar acceso, que es peor para todos.
+
+### Se deriva de la sensibilidad, no de una lista de campos
+
+Cada columna declara la suya **en el modelo**, junto a su definición:
+
+```python
+email: Mapped[str | None] = mapped_column(
+    String(320), nullable=True, info={"sensibilidad": "personal"}
+)
+```
+
+Vive ahí para que quien añada una columna sensible vea en la línea de al lado
+que sus vecinas la declaran. Una lista campo a campo en otro fichero tendría que
+mantenerse a mano y se quedaría desfasada al primer campo nuevo — que entraría
+**visible para todos** sin que nadie lo decidiera.
+
+Los cinco niveles van de menos a más: `publico`, `interno`, `confidencial`,
+`personal`, `especial` (CRM-07.03.01.05). El orden es lo que permite decir «este
+rol ve hasta confidencial» en vez de enumerar niveles.
+
+Un campo sin declarar entra como **`interno`**, no como público. Equivocarse
+hacia la discreción se corrige con una línea de configuración; al revés se
+corrige con una notificación de brecha.
+
+### Y la política dice qué hace cada rol con cada nivel
+
+| Rol | Ve en claro hasta | Enmascara hasta | Por encima |
+|---|---|---|---|
+| `usuario` | interno | confidencial | no lo ve |
+| `comercial` | confidencial | personal | no lo ve |
+| `responsable_ventas` | personal | especial | — |
+| `admin` | especial | — | — |
+
+Con **varios roles gana el más permisivo**, igual que con los permisos: los
+roles suman, y que añadir un rol quitara visibilidad sería incomprensible para
+quien lo administra. Y un rol que la política no menciona no ve nada por encima
+de `interno`: un rol nuevo sin configurar no puede nacer viendo los datos
+personales de todos los clientes.
+
+El **administrador de plataforma no queda exento**. Su acceso a datos de un
+tenant ya está auditado con motivo, y eximirle aquí convertiría ese privilegio en
+«ve todo siempre», que es justo lo que la auditoría intenta acotar. Lo que tiene
+es el rol con la política más amplia, no una puerta aparte.
+
+### Enmascarar y ocultar no son lo mismo
+
+**Enmascarado** (CRM-00.05.03.03) deja los últimos caracteres: `·····7890`.
+Identificable por quien ya conoce el dato —para confirmar que la ficha es la
+correcta— e inútil para quien no. Un campo **vacío no se enmascara**: «····»
+donde no hay nada hace creer que hay algo escondido.
+
+**Oculto** significa que el campo **no viene** en la respuesta, y la respuesta lo
+anuncia en la cabecera `X-Campos-Retenidos`. Devolverlo como `null` sería
+indistinguible de un campo sin rellenar, y esa diferencia cambia lo que hace
+quien lo recibe: rellenarlo, o pedir permiso.
+
+### Excepciones, y dónde viven
+
+La clasificación por niveles acierta en el 95 %; el 5 % restante son decisiones
+que un cliente concreto necesita tomar. Para eso hay excepciones por campo, que
+mandan sobre la política en los dos sentidos: pueden ocultar algo que por su
+nivel se vería, y abrir algo que por su nivel se ocultaría.
+
+Viven **en el esquema del servicio dueño del dato**, como la papelera o la
+retención: una tabla central no la podría consultar el servicio que serializa,
+porque los permisos de base de datos se lo impiden.
+
+### Un límite, dicho por delante
+
+Esto filtra **la salida**. No impide que un campo oculto se use en un filtro de
+búsqueda, ni que se deduzca de un agregado — quien no ve la facturación de una
+cuenta podría, en teoría, acotarla ordenando un listado por ella. Cerrar eso
+exige reescribir las consultas con la proyección dentro, y **está pendiente**. Se
+dice aquí en vez de dejar creer que la protección es total.
+
+La llamada es explícita en cada endpoint que devuelve datos personales, no magia
+en la serialización, y hay un gate que comprueba que no falta. Es deliberado:
+enmascarar el campo equivocado en silencio es peor que una llamada olvidada,
+porque la llamada olvidada la caza el gate y el enmascarado equivocado no lo caza
+nadie hasta que un cliente enseña una pantalla con puntos donde debería haber un
+teléfono.

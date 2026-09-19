@@ -23,7 +23,7 @@ import hashlib
 import hmac
 import time
 from collections.abc import Iterator
-from typing import Annotated, Any
+from typing import Annotated, Any, Callable
 from uuid import UUID
 
 from fastapi import Depends, Header, Request
@@ -295,3 +295,64 @@ def get_uow(principal: PrincipalDep) -> Iterator[Any]:
 
 
 UowDep = Annotated[Any, Depends(get_uow)]
+
+
+def proyectar_para(
+    principal: Principal, db: Any, *, objeto: str, modelo: type
+) -> Callable[[Any], dict[str, Any]]:
+    """Devuelve la función que serializa un registro **ya filtrado**.
+
+    Se usa así en un endpoint:
+
+        proyecta = proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)
+        return [proyecta(c) for c in cuentas]
+
+    Es una llamada explícita y no magia en la serialización, y es deliberado:
+    enmascarar el campo equivocado en silencio es peor que una llamada que
+    falta, porque una llamada que falta la caza el gate
+    (`test_contratos_arquitectura.py`) y un enmascarado equivocado no lo caza
+    nadie hasta que un cliente enseña una pantalla con puntos donde debería
+    haber un teléfono.
+
+    La política se resuelve **una vez** y se cierra sobre el resultado: hacerlo
+    por fila consultaría las excepciones una vez por registro, y un listado de
+    doscientas cuentas haría doscientas consultas para aplicar la misma regla.
+    """
+    from crmcore.authz.proyeccion import (
+        _excepciones,
+        _nivel_del_campo,
+        _politica_por_rol,
+        anotar_retenidos,
+    )
+    from crmcore.config import get_settings
+    from crmcore.security.cifrado import enmascarar
+
+    activo = bool(get_settings().masking_enabled)
+    politica = _politica_por_rol(db) if activo else {}
+    excepciones = _excepciones(db, principal.tenant_id, objeto) if activo else {}
+    roles = frozenset(principal.roles) | (
+        {"admin"} if principal.es_admin_plataforma else frozenset()
+    )
+
+    def _proyecta(fila: Any) -> dict[str, Any]:
+        datos = fila.a_dict() if hasattr(fila, "a_dict") else dict(fila)
+        if not activo:
+            return datos
+        salida: dict[str, Any] = {}
+        retenidos: set[str] = set()
+        for campo, valor in datos.items():
+            nivel = _nivel_del_campo(campo, modelo, roles, politica, excepciones)
+            if nivel == "claro" or valor is None:
+                salida[campo] = valor
+            elif nivel == "enmascarado":
+                salida[campo] = enmascarar(str(valor))
+            else:
+                # Se anota para anunciarlo en la cabecera `X-Campos-Retenidos`.
+                # Sin ese anuncio, el cliente no puede distinguir «este campo
+                # está vacío» de «este campo no te lo doy», y esa diferencia
+                # cambia lo que hace con él: rellenarlo o pedir permiso.
+                retenidos.add(campo)
+        anotar_retenidos(retenidos)
+        return salida
+
+    return _proyecta

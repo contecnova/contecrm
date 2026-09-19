@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**138 ajustes** en total, de los cuales **47** son editables en caliente por tenant.
+**139 ajustes** en total, de los cuales **48** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -188,3 +188,4 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `TRUSTED_PROXIES` | — | *(vacío)* |  | Redes desde las que se aceptan esas cabeceras, separadas por comas. |
 | `URL_GUARD_HOSTS_PERMITIDOS` | 🔥 `url_guard_hosts_permitidos` | *(vacío)* |  | Hosts internos que el operador admite pese a estar en rango privado, separados por comas. Existe porque hay instalaciones con el IdP o el ERP en la red interna, y negarlo obligaría a apagar el guard entero. |
 | `URL_GUARD_DNS_TIMEOUT_S` | — | `3.0` | 0.1–30.0 | Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS que no contesta colgaría el hilo que atiende la petición. |
+| `POLITICA_SENSIBILIDAD` | 🔥 `politica_sensibilidad` |  |  | `ve_hasta` es el nivel máximo que se ve EN CLARO; `enmascara`, hasta dónde se ve con los últimos caracteres. Por encima de eso, no se ve. Los valores por defecto son conservadores a propósito: un rol que no aparezca aquí no ve nada por encima de `interno`. Un rol nuevo sin configurar no puede… |

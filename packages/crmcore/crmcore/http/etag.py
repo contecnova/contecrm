@@ -87,8 +87,16 @@ def comprobar_if_none_match(objeto: Any, if_none_match: str | None) -> bool:
 
 
 class ETagMiddleware:
-    """Pone la cabecera `ETag` en toda respuesta que lleve versión
-    (CRM-00.02.01.09).
+    """Cabeceras que se derivan de la respuesta ya generada.
+
+    Dos, y las dos por el mismo motivo: se calculan **después** de tener el
+    cuerpo, así que no pueden ponerse en el endpoint sin repetirlo en cien
+    sitios.
+
+      * `ETag`, cuando la respuesta lleva versión (CRM-00.02.01.09).
+      * `X-Campos-Retenidos`, cuando la proyección ocultó campos
+        (CRM-00.05.02.03) — sin ese anuncio, el cliente no distingue «vacío» de
+        «no te lo doy», y esa diferencia cambia lo que hace con el campo.
 
     La mitad automática del control de concurrencia. Se hace aquí porque **la
     cabecera es mecánica**: si la respuesta JSON trae un campo `version`, el
@@ -132,11 +140,20 @@ class ETagMiddleware:
                 inicio = estado["inicio"]
                 if inicio is not None:
                     version = _version_del_cuerpo(estado["cuerpo"]) if estado["json"] else None
+                    cabeceras = list(inicio.get("headers", []))
                     if version is not None:
-                        inicio["headers"] = [
-                            *inicio.get("headers", []),
-                            (b"etag", f'W/"{version}"'.encode()),
-                        ]
+                        cabeceras.append((b"etag", f'W/"{version}"'.encode()))
+                    from crmcore.authz.proyeccion import limpiar_retenidos, retenidos
+
+                    ocultos = retenidos()
+                    if ocultos:
+                        cabeceras.append((b"x-campos-retenidos", ",".join(ocultos).encode()))
+                    # Se limpia SIEMPRE, no solo cuando hay algo: el contextvar
+                    # sobrevive a la petición en el hilo del servidor, y sin
+                    # limpiarlo la respuesta siguiente anunciaría campos que no
+                    # ha retenido.
+                    limpiar_retenidos()
+                    inicio["headers"] = cabeceras
                     await send(inicio)
                     estado["inicio"] = None
                 await send({"type": "http.response.body", "body": estado["cuerpo"]})

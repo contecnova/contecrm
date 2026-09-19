@@ -10,7 +10,13 @@ from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.deps import (
+    AutenticadoDep,
+    DbDep,
+    UowDep,
+    exige_permiso,
+    proyectar_para,
+)
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Query, status
@@ -129,8 +135,12 @@ def listar_cuentas(
     dependencies=[Depends(exige_permiso("account:read"))],
     summary="Ficha de una cuenta",
 )
-def obtener_cuenta(cuenta_id: UUID, db: DbDep) -> Any:
-    return svc._cuenta(db, cuenta_id)
+def obtener_cuenta(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    # La proyección va aquí y no en el modelo de salida: el objeto se sigue
+    # necesitando entero para las reglas de negocio, y vaciarle campos para
+    # serializar sabotearía la lógica que viene después.
+    proyecta = proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)
+    return proyecta(svc._cuenta(db, cuenta_id))
 
 
 @router_cuentas.patch(
@@ -402,11 +412,12 @@ def listar_contactos(
     dependencies=[Depends(exige_permiso("contact:read"))],
     summary="Ficha de un contacto",
 )
-def obtener_contacto(contacto_id: UUID, db: DbDep) -> Any:
+def obtener_contacto(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     contacto = db.get(Contacto, contacto_id)
     if contacto is None or contacto.deleted_at is not None:
         raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
-    return contacto
+    proyecta = proyectar_para(principal, db, objeto="contacto", modelo=Contacto)
+    return proyecta(contacto)
 
 
 @router_contactos.post(

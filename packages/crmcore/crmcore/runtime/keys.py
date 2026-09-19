@@ -372,6 +372,13 @@ CLAVES: dict[str, ClaveAjuste] = {
         ),
         # Protección del dato
         _c(
+            "politica_sensibilidad",
+            "json",
+            "Qué nivel de sensibilidad ve cada rol, en claro o enmascarado",
+            campo_settings="politica_sensibilidad",
+            sensible=True,
+        ),
+        _c(
             "masking_enabled",
             "bool",
             "Enmascarar datos sensibles según el rol",

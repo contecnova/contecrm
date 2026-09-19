@@ -361,7 +361,7 @@ modulos:
             capacidades:
               - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: en-curso, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
               - {id: CRM-00.05.03.02, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/encrypted_text.py + app/core/crypto.py", t: "Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional"}
-              - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
+              - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
               - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: pendiente, t: "Tokenización de datos de pago o identificadores fiscales"}
               - {id: CRM-00.05.03.05, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/pii.py", t: "Anonimización y pseudonimización para entornos no productivos"}
               - {id: CRM-00.05.03.06, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/security_signals.py", t: "DLP: control de exportaciones masivas, alertas y bloqueo por política"}
@@ -950,7 +950,7 @@ modulos:
               - {id: CRM-07.03.01.02, c: A, fase: 2, svc: core, estado: pendiente, t: "Archivado de datos históricos con acceso consultable"}
               - {id: CRM-07.03.01.03, c: C, fase: 1, svc: party, estado: en-curso, reutiliza: "contecflow-PSA:app/services/bi_gdpr_service.py", t: "Gestión de solicitudes de derechos del interesado, con flujo y plazos"}
               - {id: CRM-07.03.01.04, c: A, fase: 1, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py", t: "Registro de actividades de tratamiento (RAT) y mapa de datos personales"}
-              - {id: CRM-07.03.01.05, c: A, fase: 0, svc: metadata, estado: pendiente, reutiliza: "contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad)", t: "Clasificación de datos por sensibilidad y etiquetado de campos"}
+              - {id: CRM-07.03.01.05, c: A, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad)", t: "Clasificación de datos por sensibilidad y etiquetado de campos"}
               - {id: CRM-07.03.01.06, c: D, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/legal_hold.py + app/models/legal_hold.py", t: "Legal hold: bloqueo de eliminación por litigio"}
               - {id: CRM-07.03.01.07, c: A, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/compliance.py + app/api/admin_compliance.py", t: "Informes de cumplimiento y evidencias para auditoría"}
               - {id: CRM-07.03.01.08, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Gestión de consentimiento de cookies y tracking cuando hay captación web"}

@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**539 capacidades**: 🔧 25 en-curso · ✅ 150 hecho · ⬜ 364 pendiente
+**539 capacidades**: 🔧 24 en-curso · ✅ 152 hecho · ⬜ 363 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 14 · ✅ 98 · ⬜ 88
+200 capacidades · 🔧 13 · ✅ 99 · ⬜ 88
 
 ### 0.1 Multi-tenancy
 
@@ -292,7 +292,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.05.03.01` | Cifrado en tránsito (TLS 1.3) y en reposo | C | 0 | infra | 🔧 | contecmind:deploy/nginx + docs/PENTEST_HARDENING.md |
 | `CRM-00.05.03.02` | Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional | A | 0 | core | ✅ | contecmind:app/db/encrypted_text.py + app/core/crypto.py |
-| `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | 🔧 | contecmind:app/services/pii.py + sensitive_policy.py |
+| `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | ✅ | contecmind:app/services/pii.py + sensitive_policy.py |
 | `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ⬜ | — |
 | `CRM-00.05.03.05` | Anonimización y pseudonimización para entornos no productivos | A | 0 | core | ⬜ | contecmind:app/services/pii.py |
 | `CRM-00.05.03.06` | DLP: control de exportaciones masivas, alertas y bloqueo por política | A | 0 | core | ⬜ | contecweb:app/services/security_signals.py |
@@ -903,7 +903,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · 🔧 2 · ✅ 12 · ⬜ 11
+25 capacidades · 🔧 2 · ✅ 13 · ⬜ 10
 
 ### 7.1 Administración funcional
 
@@ -946,7 +946,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ⬜ | — |
 | `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | 🔧 | contecflow-PSA:app/services/bi_gdpr_service.py |
 | `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ⬜ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
-| `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ⬜ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
+| `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ✅ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
 | `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ✅ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
 | `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ⬜ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ⬜ | — |

@@ -68,3 +68,23 @@ class _SecuritySettings(BaseSettings):
     # tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS
     # que no contesta colgaría el hilo que atiende la petición.
     url_guard_dns_timeout_s: float = Field(3.0, ge=0.1, le=30.0)
+
+    # ── Qué ve cada rol de cada nivel de sensibilidad (CRM-00.05.02.03) ───
+    # `ve_hasta` es el nivel máximo que se ve EN CLARO; `enmascara`, hasta dónde
+    # se ve con los últimos caracteres. Por encima de eso, no se ve.
+    #
+    # Los valores por defecto son conservadores a propósito: un rol que no
+    # aparezca aquí no ve nada por encima de `interno`. Un rol nuevo sin
+    # configurar no puede nacer viendo los datos personales de todos los
+    # clientes — equivocarse hacia la discreción se arregla con una línea de
+    # configuración; al revés, con una notificación de brecha.
+    politica_sensibilidad: dict[str, dict[str, str]] = Field(
+        default_factory=lambda: {
+            "admin": {"ve_hasta": "especial", "enmascara": "especial"},
+            "responsable_ventas": {"ve_hasta": "personal", "enmascara": "especial"},
+            "comercial": {"ve_hasta": "confidencial", "enmascara": "personal"},
+            "usuario": {"ve_hasta": "interno", "enmascara": "confidencial"},
+            "auditor": {"ve_hasta": "interno", "enmascara": "especial"},
+            "*": {"ve_hasta": "publico", "enmascara": "interno"},
+        }
+    )
