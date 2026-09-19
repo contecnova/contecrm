@@ -118,7 +118,7 @@ modulos:
               - {id: CRM-00.01.02.02, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/tenant_context.py + app/db/session.py (_rls_apply_on_begin)", t: "Contexto de tenant propagado por todo el stack (cabecera → token → contexto de ejecución → conexión)"}
               - {id: CRM-00.01.02.03, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:tests/unit/test_tenant_scope_contract.py", t: "Prohibición estructural de consultas sin predicado de tenant (interceptor / linter / test de arquitectura)"}
               - {id: CRM-00.01.02.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:tests/unit/test_tenant_guard_contract.py", t: "Tests automatizados de cross-tenant leakage en cada pipeline local (aquí: gate de pre-push, no CI)"}
-              - {id: CRM-00.01.02.05, c: A, fase: 0, svc: core, estado: en-curso, t: "Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403)"}
+              - {id: CRM-00.01.02.05, c: A, fase: 0, svc: core, estado: hecho, t: "Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403)"}
               - {id: CRM-00.01.02.06, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/audit.py (justificación obligatoria)", t: "Auditoría de acceso cruzado por personal de soporte, con justificación obligatoria"}
               - {id: CRM-00.01.02.07, c: A, fase: 0, svc: core, estado: hecho, t: "Detección de identificadores globales enumerables; uso de ULID/UUIDv7 opacos"}
 

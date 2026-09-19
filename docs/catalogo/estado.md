@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 17 en-curso · ✅ 159 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 16 en-curso · ✅ 160 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · 🔧 6 · ✅ 106 · ⬜ 104
+216 capacidades · 🔧 5 · ✅ 107 · ⬜ 104
 
 ### 0.1 Multi-tenancy
 
@@ -40,7 +40,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.02.02` | Contexto de tenant propagado por todo el stack (cabecera → token → contexto de ejecución → conexión) | C | 0 | core | ✅ | contecmind:app/services/tenant_context.py + app/db/session.py (_rls_apply_on_begin) |
 | `CRM-00.01.02.03` | Prohibición estructural de consultas sin predicado de tenant (interceptor / linter / test de arquitectura) | C | 0 | core | ✅ | contecmind:tests/unit/test_tenant_scope_contract.py |
 | `CRM-00.01.02.04` | Tests automatizados de cross-tenant leakage en cada pipeline local (aquí: gate de pre-push, no CI) | C | 0 | core | ✅ | contecmind:tests/unit/test_tenant_guard_contract.py |
-| `CRM-00.01.02.05` | Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403) | A | 0 | core | 🔧 | — |
+| `CRM-00.01.02.05` | Tenant fuzzing: suite que intenta acceder a IDs de otro tenant y exige 404 (no 403) | A | 0 | core | ✅ | — |
 | `CRM-00.01.02.06` | Auditoría de acceso cruzado por personal de soporte, con justificación obligatoria | C | 0 | identity | ✅ | contecmind:app/services/audit.py (justificación obligatoria) |
 | `CRM-00.01.02.07` | Detección de identificadores globales enumerables; uso de ULID/UUIDv7 opacos | A | 0 | core | ✅ | — |
 

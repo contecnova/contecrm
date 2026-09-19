@@ -196,6 +196,13 @@ def vista_360(cuenta_id: UUID, db: DbDep) -> Any:
     summary="Timeline de la cuenta",
 )
 def timeline_cuenta(cuenta_id: UUID, db: DbDep, limite: int = Query(50, ge=1, le=200)) -> Any:
+    # Se comprueba primero que la cuenta existe y es de este tenant. No filtraba
+    # datos —el guard del ORM ya vacía la lista—, pero devolvía 200 donde
+    # `GET /cuentas/{id}` devuelve 404 para el MISMO identificador. Esa
+    # incoherencia es una fuga en potencia: el día que alguien añada al timeline
+    # un dato que no cuelgue de una tabla con `tenant_id`, empezaría a salir.
+    # Lo encontró el fuzzing sistemático de rutas.
+    svc.exigir_cuenta(db, cuenta_id)
     return svc.timeline(db, cuenta_id=cuenta_id, limite=limite)
 
 
@@ -484,6 +491,7 @@ def registrar_consentimiento(contacto_id: UUID, datos: RegistrarConsentimiento, 
     summary="Historial de consentimientos",
 )
 def listar_consentimientos(contacto_id: UUID, db: DbDep) -> Any:
+    svc.exigir_contacto(db, contacto_id)
     return list(
         db.execute(
             select(Consentimiento)

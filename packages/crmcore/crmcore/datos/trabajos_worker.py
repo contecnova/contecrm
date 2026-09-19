@@ -41,28 +41,45 @@ def _parar(signum: int, _frame: Any) -> None:
     logger.info("trabajos_worker.senal", senal=int(signum))
 
 
-def _procesar(db: Any, trabajo: Any, tanda_max: int) -> None:
-    """Lleva un trabajo hasta donde pueda en esta visita.
+def _procesar(trabajo_id: Any, tenant_id: Any, tanda_max: int) -> None:
+    """Lleva un trabajo hasta donde pueda, en una sesión **de su tenant**.
 
-    Se queda con él mientras avance: soltarlo tras cada tanda para volver a
-    tomarlo obligaría a una consulta con bloqueo por cada doscientos elementos,
-    y con varias réplicas el trabajo iría saltando de worker en worker sin que
-    eso aporte nada.
+    La sesión es lo importante de esta función, y costó una fuga encontrarlo.
+    El lote se toma con una sesión de sistema —hay que mirar los trabajos de
+    todos los tenants para saber cuál toca—, pero **ejecutar** el trabajo en esa
+    misma sesión deja al ejecutor sin ninguna red: el guard del ORM se aparta
+    ante una sesión de sistema, y RLS con `app.current_tenant` vacío también.
+    Un trabajo de operación masiva del tenant B con el identificador de una
+    cuenta del tenant A la habría actualizado.
+
+    Abriendo una sesión atada al tenant del trabajo, el guard filtra cada
+    consulta del ejecutor y ese identificador ajeno sencillamente no existe.
+
+    Se queda con el trabajo mientras avance: soltarlo tras cada tanda para
+    volver a tomarlo obligaría a una consulta con bloqueo cada doscientos
+    elementos, y con varias réplicas el trabajo iría saltando de worker en
+    worker sin que eso aporte nada.
     """
-    from crmcore.datos.trabajos import avanzar, avisar, soltar
+    from crmcore.datos.trabajos import avanzar, avisar, leer, soltar
+    from crmcore.db.session import nueva_sesion
     from crmcore.tenancy.context import con_contexto
 
-    with con_contexto(tenant_id=trabajo.tenant_id, origen="trabajos"):
-        while _corriendo and avanzar(db, trabajo, tanda_max=tanda_max):
-            pass
-        # Apagado a mitad: se suelta para que otro lo retome ya, en vez de
-        # esperar a que caduque el bloqueo. Un despliegue no debería costar
-        # cinco minutos de parada de algo que se sabía que iba a pasar.
-        if _corriendo:
-            if trabajo.callback_url:
-                avisar(db, trabajo)
-        else:
-            soltar(db, trabajo)
+    db = nueva_sesion(tenant_id)
+    try:
+        with con_contexto(tenant_id=tenant_id, origen="trabajos"):
+            trabajo = leer(db, trabajo_id)
+            while _corriendo and avanzar(db, trabajo, tanda_max=tanda_max):
+                pass
+            # Apagado a mitad: se suelta para que otro lo retome ya, en vez de
+            # esperar a que caduque el bloqueo. Un despliegue no debería costar
+            # cinco minutos de parada de algo que se sabía que iba a pasar.
+            if _corriendo:
+                if trabajo.callback_url:
+                    avisar(db, trabajo)
+            else:
+                soltar(db, trabajo)
+    finally:
+        db.close()
 
 
 def run(*, nombre: str = "trabajos") -> None:
@@ -93,10 +110,13 @@ def run(*, nombre: str = "trabajos") -> None:
         db = nueva_sesion(sistema=True)
         try:
             trabajos = tomar_lote(db, worker_id=worker_id, lote=cfg.trabajo_lote)
-            for trabajo in trabajos:
+            # Se sacan id y tenant ANTES de cerrar el ámbito de la sesión de
+            # sistema: el trabajo se vuelve a leer dentro de la suya.
+            pendientes = [(t.id, t.tenant_id) for t in trabajos]
+            for trabajo_id, tenant_id in pendientes:
                 if not _corriendo:
                     break
-                _procesar(db, trabajo, cfg.trabajo_tanda)
+                _procesar(trabajo_id, tenant_id, cfg.trabajo_tanda)
 
             # La purga se mira una vez por hora. Su plazo es de días, así que
             # consultarla en cada vuelta sería una consulta por segundo para

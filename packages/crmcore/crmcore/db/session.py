@@ -173,8 +173,21 @@ def get_engine() -> Engine:
 
 
 def get_sessionmaker() -> sessionmaker[Session]:
+    """El fabricante de sesiones, y con él el guard de tenant.
+
+    **El guard se instala aquí y no solo en `crear_servicio`.** Lo estaba solo
+    ahí, y un worker es un proceso que nunca llama a esa factoría: abría
+    sesiones sin la red del ORM puesta. En producción quedaba RLS, pero RLS
+    tampoco cubre una sesión de sistema, así que la red era exactamente
+    ninguna. Instalarlo al fabricar el primer `Session` cubre todo proceso que
+    toque la base —API, worker, script de mantenimiento, prueba— sin que nadie
+    tenga que acordarse.
+    """
     global _sessionmaker
     if _sessionmaker is None:
+        from crmcore.tenancy.guard import instalar_guard
+
+        instalar_guard()
         _sessionmaker = sessionmaker(
             bind=get_engine(),
             autoflush=False,

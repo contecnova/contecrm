@@ -265,6 +265,14 @@ def obtener_instancia(instancia_id: UUID, db: DbDep) -> Any:
     ),
 )
 def historial(instancia_id: UUID, db: DbDep) -> Any:
+    # El padre se comprueba antes: un subrecurso de algo que no existe —o que
+    # no es tuyo— tiene que responder 404 igual que el recurso padre. No
+    # filtraba datos (el guard vacía la lista), pero el mismo identificador
+    # daba 404 en un sitio y 200 en otro, y esa incoherencia es por donde se
+    # cuela una fuga el día que el subrecurso incluya algo que no cuelgue de
+    # una tabla con `tenant_id`. Lo encontró el fuzzing sistemático de rutas.
+    if db.get(InstanciaProceso, instancia_id) is None:
+        raise NoEncontrado("Instancia no encontrada", error_code="proceso.instancia_no_existe")
     return list(
         db.execute(
             select(PasoEjecutado)

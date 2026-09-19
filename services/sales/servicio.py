@@ -266,6 +266,12 @@ def convertir_lead(
     return lead, oportunidad
 
 
+def exigir_lead(db: Session, lead_id: UUID) -> Lead:
+    """El lead, o 404. Pública para que las rutas de subrecursos comprueben el
+    padre antes de devolver su contenido."""
+    return _lead(db, lead_id)
+
+
 def _lead(db: Session, lead_id: UUID) -> Lead:
     lead = db.get(Lead, lead_id)
     if lead is None or lead.deleted_at is not None:
@@ -638,6 +644,11 @@ def reabrir(
         },
     )
     return oportunidad
+
+
+def exigir_oportunidad(db: Session, oportunidad_id: UUID) -> Oportunidad:
+    """La oportunidad, o 404. Misma razón que `exigir_lead`."""
+    return _oportunidad(db, oportunidad_id)
 
 
 def _oportunidad(db: Session, oportunidad_id: UUID) -> Oportunidad:

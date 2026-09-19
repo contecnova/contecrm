@@ -148,7 +148,24 @@ def _al_ejecutar(estado: ORMExecuteState) -> None:
         estado.statement = estado.statement.options(
             with_loader_criteria(
                 modelo,
-                lambda cls, tid=tenant_id: cls.tenant_id == tid,
+                # `tenant_id` entra como **variable de cierre**, no como argumento
+                # por defecto. La diferencia no es de estilo: es la que decide si
+                # este guard protege o filtra.
+                #
+                # SQLAlchemy compila estos lambdas una vez y los cachea por su
+                # objeto de código. Analiza las variables de cierre y las
+                # convierte en parámetros ligados, así que el valor viaja en cada
+                # ejecución. Un argumento por defecto NO es una variable de
+                # cierre: no lo analiza, y su valor queda **horneado en la
+                # expresión cacheada**.
+                #
+                # Con el argumento por defecto, el primer tenant que consultaba
+                # en el proceso fijaba el filtro para todos los siguientes: el
+                # segundo tenant veía las filas del primero. En las pruebas no se
+                # veía porque cada una monta un motor nuevo y con él una caché
+                # nueva; en un proceso de API, que sirve a muchos tenants durante
+                # días, habría filtrado desde el primer minuto.
+                lambda cls: cls.tenant_id == tenant_id,
                 include_aliases=True,
             )
         )

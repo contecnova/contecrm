@@ -89,6 +89,50 @@ NIVELES = {
 # configuración; al revés se corrige con una notificación de brecha.
 SENSIBILIDAD_POR_DEFECTO = "interno"
 
+# Columnas que NUNCA se enmascaran ni se ocultan, porque no son contenido del
+# registro sino su metadato: quién lo creó, cuándo y con qué versión.
+#
+# No es una relajación de la política, es corregir un fallo: enmascarar el `id`
+# devolvía «·······e9be» donde el contrato declara un UUID, y la respuesta
+# reventaba con un 500 antes de llegar al cliente. Le pasaba a **toda cuenta de
+# servicio**, porque el rol `integracion` no estaba en la política y caía al
+# comodín, que enmascara hasta `interno`. Una integración no podía leer una
+# ficha. Y enmascarar el identificador tampoco protegía nada: el cliente acaba
+# de escribirlo en la URL para pedir el registro.
+CAMPOS_ESTRUCTURALES = frozenset(
+    {
+        "id",
+        "tenant_id",
+        "version",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+        "created_origen",
+        "updated_origen",
+        "deleted_at",
+        "deleted_by",
+    }
+)
+
+
+def enmascarable(modelo: type, campo: str, valor: Any) -> bool:
+    """Si este valor se puede enmascarar sin cambiar de tipo.
+
+    Enmascarar es sustituir caracteres por puntos, y eso solo tiene sentido
+    sobre texto. Aplicado a un número, una lista o un diccionario produce una
+    cadena que ya no encaja en el contrato declarado y la respuesta falla — un
+    500 en vez de un dato protegido.
+
+    Cuando no se puede, el nivel **baja a claro** y no sube a oculto. Es una
+    decisión incómoda que conviene entender: ocultar tampoco sirve, porque un
+    campo obligatorio ausente rompe el contrato igual. Lo que corresponde para
+    un número de verdad sensible es declararlo `oculto` en la columna y que su
+    esquema lo admita ausente — una decisión explícita de quien define el
+    objeto, no un efecto lateral de que su rol no estuviera en una tabla.
+    """
+    return isinstance(valor, str)
+
 
 class PoliticaCampo(Base, TimestampMixin):
     """Excepción explícita para un campo concreto.
@@ -250,7 +294,10 @@ def proyectar(
             # creer que hay algo escondido, y eso es peor que un hueco.
             salida[campo] = valor
         elif nivel == "enmascarado":
-            salida[campo] = enmascarar(str(valor))
+            if not enmascarable(modelo, campo, valor):
+                salida[campo] = valor
+                continue
+            salida[campo] = enmascarar(valor)
             enmascarados.append(campo)
         else:
             ocultos.append(campo)
@@ -268,6 +315,8 @@ def _nivel_del_campo(
     excepciones: dict[tuple[str, str], str],
 ) -> str:
     """Nivel efectivo: la excepción si la hay, y si no, el que toca por sensibilidad."""
+    if campo in CAMPOS_ESTRUCTURALES:
+        return "claro"
     for rol in [*sorted(roles), "*"]:
         nivel = excepciones.get((campo, rol))
         if nivel in NIVELES:

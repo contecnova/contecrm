@@ -323,6 +323,7 @@ def proyectar_para(
         _nivel_del_campo,
         _politica_por_rol,
         anotar_retenidos,
+        enmascarable,
     )
     from crmcore.config import get_settings
     from crmcore.security.cifrado import enmascarar
@@ -345,7 +346,11 @@ def proyectar_para(
             if nivel == "claro" or valor is None:
                 salida[campo] = valor
             elif nivel == "enmascarado":
-                salida[campo] = enmascarar(str(valor))
+                # Solo se enmascara lo que se puede enmascarar sin cambiar de
+                # tipo. Ver `crmcore.authz.proyeccion.enmascarable`: hacerlo
+                # sobre un número o una lista producía una cadena que rompía el
+                # contrato y devolvía un 500.
+                salida[campo] = enmascarar(valor) if enmascarable(modelo, campo, valor) else valor
             else:
                 # Se anota para anunciarlo en la cabecera `X-Campos-Retenidos`.
                 # Sin ese anuncio, el cliente no puede distinguir «este campo

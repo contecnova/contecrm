@@ -87,13 +87,42 @@ def _tomar_lote(db: Any, worker_id: str) -> list[InstanciaProceso]:
     return list(instancias)
 
 
-def _avanzar_una(db: Any, instancia: InstanciaProceso, invocadores: dict[str, Any]) -> None:
-    """Avanza una instancia y libera su bloqueo. Nunca propaga la excepción."""
+def _avanzar_una(
+    instancia_id: Any, tenant_id: Any, tomada_por: str, invocadores: dict[str, Any]
+) -> None:
+    """Avanza una instancia en una sesión **de su tenant**. Nunca propaga.
+
+    El lote se toma con una sesión de sistema, porque hay que mirar las
+    instancias de todos los tenants para saber cuáles han vencido. Avanzarlas en
+    esa misma sesión dejaría al motor sin la red del guard del ORM, que se
+    aparta ante una sesión de sistema. Hoy ningún paso lee un identificador que
+    venga de fuera, así que no hay fuga demostrable — pero el día que un
+    invocador la lea, la red tiene que estar puesta, no pendiente de que alguien
+    se acuerde. Es la misma corrección que en el worker de trabajos, donde sí
+    había fuga.
+    """
+    from crmcore.db.session import nueva_sesion
+
+    db = nueva_sesion(tenant_id)
+    try:
+        _avanzar_en(db, instancia_id, tomada_por, invocadores)
+    finally:
+        db.close()
+
+
+def _avanzar_en(db: Any, instancia_id: Any, tomada_por: str, invocadores: dict[str, Any]) -> None:
+    instancia = db.get(InstanciaProceso, instancia_id)
+    if instancia is None:
+        # La instancia se ha ido entre la toma y ahora (una baja de tenant, una
+        # purga). No es un error del worker.
+        logger.info("worker.instancia_ausente", instancia=str(instancia_id))
+        return
+
     from crmcore.tenancy.context import con_contexto
 
     try:
         with con_contexto(tenant_id=instancia.tenant_id, origen="orquestador"):
-            motor = Motor(db, invocadores=invocadores, worker_id=str(instancia.tomada_por))
+            motor = Motor(db, invocadores=invocadores, worker_id=tomada_por)
             motor.avanzar(instancia)
         instancia.tomada_por = None
         instancia.tomada_hasta = None
@@ -183,10 +212,13 @@ def run() -> None:
         db = nueva_sesion(sistema=True)
         try:
             instancias = _tomar_lote(db, worker_id)
-            for instancia in instancias:
+            # id, tenant y quién la tomó, ANTES de dejar la sesión de sistema:
+            # la instancia se vuelve a leer dentro de la suya.
+            pendientes = [(i.id, i.tenant_id, str(i.tomada_por)) for i in instancias]
+            for instancia_id, tenant_id, tomada_por in pendientes:
                 if not _corriendo:
                     break
-                _avanzar_una(db, instancia, invocadores)
+                _avanzar_una(instancia_id, tenant_id, tomada_por, invocadores)
 
             # Las tareas vencidas se revisan una vez por minuto, no en cada
             # vuelta: su plazo es de horas, y consultarlas cada dos segundos

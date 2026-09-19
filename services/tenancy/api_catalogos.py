@@ -257,6 +257,14 @@ def anadir_festivo(calendario_id: UUID, datos: CrearFestivo, uow: UowDep) -> Any
     "/{calendario_id}/festivos", response_model=list[FestivoOut], summary="Festivos del calendario"
 )
 def listar_festivos(calendario_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    # El padre se comprueba antes: un subrecurso de algo que no existe —o que
+    # no es tuyo— tiene que responder 404 igual que el recurso padre. No
+    # filtraba datos (el guard vacía la lista), pero el mismo identificador
+    # daba 404 en un sitio y 200 en otro, y esa incoherencia es por donde se
+    # cuela una fuga el día que el subrecurso incluya algo que no cuelgue de
+    # una tabla con `tenant_id`. Lo encontró el fuzzing sistemático de rutas.
+    if db.get(CalendarioLaboral, calendario_id) is None:
+        raise NoEncontrado("Calendario no encontrado", error_code="tenancy.calendario_no_existe")
     return (
         db.execute(
             select(Festivo).where(Festivo.calendario_id == calendario_id).order_by(Festivo.fecha)

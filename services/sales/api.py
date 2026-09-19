@@ -411,6 +411,13 @@ def reabrir(oportunidad_id: UUID, datos: Reabrir, uow: UowDep) -> Any:
     ),
 )
 def historial_etapas(oportunidad_id: UUID, db: DbDep) -> Any:
+    # El padre se comprueba antes: un subrecurso de algo que no existe —o que
+    # no es tuyo— tiene que responder 404 igual que el recurso padre. No
+    # filtraba datos (el guard vacía la lista), pero el mismo identificador
+    # daba 404 en un sitio y 200 en otro, y esa incoherencia es por donde se
+    # cuela una fuga el día que el subrecurso incluya algo que no cuelgue de
+    # una tabla con `tenant_id`. Lo encontró el fuzzing sistemático de rutas.
+    svc.exigir_oportunidad(db, oportunidad_id)
     return list(
         db.execute(
             select(CambioEtapa)
@@ -462,6 +469,7 @@ def crear_linea(
     summary="Líneas de la oportunidad",
 )
 def listar_lineas(oportunidad_id: UUID, db: DbDep) -> Any:
+    svc.exigir_oportunidad(db, oportunidad_id)
     return list(
         db.execute(
             select(LineaOportunidad)
@@ -715,6 +723,7 @@ def editar_regla(regla_id: UUID, datos: dict, uow: UowDep) -> Any:
     ),
 )
 def explicacion(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    svc.exigir_lead(db, lead_id)
     return enr.explicar(db, lead_id, principal.tenant_id)
 
 

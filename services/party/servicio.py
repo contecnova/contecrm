@@ -156,6 +156,25 @@ def actualizar_cuenta(uow: UnidadDeTrabajo, cuenta_id: UUID, cambios: dict[str, 
     return cuenta
 
 
+def exigir_contacto(db: Session, contacto_id: UUID) -> Contacto:
+    """El contacto, o 404. Misma razón que `exigir_cuenta`."""
+    contacto = db.get(Contacto, contacto_id)
+    if contacto is None or contacto.deleted_at is not None:
+        raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
+    return contacto
+
+
+def exigir_cuenta(db: Session, cuenta_id: UUID) -> Cuenta:
+    """La cuenta, o 404. Pública porque la usan las rutas de subrecursos.
+
+    Un subrecurso de algo que no existe —o que no es tuyo— tiene que responder
+    404 igual que el recurso padre. Si no, el mismo identificador da 404 en un
+    sitio y 200 en otro, y esa diferencia es por donde se cuelan las fugas
+    cuando alguien añade un dato nuevo al subrecurso.
+    """
+    return _cuenta(db, cuenta_id)
+
+
 def _cuenta(db: Session, cuenta_id: UUID) -> Cuenta:
     cuenta = db.get(Cuenta, cuenta_id)
     # La cuenta fusionada se trata como inexistente en la API: quien la busque

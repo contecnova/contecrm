@@ -429,3 +429,66 @@ def test_quien_puede_verlo_si_ordena_por_el(db: Any, tenant_id: UUID) -> None:
         db=db,
     )
     assert consulta is not None
+
+
+# ── Lo que no se puede enmascarar sin romper el contrato ──────────────────
+
+
+def test_el_identificador_nunca_se_enmascara() -> None:
+    """Enmascararlo devolvía «·······e9be» donde el contrato declara un UUID, y
+    la respuesta reventaba con un 500 antes de llegar al cliente. Tampoco
+    protegía nada: el cliente acaba de escribirlo en la URL para pedir el
+    registro."""
+    from crmcore.authz.proyeccion import CAMPOS_ESTRUCTURALES, _nivel_del_campo
+
+    from services.party.modelos import Cuenta
+
+    for campo in ("id", "tenant_id", "version", "created_at"):
+        assert campo in CAMPOS_ESTRUCTURALES
+        assert _nivel_del_campo(campo, Cuenta, frozenset(), {}, {}) == "claro"
+
+
+def test_un_valor_que_no_es_texto_no_se_enmascara() -> None:
+    """Enmascarar es sustituir caracteres por puntos: sobre un número o una
+    lista produce una cadena que ya no encaja en el tipo declarado."""
+    from crmcore.authz.proyeccion import enmascarable
+
+    from services.party.modelos import Cuenta
+
+    assert enmascarable(Cuenta, "nombre", "ACME Ibérica")
+    assert not enmascarable(Cuenta, "calidad", 87)
+    assert not enmascarable(Cuenta, "campos", {"a": 1})
+    assert not enmascarable(Cuenta, "roles", ["a", "b"])
+
+
+@pytest.mark.db
+def test_un_principal_sin_rol_conocido_recibe_una_respuesta_valida(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """El caso que rompía de verdad: una cuenta de servicio.
+
+    El rol `integracion` no estaba en la política, caía al comodín —que
+    enmascara hasta `interno`— y se enmascaraba TODO, incluidos el identificador
+    y los enteros. Ninguna integración podía leer una ficha: recibía un 500.
+    """
+    from crmcore.authz.proyeccion import proyectar
+
+    from services.party.modelos import Cuenta
+
+    cuenta = Cuenta(tenant_id=tenant_id, nombre="ACME Ibérica", clave_canonica="acme iberica")
+    db.add(cuenta)
+    db.flush()
+
+    proyeccion = proyectar(
+        cuenta.a_dict(),
+        objeto="cuenta",
+        modelo=Cuenta,
+        roles=frozenset({"rol_que_nadie_configuro"}),
+    )
+    datos = proyeccion.datos
+    # Los tipos se conservan: es lo que hace que la respuesta sea válida.
+    assert datos["id"] == cuenta.id
+    assert isinstance(datos["version"], int)
+    assert isinstance(datos["campos"], dict)
+    # Y lo que sí es texto sigue protegido.
+    assert datos["nombre"] != "ACME Ibérica" and "·" in datos["nombre"]

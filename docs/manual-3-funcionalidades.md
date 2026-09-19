@@ -315,7 +315,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
-| `CRM-00.01.02.05` Tenant fuzzing | Varias rutas responden 404 —y no 403— ante un identificador ajeno | La suite sistemática que lo pruebe en **todas** |
 | `CRM-00.01.04.07` Localización por tenant | Idioma, zona horaria y moneda guardados | Aplicarlos en formatos, calendarios y envíos |
 | `CRM-00.01.04.09` BYOK / CMEK | Rotación con clave anterior | Clave aportada y revocable por el cliente |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
@@ -2114,3 +2113,97 @@ había que darlas de alta a mano en cada entorno. Ahora se provisionan
 Prometheus y Tempo, enlazadas entre sí: se ve un pico de latencia, se salta a la
 traza que lo explica y de ahí al servicio, sin cambiar de pantalla ni copiar
 identificadores a mano.
+
+---
+
+## 27. El fuzzing entre tenants, y las tres fugas que encontró
+
+`CRM-00.01.02.05`. Había pruebas de aislamiento, pero eran las rutas que alguien
+eligió probar. Eso deja el punto ciego donde más duele: la ruta nueva que nadie
+se acordó de añadir a la lista.
+
+La suite (`tests/unit/test_fuzzing_tenant.py`) no tiene lista. Levanta cada
+servicio con su factoría de producción, saca de su OpenAPI **todas** las rutas
+con un identificador, crea una fila de ese objeto para el tenant A y la pide
+como tenant B, con permisos de administrador para que lo que se compruebe sea el
+aislamiento y no la autorización. Exige **404**.
+
+Por qué 404 y no 403: un 403 confirma que el registro existe. Enumerando
+identificadores, un competidor con cuenta en el mismo sistema puede averiguar
+cuántos clientes tiene otro y, con los códigos secuenciales que usan muchos CRM,
+hasta su ritmo de altas.
+
+Lo que hace que la suite no se degrade: una ruta cuyo objeto no se puede resolver
+**no se ignora en silencio**, se lista y hace fallar la prueba. El día que
+alguien añada `/expedientes/{expediente_id}` sin un modelo `Expediente`, la
+prueba lo dice en vez de dejar de cubrirlo. Y hay un suelo de cobertura para que
+renombrar un parámetro no desactive media suite sin que se note.
+
+### Fuga 1 — el filtro de tenant, envenenado por la caché de sentencias
+
+La más grave encontrada en este proyecto.
+
+El guard del ORM inyecta `with_loader_criteria(modelo, lambda cls: ...)`.
+SQLAlchemy compila esos lambdas una vez y los cachea por su objeto de código:
+analiza sus **variables de cierre** y las convierte en parámetros ligados, de
+modo que el valor viaja en cada ejecución. Un **argumento por defecto** no es
+una variable de cierre, no se analiza, y su valor queda horneado en la expresión
+cacheada.
+
+El guard usaba `lambda cls, tid=tenant_id: cls.tenant_id == tid`. Consecuencia:
+**el primer tenant que consultaba en el proceso fijaba el filtro para todos los
+demás, y el segundo veía las filas del primero.**
+
+No se había visto porque cada prueba monta un motor nuevo —y con él una caché de
+sentencias nueva— y casi todas usan un solo tenant. En un proceso de API, que
+vive días y atiende a muchos tenants, habría filtrado desde el primer minuto.
+Las pruebas de regresión (`test_guard_tenant_cache.py`) hacen siempre lo mismo:
+consultar con un tenant y después con otro **en el mismo proceso**, con tres
+tenants, con `select`, con `get`, con `update` y cruzando modelos distintos.
+
+### Fuga 2 — el worker ejecutaba con una sesión de sistema
+
+El worker de trabajos toma el lote con una sesión de sistema, que es correcto:
+hay que mirar los trabajos de todos los tenants para saber cuál toca. Pero
+**ejecutaba el trabajo en esa misma sesión**, y una sesión de sistema aparta al
+guard a propósito; RLS con `app.current_tenant` vacío tampoco filtra. La red era
+exactamente ninguna.
+
+Un trabajo de operación masiva del tenant B con el identificador de una cuenta
+del tenant A la habría actualizado. Ahora cada trabajo se ejecuta en una sesión
+atada a **su** tenant, y ese identificador sencillamente no existe. La misma
+corrección se aplicó al worker del motor de procesos, donde no había fuga
+demostrable pero la red tampoco estaba puesta.
+
+Y de paso: **el guard se instalaba solo en la factoría de servicio**, que un
+worker nunca llama. Ahora lo instala el propio fabricante de sesiones, así que
+cubre API, workers, scripts y pruebas sin que nadie tenga que acordarse.
+
+### Fuga 3 — el subrecurso que respondía 200 donde el recurso responde 404
+
+`GET /accounts/{id}` devolvía 404 para un identificador ajeno y
+`GET /accounts/{id}/timeline` devolvía 200 con lista vacía. No filtraba datos
+—el guard ya vacía la lista— pero es la misma incoherencia en seis rutas
+(timeline, consentimientos, historial de etapas, líneas, explicación de
+enrutamiento, historial de instancia, festivos), y es por donde se cuela una
+fuga el día que uno de esos subrecursos incluya algo que no cuelgue de una tabla
+con `tenant_id`. Todas comprueban ahora el padre primero.
+
+### Y un 500 que la suite destapó de camino
+
+Enmascarar el `id` producía `·······e9be` donde el contrato declara un UUID, y
+la respuesta reventaba antes de llegar al cliente. Le pasaba a **toda cuenta de
+servicio**: el rol `integracion` no estaba en `politica_sensibilidad`, caía al
+comodín —que enmascara hasta `interno`— y se enmascaraba todo, enteros y listas
+incluidos. Ninguna integración podía leer una ficha.
+
+Tres correcciones: los campos estructurales (`id`, `tenant_id`, `version`,
+fechas y autoría) nunca se enmascaran, porque son metadato del registro y no su
+contenido; **solo se enmascara lo que es texto**, porque sobre un número o una
+lista el enmascarado produce algo que ya no encaja en su tipo; y los roles de
+sistema que faltaban están ahora en la política.
+
+Para un campo numérico de verdad sensible, lo que corresponde es declararlo
+`oculto` en la columna y que su esquema lo admita ausente — una decisión
+explícita de quien define el objeto, no un efecto lateral de que su rol no
+estuviera en una tabla.

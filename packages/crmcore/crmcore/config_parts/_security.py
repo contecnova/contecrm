@@ -85,6 +85,12 @@ class _SecuritySettings(BaseSettings):
             "comercial": {"ve_hasta": "confidencial", "enmascara": "personal"},
             "usuario": {"ve_hasta": "interno", "enmascara": "confidencial"},
             "auditor": {"ve_hasta": "interno", "enmascara": "especial"},
+            "agente_soporte": {"ve_hasta": "interno", "enmascara": "personal"},
+            "solo_lectura": {"ve_hasta": "interno", "enmascara": "confidencial"},
+            # Una cuenta de servicio ve lo mismo que un usuario: es lo que hace
+            # que una integración pueda sincronizar el maestro. Faltaba, y caía
+            # al comodín: toda integración recibía la ficha entera enmascarada.
+            "integracion": {"ve_hasta": "interno", "enmascara": "confidencial"},
             "*": {"ve_hasta": "publico", "enmascara": "interno"},
         }
     )

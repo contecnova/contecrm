@@ -821,3 +821,82 @@ def test_un_lote_vacio_se_rechaza(api_party: Any) -> None:
     )
     assert respuesta.status_code == 422
     assert respuesta.json()["error_code"] == "masivo.lote_vacio"
+
+
+# ── Aislamiento entre tenants en el worker ────────────────────────────────
+
+
+@pytest.mark.db
+def test_un_trabajo_no_puede_tocar_el_registro_de_otro_tenant(
+    db: Any, tenant_id: UUID, otro_tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Regresión de una fuga real de ESCRITURA entre tenants.
+
+    El worker tomaba el lote con una sesión de sistema —correcto, hay que mirar
+    los trabajos de todos— y **ejecutaba el trabajo en esa misma sesión**. Una
+    sesión de sistema aparta al guard del ORM a propósito, y RLS con
+    `app.current_tenant` vacío tampoco filtra: la red era exactamente ninguna.
+
+    Un trabajo de operación masiva del tenant B con el identificador de una
+    cuenta del tenant A la habría actualizado. Lo encontró el fuzzing
+    sistemático de rutas (`test_fuzzing_tenant.py`) el día que se escribió.
+
+    La corrección es que cada trabajo se ejecute en una sesión atada a SU
+    tenant. Esta prueba recorre el camino entero del worker para comprobarlo,
+    porque comprobar la función de dentro no habría cazado el fallo: el fallo
+    estaba en qué sesión se le pasaba.
+    """
+    from crmcore.datos.trabajos_worker import _procesar
+    from crmcore.db.session import nueva_sesion
+
+    import services.party.masivo  # noqa: F401 — registra los ejecutores
+
+    # Una cuenta del tenant A.
+    ajena = Cuenta(tenant_id=tenant_id, nombre="Ajena S.L.", clave_canonica="ajena")
+    db.add(ajena)
+    db.commit()
+
+    # Un trabajo del tenant B que intenta renombrarla.
+    trabajo = tj.encolar(
+        db,
+        tenant_id=otro_tenant_id,
+        tipo=CUENTAS.tipo_trabajo,
+        entrada={
+            "operacion": "actualizar",
+            "elementos": [{"id": str(ajena.id), "nombre": "Secuestrada S.L."}],
+        },
+        total=1,
+    )
+    db.commit()
+
+    _procesar(trabajo.id, otro_tenant_id, tanda_max=10)
+
+    # La cuenta ajena sigue como estaba…
+    comprobacion = nueva_sesion(tenant_id)
+    try:
+        assert comprobacion.get(Cuenta, ajena.id).nombre == "Ajena S.L."
+    finally:
+        comprobacion.close()
+
+    # …y el trabajo lo cuenta como fallo, que es lo honesto: para el tenant B
+    # ese identificador sencillamente no existe.
+    db.expunge_all()
+    recargado = tj.leer(db, trabajo.id)
+    assert recargado.fallidos == 1 and recargado.ok == 0
+
+
+@pytest.mark.db
+def test_el_guard_esta_puesto_en_cualquier_proceso_que_abra_una_sesion(
+    db: Any, tenant_id: UUID
+) -> None:
+    """El guard se instalaba solo en la factoría de servicio, y un worker nunca
+    la llama: abría sesiones sin la red del ORM. Ahora lo instala el propio
+    fabricante de sesiones, así que cubre API, workers, scripts y pruebas."""
+    from crmcore.db.session import get_sessionmaker
+    from crmcore.tenancy.guard import _al_ejecutar
+    from sqlalchemy.orm import Session
+
+    get_sessionmaker()
+    from sqlalchemy import event
+
+    assert event.contains(Session, "do_orm_execute", _al_ejecutar)
