@@ -33,7 +33,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, Response
+from fastapi import APIRouter, Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from crmcore.logging import get_logger, setup_logging
@@ -164,8 +164,15 @@ def crear_servicio(
             if bus:
                 await bus.cerrar()
 
+    from crmcore.http.idempotency import dependencia as dep_idempotencia
+
     app = FastAPI(
         title=f"{s.app_name} · {nombre}",
+        # Global, no ruta a ruta: son más de cien rutas de escritura, y
+        # engancharla una a una significa que funciona en las que alguien se
+        # acordó. Va como dependencia y no como middleware porque necesita la
+        # identidad ya autenticada — ver el porqué en `crmcore.http.idempotency`.
+        dependencies=[Depends(dep_idempotencia)],
         description=descripcion,
         version=version,
         lifespan=ciclo_de_vida,
@@ -204,12 +211,20 @@ def _montar_middlewares(app: FastAPI, s: Any) -> None:
     del más interno al más externo: límites → tiempos → contexto. El contexto
     tiene que ser el más externo porque todo lo demás necesita el `request_id`.
     """
+    # El más interno: cuando llega aquí, la petición ya pasó los límites y tiene
+    # contexto con tenant, que es lo que la clave de idempotencia necesita.
+    from crmcore.http.etag import ETagMiddleware
     from crmcore.http.middleware import (
         ContextoMiddleware,
+        IdempotenciaMiddleware,
         LimitesMiddleware,
         TiemposMiddleware,
     )
 
+    app.add_middleware(IdempotenciaMiddleware)
+    # Por dentro de la idempotencia: la respuesta que se guarda para el
+    # reintento es la del endpoint, y la cabecera se recalcula al repetirla.
+    app.add_middleware(ETagMiddleware)
     app.add_middleware(LimitesMiddleware)
     app.add_middleware(TiemposMiddleware)
     app.add_middleware(ContextoMiddleware)

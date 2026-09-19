@@ -183,8 +183,8 @@ modulos:
               - {id: CRM-00.02.01.05, c: C, fase: 0, svc: core, estado: hecho, t: "Versionado explícito (URI o cabecera) con política de deprecación publicada"}
               - {id: CRM-00.02.01.06, c: C, fase: 0, svc: core, estado: hecho, t: "Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor"}
               - {id: CRM-00.02.01.07, c: A, fase: 0, svc: core, estado: hecho, t: "Sunset headers y avisos de deprecación proactivos a los consumidores"}
-              - {id: CRM-00.02.01.08, c: C, fase: 0, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/idempotency.py (238 líneas)", t: "Idempotencia mediante Idempotency-Key en todas las operaciones de escritura"}
-              - {id: CRM-00.02.01.09, c: C, fase: 0, svc: core, estado: en-curso, t: "Concurrencia optimista: ETag / If-Match / versión de registro"}
+              - {id: CRM-00.02.01.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/idempotency.py (238 líneas)", t: "Idempotencia mediante Idempotency-Key en todas las operaciones de escritura"}
+              - {id: CRM-00.02.01.09, c: C, fase: 0, svc: core, estado: hecho, t: "Concurrencia optimista: ETag / If-Match / versión de registro"}
               - {id: CRM-00.02.01.10, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/pagination_service.py", t: "Paginación por cursor estable, filtrado, ordenación y proyección de campos"}
               - {id: CRM-00.02.01.11, c: C, fase: 0, svc: core, estado: en-curso, t: "Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales"}
               - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: en-curso, t: "API asíncrona para cargas largas: job ID, polling y callback"}

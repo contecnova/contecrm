@@ -132,8 +132,32 @@ async def manejar_no_previsto(request: Request, exc: Exception) -> JSONResponse:
     return _respuesta(err.a_problema(instancia=str(request.url.path), request_id=rid), 500)
 
 
+async def manejar_repetida(_peticion: Request, exc: Exception) -> JSONResponse:
+    """Devuelve la respuesta que se guardó la primera vez (CRM-00.02.01.08).
+
+    No es un error, aunque llegue como excepción: la dependencia de idempotencia
+    no puede responder —solo cortar—, así que corta con esto y aquí se traduce
+    en la respuesta original.
+
+    Lleva `Idempotency-Replayed` para que el cliente pueda distinguir «se ha
+    hecho ahora» de «ya estaba hecho». Esa diferencia importa al conciliar, y sin
+    la marca es indistinguible.
+    """
+    from crmcore.http.idempotency import RespuestaRepetida
+
+    assert isinstance(exc, RespuestaRepetida)
+    return JSONResponse(
+        content=exc.cuerpo,
+        status_code=exc.status,
+        headers={"Idempotency-Replayed": "true"},
+    )
+
+
 def registrar_manejadores(app: FastAPI) -> None:
-    """Engancha los cuatro manejadores. Lo llama la factoría de servicio."""
+    """Engancha los manejadores. Lo llama la factoría de servicio."""
+    from crmcore.http.idempotency import RespuestaRepetida
+
+    app.add_exception_handler(RespuestaRepetida, manejar_repetida)  # type: ignore[arg-type]
     app.add_exception_handler(CrmError, manejar_error_dominio)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, manejar_validacion)  # type: ignore[arg-type]
     app.add_exception_handler(StarletteHTTPException, manejar_http)  # type: ignore[arg-type]

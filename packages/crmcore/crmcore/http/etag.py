@@ -84,3 +84,89 @@ def comprobar_if_none_match(objeto: Any, if_none_match: str | None) -> bool:
         return True
     actual = str(getattr(objeto, "version", ""))
     return actual in {_normalizar(v) for v in if_none_match.split(",")}
+
+
+class ETagMiddleware:
+    """Pone la cabecera `ETag` en toda respuesta que lleve versión
+    (CRM-00.02.01.09).
+
+    La mitad automática del control de concurrencia. Se hace aquí porque **la
+    cabecera es mecánica**: si la respuesta JSON trae un campo `version`, el
+    ETag sale de ahí y no hay decisión que tomar. Dejarlo en cada endpoint
+    significaría tenerlo en los que alguien recordó, y un cliente no puede usar
+    `If-Match` en un recurso que unas veces devuelve `ETag` y otras no.
+
+    La otra mitad —comprobar el `If-Match` que llega— **no** puede vivir aquí:
+    hace falta el objeto cargado para saber su versión actual, y eso solo lo
+    sabe el endpoint. Esa parte se llama con `comprobar_if_match`, y hay un gate
+    (`test_contratos_arquitectura.py`) que falla si una ruta de actualización
+    sobre un recurso versionado no la usa.
+    """
+
+    METODOS = frozenset({"GET", "POST", "PUT", "PATCH"})
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or scope.get("method", "") not in self.METODOS:
+            await self.app(scope, receive, send)
+            return
+
+        estado: dict[str, Any] = {"inicio": None, "cuerpo": b"", "json": False}
+
+        async def _interceptar(mensaje: dict[str, Any]) -> None:
+            if mensaje["type"] == "http.response.start":
+                # Se retiene el inicio para poder añadirle la cabecera cuando se
+                # conozca el cuerpo. Mandarlo antes haría imposible añadir nada.
+                estado["inicio"] = mensaje
+                cabeceras = dict(mensaje.get("headers") or [])
+                tipo = cabeceras.get(b"content-type", b"")
+                estado["json"] = b"application/json" in tipo
+                return
+
+            if mensaje["type"] == "http.response.body":
+                estado["cuerpo"] += mensaje.get("body", b"")
+                if mensaje.get("more_body", False):
+                    return
+                inicio = estado["inicio"]
+                if inicio is not None:
+                    version = _version_del_cuerpo(estado["cuerpo"]) if estado["json"] else None
+                    if version is not None:
+                        inicio["headers"] = [
+                            *inicio.get("headers", []),
+                            (b"etag", f'W/"{version}"'.encode()),
+                        ]
+                    await send(inicio)
+                    estado["inicio"] = None
+                await send({"type": "http.response.body", "body": estado["cuerpo"]})
+                return
+
+            await send(mensaje)
+
+        await self.app(scope, receive, _interceptar)
+
+
+def _version_del_cuerpo(cuerpo: bytes) -> int | None:
+    """Saca `version` de una respuesta JSON, si la trae.
+
+    Solo del nivel superior: un ETag sacado de la versión de un objeto anidado
+    identificaría a otro recurso, y el cliente lo usaría para actualizar el que
+    no es. Y solo de un objeto, no de una lista: una lista no tiene una versión.
+    """
+    import json
+
+    if not cuerpo or len(cuerpo) > 2_000_000:
+        # Un cuerpo enorme no se parsea para sacar un entero: el coste de
+        # deserializar varios megas en cada respuesta supera con mucho lo que
+        # aporta la cabecera.
+        return None
+    try:
+        datos = json.loads(cuerpo)
+    except ValueError:
+        return None
+    if isinstance(datos, dict):
+        version = datos.get("version")
+        if isinstance(version, int):
+            return version
+    return None

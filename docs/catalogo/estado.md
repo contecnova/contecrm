@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**539 capacidades**: 🔧 27 en-curso · ✅ 148 hecho · ⬜ 364 pendiente
+**539 capacidades**: 🔧 25 en-curso · ✅ 150 hecho · ⬜ 364 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 16 · ✅ 96 · ⬜ 88
+200 capacidades · 🔧 14 · ✅ 98 · ⬜ 88
 
 ### 0.1 Multi-tenancy
 
@@ -108,8 +108,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.01.05` | Versionado explícito (URI o cabecera) con política de deprecación publicada | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.06` | Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.07` | Sunset headers y avisos de deprecación proactivos a los consumidores | A | 0 | core | ✅ | — |
-| `CRM-00.02.01.08` | Idempotencia mediante Idempotency-Key en todas las operaciones de escritura | C | 0 | core | 🔧 | contecmind:app/core/idempotency.py (238 líneas) |
-| `CRM-00.02.01.09` | Concurrencia optimista: ETag / If-Match / versión de registro | C | 0 | core | 🔧 | — |
+| `CRM-00.02.01.08` | Idempotencia mediante Idempotency-Key en todas las operaciones de escritura | C | 0 | core | ✅ | contecmind:app/core/idempotency.py (238 líneas) |
+| `CRM-00.02.01.09` | Concurrencia optimista: ETag / If-Match / versión de registro | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.10` | Paginación por cursor estable, filtrado, ordenación y proyección de campos | C | 0 | core | ✅ | contecflow-PSA:app/services/pagination_service.py |
 | `CRM-00.02.01.11` | Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales | C | 0 | core | 🔧 | — |
 | `CRM-00.02.01.12` | API asíncrona para cargas largas: job ID, polling y callback | C | 0 | core | 🔧 | — |

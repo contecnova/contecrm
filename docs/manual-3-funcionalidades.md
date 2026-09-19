@@ -318,8 +318,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.01.02.05` Tenant fuzzing | Varias rutas responden 404 —y no 403— ante un identificador ajeno | La suite sistemática que lo pruebe en **todas** |
 | `CRM-00.01.04.07` Localización por tenant | Idioma, zona horaria y moneda guardados | Aplicarlos en formatos, calendarios y envíos |
 | `CRM-00.01.04.09` BYOK / CMEK | Rotación con clave anterior | Clave aportada y revocable por el cliente |
-| `CRM-00.02.01.08` Idempotencia | Módulo completo, con reserva previa y respuesta guardada | Engancharlo en cada ruta de escritura |
-| `CRM-00.02.01.09` ETag / If-Match | Módulo completo y contador de versión en toda entidad | Aplicarlo recurso a recurso |
 | `CRM-00.02.01.11` Operaciones masivas | Topes definidos y validados | El endpoint por recurso, con informe parcial |
 | `CRM-00.02.01.12` API asíncrona | El motor de procesos cubre el trabajo largo | La API de *jobs* con id, sondeo y callback |
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
@@ -1294,3 +1292,70 @@ siendo el de sus datos. Un servicio que no responda **no hace fallar la
 búsqueda**: se devuelve lo que haya y se dice cuáles faltan, porque media
 respuesta útil vale más que un error — y ocultar que falta la mitad sería peor
 que las dos cosas.
+
+---
+
+## 19. Reintentar sin duplicar, y no pisarse al editar
+
+Dos garantías del contrato de API que estaban escritas y **sin enganchar**, que
+es la peor situación posible: el módulo existe, la documentación las promete, y
+en la práctica funcionan donde alguien se acordó. Un contrato que vale «en casi
+todas partes» no es un contrato — el integrador descubre dónde no vale
+reintentando un cobro.
+
+### Idempotencia (CRM-00.02.01.08)
+
+Cualquier escritura acepta la cabecera `Idempotency-Key`. Con ella, repetir la
+petición **no repite el trabajo**: se devuelve la misma respuesta de la primera
+vez, con el mismo código, y una cabecera `Idempotency-Replayed: true` para que el
+cliente pueda distinguir «se ha hecho ahora» de «ya estaba hecho». Esa diferencia
+importa al conciliar, y sin la marca es indistinguible.
+
+Se aplica a **todas** las rutas de escritura sin tocar ninguna. Son más de cien:
+engancharlo una a una significa que funciona en las que alguien recordó.
+
+Está partido en dos mitades, y la separación **no es un capricho**: el middleware
+corre antes de la autenticación, así que ahí todavía no se sabe qué tenant es.
+Usar la pista de la cabecera sin verificar habría parecido que funcionaba y
+habría sido una fuga — quien mintiera sobre su tenant podría recibir la respuesta
+guardada de otro cliente, con su contenido dentro. Así que la clave la reserva
+una **dependencia** que depende del principal ya autenticado, y el middleware
+solo **captura la respuesta**, que es lo que una dependencia no ve.
+
+Tres decisiones que se notan al usarlo:
+
+- **Sin cabecera no hace nada.** Exigirla siempre rompería a todo cliente que hoy
+  funciona, y decidir si una operación se puede reintentar es de quien llama.
+- **La misma clave con otro cuerpo se rechaza** con un 409. Es casi siempre un
+  error del cliente —reutilizar la clave de una operación para otra—, y
+  aceptarlo devolvería la respuesta equivocada.
+- **Una operación fallida libera la clave.** Si se guardara el error, el cliente
+  que reintenta tras arreglar su problema recibiría para siempre el fallo de la
+  primera vez.
+
+Al conectarlo apareció que el módulo **nunca había funcionado**: comprobaba si
+había insertado mirando `rowcount`, y con psycopg 3 un `ON CONFLICT DO NOTHING`
+devuelve **-1**, que en Python es verdadero. Con eso, la función daba siempre
+«la he insertado yo» y no detectaba un duplicado jamás. Llevaba así desde que se
+escribió, invisible porque no estaba enganchada a ninguna ruta. Ahora usa
+`RETURNING`, que no depende de cómo cuente el driver.
+
+### ETag y If-Match (CRM-00.02.01.09)
+
+Toda respuesta que lleve un campo `version` sale con su cabecera `ETag`. Esa
+mitad es automática porque **es mecánica**: si hay versión, el ETag sale de ahí y
+no hay decisión que tomar. Dejarlo en cada endpoint daría un recurso que unas
+veces devuelve `ETag` y otras no, y un cliente no puede usar `If-Match` contra
+eso.
+
+La otra mitad —comprobar el `If-Match` que llega— **no puede ser automática**:
+hace falta el objeto cargado para saber su versión actual, y eso solo lo sabe el
+endpoint. Se llama con una línea, y un gate vigila que no se olvide.
+
+El ETag es **débil** (`W/"7"`) a propósito: identifica la versión lógica del
+registro, no el byte exacto de la representación. Dos peticiones con distinta
+proyección de campos son la misma versión del mismo recurso.
+
+Un `If-Match` desfasado responde **409**, no 412: lo que ha pasado es un
+conflicto de edición —alguien guardó entre tu lectura y tu escritura—, y el
+cliente necesita releer y reintentar, no concluir que su petición era inválida.

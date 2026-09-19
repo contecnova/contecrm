@@ -9,9 +9,11 @@ preferencia de estilo; es la diferencia entre funcionar y no funcionar.
 
 El orden en que se montan (el último añadido es el más externo) importa:
 
-    1. Contexto     — el más externo: todo lo demás necesita `request_id`.
-    2. Tiempos      — mide lo que tardan los de dentro.
-    3. Límites      — rechaza antes de tocar la base de datos.
+    1. Contexto      — el más externo: todo lo demás necesita `request_id`.
+    2. Tiempos       — mide lo que tardan los de dentro.
+    3. Límites       — rechaza antes de tocar la base de datos.
+    4. Idempotencia  — el más interno: solo llega aquí lo que ya pasó los límites
+                       y tiene tenant, que es lo que la clave necesita.
 """
 
 from __future__ import annotations
@@ -218,6 +220,83 @@ class LimitesMiddleware:
                 return
 
         await self.app(scope, receive, send)
+
+
+class IdempotenciaMiddleware:
+    """Guarda la respuesta de una escritura idempotente (CRM-00.02.01.08).
+
+    Es **la segunda mitad**. La primera —reservar la clave— la hace una
+    dependencia global (`crmcore.http.idempotency.dependencia`), y están
+    separadas por un motivo que costó descubrir: **el middleware corre antes de
+    la autenticación**, así que aquí todavía no se sabe qué tenant es.
+
+    Usar la pista de tenant de la cabecera sin verificar habría parecido que
+    funcionaba, y habría sido una fuga: quien mintiera sobre su tenant podría
+    recibir la respuesta guardada de otro cliente, con su contenido dentro. La
+    clave se reserva donde la identidad ya está comprobada, y aquí solo se
+    captura el resultado.
+
+    Qué hace falta de un middleware, entonces: el **cuerpo de la respuesta**, que
+    una dependencia no ve. Por eso esta mitad sigue aquí.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        estado: dict[str, Any] = {"status": 0, "cuerpo": b""}
+
+        async def _capturar(mensaje: Message) -> None:
+            if mensaje["type"] == "http.response.start":
+                estado["status"] = mensaje["status"]
+            elif mensaje["type"] == "http.response.body":
+                estado["cuerpo"] += mensaje.get("body", b"")
+            await send(mensaje)
+
+        await self.app(scope, receive, _capturar)
+
+        # La dependencia deja aquí la clave que reservó. Si no hay nada, esta
+        # petición no era idempotente y no hay nada que guardar.
+        reserva = (scope.get("state") or {}).get("idempotencia")
+        if reserva:
+            await _guardar_respuesta(reserva["clave"], reserva["tenant_id"], estado)
+
+
+async def _guardar_respuesta(clave: str, tenant_id: UUID, estado: dict[str, Any]) -> None:
+    """Guarda la respuesta, o libera la clave si la operación falló.
+
+    Una operación fallida **libera** la clave: si se guardara el error, el
+    cliente que reintenta tras arreglar su problema recibiría para siempre el
+    fallo de la primera vez.
+    """
+    import json
+
+    from crmcore.db.session import nueva_sesion
+    from crmcore.http.idempotency import completar, fallar
+
+    db = nueva_sesion(tenant_id)
+    try:
+        if estado["status"] >= 400:
+            fallar(db, clave=clave, tenant_id=tenant_id, error=f"HTTP {estado['status']}")
+        else:
+            try:
+                cuerpo = json.loads(estado["cuerpo"]) if estado["cuerpo"] else None
+            except ValueError:
+                # Una respuesta que no es JSON —un fichero, un XML— no se
+                # guarda: repetirla exigiría almacenar el binario entero, y para
+                # eso está volver a pedirla.
+                cuerpo = None
+            completar(db, clave=clave, tenant_id=tenant_id, status=estado["status"], cuerpo=cuerpo)
+        db.commit()
+    except Exception as exc:  # noqa: BLE001 — no puede tumbar una respuesta ya enviada
+        logger.error("idempotencia.fallo_al_guardar", error=str(exc)[:200])
+        db.rollback()
+    finally:
+        db.close()
 
 
 async def _responder_error(send: Send, exc: Any, scope: Scope) -> None:
