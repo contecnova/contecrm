@@ -135,6 +135,9 @@ def aplicar_orden_y_cursor(
     params: ParametrosPagina,
     *,
     columnas_permitidas: set[str],
+    objeto: str | None = None,
+    principal: Any = None,
+    db: Any = None,
 ) -> Select:
     """Aplica orden y posición del cursor a la consulta.
 
@@ -142,7 +145,32 @@ def aplicar_orden_y_cursor(
     columna existe: ordenar por una columna sin índice convierte una lista en un
     recorrido completo, y hay columnas (una contraseña hasheada) por las que
     directamente no se ordena. La lista la declara cada recurso.
+
+    Con `objeto` y `principal` se aplica además la **proyección**
+    (CRM-00.05.02.03): ordenar por un campo que no se puede ver lo reconstruye
+    entero — basta pedir la lista ascendente y descendente y comparar. Con un
+    filtro de rango, por búsqueda binaria, en una docena de peticiones. Así que
+    para ordenar por un campo hay que poder verlo **en claro**; enmascarado no
+    basta, porque quien ve `·····7890` no lee el número pero sí lo adivina si
+    puede ordenar por él.
+
+    Los tres argumentos son opcionales para no romper a quien ya llamaba, pero
+    hay un gate que exige pasarlos en todo listado de un objeto con campos
+    sensibles: la compatibilidad no puede convertirse en la puerta de atrás.
     """
+    if objeto is not None and principal is not None:
+        from crmcore.authz.proyeccion import columnas_usables
+
+        columnas_permitidas = columnas_usables(
+            columnas_permitidas,
+            modelo=modelo,
+            objeto=objeto,
+            roles=frozenset(getattr(principal, "roles", frozenset())),
+            es_admin=bool(getattr(principal, "es_admin_plataforma", False)),
+            tenant_id=getattr(principal, "tenant_id", None),
+            db=db,
+        )
+
     campos_orden = [c.strip() for c in params.orden.split(",") if c.strip()]
     if not campos_orden:
         campos_orden = ["-created_at"]

@@ -524,3 +524,51 @@ def test_las_fichas_de_datos_personales_pasan_por_la_proyeccion() -> None:
         + "\n  ".join(faltan)
         + "\n\nUsa `proyectar_para(principal, db, objeto=..., modelo=...)`."
     )
+
+
+def test_todo_listado_de_objeto_sensible_proyecta_su_ordenacion() -> None:
+    """Ordenar por un campo que no se puede ver lo reconstruye entero.
+
+    Basta pedir la lista ascendente y descendente y comparar; con un filtro de
+    rango, por búsqueda binaria, en una docena de peticiones. Así que todo
+    listado de un objeto con columnas sensibles tiene que pasar `objeto` y
+    `principal` a `aplicar_orden_y_cursor`, que es donde se recorta la lista de
+    columnas ordenables al rol.
+
+    Los argumentos son opcionales en la firma para no romper a quien ya llamaba;
+    este gate es lo que impide que esa compatibilidad se convierta en la puerta
+    de atrás.
+    """
+    # Listados sobre objetos que NO son datos de un tenant, con su motivo.
+    exentos = {
+        # `Tenant` es metadato de la plataforma: no tiene `tenant_id` ni columnas
+        # clasificadas, y su listado ya exige ser personal de plataforma. Pedirle
+        # una proyección por rol de tenant no significaría nada.
+        "tenancy/api.py",
+    }
+
+    faltan: list[str] = []
+    for fichero in sorted(SERVICIOS_DIR.rglob("api*.py")):
+        if "__pycache__" in str(fichero):
+            continue
+        if f"{fichero.parent.name}/{fichero.name}" in exentos:
+            continue
+        texto = fichero.read_text(encoding="utf-8")
+        if "aplicar_orden_y_cursor" not in texto:
+            continue
+        arbol = ast.parse(texto, str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.Call):
+                continue
+            nombre = getattr(nodo.func, "id", "") or getattr(nodo.func, "attr", "")
+            if nombre != "aplicar_orden_y_cursor":
+                continue
+            claves = {k.arg for k in nodo.keywords}
+            if not {"objeto", "principal"} <= claves:
+                faltan.append(f"{fichero.parent.name}/{fichero.name}:{nodo.lineno}")
+
+    assert not faltan, (
+        "Listados que ordenan sin aplicar la proyección:\n  "
+        + "\n  ".join(faltan)
+        + "\n\nPasa `objeto=` y `principal=` a `aplicar_orden_y_cursor`."
+    )

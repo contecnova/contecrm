@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore.authz.proyeccion import exigir_campo_usable
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
@@ -103,6 +104,9 @@ def listar_leads(
         Lead,
         params,
         columnas_permitidas={"created_at", "sla_primera_respuesta_at", "estado"},
+        objeto="lead",
+        principal=principal,
+        db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
@@ -306,6 +310,9 @@ def listar_oportunidades(
         Oportunidad,
         params,
         columnas_permitidas={"created_at", "fecha_cierre", "importe", "nombre"},
+        objeto="oportunidad",
+        principal=principal,
+        db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
@@ -531,10 +538,24 @@ router_pipeline_vista = APIRouter(prefix="/pipeline", tags=["pipeline"])
     summary="Importe por etapa, bruto y ponderado",
     description=(
         "El ponderado va **además** del bruto, no en su lugar: el bruto dice "
-        "cuánto hay sobre la mesa y el ponderado cuánto se espera cerrar."
+        "cuánto hay sobre la mesa y el ponderado cuánto se espera cerrar.\n\n"
+        "Exige poder ver el importe **en claro**: un agregado sobre un campo "
+        "oculto es el campo oculto cuando el grupo tiene un elemento."
     ),
 )
 def resumen(db: DbDep, principal: AutenticadoDep, pipeline_id: UUID | None = Query(None)) -> Any:
+    # Un agregado es la vía más directa de todas para sacar un campo que no se
+    # puede ver: la suma de una etapa con una sola oportunidad **es** el importe
+    # de esa oportunidad. Por eso se exige verlo en claro, no enmascarado.
+    exigir_campo_usable(
+        "importe",
+        modelo=Oportunidad,
+        objeto="oportunidad",
+        roles=frozenset(principal.roles),
+        es_admin=principal.es_admin_plataforma,
+        tenant_id=principal.tenant_id,
+        db=db,
+    )
     return svc.resumen_pipeline(db, principal.tenant_id, pipeline_id=pipeline_id)
 
 

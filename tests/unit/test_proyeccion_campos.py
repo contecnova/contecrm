@@ -285,3 +285,147 @@ def test_con_el_enmascarado_apagado_no_se_toca_nada(
         assert resultado.ocultos == ()
     finally:
         limpiar_cache_settings()
+
+
+# ── La otra mitad: filtros, orden y agregados ─────────────────────────────
+#
+# Proyectar solo la salida deja una puerta que no se ve. Quien no puede leer la
+# facturación puede reconstruirla entera si se le deja ordenar por ella —basta
+# pedir la lista ascendente y descendente— y, con un filtro de rango, por
+# búsqueda binaria en una docena de peticiones.
+
+
+def test_para_usar_un_campo_hay_que_verlo_en_claro(db: Any, tenant_id: UUID) -> None:
+    from crmcore.authz.proyeccion import puede_usar
+
+    # El comercial ve la facturación en claro (confidencial): puede ordenar.
+    assert puede_usar(
+        "facturacion_anual",
+        modelo=Cuenta,
+        objeto="cuenta",
+        roles=frozenset({"comercial"}),
+        tenant_id=tenant_id,
+        db=db,
+    )
+    # Pero el correo lo ve enmascarado, así que no.
+    assert not puede_usar(
+        "email",
+        modelo=Cuenta,
+        objeto="cuenta",
+        roles=frozenset({"comercial"}),
+        tenant_id=tenant_id,
+        db=db,
+    )
+
+
+def test_enmascarado_no_basta_para_filtrar(db: Any, tenant_id: UUID) -> None:
+    """Quien ve `·····7890` no lee el número, pero si puede filtrar por él lo
+    adivina: con un filtro de igualdad, en unos cientos de intentos; con uno de
+    rango, en una docena."""
+    from crmcore.authz.proyeccion import nivel_para, puede_usar
+
+    roles = frozenset({"usuario"})
+    assert nivel_para("confidencial", roles, POLITICA) == "enmascarado"
+    assert not puede_usar(
+        "facturacion_anual",
+        modelo=Cuenta,
+        objeto="cuenta",
+        roles=roles,
+        tenant_id=tenant_id,
+        db=db,
+    )
+
+
+def test_el_error_no_dice_por_que(db: Any, tenant_id: UUID) -> None:
+    """Responder «no puedes ordenar por facturación porque es confidencial»
+    confirma que el campo existe y que tiene valor, que es la mitad de lo que
+    quería averiguar quien lo intenta."""
+    from crmcore.authz.proyeccion import exigir_campo_usable
+    from crmcore.errors import Prohibido
+
+    with pytest.raises(Prohibido) as exc:
+        exigir_campo_usable(
+            "email",
+            modelo=Cuenta,
+            objeto="cuenta",
+            roles=frozenset({"usuario"}),
+            tenant_id=tenant_id,
+            db=db,
+        )
+    assert "confidencial" not in str(exc.value)
+    assert "personal" not in str(exc.value)
+    assert exc.value.error_code == "proyeccion.campo_no_usable"
+
+
+def test_las_columnas_ordenables_se_recortan_al_rol(db: Any, tenant_id: UUID) -> None:
+    from crmcore.authz.proyeccion import columnas_usables
+
+    candidatas = {"nombre", "created_at", "facturacion_anual", "email"}
+    comercial = columnas_usables(
+        candidatas,
+        modelo=Cuenta,
+        objeto="cuenta",
+        roles=frozenset({"comercial"}),
+        tenant_id=tenant_id,
+        db=db,
+    )
+    basico = columnas_usables(
+        candidatas,
+        modelo=Cuenta,
+        objeto="cuenta",
+        roles=frozenset({"usuario"}),
+        tenant_id=tenant_id,
+        db=db,
+    )
+    assert "facturacion_anual" in comercial and "email" not in comercial
+    assert "facturacion_anual" not in basico
+
+
+def test_ordenar_por_un_campo_no_visible_se_rechaza(db: Any, tenant_id: UUID) -> None:
+    """La comprobación va en el punto central de ordenación, no en cada
+    listado: hay uno por recurso y el que se olvide es el que se explota."""
+    from types import SimpleNamespace
+
+    from crmcore.errors import ErrorValidacion
+    from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor
+    from sqlalchemy import select
+
+    principal = SimpleNamespace(
+        roles=frozenset({"usuario"}), es_admin_plataforma=False, tenant_id=tenant_id
+    )
+    params = ParametrosPagina.desde_query(limite=50, cursor="", orden="-facturacion_anual")
+
+    with pytest.raises(ErrorValidacion) as exc:
+        aplicar_orden_y_cursor(
+            select(Cuenta),
+            Cuenta,
+            params,
+            columnas_permitidas={"created_at", "facturacion_anual"},
+            objeto="cuenta",
+            principal=principal,
+            db=db,
+        )
+    assert exc.value.error_code == "paginacion.orden_no_permitido"
+
+
+def test_quien_puede_verlo_si_ordena_por_el(db: Any, tenant_id: UUID) -> None:
+    from types import SimpleNamespace
+
+    from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor
+    from sqlalchemy import select
+
+    principal = SimpleNamespace(
+        roles=frozenset({"comercial"}), es_admin_plataforma=False, tenant_id=tenant_id
+    )
+    params = ParametrosPagina.desde_query(limite=50, cursor="", orden="-facturacion_anual")
+
+    consulta = aplicar_orden_y_cursor(
+        select(Cuenta),
+        Cuenta,
+        params,
+        columnas_permitidas={"created_at", "facturacion_anual"},
+        objeto="cuenta",
+        principal=principal,
+        db=db,
+    )
+    assert consulta is not None

@@ -323,7 +323,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
 | `CRM-00.03.03.03` Acciones de automatización | Declaradas y validadas contra una lista cerrada | Los ejecutores de negocio (llegan con la fase 1) |
 | `CRM-00.04.01.07` Máquinas de estado | Declarables por objeto | Forzarlas en la escritura |
-| `CRM-00.05.02.03` Permisos por campo (salida) | Proyección por sensibilidad y rol al serializar, con excepciones por campo | Aplicarla también a los FILTROS: hoy un campo oculto todavía se puede usar para acotar una búsqueda |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
@@ -1435,13 +1434,29 @@ Viven **en el esquema del servicio dueño del dato**, como la papelera o la
 retención: una tabla central no la podría consultar el servicio que serializa,
 porque los permisos de base de datos se lo impiden.
 
-### Un límite, dicho por delante
+### También en los filtros, el orden y los agregados
 
-Esto filtra **la salida**. No impide que un campo oculto se use en un filtro de
-búsqueda, ni que se deduzca de un agregado — quien no ve la facturación de una
-cuenta podría, en teoría, acotarla ordenando un listado por ella. Cerrar eso
-exige reescribir las consultas con la proyección dentro, y **está pendiente**. Se
-dice aquí en vez de dejar creer que la protección es total.
+Proyectar solo la salida deja una puerta que no se ve. Quien no puede leer la
+facturación de una cuenta la reconstruye entera si se le deja **ordenar** por
+ella: basta pedir la lista ascendente y descendente y comparar. Con un **filtro
+de rango** lo hace por búsqueda binaria, en una docena de peticiones. Y un
+**agregado** es todavía más directo: la suma de una etapa con una sola
+oportunidad **es** el importe de esa oportunidad.
+
+Así que la regla es: para **usar** un campo —ordenar, filtrar, agregar— hay que
+poder verlo **en claro**. Enmascarado no basta, porque quien ve `·····7890` no
+lee el número pero sí lo adivina si puede filtrar por él.
+
+La comprobación vive en el punto central de ordenación, no en cada listado: hay
+uno por recurso y el que se olvide es justo el que se explota. Y hay un gate que
+falla si un listado ordena sin pasar la proyección — los argumentos son
+opcionales en la firma para no romper a quien ya llamaba, y el gate es lo que
+impide que esa compatibilidad se convierta en la puerta de atrás.
+
+El error dice **que no se puede**, no por qué. Responder «no puedes ordenar por
+facturación porque es confidencial» confirma que el campo existe y que tiene
+valor, que es la mitad de lo que quería averiguar quien lo intenta. La razón
+completa va al log, donde la ve el operador.
 
 La llamada es explícita en cada endpoint que devuelve datos personales, no magia
 en la serialización, y hay un gate que comprueba que no falta. Es deliberado:

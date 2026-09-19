@@ -36,7 +36,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from crmcore.db.base import Base, TimestampMixin
-from crmcore.errors import ErrorValidacion
+from crmcore.errors import ErrorValidacion, Prohibido
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 
@@ -306,3 +306,112 @@ def fijar_politica_campo(
     db.flush()
     logger.info("proyeccion.excepcion_fijada", objeto=objeto, campo=campo, rol=rol, nivel=nivel)
     return fila
+
+
+# ── La otra mitad: filtros, orden y agregados ─────────────────────────────
+#
+# Proyectar solo la salida deja una puerta abierta que no se ve: quien no puede
+# leer la facturación de una cuenta puede, si se le deja ordenar por ella,
+# reconstruirla entera — y con un filtro de rango puede hacerlo por búsqueda
+# binaria, en una docena de peticiones. Un agregado es todavía más directo:
+# la suma de un campo oculto **es** el campo oculto cuando el grupo tiene un
+# elemento.
+#
+# Así que la regla es: para **usar** un campo —ordenar, filtrar, agregar— hay
+# que poder verlo **en claro**. Enmascarado no basta: quien ve `·····7890` no
+# puede leer el número, pero si puede filtrar por él lo adivina.
+
+
+def puede_usar(
+    campo: str,
+    *,
+    modelo: type,
+    objeto: str,
+    roles: frozenset[str],
+    es_admin: bool = False,
+    tenant_id: UUID | None = None,
+    db: Session | None = None,
+) -> bool:
+    """Si este campo se puede usar para ordenar, filtrar o agregar."""
+    from crmcore.config import get_settings
+
+    if not bool(get_settings().masking_enabled):
+        return True
+    roles_efectivos = frozenset(roles) | ({"admin"} if es_admin else frozenset())
+    nivel = _nivel_del_campo(
+        campo,
+        modelo,
+        roles_efectivos,
+        _politica_por_rol(db),
+        _excepciones(db, tenant_id, objeto),
+    )
+    return nivel == "claro"
+
+
+def exigir_campo_usable(
+    campo: str,
+    *,
+    modelo: type,
+    objeto: str,
+    roles: frozenset[str],
+    es_admin: bool = False,
+    tenant_id: UUID | None = None,
+    db: Session | None = None,
+) -> None:
+    """Lanza si el campo no se puede usar para acotar o agregar.
+
+    El mensaje dice **que no se puede**, no *por qué*. Responder «no puedes
+    ordenar por facturación porque es confidencial» confirma que el campo existe
+    y que tiene valor, que es la mitad de lo que quería averiguar quien lo
+    intenta. La razón completa va al log, donde la ve el operador.
+    """
+    if puede_usar(
+        campo,
+        modelo=modelo,
+        objeto=objeto,
+        roles=roles,
+        es_admin=es_admin,
+        tenant_id=tenant_id,
+        db=db,
+    ):
+        return
+    logger.info(
+        "proyeccion.uso_denegado",
+        objeto=objeto,
+        campo=campo,
+        sensibilidad=sensibilidad_de(modelo, campo),
+        roles=sorted(roles),
+    )
+    raise Prohibido(
+        f"No se puede usar «{campo}» para acotar ni ordenar resultados",
+        error_code="proyeccion.campo_no_usable",
+    )
+
+
+def columnas_usables(
+    candidatas: set[str],
+    *,
+    modelo: type,
+    objeto: str,
+    roles: frozenset[str],
+    es_admin: bool = False,
+    tenant_id: UUID | None = None,
+    db: Session | None = None,
+) -> set[str]:
+    """De una lista blanca, las que además este principal puede usar.
+
+    Se resuelve la política **una vez** para todas: comprobarlas de una en una
+    consultaría las excepciones tantas veces como columnas tenga el recurso.
+    """
+    from crmcore.config import get_settings
+
+    if not bool(get_settings().masking_enabled):
+        return set(candidatas)
+    roles_efectivos = frozenset(roles) | ({"admin"} if es_admin else frozenset())
+    politica = _politica_por_rol(db)
+    excepciones = _excepciones(db, tenant_id, objeto)
+    return {
+        c
+        for c in candidatas
+        if _nivel_del_campo(c, modelo, roles_efectivos, politica, excepciones) == "claro"
+    }

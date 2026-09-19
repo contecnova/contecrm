@@ -92,7 +92,7 @@ def crear_cuenta(datos: CrearCuenta, uow: UowDep) -> Any:
 )
 def listar_cuentas(
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
     orden: str = Query("-created_at"),
@@ -123,6 +123,9 @@ def listar_cuentas(
         Cuenta,
         params,
         columnas_permitidas={"created_at", "nombre", "calidad", "updated_at"},
+        objeto="cuenta",
+        principal=principal,
+        db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=[orden])
@@ -373,7 +376,7 @@ def crear_contacto(datos: CrearContacto, uow: UowDep) -> Any:
 )
 def listar_contactos(
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
     buscar: str = Query(""),
@@ -400,6 +403,9 @@ def listar_contactos(
         Contacto,
         params,
         columnas_permitidas={"created_at", "nombre_completo", "calidad"},
+        objeto="contacto",
+        principal=principal,
+        db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
