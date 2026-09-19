@@ -322,7 +322,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.02.01.12` API asíncrona | El motor de procesos cubre el trabajo largo | La API de *jobs* con id, sondeo y callback |
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
 | `CRM-00.03.03.03` Acciones de automatización | Declaradas y validadas contra una lista cerrada | Los ejecutores de negocio (llegan con la fase 1) |
-| `CRM-00.04.01.07` Máquinas de estado | Declarables por objeto | Forzarlas en la escritura |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
 | `CRM-00.06.01.06` Panel de salud del tenant | `/health/ready` y el registro de servicios | La página de estado por tenant |
@@ -1464,3 +1463,68 @@ enmascarar el campo equivocado en silencio es peor que una llamada olvidada,
 porque la llamada olvidada la caza el gate y el enmascarado equivocado no lo caza
 nadie hasta que un cliente enseña una pantalla con puntos donde debería haber un
 teléfono.
+
+---
+
+## 21. Máquinas de estado, forzadas al escribir
+
+Un campo `estado` sin máquina es una cadena de texto con nombres bonitos
+(CRM-00.04.01.07). Funciona mientras todo el mundo use la interfaz; el día que
+alguien escribe por API —una integración, una importación, un script de
+migración— aparecen oportunidades «ganadas» que nunca pasaron por negociación, y
+los informes de conversión dejan de significar nada **sin que nada haya
+fallado**.
+
+### La máquina se declara en el código, y eso es deliberado
+
+El código tiene un `if estado == "ganada"` en quince sitios: la lista de estados
+posibles **es** parte del programa. Si un tenant pudiera inventarse un estado, la
+mitad de esas comparaciones dejarían de acertar y el registro se quedaría en un
+limbo que nadie programó.
+
+Lo que un tenant **sí** puede es **restringir**. Quitar una transición que el
+código admite es seguro —el código sabe manejar los dos estados, simplemente no
+se va a llegar de uno al otro— y es lo que de verdad piden: «aquí una
+oportunidad perdida no se reabre». Esa asimetría es la que hace la máquina
+configurable sin hacerla frágil. Y cuando una transición está bloqueada por
+configuración, el error lo dice: sin eso, quien administra el tenant no sabe si
+tiene que cambiar un ajuste o pedir un cambio de producto.
+
+Los objetos **propios del tenant** son el caso distinto: no tienen código
+detrás, así que ahí la declaración de metadatos **es** la máquina entera y sí
+define los estados.
+
+### Qué codifica una máquina: lo legítimo, no lo ideal
+
+La primera versión de la máquina de leads exigía pasar por «cualificado» antes de
+convertir, y las pruebas lo cazaron: **un lead que llega de una feria con el
+pedido firmado se convierte en el momento**. Obligar a marcarlo antes como
+contactado y cualificado no mejora el dato — produce dos clics de mentira y un
+histórico que afirma un seguimiento que no existió.
+
+Forzar el proceso ideal es la forma más rápida de que la gente lo falsee, y
+entonces el dato deja de servir para lo que se recogía. La máquina impide lo
+imposible —convertir dos veces el mismo lead, reabrir un tenant archivado cuyos
+datos ya se destruyeron—, no lo poco ortodoxo.
+
+### Detalles que se notan
+
+- **Los estados finales se declaran**, no se deducen de «no tiene salidas».
+  Deducirlos hacía la validación circular: cualquier destino pasaba a ser estado
+  válido por el hecho de ser destino, así que una errata en un nombre creaba un
+  estado nuevo en vez de fallar.
+- **Un estado inventado se distingue de uno prohibido.** Casi siempre es una
+  errata o una integración desactualizada, y decir «desconocido» ahorra media
+  hora buscando un permiso que no falta.
+- **Algunas transiciones exigen motivo** —perder, cancelar, suspender, reabrir—
+  porque son las que alguien preguntará meses después, y la respuesta se pierde
+  con quien la tomó.
+- **Cada transición se audita en el motor**, no en cada sitio que la provoca.
+  Una transición sin apunte es un cambio que nadie puede explicar, y son justo
+  los que se preguntan. Un cambio al mismo estado no se anota: llenaría el
+  historial de ruido y escondería los que sí importan.
+
+El motor es compartido: `tenancy` tenía su propia tabla de transiciones con su
+comprobación a mano, y al pasarla al motor ganó lo que le faltaba —restricción
+por tenant, auditoría automática y el mismo mensaje de error que el resto del
+sistema— sin cambiar una sola de sus reglas.

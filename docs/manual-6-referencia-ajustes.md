@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**139 ajustes** en total, de los cuales **48** son editables en caliente por tenant.
+**140 ajustes** en total, de los cuales **49** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -147,6 +147,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CACHE_TTL_GENERACION_S` | — | `5` | 0–300 | Segundos que cada proceso recuerda la generación de un tenant sin volver a preguntarla. Durante esa ventana una réplica puede seguir sirviendo lo purgado: es el precio explícito de no pagar un viaje de red por lectura. |
 | `BUSQUEDA_IDIOMA` | 🔥 `busqueda_idioma` | `spanish` |  | Configuración de texto de Postgres, que decide cómo se derivan las palabras. Con la equivocada, «facturas» no encuentra «factura» y la búsqueda parece rota sin que nada falle. Va por tenant porque un cliente portugués no busca igual que uno español. |
 | `BUSQUEDA_MAX_RESULTADOS` | 🔥 `busqueda_max_resultados` | `20` | 1–200 | Resultados por consulta. Más de una pantalla no se mira, y pedir mil obliga a Postgres a ordenar mil por relevancia para tirar novecientos. |
+| `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 
 ## Observabilidad y auditoría
 

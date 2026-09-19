@@ -307,7 +307,7 @@ modulos:
               - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Campos calculados y rollups agregados sobre hijos"}
               - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
               - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: hecho, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
-              - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: en-curso, t: "Máquinas de estado configurables por objeto"}
+              - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "Máquinas de estado configurables por objeto"}
               - {id: CRM-00.04.01.08, c: C, fase: 0, svc: metadata, estado: hecho, t: "Esquema expuesto vía API de metadatos (describe) para clientes headless"}
               - {id: CRM-00.04.01.09, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos"}
               - {id: CRM-00.04.01.10, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso"}

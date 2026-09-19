@@ -80,6 +80,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="sso_estado_ttl_s",
             sensible=True,
         ),
+        # Máquinas de estado (CRM-00.04.01.07)
+        _c(
+            "transiciones_prohibidas",
+            "json",
+            "Transiciones que este tenant quita de las que el producto admite",
+            campo_settings="transiciones_prohibidas",
+            sensible=True,
+        ),
         # Búsqueda (CRM-00.01.01.09)
         _c(
             "busqueda_idioma",

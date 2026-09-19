@@ -105,3 +105,14 @@ class _LimitsSettings(BaseSettings):
     # Resultados por consulta. Más de una pantalla no se mira, y pedir mil
     # obliga a Postgres a ordenar mil por relevancia para tirar novecientos.
     busqueda_max_resultados: int = Field(20, ge=1, le=200)
+
+    # ── Máquinas de estado (CRM-00.04.01.07) ──────────────────────────────
+    # Transiciones que este tenant QUITA de las que el código admite. Solo
+    # quita: añadir un estado que el código no conoce dejaría el registro en un
+    # limbo que ningún `if` sabe manejar.
+    #
+    #     {"oportunidad": {"perdida": ["abierta"]}}
+    #
+    # significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:
+    # el producto no decide por el cliente qué procesos son válidos en su casa.
+    transiciones_prohibidas: dict[str, dict[str, list[str]]] = Field(default_factory=dict)

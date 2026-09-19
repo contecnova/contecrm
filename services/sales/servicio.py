@@ -8,12 +8,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar, registrar_cambios
+from crmcore.datos.estados import aplicar as aplicar_estado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.logging import get_logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from services.sales import estados as _estados  # noqa: F401 — declara las máquinas
 from services.sales.enrutamiento import enrutar
 from services.sales.modelos import (
     CambioEtapa,
@@ -110,7 +112,7 @@ def registrar_primera_respuesta(db: Session, lead_id: UUID, *, por: UUID | None 
         lead.sla_primera_respuesta_at and ahora > lead.sla_primera_respuesta_at
     )
     if lead.estado == "nuevo":
-        lead.estado = "contactado"
+        aplicar_estado(db, lead, objeto="lead", nuevo="contactado", por=por)
     if lead.sla_incumplido:
         logger.warning(
             "sales.sla_incumplido",
@@ -145,7 +147,7 @@ def descartar_lead(uow: UnidadDeTrabajo, lead_id: UUID, *, motivo: str, nota: st
         )
 
     dias = int(rt.efectivo("lead_dias_reciclaje", uow.db) or 180)
-    lead.estado = "descartado"
+    aplicar_estado(uow.db, lead, objeto="lead", nuevo="descartado", motivo=motivo)
     lead.motivo_descarte = motivo
     lead.nota_descarte = nota or None
     # Un «ahora no» no es un no para siempre: se programa la vuelta a la cola.
@@ -230,7 +232,10 @@ def convertir_lead(
             lead_id=lead.id,
         )
 
-    lead.estado = "convertido"
+    # Pasa por la máquina: convertir un lead ya convertido crearía una segunda
+    # cuenta del mismo cliente, y convertir uno descartado se salta la
+    # cualificación que mide el equipo.
+    aplicar_estado(uow.db, lead, objeto="lead", nuevo="convertido")
     lead.convertido_at = datetime.now(timezone.utc)
     lead.cuenta_id = cuenta_id
     lead.contacto_id = contacto_id
@@ -522,7 +527,13 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
     """Marca la oportunidad como cerrada y la bloquea si así está configurado."""
     from crmcore.runtime import settings as rt
 
-    oportunidad.estado = "ganada" if ganada else "perdida"
+    aplicar_estado(
+        uow.db,
+        oportunidad,
+        objeto="oportunidad",
+        nuevo="ganada" if ganada else "perdida",
+        motivo=motivo,
+    )
     oportunidad.fecha_cierre_real = date.today()
     oportunidad.probabilidad = 100 if ganada else 0
     if bool(rt.efectivo("bloquear_al_cerrar", uow.db)):
@@ -600,7 +611,7 @@ def reabrir(
         )
 
     estado_previo = oportunidad.estado
-    oportunidad.estado = "abierta"
+    aplicar_estado(uow.db, oportunidad, objeto="oportunidad", nuevo="abierta", motivo=motivo)
     oportunidad.bloqueada = False
     oportunidad.etapa_id = etapa.id
     oportunidad.etapa_desde = datetime.now(timezone.utc)

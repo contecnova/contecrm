@@ -15,6 +15,8 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
+from crmcore.datos.estados import Maquina, registrar_maquina
+from crmcore.datos.estados import comprobar as comprobar_estado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.logging import get_logger
@@ -36,16 +38,35 @@ SLUGS_RESERVADOS = frozenset(
 # Estados y las transiciones permitidas. Se declara la máquina entera en vez de
 # comprobar caso por caso: así se puede enseñar, y añadir un estado obliga a
 # decir desde dónde se llega a él.
-TRANSICIONES: dict[str, frozenset[str]] = {
-    "activo": frozenset({"suspendido", "solo_lectura", "en_baja"}),
-    "suspendido": frozenset({"activo", "solo_lectura", "en_baja"}),
-    "solo_lectura": frozenset({"activo", "suspendido", "en_baja"}),
-    # De `en_baja` se puede volver: una baja por error tiene que ser
-    # recuperable mientras los datos sigan ahí.
-    "en_baja": frozenset({"activo", "archivado"}),
-    # `archivado` es terminal: los datos ya se han destruido.
-    "archivado": frozenset(),
-}
+# La máquina de estados del tenant, declarada en el motor compartido
+# (CRM-00.04.01.07). Estaba aquí como una tabla suelta con su comprobación a
+# mano; pasarla al motor le da lo que le faltaba —restricción por tenant,
+# auditoría automática de cada transición y el mismo mensaje de error que el
+# resto del sistema— y evita que la siguiente máquina se escriba otra vez.
+MAQUINA_TENANT = registrar_maquina(
+    Maquina(
+        objeto="tenant",
+        inicial="activo",
+        transiciones={
+            "activo": frozenset({"suspendido", "solo_lectura", "en_baja"}),
+            "suspendido": frozenset({"activo", "solo_lectura", "en_baja"}),
+            "solo_lectura": frozenset({"activo", "suspendido", "en_baja"}),
+            # De `en_baja` se puede volver: una baja por error tiene que ser
+            # recuperable mientras los datos sigan ahí.
+            "en_baja": frozenset({"activo", "archivado"}),
+        },
+        # `archivado` es terminal: los datos ya se han destruido.
+        finales=frozenset({"archivado"}),
+        # Todo lo que degrada el servicio exige motivo. Seis meses después,
+        # «¿por qué está suspendido este cliente?» es una pregunta real, y sin
+        # motivo escrito la respuesta se pierde con quien lo hizo.
+        exigen_motivo=frozenset({"suspendido", "solo_lectura", "en_baja"}),
+    )
+)
+
+# Se conserva para quien la importaba. Sale de la máquina, así que no puede
+# desincronizarse de ella.
+TRANSICIONES: dict[str, frozenset[str]] = dict(MAQUINA_TENANT.transiciones)
 
 
 # ── Alta y ciclo de vida ──────────────────────────────────────────────────
@@ -144,18 +165,9 @@ def cambiar_estado(
     if nuevo == tenant.estado:
         return tenant
 
-    permitidos = TRANSICIONES.get(tenant.estado, frozenset())
-    if nuevo not in permitidos:
-        raise Conflicto(
-            f"No se puede pasar de «{tenant.estado}» a «{nuevo}»",
-            error_code="tenant.transicion_no_permitida",
-            detalle={"desde": tenant.estado, "permitidos": sorted(permitidos)},
-        )
-    if nuevo in ("suspendido", "solo_lectura", "en_baja") and not motivo.strip():
-        raise ErrorValidacion(
-            f"Pasar a «{nuevo}» exige un motivo escrito",
-            error_code="tenant.motivo_requerido",
-        )
+    # El motor comprueba la transición, exige el motivo donde toca y aplica las
+    # restricciones que haya puesto el tenant.
+    comprobar_estado("tenant", desde=tenant.estado, hasta=nuevo, motivo=motivo, db=uow.db)
 
     anterior = tenant.estado
     tenant.estado = nuevo

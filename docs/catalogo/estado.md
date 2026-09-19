@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**539 capacidades**: 🔧 23 en-curso · ✅ 153 hecho · ⬜ 363 pendiente
+**539 capacidades**: 🔧 22 en-curso · ✅ 154 hecho · ⬜ 363 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-200 capacidades · 🔧 12 · ✅ 100 · ⬜ 88
+200 capacidades · 🔧 11 · ✅ 101 · ⬜ 88
 
 ### 0.1 Multi-tenancy
 
@@ -236,7 +236,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.01.04` | Campos calculados y rollups agregados sobre hijos | A | 1 | metadata | ⬜ | — |
 | `CRM-00.04.01.05` | Registros de tipo (record types) con layouts y valores de lista distintos | A | 1 | metadata | ⬜ | contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio) |
 | `CRM-00.04.01.06` | Validaciones declarativas a nivel de campo, registro y transición de estado | C | 0 | metadata | ✅ | — |
-| `CRM-00.04.01.07` | Máquinas de estado configurables por objeto | A | 0 | metadata | 🔧 | — |
+| `CRM-00.04.01.07` | Máquinas de estado configurables por objeto | A | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.08` | Esquema expuesto vía API de metadatos (describe) para clientes headless | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.09` | Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos | A | 0 | metadata | ⬜ | — |
 | `CRM-00.04.01.10` | Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso | A | 0 | metadata | ⬜ | — |
