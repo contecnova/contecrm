@@ -103,6 +103,7 @@ async def manejar_http(request: Request, exc: StarletteHTTPException) -> JSONRes
         403: "prohibido",
         404: "no_encontrado",
         409: "conflicto",
+        413: "cuerpo_demasiado_grande",
         422: "validacion",
         429: "limite_excedido",
     }

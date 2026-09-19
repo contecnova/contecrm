@@ -223,6 +223,55 @@ services:
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_sales_mig:contecrm_dev_only@postgres:5432/contecrm
     ports: ["127.0.0.1:8009:8000"]
 
+  # ── Workers ───────────────────────────────────────────────────────────────
+  # Procesos de fondo, sin HTTP. Heredan `x-servicio` pero **anulan el
+  # healthcheck**: el de la plantilla comprueba `/health/live` con curl, y un
+  # worker no escucha en ningún puerto — se quedaría permanentemente `unhealthy`
+  # y `restart: unless-stopped` lo reiniciaría en bucle.
+  #
+  # Que estos tres no estuvieran aquí era un agujero de despliegue, no de
+  # código: el worker del motor existía, estaba probado y documentado, y no lo
+  # arrancaba nadie. En esta pila, ningún temporizador de proceso habría saltado
+  # nunca, y el síntoma —«las esperas no vencen»— habría mandado a buscar el
+  # fallo al motor.
+  orchestrator-worker:
+    <<: *servicio
+    command: ["worker", "orchestrator"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: orchestrator
+      DATABASE_URL: postgresql+psycopg://crm_orchestrator_app:contecrm_dev_only@postgres:5432/contecrm
+      # No migra: lo hace el servicio HTTP del mismo esquema. Dos procesos
+      # migrando a la vez es la forma habitual de dejar a medias un `alembic`.
+      APLICAR_MIGRACIONES: "false"
+    ports: []
+    healthcheck:
+      disable: true
+
+  party-trabajos:
+    <<: *servicio
+    command: ["worker", "party", "trabajos_worker"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: party
+      DATABASE_URL: postgresql+psycopg://crm_party_app:contecrm_dev_only@postgres:5432/contecrm
+      APLICAR_MIGRACIONES: "false"
+    ports: []
+    healthcheck:
+      disable: true
+
+  sales-trabajos:
+    <<: *servicio
+    command: ["worker", "sales", "trabajos_worker"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: sales
+      DATABASE_URL: postgresql+psycopg://crm_sales_app:contecrm_dev_only@postgres:5432/contecrm
+      APLICAR_MIGRACIONES: "false"
+    ports: []
+    healthcheck:
+      disable: true
+
   analytics:
     <<: *servicio
     command: ["servicio", "analytics"]

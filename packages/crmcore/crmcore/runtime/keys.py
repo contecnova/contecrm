@@ -271,6 +271,30 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=100_000,
             campo_settings="bulk_max_items",
         ),
+        _c(
+            "trabajo_max_items",
+            "int",
+            "Elementos máximos en una operación masiva diferida",
+            minimo=1,
+            maximo=5_000_000,
+            campo_settings="trabajo_max_items",
+        ),
+        _c(
+            "trabajo_tanda",
+            "int",
+            "Elementos que procesa un trabajo entre commit y commit",
+            minimo=1,
+            maximo=10_000,
+            campo_settings="trabajo_tanda",
+        ),
+        _c(
+            "trabajo_retencion_h",
+            "int",
+            "Horas que se conserva un trabajo terminado antes de borrarlo",
+            minimo=1,
+            maximo=8_760,
+            campo_settings="trabajo_retencion_h",
+        ),
         # Identidad
         _c(
             "mfa_obligatoria",

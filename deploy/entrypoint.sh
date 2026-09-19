@@ -3,7 +3,8 @@
 #
 #   entrypoint.sh servicio <nombre>   arranca un servicio con uvicorn
 #   entrypoint.sh migrar <nombre>     aplica las migraciones de ese servicio
-#   entrypoint.sh worker <nombre>     arranca su worker de fondo
+#   entrypoint.sh worker <nombre> [m]  arranca un worker de fondo del servicio
+#                                     (m = módulo, por defecto `worker`)
 #   entrypoint.sh shell               shell de Python con el entorno cargado
 #
 # Por qué un punto de entrada y no ocho comandos en el compose: el arranque de
@@ -84,7 +85,11 @@ case "$MODO" in
     ;;
   worker)
     esperar_a_postgres
-    exec python -m "services.${SERVICIO}.worker"
+    # Un servicio puede tener más de un worker con bucles distintos: el del
+    # motor de procesos avanza instancias, el de trabajos consume lotes. El
+    # tercer argumento dice cuál, y por defecto es el histórico.
+    MODULO_WORKER="${3:-worker}"
+    exec python -m "services.${SERVICIO}.${MODULO_WORKER}"
     ;;
   shell)
     exec python

@@ -197,13 +197,14 @@ class LimitesMiddleware:
 
         longitud = _cabecera(scope, "content-length")
         if longitud.isdigit() and int(longitud) > s.max_body_mb * 1024 * 1024:
-            from crmcore.errors import ErrorValidacion
+            from crmcore.errors import CuerpoDemasiadoGrande
 
             await _responder_error(
                 send,
-                ErrorValidacion(
+                CuerpoDemasiadoGrande(
                     f"El cuerpo supera el máximo de {s.max_body_mb} MB",
                     error_code="http.cuerpo_demasiado_grande",
+                    detalle={"maximo_mb": s.max_body_mb},
                 ),
                 scope,
             )

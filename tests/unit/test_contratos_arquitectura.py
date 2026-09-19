@@ -219,6 +219,14 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "delegar": "ídem: solo puede delegar quien la tiene asignada",
         "suplantar": "la comprobación es «ser personal de plataforma», dentro del servicio",
         "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
+        # El permiso depende de la OPERACIÓN que trae el cuerpo (crear,
+        # actualizar, borrar), y una dependencia de ruta se resuelve antes de
+        # leerlo. Declarar uno solo obligaría a exigir el más fuerte para todas,
+        # y quien solo puede actualizar no podría actualizar en lote.
+        # Que la comprobación exista y funcione no se queda sin probar: lo cubre
+        # `test_sin_el_permiso_de_la_operacion_se_rechaza` en
+        # `test_trabajos_y_masivo.py`, contra la API real montada.
+        "masivo": "el permiso depende de la operación del cuerpo; se comprueba dentro",
     }
 
     # Los routers COMPARTIDOS del núcleo también escriben, y montarlos desde

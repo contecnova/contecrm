@@ -132,6 +132,26 @@ class Prohibido(CrmError):
     title = "Sin permiso"
 
 
+class CuerpoDemasiadoGrande(CrmError):
+    """Lo que se manda no cabe: un cuerpo que pasa del máximo, un lote con más
+    elementos de los que una petición admite.
+
+    Es distinto de un 429 aunque las dos sean «te has pasado», y confundirlas
+    tiene consecuencias: un 429 le dice al cliente **espera y reintenta**, y
+    reintentar el mismo lote de cincuenta mil dentro de un minuto volverá a
+    fallar, para siempre. Un 413 dice «esto no va a entrar así», que es lo
+    único que hace que el cliente cambie de camino.
+
+    Se usaba `ErrorValidacion` (422) para el cuerpo demasiado grande y
+    `LimiteExcedido` (429) para el lote. Las dos eran respuestas correctas de
+    servidor a preguntas que nadie hacía.
+    """
+
+    status_code = 413
+    code = "cuerpo_demasiado_grande"
+    title = "La petición es demasiado grande"
+
+
 class LimiteExcedido(CrmError):
     """Rate limit o cuota. Lleva `reintentar_en_s` para que el cliente no
     tenga que adivinar cuánto esperar (se copia a la cabecera `Retry-After`)."""
@@ -227,6 +247,7 @@ POR_CODIGO: dict[str, type[CrmError]] = {
         NoEncontrado,
         Conflicto,
         ConflictoDeVersion,
+        CuerpoDemasiadoGrande,
         NoAutenticado,
         Prohibido,
         LimiteExcedido,

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**140 ajustes** en total, de los cuales **49** son editables en caliente por tenant.
+**146 ajustes** en total, de los cuales **52** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -126,6 +126,12 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `COMPOSITE_MAX_OPS` | — | `25` | 1–500 | Tope de operaciones en una petición compuesta (CRM-00.02.01.13). |
 | `PAGE_MAX_SIZE` | 🔥 `page_max_size` | `200` | 1–10000 | Página máxima que se puede pedir. Sin tope, un `limit=1000000` es una denegación de servicio escrita por el propio cliente sin querer. |
 | `PAGE_DEFAULT_SIZE` | — | `50` | 1–1000 |  |
+| `TRABAJO_MAX_ITEMS` | 🔥 `trabajo_max_items` | `100000` | 1–5000000 | Elementos que admite una operación masiva por el camino diferido. Es dos órdenes de magnitud más que el síncrono porque aquí no hay nadie esperando: el límite ya no es la paciencia de un navegador, sino lo que cabe razonablemente en el JSONB de una fila. |
+| `TRABAJO_TANDA` | 🔥 `trabajo_tanda` | `200` | 1–10000 | Elementos que procesa un worker entre commit y commit. Es la unidad de reanudación: una tanda grande amortiza el viaje a la base, y una pequeña pierde menos trabajo cuando el proceso muere a mitad. |
+| `TRABAJO_LOTE` | — | `5` | 1–100 | Trabajos que un worker se lleva por vuelta. |
+| `TRABAJO_BLOQUEO_MIN` | — | `5` | 1–120 | Cuánto retiene un worker un trabajo antes de que otro pueda recuperarlo. Se renueva en cada tanda, así que basta con que supere lo que tarda UNA tanda, no el trabajo entero. |
+| `TRABAJO_RETENCION_H` | 🔥 `trabajo_retencion_h` | `72` | 1–8760 | Cuánto se conserva un trabajo terminado. Guarda la entrada completa, que en una importación son los datos que subió el cliente: conservarla «por si acaso» pasado el plazo es justo lo que el plazo impide. |
+| `TRABAJO_ESPERA_VACIO_S` | — | `2.0` | 0.1–60.0 | Espera del worker cuando no hay nada que hacer. Es la latencia máxima entre aceptar un trabajo y empezarlo. |
 | `HTTP_INTERNO_TIMEOUT_S` | — | `10.0` | 0.5–300.0 | Timeout de una llamada entre servicios. Corto: encadenar tres llamadas con timeouts largos convierte un servicio lento en una caída general. |
 | `HTTP_EXTERNO_TIMEOUT_S` | — | `30.0` | 1.0–600.0 | Timeout de una llamada a un sistema externo (ERP, firma, telefonía). Más largo porque no controlamos su latencia, pero acotado igual. |
 | `REQUEST_TIMEOUT_S` | — | `60.0` | 1.0–900.0 | Una petición que pasa de aquí se corta y devuelve 504. Existe para que una consulta patológica no retenga una conexión del pool indefinidamente. |

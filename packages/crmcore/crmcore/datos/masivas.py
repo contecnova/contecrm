@@ -40,6 +40,10 @@ class Informe:
     total: int = 0
     creados: int = 0
     actualizados: int = 0
+    # Los borrados se cuentan aparte y no como «actualizados». Parece un detalle
+    # y no lo es: un informe que dice «500 actualizados» tras un borrado masivo
+    # es la clase de frase que hace que nadie compruebe qué pasó de verdad.
+    borrados: int = 0
     omitidos: int = 0
     fallidos: int = 0
     errores: list[dict[str, Any]] = field(default_factory=list)
@@ -59,6 +63,7 @@ class Informe:
             "total": self.total,
             "creados": self.creados,
             "actualizados": self.actualizados,
+            "borrados": self.borrados,
             "omitidos": self.omitidos,
             "fallidos": self.fallidos,
             "errores": self.errores,

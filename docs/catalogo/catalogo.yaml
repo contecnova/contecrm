@@ -186,8 +186,8 @@ modulos:
               - {id: CRM-00.02.01.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/idempotency.py (238 líneas)", t: "Idempotencia mediante Idempotency-Key en todas las operaciones de escritura"}
               - {id: CRM-00.02.01.09, c: C, fase: 0, svc: core, estado: hecho, t: "Concurrencia optimista: ETag / If-Match / versión de registro"}
               - {id: CRM-00.02.01.10, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/pagination_service.py", t: "Paginación por cursor estable, filtrado, ordenación y proyección de campos"}
-              - {id: CRM-00.02.01.11, c: C, fase: 0, svc: core, estado: en-curso, t: "Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales"}
-              - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: en-curso, t: "API asíncrona para cargas largas: job ID, polling y callback"}
+              - {id: CRM-00.02.01.11, c: C, fase: 0, svc: core, estado: hecho, t: "Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales"}
+              - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: hecho, t: "API asíncrona para cargas largas: job ID, polling y callback"}
               - {id: CRM-00.02.01.13, c: A, fase: 0, svc: core, estado: pendiente, t: "Batch/composite requests (varias operaciones en una llamada, transaccionales o no)"}
               - {id: CRM-00.02.01.14, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py", t: "Errores normalizados (RFC 9457 Problem Details) con código estable y correlación"}
               - {id: CRM-00.02.01.15, c: A, fase: 0, svc: gateway, estado: pendiente, t: "Sandbox de API con datos sintéticos y consola interactiva"}

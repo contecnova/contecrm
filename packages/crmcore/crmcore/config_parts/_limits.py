@@ -28,10 +28,35 @@ class _LimitsSettings(BaseSettings):
     bulk_max_items: int = Field(1_000, ge=1, le=100_000)
     # Tope de operaciones en una petición compuesta (CRM-00.02.01.13).
     composite_max_ops: int = Field(25, ge=1, le=500)
+
     # Página máxima que se puede pedir. Sin tope, un `limit=1000000` es una
     # denegación de servicio escrita por el propio cliente sin querer.
     page_max_size: int = Field(200, ge=1, le=10_000)
     page_default_size: int = Field(50, ge=1, le=1_000)
+
+    # ── Trabajos asíncronos (CRM-00.02.01.12) ─────────────────────────────
+    # Elementos que admite una operación masiva por el camino diferido. Es dos
+    # órdenes de magnitud más que el síncrono porque aquí no hay nadie
+    # esperando: el límite ya no es la paciencia de un navegador, sino lo que
+    # cabe razonablemente en el JSONB de una fila.
+    trabajo_max_items: int = Field(100_000, ge=1, le=5_000_000)
+    # Elementos que procesa un worker entre commit y commit. Es la unidad de
+    # reanudación: una tanda grande amortiza el viaje a la base, y una pequeña
+    # pierde menos trabajo cuando el proceso muere a mitad.
+    trabajo_tanda: int = Field(200, ge=1, le=10_000)
+    # Trabajos que un worker se lleva por vuelta.
+    trabajo_lote: int = Field(5, ge=1, le=100)
+    # Cuánto retiene un worker un trabajo antes de que otro pueda recuperarlo.
+    # Se renueva en cada tanda, así que basta con que supere lo que tarda UNA
+    # tanda, no el trabajo entero.
+    trabajo_bloqueo_min: int = Field(5, ge=1, le=120)
+    # Cuánto se conserva un trabajo terminado. Guarda la entrada completa, que
+    # en una importación son los datos que subió el cliente: conservarla «por si
+    # acaso» pasado el plazo es justo lo que el plazo impide.
+    trabajo_retencion_h: int = Field(72, ge=1, le=8_760)
+    # Espera del worker cuando no hay nada que hacer. Es la latencia máxima
+    # entre aceptar un trabajo y empezarlo.
+    trabajo_espera_vacio_s: float = Field(2.0, ge=0.1, le=60.0)
 
     # ── Tiempos ───────────────────────────────────────────────────────────
     # Timeout de una llamada entre servicios. Corto: encadenar tres llamadas

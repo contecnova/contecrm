@@ -388,6 +388,7 @@ from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
+from crmcore.datos.trabajos import Trabajo  # noqa: E402
 
 from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento  # noqa: E402
 from services.sales.origen import Toque  # noqa: E402
@@ -411,4 +412,5 @@ __all__ = [
     "RegistroEnrutamiento",
     "ReglaEnrutamiento",
     "Toque",
+    "Trabajo",
 ]

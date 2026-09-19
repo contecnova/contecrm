@@ -799,6 +799,25 @@ from services.party.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E40
 router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES)
 
 
+# Operaciones masivas y sus trabajos diferidos. Importar el módulo es lo que
+# registra los ejecutores, así que tiene que pasar también en el worker: por eso
+# `trabajos_worker.py` importa esto mismo y no se fía de que la API lo haya
+# hecho, que en el worker no ha pasado.
+from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
+from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
+
+from services.party.masivo import RECURSOS as _RECURSOS_MASIVOS  # noqa: E402
+
+routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+
+# Ver los trabajos exige el permiso de administrar el maestro y no uno genérico:
+# la ficha de un trabajo guarda la entrada completa, que en una importación son
+# los datos personales del fichero que subió el cliente.
+router_trabajos = crear_router_trabajos(
+    permiso_ver="account:import", permiso_cancelar="account:import"
+)
+
+
 ROUTERS = [
     router_admin,
     router_cuentas,
@@ -810,4 +829,6 @@ ROUTERS = [
     router_comentarios,
     router_retencion,
     router_busqueda,
+    router_trabajos,
+    *routers_masivos,
 ]

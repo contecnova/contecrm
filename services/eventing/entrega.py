@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -12,6 +10,7 @@ from uuid import UUID
 from crmcore.events.envelope import Evento
 from crmcore.logging import get_logger
 from crmcore.red import cliente_seguro_async
+from crmcore.security.firma import H_FIRMA, H_MOMENTO, firmar
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,40 +23,14 @@ logger = get_logger(__name__)
 # intentándolo es tráfico, ruido en los logs y una cola que no se vacía nunca.
 FALLOS_PARA_DESACTIVAR = 20
 
-# Cabeceras del contrato de entrega. Se documentan en el manual del integrador,
-# y son las que permiten verificar el mensaje sin confiar en la red.
-H_FIRMA = "X-Contecrm-Firma"
-H_MOMENTO = "X-Contecrm-Momento"
+# Cabeceras propias de la entrega de eventos. La firma y el momento vienen de
+# `crmcore.security.firma`, que es donde viven desde que el aviso de fin de un
+# trabajo asíncrono empezó a usar el mismo esquema: una sola implementación del
+# HMAC, y el manual del integrador describe la que corre en los dos sitios.
 H_EVENTO = "X-Contecrm-Evento"
 H_TIPO = "X-Contecrm-Tipo"
 H_DEDUP = "X-Contecrm-Dedup"
 H_INTENTO = "X-Contecrm-Intento"
-
-
-def firmar(cuerpo: bytes, secreto: str, momento: int) -> str:
-    """Firma HMAC-SHA256 del cuerpo y el instante.
-
-    El instante entra en la firma, y esa es la parte que impide el replay: sin
-    él, un mensaje capturado se podría reenviar tal cual dentro de un año con su
-    firma intacta.
-    """
-    material = f"{momento}.".encode() + cuerpo
-    return hmac.new(secreto.encode(), material, hashlib.sha256).hexdigest()
-
-
-def verificar_firma(
-    cuerpo: bytes, secreto: str, firma: str, momento: int, *, ventana_s: int = 300
-) -> bool:
-    """Verificación de referencia, para que el integrador la copie.
-
-    Se publica en el manual porque la mitad de las integraciones que fallan lo
-    hacen por implementar mal esta comprobación: comparando con `==` (que filtra
-    por tiempo), olvidando la ventana, o firmando el JSON reserializado en vez
-    de los bytes recibidos.
-    """
-    if abs(time.time() - momento) > ventana_s:
-        return False
-    return hmac.compare_digest(firmar(cuerpo, secreto, momento), firma)
 
 
 def coincide(suscripcion: Suscripcion, evento: Evento) -> bool:

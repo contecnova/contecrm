@@ -318,8 +318,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-00.01.02.05` Tenant fuzzing | Varias rutas responden 404 —y no 403— ante un identificador ajeno | La suite sistemática que lo pruebe en **todas** |
 | `CRM-00.01.04.07` Localización por tenant | Idioma, zona horaria y moneda guardados | Aplicarlos en formatos, calendarios y envíos |
 | `CRM-00.01.04.09` BYOK / CMEK | Rotación con clave anterior | Clave aportada y revocable por el cliente |
-| `CRM-00.02.01.11` Operaciones masivas | Topes definidos y validados | El endpoint por recurso, con informe parcial |
-| `CRM-00.02.01.12` API asíncrona | El motor de procesos cubre el trabajo largo | La API de *jobs* con id, sondeo y callback |
 | `CRM-00.03.02.10` Tablas de decisión | Modelo y política de aciertos | El motor que las evalúa |
 | `CRM-00.05.03.01` Cifrado en tránsito y reposo | Cifrado de campo | TLS y cifrado de disco: son del despliegue, documentados en el Manual IV |
 | `CRM-00.06.01.03` Trazas distribuidas | Contexto y `traceparent` propagados | El exportador OpenTelemetry |
@@ -1777,3 +1775,167 @@ mitad:
    ascendente de `CRM-00.05.02.02`, y está en la membresía y no en el usuario
    porque la misma persona puede ser responsable en un tenant y colaborador en
    otro. La detección de ciclos está en `crmcore/datos/jerarquia.py`.
+
+---
+
+## 24. Muchos registros de una vez, y lo que tarda más que una petición
+
+Dos capacidades que se entregan juntas porque la una sin la otra deja media
+promesa: **operaciones masivas** (`CRM-00.02.01.11`) y **API asíncrona**
+(`CRM-00.02.01.12`).
+
+### El informe parcial es el producto
+
+Un lote de diez mil filas con noventa mal no es un fallo: es un martes. Lo que
+no puede pasar es que esas noventa impidan escribir las 9.910 buenas, ni que el
+informe diga una cosa y la base tenga otra.
+
+```
+POST /api/v1/cuentas/masivo
+{ "operacion": "upsert", "elementos": [ … ] }
+
+207 Multi-Status
+{ "total": 10000, "creados": 8110, "actualizados": 1800, "borrados": 0,
+  "omitidos": 0, "fallidos": 90,
+  "errores": [ { "fila": 412, "motivo": "…", "codigo": "party.nif_invalido" }, … ],
+  "errores_no_mostrados": 0 }
+```
+
+Tres decisiones dentro de esa respuesta:
+
+- **Un punto de guardado por elemento.** Sin él, la fila 4.000 que viola una
+  restricción aborta la transacción entera de Postgres y las 3.999 anteriores
+  desaparecen, mientras el informe sigue diciendo que se crearon. Un `SAVEPOINT`
+  por fila cuesta, y es exactamente lo que se paga por que el informe no mienta.
+- **La fila es la del fichero, no la del trozo.** Quien va a corregir está
+  mirando su hoja de cálculo; decirle «fila 12 de la tanda 3» le hace corregir
+  la línea equivocada.
+- **207 también cuando todo va bien.** El cliente lee el informe siempre igual y
+  no tiene que tratar dos formas distintas de éxito.
+
+### Lo masivo no puede hacer más que lo individual
+
+Es la regla que gobierna todo este capítulo, y la que decidió qué NO se ofrece.
+
+Cada operación en lote valida con el **mismo esquema Pydantic** y llama a la
+**misma función de servicio** que el alta de una en una. Escribir directo en la
+tabla —que es como se suele hacer, porque es más rápido— se salta la detección
+de duplicados, la normalización del teléfono, el recálculo de calidad, la
+auditoría, el índice de búsqueda y el evento de dominio. El resultado es un
+maestro con diez mil fichas que ninguna pantalla habría dejado guardar, y un
+buscador que no las encuentra.
+
+De ahí salen tres ausencias deliberadas:
+
+| Recurso | Ofrece | No ofrece, y por qué |
+|---|---|---|
+| Cuentas | crear, actualizar, upsert, borrar | — |
+| Contactos | crear | **upsert**: no hay clave fiable para una persona (el correo se comparte, cambia de empresa y se reutiliza). **borrar**: la API no tiene `DELETE /contactos/{id}`; ofrecerlo en lote daría al camino masivo una puerta que el individual no tiene |
+| Leads | crear | **upsert**: un lead duplicado se detecta, no se pisa. El de la feria de marzo y el del formulario de octubre son dos intenciones de compra y valen como dos |
+| Oportunidades | crear, actualizar | **borrar**: una oportunidad se cierra como perdida. Su valor está en que consten las que no salieron |
+
+El upsert de cuenta busca **primero por identificador fiscal y después por
+nombre**, en ese orden porque un NIF identifica y un nombre solo se parece. Al
+revés, dos sociedades del mismo grupo con nombre casi igual se fundirían sin que
+nadie lo pidiera.
+
+Y los permisos son literalmente los de las rutas individuales. Hay un gate que
+lo comprueba leyendo los `exige_permiso(...)` del propio `api.py`, para que no
+envejezca: si mañana alguien inventa aquí un permiso que ninguna ruta usa, la
+suite falla.
+
+### Pasado el tope, se cambia de camino
+
+Hasta `BULK_MAX_ITEMS` (1.000 por defecto) el lote se ejecuta en la petición.
+Por encima se responde **413** —no 429— con la ruta exacta del camino que sí lo
+acepta:
+
+```
+413 Content Too Large
+{ "error_code": "masivo.lote_excesivo",
+  "detalle": { "maximo": 1000, "recibidos": 50000,
+               "alternativa": "POST /cuentas/masivo?modo=asincrono" } }
+```
+
+El 413 y el 429 no son intercambiables, y la diferencia es operativa: un 429 le
+dice al cliente **espera y reintenta**, y reintentar el mismo lote de cincuenta
+mil dentro de un minuto volverá a fallar, para siempre. Esto se corrigió también
+en el middleware de tamaño de cuerpo, que devolvía un 422 por lo mismo.
+
+### El trabajo asíncrono: id, sondeo, reanudación y aviso
+
+```
+POST /api/v1/cuentas/masivo?modo=asincrono   →  202 Accepted
+                                                Location: /trabajos/{id}
+GET  /api/v1/trabajos/{id}                   →  progreso (+ Retry-After: 2)
+GET  /api/v1/trabajos/{id}/errores           →  el informe parcial completo
+POST /api/v1/trabajos/{id}/cancelar          →  para en cuanto termine la tanda
+```
+
+**El cursor es lo que hace que esto sea un trabajo y no una barra de progreso.**
+No es un contador para pintar un porcentaje: es el índice del siguiente elemento
+pendiente, y se confirma con commit al final de cada tanda, en la **misma
+transacción** que las filas que esa tanda escribió. Si el worker muere a mitad de
+una importación de cincuenta mil, otro la retoma en la 31.200 — sin repetir las
+31.200 primeras ni saltarse ninguna. Los eventos de dominio van en ese mismo
+commit, así que o avanza el cursor y salen los eventos, o no avanza ninguno.
+
+Y los eventos de una fila que falla **se descartan con ella**: un
+`account.created` de una cuenta cuyo punto de guardado se deshizo es un evento
+que ningún consumidor podrá resolver.
+
+Lo demás, en corto:
+
+- **`Retry-After` mientras no ha terminado.** Sin él cada cliente elige su
+  intervalo, y el que elige 200 ms convierte una importación en una denegación
+  de servicio contra su propio CRM.
+- **`porcentaje: null` cuando no se sabe el total**, no `0`. Son cosas distintas,
+  y confundirlas deja una barra clavada en el cero mientras el trabajo avanza.
+- **Cancelar termina la tanda en curso.** Interrumpirla a mitad dejaría sus
+  filas escritas y el cursor sin avanzar, y al reanudar se volverían a escribir.
+  Una importación cancelada a la mitad ha metido media importación, y eso se
+  dice.
+- **Los errores se recortan a 500 guardados; el recuento es exacto siempre.** La
+  respuesta de `/errores` dice `recortado: true` cuando lo está, porque un
+  fichero con mil errores del que se guardaron quinientos parece un fichero con
+  quinientos, y se corrige a medias.
+- **Bloqueo con caducidad.** Un worker muerto no retiene un trabajo: otro lo
+  recupera cuando el bloqueo vence, y en un apagado limpio lo suelta al recibir
+  `SIGTERM` en vez de dejarlo esperando a que caduque.
+- **La URL de aviso se valida al aceptar el trabajo**, no al dispararlo. La
+  llamada la hace el worker desde la red interna, así que sin el guard de
+  salidas este campo sería un SSRF con persistencia; y validarla tarde dejaría
+  al cliente irse creyendo que le avisarían. El aviso va firmado con **el mismo
+  HMAC que los webhooks** — una sola implementación, en
+  `crmcore/security/firma.py`, para que quien ya verifica webhooks no tenga que
+  escribir una segunda comprobación.
+- **Retención.** Un trabajo terminado se borra a las 72 horas
+  (`TRABAJO_RETENCION_H`). Guarda la entrada completa, que en una importación son
+  los datos que subió el cliente: conservarla «por si acaso» pasado el plazo es
+  justo lo que el plazo impide. Un trabajo **vivo** nunca se purga, aunque haya
+  caducado.
+
+### La tabla vive en el esquema de cada servicio
+
+No hay un servicio de trabajos. El ejecutor escribe en las tablas de su servicio
+dentro de la misma transacción que avanza el cursor, y eso es imposible desde
+otro esquema sobre el que no tiene permisos de escritura — ni debería tenerlos.
+Así que cada servicio tiene su tabla `trabajos` y su worker
+(`python -m services.party.trabajos_worker`), y quien quiera verlos todos los
+pide a cada servicio, igual que hace con sus registros.
+
+### Un agujero de despliegue que salió al escribir esto
+
+**El worker del motor de procesos no lo arrancaba nadie.** Existía
+(`services/orchestrator/worker.py`), estaba probado y estaba documentado en el
+Manual V, y no había un solo contenedor que lo ejecutara. En esa pila, ningún
+temporizador de proceso habría vencido nunca, y el síntoma —«las esperas no
+saltan»— habría mandado a buscar el fallo al motor, que estaba bien.
+
+Ahora el compose levanta los tres: `orchestrator-worker`, `party-trabajos` y
+`sales-trabajos`. Con el healthcheck **desactivado**, que es el detalle que
+importa: el de la plantilla comprueba `/health/live` con `curl`, y un worker no
+escucha en ningún puerto — se habría quedado `unhealthy` para siempre y
+`restart: unless-stopped` lo habría reiniciado en bucle. Y sin aplicar
+migraciones, porque las aplica el servicio HTTP del mismo esquema: dos procesos
+migrando a la vez es la forma habitual de dejar un `alembic` a medias.

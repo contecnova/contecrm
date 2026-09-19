@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 21 en-curso · ✅ 155 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 19 en-curso · ✅ 157 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · 🔧 10 · ✅ 102 · ⬜ 104
+216 capacidades · 🔧 8 · ✅ 104 · ⬜ 104
 
 ### 0.1 Multi-tenancy
 
@@ -111,8 +111,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.01.08` | Idempotencia mediante Idempotency-Key en todas las operaciones de escritura | C | 0 | core | ✅ | contecmind:app/core/idempotency.py (238 líneas) |
 | `CRM-00.02.01.09` | Concurrencia optimista: ETag / If-Match / versión de registro | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.10` | Paginación por cursor estable, filtrado, ordenación y proyección de campos | C | 0 | core | ✅ | contecflow-PSA:app/services/pagination_service.py |
-| `CRM-00.02.01.11` | Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales | C | 0 | core | 🔧 | — |
-| `CRM-00.02.01.12` | API asíncrona para cargas largas: job ID, polling y callback | C | 0 | core | 🔧 | — |
+| `CRM-00.02.01.11` | Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales | C | 0 | core | ✅ | — |
+| `CRM-00.02.01.12` | API asíncrona para cargas largas: job ID, polling y callback | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.13` | Batch/composite requests (varias operaciones en una llamada, transaccionales o no) | A | 0 | core | ⬜ | — |
 | `CRM-00.02.01.14` | Errores normalizados (RFC 9457 Problem Details) con código estable y correlación | C | 0 | core | ✅ | contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py |
 | `CRM-00.02.01.15` | Sandbox de API con datos sintéticos y consola interactiva | A | 0 | gateway | ⬜ | — |

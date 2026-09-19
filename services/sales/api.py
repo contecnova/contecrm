@@ -898,6 +898,21 @@ from services.sales.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E40
 router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES)
 
 
+# Operaciones masivas y sus trabajos diferidos. El import de `masivo` registra
+# los ejecutores; el worker hace ese mismo import por su cuenta, porque es otro
+# proceso.
+from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
+from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
+
+from services.sales.masivo import RECURSOS as _RECURSOS_MASIVOS  # noqa: E402
+
+routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
+
+# Un trabajo de `sales` guarda el lote de leads u oportunidades que se importó,
+# así que verlo pide el mismo permiso que escribirlos, no uno de lectura.
+router_trabajos = crear_router_trabajos(permiso_ver="lead:write", permiso_cancelar="lead:write")
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -909,4 +924,6 @@ ROUTERS = [
     router_comentarios,
     router_retencion,
     router_busqueda,
+    router_trabajos,
+    *routers_masivos,
 ]

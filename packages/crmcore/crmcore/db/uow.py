@@ -70,6 +70,18 @@ class UnidadDeTrabajo:
             }
         )
 
+    def volcar(self) -> None:
+        """Escribe los eventos pendientes sin cerrar la transacción.
+
+        La usa quien controla su propio commit y no puede delegar en el gestor
+        de contexto: el ejecutor de un trabajo asíncrono, que hace un commit por
+        tanda. Sin esto, los eventos de una importación de cincuenta mil filas
+        se quedarían acumulados en memoria hasta el final —o se perderían con el
+        proceso—, y las automatizaciones que dependen de ellos no se dispararían.
+        """
+        self._volcar_eventos()
+        self._pendientes.clear()
+
     def _volcar_eventos(self) -> None:
         """Escribe los eventos pendientes en la tabla de salida."""
         if not self._pendientes:
