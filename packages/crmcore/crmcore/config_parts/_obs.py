@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -59,6 +59,33 @@ class _ObsSettings(BaseSettings):
     audit_retencion_dias: int = Field(2190, ge=30, le=36_500)
     # Exportación a SIEM: destino syslog/HTTP. Vacío = no se exporta.
     audit_siem_url: str = ""
+
+    # ── Notificaciones salientes (CRM-06.02.01.02) ────────────────────────
+    # SMTP y no la API de un proveedor: lo hablan todos —SendGrid, SES,
+    # Mailgun— y también el servidor corporativo del cliente que no quiere que
+    # su correo salga de su red. Cambiar de proveedor es cambiar estas líneas,
+    # no desplegar código.
+    #
+    # Vacío = no hay correo. Los avisos se quedan en la cola con su motivo, y no
+    # se descartan: es un fallo de configuración que alguien va a arreglar.
+    smtp_host: str = ""
+    smtp_puerto: int = Field(587, ge=1, le=65_535)
+    smtp_usuario: str = ""
+    smtp_clave: SecretStr = SecretStr("")
+    # `starttls` es lo normal en el 587; `ssl` en el 465; `ninguno` solo tiene
+    # sentido contra un relé de la propia red, y con credenciales se rechaza.
+    smtp_tls: Literal["starttls", "ssl", "ninguno"] = "starttls"
+    smtp_remitente: str = ""
+    smtp_timeout_s: float = Field(20.0, ge=1.0, le=300.0)
+
+    # Reparto: cuántos avisos por vuelta y cuánto se espera entre reintentos.
+    # La espera crece con el intento (1 min, 4, 9, 16…): un proveedor caído diez
+    # minutos no puede costar diez minutos de avisos perdidos, y uno caído tres
+    # días no puede costar tres días de reintentos.
+    notificacion_lote: int = Field(100, ge=1, le=5_000)
+    notificacion_max_intentos: int = Field(5, ge=1, le=50)
+    notificacion_espera_base_s: int = Field(60, ge=1, le=3_600)
+    notificacion_espera_vacio_s: float = Field(5.0, ge=0.1, le=300.0)
 
     # ── Salud ─────────────────────────────────────────────────────────────
     # Tiempo máximo que puede tardar una comprobación de readiness antes de

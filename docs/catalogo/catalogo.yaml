@@ -922,7 +922,7 @@ modulos:
             nombre: Colaboración
             capacidades:
               - {id: CRM-06.02.01.01, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/", t: "Menciones, comentarios y hilos sobre registros"}
-              - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
+              - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
               - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
               - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: pendiente, t: "Modo offline con cola de cambios y resolución de conflictos"}
               - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: pendiente, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}

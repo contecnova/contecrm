@@ -441,6 +441,30 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="audit_retencion_dias",
             sensible=True,
         ),
+        # Canales de notificación (CRM-06.02.01.02). Son JSON porque describen
+        # un canal entero —URL, método, cabeceras, plantilla— y partirlo en
+        # cinco claves obligaría a mantener cinco jerarquías coherentes entre sí.
+        _c(
+            "canal_correo",
+            "json",
+            "Servidor y remitente de correo de este tenant (vacío = el del despliegue)",
+            campo_settings="",
+            sensible=True,
+        ),
+        _c(
+            "canal_sms",
+            "json",
+            "Endpoint HTTP del proveedor de SMS: url, metodo, cabeceras y cuerpo",
+            campo_settings="",
+            sensible=True,
+        ),
+        _c(
+            "canal_push",
+            "json",
+            "Endpoint HTTP del proveedor de push: url, metodo, cabeceras y cuerpo",
+            campo_settings="",
+            sensible=True,
+        ),
         # Localización, con preferencia por usuario
         _c(
             "idioma",

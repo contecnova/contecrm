@@ -41,11 +41,27 @@ def test_toda_accion_admitida_tiene_ejecutor(db: Any, tenant_id: UUID) -> None:
     assert not faltan, f"Acciones sin ejecutor: {sorted(faltan)}"
 
 
-def test_no_se_ofrece_lo_que_no_se_puede_ejecutar() -> None:
-    """`enviar_correo` estaba en la lista y no había con qué enviar: una regla
-    que lo usara se habría guardado, validado y ejecutado «bien» sin que saliera
-    ningún correo."""
-    assert "enviar_correo" not in ACCIONES
+def test_enviar_correo_vuelve_ahora_que_hay_con_que_enviar() -> None:
+    """Estuvo fuera mientras no había repartidor: una regla que lo usara se
+    habría guardado, validado y ejecutado «bien» sin que saliera ningún correo.
+
+    Vuelve con `CRM-06.02.01.02`, y lo que la sostiene no es esta línea sino el
+    gate de arriba —toda acción declarada tiene ejecutor— más la prueba del
+    consumidor, que comprueba que el evento que emite lo recoge alguien. La
+    primera vez faltaba justo eso: el ejecutor emitía y nadie escuchaba.
+    """
+    assert "enviar_correo" in ACCIONES
+
+
+def test_enviar_correo_pide_el_canal_explicitamente(db: Any, tenant_id: UUID) -> None:
+    """Es la diferencia con `notificar`: quien escribe esta regla quiere que
+    salga un correo, no que salga por donde el destinatario prefiera recibir los
+    avisos de movimiento."""
+    uow = _Uow(db, tenant_id)
+    construir(uow)["enviar_correo"](
+        titulo="Tu pedido está confirmado", cuerpo="Gracias", _tenant_id=tenant_id
+    )
+    assert uow.emitidos[-1]["data"]["canales"] == ["correo"]
 
 
 # ── Los ejecutores emiten, no escriben ────────────────────────────────────

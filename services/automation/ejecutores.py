@@ -15,11 +15,11 @@ cuenta está esperando a que se guarde su cuenta, no a que terminen tres reglas
 encadenadas. Lo que sí es síncrono es la traza — que la regla se disparó consta
 antes de responder, aunque sus efectos lleguen un segundo después.
 
-**Lo que no se puede ejecutar entero, no se ofrece.** `enviar_correo` estaba en
-la lista de acciones admitidas y no había con qué enviar: una regla que lo usara
-se habría guardado, validado y ejecutado «bien» sin que saliera ningún correo.
-Está fuera hasta que exista el repartidor, y se dice en el error que devuelve
-quien la intente usar.
+**Lo que no se puede ejecutar entero, no se ofrece.** `enviar_correo` estuvo
+fuera de la lista mientras no hubo con qué enviar: una regla que lo usara se
+habría guardado, validado y ejecutado «bien» sin que saliera ningún correo. Ya
+existe el repartidor (CRM-06.02.01.02), así que vuelve — y esta vez el gate que
+comprueba que toda acción declarada tiene ejecutor sirve de algo, porque lo hay.
 """
 
 from __future__ import annotations
@@ -136,6 +136,48 @@ def construir(uow: Any) -> dict[str, Any]:
         )
         return {"aviso": titulo}
 
+    def _enviar_correo(
+        titulo: str = "",
+        cuerpo: str = "",
+        usuarios: Any = None,
+        objeto: str = "",
+        registro_id: str = "",
+        _contexto: Any = None,
+        _tenant_id: UUID | None = None,
+        **_extra: Any,
+    ) -> dict[str, Any]:
+        """Un aviso que sale **por correo**, pase lo que pase.
+
+        Es `notificar` con el canal forzado, y merece acción propia por una
+        razón práctica: quien escribe una regla busca «enviar correo», no
+        «notificar con canales=correo». Una funcionalidad que existe y no se
+        encuentra es, para quien la busca, una que no existe.
+
+        Forzar el canal se salta la preferencia del destinatario a propósito, y
+        es la diferencia con `notificar`: quien escribe esta regla quiere que
+        salga un correo —una confirmación de pedido, un aviso de vencimiento—, no
+        que salga por donde el destinatario prefiera recibir los avisos de
+        movimiento. La franja de silencio sí se respeta.
+        """
+        if not titulo:
+            raise ErrorValidacion(
+                "Un correo sin asunto no lo abre nadie",
+                error_code="automatizacion.falta_titulo",
+            )
+        uow.emitir(
+            "automatizacion.aviso",
+            subject=(objeto or "automatizacion", registro_id or (_tenant_id or uow.tenant_id)),
+            data={
+                "titulo": titulo,
+                "cuerpo": cuerpo,
+                "objeto_tipo": objeto or None,
+                "objeto_id": registro_id or None,
+                "menciones": [str(u) for u in (usuarios or [])],
+                "canales": ["correo"],
+            },
+        )
+        return {"correo": titulo}
+
     def _lanzar_proceso(
         proceso: str = "",
         _contexto: Any = None,
@@ -245,6 +287,7 @@ def construir(uow: Any) -> dict[str, Any]:
         "actualizar_registro": _actualizar_registro,
         "asignar": _asignar,
         "notificar": _notificar,
+        "enviar_correo": _enviar_correo,
         "lanzar_proceso": _lanzar_proceso,
         "emitir_evento": _emitir_evento,
         "llamar_api": _llamar_api,

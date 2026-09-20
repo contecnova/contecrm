@@ -248,6 +248,25 @@ services:
     healthcheck:
       disable: true
 
+  identity-reparto:
+    <<: *servicio
+    command: ["worker", "identity", "reparto_worker"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: identity
+      DATABASE_URL: postgresql+psycopg://crm_identity_app:contecrm_dev_only@postgres:5432/contecrm
+      APLICAR_MIGRACIONES: "false"
+      # Sin SMTP configurado los avisos se quedan en la cola con su motivo y
+      # salen en cuanto alguien lo configure. En desarrollo suele apuntarse a un
+      # servidor de pruebas que los enseña en una web en vez de mandarlos.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PUERTO: ${SMTP_PUERTO:-1025}
+      SMTP_TLS: ${SMTP_TLS:-ninguno}
+      SMTP_REMITENTE: ${SMTP_REMITENTE:-no-reply@contecrm.local}
+    ports: []
+    healthcheck:
+      disable: true
+
   party-trabajos:
     <<: *servicio
     command: ["worker", "party", "trabajos_worker"]

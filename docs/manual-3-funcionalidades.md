@@ -317,7 +317,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 |---|---|---|
 | `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
-| `CRM-06.02.01.02` Seguimiento y notificaciones | Suscripciones, preferencias por tipo y canal, agrupación, franja de silencio y la bandeja de la aplicación | El repartidor que entrega por correo, push y SMS: hoy las notificaciones se crean y se leen en la bandeja, pero nada sale del sistema |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 | `CRM-01.01.01.04` Relaciones no jerárquicas | Modelo y tabla: partner, competidor, proveedor, prescriptor, separados de la jerarquía | La API para crearlas y consultarlas |
 | `CRM-01.01.01.05` Direcciones tipificadas | Varias por cuenta o contacto, con tipo y principal, y su API | Validación postal y geocodificación |
@@ -2350,3 +2349,101 @@ publica su página, el gateway pregunta a todos **en paralelo** —en serie, die
 servicios con cinco segundos de plazo son cincuenta segundos de espera justo
 cuando algo va mal— y devuelve una sola vista. Un servicio que no responde sale
 como caído, sin filtrar el mensaje del error, que lleva host y puerto.
+
+---
+
+## 29. El repartidor de notificaciones, y los dos silencios que tapaba
+
+`CRM-06.02.01.02`. Las notificaciones se creaban, se agrupaban, respetaban la
+franja de silencio y se leían en la bandeja. **No salía ninguna del sistema.**
+
+Y al montar el repartidor aparecieron dos silencios más, los dos de la misma
+familia: código que decía hacer algo y no lo hacía.
+
+- El ejecutor de automatizaciones emitía `automatizacion.aviso` y su comentario
+  decía que «el consumidor de identidad ya sabe traducir esto». **No existía.**
+  La acción `notificar` de una regla se guardaba, se validaba, se simulaba, se
+  ejecutaba sin error y no producía ningún aviso — el mismo modo de fallo por el
+  que `enviar_correo` se había retirado, solo que en este no se había visto.
+- `enviar_correo` volvía a la lista de acciones. Ahora sí hay con qué enviar, y
+  lo que la sostiene no es una línea en el manual sino el gate que exige que
+  toda acción declarada tenga ejecutor, más la prueba de que el evento que emite
+  lo recoge alguien.
+
+### Dos transportes, ningún proveedor
+
+Es la decisión que gobierna el módulo entero. No hay código de Twilio, ni de
+SendGrid, ni de Firebase. Hay dos transportes y los dos son estándares:
+
+- **SMTP** para el correo. Lo hablan todos los proveedores y también el servidor
+  corporativo del cliente que no quiere que su correo salga de su red. Cambiar
+  de proveedor son cuatro líneas del `.env`, no un despliegue.
+- **HTTP declarativo** para SMS, push y lo que venga. El tenant declara URL,
+  método, cabeceras y una plantilla de cuerpo en un ajuste en caliente; el
+  sistema la rellena y la manda firmada, por el guard de salidas. Es el mismo
+  patrón que el conector de integraciones, que ya lleva en producción en
+  `contecweb`.
+
+Con un conector por proveedor, cada cliente con un proveedor distinto es una
+versión del producto que hay que mantener, probar y desplegar. Con esto es una
+fila de configuración. Hay una prueba que busca nombres de proveedor en el
+transporte HTTP, para que eso siga siendo verdad.
+
+El precio del SMTP, dicho: no hay estadísticas de apertura ni de rebote, que sí
+dan las APIs propietarias. Cuando haga falta se añadirá un transporte aparte
+para quien lo quiera, y se dirá que ata la instalación a ese proveedor.
+
+### Todo intento queda registrado
+
+«No me llegó el aviso» es la incidencia más frecuente de un CRM y la más difícil
+de contestar. Sin registro se acaba mirando el log del servidor de correo de
+otra empresa, o diciendo «nosotros lo mandamos», que no es una respuesta.
+
+Con `entregas_notificacion` se contesta con hechos: se intentó a las 09:12, el
+servidor devolvió «550 mailbox unavailable», no se reintentó porque ese código
+es definitivo, y la dirección a la que se mandó fue esa. **La dirección se
+guarda aunque esté en la ficha del usuario**, porque la ficha cambia y la
+pregunta que se hace después es «¿a qué dirección lo mandasteis?», no «¿cuál
+tiene ahora?».
+
+Una fila **por canal**, no una por notificación: un aviso que va por correo y
+por SMS puede entregarse por uno y fallar por el otro, y una sola fila obligaría
+a elegir cuál de las dos verdades se guarda.
+
+### Reintentar, y saber cuándo no
+
+- **La espera crece con el cuadrado del intento** (1, 4, 9, 16, 25 minutos).
+  Lineal se queda corta con un proveedor caído una hora; exponencial se pasa de
+  largo —al quinto intento serían dieciséis horas— para un aviso que deja de
+  tener valor pasada la tarde.
+- **Lo definitivo no se reintenta.** Un destinatario sin teléfono, un `550` de
+  buzón inexistente: repetirlo cada cinco minutos llena la cola de algo que
+  nunca va a salir. Se marca `descartada` y se dice por qué.
+- **A quien ya no está en el tenant no se le manda.** No es un detalle: es lo
+  que impide que alguien que se fue de la empresa siga recibiendo movimientos de
+  clientes en su correo personal.
+
+### Lo que este repartidor NO hace, y por qué
+
+**No decide a quién avisar.** Quién sigue qué, qué canales quiere y si es de
+noche para él ya lo resolvió `crmcore.datos.seguimiento` al crear la
+notificación. Mezclarlo aquí habría hecho imposible probar una cosa sin la otra.
+
+**No renderiza plantillas de `tenancy`.** La primera versión lo hacía, y es
+acoplamiento entre servicios: las plantillas son de `tenancy` y ningún servicio
+lee el esquema de otro. La consecuencia honesta es que **hoy no hay plantilla
+por canal** —el mismo texto va al correo y al SMS, recortado a 160 caracteres en
+el segundo—. Tenerla exigiría replicar las plantillas a cada esquema como se
+hace con los ajustes, y es una capacidad aparte que todavía no está. Decirlo es
+mejor que fingir que existe.
+
+**No fuerza el canal salvo cuando se le pide.** `enviar_correo` añade el correo
+a lo que el destinatario ya quería, sin quitárselo: sigue viéndolo en la bandeja
+además de recibirlo. Y saltarse la preferencia es para el aviso que **tiene** que
+salir —una confirmación de pedido, un enlace de aprobación—, no para el de
+movimiento, que es justo lo que la preferencia existe para acotar. Abusar de eso
+es cómo un sistema de avisos se gana que lo filtren.
+
+El worker es un proceso aparte (`identity-reparto` en el compose), por lo mismo
+que los trabajos asíncronos: una tarea en segundo plano muere con el proceso, y
+un despliegue a mitad de un lote perdería esos avisos sin que nadie lo supiera.

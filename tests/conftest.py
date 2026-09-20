@@ -124,6 +124,7 @@ def _importar_todos_los_modelos() -> None:
         "crmcore.datos.seguimiento",
         "crmcore.datos.trabajos",
         "crmcore.security.byok",
+        "crmcore.notificaciones.entrega",
         "services.tenancy.modelos",
         "services.identity.modelos",
         "services.orchestrator.modelos",

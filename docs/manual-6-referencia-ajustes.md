@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**152 ajustes** en total, de los cuales **52** son editables en caliente por tenant.
+**163 ajustes** en total, de los cuales **55** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -175,6 +175,17 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `AUDIT_HASH_CHAIN` | — | `True` |  | Encadenar cada apunte con el hash del anterior. Convierte el log en verificable: si alguien borra o edita una fila, la cadena se rompe y se puede demostrar. Cuesta un hash por apunte. |
 | `AUDIT_RETENCION_DIAS` | 🔥 `audit_retencion_dias` | `2190` | 30–36500 | Retención antes de archivar o purgar (CRM-00.05.04.04). Seis años cubre los plazos mercantiles habituales en España. |
 | `AUDIT_SIEM_URL` | — | *(vacío)* |  | Exportación a SIEM: destino syslog/HTTP. Vacío = no se exporta. |
+| `SMTP_HOST` | — | *(vacío)* |  | SMTP y no la API de un proveedor: lo hablan todos —SendGrid, SES, Mailgun— y también el servidor corporativo del cliente que no quiere que su correo salga de su red. Cambiar de proveedor es cambiar estas líneas, no desplegar código. Vacío = no hay correo. Los avisos se quedan en la cola con su… |
+| `SMTP_PUERTO` | — | `587` | 1–65535 |  |
+| `SMTP_USUARIO` | — | *(vacío)* |  |  |
+| `SMTP_CLAVE` | — | `` |  |  |
+| `SMTP_TLS` | — | `starttls` |  | `starttls` es lo normal en el 587; `ssl` en el 465; `ninguno` solo tiene sentido contra un relé de la propia red, y con credenciales se rechaza. |
+| `SMTP_REMITENTE` | — | *(vacío)* |  |  |
+| `SMTP_TIMEOUT_S` | — | `20.0` | 1.0–300.0 |  |
+| `NOTIFICACION_LOTE` | — | `100` | 1–5000 | Reparto: cuántos avisos por vuelta y cuánto se espera entre reintentos. La espera crece con el intento (1 min, 4, 9, 16…): un proveedor caído diez minutos no puede costar diez minutos de avisos perdidos, y uno caído tres días no puede costar tres días de reintentos. |
+| `NOTIFICACION_MAX_INTENTOS` | — | `5` | 1–50 |  |
+| `NOTIFICACION_ESPERA_BASE_S` | — | `60` | 1–3600 |  |
+| `NOTIFICACION_ESPERA_VACIO_S` | — | `5.0` | 0.1–300.0 |  |
 | `HEALTH_CHECK_TIMEOUT_S` | — | `3.0` | 0.1–30.0 | Tiempo máximo que puede tardar una comprobación de readiness antes de darla por fallida. Corto: un readiness lento hace que el orquestador crea que el servicio está caído. |
 
 ## Protección del dato

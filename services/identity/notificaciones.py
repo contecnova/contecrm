@@ -96,6 +96,28 @@ AVISOS: dict[str, dict[str, Any]] = {
         "titulo": "Se ha cerrado una oportunidad",
         "prioridad": "alta",
     },
+    # El aviso que pide una automatización con las acciones `notificar` o
+    # `enviar_correo` (CRM-00.03.03.03).
+    #
+    # **Este consumidor faltaba.** El ejecutor emitía el evento y su comentario
+    # decía que «el consumidor de identidad ya sabe traducir esto»; no existía,
+    # así que la acción `notificar` de una regla no producía ningún aviso. Se
+    # guardaba, se validaba, se simulaba, se ejecutaba sin error y no pasaba
+    # nada — el mismo modo de fallo por el que `enviar_correo` se había
+    # retirado, solo que en este no se había visto.
+    "automatizacion.aviso": {
+        "objeto_tipo": None,
+        "campo_id": "objeto_id",
+        "titulo": "",
+        "titulo_campo": "titulo",
+        "cuerpo_campo": "cuerpo",
+        "destinatarios_campo": "menciones",
+        "sumar_a_seguidores": True,
+        "canales_campo": "canales",
+        # No se suscribe a quien se avisa: una regla puede avisar a un
+        # responsable de un registro que no le interesa seguir, y suscribirle
+        # por la fuerza le llenaría la bandeja con todo lo que pase después.
+    },
 }
 
 
@@ -196,6 +218,15 @@ async def consumir_evento(mensaje: Any) -> None:
         return
     objeto_id = UUID(str(bruto_id))
 
+    # El título puede venir del evento —lo escribe quien configura la regla— o
+    # ser fijo. Un aviso sin título no se puede leer, así que si no hay ninguno
+    # de los dos se descarta en vez de mandar una línea en blanco.
+    titulo = str(datos.get(regla["titulo_campo"], "")) if regla.get("titulo_campo") else ""
+    titulo = titulo or regla["titulo"]
+    if not titulo:
+        logger.warning("notificacion.evento_sin_titulo", tipo=tipo)
+        return
+
     # Quien provocó el cambio no se avisa a sí mismo.
     actor = datos.get("actor_id") or getattr(mensaje, "actor_id", None)
     excluir = [UUID(str(actor))] if actor else []
@@ -242,7 +273,7 @@ async def consumir_evento(mensaje: Any) -> None:
             uow.db,
             tenant_id=tenant_id,
             tipo=tipo or "",
-            titulo=regla["titulo"],
+            titulo=titulo,
             cuerpo=str(datos.get(regla["cuerpo_campo"], ""))
             if regla.get("cuerpo_campo")
             else regla.get("cuerpo", ""),
@@ -252,6 +283,14 @@ async def consumir_evento(mensaje: Any) -> None:
             datos=datos,
             usuarios=explicitos,
             excluir=excluir,
+            # Los canales que pide el evento se AÑADEN a los del destinatario,
+            # no los sustituyen. Solo lo usa `enviar_correo`, y es su razón de
+            # ser: quien escribe esa regla quiere que salga un correo, no que
+            # salga por donde el destinatario prefiera recibir los avisos de
+            # movimiento. La franja de silencio se sigue respetando.
+            canales_forzados=tuple(datos.get(regla["canales_campo"]) or ())
+            if regla.get("canales_campo")
+            else (),
         )
 
 

@@ -37,15 +37,16 @@ logger = get_logger(__name__)
 # declararla: la regla se guarda, se valida, se simula y al ejecutarse falla —o,
 # antes de esto, no hacía nada en silencio.
 #
-# `enviar_correo` estuvo aquí y se ha retirado: no hay con qué enviar hasta que
-# exista el repartidor de notificaciones (CRM-06.02.01.02). Una acción que no
-# puede ejecutarse entera no se ofrece.
+# `enviar_correo` estuvo fuera mientras no hubo con qué enviar. Vuelve con el
+# repartidor de notificaciones (CRM-06.02.01.02), que es lo que hacía falta para
+# que la acción se pudiera ejecutar entera y no solo guardarse.
 ACCIONES = frozenset(
     {
         "crear_registro",
         "actualizar_registro",
         "asignar",
         "notificar",
+        "enviar_correo",
         "llamar_api",
         "lanzar_proceso",
         "emitir_evento",

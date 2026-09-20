@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 12 en-curso · ✅ 164 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 11 en-curso · ✅ 165 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -894,7 +894,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-12 capacidades · 🔧 2 · ✅ 1 · ⬜ 9
+12 capacidades · 🔧 1 · ✅ 2 · ⬜ 9
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -916,7 +916,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ✅ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
-| `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | 🔧 | contecmind:app/services/notifications.py + app/models/notification.py |
+| `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | ✅ | contecmind:app/services/notifications.py + app/models/notification.py |
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |

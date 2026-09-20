@@ -314,6 +314,7 @@ def notificar(
     usuarios: list[UUID] | None = None,
     excluir: list[UUID] | None = None,
     canales_por_defecto: tuple[str, ...] = ("app",),
+    canales_forzados: tuple[str, ...] = (),
 ) -> list[Notificacion]:
     """Crea las notificaciones para quien siga el registro.
 
@@ -346,6 +347,13 @@ def notificar(
         # los canales no apagara nada, que es exactamente lo contrario de lo
         # que el usuario acaba de pedir.
         canales = list(pref.canales) if pref is not None else list(canales_por_defecto)
+        # `canales_forzados` se salta la preferencia, y hay que usarlo con
+        # cuidado: es para el aviso que **tiene** que salir por un canal —una
+        # confirmación de pedido, un enlace de aprobación— y no para el aviso de
+        # movimiento, que es justo lo que la preferencia existe para acotar.
+        # Abusar de esto es cómo un sistema de avisos se gana que lo filtren.
+        if canales_forzados:
+            canales = list(dict.fromkeys([*canales, *canales_forzados]))
         if not canales:
             continue
 
