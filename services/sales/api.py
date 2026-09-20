@@ -15,7 +15,7 @@ from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -937,6 +937,184 @@ routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
 router_trabajos = crear_router_trabajos(permiso_ver="lead:write", permiso_cancelar="lead:write")
 
 
+# ── Captura de leads desde fuera (CRM-01.01.03.02) ────────────────────────
+
+router_captura = APIRouter(prefix="/captura", tags=["captura de leads"])
+
+
+class CrearCanalCaptura(BaseModel):
+    clave: str = Field(max_length=80, description="Identificador del canal en la URL pública")
+    nombre: str = Field(max_length=200)
+    tipo: str = Field("formulario", description="formulario | chat | lista | otro")
+    mapeo: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "De qué campo de entrada sale cada campo del lead: "
+            '`{"email": "correo", "nombre": "nombre_completo"}`. Solo se pueden '
+            "mapear campos de contacto: un canal público no puede escribir el "
+            "propietario ni la campaña."
+        ),
+    )
+    fijos: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Valores que pone siempre el canal: el origen, la campaña. Van aquí "
+            "y no en la petición porque vienen del canal, no de quien rellena el "
+            "formulario — que podría poner cualquier cosa."
+        ),
+    )
+    obligatorios: list[str] = Field(default_factory=list)
+    campo_trampa: str = Field(
+        "",
+        max_length=60,
+        description=(
+            "Campo que un humano nunca rellena porque no lo ve. Si viene con "
+            "contenido, se descarta con un 200: un error le diría al robot qué "
+            "cambiar para la próxima."
+        ),
+    )
+    max_por_hora: int = Field(200, ge=1, le=100_000)
+
+
+@router_captura.post(
+    "/canales",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+    summary="Declarar un canal de captura",
+    description=(
+        "Un canal es la definición de **cómo se traduce lo que llega a un "
+        "lead**. El formulario de la web manda `nombre_completo`, el chat manda "
+        "`visitor_name` y la tablet de la feria manda `NOMBRE`: con un endpoint "
+        "por cada uno, cada cliente nuevo es código nuevo; con un mapa "
+        "declarado, es una fila.\\n\\n"
+        "**El secreto se devuelve una sola vez.** Se guarda hasheado: si la base "
+        "se filtra, las claves de los formularios de todos los tenants no vienen "
+        "en ella. Si se pierde, se rota."
+    ),
+)
+def crear_canal_captura(datos: CrearCanalCaptura, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.sales import captura
+
+    canal, secreto = captura.crear_canal(
+        uow.db, tenant_id=principal.tenant_id, **datos.model_dump()
+    )
+    return {
+        "id": str(canal.id),
+        "clave": canal.clave,
+        "secreto": secreto,
+        "aviso": (
+            "Guárdalo ahora: no se conserva en claro y no se puede volver a "
+            "consultar. Si se pierde, se rota."
+        ),
+    }
+
+
+@router_captura.post(
+    "/canales/{canal_id}/rotar",
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+    summary="Rotar el secreto del canal",
+    description=(
+        "El secreto viaja en el HTML de una página pública, así que se filtra: "
+        "rotarlo es una operación normal, no una emergencia. Lo anterior deja de "
+        "valer inmediatamente."
+    ),
+)
+def rotar_secreto_captura(canal_id: UUID, uow: UowDep) -> Any:
+    from services.sales import captura
+
+    return {"secreto": captura.rotar_secreto(uow.db, canal_id)}
+
+
+@router_captura.get(
+    "/recepciones",
+    dependencies=[Depends(exige_permiso("lead:read"))],
+    summary="Qué ha entrado por los canales, incluido lo descartado",
+    description=(
+        "Es lo que convierte «no me llegó el lead del formulario» en una "
+        "pregunta contestable: o no llegó, o llegó y se descartó por el motivo "
+        "que dice aquí. Sin esto, la respuesta es mirar el log del servidor web."
+    ),
+)
+def listar_recepciones(
+    db: DbDep,
+    _: AutenticadoDep,
+    canal_id: UUID | None = Query(None),
+    solo_descartadas: bool = Query(False),
+    limite: int = Query(100, ge=1, le=500),
+) -> Any:
+    from services.sales import captura
+
+    return captura.recepciones(
+        db, canal_id=canal_id, solo_descartadas=solo_descartadas, limite=limite
+    )
+
+
+# ── El endpoint público ───────────────────────────────────────────────────
+#
+# Va SIN el prefijo de versión y sin autenticación de usuario, porque lo llama
+# el navegador de un desconocido desde la web del cliente. Lo que lo protege es
+# la clave del canal, la trampa y el tope — ver `services/sales/captura.py`.
+
+router_publico = APIRouter(prefix="/captura", tags=["captura pública"])
+
+
+@router_publico.post(
+    "/{tenant_id}/{clave}",
+    summary="Recibir un lead desde un formulario, un chat o una tablet",
+    description=(
+        "Endpoint **público**: lo llama el navegador de un desconocido. No es "
+        "anónimo — lleva la clave del canal— pero esa clave viaja en el HTML de "
+        "una página pública y por tanto se filtra. Lo que acota el daño es el "
+        "tope por hora que declara el canal.\\n\\n"
+        "Devuelve **siempre la misma forma**, también al descartar: una "
+        "respuesta distinta por cada motivo le enseñaría a un robot qué tiene "
+        "que cambiar.\n\n"
+        "El tenant va por **identificador y no por slug**: traducir un slug "
+        "exige leer la tabla de tenants, que es de `tenancy`, y eso ataría la "
+        "captura de leads a que ese servicio esté en pie justo cuando un "
+        "desconocido rellena el formulario. El identificador no es un secreto — "
+        "lo que autoriza es la clave del canal."
+    ),
+    include_in_schema=True,
+)
+async def recibir_lead(
+    tenant_id: UUID,
+    clave: str,
+    peticion: Request,
+    x_captura_secreto: str = Header("", alias="X-Captura-Secreto"),
+) -> Any:
+    """El tenant va por **identificador y no por slug**, y es deliberado.
+
+    Traducir un slug a identificador exige leer la tabla de tenants, que es de
+    `tenancy`, y ningún servicio lee el esquema de otro. La alternativa sería
+    una llamada entre servicios en cada envío de formulario: ataría la captura
+    de leads a que `tenancy` esté en pie, justo en el momento en que un
+    desconocido está rellenando un formulario en la web del cliente.
+
+    El identificador no es un secreto —lo que autoriza es la clave del canal— y
+    quien monta el formulario lo pega una vez en el HTML.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.sales import captura
+
+    entrada = await peticion.json()
+    if not isinstance(entrada, dict):
+        raise ErrorValidacion(
+            "El cuerpo tiene que ser un objeto", error_code="captura.cuerpo_invalido"
+        )
+
+    with con_contexto(tenant_id=tenant_id, origen="api"), unidad_de_trabajo(tenant_id) as uow:
+        return captura.recibir(
+            uow,
+            tenant_id=tenant_id,
+            clave=clave,
+            secreto=x_captura_secreto,
+            entrada=entrada,
+        )
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -949,5 +1127,12 @@ ROUTERS = [
     router_retencion,
     router_busqueda,
     router_trabajos,
+    router_captura,
     *routers_masivos,
 ]
+
+# El endpoint público de captura va aparte y **sin el prefijo de versión**: lo
+# pega un cliente en el HTML de su web, y una URL con `/api/v1/` dentro invita a
+# que alguien la cambie a `/api/v2/` el día que exista y se le rompa el
+# formulario sin avisar.
+ROUTERS_SIN_PREFIJO = [router_publico]

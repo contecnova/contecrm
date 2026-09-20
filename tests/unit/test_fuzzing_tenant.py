@@ -94,6 +94,7 @@ ALIAS_MODELO = {
     "direccion_id": "direccion",
     "identificador_id": "identificadorfiscal",
     "miembro_id": "miembroequipocuenta",
+    "canal_id": "canalcaptura",
 }
 
 

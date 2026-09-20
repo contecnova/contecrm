@@ -317,7 +317,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 |---|---|---|
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
-| `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
 
 ---
 
@@ -2849,3 +2848,89 @@ Solo se ejecutan acceso, portabilidad y supresión. Rectificación, oposición y
 limitación exigen una decisión humana —qué rectificar, qué tratamiento limitar—
 y fingir que se automatizan produciría resoluciones que nadie ha revisado. Se
 registran, se les cuenta el plazo y se resuelven a mano, que es lo honesto.
+
+---
+
+## 36. Captura de leads desde fuera: un mecanismo, no tres
+
+`CRM-01.01.03.02` pide «formularios, web, importación, API, eventos, listas,
+chat». La importación masiva y la API ya estaban. Faltaba lo que llega **desde
+fuera sin credencial de usuario**: el formulario de la web, el chat, la tablet de
+una feria.
+
+Y eso es **un solo mecanismo**. Un canal de captura es una definición por tenant
+que dice cómo se traduce lo que llega a un lead:
+
+```json
+{ "clave": "web", "tipo": "formulario",
+  "mapeo": { "email": "correo", "nombre": "nombre_completo" },
+  "fijos": { "origen": "formulario web" },
+  "obligatorios": ["correo"], "campo_trampa": "apellido2", "max_por_hora": 200 }
+```
+
+El formulario de la web manda `nombre_completo`, el chat manda `visitor_name` y
+la tablet de la feria manda `NOMBRE`. Con un endpoint por cada uno, cada cliente
+nuevo es código nuevo. Con un mapa declarado, es una fila.
+
+### El origen lo pone el canal, no quien rellena
+
+`fijos` existe para eso. Si el origen o la campaña vinieran en la petición,
+cualquiera que viera el HTML del formulario podría imputar sus leads a la
+campaña que quisiera — y la atribución, que es para lo que sirve todo esto,
+dejaría de significar nada.
+
+Por el mismo motivo, un canal **solo puede mapear campos de contacto**. Nada de
+`owner_id` ni `campana_id`: una petición pública que puede escribirlos es una
+petición pública que se asigna leads.
+
+### Tres protecciones, ninguna opcional
+
+El endpoint es público —tiene que serlo, lo llama el navegador de un
+desconocido— pero no anónimo:
+
+- **Clave por canal.** Sin ella, la URL sería un formulario de alta de leads
+  abierto a Internet, y un competidor aburrido puede llenar el CRM en una tarde.
+  Se guarda **hasheada**: si la base se filtra, las claves de los formularios de
+  todos los tenants no vienen en ella.
+- **Trampa para robots.** Un campo que un humano nunca rellena porque no lo ve.
+  Si viene con contenido se descarta **con un 200 idéntico al de un envío
+  bueno**: un error le diría al robot qué tiene que cambiar para la próxima.
+- **Tope por hora.** La clave viaja en el HTML de una página pública, así que
+  **se filtra siempre**. Rotarla es una operación normal, no una emergencia, y
+  el tope es lo que acota el daño mientras tanto.
+
+Y un detalle que no lo parece: el mismo error para «el canal no existe», «está
+apagado» y «la clave es mala». Distinguirlos convierte el endpoint en un oráculo
+que dice qué canales tiene un tenant.
+
+### Lo descartado se ve
+
+`GET /captura/recepciones` devuelve **también lo que no se creó**, con el motivo
+y con lo que llegó. Es lo que convierte «no me llegó el lead del formulario» en
+una pregunta contestable: o no llegó, o llegó y se descartó por esto. Sin ello,
+la respuesta es mirar el log del servidor web.
+
+Guardar la entrada permite además recuperar a mano un lead descartado por error
+—un obligatorio mal configurado— en vez de pedirle al cliente que vuelva a
+rellenar el formulario.
+
+### Dos decisiones que conviene entender
+
+**El tenant va por identificador y no por slug** en la URL pública. Traducir un
+slug exige leer la tabla de tenants, que es de `tenancy`, y ningún servicio lee
+el esquema de otro; la alternativa sería una llamada entre servicios en cada
+envío, que ataría la captura de leads a que `tenancy` esté en pie justo cuando
+un desconocido rellena un formulario. El identificador no es un secreto: lo que
+autoriza es la clave del canal.
+
+**La URL pública no lleva el prefijo de versión.** Un cliente la pega en el HTML
+de su web y no la vuelve a tocar; una URL con `/api/v1/` dentro invita a que
+alguien la «actualice» a `/api/v2/` el día que exista y se le rompa el
+formulario sin avisar.
+
+### Lo que no hace, dicho
+
+**No deduplica en el momento de la captura.** Eso lo hace el flujo de calidad
+después. Meterlo aquí convertiría cada envío de formulario en una consulta de
+similitud contra toda la tabla, y un formulario que tarda dos segundos es un
+formulario que se abandona.

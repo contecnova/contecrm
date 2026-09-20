@@ -227,6 +227,13 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # `test_sin_el_permiso_de_la_operacion_se_rechaza` en
         # `test_trabajos_y_masivo.py`, contra la API real montada.
         "masivo": "el permiso depende de la operación del cuerpo; se comprueba dentro",
+        # Endpoint PÚBLICO de captura de leads (CRM-01.01.03.02): lo llama el
+        # navegador de un desconocido desde la web del cliente, así que no hay
+        # usuario que pueda tener un permiso. No es anónimo: lo autoriza la clave
+        # del canal, y además tiene trampa para robots y tope por hora. Está
+        # probado en `test_captura_leads.py`, incluido que un canal de otro
+        # tenant no sirve.
+        "recibir_lead": "público por diseño; lo autoriza la clave del canal, no un permiso",
     }
 
     # Los routers COMPARTIDOS del núcleo también escriben, y montarlos desde

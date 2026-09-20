@@ -392,10 +392,13 @@ from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E40
 from crmcore.datos.trabajos import Trabajo  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.sales.captura import CanalCaptura, RecepcionCaptura  # noqa: E402
 from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento  # noqa: E402
 from services.sales.origen import Toque  # noqa: E402
 
 __all__ = [
+    "CanalCaptura",
+    "RecepcionCaptura",
     "ComparticionManual",
     "ReglaComparticion",
     "ClaveTenant",

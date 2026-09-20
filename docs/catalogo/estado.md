@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**560 capacidades**: 🔧 3 en-curso · ✅ 173 hecho · ⬜ 384 pendiente
+**560 capacidades**: 🔧 2 en-curso · ✅ 174 hecho · ⬜ 384 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -361,7 +361,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · 🔧 1 · ✅ 30 · ⬜ 23
+54 capacidades · ✅ 31 · ⬜ 23
 
 ### 1.1 Modelo de parties
 
@@ -401,7 +401,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-01.01.03.01` | Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad | C | 1 | sales | ✅ | — |
-| `CRM-01.01.03.02` | Captura multicanal: formularios, web, importación, API, eventos, listas, chat | C | 1 | sales | 🔧 | contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py |
+| `CRM-01.01.03.02` | Captura multicanal: formularios, web, importación, API, eventos, listas, chat | C | 1 | sales | ✅ | contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py |
 | `CRM-01.01.03.03` | Deduplicación en el momento de la captura contra leads y contactos existentes | C | 1 | party | ✅ | — |
 | `CRM-01.01.03.04` | Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin) | C | 1 | sales | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill) |
 | `CRM-01.01.03.05` | Estados y motivos de descarte normalizados con reciclaje posterior | C | 1 | sales | ✅ | — |

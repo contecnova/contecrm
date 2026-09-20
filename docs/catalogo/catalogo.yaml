@@ -463,7 +463,7 @@ modulos:
             nombre: Leads y captación
             capacidades:
               - {id: CRM-01.01.03.01, c: C, fase: 1, svc: sales, estado: hecho, t: "Objeto lead con ciclo de vida propio y conversión a cuenta/contacto/oportunidad"}
-              - {id: CRM-01.01.03.02, c: C, fase: 1, svc: sales, estado: en-curso, reutiliza: "contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py", t: "Captura multicanal: formularios, web, importación, API, eventos, listas, chat"}
+              - {id: CRM-01.01.03.02, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py", t: "Captura multicanal: formularios, web, importación, API, eventos, listas, chat"}
               - {id: CRM-01.01.03.03, c: C, fase: 1, svc: party, estado: hecho, t: "Deduplicación en el momento de la captura contra leads y contactos existentes"}
               - {id: CRM-01.01.03.04, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill)", t: "Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin)"}
               - {id: CRM-01.01.03.05, c: C, fase: 1, svc: sales, estado: hecho, t: "Estados y motivos de descarte normalizados con reciclaje posterior"}

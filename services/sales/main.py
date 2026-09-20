@@ -5,7 +5,7 @@ from __future__ import annotations
 from crmcore.service import crear_servicio
 
 from services.sales import eventos  # noqa: F401  — registra los tipos de evento
-from services.sales.api import ROUTERS
+from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.sales.consumidores import consumir_comando
 
 app = crear_servicio(
@@ -16,6 +16,7 @@ app = crear_servicio(
         "y competidores, y cierre bloqueado con reapertura auditada."
     ),
     routers=ROUTERS,
+    routers_sin_prefijo=ROUTERS_SIN_PREFIJO,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho
     # porque el despachador ya filtra por manejador registrado.

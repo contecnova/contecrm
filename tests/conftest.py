@@ -137,6 +137,7 @@ def _importar_todos_los_modelos() -> None:
         "services.sales.modelos",
         "services.sales.enrutamiento",
         "services.sales.origen",
+        "services.sales.captura",
         "services.party.retencion",
         "services.sales.retencion",
         "services.analytics.modelos",
