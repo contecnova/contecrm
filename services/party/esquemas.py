@@ -390,3 +390,13 @@ class AsignarActividad(BaseModel):
 
 class RecordatorioEntrada(BaseModel):
     cuando: datetime | None = Field(None, description="Cuándo avisar. Nulo quita el recordatorio.")
+
+
+class SupresionEntrada(BaseModel):
+    confirmo_que_es_irreversible: bool = Field(
+        False,
+        description=(
+            "Anonimizar no tiene vuelta atrás: los datos identificativos no se "
+            "pueden recuperar. Hay que ponerlo a `true` explícitamente."
+        ),
+    )

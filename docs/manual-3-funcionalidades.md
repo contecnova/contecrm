@@ -318,7 +318,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 | `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
-| `CRM-07.03.01.03` Derechos del interesado | Registro de la solicitud con el plazo legal calculado al recibirla, y su API | La ejecución (exportar o borrar los datos) y la evidencia de haberlo hecho |
 
 ---
 
@@ -2764,3 +2763,89 @@ verlas, en vez de anotarlas:
   antes con `desde_cache`.
 - El barrido de recordatorios solo confirmaba lo emitido, así que la marca de
   una actividad sin asignado se perdía y volvía en cada vuelta para siempre.
+
+---
+
+## 35. Ejecutar una solicitud de derechos, y poder demostrarlo
+
+`CRM-07.03.01.03`. El registro de la solicitud con su plazo legal ya estaba.
+Faltaba lo único que el interesado nota y lo único que un inspector pide:
+**hacerlo y poder demostrarlo**.
+
+Una solicitud que se registra, se tramita a mano y se marca resuelta sin
+evidencia deja a la empresa exactamente igual que si no tuviera sistema: cuando
+llegue la reclamación, la respuesta será «lo hicimos» sin nada detrás.
+
+### Acceso y portabilidad comparten ejecución
+
+El contenido es el mismo; lo que cambia es a quién se entrega y en qué formato,
+y eso lo decide quien responde. Se devuelve JSON estructurado, que es lo que el
+RGPD llama «de uso común y lectura mecánica».
+
+Tres decisiones:
+
+- **Se buscan todas las fichas de la persona, por identificador y por correo.**
+  Una persona puede estar tres veces en el sistema con la misma dirección, y
+  resolver la solicitud solo sobre la ficha enlazada dejaría las otras dos
+  intactas — que es incumplir, aunque la solicitud figure resuelta.
+- **El expediente no lleva metadatos internos.** Al interesado le interesan sus
+  datos, no nuestras claves ajenas ni la versión de la fila. Incluirlas
+  convierte un expediente legible en un volcado de base de datos, que cumple la
+  letra y no el propósito.
+- **Una persona que no está en el sistema no es un error.** La respuesta
+  correcta es «no tenemos nada suyo»; fingir un error dejaría la solicitud sin
+  resolver y el plazo corriendo.
+
+**Y la respuesta dice lo que NO cubre.** `party` no puede leer el esquema de
+`sales` ni el de `service`, así que esto son los datos de un servicio. La
+respuesta completa exige preguntar a los demás, y el campo `alcance` lo dice en
+cada llamada. Devolverlo como si fuera todo sería la forma más silenciosa de
+incumplir: el interesado recibiría un expediente incompleto creyendo que es
+completo.
+
+### Suprimir es anonimizar, no borrar
+
+Hay datos que la empresa tiene **obligación de conservar** —una factura, un
+contrato— aunque el interesado pida la supresión. Lo que se hace es romper el
+vínculo con la persona y conservar el hecho económico.
+
+Borrar la fila entera rompería la contabilidad y dejaría huérfanos registros que
+sí hay que guardar: sería cambiar un incumplimiento por otro. El identificador
+se mantiene para que las referencias desde oportunidades y facturas sigan
+apuntando a algo, y queda `anonimizado_at` para que nadie intente «arreglar» el
+nombre después creyendo que se perdió por un fallo.
+
+Los consentimientos **se revocan** además de anonimizarse: conservar un
+«consintió recibir comercial» de alguien cuya ficha ya no lo identifica
+permitiría seguir contándolo como base legal de un envío.
+
+### El bloqueo legal gana sobre el derecho de supresión
+
+Si un juzgado ha pedido conservar esos datos, no se borran. **Y eso no es un
+fallo del sistema**: es la ley resolviendo un conflicto entre dos obligaciones.
+
+Se rechaza con el motivo y la referencia del bloqueo, la solicitud queda **en
+curso** —no resuelta— y la evidencia dice por qué, para que alguien conteste al
+interesado explicando el conflicto. Borrar igualmente destruiría prueba;
+callarlo dejaría al responsable sin saber qué contestar.
+
+### La evidencia es una huella, no una copia
+
+Lo que se guarda es **el hash de lo que se entregó**, no lo entregado. Guardar
+el expediente sería conservar exactamente los datos que el interesado quiere que
+dejemos de tener, que es lo contrario de lo que la solicitud pide.
+
+Con la huella se puede demostrar dentro de dos años que lo entregado fue
+exactamente eso y no otra cosa: `comprobar_evidencia()` lo verifica. Guardar
+evidencia sin forma de comprobarla es una casilla marcada.
+
+La supresión guarda además la huella **de lo borrado** y la lista de campos que
+se vaciaron: demuestra que se borró algo concreto sin conservar precisamente lo
+que se pidió borrar.
+
+### Lo que no se automatiza, y por qué
+
+Solo se ejecutan acceso, portabilidad y supresión. Rectificación, oposición y
+limitación exigen una decisión humana —qué rectificar, qué tratamiento limitar—
+y fingir que se automatizan produciría resoluciones que nadie ha revisado. Se
+registran, se les cuenta el plazo y se resuelven a mano, que es lo honesto.

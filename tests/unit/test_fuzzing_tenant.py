@@ -89,6 +89,11 @@ ALIAS_MODELO = {
     "bloqueo_id": "bloqueolegal",
     "calendario_id": "calendariolaboral",
     "clave_id": "claveapi",
+    "solicitud_id": "solicitudderechos",
+    "relacion_id": "relacioncuenta",
+    "direccion_id": "direccion",
+    "identificador_id": "identificadorfiscal",
+    "miembro_id": "miembroequipocuenta",
 }
 
 

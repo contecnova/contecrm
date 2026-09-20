@@ -316,6 +316,12 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
 
     tratamiento: Mapped[str | None] = mapped_column(String(20), nullable=True)
     cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    # Cuándo se anonimizó por una solicitud de supresión (CRM-07.03.01.03). Es
+    # distinto de borrar: la fila sigue, sin lo que identifica a la persona,
+    # porque las referencias desde oportunidades y facturas tienen que seguir
+    # apuntando a algo. Se guarda la fecha para que nadie intente «arreglar» el
+    # nombre después creyendo que se perdió por un fallo.
+    anonimizado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     departamento: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
     # ── Canales (CRM-01.01.02.01) ─────────────────────────────────────────

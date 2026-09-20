@@ -20,7 +20,7 @@ from crmcore.http.deps import (
 )
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, status
 from sqlalchemy import select
 
 from services.party import administracion as admin
@@ -49,6 +49,7 @@ from services.party.esquemas import (
     RelacionCuentaEntrada,
     SolicitudDerechosEntrada,
     SolicitudDerechosOut,
+    SupresionEntrada,
     VincularContacto,
     Vista360,
 )
@@ -671,6 +672,63 @@ def listar_solicitudes(
         consulta = consulta.where(SolicitudDerechos.estado == estado)
     filas = db.execute(consulta.order_by(SolicitudDerechos.vence_at).limit(limite)).scalars().all()
     return [_solicitud_out(s) for s in filas]
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-acceso",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Reunir todo lo que este servicio guarda de la persona",
+    description=(
+        "Vale para acceso y para portabilidad: el contenido es el mismo y lo que "
+        "cambia es a quién se entrega y en qué formato.\n\n"
+        "**Solo los datos de este servicio.** `party` no puede leer el esquema de "
+        "`sales` ni el de `service`, así que la respuesta completa al interesado "
+        "exige preguntar también a los demás. Devolver esto como si fuera todo "
+        "sería la forma más silenciosa de incumplir: el interesado recibiría un "
+        "expediente incompleto creyendo que es completo. La respuesta lo dice en "
+        "`alcance`.\n\n"
+        "El contenido **no se guarda**: guardarlo sería conservar exactamente los "
+        "datos que el interesado quiere que dejemos de tener. Lo que queda es la "
+        "huella, que basta para demostrar después qué se entregó."
+    ),
+)
+def ejecutar_acceso(solicitud_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_acceso(db, solicitud_id, por=principal.id)
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-supresion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:delete"))],
+    summary="Suprimir los datos de la persona, respetando los bloqueos legales",
+    description=(
+        "**Anonimiza, no borra.** Hay datos que la empresa tiene obligación de "
+        "conservar —una factura, un contrato— aunque el interesado pida la "
+        "supresión. Se rompe el vínculo con la persona y se conserva el hecho "
+        "económico; borrar la fila rompería la contabilidad y sería otro "
+        "incumplimiento distinto.\n\n"
+        "**Un bloqueo legal gana sobre el derecho de supresión.** Si un juzgado "
+        "ha pedido conservar esos datos, no se tocan, la solicitud queda EN CURSO "
+        "y la evidencia dice por qué, para que alguien conteste al interesado "
+        "explicando el conflicto. No es un fallo del sistema: es la ley "
+        "resolviendo dos obligaciones que chocan.\n\n"
+        "Es irreversible y exige confirmación explícita."
+    ),
+)
+def ejecutar_supresion(
+    solicitud_id: UUID,
+    db: DbDep,
+    principal: AutenticadoDep,
+    cuerpo: SupresionEntrada = Body(default_factory=SupresionEntrada),
+) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_supresion(
+        db, solicitud_id, por=principal.id, confirmado=cuerpo.confirmo_que_es_irreversible
+    )
 
 
 def _solicitud_out(solicitud: SolicitudDerechos) -> dict[str, Any]:
