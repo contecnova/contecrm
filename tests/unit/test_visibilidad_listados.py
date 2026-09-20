@@ -271,7 +271,8 @@ def test_el_listado_coincide_con_el_veredicto_de_cada_ficha(
     principal = _quien(tenant_id, yo, roles=frozenset({"comercial"}))
     del_listado = _visibles(db, principal)
 
-    equipos = {de_equipo.id}
+    # Mapa y no conjunto: el equipo dice además QUÉ acceso concede.
+    equipos = {de_equipo.id: "lectura"}
     de_la_ficha = set()
     for cuenta in db.execute(select(Cuenta)).scalars():
         veredicto = visibilidad_de(

@@ -80,3 +80,25 @@ ACTIVITY_COMPLETED = registrar(
         publico=False,
     )
 )
+ACCOUNT_TEAM_ADDED = registrar(
+    TipoEvento(
+        tipo="account.team.added",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Alguien entra en el equipo de una cuenta. Importa fuera de este "
+            "servicio porque pertenecer al equipo DA VISIBILIDAD sobre la "
+            "cuenta: quien audite quién puede ver qué necesita este hecho"
+        ),
+        campos=("cuenta_id", "usuario_id", "rol"),
+    )
+)
+ACCOUNT_TEAM_REMOVED = registrar(
+    TipoEvento(
+        tipo="account.team.removed",
+        version=1,
+        productor="party",
+        descripcion="Alguien sale del equipo de una cuenta y deja de verla",
+        campos=("cuenta_id", "usuario_id", "rol"),
+    )
+)

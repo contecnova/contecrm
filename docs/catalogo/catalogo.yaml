@@ -443,7 +443,7 @@ modulos:
               - {id: CRM-01.01.01.07, c: C, fase: 1, svc: party, estado: hecho, t: "Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida"}
               - {id: CRM-01.01.01.08, c: A, fase: 4, svc: party, estado: pendiente, t: "Datos firmográficos enriquecidos desde proveedores externos"}
               - {id: CRM-01.01.01.09, c: A, fase: 1, svc: party, estado: pendiente, reutiliza: "contecpos:services/clientas (modelo B2C)", t: "Cuentas personales (B2C) coexistiendo con el modelo B2B"}
-              - {id: CRM-01.01.01.10, c: C, fase: 1, svc: party, estado: en-curso, reutiliza: "contecflow-PSA:app/services/raci_service.py (roles sobre entidad)", t: "Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero)"}
+              - {id: CRM-01.01.01.10, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/raci_service.py (roles sobre entidad)", t: "Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero)"}
               - {id: CRM-01.01.01.11, c: A, fase: 2, svc: party, estado: pendiente, t: "Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos"}
               - {id: CRM-01.01.01.12, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{risk_scoring,profitability_service}.py", t: "Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo"}
           - id: CRM-01.01.02

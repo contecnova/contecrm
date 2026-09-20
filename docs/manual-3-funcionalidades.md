@@ -320,7 +320,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-01.01.01.04` Relaciones no jerárquicas | Modelo y tabla: partner, competidor, proveedor, prescriptor, separados de la jerarquía | La API para crearlas y consultarlas |
 | `CRM-01.01.01.05` Direcciones tipificadas | Varias por cuenta o contacto, con tipo y principal, y su API | Validación postal y geocodificación |
 | `CRM-01.01.01.06` Identificadores fiscales | Varios por cuenta y validación del NIF/CIF español | El resto de países y la comprobación contra VIES |
-| `CRM-01.01.01.10` Equipo de cuenta | Modelo con roles (owner, KAM, técnico, soporte, financiero) y nivel de acceso | Su API, y que pertenecer al equipo cuente como vía de compartición en los listados |
 | `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
 | `CRM-01.01.04.10` Validación de contacto | Normalización de teléfono, formato de correo y puntuación de calidad | El estado de verificación real —rebote de correo, SMS— y la validación de dirección |
 | `CRM-01.02.01.02` Gestión de actividades | Actividades con propietario, vencimiento y cierre | Delegación, recordatorios y la vista de vencidas |
@@ -2526,3 +2525,46 @@ los ajustes y la clave del tenant, y es trabajo de la capacidad de jerarquía, n
 de esta. Se dice aquí y está anotado también en el código, en
 `crmcore/authz/visibilidad.py`, donde alguien lo va a leer antes de preguntarse
 por qué su responsable no ve las cuentas de su equipo.
+
+---
+
+## 31. El equipo de cuenta, y dos campos que no hacían nada
+
+`CRM-01.01.01.10`. El propietario es uno; el equipo es quien más trabaja la
+cuenta. Sin esta tabla, el técnico que lleva tres años atendiendo a un cliente no
+aparece en ningún sitio y su conocimiento se pierde cuando cambia el comercial.
+
+El modelo existía con `rol`, `acceso`, `desde` y `hasta`. Faltaba la API — y,
+peor, **dos de esos cuatro campos no los usaba nadie**:
+
+- **`hasta` no caducaba nada.** Quien salió del equipo hace un año seguía viendo
+  la cuenta. Una pertenencia con fecha de fin que no caduca no es temporal: es
+  permanente con una fecha decorativa.
+- **`acceso` no concedía escritura.** Un miembro dado de alta con acceso de
+  escritura solo podía leer, y nadie entendía por qué el campo no hacía nada.
+
+Los dos se aplican ahora, en el listado y en la ficha. Con varios roles sobre la
+misma cuenta —alguien puede ser KAM y técnico— gana el acceso más amplio: las
+vías de compartición suman, nunca restan.
+
+### Decisiones
+
+**El propietario no vive aquí.** Es `owner_id` en la cuenta. Tener dos sitios
+donde vive «quién es el dueño» acaba con los dos diciendo cosas distintas. Se
+puede registrar a alguien con rol `owner` para dejar constancia de que forma
+parte del equipo, pero lo que decide la propiedad sigue siendo la cuenta.
+
+**Los roles son una lista cerrada.** Con texto libre, cada comercial escribe el
+suyo y a los tres meses hay «tecnico», «Técnico» y «tec.» conviviendo — y «¿qué
+cuentas llevo como técnico?» deja de tener respuesta.
+
+**Repetir el alta renueva.** Es lo que hace quien prorroga a alguien en el
+equipo; obligarle a borrar y volver a crear pierde la fecha de alta original.
+
+**El listado devuelve los no vigentes salvo que se pidan solo los de hoy.** Quien
+administra el equipo necesita ver al que entra el mes que viene y al que salió
+ayer, o no puede corregir una fecha mal puesta.
+
+**Y el alta emite un evento**, porque pertenecer al equipo **da visibilidad**
+sobre la cuenta: quien audite quién puede ver qué necesita ese hecho, y sin
+evento solo constaría en una tabla que nadie mira.

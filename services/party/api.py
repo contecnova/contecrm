@@ -41,6 +41,8 @@ from services.party.esquemas import (
     DireccionOut,
     EnlazarJerarquia,
     Fusionar,
+    MiembroEquipoEntrada,
+    MiembroEquipoOut,
     RegistrarConsentimiento,
     SolicitudDerechosEntrada,
     SolicitudDerechosOut,
@@ -802,6 +804,93 @@ def importar_cuentas(
 ) -> Any:
     informe = admin.importar_cuentas(db, filas, simular=simular, actualizar=actualizar)
     return informe.a_dict()
+
+
+# ── Equipo de cuenta (CRM-01.01.01.10) ────────────────────────────────────
+
+
+@router_cuentas.get(
+    "/{cuenta_id}/equipo",
+    response_model=list[MiembroEquipoOut],
+    dependencies=[Depends(exige_permiso("account:read"))],
+    summary="Quién trabaja esta cuenta",
+    description=(
+        "El propietario es uno; el equipo es quien más trabaja la cuenta. Sin "
+        "esto, el técnico que lleva tres años atendiendo a un cliente no "
+        "aparece en ningún sitio y su conocimiento se pierde cuando cambia el "
+        "comercial.\n\n"
+        "Devuelve **todos**, vigentes o no: quien administra el equipo necesita "
+        "ver al que entra el mes que viene y al que salió ayer, o no puede "
+        "corregir una fecha mal puesta. Con `solo_vigentes` se pregunta quién "
+        "lleva la cuenta hoy."
+    ),
+)
+def listar_equipo(cuenta_id: UUID, db: DbDep, solo_vigentes: bool = Query(False)) -> Any:
+    from datetime import date
+
+    svc.exigir_cuenta(db, cuenta_id)
+    hoy = date.today()
+    return [
+        MiembroEquipoOut(
+            id=m.id,
+            cuenta_id=m.cuenta_id,
+            usuario_id=m.usuario_id,
+            rol=m.rol,
+            acceso=m.acceso,
+            desde=m.desde,
+            hasta=m.hasta,
+            vigente=(m.desde is None or m.desde <= hoy) and (m.hasta is None or m.hasta >= hoy),
+        )
+        for m in svc.equipo_de_cuenta(db, cuenta_id, solo_vigentes=solo_vigentes)
+    ]
+
+
+@router_cuentas.post(
+    "/{cuenta_id}/equipo",
+    response_model=MiembroEquipoOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Sumar a alguien al equipo de la cuenta",
+    description=(
+        "Pertenecer al equipo **da visibilidad** sobre la cuenta, así que el "
+        "alta se audita y emite un evento: quien audite quién puede ver qué lo "
+        "necesita.\n\n"
+        "Repetir el alta del mismo usuario y rol **actualiza** la vigencia y el "
+        "acceso en vez de fallar: es lo que hace quien renueva a alguien, y "
+        "obligarle a borrar y volver a crear pierde la fecha de alta original."
+    ),
+)
+def añadir_miembro_equipo(cuenta_id: UUID, datos: MiembroEquipoEntrada, uow: UowDep) -> Any:
+    from datetime import date
+
+    miembro = svc.añadir_al_equipo(uow, cuenta_id=cuenta_id, **datos.model_dump())
+    hoy = date.today()
+    return MiembroEquipoOut(
+        id=miembro.id,
+        cuenta_id=miembro.cuenta_id,
+        usuario_id=miembro.usuario_id,
+        rol=miembro.rol,
+        acceso=miembro.acceso,
+        desde=miembro.desde,
+        hasta=miembro.hasta,
+        vigente=(miembro.desde is None or miembro.desde <= hoy)
+        and (miembro.hasta is None or miembro.hasta >= hoy),
+    )
+
+
+@router_cuentas.delete(
+    "/{cuenta_id}/equipo/{miembro_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Sacar a alguien del equipo",
+    description=(
+        "Borra la fila: el equipo de hace dos años no lo consulta nadie. Lo que "
+        "sí queda es el apunte de auditoría, que es donde se busca «¿desde "
+        "cuándo dejó de ver esto?»."
+    ),
+)
+def quitar_miembro_equipo(cuenta_id: UUID, miembro_id: UUID, uow: UowDep) -> None:
+    svc.quitar_del_equipo(uow, cuenta_id=cuenta_id, miembro_id=miembro_id)
 
 
 # Adjuntos de los objetos que este servicio posee. La lista blanca impide que

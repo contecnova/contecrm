@@ -151,7 +151,7 @@ def visibilidad_de(
     objeto: str,
     registro: dict[str, Any],
     subordinados: set[UUID] | None = None,
-    equipos: set[UUID] | None = None,
+    equipos: dict[UUID, str] | None = None,
 ) -> Visibilidad:
     """Calcula si un usuario ve un registro concreto, y por qué.
 
@@ -172,8 +172,14 @@ def visibilidad_de(
 
     registro_id = registro.get("id")
     if equipos and registro_id and UUID(str(registro_id)) in equipos:
+        # El acceso lo dice la ficha del equipo, no se asume. El modelo lo
+        # guardaba desde el principio y esto lo ignoraba: un miembro dado de
+        # alta con acceso de escritura solo podía leer, y nadie entendía por
+        # qué el campo no hacía nada.
+        acceso = equipos[UUID(str(registro_id))]
         resultado.puede_leer = True
-        resultado.motivos.append("está en el equipo de la cuenta")
+        resultado.puede_escribir = resultado.puede_escribir or acceso == "escritura"
+        resultado.motivos.append(f"está en el equipo de la cuenta ({acceso})")
 
     for regla in _reglas_aplicables(db, tenant_id, objeto):
         if not _destino_incluye(regla, usuario_id, registro):
@@ -204,7 +210,7 @@ def filtro_visibilidad(
     usuario_id: UUID,
     objeto: str,
     subordinados: set[UUID] | None = None,
-    equipos: set[UUID] | None = None,
+    equipos: dict[UUID, str] | None = None,
     roles: frozenset[str] | None = None,
     business_unit_id: UUID | None = None,
 ) -> Any:
@@ -246,6 +252,8 @@ def filtro_visibilidad(
     if subordinados:
         vias.append(modelo.owner_id.in_(list(subordinados)))
     if equipos:
+        # Para LEER da igual el acceso: lectura y escritura dejan ver. La
+        # distinción la aplica quien vaya a escribir, con `visibilidad_de`.
         vias.append(modelo.id.in_(list(equipos)))
 
     # Lo compartido a mano: subconsulta contra la tabla local, que es

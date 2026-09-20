@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 10 en-curso · ✅ 166 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 9 en-curso · ✅ 167 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -360,7 +360,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · 🔧 7 · ✅ 24 · ⬜ 21
+52 capacidades · 🔧 6 · ✅ 25 · ⬜ 21
 
 ### 1.1 Modelo de parties
 
@@ -377,7 +377,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.01.07` | Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida | C | 1 | party | ✅ | — |
 | `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
 | `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
-| `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | 🔧 | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
+| `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | ✅ | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
 | `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ⬜ | — |
 | `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ⬜ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
 

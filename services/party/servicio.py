@@ -875,3 +875,158 @@ def crear_solicitud_derechos(
         tenant_id=tenant_id,
     )
     return solicitud
+
+
+# ── Equipo de cuenta (CRM-01.01.01.10) ────────────────────────────────────
+
+# Roles del equipo. Lista cerrada a propósito: es lo que permite preguntar «¿qué
+# cuentas llevo como técnico?» y que la respuesta signifique lo mismo en toda la
+# instalación. Con texto libre, cada comercial escribe el suyo y a los tres
+# meses hay «tecnico», «Técnico» y «tec.» conviviendo.
+ROLES_EQUIPO = ("owner", "kam", "tecnico", "soporte", "financiero", "otro")
+ACCESOS_EQUIPO = ("lectura", "escritura")
+
+
+def añadir_al_equipo(
+    uow: UnidadDeTrabajo,
+    *,
+    cuenta_id: UUID,
+    usuario_id: UUID,
+    rol: str,
+    acceso: str = "lectura",
+    desde: Any = None,
+    hasta: Any = None,
+) -> Any:
+    """Suma a alguien al equipo de una cuenta.
+
+    El **propietario no se añade aquí**: es la columna `owner_id` de la cuenta y
+    tener dos sitios donde vive «quién es el dueño» acaba con los dos diciendo
+    cosas distintas. Se puede registrar con rol `owner` para dejar constancia de
+    que el dueño forma parte del equipo, pero lo que decide la propiedad sigue
+    siendo la cuenta.
+    """
+    from services.party.modelos import MiembroEquipoCuenta
+
+    if rol not in ROLES_EQUIPO:
+        raise ErrorValidacion(
+            f"Rol de equipo desconocido: «{rol}»",
+            error_code="party.rol_equipo_invalido",
+            detalle={"admitidos": list(ROLES_EQUIPO)},
+        )
+    if acceso not in ACCESOS_EQUIPO:
+        raise ErrorValidacion(
+            f"Acceso desconocido: «{acceso}»",
+            error_code="party.acceso_equipo_invalido",
+            detalle={"admitidos": list(ACCESOS_EQUIPO)},
+        )
+    if desde and hasta and hasta < desde:
+        # Un intervalo al revés no da error al guardar y deja a la persona sin
+        # ver nada nunca. Se rechaza aquí, que es donde se puede explicar.
+        raise ErrorValidacion(
+            "La fecha de fin es anterior a la de inicio",
+            error_code="party.vigencia_invalida",
+        )
+
+    cuenta = exigir_cuenta(uow.db, cuenta_id)
+    existente = uow.db.execute(
+        select(MiembroEquipoCuenta).where(
+            MiembroEquipoCuenta.cuenta_id == cuenta_id,
+            MiembroEquipoCuenta.usuario_id == usuario_id,
+            MiembroEquipoCuenta.rol == rol,
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
+        # Repetir el alta actualiza la vigencia y el acceso en vez de fallar: es
+        # lo que hace quien renueva a alguien en el equipo, y obligarle a borrar
+        # y volver a crear pierde la fecha de alta original.
+        existente.acceso = acceso
+        existente.desde = desde
+        existente.hasta = hasta
+        uow.db.flush()
+        miembro = existente
+    else:
+        miembro = MiembroEquipoCuenta(
+            tenant_id=cuenta.tenant_id,
+            cuenta_id=cuenta_id,
+            usuario_id=usuario_id,
+            rol=rol,
+            acceso=acceso,
+            desde=desde,
+            hasta=hasta,
+        )
+        uow.db.add(miembro)
+        uow.db.flush()
+
+    registrar(
+        uow.db,
+        accion="cuenta.equipo_añadido",
+        objeto="cuenta",
+        objeto_id=cuenta_id,
+        datos={"usuario_id": str(usuario_id), "rol": rol, "acceso": acceso},
+    )
+    # El evento importa porque pertenecer al equipo **da visibilidad**: quien
+    # audite quién puede ver qué necesita ver esta alta, y sin evento solo
+    # constaría en una tabla que nadie mira.
+    uow.emitir(
+        "account.team.added",
+        subject=("cuenta", cuenta_id),
+        data={"cuenta_id": str(cuenta_id), "usuario_id": str(usuario_id), "rol": rol},
+    )
+    return miembro
+
+
+def quitar_del_equipo(uow: UnidadDeTrabajo, *, cuenta_id: UUID, miembro_id: UUID) -> None:
+    """Saca a alguien del equipo. Borra la fila: no es un dato histórico.
+
+    La alternativa —marcarla inactiva— tendría sentido si alguien fuera a
+    consultar el equipo de hace dos años, y nadie lo hace. Lo que sí queda es el
+    apunte de auditoría, que es donde se busca «¿desde cuándo dejó de ver esto?».
+    """
+    from services.party.modelos import MiembroEquipoCuenta
+
+    miembro = uow.db.get(MiembroEquipoCuenta, miembro_id)
+    if miembro is None or miembro.cuenta_id != cuenta_id:
+        raise NoEncontrado(
+            "Ese miembro no está en el equipo de esta cuenta",
+            error_code="party.miembro_equipo_no_existe",
+        )
+    datos = {"usuario_id": str(miembro.usuario_id), "rol": miembro.rol}
+    uow.db.delete(miembro)
+    uow.db.flush()
+
+    registrar(
+        uow.db,
+        accion="cuenta.equipo_retirado",
+        objeto="cuenta",
+        objeto_id=cuenta_id,
+        datos=datos,
+    )
+    uow.emitir(
+        "account.team.removed",
+        subject=("cuenta", cuenta_id),
+        data={"cuenta_id": str(cuenta_id), **datos},
+    )
+
+
+def equipo_de_cuenta(db: Session, cuenta_id: UUID, *, solo_vigentes: bool = False) -> list[Any]:
+    """El equipo de una cuenta.
+
+    Por defecto devuelve **todos**, vigentes o no: quien administra el equipo
+    necesita ver al que entra el mes que viene y al que salió ayer, o no puede
+    corregir una fecha mal puesta. `solo_vigentes` es para quien pregunta «quién
+    lleva esto hoy».
+    """
+    from datetime import date
+
+    from sqlalchemy import or_
+
+    from services.party.modelos import MiembroEquipoCuenta
+
+    consulta = select(MiembroEquipoCuenta).where(MiembroEquipoCuenta.cuenta_id == cuenta_id)
+    if solo_vigentes:
+        hoy = date.today()
+        consulta = consulta.where(
+            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= hoy),
+            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= hoy),
+        )
+    return list(db.execute(consulta.order_by(MiembroEquipoCuenta.rol)).scalars().all())

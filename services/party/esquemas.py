@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
@@ -322,3 +322,36 @@ class Vista360(BaseModel):
     contactos: list[dict[str, Any]]
     timeline: list[dict[str, Any]]
     metricas: dict[str, Any]
+
+
+class MiembroEquipoEntrada(BaseModel):
+    usuario_id: UUID
+    rol: str = Field(description="owner | kam | tecnico | soporte | financiero | otro")
+    acceso: str = Field(
+        "lectura",
+        description=(
+            "Qué concede pertenecer al equipo. Es una regla de compartición "
+            "sobre ESTA cuenta, no un permiso global."
+        ),
+    )
+    desde: date | None = None
+    hasta: date | None = Field(
+        None,
+        description=(
+            "Fecha de fin de la pertenencia. Al pasarla, la persona deja de ver "
+            "la cuenta por esta vía — puede seguir viéndola por otra."
+        ),
+    )
+
+
+class MiembroEquipoOut(BaseModel):
+    id: UUID
+    cuenta_id: UUID
+    usuario_id: UUID
+    rol: str
+    acceso: str
+    desde: date | None = None
+    hasta: date | None = None
+    vigente: bool
+
+    model_config = {"from_attributes": True}

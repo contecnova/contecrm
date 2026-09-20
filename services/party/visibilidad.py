@@ -22,28 +22,46 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 
-def equipos(db: Session, principal: Any, objeto: str) -> set[UUID]:
-    """Cuentas en cuyo equipo está este usuario.
+def equipos(db: Session, principal: Any, objeto: str) -> dict[UUID, str]:
+    """Cuentas en cuyo equipo está este usuario, con el acceso que le da cada una.
 
     Solo para el objeto `cuenta`: un contacto no tiene equipo propio. Devolver
     los identificadores de cuenta para el listado de contactos los filtraría
     contra la columna equivocada, que es la clase de error que enseña registros
     de más sin que nadie lo note.
+
+    **Se respeta la vigencia.** El modelo tiene `desde` y `hasta` desde el
+    principio y la primera versión de esto los ignoraba: un miembro que salió
+    del equipo hace un año seguía viendo la cuenta. Una pertenencia con fecha de
+    fin que no caduca no es una pertenencia temporal, es una permanente con una
+    fecha decorativa.
     """
     if objeto != "cuenta":
-        return set()
+        return {}
+
+    from datetime import date
+
+    from sqlalchemy import or_
 
     from services.party.modelos import MiembroEquipoCuenta
 
-    return {
-        fila
-        for fila in db.execute(
-            select(MiembroEquipoCuenta.cuenta_id).where(
-                MiembroEquipoCuenta.tenant_id == principal.tenant_id,
-                MiembroEquipoCuenta.usuario_id == principal.id,
-            )
-        ).scalars()
-    }
+    hoy = date.today()
+    filas = db.execute(
+        select(MiembroEquipoCuenta.cuenta_id, MiembroEquipoCuenta.acceso).where(
+            MiembroEquipoCuenta.tenant_id == principal.tenant_id,
+            MiembroEquipoCuenta.usuario_id == principal.id,
+            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= hoy),
+            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= hoy),
+        )
+    ).all()
+
+    # Con varias filas para la misma cuenta —alguien puede ser KAM y técnico—
+    # gana el acceso más amplio: las vías de compartición suman, nunca restan.
+    acceso_por_cuenta: dict[UUID, str] = {}
+    for cuenta_id, acceso in filas:
+        if acceso_por_cuenta.get(cuenta_id) != "escritura":
+            acceso_por_cuenta[cuenta_id] = acceso
+    return acceso_por_cuenta
 
 
 registrar_resolutor("equipos", equipos)
