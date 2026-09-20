@@ -535,7 +535,7 @@ class CompartirRegistro(BaseModel):
 def crear_regla_comparticion(
     datos: CrearReglaComparticion, db: DbDep, principal: AutenticadoDep
 ) -> Any:
-    from services.identity.comparticion import ReglaComparticion
+    from crmcore.authz.comparticion import ReglaComparticion
 
     regla = ReglaComparticion(tenant_id=principal.tenant_id, **datos.model_dump())
     db.add(regla)
@@ -552,7 +552,7 @@ def crear_regla_comparticion(
 def listar_reglas_comparticion(
     db: DbDep, principal: AutenticadoDep, objeto: str = Query("")
 ) -> Any:
-    from services.identity.comparticion import ReglaComparticion
+    from crmcore.authz.comparticion import ReglaComparticion
 
     consulta = select(ReglaComparticion).where(ReglaComparticion.tenant_id == principal.tenant_id)
     if objeto:
@@ -579,7 +579,7 @@ def listar_reglas_comparticion(
     summary="Compartir un registro concreto con alguien",
 )
 def compartir_registro(datos: CompartirRegistro, db: DbDep, principal: AutenticadoDep) -> Any:
-    from services.identity import comparticion as comp
+    from crmcore.authz import comparticion as comp
 
     fila = comp.compartir(
         db,
@@ -614,7 +614,7 @@ def explicar_visibilidad(
     db: DbDep,
     principal: AutenticadoDep,
 ) -> Any:
-    from services.identity import comparticion as comp
+    from crmcore.authz import comparticion as comp
 
     return comp.visibilidad_de(
         db,

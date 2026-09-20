@@ -315,7 +315,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
-| `CRM-00.05.02.04` Reglas de compartición | Las cinco vías (propietario, jerarquía, equipo, criterio y manual con caducidad), el explicador y su API | **Aplicarlas en los listados**: hoy devuelven el veredicto y la explicación de un registro, pero `party` y `sales` todavía no filtran sus consultas con ellas |
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 | `CRM-01.01.01.04` Relaciones no jerárquicas | Modelo y tabla: partner, competidor, proveedor, prescriptor, separados de la jerarquía | La API para crearlas y consultarlas |
@@ -2447,3 +2446,83 @@ es cómo un sistema de avisos se gana que lo filtren.
 El worker es un proceso aparte (`identity-reparto` en el compose), por lo mismo
 que los trabajos asíncronos: una tarea en segundo plano muere con el proceso, y
 un despliegue a mitad de un lote perdería esos avisos sin que nadie lo supiera.
+
+---
+
+## 30. La compartición, aplicada donde se nota
+
+`CRM-00.05.02.04`. Las cinco vías estaban, se explicaban y se podían consultar
+para un registro concreto. Lo que no pasaba es lo único que el usuario nota:
+**`GET /accounts` seguía enseñándolo todo**.
+
+Y no era un olvido que se arreglara añadiendo un `WHERE`: las reglas vivían en
+el esquema de `identity` y los registros en el de `party`. Ningún servicio lee el
+esquema de otro, así que el listado no podía filtrar por ellas ni aunque alguien
+lo intentara. La funcionalidad estaba estructuralmente a medias.
+
+### Las tablas se mudan a donde están los datos
+
+Es el mismo patrón que adjuntos, comentarios y retención, y por la misma razón:
+una funcionalidad transversal cuyas tablas tienen que estar donde están los
+datos que gobierna. Ahora `party` guarda las reglas de `cuenta` y `contacto` en
+su esquema, `sales` las de `lead` y `oportunidad` en el suyo, y el filtro se
+convierte en un `WHERE` normal.
+
+### Filtrar en SQL, no fila a fila
+
+No es una optimización: es la diferencia entre que funcione y que no. Comprobar
+registro a registro rompe la paginación —pides veinte y recibes siete, porque
+trece se cayeron por el camino— y hace una consulta por fila.
+
+El precio es que el `WHERE` solo sabe expresar lo que se traduce a SQL, y eso
+obligó a una decisión incómoda que conviene entender. Una condición que no se
+puede traducir —`usuario.pais`, o un operador sin equivalente— **se omite del
+`AND`**, así que la regla comparte de más antes que de menos. Se eligió esa
+dirección a conciencia: esconder un registro que alguien sí puede ver produce
+una llamada a soporte y una decisión tomada sin un dato; enseñarlo de más
+produce lo mismo que la regla ya autorizaba por otra vía. Y se registra en el
+log, para que no pase inadvertido.
+
+Lo que **nunca** se hace es inventar una traducción aproximada. `a_sql` devuelve
+`None` para lo que no tiene equivalente honesto, y quien llama decide. Una
+condición traducida «casi igual» produce un listado que casi acierta, y eso no
+se detecta mirándolo.
+
+### El listado y la ficha tienen que decir lo mismo
+
+Son dos implementaciones de la misma regla —una en SQL para el listado, otra en
+Python para la ficha— y divergen el día que alguien toca una. Cuando eso pasa,
+el listado enseña un registro que la ficha luego niega, y el usuario deja de
+fiarse de los dos.
+
+Hay una prueba que las compara sobre los mismos datos, con las cinco vías a la
+vez: propia, compartida a mano, de equipo, por regla y ninguna. Si alguna vez
+divergen, falla ahí y no en producción.
+
+### Ante la duda, no se enseña
+
+- Sin identidad, la consulta no devuelve nada. Quien llame sin autenticar no
+  debería haber llegado, y si llega no ve nada en vez de verlo todo.
+- **Un error resolviendo la visibilidad filtra**, no abre. Si la tabla de reglas
+  no responde, el listado sale vacío y se registra el fallo.
+- Quien tiene el permiso de administrar el objeto no se filtra: un administrador
+  que ve media lista no puede administrar nada, y darle una compartición sobre
+  todo convertiría la auditoría en ruido. Se decide por permiso explícito y no
+  por rol, para que cada tenant monte su propia jerarquía.
+
+### El hueco que queda, dicho
+
+**La vía por jerarquía de mando todavía no aplica en los listados de `party` y
+`sales`.** `superior_id` vive en la membresía del tenant, que es de `identity`, y
+ningún servicio lee el esquema de otro.
+
+Hoy, un responsable ve en esos listados sus registros, aquellos en cuyo equipo
+de cuenta está y lo que le compartan — pero no los de sus subordinados por el
+solo hecho de serlo. La ficha sí lo evalúa si quien pregunta le pasa los
+subordinados resueltos.
+
+Para cerrarlo hay que replicar la jerarquía a cada servicio, como se replican
+los ajustes y la clave del tenant, y es trabajo de la capacidad de jerarquía, no
+de esta. Se dice aquí y está anotado también en el código, en
+`crmcore/authz/visibilidad.py`, donde alguien lo va a leer antes de preguntarse
+por qué su responsable no ve las cuentas de su equipo.

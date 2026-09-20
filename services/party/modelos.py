@@ -618,6 +618,7 @@ class SolicitudDerechos(Base, TimestampMixin):
 # Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.authz.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
@@ -628,6 +629,8 @@ from crmcore.datos.trabajos import Trabajo  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 __all__ = [
+    "ComparticionManual",
+    "ReglaComparticion",
     "ClaveTenant",
     "Actividad",
     "Adjunto",

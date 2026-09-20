@@ -142,7 +142,7 @@ def _importar_todos_los_modelos() -> None:
         "services.analytics.modelos",
         "services.tenancy.catalogos",
         "services.tenancy.baja",
-        "services.identity.comparticion",
+        "crmcore.authz.comparticion",
         "services.identity.sso",
     ]
     for modulo in modulos:

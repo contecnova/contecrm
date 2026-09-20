@@ -17,10 +17,23 @@ Que solo sumen es lo que hace posible responder a «¿por qué ve esto?» con un
 lista de motivos. Con reglas que además quitan, la respuesta exige ejecutar el
 motor entero y no se puede explicar.
 
-**Lo que esto NO hace todavía, dicho claramente**: no reescribe las consultas de
-los demás servicios. Devuelve el conjunto de identificadores visibles y la
-explicación; aplicarlo en cada listado es trabajo del servicio dueño del objeto,
-y está pendiente en `party` y `sales` (ver el manual, «Lo que está a medias»).
+**Vive en el núcleo y sus tablas en el esquema de cada servicio.** Estuvo en
+`identity`, y eso dejaba la funcionalidad a medias de una forma que no se podía
+arreglar sin moverla: las reglas estaban en un esquema y los registros en otro,
+ningún servicio lee el de otro, y por tanto **el listado de cuentas no podía
+filtrar por ellas**. Devolvía el veredicto de un registro y la explicación, pero
+`GET /accounts` seguía enseñándolo todo.
+
+Es el mismo patrón que adjuntos, comentarios y retención, y por el mismo motivo:
+una funcionalidad transversal cuyas tablas tienen que estar donde están los
+datos que gobierna. Ahora `party` guarda las reglas de `cuenta` y `contacto` en
+su esquema, y `filtro_visibilidad()` se convierte en un `WHERE` normal.
+
+**Filtrar en SQL y no fila a fila** no es una optimización, es la diferencia
+entre que funcione y que no: comprobar registro a registro rompe la paginación
+—pides veinte y te devuelve siete— y hace una consulta por fila. El precio es
+que el `WHERE` solo sabe expresar lo que se puede traducir a SQL, y lo que no,
+se dice: ver `filtro_visibilidad`.
 """
 
 from __future__ import annotations
@@ -30,9 +43,6 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
-from crmcore.ids import nuevo_id
-from crmcore.logging import get_logger
 from sqlalchemy import (
     Boolean,
     Date,
@@ -48,6 +58,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
+
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.ids import nuevo_id
+from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -180,6 +194,142 @@ def visibilidad_de(
     if not resultado.motivos:
         resultado.motivos.append("ninguna regla lo alcanza")
     return resultado
+
+
+def filtro_visibilidad(
+    db: Session,
+    modelo: type,
+    *,
+    tenant_id: UUID,
+    usuario_id: UUID,
+    objeto: str,
+    subordinados: set[UUID] | None = None,
+    equipos: set[UUID] | None = None,
+    roles: frozenset[str] | None = None,
+    business_unit_id: UUID | None = None,
+) -> Any:
+    """El `WHERE` que deja solo los registros que este usuario puede ver.
+
+    Devuelve `None` cuando no hay que filtrar —porque el usuario lo ve todo— y
+    una condición de SQLAlchemy en el resto de casos. `None` y no `true()` para
+    que quien llama pueda distinguir «no filtres» de «filtra por esto», y no
+    añada una cláusula inútil a cada consulta.
+
+    Las cinco vías se **suman** con un `OR`, igual que en `visibilidad_de`, y el
+    resultado de las dos tiene que coincidir: hay una prueba que las compara
+    sobre los mismos datos, porque dos implementaciones de la misma regla
+    divergen el día que alguien toca una — y entonces el listado enseña un
+    registro que la ficha luego niega, o al revés.
+
+    **Lo que este filtro NO sabe traducir**, dicho por delante: las condiciones
+    de regla que miran atributos del *usuario* (`usuario.pais`) o que usan
+    operadores sin equivalente en SQL. Esas reglas se aplican **entera**: si la
+    parte que sí se puede evaluar en Python da verdadero para este usuario, la
+    regla entra como un `OR` con sus condiciones sobre el registro; si no, se
+    deja fuera. Lo que no se puede hacer es ignorarlas en silencio, que
+    escondería registros que el usuario sí puede ver.
+    """
+    from sqlalchemy import or_
+
+    if not hasattr(modelo, "owner_id"):
+        # Un objeto sin propietario no tiene compartición que aplicar: la
+        # visibilidad la decide el permiso, y ya está comprobado.
+        return None
+
+    contexto_usuario = {
+        "roles": sorted(roles or ()),
+        "business_unit_id": str(business_unit_id) if business_unit_id else "",
+    }
+
+    vias: list[Any] = [modelo.owner_id == usuario_id]
+
+    if subordinados:
+        vias.append(modelo.owner_id.in_(list(subordinados)))
+    if equipos:
+        vias.append(modelo.id.in_(list(equipos)))
+
+    # Lo compartido a mano: subconsulta contra la tabla local, que es
+    # exactamente lo que el traslado al esquema del servicio hace posible.
+    vias.append(
+        modelo.id.in_(
+            select(ComparticionManual.registro_id).where(
+                ComparticionManual.tenant_id == tenant_id,
+                ComparticionManual.usuario_id == usuario_id,
+                ComparticionManual.objeto == objeto,
+                ComparticionManual.revocada_at.is_(None),
+                or_(
+                    ComparticionManual.hasta.is_(None),
+                    ComparticionManual.hasta >= date.today(),
+                ),
+            )
+        )
+    )
+
+    for regla in _reglas_aplicables(db, tenant_id, objeto):
+        if not _destino_incluye(regla, usuario_id, {"_usuario": contexto_usuario}):
+            continue
+        condicion = _condiciones_en_sql(modelo, regla)
+        if condicion is not None:
+            vias.append(condicion)
+
+    return or_(*vias) if len(vias) > 1 else vias[0]
+
+
+def _condiciones_en_sql(modelo: type, regla: ReglaComparticion) -> Any:
+    """Traduce las condiciones de una regla a SQL, o devuelve `None`.
+
+    Devuelve `None` cuando la regla no alcanza nada traducible. Una regla **sin
+    condiciones** comparte todo el objeto, así que devuelve una condición
+    siempre cierta: es legítimo —«todas las cuentas con dirección»— y por eso se
+    permite, aunque `visibilidad_de` lo anote como la forma más fácil de abrir
+    de más sin darse cuenta.
+
+    Lo que no se traduce se trata como **más permisivo**, no como menos: una
+    condición que no sabemos evaluar en SQL se omite del `AND`, así que la regla
+    puede compartir de más antes que de menos. Es la dirección incómoda, y es la
+    correcta: esconder un registro que alguien sí puede ver produce una llamada
+    a soporte y una decisión tomada sin un dato; enseñarlo de más produce lo
+    mismo que la regla ya autorizaba a ver por otra vía. Y se registra, para que
+    no pase inadvertido.
+    """
+    from sqlalchemy import true
+
+    from crmcore.authz.abac import a_sql
+
+    if not regla.condiciones:
+        return true()
+
+    partes: list[Any] = []
+    sin_traducir: list[str] = []
+    for bruta in regla.condiciones:
+        atributo = str((bruta or {}).get("atributo") or "")
+        if not atributo.startswith("registro."):
+            # `usuario.x` no se puede poner en el WHERE de la tabla de
+            # registros: no hay columna que comparar. Se decidió arriba, al
+            # elegir si la regla alcanza a este usuario.
+            continue
+        columna = getattr(modelo, atributo.removeprefix("registro."), None)
+        if columna is None:
+            sin_traducir.append(atributo)
+            continue
+        traducida = a_sql(columna, str(bruta.get("operador") or "="), bruta.get("valor"))
+        if traducida is None:
+            sin_traducir.append(f"{atributo} {bruta.get('operador')}")
+            continue
+        partes.append(traducida)
+
+    if sin_traducir:
+        logger.warning(
+            "comparticion.condicion_no_traducible",
+            regla=regla.nombre,
+            condiciones=sin_traducir,
+            efecto="la regla comparte de más en el listado; el detalle sí la evalúa entera",
+        )
+    if not partes:
+        return true()
+    from sqlalchemy import and_, or_
+
+    return and_(*partes) if regla.combinacion == "todas" else or_(*partes)
 
 
 def _reglas_aplicables(db: Session, tenant_id: UUID, objeto: str) -> list[ReglaComparticion]:

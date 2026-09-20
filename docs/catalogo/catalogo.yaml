@@ -367,7 +367,7 @@ modulos:
               - {id: CRM-00.05.02.01, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom)", t: "RBAC con roles, perfiles y conjuntos de permisos acumulables"}
               - {id: CRM-00.05.02.02, c: C, fase: 0, svc: identity, estado: hecho, t: "Jerarquía de roles con visibilidad ascendente sobre subordinados"}
               - {id: CRM-00.05.02.03, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac.py (394) + abac_enforce.py", t: "Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto)"}
-              - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: en-curso, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
+              - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
               - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
               - {id: CRM-00.05.02.06, c: A, fase: 0, svc: identity, estado: pendiente, t: "Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless"}
               - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}

@@ -16,9 +16,9 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.authz import comparticion as comp
 from crmcore.errors import ErrorValidacion, NoEncontrado
 
-from services.identity import comparticion as comp
 from services.tenancy import catalogos as cat
 
 # ── Compartición ──────────────────────────────────────────────────────────

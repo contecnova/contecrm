@@ -41,6 +41,52 @@ OPERADORES: dict[str, Callable[[Any, Any], bool]] = {
 }
 
 
+def a_sql(columna: Any, operador: str, valor: Any) -> Any:
+    """La misma comparación, pero como `WHERE` de SQL. `None` si no se puede.
+
+    Existe porque una regla de compartición tiene que decidir dos cosas con la
+    **misma** gramática: si este registro concreto se ve —en Python, sobre un
+    diccionario— y cuáles se ven de todos —en SQL, sobre una tabla—. Dos
+    gramáticas distintas para lo mismo es cómo se acaba con un listado que
+    enseña un registro que la ficha luego niega.
+
+    Devuelve `None` para lo que no tiene traducción honesta:
+
+      * Un valor con prefijo `@`, que apunta a otro atributo del ámbito. En SQL
+        no hay ámbito: quien llama resuelve esa parte antes.
+      * `contiene`, que en Python mira dentro de una lista y en SQL depende del
+        tipo de la columna —un JSONB, un array, una relación— y traducirlo mal
+        es peor que no traducirlo.
+
+    Nunca se inventa una traducción aproximada. Una condición traducida «casi
+    igual» produce un listado que casi acierta, y eso no se detecta mirándolo.
+    """
+    if isinstance(valor, str) and valor.startswith("@"):
+        return None
+
+    if operador == "=":
+        return columna == valor
+    if operador == "!=":
+        return columna != valor
+    if operador == ">":
+        return columna > valor
+    if operador == ">=":
+        return columna >= valor
+    if operador == "<":
+        return columna < valor
+    if operador == "<=":
+        return columna <= valor
+    if operador == "en":
+        return columna.in_(list(valor or []))
+    if operador == "no_en":
+        return columna.not_in(list(valor or []))
+    if operador == "vacio":
+        return columna.is_(None)
+    if operador == "no_vacio":
+        return columna.is_not(None)
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class Condicion:
     """Una comparación entre un atributo y un valor.

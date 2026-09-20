@@ -265,6 +265,7 @@ class ProveedorIdentidad(Base, TimestampMixin):
 # Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.authz.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
@@ -276,7 +277,6 @@ from crmcore.datos.seguimiento import (  # noqa: E402
 from crmcore.notificaciones.entrega import EntregaNotificacion  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
-from services.identity.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
 from services.identity.sso import EstadoSSO  # noqa: E402
 
 __all__ = [

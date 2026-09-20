@@ -7,7 +7,10 @@ from crmcore.service import crear_servicio
 # Los tipos de evento se registran al importar el módulo, antes de crear la
 # aplicación: el catálogo de eventos tiene que estar completo cuando alguien
 # consulte el AsyncAPI o se suscriba a un webhook.
-from services.party import eventos  # noqa: F401
+from services.party import (
+    eventos,  # noqa: F401
+    visibilidad,  # noqa: F401 — registra el resolutor de equipos
+)
 from services.party.api import ROUTERS
 from services.party.consumidores import consumir_comando
 

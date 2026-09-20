@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 11 en-curso · ✅ 165 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 10 en-curso · ✅ 166 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · 🔧 1 · ✅ 111 · ⬜ 104
+216 capacidades · ✅ 112 · ⬜ 104
 
 ### 0.1 Multi-tenancy
 
@@ -298,7 +298,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.01` | RBAC con roles, perfiles y conjuntos de permisos acumulables | C | 0 | identity | ✅ | contecmind:app/services/acl.py + grc.py (matriz de permisos editable, roles custom) |
 | `CRM-00.05.02.02` | Jerarquía de roles con visibilidad ascendente sobre subordinados | C | 0 | identity | ✅ | — |
 | `CRM-00.05.02.03` | Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto) | C | 0 | identity | ✅ | contecweb:app/services/abac.py (394) + abac_enforce.py |
-| `CRM-00.05.02.04` | Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal | C | 1 | identity | 🔧 | contecweb:app/services/share_links.py (477 líneas) |
+| `CRM-00.05.02.04` | Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal | C | 1 | identity | ✅ | contecweb:app/services/share_links.py (477 líneas) |
 | `CRM-00.05.02.05` | ABAC: decisiones basadas en atributos de usuario, registro y contexto | A | 0 | identity | ✅ | contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py |
 | `CRM-00.05.02.06` | Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless | A | 0 | identity | ⬜ | — |
 | `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ⬜ | — |

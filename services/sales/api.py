@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.proyeccion import exigir_campo_usable
+from crmcore.authz.visibilidad import aplicar_visibilidad
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
@@ -88,7 +89,14 @@ def listar_leads(
     from datetime import datetime, timezone
 
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
-    consulta = select(Lead).where(Lead.deleted_at.is_(None))
+    consulta = aplicar_visibilidad(
+        select(Lead).where(Lead.deleted_at.is_(None)),
+        Lead,
+        db=db,
+        principal=principal,
+        objeto="lead",
+        permiso_ver_todo="lead:admin",
+    )
     if estado:
         consulta = consulta.where(Lead.estado == estado)
     if mios:
@@ -298,7 +306,14 @@ def listar_oportunidades(
     mias: bool = Query(False),
 ) -> Any:
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
-    consulta = select(Oportunidad).where(Oportunidad.deleted_at.is_(None))
+    consulta = aplicar_visibilidad(
+        select(Oportunidad).where(Oportunidad.deleted_at.is_(None)),
+        Oportunidad,
+        db=db,
+        principal=principal,
+        objeto="oportunidad",
+        permiso_ver_todo="opportunity:admin",
+    )
     if estado:
         consulta = consulta.where(Oportunidad.estado == estado)
     if cuenta_id:

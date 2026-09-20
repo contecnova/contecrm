@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore.authz.visibilidad import aplicar_visibilidad
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
@@ -101,7 +102,18 @@ def listar_cuentas(
     owner_id: UUID | None = Query(None),
 ) -> Any:
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden=orden)
-    consulta = select(Cuenta).where(Cuenta.deleted_at.is_(None), Cuenta.fusionada_en_id.is_(None))
+    # La compartición se aplica ANTES que los filtros del usuario, y da igual el
+    # orden para el resultado: se pone primero para que se vea al leer que toda
+    # consulta de este listado sale ya acotada, y no dependa de que quien añada
+    # un filtro nuevo lo ponga en el sitio correcto (CRM-00.05.02.04).
+    consulta = aplicar_visibilidad(
+        select(Cuenta).where(Cuenta.deleted_at.is_(None), Cuenta.fusionada_en_id.is_(None)),
+        Cuenta,
+        db=db,
+        principal=principal,
+        objeto="cuenta",
+        permiso_ver_todo="account:admin",
+    )
     if buscar:
         from sqlalchemy import or_
 
@@ -392,8 +404,13 @@ def listar_contactos(
     from services.party.modelos import RelacionContactoCuenta
 
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
-    consulta = select(Contacto).where(
-        Contacto.deleted_at.is_(None), Contacto.fusionado_en_id.is_(None)
+    consulta = aplicar_visibilidad(
+        select(Contacto).where(Contacto.deleted_at.is_(None), Contacto.fusionado_en_id.is_(None)),
+        Contacto,
+        db=db,
+        principal=principal,
+        objeto="contacto",
+        permiso_ver_todo="contact:admin",
     )
     if buscar:
         patron = f"%{buscar.lower()}%"
