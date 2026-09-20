@@ -44,6 +44,7 @@ from services.party.esquemas import (
     MiembroEquipoEntrada,
     MiembroEquipoOut,
     RegistrarConsentimiento,
+    RelacionCuentaEntrada,
     SolicitudDerechosEntrada,
     SolicitudDerechosOut,
     VincularContacto,
@@ -804,6 +805,100 @@ def importar_cuentas(
 ) -> Any:
     informe = admin.importar_cuentas(db, filas, simular=simular, actualizar=actualizar)
     return informe.a_dict()
+
+
+# ── Relaciones no jerárquicas entre cuentas (CRM-01.01.01.04) ─────────────
+
+
+@router_cuentas.get(
+    "/{cuenta_id}/relaciones",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("account:read"))],
+    summary="Con qué otras cuentas se relaciona esta",
+    description=(
+        "Partner, competidor, proveedor, prescriptor. **No implica pertenencia "
+        "ni consolidación**: que A sea partner de B no hace que los números de A "
+        "sumen en B. Esa es la diferencia con la jerarquía.\n\n"
+        "Devuelve las relaciones **en las dos direcciones**: donde una ficha "
+        "dice «es proveedor de», la otra dice «es cliente de». Se guarda una "
+        "sola fila y se lee al revés, en vez de duplicarla — dos filas obligan a "
+        "sincronizarlas y el día que una se quede huérfana las dos fichas se "
+        "contradicen."
+    ),
+)
+def listar_relaciones_cuenta(cuenta_id: UUID, db: DbDep) -> Any:
+    svc.exigir_cuenta(db, cuenta_id)
+    return svc.relaciones_de_cuenta(db, cuenta_id)
+
+
+@router_cuentas.post(
+    "/{cuenta_id}/relaciones",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Relacionar esta cuenta con otra",
+)
+def crear_relacion_cuenta(cuenta_id: UUID, datos: RelacionCuentaEntrada, uow: UowDep) -> Any:
+    relacion = svc.relacionar_cuentas(uow, cuenta_id=cuenta_id, **datos.model_dump())
+    return {
+        "id": str(relacion.id),
+        "cuenta_id": str(relacion.cuenta_id),
+        "relacionada_id": str(relacion.relacionada_id),
+        "tipo": relacion.tipo,
+        "tipo_inverso": relacion.tipo_inverso,
+    }
+
+
+@router_cuentas.delete(
+    "/{cuenta_id}/relaciones/{relacion_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Quitar una relación",
+    description="Vale desde cualquiera de las dos fichas: la relación es una sola.",
+)
+def borrar_relacion_cuenta(cuenta_id: UUID, relacion_id: UUID, uow: UowDep) -> None:
+    svc.desrelacionar_cuentas(uow, cuenta_id=cuenta_id, relacion_id=relacion_id)
+
+
+# ── Verificación contra registros externos ────────────────────────────────
+
+
+@router_cuentas.post(
+    "/{cuenta_id}/identificadores/{identificador_id}/verificar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Comprobar un identificador fiscal contra el registro oficial",
+    description=(
+        "Son dos comprobaciones distintas y conviene no confundirlas: la **de "
+        "forma** (¿está bien construido?) se hace al guardar, es un cálculo y "
+        "siempre da la misma respuesta; la **de existencia** (¿existe esta "
+        "empresa?) solo la sabe el registro oficial, hay que preguntarle y puede "
+        "no contestar.\n\n"
+        "Si el registro no contesta **no se degrada el dato**: se conserva el "
+        "veredicto anterior y se devuelve `no_concluyente`. Poner «desconocido» "
+        "encima de un «válido» porque hoy hubo un timeout convertiría cada "
+        "incidencia de red en una pérdida de información."
+    ),
+)
+def verificar_identificador(cuenta_id: UUID, identificador_id: UUID, uow: UowDep) -> Any:
+    return svc.verificar_identificador_fiscal(
+        uow, cuenta_id=cuenta_id, identificador_id=identificador_id
+    )
+
+
+@router_cuentas.post(
+    "/{cuenta_id}/direcciones/{direccion_id}/geocodificar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Geocodificar una dirección",
+    description=(
+        "Pregunta al geocodificador configurado por este tenant. **No hay "
+        "código de ningún proveedor**: se declara a dónde llamar y de qué parte "
+        "de la respuesta salen las coordenadas."
+    ),
+)
+def geocodificar_direccion(cuenta_id: UUID, direccion_id: UUID, uow: UowDep) -> Any:
+    return svc.geocodificar(uow, objeto="cuenta", objeto_id=cuenta_id, direccion_id=direccion_id)
 
 
 # ── Equipo de cuenta (CRM-01.01.01.10) ────────────────────────────────────

@@ -355,3 +355,30 @@ class MiembroEquipoOut(BaseModel):
     vigente: bool
 
     model_config = {"from_attributes": True}
+
+
+class RelacionCuentaEntrada(BaseModel):
+    relacionada_id: UUID
+    tipo: str = Field(
+        description="partner | competidor | proveedor | cliente | prescriptor | prescrito_por | filial_operativa | matriz_operativa | otro"
+    )
+    tipo_inverso: str | None = Field(
+        None,
+        description=(
+            "Cómo se lee la relación desde la otra ficha. Si no se dice, se usa "
+            "la inversa conocida del tipo: no toda relación es simétrica, y "
+            "adivinarla produce etiquetas absurdas al otro lado."
+        ),
+    )
+    nota: str = ""
+
+
+class VerificacionEntrada(BaseModel):
+    forzar: bool = Field(
+        False,
+        description=(
+            "Vuelve a preguntar aunque ya haya un veredicto reciente. Sin esto "
+            "se respeta el último, para no gastar cuota del verificador en un "
+            "dato que no ha cambiado."
+        ),
+    )

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**163 ajustes** en total, de los cuales **55** son editables en caliente por tenant.
+**163 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 9 en-curso · ✅ 167 hecho · ⬜ 379 pendiente
+**555 capacidades**: 🔧 5 en-curso · ✅ 171 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -360,7 +360,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · 🔧 6 · ✅ 25 · ⬜ 21
+52 capacidades · 🔧 2 · ✅ 29 · ⬜ 21
 
 ### 1.1 Modelo de parties
 
@@ -371,9 +371,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.01.01` | Ficha de cuenta con datos fiscales, comerciales, operativos y financieros | C | 1 | party | ✅ | contecflow-PSA:app/models/clients.py + app/services/client_service.py; contecweb:app/services/suppliers.py |
 | `CRM-01.01.01.02` | Jerarquías de cuenta multinivel (grupo, matriz, filial, delegación, centro) | C | 1 | party | ✅ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
 | `CRM-01.01.01.03` | Jerarquías múltiples y simultáneas: legal, comercial, de facturación, de entrega | A | 1 | party | ✅ | — |
-| `CRM-01.01.01.04` | Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor) | A | 1 | party | 🔧 | — |
-| `CRM-01.01.01.05` | Múltiples direcciones tipificadas con validación y geocodificación | C | 1 | party | 🔧 | — |
-| `CRM-01.01.01.06` | Múltiples identificadores fiscales y validación contra registros oficiales (VIES) | A | 1 | party | 🔧 | contecweb:app/services/prueba_de_identidad.py (validación contra registros) |
+| `CRM-01.01.01.04` | Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor) | A | 1 | party | ✅ | — |
+| `CRM-01.01.01.05` | Múltiples direcciones tipificadas con validación y geocodificación | C | 1 | party | ✅ | — |
+| `CRM-01.01.01.06` | Múltiples identificadores fiscales y validación contra registros oficiales (VIES) | A | 1 | party | ✅ | contecweb:app/services/prueba_de_identidad.py (validación contra registros) |
 | `CRM-01.01.01.07` | Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida | C | 1 | party | ✅ | — |
 | `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
 | `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
@@ -419,7 +419,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.04.07` | Linaje del dato: de qué sistema y en qué momento llegó cada valor | A | 2 | party | ⬜ | contecweb (linaje del dato por fuente) |
 | `CRM-01.01.04.08` | Stewardship: cola de excepciones de calidad asignable a responsables | A | 2 | party | ⬜ | contecmind:app/services/gap_tasks.py (cola de excepciones asignable) |
 | `CRM-01.01.04.09` | Enriquecimiento programado y detección de datos obsoletos | A | 4 | party | ⬜ | contecmind:app/services/freshness.py |
-| `CRM-01.01.04.10` | Validación de correo, teléfono y dirección con estado de verificación | A | 1 | party | 🔧 | — |
+| `CRM-01.01.04.10` | Validación de correo, teléfono y dirección con estado de verificación | A | 1 | party | ✅ | — |
 
 #### CRM-01.01.05 · Vista 360 e identidad
 

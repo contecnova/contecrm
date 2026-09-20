@@ -465,6 +465,22 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="",
             sensible=True,
         ),
+        # Verificadores externos (CRM-01.01.01.05, .06 y CRM-01.01.04.10). Uno
+        # por tipo de dato, y opcionalmente uno por país para lo que cambia de
+        # país a país —el registro fiscal— sin repetir lo que no cambia.
+        #
+        # No hay código de ningún proveedor: aquí se declara a dónde llamar y de
+        # qué parte de la respuesta sale el veredicto.
+        _c(
+            "verificador_fiscal",
+            "json",
+            "Registro oficial de identificadores fiscales",
+            sensible=True,
+        ),
+        _c("verificador_fiscal_es", "json", "Registro fiscal específico de España", sensible=True),
+        _c("verificador_direccion", "json", "Geocodificador de direcciones", sensible=True),
+        _c("verificador_correo", "json", "Validador de direcciones de correo", sensible=True),
+        _c("verificador_telefono", "json", "Validador de números de teléfono", sensible=True),
         # Localización, con preferencia por usuario
         _c(
             "idioma",

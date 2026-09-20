@@ -437,9 +437,9 @@ modulos:
               - {id: CRM-01.01.01.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/clients.py + app/services/client_service.py; contecweb:app/services/suppliers.py", t: "Ficha de cuenta con datos fiscales, comerciales, operativos y financieros"}
               - {id: CRM-01.01.01.02, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquías de cuenta multinivel (grupo, matriz, filial, delegación, centro)"}
               - {id: CRM-01.01.01.03, c: A, fase: 1, svc: party, estado: hecho, t: "Jerarquías múltiples y simultáneas: legal, comercial, de facturación, de entrega"}
-              - {id: CRM-01.01.01.04, c: A, fase: 1, svc: party, estado: en-curso, t: "Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor)"}
-              - {id: CRM-01.01.01.05, c: C, fase: 1, svc: party, estado: en-curso, t: "Múltiples direcciones tipificadas con validación y geocodificación"}
-              - {id: CRM-01.01.01.06, c: A, fase: 1, svc: party, estado: en-curso, reutiliza: "contecweb:app/services/prueba_de_identidad.py (validación contra registros)", t: "Múltiples identificadores fiscales y validación contra registros oficiales (VIES)"}
+              - {id: CRM-01.01.01.04, c: A, fase: 1, svc: party, estado: hecho, t: "Relaciones entre cuentas no jerárquicas (partner, competidor, proveedor, prescriptor)"}
+              - {id: CRM-01.01.01.05, c: C, fase: 1, svc: party, estado: hecho, t: "Múltiples direcciones tipificadas con validación y geocodificación"}
+              - {id: CRM-01.01.01.06, c: A, fase: 1, svc: party, estado: hecho, reutiliza: "contecweb:app/services/prueba_de_identidad.py (validación contra registros)", t: "Múltiples identificadores fiscales y validación contra registros oficiales (VIES)"}
               - {id: CRM-01.01.01.07, c: C, fase: 1, svc: party, estado: hecho, t: "Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida"}
               - {id: CRM-01.01.01.08, c: A, fase: 4, svc: party, estado: pendiente, t: "Datos firmográficos enriquecidos desde proveedores externos"}
               - {id: CRM-01.01.01.09, c: A, fase: 1, svc: party, estado: pendiente, reutiliza: "contecpos:services/clientas (modelo B2C)", t: "Cuentas personales (B2C) coexistiendo con el modelo B2B"}
@@ -479,7 +479,7 @@ modulos:
               - {id: CRM-01.01.04.07, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecweb (linaje del dato por fuente)", t: "Linaje del dato: de qué sistema y en qué momento llegó cada valor"}
               - {id: CRM-01.01.04.08, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecmind:app/services/gap_tasks.py (cola de excepciones asignable)", t: "Stewardship: cola de excepciones de calidad asignable a responsables"}
               - {id: CRM-01.01.04.09, c: A, fase: 4, svc: party, estado: pendiente, reutiliza: "contecmind:app/services/freshness.py", t: "Enriquecimiento programado y detección de datos obsoletos"}
-              - {id: CRM-01.01.04.10, c: A, fase: 1, svc: party, estado: en-curso, t: "Validación de correo, teléfono y dirección con estado de verificación"}
+              - {id: CRM-01.01.04.10, c: A, fase: 1, svc: party, estado: hecho, t: "Validación de correo, teléfono y dirección con estado de verificación"}
           - id: CRM-01.01.05
             nombre: Vista 360 e identidad
             capacidades:

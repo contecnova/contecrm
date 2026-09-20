@@ -317,11 +317,7 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 |---|---|---|
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
-| `CRM-01.01.01.04` Relaciones no jerárquicas | Modelo y tabla: partner, competidor, proveedor, prescriptor, separados de la jerarquía | La API para crearlas y consultarlas |
-| `CRM-01.01.01.05` Direcciones tipificadas | Varias por cuenta o contacto, con tipo y principal, y su API | Validación postal y geocodificación |
-| `CRM-01.01.01.06` Identificadores fiscales | Varios por cuenta y validación del NIF/CIF español | El resto de países y la comprobación contra VIES |
 | `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
-| `CRM-01.01.04.10` Validación de contacto | Normalización de teléfono, formato de correo y puntuación de calidad | El estado de verificación real —rebote de correo, SMS— y la validación de dirección |
 | `CRM-01.02.01.02` Gestión de actividades | Actividades con propietario, vencimiento y cierre | Delegación, recordatorios y la vista de vencidas |
 | `CRM-07.03.01.03` Derechos del interesado | Registro de la solicitud con el plazo legal calculado al recibirla, y su API | La ejecución (exportar o borrar los datos) y la evidencia de haberlo hecho |
 
@@ -2568,3 +2564,118 @@ ayer, o no puede corregir una fecha mal puesta.
 **Y el alta emite un evento**, porque pertenecer al equipo **da visibilidad**
 sobre la cuenta: quien audite quién puede ver qué necesita ese hecho, y sin
 evento solo constaría en una tabla que nadie mira.
+
+---
+
+## 32. Calidad del dato: identificadores, relaciones y verificación externa
+
+Cuatro capacidades —`CRM-01.01.01.04`, `.05`, `.06` y `CRM-01.01.04.10`— que
+pedían lo mismo con palabras distintas: **mandar un dato fuera y guardar qué
+contestaron**. El identificador fiscal contra el registro oficial, la dirección
+contra un geocodificador, el correo y el teléfono contra quien sepa decir si
+existen.
+
+Escribir cuatro clientes distintos habría sido cuatro veces el mismo código con
+cuatro formas de fallar. Hay uno.
+
+### Dos comprobaciones que no son la misma
+
+Esta es la distinción que gobierna todo el capítulo, y confundirla es cómo un
+sistema acaba bloqueando facturas porque el servicio del ministerio estaba
+caído:
+
+- **De forma**: ¿está bien construido? Es un cálculo. No necesita red, es
+  instantáneo y siempre da la misma respuesta. Caza el 90 % de los errores
+  reales, que son erratas de tecleo.
+- **De existencia**: ¿existe esta empresa con este identificador? Solo lo sabe
+  el registro oficial, hay que preguntarle y puede no contestar.
+
+Por eso hay **tres estados y no dos**: `valido`, `invalido` y `desconocido`.
+«No comprobado» no es «no válido».
+
+### Identificadores fiscales de diez países, no de uno
+
+Antes solo se validaba el español. Un CRM que opera en tres países y solo
+comprueba uno da una falsa sensación de calidad: el maestro parece limpio porque
+el 60 % de las fichas ni se comprueban.
+
+Ahora hay algoritmo de dígito de control para España, Portugal, Francia, Italia,
+Países Bajos, Bélgica, Alemania, Irlanda, Luxemburgo y Dinamarca, más la
+comprobación de formato del IVA de los veintisiete. Las fórmulas están en el
+código y no detrás de un servicio porque son algoritmos públicos y estables de
+veinte líneas: pedirlas por red añadiría una dependencia, una latencia y un modo
+de fallo a un cálculo que no los tiene.
+
+**Lo que no se sabe validar devuelve `None`, no `False`.** Decir «inválido» de
+un identificador de un país sin algoritmo bloquearía altas legítimas y dejaría
+al cliente sin forma de continuar. Se guarda y queda pendiente de verificar.
+
+Y un error que costó encontrar: la primera versión solo quitaba el prefijo de
+país (`ESB12345674`) cuando **no** coincidía con el país declarado — y el caso
+normal es justo el contrario. Los identificadores bien escritos en formato
+intracomunitario salían inválidos, que es el peor error posible en una
+validación: rechaza lo bueno, y quien lo sufre no tiene forma de continuar.
+Ahora se prueban las dos lecturas y gana la que valide.
+
+### Un verificador, ninguna integración por proveedor
+
+El tenant declara, por tipo de dato y por país, a dónde llamar y **de qué parte
+de la respuesta sale el veredicto**. Es lo que evita un cliente por proveedor:
+uno devuelve `{"valid": true}`, otro `{"status": "OK"}` y otro un `200` vacío.
+
+```json
+{ "url": "https://registro.example/comprobar",
+  "mapeo": { "campo": "resultado.estado", "valido": ["OK", "ACTIVO"] },
+  "conservar": { "razon_social": "resultado.nombre" } }
+```
+
+Cuatro decisiones dentro:
+
+- **Sin mapeo, un `200` se toma como válido.** Es lo que hacen la mitad de los
+  servicios sencillos, y exigir configuración para ese caso los dejaría fuera.
+- **Un campo declarado que no está en la respuesta no concluye nada.** O cambió
+  el contrato del servicio o el mapeo está mal; afirmar «inválido» sería
+  inventárselo.
+- **No se conserva nada que no se haya pedido.** La respuesta de un servicio
+  externo puede traer datos personales que nadie solicitó, y guardarla entera
+  «por si acaso» es exactamente lo que un registro de tratamiento no puede
+  justificar.
+- **Un fallo del servicio no degrada el dato.** Si el registro no contesta, el
+  veredicto anterior se conserva. Poner «desconocido» encima de un «válido»
+  porque hoy hubo un timeout convertiría cada incidencia de red en una pérdida
+  de información.
+
+La respuesta incluye **siempre** la comprobación de forma, aunque la externa no
+concluya: sin ella, un `no_concluyente` parecería que no se sabe nada del
+identificador, y sí se sabe si está bien construido.
+
+### Direcciones y geocodificación (`CRM-01.01.01.05`)
+
+Varias direcciones por cuenta o por contacto, con tipo —fiscal, envío,
+facturación, visita, postal— y una principal. La que faltaba era la
+geocodificación, y sale del mismo verificador con `conservar` apuntando a las
+coordenadas. Se guardan
+como dos columnas y no como un tipo geográfico para no exigir PostGIS: lo que
+hace falta hoy —distancias aproximadas y pintar un mapa— se resuelve con esto.
+
+**Media coordenada no se escribe.** Una latitud sin longitud deja un punto en el
+meridiano de Greenwich, que es un sitio muy concreto y casi nunca el correcto.
+Y unas coordenadas que no son números se anotan y se descartan.
+
+### Relaciones no jerárquicas
+
+Partner, competidor, proveedor, prescriptor. **No implican pertenencia ni
+consolidación**: que A sea partner de B no hace que los números de A sumen en B.
+Esa es toda la diferencia con la jerarquía, y por eso son dos tablas.
+
+- **Una sola fila, leída en las dos direcciones.** Guardar las dos obligaría a
+  sincronizarlas al editar y al borrar, y el día que una se quede huérfana la
+  ficha de una cuenta dice que es partner de otra que no lo dice.
+- **La inversa se declara, no se deduce.** No toda relación es simétrica:
+  adivinarla produce «es cliente de» donde debería decir «es proveedor de».
+- **Relacionar al revés no duplica.** Las dos direcciones son la misma relación;
+  crear la simétrica dejaría dos filas diciendo lo mismo y la ficha la enseñaría
+  dos veces.
+- **`otro` existe con etiqueta libre.** Una lista cerrada sin escape obliga a
+  forzar la relación real dentro de un tipo que no es, y entonces la lista deja
+  de significar nada.

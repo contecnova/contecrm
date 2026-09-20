@@ -196,14 +196,22 @@ def _añadir_identificador(
     normalizado = norm.normalizar_identificador_fiscal(valor)
     pais = str(datos.get("pais", "ES")).upper()
 
-    # La validación de forma solo se aplica donde se sabe hacer. Rechazar un
-    # identificador extranjero porque no cumple el algoritmo español sería
-    # impedir dar de alta a un cliente perfectamente real.
-    if pais == "ES" and not norm.validar_nif_es(normalizado):
+    # La validación de forma se aplica **donde se sabe hacer**, que ya son diez
+    # países y no uno (CRM-01.01.01.06). Rechazar un identificador extranjero
+    # porque no cumple el algoritmo español sería impedir dar de alta a un
+    # cliente perfectamente real.
+    #
+    # `None` significa «no sabemos comprobarlo» y NO bloquea: bloquear lo que no
+    # se sabe validar deja al cliente sin forma de continuar. Se guarda y queda
+    # pendiente de verificar contra el registro oficial, que es otra cosa.
+    from services.party import fiscal
+
+    veredicto, motivo = fiscal.validar(valor, pais, str(datos.get("tipo", "")))
+    if veredicto is False:
         raise ErrorValidacion(
-            f"«{valor}» no es un NIF, NIE o CIF español válido",
+            f"«{valor}» no es un identificador fiscal válido de {pais}: {motivo}",
             error_code="party.nif_invalido",
-            detalle={"valor": valor},
+            detalle={"valor": valor, "pais": pais, "motivo": motivo},
         )
 
     identificador = IdentificadorFiscal(
@@ -1030,3 +1038,321 @@ def equipo_de_cuenta(db: Session, cuenta_id: UUID, *, solo_vigentes: bool = Fals
             or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= hoy),
         )
     return list(db.execute(consulta.order_by(MiembroEquipoCuenta.rol)).scalars().all())
+
+
+# ── Relaciones no jerárquicas entre cuentas (CRM-01.01.01.04) ─────────────
+
+# Tipos conocidos, con su inversa. La inversa se declara y no se deduce: no toda
+# relación es simétrica, y adivinarla produce etiquetas absurdas en la ficha del
+# otro lado —«es cliente de» donde debería decir «es proveedor de»—.
+#
+# `otro` existe para lo que el tenant no tenga previsto, con su etiqueta libre:
+# una lista cerrada sin escape obliga a forzar la relación real dentro de un
+# tipo que no es, y entonces la lista deja de significar nada.
+TIPOS_RELACION = {
+    "partner": "partner",
+    "competidor": "competidor",
+    "proveedor": "cliente",
+    "cliente": "proveedor",
+    "prescriptor": "prescrito_por",
+    "prescrito_por": "prescriptor",
+    "filial_operativa": "matriz_operativa",
+    "matriz_operativa": "filial_operativa",
+    "otro": "otro",
+}
+
+
+def relacionar_cuentas(
+    uow: UnidadDeTrabajo,
+    *,
+    cuenta_id: UUID,
+    relacionada_id: UUID,
+    tipo: str,
+    tipo_inverso: str | None = None,
+    nota: str = "",
+) -> Any:
+    """Crea una relación no jerárquica entre dos cuentas.
+
+    **No implica pertenencia ni consolidación**: que A sea partner de B no hace
+    que los números de A sumen en B. Esa es toda la diferencia con la jerarquía,
+    y por eso son dos tablas y no una con un campo `tipo`.
+
+    Se crea **una sola fila**, no dos. Guardar las dos direcciones obligaría a
+    mantenerlas sincronizadas al editar y al borrar, y el día que una se quede
+    huérfana la ficha de una cuenta dice que es partner de otra que no lo dice.
+    La consulta devuelve las relaciones en las dos direcciones.
+    """
+    from services.party.modelos import RelacionCuenta
+
+    if cuenta_id == relacionada_id:
+        raise ErrorValidacion(
+            "Una cuenta no se puede relacionar consigo misma",
+            error_code="party.relacion_reflexiva",
+        )
+    if tipo not in TIPOS_RELACION:
+        raise ErrorValidacion(
+            f"Tipo de relación desconocido: «{tipo}»",
+            error_code="party.tipo_relacion_invalido",
+            detalle={"admitidos": sorted(TIPOS_RELACION)},
+        )
+
+    exigir_cuenta(uow.db, cuenta_id)
+    exigir_cuenta(uow.db, relacionada_id)
+
+    # Las dos direcciones cuentan como la misma relación: si ya existe al revés,
+    # se actualiza esa. Crear la simétrica dejaría dos filas diciendo lo mismo y
+    # la ficha enseñaría la relación dos veces.
+    from sqlalchemy import and_, or_
+
+    existente = (
+        uow.db.execute(
+            select(RelacionCuenta).where(
+                or_(
+                    and_(
+                        RelacionCuenta.cuenta_id == cuenta_id,
+                        RelacionCuenta.relacionada_id == relacionada_id,
+                    ),
+                    and_(
+                        RelacionCuenta.cuenta_id == relacionada_id,
+                        RelacionCuenta.relacionada_id == cuenta_id,
+                    ),
+                ),
+                RelacionCuenta.tipo == tipo,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if existente is not None:
+        existente.notas = nota or existente.notas
+        uow.db.flush()
+        return existente
+
+    relacion = RelacionCuenta(
+        tenant_id=uow.tenant_id,
+        cuenta_id=cuenta_id,
+        relacionada_id=relacionada_id,
+        tipo=tipo,
+        tipo_inverso=tipo_inverso or TIPOS_RELACION[tipo],
+        notas=nota,
+    )
+    uow.db.add(relacion)
+    uow.db.flush()
+
+    registrar(
+        uow.db,
+        accion="cuenta.relacionada",
+        objeto="cuenta",
+        objeto_id=cuenta_id,
+        datos={"relacionada_id": str(relacionada_id), "tipo": tipo},
+    )
+    return relacion
+
+
+def relaciones_de_cuenta(db: Session, cuenta_id: UUID) -> list[dict[str, Any]]:
+    """Las relaciones de una cuenta, **en las dos direcciones**.
+
+    Una sola fila describe la relación, así que la ficha de la otra cuenta tiene
+    que verla igual pero al revés: donde una dice «es proveedor de», la otra dice
+    «es cliente de». Se resuelve aquí y no duplicando filas.
+    """
+    from sqlalchemy import or_
+
+    from services.party.modelos import Cuenta as _Cuenta
+    from services.party.modelos import RelacionCuenta
+
+    filas = (
+        db.execute(
+            select(RelacionCuenta).where(
+                or_(
+                    RelacionCuenta.cuenta_id == cuenta_id,
+                    RelacionCuenta.relacionada_id == cuenta_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    salida: list[dict[str, Any]] = []
+    for fila in filas:
+        directa = fila.cuenta_id == cuenta_id
+        otra_id = fila.relacionada_id if directa else fila.cuenta_id
+        otra = db.get(_Cuenta, otra_id)
+        salida.append(
+            {
+                "id": str(fila.id),
+                "cuenta_id": str(otra_id),
+                "cuenta_nombre": otra.nombre if otra else "",
+                "tipo": fila.tipo if directa else (fila.tipo_inverso or fila.tipo),
+                # Se dice si la fila se guardó en este sentido o en el contrario.
+                # Sin esto, quien quiera borrarla desde la ficha de la otra
+                # cuenta no sabe qué identificador pasar.
+                "sentido": "directa" if directa else "inversa",
+                "nota": fila.notas or "",
+            }
+        )
+    return salida
+
+
+def desrelacionar_cuentas(uow: UnidadDeTrabajo, *, cuenta_id: UUID, relacion_id: UUID) -> None:
+    """Quita una relación. Vale desde cualquiera de las dos fichas."""
+    from services.party.modelos import RelacionCuenta
+
+    relacion = uow.db.get(RelacionCuenta, relacion_id)
+    if relacion is None or cuenta_id not in (relacion.cuenta_id, relacion.relacionada_id):
+        raise NoEncontrado(
+            "Esa relación no existe o no es de esta cuenta",
+            error_code="party.relacion_no_existe",
+        )
+    datos = {"relacionada_id": str(relacion.relacionada_id), "tipo": relacion.tipo}
+    uow.db.delete(relacion)
+    uow.db.flush()
+    registrar(
+        uow.db,
+        accion="cuenta.desrelacionada",
+        objeto="cuenta",
+        objeto_id=cuenta_id,
+        datos=datos,
+    )
+
+
+# ── Verificación contra registros externos ────────────────────────────────
+
+# Cuánto vale un veredicto antes de volver a preguntar. Un NIF verificado hace
+# tres años no es un NIF verificado; uno verificado esta mañana no hace falta
+# volver a preguntarlo y gastar cuota del registro.
+DIAS_VEREDICTO_VIGENTE = 90
+
+
+def verificar_identificador_fiscal(
+    uow: UnidadDeTrabajo, *, cuenta_id: UUID, identificador_id: UUID
+) -> dict[str, Any]:
+    """Comprueba un identificador contra el registro oficial configurado.
+
+    **Si el registro no contesta, no se degrada el dato.** Se conserva el
+    veredicto anterior y se devuelve `no_concluyente`. Poner «desconocido»
+    encima de un «válido» porque hoy hubo un timeout convertiría cada incidencia
+    de red en una pérdida de información.
+    """
+    from datetime import datetime, timezone
+
+    from crmcore.datos import verificacion as verif
+
+    exigir_cuenta(uow.db, cuenta_id)
+    identificador = uow.db.get(IdentificadorFiscal, identificador_id)
+    if identificador is None or identificador.cuenta_id != cuenta_id:
+        raise NoEncontrado(
+            "Ese identificador no es de esta cuenta",
+            error_code="party.identificador_no_existe",
+        )
+
+    veredicto = verif.verificar(
+        uow.db,
+        tipo="fiscal",
+        valor=identificador.valor_normalizado,
+        pais=identificador.pais,
+        extra={"tipo": identificador.tipo},
+    )
+
+    if not veredicto.no_concluyente:
+        identificador.verificado = veredicto.estado == "valido"
+        identificador.verificado_at = datetime.now(timezone.utc)
+        identificador.verificacion_detalle = veredicto.detalle[:2000]
+        registrar(
+            uow.db,
+            accion="cuenta.identificador_verificado",
+            objeto="cuenta",
+            objeto_id=cuenta_id,
+            datos={"identificador": identificador.valor_normalizado, "estado": veredicto.estado},
+        )
+        uow.db.flush()
+
+    return {
+        "identificador": identificador.valor,
+        "pais": identificador.pais,
+        **veredicto.a_dict(),
+        # Se devuelve también lo que dice la comprobación de forma, que siempre
+        # está disponible: sin ella, un `no_concluyente` parecería que no se sabe
+        # nada del identificador, y sí se sabe si está bien construido.
+        "forma": _forma_de(identificador),
+    }
+
+
+def _forma_de(identificador: IdentificadorFiscal) -> dict[str, Any]:
+    from services.party import fiscal
+
+    veredicto, motivo = fiscal.validar(identificador.valor, identificador.pais, identificador.tipo)
+    return {"valido": veredicto, "motivo": motivo}
+
+
+def geocodificar(
+    uow: UnidadDeTrabajo, *, objeto: str, objeto_id: UUID, direccion_id: UUID
+) -> dict[str, Any]:
+    """Pone coordenadas a una dirección con el geocodificador configurado.
+
+    Las coordenadas solo se escriben si el veredicto es concluyente **y** trae
+    las dos. Escribir una latitud sin longitud deja un punto en el meridiano de
+    Greenwich, que es un sitio muy concreto y casi nunca el correcto.
+    """
+    from datetime import datetime, timezone
+    from decimal import Decimal, InvalidOperation
+
+    from crmcore.datos import verificacion as verif
+
+    direccion = uow.db.get(Direccion, direccion_id)
+    if direccion is None or direccion.objeto != objeto or direccion.objeto_id != objeto_id:
+        raise NoEncontrado(
+            "Esa dirección no es de este registro", error_code="party.direccion_no_existe"
+        )
+
+    veredicto = verif.verificar(
+        uow.db,
+        tipo="direccion",
+        valor=", ".join(
+            p
+            for p in (
+                direccion.linea1,
+                direccion.linea2,
+                direccion.codigo_postal,
+                direccion.ciudad,
+                direccion.provincia,
+            )
+            if p
+        ),
+        pais=direccion.pais,
+        extra={
+            "linea1": direccion.linea1 or "",
+            "codigo_postal": direccion.codigo_postal or "",
+            "ciudad": direccion.ciudad or "",
+            "pais": direccion.pais,
+        },
+    )
+
+    latitud = veredicto.datos.get("latitud")
+    longitud = veredicto.datos.get("longitud")
+    if not veredicto.no_concluyente and latitud is not None and longitud is not None:
+        try:
+            direccion.latitud = Decimal(str(latitud))
+            direccion.longitud = Decimal(str(longitud))
+            direccion.geocodificada_at = datetime.now(timezone.utc)
+            uow.db.flush()
+        except (InvalidOperation, ValueError):
+            # El geocodificador devolvió algo que no es un número. Se anota y se
+            # deja la dirección como estaba: media coordenada es peor que
+            # ninguna.
+            logger.warning(
+                "party.geocodificacion_invalida",
+                direccion=str(direccion_id),
+                latitud=str(latitud)[:40],
+                longitud=str(longitud)[:40],
+            )
+            veredicto.no_concluyente = True
+            veredicto.detalle = "el geocodificador devolvió coordenadas no numéricas"
+
+    return {
+        "direccion_id": str(direccion_id),
+        "latitud": float(direccion.latitud) if direccion.latitud is not None else None,
+        "longitud": float(direccion.longitud) if direccion.longitud is not None else None,
+        **veredicto.a_dict(),
+    }
