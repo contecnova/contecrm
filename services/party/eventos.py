@@ -102,3 +102,48 @@ ACCOUNT_TEAM_REMOVED = registrar(
         campos=("cuenta_id", "usuario_id", "rol"),
     )
 )
+ACTIVITY_ASSIGNED = registrar(
+    TipoEvento(
+        tipo="activity.assigned",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Una actividad pasa a la lista de alguien. Importa avisar: una tarea "
+            "que aparece en la lista de alguien sin que se entere se hace tarde"
+        ),
+        campos=("actividad_id", "asunto", "asignada_a", "vence_at"),
+    )
+)
+ACTIVITY_DELEGATED = registrar(
+    TipoEvento(
+        tipo="activity.delegated",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Una actividad se delega. Distinto de asignar: quien delega sigue "
+            "siendo responsable de que se haga"
+        ),
+        campos=("actividad_id", "asunto", "asignada_a", "delegada_por"),
+    )
+)
+ACTIVITY_REMINDER = registrar(
+    TipoEvento(
+        tipo="activity.reminder",
+        version=1,
+        productor="party",
+        descripcion="Ha llegado la hora del recordatorio de una actividad",
+        campos=("actividad_id", "asunto", "asignada_a", "vence_at"),
+    )
+)
+ACTIVITY_OVERDUE = registrar(
+    TipoEvento(
+        tipo="activity.overdue",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Una actividad ha pasado de plazo. Se emite UNA sola vez: un aviso "
+            "diario de la misma tarea vencida enseña a ignorarlos todos"
+        ),
+        campos=("actividad_id", "asunto", "asignada_a", "delegada_por", "vence_at"),
+    )
+)

@@ -532,3 +532,104 @@ def _fingir_respuesta(monkeypatch: Any, cuerpo: dict[str, Any]) -> None:
             return _Respuesta()
 
     monkeypatch.setattr("crmcore.red.cliente_seguro", lambda **_k: _Cliente())
+
+
+@pytest.mark.db
+def test_un_veredicto_reciente_no_se_vuelve_a_preguntar(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    """Muchos registros oficiales tienen cuota, y gastarla repitiendo lo que ya
+    se sabe deja sin comprobar lo que no."""
+    from datetime import datetime, timezone
+
+    uow = _Uow(db, tenant_id)
+    cuenta = svc.crear_cuenta(
+        uow,
+        nombre="ACME",
+        identificadores=[{"tipo": "cif", "pais": "ES", "valor": "B12345674"}],
+    )
+    db.flush()
+    identificador = db.query(IdentificadorFiscal).filter_by(cuenta_id=cuenta.id).one()
+    identificador.verificado = True
+    identificador.verificado_at = datetime.now(timezone.utc)
+    db.flush()
+
+    llamadas = {"n": 0}
+
+    def _contar(*_a: Any, **_k: Any) -> Any:
+        llamadas["n"] += 1
+        raise AssertionError("no debería haber preguntado")
+
+    monkeypatch.setattr("crmcore.datos.verificacion.verificar", _contar)
+    salida = svc.verificar_identificador_fiscal(
+        uow, cuenta_id=cuenta.id, identificador_id=identificador.id
+    )
+
+    assert llamadas["n"] == 0
+    assert salida["estado"] == "valido"
+    # Se dice que viene de antes: devolver lo guardado sin decirlo haría creer
+    # que el registro acaba de confirmarlo.
+    assert salida["desde_cache"] is True
+
+
+@pytest.mark.db
+def test_con_forzar_se_vuelve_a_preguntar(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    from datetime import datetime, timezone
+
+    uow = _Uow(db, tenant_id)
+    cuenta = svc.crear_cuenta(
+        uow,
+        nombre="ACME",
+        identificadores=[{"tipo": "cif", "pais": "ES", "valor": "B12345674"}],
+    )
+    db.flush()
+    identificador = db.query(IdentificadorFiscal).filter_by(cuenta_id=cuenta.id).one()
+    identificador.verificado = True
+    identificador.verificado_at = datetime.now(timezone.utc)
+    db.flush()
+
+    _configurar(
+        db,
+        tenant_id,
+        "verificador_fiscal",
+        {"url": "https://registro.test/x", "mapeo": {"campo": "valid"}},
+    )
+    _fingir_respuesta(monkeypatch, {"valid": False})
+
+    salida = svc.verificar_identificador_fiscal(
+        uow, cuenta_id=cuenta.id, identificador_id=identificador.id, forzar=True
+    )
+    assert salida["desde_cache"] is False
+    assert salida["estado"] == "invalido"
+
+
+@pytest.mark.db
+def test_un_veredicto_viejo_caduca_y_se_vuelve_a_preguntar(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Un NIF verificado hace tres años no es un NIF verificado. Sin caducidad,
+    el estado es una opinión sin fecha."""
+    from datetime import datetime, timedelta, timezone
+
+    uow = _Uow(db, tenant_id)
+    cuenta = svc.crear_cuenta(
+        uow,
+        nombre="ACME",
+        identificadores=[{"tipo": "cif", "pais": "ES", "valor": "B12345674"}],
+    )
+    db.flush()
+    identificador = db.query(IdentificadorFiscal).filter_by(cuenta_id=cuenta.id).one()
+    identificador.verificado = True
+    identificador.verificado_at = datetime.now(timezone.utc) - timedelta(
+        days=svc.DIAS_VEREDICTO_VIGENTE + 1
+    )
+    db.flush()
+
+    # Sin verificador configurado: se intenta preguntar y sale no concluyente.
+    salida = svc.verificar_identificador_fiscal(
+        uow, cuenta_id=cuenta.id, identificador_id=identificador.id
+    )
+    assert salida["desde_cache"] is False
+    assert salida["no_concluyente"] is True

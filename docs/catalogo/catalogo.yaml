@@ -374,6 +374,7 @@ modulos:
               - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
               - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: pendiente, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
               - {id: CRM-00.05.02.10, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sesion_cedida.py (suplantación auditada)", t: "Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría"}
+              - {id: CRM-00.05.02.12, c: C, fase: 2, svc: identity, estado: pendiente, t: "Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados"}
               - {id: CRM-00.05.02.11, c: D, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/access_explainer.py + access_simulator.py", t: "Explicador de permisos: por qué este usuario ve este registro"}
 
           - id: CRM-00.05.03
@@ -444,6 +445,7 @@ modulos:
               - {id: CRM-01.01.01.08, c: A, fase: 4, svc: party, estado: pendiente, t: "Datos firmográficos enriquecidos desde proveedores externos"}
               - {id: CRM-01.01.01.09, c: A, fase: 1, svc: party, estado: pendiente, reutiliza: "contecpos:services/clientas (modelo B2C)", t: "Cuentas personales (B2C) coexistiendo con el modelo B2B"}
               - {id: CRM-01.01.01.10, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/raci_service.py (roles sobre entidad)", t: "Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero)"}
+              - {id: CRM-01.01.01.13, c: A, fase: 2, svc: party, estado: pendiente, t: "Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota"}
               - {id: CRM-01.01.01.11, c: A, fase: 2, svc: party, estado: pendiente, t: "Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos"}
               - {id: CRM-01.01.01.12, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{risk_scoring,profitability_service}.py", t: "Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo"}
           - id: CRM-01.01.02
@@ -497,11 +499,12 @@ modulos:
             nombre: Gestión de actividades
             capacidades:
               - {id: CRM-01.02.01.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/activity.py + app/services/activity_service.py", t: "Tareas, eventos, llamadas, notas y visitas con modelo común de actividad"}
-              - {id: CRM-01.02.01.02, c: C, fase: 1, svc: party, estado: en-curso, t: "Asignación, delegación, recordatorios y seguimiento de vencidas"}
+              - {id: CRM-01.02.01.02, c: C, fase: 1, svc: party, estado: hecho, t: "Asignación, delegación, recordatorios y seguimiento de vencidas"}
               - {id: CRM-01.02.01.03, c: C, fase: 1, svc: party, estado: hecho, t: "Relación polimórfica de la actividad con cualquier objeto"}
               - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
               - {id: CRM-01.02.01.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/transcribe.py + app/services/audio_overview", t: "Transcripción y resumen automático de llamadas y reuniones"}
               - {id: CRM-01.02.01.06, c: D, fase: 5, svc: intelligence, estado: pendiente, t: "Extracción de compromisos y próximos pasos desde la transcripción"}
+              - {id: CRM-01.02.01.09, c: A, fase: 2, svc: party, estado: pendiente, t: "Recordatorios recurrentes y reprogramación automática de la actividad no atendida"}
               - {id: CRM-01.02.01.07, c: A, fase: 2, svc: sales, estado: pendiente, t: "Plantillas de actividad y secuencias predefinidas por tipo de proceso"}
               - {id: CRM-01.02.01.08, c: A, fase: 2, svc: sales, estado: pendiente, t: "Geolocalización y check-in de visita comercial"}
 
@@ -926,6 +929,8 @@ modulos:
               - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
               - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: pendiente, t: "Modo offline con cola de cambios y resolución de conflictos"}
               - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: pendiente, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}
+              - {id: CRM-06.02.01.07, c: A, fase: 2, svc: core, estado: pendiente, t: "Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio"}
+              - {id: CRM-06.02.01.08, c: D, fase: 4, svc: core, estado: pendiente, t: "Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor"}
               - {id: CRM-06.02.01.06, c: A, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/share_links.py (acceso acotado y temporal)", t: "Usuarios invitados externos con acceso acotado y temporal"}
 
   - id: "7"

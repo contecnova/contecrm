@@ -382,3 +382,11 @@ class VerificacionEntrada(BaseModel):
             "dato que no ha cambiado."
         ),
     )
+
+
+class AsignarActividad(BaseModel):
+    usuario_id: UUID
+
+
+class RecordatorioEntrada(BaseModel):
+    cuando: datetime | None = Field(None, description="Cuándo avisar. Nulo quita el recordatorio.")

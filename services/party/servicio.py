@@ -1226,7 +1226,7 @@ DIAS_VEREDICTO_VIGENTE = 90
 
 
 def verificar_identificador_fiscal(
-    uow: UnidadDeTrabajo, *, cuenta_id: UUID, identificador_id: UUID
+    uow: UnidadDeTrabajo, *, cuenta_id: UUID, identificador_id: UUID, forzar: bool = False
 ) -> dict[str, Any]:
     """Comprueba un identificador contra el registro oficial configurado.
 
@@ -1234,8 +1234,14 @@ def verificar_identificador_fiscal(
     veredicto anterior y se devuelve `no_concluyente`. Poner «desconocido»
     encima de un «válido» porque hoy hubo un timeout convertiría cada incidencia
     de red en una pérdida de información.
+
+    **Un veredicto reciente no se vuelve a preguntar** salvo con `forzar`. Un
+    NIF verificado hace tres años no es un NIF verificado, pero uno verificado
+    esta mañana tampoco hace falta volver a preguntarlo: muchos registros
+    oficiales tienen cuota, y gastarla repitiendo lo que ya se sabe deja sin
+    comprobar lo que no.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
 
     from crmcore.datos import verificacion as verif
 
@@ -1246,6 +1252,25 @@ def verificar_identificador_fiscal(
             "Ese identificador no es de esta cuenta",
             error_code="party.identificador_no_existe",
         )
+
+    if not forzar and identificador.verificado_at is not None:
+        vigente_hasta = _aware(identificador.verificado_at) + timedelta(days=DIAS_VEREDICTO_VIGENTE)
+        if vigente_hasta > datetime.now(timezone.utc):
+            return {
+                "identificador": identificador.valor,
+                "pais": identificador.pais,
+                "estado": "valido" if identificador.verificado else "invalido",
+                "detalle": identificador.verificacion_detalle or "",
+                "datos": {},
+                "momento": identificador.verificado_at.isoformat(),
+                "no_concluyente": False,
+                # Se dice que viene de antes: quien lo pidió esperaba una
+                # consulta, y devolver lo guardado sin decirlo haría creer que
+                # el registro acaba de confirmarlo.
+                "desde_cache": True,
+                "vigente_hasta": vigente_hasta.isoformat(),
+                "forma": _forma_de(identificador),
+            }
 
     veredicto = verif.verificar(
         uow.db,
@@ -1272,11 +1297,24 @@ def verificar_identificador_fiscal(
         "identificador": identificador.valor,
         "pais": identificador.pais,
         **veredicto.a_dict(),
+        "desde_cache": False,
         # Se devuelve también lo que dice la comprobación de forma, que siempre
         # está disponible: sin ella, un `no_concluyente` parecería que no se sabe
         # nada del identificador, y sí se sabe si está bien construido.
         "forma": _forma_de(identificador),
     }
+
+
+def _aware(momento: Any) -> Any:
+    """Un instante sin zona se trata como UTC, que es lo que guarda esta base.
+
+    Postgres devuelve `timestamptz` con el desfase de la sesión, y compararlo
+    con un `datetime` sin zona produce el clásico «can't compare offset-naive
+    and offset-aware» en mitad de un cálculo de caducidad.
+    """
+    from datetime import timezone
+
+    return momento if momento.tzinfo else momento.replace(tzinfo=timezone.utc)
 
 
 def _forma_de(identificador: IdentificadorFiscal) -> dict[str, Any]:
@@ -1356,3 +1394,262 @@ def geocodificar(
         "longitud": float(direccion.longitud) if direccion.longitud is not None else None,
         **veredicto.a_dict(),
     }
+
+
+# ── Asignación, delegación y recordatorios (CRM-01.02.01.02) ──────────────
+
+
+def asignar_actividad(
+    uow: UnidadDeTrabajo, actividad_id: UUID, *, usuario_id: UUID, por: UUID | None = None
+) -> Actividad:
+    """Pone una actividad en la lista de alguien.
+
+    Emite evento porque el aviso importa más que el dato: una tarea que aparece
+    en la lista de alguien sin que se entere es una tarea que se hace tarde. El
+    repartidor decide por dónde avisa (CRM-06.02.01.02).
+    """
+    actividad = _actividad(uow.db, actividad_id)
+    if actividad.estado in ("completada", "cancelada"):
+        raise Conflicto(
+            "No se puede asignar una actividad ya cerrada",
+            error_code="party.actividad_cerrada",
+        )
+    anterior = actividad.asignada_a
+    actividad.asignada_a = usuario_id
+    # Asignar **borra** la marca de delegación: pasar una tarea a otra persona
+    # no es lo mismo que delegarla, y dejar el rastro de una delegación anterior
+    # haría que la ficha dijera que alguien la delegó a quien ya no la tiene.
+    actividad.delegada_por = None
+    uow.db.flush()
+
+    registrar(
+        uow.db,
+        accion="actividad.asignada",
+        objeto="actividad",
+        objeto_id=actividad.id,
+        datos={"de": str(anterior) if anterior else None, "a": str(usuario_id)},
+    )
+    uow.emitir(
+        "activity.assigned",
+        subject=("actividad", actividad.id),
+        data={
+            "actividad_id": str(actividad.id),
+            "asunto": actividad.asunto,
+            "asignada_a": str(usuario_id),
+            "vence_at": actividad.vence_at.isoformat() if actividad.vence_at else None,
+            "objeto_tipo": "actividad",
+            "objeto_id": str(actividad.id),
+        },
+    )
+    return actividad
+
+
+def delegar_actividad(
+    uow: UnidadDeTrabajo, actividad_id: UUID, *, usuario_id: UUID, por: UUID
+) -> Actividad:
+    """Pasa una actividad a otra persona **sin perder de vista quién la tenía**.
+
+    La diferencia con asignar no es cosmética: quien delega sigue siendo
+    responsable de que se haga. Sin `delegada_por`, una tarea delegada
+    desaparece de la vista del que la delegó y nadie vuelve a mirarla — que es
+    exactamente lo que pasa con las tareas delegadas por correo.
+    """
+    actividad = _actividad(uow.db, actividad_id)
+    if actividad.estado in ("completada", "cancelada"):
+        raise Conflicto(
+            "No se puede delegar una actividad ya cerrada",
+            error_code="party.actividad_cerrada",
+        )
+    if usuario_id == actividad.asignada_a:
+        raise ErrorValidacion(
+            "La actividad ya es de esa persona", error_code="party.delegacion_redundante"
+        )
+
+    actividad.delegada_por = actividad.asignada_a or por
+    actividad.asignada_a = usuario_id
+    uow.db.flush()
+
+    registrar(
+        uow.db,
+        accion="actividad.delegada",
+        objeto="actividad",
+        objeto_id=actividad.id,
+        datos={"de": str(actividad.delegada_por), "a": str(usuario_id)},
+    )
+    uow.emitir(
+        "activity.delegated",
+        subject=("actividad", actividad.id),
+        data={
+            "actividad_id": str(actividad.id),
+            "asunto": actividad.asunto,
+            "asignada_a": str(usuario_id),
+            "delegada_por": str(actividad.delegada_por),
+            "objeto_tipo": "actividad",
+            "objeto_id": str(actividad.id),
+        },
+    )
+    return actividad
+
+
+def programar_recordatorio(uow: UnidadDeTrabajo, actividad_id: UUID, *, cuando: Any) -> Actividad:
+    """Fija cuándo avisar de una actividad.
+
+    Cambiar la fecha **rearma** el recordatorio aunque ya se hubiera enviado:
+    quien la mueve espera que le avisen otra vez, y mantener la marca de enviado
+    haría que una tarea aplazada nunca volviera a avisar.
+    """
+    from datetime import datetime, timezone
+
+    actividad = _actividad(uow.db, actividad_id)
+    if cuando is not None and cuando < datetime.now(timezone.utc):
+        raise ErrorValidacion(
+            "Un recordatorio en el pasado no avisa de nada",
+            error_code="party.recordatorio_pasado",
+        )
+    actividad.recordar_at = cuando
+    actividad.recordatorio_enviado = False
+    uow.db.flush()
+    return actividad
+
+
+def _actividad(db: Session, actividad_id: UUID) -> Actividad:
+    actividad = db.get(Actividad, actividad_id)
+    if actividad is None or actividad.deleted_at is not None:
+        raise NoEncontrado("La actividad no existe", error_code="party.actividad_no_encontrada")
+    return actividad
+
+
+def actividades_vencidas(
+    db: Session,
+    *,
+    usuario_id: UUID | None = None,
+    incluir_delegadas: bool = True,
+    limite: int = 100,
+) -> list[Actividad]:
+    """Lo que ya debería estar hecho y no lo está.
+
+    `incluir_delegadas` trae también las que este usuario delegó y siguen sin
+    hacerse. Es la mitad del valor de delegar: quien delega sigue siendo
+    responsable, y sin esta vista la tarea desaparece de su vista en cuanto la
+    pasa.
+    """
+    from datetime import datetime, timezone
+
+    from sqlalchemy import or_
+
+    ahora = datetime.now(timezone.utc)
+    consulta = select(Actividad).where(
+        Actividad.deleted_at.is_(None),
+        Actividad.estado.in_(("pendiente", "en_curso")),
+        Actividad.vence_at.is_not(None),
+        Actividad.vence_at < ahora,
+    )
+    if usuario_id is not None:
+        criterio = [Actividad.asignada_a == usuario_id]
+        if incluir_delegadas:
+            criterio.append(Actividad.delegada_por == usuario_id)
+        consulta = consulta.where(or_(*criterio))
+    return list(db.execute(consulta.order_by(Actividad.vence_at).limit(limite)).scalars().all())
+
+
+def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
+    """Emite los recordatorios vencidos y avisa de lo que ha pasado de plazo.
+
+    Corre en el worker del servicio, no en la petición: un recordatorio es algo
+    que pasa **por tiempo**, y colgarlo de que alguien entre en la aplicación
+    hace que avise justo a quien no hacía falta avisar.
+
+    Dos barridos en uno porque comparten la consulta y el commit:
+
+      * **Recordatorios**: los que llegaron a su hora. Se marcan enviados para
+        no repetirlos, y esa marca se pone ANTES de emitir — si se pusiera
+        después y el proceso muriera entre las dos cosas, el aviso saldría otra
+        vez en cada vuelta.
+      * **Vencidas**: las que pasaron de plazo. Se avisa **una sola vez**, con la
+        misma marca: un aviso diario de la misma tarea vencida enseña a
+        ignorarlos todos.
+    """
+    from datetime import datetime, timezone
+
+    from crmcore.bus.outbox import encolar
+
+    ahora = datetime.now(timezone.utc)
+    cuenta = {"recordatorios": 0, "vencidas": 0}
+    # Cuenta aparte de lo emitido: una actividad con recordatorio y sin
+    # asignado se MARCA pero no emite nada, y si el commit dependiera de lo
+    # emitido esa marca se perdería y la actividad volvería en cada vuelta para
+    # siempre. Se descubrió con la prueba, no en producción.
+    tocadas = 0
+
+    pendientes = (
+        db.execute(
+            select(Actividad)
+            .where(
+                Actividad.deleted_at.is_(None),
+                Actividad.estado.in_(("pendiente", "en_curso")),
+                Actividad.recordatorio_enviado.is_(False),
+                Actividad.recordar_at.is_not(None),
+                Actividad.recordar_at <= ahora,
+            )
+            .order_by(Actividad.recordar_at)
+            .limit(limite)
+            .with_for_update(skip_locked=True)
+        )
+        .scalars()
+        .all()
+    )
+    for actividad in pendientes:
+        actividad.recordatorio_enviado = True
+        tocadas += 1
+        if actividad.asignada_a is None:
+            # Un recordatorio de una tarea sin dueño no tiene a quién avisar. Se
+            # marca igual para no volver a mirarla en cada vuelta, y se registra:
+            # una tarea con recordatorio y sin asignar es un error de datos que
+            # alguien tiene que ver.
+            logger.info("party.recordatorio_sin_destinatario", actividad=str(actividad.id))
+            continue
+        encolar(
+            db,
+            tenant_id=actividad.tenant_id,
+            tipo="activity.reminder",
+            subject_tipo="actividad",
+            subject_id=str(actividad.id),
+            data={
+                "actividad_id": str(actividad.id),
+                "asunto": actividad.asunto,
+                "asignada_a": str(actividad.asignada_a),
+                "vence_at": actividad.vence_at.isoformat() if actividad.vence_at else None,
+                "objeto_tipo": "actividad",
+                "objeto_id": str(actividad.id),
+            },
+            dedup_key=f"recordatorio:{actividad.id}",
+        )
+        cuenta["recordatorios"] += 1
+
+    for actividad in actividades_vencidas(db, limite=limite):
+        if actividad.recordatorio_enviado or actividad.asignada_a is None:
+            continue
+        actividad.recordatorio_enviado = True
+        tocadas += 1
+        encolar(
+            db,
+            tenant_id=actividad.tenant_id,
+            tipo="activity.overdue",
+            subject_tipo="actividad",
+            subject_id=str(actividad.id),
+            data={
+                "actividad_id": str(actividad.id),
+                "asunto": actividad.asunto,
+                "asignada_a": str(actividad.asignada_a),
+                "delegada_por": str(actividad.delegada_por) if actividad.delegada_por else None,
+                "vence_at": actividad.vence_at.isoformat() if actividad.vence_at else None,
+                "objeto_tipo": "actividad",
+                "objeto_id": str(actividad.id),
+            },
+            dedup_key=f"vencida:{actividad.id}",
+        )
+        cuenta["vencidas"] += 1
+
+    if tocadas:
+        db.commit()
+    return cuenta

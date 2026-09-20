@@ -6,13 +6,13 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 216 | 112 | 0 | 104 |
-| 1 — Núcleo de datos de cliente (Customer 360) | 52 | 29 | 2 | 21 |
+| 0 — Plataforma y arquitectura transversal | 217 | 112 | 0 | 105 |
+| 1 — Núcleo de datos de cliente (Customer 360) | 54 | 30 | 1 | 23 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
 | 4 — Servicio y atención al cliente | 62 | 0 | 0 | 62 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
-| 6 — Productividad y colaboración | 12 | 2 | 1 | 9 |
+| 6 — Productividad y colaboración | 14 | 2 | 1 | 11 |
 | 7 — Administración, ALM y gobierno | 25 | 13 | 2 | 10 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
@@ -20,25 +20,25 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 196 | 122 |
-| A — Avanzado | 320 | 47 |
-| D — Diferencial | 39 | 2 |
+| C — Core | 197 | 123 |
+| A — Avanzado | 323 | 47 |
+| D — Diferencial | 40 | 2 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 123 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 79 | 47 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 116 | 1 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 79 | 48 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 120 | 1 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 47 | 0 |
-| 4 · Marketing | Segmentación, journeys, canales, atribución | 55 | 0 |
+| 4 · Marketing | Segmentación, journeys, canales, atribución | 56 | 0 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 49 | 0 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 30 | 0 |
 
 ## Reutilización
 
-**304 de 555** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**304 de 560** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

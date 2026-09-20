@@ -8,7 +8,7 @@ prueba que lo sostiene.
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 555 capacidades está en
+> el estado completo de las 560 capacidades está en
 > [el estado del catálogo](catalogo/estado.md), donde 86 constan como hechas.
 
 ---
@@ -318,7 +318,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 | `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 | `CRM-01.01.03.02` Captura multicanal de leads | Alta por API e importación masiva con validación previa | Formularios web, listas y chat |
-| `CRM-01.02.01.02` Gestión de actividades | Actividades con propietario, vencimiento y cierre | Delegación, recordatorios y la vista de vencidas |
 | `CRM-07.03.01.03` Derechos del interesado | Registro de la solicitud con el plazo legal calculado al recibirla, y su API | La ejecución (exportar o borrar los datos) y la evidencia de haberlo hecho |
 
 ---
@@ -2679,3 +2678,89 @@ Esa es toda la diferencia con la jerarquía, y por eso son dos tablas.
 - **`otro` existe con etiqueta libre.** Una lista cerrada sin escape obliga a
   forzar la relación real dentro de un tipo que no es, y entonces la lista deja
   de significar nada.
+
+---
+
+## 33. Actividades: asignar, delegar, recordar y lo que se pasó de plazo
+
+`CRM-01.02.01.02`. El modelo tenía `asignada_a`, `delegada_por`, `recordar_at` y
+`recordatorio_enviado` desde el principio. No había operaciones que los usaran
+ni **nada que mirara el reloj**, así que un recordatorio programado no avisaba
+nunca y una tarea delegada desaparecía de la vista de quien la delegó.
+
+### Delegar no es asignar
+
+Y la diferencia no es cosmética: **quien delega sigue siendo responsable de que
+se haga**. Por eso `delegada_por` se conserva, la tarea le sigue apareciendo en
+sus vencidas, y el aviso de plazo incumplido le llega también a él.
+
+Sin eso, una tarea delegada desaparece de la vista del que la delegó y nadie
+vuelve a mirarla — que es exactamente lo que pasa con las tareas delegadas por
+correo.
+
+Asignar, en cambio, **borra** la marca de delegación: pasar una tarea a otra
+persona no es delegarla, y dejar el rastro haría que la ficha dijera que alguien
+la delegó a quien ya no la tiene.
+
+### Los recordatorios los dispara el reloj, no el usuario
+
+El barrido corre en el worker del servicio, cada minuto. Colgarlo de que alguien
+entre en la aplicación haría que avisara justo a quien no hacía falta avisar.
+
+- **La marca de enviado se pone ANTES de emitir.** Si se pusiera después y el
+  proceso muriera entre las dos cosas, el aviso saldría otra vez en cada vuelta.
+- **Mover la fecha rearma el recordatorio**, aunque ya se hubiera enviado: quien
+  aplaza una tarea espera que le avisen otra vez.
+- **Un recordatorio en el pasado se rechaza** al programarlo: no avisa de nada y
+  deja al usuario creyendo que sí.
+- **Una tarea vencida avisa una sola vez.** Un aviso diario de la misma tarea
+  enseña a ignorarlos todos.
+
+Y un fallo que encontró la propia prueba: el barrido solo hacía `commit` si
+había emitido algo, así que una actividad con recordatorio y **sin asignado** se
+marcaba en memoria y la marca se perdía — volvía en cada vuelta para siempre. El
+`commit` va ahora por lo tocado, no por lo emitido.
+
+### Lo que faltaba de verdad: que el aviso saliera
+
+Los cuatro eventos —asignada, delegada, recordatorio y vencida— los traduce el
+consumidor de `identity` a notificaciones, y de ahí salen por el repartidor
+(§29). La prueba de punta a punta recorre el camino entero a propósito: probar
+solo el barrido dejaría sin comprobar el eslabón que **ya faltó una vez**, el
+consumidor que nadie había escrito.
+
+El aviso de vencida saca los destinatarios de **dos campos distintos** —el
+asignado y quien delegó—. La primera versión del consumidor solo sabía leer uno,
+y quien delegó no se enteraba.
+
+---
+
+## 34. Los huecos que se han encontrado construyendo, y dónde están ahora
+
+Este capítulo existe porque un hueco documentado en un comentario del código no
+lo lee nadie que esté decidiendo qué se hace después. Todo lo que ha aparecido
+como limitación real mientras se construía está ahora **en el catálogo, como
+capacidad pendiente**, y por tanto sale en la hoja de estado junto al resto.
+
+No es una lista de deseos: son cosas que se descubrieron al terminar otra cosa,
+con el motivo por el que no se cerraron entonces.
+
+| Capacidad | Qué falta y por qué no se hizo ya |
+|---|---|
+| `CRM-00.05.02.12` Replicar la jerarquía de mando | La compartición por jerarquía **no aplica en los listados** de `party` y `sales`: `superior_id` vive en la membresía, que es de `identity`, y ningún servicio lee el esquema de otro. Hoy un responsable ve lo suyo, lo de los equipos en los que está y lo que le compartan, pero no lo de sus subordinados por serlo. Cerrarlo exige replicar la jerarquía como se replican los ajustes y la clave del tenant (§30) |
+| `CRM-06.02.01.07` Plantilla de notificación por canal | El repartidor **no renderiza plantillas de `tenancy`** porque son de otro servicio. El mismo texto va al correo y al SMS, recortado a 160 en el segundo. Tenerla exige replicar las plantillas a cada esquema (§29) |
+| `CRM-06.02.01.08` Estadísticas de entrega del correo | SMTP no da apertura ni rebote; eso solo lo dan las APIs propietarias. Se hará como transporte aparte **para quien lo quiera**, diciendo que ata la instalación a ese proveedor (§29) |
+| `CRM-01.01.01.13` Reverificación periódica | Un veredicto caduca a los 90 días y se vuelve a preguntar **cuando alguien lo pide**. Falta la cola que reverifique sola lo caducado, con su cuota: muchos registros oficiales la tienen, y un barrido sin control la agota en una mañana (§32) |
+| `CRM-01.02.01.09` Recordatorios recurrentes | Hoy un recordatorio avisa una vez. Falta el que insiste —«cada día hasta que la cierres»— y la reprogramación automática de la tarea no atendida (§33) |
+
+Y dos cosas que estaban a medias **dentro de lo entregado** y se cerraron al
+verlas, en vez de anotarlas:
+
+- `DIAS_VEREDICTO_VIGENTE` y el esquema `VerificacionEntrada` se habían
+  declarado y no los usaba nadie. Era exactamente el mismo modo de fallo que
+  este manual lleva media docena de capítulos señalando —un campo que existe y
+  no hace nada—, así que se implementaron: un veredicto de los últimos 90 días
+  no se vuelve a preguntar salvo con `forzar`, y la respuesta dice si viene de
+  antes con `desde_cache`.
+- El barrido de recordatorios solo confirmaba lo emitido, así que la marca de
+  una actividad sin asignado se perdía y volvía en cada vuelta para siempre.

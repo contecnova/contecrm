@@ -29,6 +29,7 @@ from services.party import servicio as svc
 from services.party.esquemas import (
     ActividadOut,
     ActualizarCuenta,
+    AsignarActividad,
     CandidatoOut,
     CompletarActividad,
     ConsentimientoOut,
@@ -43,6 +44,7 @@ from services.party.esquemas import (
     Fusionar,
     MiembroEquipoEntrada,
     MiembroEquipoOut,
+    RecordatorioEntrada,
     RegistrarConsentimiento,
     RelacionCuentaEntrada,
     SolicitudDerechosEntrada,
@@ -807,6 +809,88 @@ def importar_cuentas(
     return informe.a_dict()
 
 
+# ── Asignación, delegación y vencidas (CRM-01.02.01.02) ───────────────────
+
+
+@router_actividades.post(
+    "/{actividad_id}/asignar",
+    response_model=ActividadOut,
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Poner la actividad en la lista de alguien",
+    description=(
+        "Emite un aviso, porque eso importa más que el dato: una tarea que "
+        "aparece en la lista de alguien sin que se entere es una tarea que se "
+        "hace tarde.\n\n"
+        "Asignar **borra** la marca de delegación. Pasar una tarea a otra "
+        "persona no es lo mismo que delegarla, y dejar el rastro haría que la "
+        "ficha dijera que alguien la delegó a quien ya no la tiene."
+    ),
+)
+def asignar_actividad(cuerpo: AsignarActividad, actividad_id: UUID, uow: UowDep) -> Any:
+    return svc.asignar_actividad(uow, actividad_id, usuario_id=cuerpo.usuario_id)
+
+
+@router_actividades.post(
+    "/{actividad_id}/delegar",
+    response_model=ActividadOut,
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Delegar la actividad sin dejar de ser responsable",
+    description=(
+        "La diferencia con asignar no es cosmética: quien delega **sigue siendo "
+        "responsable** de que se haga, y la tarea le sigue apareciendo en sus "
+        "vencidas. Sin eso, una tarea delegada desaparece de la vista del que la "
+        "delegó y nadie vuelve a mirarla — que es lo que pasa con las tareas "
+        "delegadas por correo."
+    ),
+)
+def delegar_actividad(
+    cuerpo: AsignarActividad, actividad_id: UUID, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return svc.delegar_actividad(uow, actividad_id, usuario_id=cuerpo.usuario_id, por=principal.id)
+
+
+@router_actividades.post(
+    "/{actividad_id}/recordatorio",
+    response_model=ActividadOut,
+    dependencies=[Depends(exige_permiso("activity:write"))],
+    summary="Programar o quitar el recordatorio",
+    description=(
+        "Cambiar la fecha **rearma** el recordatorio aunque ya se hubiera "
+        "enviado: quien la mueve espera que le avisen otra vez, y mantener la "
+        "marca haría que una tarea aplazada nunca volviera a avisar.\n\n"
+        "Con `cuando` a nulo se quita."
+    ),
+)
+def programar_recordatorio(cuerpo: RecordatorioEntrada, actividad_id: UUID, uow: UowDep) -> Any:
+    return svc.programar_recordatorio(uow, actividad_id, cuando=cuerpo.cuando)
+
+
+@router_actividades.get(
+    "/vencidas",
+    response_model=list[ActividadOut],
+    dependencies=[Depends(exige_permiso("activity:read"))],
+    summary="Lo que ya debería estar hecho y no lo está",
+    description=(
+        "Por defecto, las de quien pregunta **y las que delegó**. Eso segundo es "
+        "la mitad del valor de delegar: quien delega sigue siendo responsable, y "
+        "sin esta vista la tarea desaparece de su vista en cuanto la pasa.\n\n"
+        "Con `de_todos` —y el permiso de administrar actividades— se ven las del "
+        "equipo entero."
+    ),
+)
+def listar_vencidas(
+    db: DbDep,
+    principal: AutenticadoDep,
+    incluir_delegadas: bool = Query(True),
+    de_todos: bool = Query(False),
+    limite: int = Query(100, ge=1, le=500),
+) -> Any:
+    de_quien = None if (de_todos and principal.tiene("activity:admin")) else principal.id
+    return svc.actividades_vencidas(
+        db, usuario_id=de_quien, incluir_delegadas=incluir_delegadas, limite=limite
+    )
+
+
 # ── Relaciones no jerárquicas entre cuentas (CRM-01.01.01.04) ─────────────
 
 
@@ -877,7 +961,11 @@ def borrar_relacion_cuenta(cuenta_id: UUID, relacion_id: UUID, uow: UowDep) -> N
         "Si el registro no contesta **no se degrada el dato**: se conserva el "
         "veredicto anterior y se devuelve `no_concluyente`. Poner «desconocido» "
         "encima de un «válido» porque hoy hubo un timeout convertiría cada "
-        "incidencia de red en una pérdida de información."
+        "incidencia de red en una pérdida de información.\n\n"
+        "Un veredicto de los últimos 90 días **no se vuelve a preguntar** salvo "
+        "con `forzar`: muchos registros oficiales tienen cuota, y gastarla "
+        "repitiendo lo que ya se sabe deja sin comprobar lo que no. La respuesta "
+        "dice si viene de antes con `desde_cache`."
     ),
 )
 def verificar_identificador(cuenta_id: UUID, identificador_id: UUID, uow: UowDep) -> Any:

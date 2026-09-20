@@ -96,6 +96,44 @@ AVISOS: dict[str, dict[str, Any]] = {
         "titulo": "Se ha cerrado una oportunidad",
         "prioridad": "alta",
     },
+    # Actividades (CRM-01.02.01.02). Los cuatro avisan al asignado, que es quien
+    # tiene que hacer algo. El de vencida avisa ADEMÁS a quien la delegó: quien
+    # delega sigue siendo responsable, y sin eso la tarea desaparece de su vista
+    # en cuanto la pasa.
+    "activity.assigned": {
+        "objeto_tipo": "actividad",
+        "campo_id": "actividad_id",
+        "titulo": "Te han asignado una tarea",
+        "cuerpo_campo": "asunto",
+        "prioridad": "alta",
+        "destinatario_campo": "asignada_a",
+        "suscribir_destinatario": True,
+    },
+    "activity.delegated": {
+        "objeto_tipo": "actividad",
+        "campo_id": "actividad_id",
+        "titulo": "Te han delegado una tarea",
+        "cuerpo_campo": "asunto",
+        "prioridad": "alta",
+        "destinatario_campo": "asignada_a",
+        "suscribir_destinatario": True,
+    },
+    "activity.reminder": {
+        "objeto_tipo": "actividad",
+        "campo_id": "actividad_id",
+        "titulo": "Recordatorio",
+        "cuerpo_campo": "asunto",
+        "prioridad": "alta",
+        "destinatario_campo": "asignada_a",
+    },
+    "activity.overdue": {
+        "objeto_tipo": "actividad",
+        "campo_id": "actividad_id",
+        "titulo": "Tarea fuera de plazo",
+        "cuerpo_campo": "asunto",
+        "prioridad": "alta",
+        "destinatarios_campos": ["asignada_a", "delegada_por"],
+    },
     # El aviso que pide una automatización con las acciones `notificar` o
     # `enviar_correo` (CRM-00.03.03.03).
     #
@@ -128,12 +166,24 @@ def _destinatarios(regla: dict[str, Any], datos: dict[str, Any]) -> list[UUID]:
     consumidor: un comentario con una mención corrupta no puede impedir que se
     avise a los demás, y el evento se reintentaría en bucle para siempre.
     """
-    bruto = datos.get(regla.get("destinatarios_campo", "")) or datos.get(
-        regla.get("destinatario_campo", "")
-    )
-    if not bruto:
+    # Se admiten tres formas de declararlo, y las tres hacen falta: un campo con
+    # una lista dentro (las menciones de un comentario), un campo con uno solo
+    # (el asignado de una tarea) y VARIOS campos (una tarea vencida avisa al
+    # asignado y a quien la delegó, que están en campos distintos).
+    campos = regla.get("destinatarios_campos") or [
+        regla.get("destinatarios_campo", ""),
+        regla.get("destinatario_campo", ""),
+    ]
+    valores: list[Any] = []
+    for campo in campos:
+        if not campo:
+            continue
+        bruto = datos.get(campo)
+        if not bruto:
+            continue
+        valores.extend(bruto if isinstance(bruto, list) else [bruto])
+    if not valores:
         return []
-    valores = bruto if isinstance(bruto, list) else [bruto]
     salida: list[UUID] = []
     for valor in valores:
         try:

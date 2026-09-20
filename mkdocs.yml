@@ -23,7 +23,7 @@ nav:
       - VI — Referencia de ajustes: manual-6-referencia-ajustes.md
   - Alcance:
       - Resumen del catálogo: catalogo/resumen.md
-      - Estado de las 555 capacidades: catalogo/estado.md
+      - Estado de las 560 capacidades: catalogo/estado.md
       - Qué se reutiliza de la casa: REUTILIZACION.md
   # Este repositorio renuncia a CI y lo sustituye por gates locales. Un sistema
   # que sustituye a la CI y no está documentado depende de que alguien se

@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**555 capacidades**: 🔧 5 en-curso · ✅ 171 hecho · ⬜ 379 pendiente
+**560 capacidades**: 🔧 4 en-curso · ✅ 172 hecho · ⬜ 384 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-216 capacidades · ✅ 112 · ⬜ 104
+217 capacidades · ✅ 112 · ⬜ 105
 
 ### 0.1 Multi-tenancy
 
@@ -305,6 +305,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.08` | Restricción por unidad de negocio, marca, país o canal | A | 0 | identity | ⬜ | contecflow-PSA:app/services/organizations_service.py |
 | `CRM-00.05.02.09` | Registros ocultos vs. registros bloqueados (visibles sin detalle) | A | 1 | identity | ⬜ | — |
 | `CRM-00.05.02.10` | Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría | A | 0 | identity | ✅ | contecweb:app/services/sesion_cedida.py (suplantación auditada) |
+| `CRM-00.05.02.12` | Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados | C | 2 | identity | ⬜ | — |
 | `CRM-00.05.02.11` | Explicador de permisos: por qué este usuario ve este registro | D | 0 | identity | ✅ | contecmind:app/services/access_explainer.py + access_simulator.py |
 
 #### CRM-00.05.03 · Protección del dato
@@ -360,7 +361,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-52 capacidades · 🔧 2 · ✅ 29 · ⬜ 21
+54 capacidades · 🔧 1 · ✅ 30 · ⬜ 23
 
 ### 1.1 Modelo de parties
 
@@ -378,6 +379,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
 | `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
 | `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | ✅ | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
+| `CRM-01.01.01.13` | Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota | A | 2 | party | ⬜ | — |
 | `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ⬜ | — |
 | `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ⬜ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
 
@@ -440,11 +442,12 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-01.02.01.01` | Tareas, eventos, llamadas, notas y visitas con modelo común de actividad | C | 1 | party | ✅ | contecflow-PSA:app/models/activity.py + app/services/activity_service.py |
-| `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | 🔧 | — |
+| `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.03` | Relación polimórfica de la actividad con cualquier objeto | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ⬜ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
 | `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ⬜ | contecmind:app/core/transcribe.py + app/services/audio_overview |
 | `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ⬜ | — |
+| `CRM-01.02.01.09` | Recordatorios recurrentes y reprogramación automática de la actividad no atendida | A | 2 | party | ⬜ | — |
 | `CRM-01.02.01.07` | Plantillas de actividad y secuencias predefinidas por tipo de proceso | A | 2 | sales | ⬜ | — |
 | `CRM-01.02.01.08` | Geolocalización y check-in de visita comercial | A | 2 | sales | ⬜ | — |
 
@@ -894,7 +897,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-12 capacidades · 🔧 1 · ✅ 2 · ⬜ 9
+14 capacidades · 🔧 1 · ✅ 2 · ⬜ 11
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -920,6 +923,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
+| `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ⬜ | — |
+| `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ⬜ | — |
 | `CRM-06.02.01.06` | Usuarios invitados externos con acceso acotado y temporal | A | 1 | identity | ⬜ | contecweb:app/services/share_links.py (acceso acotado y temporal) |
 
 ## Módulo 7 — Administración, ALM y gobierno
