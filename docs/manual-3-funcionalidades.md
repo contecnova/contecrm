@@ -9,7 +9,7 @@ prueba que lo sostiene.
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
 > el estado completo de las 560 capacidades está en
-> [el estado del catálogo](catalogo/estado.md), donde 86 constan como hechas.
+> [el estado del catálogo](catalogo/estado.md), que es el recuento vivo.
 
 ---
 
@@ -315,7 +315,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
-| `CRM-06.01.01.05` Gestión documental | Subida, versionado, deduplicación por contenido, enlaces firmados y registro de descargas | Carpetas, y el enlace a SharePoint/Drive |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 
 ---
@@ -2934,3 +2933,145 @@ formulario sin avisar.
 después. Meterlo aquí convertiría cada envío de formulario en una consulta de
 similitud contra toda la tabla, y un formulario que tarda dos segundos es un
 formulario que se abandona.
+
+---
+
+## 37. Documentos: dos capas que no son la misma cosa (`CRM-06.01.01.05`)
+
+La pregunta que había que contestar antes de escribir nada era si contecrm
+necesitaba un gestor documental. La respuesta es que necesita **dos cosas
+distintas**, y confundirlas es lo que produce la típica gestión documental de
+CRM que nadie usa: a medio camino entre un almacén de ficheros y un gestor de
+verdad, peor que los dos.
+
+**Adjunto.** Lo que cuelga de un registro. La foto de una visita, el PDF que el
+cliente devolvió firmado, el pliego que se adjuntó a una oportunidad. Es del
+registro, sigue su papelera y su retención, y se sube desde la ficha en dos
+clics. Vive en contecrm.
+
+**Documento del corpus.** Los contratos marco, los procedimientos, los
+certificados ISO. Tienen versión, flujo de aprobación, fecha de obsolescencia,
+comparación entre versiones y búsqueda en el contenido. Eso no es un campo más
+en una tabla de ficheros: es un producto, y la casa ya tiene uno que lleva años
+en producción, **contecmind**.
+
+Así que el corpus se delega en contecmind, consumido de forma frontless —igual
+que contecintelligence resuelve la explotación (RT-4)—, y contecrm guarda **el
+enlace y el contexto**: qué registro tiene qué documento y para qué. Está
+recogido en el catálogo como restricción transversal **RT-5**, con
+`tests/unit/test_documental.py` como gate.
+
+### Se activa o no, y desactivado no se pierde nada del CRM
+
+`DMS_ENABLED` manda. Activado, contecmind es una **dependencia de despliegue**:
+`docker compose --profile dms up` lo levanta con la pila, o se le da en
+`DMS_BASE_URL` la dirección de uno ya en marcha. Se comprueba **al arrancar**,
+no la primera vez que alguien abre la pestaña de documentos, y con
+`DMS_EXIGIR_AL_ARRANCAR=true` el servicio se niega a arrancar si no lo alcanza.
+
+Desactivado, la pestaña del corpus no existe y **los adjuntos siguen
+funcionando igual**. Esto no es un detalle de implementación: que un comercial
+no pudiera adjuntar la foto de una visita porque un servicio externo está caído
+sería una regresión, no una integración. Las dos capas son independientes a
+propósito.
+
+Nada de esto está escrito en el código. `DMS_BASE_URL`, `DMS_CLIENT_ID`,
+`DMS_CLIENT_SECRET`, `DMS_TIMEOUT_S`, `DMS_TOKEN_TTL_S`, `DMS_SCOPES` y los dos
+interruptores de arranque salen del `.env` y de la configuración de la solución.
+
+### Cada usuario ve lo que vería entrando al gestor
+
+La integración usa la credencial de aplicación **solo para canjear un token de
+usuario**. Las búsquedas y las fichas van con ese token, no con la credencial.
+El rol se traduce de los permisos que la persona tiene aquí: `documento:admin`
+o administrador → `admin`; `documento:escribir` o `adjunto:subir` → `writer`; el
+resto → `reader`.
+
+Buscar con la credencial de aplicación habría sido más fácil y habría enseñado
+a cualquiera con acceso al CRM el corpus entero del tenant, contratos de
+dirección incluidos.
+
+**Multitenant sin confiar en el de enfrente.** Cada tenant se mapea a una
+organización de contecmind (`OrganizacionDocumental`), y **sin mapeo no se
+llama al gestor**. Derivar la organización del identificador del tenant habría
+convertido el aislamiento en una convención, y una convención no para a nadie.
+
+### Las dos obligaciones que cruzan la frontera
+
+Con contecintelligence esto no aparecía porque solo lee. Aquí se escribe y se
+borra, así que dos garantías de contecrm tienen que sostenerse **al otro lado**.
+
+**El bloqueo legal alcanza a los documentos enlazados.** Un registro bajo
+retención legal no deja quitar sus enlaces. Un bloqueo que solo alcanza a media
+prueba no es un bloqueo.
+
+**El certificado de destrucción dice qué queda fuera.** Al dar de baja un
+tenant, contecrm certifica qué ha destruido; los documentos del corpus los
+guarda contecmind y no los destruye este certificado. Callarlo dejaría al
+cliente creyendo que sus contratos ya no existen.
+
+Y aquí había un agujero que costó ver: `documentos_enlazados` vive en el
+esquema de **cada** servicio y ninguno lee el de otro, así que `tenancy` —que es
+quien emite el certificado— miraba su propio esquema, que está casi vacío. Los
+contratos están enlazados desde `party` y `sales`. El certificado habría dicho
+«0 documentos fuera» **mirando donde no había**, que es peor que no decir nada.
+
+Se resolvió como se replican los ajustes y la clave BYOK: por el bus. Al pasar
+el tenant a baja se emite `documental.inventario.solicitado`; **todos** los
+servicios lo consumen —`crear_servicio` los suscribe sin que ninguno tenga que
+acordarse— y contestan con lo suyo; `tenancy` guarda cada respuesta y compone el
+certificado con todas. La ventana de recuperación de treinta días da tiempo de
+sobra. Y lo que de verdad importa: el certificado **nombra a los servicios que
+no han contestado** y distingue el cero del silencio y del error. Una lista
+incompleta presentada como completa es lo único que este inventario no puede
+hacer.
+
+Quién tiene que contestar sale de `RUTAS_SERVICIOS`, que ya es la lista de
+servicios del despliegue. Una lista escrita en el código se habría quedado vieja
+el día que se añadiera un servicio.
+
+### Carpetas del expediente
+
+Los adjuntos de un registro se pueden organizar en carpetas. Cuelgan del
+**registro** y no del tenant: un árbol global obliga a inventar una convención
+de nombres para saber de quién es cada cosa, y a los seis meses conviven «ACME»,
+«ACME 2024» y «Acme S.L.». Con el árbol por registro, «¿qué documentos tengo de
+este cliente?» no depende de que alguien nombrara bien la carpeta.
+
+Cuatro decisiones que conviene entender:
+
+- **La ruta se guarda, y se recalcula al mover.** Sin ella, enseñar el camino de
+  un documento exige subir por los padres uno a uno, y un listado de cincuenta
+  hace doscientas consultas para pintar una columna. Mover una carpeta recalcula
+  la rama entera; dejar la ruta vieja pondría la carpeta en un sitio y su
+  contenido diría que está en otro.
+- **Borrar una carpeta no borra lo de dentro.** Sube a la raíz, o a donde se
+  diga, y se devuelve cuántos documentos se movieron. Quien borra una carpeta
+  está ordenando, no destruyendo, y el borrado en cascada es la operación que
+  más veces se lamenta.
+- **Archivar mueve todas las versiones del documento.** Una carpeta es dónde
+  está el documento, no dónde está una de sus versiones; dejar la v1 en un sitio
+  y la v2 en otro parte el historial en dos.
+- **Ninguna carpeta es obligatoria.** Sin carpeta, el adjunto está en la raíz del
+  registro. Obligar a elegir carpeta al subir hace que la gente deje de adjuntar.
+
+El árbol se devuelve **plano y ordenado por ruta**, con el nivel de cada
+carpeta: quien pinta un árbol lo anida en un bucle, y devolverlo anidado obliga
+a recorrerlo entero para encontrar una carpeta concreta. Hay un tope de ocho
+niveles, un límite de nombre sin `/` —«2026/Q1» parecería dos carpetas— y no
+puede haber dos hermanas con el mismo nombre, tampoco en la raíz: en Postgres
+dos `NULL` no son iguales, así que la raíz necesita su propio índice parcial.
+
+### Documentos que viven fuera, sin conector por proveedor
+
+Un adjunto puede ser también **una referencia a algo que está en otro sitio**:
+`externo_sistema` es una etiqueta libre y la `uri`, un enlace. No hay conector
+de SharePoint ni de Drive, y no lo va a haber: mantener su API, sus permisos y
+su autenticación para acabar enseñando un enlace que el navegador del usuario ya
+sabe abrir no compensa, y el día que el cliente cambie de gestor habría que
+volver a empezar.
+
+El precio, dicho: en ese caso **el CRM no controla el acceso al documento**.
+Quien tenga el enlace y permiso en el sistema de origen lo abre; quien no, no.
+Eso es correcto para un enlace y sería inaceptable si pretendiéramos que es un
+adjunto nuestro, y por eso se distinguen.

@@ -27,6 +27,14 @@ SALIDA = RAIZ / ".env.example"
 # Orden en que aparecen las secciones. Fijo y no alfabético: el orden en que se
 # configura un despliegue tiene sentido (identidad del servicio, base de datos,
 # tenancy…) y el alfabético lo destruye.
+#
+# Es un orden PREFERENTE, no una lista blanca. Lo era, y el resultado fue que
+# cuatro grupos enteros —almacén, servicios de la casa, explotación y corpus
+# documental— no salían en `.env.example`: el módulo existía, el ajuste
+# funcionaba, y el fichero que se supone que documenta la configuración no lo
+# mencionaba. El gate comparaba el fichero con lo generado, así que estaba en
+# verde omitiendo lo mismo que el generador. Ahora lo que no esté aquí se añade
+# al final en vez de desaparecer.
 ORDEN = ["_app", "_db", "_tenancy", "_bus", "_auth", "_limits", "_obs", "_security"]
 
 TITULOS = {
@@ -38,7 +46,17 @@ TITULOS = {
     "_limits": "Límites, resiliencia y topes de proceso",
     "_obs": "Observabilidad: logs, métricas, trazas y auditoría",
     "_security": "Protección del dato: cifrado, secretos y cabeceras",
+    "_almacen": "Almacén de ficheros y adjuntos",
+    "_servicio": "Servicios de la casa y arranque",
+    "_intelligence": "Explotación delegada en contecintelligence (RT-4)",
+    "_documental": "Corpus documental delegado en contecmind (RT-5)",
 }
+
+
+def _modulos() -> list[str]:
+    """Todos los grupos de configuración, en el orden preferente y sin perder ninguno."""
+    presentes = sorted(r.stem for r in MIXINS.glob("_*.py") if r.stem != "__init__")
+    return [m for m in ORDEN if m in presentes] + [m for m in presentes if m not in ORDEN]
 
 
 def _comentarios_previos(lineas: list[str], linea_campo: int) -> list[str]:
@@ -59,9 +77,26 @@ def _comentarios_previos(lineas: list[str], linea_campo: int) -> list[str]:
     return [c for c in comentarios if not c.startswith("──")]
 
 
+# Tipos que no pueden contener un secreto. Sin esta lista, `dms_token_ttl_s`
+# —un entero de segundos— salía como `CAMBIAME` solo porque su nombre lleva
+# «token» dentro, y quien copiara el fichero se encontraba el servicio negándose
+# a arrancar por un número mal puesto.
+TIPOS_NO_SECRETOS = {"int", "float", "bool"}
+
+
+def _tipo_de(nodo: ast.AnnAssign) -> str:
+    anotacion = nodo.annotation
+    if isinstance(anotacion, ast.Name):
+        return anotacion.id
+    if isinstance(anotacion, ast.Subscript) and isinstance(anotacion.value, ast.Name):
+        return anotacion.value.id
+    return ""
+
+
 def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
     """Valor de ejemplo. Nunca un secreto real, ni siquiera de desarrollo."""
-    if any(p in nombre for p in ("secret", "password", "key", "token")):
+    es_secreto = any(p in nombre for p in ("secret", "password", "key", "token"))
+    if es_secreto and _tipo_de(nodo) not in TIPOS_NO_SECRETOS:
         if "url" in nombre:
             return ""
         return "CAMBIAME"
@@ -78,6 +113,11 @@ def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
         valor = ast.literal_eval(nodo.value)
         if isinstance(valor, bool):
             return "true" if valor else "false"
+        # Una lista o una tupla se escribe separada por comas, que es como la
+        # lee pydantic. El `repr` de Python —`('documents:read',)`— no es un
+        # valor de entorno válido, y pegarlo tal cual rompe el arranque.
+        if isinstance(valor, (list, tuple)):
+            return ",".join(str(v) for v in valor)
         return "" if valor is None else str(valor)
     except (ValueError, TypeError, SyntaxError):
         return ""
@@ -104,7 +144,7 @@ def generar() -> str:
         "",
     ]
 
-    for modulo in ORDEN:
+    for modulo in _modulos():
         ruta = MIXINS / f"{modulo}.py"
         if not ruta.exists():
             continue

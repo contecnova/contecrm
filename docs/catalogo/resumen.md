@@ -12,7 +12,7 @@
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
 | 4 — Servicio y atención al cliente | 62 | 0 | 0 | 62 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
-| 6 — Productividad y colaboración | 14 | 2 | 1 | 11 |
+| 6 — Productividad y colaboración | 14 | 3 | 0 | 11 |
 | 7 — Administración, ALM y gobierno | 25 | 14 | 1 | 10 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
@@ -20,7 +20,7 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 197 | 125 |
+| C — Core | 197 | 126 |
 | A — Avanzado | 323 | 47 |
 | D — Diferencial | 40 | 2 |
 
@@ -29,7 +29,7 @@
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 123 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 79 | 50 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 79 | 51 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 120 | 1 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 47 | 0 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 56 | 0 |

@@ -139,6 +139,16 @@ ROLES_BASE: dict[str, Rol] = {
                 "comentario:resolver",
                 "adjunto:subir",
                 "adjunto:enlace",
+                # Enlazar un documento del corpus con una ficha es señalar algo
+                # que ya existe y que esa persona ya puede ver: el gestor vuelve
+                # a comprobar sus permisos al abrirlo, así que enlazar no
+                # descubre nada que no estuviera a su alcance.
+                "documento:enlazar",
+                # Ordenar el expediente —crear carpetas, archivar en ellas— no
+                # destruye nada: borrar una carpeta mueve su contenido. Se deja
+                # al rol básico porque el que sube el documento es quien sabe
+                # dónde va, y si no puede archivarlo acaba todo en la raíz.
+                "adjunto:organizar",
             }
         ),
         descripcion="Acceso de lectura al CRM y gestión de su propia actividad",
@@ -163,6 +173,9 @@ ROLES_BASE: dict[str, Rol] = {
                 # es una acción que deja hueco en una conversación.
                 "adjunto:borrar",
                 "comentario:borrar",
+                # Quitar el enlace no borra el documento, pero sí el rastro de
+                # por qué estaba en esa ficha, y eso es lo que se pierde.
+                "documento:desenlazar",
             }
         ),
         descripcion="Gestiona sus cuentas, contactos, leads y oportunidades",

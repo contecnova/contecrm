@@ -126,6 +126,112 @@ class CertificadoDestruccion(Base):
     __table_args__ = (Index("ix_certificados_tenant", "tenant_id", "created_at"),)
 
 
+class ReporteInventarioDocumental(Base):
+    """Lo que cada servicio contesta sobre el corpus enlazado de un tenant (RT-5).
+
+    `documentos_enlazados` vive en el esquema de CADA servicio y ninguno lee el
+    de otro, así que `tenancy` —que es quien emite el certificado— no puede
+    mirar dónde están los contratos: están enlazados desde `party` y `sales`.
+    Cada servicio contesta por el bus y su respuesta se guarda aquí.
+
+    Una fila por servicio y tenant: la respuesta se sustituye, no se acumula.
+    La entrega es at-least-once y recibir dos veces el mismo inventario no puede
+    duplicar los documentos del certificado.
+    """
+
+    __tablename__ = "reportes_inventario_documental"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    servicio: Mapped[str] = mapped_column(String(60), nullable=False)
+    documentos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Vacía si el servicio pudo leer su inventario; con el motivo si no pudo.
+    # El silencio y el cero se distinguen, y quien entrega el certificado
+    # necesita saber cuál de los dos tiene delante.
+    nota: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("ix_reportes_invdoc_tenant", "tenant_id", "servicio", unique=True),)
+
+
+async def consumir_reporte_inventario(mensaje: Any) -> None:
+    """Guarda la respuesta de un servicio. Solo lo registra `tenancy`.
+
+    Idempotente por (tenant, servicio): la entrega es at-least-once y el mismo
+    inventario recibido dos veces tiene que dejar el mismo estado, no el doble
+    de documentos en el certificado.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.documental.inventario import _datos_de
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    datos = _datos_de(mensaje)
+    try:
+        tenant_id = UUID(str(datos.get("tenant_id")))
+    except (TypeError, ValueError):
+        logger.error("baja.reporte_inventario_sin_tenant", datos=str(datos)[:200])
+        return
+    servicio = str(datos.get("servicio") or "desconocido")
+    documentos = datos.get("documentos") or []
+    valores = {
+        "tenant_id": tenant_id,
+        "servicio": servicio,
+        "documentos": documentos,
+        "total": int(datos.get("total") or len(documentos)),
+        "nota": str(datos.get("nota") or "")[:300],
+    }
+    with unidad_de_trabajo(sistema=True) as uow:
+        uow.db.execute(
+            pg_insert(ReporteInventarioDocumental)
+            .values(**valores)
+            .on_conflict_do_update(
+                index_elements=["tenant_id", "servicio"],
+                set_={
+                    "documentos": valores["documentos"],
+                    "total": valores["total"],
+                    "nota": valores["nota"],
+                    "updated_at": func.now(),
+                },
+            )
+        )
+    logger.info(
+        "baja.inventario_documental_recibido",
+        tenant=str(tenant_id),
+        servicio=servicio,
+        documentos=valores["total"],
+    )
+
+
+def servicios_esperados() -> list[str]:
+    """Quién tiene que contestar al inventario.
+
+    Sale de `RUTAS_SERVICIOS`, que es la lista de servicios **de este
+    despliegue** y ya se declara en el `.env` para el gateway. Una lista escrita
+    aquí se quedaría vieja el día que se añada un servicio, y el certificado
+    daría por completa una respuesta a la que le falta uno.
+
+    Se leen los nombres, no el analizador del gateway: importarlo ataría este
+    servicio a otro, que es justo lo que la arquitectura prohíbe. Lo que hace
+    falta son los nombres, y eso son tres líneas.
+    """
+    from crmcore.config import get_settings
+
+    nombres = set()
+    for trozo in get_settings().rutas_servicios.replace("\n", "").split(","):
+        nombre, _, url = trozo.partition("=")
+        if nombre.strip() and url.strip():
+            nombres.add(nombre.strip())
+    return sorted(nombres)
+
+
 # ── Exportación ───────────────────────────────────────────────────────────
 
 
@@ -375,8 +481,97 @@ def destruir(
         "cache_purgada": True,
         "cache_generacion": generacion,
         "exportacion_conservada": conservar_exportacion,
+        # Lo que este certificado NO destruye porque no es suyo (RT-5). El
+        # corpus documental vive en contecmind y lo destruye quien lo guarda.
+        #
+        # Callarlo sería certificar una destrucción que no se ha hecho entera, y
+        # el cliente se quedaría creyendo que sus contratos ya no existen. Se
+        # dice, con el inventario, para que quien entregue el certificado sepa
+        # qué le queda por pedir.
+        "fuera_de_este_certificado": _inventario_externo(db, tenant.id),
     }
     return _certificar(db, tenant=tenant, exportacion=exportacion, alcance=alcance, por=por)
+
+
+def _inventario_externo(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Qué tenía este tenant en sistemas que contecrm no destruye (RT-5).
+
+    Se compone con lo que **cada servicio** ha contestado a la solicitud que se
+    emitió al pasar el tenant a baja, más lo que `tenancy` tenga en su propio
+    esquema. Mirar solo el esquema propio daba un inventario casi vacío —los
+    contratos están enlazados desde `party` y `sales`— y un certificado que
+    dijera «0 documentos fuera» porque miró donde no había sería peor que no
+    decir nada.
+
+    Lo importante de aquí es lo que se dice cuando **falta** alguien: los
+    servicios que no han contestado se nombran. Una lista incompleta presentada
+    como completa es lo único que este inventario no puede hacer.
+    """
+    reportes = {
+        r.servicio: r
+        for r in db.execute(
+            select(ReporteInventarioDocumental).where(
+                ReporteInventarioDocumental.tenant_id == tenant_id
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    documentos: list[dict[str, Any]] = []
+    por_servicio: dict[str, int] = {}
+    ilegibles: list[str] = []
+    for servicio, reporte in sorted(reportes.items()):
+        for doc in reporte.documentos or []:
+            documentos.append({**doc, "servicio": servicio})
+        por_servicio[servicio] = reporte.total
+        if reporte.nota:
+            ilegibles.append(f"{servicio}: {reporte.nota}")
+
+    # Lo de `tenancy` se lee en directo: es el esquema de este mismo servicio y
+    # esperar a que se conteste a sí mismo por el bus sería dar un rodeo para
+    # llegar a la tabla de al lado.
+    if "tenancy" not in reportes:
+        try:
+            from crmcore.documental import inventario_para_certificado
+
+            propios = inventario_para_certificado(db, tenant_id)
+            documentos += [{**doc, "servicio": "tenancy"} for doc in propios]
+            por_servicio["tenancy"] = len(propios)
+        except Exception as exc:  # noqa: BLE001 — no poder inventariar no impide certificar
+            logger.error("baja.inventario_externo_fallido", error=str(exc)[:200])
+            ilegibles.append(f"tenancy: {str(exc)[:160]}")
+
+    esperados = servicios_esperados()
+    sin_contestar = sorted(s for s in esperados if s not in por_servicio)
+
+    inventario: dict[str, Any] = {
+        "documentos": documentos,
+        "total": len(documentos),
+        "por_servicio": por_servicio,
+        "servicios_esperados": esperados,
+        "servicios_sin_contestar": sin_contestar,
+        "completo": not sin_contestar and not ilegibles,
+    }
+    if ilegibles:
+        inventario["inventarios_ilegibles"] = ilegibles
+    avisos: list[str] = []
+    if documentos:
+        avisos.append(
+            "Estos documentos viven en el gestor documental y NO los destruye este "
+            "certificado. Hay que pedir su destrucción a quien los guarda."
+        )
+    if sin_contestar:
+        avisos.append(
+            "Esta lista está INCOMPLETA: no han contestado al inventario "
+            + ", ".join(sin_contestar)
+            + ". Hay que pedírselo antes de entregar el certificado."
+        )
+    if ilegibles:
+        avisos.append("Algún servicio no pudo leer su inventario: " + "; ".join(ilegibles))
+    if avisos:
+        inventario["aviso"] = " ".join(avisos)
+    return inventario
 
 
 def _rehacer_exportacion(db: Session, exportacion: Exportacion) -> None:

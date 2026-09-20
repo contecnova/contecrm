@@ -351,3 +351,156 @@ def test_el_certificado_sobrevive_a_los_datos(db: Any, tenant_id: UUID) -> None:
     )
     assert len(guardados) == 1
     assert guardados[0].tenant_slug == t.slug
+
+
+# ── Lo que el certificado NO destruye (RT-5) ──────────────────────────────
+
+
+def _despliegue(monkeypatch: Any, *servicios: str) -> None:
+    """Declara qué servicios tiene este despliegue.
+
+    Sale de `RUTAS_SERVICIOS`, que es un `Settings` con caché: cambiar la
+    variable sin vaciarla dejaba la prueba mirando la lista del proceso, y
+    pasaba por casualidad.
+    """
+    from crmcore.config import limpiar_cache_settings
+
+    monkeypatch.setenv("RUTAS_SERVICIOS", ",".join(f"{s}=http://{s}:8000" for s in servicios))
+    limpiar_cache_settings()
+
+
+def _reporte(
+    db: Any, tenant_id: UUID, servicio: str, documentos: list[Any], nota: str = ""
+) -> None:
+    db.add(
+        baja.ReporteInventarioDocumental(
+            tenant_id=tenant_id,
+            servicio=servicio,
+            documentos=documentos,
+            total=len(documentos),
+            nota=nota,
+        )
+    )
+    db.flush()
+
+
+def test_el_certificado_recoge_los_documentos_de_todos_los_servicios(
+    db: Any, tenant_id: UUID, monkeypatch: Any
+) -> None:
+    """`documentos_enlazados` vive en el esquema de cada servicio.
+
+    Mirar solo el propio daba «0 documentos fuera» mientras los contratos
+    seguían en el gestor, enlazados desde `party` — y el cliente se quedaba
+    creyendo que ya no existían.
+    """
+    _despliegue(monkeypatch, "tenancy", "party")
+    _reporte(db, tenant_id, "party", [{"documento_id": "d-1", "sistema": "contecmind"}])
+    t, exp = _listo_para_destruir(db, tenant_id)
+
+    cert = baja.destruir(db, tenant=t, exportacion_id=exp.id)
+
+    fuera = cert.alcance["fuera_de_este_certificado"]
+    assert fuera["total"] == 1
+    assert fuera["documentos"][0]["servicio"] == "party"
+    assert fuera["completo"] is True
+
+
+def test_el_certificado_dice_quien_no_ha_contestado(
+    db: Any, tenant_id: UUID, monkeypatch: Any
+) -> None:
+    """Una lista incompleta presentada como completa es lo único que no puede hacer."""
+    _despliegue(monkeypatch, "tenancy", "party", "sales")
+    _reporte(db, tenant_id, "party", [])
+    t, exp = _listo_para_destruir(db, tenant_id)
+
+    cert = baja.destruir(db, tenant=t, exportacion_id=exp.id)
+
+    fuera = cert.alcance["fuera_de_este_certificado"]
+    assert fuera["servicios_sin_contestar"] == ["sales"]
+    assert fuera["completo"] is False
+    assert "sales" in fuera["aviso"]
+
+
+def test_un_servicio_que_no_pudo_leer_su_inventario_no_pasa_por_cero(
+    db: Any, tenant_id: UUID, monkeypatch: Any
+) -> None:
+    """El silencio, el cero y el error son tres respuestas distintas."""
+    _despliegue(monkeypatch, "tenancy", "party")
+    _reporte(db, tenant_id, "party", [], nota="no se pudo leer el inventario: tabla ausente")
+    t, exp = _listo_para_destruir(db, tenant_id)
+
+    cert = baja.destruir(db, tenant=t, exportacion_id=exp.id)
+
+    fuera = cert.alcance["fuera_de_este_certificado"]
+    assert fuera["completo"] is False
+    assert any("party" in i for i in fuera["inventarios_ilegibles"])
+
+
+def test_pasar_a_baja_pide_el_inventario_a_todos(db: Any, tenant_id: UUID) -> None:
+    """Se pide al empezar la ventana de recuperación, no al destruir: si se
+    pidiera al destruir, nadie tendría tiempo de contestar."""
+    from crmcore.bus.modelos import EventoSaliente
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.documental.inventario import INVENTARIO_SOLICITADO
+    from sqlalchemy import select
+
+    from services.tenancy import servicio as svc
+
+    _tenant(db, tenant_id, estado="activo")
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    svc.cambiar_estado(uow, tenant_id, nuevo="en_baja", motivo="el cliente se va")
+    db.flush()
+
+    tipos = list(
+        db.execute(select(EventoSaliente.tipo).where(EventoSaliente.tenant_id == tenant_id))
+        .scalars()
+        .all()
+    )
+    assert INVENTARIO_SOLICITADO in tipos
+
+
+def test_recibir_dos_veces_el_mismo_inventario_no_lo_duplica(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """La entrega es at-least-once: un reintento no puede doblar los documentos
+    que el certificado dice que quedan fuera."""
+    import asyncio
+
+    from sqlalchemy import func, select
+
+    mensaje = {
+        "data": {
+            "tenant_id": str(tenant_id),
+            "servicio": "party",
+            "documentos": [{"documento_id": "d-1", "sistema": "contecmind"}],
+            "total": 1,
+            "nota": "",
+        }
+    }
+    asyncio.run(baja.consumir_reporte_inventario(mensaje))
+    asyncio.run(baja.consumir_reporte_inventario(mensaje))
+
+    filas = db.execute(
+        select(func.count())
+        .select_from(baja.ReporteInventarioDocumental)
+        .where(baja.ReporteInventarioDocumental.tenant_id == tenant_id)
+    ).scalar_one()
+    assert filas == 1
+
+
+def test_un_servicio_sin_la_tabla_contesta_en_vez_de_callarse(db: Any, tenant_id: UUID) -> None:
+    """Si no contestara, quien emite el certificado esperaría para siempre a un
+    servicio que nunca iba a tener nada que decir."""
+    from crmcore.documental import inventario as inv
+
+    class _RotaSession:
+        def __getattr__(self, _nombre: str) -> Any:
+            raise RuntimeError("relation «documentos_enlazados» does not exist")
+
+        def rollback(self) -> None:
+            return None
+
+    documentos, nota = inv._inventariar(_RotaSession(), tenant_id)  # type: ignore[arg-type]
+
+    assert documentos == []
+    assert "no se pudo leer" in nota

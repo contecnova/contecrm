@@ -13,6 +13,7 @@ from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.documental_router import crear_router_documental
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Header, Query, Request, status
@@ -1115,6 +1116,11 @@ async def recibir_lead(
         )
 
 
+# Corpus documental delegado en contecmind (RT-5). La lista blanca impide que
+# este servicio enlace documentos a objetos que no son suyos.
+router_documental = crear_router_documental({"lead", "oportunidad"})
+
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -1126,6 +1132,7 @@ ROUTERS = [
     router_comentarios,
     router_retencion,
     router_busqueda,
+    router_documental,
     router_trabajos,
     router_captura,
     *routers_masivos,

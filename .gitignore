@@ -17,6 +17,10 @@ __pycache__/
 
 # Datos y salidas locales
 data/
+# El almacén local de adjuntos (STORAGE_LOCAL_PATH por defecto). Lo llenan el
+# desarrollo y la suite de pruebas, y son bytes de ficheros subidos: no tienen
+# nada que hacer en el repositorio.
+datos/
 var/
 logs/
 *.log

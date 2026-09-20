@@ -38,6 +38,22 @@ fallo no se vería hasta que dos clientes se vieran los datos.
 
 Hay un gate que comprueba que ningún servicio instancia `FastAPI` directamente.
 
+Lo mismo vale para lo que cada servicio tiene que **escuchar**. Hay tablas que
+viven en el esquema de todos —`ajustes_runtime`, las claves BYOK del tenant,
+`documentos_enlazados`— porque ningún servicio lee el de otro. Eso obliga a que
+ciertos eventos los consuma **todo el mundo**, y `crear_servicio()` los suscribe
+sin que ningún servicio tenga que acordarse:
+
+| Evento | Qué pasaría si un servicio no lo consumiera |
+|---|---|
+| `configuracion.ajuste_cambiado` | Se quedaría con la configuración de su `.env` mientras el resto usa la del cliente. La divergencia tarda semanas en atribuirse |
+| `seguridad.clave_tenant_cambiada` (BYOK) | Seguiría cifrando con la maestra, y revocar la clave del cliente no dejaría ilegible nada — el único modo de fallo inaceptable de BYOK |
+| `documental.inventario.solicitado` | Sus documentos del corpus quedarían fuera del certificado de destrucción, y el cliente creería que ya no existen (RT-5) |
+
+La regla que hay detrás: **cuando una garantía transversal depende de que N
+servicios hagan algo, no se documenta, se suscribe en el sitio por el que pasan
+todos.** Lo que se deja a que cada uno se acuerde, uno no se acuerda.
+
 ### 2. El aislamiento por tenant tiene tres capas, no una
 
 | Capa | Qué cubre | Qué NO cubre |

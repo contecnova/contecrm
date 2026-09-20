@@ -132,6 +132,10 @@ def crear_servicio(
                 # servicio que no consuma este evento se queda con la
                 # configuración de su `.env` mientras el resto usa la del
                 # cliente. Esa divergencia tarda semanas en atribuirse.
+                from crmcore.documental.inventario import (
+                    INVENTARIO_SOLICITADO,
+                    consumir_solicitud,
+                )
                 from crmcore.runtime.settings import AJUSTE_CAMBIADO, consumir_ajuste
                 from crmcore.security.byok import CLAVE_CAMBIADA, consumir_clave
 
@@ -142,6 +146,13 @@ def crear_servicio(
                     # cifrando con la maestra y revocarla no dejaría ilegible
                     # nada — el único modo de fallo inaceptable de BYOK.
                     (CLAVE_CAMBIADA, consumir_clave, f"{nombre}-byok"),
+                    # El inventario del corpus para el certificado de
+                    # destrucción (RT-5). También universal, y por el mismo
+                    # motivo: `documentos_enlazados` vive en el esquema de cada
+                    # servicio, así que un servicio que no contestara dejaría
+                    # sus contratos fuera del certificado sin que nadie lo
+                    # notara — y el cliente creería que ya no existen.
+                    (INVENTARIO_SOLICITADO, consumir_solicitud, f"{nombre}-invdoc"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:

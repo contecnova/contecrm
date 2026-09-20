@@ -87,6 +87,28 @@ restricciones_transversales:
       alcanzable. Sin él no hay explotación, y eso se comprueba al arrancar en
       vez de descubrirse la primera vez que alguien abre un informe.
     gate: tests/unit/test_explotacion_delegada.py
+  - id: RT-5
+    nombre: Corpus documental delegado en contecmind
+    enunciado: >-
+      El CORPUS documental de la empresa —contratos, procedimientos,
+      certificados, con versionado, aprobación, obsolescencia y búsqueda— NO se
+      reimplementa aquí: lo resuelve contecmind, consumido de forma frontless.
+      contecrm guarda el enlace y el contexto —qué registro tiene qué documento y
+      para qué— y el documento vive allí, con la identidad del usuario propagada
+      para que cada uno vea lo que vería entrando al gestor.
+      La distinción con RT-4 es que aquí se ESCRIBE y se BORRA, así que dos
+      obligaciones de contecrm cruzan la frontera y tienen que sostenerse: un
+      bloqueo legal sobre un registro impide quitar sus documentos enlazados, y
+      el certificado de destrucción de un tenant dice qué quedó fuera porque lo
+      destruye quien lo guarda.
+      Se activa o no (DMS_ENABLED). Activado, es una dependencia de despliegue:
+      la pila lo levanta con el perfil `dms` o se le da la dirección de uno ya en
+      marcha, y se comprueba al arrancar. Desactivado NO se pierde nada del CRM:
+      los ADJUNTOS de los registros —la foto de una visita, el PDF de una
+      oportunidad— siguen en contecrm y se suben aunque el gestor no responda.
+      Son otra capa, y confundirlas convertiría una integración en una
+      regresión.
+    gate: tests/unit/test_documental.py
 
 modulos:
   - id: "0"
@@ -916,7 +938,7 @@ modulos:
               - {id: CRM-06.01.01.02, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:extension/ (complemento de navegador)", t: "Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo"}
               - {id: CRM-06.01.01.03, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py", t: "Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat"}
               - {id: CRM-06.01.01.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro automático de reuniones y de asistentes"}
-              - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
+              - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
               - {id: CRM-06.01.01.06, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/generated_documents.py + templates.py", t: "Generación documental desde plantillas (propuesta, contrato, acta)"}
       - id: "6.2"
         nombre: Colaboración y movilidad

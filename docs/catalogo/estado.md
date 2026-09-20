@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**560 capacidades**: 🔧 2 en-curso · ✅ 174 hecho · ⬜ 384 pendiente
+**560 capacidades**: 🔧 1 en-curso · ✅ 175 hecho · ⬜ 384 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -897,7 +897,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-14 capacidades · 🔧 1 · ✅ 2 · ⬜ 11
+14 capacidades · ✅ 3 · ⬜ 11
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -909,7 +909,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | ⬜ | contecmind:extension/ (complemento de navegador) |
 | `CRM-06.01.01.03` | Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat | A | 2 | integration | ⬜ | contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py |
 | `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | 🔧 | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
+| `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ✅ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
 | `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ⬜ | contecmind:app/services/generated_documents.py + templates.py |
 
 ### 6.2 Colaboración y movilidad

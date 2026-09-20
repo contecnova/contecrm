@@ -30,9 +30,8 @@ _destinos: dict[str, rutas.Destino] = {}
 async def arrancar() -> None:
     """Prepara el cliente HTTP y la tabla de destinos."""
     global _cliente, _destinos
-    import os
 
-    _destinos = rutas.cargar_destinos(os.environ.get("RUTAS_SERVICIOS", ""))
+    _destinos = rutas.cargar_destinos(get_settings().rutas_servicios)
     # Sin límite de conexiones el gateway puede abrir miles contra un servicio
     # lento y quedarse sin descriptores; con un límite, las peticiones esperan
     # en cola, que es un fallo mucho más benigno.

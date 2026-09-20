@@ -19,9 +19,14 @@ from sqlalchemy import select
 
 from crmcore.datos.adjuntos import (
     Adjunto,
+    arbol_carpetas,
     borrar,
+    borrar_carpeta,
+    crear_carpeta,
     firmar_enlace,
     leer,
+    mover_adjunto,
+    mover_carpeta,
     subir,
     verificar_enlace,
 )
@@ -44,8 +49,25 @@ class AdjuntoOut(BaseModel):
     descripcion: str
     etiquetas: list[Any]
     analisis: str
+    carpeta_id: UUID | None
+    externo_sistema: str
 
     model_config = {"from_attributes": True}
+
+
+class CarpetaEntrada(BaseModel):
+    nombre: str
+    padre_id: UUID | None = None
+
+
+class MoverEntrada(BaseModel):
+    # `None` explícito significa «a la raíz», que es una orden distinta de «no
+    # lo muevas». Por eso el campo no se omite: se manda con valor nulo.
+    padre_id: UUID | None = None
+
+
+class MoverAdjuntoEntrada(BaseModel):
+    carpeta_id: UUID | None = None
 
 
 def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
@@ -107,6 +129,7 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         objeto_id: UUID = Form(...),
         descripcion: str = Form(""),
         documento_id: UUID | None = Form(None),
+        carpeta_id: UUID | None = Form(None),
     ) -> Any:
         _validar_objeto(objeto_tipo)
         # Se lee entero en memoria porque el tope configurado (25 MB por
@@ -126,6 +149,7 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
             descripcion=descripcion,
             usuario_id=principal.id,
             documento_id=documento_id,
+            carpeta_id=carpeta_id,
         )
 
     @router.get(
@@ -137,6 +161,8 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         principal: AutenticadoDep,
         objeto_id: UUID = Query(...),
         todas_las_versiones: bool = Query(False),
+        carpeta_id: UUID | None = Query(None, description="Solo lo que hay en esa carpeta"),
+        en_raiz: bool = Query(False, description="Solo lo que no está en ninguna carpeta"),
     ) -> Any:
         _validar_objeto(objeto_tipo)
         consulta = select(Adjunto).where(
@@ -146,6 +172,13 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         )
         if not todas_las_versiones:
             consulta = consulta.where(Adjunto.es_actual.is_(True))
+        # Sin filtro se devuelve el expediente entero, carpetas incluidas: es lo
+        # que espera quien busca «todos los documentos de esta cuenta» y no
+        # quiere recorrer el árbol para encontrarlos.
+        if carpeta_id is not None:
+            consulta = consulta.where(Adjunto.carpeta_id == carpeta_id)
+        elif en_raiz:
+            consulta = consulta.where(Adjunto.carpeta_id.is_(None))
         return list(db.execute(consulta.order_by(Adjunto.created_at.desc())).scalars().all())
 
     @router.get(
@@ -237,7 +270,139 @@ def crear_router_adjuntos(objetos: set[str]) -> APIRouter:
         _traer(uow.db, adjunto_id, objeto_tipo)
         return borrar(uow.db, adjunto_id, usuario_id=principal.id)
 
+    # ── Carpetas ──────────────────────────────────────────────────────────
+    # Van bajo `/carpetas/...` y no bajo `/{objeto_tipo}/carpetas` porque
+    # `{objeto_tipo}` se come cualquier primer segmento: un camino literal
+    # detrás de él nunca se distinguiría del identificador de un adjunto.
+
+    @router.get(
+        "/carpetas/{objeto_tipo}",
+        response_model=list[dict],
+        summary="Árbol de carpetas del expediente",
+        description=(
+            "Plano y ordenado por ruta, con el nivel de cada una. Quien pinta "
+            "el árbol lo anida en un bucle; devolverlo anidado obligaría a "
+            "recorrerlo entero para encontrar una carpeta concreta."
+        ),
+    )
+    def listar_carpetas(
+        objeto_tipo: str, db: DbDep, _: AutenticadoDep, objeto_id: UUID = Query(...)
+    ) -> Any:
+        _validar_objeto(objeto_tipo)
+        return arbol_carpetas(db, objeto_tipo=objeto_tipo, objeto_id=objeto_id)
+
+    @router.post(
+        "/carpetas/{objeto_tipo}",
+        response_model=dict,
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[Depends(exige_permiso("adjunto:organizar"))],
+        summary="Crear una carpeta en el expediente",
+    )
+    def crear_carpeta_ruta(
+        objeto_tipo: str,
+        datos: CarpetaEntrada,
+        uow: UowDep,
+        principal: AutenticadoDep,
+        objeto_id: UUID = Query(...),
+    ) -> Any:
+        _validar_objeto(objeto_tipo)
+        carpeta = crear_carpeta(
+            uow.db,
+            tenant_id=principal.tenant_id,
+            objeto_tipo=objeto_tipo,
+            objeto_id=objeto_id,
+            nombre=datos.nombre,
+            padre_id=datos.padre_id,
+        )
+        return _carpeta_out(carpeta)
+
+    @router.patch(
+        "/carpetas/{objeto_tipo}/{carpeta_id}",
+        response_model=dict,
+        dependencies=[Depends(exige_permiso("adjunto:organizar"))],
+        summary="Mover una carpeta",
+        description=(
+            "Recalcula la ruta de toda la rama. `padre_id: null` la lleva a la "
+            "raíz del expediente."
+        ),
+    )
+    def mover_carpeta_ruta(
+        objeto_tipo: str,
+        carpeta_id: UUID,
+        datos: MoverEntrada,
+        uow: UowDep,
+        _: AutenticadoDep,
+    ) -> Any:
+        _validar_objeto(objeto_tipo)
+        _exigir_carpeta_del_tipo(uow.db, carpeta_id, objeto_tipo)
+        return _carpeta_out(mover_carpeta(uow.db, carpeta_id, nuevo_padre_id=datos.padre_id))
+
+    @router.delete(
+        "/carpetas/{objeto_tipo}/{carpeta_id}",
+        response_model=dict,
+        dependencies=[Depends(exige_permiso("adjunto:organizar"))],
+        summary="Borrar una carpeta (su contenido se mueve, no se borra)",
+        description=(
+            "Lo de dentro sube a la raíz, o a `mover_a` si se indica, y se "
+            "devuelve cuántos documentos se movieron. Borrar en cascada es la "
+            "operación que más veces se lamenta: quien borra una carpeta está "
+            "ordenando, no destruyendo."
+        ),
+    )
+    def borrar_carpeta_ruta(
+        objeto_tipo: str,
+        carpeta_id: UUID,
+        uow: UowDep,
+        _: AutenticadoDep,
+        mover_a: UUID | None = Query(None),
+    ) -> Any:
+        _validar_objeto(objeto_tipo)
+        _exigir_carpeta_del_tipo(uow.db, carpeta_id, objeto_tipo)
+        return {"movidos": borrar_carpeta(uow.db, carpeta_id, mover_a=mover_a)}
+
+    @router.patch(
+        "/{objeto_tipo}/{adjunto_id}/carpeta",
+        response_model=AdjuntoOut,
+        dependencies=[Depends(exige_permiso("adjunto:organizar"))],
+        summary="Archivar un adjunto en una carpeta",
+        description=(
+            "Mueve **todas las versiones** del documento: una carpeta es dónde "
+            "está el documento, no dónde está una de sus versiones."
+        ),
+    )
+    def mover_adjunto_ruta(
+        objeto_tipo: str,
+        adjunto_id: UUID,
+        datos: MoverAdjuntoEntrada,
+        uow: UowDep,
+        _: AutenticadoDep,
+    ) -> Any:
+        _traer(uow.db, adjunto_id, objeto_tipo)
+        return mover_adjunto(uow.db, adjunto_id, carpeta_id=datos.carpeta_id)
+
+    def _exigir_carpeta_del_tipo(db: Any, carpeta_id: UUID, objeto_tipo: str) -> None:
+        """Igual que `_traer` para los adjuntos: el segmento de la ruta manda.
+
+        Sin esto se podría tocar la carpeta de una oportunidad entrando por el
+        camino de las cuentas, y el servicio dueño del registro no se enteraría.
+        """
+        from crmcore.datos.adjuntos import CarpetaDocumental
+
+        fila = db.get(CarpetaDocumental, carpeta_id)
+        if fila is None or fila.objeto_tipo != objeto_tipo:
+            raise NoEncontrado("La carpeta no existe", error_code="carpeta.no_existe")
+
     return router
+
+
+def _carpeta_out(carpeta: Any) -> dict[str, Any]:
+    return {
+        "id": str(carpeta.id),
+        "nombre": carpeta.nombre,
+        "padre_id": str(carpeta.padre_id) if carpeta.padre_id else None,
+        "ruta": carpeta.ruta,
+        "nivel": carpeta.ruta.count("/"),
+    }
 
 
 def _respuesta(fila: Adjunto, datos: bytes) -> Response:

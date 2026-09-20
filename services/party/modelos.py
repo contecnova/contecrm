@@ -632,9 +632,12 @@ from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 from crmcore.datos.trabajos import Trabajo  # noqa: E402
+from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 __all__ = [
+    "DocumentoEnlazado",
+    "OrganizacionDocumental",
     "ComparticionManual",
     "ReglaComparticion",
     "ClaveTenant",

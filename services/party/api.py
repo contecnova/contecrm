@@ -18,6 +18,7 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
+from crmcore.http.documental_router import crear_router_documental
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Body, Depends, Query, status
@@ -1173,6 +1174,11 @@ router_trabajos = crear_router_trabajos(
 )
 
 
+# Corpus documental delegado en contecmind (RT-5). La lista blanca impide que
+# este servicio enlace documentos a objetos que no son suyos.
+router_documental = crear_router_documental({"cuenta", "contacto"})
+
+
 ROUTERS = [
     router_admin,
     router_cuentas,
@@ -1184,6 +1190,7 @@ ROUTERS = [
     router_comentarios,
     router_retencion,
     router_busqueda,
+    router_documental,
     router_trabajos,
     *routers_masivos,
 ]

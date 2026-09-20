@@ -39,6 +39,20 @@ class _AppSettings(BaseSettings):
     service_host: str = "127.0.0.1"
     service_port: int = Field(8000, ge=1, le=65535)
 
+    # Los servicios DE ESTE DESPLIEGUE, como `nombre=url` separados por comas:
+    # `tenancy=http://tenancy:8000,party=http://party:8000`.
+    #
+    # Lo lee el gateway para enrutar —un servicio que no esté aquí no es
+    # alcanzable y responde 503 diciendo cuál falta, que es mejor que un 404
+    # genérico— y lo lee `tenancy` para saber **quién tiene que contestar** al
+    # inventario documental del certificado de destrucción (RT-5). Sin la lista,
+    # ese certificado daría por completa una respuesta a la que le faltan
+    # servicios enteros.
+    #
+    # Va en configuración y no en código para que añadir un servicio sea
+    # desplegarlo, no editar y volver a publicar.
+    rutas_servicios: str = ""
+
     # URL base pública del sistema, usada para componer enlaces absolutos
     # (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los
     # enlaces salen relativos y rotos en el correo.

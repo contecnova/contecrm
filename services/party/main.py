@@ -14,6 +14,18 @@ from services.party import (
 from services.party.api import ROUTERS
 from services.party.consumidores import consumir_comando
 
+
+def _al_arrancar() -> None:
+    """Comprueba el gestor documental al desplegar, no al abrir el primero.
+
+    No impide arrancar salvo que se pida (`DMS_EXIGIR_AL_ARRANCAR`): el CRM
+    operativo no puede depender del corpus documental.
+    """
+    from crmcore.documental.cliente import comprobar_al_arrancar
+
+    comprobar_al_arrancar()
+
+
 app = crear_servicio(
     nombre="party",
     descripcion=(
@@ -22,6 +34,7 @@ app = crear_servicio(
         "360 consultable por cualquier frontend."
     ),
     routers=ROUTERS,
+    al_arrancar=_al_arrancar,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho
     # porque el despachador ya filtra por manejador registrado.

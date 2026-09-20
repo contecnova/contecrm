@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**163 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**164 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -21,6 +21,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `APP_NAME` | — | `contecrm` |  | Nombre del producto en textos visibles (correos, cabeceras, títulos de OpenAPI). Configurable porque la marca blanca (CRM-00.01.04.06) lo cambia. |
 | `SERVICE_HOST` | — | `127.0.0.1` |  | Puerto en el que escucha este servicio. Lo leen uvicorn (arranque), el healthcheck de compose y el gateway (enrutado). Boot-only: cambiarlo en caliente no reabre el socket. |
 | `SERVICE_PORT` | — | `8000` | 1–65535 |  |
+| `RUTAS_SERVICIOS` | — | *(vacío)* |  | Los servicios DE ESTE DESPLIEGUE, como `nombre=url` separados por comas: `tenancy=http://tenancy:8000,party=http://party:8000`. Lo lee el gateway para enrutar —un servicio que no esté aquí no es alcanzable y responde 503 diciendo cuál falta, que es mejor que un 404 genérico— y lo lee `tenancy`… |
 | `PUBLIC_BASE_URL` | — | `http://localhost:8080` |  | URL base pública del sistema, usada para componer enlaces absolutos (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los enlaces salen relativos y rotos en el correo. |
 | `CORS_ORIGINS` | — | *(vacío)* |  | Lista separada por comas. Vacío = ningún origen de navegador permitido, que es lo correcto para un servicio interno: solo el gateway habla con él. |
 | `API_PREFIX` | — | `/api/v1` |  | Prefijo de versión de la API pública. El versionado es explícito y por URI (CRM-00.02.01.05): un cambio rompedor estrena `v2` y `v1` sigue sirviéndose hasta su fecha de retirada. |

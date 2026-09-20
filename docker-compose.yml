@@ -66,6 +66,17 @@ x-servicio: &servicio
     TENANT_ROOT_DOMAIN: ${TENANT_ROOT_DOMAIN:-}
     RLS_ENABLED: "true"
     METRICS_ENABLED: "true"
+    # La lista de servicios DE ESTE DESPLIEGUE. La usa el gateway para enrutar
+    # y `tenancy` para saber quién tiene que contestar al inventario documental
+    # del certificado de destrucción (RT-5): sin ella daría por completa una
+    # lista a la que le faltan los documentos de `party` y `sales`, que es la
+    # mentira que ese certificado no puede contar.
+    RUTAS_SERVICIOS: &rutas >-
+      tenancy=http://tenancy:8000,identity=http://identity:8000,
+      metadata=http://metadata:8000,orchestrator=http://orchestrator:8000,
+      automation=http://automation:8000,integration=http://integration:8000,
+      eventing=http://eventing:8000,party=http://party:8000,
+      sales=http://sales:8000,analytics=http://analytics:8000
   depends_on:
     postgres: { condition: service_healthy }
     nats: { condition: service_started }
@@ -211,6 +222,13 @@ services:
       SERVICE_NAME: party
       DATABASE_URL: postgresql+psycopg://crm_party_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_party_mig:contecrm_dev_only@postgres:5432/contecrm
+      # RT-5: el corpus documental lo resuelve contecmind. Apagado por defecto —
+      # una instalación que solo quiere adjuntar ficheros a sus registros no lo
+      # necesita— y, si se enciende, hay que darle dirección y credencial.
+      DMS_ENABLED: ${DMS_ENABLED:-false}
+      DMS_BASE_URL: ${DMS_BASE_URL:-http://contecmind:8000}
+      DMS_CLIENT_ID: ${DMS_CLIENT_ID:-}
+      DMS_CLIENT_SECRET: ${DMS_CLIENT_SECRET:-}
     ports: ["127.0.0.1:8008:8000"]
 
   sales:
@@ -221,6 +239,13 @@ services:
       SERVICE_NAME: sales
       DATABASE_URL: postgresql+psycopg://crm_sales_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_sales_mig:contecrm_dev_only@postgres:5432/contecrm
+      # RT-5: el corpus documental lo resuelve contecmind. Apagado por defecto —
+      # una instalación que solo quiere adjuntar ficheros a sus registros no lo
+      # necesita— y, si se enciende, hay que darle dirección y credencial.
+      DMS_ENABLED: ${DMS_ENABLED:-false}
+      DMS_BASE_URL: ${DMS_BASE_URL:-http://contecmind:8000}
+      DMS_CLIENT_ID: ${DMS_CLIENT_ID:-}
+      DMS_CLIENT_SECRET: ${DMS_CLIENT_SECRET:-}
     ports: ["127.0.0.1:8009:8000"]
 
   # ── Workers ───────────────────────────────────────────────────────────────
@@ -332,6 +357,33 @@ services:
       retries: 12
       start_period: 40s
 
+  # ── Gestión documental ───────────────────────────────────────────────────
+  #
+  # contecmind resuelve el CORPUS documental (RT-5), usado de forma frontless:
+  # versionado con aprobación, obsolescencia, diff y búsqueda. Va en su propio
+  # perfil, igual que contecintelligence, para que quien ya tenga uno en marcha
+  # —lo normal en una instalación con varias soluciones de la casa— no levante
+  # un segundo y le dé la dirección del suyo en DMS_BASE_URL.
+  #
+  #     docker compose --profile app --profile dms up      # levanta también el suyo
+  #     DMS_BASE_URL=http://10.0.0.30:8000 docker compose --profile app up
+  #
+  # Sin él NO se pierde el CRM ni los adjuntos: son otra capa. Lo que no hay es
+  # corpus documental, y el `/documentos/estado` lo dice con esas palabras.
+  contecmind:
+    image: ${DMS_IMAGEN:-contecmind:latest}
+    profiles: [dms]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DMS_DATABASE_URL:-postgresql+psycopg://contecmind:contecrm_dev_only@postgres:5432/contecmind}
+    ports: ["127.0.0.1:${DMS_PORT:-8200}:8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/livez || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
   gateway:
     <<: *servicio
     command: ["servicio", "gateway"]
@@ -340,15 +392,11 @@ services:
       SERVICE_NAME: gateway
       DATABASE_URL: postgresql+psycopg://crm_gateway_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_gateway_mig:contecrm_dev_only@postgres:5432/contecrm
-      # El gateway es el único que conoce a los demás. Los servicios NO se
-      # llaman entre sí por HTTP salvo por esta tabla de rutas: lo normal entre
-      # ellos es el bus, que no crea acoplamiento temporal.
-      RUTAS_SERVICIOS: >-
-        tenancy=http://tenancy:8000,identity=http://identity:8000,
-        metadata=http://metadata:8000,orchestrator=http://orchestrator:8000,
-        automation=http://automation:8000,integration=http://integration:8000,
-        eventing=http://eventing:8000,party=http://party:8000,
-        sales=http://sales:8000,analytics=http://analytics:8000
+      # El gateway es el único que LLAMA a los demás por HTTP. Los servicios no
+      # se llaman entre sí: lo normal entre ellos es el bus, que no crea
+      # acoplamiento temporal. La lista viene del entorno común porque también
+      # sirve para saber quién existe, no solo para enrutar.
+      RUTAS_SERVICIOS: *rutas
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports: ["127.0.0.1:${GATEWAY_PORT:-8080}:8000"]
 

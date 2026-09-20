@@ -8,6 +8,18 @@ from services.sales import eventos  # noqa: F401  — registra los tipos de even
 from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.sales.consumidores import consumir_comando
 
+
+def _al_arrancar() -> None:
+    """Comprueba el gestor documental al desplegar, no al abrir el primero.
+
+    No impide arrancar salvo que se pida (`DMS_EXIGIR_AL_ARRANCAR`): el CRM
+    operativo no puede depender del corpus documental.
+    """
+    from crmcore.documental.cliente import comprobar_al_arrancar
+
+    comprobar_al_arrancar()
+
+
 app = crear_servicio(
     nombre="sales",
     descripcion=(
@@ -16,6 +28,7 @@ app = crear_servicio(
         "y competidores, y cierre bloqueado con reapertura auditada."
     ),
     routers=ROUTERS,
+    al_arrancar=_al_arrancar,
     routers_sin_prefijo=ROUTERS_SIN_PREFIJO,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho

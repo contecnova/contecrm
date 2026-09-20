@@ -38,6 +38,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
     select,
     text,
@@ -46,7 +47,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin
+from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import CuotaAgotada, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -88,6 +89,33 @@ class Adjunto(EntidadBase, SoftDeleteMixin):
         PgUUID(as_uuid=True), nullable=False, default=nuevo_id
     )
     es_actual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Carpeta del expediente en la que está (CRM-06.01.01.05). Nulo = en la
+    # raíz del registro, que es donde cae todo mientras nadie organice nada —y
+    # así tiene que ser: obligar a elegir carpeta al subir haría que la gente
+    # dejara de adjuntar.
+    carpeta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+
+    # ── Documento que vive fuera (CRM-06.01.01.05) ────────────────────────
+    # Cuando el cliente guarda sus documentos en SharePoint, Drive o su gestor
+    # documental, aquí se guarda **la referencia y el contexto**, no los bytes.
+    #
+    # No hay conector por proveedor y no lo va a haber: `externo_sistema` es una
+    # etiqueta libre y `uri` un enlace. Escribir un conector de SharePoint sería
+    # mantener su API, sus permisos y su autenticación para que el CRM enseñe un
+    # enlace que el navegador del usuario ya sabe abrir — y el día que el cliente
+    # use otro gestor, otra vez.
+    #
+    # El precio, dicho: el CRM NO controla el acceso a ese documento. Quien
+    # tenga el enlace y permiso en el sistema de origen lo abre; quien no lo
+    # tenga, no. Es correcto —cada sistema manda en lo suyo— y hay que saberlo
+    # antes de guardar ahí un contrato.
+    # `server_default` además del `default` de Python: la columna llegó a una
+    # tabla que ya tenía filas, y un NOT NULL sin valor por defecto no se
+    # puede añadir en una base con datos.
+    externo_sistema: Mapped[str] = mapped_column(
+        String(60), nullable=False, default="", server_default=""
+    )
 
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     etiquetas: Mapped[list[Any]] = mapped_column(
@@ -173,6 +201,7 @@ def subir(
     etiquetas: list[str] | None = None,
     usuario_id: UUID | None = None,
     documento_id: UUID | None = None,
+    carpeta_id: UUID | None = None,
 ) -> Adjunto:
     """Sube un fichero y lo asocia a un registro.
 
@@ -189,6 +218,8 @@ def subir(
     from crmcore.runtime import settings as rt
 
     validar(nombre, datos, db)
+    if carpeta_id is not None:
+        _exigir_carpeta_del_objeto(db, carpeta_id, objeto_tipo, objeto_id)
     sha = hashlib.sha256(datos).hexdigest()
 
     uri: str | None = None
@@ -244,6 +275,7 @@ def subir(
         es_actual=True,
         descripcion=descripcion,
         etiquetas=etiquetas or [],
+        carpeta_id=carpeta_id,
         analisis="pendiente" if rt.efectivo("adjunto_analizador_url", db) else "omitido",
         created_by=usuario_id,
     )
@@ -432,3 +464,341 @@ def verificar_enlace(token: str) -> tuple[UUID, UUID | None]:
         raise Prohibido("El enlace ha caducado", error_code="adjunto.enlace_caducado")
 
     return UUID(adjunto), UUID(usuario) if usuario else None
+
+
+# ── Carpetas (CRM-06.01.01.05) ────────────────────────────────────────────
+
+
+class CarpetaDocumental(Base, TimestampMixin):
+    """Una carpeta dentro del expediente de un registro.
+
+    Cuelga de un objeto —una cuenta, un caso— y no del tenant: un árbol global
+    de carpetas obliga a inventar una convención de nombres para saber de quién
+    es cada cosa, y a los seis meses hay «ACME», «ACME 2024» y «Acme S.L.»
+    conviviendo. Con el árbol por registro, la pregunta «¿qué documentos tengo
+    de este cliente?» no depende de que alguien nombrara bien la carpeta.
+
+    Se guarda además la **ruta** completa: sin ella, enseñar el camino de un
+    documento exige subir por los padres consultando uno a uno, y un listado de
+    cincuenta documentos hace doscientas consultas para pintar una columna.
+    """
+
+    __tablename__ = "carpetas_documentales"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    objeto_tipo: Mapped[str] = mapped_column(String(60), nullable=False)
+    objeto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+
+    nombre: Mapped[str] = mapped_column(String(200), nullable=False)
+    padre_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Ruta legible, recalculada al mover. Es dato derivado y se dice: la verdad
+    # está en `padre_id`, y si las dos discrepan manda el padre.
+    ruta: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+
+    __table_args__ = (
+        Index("ix_carpetas_objeto", "tenant_id", "objeto_tipo", "objeto_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "objeto_tipo",
+            "objeto_id",
+            "padre_id",
+            "nombre",
+            name="uq_carpeta_hermana",
+        ),
+        # La restricción de arriba NO cubre las carpetas de raíz: en Postgres
+        # dos `NULL` nunca son iguales, así que `padre_id IS NULL` deja pasar
+        # dos raíces con el mismo nombre —y la ruta de las dos sería idéntica,
+        # que es justo lo que la ruta existe para evitar. Este índice parcial
+        # las cubre.
+        Index(
+            "uq_carpeta_raiz",
+            "tenant_id",
+            "objeto_tipo",
+            "objeto_id",
+            "nombre",
+            unique=True,
+            postgresql_where=text("padre_id IS NULL"),
+            sqlite_where=text("padre_id IS NULL"),
+        ),
+    )
+
+
+# Profundidad máxima del árbol. Ocho niveles son más de lo que nadie navega, y
+# el tope existe porque sin él una carpeta movida mal puede generar una ruta que
+# no cabe en la columna.
+MAX_PROFUNDIDAD_CARPETA = 8
+
+
+def crear_carpeta(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    objeto_tipo: str,
+    objeto_id: UUID,
+    nombre: str,
+    padre_id: UUID | None = None,
+) -> CarpetaDocumental:
+    """Crea una carpeta en el expediente de un registro."""
+    nombre = (nombre or "").strip()
+    if not nombre:
+        raise ErrorValidacion("La carpeta necesita un nombre", error_code="carpeta.sin_nombre")
+    if "/" in nombre:
+        # La barra parte la ruta y haría que una carpeta llamada «2026/Q1»
+        # pareciera dos. Se rechaza en vez de escaparla: escaparla produce rutas
+        # que se leen mal en cualquier sitio que las enseñe.
+        raise ErrorValidacion(
+            "El nombre de una carpeta no puede llevar «/»",
+            error_code="carpeta.nombre_con_barra",
+        )
+
+    padre = None
+    if padre_id is not None:
+        padre = db.get(CarpetaDocumental, padre_id)
+        if padre is None or padre.objeto_id != objeto_id:
+            raise NoEncontrado(
+                "La carpeta padre no existe en este registro",
+                error_code="carpeta.padre_no_existe",
+            )
+        if padre.ruta.count("/") + 1 >= MAX_PROFUNDIDAD_CARPETA:
+            raise ErrorValidacion(
+                f"No se pueden anidar más de {MAX_PROFUNDIDAD_CARPETA} niveles",
+                error_code="carpeta.demasiado_profunda",
+            )
+
+    _exigir_nombre_libre(
+        db,
+        tenant_id=tenant_id,
+        objeto_tipo=objeto_tipo,
+        objeto_id=objeto_id,
+        padre_id=padre_id,
+        nombre=nombre,
+    )
+
+    carpeta = CarpetaDocumental(
+        tenant_id=tenant_id,
+        objeto_tipo=objeto_tipo,
+        objeto_id=objeto_id,
+        nombre=nombre,
+        padre_id=padre_id,
+        ruta=f"{padre.ruta}/{nombre}" if padre else nombre,
+    )
+    db.add(carpeta)
+    db.flush()
+    return carpeta
+
+
+def mover_carpeta(
+    db: Session, carpeta_id: UUID, *, nuevo_padre_id: UUID | None
+) -> CarpetaDocumental:
+    """Cambia una carpeta de sitio y **recalcula las rutas de su rama**.
+
+    Sin recalcular, los documentos de dentro seguirían enseñando el camino
+    viejo: la carpeta estaría en un sitio y su contenido diría que está en otro.
+    """
+    from crmcore.datos.jerarquia import comprobar_ciclo
+
+    carpeta = db.get(CarpetaDocumental, carpeta_id)
+    if carpeta is None:
+        raise NoEncontrado("La carpeta no existe", error_code="carpeta.no_existe")
+
+    if nuevo_padre_id is not None:
+        padre = db.get(CarpetaDocumental, nuevo_padre_id)
+        if padre is None or padre.objeto_id != carpeta.objeto_id:
+            raise NoEncontrado(
+                "La carpeta destino no existe en este registro",
+                error_code="carpeta.padre_no_existe",
+            )
+
+        # Meter una carpeta dentro de su propia rama la desconecta del árbol:
+        # deja de verse desde la raíz y sus documentos se vuelven inalcanzables.
+        def _padre_de(cid: UUID) -> UUID | None:
+            fila = db.get(CarpetaDocumental, cid)
+            return fila.padre_id if fila is not None else None
+
+        comprobar_ciclo(_padre_de, hijo=carpeta_id, nuevo_padre=nuevo_padre_id)
+        carpeta.ruta = f"{padre.ruta}/{carpeta.nombre}"
+    else:
+        carpeta.ruta = carpeta.nombre
+    _exigir_nombre_libre(
+        db,
+        tenant_id=carpeta.tenant_id,
+        objeto_tipo=carpeta.objeto_tipo,
+        objeto_id=carpeta.objeto_id,
+        padre_id=nuevo_padre_id,
+        nombre=carpeta.nombre,
+        excepto=carpeta.id,
+    )
+    carpeta.padre_id = nuevo_padre_id
+    db.flush()
+    _recalcular_rutas(db, carpeta)
+    return carpeta
+
+
+def _recalcular_rutas(db: Session, carpeta: CarpetaDocumental) -> None:
+    for hija in db.execute(
+        select(CarpetaDocumental).where(CarpetaDocumental.padre_id == carpeta.id)
+    ).scalars():
+        hija.ruta = f"{carpeta.ruta}/{hija.nombre}"
+        db.flush()
+        _recalcular_rutas(db, hija)
+
+
+def arbol_carpetas(db: Session, *, objeto_tipo: str, objeto_id: UUID) -> list[dict[str, Any]]:
+    """Las carpetas del expediente, ordenadas por ruta.
+
+    Plano y no anidado: quien pinta un árbol lo anida en un bucle, y devolverlo
+    anidado obliga a recorrerlo entero para buscar una carpeta concreta.
+    """
+    filas = (
+        db.execute(
+            select(CarpetaDocumental)
+            .where(
+                CarpetaDocumental.objeto_tipo == objeto_tipo,
+                CarpetaDocumental.objeto_id == objeto_id,
+            )
+            .order_by(CarpetaDocumental.ruta)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "nombre": f.nombre,
+            "padre_id": str(f.padre_id) if f.padre_id else None,
+            "ruta": f.ruta,
+            "nivel": f.ruta.count("/"),
+        }
+        for f in filas
+    ]
+
+
+def borrar_carpeta(db: Session, carpeta_id: UUID, *, mover_a: UUID | None = None) -> int:
+    """Borra una carpeta. Su contenido **no se borra**: se mueve.
+
+    Borrar en cascada los documentos de una carpeta es la operación que más
+    veces se lamenta: quien borra una carpeta está ordenando, no destruyendo.
+    Lo de dentro sube a la raíz —o a donde se diga— y se cuenta cuántos se
+    movieron, para que quien lo hizo sepa qué acaba de pasar.
+    """
+    carpeta = db.get(CarpetaDocumental, carpeta_id)
+    if carpeta is None:
+        raise NoEncontrado("La carpeta no existe", error_code="carpeta.no_existe")
+
+    if mover_a is not None:
+        destino = db.get(CarpetaDocumental, mover_a)
+        if destino is None or destino.objeto_id != carpeta.objeto_id:
+            raise NoEncontrado(
+                "La carpeta destino no existe en este registro",
+                error_code="carpeta.padre_no_existe",
+            )
+        # Mandar el contenido a una carpeta de dentro de la que se está
+        # borrando lo tira con ella: al desaparecer el padre, la rama entera
+        # queda colgando de un identificador que ya no existe.
+        if destino.id == carpeta_id or destino.ruta.startswith(f"{carpeta.ruta}/"):
+            raise ErrorValidacion(
+                "No se puede mover el contenido a una carpeta de dentro de la que se borra",
+                error_code="carpeta.destino_dentro",
+            )
+
+    movidos = 0
+    for adjunto in db.execute(select(Adjunto).where(Adjunto.carpeta_id == carpeta_id)).scalars():
+        adjunto.carpeta_id = mover_a
+        movidos += 1
+    # Las hijas se mueven con `mover_carpeta` y no a mano: cambiar `padre_id`
+    # sin recalcular dejaba la ruta de toda la rama apuntando a una carpeta
+    # borrada, y la ruta es lo que se enseña.
+    hijas = list(
+        db.execute(
+            select(CarpetaDocumental).where(CarpetaDocumental.padre_id == carpeta_id)
+        ).scalars()
+    )
+    db.flush()
+    for hija in hijas:
+        hija.padre_id = None  # se saca de la rama antes de comprobar ciclos
+        db.flush()
+        mover_carpeta(db, hija.id, nuevo_padre_id=mover_a)
+    db.delete(carpeta)
+    db.flush()
+    return movidos
+
+
+def _exigir_nombre_libre(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    objeto_tipo: str,
+    objeto_id: UUID,
+    padre_id: UUID | None,
+    nombre: str,
+    excepto: UUID | None = None,
+) -> None:
+    """Dos hermanas con el mismo nombre tendrían la misma ruta.
+
+    El índice lo impide en base de datos, pero dejarlo solo ahí devuelve un
+    error de integridad en crudo: quien lo ve no sabe qué carpeta chocó.
+    """
+    consulta = select(CarpetaDocumental).where(
+        CarpetaDocumental.tenant_id == tenant_id,
+        CarpetaDocumental.objeto_tipo == objeto_tipo,
+        CarpetaDocumental.objeto_id == objeto_id,
+        CarpetaDocumental.nombre == nombre,
+    )
+    consulta = (
+        consulta.where(CarpetaDocumental.padre_id.is_(None))
+        if padre_id is None
+        else consulta.where(CarpetaDocumental.padre_id == padre_id)
+    )
+    if excepto is not None:
+        consulta = consulta.where(CarpetaDocumental.id != excepto)
+    if db.execute(consulta.limit(1)).scalar_one_or_none() is not None:
+        raise ErrorValidacion(
+            f"Ya hay una carpeta «{nombre}» en ese mismo sitio",
+            error_code="carpeta.nombre_repetido",
+        )
+
+
+def _exigir_carpeta_del_objeto(
+    db: Session, carpeta_id: UUID, objeto_tipo: str, objeto_id: UUID
+) -> CarpetaDocumental:
+    """La carpeta tiene que ser del expediente del propio registro.
+
+    Sin esta comprobación se podría archivar el contrato de una cuenta en el
+    expediente de otra pasando su identificador de carpeta, y el documento
+    desaparecería del sitio donde alguien lo va a buscar.
+    """
+    carpeta = db.get(CarpetaDocumental, carpeta_id)
+    if carpeta is None or carpeta.objeto_tipo != objeto_tipo or carpeta.objeto_id != objeto_id:
+        raise NoEncontrado(
+            "La carpeta no existe en este registro",
+            error_code="carpeta.no_existe",
+        )
+    return carpeta
+
+
+def mover_adjunto(db: Session, adjunto_id: UUID, *, carpeta_id: UUID | None) -> Adjunto:
+    """Archiva un adjunto en una carpeta, o lo devuelve a la raíz.
+
+    Mueve **todas las versiones del documento**: una carpeta es dónde está el
+    documento, no dónde está una de sus versiones, y dejar la v1 en un sitio y
+    la v2 en otro convierte el historial en dos documentos distintos.
+    """
+    fila = db.get(Adjunto, adjunto_id)
+    if fila is None or fila.deleted_at is not None:
+        raise NoEncontrado("Adjunto no encontrado", error_code="adjunto.no_existe")
+    if carpeta_id is not None:
+        _exigir_carpeta_del_objeto(db, carpeta_id, fila.objeto_tipo, fila.objeto_id)
+    for version in db.execute(
+        select(Adjunto).where(
+            Adjunto.tenant_id == fila.tenant_id, Adjunto.documento_id == fila.documento_id
+        )
+    ).scalars():
+        version.carpeta_id = carpeta_id
+    db.flush()
+    logger.info(
+        "adjunto.movido",
+        documento=str(fila.documento_id),
+        carpeta=str(carpeta_id) if carpeta_id else "",
+    )
+    return fila

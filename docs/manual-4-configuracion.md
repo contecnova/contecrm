@@ -94,6 +94,40 @@ En producción, las migraciones van en un paso **separado del arranque**
 (`APLICAR_MIGRACIONES=false`): si dos réplicas migran a la vez, la segunda se
 encuentra el esquema a medias.
 
+### Los servicios de la casa: contecintelligence y contecmind
+
+Dos capacidades no las implementa contecrm: la **explotación** (informes,
+cuadros de mando, exportaciones analíticas) la resuelve contecintelligence
+(RT-4) y el **corpus documental** (contratos, procedimientos, certificados, con
+versión y aprobación) lo resuelve contecmind (RT-5). Los dos se consumen de
+forma frontless y los dos se activan o no.
+
+```bash
+# Con explotación y corpus documental incluidos en la pila
+docker compose --profile app --profile intelligence --profile dms up -d
+```
+
+| Ajuste | Para qué |
+|---|---|
+| `DMS_ENABLED` | Activa el corpus documental. Desactivado, la pestaña no existe |
+| `DMS_BASE_URL` | Dirección del contecmind a usar. Vacío con el perfil `dms` = el de la pila |
+| `DMS_CLIENT_ID` / `DMS_CLIENT_SECRET` | Credencial de aplicación. **Solo** sirve para canjear el token de cada usuario |
+| `DMS_COMPROBAR_AL_ARRANCAR` | Comprueba el enlace al arrancar en vez de la primera vez que alguien abre la pestaña |
+| `DMS_EXIGIR_AL_ARRANCAR` | El servicio se **niega a arrancar** si no lo alcanza. Para producción |
+| `DMS_TIMEOUT_S` / `DMS_TOKEN_TTL_S` | Paciencia de cada llamada y vida del token de usuario |
+| `DMS_SCOPES` | Alcances que se piden al canjear el token |
+
+Dos cosas que conviene tener claras antes de activarlo:
+
+**Los adjuntos no dependen de esto.** Con `DMS_ENABLED=false` se sigue
+adjuntando a las fichas, con versiones, carpetas y enlaces firmados. Lo que no
+hay es corpus. Son dos capas distintas y a propósito.
+
+**Cada tenant necesita su organización en contecmind.** Se mapea con
+`PUT /api/v1/documentos/organizacion`, y **sin mapeo no se llama al gestor**:
+es lo que impide que un fallo de configuración enseñe los documentos de un
+cliente a otro.
+
 ### Sembrar datos: una parte por servicio
 
 Cualquier script que toque varios servicios hay que ejecutarlo **donde tenga

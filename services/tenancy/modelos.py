@@ -238,9 +238,14 @@ class Consumo(Base):
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
+from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
-from services.tenancy.baja import CertificadoDestruccion, Exportacion  # noqa: E402
+from services.tenancy.baja import (  # noqa: E402
+    CertificadoDestruccion,
+    Exportacion,
+    ReporteInventarioDocumental,
+)
 from services.tenancy.catalogos import (  # noqa: E402
     CalendarioLaboral,
     Festivo,
@@ -249,9 +254,12 @@ from services.tenancy.catalogos import (  # noqa: E402
 )
 
 __all__ = [
+    "DocumentoEnlazado",
+    "OrganizacionDocumental",
     "ClaveTenant",
     "CalendarioLaboral",
     "CertificadoDestruccion",
+    "ReporteInventarioDocumental",
     "Consumo",
     "BloqueoLegal",
     "EntradaPapelera",
