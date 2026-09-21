@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 238 hecho · ⬜ 393 pendiente
+**631 capacidades**: ✅ 239 hecho · ⬜ 392 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 124 · ⬜ 98
+222 capacidades · ✅ 125 · ⬜ 97
 
 ### 0.1 Multi-tenancy
 
@@ -201,7 +201,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.03.01` | Constructor de automatizaciones tipo cuando ocurre X, si Y, entonces Z | C | 0 | automation | ✅ | contecflow-PSA:app/models/automations.py + app/services/automations_service.py |
 | `CRM-00.03.03.02` | Disparadores: creación, modificación de campo, eliminación, evento entrante, webhook, programado, manual | C | 0 | automation | ✅ | contecflow-PSA:app/services/automations_service.py (disparadores) |
 | `CRM-00.03.03.03` | Acciones: crear/actualizar registro, notificar, llamar API externa, lanzar proceso, asignar, calcular | C | 0 | automation | ✅ | — |
-| `CRM-00.03.03.04` | Ramificaciones, bucles sobre colecciones y variables de flujo | A | 0 | automation | ⬜ | — |
+| `CRM-00.03.03.04` | Ramificaciones, bucles sobre colecciones y variables de flujo | A | 0 | automation | ✅ | — |
 | `CRM-00.03.03.05` | Ejecución inmediata vs. diferida vs. programada | C | 0 | automation | ✅ | — |
 | `CRM-00.03.03.06` | Gestión de orden de ejecución y prevención de bucles infinitos entre reglas | C | 0 | automation | ✅ | — |
 | `CRM-00.03.03.07` | Depurador con ejecución paso a paso y log de decisiones por registro | A | 0 | automation | ✅ | — |

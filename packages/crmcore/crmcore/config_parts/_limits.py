@@ -141,3 +141,18 @@ class _LimitsSettings(BaseSettings):
     # significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:
     # el producto no decide por el cliente qué procesos son válidos en su casa.
     transiciones_prohibidas: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
+
+    # ── Control de flujo en automatizaciones (CRM-00.03.03.04) ────────────
+    # Vueltas máximas de un `para_cada`. Una automatización que recorre una
+    # colección no puede colgar la petición que la disparó: guardar una
+    # oportunidad con seiscientas líneas dispararía seiscientas acciones y el
+    # usuario vería un formulario congelado sin saber por qué.
+    #
+    # Cuando se corta se DICE en la traza: una iteración que se queda a medias
+    # en silencio es peor que no tenerla, porque el resultado parcial parece
+    # completo.
+    automatizacion_max_vueltas: int = Field(200, ge=1, le=10_000)
+    # Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que
+    # alguien construye en una interfaz; más que eso es un proceso, y para eso
+    # está el motor de procesos, que sabe reanudar y compensar.
+    automatizacion_max_anidamiento: int = Field(3, ge=1, le=10)

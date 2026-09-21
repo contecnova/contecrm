@@ -3831,3 +3831,58 @@ menos caminos de los que tiene — y el que falta sería justo el que nadie revi
 Y el editor **valida y simula sin publicar** (`CRM-00.03.05.04`). Es el punto
 entero de la pantalla: un error descubierto aquí es un mensaje, y descubierto en
 ejecución es un proceso a medias en producción con su compensación pendiente.
+
+---
+
+## 44. Automatizaciones con ramas, bucles y variables (`CRM-00.03.03.04`)
+
+Una automatización deja de ser una lista de acciones en cuanto alguien necesita
+«si el importe pasa de X avisa, y si no asigna» o «por cada línea, comprueba
+stock». Eso ya se puede escribir, con tres piezas nuevas: `si`, `para_cada` y
+`fijar`.
+
+Van como **acciones de control** y no como acciones normales, porque el motor
+las interpreta en vez de delegarlas en un ejecutor. Confundirlas llevaría a
+buscar un «ejecutor de si» que no existe ni debe existir.
+
+### La misma gramática de condiciones para disparar y para ramificar
+
+La rama usa exactamente la misma que decide si la regla salta. Dos gramáticas en
+el mismo motor —una para cada cosa— es garantía de que se comportarán distinto
+ante el mismo dato, y nadie sabrá cuál mira qué.
+
+### Tres topes, y ninguno es decorativo
+
+**Las vueltas de un bucle** (`AUTOMATIZACION_MAX_VUELTAS`, 200 por defecto).
+Guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y
+el usuario vería un formulario congelado sin saber por qué. Y cuando se corta,
+**se dice en la traza**: una iteración cortada en silencio es peor que no
+tenerla, porque el resultado parcial parece completo — alguien ve
+«automatización disparada» y da por hecho que recorrió las seiscientas.
+
+**El anidamiento** (`AUTOMATIZACION_MAX_ANIDAMIENTO`, 3). Tres niveles cubren
+todo lo que alguien construye en una interfaz; más que eso es un proceso, y para
+eso está el motor de procesos, que sabe reanudar y compensar — cosas que una
+automatización no hace ni debe intentar.
+
+**La cascada entre reglas**, que ya estaba: una regla que dispara otra que
+dispara la primera.
+
+### Las variables no se escapan
+
+El ámbito arranca como una **copia** de los valores del registro. Escribir sobre
+el original haría que una regla contaminara a la siguiente, y el síntoma —«esta
+regla funciona sola pero no cuando corre después de aquella»— es de los caros de
+encontrar.
+
+Una acción puede guardar su salida con `guardar_en`, y así encadenar «crea el
+registro y luego notifica sobre él» sin volver a buscarlo. Los nombres que
+empiezan por `_` están reservados, y una variable no puede llamarse como un
+campo del registro: lo taparía para el resto de la regla, y el efecto no se ve
+leyendo la regla.
+
+Las variables que quedan al terminar van **a la traza**, recortadas: sin ellas
+«¿por qué entró por esta rama?» no se puede contestar, y contestarlo es la única
+razón de que este motor deje traza también de lo que **no** se disparó. Se
+recortan porque una variable puede acabar conteniendo la respuesta entera de una
+API, y la traza se consulta para entender una decisión, no para recuperar datos.
