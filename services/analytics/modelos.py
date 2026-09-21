@@ -84,9 +84,11 @@ class ConsultaAnalitica(Base):
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
+from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 __all__ = [
+    "VersionAjuste",
     "PoliticaAbac",
     "VersionPoliticaAbac",
     "ClaveTenant",

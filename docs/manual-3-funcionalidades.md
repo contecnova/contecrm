@@ -4407,3 +4407,97 @@ tratarla así convertiría un error de tecleo en una lista vacía. Y la lista se
 valida **al guardarla**, porque descubrir una red mal escrita en la primera
 llamada deja la integración caída y a nadie mirando, ya que quien la configuró se
 fue.
+
+---
+
+## 53. Cuatro cosas de plataforma que se notan cuando ya es tarde
+
+### Recibir eventos sin exponer un endpoint (`CRM-00.02.02.10`)
+
+Los webhooks exigen una dirección pública y estable. Eso deja fuera a media
+integración real: un navegador, una aplicación móvil, un servicio dentro de una
+red cerrada, un cuaderno de análisis. Todos pueden **llamar** al CRM y ninguno
+puede recibir una llamada.
+
+Se resuelve con **SSE** y no con WebSocket, por algo práctico: el flujo va en un
+solo sentido —el CRM cuenta lo que pasa— y SSE es HTTP normal, así que atraviesa
+proxies corporativos, se reconecta solo y se depura con `curl`. Un WebSocket para
+empujar en un sentido es un protocolo más que mantener y una cosa más que un
+proxy puede romper.
+
+Dos detalles que evitan los fallos de siempre. **Se reanuda** desde el último
+identificador recibido: sin eso, cada corte de red —que en un móvil es cada
+túnel— pierde los eventos de ese hueco y el cliente no sabe cuántos ni cuáles. Y
+**hay latido**, porque un flujo sin datos durante minutos lo cierra cualquier
+intermediario por inactividad y el cliente cree que el servidor se ha caído
+cuando lo que pasa es que no pasa nada.
+
+Y lo que **no** es: la garantía de entrega. Eso son el bus y su tabla de salida.
+Esto es un puente para que una reconexión corta no pierda nada, con cola acotada
+— y cuando lo pedido ya se ha caído de la cola, **se avisa del hueco** en vez de
+saltar a lo nuevo. Un cliente que cree haberlo recibido todo y no lo ha recibido
+toma decisiones sobre datos incompletos.
+
+### Cachear con invalidación por evento (`CRM-00.02.04.05`)
+
+Cachear es fácil; invalidar es el problema. Con caducidad por tiempo, la
+respuesta vieja se sirve durante todo el plazo que le quede y el usuario que
+acaba de cambiar algo **ve su propio cambio desaparecer** — la queja más difícil
+de reproducir que existe, porque a los cinco minutos ya no pasa.
+
+La invalidación va por **evento**, apoyada en las generaciones que la caché ya
+tenía: la clave lleva dentro la generación de cada evento que la invalida, y
+cuando ese evento pasa se sube el contador. Todas las claves viejas dejan de
+encontrarse de golpe, sin recorrer nada y con cualquier backend. Es la diferencia
+con llevar un índice de claves, que hay que mantener, puede desincronizarse y
+recorrerlo en la ruta caliente de un evento es justo lo que no se puede hacer.
+
+La caducidad se queda como red de seguridad de lo que nadie invalidó. Y se puede
+preguntar **qué políticas solo caducan**: una caché que se creyó invalidada por
+evento y solo caduca es la que sirve datos viejos sin que nadie entienda por qué.
+
+### La consulta que se está degradando (`CRM-00.06.01.07`)
+
+Una consulta que tarda 20 ms con mil filas y 4 segundos con un millón no falla
+nunca: va empeorando. Nadie abre una incidencia por eso — se abre por «el CRM va
+lento», meses después, cuando ya hay veinte consultas candidatas y ninguna
+evidencia de cuál empezó.
+
+Lo que se mide no es el tiempo medio, que sube despacio y no dice nada, sino el
+**tiempo contra el volumen**. Una consulta sana tarda parecido con mil filas y
+con cien mil porque usa índice; una que no lo usa tarda proporcionalmente más.
+Esa proporción se ve mucho antes de que el tiempo absoluto moleste.
+
+Se agrupa por **forma** y no por texto —dos consultas iguales con parámetros
+distintos son la misma— y las listas de `IN` se colapsan, porque si no la misma
+consulta con 3 y con 300 identificadores serían dos formas y la que se repite
+quedaría repartida entre cientos de filas del informe.
+
+El informe ordena por **tiempo total** y no por media: una consulta de 2 ms que
+corre cien mil veces cuesta más que una de 900 ms que corre dos, y es la que hay
+que arreglar primero. El informe por media señala siempre la segunda.
+
+### Versionar la configuración (`CRM-00.01.04.02`)
+
+Los ajustes en caliente son lo más fácil de cambiar del sistema y lo más difícil
+de deshacer: alguien toca un umbral un viernes, el lunes algo va mal, y no hay
+forma de saber qué valía antes. El propio mecanismo que los hace cómodos —se
+aplican al instante, sin despliegue— es el que borra la evidencia.
+
+Ahora cada cambio guarda **el valor anterior y el nuevo**, y se anota desde
+`fijar` y no desde quien llame: un histórico que depende de que alguien se
+acuerde de anotar tiene huecos justo donde importa. Si anotar falla, **no se
+propaga**: perder el apunte es malo y perder el cambio que alguien estaba
+haciendo es peor.
+
+Se guarda el anterior y no solo el nuevo porque con el nuevo deshacer exige
+reconstruir el histórico hacia atrás; con el anterior delante, volver es copiar
+un valor. El diff se colapsa por clave —«qué cambió el viernes» es la pregunta
+real— y **no saca lo que acabó igual que empezó**: quien subió un umbral y lo
+bajó esa misma tarde no cambió nada, y sacarlo manda a investigar un cambio que
+no existe.
+
+Y volver atrás es **un cambio más**, registrado como tal, que se aplica por el
+camino normal para que se replique a todos los servicios. Escribir la tabla
+directamente dejaría al resto del sistema con el valor deshecho hasta el
+siguiente reinicio, que es el fallo que la réplica por evento vino a cerrar.

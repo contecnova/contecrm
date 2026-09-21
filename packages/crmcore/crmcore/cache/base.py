@@ -28,6 +28,9 @@ ESPACIOS = {
     "plantilla": "Plantillas renderizadas",
     "tipo_cambio": "Tipos de cambio vigentes",
     "sesion": "Datos de sesión no sensibles",
+    # Respuestas cacheadas de la API, invalidadas por evento y no solo por
+    # caducidad (CRM-00.02.04.05).
+    "respuesta": "Respuestas de la API cacheadas con invalidación por evento",
     "prueba": "Solo para la suite de pruebas",
 }
 

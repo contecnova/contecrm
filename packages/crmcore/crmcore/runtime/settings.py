@@ -227,6 +227,12 @@ def fijar(
         )
     )
 
+    # Y la versión, con el valor ANTERIOR delante (CRM-00.01.04.02). Va aquí y
+    # no en quien llame, para que no haya forma de cambiar un ajuste sin dejar
+    # rastro: un histórico que depende de que alguien se acuerde de anotar es un
+    # histórico con huecos justo donde importa.
+    _anotar_version(db, clave, ambito, ambito_id, anterior, convertido, por)
+
     # Auditar el cambio de configuración es obligatorio (CRM-00.05.04.03): la
     # mitad de los incidentes de «esto antes funcionaba» son un ajuste que
     # alguien cambió y nadie recuerda.
@@ -474,3 +480,46 @@ def valores_efectivos(db: Session) -> dict[str, Any]:
 def _ambitos_sin_usar() -> tuple[str, ...]:  # pragma: no cover
     """Mantiene vivo el import de ORDEN_AMBITOS para las anotaciones."""
     return ORDEN_AMBITOS
+
+
+def _anotar_version(
+    db: Session,
+    clave: str,
+    ambito: str,
+    ambito_id: str,
+    anterior: Any,
+    nuevo: Any,
+    por: UUID | None,
+) -> None:
+    """Guarda el antes y el después del ajuste (CRM-00.01.04.02).
+
+    Si falla, NO se propaga: perder el apunte del histórico es malo y perder el
+    cambio de configuración que alguien estaba haciendo es peor. Se registra el
+    fallo, que es lo que permite darse cuenta de que el histórico tiene un
+    hueco en vez de descubrirlo cuando hace falta.
+    """
+    from crmcore.tenancy.context import contexto_actual
+
+    tenant_id = contexto_actual().tenant_id
+    if ambito == "tenant" and ambito_id:
+        try:
+            tenant_id = UUID(str(ambito_id))
+        except ValueError:
+            pass
+    if tenant_id is None:
+        return
+    try:
+        from crmcore.runtime.versiones import anotar
+
+        anotar(
+            db,
+            tenant_id=tenant_id,
+            clave=clave,
+            ambito=ambito,
+            ambito_id=ambito_id,
+            valor_anterior=anterior,
+            valor_nuevo=nuevo,
+            por=por,
+        )
+    except Exception as exc:  # noqa: BLE001 — el histórico no puede tumbar el cambio
+        logger.error("ajuste.version_no_anotada", clave=clave, error=str(exc)[:200])

@@ -178,6 +178,7 @@ def _importar_todos_los_modelos() -> None:
         "services.tenancy.grc",
         "services.identity.sod",
         "services.metadata.gobierno",
+        "crmcore.runtime.versiones",
         "services.tenancy.modelos",
         "services.identity.modelos",
         "services.orchestrator.modelos",

@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**646 capacidades**: ✅ 262 hecho · ⬜ 384 pendiente
+**646 capacidades**: ✅ 266 hecho · ⬜ 380 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 148 · ⬜ 74
+222 capacidades · ✅ 152 · ⬜ 70
 
 ### 0.1 Multi-tenancy
 
@@ -64,7 +64,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.01.04.01` | Capa de configuración jerárquica: global → tier → tenant → BU → usuario | C | 0 | tenancy | ✅ | contecmind:app/services/runtime_settings*.py (7 módulos, 986 ajustes) + contecpos:packages/common/src/ajustes.ts |
-| `CRM-00.01.04.02` | Versionado de la configuración con diff y rollback | A | 0 | tenancy | ⬜ | contecflow-PSA:app/services/settings_audit_service.py |
+| `CRM-00.01.04.02` | Versionado de la configuración con diff y rollback | A | 0 | tenancy | ✅ | contecflow-PSA:app/services/settings_audit_service.py |
 | `CRM-00.01.04.03` | Modelo de datos extensible por tenant sin afectar a los demás | C | 0 | metadata | ✅ | contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py |
 | `CRM-00.01.04.04` | Feature flags por tenant, por usuario y por porcentaje de tráfico | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py |
 | `CRM-00.01.04.05` | Catálogo de planes/entitlements que activa capacidades declarativamente | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes |
@@ -130,7 +130,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.02.07` | Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry | A | 0 | eventing | ✅ | — |
 | `CRM-00.02.02.08` | Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad) | A | 0 | core | ✅ | — |
 | `CRM-00.02.02.09` | Replay de eventos históricos desde un punto en el tiempo | A | 0 | eventing | ✅ | — |
-| `CRM-00.02.02.10` | Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint | A | 0 | gateway | ⬜ | contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py |
+| `CRM-00.02.02.10` | Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint | A | 0 | gateway | ✅ | contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py |
 
 #### CRM-00.02.03 · Desacoplamiento de la presentación
 
@@ -155,7 +155,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.04.02` | Resolución de tenant por subdominio, cabecera, claim del token o clave de API | C | 0 | gateway | ✅ | contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py) |
 | `CRM-00.02.04.03` | mTLS para integraciones máquina-a-máquina críticas | A | 0 | gateway | ⬜ | — |
 | `CRM-00.02.04.04` | IP allowlisting por tenant y por credencial | A | 0 | gateway | ✅ | contecweb:app/services/security_rules.py |
-| `CRM-00.02.04.05` | Cacheo configurable con invalidación por evento y aislamiento por tenant | A | 0 | gateway | ⬜ | contecmind:app/core/cache_registry.py |
+| `CRM-00.02.04.05` | Cacheo configurable con invalidación por evento y aislamiento por tenant | A | 0 | gateway | ✅ | contecmind:app/core/cache_registry.py |
 | `CRM-00.02.04.06` | Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas | A | 1 | gateway | ⬜ | contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py |
 | `CRM-00.02.04.07` | Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable | C | 0 | core | ✅ | contecmind:app/core/middleware.py (X-Request-Id) + tracing.py |
 
@@ -349,7 +349,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ⬜ | contecmind:ops/prometheus/governance_alerts.yml |
 | `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ✅ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
 | `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | ✅ | contecmind:app/services/health_monitor.py + app/api/admin_health.py |
-| `CRM-00.06.01.07` | Auditoría de rendimiento por consulta y detección de queries degradadas por tenant | A | 0 | core | ⬜ | contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md |
+| `CRM-00.06.01.07` | Auditoría de rendimiento por consulta y detección de queries degradadas por tenant | A | 0 | core | ✅ | contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md |
 
 #### CRM-00.06.02 · Continuidad y resiliencia
 

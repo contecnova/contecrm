@@ -162,7 +162,7 @@ modulos:
             nombre: Configuración y metadatos por tenant
             capacidades:
               - {id: CRM-00.01.04.01, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/runtime_settings*.py (7 módulos, 986 ajustes) + contecpos:packages/common/src/ajustes.ts", t: "Capa de configuración jerárquica: global → tier → tenant → BU → usuario"}
-              - {id: CRM-00.01.04.02, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Versionado de la configuración con diff y rollback"}
+              - {id: CRM-00.01.04.02, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Versionado de la configuración con diff y rollback"}
               - {id: CRM-00.01.04.03, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py", t: "Modelo de datos extensible por tenant sin afectar a los demás"}
               - {id: CRM-00.01.04.04, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py", t: "Feature flags por tenant, por usuario y por porcentaje de tráfico"}
               - {id: CRM-00.01.04.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes", t: "Catálogo de planes/entitlements que activa capacidades declarativamente"}
@@ -226,7 +226,7 @@ modulos:
               - {id: CRM-00.02.02.07, c: A, fase: 0, svc: eventing, estado: hecho, t: "Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry"}
               - {id: CRM-00.02.02.08, c: A, fase: 0, svc: core, estado: hecho, t: "Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad)"}
               - {id: CRM-00.02.02.09, c: A, fase: 0, svc: eventing, estado: hecho, t: "Replay de eventos históricos desde un punto en el tiempo"}
-              - {id: CRM-00.02.02.10, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py", t: "Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint"}
+              - {id: CRM-00.02.02.10, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py", t: "Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint"}
 
           - id: CRM-00.02.03
             nombre: Desacoplamiento de la presentación
@@ -249,7 +249,7 @@ modulos:
               - {id: CRM-00.02.04.02, c: C, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py)", t: "Resolución de tenant por subdominio, cabecera, claim del token o clave de API"}
               - {id: CRM-00.02.04.03, c: A, fase: 0, svc: gateway, estado: pendiente, t: "mTLS para integraciones máquina-a-máquina críticas"}
               - {id: CRM-00.02.04.04, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecweb:app/services/security_rules.py", t: "IP allowlisting por tenant y por credencial"}
-              - {id: CRM-00.02.04.05, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecmind:app/core/cache_registry.py", t: "Cacheo configurable con invalidación por evento y aislamiento por tenant"}
+              - {id: CRM-00.02.04.05, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:app/core/cache_registry.py", t: "Cacheo configurable con invalidación por evento y aislamiento por tenant"}
               - {id: CRM-00.02.04.06, c: A, fase: 1, svc: gateway, estado: pendiente, reutiliza: "contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py", t: "Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas"}
               - {id: CRM-00.02.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/middleware.py (X-Request-Id) + tracing.py", t: "Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable"}
 
@@ -439,7 +439,7 @@ modulos:
               - {id: CRM-00.06.01.04, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:ops/prometheus/governance_alerts.yml", t: "SLO y error budget definidos por servicio y por tier de cliente"}
               - {id: CRM-00.06.01.05, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:ops/alertmanager + app/services/alert_dispatch.py", t: "Alertado accionable con runbooks enlazados"}
               - {id: CRM-00.06.01.06, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/health_monitor.py + app/api/admin_health.py", t: "Panel de salud visible por el propio tenant (status page privada)"}
-              - {id: CRM-00.06.01.07, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Auditoría de rendimiento por consulta y detección de queries degradadas por tenant"}
+              - {id: CRM-00.06.01.07, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Auditoría de rendimiento por consulta y detección de queries degradadas por tenant"}
 
           - id: CRM-00.06.02
             nombre: Continuidad y resiliencia
