@@ -412,9 +412,9 @@ modulos:
               - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
               - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: pendiente, t: "Tokenización de datos de pago o identificadores fiscales"}
               - {id: CRM-00.05.03.05, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/pii.py", t: "Anonimización y pseudonimización para entornos no productivos"}
-              - {id: CRM-00.05.03.06, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/security_signals.py", t: "DLP: control de exportaciones masivas, alertas y bloqueo por política"}
+              - {id: CRM-00.05.03.06, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecweb:app/services/security_signals.py", t: "DLP: control de exportaciones masivas, alertas y bloqueo por política"}
               - {id: CRM-00.05.03.07, c: D, fase: 1, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/_pdf_marca.py (marca de agua)", t: "Marca de agua e identificación de origen en exportaciones"}
-              - {id: CRM-00.05.03.08, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/security_signals.py + contecflow-PSA:app/services/security_observability.py", t: "Detección de comportamiento anómalo (descargas masivas, accesos fuera de patrón)"}
+              - {id: CRM-00.05.03.08, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecweb:app/services/security_signals.py + contecflow-PSA:app/services/security_observability.py", t: "Detección de comportamiento anómalo (descargas masivas, accesos fuera de patrón)"}
 
           - id: CRM-00.05.04
             nombre: Auditoría y trazabilidad

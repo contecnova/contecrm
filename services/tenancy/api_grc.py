@@ -286,3 +286,26 @@ def _control(fila: Any) -> dict[str, Any]:
 
 
 ROUTERS_GRC = [router_grc]
+
+
+@router_grc.get(
+    "/anomalias",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Exportaciones que se han salido del patrón",
+    description=(
+        "Lo que ha disparado el control de fuga de datos: quién, cuándo, cuánto "
+        "y por qué (CRM-00.05.03.08).\n\n"
+        "Sale del audit trail y no de una tabla de alertas aparte. Una tabla "
+        "aparte es un segundo registro de lo mismo que puede discrepar del "
+        "primero, y el primero es el que tiene la cadena de hashes."
+    ),
+)
+def anomalias(
+    db: DbDep,
+    principal: AutenticadoDep,
+    dias: int = Query(7, ge=1, le=365, description="Ventana que se mira"),
+) -> Any:
+    from crmcore.seguridad.dlp import anomalias as leer_anomalias
+
+    return leer_anomalias(db, principal.tenant_id, dias=dias)

@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 242 hecho · ⬜ 389 pendiente
+**631 capacidades**: ✅ 244 hecho · ⬜ 387 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 128 · ⬜ 94
+222 capacidades · ✅ 130 · ⬜ 92
 
 ### 0.1 Multi-tenancy
 
@@ -322,9 +322,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | ✅ | contecmind:app/services/pii.py + sensitive_policy.py |
 | `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ⬜ | — |
 | `CRM-00.05.03.05` | Anonimización y pseudonimización para entornos no productivos | A | 0 | core | ⬜ | contecmind:app/services/pii.py |
-| `CRM-00.05.03.06` | DLP: control de exportaciones masivas, alertas y bloqueo por política | A | 0 | core | ⬜ | contecweb:app/services/security_signals.py |
+| `CRM-00.05.03.06` | DLP: control de exportaciones masivas, alertas y bloqueo por política | A | 0 | core | ✅ | contecweb:app/services/security_signals.py |
 | `CRM-00.05.03.07` | Marca de agua e identificación de origen en exportaciones | D | 1 | core | ⬜ | contecflow-PSA:app/services/_pdf_marca.py (marca de agua) |
-| `CRM-00.05.03.08` | Detección de comportamiento anómalo (descargas masivas, accesos fuera de patrón) | A | 0 | core | ⬜ | contecweb:app/services/security_signals.py + contecflow-PSA:app/services/security_observability.py |
+| `CRM-00.05.03.08` | Detección de comportamiento anómalo (descargas masivas, accesos fuera de patrón) | A | 0 | core | ✅ | contecweb:app/services/security_signals.py + contecflow-PSA:app/services/security_observability.py |
 
 #### CRM-00.05.04 · Auditoría y trazabilidad
 

@@ -138,3 +138,38 @@ class _AbacSettings(BaseSettings):
     # Un motor lento no puede convertir cada ficha en una espera, y como no
     # contestar significa «decide tú», agotar el plazo es seguro.
     abac_motor_externo_timeout_s: float = Field(2.0, ge=0.1, le=30.0)
+
+
+class _DlpSettings(BaseSettings):
+    """Control de fuga de datos (CRM-00.05.03.06, CRM-00.05.03.08).
+
+    Todo configurable y nada a fuego, porque los números correctos no existen en
+    abstracto: cincuenta registros son una exportación normal en un tenant con
+    doscientos clientes y un incidente en uno con veinte mil. Por eso el aviso
+    se decide **midiendo contra el patrón de cada uno**, y los topes duros son
+    solo la red de seguridad de arriba.
+    """
+
+    dlp_enabled: bool = True
+    # Tope duro por exportación. Alto a propósito: no es el mecanismo principal
+    # —ese es la comparación con el patrón— sino el que impide que alguien se
+    # lleve la base entera de una sola vez.
+    dlp_max_registros_export: int = Field(50_000, ge=100, le=10_000_000)
+    # Exportaciones por hora y usuario. Quien de verdad se está llevando datos
+    # trocea para no disparar el tope por volumen.
+    dlp_max_exports_hora: int = Field(20, ge=1, le=1_000)
+    # Si se BLOQUEA o solo se avisa. Apagado de serie, y no por descuido:
+    # bloquear una migración legítima cuesta tanto como dejar pasar una fuga, y
+    # esa decisión es del cliente. Lo que no es opcional es que quede registrado.
+    dlp_bloquear: bool = False
+    # Días de historial con los que se calcula lo normal de cada usuario. Dos
+    # semanas cubren el ciclo de trabajo de casi cualquiera sin arrastrar el
+    # cierre de trimestre, que distorsionaría el patrón durante meses.
+    dlp_dias_patron: int = Field(14, ge=1, le=365)
+    # Cuántas veces su propia media tiene que superar alguien para que se avise.
+    # Tres es holgado a propósito: un umbral ajustado convierte el aviso en ruido
+    # y el ruido en «esto siempre salta», que es peor que no tener aviso.
+    dlp_factor_anomalia: float = Field(3.0, ge=1.5, le=100.0)
+    # Exportaciones mínimas en el historial para fiarse del patrón. Con dos
+    # datos, cualquier tercero parece una anomalía.
+    dlp_minimo_para_patron: int = Field(5, ge=2, le=1_000)

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**172 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**179 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -222,3 +222,10 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `ABAC_MOTOR_EXTERNO_ENABLED` | — | `False` |  |  |
 | `ABAC_MOTOR_EXTERNO_URL` | — | *(vacío)* |  |  |
 | `ABAC_MOTOR_EXTERNO_TIMEOUT_S` | — | `2.0` | 0.1–30.0 | Corto a propósito: esto se consulta en la ruta caliente de cada decisión. Un motor lento no puede convertir cada ficha en una espera, y como no contestar significa «decide tú», agotar el plazo es seguro. |
+| `DLP_ENABLED` | — | `True` |  |  |
+| `DLP_MAX_REGISTROS_EXPORT` | — | `50000` | 100–10000000 | Tope duro por exportación. Alto a propósito: no es el mecanismo principal —ese es la comparación con el patrón— sino el que impide que alguien se lleve la base entera de una sola vez. |
+| `DLP_MAX_EXPORTS_HORA` | — | `20` | 1–1000 | Exportaciones por hora y usuario. Quien de verdad se está llevando datos trocea para no disparar el tope por volumen. |
+| `DLP_BLOQUEAR` | — | `False` |  | Si se BLOQUEA o solo se avisa. Apagado de serie, y no por descuido: bloquear una migración legítima cuesta tanto como dejar pasar una fuga, y esa decisión es del cliente. Lo que no es opcional es que quede registrado. |
+| `DLP_DIAS_PATRON` | — | `14` | 1–365 | Días de historial con los que se calcula lo normal de cada usuario. Dos semanas cubren el ciclo de trabajo de casi cualquiera sin arrastrar el cierre de trimestre, que distorsionaría el patrón durante meses. |
+| `DLP_FACTOR_ANOMALIA` | — | `3.0` | 1.5–100.0 | Cuántas veces su propia media tiene que superar alguien para que se avise. Tres es holgado a propósito: un umbral ajustado convierte el aviso en ruido y el ruido en «esto siempre salta», que es peor que no tener aviso. |
+| `DLP_MINIMO_PARA_PATRON` | — | `5` | 2–1000 | Exportaciones mínimas en el historial para fiarse del patrón. Con dos datos, cualquier tercero parece una anomalía. |

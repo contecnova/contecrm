@@ -6,7 +6,7 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 222 | 128 | 0 | 94 |
+| 0 — Plataforma y arquitectura transversal | 222 | 130 | 0 | 92 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 31 | 0 | 23 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
@@ -21,14 +21,14 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 240 | 175 |
-| A — Avanzado | 348 | 65 |
+| A — Avanzado | 348 | 67 |
 | D — Diferencial | 43 | 2 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 179 | 126 |
+| 0 · Cimientos | Módulo 0 completo | 179 | 128 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 128 | 108 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 131 | 8 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 50 | 0 |

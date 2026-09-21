@@ -257,6 +257,29 @@ def exportar(
     """
     from crmcore.almacen import get_almacen
 
+    # Antes de volcar nada: esto es la salida de datos más grande que hay en el
+    # sistema, y comprobarla después serviría para el informe forense y no para
+    # impedir nada (CRM-00.05.03.06). Se cuenta primero cuánto se va a sacar,
+    # porque el veredicto se decide sobre el volumen y no sobre la intención.
+    from crmcore.seguridad.dlp import comprobar_exportacion
+
+    a_exportar = sum(
+        int(
+            db.execute(
+                select(func.count()).select_from(modelo).where(modelo.tenant_id == tenant_id)
+            ).scalar_one()
+            or 0
+        )
+        for modelo in tablas.values()
+    )
+    comprobar_exportacion(
+        db,
+        tenant_id=tenant_id,
+        usuario_id=por,
+        registros=a_exportar,
+        objeto="tenant",
+    )
+
     exportacion = Exportacion(
         tenant_id=tenant_id, motivo=motivo, solicitada_por=por, estado="preparando"
     )

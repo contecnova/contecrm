@@ -313,7 +313,10 @@ desarrolla: están descritos uno a uno en [Gates locales](QUALITY_GATES.md).
 
 **Ahora mismo, nada.** Todo lo que consta como hecho cumple su enunciado, tiene
 prueba que lo cita y está explicado aquí; lo que no está hecho consta como
-pendiente y no aparece en este manual.
+pendiente y no aparece.
+
+Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
+medias, y tenerla vacía es una afirmación, no una omisión.
 
 Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
 medias, y tenerla vacía es una afirmación, no una omisión. La alternativa —no
@@ -4011,3 +4014,62 @@ Ahora dos ausencias comparadas con `=` dan falso, en Python y en SQL, que es lo
 que mantiene coherentes la ficha y el listado. Y cuando el atributo del usuario
 viene vacío, la condición se traduce a «ninguno» y se registra: en una
 restricción, ante la duda, no se enseña.
+
+---
+
+## 47. Quien se lleva los datos casi nunca entra por la puerta (`CRM-00.05.03.06`, `CRM-00.05.03.08`)
+
+El robo de datos de un CRM casi nunca es una intrusión: es alguien de dentro,
+con permiso para leer, que se lleva más de lo que le toca. **Los permisos no lo
+ven** —está haciendo exactamente lo que puede hacer— así que hace falta mirar
+cuánto y cuándo, no solo qué.
+
+### El umbral se mide contra el patrón de cada uno
+
+Cincuenta registros son una exportación normal en un tenant con doscientos
+clientes y un incidente en uno con veinte mil; y dentro del mismo tenant, lo
+normal de quien lleva la migración no es lo normal de un comercial. Un número
+fijo produce o ruido o silencio, y las dos cosas acaban igual: «esto siempre
+salta», y alguien lo apaga.
+
+Así que se compara con **la media de esa persona**, calculada sobre su propio
+historial de las últimas dos semanas. Y no se avisa cuando no hay historial
+suficiente: con dos datos, cualquier tercero parece una anomalía, y un sistema
+que avisa de todo el mundo el primer día se desactiva la primera semana.
+
+Encima de eso hay dos topes duros, que son la red de arriba: registros por
+exportación —para que nadie se lleve la base entera de una vez aunque lleve
+meses acostumbrando al sistema— y **exportaciones por hora**, porque quien de
+verdad se está llevando datos trocea para no disparar el tope por volumen.
+
+### Bloquear es opcional; registrar, no
+
+Bloquear una migración legítima cuesta tanto como dejar pasar una fuga, y esa
+decisión es del cliente: `DLP_BLOQUEAR` viene apagado. Lo que no es opcional es
+que **quede registrado**, incluso lo bloqueado — una exportación sin rastro es
+la que no se puede investigar después.
+
+Y una distinción que importa: superar un tope duro puede bloquear, pero
+**salirse del patrón solo avisa**, aunque el bloqueo esté activo. Salirse de lo
+habitual no es ilegítimo —el día del cierre todo el mundo exporta más— y cortarlo
+pararía trabajo real.
+
+### Se apuntan también las permitidas
+
+Y sobre todo esas: el patrón de mañana se calcula con lo de hoy, así que apuntar
+solo lo sospechoso haría que la media fuera la media de lo sospechoso.
+
+Todo va al **audit trail**, que ya existe y ya es inalterable. No hay tabla nueva
+de alertas a propósito: sería un segundo registro de lo mismo que podría
+discrepar del primero, y el primero es el que tiene la cadena de hashes.
+
+### Dónde está puesto hoy, y dónde no
+
+Está en la **exportación de tenant**, que es la salida de datos más grande del
+sistema, y se comprueba **antes** de volcar nada: comprobarlo después serviría
+para el informe forense y no para impedir nada.
+
+Lo que **no** cubre todavía, dicho: alguien paginando un listado doscientos
+registros cada vez, mil veces. El tope por hora no lo ve porque un listado no es
+una exportación. Cerrar eso exige contar registros servidos por usuario en la
+capa de paginación, y está anotado como pendiente en vez de dado por hecho.
