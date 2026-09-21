@@ -7,6 +7,7 @@ import { Cobertura } from "@/paginas/Cobertura";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Estado } from "@/paginas/Estado";
+import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
 import { Modulo } from "@/paginas/Modulo";
 import { Recorrido } from "@/paginas/Recorrido";
@@ -65,6 +66,7 @@ export function App() {
         <Route path="/" element={<Inicio sesion={sesion} />} />
         <Route path="/administracion" element={<Consola sesion={sesion} />} />
         <Route path="/m/:ruta" element={<Modulo sesion={sesion} />} />
+        <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
         <Route path="/estado" element={<Estado />} />
         <Route path="/cobertura" element={<Cobertura />} />
         <Route path="/recorrido" element={<Recorrido />} />

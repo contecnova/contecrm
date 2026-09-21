@@ -189,9 +189,12 @@ def test_cada_seccion_declarada_hecha_tiene_pantalla_en_el_codigo() -> None:
         if c["id"].startswith("CRM-07.04.03.") and c.get("cubre") and c["estado"] == "hecho"
     }
 
-    # Pantallas a medida: la consola se construye de la superficie y el estado
-    # lo agrega el gateway, así que no salen de `modulos.ts`.
-    A_MEDIDA = {"7.1", "0.6", "8.2"}
+    # Pantallas a medida, que no salen de `modulos.ts` y por qué: la consola se
+    # construye de la superficie, el estado lo agrega el gateway, y la
+    # colaboración —adjuntos, comentarios y documentos— vive en la ficha de
+    # cualquier registro, a la que se llega desde todos los listados en vez de
+    # tener entrada propia en el menú.
+    A_MEDIDA = {"7.1", "0.6", "8.2", "6.2"}
 
     modulos = (FRONT / "lib" / "modulos.ts").read_text("utf-8")
     con_pantalla = set(re.findall(r'seccion:\s*"([^"]+)"', modulos)) | A_MEDIDA

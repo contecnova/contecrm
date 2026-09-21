@@ -73,6 +73,35 @@ export interface Respuesta<T> {
   retenidos: string[];
 }
 
+/**
+ * Sube un fichero. Va aparte porque el cuerpo no es JSON.
+ *
+ * Se manda `FormData` **sin** fijar `Content-Type`: el navegador tiene que
+ * ponerlo él con el separador del multipart, y fijarlo a mano produce un cuerpo
+ * que el servidor no sabe partir — un fallo que se lee como «fichero corrupto»
+ * y no como «cabecera mal puesta».
+ */
+export async function subir<T = unknown>(
+  ruta: string,
+  fichero: File,
+  campos: Record<string, string> = {},
+): Promise<T> {
+  const cuerpo = new FormData();
+  cuerpo.append("fichero", fichero);
+  for (const [clave, valor] of Object.entries(campos)) cuerpo.append(clave, valor);
+
+  const respuesta = await fetch(`${config().apiBase}${ruta}`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Idempotency-Key": crypto.randomUUID() },
+    body: cuerpo,
+    credentials: "include",
+  });
+  const texto = await respuesta.text();
+  const datos = texto ? seguroJson(texto) : null;
+  if (!respuesta.ok) throw problema(respuesta.status, datos);
+  return datos as T;
+}
+
 export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {}): Promise<Respuesta<T>> {
   const metodo = (opciones.metodo ?? "GET").toUpperCase();
   const cabeceras: Record<string, string> = { Accept: "application/json" };

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 231 hecho · ⬜ 400 pendiente
+**631 capacidades**: ✅ 232 hecho · ⬜ 399 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -934,7 +934,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 64 · ⬜ 27
+91 capacidades · ✅ 65 · ⬜ 26
 
 ### 7.1 Administración funcional
 
@@ -1054,7 +1054,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ✅ | — |
 | `CRM-07.04.03.23` | Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista | A | 5 | front | ⬜ | — |
 | `CRM-07.04.03.24` | Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo | A | 1 | front | ⬜ | — |
-| `CRM-07.04.03.25` | Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5) | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.25` | Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5) | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.26` | Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.27` | ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás | A | 2 | front | ⬜ | — |
 | `CRM-07.04.03.28` | Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD | A | 1 | front | ✅ | — |

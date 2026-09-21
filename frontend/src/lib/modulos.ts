@@ -37,6 +37,11 @@ export interface Recurso {
   columnas?: string[];
   /** Permiso que hace falta para verlo. Lo declara el servicio; aquí se lee. */
   permiso?: string;
+  /**
+   * Tipo de objeto para lo que cuelga del registro: adjuntos, comentarios y
+   * documentos. Sin él no hay ficha, porque esas rutas lo llevan dentro.
+   */
+  objeto?: string;
 }
 
 export const MODULOS: Modulo[] = [
@@ -146,6 +151,7 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Cuentas",
+        objeto: "cuenta",
         listar: "/api/v1/accounts",
         crear: "/api/v1/accounts",
         servicio: "party",
@@ -154,6 +160,7 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Contactos",
+        objeto: "contacto",
         listar: "/api/v1/contacts",
         crear: "/api/v1/contacts",
         servicio: "party",
@@ -178,6 +185,7 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Actividades",
+        objeto: "actividad",
         listar: "/api/v1/activities",
         crear: "/api/v1/activities",
         servicio: "party",
@@ -197,6 +205,7 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Oportunidades",
+        objeto: "oportunidad",
         listar: "/api/v1/opportunities",
         crear: "/api/v1/opportunities",
         servicio: "sales",
@@ -216,6 +225,7 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Leads",
+        objeto: "lead",
         listar: "/api/v1/leads",
         crear: "/api/v1/leads",
         servicio: "sales",

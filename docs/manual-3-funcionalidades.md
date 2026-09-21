@@ -3609,7 +3609,19 @@ gobierno con riesgos, controles, segregación, retención, bloqueos legales y
 clases de dato (`CRM-07.04.03.28`), la previsión con el resumen del pipeline y
 las oportunidades estancadas (`CRM-07.04.03.14`) y la explotación delegada en
 contecintelligence (`CRM-07.04.03.22`), donde se enseña el estado del enlace y
-lo consultado — los informes se abren allí, con la identidad del usuario (RT-4).
+lo consultado — los informes se abren allí, con la identidad del usuario (RT-4)—
+y la colaboración sobre la ficha (`CRM-07.04.03.25`).
+
+**La ficha de un registro sirve para cualquier objeto.** Adjuntos, comentarios y
+documentos del corpus son transversales: los mismos para una cuenta, un contacto
+o una oportunidad. Están en una sola ficha y no repetidos en cada módulo, que es
+como se acaba con tres implementaciones del panel de adjuntos, dos de ellas sin
+el aviso de fichero infectado. El tipo de objeto va en la ruta porque es el
+servicio dueño del registro quien guarda lo que cuelga de él.
+
+Los listados enlazan a la ficha **solo cuando la hay**: un enlace que lleva a una
+pantalla vacía es peor que no tener enlace, porque el usuario cree que se ha
+roto algo.
 
 **Una sola pantalla para todos, no treinta escritas a mano.** No es pereza:
 treinta pantallas son treinta sitios donde el mismo fallo se arregla una vez y

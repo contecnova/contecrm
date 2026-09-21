@@ -63,12 +63,20 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           ))}
         </nav>
       ) : null}
-      {recurso ? <RecursoVista recurso={recurso} sesion={sesion} /> : <Vacio />}
+      {recurso ? <RecursoVista recurso={recurso} sesion={sesion} ruta={ruta} /> : <Vacio />}
     </>
   );
 }
 
-function RecursoVista({ recurso, sesion }: { recurso: Recurso; sesion: Sesion | null }) {
+function RecursoVista({
+  recurso,
+  sesion,
+  ruta,
+}: {
+  recurso: Recurso;
+  sesion: Sesion | null;
+  ruta: string;
+}) {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
@@ -165,7 +173,22 @@ function RecursoVista({ recurso, sesion }: { recurso: Recurso; sesion: Sesion | 
         <Vacio />
       ) : (
         <>
-          <Tabla filas={filas} columnas={ordenar(filas, recurso.columnas)} titulo={recurso.nombre} />
+          <Tabla
+            filas={filas}
+            columnas={ordenar(filas, recurso.columnas)}
+            titulo={recurso.nombre}
+            // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una
+            // pantalla vacía es peor que no tener enlace, porque el usuario
+            // cree que se ha roto algo.
+            enlace={
+              recurso.objeto
+                ? (fila) =>
+                    typeof fila.id === "string"
+                      ? `/m/${ruta}/${recurso.objeto}/${fila.id}`
+                      : null
+                : undefined
+            }
+          />
           <Retenidos campos={retenidos} />
           {siguiente ? (
             <button

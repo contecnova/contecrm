@@ -23,6 +23,19 @@ export default {
     sso: "Entrar con el proveedor de mi organización",
     error: "No se ha podido iniciar sesión",
   },
+  ficha: {
+    secciones: "Secciones de la ficha",
+    datos: "Datos",
+    adjuntos: "Adjuntos",
+    comentarios: "Comentarios",
+    documentos: "Documentos",
+    subir: "Subir un fichero",
+    subiendo: "Subiendo…",
+    escribir: "Escribir un comentario",
+    enviar: "Enviar",
+    documentosIntro:
+      "Estos documentos viven en el gestor documental. Aquí está el enlace y para qué está enlazado; el estado real —versión, aprobación, obsolescencia— es de allí.",
+  },
   modulo: {
     nuevo: "Nuevo",
     cancelar: "Cancelar",

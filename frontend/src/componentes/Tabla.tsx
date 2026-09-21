@@ -17,14 +17,18 @@
  * una que se desplaza, sí, y el usuario decide qué mira.
  */
 
+import { Link } from "react-router-dom";
+
 export interface Props {
   filas: Record<string, unknown>[];
   /** Columnas en orden. Si no se pasan, salen de las filas. */
   columnas?: string[];
   titulo?: string;
+  /** Si se pasa, la primera celda de cada fila enlaza a su ficha. */
+  enlace?: (fila: Record<string, unknown>) => string | null;
 }
 
-export function Tabla({ filas, columnas, titulo }: Props) {
+export function Tabla({ filas, columnas, titulo, enlace }: Props) {
   const cabeceras = columnas ?? columnasDe(filas);
   return (
     <div className="overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
@@ -42,11 +46,20 @@ export function Tabla({ filas, columnas, titulo }: Props) {
         <tbody>
           {filas.map((fila, i) => (
             <tr key={clave(fila, i)} className="border-b border-ink-dim/30 last:border-0">
-              {cabeceras.map((c) => (
-                <td key={c} className="px-3 py-2 align-top text-ink">
-                  {celda(fila[c])}
-                </td>
-              ))}
+              {cabeceras.map((c, columna) => {
+                const destino = columna === 0 && enlace ? enlace(fila) : null;
+                return (
+                  <td key={c} className="px-3 py-2 align-top text-ink">
+                    {destino ? (
+                      <Link to={destino} className="text-accent hover:underline">
+                        {celda(fila[c])}
+                      </Link>
+                    ) : (
+                      celda(fila[c])
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
