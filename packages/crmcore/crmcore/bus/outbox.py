@@ -147,7 +147,7 @@ class Relevo:
                 .all()
             )
 
-            for fila in filas:
+            for fila in self._en_orden(filas, s):
                 if await self._publicar_una(db, fila, s):
                     publicados += 1
             db.commit()
@@ -157,6 +157,37 @@ class Relevo:
         finally:
             db.close()
         return publicados
+
+    def _en_orden(self, filas: list[EventoSaliente], s: Any) -> list[EventoSaliente]:
+        """Un solo evento por agregado en cada vuelta (CRM-00.02.02.08).
+
+        El lote viene ordenado por fecha, pero eso **no** garantiza el orden por
+        registro. Si el primer evento de una cuenta falla y se reintenta con
+        espera, el segundo saldría antes en la vuelta siguiente: quien lo
+        consuma vería «cuenta actualizada» antes que «cuenta creada» y, si su
+        manejador es idempotente por identificador, se quedaría con el estado
+        viejo para siempre.
+
+        Con un evento por agregado y vuelta, el segundo no sale hasta que el
+        primero se publica o se aparta a la cola de fallidos. El coste es que un
+        registro muy activo avanza a un evento por vuelta; se acepta porque el
+        desorden no se nota hasta que alguien investiga por qué un dato está mal,
+        y entonces ya no se puede reconstruir.
+
+        Se puede apagar (`OUTBOX_ORDEN_POR_AGREGADO=false`) para quien prefiera
+        el rendimiento y tenga consumidores que no dependen del orden.
+        """
+        if not getattr(s, "outbox_orden_por_agregado", True):
+            return list(filas)
+        vistos: set[tuple[str, str]] = set()
+        salida: list[EventoSaliente] = []
+        for fila in filas:
+            clave = (fila.subject_tipo, fila.subject_id)
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            salida.append(fila)
+        return salida
 
     async def _publicar_una(self, db: Session, fila: EventoSaliente, s: Any) -> bool:
         from crmcore.events.envelope import Evento

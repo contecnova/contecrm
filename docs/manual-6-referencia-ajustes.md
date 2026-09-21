@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**179 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**180 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -83,6 +83,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `WEBHOOK_BACKOFF_BASE_S` | — | `5.0` | 0.5–600.0 |  |
 | `WEBHOOK_FIRMA_VENTANA_S` | — | `300` | 30–3600 | Ventana en la que se acepta la firma de una petición entrante, para que un mensaje capturado no se pueda reenviar más tarde (anti-replay). |
 | `WEBHOOK_MAX_PAYLOAD_KB` | — | `256` | 1–10240 | Tamaño máximo del cuerpo que se entrega. Un payload gigante es casi siempre un error de diseño y además revienta al receptor. |
+| `OUTBOX_ORDEN_POR_AGREGADO` | — | `True` |  | Un solo evento por agregado en cada vuelta del relevo. Sin esto, un evento que falla y se reintenta con espera deja salir antes al siguiente del mismo registro: quien lo consuma vería «actualizada» antes que «creada». El coste es que un registro muy activo avanza a un evento por vuelta. Se paga… |
 
 ## Identidad: tokens, sesiones, MFA
 

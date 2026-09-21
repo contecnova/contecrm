@@ -4191,3 +4191,128 @@ Tres decisiones dentro de eso:
 Y un detalle del comodín que parece menor: `cuenta.*` casa con `cuenta.creada` y
 **no** con `cuenta_borrador.creada`. El punto es parte del prefijo a propósito;
 sin él, una extensión escucharía objetos que no son el suyo.
+
+---
+
+## 50. Que un tenant saturado no se lleve a los demás por delante
+
+Las cuotas dicen **cuánto** puede consumir cada cliente al mes. Esto es otra
+cosa: qué pasa **ahora mismo** cuando uno satura un recurso compartido y los
+demás esperan detrás. Las cuotas no lo ven, porque nadie ha superado la suya —
+simplemente están todos pidiendo a la vez.
+
+Tres mecanismos, y los tres responden a la misma idea: **fallar rápido y
+parcialmente es mejor que esperar y caer entero**.
+
+### Mamparos, por tenant y no globales (`CRM-00.01.06.03`)
+
+Cada tenant tiene un número máximo de operaciones simultáneas sobre un recurso.
+**Por tenant** es la decisión que importa: un tope global protege el sistema y
+no protege a los clientes entre sí, que es el problema de verdad en
+multi-tenant. Con tope global, el que lanza doscientas importaciones ocupa el
+cupo y los demás esperan detrás sin haber hecho nada — y lo que ven es un error
+de conexión, que no dice nada y manda a buscar el fallo a la base de datos.
+
+El cupo **se libera aunque la operación falle**. Si no, un error deja el cupo
+ocupado para siempre y el tenant no puede trabajar hasta que alguien reinicie el
+proceso.
+
+### Cortacircuitos
+
+Un recurso que falla repetidamente deja de intentarse durante un rato.
+Reintentar contra algo caído no lo arregla y sí consume el hilo que lo intenta:
+es como la caída de un servicio se convierte en una caída total.
+
+Dos detalles que deciden si funciona: **un éxito borra el historial**, porque lo
+que importa son los fallos *seguidos* —contar acumulados abriría el circuito de
+un recurso que va bien simplemente porque lleva meses funcionando—; y al
+cerrarse el circuito **queda a un fallo de reabrirse**, no a cero. Si sigue roto,
+el primer intento vuelve a abrirlo en vez de tener que fallar el umbral entero
+otra vez, que serían N veces el mismo *timeout* para todos los que pasen.
+
+### Degradación por prioridad (`CRM-00.01.06.04`)
+
+Bajo presión se difiere lo que puede esperar en vez de rechazarlo todo por
+igual. Rechazar una escritura de cliente y un recálculo de previsión con el
+mismo criterio es tratar como iguales dos cosas que no lo son: una la está
+haciendo alguien delante de la pantalla y la otra puede esperar diez minutos sin
+que nadie lo note.
+
+Lo crítico —escrituras de usuario, autenticación— **no cae nunca**. Lo diferible
+cae primero. Y la presión la declara quien la mide —el gateway con su latencia,
+el worker con su cola— en vez de calcularse en un sitio central que tendría que
+adivinar la saturación de todos.
+
+### Modo solo lectura (`CRM-00.06.02.07`)
+
+Convierte una avería de la base primaria en «no se puede guardar» en vez de en
+«el CRM no funciona». La diferencia importa: con lectura, el comercial que está
+delante de un cliente sigue viendo su ficha.
+
+El mensaje **dice el motivo**, y eso no es cortesía: sin él, el usuario cree que
+su cambio tenía algo malo y lo reintenta cambiándolo, que es como se pierde
+trabajo durante una incidencia.
+
+---
+
+## 51. Tres cosas más que se notan poco y se echan de menos mucho
+
+### Varias operaciones en una llamada (`CRM-00.02.01.13`)
+
+Crear una cuenta, añadirle un contacto y abrirle una oportunidad son tres
+llamadas y tres viajes de red. Desde un móvil con mala cobertura, tres ocasiones
+de quedarse a medias — y quedarse a medias aquí es una cuenta sin contacto que
+alguien limpiará a mano.
+
+**Todo o nada, en una transacción**: si la tercera falla, las dos primeras se
+deshacen. Sin esa garantía, agrupar solo ahorra latencia y añade una forma nueva
+de dejar datos a medias. Y **las operaciones se refieren entre sí** con `$1.id`,
+porque la segunda necesita el identificador que generó la primera y sin eso
+agrupar no sirve para el caso que motiva agrupar.
+
+Solo hacia atrás: referirse a una operación posterior o a sí misma se rechaza
+**antes** de correr nada, porque descubrirlo a mitad deja la transacción abortada
+y al cliente con un error que no dice cuál de sus operaciones estaba mal. Y una
+referencia a un campo que no vino se deja visible en vez de sustituirse por
+vacío: poner vacío crearía la fila incompleta y nadie lo notaría hasta semanas
+después.
+
+No es un lenguaje: no hay condiciones ni bucles. Una secuencia que necesita
+decidir es un proceso, y para eso está el motor que sabe reanudar y compensar.
+
+### Los eventos de un mismo registro, en orden (`CRM-00.02.02.08`)
+
+El relevo publicaba por fecha, y eso **no** garantiza el orden por registro: si
+el primer evento de una cuenta falla y se reintenta con espera, el segundo sale
+antes. Quien lo consuma ve «cuenta actualizada» antes que «cuenta creada» y, si
+su manejador es idempotente por identificador, se queda con el estado viejo para
+siempre.
+
+Ahora sale **un evento por agregado y vuelta**: el segundo no sale hasta que el
+primero se publica o se aparta a la cola de fallidos. El coste es que un registro
+muy activo avanza a un evento por vuelta, y se acepta porque el desorden no se
+nota hasta que alguien investiga por qué un dato está mal — y entonces ya no se
+puede reconstruir. Se puede apagar para quien prefiera el rendimiento y tenga
+consumidores que no dependan del orden.
+
+### Acceso por IP, dispositivo y horario (`CRM-00.05.01.09`)
+
+El ABAC decide por atributos del usuario y del registro; esto añade los del
+**momento**, que son los que cambian entre una sesión legítima y la misma
+credencial usada por otro.
+
+Se comprueba **en cada petición y no al entrar**: comprobarlo solo en el login
+deja la sesión abierta cuando las condiciones dejan de cumplirse, y el caso que
+se quiere cubrir es exactamente ese.
+
+Y una señal que no llega **no bloquea**. Una IP ausente porque hay un proxy mal
+configurado delante dejaría fuera a toda la plantilla, y eso es una caída con
+otro nombre: se registra y la regla que dependía de ella no aplica. Lo que sí
+bloquea es una **red mal escrita**, porque tratarla como comodín convertiría un
+error de tecleo en una lista de permitidos vacía.
+
+La franja horaria admite cruzar medianoche —de 22 a 6— porque el turno de noche
+existe y escribirlo al revés es el error más común al configurar esto. Y una
+lista vacía significa «no se comprueba», no «ninguno»: lo contrario es la forma
+más rápida de dejar fuera a todo el mundo el día que alguien crea la regla sin
+rellenarla.

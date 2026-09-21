@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**641 capacidades**: ✅ 250 hecho · ⬜ 391 pendiente
+**646 capacidades**: ✅ 256 hecho · ⬜ 390 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 136 · ⬜ 86
+222 capacidades · ✅ 142 · ⬜ 80
 
 ### 0.1 Multi-tenancy
 
@@ -89,8 +89,8 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.01.06.01` | Rate limiting por tenant, por API key, por usuario y por endpoint | C | 0 | gateway | ✅ | contecmind:app/core/rate_limit.py (508 líneas, por tenant/usuario/endpoint) |
 | `CRM-00.01.06.02` | Cuotas de almacenamiento, registros, llamadas API, correos, workflows y tokens de IA | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py (cuotas) + metering.py |
-| `CRM-00.01.06.03` | Aislamiento de carga: bulkheads, circuit breakers y colas de prioridad por tier | A | 0 | core | ⬜ | contecmind:app/core/circuit_breaker.py |
-| `CRM-00.01.06.04` | Backpressure y degradación elegante bajo saturación (diferir lo no crítico) | A | 0 | core | ⬜ | contecmind:app/core/degradation.py |
+| `CRM-00.01.06.03` | Aislamiento de carga: bulkheads, circuit breakers y colas de prioridad por tier | A | 0 | core | ✅ | contecmind:app/core/circuit_breaker.py |
+| `CRM-00.01.06.04` | Backpressure y degradación elegante bajo saturación (diferir lo no crítico) | A | 0 | core | ✅ | contecmind:app/core/degradation.py |
 | `CRM-00.01.06.05` | Detección de tenants anómalos y throttling adaptativo automático | A | 0 | gateway | ⬜ | — |
 | `CRM-00.01.06.06` | Panel de consumo por tenant con alertas de aproximación al límite | C | 0 | tenancy | ✅ | contecmind:app/services/metering.py + app/api/admin_observability.py |
 | `CRM-00.01.06.07` | Medición para facturación (metering) exportable a sistema de billing | A | 0 | tenancy | ✅ | contecmind:app/services/metering.py |
@@ -113,7 +113,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.01.10` | Paginación por cursor estable, filtrado, ordenación y proyección de campos | C | 0 | core | ✅ | contecflow-PSA:app/services/pagination_service.py |
 | `CRM-00.02.01.11` | Operaciones masivas: bulk create/update/upsert/delete con informe de resultados parciales | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.12` | API asíncrona para cargas largas: job ID, polling y callback | C | 0 | core | ✅ | — |
-| `CRM-00.02.01.13` | Batch/composite requests (varias operaciones en una llamada, transaccionales o no) | A | 0 | core | ⬜ | — |
+| `CRM-00.02.01.13` | Batch/composite requests (varias operaciones en una llamada, transaccionales o no) | A | 0 | core | ✅ | — |
 | `CRM-00.02.01.14` | Errores normalizados (RFC 9457 Problem Details) con código estable y correlación | C | 0 | core | ✅ | contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py |
 | `CRM-00.02.01.15` | Sandbox de API con datos sintéticos y consola interactiva | A | 0 | gateway | ⬜ | — |
 
@@ -128,7 +128,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.02.05` | Streaming de eventos (Kafka / Pub-Sub / Kinesis) con topic por tenant o partición | A | 0 | core | ✅ | contecpos:packages/common/src/bus.ts (NATS JetStream, subjects por tenant) |
 | `CRM-00.02.02.06` | Change Data Capture del modelo de datos hacia el data lake del cliente | A | 5 | eventing | ⬜ | — |
 | `CRM-00.02.02.07` | Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry | A | 0 | eventing | ✅ | — |
-| `CRM-00.02.02.08` | Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad) | A | 0 | core | ⬜ | — |
+| `CRM-00.02.02.08` | Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad) | A | 0 | core | ✅ | — |
 | `CRM-00.02.02.09` | Replay de eventos históricos desde un punto en el tiempo | A | 0 | eventing | ✅ | — |
 | `CRM-00.02.02.10` | Long-polling / SSE / WebSocket para clientes que no pueden exponer endpoint | A | 0 | gateway | ⬜ | contecweb:app/services/ws_manager.py + contecflow-PSA:app/services/ws_manager.py |
 
@@ -288,7 +288,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.06` | MFA obligatoria configurable por rol, con TOTP, push, WebAuthn/passkeys | C | 0 | identity | ✅ | contecweb:app/services/mfa.py + contecmind:app/services/{mfa,webauthn}.py |
 | `CRM-00.05.01.07` | Credenciales máquina: client credentials, service accounts, claves con scope y caducidad | C | 0 | identity | ✅ | contecflow-PSA:app/models/oauth_apps.py |
 | `CRM-00.05.01.08` | Gestión de sesiones: duración, sesiones concurrentes, revocación remota | C | 0 | identity | ✅ | contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py |
-| `CRM-00.05.01.09` | Políticas de acceso contextual: IP, dispositivo, geolocalización, horario | A | 0 | identity | ⬜ | contecweb:app/services/security_rules.py |
+| `CRM-00.05.01.09` | Políticas de acceso contextual: IP, dispositivo, geolocalización, horario | A | 0 | identity | ✅ | contecweb:app/services/security_rules.py |
 | `CRM-00.05.01.10` | Identidad de clientes externos (portal) separada de la de empleados (CIAM) | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py |
 
 #### CRM-00.05.02 · Autorización
@@ -361,7 +361,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.02.04` | Papelera de reciclaje con retención y restauración en cascada de relaciones | C | 1 | core | ✅ | — |
 | `CRM-00.06.02.05` | Alta disponibilidad multi-AZ y plan de recuperación multi-región | A | 0 | infra | ⬜ | — |
 | `CRM-00.06.02.06` | Pruebas de DR periódicas documentadas | A | 0 | ops | ⬜ | contecmind:scripts/test_restore_integrity.sh |
-| `CRM-00.06.02.07` | Modo degradado: lectura disponible aunque la escritura esté afectada | A | 0 | core | ⬜ | contecmind:app/core/degradation.py (270 líneas) |
+| `CRM-00.06.02.07` | Modo degradado: lectura disponible aunque la escritura esté afectada | A | 0 | core | ✅ | contecmind:app/core/degradation.py (270 líneas) |
 | `CRM-00.06.02.08` | Despliegues sin downtime: blue/green, canary, rollback automático | A | 0 | infra | ⬜ | — |
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
@@ -902,7 +902,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-24 capacidades · ✅ 3 · ⬜ 21
+29 capacidades · ✅ 3 · ⬜ 26
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -931,6 +931,11 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.02.08` | Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido | A | 2 | core | ⬜ | — |
 | `CRM-06.01.02.09` | Firma presencial en tableta y firma biométrica con captura de trazo | D | 3 | core | ⬜ | — |
 | `CRM-06.01.02.10` | Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.11` | Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook | C | 2 | integration | ⬜ | contecflow-PSA:app/services/esign_providers.py |
+| `CRM-06.01.02.12` | Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.02.13` | Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.02.14` | Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.02.15` | Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado | A | 2 | integration | ⬜ | — |
 
 ### 6.2 Colaboración y movilidad
 

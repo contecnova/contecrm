@@ -68,3 +68,13 @@ class _BusSettings(BaseSettings):
     # Tamaño máximo del cuerpo que se entrega. Un payload gigante es casi
     # siempre un error de diseño y además revienta al receptor.
     webhook_max_payload_kb: int = Field(256, ge=1, le=10_240)
+
+    # ── Orden de los eventos (CRM-00.02.02.08) ────────────────────────────
+    # Un solo evento por agregado en cada vuelta del relevo. Sin esto, un evento
+    # que falla y se reintenta con espera deja salir antes al siguiente del
+    # mismo registro: quien lo consuma vería «actualizada» antes que «creada».
+    #
+    # El coste es que un registro muy activo avanza a un evento por vuelta. Se
+    # paga porque el desorden no se nota hasta que alguien investiga por qué un
+    # dato está mal, y entonces ya no se puede reconstruir.
+    outbox_orden_por_agregado: bool = True
