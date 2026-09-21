@@ -346,7 +346,7 @@ modulos:
               - {id: CRM-00.04.01.01, c: C, fase: 0, svc: metadata, estado: hecho, t: "Objetos personalizados por tenant con ciclo de vida completo (CRUD, API, permisos, auditoría)"}
               - {id: CRM-00.04.01.02, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py", t: "Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado"}
               - {id: CRM-00.04.01.03, c: C, fase: 0, svc: metadata, estado: hecho, t: "Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada"}
-              - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Campos calculados y rollups agregados sobre hijos"}
+              - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: hecho, t: "Campos calculados y rollups agregados sobre hijos"}
               - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
               - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: hecho, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
               - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "Máquinas de estado configurables por objeto"}

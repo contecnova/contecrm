@@ -3886,3 +3886,71 @@ Las variables que quedan al terminar van **a la traza**, recortadas: sin ellas
 razón de que este motor deje traza también de lo que **no** se disparó. Se
 recortan porque una variable puede acabar conteniendo la respuesta entera de una
 API, y la traza se consulta para entender una decisión, no para recuperar datos.
+
+---
+
+## 45. Campos calculados y agregados sobre hijos (`CRM-00.04.01.04`)
+
+Dos cosas distintas que suelen contarse juntas: una **fórmula** mira el propio
+registro —«importe por 1,21», «días desde el alta»— y un **rollup** mira los que
+cuelgan de él —«total de las líneas», «número de contactos activos»—.
+
+### La fórmula la escribe quien configura, no quien programa
+
+Eso decide todo lo demás: la fórmula es **entrada del tenant**, y evaluarla con
+`eval()` sería ejecutar código del cliente dentro del proceso del servidor, con
+acceso a todo lo que el proceso ve. Así que hay gramática cerrada y analizador
+propio, y lo que no está en la gramática no se puede escribir.
+
+Lo que queda cerrado y por qué: atributos e índices, porque con `.__class__` se
+llega al intérprete; funciones anónimas, por lo mismo; y la potencia `**`,
+porque `9**9**9` cuelga el proceso sin necesidad de llegar a ningún sitio y no
+hay ninguna fórmula de negocio que la necesite. Hay además un tope de partes:
+mil nodos es alguien pegando algo generado, y evaluarlo en cada fila de un
+listado convierte una lista en una espera.
+
+La gramática es pequeña a propósito. Cubre lo que se pide de verdad —sumar,
+concatenar, redondear, decidir entre dos valores, días entre fechas— y no
+intenta ser un lenguaje. Una fórmula que necesita bucles no es un campo
+calculado: es una automatización, y ahí sí hay motor con topes y traza (§44).
+
+Tres decisiones sobre qué pasa cuando algo falta o falla:
+
+- **Un campo vacío da vacío, no cero.** Tratarlo como cero haría que «media de
+  descuento» contara los registros sin descuento, que es otra respuesta y nadie
+  la ha pedido.
+- **Un campo que no existe no rompe la fórmula.** Los campos opcionales están
+  vacíos la mayor parte del tiempo.
+- **Una fórmula rota devuelve vacío y se registra; no lanza.** Propagar el error
+  convertiría una fórmula mal escrita en una ficha que no se puede abrir.
+
+Y se valida **al guardar el campo**, no al leer el primer registro: descubrirla
+rota al leer es una ficha inaccesible con la persona que la escribió ya lejos.
+
+### El rollup se calcula en SQL y no se guarda
+
+**En SQL**: traer las líneas para sumarlas en el proceso son N filas por cada
+registro de un listado —veinte cuentas con cincuenta contactos cada una son mil
+filas para pintar una columna—. Y **de golpe** para todos los padres de la
+página: pedirlos uno a uno es el patrón N+1 con otro nombre, y con esto un
+listado de doscientas cuentas con tres rollups son tres consultas.
+
+**No se guarda**, y es deliberado: guardarlo obliga a recalcular cada vez que
+cambia un hijo, y el día que falle un recálculo el padre queda con un número
+viejo que parece bueno. Un total que miente es peor que uno que cuesta una
+consulta.
+
+El vacío **no es siempre cero**. `suma` y `cuenta` valen 0 —«ninguna línea» suma
+cero— pero `maximo`, `minimo` y `media` valen vacío, porque el máximo de un
+conjunto vacío no existe. Devolver cero ahí haría que un listado ordenado por
+«última actividad» pusiera arriba justo a quien no tiene ninguna.
+
+La función de agregación sale de una **lista cerrada**: dejar pasar el nombre de
+una función de SQL desde la configuración del tenant es ejecutar SQL arbitrario
+con otro nombre. Y el filtro lo construye el **servicio dueño** con sus propios
+modelos, porque el único que sabe qué significa «activo» para un contacto es
+quien tiene ese modelo delante.
+
+Por último, una columna real **manda sobre** un rollup del mismo nombre. Al
+revés, un campo de configuración podría tapar un dato del registro y el síntoma
+sería una ficha que enseña un número que no está en la base.
