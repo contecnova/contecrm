@@ -3749,3 +3749,52 @@ probadas y documentadas que quien mira el producto concluye que no están. Se
 calcula **en vivo**, porque un informe de cobertura guardado se queda viejo en
 cuanto alguien añade una ruta — y un informe viejo es peor que ninguno, porque
 se decide sobre él.
+
+---
+
+## 43. El proceso antes de publicarlo: validar, guardar a medias y retirar
+
+El motor de procesos ya ejecutaba, compensaba y reanudaba. Lo que faltaba es lo
+que pasa **antes** de que una definición llegue a producción, y es donde estos
+motores se rompen siempre: alguien cambia el diagrama un martes y doscientas
+instancias a medias pasan a ejecutar pasos que no existían cuando empezaron.
+
+### Dos formas de que un proceso se atasque, y solo se detectaba una
+
+La validación ya avisaba de pasos inalcanzables: un paso que se dejó de enlazar
+al reorganizar el flujo. Eso es código muerto, molesto pero inofensivo.
+
+Lo que **no** se detectaba es lo contrario, que es lo caro: pasos desde los que
+no se llega a ningún final (`CRM-00.03.05.03`). Una instancia que entra ahí **no
+sale**: se queda en curso para siempre, consumiendo su temporizador, sin fallar y
+sin que nadie sepa por qué. Cubre los dos casos que se escriben solos al
+reorganizar un flujo — un bucle sin rama de salida, y una rama que se quedó sin
+enlazar a ningún `fin`.
+
+Se comprueba recorriendo con los **mismos enlaces** que usa la detección de
+alcanzables, a propósito: si aparecieran tipos de enlace nuevos y solo se
+añadieran a un lado, un bucle sin salida dejaría de detectarse justo cuando más
+falta hace.
+
+### Borrador, publicada, archivada (`CRM-00.03.05.05`)
+
+Una definición se puede guardar como **borrador**: se valida y se puede simular,
+pero nadie la puede instanciar. Sirve para dejar un proceso a medias entre
+sesiones de trabajo sin arriesgarse a que un disparador lo arranque a mitad de
+escribirlo.
+
+El borrador **también se valida**, y es deliberado: descubrir que la definición
+está rota el día que se publica, con prisa, es exactamente cuando peor viene. Lo
+que el borrador evita es que alguien la ejecute, no que se revise. Y al publicar
+se **revalida**, porque entre guardar el borrador y publicarlo pueden haber
+pasado semanas y lo que valía entonces puede apuntar a una tabla de decisión que
+ya no existe.
+
+**Archivar no para nada.** Las instancias en vuelo terminan con la versión con
+la que empezaron; lo que impide es que se arranquen nuevas, que es de lo que se
+trata cuando un proceso se retira. Cortar una instancia a mitad dejaría su
+compensación sin ejecutar, que es peor que dejarla terminar.
+
+Y no se vuelve de archivada a publicada. Si hace falta, se publica una versión
+nueva: resucitar una archivada haría que el historial dejara de explicar por qué
+una instancia siguió el camino que siguió.

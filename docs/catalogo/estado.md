@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 232 hecho · ⬜ 399 pendiente
+**631 capacidades**: ✅ 234 hecho · ⬜ 397 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 118 · ⬜ 104
+222 capacidades · ✅ 120 · ⬜ 102
 
 ### 0.1 Multi-tenancy
 
@@ -230,9 +230,9 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.03.05.01` | Editor gráfico de flujos: el lienzo de nodos y conexiones ES la definición, no un dibujo que la documenta | C | 1 | orchestrator | ⬜ | contecflow-PSA:app/models/workflow_designer.py (lienzo de nodos y versiones) |
 | `CRM-00.03.05.02` | La misma definición como gráfico y como código (JSON/YAML), intercambiables sin pérdida ni segunda fuente de verdad | C | 1 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.03` | Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible | C | 1 | orchestrator | ⬜ | — |
+| `CRM-00.03.05.03` | Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible | C | 1 | orchestrator | ✅ | — |
 | `CRM-00.03.05.04` | Simulación con datos reales antes de publicar: qué ruta seguiría, quién aprobaría y cuánto tardaría | C | 1 | orchestrator | ⬜ | contecflow-PSA:app/services/approval_engine/workflows.py (simulate_workflow) |
-| `CRM-00.03.05.05` | Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión | C | 1 | orchestrator | ⬜ | — |
+| `CRM-00.03.05.05` | Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión | C | 1 | orchestrator | ✅ | — |
 | `CRM-00.03.05.06` | Aprobaciones en cadena y en paralelo con quórum configurable: todos, mayoría, cualquiera, N de M | C | 2 | orchestrator | ⬜ | contecflow-PSA:app/services/approval_engine/requests.py (quórum y decisiones) |
 | `CRM-00.03.05.07` | Resolución del aprobador por regla: jerarquía de mando, importe, unidad de negocio, rol o campo del registro | C | 2 | orchestrator | ⬜ | — |
 | `CRM-00.03.05.08` | Delegación y sustitución por ausencia con vigencia, sin perder la traza de quién decidió de verdad | C | 2 | orchestrator | ⬜ | — |

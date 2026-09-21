@@ -39,13 +39,26 @@ router_def = APIRouter(prefix="/procesos", tags=["procesos"])
     response_model=DefinicionOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("proceso:write"))],
-    summary="Publicar una versión de un proceso",
+    summary="Guardar una versión de un proceso, como borrador o publicada",
     description=(
-        "Valida la definición y la publica como versión nueva. Las instancias "
-        "en vuelo siguen con su versión: publicar no las altera."
+        "Valida la definición y crea una versión nueva. Las instancias en "
+        "vuelo siguen con su versión: publicar no las altera.\n\n"
+        "Con `estado: borrador` se guarda sin que nadie la pueda instanciar. "
+        "Es lo que permite ir dejando un proceso a medias entre sesiones de "
+        "trabajo sin arriesgarse a que un disparador lo arranque a mitad de "
+        "escribirlo (CRM-00.03.05.05)."
     ),
 )
 def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) -> Any:
+    if datos.estado not in ("borrador", "publicada"):
+        raise ErrorValidacion(
+            "Una versión se crea como «borrador» o como «publicada»",
+            error_code="proceso.estado_invalido",
+        )
+    # El borrador también se valida, y a propósito: descubrir que la definición
+    # está rota el día que se publica, con prisa, es exactamente cuando peor
+    # viene. Lo que el borrador evita es que ALGUIEN LA EJECUTE, no que se
+    # revise.
     problemas = mtr.validar_definicion(datos.definicion)
     if problemas:
         raise ErrorValidacion(
@@ -72,7 +85,7 @@ def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) ->
         descripcion=datos.descripcion,
         definicion=datos.definicion,
         disparadores=datos.disparadores,
-        estado="publicada",
+        estado=datos.estado,
     )
     db.add(definicion)
     # Volcado ANTES de auditar y de devolverla: el identificador lo asigna
@@ -81,10 +94,71 @@ def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) ->
     db.flush()
     registrar(
         db,
-        accion="proceso.publicado",
+        accion="proceso.publicado" if datos.estado == "publicada" else "proceso.borrador_guardado",
         objeto="definicion_proceso",
         objeto_id=definicion.id,
-        datos={"clave": datos.clave, "version": definicion.version},
+        datos={"clave": datos.clave, "version": definicion.version, "estado": datos.estado},
+    )
+    return definicion
+
+
+@router_def.post(
+    "/definiciones/{clave}/{version}/estado",
+    response_model=DefinicionOut,
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Publicar o archivar una versión (CRM-00.03.05.05)",
+    description=(
+        "Un borrador pasa a publicada y una publicada pasa a archivada. "
+        "**Archivar no para nada**: las instancias en vuelo terminan con la "
+        "versión con la que empezaron. Lo que impide es que se arranquen "
+        "nuevas, que es de lo que se trata cuando un proceso se retira.\n\n"
+        "No se vuelve de archivada a publicada: si hace falta, se publica una "
+        "versión nueva. Resucitar una versión archivada haría que el historial "
+        "dejara de explicar por qué una instancia siguió el camino que siguió."
+    ),
+)
+def cambiar_estado_definicion(
+    clave: str, version: int, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+) -> Any:
+    nuevo = str(cuerpo.get("estado", ""))
+    definicion = db.execute(
+        select(DefinicionProceso).where(
+            DefinicionProceso.tenant_id == principal.tenant_id,
+            DefinicionProceso.clave == clave,
+            DefinicionProceso.version == version,
+        )
+    ).scalar_one_or_none()
+    if definicion is None:
+        raise NoEncontrado("Esa versión no existe", error_code="proceso.version_no_existe")
+
+    permitidas = {("borrador", "publicada"), ("publicada", "archivada"), ("borrador", "archivada")}
+    if (definicion.estado, nuevo) not in permitidas:
+        raise Conflicto(
+            f"No se puede pasar de «{definicion.estado}» a «{nuevo}»",
+            error_code="proceso.transicion_invalida",
+            detalle={"permitidas": sorted(f"{a} → {b}" for a, b in permitidas)},
+        )
+    if nuevo == "publicada":
+        # Se revalida al publicar: entre guardar el borrador y publicarlo pueden
+        # haber pasado semanas, y lo que valía entonces puede apuntar a una
+        # tabla de decisión que ya no existe.
+        problemas = mtr.validar_definicion(definicion.definicion)
+        if problemas:
+            raise ErrorValidacion(
+                "La definición ya no es válida",
+                error_code="proceso.definicion_invalida",
+                errores=[{"campo": "definicion", "motivo": p} for p in problemas],
+            )
+
+    anterior = definicion.estado
+    definicion.estado = nuevo
+    db.flush()
+    registrar(
+        db,
+        accion=f"proceso.{nuevo}",
+        objeto="definicion_proceso",
+        objeto_id=definicion.id,
+        datos={"clave": clave, "version": version, "desde": anterior},
     )
     return definicion
 

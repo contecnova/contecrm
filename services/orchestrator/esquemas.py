@@ -20,6 +20,14 @@ class PublicarDefinicion(BaseModel):
             "ver la referencia de tipos de paso en el manual técnico"
         ),
     )
+    estado: str = Field(
+        "publicada",
+        description=(
+            "`borrador` para guardar sin que nadie la pueda instanciar, "
+            "`publicada` para dejarla en uso. Un borrador se puede validar y "
+            "simular; lo que no puede es arrancar contra datos reales"
+        ),
+    )
     disparadores: list[str] = Field(
         default_factory=list,
         description="Eventos que arrancan el proceso automáticamente",

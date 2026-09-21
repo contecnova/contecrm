@@ -237,7 +237,34 @@ def validar_definicion(definicion: dict[str, Any]) -> list[str]:
     for huerfano in sorted(destinos_validos - alcanzables):
         problemas.append(f"«{huerfano}» no es alcanzable desde el inicio")
 
+    # Y lo contrario, que es peor: pasos desde los que NO se puede llegar a un
+    # final (CRM-00.03.05.03). Un paso inalcanzable es código muerto; uno sin
+    # salida es una instancia que entra y no sale — se queda en curso para
+    # siempre, consumiendo su temporizador y sin que nadie sepa por qué.
+    #
+    # Cubre los dos casos que se escriben solos al reorganizar un flujo: un
+    # bucle que no tiene rama de salida, y una rama que se quedó sin enlazar a
+    # ningún `fin`.
+    sin_salida = sorted(
+        nombre for nombre in alcanzables if nombre in pasos and not _llega_a_fin(pasos, nombre)
+    )
+    for atascado in sin_salida:
+        problemas.append(f"desde «{atascado}» no se llega a ningún paso final")
+
     return problemas
+
+
+def _llega_a_fin(pasos: dict[str, Any], desde: str) -> bool:
+    """Si desde este paso se puede alcanzar algún paso de tipo `fin`.
+
+    Se recorre hacia delante con los mismos enlaces que usa `_alcanzables`: si
+    aparecieran enlaces nuevos y solo se añadieran allí, un bucle sin salida
+    dejaría de detectarse justo cuando más falta hace.
+    """
+    for alcanzable in _alcanzables(pasos, desde):
+        if (pasos.get(alcanzable) or {}).get("tipo") == "fin":
+            return True
+    return False
 
 
 def _alcanzables(pasos: dict[str, Any], inicio: str) -> set[str]:

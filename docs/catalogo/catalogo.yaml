@@ -321,9 +321,9 @@ modulos:
             capacidades:
               - {id: CRM-00.03.05.01, c: C, fase: 1, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/models/workflow_designer.py (lienzo de nodos y versiones)", t: "Editor gráfico de flujos: el lienzo de nodos y conexiones ES la definición, no un dibujo que la documenta"}
               - {id: CRM-00.03.05.02, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "La misma definición como gráfico y como código (JSON/YAML), intercambiables sin pérdida ni segunda fuente de verdad"}
-              - {id: CRM-00.03.05.03, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible"}
+              - {id: CRM-00.03.05.03, c: C, fase: 1, svc: orchestrator, estado: hecho, t: "Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible"}
               - {id: CRM-00.03.05.04, c: C, fase: 1, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/workflows.py (simulate_workflow)", t: "Simulación con datos reales antes de publicar: qué ruta seguiría, quién aprobaría y cuánto tardaría"}
-              - {id: CRM-00.03.05.05, c: C, fase: 1, svc: orchestrator, estado: pendiente, t: "Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión"}
+              - {id: CRM-00.03.05.05, c: C, fase: 1, svc: orchestrator, estado: hecho, t: "Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión"}
               - {id: CRM-00.03.05.06, c: C, fase: 2, svc: orchestrator, estado: pendiente, reutiliza: "contecflow-PSA:app/services/approval_engine/requests.py (quórum y decisiones)", t: "Aprobaciones en cadena y en paralelo con quórum configurable: todos, mayoría, cualquiera, N de M"}
               - {id: CRM-00.03.05.07, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Resolución del aprobador por regla: jerarquía de mando, importe, unidad de negocio, rol o campo del registro"}
               - {id: CRM-00.03.05.08, c: C, fase: 2, svc: orchestrator, estado: pendiente, t: "Delegación y sustitución por ausencia con vigencia, sin perder la traza de quién decidió de verdad"}
