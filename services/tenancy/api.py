@@ -26,6 +26,7 @@ from sqlalchemy import select
 from services.tenancy import servicio as svc
 from services.tenancy.api_byok import ROUTERS_BYOK
 from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
+from services.tenancy.api_grc import ROUTERS_GRC
 from services.tenancy.esquemas import (
     CambiarEstado,
     ConsumoOut,
@@ -279,4 +280,5 @@ ROUTERS = [
     router_ajustes,
     *ROUTERS_CATALOGOS,
     *ROUTERS_BYOK,
+    *ROUTERS_GRC,
 ]

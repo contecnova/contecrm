@@ -390,13 +390,13 @@ modulos:
               - {id: CRM-00.05.02.02, c: C, fase: 0, svc: identity, estado: hecho, t: "Jerarquía de roles con visibilidad ascendente sobre subordinados"}
               - {id: CRM-00.05.02.03, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac.py (394) + abac_enforce.py", t: "Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto)"}
               - {id: CRM-00.05.02.04, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/share_links.py (477 líneas)", t: "Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal"}
-              - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: en-curso, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
-              - {id: CRM-00.05.02.06, c: A, fase: 0, svc: identity, estado: pendiente, t: "Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless"}
-              - {id: CRM-00.05.02.17, c: C, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/abac_policies.py (354, políticas persistidas y versionadas)", t: "Políticas ABAC persistidas, versionadas y editables desde administración, replicadas a todos los servicios"}
-              - {id: CRM-00.05.02.18, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecweb:app/services/abac_enforce.py (punto único de decisión)", t: "Punto único de decisión: toda lectura y escritura de un registro pasa por la evaluación de políticas, con gate que lo impone"}
-              - {id: CRM-00.05.02.19, c: C, fase: 1, svc: core, estado: pendiente, t: "Filtrado de listados por política traducida a SQL, coherente con la decisión de la ficha"}
-              - {id: CRM-00.05.02.20, c: A, fase: 1, svc: identity, estado: pendiente, t: "Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro"}
-              - {id: CRM-00.05.02.21, c: A, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecmind:app/api/admin_access_simulator.py", t: "Simulador de acceso: ver qué vería un usuario dado antes de activar una política"}
+              - {id: CRM-00.05.02.05, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py", t: "ABAC: decisiones basadas en atributos de usuario, registro y contexto"}
+              - {id: CRM-00.05.02.06, c: A, fase: 0, svc: identity, estado: hecho, t: "Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless"}
+              - {id: CRM-00.05.02.17, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/abac_policies.py (354, políticas persistidas y versionadas)", t: "Políticas ABAC persistidas, versionadas y editables desde administración, replicadas a todos los servicios"}
+              - {id: CRM-00.05.02.18, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecweb:app/services/abac_enforce.py (punto único de decisión)", t: "Punto único de decisión: toda lectura y escritura de un registro pasa por la evaluación de políticas, con gate que lo impone"}
+              - {id: CRM-00.05.02.19, c: C, fase: 1, svc: core, estado: hecho, t: "Filtrado de listados por política traducida a SQL, coherente con la decisión de la ficha"}
+              - {id: CRM-00.05.02.20, c: A, fase: 1, svc: identity, estado: hecho, t: "Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro"}
+              - {id: CRM-00.05.02.21, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/api/admin_access_simulator.py", t: "Simulador de acceso: ver qué vería un usuario dado antes de activar una política"}
               - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
               - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
               - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: pendiente, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
@@ -1009,14 +1009,14 @@ modulos:
           - id: CRM-07.03.02
             nombre: GRC — gobierno, riesgo y cumplimiento
             capacidades:
-              - {id: CRM-07.03.02.01, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/grc.py (740) + app/models/grc.py; contecweb:app/services/grc.py (786)", t: "Registro de riesgos con probabilidad, impacto, propietario, tratamiento y riesgo residual"}
-              - {id: CRM-07.03.02.02, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/grc.py (Control, ControlAssessment)", t: "Catálogo de controles con tipo, frecuencia, responsable y estado"}
-              - {id: CRM-07.03.02.03, c: C, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/grc.py (ControlAssessment)", t: "Evaluación periódica de controles con resultado, evidencia y plan de acción"}
-              - {id: CRM-07.03.02.04, c: C, fase: 1, svc: core, estado: pendiente, t: "Cada control anclado a capacidades del catálogo por su identificador, para que la cobertura sea medible y crezca con el producto"}
-              - {id: CRM-07.03.02.05, c: C, fase: 1, svc: core, estado: pendiente, t: "Informe de cobertura: qué capacidades tienen control, cuáles no, y qué controles apuntan a capacidades que ya no existen"}
-              - {id: CRM-07.03.02.06, c: C, fase: 1, svc: identity, estado: pendiente, reutiliza: "contecmind:app/services/grc.py (SodRule, SodViolation)", t: "Segregación de funciones (SoD): reglas de permisos incompatibles, detección de violaciones y excepciones aprobadas"}
-              - {id: CRM-07.03.02.07, c: A, fase: 1, svc: core, estado: pendiente, t: "Mapeo a marcos normativos (ISO 27001, SOC 2, ENS, GDPR) recorrible en los dos sentidos: del control al marco y del marco a la capacidad"}
-              - {id: CRM-07.03.02.08, c: A, fase: 1, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/compliance.py + app/api/admin_compliance.py", t: "Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano"}
+              - {id: CRM-07.03.02.01, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/grc.py (740) + app/models/grc.py; contecweb:app/services/grc.py (786)", t: "Registro de riesgos con probabilidad, impacto, propietario, tratamiento y riesgo residual"}
+              - {id: CRM-07.03.02.02, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/grc.py (Control, ControlAssessment)", t: "Catálogo de controles con tipo, frecuencia, responsable y estado"}
+              - {id: CRM-07.03.02.03, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/grc.py (ControlAssessment)", t: "Evaluación periódica de controles con resultado, evidencia y plan de acción"}
+              - {id: CRM-07.03.02.04, c: C, fase: 1, svc: core, estado: hecho, t: "Cada control anclado a capacidades del catálogo por su identificador, para que la cobertura sea medible y crezca con el producto"}
+              - {id: CRM-07.03.02.05, c: C, fase: 1, svc: core, estado: hecho, t: "Informe de cobertura: qué capacidades tienen control, cuáles no, y qué controles apuntan a capacidades que ya no existen"}
+              - {id: CRM-07.03.02.06, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/grc.py (SodRule, SodViolation)", t: "Segregación de funciones (SoD): reglas de permisos incompatibles, detección de violaciones y excepciones aprobadas"}
+              - {id: CRM-07.03.02.07, c: A, fase: 1, svc: core, estado: hecho, t: "Mapeo a marcos normativos (ISO 27001, SOC 2, ENS, GDPR) recorrible en los dos sentidos: del control al marco y del marco a la capacidad"}
+              - {id: CRM-07.03.02.08, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/compliance.py + app/api/admin_compliance.py", t: "Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano"}
               - {id: CRM-07.03.02.09, c: A, fase: 2, svc: core, estado: pendiente, t: "Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales"}
               - {id: CRM-07.03.02.10, c: A, fase: 2, svc: core, estado: pendiente, t: "Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo"}
       - id: "7.4"
@@ -1046,21 +1046,38 @@ modulos:
               - {id: CRM-07.04.02.08, c: C, fase: 1, svc: front, estado: pendiente, t: "Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado"}
               - {id: CRM-07.04.02.09, c: A, fase: 1, svc: front, estado: pendiente, t: "Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión"}
           - id: CRM-07.04.03
-            nombre: Módulos funcionales de la interfaz
+            nombre: Cobertura funcional de la interfaz
             capacidades:
-              - {id: CRM-07.04.03.01, c: C, fase: 1, svc: front, estado: pendiente, t: "Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato"}
-              - {id: CRM-07.04.03.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Cuentas y contactos: ficha 360, jerarquías, relaciones, calidad del dato y duplicados"}
-              - {id: CRM-07.04.03.03, c: C, fase: 1, svc: front, estado: pendiente, t: "Actividades: agenda, tareas, delegación y recordatorios"}
-              - {id: CRM-07.04.03.04, c: C, fase: 1, svc: front, estado: pendiente, t: "Leads y oportunidades: embudo arrastrable, cualificación, enrutamiento y previsión"}
-              - {id: CRM-07.04.03.05, c: C, fase: 1, svc: front, estado: pendiente, t: "Búsqueda y listados: filtros guardados, columnas configurables, paginación por cursor y exportación"}
-              - {id: CRM-07.04.03.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Adjuntos, carpetas del expediente y corpus documental de contecmind embebido"}
-              - {id: CRM-07.04.03.07, c: C, fase: 1, svc: front, estado: pendiente, t: "Comentarios, menciones y notificaciones en la ficha"}
-              - {id: CRM-07.04.03.08, c: C, fase: 1, svc: front, estado: pendiente, t: "Operaciones masivas y trabajos: subida, validación previa, progreso e informe de errores descargable"}
-              - {id: CRM-07.04.03.09, c: A, fase: 2, svc: front, estado: pendiente, t: "Informes y cuadros de mando de contecintelligence embebidos con la identidad del usuario"}
-              - {id: CRM-07.04.03.10, c: A, fase: 2, svc: front, estado: pendiente, t: "Interfaz de GRC: riesgos, controles, evaluaciones, cobertura del catálogo y violaciones de SoD"}
-              - {id: CRM-07.04.03.11, c: A, fase: 2, svc: front, estado: pendiente, t: "Editor visual de procesos y automatizaciones sobre el motor existente"}
-              - {id: CRM-07.04.03.12, c: A, fase: 2, svc: front, estado: pendiente, t: "Constructor de políticas ABAC con simulador de acceso antes de activarlas"}
-              - {id: CRM-07.04.03.13, c: A, fase: 1, svc: front, estado: pendiente, t: "Página de estado del tenant, consumo frente a cuotas y ejercicio de derechos del interesado"}
+              - {id: CRM-07.04.03.01, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.1", t: "Multi-tenancy y espacio del tenant: unidades de negocio, residencia del dato, cuotas y consumo, marca blanca y baja con exportación y certificado"}
+              - {id: CRM-07.04.03.02, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.2", t: "Explorador de la API: superficie, contrato OpenAPI, claves y webhooks — para que el cliente vea que todo lo que hace la pantalla lo puede hacer él"}
+              - {id: CRM-07.04.03.03, c: C, fase: 2, svc: front, estado: pendiente, cubre: "0.3", t: "Procesos y orquestación: diseñador de procesos, instancias en curso, tareas humanas, tablas de decisión, colas de fallidos y reintentos"}
+              - {id: CRM-07.04.03.04, c: C, fase: 2, svc: front, estado: pendiente, cubre: "0.4", t: "Modelo de datos: objetos y campos a medida, listas de valores, relaciones, disposición de la ficha y reglas de validación"}
+              - {id: CRM-07.04.03.05, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.5", t: "Identidad y acceso: usuarios, roles, conjuntos de permisos, SSO por tenant, MFA y passkeys, sesiones, claves de servicio y suplantación auditada"}
+              - {id: CRM-07.04.03.06, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.6", t: "Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos"}
+              - {id: CRM-07.04.03.07, c: C, fase: 1, svc: front, estado: pendiente, cubre: "1.1", t: "Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión"}
+              - {id: CRM-07.04.03.08, c: C, fase: 1, svc: front, estado: pendiente, cubre: "1.2", t: "Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente"}
+              - {id: CRM-07.04.03.09, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.1", t: "Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas"}
+              - {id: CRM-07.04.03.10, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.2", t: "Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición"}
+              - {id: CRM-07.04.03.11, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.3", t: "Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío"}
+              - {id: CRM-07.04.03.12, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.4", t: "Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión"}
+              - {id: CRM-07.04.03.13, c: C, fase: 1, svc: front, estado: pendiente, cubre: "3.1", t: "Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre"}
+              - {id: CRM-07.04.03.14, c: A, fase: 2, svc: front, estado: pendiente, cubre: "3.2", t: "Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios"}
+              - {id: CRM-07.04.03.15, c: C, fase: 2, svc: front, estado: pendiente, cubre: "3.3", t: "Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques"}
+              - {id: CRM-07.04.03.16, c: D, fase: 6, svc: front, estado: pendiente, cubre: "3.4", t: "Canal indirecto: portal de partner, registro de oportunidad y liquidaciones"}
+              - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: pendiente, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
+              - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
+              - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
+              - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
+              - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
+              - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: pendiente, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
+              - {id: CRM-07.04.03.23, c: A, fase: 5, svc: front, estado: pendiente, cubre: "5.2", t: "Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista"}
+              - {id: CRM-07.04.03.24, c: A, fase: 1, svc: front, estado: pendiente, cubre: "6.1", t: "Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo"}
+              - {id: CRM-07.04.03.25, c: C, fase: 1, svc: front, estado: pendiente, cubre: "6.2", t: "Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5)"}
+              - {id: CRM-07.04.03.26, c: C, fase: 1, svc: front, estado: pendiente, cubre: "7.1", t: "Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada"}
+              - {id: CRM-07.04.03.27, c: A, fase: 2, svc: front, estado: pendiente, cubre: "7.2", t: "ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás"}
+              - {id: CRM-07.04.03.28, c: A, fase: 1, svc: front, estado: pendiente, cubre: "7.3", t: "Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD"}
+              - {id: CRM-07.04.03.29, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.1", t: "Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda"}
+              - {id: CRM-07.04.03.30, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.2", t: "Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido"}
           - id: CRM-07.04.04
             nombre: Calidad del front
             capacidades:
@@ -1068,6 +1085,14 @@ modulos:
               - {id: CRM-07.04.04.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Comprobación automática de accesibilidad en las pantallas principales"}
               - {id: CRM-07.04.04.03, c: A, fase: 1, svc: front, estado: pendiente, t: "Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local"}
               - {id: CRM-07.04.04.04, c: A, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/scripts/check-dead-exports.mjs", t: "Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI"}
+          - id: CRM-07.04.05
+            nombre: Cobertura y demostración
+            capacidades:
+              - {id: CRM-07.04.05.01, c: C, fase: 1, svc: front, estado: pendiente, t: "Cobertura medida contra el catálogo: cada sección funcional tiene pantalla declarada, y un gate falla si se añade una sección sin ella"}
+              - {id: CRM-07.04.05.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Informe de cobertura al revés: capacidades hechas que ninguna pantalla enseña, para que la potencia del sistema no quede escondida en la API"}
+              - {id: CRM-07.04.05.03, c: C, fase: 1, svc: front, estado: pendiente, t: "Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales"}
+              - {id: CRM-07.04.05.04, c: A, fase: 1, svc: front, estado: pendiente, t: "Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy"}
+              - {id: CRM-07.04.05.05, c: A, fase: 2, svc: front, estado: pendiente, t: "Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz"}
 
 
   - id: "8"

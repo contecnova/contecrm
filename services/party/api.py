@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.visibilidad import aplicar_visibilidad
-from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.errors import ErrorValidacion
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
@@ -450,9 +450,9 @@ def listar_contactos(
     summary="Ficha de un contacto",
 )
 def obtener_contacto(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    contacto = db.get(Contacto, contacto_id)
-    if contacto is None or contacto.deleted_at is not None:
-        raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
+    # Por el cargador compartido: es el que evalúa las políticas de acceso, y
+    # cargarlo aquí a mano era saltárselas sin que se notara.
+    contacto = svc.exigir_contacto(db, contacto_id)
     proyecta = proyectar_para(principal, db, objeto="contacto", modelo=Contacto)
     return proyecta(contacto)
 

@@ -24,7 +24,7 @@ comprobadas por pruebas en lugar de declaradas:
 | **Orquestación** | Los procesos de negocio son composiciones explícitas y observables, no lógica enterrada en controladores o *triggers* | `tests/unit/test_contratos_arquitectura.py` |
 | **Multi-tenant** | Cada capacidad es *tenant-aware* por defecto: datos, configuración, metadatos, cuotas, claves y observabilidad | `tests/integration/test_rls_aislamiento.py` |
 
-El alcance vive en un [catálogo funcional](docs/catalogo/catalogo.yaml) de **560
+El alcance vive en un [catálogo funcional](docs/catalogo/catalogo.yaml) de **631
 capacidades** con identificador estable. Del catálogo salen el manual, la matriz
 de trazabilidad y un gate que **impide declarar hecho lo que no lo está**: una
 capacidad solo pasa a «hecho» si se cita por su ID en el código y está explicada

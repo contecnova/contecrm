@@ -8,7 +8,7 @@ prueba que lo sostiene.
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
 > **implementado y probado**. Lo que está a medias se dice explícitamente en
 > [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 560 capacidades está en
+> el estado completo de las 631 capacidades está en
 > [el estado del catálogo](catalogo/estado.md), que es el recuento vivo.
 
 ---
@@ -258,18 +258,9 @@ sin duplicar reglas.
   Los permisos **se suman, nunca se restan**: en cuanto se mezclan concesiones y
   denegaciones con herencia, «¿por qué este usuario ve esto?» deja de tener
   respuesta.
-- **ABAC** con políticas como datos (CRM-00.05.02.05): la gramática de
-  operadores es cerrada, la decisión es explicable y la misma condición se
-  traduce a SQL para que el listado y la ficha no se contradigan. **Está a
-  medias, y conviene leerlo con cuidado**: hoy las políticas viven en una lista
-  de Python, las tres de ejemplo están desactivadas y el único sitio que las
-  evalúa es el explicador — o sea, el sistema sabe explicar una decisión que no
-  toma. Lo que falta está desglosado en `CRM-00.05.02.17` a `CRM-00.05.02.21`:
-  políticas guardadas y versionadas, punto único de decisión con gate que lo
-  imponga, filtrado de listados por política, políticas por campo y simulador
-  de acceso. Lo que **sí** decide hoy quién ve qué registro son el RBAC, la
-  compartición (CRM-00.05.02.04) y la proyección por sensibilidad
-  (CRM-00.05.02.03).
+- **ABAC aplicado** (CRM-00.05.02.05 y `.17` a `.21`): políticas guardadas,
+  versionadas y editables, evaluadas en la ficha, en el listado y en la
+  proyección. Tiene capítulo propio (§40).
 - **Explicador de permisos** (CRM-00.05.02.11): responde con el permiso que
   decide y la política que aplica. Existe porque «no puedo hacer X» sin
   explicación es el ticket de soporte más frecuente de cualquier CRM.
@@ -325,7 +316,6 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
-| `CRM-00.05.02.05` ABAC | El motor: gramática cerrada de operadores, políticas evaluables, decisión explicable y traducción de la misma condición a SQL | Que se aplique. Las políticas están en una lista de Python y las tres de ejemplo desactivadas, y el único sitio que las evalúa es el explicador: el sistema sabe explicar una decisión que no toma |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 
 ---
@@ -3154,7 +3144,7 @@ consola escondiera media administración como si no existiera.
 Tres bloques nuevos en el catálogo, con identificador cada uno, y por tanto en
 la hoja de estado desde ya.
 
-### El front oficial de referencia (`CRM-07.04.*`, 34 capacidades)
+### El front oficial de referencia (`CRM-07.04.*`, 56 capacidades)
 
 contecrm es y sigue siendo **frontless**: quien quiera se hace su interfaz
 entera como le dé la gana, y no pierde nada por hacerlo — toda capacidad existe
@@ -3162,12 +3152,26 @@ primero como servicio con contrato (RT-1). Lo que faltaba es la otra mitad de
 esa frase: **una interfaz oficial completa**, la que da la solución estándar,
 con la estética y el sistema de diseño de contecmind.
 
-Va desglosado en cuatro bloques: la base y el sistema de diseño, la sesión y la
-seguridad del cliente, los módulos funcionales y la calidad. Dos capacidades de
-ahí son gates y no pantallas, y son las que impiden que el front oficial se
-convierta en el privilegiado: **toda llamada que hace el front tiene que existir
-en la superficie**, y **cero lógica de negocio en el front** — ni cálculo de
-precios, ni de permisos, ni de reglas de estado.
+Va desglosado en cinco bloques: la base y el sistema de diseño, la sesión y la
+seguridad del cliente, la cobertura funcional, la calidad, y la cobertura
+medida. Dos capacidades son gates y no pantallas, y son las que impiden que el
+front oficial se convierta en el privilegiado: **toda llamada que hace el front
+tiene que existir en la superficie**, y **cero lógica de negocio en el front** —
+ni cálculo de precios, ni de permisos, ni de reglas de estado.
+
+**Tiene que cubrirlo todo, y eso se comprueba.** El front estándar es con lo que
+se enseña la solución, así que una capacidad que solo existe por API es una
+capacidad que nadie ve: quien mira el producto concluye que no está. Por eso la
+cobertura funcional no es una lista de pantallas escrita a ojo, sino **una
+capacidad por cada sección del catálogo** —las treinta que hay—, cada una
+declarando con `cubre:` qué sección enseña. Un gate comprueba las dos
+direcciones: que no queda ninguna sección sin pantalla declarada, y que ninguna
+pantalla declara cubrir una sección que ya no existe. El día que se añada un
+área nueva al catálogo, la prueba falla hasta que alguien decida cómo se enseña,
+en vez de que entre sin interfaz y se descubra en una demostración.
+
+Y el informe al revés, que es el que nadie hace: **qué capacidades ya hechas no
+enseña ninguna pantalla**. Es la lista de potencia escondida en la API.
 
 ### ABAC aplicado (`CRM-00.05.02.17` a `CRM-00.05.02.21`)
 
@@ -3188,7 +3192,7 @@ el GRC que la casa ya sabe hacer —hay 740 líneas en contecmind y 786 en
 contecweb— con dos vueltas de tuerca.
 
 La primera: **cada control se ancla a capacidades del catálogo por su
-identificador**. Eso convierte la cobertura en algo medible —«de las 609
+identificador**. Eso convierte la cobertura en algo medible —«de las 631
 capacidades, cuáles tienen control y cuáles no»— y hace que crezca sola con el
 producto en vez de quedarse vieja. Incluye el informe al revés, que es el que
 nadie hace: qué controles apuntan a capacidades que ya no existen.
@@ -3199,3 +3203,260 @@ sostienen y con qué evidencia; y desde una capacidad se ve a qué obligaciones
 responde. Las evidencias salen del audit trail, de los certificados de
 destrucción y de los propios gates, en vez de adjuntarse a mano — que es como
 un GRC se queda desactualizado el segundo trimestre.
+
+---
+
+## 40. ABAC: del motor que nadie llamaba al que decide de verdad
+
+RBAC responde «¿puede leer cuentas?». ABAC responde lo que de verdad pregunta un
+CRM: «¿puede leer **esta** cuenta?». Los dos hacen falta, y se aplican en este
+orden: el ABAC **restringe y nunca amplía**, así que «¿qué puede hacer como
+máximo?» se sigue respondiendo mirando solo los roles.
+
+Lo que había era un motor impecable —gramática cerrada de operadores, decisión
+explicable, traducción de la misma condición a SQL— al que **no llamaba nadie**.
+Las políticas vivían en una lista de Python, las tres de ejemplo estaban
+desactivadas, y el único sitio que las evaluaba era el explicador de permisos.
+El sistema sabía explicar una decisión que no tomaba. Esto es la otra mitad
+(CRM-00.05.02.05, y `.17` a `.21`).
+
+### Las políticas son datos, y se guardan donde se decide
+
+Una política es una fila: objeto, acciones, una lista de condiciones
+`{atributo, operador, valor}`, cómo se combinan y con qué prioridad. No es una
+expresión que haya que interpretar, y eso no es un detalle: una cadena
+interpretada sería ejecutar entrada del tenant dentro del motor de permisos, y
+además no se podría explicar condición a condición, que es lo que hace útil al
+explicador.
+
+Viven en el esquema de **cada servicio**, porque la decisión se toma donde está
+el dato: `party` decide sobre una cuenta y no puede leer el esquema de
+`identity`. Se escriben desde administración y se replican por evento, igual
+que los ajustes en caliente, la clave BYOK y el mapeo del gestor documental
+(§«las tres decisiones» del manual de arquitectura). Un servicio que no
+replicara seguiría decidiendo con las políticas de ayer, y en permisos esa es
+la divergencia más cara: **no falla nada**, simplemente alguien ve lo que ya no
+debería.
+
+Cada cambio sube la versión y deja una copia de la anterior. Sin histórico,
+«¿por qué no veía yo esto el mes pasado?» no tiene respuesta, porque la tabla
+viva solo enseña el estado de hoy — y una política de acceso es exactamente el
+tipo de cosa por la que se pregunta después, no antes.
+
+### El punto único de decisión, y por qué es un cargador y no un endpoint
+
+Tres entradas que tienen que dar **la misma** respuesta:
+
+| Dónde | Qué hace |
+|---|---|
+| `exigir(...)` | La ficha y la escritura (CRM-00.05.02.18). Evalúa en Python sobre el registro y corta con 403 **con la explicación dentro** |
+| `filtro(...)` | El listado (CRM-00.05.02.19). La misma condición, traducida a `WHERE` |
+| `campos_ocultos(...)` | La proyección (CRM-00.05.02.20). Qué columnas se caen en este registro concreto |
+
+Que la ficha y el listado coincidan no es una aspiración: es lo que impide el
+fallo clásico de estos sistemas —un listado que enseña un registro que la ficha
+luego niega, o un registro invisible en la lista y accesible por su
+identificador—. Por eso la condición se escribe **una vez** y se traduce, en
+vez de escribirse dos veces en dos lenguajes.
+
+La llamada va **dentro de los cargadores compartidos** (`_cuenta`, `_lead`,
+`exigir_contacto`…), no en cada endpoint. El endpoint que se olvide es el
+agujero, y acordarse en cada uno es exactamente lo que no funciona. Un gate lo
+sostiene: recorre el código buscando funciones que carguen por identificador un
+objeto con política y respondan 404, y exige que llamen al punto de decisión.
+Al escribirlo encontró **ocho** cargadores que no pasaban por ahí —la ficha de
+contacto, el borrado, las dos fusiones, el consentimiento, el vínculo
+contacto-cuenta y completar una actividad—. Un cargador nuevo aparece en esa
+lista solo, sin que nadie actualice nada.
+
+### La asimetría con la compartición, que hay que tener clara
+
+Las dos cosas filtran listados y se parecen, y se comportan **al revés**:
+
+- La **compartición** dice a quién se le ha dado acceso. Cuando una vía no se
+  puede traducir, comparte de más: no aplicarla deja de enseñar algo que sí se
+  podía ver.
+- El **ABAC** dice a quién se le quita. Cuando una condición no se puede
+  traducir —mira una columna que el modelo no tiene, o usa un operador sin
+  equivalente en SQL—, **deniega**: no aplicarla enseñaría lo que no se debe.
+
+Así que una política con un error de escritura vacía el listado en vez de
+abrirlo. Es incómodo y es lo correcto; y para que ese error no llegue a
+producción, la gramática se valida **al guardar**: una política con un operador
+que no existe se rechaza, porque evaluada se comportaría como denegar y eso
+convertiría un error de escritura en un corte de acceso silencioso el día que
+alguien la activara.
+
+Y una división que hace posible el filtrado en SQL: las condiciones sobre el
+**usuario y el contexto** no dependen de la fila, así que se evalúan una vez
+antes de construir la consulta —o son las cuatro de la tarde para toda la
+consulta, o no lo son para ninguna fila—, y solo las condiciones sobre el
+**registro** van al `WHERE`.
+
+### Políticas por campo
+
+Una política de alcance `campos` no esconde el registro: esconde los campos que
+nombra a quien no cumple la condición. Convive con la proyección por
+sensibilidad y no la sustituye, porque dicen cosas distintas: la sensibilidad
+dice «el identificador fiscal es dato personal y este rol no lo ve nunca», y
+esto dice «el margen de las cuentas de otra unidad de negocio no se ve». Una es
+del campo y la otra del registro que se está mirando.
+
+Se evalúa **por registro**, dentro del bucle de proyección, porque depende de
+la fila. Y si evaluar falla, se esconde: como no se sabe cuáles tocaba
+esconder, se esconden todos los que alguna política controla para ese objeto —
+acotado, y sin enseñar nada que se estuviera negando.
+
+### El simulador, que es lo que hace que alguien se atreva a escribir una
+
+Una política de acceso mal escrita no da un error: corta el acceso a gente que
+estaba trabajando, en silencio, y se descubre por los tickets. `POST
+/politicas-acceso/simular` contesta «¿qué vería esta persona?» con los
+atributos **reales** del usuario que se indique y sobre el registro que se
+pase, y admite una política que **todavía no existe** — que es la forma de
+comprobar qué haría antes de crearla. Por eso, además, una política se puede
+guardar desactivada: que se pueda escribir sin que aplique es lo que hace que
+alguien la escriba.
+
+### Sacar el motor fuera, sin atarse a ningún producto (`CRM-00.05.02.06`)
+
+Decidir dentro del proceso está bien mientras el único que pregunta es el CRM.
+Deja de estarlo en cuanto hay más consumidores: un front a medida que quiere
+saber si pintar un botón, un servicio del cliente que aplica las mismas reglas,
+un motor corporativo que ya existe. Sin esto, cada uno reimplementa las reglas y
+la cuarta implementación ya no dice lo mismo que las otras tres.
+
+Dos piezas, y ninguna ata la instalación a un producto:
+
+**Publicar** la política en un formato neutro, con la semántica **dentro del
+documento** —qué pasa sin políticas, qué pasa con un operador desconocido, cómo
+se combinan—. No se traduce a Rego ni a Cedar a propósito: hacerlo aquí ataría
+el producto a ese dialecto, y quien use uno escribe el traductor una vez con
+esta salida como entrada estable.
+
+**Delegar** la decisión en un motor externo por HTTP, si se configura
+(`ABAC_MOTOR_EXTERNO_*`). Es un transporte declarativo, como el de
+notificaciones o el de verificación: dirección, plazo y contrato en la
+configuración, sin cliente por producto. Con dos reglas que impiden que
+delegar sea un agujero: **si no contesta, decide el motor de dentro** —que
+tiene la misma política replicada—, y **el externo puede restringir más, nunca
+menos**. Sin la segunda, bastaría apuntar la configuración a un servicio que
+diga «sí» a todo para saltarse las políticas del tenant; con ella, el peor caso
+de un motor externo hostil es que no cambie nada.
+
+### El fallo que apareció al probarlo, y que era el peor posible
+
+`registro.owner_id = @usuario.id` es la regla que pide casi todo despliegue. El
+registro llega serializado —el identificador es una cadena— y el usuario viene
+del principal, donde es un `UUID`. Comparados tal cual **nunca** son iguales.
+
+Es decir: la política más común del sistema habría denegado siempre, en
+silencio, sin error y sin traza. Ahora los identificadores se igualan antes de
+comparar, y solo ellos: convertir todo a texto para comparar haría que `5 > 10`
+fuera cierto, que es cambiar una regla por otra sin decirlo.
+
+---
+
+## 41. GRC: el que se mide sobre el producto, no sobre un documento
+
+El registro de riesgos con su tratamiento y su residual (`CRM-07.03.02.01`), el
+catálogo de controles con tipo, frecuencia y responsable (`CRM-07.03.02.02`) y
+la evaluación periódica con resultado, evidencia y plan de acción
+(`CRM-07.03.02.03`). Eso ya lo sabe hacer la casa —740 líneas en contecmind, 786
+en contecweb— y lo que cambia aquí son dos vueltas de tuerca que solo son
+posibles porque este producto tiene un catálogo funcional con identificadores
+estables.
+
+### Cada control se ancla a capacidades reales (`CRM-07.03.02.04`)
+
+Un GRC donde los controles se escriben a mano describe un sistema **imaginado**,
+y a los dos trimestres describe uno que ya no existe. Aquí un control declara
+qué capacidades del catálogo cubre, por su identificador, y eso se comprueba al
+guardar: un control sobre `CRM-99.99.99.99` **no se guarda**, porque contaría en
+el informe de cobertura sin cubrir nada.
+
+Para poder comprobarlo, el catálogo se lee **en ejecución** y no solo en las
+pruebas: `docs/catalogo/catalogo.yaml` viaja en la imagen. No es documentación,
+es dato de producto.
+
+### El informe va en los dos sentidos (`CRM-07.03.02.05`)
+
+El que todo el mundo hace es «qué capacidades no tienen control», agrupado por
+sección para que se lea —una lista de cuatrocientos identificadores no la mira
+nadie—. Y se puede medir sobre **lo entregado** o sobre el catálogo entero: lo
+primero es lo que un auditor puede comprobar hoy, lo segundo es lo que queda por
+cubrir cuando el resto se entregue.
+
+El que **nadie** hace es el de vuelta: **qué controles apuntan a capacidades que
+ya no existen**. Es como se detecta que un control lleva un año cubriendo algo
+que se quitó del producto, y no aparece solo porque hay que ir a buscarlo.
+
+Un detalle que parece menor y no lo es: cuando el catálogo no está disponible,
+la respuesta **dice que no se ha podido medir** en vez de devolver ceros. Una
+cobertura del 0 % y una cobertura que no se ha podido medir se leen igual y
+significan cosas opuestas.
+
+### Del marco normativo al código, y de vuelta (`CRM-07.03.02.07`)
+
+Un auditor pregunta por ISO 27001 A.9 y sale qué controles responden, qué
+capacidades del producto los sostienen —con su título, no solo su
+identificador— y cuándo se evaluaron por última vez. Y el recorrido inverso, que
+es el que sirve a quien construye: antes de tocar una capacidad se ve a qué
+obligaciones está respondiendo.
+
+### La evidencia la pone el sistema (`CRM-07.03.02.08`)
+
+Adjuntar la prueba a mano es exactamente como un GRC se queda desactualizado el
+segundo trimestre: la persona que la sacaba cambia de puesto y nadie más sabe de
+dónde salía. Aquí el control declara su fuente —`audit_trail`,
+`politicas_abac`, `certificados_destruccion`— y el sistema la lee al evaluar. Y
+una fuente que no se sabe leer **lo dice en la propia evidencia**: devolver un
+diccionario vacío parecería «no hay nada que probar».
+
+### Tres obligaciones que impiden que esto se vuelva un archivo
+
+**Aceptar un riesgo exige declarar el residual.** Aceptar sin decir cuánto queda
+no es una decisión, es archivarlo. Y guardar el residual aparte del inherente es
+lo que permite responder si el tratamiento sirvió de algo: la diferencia entre
+los dos **es** el valor del control.
+
+**Un control que no sale efectivo exige plan de acción.** Sin esa obligación, el
+registro se llena de controles «parciales» que nadie arregla.
+
+**La fecha de la próxima evaluación se calcula de la frecuencia**, no se
+escribe. Una fecha a mano es la primera que se queda sin poner, y así un control
+«trimestral» pasa dieciocho meses sin mirarse.
+
+Y una vista, `/grc/pendiente`, que junta lo que no cuadra hoy: controles nunca
+evaluados, fuera de plazo o no efectivos, y **riesgos que se decidió mitigar y
+no tienen ningún control** — una decisión sin ejecución, que es el caso que más
+veces sale en una auditoría.
+
+### Segregación de funciones (`CRM-07.03.02.06`)
+
+La regla más vieja del control interno: quien crea un proveedor no puede aprobar
+su pago. En un CRM son pares de permisos que no deben coincidir en una persona.
+Vive en `identity` porque lo que compara son **permisos efectivos**, que salen
+de los roles y sus herencias.
+
+Cuatro decisiones, todas dirigidas a que el informe siga sirviendo pasado el
+primer trimestre:
+
+- **Detecta, no impide.** Bloquear la asignación de un rol deja al administrador
+  sin poder operar y sin entender por qué. Lo que hace falta es la lista de
+  quién está en conflicto, para resolverlo con criterio.
+- **Se calcula en vivo y no se guarda.** Una tabla de violaciones se queda vieja
+  en cuanto alguien cambia de rol, y una lista de conflictos vieja es peor que
+  ninguna, porque se actúa sobre ella.
+- **La excepción se aprueba, con motivo y con caducidad.** Sin excepciones, el
+  informe sale siempre en rojo y se deja de mirar; con excepciones eternas, el
+  rojo desaparece y tampoco se mira. Una organización pequeña tiene conflictos
+  inevitables porque una persona es todo el departamento; eso se aprueba, no se
+  ignora.
+- **Un conflicto exceptuado sigue saliendo, marcado.** Esconderlo haría que una
+  excepción caducada pasara de «aprobado» a «no existe» sin que nadie lo viera.
+
+Dos comprobaciones que evitan reglas que mienten: un mismo permiso en los dos
+lados no segrega nada —prohíbe, y para eso se quita del rol—, y el comodín se
+expande al comparar, porque un rol con `*:*` los tiene todos y una regla que no
+lo viera daría por limpio justo al usuario más peligroso.

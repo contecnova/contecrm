@@ -60,6 +60,9 @@ PREFIJOS: dict[str, str] = {
     # enruta no hay inicio de sesión federado: no es una ruta de servicio, es
     # LA puerta. Faltaba, y el síntoma habría sido un 404 en mitad del login.
     "sso": "identity",
+    "politicas-acceso": "identity",
+    "segregacion": "identity",
+    "grc": "tenancy",
     "tablas-decision": "orchestrator",
     # Los recursos masivos publican el nombre del recurso en español mientras
     # el CRUD usa el inglés (`/cuentas/masivo` junto a `/accounts`). La

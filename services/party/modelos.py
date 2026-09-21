@@ -625,6 +625,7 @@ class SolicitudDerechos(Base, TimestampMixin):
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.authz.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
+from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
@@ -636,6 +637,8 @@ from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 __all__ = [
+    "PoliticaAbac",
+    "VersionPoliticaAbac",
     "DocumentoEnlazado",
     "OrganizacionDocumental",
     "ComparticionManual",

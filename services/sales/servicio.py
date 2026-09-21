@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar, registrar_cambios
+from crmcore.authz.decision import exigir
 from crmcore.datos.estados import aplicar as aplicar_estado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -276,6 +277,11 @@ def _lead(db: Session, lead_id: UUID) -> Lead:
     lead = db.get(Lead, lead_id)
     if lead is None or lead.deleted_at is not None:
         raise NoEncontrado("El lead no existe", error_code="sales.lead_no_encontrado")
+    # Punto único de decisión (CRM-00.05.02.18). Va en el cargador y no en cada
+    # endpoint a propósito: el endpoint que se olvide de llamarlo es el agujero,
+    # y aquí pasan TODOS —la ficha, la edición, el borrado y lo que venga—.
+    # Si una política lo niega, esto corta con 403 y la explicación dentro.
+    exigir(db, objeto="lead", accion="read", registro=lead)
     return lead
 
 
@@ -655,6 +661,11 @@ def _oportunidad(db: Session, oportunidad_id: UUID) -> Oportunidad:
     oportunidad = db.get(Oportunidad, oportunidad_id)
     if oportunidad is None or oportunidad.deleted_at is not None:
         raise NoEncontrado("La oportunidad no existe", error_code="sales.oportunidad_no_encontrada")
+    # Punto único de decisión (CRM-00.05.02.18). Va en el cargador y no en cada
+    # endpoint a propósito: el endpoint que se olvide de llamarlo es el agujero,
+    # y aquí pasan TODOS —la ficha, la edición, el borrado y lo que venga—.
+    # Si una política lo niega, esto corta con 403 y la explicación dentro.
+    exigir(db, objeto="oportunidad", accion="read", registro=oportunidad)
     return oportunidad
 
 

@@ -67,6 +67,11 @@ COPY --chown=crm:crm alembic/ ./alembic/
 COPY --chown=crm:crm alembic.ini ./
 COPY --chown=crm:crm scripts/ ./scripts/
 COPY --chown=crm:crm deploy/ ./deploy/
+# El catálogo funcional NO es documentación: es dato de producto que se lee en
+# ejecución. El GRC ancla cada control a capacidades por su identificador
+# (CRM-07.03.02.04), y sin el fichero no puede comprobar que existen — con lo
+# que un control sobre una capacidad inventada se guardaría tan tranquilo.
+COPY --chown=crm:crm docs/catalogo/catalogo.yaml ./docs/catalogo/catalogo.yaml
 
 # Usuario sin privilegios. Un proceso que no necesita root no debe correr como
 # root: si alguien consigue ejecución dentro del contenedor, la diferencia entre

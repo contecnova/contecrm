@@ -169,3 +169,45 @@ def test_el_catalogo_cubre_las_tres_restricciones(catalogo: dict) -> None:
             f"La restricción {restriccion['id']} declara el gate «{restriccion['gate']}» "
             "y ese fichero no existe"
         )
+
+
+def test_el_front_oficial_cubre_todas_las_secciones(catalogo: dict) -> None:
+    """El front estándar tiene que enseñar TODO lo que el sistema hace.
+
+    No es una aspiración de producto: es lo que hace que la solución se pueda
+    presentar entera. Una capacidad que solo existe por API es una capacidad que
+    nadie ve, y quien mira el producto concluye que no está.
+
+    La cobertura se declara con `cubre:` en cada capacidad del front oficial,
+    apuntando a la sección del catálogo que enseña. Así el día que se añade una
+    sección funcional nueva —un módulo, un área— esta prueba falla hasta que
+    alguien decida qué pantalla la enseña, en vez de que la sección entre sin
+    interfaz y nadie se entere hasta una demostración.
+
+    La propia sección del front se excluye: no se enseña a sí misma.
+    """
+    secciones = {s["id"] for m in catalogo["modulos"] for s in m["secciones"]}
+    # `7.4` es el front: no tiene que cubrirse a sí mismo.
+    secciones.discard("7.4")
+
+    cubiertas = {
+        str(c["cubre"])
+        for c in _capacidades(catalogo)
+        if c["id"].startswith("CRM-07.04.") and c.get("cubre")
+    }
+
+    sin_pantalla = sorted(secciones - cubiertas)
+    assert not sin_pantalla, (
+        "Secciones del catálogo que el front oficial no declara enseñar:\n  "
+        + "\n  ".join(sin_pantalla)
+        + '\n\nAñade una capacidad en `CRM-07.04.03` con `cubre: "<sección>"`, o '
+        "explica en el manual por qué esa sección no tiene interfaz."
+    )
+
+    # Y al revés: una declaración que apunta a una sección que ya no existe es
+    # una pantalla prevista para algo que se quitó del catálogo.
+    huerfanas = sorted(cubiertas - secciones - {"7.4"})
+    assert not huerfanas, (
+        "El front declara cubrir secciones que no existen en el catálogo:\n  "
+        + "\n  ".join(huerfanas)
+    )

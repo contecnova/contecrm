@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.authz.decision import exigir
 from crmcore.datos.masivas import Informe, PlanImportacion, importar, transferir_propiedad
 from crmcore.datos.papelera import Cascada, EntradaPapelera, borrar, purgar, restaurar
 from crmcore.logging import get_logger
@@ -71,6 +72,7 @@ def borrar_contacto(db: Session, contacto_id: UUID, *, por: UUID | None = None) 
     contacto = db.get(Contacto, contacto_id)
     if contacto is None:
         raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
+    exigir(db, objeto="contacto", accion="delete", registro=contacto)
     return borrar(
         db,
         contacto,

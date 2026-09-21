@@ -6,39 +6,39 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 222 | 111 | 1 | 110 |
+| 0 — Plataforma y arquitectura transversal | 222 | 118 | 0 | 104 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 31 | 0 | 23 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 7 | 0 | 58 |
 | 4 — Servicio y atención al cliente | 62 | 0 | 0 | 62 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
 | 6 — Productividad y colaboración | 14 | 3 | 0 | 11 |
-| 7 — Administración, ALM y gobierno | 69 | 14 | 1 | 54 |
+| 7 — Administración, ALM y gobierno | 91 | 22 | 1 | 68 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
 ## Por criticidad
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 231 | 126 |
-| A — Avanzado | 338 | 46 |
-| D — Diferencial | 40 | 2 |
+| C — Core | 240 | 135 |
+| A — Avanzado | 348 | 52 |
+| D — Diferencial | 43 | 2 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 179 | 122 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 122 | 51 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 126 | 1 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 47 | 0 |
-| 4 · Marketing | Segmentación, journeys, canales, atribución | 56 | 0 |
-| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 49 | 0 |
-| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 30 | 0 |
+| 0 · Cimientos | Módulo 0 completo | 179 | 124 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 128 | 64 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 131 | 1 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 50 | 0 |
+| 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 0 |
+| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 0 |
+| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 0 |
 
 ## Reutilización
 
-**319 de 609** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**319 de 631** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

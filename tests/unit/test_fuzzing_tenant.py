@@ -66,6 +66,9 @@ PARAMETROS_NO_FILA = {
     "codigo": "código de catálogo, no identificador",
     "slug": "identificador legible del tenant",
     "usuario_id": "la pertenencia de un usuario a un tenant la prueba `test_sso`",
+    "capacidad_id": (
+        "es un identificador del catálogo funcional (CRM-07.03.02), que es el mismo\n        para todos los tenants y no contiene dato de ninguno: la respuesta que sí\n        es de cada uno —qué controles la cubren— sale filtrada por tenant"
+    ),
 }
 
 # Rutas que responden algo distinto de 404 por un motivo legítimo, con él

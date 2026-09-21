@@ -277,7 +277,8 @@ def crear_rol(datos: CrearRol, db: DbDep, principal: AutenticadoDep) -> Any:
     ),
 )
 def explicar(datos: ExplicarPermiso, db: DbDep, principal: AutenticadoDep) -> Any:
-    from crmcore.authz.abac import POLITICAS_EJEMPLO, evaluar
+    from crmcore.authz.abac import evaluar
+    from crmcore.authz.politicas import cargar
 
     permisos = svc.permisos_efectivos(db, datos.usuario_id, principal.tenant_id)
     permiso = f"{datos.objeto}:{datos.accion}"
@@ -300,8 +301,12 @@ def explicar(datos: ExplicarPermiso, db: DbDep, principal: AutenticadoDep) -> An
         "registro": datos.registro,
         "contexto": {"tenant_id": str(principal.tenant_id)},
     }
+    # Las políticas GUARDADAS del tenant, no una lista de ejemplo del código.
+    # Mientras miraba la lista de ejemplo —con las tres desactivadas— este
+    # endpoint contestaba siempre «permitido por ABAC», que es peor que no
+    # contestar: daba por buena una explicación que no explicaba nada.
     decision = evaluar(
-        [p for p in POLITICAS_EJEMPLO if p.activa],
+        cargar(db, principal.tenant_id),
         objeto=datos.objeto,
         accion=datos.accion,
         ambito=ambito,
@@ -703,6 +708,9 @@ def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
+from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
+from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
+
 ROUTERS = [
     router_auth,
     router_usuarios,
@@ -713,4 +721,6 @@ ROUTERS = [
     *ROUTERS_NOTIFICACION,
     router_sso,
     router_idp,
+    *ROUTERS_POLITICAS,
+    *ROUTERS_SOD,
 ]

@@ -24,6 +24,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from crmcore.config_parts import (
+    _AbacSettings,
     _AlmacenSettings,
     _AppSettings,
     _AuthSettings,
@@ -58,6 +59,7 @@ class Settings(
     _AlmacenSettings,
     _IntelligenceSettings,
     _DocumentalSettings,
+    _AbacSettings,
     _DbSettings,
     _TenancySettings,
     _BusSettings,

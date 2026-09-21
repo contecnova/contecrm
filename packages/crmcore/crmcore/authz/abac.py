@@ -113,6 +113,7 @@ class Condicion:
             # Operador desconocido = política corrupta. Se deniega: en
             # seguridad, ante la duda, no.
             return False
+        izquierda, derecha = _comparables(izquierda, derecha)
         try:
             return fn(izquierda, derecha)
         except TypeError:
@@ -208,6 +209,30 @@ def evaluar(
             politica_decisiva=politica.nombre,
         )
     return Decision(permitido=True, razones=razones, politica_decisiva=aplicables[-1].nombre)
+
+
+def _comparables(izquierda: Any, derecha: Any) -> tuple[Any, Any]:
+    """Iguala los tipos que en la práctica son el mismo valor escrito distinto.
+
+    El caso es `registro.owner_id = @usuario.id`, que es la regla que pide casi
+    todo despliegue. El registro llega serializado —el identificador es una
+    cadena— y el usuario viene del principal, donde es un `UUID`. Comparados
+    tal cual **nunca** son iguales, así que la política más común del sistema
+    habría denegado siempre, en silencio y sin error: el peor modo de fallo
+    posible en permisos.
+
+    Solo se igualan identificadores y nada más. Convertir todo a texto para
+    comparar haría que `5 > 10` fuera cierto, que es cambiar una regla por otra
+    sin decirlo.
+    """
+    from uuid import UUID as _UUID
+
+    def _uno(a: Any, b: Any) -> Any:
+        if isinstance(a, _UUID) and isinstance(b, str):
+            return str(a)
+        return a
+
+    return _uno(izquierda, derecha), _uno(derecha, izquierda)
 
 
 def _leer(ambito: dict[str, Any], ruta: str) -> Any:

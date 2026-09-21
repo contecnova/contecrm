@@ -337,11 +337,25 @@ def proyectar_para(
 
     def _proyecta(fila: Any) -> dict[str, Any]:
         datos = fila.a_dict() if hasattr(fila, "a_dict") else dict(fila)
+        # Las políticas ABAC de alcance «campos» (CRM-00.05.02.20) se evalúan
+        # POR REGISTRO, no una vez: dependen de la fila —«el margen de las
+        # oportunidades de otra unidad de negocio»—, así que no se pueden
+        # resolver fuera del bucle como la política por sensibilidad.
+        #
+        # Se hace aunque el enmascarado global esté apagado: `MASKING_ENABLED`
+        # gobierna la proyección por sensibilidad, que es una decisión de
+        # despliegue; una política la ha escrito el cliente y apagarla desde el
+        # `.env` sería saltarse su configuración desde la nuestra.
+        por_politica = _ocultos_de_politica(db, objeto, datos)
         if not activo:
-            return datos
+            return (
+                {k: v for k, v in datos.items() if k not in por_politica} if por_politica else datos
+            )
         salida: dict[str, Any] = {}
-        retenidos: set[str] = set()
+        retenidos: set[str] = set(por_politica)
         for campo, valor in datos.items():
+            if campo in por_politica:
+                continue
             nivel = _nivel_del_campo(campo, modelo, roles, politica, excepciones)
             if nivel == "claro" or valor is None:
                 salida[campo] = valor
@@ -361,3 +375,30 @@ def proyectar_para(
         return salida
 
     return _proyecta
+
+
+def _ocultos_de_politica(db: Any, objeto: str, datos: dict[str, Any]) -> set[str]:
+    """Campos que una política ABAC esconde en este registro concreto.
+
+    Si evaluar falla **se esconde**, no se enseña: un error resolviendo una
+    política que restringe no se puede resolver enseñando el campo. Como no se
+    sabe cuáles tocaba esconder, se esconden todos los que alguna política
+    controla para ese objeto — acotado, y sin enseñar nada que se estuviera
+    negando. Es la regla contraria a la de compartición, y está razonada en
+    `crmcore.authz.decision`.
+    """
+    from crmcore.authz.decision import campos_ocultos
+    from crmcore.logging import get_logger
+
+    try:
+        return campos_ocultos(db, objeto=objeto, registro=datos)
+    except Exception as exc:  # noqa: BLE001 — ante la duda, no se enseña
+        get_logger(__name__).error("abac.fallo_al_ocultar", objeto=objeto, error=str(exc)[:300])
+        try:
+            from crmcore.authz.politicas import campos_gobernados
+            from crmcore.tenancy.context import contexto_actual
+
+            tid = contexto_actual().tenant_id
+            return campos_gobernados(db, tid, objeto) if tid else set()
+        except Exception:  # noqa: BLE001 — si ni eso se puede, no se sirve la ficha
+            raise exc from None

@@ -132,6 +132,10 @@ def crear_servicio(
                 # servicio que no consuma este evento se queda con la
                 # configuración de su `.env` mientras el resto usa la del
                 # cliente. Esa divergencia tarda semanas en atribuirse.
+                from crmcore.authz.politicas import (
+                    POLITICA_CAMBIADA,
+                    consumir_politica,
+                )
                 from crmcore.documental.enlaces import (
                     ORGANIZACION_CAMBIADA,
                     consumir_organizacion,
@@ -164,6 +168,13 @@ def crear_servicio(
                     # mientras el de los demás funciona, con el administrador
                     # viendo su mapeo guardado y correcto.
                     (ORGANIZACION_CAMBIADA, consumir_organizacion, f"{nombre}-orgdoc"),
+                    # Las políticas ABAC. La decisión se toma DONDE ESTÁ EL
+                    # DATO —`party` decide sobre una cuenta— así que la política
+                    # tiene que estar en el esquema de cada servicio. Uno que no
+                    # la replicara seguiría decidiendo con las de ayer, y en
+                    # permisos esa es la divergencia más cara: no falla nada,
+                    # simplemente alguien ve lo que ya no debería.
+                    (POLITICA_CAMBIADA, consumir_politica, f"{nombre}-abac"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:

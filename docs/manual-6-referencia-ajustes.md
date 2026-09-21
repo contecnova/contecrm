@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**164 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**167 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -214,3 +214,6 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `URL_GUARD_HOSTS_PERMITIDOS` | 🔥 `url_guard_hosts_permitidos` | *(vacío)* |  | Hosts internos que el operador admite pese a estar en rango privado, separados por comas. Existe porque hay instalaciones con el IdP o el ERP en la red interna, y negarlo obligaría a apagar el guard entero. |
 | `URL_GUARD_DNS_TIMEOUT_S` | — | `3.0` | 0.1–30.0 | Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS que no contesta colgaría el hilo que atiende la petición. |
 | `POLITICA_SENSIBILIDAD` | 🔥 `politica_sensibilidad` |  |  | `ve_hasta` es el nivel máximo que se ve EN CLARO; `enmascara`, hasta dónde se ve con los últimos caracteres. Por encima de eso, no se ve. Los valores por defecto son conservadores a propósito: un rol que no aparezca aquí no ve nada por encima de `interno`. Un rol nuevo sin configurar no puede… |
+| `ABAC_MOTOR_EXTERNO_ENABLED` | — | `False` |  |  |
+| `ABAC_MOTOR_EXTERNO_URL` | — | *(vacío)* |  |  |
+| `ABAC_MOTOR_EXTERNO_TIMEOUT_S` | — | `2.0` | 0.1–30.0 | Corto a propósito: esto se consulta en la ruta caliente de cada decisión. Un motor lento no puede convertir cada ficha en una espera, y como no contestar significa «decide tú», agotar el plazo es seguro. |

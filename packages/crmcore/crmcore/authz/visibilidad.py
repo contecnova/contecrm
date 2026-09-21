@@ -47,13 +47,37 @@ def aplicar_visibilidad(
     objeto: str,
     permiso_ver_todo: str = "",
 ) -> Select:
-    """Añade a la consulta el filtro de compartición de este usuario."""
+    """Añade a la consulta el filtro de compartición y el de las políticas ABAC.
+
+    Los dos, y en este orden, porque no son lo mismo y se comportan al revés:
+
+      * La **compartición** dice a quién se le ha dado acceso. Cuando una vía no
+        se puede traducir, comparte de más: no aplicarla deja de enseñar algo
+        que sí se podía ver.
+      * El **ABAC** dice a quién se le quita. Cuando una condición no se puede
+        traducir, deniega: no aplicarla enseñaría lo que no se debe.
+
+    Y el ABAC se aplica **también al administrador del objeto**. La
+    compartición no —quien administra tiene que ver el maestro entero o no puede
+    administrar nada—, pero una política de «esta unidad de negocio no ve las
+    oportunidades de la otra» dejaría de servir para nada si el administrador
+    fuera la excepción: es exactamente a quien se le pone.
+    """
     from crmcore.authz.comparticion import filtro_visibilidad
+    from crmcore.authz.decision import filtro as filtro_abac
 
     if principal is None or principal.id is None or principal.tenant_id is None:
         # Sin identidad no hay compartición que aplicar, y tampoco hay nada que
         # enseñar: quien llame sin autenticar no debería haber llegado aquí.
         return consulta.where(false())
+
+    try:
+        politica = filtro_abac(db, modelo, objeto=objeto, tenant_id=principal.tenant_id)
+    except Exception as exc:  # noqa: BLE001 — ante la duda, no se enseña
+        logger.error("abac.fallo_al_filtrar", objeto=objeto, error=str(exc)[:300])
+        return consulta.where(false())
+    if politica is not None:
+        consulta = consulta.where(politica)
 
     if principal.es_admin_plataforma or principal.tiene(permiso_ver_todo or f"{objeto}:admin"):
         return consulta

@@ -236,6 +236,7 @@ class Consumo(Base):
 # Que la lista esté escrita a mano es deliberado: dice, en un sitio, qué tablas
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
+from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental  # noqa: E402
@@ -252,8 +253,18 @@ from services.tenancy.catalogos import (  # noqa: E402
     Plantilla,
     TipoCambio,
 )
+from services.tenancy.grc import (  # noqa: E402
+    Control,
+    EvaluacionControl,
+    Riesgo,
+)
 
 __all__ = [
+    "Control",
+    "EvaluacionControl",
+    "Riesgo",
+    "PoliticaAbac",
+    "VersionPoliticaAbac",
     "DocumentoEnlazado",
     "OrganizacionDocumental",
     "ClaveTenant",

@@ -383,6 +383,7 @@ class CompetidorEnOportunidad(Base, TimestampMixin):
 # comunes guarda este servicio en su esquema. Descubrirlas automáticamente
 # acabaría creando en todos los esquemas las tablas de todos.
 from crmcore.authz.comparticion import ComparticionManual, ReglaComparticion  # noqa: E402
+from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
@@ -398,6 +399,8 @@ from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento 
 from services.sales.origen import Toque  # noqa: E402
 
 __all__ = [
+    "PoliticaAbac",
+    "VersionPoliticaAbac",
     "DocumentoEnlazado",
     "OrganizacionDocumental",
     "CanalCaptura",

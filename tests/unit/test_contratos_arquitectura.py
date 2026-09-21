@@ -610,3 +610,58 @@ def test_toda_accion_de_automatizacion_tiene_ejecutor() -> None:
         f"Acciones declaradas sin ejecutor: {sorted(faltan)}. "
         "O se implementa el ejecutor, o se quita la acción de la lista."
     )
+
+
+# Objetos de negocio sobre los que una política ABAC puede decidir. Son los que
+# tienen ficha propia y dueño: sobre una línea de oportunidad o una dirección se
+# decide a través de su padre, no por separado.
+MODELOS_CON_POLITICA = {
+    "Cuenta": "cuenta",
+    "Contacto": "contacto",
+    "Actividad": "actividad",
+    "Lead": "lead",
+    "Oportunidad": "oportunidad",
+}
+
+
+def test_todo_cargador_de_registro_pasa_por_el_punto_de_decision() -> None:
+    """Quien carga un registro por su identificador evalúa las políticas.
+
+    Este gate es la mitad que le faltaba al ABAC. El motor estaba entero y no lo
+    llamaba nadie: las políticas se podían escribir y no decidían nada. Lo que
+    impide que vuelva a pasar no es acordarse en cada endpoint —eso es
+    exactamente lo que se olvida— sino que el cargador compartido lo haga y que
+    esta prueba compruebe que ninguno se salta.
+
+    Se buscan las funciones que hacen `db.get(<Modelo>, …)` sobre un objeto con
+    política y responden 404 si no está: esas son las que devuelven un registro
+    concreto a alguien. Cada una tiene que llamar a `exigir(...)`.
+
+    Un cargador nuevo aparece en esta lista solo, sin que nadie actualice nada.
+    """
+    faltan: list[str] = []
+    for fichero in sorted(SERVICIOS_DIR.glob("*/*.py")):
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            fuente = ast.unparse(nodo)
+            carga = [
+                modelo
+                for modelo in MODELOS_CON_POLITICA
+                if f"db.get({modelo}," in fuente or f"uow.db.get({modelo}," in fuente
+            ]
+            if not carga or "NoEncontrado(" not in fuente:
+                continue
+            if "exigir(" in fuente:
+                continue
+            rel = fichero.relative_to(SERVICIOS_DIR)
+            faltan.append(f"{rel}::{nodo.name} (carga {', '.join(sorted(carga))})")
+
+    assert not faltan, (
+        "Cargadores de registro que no evalúan las políticas de acceso:\n  "
+        + "\n  ".join(faltan)
+        + "\n\nLlama a `crmcore.authz.decision.exigir(db, objeto=..., accion=..., "
+        "registro=...)` antes de devolverlo, o delega en el cargador compartido "
+        "que ya lo hace."
+    )

@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from crmcore.authz.decision import exigir
 from crmcore.logging import get_logger
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -306,6 +307,12 @@ def fusionar_cuentas(
 
     superviviente = db.get(Cuenta, superviviente_id)
     absorbida = db.get(Cuenta, absorbida_id)
+    # Fusionar es la escritura más destructiva que hay sobre una cuenta: una
+    # deja de existir. Se decide sobre las DOS, porque quien no puede tocar la
+    # absorbida no puede hacerla desaparecer dentro de otra.
+    for fila in (superviviente, absorbida):
+        if fila is not None:
+            exigir(db, objeto="cuenta", accion="write", registro=fila)
     if superviviente is None or absorbida is None:
         raise NoEncontrado("Una de las cuentas no existe", error_code="party.cuenta_no_encontrada")
     if superviviente_id == absorbida_id:
@@ -405,6 +412,9 @@ def fusionar_contactos(
 
     superviviente = db.get(Contacto, superviviente_id)
     absorbido = db.get(Contacto, absorbido_id)
+    for fila in (superviviente, absorbido):
+        if fila is not None:
+            exigir(db, objeto="contacto", accion="write", registro=fila)
     if superviviente is None or absorbido is None:
         raise NoEncontrado(
             "Uno de los contactos no existe", error_code="party.contacto_no_encontrado"

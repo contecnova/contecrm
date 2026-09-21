@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar, registrar_cambios
+from crmcore.authz.decision import exigir
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.logging import get_logger
@@ -161,6 +162,7 @@ def exigir_contacto(db: Session, contacto_id: UUID) -> Contacto:
     contacto = db.get(Contacto, contacto_id)
     if contacto is None or contacto.deleted_at is not None:
         raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
+    exigir(db, objeto="contacto", accion="read", registro=contacto)
     return contacto
 
 
@@ -182,6 +184,11 @@ def _cuenta(db: Session, cuenta_id: UUID) -> Cuenta:
     # garantizar que nunca volverá, y una fusión se puede deshacer.
     if cuenta is None or cuenta.deleted_at is not None:
         raise NoEncontrado("La cuenta no existe", error_code="party.cuenta_no_encontrada")
+    # Punto único de decisión (CRM-00.05.02.18). Va en el cargador y no en cada
+    # endpoint a propósito: el endpoint que se olvide de llamarlo es el agujero,
+    # y aquí pasan TODOS —la ficha, la edición, el borrado y lo que venga—.
+    # Si una política lo niega, esto corta con 403 y la explicación dentro.
+    exigir(db, objeto="cuenta", accion="read", registro=cuenta)
     return cuenta
 
 
@@ -436,8 +443,14 @@ def vincular_contacto(
     principal: bool = False,
 ) -> RelacionContactoCuenta:
     """Vincula un contacto con una cuenta (CRM-01.01.02.02)."""
+    # Por los cargadores compartidos y no con `db.get` a pelo: son los que
+    # evalúan las políticas de acceso, y vincular es escribir en los dos lados.
     contacto = db.get(Contacto, contacto_id)
     cuenta = db.get(Cuenta, cuenta_id)
+    if contacto is not None and contacto.deleted_at is None:
+        exigir(db, objeto="contacto", accion="write", registro=contacto)
+    if cuenta is not None and cuenta.deleted_at is None:
+        exigir(db, objeto="cuenta", accion="write", registro=cuenta)
     if contacto is None or cuenta is None:
         raise NoEncontrado(
             "El contacto o la cuenta no existen", error_code="party.vinculo_no_encontrado"
@@ -561,6 +574,11 @@ def registrar_consentimiento(
     contacto = uow.db.get(Contacto, contacto_id)
     if contacto is None:
         raise NoEncontrado("El contacto no existe", error_code="party.contacto_no_encontrado")
+    # Registrar un consentimiento es escribir sobre el contacto: si una política
+    # esconde ese contacto a quien pregunta, tampoco puede tocarle el
+    # consentimiento — que es justo el dato por el que se responde ante una
+    # reclamación.
+    exigir(uow.db, objeto="contacto", accion="write", registro=contacto)
 
     fila = Consentimiento(
         tenant_id=contacto.tenant_id,
@@ -697,9 +715,8 @@ def crear_actividad(
 def completar_actividad(
     db: Session, actividad_id: UUID, *, resultado: str | None = None, por: UUID | None = None
 ) -> Actividad:
-    actividad = db.get(Actividad, actividad_id)
-    if actividad is None or actividad.deleted_at is not None:
-        raise NoEncontrado("La actividad no existe", error_code="party.actividad_no_encontrada")
+    actividad = _actividad(db, actividad_id)
+    exigir(db, objeto="actividad", accion="write", registro=actividad)
     if actividad.estado == "completada":
         raise Conflicto("Esa actividad ya está completada", error_code="party.actividad_completada")
     actividad.estado = "completada"
@@ -1516,6 +1533,11 @@ def _actividad(db: Session, actividad_id: UUID) -> Actividad:
     actividad = db.get(Actividad, actividad_id)
     if actividad is None or actividad.deleted_at is not None:
         raise NoEncontrado("La actividad no existe", error_code="party.actividad_no_encontrada")
+    # Punto único de decisión (CRM-00.05.02.18). Va en el cargador y no en cada
+    # endpoint a propósito: el endpoint que se olvide de llamarlo es el agujero,
+    # y aquí pasan TODOS —la ficha, la edición, el borrado y lo que venga—.
+    # Si una política lo niega, esto corta con 403 y la explicación dentro.
+    exigir(db, objeto="actividad", accion="read", registro=actividad)
     return actividad
 
 

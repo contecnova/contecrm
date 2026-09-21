@@ -184,11 +184,14 @@ class ValorLista(Base, TimestampMixin):
 #
 # `modelos.py` es lo que leen el generador de migraciones y la fixture de
 # pruebas. Un modelo que no aparezca aquí sencillamente no se migra.
+from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
 from services.metadata.relaciones import RelacionDefinida  # noqa: E402
 
 __all__ = [
+    "PoliticaAbac",
+    "VersionPoliticaAbac",
     "ClaveTenant",
     "CampoDefinido",
     "Layout",

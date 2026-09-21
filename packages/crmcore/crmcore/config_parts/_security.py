@@ -116,3 +116,25 @@ class _SecuritySettings(BaseSettings):
             "*": {"ve_hasta": "publico", "enmascara": "interno"},
         }
     )
+
+
+class _AbacSettings(BaseSettings):
+    """Motor de políticas externo (CRM-00.05.02.06).
+
+    Apagado de serie: la instalación normal decide dentro, con el motor de
+    `crmcore.authz.abac`, que ya tiene la política replicada en cada servicio.
+    Esto es para quien ya tiene un motor de decisión corporativo y quiere que
+    mande el suyo.
+
+    Genérico y sin cliente por producto: una dirección HTTP a la que se manda
+    `{tenant, objeto, accion, ambito}` y que contesta `{permitido, razones}`.
+    Quien use OPA o Cedar pone delante su adaptador; escribir aquí un cliente
+    de OPA ataría el producto a OPA.
+    """
+
+    abac_motor_externo_enabled: bool = False
+    abac_motor_externo_url: str = ""
+    # Corto a propósito: esto se consulta en la ruta caliente de cada decisión.
+    # Un motor lento no puede convertir cada ficha en una espera, y como no
+    # contestar significa «decide tú», agotar el plazo es seguro.
+    abac_motor_externo_timeout_s: float = Field(2.0, ge=0.1, le=30.0)
