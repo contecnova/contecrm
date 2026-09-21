@@ -151,6 +151,57 @@ async def estado_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/estado/contratos",
+    summary="Contratos de evento de toda la instalación",
+    description=(
+        "Contract testing interno dirigido por el consumidor "
+        "(CRM-00.03.01.03): junta lo que publica cada servicio sobre los "
+        "contratos de evento que consume.\n\n"
+        "Se junta aquí porque un contrato tiene dos lados en dos servicios "
+        "distintos: mirarlo servicio a servicio enseña la mitad de cada uno y "
+        "no deja ver lo único que importa, que es si lo que uno promete lo "
+        "cumple para quien depende de ello."
+    ),
+)
+async def contratos_de_la_instalacion(principal: AutenticadoDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/contratos",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return dict(respuesta.json())
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            # Un servicio que no contesta NO cuenta como «en verde»: contarlo
+            # así daría por verificado un contrato que nadie ha comprobado, que
+            # es exactamente lo que este gate existe para impedir.
+            return {"servicio": nombre, "medible": False, "en_verde": False}
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    incumplimientos = [i for p in partes for i in p.get("incumplimientos", [])]
+    return {
+        "en_verde": not incumplimientos and all(p.get("medible", True) for p in partes),
+        "incumplimientos": incumplimientos,
+        "servicios": partes,
+        "sin_respuesta": [p["servicio"] for p in partes if not p.get("medible", True)],
+    }
+
+
+@router.get(
     "/superficie",
     summary="Todo lo que sabe hacer el CRM, en una lista",
     description=(

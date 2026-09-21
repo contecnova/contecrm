@@ -709,6 +709,7 @@ def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
+from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
 from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
 
 ROUTERS = [
@@ -723,4 +724,5 @@ ROUTERS = [
     router_idp,
     *ROUTERS_POLITICAS,
     *ROUTERS_SOD,
+    *ROUTERS_SCIM,
 ]

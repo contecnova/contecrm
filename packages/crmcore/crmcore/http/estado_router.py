@@ -37,4 +37,24 @@ def crear_router_estado(servicio: str) -> APIRouter:
 
         return {"servicio": servicio, **calcular(db, principal.tenant_id)}
 
+    @router.get(
+        "/contratos",
+        summary=f"Contratos de evento que «{servicio}» consume y cumple",
+        description=(
+            "Contract testing interno dirigido por el consumidor "
+            "(CRM-00.03.01.03): qué campos de qué eventos necesita este "
+            "servicio, qué promesas no se sostienen y —lo que más cuesta "
+            "encontrar en otros sitios— qué parte del contrato se ha visto "
+            "cumplirse de verdad y cuál solo está escrita.\n\n"
+            "La cobertura se cuenta sobre emisiones observadas, no sobre "
+            "campos declarados: un 100 % de campos declarados sin una sola "
+            "emisión observada sería un informe que dice que todo va bien sin "
+            "haber mirado."
+        ),
+    )
+    def contratos_de_evento(principal: AutenticadoDep) -> Any:
+        from crmcore import contratos
+
+        return {"servicio": servicio, **contratos.informe()}
+
     return router

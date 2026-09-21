@@ -430,3 +430,28 @@ async def consumir_organizacion(mensaje: Any) -> None:
         tenant=str(tenant_id),
         organizacion=organizacion,
     )
+
+
+from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
+
+# El evento se declara también al importar, y no solo la primera vez que alguien
+# lo emite. Con la declaración perezosa, el gate de contratos podía correr sin
+# que el productor existiera todavía y acusar al consumidor de esperar un evento
+# que nadie publica. Las declaraciones son idempotentes, así que no cuesta nada.
+declarar_evento_organizacion()
+
+
+# Contrato dirigido por el consumidor (CRM-00.03.01.03): lo que este
+# consumidor lee de verdad, para que el productor no lo quite creyendo que
+# no lo usa nadie. El daño de quitarlo no se ve en el productor.
+declarar_consumo(
+    Consumo(
+        consumidor="todos-los-servicios",
+        evento=ORGANIZACION_CAMBIADA,
+        campos=("tenant_id", "organizacion"),
+        motivo=(
+            "Rehacer la ruta de archivo de los documentos del tenant; sin "
+            "`organizacion` quedan colgando del árbol anterior"
+        ),
+    )
+)

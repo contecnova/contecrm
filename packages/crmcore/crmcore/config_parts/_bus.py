@@ -36,6 +36,18 @@ class _BusSettings(BaseSettings):
     # El precio es entrega at-least-once —un evento puede publicarse dos veces
     # si el proceso muere entre publicar y marcar—, y por eso TODO consumidor
     # es idempotente por `dedup_key` (CRM-00.02.02.04).
+    # ── Contract testing interno (CRM-00.03.01.03) ────────────────────────
+    # Con esto activo, emitir un evento al que le falta un campo que su
+    # contrato promete es un error en el acto, dentro de la transacción, y por
+    # tanto la deshace. Apagado, se registra y sigue.
+    #
+    # El valor por defecto es «sí» a propósito: un evento incompleto no rompe
+    # al productor, rompe al consumidor, días después y sin relación aparente
+    # con el cambio que lo causó. Fallar donde se origina es lo único que hace
+    # que se arregle. Se puede apagar para un despliegue en el que un productor
+    # antiguo convive con un contrato nuevo, que es el único caso legítimo.
+    contratos_emision_estricta: bool = True
+
     outbox_enabled: bool = True
     # Cuántos eventos publica el relevo por vuelta. Lotes grandes reducen
     # viajes pero alargan el bloqueo de las filas tomadas.

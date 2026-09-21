@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**646 capacidades**: ✅ 266 hecho · ⬜ 380 pendiente
+**661 capacidades**: ✅ 272 hecho · ⬜ 389 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 152 · ⬜ 70
+237 capacidades · ✅ 156 · ⬜ 81
 
 ### 0.1 Multi-tenancy
 
@@ -167,7 +167,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.03.01.01` | Servicios delimitados por capacidad de negocio (party, sales, service, marketing, billing-interface) | C | 0 | infra | ✅ | contecpos:services/* (14 servicios por capacidad) |
 | `CRM-00.03.01.02` | Propiedad exclusiva de datos por servicio; prohibida la lectura directa de la BD ajena | C | 0 | infra | ✅ | contecpos:deploy/crear-bases.sh (una base y un rol por servicio) |
-| `CRM-00.03.01.03` | Contratos internos versionados y verificados por contract testing (consumer-driven) | A | 0 | core | ⬜ | contecpos:packages/contracts (buf) |
+| `CRM-00.03.01.03` | Contratos internos versionados y verificados por contract testing (consumer-driven) | A | 0 | core | ✅ | contecpos:packages/contracts (buf) |
 | `CRM-00.03.01.04` | Service registry / catálogo interno con owner, SLO, dependencias y runbook | A | 0 | docs | ⬜ | — |
 | `CRM-00.03.01.05` | Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red | A | 2 | infra | ⬜ | — |
 | `CRM-00.03.01.06` | Despliegue independiente por servicio, sin ventanas de release coordinadas | A | 0 | infra | ✅ | — |
@@ -284,12 +284,27 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.02` | SAML 2.0 para SSO empresarial | C | 0 | identity | ✅ | contecweb:app/services/saml.py + contecmind:app/services/saml.py |
 | `CRM-00.05.01.03` | SSO por tenant con múltiples proveedores de identidad simultáneos | A | 0 | identity | ✅ | contecmind:app/services/oidc_mappings.py |
 | `CRM-00.05.01.04` | Federación y Just-In-Time provisioning de usuarios | A | 0 | identity | ✅ | contecmind:app/services/oidc.py (JIT provisioning) |
-| `CRM-00.05.01.05` | SCIM 2.0 para aprovisionamiento y desaprovisionamiento automático | A | 0 | identity | ⬜ | contecweb:app/services/scim.py (699 líneas) + contecflow-PSA:app/services/scim_service.py |
+| `CRM-00.05.01.05` | SCIM 2.0 para aprovisionamiento y desaprovisionamiento automático | A | 0 | identity | ✅ | contecweb:app/services/scim.py (699 líneas) + contecflow-PSA:app/services/scim_service.py |
 | `CRM-00.05.01.06` | MFA obligatoria configurable por rol, con TOTP, push, WebAuthn/passkeys | C | 0 | identity | ✅ | contecweb:app/services/mfa.py + contecmind:app/services/{mfa,webauthn}.py |
 | `CRM-00.05.01.07` | Credenciales máquina: client credentials, service accounts, claves con scope y caducidad | C | 0 | identity | ✅ | contecflow-PSA:app/models/oauth_apps.py |
 | `CRM-00.05.01.08` | Gestión de sesiones: duración, sesiones concurrentes, revocación remota | C | 0 | identity | ✅ | contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py |
 | `CRM-00.05.01.09` | Políticas de acceso contextual: IP, dispositivo, geolocalización, horario | A | 0 | identity | ✅ | contecweb:app/services/security_rules.py |
 | `CRM-00.05.01.10` | Identidad de clientes externos (portal) separada de la de empleados (CIAM) | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py |
+| `CRM-00.05.01.11` | SSO iniciado por el proveedor (IdP-initiated) con protección contra reenvío de aserciones | C | 1 | identity | ⬜ | contecweb:app/services/saml.py |
+| `CRM-00.05.01.12` | Cierre de sesión único (Single Logout) propagado al IdP y a todos los servicios, por canal frontal y trasero | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.13` | Forzar SSO por tenant: sin contraseña local ni vías de escape, con excepción nominal y auditada para el administrador de rescate | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.14` | Descubrimiento de dominio (home realm discovery) y alias de correo, para no preguntar al usuario por su proveedor | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.15` | Rotación y caducidad de los certificados de firma del IdP, con aviso antes de que expiren y convivencia de dos certificados | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.16` | Conectores SSO por proveedor (Entra ID, Okta, Google Workspace, Keycloak, Ping) encima del genérico, nunca en su lugar | A | 2 | identity | ⬜ | — |
+| `CRM-00.05.01.17` | Segundo factor por SMS y por correo (OTP), marcados como el factor más débil y desactivables por política | C | 1 | identity | ⬜ | contecmind:app/services/mfa.py |
+| `CRM-00.05.01.18` | Reautenticación reforzada (step-up) ante operación sensible: exportación masiva, cambio de permisos, borrado, suplantación | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.19` | Ciclo de vida del segundo factor: inscripción guiada, cambio de dispositivo y desbloqueo asistido con doble aprobación auditada | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.20` | Dispositivos de confianza con caducidad y revocación remota, para no pedir el factor en cada entrada del mismo equipo | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.21` | MFA adaptativa por riesgo: exigir el segundo factor solo cuando el contexto cambia (IP, país, dispositivo, horario) | A | 2 | identity | ⬜ | contecweb:app/services/security_rules.py |
+| `CRM-00.05.01.22` | Conectores MFA por proveedor (Duo, Okta Verify, Twilio Verify, RSA SecurID) encima del transporte genérico | A | 2 | identity | ⬜ | — |
+| `CRM-00.05.01.23` | Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor | A | 1 | identity | ⬜ | contecmind:app/services/webauthn.py |
+| `CRM-00.05.01.24` | Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.25` | Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer | C | 1 | identity | ⬜ | — |
 
 #### CRM-00.05.02 · Autorización
 
@@ -346,7 +361,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.06.01.01` | Logs estructurados con tenant_id, trace_id, user_id y correlación extremo a extremo | C | 0 | core | ✅ | contecmind:app/core/logging.py (structlog + redacción PII) |
 | `CRM-00.06.01.02` | Métricas por tenant: latencia, throughput, tasa de error, saturación | C | 0 | core | ✅ | contecmind:app/core/metrics.py (577 líneas, Prometheus) |
 | `CRM-00.06.01.03` | Trazas distribuidas (OpenTelemetry) a través de servicios y orquestaciones | A | 0 | core | ✅ | contecmind:app/core/tracing.py (OpenTelemetry) + contecpos:packages/common/src/otel.ts |
-| `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ⬜ | contecmind:ops/prometheus/governance_alerts.yml |
+| `CRM-00.06.01.04` | SLO y error budget definidos por servicio y por tier de cliente | A | 0 | ops | ✅ | contecmind:ops/prometheus/governance_alerts.yml |
 | `CRM-00.06.01.05` | Alertado accionable con runbooks enlazados | C | 0 | ops | ✅ | contecmind:ops/alertmanager + app/services/alert_dispatch.py |
 | `CRM-00.06.01.06` | Panel de salud visible por el propio tenant (status page privada) | A | 0 | tenancy | ✅ | contecmind:app/services/health_monitor.py + app/api/admin_health.py |
 | `CRM-00.06.01.07` | Auditoría de rendimiento por consulta y detección de queries degradadas por tenant | A | 0 | core | ✅ | contecmind:tests/unit/test_query_count_ratchet.py + contecflow-PSA:docs/INDEX_TUNING.md |
@@ -357,7 +372,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.06.02.01` | Backups automáticos con RPO y RTO comprometidos por tier | C | 0 | ops | ✅ | contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup* |
 | `CRM-00.06.02.02` | Point-in-time recovery a nivel de tenant, no solo de clúster | A | 0 | ops | ⬜ | — |
-| `CRM-00.06.02.03` | Restauración selectiva de registros o de objetos concretos | A | 0 | ops | ⬜ | contecmind:app/api/admin_backup.py (restauración selectiva) |
+| `CRM-00.06.02.03` | Restauración selectiva de registros o de objetos concretos | A | 0 | ops | ✅ | contecmind:app/api/admin_backup.py (restauración selectiva) |
 | `CRM-00.06.02.04` | Papelera de reciclaje con retención y restauración en cascada de relaciones | C | 1 | core | ✅ | — |
 | `CRM-00.06.02.05` | Alta disponibilidad multi-AZ y plan de recuperación multi-región | A | 0 | infra | ⬜ | — |
 | `CRM-00.06.02.06` | Pruebas de DR periódicas documentadas | A | 0 | ops | ⬜ | contecmind:scripts/test_restore_integrity.sh |
@@ -954,7 +969,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 65 · ⬜ 26
+91 capacidades · ✅ 67 · ⬜ 24
 
 ### 7.1 Administración funcional
 
@@ -996,10 +1011,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.01.01` | Políticas de retención y eliminación automática por tipo de dato | C | 0 | core | ✅ | contecmind:scripts/audit_purge.py + purge_old_conversations.py |
 | `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ⬜ | — |
 | `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | ✅ | contecflow-PSA:app/services/bi_gdpr_service.py |
-| `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ⬜ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
+| `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ✅ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
 | `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ✅ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
 | `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ✅ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
-| `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ⬜ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
+| `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ✅ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ⬜ | — |
 
 #### CRM-07.03.02 · GRC — gobierno, riesgo y cumplimiento

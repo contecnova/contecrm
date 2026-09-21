@@ -62,6 +62,9 @@ PREFIJOS: dict[str, str] = {
     "sso": "identity",
     "politicas-acceso": "identity",
     "segregacion": "identity",
+    # SCIM lo llama el IdP corporativo, no el front: entra por el mismo gateway
+    # y con la misma clave de API, que es lo que acota el tenant.
+    "scim": "identity",
     "grc": "tenancy",
     "compromisos": "tenancy",
     "tablas-decision": "orchestrator",

@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**182 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**183 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -70,7 +70,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `NATS_URL` | — | `nats://localhost:4222` |  |  |
 | `REDIS_URL` | — | `redis://localhost:6379/0` |  |  |
 | `BUS_PREFIX` | — | `contecrm` |  | Prefijo de todos los subjects. Aísla despliegues que compartan broker (un NATS común para pre-producción y demo, por ejemplo). |
-| `OUTBOX_ENABLED` | — | `True` |  | El evento se escribe en la MISMA transacción que el cambio que lo provoca, y un relevo lo publica después. Es lo que impide el estado imposible: oportunidad ganada en la base y nadie enterado en el bus. El precio es entrega at-least-once —un evento puede publicarse dos veces si el proceso muere… |
+| `CONTRATOS_EMISION_ESTRICTA` | — | `True` |  | El evento se escribe en la MISMA transacción que el cambio que lo provoca, y un relevo lo publica después. Es lo que impide el estado imposible: oportunidad ganada en la base y nadie enterado en el bus. El precio es entrega at-least-once —un evento puede publicarse dos veces si el proceso muere… |
+| `OUTBOX_ENABLED` | — | `True` |  |  |
 | `OUTBOX_LOTE` | — | `100` | 1–10000 | Cuántos eventos publica el relevo por vuelta. Lotes grandes reducen viajes pero alargan el bloqueo de las filas tomadas. |
 | `OUTBOX_INTERVALO_S` | — | `1.0` | 0.05–60.0 | Cada cuánto vuelve a mirar si hay pendientes cuando la última vuelta salió vacía. Con eventos esperando publica de seguido, sin esperar. |
 | `OUTBOX_MAX_INTENTOS` | — | `8` | 1–100 | Intentos antes de mandar el evento a la cola de fallidos. Con backoff exponencial, 8 intentos cubren varios minutos de caída del broker. |

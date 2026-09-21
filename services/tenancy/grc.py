@@ -658,3 +658,42 @@ def _tiene_control(db: Session, tenant_id: UUID, riesgo_codigo: str) -> bool:
         if riesgo_codigo in (control.riesgos or []):
             return True
     return False
+
+
+# ── Aportación al informe de cumplimiento (CRM-07.03.01.07) ───────────────
+#
+# Los apartados los aporta quien es dueño del dato, no el núcleo. Si el núcleo
+# los importara, pasaría a depender de este servicio y se acabó el despliegue
+# independiente: el gate de arquitectura lo caza, y con razón.
+
+
+def _apartado_cobertura(db: Any, tenant_id: UUID) -> dict[str, Any]:
+    return cobertura(db, tenant_id, solo_hechas=True)
+
+
+def _apartado_certificados(db: Any, tenant_id: UUID) -> dict[str, Any]:
+    from sqlalchemy import func as _func
+    from sqlalchemy import select as _select
+
+    from services.tenancy.baja import CertificadoDestruccion
+
+    cuantos = int(
+        db.execute(
+            _select(_func.count())
+            .select_from(CertificadoDestruccion)
+            .where(CertificadoDestruccion.tenant_id == tenant_id)
+        ).scalar_one()
+        or 0
+    )
+    return {"emitidos": cuantos}
+
+
+def registrar_apartados() -> None:
+    """Aporta al informe lo que este servicio sabe y el núcleo no."""
+    from crmcore.cumplimiento import registrar_apartado
+
+    registrar_apartado("cobertura_de_controles", _apartado_cobertura)
+    registrar_apartado("certificados_de_destruccion", _apartado_certificados)
+
+
+registrar_apartados()

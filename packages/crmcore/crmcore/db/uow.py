@@ -59,6 +59,27 @@ class UnidadDeTrabajo:
         transacción. Llamarlo dentro del bloque es lo que da la garantía; si se
         llamara después del commit, volvería el estado imposible que esto evita.
         """
+        # Contract testing en ejecución (CRM-00.03.01.03). Se comprueba AQUÍ y
+        # no al publicar porque aquí todavía se está dentro de la transacción:
+        # el error la deshace y no queda un cambio hecho con un evento que
+        # nadie podrá interpretar. Comprobarlo en el relevo llegaría tarde.
+        from crmcore.contratos import comprobar_emision
+
+        faltan = comprobar_emision(tipo, data or {})
+        if faltan:
+            from crmcore.config import get_settings
+
+            aviso = (
+                f"El evento «{tipo}» se emite sin {', '.join(faltan)}, que su "
+                "contrato promete. Quien lo consume cuenta con esos campos y se "
+                "quedará sin ellos sin saber por qué."
+            )
+            if get_settings().contratos_emision_estricta:
+                raise ValueError(aviso)
+            import logging
+
+            logging.getLogger(__name__).error(aviso)
+
         self._pendientes.append(
             {
                 "tipo": tipo,

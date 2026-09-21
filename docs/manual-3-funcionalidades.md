@@ -311,12 +311,18 @@ desarrolla: están descritos uno a uno en [Gates locales](QUALITY_GATES.md).
 
 ## Lo que está a medias
 
-**Ahora mismo, nada.** Todo lo que consta como hecho cumple su enunciado, tiene
-prueba que lo cita y está explicado aquí; lo que no está hecho consta como
-pendiente y no aparece.
+Lo que está **en curso ahora mismo**. Todo lo demás que consta como hecho
+cumple su enunciado, tiene prueba que lo cita y está explicado aquí; lo que no
+está hecho consta como pendiente y no aparece.
 
-Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
-medias, y tenerla vacía es una afirmación, no una omisión.
+| Capacidad | Qué hay | Qué falta |
+|---|---|---|
+| `CRM-00.03.01.03` Contratos internos verificados | El OpenAPI de cada servicio y el gate de alcanzabilidad | Que un cambio incompatible falle en quien lo consume, no en producción |
+| `CRM-00.06.02.03` Restauración selectiva | La papelera y la exportación completa | Recuperar registros concretos desde una exportación sin restaurar nada más |
+| `CRM-00.05.01.05` SCIM 2.0 | Usuarios, roles y membresías | El protocolo de aprovisionamiento, y sobre todo el DESaprovisionamiento |
+| `CRM-00.06.01.04` SLO y error budget | Métricas por servicio | El objetivo declarado y cuánto margen queda antes de incumplirlo |
+| `CRM-07.03.01.04` Registro de tratamiento (RAT) | La sensibilidad declarada campo a campo | El mapa de datos personales y el registro que exige el RGPD |
+| `CRM-07.03.01.07` Informes de cumplimiento | GRC, audit trail y certificados | Juntarlo en evidencia que un auditor pueda leer sin pedir nada |
 
 ---
 
@@ -4501,3 +4507,211 @@ Y volver atrás es **un cambio más**, registrado como tal, que se aplica por el
 camino normal para que se replique a todos los servicios. Escribir la tabla
 directamente dejaría al resto del sistema con el valor deshecho hasta el
 siguiente reinicio, que es el fallo que la réplica por evento vino a cerrar.
+
+## Aprovisionamiento automático con SCIM 2.0 (`CRM-00.05.01.05`)
+
+SSO resuelve **quién entra**. No resuelve **quién deja de entrar**. Un empleado
+que se va desaparece del directorio corporativo, pero su usuario del CRM sigue
+ahí: con sus asignaciones, sus registros y —si alguna vez tuvo contraseña local
+o una clave de API— con una puerta abierta. SCIM es el canal por el que el
+directorio da esas bajas, y aquí está montado con la baja como camino principal.
+
+Se reutiliza `contecweb:app/services/scim.py` y
+`contecflow-PSA:app/services/scim_service.py`: de ahí salen el sobre
+`ListResponse`, el formato de error del RFC 7644 y, sobre todo, el catálogo de
+rarezas de proveedor, que es lo caro de descubrir.
+
+### Por qué la baja pesa más que el alta
+
+Un alta que falla se ve el primer día: la persona nueva no puede entrar y llama.
+Una baja que falla no la ve **nadie**. Alguien que se fue hace ocho meses
+conserva el acceso, y eso aparece en una auditoría o en un incidente, nunca
+antes. Por eso:
+
+- **`DELETE` no borra.** Desactiva la membresía en ese tenant y **corta las
+  sesiones en el acto**. Borrar dejaría huérfano todo lo que esa persona creó y
+  el historial de auditoría pasaría a apuntar a un identificador inexistente.
+  Marcar la membresía sin revocar las sesiones dejaría al que se va operando
+  hasta que le caducara el token, que es justo el rato que importa.
+- **La baja es por tenant, no global.** `active` sale de la membresía y no del
+  usuario. Es lo que permite que un consultor que trabaja para tres clientes
+  tenga una sola identidad: mirar el usuario aquí lo echaría de todos.
+- **Volver es reactivar, no dar de alta otra vez.** Un alta nueva sería una
+  identidad distinta y perdería su historial.
+
+### Las dos rarezas que hay que soportar sí o sí
+
+Ninguna es opcional, porque las mandan los dos proveedores mayoritarios:
+
+1. **`active` como cadena.** Entra ID manda `"value": "False"` —texto, con
+   mayúscula— en lugar del booleano del RFC. Leído con `bool()` de Python eso es
+   **cierto**: la baja se convertiría en «sigue activo». Es el fallo más caro
+   posible en este módulo, y por eso `active` se lee booleano, texto o número, y
+   un valor que no se entiende **se rechaza** en vez de darse por activo: por
+   defecto a «sí» sería convertir una baja ilegible en un alta silenciosa.
+2. **`PATCH` sin `path`.** Okta manda `{"op": "replace", "value": {"active":
+   false}}`, con el atributo dentro del valor. Mirando solo `path`, la operación
+   se ignora en silencio y se responde 200 — peor que fallar.
+
+Ninguna se corrige detectando el proveedor: se aceptan **siempre las dos
+formas**, porque las dos son lecturas defendibles del RFC y porque detectar por
+proveedor obliga a tocar el producto cada vez que aparece uno nuevo.
+
+### Lo que el directorio **no** puede hacer
+
+Un IdP manda los grupos que tiene él, que no son los roles de aquí. Aceptarlos
+por el nombre dejaría la matriz de permisos en manos de quien administre el
+directorio corporativo: bastaría crear un grupo llamado «Administradores» para
+tenerlos. Los grupos entrantes **se cruzan con los roles reales del tenant** y lo
+que no case se ignora.
+
+Los atributos de directorio que aquí no tienen sitio —departamento, oficina,
+manager— también se ignoran, y a propósito: fallar por ellos pararía el ciclo de
+sincronización entero, **incluidas las bajas**.
+
+### Detalles que evitan una llamada a soporte
+
+- El **alta no pone contraseña local**. Si la pusiera, existiría una vía de
+  entrada que el IdP no controla, y la baja en el directorio no la cerraría.
+- **Repetir un alta da 409 con el identificador dentro.** Es el caso más común
+  en producción —el alta salió bien y la respuesta se perdió—, y devolver el id
+  deja al IdP reconciliar solo, sin intervención.
+- La **búsqueda por `userName` ignora mayúsculas**: los IdP no normalizan el
+  correo antes de preguntar, y un fallo ahí significa crear un duplicado en cada
+  ciclo.
+- **La página tiene tope duro.** Un `count` desmedido de un IdP mal configurado
+  se llevaría por delante el servicio de identidad, que es el que no puede caer.
+- `ServiceProviderConfig` **declara solo lo implementado**. Declarar `bulk` o
+  `sort` sin tenerlos haría que el IdP los intentara y se llevara un error a
+  mitad de un ciclo.
+- Los errores salen en el **sobre SCIM** con su `scimType`. Con el
+  problema+json del resto del sistema, el cliente lo registra como fallo opaco,
+  reintenta cada hora y nadie averigua por qué la sincronización no avanza.
+
+El tenant sale **de la clave de API**, nunca del cuerpo ni de la URL: es lo que
+hace imposible que el cliente SCIM de una organización toque los usuarios de
+otra.
+
+## Contratos internos verificados por el consumidor (`CRM-00.03.01.03`)
+
+Entre servicios no hay llamadas directas ni lecturas cruzadas de base —el gate
+de arquitectura lo impide—, así que **el único contrato que puede romperse en
+silencio es el sobre de un evento**. El catálogo de eventos ya dice lo que cada
+productor *declara* publicar, y eso no basta: el productor no sabe qué campos
+lee cada consumidor, así que puede quitar uno creyendo que no lo usa nadie. El
+daño no se ve al desplegar —el productor sigue verde— sino en el consumidor,
+días después, sin relación aparente con el cambio.
+
+Aquí **cada consumidor declara qué campos necesita y para qué**. El motivo va en
+la declaración, no en un comentario, porque es lo único que le dice a quien se
+plantea quitar el campo si puede. Se reutiliza la idea de
+`contecpos:packages/contracts` (buf), traducida al evento.
+
+Se verifican tres cosas, y cada una tapa un agujero distinto:
+
+1. **Estático**, en el preflight: que el evento tenga productor, que el productor
+   declare todos los campos que el consumo pide y que la versión alcance. Rompe
+   antes de salir.
+2. **En ejecución**, al emitir: que lo que se publica de verdad lleve los campos
+   prometidos. Sin esto, productor y consumidor pueden declarar lo mismo y que
+   la declaración sea falsa —el campo está en el catálogo y nunca en el `data`—.
+   Se comprueba **dentro de la transacción**, para que el error la deshaga y no
+   quede un cambio hecho con un evento que nadie podrá interpretar; comprobarlo
+   en el relevo llegaría tarde. Esto ya encontró un defecto real: la
+   reactivación por SCIM emitía `user.provisioned` sin `email`.
+3. **Observado**: qué campos se han visto salir de verdad. La cobertura se cuenta
+   sobre eso y no sobre lo declarado, porque un 100 % de campos declarados sin
+   una sola emisión observada sería un informe que dice que todo va bien sin
+   haber mirado.
+
+Un consumo marcado **opcional** no rompe: es lo que permite añadir campos sin
+coordinar despliegues. Y declarar un consumo del propio evento se rechaza: un
+servicio no necesita un contrato consigo mismo, y contarlo infla la cobertura
+sin proteger de nada.
+
+Lo que **no** hace: deducir el contrato leyendo el código. Un contrato deducido
+es una foto de lo que hay, no un acuerdo, y no sirve para impedir el cambio que
+lo rompe.
+
+Se consulta en `GET /estado/contratos` de cada servicio. La estrictez al emitir
+se apaga con `CONTRATOS_EMISION_ESTRICTA=false` para el único caso legítimo: un
+despliegue en el que un productor antiguo convive con un contrato nuevo.
+
+## Objetivos de servicio y presupuesto de error (`CRM-00.06.01.04`)
+
+Un SLO sirve para convertir «esto va lento» en una cuenta. Aquí se declara por
+servicio y por *tier* —disponibilidad y latencia p95— y de ahí sale el
+presupuesto de error, con tres decisiones que cambian cómo se lee:
+
+- **Lo lento cuenta aparte de lo fallido.** Una respuesta que llega en cuatro
+  segundos es un error para quien la espera, aunque devuelva 200. Contar solo
+  los 5xx da un 99,99 % con la pantalla inservible.
+- **Sin tráfico no se dice que va bien.** «100 % disponible» sin peticiones es
+  mentir con la verdad: un servicio que nadie ha usado no ha demostrado nada, y
+  así se marca —`medible: false`— en vez de enseñar un verde vacío.
+- **El presupuesto se dice en minutos.** «Te queda el 37 % del presupuesto» no le
+  dice nada a nadie; «te quedan 16 minutos de caída este mes» se entiende a la
+  primera y sirve para decidir si se despliega o se arregla.
+
+Cuando el presupuesto se agota, la respuesta lo dice con todas las letras: toca
+arreglar antes que seguir sacando.
+
+## Restauración selectiva (`CRM-00.06.02.03`)
+
+Restaurar la copia entera para recuperar veinte registros borrados por error
+sacrifica todo lo que se hizo desde entonces. La restauración selectiva lee una
+exportación, deja **previsualizar** qué cambiaría y escribe solo lo elegido.
+
+Las tres reglas que la hacen usable:
+
+- **Se ve antes de escribir.** Quien restaura casi nunca sabe qué va a
+  sobrescribir, y descubrirlo después es cambiar un problema por otro. La
+  previsualización dice, registro a registro, qué campos difieren.
+- **No se pisa lo modificado después del punto de restauración.** Es trabajo que
+  alguien hizo a sabiendas; sobrescribirlo sin avisar cambia un problema
+  conocido por otro peor. Se salta y se dice, y forzarlo es una decisión
+  explícita que queda escrita en la auditoría.
+- **Nunca entre tenants.** Sería la peor fuga posible: datos de un cliente
+  escritos en la base de otro, con un rastro que dice que fue una recuperación
+  legítima. Se rechaza de plano.
+
+## Registro de tratamiento e informes de cumplimiento (`CRM-07.03.01.04`, `CRM-07.03.01.07`)
+
+El RAT que exige el RGPD se hace casi siempre en una hoja de cálculo, a mano, y
+describe el sistema que alguien recordaba el día que lo escribió. A los seis
+meses describe otro sistema.
+
+Aquí **sale del propio modelo**: cada columna declara su sensibilidad y de ahí se
+compone el mapa de datos personales sin que nadie lo transcriba. Cuando alguien
+añade un campo con datos personales, el mapa lo recoge solo; con la hoja de
+cálculo, ese campo no existe para el RAT hasta que alguien se acuerda — y nadie
+se acuerda.
+
+Lo que no se puede derivar —finalidad, base legal, plazo, destinatarios— sí se
+declara, porque son decisiones y no datos técnicos, pero se declara **junto al
+objeto** y no en un documento aparte que se queda viejo.
+
+Y lo que falta **se dice**, que es la parte que hace que esto valga:
+
+- un objeto con campos personales y sin tratamiento declarado sale como hueco;
+- un tratamiento declarado sobre un objeto que ya no tiene datos personales
+  también sale — suele significar que el objeto cambió y el RAT no;
+- las **categorías especiales** del artículo 9 se señalan aparte, porque su
+  régimen legal es distinto y un RAT que las mezcla esconde justo lo que un
+  auditor mira primero.
+
+Un RAT que presenta como completo lo que no lo está es peor que no tenerlo,
+porque nadie vuelve a mirarlo.
+
+El **informe de cumplimiento** se compone de lo que ya existe —cobertura de
+controles GRC, verificación de la cadena de auditoría, políticas activas,
+certificados de destrucción— en vez de mantener un informe aparte. Un informe que
+se rellena a mano dice lo que alguien quería que dijera; este dice lo que hay.
+Cuando un apartado no se puede leer **se dice**: un apartado ausente se lee como
+«no aplica», y la diferencia entre eso y «no se ha podido comprobar» es justo la
+que importa en una auditoría.
+
+Los apartados los **aporta cada servicio dueño del dato**, no el núcleo. Si el
+núcleo importara `tenancy` para leer la cobertura de controles, pasaría a
+depender de un servicio y se acabó el despliegue independiente. Invertido, cada
+servicio aporta lo suyo y el núcleo no conoce a ninguno.

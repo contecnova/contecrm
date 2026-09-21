@@ -176,3 +176,28 @@ def _inventariar(db: Session, tenant_id: UUID) -> tuple[list[dict[str, Any]], st
         db.rollback()
         logger.warning("documental.inventario_no_legible", error=str(exc)[:200])
         return [], f"no se pudo leer el inventario: {str(exc)[:160]}"
+
+
+from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
+
+# El evento se declara también al importar, y no solo la primera vez que alguien
+# lo emite. Con la declaración perezosa, el gate de contratos podía correr sin
+# que el productor existiera todavía y acusar al consumidor de esperar un evento
+# que nadie publica. Las declaraciones son idempotentes, así que no cuesta nada.
+declarar_eventos()
+
+
+# Contrato dirigido por el consumidor (CRM-00.03.01.03): lo que este
+# consumidor lee de verdad, para que el productor no lo quite creyendo que
+# no lo usa nadie. El daño de quitarlo no se ve en el productor.
+declarar_consumo(
+    Consumo(
+        consumidor="todos-los-servicios",
+        evento=INVENTARIO_SOLICITADO,
+        campos=("tenant_id",),
+        motivo=(
+            "Saber de qué tenant hay que listar los documentos; sin él la respuesta "
+            "sería de todos los tenants, que es justo lo que no puede pasar"
+        ),
+    )
+)

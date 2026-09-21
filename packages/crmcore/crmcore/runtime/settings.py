@@ -523,3 +523,29 @@ def _anotar_version(
         )
     except Exception as exc:  # noqa: BLE001 — el histórico no puede tumbar el cambio
         logger.error("ajuste.version_no_anotada", clave=clave, error=str(exc)[:200])
+
+
+from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
+
+# El evento se declara también al importar, y no solo la primera vez que alguien
+# lo emite. Con la declaración perezosa, el gate de contratos podía correr sin
+# que el productor existiera todavía y acusar al consumidor de esperar un evento
+# que nadie publica. Las declaraciones son idempotentes, así que no cuesta nada.
+_declarar_evento()
+
+
+# Lo que ESTE consumidor lee de verdad. Va declarado para que quitar un
+# campo del productor rompa el preflight en vez de romper la réplica de
+# configuración en silencio (CRM-00.03.01.03).
+declarar_consumo(
+    Consumo(
+        consumidor="todos-los-servicios",
+        evento=AJUSTE_CAMBIADO,
+        campos=("clave", "ambito", "ambito_id", "valor", "quitado"),
+        motivo=(
+            "Replicar el ajuste en el esquema local; sin `ambito_id` no se "
+            "sabe a qué tenant aplica y sin `quitado` no se distingue "
+            "borrar de poner en blanco"
+        ),
+    )
+)

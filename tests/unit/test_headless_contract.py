@@ -155,7 +155,15 @@ _OBJETO_POR_DEFECTO = "x"
 # Rutas que el gateway NO reenvía: las sirve él juntando la de todos los
 # servicios. Preguntarlas a uno solo daría una respuesta parcial presentada
 # como completa, que es peor que no tenerlas.
-_AGREGADAS_EN_EL_GATEWAY = {"/api/v1/estado", "/api/v1/superficie"}
+# Rutas que cada servicio publica para sí mismo y que el gateway NO enruta,
+# sino que **compone** preguntando a todos. Llegar a la de un servicio suelto no
+# serviría de nada: media página de estado, o la mitad de un contrato que tiene
+# los dos lados en servicios distintos.
+_AGREGADAS_EN_EL_GATEWAY = {
+    "/api/v1/estado",
+    "/api/v1/estado/contratos",
+    "/api/v1/superficie",
+}
 
 # Operaciones del corpus documental que NO son de ningún registro concreto
 # —el estado del gestor, la búsqueda, el mapeo del tenant— y que publican los

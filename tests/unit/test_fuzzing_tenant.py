@@ -98,6 +98,9 @@ ALIAS_MODELO = {
     "identificador_id": "identificadorfiscal",
     "miembro_id": "miembroequipocuenta",
     "canal_id": "canalcaptura",
+    # SCIM llama «Group» al rol; el nombre viene del RFC 7644 y renombrarlo
+    # rompería el contrato con los IdP.
+    "grupo_id": "roltenant",
 }
 
 
