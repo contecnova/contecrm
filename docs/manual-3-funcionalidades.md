@@ -318,11 +318,6 @@ pendiente y no aparece.
 Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
 medias, y tenerla vacía es una afirmación, no una omisión.
 
-Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
-medias, y tenerla vacía es una afirmación, no una omisión. La alternativa —no
-tenerla— haría imposible distinguir «no hay nada a medias» de «nadie lo ha
-mirado».
-
 ---
 
 ## 8. Cuentas, contactos y actividades (fase 1)
@@ -4073,3 +4068,126 @@ Lo que **no** cubre todavía, dicho: alguien paginando un listado doscientos
 registros cada vez, mil veces. El tope por hora no lo ve porque un listado no es
 una exportación. Cerrar eso exige contar registros servidos por usuario en la
 capa de paginación, y está anotado como pendiente en vez de dado por hecho.
+
+---
+
+## 48. Sacar el dato del sistema sin perder el rastro
+
+Cuatro piezas de la misma idea: el dato sale por sitios que no son un ataque —una
+copia de preproducción, un CSV que alguien reenvía, un volcado al SIEM, una
+consulta de soporte— y en todos hay que saber qué salió y de dónde.
+
+### Preproducción con datos reales es la fuga que nadie llama fuga (`CRM-00.05.03.05`)
+
+Un entorno de pruebas con datos de clientes es una copia de la base en una
+máquina con menos vigilancia, más gente dentro y sin las mismas políticas. Se
+anonimiza, y dos decisiones deciden si sirve:
+
+**Es consistente.** El mismo valor da siempre el mismo sustituto dentro del mismo
+entorno. Sin eso, el correo de un contacto sería distinto en la tabla de
+contactos y en la de actividades, las relaciones se romperían y el entorno no
+serviría para probar nada — que es como acaban reponiendo los datos reales «solo
+esta vez».
+
+**No es reversible.** El sustituto sale de un HMAC con una sal **del entorno**,
+no de un cifrado: si se pudiera deshacer, el entorno seguiría conteniendo los
+datos con un paso más. Y la sal es por entorno, así que juntar dos copias con
+campos distintos anonimizados no devuelve el registro.
+
+La forma se conserva —un correo sigue pareciendo un correo— porque un entorno
+donde los correos son «xxx» no sirve para probar el envío de correos, que es
+justo lo que se prueba ahí. Y el vacío se queda vacío: inventar un correo donde
+no había cambiaría los recuentos de completitud y alguien concluiría que
+preproducción tiene mejores datos que producción.
+
+Qué se anonimiza sale de la **sensibilidad declarada en el modelo**, no de una
+lista: con una lista, el campo nuevo entraría con dato real sin que nadie lo
+decidiera. Y la fila se copia antes de sustituir: hacerlo sobre el objeto de
+SQLAlchemy lo marcaría como sucio y el siguiente `flush` escribiría los valores
+anónimos **en producción** — el peor accidente imaginable de una herramienta
+cuyo propósito es proteger datos.
+
+### De dónde salió este fichero (`CRM-00.05.03.07`)
+
+El audit trail dice quién exportó. La marca de agua dice **de dónde salió este
+fichero**, que es otra pregunta y se hace en otro momento: cuando la hoja con la
+cartera aparece en el ordenador de un competidor, el audit trail de quien la
+perdió no está disponible.
+
+Va **dentro del fichero**, no en el nombre ni en una cabecera HTTP: las dos se
+pierden en cuanto alguien lo reenvía, que es justo cuando hace falta. En un CSV
+como comentario arriba, en un JSON Lines como primera línea, en un texto arriba y
+abajo —porque el recorte de las primeras líneas al pegar un fragmento en un
+correo es lo más habitual, y el del final también—.
+
+El identificador del usuario va **resumido** y no en claro: el fichero puede
+acabar en manos de cualquiera y el identificador en claro es un dato de la
+plantilla del cliente. Resumido sigue sirviendo para cotejarlo con el audit
+trail, que es para lo que hace falta.
+
+Y lo que **no** es: una protección. Quien sepa que está ahí la quita. Lo que
+hace es cerrar el caso más común con diferencia y dejar constancia de que el
+fichero salió identificado.
+
+### Retención del log y volcado a SIEM (`CRM-00.05.04.04`)
+
+Un audit trail que crece para siempre acaba siendo la tabla más grande y la más
+lenta de consultar, y entonces se deja de consultar. Pero borrarlo rompe la
+cadena de hashes, que es lo que lo hace verificable.
+
+Se purga **por tramos completos desde el principio**, nunca por el medio, y
+**antes de borrar se apunta qué se borra y hasta dónde**, en un apunte que queda
+dentro de la cadena nueva. Así quien verifique encuentra el corte explicado en
+vez de un hueco que parece manipulación. El apunte va antes del borrado a
+propósito: después, el primer apunte tras la purga no tendría con qué encadenarse
+y la verificación fallaría en el sitio equivocado.
+
+El volcado va en **JSON Lines con nombres neutros** y no en el formato de un
+producto: escribir el de uno ata la instalación a ese uno, y el adaptador de
+cualquier SIEM son veinte líneas. Viajan la secuencia y los hashes, que es lo que
+permite a quien lo reciba comprobar que no falta nada por el camino. Y se
+devuelve como flujo, porque un año de audit trail no cabe cómodamente en memoria.
+
+### Preguntarle al audit trail desde aquí (`CRM-00.05.04.05`)
+
+`GET /api/v1/grc/auditoria`, filtrable por acción, objeto, actor y fechas. Desde
+la propia plataforma y no exportando a otro sitio: «¿quién tocó esta cuenta?» se
+pregunta mientras se mira la cuenta, y obligar a salir a otra herramienta
+significa que casi nunca se responde.
+
+---
+
+## 49. Engancharse al CRM sin bifurcarlo (`CRM-00.04.02.02`, `CRM-00.04.02.03`)
+
+Un CRM al que no se le puede enganchar nada obliga a modificarlo para cada
+cliente, y a los dos años hay cinco versiones del producto. Hay dos formas, y la
+diferencia no es de estilo.
+
+**Síncrono** (`antes_de` / `despues_de`): corre dentro de la transacción del
+cambio. Sirve para lo que tiene que **decidir** —rechazar un guardado, completar
+un campo— y por eso mismo es peligroso: lo que falle aquí tumba la operación del
+usuario.
+
+**Asíncrono** (`al_ocurrir`): corre fuera, sobre el evento ya publicado. No puede
+rechazar nada porque el cambio ya pasó, y a cambio no puede romperlo.
+
+La regla, dicha una vez: **si puede esperar, es asíncrono**. La tentación de
+hacerlo todo síncrono —«así lo tengo hecho al volver»— es lo que convierte un
+guardado de 80 ms en uno de dos segundos que a veces falla por algo que no tiene
+nada que ver con guardar.
+
+Tres decisiones dentro de eso:
+
+- **Antes puede rechazar; después, no.** Un hook posterior que falla se registra
+  y sigue. Propagar haría que el usuario viera un error sobre algo que **sí** se
+  guardó, y la próxima vez lo volvería a intentar duplicándolo.
+- **Un hook lento se avisa, no se corta.** Cortarlo a mitad dejaría la operación
+  en un estado que la extensión no esperaba. Lo que hace falta es saber quién
+  está frenando el guardado.
+- **Una extensión asíncrona rota no para el bus.** Si se propagara, una mal
+  escrita bloquearía la cola para todas las demás y el sistema se pararía entero
+  por algo que es de un tenant.
+
+Y un detalle del comodín que parece menor: `cuenta.*` casa con `cuenta.creada` y
+**no** con `cuenta_borrador.creada`. El punto es parte del prefijo a propósito;
+sin él, una extensión escucharía objetos que no son el suyo.

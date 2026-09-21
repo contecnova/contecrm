@@ -309,3 +309,27 @@ def anomalias(
     from crmcore.seguridad.dlp import anomalias as leer_anomalias
 
     return leer_anomalias(db, principal.tenant_id, dias=dias)
+
+
+@router_grc.get(
+    "/auditoria",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Consultar el audit trail (CRM-00.05.04.05)",
+    description=(
+        "Filtrable por acción, objeto, actor y fechas. Desde la propia "
+        "plataforma y no exportando a otro sitio: «¿quién tocó esta cuenta?» se "
+        "pregunta mientras se mira la cuenta, y obligar a salir a otra "
+        "herramienta significa que casi nunca se responde."
+    ),
+)
+def auditoria(
+    db: DbDep,
+    principal: AutenticadoDep,
+    accion: str = Query("", max_length=80),
+    objeto: str = Query("", max_length=80),
+    limite: int = Query(100, ge=1, le=1000),
+) -> Any:
+    from crmcore.seguridad.siem import consultar
+
+    return consultar(db, principal.tenant_id, accion=accion, objeto=objeto, limite=limite)

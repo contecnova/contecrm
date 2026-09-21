@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 244 hecho · ⬜ 387 pendiente
+**641 capacidades**: ✅ 250 hecho · ⬜ 391 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 130 · ⬜ 92
+222 capacidades · ✅ 136 · ⬜ 86
 
 ### 0.1 Multi-tenancy
 
@@ -267,8 +267,8 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.04.02.01` | Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota | A | 6 | automation | ⬜ | — |
-| `CRM-00.04.02.02` | Hooks pre/post sobre operaciones de dominio (before save, after commit) | A | 0 | core | ⬜ | — |
-| `CRM-00.04.02.03` | Extensiones asíncronas suscritas a eventos, sin bloquear la transacción | A | 0 | core | ⬜ | — |
+| `CRM-00.04.02.02` | Hooks pre/post sobre operaciones de dominio (before save, after commit) | A | 0 | core | ✅ | — |
+| `CRM-00.04.02.03` | Extensiones asíncronas suscritas a eventos, sin bloquear la transacción | A | 0 | core | ✅ | — |
 | `CRM-00.04.02.04` | Endpoints personalizados definidos por el tenant sobre el mismo gateway | D | 6 | gateway | ⬜ | — |
 | `CRM-00.04.02.05` | Gestión de dependencias, versiones y rollback del código de extensión | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.06` | Observabilidad de extensiones: logs, métricas, errores y coste atribuido | A | 6 | automation | ⬜ | — |
@@ -321,9 +321,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.03.02` | Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional | A | 0 | core | ✅ | contecmind:app/db/encrypted_text.py + app/core/crypto.py |
 | `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | ✅ | contecmind:app/services/pii.py + sensitive_policy.py |
 | `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ⬜ | — |
-| `CRM-00.05.03.05` | Anonimización y pseudonimización para entornos no productivos | A | 0 | core | ⬜ | contecmind:app/services/pii.py |
+| `CRM-00.05.03.05` | Anonimización y pseudonimización para entornos no productivos | A | 0 | core | ✅ | contecmind:app/services/pii.py |
 | `CRM-00.05.03.06` | DLP: control de exportaciones masivas, alertas y bloqueo por política | A | 0 | core | ✅ | contecweb:app/services/security_signals.py |
-| `CRM-00.05.03.07` | Marca de agua e identificación de origen en exportaciones | D | 1 | core | ⬜ | contecflow-PSA:app/services/_pdf_marca.py (marca de agua) |
+| `CRM-00.05.03.07` | Marca de agua e identificación de origen en exportaciones | D | 1 | core | ✅ | contecflow-PSA:app/services/_pdf_marca.py (marca de agua) |
 | `CRM-00.05.03.08` | Detección de comportamiento anómalo (descargas masivas, accesos fuera de patrón) | A | 0 | core | ✅ | contecweb:app/services/security_signals.py + contecflow-PSA:app/services/security_observability.py |
 
 #### CRM-00.05.04 · Auditoría y trazabilidad
@@ -333,8 +333,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.04.01` | Audit trail inmutable de accesos, cambios, exportaciones y acciones administrativas | C | 0 | core | ✅ | contecmind:app/services/audit.py (668, hash-chain) + deploy/sql/audit_immutable.sql; contecweb:app/services/audit_chain.py |
 | `CRM-00.05.04.02` | Historial de campo con valor anterior, valor nuevo, autor, origen (UI/API/automatización) y timestamp | C | 0 | core | ✅ | contecflow-PSA:app/models/task_movement_log.py (historial de campo) |
 | `CRM-00.05.04.03` | Auditoría de cambios de configuración y de permisos | C | 0 | core | ✅ | contecflow-PSA:app/services/settings_audit_service.py |
-| `CRM-00.05.04.04` | Retención configurable del log y exportación a SIEM | A | 0 | core | ⬜ | contecmind:scripts/audit_purge.py |
-| `CRM-00.05.04.05` | Consulta y alertado sobre el audit trail desde la propia plataforma | A | 0 | core | ⬜ | contecmind:app/api/admin_audit.py |
+| `CRM-00.05.04.04` | Retención configurable del log y exportación a SIEM | A | 0 | core | ✅ | contecmind:scripts/audit_purge.py |
+| `CRM-00.05.04.05` | Consulta y alertado sobre el audit trail desde la propia plataforma | A | 0 | core | ✅ | contecmind:app/api/admin_audit.py |
 | `CRM-00.05.04.06` | Event sourcing opcional en agregados críticos para reconstrucción de estado | D | 2 | core | ⬜ | — |
 
 ### 0.6 Observabilidad y operación
@@ -659,7 +659,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.03.02.04` | Descuentos con matriz de aprobación por umbral y margen mínimo | C | 2 | sales | ⬜ | contecmind:app/services/approval_engine/ (matriz de aprobación por umbral) |
 | `CRM-03.03.02.05` | Cálculo de margen y rentabilidad en el propio presupuesto | A | 2 | sales | ⬜ | contecflow-PSA:app/services/profitability_service.py + cost_service.py |
 | `CRM-03.03.02.06` | Generación documental (PDF) con plantillas por marca e idioma | C | 2 | sales | ⬜ | contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py |
-| `CRM-03.03.02.07` | Firma electrónica integrada con evidencia legal y estado | A | 2 | sales | ⬜ | contecflow-PSA:app/services/esign_service.py + esign_providers.py + signature_pdf.py |
+| `CRM-03.03.02.07` | Enviar a firma un presupuesto o contrato desde la oportunidad, y que su estado mueva la etapa (usa CRM-06.01.02) | A | 2 | sales | ⬜ | — |
 | `CRM-03.03.02.08` | Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos | A | 2 | sales | ⬜ | contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py |
 | `CRM-03.03.02.09` | Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación | A | 2 | sales | ⬜ | contecpos:services/identidad (suscripciones y planes) |
 | `CRM-03.03.02.10` | Gestión de renovaciones con alertas y pipeline específico | A | 2 | sales | ⬜ | — |
@@ -902,7 +902,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-14 capacidades · ✅ 3 · ⬜ 11
+24 capacidades · ✅ 3 · ⬜ 21
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -916,6 +916,21 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ⬜ | — |
 | `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ✅ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
 | `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ⬜ | contecmind:app/services/generated_documents.py + templates.py |
+
+#### CRM-06.01.02 · Firma electrónica
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-06.01.02.01` | Envío a firma desde cualquier registro, con varios firmantes, orden y plazo | C | 2 | core | ⬜ | contecflow-PSA:app/services/esign_service.py + esign_providers.py |
+| `CRM-06.01.02.02` | Proveedor de firma configurable y varios a la vez: transporte declarativo, sin un conector por producto ni lista de proveedores en el código | C | 2 | core | ⬜ | — |
+| `CRM-06.01.02.03` | Estado de cada firmante en la propia ficha, con recordatorios y cancelación | C | 2 | core | ⬜ | — |
+| `CRM-06.01.02.04` | Evidencia legal: hash del documento firmado, sello de tiempo, certificado de finalización y trazabilidad de cada acceso | C | 2 | core | ⬜ | contecflow-PSA:app/services/signature_pdf.py |
+| `CRM-06.01.02.05` | Niveles eIDAS: simple, avanzada y cualificada, elegibles por tipo de documento | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.06` | Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.07` | El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5) | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.08` | Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.09` | Firma presencial en tableta y firma biométrica con captura de trazo | D | 3 | core | ⬜ | — |
+| `CRM-06.01.02.10` | Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta | A | 2 | core | ⬜ | — |
 
 ### 6.2 Colaboración y movilidad
 
