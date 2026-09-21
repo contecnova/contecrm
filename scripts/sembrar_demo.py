@@ -4,6 +4,8 @@
     python scripts/sembrar_demo.py                  # todo (desarrollo local)
     python scripts/sembrar_demo.py --parte tenant   # desde el contenedor tenancy
     python scripts/sembrar_demo.py --parte usuario  # desde el contenedor identity
+    python scripts/sembrar_demo.py --parte party    # desde el contenedor party
+    python scripts/sembrar_demo.py --parte sales    # desde el contenedor sales
 
 **Por qué se puede partir en dos.** En desarrollo local un solo proceso llega a
 todos los esquemas y siembra de una vez. En un despliegue real **no**, y eso es
@@ -114,12 +116,164 @@ def _sembrar_usuario(tenant_id: UUID) -> None:
     print(f"Usuario «{EMAIL_ADMIN}» creado")
 
 
+# Datos de la demostración. Coherentes entre sí a propósito (CRM-07.04.05.03):
+# los contactos pertenecen a las cuentas, las oportunidades también, y las
+# actividades cuelgan de algo. Un tenant de muestra con registros sueltos no
+# sirve para enseñar el sistema, porque justo lo que hay que enseñar es cómo se
+# relacionan.
+CUENTAS_DEMO = [
+    {"nombre": "Metalúrgica del Norte, S.A.", "sector_codigo": "2511", "tier": "A"},
+    {"nombre": "Distribuciones Levante, S.L.", "sector_codigo": "4690", "tier": "B"},
+    {"nombre": "Clínica Sanitas Vallés", "sector_codigo": "8610", "tier": "B"},
+    {"nombre": "Transportes Arruti", "sector_codigo": "4941", "tier": "C"},
+]
+
+CONTACTOS_DEMO = [
+    (
+        "Metalúrgica del Norte, S.A.",
+        "Ana",
+        "Bermúdez",
+        "ana.bermudez@metalnorte.example",
+        "Directora de compras",
+    ),
+    (
+        "Metalúrgica del Norte, S.A.",
+        "Luis",
+        "Onaindía",
+        "luis.onaindia@metalnorte.example",
+        "Jefe de planta",
+    ),
+    ("Distribuciones Levante, S.L.", "Marta", "Ferrer", "marta.ferrer@dlevante.example", "Gerente"),
+    (
+        "Clínica Sanitas Vallés",
+        "Jordi",
+        "Puig",
+        "jordi.puig@sanitasvalles.example",
+        "Responsable de compras",
+    ),
+]
+
+OPORTUNIDADES_DEMO = [
+    ("Metalúrgica del Norte, S.A.", "Renovación de la línea de corte", 185_000),
+    ("Distribuciones Levante, S.L.", "Ampliación de flota refrigerada", 92_500),
+    ("Clínica Sanitas Vallés", "Equipamiento de quirófano", 240_000),
+]
+
+LEADS_DEMO = [
+    ("Bodegas Ribera Alta", "Elena", "Casal", "elena.casal@riberalta.example"),
+    ("Talleres Mecánicos Sur", "Paco", "Ramos", "paco.ramos@tmsur.example"),
+]
+
+
+def _sembrar_party(tenant_id: UUID) -> None:
+    """Cuentas, contactos y actividades. Corre donde `party` tiene permisos."""
+    os.environ["SERVICE_NAME"] = "party"
+    from crmcore.config import limpiar_cache_settings
+    from crmcore.db.session import reset_engine
+
+    limpiar_cache_settings()
+    reset_engine()
+
+    from datetime import datetime, timedelta, timezone
+
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select
+
+    from services.party import servicio as svc_party
+    from services.party.modelos import Cuenta
+
+    with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+        if uow.db.execute(select(Cuenta).limit(1)).scalar_one_or_none():
+            print("Ya hay cuentas en este tenant. No se toca nada.")
+            return
+
+        por_nombre: dict[str, UUID] = {}
+        for datos in CUENTAS_DEMO:
+            cuenta = svc_party.crear_cuenta(uow, **datos)
+            por_nombre[str(datos["nombre"])] = cuenta.id
+        print(f"{len(CUENTAS_DEMO)} cuentas creadas")
+
+        for empresa, nombre, apellidos, email, cargo in CONTACTOS_DEMO:
+            svc_party.crear_contacto(
+                uow,
+                nombre=nombre,
+                apellidos=apellidos,
+                email=email,
+                cargo=cargo,
+                cuenta_id=por_nombre.get(empresa),
+            )
+        print(f"{len(CONTACTOS_DEMO)} contactos creados")
+
+        # Una vencida y una por vencer: enseñar solo actividades al día esconde
+        # justo la mitad del sistema que se nota —los avisos y los vencimientos—.
+        ahora = datetime.now(timezone.utc)
+        for asunto, dias, cuenta in (
+            ("Llamada de seguimiento de la oferta", -3, "Metalúrgica del Norte, S.A."),
+            ("Enviar propuesta revisada", 2, "Distribuciones Levante, S.L."),
+            ("Visita a planta", 9, "Clínica Sanitas Vallés"),
+        ):
+            svc_party.crear_actividad(
+                uow,
+                tipo="tarea",
+                asunto=asunto,
+                objeto="cuenta",
+                objeto_id=por_nombre.get(cuenta),
+                vence_at=ahora + timedelta(days=dias),
+            )
+        print("3 actividades creadas (una ya vencida, para que se vea el aviso)")
+
+
+def _sembrar_sales(tenant_id: UUID) -> None:
+    """Leads y oportunidades. Corre donde `sales` tiene permisos.
+
+    Las oportunidades se atan a las cuentas **por nombre**, porque `sales` no
+    puede leer el esquema de `party` para buscar sus identificadores — que es el
+    aislamiento funcionando. Si la cuenta no se encuentra, la oportunidad se
+    crea sin ella y se dice: una demo a medias que lo avisa es útil; una que
+    finge estar completa, no.
+    """
+    os.environ["SERVICE_NAME"] = "sales"
+    from crmcore.config import limpiar_cache_settings
+    from crmcore.db.session import reset_engine
+
+    limpiar_cache_settings()
+    reset_engine()
+
+    from decimal import Decimal
+
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select
+
+    from services.sales import servicio as svc_sales
+    from services.sales.modelos import Lead
+
+    with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+        if uow.db.execute(select(Lead).limit(1)).scalar_one_or_none():
+            print("Ya hay leads en este tenant. No se toca nada.")
+            return
+
+        for empresa, nombre, apellidos, email in LEADS_DEMO:
+            svc_sales.crear_lead(
+                uow, nombre=nombre, apellidos=apellidos, empresa=empresa, email=email
+            )
+        print(f"{len(LEADS_DEMO)} leads creados")
+
+        for _empresa, nombre, importe in OPORTUNIDADES_DEMO:
+            svc_sales.crear_oportunidad_nueva(uow, nombre=nombre, importe=Decimal(importe))
+        print(f"{len(OPORTUNIDADES_DEMO)} oportunidades creadas")
+
+
 def main() -> int:
     from crmcore.config import get_settings
 
     parte = _parte_pedida()
-    if parte not in ("tenant", "usuario", "todo"):
-        print(f"Parte desconocida: «{parte}» (usa tenant|usuario|todo)", file=sys.stderr)
+    if parte not in ("tenant", "usuario", "party", "sales", "todo"):
+        print(
+            f"Parte desconocida: «{parte}» (usa tenant|usuario|party|sales|todo)",
+            file=sys.stderr,
+        )
         return 2
 
     os.environ.setdefault("SERVICE_NAME", "tenancy" if parte != "usuario" else "identity")
@@ -141,7 +295,7 @@ def main() -> int:
         )
         return 0
 
-    if parte == "usuario":
+    if parte in ("usuario", "party", "sales"):
         valor = os.environ.get("TENANT_DEMO", "")
         if not valor:
             print(
@@ -151,10 +305,17 @@ def main() -> int:
             )
             return 2
         tenant_id = UUID(valor)
-        _sembrar_usuario(tenant_id)
-    else:
-        tenant_id = _sembrar_tenant()
-        _sembrar_usuario(tenant_id)
+        {"usuario": _sembrar_usuario, "party": _sembrar_party, "sales": _sembrar_sales}[parte](
+            tenant_id
+        )
+        return 0
+    tenant_id = _sembrar_tenant()
+    _sembrar_usuario(tenant_id)
+    # En local un solo proceso llega a todos los esquemas. En un despliegue real
+    # no, y por eso cada parte se puede ejecutar por separado donde tiene
+    # permisos: no es una comodidad, es el aislamiento entre servicios.
+    _sembrar_party(tenant_id)
+    _sembrar_sales(tenant_id)
 
     print(
         "\nListo:\n"

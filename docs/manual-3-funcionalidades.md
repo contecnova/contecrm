@@ -311,12 +311,14 @@ desarrolla: están descritos uno a uno en [Gates locales](QUALITY_GATES.md).
 
 ## Lo que está a medias
 
-Se dice aquí y no se esconde, porque una lista de capacidades que no distingue
-entre «hecho» y «empezado» no sirve para decidir nada.
+**Ahora mismo, nada.** Todo lo que consta como hecho cumple su enunciado, tiene
+prueba que lo cita y está explicado aquí; lo que no está hecho consta como
+pendiente y no aparece en este manual.
 
-| Capacidad | Qué hay | Qué falta |
-|---|---|---|
-| `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
+Esta sección se queda, y no por costumbre: es donde va lo que se entrega a
+medias, y tenerla vacía es una afirmación, no una omisión. La alternativa —no
+tenerla— haría imposible distinguir «no hay nada a medias» de «nadie lo ha
+mirado».
 
 ---
 
@@ -3460,3 +3462,278 @@ Dos comprobaciones que evitan reglas que mienten: un mismo permiso en los dos
 lados no segrega nada —prohíbe, y para eso se quita del rol—, y el comodín se
 expande al comparar, porque un rol con `*:*` los tiene todos y una regla que no
 lo viera daría por limpio justo al usuario más peligroso.
+
+---
+
+## 42. El front oficial, y la consola que se construye sola
+
+contecrm es y sigue siendo **frontless**: toda capacidad existe primero como
+servicio con contrato (RT-1) y quien quiera se hace su interfaz entera sin
+perder nada. Lo que faltaba es la otra mitad de esa frase — la interfaz
+**oficial**, la que da la solución estándar — y está en `frontend/`, con el
+mismo stack y el mismo sistema de diseño que contecmind: React, Vite,
+TypeScript y Tailwind, con los tokens `paper` / `ink` / `accent` tal cual, para
+que quien use las dos soluciones no note que cambia de producto.
+
+Lo que hay montado, capacidad a capacidad: la aplicación de referencia con el
+stack de la casa (`CRM-07.04.01.01`), su sistema de diseño (`CRM-07.04.01.02`),
+el marco con navegación, tema claro/oscuro y aviso permanente de suplantación
+(`CRM-07.04.01.03`), los textos centralizados para que el segundo idioma no
+obligue a repasar la aplicación entera (`CRM-07.04.01.05`), los estados de
+carga, vacío y error homogéneos con el Problem Details traducido a lenguaje de
+usuario (`CRM-07.04.01.07`), la entrada con SSO y con contraseña
+(`CRM-07.04.02.01`), el cliente de API con idempotencia en las escrituras y
+`ETag`/`If-Match` en las ediciones (`CRM-07.04.02.06`), la página de estado del
+tenant (`CRM-07.04.03.13`) y las pruebas de todo ello (`CRM-07.04.04.01`).
+
+Se levanta con su perfil, porque una instalación que solo consuma la API no la
+necesita:
+
+```bash
+docker compose --profile app --profile consola up
+```
+
+### La consola de administración se construye del contrato (`CRM-07.01.01.01`)
+
+Esta es la pieza que cierra la capacidad que llevaba en curso desde el
+principio, y que es además `CRM-07.04.03.01`. El menú, las tablas y las acciones
+de la consola **salen de `GET /api/v1/superficie`**, que el gateway agrega
+juntando la de los diez servicios.
+
+Eso convierte «la consola está replicada al 100 % por API» en algo comprobable
+en vez de declarado: aquí **no hay forma de pintar una acción que no sea una
+operación publicada**, porque no existe ninguna lista de acciones escrita a mano
+de donde sacarla. Por construcción, no por disciplina.
+
+Tres decisiones de esa consola que conviene entender:
+
+- **Agrupa por recurso de la ruta, no por etiqueta.** Dos servicios pueden
+  rotular parecido —«ajustes» y «configuración»— y acabarían en el mismo menú
+  apuntando a sitios distintos, sin que el usuario viera la diferencia hasta
+  pulsar.
+- **El listado es el `GET` sin parámetros.** Con uno parametrizado habría que
+  pedirle al usuario que invente un identificador para ver una tabla; un área
+  que no lo tiene lo dice en vez de fingir una lista vacía.
+- **Lo que el rol no concede se enseña apagado, no escondido.** Esconderlo haría
+  imposible saber que esa operación existe, que es justo lo que alguien necesita
+  para pedir el permiso. Y la decisión no la toma la interfaz
+  (`CRM-07.04.02.05`): **lee** los permisos efectivos que le da el servidor y con
+  eso decide qué ofrecer. Si decidiera ella, bastaría con abrir las herramientas
+  del navegador para «concederse» una acción.
+
+Y cuando un servicio no contesta a la superficie, **se dice y se nombra**: una
+consola que callara eso escondería media administración como si no existiera.
+
+### Lo que el front no puede hacer, y hay gate que lo impide
+
+Dos capacidades del catálogo son gates y no pantallas, y son las que evitan que
+la interfaz oficial se convierta en el cliente privilegiado — algo que no pasa
+de golpe, sino una pantalla a la vez, cada una con su prisa.
+
+Las cabeceras de seguridad del cliente (`CRM-07.04.02.04`) las pone el servidor
+que sirve la aplicación y no la aplicación: CSP sin `eval` ni estilos en línea,
+`nosniff`, `frame-ancestors: none` y aislamiento de origen. Una cabecera que
+pone la aplicación puede quitarla la propia aplicación; una que pone el
+servidor, no.
+
+**Toda llamada del front existe como ruta publicada** (`CRM-07.04.02.07`). El
+gate recorre las rutas literales del código y las compara con el OpenAPI de
+todos los servicios. Cinco están exentas y se nombran con su motivo: la propia
+superficie, el estado agregado, la identidad de la sesión, la entrada y el
+arranque del SSO.
+
+**Cero lógica de negocio en el front** (`CRM-07.04.02.08`). Ni cálculo de
+precios, ni de descuentos, ni de puntuación de leads, ni de SLA. El gate caza lo
+que tiene nombre y se dice claramente que lo que no puede cazar —una regla
+escondida en un `if`— lo sostiene la revisión.
+
+Y un tercero: **nada de negocio en el almacenamiento del navegador**
+(`CRM-07.04.02.09`). Solo preferencias de quien mira, y solo en un fichero
+—`lib/tema.ts`— que el gate conoce. Los comentarios se ignoran a propósito: este
+front explica precisamente lo que *no* hace, y castigar la frase que documenta
+una decisión correcta es la forma más rápida de que nadie vuelva a escribirla.
+
+### La sesión en cookie, y el hueco que destapó (`CRM-07.04.02.03`)
+
+Al escribir la pantalla de entrada apareció un problema de verdad: `identity`
+devuelve los tokens **en el cuerpo**. Para una integración es lo correcto —un
+servicio guarda su token donde quiera— y para un navegador es lo peor posible:
+si el token llega al cliente, la aplicación tiene que guardarlo, y todos los
+sitios que sobreviven a una recarga los puede leer un script inyectado. Un XSS
+deja de ser un susto y pasa a ser una sesión robada.
+
+Así que el **gateway** —lo único con lo que habla un navegador— hace de puente.
+`POST /api/v1/sesion/entrar` recibe las credenciales, pide los tokens a
+identidad y devuelve una cookie `HttpOnly`; **el cuerpo no lleva el token**, y
+hay una prueba que lo comprueba sobre el código precisamente para que nadie lo
+añada más adelante «porque no hace daño». Las cuatro propiedades de la cookie
+están puestas y ninguna es decorativa: `HttpOnly` la esconde de los scripts,
+`Secure` impide que viaje en claro, `SameSite=Lax` corta el envío en peticiones
+cruzadas de escritura —y es `lax` y no `strict` porque con `strict` la vuelta
+del proveedor de identidad llega sin cookie y el SSO no completa nunca— y
+`Path=/api` la acota.
+
+Cerrar sesión revoca en identidad además de borrar la cookie: borrar solo la
+cookie dejaría el token vivo hasta caducar, y quien lo hubiera copiado seguiría
+dentro. Si identidad no responde, la cookie se borra igual — dejar al usuario
+dentro porque un servicio no contesta es el peor resultado posible de pulsar
+«cerrar sesión».
+
+Una cabecera `Authorization` explícita **manda sobre la cookie**. Sin esa
+precedencia, una pestaña con sesión abierta cambiaría en silencio la identidad
+de una llamada de API hecha desde la misma máquina.
+
+### Lo que hay y lo que no
+
+Hay: el marco con navegación y tema claro/oscuro, la entrada con SSO y con
+contraseña, la consola de administración, la página de estado del tenant —que
+enseña además los compromisos de servicio junto a lo medido
+(`CRM-07.04.03.30`), porque un RPO escrito en un contrato que nadie compara con
+la realidad no lo comprueba nadie—, los
+estados de carga, vacío y error homogéneos con el Problem Details traducido, el
+aviso de campos retenidos por permisos, el aviso permanente de suplantación, y
+el cliente de API con idempotencia en las escrituras y `ETag`/`If-Match` en las
+ediciones.
+
+Y los módulos funcionales de la fase 1, uno por sección del catálogo: tenants,
+planes, ajustes y localización (`CRM-07.04.03.01`), el explorador del contrato
+de la API (`CRM-07.04.03.02`), procesos, instancias, tareas, tablas de decisión
+y automatizaciones (`CRM-07.04.03.03`), objetos y relaciones del modelo de datos
+(`CRM-07.04.03.04`), usuarios, roles, políticas de acceso, claves, sesiones y
+proveedores de identidad (`CRM-07.04.03.05`), la operación y el catálogo de
+eventos (`CRM-07.04.03.06`), cuentas, contactos y duplicados
+(`CRM-07.04.03.07`), actividades (`CRM-07.04.03.08`), el pipeline
+(`CRM-07.04.03.13`), la prospección con leads, enrutamiento y canales de captura
+(`CRM-07.04.03.15`), la consola de administración (`CRM-07.04.03.26`) y el
+gobierno con riesgos, controles, segregación, retención, bloqueos legales y
+clases de dato (`CRM-07.04.03.28`), la previsión con el resumen del pipeline y
+las oportunidades estancadas (`CRM-07.04.03.14`) y la explotación delegada en
+contecintelligence (`CRM-07.04.03.22`), donde se enseña el estado del enlace y
+lo consultado — los informes se abren allí, con la identidad del usuario (RT-4).
+
+**Una sola pantalla para todos, no treinta escritas a mano.** No es pereza:
+treinta pantallas son treinta sitios donde el mismo fallo se arregla una vez y
+sigue en las otras veintinueve, y treinta sitios donde alguien olvida la
+paginación, el aviso de campos retenidos o la clave de idempotencia. Lo que cada
+módulo declara es **qué** se enseña; el **cómo** es uno solo. Las columnas salen
+de lo que devuelve la API y los formularios del OpenAPI del servicio dueño
+(`CRM-07.04.04.04`), así que un campo nuevo en el servicio aparece en el
+formulario sin tocar el front.
+
+Ese formulario **no valida reglas de negocio**: marca lo obligatorio y respeta
+tipo y longitud porque eso es contrato; «el descuento no puede pasar del 30 %»
+lo comprueba el servicio, y duplicarlo aquí sería tener dos versiones de la
+misma regla que se separan.
+
+Hay un tercer gate que ata las dos listas que podrían separarse: el catálogo
+dice qué secciones enseña el front y `modulos.ts` dice qué pantallas hay. Una
+sección declarada hecha sin módulo hace fallar la prueba, y un módulo que cubre
+una sección que nadie ha declarado terminada, también. La que se queda corta es
+siempre la del código, porque marcar una capacidad cuesta una línea y construir
+la pantalla cuesta una tarde.
+
+No hay todavía: marketing, servicio y atención, analítica e IA, productividad,
+ALM y canal indirecto. Están catalogados en `CRM-07.04.03.*`, uno por sección, y
+constan como pendientes.
+
+La configuración del cliente —dirección de la API, nombre del producto, idioma,
+color de acento y logotipo— se lee **en ejecución** de `/config.json`, que genera
+el contenedor al arrancar a partir del entorno. Compilarla obligaría a
+reconstruir la imagen para cambiar una URL.
+
+**Marca blanca** (`CRM-07.04.01.04`): el acento del cliente se escribe sobre la
+*misma* variable que usa el sistema de diseño, no sobre una clase aparte, así
+que llega a todo lo que ya usa `bg-accent` o `text-accent` sin repasar la
+aplicación. Se valida la forma antes de escribirla: una variable CSS con un
+valor inventado no falla, simplemente deja de aplicarse y el acento desaparece
+sin decir por qué.
+
+### La sesión se renueva sola (`CRM-07.04.02.02`)
+
+El token de acceso dura quince minutos a propósito: su tiempo de vida **es** la
+ventana de exposición si alguien lo copia. La interfaz lo cambia por uno nuevo
+cada diez, **antes** de que caduque — descubrirlo con un 401 en mitad de un
+formulario pierde lo que se estaba escribiendo.
+
+Eso obligó a guardar también el token de refresco, en una segunda cookie
+acotada a la única ruta que lo canjea: una cookie de refresco que viajara en
+cada petición multiplicaría por mil las ocasiones de que se filtre, y solo hace
+falta en una. El refresco **rota** en cada uso, así que se guarda el nuevo;
+guardar el viejo haría que el siguiente intento revocara todas las sesiones del
+usuario, que es lo que pasa al presentar un refresco ya rotado. Y una sesión que
+no se puede renovar **se cierra**: dejar la cookie vieja haría que la interfaz
+siguiera creyéndose dentro hasta el siguiente 401.
+
+### Accesibilidad, tamaño y pantalla pequeña
+
+**Accesibilidad AA** (`CRM-07.04.01.06`) con comprobación automática en cada
+cambio (`CRM-07.04.04.02`): `eslint-plugin-jsx-a11y` con sus reglas
+recomendadas, y un gate que revisa los cuatro fallos que ninguna herramienta
+perdona — el salto al contenido, el idioma del documento, que toda navegación
+esté rotulada y que ningún control se quede sin nombre. Se dice claramente lo
+que un gate estático **no** puede comprobar: el contraste real y el orden de
+foco los mide el navegador.
+
+**Pantalla pequeña sin aplicación aparte** (`CRM-07.04.01.08`): en móvil la
+cabecera se apila en vez de encogerse —una barra con seis enlaces a 360 px o
+desborda o los deja de 8 px, y las dos cosas son peores que dos líneas— y las
+tablas se desplazan en horizontal. Una tabla de doce columnas apretada en 360 px
+no se lee; una que se desplaza, sí, y el usuario decide qué mira.
+
+**Presupuesto de rendimiento** (`CRM-07.04.04.03`): 120 kB comprimidos, medidos
+sobre `dist/` en el preflight local. Una aplicación web crece de treinta en
+treinta kilobytes, cada uno con su justificación, y un día tarda cuatro segundos
+en abrir; nadie lo decide, se llega. Un tope que falla obliga a que la decisión
+sea explícita: o se justifica subirlo, o se quita algo.
+
+**Tipado estricto y tipos del contrato** (`CRM-07.04.04.04`): TypeScript en modo
+estricto, sin `any` implícito y con índices comprobados, y los esquemas de los
+formularios leídos del OpenAPI del servicio dueño en vez de escritos a mano.
+
+### El recorrido, y la trazabilidad puesta delante
+
+Hay un **recorrido guiado** por la solución (`CRM-07.04.05.04`) construido desde
+el catálogo de módulos, no escrito a mano: un guion de demostración aparte se
+queda viejo a la tercera pantalla que alguien añade, y el día que se enseña el
+producto lo que se cuenta ya no es lo que hay. Cada paso sale de un módulo real
+y lleva a la pantalla real, y lo que no aparece ahí es que no está hecho.
+
+Y **cada pantalla dice qué capacidad del catálogo implementa**
+(`CRM-07.04.05.05`), con el identificador a la vista. Desde él se llega al
+enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
+la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
+existe.
+
+### El tenant de demostración (`CRM-07.04.05.03`)
+
+Enseñar la solución sobre una base vacía no enseña nada: lo que hay que ver es
+cómo se relacionan los registros, no que existan. `scripts/sembrar_demo.py`
+siembra un tenant con cuatro cuentas, sus contactos, tres oportunidades, dos
+leads y tres actividades — y una de esas actividades está **vencida** a
+propósito, porque enseñar solo actividades al día esconde justo la mitad del
+sistema que se nota: los avisos y los vencimientos.
+
+Los datos son coherentes entre sí y hay prueba que lo comprueba: los contactos
+pertenecen a cuentas que se siembran, las oportunidades también, y los leads son
+de empresas que **no** son clientes todavía — si coincidieran con una cuenta
+existente, la demo enseñaría un duplicado y no un lead.
+
+Se siembra **por partes**, una por servicio, y no por comodidad: en un
+despliegue real un proceso no llega a todos los esquemas, y eso es el
+aislamiento funcionando. Y se niega a ejecutarse en producción, que es la
+condición sin la cual todo lo demás da igual: meter datos de ejemplo en la base
+de un cliente no se deshace con un `DELETE`, porque los eventos ya se han
+publicado, la auditoría ya lo ha registrado y los webhooks ya han salido.
+
+### El informe que nadie hace (`CRM-07.04.05.01`, `CRM-07.04.05.02`)
+
+Hay una pantalla de cobertura que cruza la superficie con los módulos
+declarados y contesta dos preguntas. La normal —cuántas operaciones publicadas
+tienen pantalla— y la de vuelta, que es la que importa: **qué sabe hacer el CRM
+que ninguna pantalla enseña**, ordenado por cuánto esconde cada recurso.
+
+Esa es la lista de potencia escondida en la API: capacidades construidas,
+probadas y documentadas que quien mira el producto concluye que no están. Se
+calcula **en vivo**, porque un informe de cobertura guardado se queda viejo en
+cuanto alguien añade una ruta — y un informe viejo es peor que ninguno, porque
+se decide sobre él.

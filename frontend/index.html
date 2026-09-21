@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>contecrm</title>
+    <meta name="description" content="CRM empresarial headless, multi-tenant y orquestado" />
+    <!--
+      El tema se aplica ANTES de pintar nada. Sin esto, quien tiene el tema
+      oscuro ve un fogonazo blanco en cada carga: el HTML se pinta con el tema
+      por defecto y React lo corrige unos fotogramas después.
+    -->
+    <script>
+      try {
+        const guardado = localStorage.getItem("contecrm.tema");
+        const oscuro =
+          guardado === "oscuro" ||
+          (!guardado && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (oscuro) document.documentElement.classList.add("dark");
+      } catch {
+        /* Modo privado o almacenamiento bloqueado: se queda el tema claro. */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

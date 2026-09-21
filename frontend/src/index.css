@@ -1,0 +1,633 @@
+/* Sistema de diseño de la casa (CRM-07.04.01.02).
+ *
+ * Los tokens son los MISMOS que los de contecmind, copiados tal cual: quien usa
+ * las dos soluciones no debe notar que cambia de producto, y dos paletas
+ * «parecidas» se separan a la tercera pantalla que alguien añade.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme variables ────────────────────────────────────────────────────
+   The palette is keyed by CSS variables so the same `bg-paper-*` /
+   `text-ink-*` class can render either the light NotebookLM palette
+   (default) or the dark Contecmind palette (opt-in via the theme toggle,
+   which writes `class="dark"` on <html>).
+
+   Values are stored as `R G B` triplets so Tailwind's `<alpha-value>`
+   plumbing keeps working with the `/30`, `/15`, etc. opacity modifiers.
+ */
+:root {
+  /* Light theme — NotebookLM / Material 3 inspired */
+  --paper:         255 255 255;  /* #ffffff — surface (panels, page bg) */
+  --paper-dark:    248 249 250;  /* #f8f9fa — base canvas */
+  --paper-light:   241 243 244;  /* #f1f3f4 — hover targets, chip bg */
+  --paper-lighter: 232 234 237;  /* #e8eaed — borders-as-fill, sunken */
+
+  --ink:           32 33 36;     /* #202124 — primary text */
+  --ink-muted:    95 99 104;     /* #5f6368 — secondary text */
+  /* Bumped from #80868b (~3.6:1, below WCAG AA for small text on
+   * paper-light) to #62686f (~5.3:1). Captions and placeholders are
+   * the worst offenders for accessibility complaints because they're
+   * always set in text-xs / text-3xs. */
+  --ink-faint:    98 104 111;    /* #62686f — captions, placeholders */
+  --ink-dim:      218 220 224;   /* #dadce0 — borders, dividers */
+
+  /* ── Semánticos: RELLENO y TEXTO son tokens distintos ─────────────────────
+     Auditoría 2026-09-02 (#26). Un color no puede servir para las dos cosas,
+     y no es una cuestión de gusto — son dos requisitos numéricos distintos y
+     opuestos de WCAG 2:
+
+       · como TEXTO, el color va contra la superficie y necesita 4.5:1 (1.4.3)
+       · como RELLENO, lo que necesita 4.5:1 es el texto que va ENCIMA, y el
+         propio relleno solo necesita 3:1 contra la superficie (1.4.11)
+
+     El amarillo lo deja a la vista: `#f9ab00` sobre blanco da 1.93:1 como
+     texto —ilegible— y sin embargo es un relleno perfectamente bueno, porque
+     lo que se lee encima es tinta oscura. Pedirle a un solo valor que cumpla
+     las dos cosas no es un compromiso difícil: es imposible.
+
+     Así que el token base es el RELLENO y `*-text` es el mismo color movido en
+     luminosidad —mismo tono, misma saturación— hasta llegar a 4.6:1 contra la
+     PEOR de las cuatro superficies (`paper-lighter`, la de modales). Se toma
+     la peor porque las superficies se anidan: un modal sobre una tarjeta sobre
+     la página, y nada en el código impide ninguna combinación.
+
+     `tailwind.config.js` conecta `text-*` con estos, así que los ~430 sitios
+     de llamada no cambian. El margen es 4.6 y no 4.5 para que el redondeo del
+     navegador no haga fallar el gate por centésimas. Los ratios de los
+     comentarios son el peor caso de las cuatro superficies, y
+     `e2e/a11y-contraste.spec.ts` los vuelve a medir con el motor del navegador
+     en vez de creérselos. */
+
+  /* Rellenos. `--accent` bajó de #1a73e8 porque con `text-paper` encima daba
+     4.51:1 — cumplía, pero sin margen para el redondeo. */
+  --accent:        23 113 232;   /* #1771e8 — Google Blue; text-paper encima 4.60:1 */
+  --accent-soft:   19 95 195;    /* #135fc3 — hover: relleno −8% L */
+  --accent-glow:   66 133 244;   /* #4285f4 — solo resaltados; nunca lleva texto */
+
+  --success:       30 142 62;    /* #1e8e3e — Google Green */
+  --success-soft:  24 128 56;
+  --warning:      249 171 0;     /* #f9ab00 — Google Yellow */
+  --warning-soft: 234 154 0;
+  --danger:       217 48 37;     /* #d93025 — Google Red */
+  --danger-soft:  182 40 31;     /* #b6281f — hover: relleno −8% L */
+
+  /* Los mismos colores, como TEXTO. `ink-faint` ya llegaba en claro; existe
+     aquí porque `.dark` tiene que poder redefinirlo, y una variable declarada
+     solo en `:root` conservaría el valor CLARO en tema oscuro. */
+  --ink-faint-text:     98 104 111;  /* #62686f — 4.67:1 */
+  --accent-text:        21 101 206;  /* #1565ce — 4.60:1 */
+  --accent-soft-text:   24 101 205;  /* #1865cd — 4.61:1 */
+  --accent-glow-text:   13 95 229;   /* #0d5fe5 — 4.60:1 */
+  --success-text:       25 120 52;   /* #197834 — 4.61:1 */
+  --success-soft-text:  23 120 53;   /* #177835 — 4.62:1 */
+  --warning-text:      139 95 0;     /* #8b5f00 — 4.67:1; un amarillo legible
+                                        sobre blanco es forzosamente un marrón */
+  --warning-soft-text: 143 94 0;     /* #8f5e00 — 4.62:1 */
+  --danger-text:       198 44 34;    /* #c62c22 — 4.60:1 */
+  --danger-soft-text:  197 34 31;    /* #c5221f — 4.81:1 */
+
+  /* ── Categóricos de visualización (auditoría 2026-09-02 #36) ──────────────
+     Los grafos y el scatter necesitan distinguir CATEGORÍAS entre sí, que es un
+     requisito distinto de «seguir el tema»: los 6 tipos de relación del grafo
+     doc→doc tienen que verse diferentes, y la paleta semántica solo ofrece
+     cuatro tonos (accent/success/warning/danger).
+
+     Forzar 6 categorías en 4 tokens haría indistinguibles dos relaciones, y eso
+     es peor que un literal. Así que se EXTIENDE el sistema de tokens en vez de
+     esquivarlo: estos dos cubren los tonos que faltaban y, como cualquier otro
+     token, tienen valor propio en claro y en oscuro. */
+  --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
+  --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
+}
+
+.dark {
+  /* Dark theme — legacy Contecmind cool neutrals, now with Google blue */
+  --paper:         28 29 38;     /* #1c1d26 — surface */
+  --paper-dark:    19 20 26;     /* #13141a — base */
+  --paper-light:   38 40 51;     /* #262833 — elevated */
+  --paper-lighter: 50 52 66;     /* #323242 — top */
+
+  --ink:           228 230 235;  /* #e4e6eb */
+  --ink-muted:    164 168 180;   /* #a4a8b4 */
+  --ink-faint:    138 142 156;   /* #8a8e9c */
+  --ink-dim:       64 68 86;     /* #404456 */
+
+  /* Rellenos. Los `-soft` son el hover, y aquí iban AL REVÉS: `--accent-soft`
+     era #1a73e8, más OSCURO que el relleno #4285f4. Sobre una interfaz oscura
+     el hover tiene que aclarar —oscurecer acerca el botón al fondo, o sea que
+     al pasar por encima el botón se apagaba— y además rompía el contraste del
+     texto de encima. Ahora los dos son el relleno +8% L. */
+  --accent:        66 133 244;   /* #4285f4 — text-paper encima 4.70:1 */
+  --accent-soft:  105 158 246;   /* #699ef6 — hover: relleno +8% L */
+  --accent-glow:  138 180 248;   /* #8ab4f8 */
+
+  --success:       52 168 83;
+  --success-soft:  46 148 73;
+  --warning:      251 188 4;
+  --warning-soft: 234 154 0;
+  --danger:       242 139 130;
+  --danger-soft:  246 173 167;   /* #f6ada7 — hover: relleno +8% L */
+
+  /* Los mismos colores, como TEXTO: aquí hay que ACLARAR, porque la superficie
+     es oscura. Es el movimiento contrario al del tema claro, y por eso los dos
+     bloques no pueden compartir estos valores. */
+  --ink-faint-text:    155 158 170;  /* #9b9eaa — 4.61:1 (el base daba 3.77) */
+  --accent-text:       106 159 246;  /* #6a9ff6 — 4.63:1 */
+  --accent-soft-text:  101 161 240;  /* #65a1f0 — 4.64:1 */
+  --accent-glow-text:  138 180 248;  /* #8ab4f8 — 5.84:1; = base */
+  --success-text:       56 181 90;   /* #38b55a — 4.65:1 */
+  --success-soft-text:  56 181 89;   /* #38b559 — 4.64:1 */
+  --warning-text:      251 188 4;    /* #fbbc04 — 7.21:1; = base */
+  --warning-soft-text: 234 154 0;    /* #ea9a00 — 5.35:1; = base */
+  --danger-text:       242 139 130;  /* #f28b82 — 5.15:1; = base */
+  --danger-soft-text:  240 125 115;  /* #f07d73 — 4.62:1 */
+
+  /* Categóricos de visualización (#36) — más luminosos para el lienzo oscuro. */
+  --viz-violet:   167 139 250;   /* #a78bfa */
+  --viz-neutral:  156 163 175;   /* #9ca3af */
+}
+
+@layer base {
+  html {
+    /* Tells the browser to style its own widgets (scrollbar thumbs, form
+       autofill) for the active theme. `light dark` lets the browser pick
+       based on the html.dark class so autofill never paints unreadable
+       light-on-light or dark-on-dark. */
+    color-scheme: light dark;
+  }
+  html.dark { color-scheme: dark; }
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-paper-dark text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  /* ── Accessibility overrides ─────────────────────────────────────
+     Push ink-faint to ink-muted when the OS asks for more contrast,
+     and disable ambient animations under reduced-motion.
+   */
+  @media (prefers-contrast: more) {
+    .text-ink-faint {
+      @apply text-ink-muted;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  ::selection {
+    @apply bg-accent/25 text-ink;
+  }
+  /* Custom scrollbar — light & discreet (Material guidance) */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink-dim) / 0.8);
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-faint) / 0.9);
+    background-clip: padding-box;
+  }
+  /* Keyboard focus rings — Material focus indicator */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent/40 ring-offset-2;
+    --tw-ring-offset-color: rgb(var(--paper));
+  }
+}
+
+@layer components {
+  /* ── Buttons ────────────────────────────────────────────────────────────
+     Material 3 flat / filled buttons. Primary is solid Google blue with a
+     subtle elevation-1 shadow; no more blue→violet gradient. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+      bg-accent text-white rounded-full font-medium text-sm
+      shadow-elevation-1
+      hover:bg-accent-soft hover:shadow-elevation-2
+      active:bg-accent-soft active:shadow-elevation-1
+      transition-all
+      disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+      bg-paper text-accent border border-ink-dim rounded-full
+      font-medium text-sm
+      hover:bg-accent/10 hover:border-accent/40
+      transition-colors
+      disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-3 py-1.5
+      text-sm text-ink-muted hover:text-ink hover:bg-paper-light
+      rounded-full transition-colors
+      disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-icon {
+    @apply !w-10 !h-10 !p-0 inline-flex items-center justify-center rounded-full;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+      bg-danger/10 text-danger border border-danger/30 rounded-full
+      font-medium text-sm
+      hover:bg-danger/20 hover:border-danger/50
+      transition-colors;
+  }
+  /* Inline micro-action used in admin tables / sidebar. Keeps the prior
+     uppercase-mono signature but adopts smaller padding for Material density. */
+  .btn-link {
+    @apply inline-flex items-center text-3xs font-mono
+      uppercase tracking-wider px-1.5 py-0.5
+      transition-colors
+      disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  /* Toggle pill — boolean states (activo/inactivo) */
+  .toggle-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full
+      text-3xs font-mono uppercase tracking-wider
+      transition-colors cursor-pointer;
+  }
+  .toggle-badge--on {
+    @apply toggle-badge bg-success/15 text-success;
+  }
+  .toggle-badge--off {
+    @apply toggle-badge bg-paper-light text-ink-faint;
+  }
+  /* Pill-style tag — category nav */
+  .pill {
+    @apply inline-flex items-center px-3 py-1 rounded-full
+      text-xs font-medium text-ink-muted
+      bg-paper-light border border-transparent
+      hover:bg-paper-lighter hover:text-ink
+      transition-colors cursor-pointer select-none;
+  }
+  .pill-active {
+    @apply !text-accent !bg-accent/10 !border-accent/30;
+  }
+
+  /* ── Inputs ─────────────────────────────────────────────────────────── */
+  /* Canonical form label: misma talla/peso/espaciado en todos los formularios
+     (antes se repetía `text-xs font-semibold text-ink-muted` con mb-1 / mb-1.5
+     / mb-2 a ojo, rompiendo la alineación vertical entre campos). */
+  .label-base {
+    @apply block text-xs font-semibold text-ink-muted mb-2;
+  }
+  .input-base {
+    @apply w-full px-3.5 py-2.5
+      bg-paper border border-ink-dim rounded-lg
+      text-ink placeholder:text-ink-faint
+      focus:outline-none focus:border-accent focus:shadow-accent-glow
+      transition-all;
+  }
+  .input-sm {
+    @apply px-3 py-2 text-xs font-mono
+      bg-paper border border-ink-dim rounded-md
+      text-ink placeholder:text-ink-faint
+      focus:outline-none focus:border-accent
+      transition-colors;
+  }
+
+  /* ── Cards & surfaces ───────────────────────────────────────────────────
+     Material 3 surface tonal cards with elevation-1 default. */
+  .card {
+    @apply bg-paper border border-ink-dim/60 rounded-xl;
+  }
+  .card-hover {
+    @apply hover:bg-paper-light hover:border-ink-dim transition-colors;
+  }
+  .card-stat {
+    @apply card relative overflow-hidden p-5 shadow-elevation-1;
+  }
+  .card-stat::before {
+    content: "";
+    @apply absolute top-0 left-0 right-0 h-[3px] bg-accent;
+  }
+  .card-stat.stat-success::before { @apply bg-success; }
+  .card-stat.stat-warning::before { @apply bg-warning; }
+  .card-stat.stat-danger::before  { @apply bg-danger; }
+  .card-stat.stat-info::before    { @apply bg-accent-glow; }
+
+  /* ── Citation pills (chat answers) ─────────────────────────────────── */
+  .citation-pill {
+    @apply inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 mx-0.5
+      text-2xs font-mono font-medium
+      bg-accent/10 text-accent border border-accent/30 rounded-full
+      hover:bg-accent/20 hover:border-accent/60
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
+      focus-visible:ring-offset-1 focus-visible:ring-offset-paper
+      cursor-pointer transition-colors align-baseline;
+  }
+  .citation-pill--orphan {
+    @apply bg-ink-dim/30 text-ink-faint border-ink-dim/60 line-through
+      hover:bg-ink-dim/30 hover:border-ink-dim/60
+      cursor-not-allowed;
+  }
+  .citation-wrap {
+    @apply relative inline-block align-baseline;
+  }
+  .citation-hover {
+    @apply pointer-events-none absolute left-1/2 bottom-full z-30
+      -translate-x-1/2 -translate-y-1 mb-1
+      w-[min(22rem,calc(100vw-2rem))]
+      px-3 py-2.5 rounded-lg
+      bg-paper border border-accent/30 shadow-popover
+      text-left
+      opacity-0 invisible transition-opacity duration-150;
+  }
+  .citation-wrap:hover .citation-hover,
+  .citation-wrap:focus-within .citation-hover {
+    @apply opacity-100 visible pointer-events-auto;
+  }
+  .citation-hover-meta {
+    @apply block text-3xs font-mono uppercase tracking-widest text-accent mb-1;
+  }
+  .citation-hover-snippet {
+    @apply block text-xs text-ink leading-relaxed font-sans;
+  }
+  .citation-hover-foot {
+    /* Auditoría 2026-07-17 R30: era text-[0.55rem] (~8.8px), por debajo del
+       mínimo legible del sistema; usa el token canónico text-3xs (10px). */
+    @apply block mt-2 text-3xs font-mono uppercase tracking-widest text-ink-faint;
+  }
+
+  .citation-group {
+    @apply inline-flex items-center gap-0.5 mx-0.5 align-baseline;
+  }
+  .citation-group .citation-pill {
+    @apply mx-0 rounded-none border-x-0 first:rounded-l-full first:border-l
+      last:rounded-r-full last:border-r;
+  }
+  .citation-sep {
+    @apply text-3xs font-mono text-accent/50 leading-5;
+  }
+
+  /* ── Badges ─────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+      text-3xs font-mono uppercase tracking-wider;
+  }
+  .badge-success {
+    @apply badge bg-success/10 text-success border border-success/30;
+  }
+  .badge-warning {
+    @apply badge bg-warning/15 text-warning border border-warning/30;
+  }
+  .badge-danger {
+    @apply badge bg-danger/10 text-danger border border-danger/30;
+  }
+  .badge-muted {
+    @apply badge bg-paper-light text-ink-muted border border-ink-dim/60;
+  }
+  .badge-accent {
+    @apply badge bg-accent/10 text-accent border border-accent/30;
+  }
+
+  /* ── Tab nav — Material 3 segmented chips ─────────────────────────── */
+  .tab-button {
+    @apply px-4 py-1.5 text-sm font-medium rounded-full transition-colors;
+  }
+  .tab-button-inactive {
+    @apply tab-button text-ink-muted hover:text-ink hover:bg-paper-light;
+  }
+  .tab-button-active {
+    @apply tab-button bg-accent/10 text-accent;
+  }
+
+  /* ── Section labels ─────────────────────────────────────────────────── */
+  .section-label {
+    @apply text-2xs font-semibold uppercase tracking-[0.10em] text-ink-faint;
+  }
+
+  /* ── Canonical vertical spacing scale ─────────────────────────────── */
+  .stack-tight   { @apply space-y-2; }
+  .stack-normal  { @apply space-y-4; }
+  .stack-section { @apply space-y-6; }
+  .stack-page    { @apply space-y-8; }
+
+  /* ── Logo tile (rounded square with the workspace initial) ──────────
+     Now a flat Google-blue Material tile, no inner highlight + outer glow. */
+  .logo-tile {
+    @apply inline-flex items-center justify-center
+      w-9 h-9 rounded-xl
+      bg-accent text-white font-bold text-base
+      shadow-elevation-1;
+  }
+  .logo-tile-lg {
+    @apply logo-tile w-12 h-12 rounded-2xl text-xl;
+  }
+
+  /* ── Material Symbols icon helper ───────────────────────────────────
+     We load Material Symbols from local npm package in main.tsx. Use:
+       <span className="material-symbol">edit</span>
+     for any Material icon — the ligature stays as the literal text. */
+  .material-symbol {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+  .material-symbol--filled {
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+  .material-symbol--sm { font-size: 18px; }
+  .material-symbol--lg { font-size: 24px; }
+  .material-symbol--xl { font-size: 32px; }
+}
+
+/* ── View mode: focus (Ciclo 23) ───────────────────────────────────────
+   When the user picks "Modo enfoque" in the TopBar, anything marked
+   `.focus-hide` is removed from the layout so only the conversation
+   remains. Components opt in by adding the class (sidebar, studio drawer,
+   the chat scope/meta sub-bar). `ops` mode adds no CSS — components read
+   it via useViewMode() to surface diagnostics. */
+html[data-view-mode="focus"] .focus-hide {
+  display: none !important;
+}
+
+/* ── Streaming caret animation ─────────────────────────────────────── */
+.caret::after {
+  content: "▌";
+  @apply text-accent ml-0.5;
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.1%, 100% { opacity: 0; }
+}
+
+/* "Pensando…" indicator: three dots that pulse in sequence. Shown
+   while the assistant is streaming but no content has arrived yet. */
+.thinking-dots::after {
+  content: "…";
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: thinkingDots 1.4s steps(4) infinite;
+}
+
+@keyframes thinkingDots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+  100% { content: ""; }
+}
+
+/* Auditoría L16 (2026-05-27): barra indeterminada para uploads sin
+   progress real. Material-style — el segmento se desliza de izquierda
+   a derecha en bucle. Usado por Sidebar uploads e importación URL. */
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dots::after { animation: none; content: "…"; }
+}
+
+/* ── Toast notifications (bottom-right) ────────────────────────────── */
+.toast-container {
+  /* z-toast sits above every modal in the app: Dialog (z-[80]),
+     CommandPalette (z-[90]), and any future overlay. Toasts MUST be
+     reachable even when an error fires while a modal is open
+     (e.g. session expired during a "Confirm delete" dialog). */
+  @apply fixed bottom-4 right-4 z-toast flex flex-col gap-2 max-w-sm pointer-events-none;
+}
+.toast {
+  @apply pointer-events-auto px-4 py-3 rounded-xl shadow-elevation-3
+    border text-sm flex items-start gap-3
+    animate-slide-up bg-paper;
+}
+.toast-success { @apply toast border-success/40 text-ink; }
+.toast-error   { @apply toast border-danger/40 text-ink; }
+.toast-warning { @apply toast border-warning/40 text-ink; }
+.toast-info    { @apply toast border-accent/40 text-ink; }
+
+/* ── Markdown rendering in chat ────────────────────────────────────── */
+.prose-chat {
+  @apply text-ink leading-relaxed;
+}
+.prose-chat p { @apply my-3 first:mt-0 last:mb-0; }
+.prose-chat strong { @apply text-ink font-semibold; }
+.prose-chat em { @apply italic text-ink; }
+.prose-chat code {
+  @apply px-1.5 py-0.5 rounded-md bg-paper-light text-accent font-mono text-[0.85em];
+}
+.prose-chat pre {
+  @apply my-4 p-4 bg-paper-dark border border-ink-dim/60 rounded-lg overflow-x-auto;
+}
+.prose-chat pre code {
+  @apply bg-transparent p-0 text-ink-muted text-sm;
+}
+.prose-chat ul, .prose-chat ol {
+  @apply my-3 pl-6 space-y-1;
+}
+.prose-chat ul { @apply list-disc; }
+.prose-chat ol { @apply list-decimal; }
+.prose-chat li::marker { @apply text-ink-faint; }
+.prose-chat blockquote {
+  @apply my-3 pl-4 border-l-2 border-accent/40 text-ink-muted italic;
+}
+.prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 {
+  @apply font-sans font-bold text-ink mt-4 mb-2 first:mt-0;
+}
+.prose-chat h1 { @apply text-2xl; }
+.prose-chat h2 { @apply text-xl; }
+.prose-chat h3 { @apply text-lg; }
+.prose-chat h4 { @apply text-base; }
+.prose-chat a {
+  @apply text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent;
+}
+.prose-chat hr { @apply my-4 border-ink-dim/60; }
+
+/* ── Inline figures from extracted PDF/DOCX ─────────────────────────── */
+.prose-chat .doc-figure {
+  @apply my-5 flex flex-col items-center;
+}
+.prose-chat .doc-figure-img {
+  @apply max-w-full h-auto rounded-md border border-ink-dim/60 bg-paper-dark shadow-sm;
+}
+.prose-chat .doc-figure-caption {
+  @apply mt-2 text-xs text-ink-faint italic text-center px-2;
+}
+.prose-chat .doc-figure-fallback {
+  @apply text-xs text-ink-faint italic;
+}
+.prose-chat .doc-figure-inline {
+  @apply inline-block align-middle max-h-32 w-auto rounded-sm border border-ink-dim/60 mx-1;
+}
+
+/* Document page rich-text wrapper — selectable, document-like. */
+.doc-rich-text {
+  @apply text-ink leading-relaxed;
+}
+
+/* ── Tables in prose-chat (LLM output) ─────────────────────────────── */
+.prose-chat table {
+  @apply w-full my-4 text-sm border-collapse;
+}
+.prose-chat th {
+  @apply px-3 py-2 text-left font-semibold text-ink bg-paper-light border border-ink-dim/60;
+}
+.prose-chat td {
+  @apply px-3 py-2 text-ink-muted border border-ink-dim/60;
+}
+.prose-chat tr:nth-child(even) td {
+  @apply bg-paper-light/40;
+}
+
+/* ── Task-list checkboxes ───────────────────────────────────────────── */
+.prose-chat .task-list-item {
+  @apply list-none flex items-start gap-2;
+}
+.prose-chat .task-list-item input[type="checkbox"] {
+  @apply mt-0.5 accent-accent shrink-0;
+}
+
+/* ── Accessibility: respect reduced-motion preference ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow,
+  .animate-ambient-glow,
+  .animate-slide-up,
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+  }
+  .caret::after {
+    animation: none;
+    opacity: 1;
+  }
+}

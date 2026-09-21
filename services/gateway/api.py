@@ -12,6 +12,7 @@ from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, Request, Response
 
 from services.gateway import proxy, rutas
+from services.gateway.sesion import crear_router_sesion
 
 logger = get_logger(__name__)
 
@@ -343,5 +344,12 @@ async def buscar_global(
     }
 
 
-ROUTERS = [router]
+def _piezas() -> tuple[Any, dict[str, rutas.Destino], float]:
+    """El cliente, los destinos y el plazo, resueltos al llamar y no al montar."""
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+    return _cliente, _destinos, get_settings().http_interno_timeout_s
+
+
+ROUTERS = [router, crear_router_sesion(_piezas)]
 ROUTERS_SIN_PREFIJO = [router_proxy]

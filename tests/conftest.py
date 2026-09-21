@@ -55,21 +55,25 @@ def postgres_uri() -> Iterator[str]:
     servidor.cleanup()
 
 
-@pytest.fixture
-def db(postgres_uri: str, request: pytest.FixtureRequest) -> Iterator[Any]:
-    """Sesión de base de datos con un esquema limpio por prueba.
+@pytest.fixture(scope="session")
+def _esquema(postgres_uri: str) -> Iterator[str]:
+    """Monta el esquema UNA vez para toda la sesión de pruebas.
 
-    Crea un esquema propio, monta ahí todas las tablas declaradas y abre una
-    sesión de sistema. Al terminar, tira el esquema entero: más rápido y más
-    fiable que borrar fila a fila, y no deja restos que hagan pasar la prueba
-    siguiente por el motivo equivocado.
+    Antes se creaba y se tiraba uno por prueba. Medido: 0,28 s en crear las 98
+    tablas y 0,08 s en tirarlas, o sea **0,36 s de coste fijo por prueba**. Con
+    537 pruebas con base de datos eso eran 195 de los 200 segundos que tardaba
+    la suite: el tiempo no se iba en probar, se iba en montar y desmontar.
+
+    Y lo peor no era el número, era la pendiente: cada tabla nueva del producto
+    encarecía TODAS las pruebas a la vez. Con el esquema por sesión, una tabla
+    nueva cuesta unos milisegundos una vez.
     """
     import sqlalchemy as sa
     from crmcore.config import limpiar_cache_settings
     from crmcore.db.base import Base
-    from crmcore.db.session import reset_engine
+    from crmcore.db.session import get_engine, reset_engine
 
-    esquema = f"t_{abs(hash(request.node.nodeid)) % 10**10}"
+    esquema = "pruebas"
     os.environ["DATABASE_URL"] = postgres_uri
     os.environ["DB_SCHEMA"] = esquema
     limpiar_cache_settings()
@@ -80,8 +84,6 @@ def db(postgres_uri: str, request: pytest.FixtureRequest) -> Iterator[Any]:
     # la primera consulta, como un «relation does not exist» sin contexto.
     _importar_todos_los_modelos()
 
-    from crmcore.db.session import get_engine, nueva_sesion
-
     engine = get_engine()
     with engine.connect() as conn:
         conn.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{esquema}"'))
@@ -91,18 +93,64 @@ def db(postgres_uri: str, request: pytest.FixtureRequest) -> Iterator[Any]:
     # Python (`crmcore.ids.nuevo_id`), no `gen_random_uuid()`. Donde sí hace
     # falta es en el despliegue real, y ahí lo crea `deploy/crear-bases.sh`.
     # Que la suite no dependa de él es lo que permite correrla sin Docker.
-
     Base.metadata.create_all(engine)
 
-    sesion = nueva_sesion(sistema=True)
+    yield esquema
+
+    reset_engine()
+
+
+@pytest.fixture
+def db(_esquema: str) -> Iterator[Any]:
+    """Sesión de base de datos aislada por TRANSACCIÓN, no por esquema.
+
+    Cada prueba corre dentro de una transacción que se deshace al terminar. El
+    aislamiento es el mismo que antes —ninguna prueba ve lo que escribió otra—
+    y el coste pasa de 0,36 s a unos milisegundos.
+
+    **Todas las sesiones de la prueba comparten la misma conexión**, incluidas
+    las que abre el propio código de la aplicación (`unidad_de_trabajo`,
+    `nueva_sesion`, los consumidores del bus). Sin eso, una sesión abierta
+    dentro del código escribiría fuera de la transacción de la prueba y
+    ensuciaría la siguiente — que es el modo de fallo por el que este patrón se
+    hace mal.
+
+    `join_transaction_mode="create_savepoint"` es lo que permite que el código
+    bajo prueba haga `commit()` de verdad: cada commit libera un savepoint en
+    vez de cerrar la transacción de fuera, así que el código se comporta igual
+    que en producción y la prueba sigue pudiendo deshacerlo todo.
+    """
+    from crmcore.db import session as db_session
+    from crmcore.db.session import get_engine
+    from crmcore.tenancy.guard import instalar_guard
+    from sqlalchemy.orm import sessionmaker
+
+    instalar_guard()
+    conexion = get_engine().connect()
+    transaccion = conexion.begin()
+
+    fabrica = sessionmaker(
+        bind=conexion,
+        autoflush=False,
+        expire_on_commit=False,
+        future=True,
+        join_transaction_mode="create_savepoint",
+    )
+    anterior = db_session._sessionmaker
+    db_session._sessionmaker = fabrica
+
+    sesion = fabrica()
+    sesion.info["sistema"] = True
+    sesion.info["tenant_id"] = None
     try:
         yield sesion
     finally:
         sesion.close()
-        with engine.connect() as conn:
-            conn.execute(sa.text(f'DROP SCHEMA IF EXISTS "{esquema}" CASCADE'))
-            conn.commit()
-        reset_engine()
+        db_session._sessionmaker = anterior
+        # Se deshace TODO, incluido lo que el código hubiera confirmado: los
+        # commits de dentro eran savepoints.
+        transaccion.rollback()
+        conexion.close()
 
 
 def _importar_todos_los_modelos() -> None:

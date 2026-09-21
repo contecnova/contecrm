@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: 🔧 1 en-curso · ✅ 189 hecho · ⬜ 441 pendiente
+**631 capacidades**: ✅ 231 hecho · ⬜ 400 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -934,7 +934,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · 🔧 1 · ✅ 22 · ⬜ 68
+91 capacidades · ✅ 64 · ⬜ 27
 
 ### 7.1 Administración funcional
 
@@ -942,7 +942,7 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.01.01.01` | Consola de administración completa, replicada al 100 % por API | C | 1 | core | 🔧 | contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol) |
+| `CRM-07.01.01.01` | Consola de administración completa, replicada al 100 % por API | C | 1 | core | ✅ | contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol) |
 | `CRM-07.01.01.02` | Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad | C | 1 | identity | ✅ | contecmind:app/services/users.py + app/api/admin_users.py |
 | `CRM-07.01.01.03` | Valores de lista globales, taxonomías y catálogos maestros | C | 1 | metadata | ✅ | contecweb:app/services/custom_fields.py (valores de lista) |
 | `CRM-07.01.01.04` | Plantillas de correo, de documento y de notificación | C | 1 | core | ✅ | contecmind:app/services/templates.py + email.py |
@@ -1003,82 +1003,82 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.04.01.01` | Aplicación de referencia con el mismo stack que el resto de soluciones de la casa | C | 1 | front | ⬜ | contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción) |
-| `CRM-07.04.01.02` | Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro | C | 1 | front | ⬜ | contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios) |
-| `CRM-07.04.01.03` | Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones | C | 1 | front | ⬜ | contecmind:frontend/src/components (shell, navegación, paleta de comandos) |
-| `CRM-07.04.01.04` | Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados | A | 1 | front | ⬜ | — |
-| `CRM-07.04.01.05` | Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant | C | 1 | front | ⬜ | contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs |
-| `CRM-07.04.01.06` | Accesibilidad WCAG 2.2 AA: navegación por teclado, foco visible, contraste y lectores de pantalla | C | 1 | front | ⬜ | — |
-| `CRM-07.04.01.07` | Estados vacíos, de carga y de error homogéneos, con el Problem Details del servicio traducido a lenguaje de usuario | C | 1 | front | ⬜ | — |
-| `CRM-07.04.01.08` | Uso en tableta y móvil sin aplicación aparte | C | 1 | front | ⬜ | — |
+| `CRM-07.04.01.01` | Aplicación de referencia con el mismo stack que el resto de soluciones de la casa | C | 1 | front | ✅ | contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción) |
+| `CRM-07.04.01.02` | Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro | C | 1 | front | ✅ | contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios) |
+| `CRM-07.04.01.03` | Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones | C | 1 | front | ✅ | contecmind:frontend/src/components (shell, navegación, paleta de comandos) |
+| `CRM-07.04.01.04` | Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados | A | 1 | front | ✅ | — |
+| `CRM-07.04.01.05` | Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant | C | 1 | front | ✅ | contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs |
+| `CRM-07.04.01.06` | Accesibilidad WCAG 2.2 AA: navegación por teclado, foco visible, contraste y lectores de pantalla | C | 1 | front | ✅ | — |
+| `CRM-07.04.01.07` | Estados vacíos, de carga y de error homogéneos, con el Problem Details del servicio traducido a lenguaje de usuario | C | 1 | front | ✅ | — |
+| `CRM-07.04.01.08` | Uso en tableta y móvil sin aplicación aparte | C | 1 | front | ✅ | — |
 
 #### CRM-07.04.02 · Sesión y seguridad del cliente
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.04.02.01` | Inicio de sesión con OIDC/PKCE y SAML, MFA y passkeys, con el tenant resuelto por dominio | C | 1 | front | ⬜ | contecmind:frontend/src/lib/auth |
-| `CRM-07.04.02.02` | Renovación silenciosa de sesión, cierre por inactividad y revocación remota efectiva en el cliente | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.03` | El token de sesión nunca en almacenamiento accesible por script: cookie de sesión y memoria | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.04` | Cabeceras de seguridad del front: CSP estricta sin eval ni estilos en línea, integridad de subrecursos y aislamiento de origen | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.05` | La interfaz no decide permisos: pinta lo que declaran la superficie, los permisos efectivos y las capacidades del plan | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.06` | Escrituras con clave de idempotencia y control de concurrencia por ETag, con resolución de conflicto a la vista del usuario | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.07` | Gate: toda llamada que hace el front existe como ruta publicada en la superficie, y toda acción de administración es una de ellas | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.08` | Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado | C | 1 | front | ⬜ | — |
-| `CRM-07.04.02.09` | Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión | A | 1 | front | ⬜ | — |
+| `CRM-07.04.02.01` | Inicio de sesión con OIDC/PKCE y SAML, MFA y passkeys, con el tenant resuelto por dominio | C | 1 | front | ✅ | contecmind:frontend/src/lib/auth |
+| `CRM-07.04.02.02` | Renovación silenciosa de sesión, cierre por inactividad y revocación remota efectiva en el cliente | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.03` | El token de sesión nunca en almacenamiento accesible por script: cookie de sesión y memoria | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.04` | Cabeceras de seguridad del front: CSP estricta sin eval ni estilos en línea, integridad de subrecursos y aislamiento de origen | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.05` | La interfaz no decide permisos: pinta lo que declaran la superficie, los permisos efectivos y las capacidades del plan | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.06` | Escrituras con clave de idempotencia y control de concurrencia por ETag, con resolución de conflicto a la vista del usuario | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.07` | Gate: toda llamada que hace el front existe como ruta publicada en la superficie, y toda acción de administración es una de ellas | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.08` | Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado | C | 1 | front | ✅ | — |
+| `CRM-07.04.02.09` | Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión | A | 1 | front | ✅ | — |
 
 #### CRM-07.04.03 · Cobertura funcional de la interfaz
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.04.03.01` | Multi-tenancy y espacio del tenant: unidades de negocio, residencia del dato, cuotas y consumo, marca blanca y baja con exportación y certificado | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.02` | Explorador de la API: superficie, contrato OpenAPI, claves y webhooks — para que el cliente vea que todo lo que hace la pantalla lo puede hacer él | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.03` | Procesos y orquestación: diseñador de procesos, instancias en curso, tareas humanas, tablas de decisión, colas de fallidos y reintentos | C | 2 | front | ⬜ | — |
-| `CRM-07.04.03.04` | Modelo de datos: objetos y campos a medida, listas de valores, relaciones, disposición de la ficha y reglas de validación | C | 2 | front | ⬜ | — |
-| `CRM-07.04.03.05` | Identidad y acceso: usuarios, roles, conjuntos de permisos, SSO por tenant, MFA y passkeys, sesiones, claves de servicio y suplantación auditada | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.06` | Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.07` | Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.08` | Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.01` | Multi-tenancy y espacio del tenant: unidades de negocio, residencia del dato, cuotas y consumo, marca blanca y baja con exportación y certificado | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.02` | Explorador de la API: superficie, contrato OpenAPI, claves y webhooks — para que el cliente vea que todo lo que hace la pantalla lo puede hacer él | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.03` | Procesos y orquestación: diseñador de procesos, instancias en curso, tareas humanas, tablas de decisión, colas de fallidos y reintentos | C | 2 | front | ✅ | — |
+| `CRM-07.04.03.04` | Modelo de datos: objetos y campos a medida, listas de valores, relaciones, disposición de la ficha y reglas de validación | C | 2 | front | ✅ | — |
+| `CRM-07.04.03.05` | Identidad y acceso: usuarios, roles, conjuntos de permisos, SSO por tenant, MFA y passkeys, sesiones, claves de servicio y suplantación auditada | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.06` | Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.07` | Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.08` | Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.09` | Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas | A | 4 | front | ⬜ | — |
 | `CRM-07.04.03.10` | Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición | A | 4 | front | ⬜ | — |
 | `CRM-07.04.03.11` | Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío | A | 4 | front | ⬜ | — |
 | `CRM-07.04.03.12` | Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión | A | 4 | front | ⬜ | — |
-| `CRM-07.04.03.13` | Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.14` | Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios | A | 2 | front | ⬜ | — |
-| `CRM-07.04.03.15` | Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques | C | 2 | front | ⬜ | — |
+| `CRM-07.04.03.13` | Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre | C | 1 | front | ✅ | — |
+| `CRM-07.04.03.14` | Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios | A | 2 | front | ✅ | — |
+| `CRM-07.04.03.15` | Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques | C | 2 | front | ✅ | — |
 | `CRM-07.04.03.16` | Canal indirecto: portal de partner, registro de oportunidad y liquidaciones | D | 6 | front | ⬜ | — |
 | `CRM-07.04.03.17` | Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución | C | 3 | front | ⬜ | — |
 | `CRM-07.04.03.18` | Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola | A | 3 | front | ⬜ | — |
 | `CRM-07.04.03.19` | Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente | A | 3 | front | ⬜ | — |
 | `CRM-07.04.03.20` | Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados | D | 6 | front | ⬜ | — |
 | `CRM-07.04.03.21` | Postventa: devoluciones, garantías y logística inversa | D | 6 | front | ⬜ | — |
-| `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ⬜ | — |
+| `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ✅ | — |
 | `CRM-07.04.03.23` | Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista | A | 5 | front | ⬜ | — |
 | `CRM-07.04.03.24` | Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo | A | 1 | front | ⬜ | — |
 | `CRM-07.04.03.25` | Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5) | C | 1 | front | ⬜ | — |
-| `CRM-07.04.03.26` | Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.26` | Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.27` | ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás | A | 2 | front | ⬜ | — |
-| `CRM-07.04.03.28` | Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD | A | 1 | front | ⬜ | — |
+| `CRM-07.04.03.28` | Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD | A | 1 | front | ✅ | — |
 | `CRM-07.04.03.29` | Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda | A | 2 | front | ⬜ | — |
-| `CRM-07.04.03.30` | Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.30` | Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido | A | 2 | front | ✅ | — |
 
 #### CRM-07.04.04 · Calidad del front
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.04.04.01` | Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada | C | 1 | front | ⬜ | contecmind:frontend/vitest.config.ts + playwright.config.ts |
-| `CRM-07.04.04.02` | Comprobación automática de accesibilidad en las pantallas principales | C | 1 | front | ⬜ | — |
-| `CRM-07.04.04.03` | Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local | A | 1 | front | ⬜ | — |
-| `CRM-07.04.04.04` | Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI | A | 1 | front | ⬜ | contecmind:frontend/scripts/check-dead-exports.mjs |
+| `CRM-07.04.04.01` | Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada | C | 1 | front | ✅ | contecmind:frontend/vitest.config.ts + playwright.config.ts |
+| `CRM-07.04.04.02` | Comprobación automática de accesibilidad en las pantallas principales | C | 1 | front | ✅ | — |
+| `CRM-07.04.04.03` | Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local | A | 1 | front | ✅ | — |
+| `CRM-07.04.04.04` | Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI | A | 1 | front | ✅ | contecmind:frontend/scripts/check-dead-exports.mjs |
 
 #### CRM-07.04.05 · Cobertura y demostración
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.04.05.01` | Cobertura medida contra el catálogo: cada sección funcional tiene pantalla declarada, y un gate falla si se añade una sección sin ella | C | 1 | front | ⬜ | — |
-| `CRM-07.04.05.02` | Informe de cobertura al revés: capacidades hechas que ninguna pantalla enseña, para que la potencia del sistema no quede escondida en la API | C | 1 | front | ⬜ | — |
-| `CRM-07.04.05.03` | Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales | C | 1 | front | ⬜ | — |
-| `CRM-07.04.05.04` | Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy | A | 1 | front | ⬜ | — |
-| `CRM-07.04.05.05` | Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz | A | 2 | front | ⬜ | — |
+| `CRM-07.04.05.01` | Cobertura medida contra el catálogo: cada sección funcional tiene pantalla declarada, y un gate falla si se añade una sección sin ella | C | 1 | front | ✅ | — |
+| `CRM-07.04.05.02` | Informe de cobertura al revés: capacidades hechas que ninguna pantalla enseña, para que la potencia del sistema no quede escondida en la API | C | 1 | front | ✅ | — |
+| `CRM-07.04.05.03` | Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales | C | 1 | front | ✅ | — |
+| `CRM-07.04.05.04` | Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy | A | 1 | front | ✅ | — |
+| `CRM-07.04.05.05` | Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz | A | 2 | front | ✅ | — |
 
 ## Módulo 8 — Requisitos no funcionales
 

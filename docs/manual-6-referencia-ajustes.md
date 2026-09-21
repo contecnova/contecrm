@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**167 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**170 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -111,6 +111,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `OIDC_CACHE_TTL_S` | 🔥 `oidc_cache_ttl_s` | `300` | 10–86400 | Cuánto se cachean el documento de descubrimiento y las claves de un proveedor. Cinco minutos: lo bastante para no consultar al IdP en cada inicio de sesión, y lo bastante poco para que una rotación de claves se recoja sola sin tocar nada. |
 | `SSO_MARGEN_RELOJ_S` | — | `60` | 0–600 | Margen de reloj admitido al validar la vigencia de un token. Los relojes del IdP y del servidor no van sincronizados al milisegundo, y sin margen un token recién emitido puede parecer futuro. |
 | `SSO_ESTADO_TTL_S` | 🔥 `sso_estado_ttl_s` | `300` | 60–3600 | Cuánto vive un inicio de sesión a medias —el estado entre que se manda al usuario al IdP y vuelve—. Cinco minutos basta para escribir una contraseña y pasar el segundo factor; más deja la ventana abierta. |
+| `SESION_COOKIE_NOMBRE` | — | `contecrm_sesion` |  | El token de acceso viaja en cookie cuando quien llama es un navegador. Es la única forma de que un XSS no se lleve la sesión: lo que está en `localStorage` lo lee cualquier script inyectado, y una cookie `HttpOnly` no. Nombre configurable porque dos despliegues de la casa en el mismo dominio se… |
+| `SESION_COOKIE_SECURE` | — | `True` |  | `secure` en producción SIEMPRE: una cookie sin él viaja en claro si alguien fuerza http, y con ella va la sesión entera. Se deja configurable para poder trabajar en local sobre http, y el arranque avisa si se despliega en producción con esto apagado. |
+| `SESION_COOKIE_SAMESITE` | — | `lax` |  | `lax` y no `strict`: con `strict` la vuelta del proveedor de identidad —que es una navegación desde otro dominio— llega sin cookie y el SSO no completa nunca. `lax` sigue bloqueando el envío en peticiones cruzadas de escritura, que es de lo que protege. |
 
 ## Límites, resiliencia y topes de proceso
 

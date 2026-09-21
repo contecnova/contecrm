@@ -1,0 +1,137 @@
+/**
+ * El único sitio por el que este front habla con el CRM (CRM-07.04.02.06).
+ *
+ * Tres cosas que no son opcionales y por eso están aquí y no repartidas:
+ *
+ * **Los errores llegan como Problem Details (RFC 9457)** y se convierten en un
+ * objeto con `codigo` y `detalle`. Sin eso, cada pantalla interpretaría el
+ * cuerpo del error a su manera y el mensaje que ve el usuario dependería de
+ * quién escribió la pantalla.
+ *
+ * **Las escrituras llevan clave de idempotencia** (CRM-07.04.02.06). Un `POST`
+ * que se reintenta porque la red falló a mitad no puede crear dos registros, y
+ * quien reintenta no es la persona: es el navegador, el móvil que recupera
+ * cobertura o el propio usuario dando dos veces al botón.
+ *
+ * **La concurrencia se resuelve con `ETag`/`If-Match`.** Dos personas editando
+ * la misma ficha tienen que enterarse, no pisarse. El conflicto llega como un
+ * error 412 con su código, y la pantalla decide qué enseñar.
+ *
+ * Lo que este módulo NO hace, y es deliberado: no decide permisos, no calcula
+ * nada de negocio y no guarda datos de negocio en el navegador. Hay un gate que
+ * lo comprueba.
+ */
+
+import { config } from "@/lib/config";
+
+export class ErrorApi extends Error {
+  constructor(
+    readonly estado: number,
+    readonly codigo: string,
+    readonly titulo: string,
+    readonly detalle: unknown,
+  ) {
+    super(titulo || `Error ${estado}`);
+    this.name = "ErrorApi";
+  }
+
+  /** Si el registro ha cambiado debajo mientras se editaba. */
+  get esConflictoDeVersion(): boolean {
+    return this.estado === 412 || this.estado === 409;
+  }
+
+  /** Si lo impide una política de acceso, y no la falta de permiso del rol. */
+  get esPoliticaDeAcceso(): boolean {
+    return this.codigo === "abac.denegado";
+  }
+}
+
+export interface Opciones {
+  metodo?: string;
+  cuerpo?: unknown;
+  /** Versión que se está editando, para `If-Match`. */
+  version?: string;
+  /** Reutilizar una clave concreta al reintentar la MISMA operación. */
+  idempotencia?: string;
+  signal?: AbortSignal;
+}
+
+/** Métodos que crean o cambian algo, y por tanto necesitan protección. */
+const ESCRITURAS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+export interface Respuesta<T> {
+  datos: T;
+  /** Versión del recurso, para mandarla de vuelta al guardar. */
+  version: string | null;
+  /**
+   * Campos que el servidor ha retenido por permisos (`X-Campos-Retenidos`).
+   *
+   * Se expone porque el usuario tiene que poder distinguir «este campo está
+   * vacío» de «este campo no te lo doy»: son dos cosas distintas y llevan a
+   * acciones distintas —rellenarlo o pedir acceso—.
+   */
+  retenidos: string[];
+}
+
+export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {}): Promise<Respuesta<T>> {
+  const metodo = (opciones.metodo ?? "GET").toUpperCase();
+  const cabeceras: Record<string, string> = { Accept: "application/json" };
+
+  if (opciones.cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
+  if (opciones.version) cabeceras["If-Match"] = opciones.version;
+  if (ESCRITURAS.has(metodo)) {
+    cabeceras["Idempotency-Key"] = opciones.idempotencia ?? crypto.randomUUID();
+  }
+
+  const respuesta = await fetch(`${config().apiBase}${ruta}`, {
+    method: metodo,
+    headers: cabeceras,
+    body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+    // La sesión va en cookie, nunca en un almacén que pueda leer un script
+    // (CRM-07.04.02.03): un XSS con el token en `localStorage` es una sesión
+    // robada; con cookie `HttpOnly`, no.
+    credentials: "include",
+    signal: opciones.signal,
+  });
+
+  if (respuesta.status === 204) {
+    return { datos: undefined as T, version: null, retenidos: [] };
+  }
+
+  const texto = await respuesta.text();
+  const cuerpo = texto ? seguroJson(texto) : null;
+
+  if (!respuesta.ok) {
+    throw problema(respuesta.status, cuerpo);
+  }
+
+  return {
+    datos: cuerpo as T,
+    version: respuesta.headers.get("ETag"),
+    retenidos: (respuesta.headers.get("X-Campos-Retenidos") ?? "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean),
+  };
+}
+
+function seguroJson(texto: string): unknown {
+  try {
+    return JSON.parse(texto);
+  } catch {
+    // Un cuerpo que no es JSON casi siempre es una página de error de un proxy
+    // por delante del gateway. Se devuelve como texto en vez de romper, para
+    // que el mensaje que llegue diga algo.
+    return { detail: texto.slice(0, 500) };
+  }
+}
+
+function problema(estado: number, cuerpo: unknown): ErrorApi {
+  const p = (cuerpo ?? {}) as Record<string, unknown>;
+  return new ErrorApi(
+    estado,
+    String(p.error_code ?? p.type ?? ""),
+    String(p.title ?? p.detail ?? ""),
+    p.detalle ?? p.detail ?? null,
+  );
+}

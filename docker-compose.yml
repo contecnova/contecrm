@@ -384,6 +384,31 @@ services:
       retries: 12
       start_period: 40s
 
+  # ── Front oficial ────────────────────────────────────────────────────────
+  #
+  # La consola de referencia (CRM-07.04.*). contecrm es y sigue siendo
+  # frontless: quien quiera se hace la suya y no pierde nada, porque toda
+  # capacidad existe primero como servicio con contrato. Esta es la que da la
+  # solución estándar, con el sistema de diseño de contecmind.
+  #
+  # Va en su propio perfil porque una instalación que solo consuma la API no la
+  # necesita, y levantarla sería un contenedor más que mantener para nada.
+  #
+  #     docker compose --profile app --profile consola up
+  consola:
+    build:
+      context: ./frontend
+    profiles: [consola]
+    restart: unless-stopped
+    environment:
+      # Vacío = mismo origen. Se pone solo cuando el gateway está en otro sitio
+      # y no hay proxy delante.
+      API_BASE: ${CONSOLA_API_BASE:-}
+      APP_NAME: ${APP_NAME:-contecrm}
+    ports: ["127.0.0.1:${CONSOLA_PORT:-3000}:80"]
+    depends_on:
+      gateway: { condition: service_started }
+
   gateway:
     <<: *servicio
     command: ["servicio", "gateway"]

@@ -30,3 +30,7 @@ logs/
 
 # Sitio de documentación generado por mkdocs
 site/
+
+# Dependencias y salida de compilación del front oficial.
+frontend/node_modules/
+frontend/dist/

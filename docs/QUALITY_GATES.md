@@ -37,6 +37,27 @@ demás tampoco.
 
 ---
 
+## El presupuesto: tres minutos, y es un gate más
+
+El preflight entero tiene **180 segundos**. Si se pasa, falla — aunque todo lo
+demás esté en verde.
+
+No es una preferencia de estilo. Un preflight que tarda más deja de correrse: se
+pospone «para luego», y luego se empuja sin él. Entonces el coste se paga entero
+y la garantía no llega, que es el peor de los dos mundos. Un gate que no se corre
+no garantiza nada.
+
+Cuando el presupuesto salta, **lo que se arregla es el gate lento, no la
+comprobación**. La primera vez que se midió, las pruebas con base de datos
+tardaban 200 segundos y 195 de ellos se iban en crear y tirar un esquema de 98
+tablas **por prueba** —0,36 s × 537 pruebas—. El tiempo no se iba en probar: se
+iba en montar y desmontar. Pasar a aislar por **transacción** en vez de por
+esquema lo dejó en 11 segundos sin quitar ni una prueba.
+
+Lo peor de aquello no era el número, era la pendiente: cada tabla nueva del
+producto encarecía todas las pruebas a la vez. Con el esquema montado una sola
+vez por sesión, una tabla nueva cuesta unos milisegundos una vez.
+
 ## Los gates, uno a uno
 
 | Gate | Tier | Qué garantiza |
@@ -50,7 +71,15 @@ demás tampoco.
 | `contrato-headless` | fast | Todo servicio publica su contrato y toda ruta está documentada |
 | `pruebas-sin-bd` | tests | Todo lo que no necesita infraestructura |
 | `pruebas-con-bd` | tests | Aislamiento entre tenants, motor de procesos, persistencia |
+| `migraciones` | tests | Ningún modelo cambiado se ha quedado sin su migración |
+| `front` | tests | El front oficial tipa, cumple sus reglas de accesibilidad, pasa sus pruebas y construye |
 | `docs` | todo | `mkdocs build --strict`: el manual construye y sus enlaces resuelven |
+
+Los gates `front` y `docs` son **opcionales**: si Node o mkdocs no están
+instalados, se omiten con aviso en vez de tumbar el preflight. No toda máquina
+que toca el backend tiene la cadena del front montada, y negarse a correr por eso
+convertiría el ciclo rápido en una instalación obligatoria. Cuando la herramienta
+está, el gate corre y falla como cualquier otro.
 
 ### `entorno` va primero, y es deliberado
 

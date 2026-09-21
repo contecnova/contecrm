@@ -1,0 +1,182 @@
+/**
+ * La consola de administración, construida desde el contrato
+ * (CRM-07.01.01.01, CRM-07.04.03.26).
+ *
+ * El menú, las tablas y las acciones salen de `GET /api/v1/superficie`. Eso es
+ * lo que hace **comprobable** —y no solo declarado— que la consola está
+ * replicada al 100 % por API: aquí no hay forma de pintar una acción que no sea
+ * una operación publicada, porque no hay ninguna lista de acciones escrita a
+ * mano de donde sacarla.
+ *
+ * Y lo que la consola no hace: **no decide permisos**. Pregunta a la sesión si
+ * el permiso que la propia operación declara está concedido, y con eso decide
+ * si ofrecerla. Quien decide de verdad sigue siendo el servidor.
+ */
+
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import { Tabla } from "@/componentes/Tabla";
+import { llamar } from "@/lib/api";
+import { puede, type Sesion } from "@/lib/sesion";
+import {
+  acciones,
+  areasDeAdministracion,
+  cargarSuperficie,
+  operacionDeListado,
+  type Area,
+  type Superficie,
+} from "@/lib/superficie";
+
+export function Consola({ sesion }: { sesion: Sesion | null }) {
+  const { t } = useTranslation();
+  const [superficie, setSuperficie] = useState<Superficie | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [area, setArea] = useState<Area | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    cargarSuperficie(control.signal).then(setSuperficie).catch(setFallo);
+    return () => control.abort();
+  }, []);
+
+  if (fallo) return <Fallo error={fallo} />;
+  if (!superficie) return <Cargando />;
+
+  const areas = areasDeAdministracion(superficie);
+
+  return (
+    <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
+      <aside>
+        <h1 className="text-sm font-medium text-ink">{t("consola.titulo")}</h1>
+        <p className="mt-1 text-2xs text-ink-faint">{t("consola.intro")}</p>
+        <p className="mt-2 text-3xs text-ink-faint">
+          {t("consola.total", { total: superficie.total, administracion: superficie.administracion })}
+        </p>
+        {/* Un servicio que no contesta se dice y se nombra. Callarlo haría que
+            la consola escondiera media administración como si no existiera. */}
+        {superficie.servicios_sin_contestar.length > 0 ? (
+          <p className="mt-2 rounded-lg bg-warning/10 p-2 text-3xs text-warning" role="alert">
+            {t("consola.incompleta", {
+              count: superficie.servicios_sin_contestar.length,
+              servicios: superficie.servicios_sin_contestar.join(", "),
+            })}
+          </p>
+        ) : null}
+
+        <nav aria-label={t("consola.areas")} className="mt-4 flex flex-col gap-0.5">
+          {areas.map((a) => (
+            <button
+              key={a.recurso}
+              type="button"
+              onClick={() => setArea(a)}
+              className={`rounded-lg px-3 py-1.5 text-left text-xs ${
+                area?.recurso === a.recurso
+                  ? "bg-paper-light text-ink"
+                  : "text-ink-muted hover:bg-paper-light"
+              }`}
+            >
+              {a.nombre}
+              <span className="ml-2 text-3xs text-ink-faint">{a.operaciones.length}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <section>{area ? <AreaVista area={area} sesion={sesion} /> : <Vacio />}</section>
+    </div>
+  );
+}
+
+function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
+  const { t } = useTranslation();
+  const listado = operacionDeListado(area);
+  const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
+  const [retenidos, setRetenidos] = useState<string[]>([]);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    setFilas(null);
+    setFallo(null);
+    if (!listado) return;
+    const control = new AbortController();
+    llamar<unknown>(listado.ruta, { signal: control.signal })
+      .then((r) => {
+        setFilas(comoFilas(r.datos));
+        setRetenidos(r.retenidos);
+      })
+      .catch(setFallo);
+    return () => control.abort();
+  }, [listado]);
+
+  return (
+    <>
+      <h2 className="text-sm font-medium text-ink">{area.nombre}</h2>
+
+      {listado ? (
+        fallo ? (
+          <Fallo error={fallo} />
+        ) : filas === null ? (
+          <Cargando />
+        ) : filas.length === 0 ? (
+          <Vacio />
+        ) : (
+          <div className="mt-3">
+            <Tabla filas={filas} titulo={area.nombre} />
+            <Retenidos campos={retenidos} />
+          </div>
+        )
+      ) : (
+        <p className="mt-3 text-2xs text-ink-faint">{t("consola.sinListado")}</p>
+      )}
+
+      <h3 className="mt-6 text-2xs font-medium uppercase tracking-wide text-ink-faint">
+        {t("consola.operaciones")}
+      </h3>
+      <ul className="mt-2 flex flex-col gap-1">
+        {acciones(area).map((o) => {
+          const permitida = puede(sesion, o.permiso);
+          return (
+            <li
+              key={`${o.metodo} ${o.ruta}`}
+              className={`rounded-lg border border-ink-dim/30 px-3 py-2 ${
+                permitida ? "bg-paper" : "bg-paper-light opacity-60"
+              }`}
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-3xs text-accent">{o.metodo}</span>
+                <span className="font-mono text-2xs text-ink-muted">{o.ruta}</span>
+              </div>
+              <p className="text-2xs text-ink">{o.resumen}</p>
+              <p className="text-3xs text-ink-faint">
+                {o.permiso ? `${t("consola.permiso")}: ${o.permiso}` : null}
+                {!permitida ? ` · ${t("consola.sinPermiso")}` : null}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+/**
+ * Convierte lo que devuelve un listado en filas.
+ *
+ * La API pagina por cursor y devuelve `{items, siguiente}` en unos sitios y una
+ * lista a secas en otros. Se admiten las dos formas en vez de exigir una: la
+ * alternativa era que media consola no enseñara nada y pareciera que esos
+ * recursos están vacíos.
+ */
+export function comoFilas(datos: unknown): Record<string, unknown>[] {
+  if (Array.isArray(datos)) return datos as Record<string, unknown>[];
+  if (datos && typeof datos === "object") {
+    const objeto = datos as Record<string, unknown>;
+    for (const clave of ["items", "resultados", "datos"]) {
+      if (Array.isArray(objeto[clave])) return objeto[clave] as Record<string, unknown>[];
+    }
+    return [objeto];
+  }
+  return [];
+}

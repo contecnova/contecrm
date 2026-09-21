@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings
 
@@ -82,3 +84,24 @@ class _AuthSettings(BaseSettings):
     # usuario al IdP y vuelve—. Cinco minutos basta para escribir una
     # contraseña y pasar el segundo factor; más deja la ventana abierta.
     sso_estado_ttl_s: int = Field(300, ge=60, le=3_600)
+
+    # ── Sesión de navegador (CRM-07.04.02.03) ─────────────────────────────
+    # El token de acceso viaja en cookie cuando quien llama es un navegador. Es
+    # la única forma de que un XSS no se lleve la sesión: lo que está en
+    # `localStorage` lo lee cualquier script inyectado, y una cookie `HttpOnly`
+    # no.
+    #
+    # Nombre configurable porque dos despliegues de la casa en el mismo dominio
+    # se pisarían la cookie, y el síntoma —entrar en uno te saca del otro— es de
+    # los que tardan en atribuirse.
+    sesion_cookie_nombre: str = "contecrm_sesion"
+    # `secure` en producción SIEMPRE: una cookie sin él viaja en claro si
+    # alguien fuerza http, y con ella va la sesión entera. Se deja configurable
+    # para poder trabajar en local sobre http, y el arranque avisa si se
+    # despliega en producción con esto apagado.
+    sesion_cookie_secure: bool = True
+    # `lax` y no `strict`: con `strict` la vuelta del proveedor de identidad
+    # —que es una navegación desde otro dominio— llega sin cookie y el SSO no
+    # completa nunca. `lax` sigue bloqueando el envío en peticiones cruzadas de
+    # escritura, que es de lo que protege.
+    sesion_cookie_samesite: Literal["lax", "strict", "none"] = "lax"

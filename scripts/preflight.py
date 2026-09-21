@@ -119,6 +119,17 @@ GATES: list[Gate] = [
         "ningún modelo cambiado se ha quedado sin su migración",
     ),
     Gate(
+        "front",
+        ["npm", "--prefix", "frontend", "run", "verificar"],
+        "tests",
+        "el front oficial tipa, cumple sus reglas, pasa sus pruebas y construye",
+        # Opcional porque no toda máquina que toca el backend tiene Node
+        # instalado, y negarse a correr el preflight por eso convertiría el
+        # ciclo rápido en una instalación obligatoria. Si Node está, el gate
+        # corre y falla como cualquier otro.
+        opcional=True,
+    ),
+    Gate(
         "docs",
         [PY, "-m", "mkdocs", "build", "--strict", "--quiet"],
         "todo",
@@ -126,6 +137,20 @@ GATES: list[Gate] = [
         opcional=True,
     ),
 ]
+
+
+# Lo que puede tardar el preflight ENTERO, en segundos.
+#
+# No es una preferencia: es la condición para que exista. Un preflight que pasa
+# de tres minutos deja de correrse —se pospone «para luego», y luego se empuja
+# sin él— y un gate que no se corre no garantiza nada, con lo que el coste se
+# paga entero y el beneficio no llega.
+#
+# Cuando esto falla, lo que se arregla es el gate lento, no la comprobación. La
+# primera vez que se midió, 195 de los 200 segundos de las pruebas con base de
+# datos se iban en crear y tirar un esquema de 98 tablas **por prueba**; pasar a
+# aislar por transacción lo dejó en 11 segundos sin quitar ni una prueba.
+PRESUPUESTO_S = 180.0
 
 
 def _correr(gate: Gate) -> tuple[bool, float, str]:
@@ -166,10 +191,12 @@ def main() -> int:
 
     fallos: list[tuple[Gate, str]] = []
     omitidos: list[str] = []
+    total = 0.0
     print(f"preflight — {len(seleccionados)} gates\n")
 
     for gate in seleccionados:
         ok, duracion, salida = _correr(gate)
+        total += duracion
         if ok and "no instalada" in salida:
             omitidos.append(gate.nombre)
             print(f"  ~ {gate.nombre:22} omitido ({salida})")
@@ -192,7 +219,18 @@ def main() -> int:
             print()
         return 1
 
-    print("\nTodo en verde.")
+    if total > PRESUPUESTO_S:
+        print(
+            f"\nTodo en verde, PERO el preflight tarda {total:.0f}s y el "
+            f"presupuesto son {PRESUPUESTO_S:.0f}s.\n\n"
+            "Un preflight que pasa de tres minutos deja de correrse, y un gate "
+            "que no se corre no garantiza nada — con lo que el coste se paga\n"
+            "entero y el beneficio no llega. Los tiempos de arriba dicen dónde "
+            "se va: se arregla el gate lento, no se quita la comprobación."
+        )
+        return 1
+
+    print(f"\nTodo en verde. {total:.0f}s de {PRESUPUESTO_S:.0f}s de presupuesto.")
     return 0
 
 

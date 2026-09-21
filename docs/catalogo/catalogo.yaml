@@ -969,7 +969,7 @@ modulos:
           - id: CRM-07.01.01
             nombre: Consola de administración
             capacidades:
-              - {id: CRM-07.01.01.01, c: C, fase: 1, svc: core, estado: en-curso, reutiliza: "contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol)", t: "Consola de administración completa, replicada al 100 % por API"}
+              - {id: CRM-07.01.01.01, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/api/admin_*.py (52 routers, 244 rutas con gate de rol)", t: "Consola de administración completa, replicada al 100 % por API"}
               - {id: CRM-07.01.01.02, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/users.py + app/api/admin_users.py", t: "Gestión de usuarios, licencias, roles y desactivación con transferencia de propiedad"}
               - {id: CRM-07.01.01.03, c: C, fase: 1, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (valores de lista)", t: "Valores de lista globales, taxonomías y catálogos maestros"}
               - {id: CRM-07.01.01.04, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/templates.py + email.py", t: "Plantillas de correo, de documento y de notificación"}
@@ -1025,74 +1025,74 @@ modulos:
           - id: CRM-07.04.01
             nombre: Base y sistema de diseño
             capacidades:
-              - {id: CRM-07.04.01.01, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción)", t: "Aplicación de referencia con el mismo stack que el resto de soluciones de la casa"}
-              - {id: CRM-07.04.01.02, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios)", t: "Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro"}
-              - {id: CRM-07.04.01.03, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/src/components (shell, navegación, paleta de comandos)", t: "Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones"}
-              - {id: CRM-07.04.01.04, c: A, fase: 1, svc: front, estado: pendiente, t: "Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados"}
-              - {id: CRM-07.04.01.05, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs", t: "Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant"}
-              - {id: CRM-07.04.01.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Accesibilidad WCAG 2.2 AA: navegación por teclado, foco visible, contraste y lectores de pantalla"}
-              - {id: CRM-07.04.01.07, c: C, fase: 1, svc: front, estado: pendiente, t: "Estados vacíos, de carga y de error homogéneos, con el Problem Details del servicio traducido a lenguaje de usuario"}
-              - {id: CRM-07.04.01.08, c: C, fase: 1, svc: front, estado: pendiente, t: "Uso en tableta y móvil sin aplicación aparte"}
+              - {id: CRM-07.04.01.01, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción)", t: "Aplicación de referencia con el mismo stack que el resto de soluciones de la casa"}
+              - {id: CRM-07.04.01.02, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios)", t: "Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro"}
+              - {id: CRM-07.04.01.03, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/src/components (shell, navegación, paleta de comandos)", t: "Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones"}
+              - {id: CRM-07.04.01.04, c: A, fase: 1, svc: front, estado: hecho, t: "Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados"}
+              - {id: CRM-07.04.01.05, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs", t: "Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant"}
+              - {id: CRM-07.04.01.06, c: C, fase: 1, svc: front, estado: hecho, t: "Accesibilidad WCAG 2.2 AA: navegación por teclado, foco visible, contraste y lectores de pantalla"}
+              - {id: CRM-07.04.01.07, c: C, fase: 1, svc: front, estado: hecho, t: "Estados vacíos, de carga y de error homogéneos, con el Problem Details del servicio traducido a lenguaje de usuario"}
+              - {id: CRM-07.04.01.08, c: C, fase: 1, svc: front, estado: hecho, t: "Uso en tableta y móvil sin aplicación aparte"}
           - id: CRM-07.04.02
             nombre: Sesión y seguridad del cliente
             capacidades:
-              - {id: CRM-07.04.02.01, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/src/lib/auth", t: "Inicio de sesión con OIDC/PKCE y SAML, MFA y passkeys, con el tenant resuelto por dominio"}
-              - {id: CRM-07.04.02.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Renovación silenciosa de sesión, cierre por inactividad y revocación remota efectiva en el cliente"}
-              - {id: CRM-07.04.02.03, c: C, fase: 1, svc: front, estado: pendiente, t: "El token de sesión nunca en almacenamiento accesible por script: cookie de sesión y memoria"}
-              - {id: CRM-07.04.02.04, c: C, fase: 1, svc: front, estado: pendiente, t: "Cabeceras de seguridad del front: CSP estricta sin eval ni estilos en línea, integridad de subrecursos y aislamiento de origen"}
-              - {id: CRM-07.04.02.05, c: C, fase: 1, svc: front, estado: pendiente, t: "La interfaz no decide permisos: pinta lo que declaran la superficie, los permisos efectivos y las capacidades del plan"}
-              - {id: CRM-07.04.02.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Escrituras con clave de idempotencia y control de concurrencia por ETag, con resolución de conflicto a la vista del usuario"}
-              - {id: CRM-07.04.02.07, c: C, fase: 1, svc: front, estado: pendiente, t: "Gate: toda llamada que hace el front existe como ruta publicada en la superficie, y toda acción de administración es una de ellas"}
-              - {id: CRM-07.04.02.08, c: C, fase: 1, svc: front, estado: pendiente, t: "Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado"}
-              - {id: CRM-07.04.02.09, c: A, fase: 1, svc: front, estado: pendiente, t: "Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión"}
+              - {id: CRM-07.04.02.01, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/src/lib/auth", t: "Inicio de sesión con OIDC/PKCE y SAML, MFA y passkeys, con el tenant resuelto por dominio"}
+              - {id: CRM-07.04.02.02, c: C, fase: 1, svc: front, estado: hecho, t: "Renovación silenciosa de sesión, cierre por inactividad y revocación remota efectiva en el cliente"}
+              - {id: CRM-07.04.02.03, c: C, fase: 1, svc: front, estado: hecho, t: "El token de sesión nunca en almacenamiento accesible por script: cookie de sesión y memoria"}
+              - {id: CRM-07.04.02.04, c: C, fase: 1, svc: front, estado: hecho, t: "Cabeceras de seguridad del front: CSP estricta sin eval ni estilos en línea, integridad de subrecursos y aislamiento de origen"}
+              - {id: CRM-07.04.02.05, c: C, fase: 1, svc: front, estado: hecho, t: "La interfaz no decide permisos: pinta lo que declaran la superficie, los permisos efectivos y las capacidades del plan"}
+              - {id: CRM-07.04.02.06, c: C, fase: 1, svc: front, estado: hecho, t: "Escrituras con clave de idempotencia y control de concurrencia por ETag, con resolución de conflicto a la vista del usuario"}
+              - {id: CRM-07.04.02.07, c: C, fase: 1, svc: front, estado: hecho, t: "Gate: toda llamada que hace el front existe como ruta publicada en la superficie, y toda acción de administración es una de ellas"}
+              - {id: CRM-07.04.02.08, c: C, fase: 1, svc: front, estado: hecho, t: "Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado"}
+              - {id: CRM-07.04.02.09, c: A, fase: 1, svc: front, estado: hecho, t: "Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión"}
           - id: CRM-07.04.03
             nombre: Cobertura funcional de la interfaz
             capacidades:
-              - {id: CRM-07.04.03.01, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.1", t: "Multi-tenancy y espacio del tenant: unidades de negocio, residencia del dato, cuotas y consumo, marca blanca y baja con exportación y certificado"}
-              - {id: CRM-07.04.03.02, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.2", t: "Explorador de la API: superficie, contrato OpenAPI, claves y webhooks — para que el cliente vea que todo lo que hace la pantalla lo puede hacer él"}
-              - {id: CRM-07.04.03.03, c: C, fase: 2, svc: front, estado: pendiente, cubre: "0.3", t: "Procesos y orquestación: diseñador de procesos, instancias en curso, tareas humanas, tablas de decisión, colas de fallidos y reintentos"}
-              - {id: CRM-07.04.03.04, c: C, fase: 2, svc: front, estado: pendiente, cubre: "0.4", t: "Modelo de datos: objetos y campos a medida, listas de valores, relaciones, disposición de la ficha y reglas de validación"}
-              - {id: CRM-07.04.03.05, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.5", t: "Identidad y acceso: usuarios, roles, conjuntos de permisos, SSO por tenant, MFA y passkeys, sesiones, claves de servicio y suplantación auditada"}
-              - {id: CRM-07.04.03.06, c: C, fase: 1, svc: front, estado: pendiente, cubre: "0.6", t: "Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos"}
-              - {id: CRM-07.04.03.07, c: C, fase: 1, svc: front, estado: pendiente, cubre: "1.1", t: "Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión"}
-              - {id: CRM-07.04.03.08, c: C, fase: 1, svc: front, estado: pendiente, cubre: "1.2", t: "Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente"}
+              - {id: CRM-07.04.03.01, c: C, fase: 1, svc: front, estado: hecho, cubre: "0.1", t: "Multi-tenancy y espacio del tenant: unidades de negocio, residencia del dato, cuotas y consumo, marca blanca y baja con exportación y certificado"}
+              - {id: CRM-07.04.03.02, c: C, fase: 1, svc: front, estado: hecho, cubre: "0.2", t: "Explorador de la API: superficie, contrato OpenAPI, claves y webhooks — para que el cliente vea que todo lo que hace la pantalla lo puede hacer él"}
+              - {id: CRM-07.04.03.03, c: C, fase: 2, svc: front, estado: hecho, cubre: "0.3", t: "Procesos y orquestación: diseñador de procesos, instancias en curso, tareas humanas, tablas de decisión, colas de fallidos y reintentos"}
+              - {id: CRM-07.04.03.04, c: C, fase: 2, svc: front, estado: hecho, cubre: "0.4", t: "Modelo de datos: objetos y campos a medida, listas de valores, relaciones, disposición de la ficha y reglas de validación"}
+              - {id: CRM-07.04.03.05, c: C, fase: 1, svc: front, estado: hecho, cubre: "0.5", t: "Identidad y acceso: usuarios, roles, conjuntos de permisos, SSO por tenant, MFA y passkeys, sesiones, claves de servicio y suplantación auditada"}
+              - {id: CRM-07.04.03.06, c: C, fase: 1, svc: front, estado: hecho, cubre: "0.6", t: "Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos"}
+              - {id: CRM-07.04.03.07, c: C, fase: 1, svc: front, estado: hecho, cubre: "1.1", t: "Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión"}
+              - {id: CRM-07.04.03.08, c: C, fase: 1, svc: front, estado: hecho, cubre: "1.2", t: "Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente"}
               - {id: CRM-07.04.03.09, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.1", t: "Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas"}
               - {id: CRM-07.04.03.10, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.2", t: "Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición"}
               - {id: CRM-07.04.03.11, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.3", t: "Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío"}
               - {id: CRM-07.04.03.12, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.4", t: "Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión"}
-              - {id: CRM-07.04.03.13, c: C, fase: 1, svc: front, estado: pendiente, cubre: "3.1", t: "Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre"}
-              - {id: CRM-07.04.03.14, c: A, fase: 2, svc: front, estado: pendiente, cubre: "3.2", t: "Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios"}
-              - {id: CRM-07.04.03.15, c: C, fase: 2, svc: front, estado: pendiente, cubre: "3.3", t: "Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques"}
+              - {id: CRM-07.04.03.13, c: C, fase: 1, svc: front, estado: hecho, cubre: "3.1", t: "Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre"}
+              - {id: CRM-07.04.03.14, c: A, fase: 2, svc: front, estado: hecho, cubre: "3.2", t: "Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios"}
+              - {id: CRM-07.04.03.15, c: C, fase: 2, svc: front, estado: hecho, cubre: "3.3", t: "Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques"}
               - {id: CRM-07.04.03.16, c: D, fase: 6, svc: front, estado: pendiente, cubre: "3.4", t: "Canal indirecto: portal de partner, registro de oportunidad y liquidaciones"}
               - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: pendiente, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
               - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
               - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
               - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
               - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
-              - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: pendiente, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
+              - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: hecho, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
               - {id: CRM-07.04.03.23, c: A, fase: 5, svc: front, estado: pendiente, cubre: "5.2", t: "Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista"}
               - {id: CRM-07.04.03.24, c: A, fase: 1, svc: front, estado: pendiente, cubre: "6.1", t: "Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo"}
               - {id: CRM-07.04.03.25, c: C, fase: 1, svc: front, estado: pendiente, cubre: "6.2", t: "Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5)"}
-              - {id: CRM-07.04.03.26, c: C, fase: 1, svc: front, estado: pendiente, cubre: "7.1", t: "Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada"}
+              - {id: CRM-07.04.03.26, c: C, fase: 1, svc: front, estado: hecho, cubre: "7.1", t: "Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada"}
               - {id: CRM-07.04.03.27, c: A, fase: 2, svc: front, estado: pendiente, cubre: "7.2", t: "ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás"}
-              - {id: CRM-07.04.03.28, c: A, fase: 1, svc: front, estado: pendiente, cubre: "7.3", t: "Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD"}
+              - {id: CRM-07.04.03.28, c: A, fase: 1, svc: front, estado: hecho, cubre: "7.3", t: "Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD"}
               - {id: CRM-07.04.03.29, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.1", t: "Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda"}
-              - {id: CRM-07.04.03.30, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.2", t: "Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido"}
+              - {id: CRM-07.04.03.30, c: A, fase: 2, svc: front, estado: hecho, cubre: "8.2", t: "Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido"}
           - id: CRM-07.04.04
             nombre: Calidad del front
             capacidades:
-              - {id: CRM-07.04.04.01, c: C, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/vitest.config.ts + playwright.config.ts", t: "Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada"}
-              - {id: CRM-07.04.04.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Comprobación automática de accesibilidad en las pantallas principales"}
-              - {id: CRM-07.04.04.03, c: A, fase: 1, svc: front, estado: pendiente, t: "Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local"}
-              - {id: CRM-07.04.04.04, c: A, fase: 1, svc: front, estado: pendiente, reutiliza: "contecmind:frontend/scripts/check-dead-exports.mjs", t: "Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI"}
+              - {id: CRM-07.04.04.01, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/vitest.config.ts + playwright.config.ts", t: "Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada"}
+              - {id: CRM-07.04.04.02, c: C, fase: 1, svc: front, estado: hecho, t: "Comprobación automática de accesibilidad en las pantallas principales"}
+              - {id: CRM-07.04.04.03, c: A, fase: 1, svc: front, estado: hecho, t: "Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local"}
+              - {id: CRM-07.04.04.04, c: A, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/scripts/check-dead-exports.mjs", t: "Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI"}
           - id: CRM-07.04.05
             nombre: Cobertura y demostración
             capacidades:
-              - {id: CRM-07.04.05.01, c: C, fase: 1, svc: front, estado: pendiente, t: "Cobertura medida contra el catálogo: cada sección funcional tiene pantalla declarada, y un gate falla si se añade una sección sin ella"}
-              - {id: CRM-07.04.05.02, c: C, fase: 1, svc: front, estado: pendiente, t: "Informe de cobertura al revés: capacidades hechas que ninguna pantalla enseña, para que la potencia del sistema no quede escondida en la API"}
-              - {id: CRM-07.04.05.03, c: C, fase: 1, svc: front, estado: pendiente, t: "Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales"}
-              - {id: CRM-07.04.05.04, c: A, fase: 1, svc: front, estado: pendiente, t: "Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy"}
-              - {id: CRM-07.04.05.05, c: A, fase: 2, svc: front, estado: pendiente, t: "Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz"}
+              - {id: CRM-07.04.05.01, c: C, fase: 1, svc: front, estado: hecho, t: "Cobertura medida contra el catálogo: cada sección funcional tiene pantalla declarada, y un gate falla si se añade una sección sin ella"}
+              - {id: CRM-07.04.05.02, c: C, fase: 1, svc: front, estado: hecho, t: "Informe de cobertura al revés: capacidades hechas que ninguna pantalla enseña, para que la potencia del sistema no quede escondida en la API"}
+              - {id: CRM-07.04.05.03, c: C, fase: 1, svc: front, estado: hecho, t: "Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales"}
+              - {id: CRM-07.04.05.04, c: A, fase: 1, svc: front, estado: hecho, t: "Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy"}
+              - {id: CRM-07.04.05.05, c: A, fase: 2, svc: front, estado: hecho, t: "Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz"}
 
 
   - id: "8"

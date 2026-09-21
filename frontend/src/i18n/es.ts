@@ -1,0 +1,97 @@
+export default {
+  app: {
+    cargando: "Cargando…",
+    reintentar: "Reintentar",
+    cerrarSesion: "Cerrar sesión",
+    suplantado: "Estás viendo esto en nombre de otra persona",
+    tema: "Cambiar tema",
+    saltarAlContenido: "Saltar al contenido",
+  },
+  nav: {
+    inicio: "Inicio",
+    consola: "Administración",
+    estado: "Estado",
+    cobertura: "Cobertura",
+    recorrido: "Recorrido",
+  },
+  entrar: {
+    titulo: "Entrar",
+    email: "Correo electrónico",
+    tenant: "Organización",
+    contrasena: "Contraseña",
+    enviar: "Entrar",
+    sso: "Entrar con el proveedor de mi organización",
+    error: "No se ha podido iniciar sesión",
+  },
+  modulo: {
+    nuevo: "Nuevo",
+    cancelar: "Cancelar",
+    guardar: "Guardar",
+    cargarMas: "Cargar más",
+    seccion: "sección",
+  },
+  consola: {
+    titulo: "Administración",
+    intro:
+      "Todo lo que hay aquí sale del contrato de la API. No existe ninguna acción de esta consola que no sea una llamada publicada.",
+    areas: "Áreas",
+    operaciones: "Operaciones",
+    metodo: "Método",
+    ruta: "Ruta",
+    permiso: "Permiso",
+    quePuede: "Qué hace",
+    sinPermiso: "Tu rol no concede este permiso",
+    sinListado: "Esta área no publica un listado; sus operaciones necesitan un identificador.",
+    incompleta_uno: "No ha contestado el servicio {{servicios}}, así que falta parte de la administración.",
+    incompleta_otros: "No han contestado los servicios {{servicios}}, así que falta parte de la administración.",
+    total: "{{total}} operaciones, {{administracion}} de administración",
+  },
+  recorrido: {
+    titulo: "Recorrido por la solución",
+    intro:
+      "Cada paso lleva a una pantalla real, con el identificador del catálogo delante. Se construye desde los módulos, no de un guion aparte: un guion se queda viejo a la tercera pantalla que alguien añade.",
+    cuantos: "{{modulos}} módulos en {{grupos}} áreas",
+    cierre:
+      "Lo que no aparece aquí, no está hecho. La hoja de estado del catálogo dice qué falta y en qué fase.",
+  },
+  cobertura: {
+    titulo: "Cobertura de la interfaz",
+    intro:
+      "Qué del sistema enseña el front oficial, medido contra el contrato. Se calcula en vivo: un informe guardado se queda viejo en cuanto alguien añade una ruta.",
+    publicadas: "Operaciones publicadas",
+    conPantalla: "Con pantalla",
+    sinPantalla: "Sin pantalla",
+    operaciones: "operaciones",
+    escondido: "Lo que el CRM hace y ninguna pantalla enseña",
+    escondidoIntro:
+      "Es la lista de potencia escondida en la API: capacidades construidas, probadas y documentadas que quien mira el producto concluye que no están.",
+    todoEnsenado: "Todo lo publicado tiene pantalla.",
+  },
+  estado: {
+    titulo: "Estado del servicio",
+    componente: "Componente",
+    servicio: "Servicio",
+    situacion: "Situación",
+    detalle: "Detalle",
+    compromisos: "Compromisos de servicio",
+    compromisosIntro:
+      "Lo prometido y lo medido, uno al lado del otro. Un compromiso que nadie compara con la realidad no lo comprueba nadie.",
+    comprometido: "Comprometido",
+    medido: "Medido",
+    noSeMide: "no se mide desde aquí",
+  },
+  errores: {
+    generico: "Algo ha ido mal",
+    sinPermiso: "No tienes permiso para esto",
+    politica: "Una política de acceso lo impide",
+    conflicto: "Alguien ha cambiado este registro mientras lo editabas",
+    noEncontrado: "No existe",
+    sinRed: "No se ha podido contactar con el servidor",
+  },
+  vacio: {
+    titulo: "Aquí no hay nada todavía",
+    detalle: "Cuando lo haya, aparecerá en esta lista.",
+  },
+  retenidos_uno: "Hay un campo que no puedes ver: {{campos}}",
+  retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
+};

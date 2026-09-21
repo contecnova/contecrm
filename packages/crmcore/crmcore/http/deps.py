@@ -122,6 +122,17 @@ async def contexto_autenticado(
         principal = _principal_de_cabeceras(request)
     elif authorization and authorization.lower().startswith("bearer "):
         principal = _principal_de_token(authorization[7:], secreto)
+    elif request.cookies.get(s.sesion_cookie_nombre):
+        # Sesión de navegador (CRM-07.04.02.03). El mismo token, en una cookie
+        # `HttpOnly` que ningún script puede leer: es la única forma de que un
+        # XSS no se lleve la sesión. La pone y la quita el gateway, que es lo
+        # único con lo que habla un navegador.
+        #
+        # Va DESPUÉS de la cabecera a propósito: una integración que manda su
+        # token explícitamente tiene que mandar sobre la cookie que el navegador
+        # arrastre, o una pestaña con sesión abierta cambiaría en silencio la
+        # identidad de una llamada de API.
+        principal = _principal_de_token(request.cookies[s.sesion_cookie_nombre], secreto)
     else:
         principal = ANONIMO
 

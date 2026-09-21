@@ -106,6 +106,12 @@ def test_lo_declarado_hecho_esta_citado_en_el_codigo(catalogo: dict) -> None:
         *(RAIZ / "tests").rglob("*.py"),
         *(RAIZ / "scripts").rglob("*.py"),
         *(RAIZ / "deploy").rglob("*.sql"),
+        # El front oficial es parte del producto, no documentación: sus
+        # capacidades se trazan igual que las del backend. Sin esto, una
+        # capacidad de interfaz podía declararse hecha sin nada que la
+        # sostuviera, que es justo lo que este gate existe para impedir.
+        *(RAIZ / "frontend" / "src").rglob("*.ts"),
+        *(RAIZ / "frontend" / "src").rglob("*.tsx"),
     ]
     texto = "\n".join(
         f.read_text(encoding="utf-8", errors="ignore")
