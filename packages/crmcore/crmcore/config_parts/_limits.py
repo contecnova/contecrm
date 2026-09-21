@@ -156,3 +156,16 @@ class _LimitsSettings(BaseSettings):
     # alguien construye en una interfaz; más que eso es un proceso, y para eso
     # está el motor de procesos, que sabe reanudar y compensar.
     automatizacion_max_anidamiento: int = Field(3, ge=1, le=10)
+
+    # ── Gobierno del esquema (CRM-00.04.01.09) ────────────────────────────
+    # Campos activos por objeto. Ciento cincuenta es mucho más de lo que
+    # necesita cualquier objeto bien modelado y bastante menos de donde empieza
+    # a doler: a partir de doscientos, la ficha, el listado, la exportación y
+    # las migraciones se degradan a la vez.
+    #
+    # El techo no está para fastidiar: está para que la conversación ocurra
+    # antes de que el sistema vaya mal, y no después.
+    metadata_max_campos: int = Field(150, ge=10, le=1_000)
+    # Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el
+    # modelo; al 100 % el aviso llega cuando ya no se puede añadir nada.
+    metadata_aviso_pct: int = Field(80, ge=10, le=100)

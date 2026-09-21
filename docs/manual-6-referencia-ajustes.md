@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**180 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**182 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -161,6 +161,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
+| `METADATA_MAX_CAMPOS` | — | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
+| `METADATA_AVISO_PCT` | — | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |
 
 ## Observabilidad y auditoría
 

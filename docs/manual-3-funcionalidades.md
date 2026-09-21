@@ -4316,3 +4316,94 @@ existe y escribirlo al revés es el error más común al configurar esto. Y una
 lista vacía significa «no se comprueba», no «ninguno»: lo contrario es la forma
 más rápida de dejar fuera a todo el mundo el día que alguien crea la regla sin
 rellenarla.
+
+---
+
+## 52. El metamodelo cuando el cliente lleva un año configurando
+
+Cuatro cosas que aparecen siempre en el mismo momento: cuando el esquema empieza
+a pesar y ya hay integraciones enganchadas.
+
+### Dos que ya estaban y no se habían declarado
+
+`GET /metadata/objetos/{nombre}/describe` devuelve **campos, validaciones,
+layouts y los permisos de quien pregunta** (`CRM-00.02.03.06`), que es todo lo
+que necesita una interfaz para renderizar sin saber nada del CRM. Y
+`POST /metadata/objetos/{nombre}/validar` ejecuta **las mismas** reglas que al
+guardar sin escribir nada (`CRM-00.02.03.07`), para que un frontend enseñe los
+errores antes de enviar en vez de reimplementarlos — que es como acaban
+divergiendo del servidor.
+
+Estaban construidas y sin marcar. Se declaran ahora, con su cita, en vez de
+dejarlas contando como pendientes: un catálogo que no reconoce lo que hay es tan
+inexacto como uno que declara lo que no hay.
+
+### Tipos de registro (`CRM-00.04.01.05`)
+
+El mismo objeto con caras distintas. Una cuenta de empresa y una cuenta pública
+no comparten campos ni listas, y las dos alternativas son peores: modelarlas como
+dos objetos rompe los informes —«cuántos clientes tengo» deja de tener una
+respuesta— y modelarlas como uno solo llena la ficha de campos que sobran en la
+mitad de los casos.
+
+Un tipo guarda **los campos que NO usa**, no los que usa. Así un campo nuevo
+aparece en todos los tipos por defecto, que es lo que se quiere el noventa por
+ciento de las veces, en vez de en ninguno.
+
+Y solo puede haber **uno por defecto**: dos dejarían el alta sin saber cuál usar,
+y el que ganara dependería del orden de la consulta, que cambia sin avisar.
+
+### Límites del esquema (`CRM-00.04.01.09`)
+
+Un esquema sin techo llega a doscientos campos por objeto, y entonces van lentos
+a la vez la ficha, el listado, la exportación y las migraciones. El techo no está
+para fastidiar: **está para que la conversación ocurra antes de que el sistema
+vaya mal**, y no después.
+
+Se devuelve el porcentaje además del número, y no es cosmética: nadie sabe si 140
+campos son muchos, y todo el mundo entiende «vas por el 70 %». El aviso llega al
+80 %, con margen para replantear el modelo. Y el error de tope **dice cuál es el
+tope**: «has llegado al límite» sin decir cuál obliga a buscarlo, y quien lo lee
+está justo en mitad de configurar algo.
+
+### Renombrar sin romper a nadie (`CRM-00.04.01.10`)
+
+Renombrar un campo en un CRM con integraciones no es renombrar una columna. Hay
+clientes mandando el nombre viejo, y cortarles el día del cambio convierte una
+mejora en una incidencia.
+
+El cambio pasa por una fase en la que **los dos nombres funcionan**, y cada uso
+del viejo **se cuenta**. Contar es la parte que importa: es lo que permite
+decidir cuándo se retira **midiendo** en vez de suponiendo. Con una fecha, el día
+que toca siempre hay alguien usándolo.
+
+Si llegan los dos a la vez, **manda el nuevo**: quien ya se ha migrado no puede
+verse pisado por un campo viejo que su cliente sigue mandando por inercia.
+
+### La lista de IP por credencial, y el agujero que tenía (`CRM-00.02.04.04`)
+
+El acceso contextual (§51) acota a una **persona**; esto acota a una **llave**.
+No es un matiz: una clave de integración vive en un servidor que no se mueve
+nunca, así que su lista puede ser de una sola dirección — y eso convierte una
+clave robada en una clave inútil fuera de ese servidor. La misma restricción
+sobre una persona sería inservible, porque las personas se mueven.
+
+Va en la credencial y no en el tenant, porque un tenant con veinte integraciones
+en veinte sitios tendría que permitir las veinte direcciones a todas, con lo que
+cada clave valdría desde donde valen todas las demás.
+
+Y había dos agujeros en la comprobación que ya existía:
+
+- **No entendía redes.** Comparaba cadenas, así que `10.0.0.0/8` no casaba nunca
+  con `10.1.2.3`: quien declaraba una red se quedaba sin acceso y acababa
+  poniendo direcciones sueltas o quitando la lista.
+- **Sin IP no comprobaba nada.** Una llamada detrás de un proxy que no propaga la
+  dirección —o que la suprime a propósito— se saltaba la lista **entera**. Una
+  restricción que se desactiva omitiendo un dato no es una restricción.
+
+Ahora entiende redes y, con lista declarada, la falta de dirección corta. Una
+red mal escrita se ignora y se registra, pero **no** se trata como comodín:
+tratarla así convertiría un error de tecleo en una lista vacía. Y la lista se
+valida **al guardarla**, porque descubrir una red mal escrita en la primera
+llamada deja la integración caída y a nadie mirando, ya que quien la configuró se
+fue.

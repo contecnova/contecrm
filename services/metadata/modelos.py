@@ -190,6 +190,8 @@ from crmcore.security.byok import ClaveTenant  # noqa: E402
 from services.metadata.relaciones import RelacionDefinida  # noqa: E402
 
 __all__ = [
+    "CambioEsquema",
+    "TipoRegistro",
     "PoliticaAbac",
     "VersionPoliticaAbac",
     "ClaveTenant",
@@ -200,3 +202,5 @@ __all__ = [
     "ReglaValidacion",
     "ValorLista",
 ]
+
+from services.metadata.gobierno import CambioEsquema, TipoRegistro  # noqa: E402

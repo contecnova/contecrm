@@ -486,4 +486,143 @@ def plan_de_borrado(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
     ]
 
 
-ROUTERS = [router]
+# ── Tipos de registro y gobierno del esquema ──────────────────────────────
+
+router_gobierno = APIRouter(prefix="/metadata", tags=["metadatos"])
+
+
+@router_gobierno.get(
+    "/objetos/{nombre}/limites",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Cuánto esquema lleva este objeto y cuánto le queda",
+    description=(
+        "Campos activos, tope y porcentaje (CRM-00.04.01.09). El porcentaje no "
+        "es cosmética: nadie sabe si 140 campos son muchos, y todo el mundo "
+        "entiende «vas por el 70 %»."
+    ),
+)
+def limites_objeto(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata.gobierno import limites
+
+    objeto = _objeto(db, principal.tenant_id, nombre)
+    return limites(db, principal.tenant_id, objeto.id)
+
+
+@router_gobierno.get(
+    "/objetos/{nombre}/tipos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Tipos de registro del objeto",
+    description=(
+        "El mismo objeto con caras distintas (CRM-00.04.01.05): una cuenta de "
+        "empresa y una pública no comparten campos ni listas, y modelarlas como "
+        "dos objetos rompe los informes — «cuántos clientes tengo» deja de "
+        "tener una respuesta."
+    ),
+)
+def tipos_registro(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata.gobierno import TipoRegistro
+
+    objeto = _objeto(db, principal.tenant_id, nombre)
+    filas = (
+        db.execute(
+            select(TipoRegistro)
+            .where(TipoRegistro.objeto_id == objeto.id, TipoRegistro.activo.is_(True))
+            .order_by(TipoRegistro.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "por_defecto": f.por_defecto,
+            "campos_ocultos": list(f.campos_ocultos or []),
+            "valores_lista": f.valores_lista,
+            "layout": f.layout,
+        }
+        for f in filas
+    ]
+
+
+@router_gobierno.put(
+    "/objetos/{nombre}/tipos/{clave}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Crear o cambiar un tipo de registro",
+)
+def guardar_tipo_registro(
+    nombre: str, clave: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.metadata.gobierno import guardar_tipo
+
+    objeto = _objeto(db, principal.tenant_id, nombre)
+    fila = guardar_tipo(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto_id=objeto.id,
+        clave=clave,
+        nombre=str(cuerpo.get("nombre") or clave),
+        layout=cuerpo.get("layout"),
+        valores_lista=cuerpo.get("valores_lista"),
+        campos_ocultos=cuerpo.get("campos_ocultos"),
+        por_defecto=bool(cuerpo.get("por_defecto")),
+    )
+    return {"clave": fila.clave, "nombre": fila.nombre, "por_defecto": fila.por_defecto}
+
+
+@router_gobierno.post(
+    "/objetos/{nombre}/renombrar-campo",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Empezar un renombrado compatible (CRM-00.04.01.10)",
+    description=(
+        "Los dos nombres funcionan a la vez y se cuenta cada uso del viejo. "
+        "Renombrar de golpe rompe a quien manda el nombre viejo, y en un CRM "
+        "con integraciones eso es siempre alguien."
+    ),
+)
+def renombrar_campo(
+    nombre: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.metadata.gobierno import anunciar_renombrado
+
+    cambio = anunciar_renombrado(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto=nombre,
+        desde=str(cuerpo.get("desde", "")),
+        hasta=str(cuerpo.get("hasta", "")),
+    )
+    return {"desde": cambio.campo_origen, "hasta": cambio.campo_destino, "estado": cambio.estado}
+
+
+@router_gobierno.post(
+    "/objetos/{nombre}/retirar-campo-viejo",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Retirar el nombre viejo, si de verdad ha dejado de usarse",
+    description=(
+        "Se comprueba con el contador de usos y no con una fecha: el día que "
+        "toca siempre hay alguien usándolo, y cortar entonces convierte una "
+        "mejora planificada en una incidencia."
+    ),
+)
+def retirar_campo_viejo(
+    nombre: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.metadata.gobierno import completar_renombrado
+
+    cambio = completar_renombrado(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto=nombre,
+        desde=str(cuerpo.get("desde", "")),
+        dias_sin_uso=int(cuerpo.get("dias_sin_uso", 30)),
+    )
+    return {"desde": cambio.campo_origen, "estado": cambio.estado, "usos": cambio.usos_del_viejo}
+
+
+ROUTERS = [router, router_gobierno]

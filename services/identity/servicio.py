@@ -529,12 +529,22 @@ def validar_clave_api(db: Session, secreto: str, *, ip: str = "") -> ClaveApi:
         raise NoAutenticado("Clave de API no válida", error_code="auth.clave_invalida")
     if clave.expira_at and clave.expira_at < datetime.now(timezone.utc):
         raise NoAutenticado("La clave de API ha caducado", error_code="auth.clave_caducada")
-    if clave.ips_permitidas and ip and ip not in clave.ips_permitidas:
-        logger.warning("auth.clave_ip_no_permitida", prefijo=clave.prefijo, ip=ip)
-        raise Prohibido(
-            "La clave no admite esta dirección de origen",
-            error_code="auth.clave_ip_no_permitida",
-        )
+    # La comprobación tenía dos agujeros y los dos se ven mejor juntos
+    # (CRM-00.02.04.04):
+    #
+    #   * `ip not in lista` comparaba CADENAS, así que `10.0.0.0/8` no casaba
+    #     nunca con `10.1.2.3`: quien declaraba una red se quedaba sin acceso y
+    #     acababa poniendo direcciones sueltas o quitando la lista.
+    #   * `and ip` hacía que, **sin IP, no se comprobara nada**. Una llamada
+    #     detrás de un proxy que no propaga la dirección —o que la suprime a
+    #     propósito— se saltaba la lista entera. Una restricción que se puede
+    #     desactivar omitiendo un dato no es una restricción.
+    #
+    # Ahora entiende redes y, con lista declarada, la falta de dirección CORTA:
+    # una credencial de máquina se usa desde un sitio conocido.
+    from crmcore.authz.credenciales import comprobar
+
+    comprobar(ip, list(clave.ips_permitidas or []), credencial=clave.prefijo)
     clave.ultimo_uso_at = datetime.now(timezone.utc)
     return clave
 

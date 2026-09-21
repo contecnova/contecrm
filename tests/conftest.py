@@ -177,6 +177,7 @@ def _importar_todos_los_modelos() -> None:
         "crmcore.authz.politicas",
         "services.tenancy.grc",
         "services.identity.sod",
+        "services.metadata.gobierno",
         "services.tenancy.modelos",
         "services.identity.modelos",
         "services.orchestrator.modelos",

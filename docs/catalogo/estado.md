@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**646 capacidades**: ✅ 256 hecho · ⬜ 390 pendiente
+**646 capacidades**: ✅ 262 hecho · ⬜ 384 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 142 · ⬜ 80
+222 capacidades · ✅ 148 · ⬜ 74
 
 ### 0.1 Multi-tenancy
 
@@ -141,8 +141,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.03.03` | Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco | A | 1 | gateway | ⬜ | — |
 | `CRM-00.02.03.04` | SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go | A | 1 | core | ⬜ | — |
 | `CRM-00.02.03.05` | Componentes embebibles opcionales (web components) para incrustar en portales propios | A | 3 | core | ⬜ | — |
-| `CRM-00.02.03.06` | Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente | A | 0 | metadata | ⬜ | — |
-| `CRM-00.02.03.07` | API de validación consultable antes de enviar (dry-run de reglas) | A | 0 | metadata | ⬜ | — |
+| `CRM-00.02.03.06` | Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente | A | 0 | metadata | ✅ | — |
+| `CRM-00.02.03.07` | API de validación consultable antes de enviar (dry-run de reglas) | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.08` | Server-driven UI: definición de formularios y vistas servida como JSON | D | 1 | metadata | ⬜ | — |
 | `CRM-00.02.03.09` | Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI | A | 3 | integration | ⬜ | — |
 | `CRM-00.02.03.10` | Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros | D | 6 | gateway | ⬜ | — |
@@ -154,7 +154,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.04.01` | API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant | C | 0 | gateway | ✅ | — |
 | `CRM-00.02.04.02` | Resolución de tenant por subdominio, cabecera, claim del token o clave de API | C | 0 | gateway | ✅ | contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py) |
 | `CRM-00.02.04.03` | mTLS para integraciones máquina-a-máquina críticas | A | 0 | gateway | ⬜ | — |
-| `CRM-00.02.04.04` | IP allowlisting por tenant y por credencial | A | 0 | gateway | ⬜ | contecweb:app/services/security_rules.py |
+| `CRM-00.02.04.04` | IP allowlisting por tenant y por credencial | A | 0 | gateway | ✅ | contecweb:app/services/security_rules.py |
 | `CRM-00.02.04.05` | Cacheo configurable con invalidación por evento y aislamiento por tenant | A | 0 | gateway | ⬜ | contecmind:app/core/cache_registry.py |
 | `CRM-00.02.04.06` | Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas | A | 1 | gateway | ⬜ | contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py |
 | `CRM-00.02.04.07` | Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable | C | 0 | core | ✅ | contecmind:app/core/middleware.py (X-Request-Id) + tracing.py |
@@ -255,12 +255,12 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.01.02` | Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado | C | 0 | metadata | ✅ | contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py |
 | `CRM-00.04.01.03` | Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.04` | Campos calculados y rollups agregados sobre hijos | A | 1 | metadata | ✅ | — |
-| `CRM-00.04.01.05` | Registros de tipo (record types) con layouts y valores de lista distintos | A | 1 | metadata | ⬜ | contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio) |
+| `CRM-00.04.01.05` | Registros de tipo (record types) con layouts y valores de lista distintos | A | 1 | metadata | ✅ | contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio) |
 | `CRM-00.04.01.06` | Validaciones declarativas a nivel de campo, registro y transición de estado | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.07` | Máquinas de estado configurables por objeto | A | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.08` | Esquema expuesto vía API de metadatos (describe) para clientes headless | C | 0 | metadata | ✅ | — |
-| `CRM-00.04.01.09` | Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos | A | 0 | metadata | ⬜ | — |
-| `CRM-00.04.01.10` | Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso | A | 0 | metadata | ⬜ | — |
+| `CRM-00.04.01.09` | Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos | A | 0 | metadata | ✅ | — |
+| `CRM-00.04.01.10` | Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso | A | 0 | metadata | ✅ | — |
 
 #### CRM-00.04.02 · Extensión por código
 

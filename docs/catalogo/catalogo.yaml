@@ -236,8 +236,8 @@ modulos:
               - {id: CRM-00.02.03.03, c: A, fase: 1, svc: gateway, estado: pendiente, t: "Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco"}
               - {id: CRM-00.02.03.04, c: A, fase: 1, svc: core, estado: pendiente, t: "SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go"}
               - {id: CRM-00.02.03.05, c: A, fase: 3, svc: core, estado: pendiente, t: "Componentes embebibles opcionales (web components) para incrustar en portales propios"}
-              - {id: CRM-00.02.03.06, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente"}
-              - {id: CRM-00.02.03.07, c: A, fase: 0, svc: metadata, estado: pendiente, t: "API de validación consultable antes de enviar (dry-run de reglas)"}
+              - {id: CRM-00.02.03.06, c: A, fase: 0, svc: metadata, estado: hecho, t: "Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente"}
+              - {id: CRM-00.02.03.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "API de validación consultable antes de enviar (dry-run de reglas)"}
               - {id: CRM-00.02.03.08, c: D, fase: 1, svc: metadata, estado: pendiente, t: "Server-driven UI: definición de formularios y vistas servida como JSON"}
               - {id: CRM-00.02.03.09, c: A, fase: 3, svc: integration, estado: pendiente, t: "Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI"}
               - {id: CRM-00.02.03.10, c: D, fase: 6, svc: gateway, estado: pendiente, t: "Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros"}
@@ -248,7 +248,7 @@ modulos:
               - {id: CRM-00.02.04.01, c: C, fase: 0, svc: gateway, estado: hecho, t: "API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant"}
               - {id: CRM-00.02.04.02, c: C, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py)", t: "Resolución de tenant por subdominio, cabecera, claim del token o clave de API"}
               - {id: CRM-00.02.04.03, c: A, fase: 0, svc: gateway, estado: pendiente, t: "mTLS para integraciones máquina-a-máquina críticas"}
-              - {id: CRM-00.02.04.04, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecweb:app/services/security_rules.py", t: "IP allowlisting por tenant y por credencial"}
+              - {id: CRM-00.02.04.04, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecweb:app/services/security_rules.py", t: "IP allowlisting por tenant y por credencial"}
               - {id: CRM-00.02.04.05, c: A, fase: 0, svc: gateway, estado: pendiente, reutiliza: "contecmind:app/core/cache_registry.py", t: "Cacheo configurable con invalidación por evento y aislamiento por tenant"}
               - {id: CRM-00.02.04.06, c: A, fase: 1, svc: gateway, estado: pendiente, reutiliza: "contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py", t: "Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas"}
               - {id: CRM-00.02.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/middleware.py (X-Request-Id) + tracing.py", t: "Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable"}
@@ -347,12 +347,12 @@ modulos:
               - {id: CRM-00.04.01.02, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py (458 líneas) + contecflow-PSA:app/models/custom_fields.py", t: "Campos personalizados: texto, número, moneda, fecha, booleano, lista, lista múltiple, fórmula, lookup, geolocalización, JSON, fichero, cifrado"}
               - {id: CRM-00.04.01.03, c: C, fase: 0, svc: metadata, estado: hecho, t: "Relaciones: 1:1, 1:N, N:M, jerárquicas, polimórficas, maestro-detalle con cascada"}
               - {id: CRM-00.04.01.04, c: A, fase: 1, svc: metadata, estado: hecho, t: "Campos calculados y rollups agregados sobre hijos"}
-              - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
+              - {id: CRM-00.04.01.05, c: A, fase: 1, svc: metadata, estado: hecho, reutiliza: "contecflow-PSA:app/services/issue_type_service.py (tipos con layout propio)", t: "Registros de tipo (record types) con layouts y valores de lista distintos"}
               - {id: CRM-00.04.01.06, c: C, fase: 0, svc: metadata, estado: hecho, t: "Validaciones declarativas a nivel de campo, registro y transición de estado"}
               - {id: CRM-00.04.01.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "Máquinas de estado configurables por objeto"}
               - {id: CRM-00.04.01.08, c: C, fase: 0, svc: metadata, estado: hecho, t: "Esquema expuesto vía API de metadatos (describe) para clientes headless"}
-              - {id: CRM-00.04.01.09, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos"}
-              - {id: CRM-00.04.01.10, c: A, fase: 0, svc: metadata, estado: pendiente, t: "Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso"}
+              - {id: CRM-00.04.01.09, c: A, fase: 0, svc: metadata, estado: hecho, t: "Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos"}
+              - {id: CRM-00.04.01.10, c: A, fase: 0, svc: metadata, estado: hecho, t: "Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso"}
 
           - id: CRM-00.04.02
             nombre: Extensión por código
