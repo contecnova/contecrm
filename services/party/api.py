@@ -1147,12 +1147,18 @@ router_comentarios = crear_router_comentarios({"cuenta", "contacto", "actividad"
 # Las clases de dato de este servicio se declaran al importar su módulo.
 from services.party import retencion as _retencion  # noqa: E402,F401
 
-router_retencion = crear_router_retencion()
+# ── Recursos transversales, bajo el nombre del servicio ───────────────────
+# Retención, búsqueda y trabajos los monta la misma fábrica en varios servicios.
+# Con el camino corto —`/api/v1/trabajos/{id}`— el gateway no puede saber a cuál
+# va: el identificador no delata al dueño. El resultado era que estas tres
+# familias, escritas y probadas, devolvían 404 desde fuera. Con el nombre del
+# servicio delante la ruta es inequívoca y además se lee.
+router_retencion = crear_router_retencion("/party/retencion")
 
 
 from services.party.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E402
 
-router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES)
+router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/party/buscar")
 
 
 # Operaciones masivas y sus trabajos diferidos. Importar el módulo es lo que
@@ -1170,7 +1176,7 @@ routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
 # la ficha de un trabajo guarda la entrada completa, que en una importación son
 # los datos personales del fichero que subió el cliente.
 router_trabajos = crear_router_trabajos(
-    permiso_ver="account:import", permiso_cancelar="account:import"
+    permiso_ver="account:import", permiso_cancelar="account:import", prefijo="/party/trabajos"
 )
 
 

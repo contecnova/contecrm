@@ -44,7 +44,9 @@ from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, co
 RETRY_AFTER_S = 2
 
 
-def crear_router_trabajos(*, permiso_ver: str, permiso_cancelar: str) -> APIRouter:
+def crear_router_trabajos(
+    *, permiso_ver: str, permiso_cancelar: str, prefijo: str = "/trabajos"
+) -> APIRouter:
     """Construye el router de trabajos del servicio.
 
     Los permisos los pasa el servicio porque el suyo es el que sabe: en `party`
@@ -53,7 +55,7 @@ def crear_router_trabajos(*, permiso_ver: str, permiso_cancelar: str) -> APIRout
     genérico «ver trabajos» dejaría que quien puede mirar un recálculo leyera la
     entrada de una importación, que son los datos personales del fichero.
     """
-    router = APIRouter(prefix="/trabajos", tags=["trabajos"])
+    router = APIRouter(prefix=prefijo, tags=["trabajos"])
 
     @router.get(
         "",

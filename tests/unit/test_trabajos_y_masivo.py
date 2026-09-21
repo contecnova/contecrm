@@ -790,10 +790,14 @@ def test_el_camino_diferido_responde_202_con_location_y_se_puede_sondear(
     )
     assert aceptado.status_code == 202
     ficha = aceptado.json()
-    assert aceptado.headers["location"] == f"/trabajos/{ficha['id']}"
+    # La ruta PÚBLICA, con prefijo y servicio: quien sigue esta cabecera está
+    # fuera y entra por el gateway, y `/trabajos/{id}` a secas es ambiguo —los
+    # trabajos los tienen varios servicios— así que devolvía un 404 a quien
+    # hacía lo que la cabecera decía.
+    assert aceptado.headers["location"] == f"/api/v1/party/trabajos/{ficha['id']}"
     assert ficha["estado"] == "encolado"
 
-    sondeo = api_party.llamar("GET", f"/trabajos/{ficha['id']}", permisos="account:import")
+    sondeo = api_party.llamar("GET", f"/party/trabajos/{ficha['id']}", permisos="account:import")
     assert sondeo.status_code == 200
     # Mientras no ha terminado, el servidor dice cada cuánto volver a preguntar:
     # sin esto cada cliente elige su intervalo y el que elige 200 ms convierte

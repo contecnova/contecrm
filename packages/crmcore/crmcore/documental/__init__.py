@@ -32,8 +32,10 @@ borra, así que la frontera tiene que sostener las dos cosas.
 from __future__ import annotations
 
 from crmcore.documental.enlaces import (
+    ORGANIZACION_CAMBIADA,
     DocumentoEnlazado,
     OrganizacionDocumental,
+    consumir_organizacion,
     documentos_de,
     enlazar,
     inventario_para_certificado,
@@ -43,8 +45,10 @@ from crmcore.documental.enlaces import (
 )
 
 __all__ = [
+    "ORGANIZACION_CAMBIADA",
     "DocumentoEnlazado",
     "OrganizacionDocumental",
+    "consumir_organizacion",
     "documentos_de",
     "enlazar",
     "inventario_para_certificado",

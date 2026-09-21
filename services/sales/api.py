@@ -915,12 +915,18 @@ router_comentarios = crear_router_comentarios({"lead", "oportunidad"})
 # Las clases de dato de este servicio se declaran al importar su módulo.
 from services.sales import retencion as _retencion  # noqa: E402,F401
 
-router_retencion = crear_router_retencion()
+# ── Recursos transversales, bajo el nombre del servicio ───────────────────
+# Retención, búsqueda y trabajos los monta la misma fábrica en varios servicios.
+# Con el camino corto —`/api/v1/trabajos/{id}`— el gateway no puede saber a cuál
+# va: el identificador no delata al dueño. El resultado era que estas tres
+# familias, escritas y probadas, devolvían 404 desde fuera. Con el nombre del
+# servicio delante la ruta es inequívoca y además se lee.
+router_retencion = crear_router_retencion("/sales/retencion")
 
 
 from services.sales.indexacion import OBJETOS as _OBJETOS_BUSCABLES  # noqa: E402
 
-router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES)
+router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/sales/buscar")
 
 
 # Operaciones masivas y sus trabajos diferidos. El import de `masivo` registra
@@ -935,7 +941,9 @@ routers_masivos = [crear_router_masivo(r) for r in _RECURSOS_MASIVOS]
 
 # Un trabajo de `sales` guarda el lote de leads u oportunidades que se importó,
 # así que verlo pide el mismo permiso que escribirlos, no uno de lectura.
-router_trabajos = crear_router_trabajos(permiso_ver="lead:write", permiso_cancelar="lead:write")
+router_trabajos = crear_router_trabajos(
+    permiso_ver="lead:write", permiso_cancelar="lead:write", prefijo="/sales/trabajos"
+)
 
 
 # ── Captura de leads desde fuera (CRM-01.01.03.02) ────────────────────────

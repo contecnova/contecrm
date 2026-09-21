@@ -29,7 +29,10 @@ CATALOGO = RAIZ / "docs" / "catalogo" / "catalogo.yaml"
 RE_ID = re.compile(r"^CRM-\d{2}\.\d{2}\.\d{2}\.\d{2}$")
 
 # Etiquetas de `svc` que no son un servicio desplegable.
-ETIQUETAS = {"core", "infra", "docs", "ops"}
+# `front` no es un servicio del backend: es la aplicación de referencia, que
+# consume la API como un cliente más. Se etiqueta aparte para que en el
+# catálogo se distinga de un servicio con esquema propio.
+ETIQUETAS = {"core", "infra", "docs", "ops", "front"}
 # Servicios previstos en fases posteriores: se admiten en el catálogo antes de
 # existir, porque el catálogo es el plan y el plan va por delante del código.
 SERVICIOS_FUTUROS = {"party", "sales", "service", "marketing", "analytics", "intelligence"}

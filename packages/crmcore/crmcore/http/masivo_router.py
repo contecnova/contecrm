@@ -322,7 +322,15 @@ def crear_router_masivo(recurso: RecursoMasivo) -> APIRouter:
             respuesta.status_code = status.HTTP_202_ACCEPTED
             # `Location` apunta a donde se sondea. Es lo que convierte el 202 en
             # una respuesta accionable en vez de un «vale» sin continuación.
-            respuesta.headers["Location"] = f"/trabajos/{trabajo.id}"
+            #
+            # Es la ruta **pública**, con el prefijo de la API y el nombre del
+            # servicio, porque quien la sigue está fuera y entra por el gateway.
+            # Devolver `/trabajos/{id}` a secas mandaba a una ruta que el
+            # gateway no sabe enrutar —trabajos los tienen varios servicios— y
+            # el cliente que hacía lo que la cabecera decía recibía un 404.
+            respuesta.headers["Location"] = (
+                f"{cfg.api_prefix}/{cfg.service_name}/trabajos/{trabajo.id}"
+            )
             from crmcore.datos.trabajos import a_dict as ficha
 
             return ficha(trabajo)

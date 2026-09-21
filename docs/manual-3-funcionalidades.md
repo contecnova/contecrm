@@ -258,8 +258,18 @@ sin duplicar reglas.
   Los permisos **se suman, nunca se restan**: en cuanto se mezclan concesiones y
   denegaciones con herencia, «¿por qué este usuario ve esto?» deja de tener
   respuesta.
-- **ABAC** con políticas como datos (CRM-00.05.02.05), que se pueden guardar,
-  versionar y **explicar**.
+- **ABAC** con políticas como datos (CRM-00.05.02.05): la gramática de
+  operadores es cerrada, la decisión es explicable y la misma condición se
+  traduce a SQL para que el listado y la ficha no se contradigan. **Está a
+  medias, y conviene leerlo con cuidado**: hoy las políticas viven en una lista
+  de Python, las tres de ejemplo están desactivadas y el único sitio que las
+  evalúa es el explicador — o sea, el sistema sabe explicar una decisión que no
+  toma. Lo que falta está desglosado en `CRM-00.05.02.17` a `CRM-00.05.02.21`:
+  políticas guardadas y versionadas, punto único de decisión con gate que lo
+  imponga, filtrado de listados por política, políticas por campo y simulador
+  de acceso. Lo que **sí** decide hoy quién ve qué registro son el RBAC, la
+  compartición (CRM-00.05.02.04) y la proyección por sensibilidad
+  (CRM-00.05.02.03).
 - **Explicador de permisos** (CRM-00.05.02.11): responde con el permiso que
   decide y la política que aplica. Existe porque «no puedo hacer X» sin
   explicación es el ticket de soporte más frecuente de cualquier CRM.
@@ -315,6 +325,7 @@ entre «hecho» y «empezado» no sirve para decidir nada.
 
 | Capacidad | Qué hay | Qué falta |
 |---|---|---|
+| `CRM-00.05.02.05` ABAC | El motor: gramática cerrada de operadores, políticas evaluables, decisión explicable y traducción de la misma condición a SQL | Que se aplique. Las políticas están en una lista de Python y las tres de ejemplo desactivadas, y el único sitio que las evalúa es el explicador: el sistema sabe explicar una decisión que no toma |
 | `CRM-07.01.01.01` Consola de administración | `GET /api/v1/superficie` en **todos** los servicios: cada operación con su método, ruta, permiso y si es de administración | La consola en sí. Lo que ya está garantizado es que no podrá hacer nada que no sea una de esas llamadas |
 
 ---
@@ -1848,10 +1859,10 @@ en el middleware de tamaño de cuerpo, que devolvía un 422 por lo mismo.
 
 ```
 POST /api/v1/cuentas/masivo?modo=asincrono   →  202 Accepted
-                                                Location: /trabajos/{id}
-GET  /api/v1/trabajos/{id}                   →  progreso (+ Retry-After: 2)
-GET  /api/v1/trabajos/{id}/errores           →  el informe parcial completo
-POST /api/v1/trabajos/{id}/cancelar          →  para en cuanto termine la tanda
+                              Location: /api/v1/party/trabajos/{id}
+GET  /api/v1/party/trabajos/{id}             →  progreso (+ Retry-After: 2)
+GET  /api/v1/party/trabajos/{id}/errores     →  el informe parcial completo
+POST /api/v1/party/trabajos/{id}/cancelar    →  para en cuanto termine la tanda
 ```
 
 **El cursor es lo que hace que esto sea un trabajo y no una barra de progreso.**
@@ -3075,3 +3086,116 @@ El precio, dicho: en ese caso **el CRM no controla el acceso al documento**.
 Quien tenga el enlace y permiso en el sistema de origen lo abre; quien no, no.
 Eso es correcto para un enlace y sería inaceptable si pretendiéramos que es un
 adjunto nuestro, y por eso se distinguen.
+
+---
+
+## 38. Nueve familias de la API que no se podían llamar
+
+El hallazgo salió al preparar la consola de administración, y es el más gordo de
+los que lleva este capítulo abierto: **buena parte de la API publicada no era
+alcanzable desde fuera**. No estaba mal escrita ni mal probada; simplemente el
+gateway no sabía a qué servicio mandarla, así que respondía 404.
+
+La lista, tal como salió:
+
+| Familia | Qué quedaba fuera |
+|---|---|
+| `/api/v1/sso/*` | **El inicio de sesión federado entero.** La vuelta de SAML y el callback de OIDC llegan del navegador del usuario y del proveedor de identidad, y son exactamente lo que el gateway tiene que atender |
+| `/api/v1/proveedores-identidad` | Alta y comprobación de los IdP por tenant, y la publicación de los metadatos SAML |
+| `/api/v1/retencion/*` | Políticas de retención, clases de dato, bloqueos legales y purga, en `party` y en `sales` |
+| `/api/v1/trabajos/*` | Todos los trabajos asíncronos: seguimiento, cancelación e informe de errores |
+| `/api/v1/buscar` | La búsqueda de cada servicio |
+| `/api/v1/captura/canales` | Los canales de captura de leads y su rotación de clave |
+| `/api/v1/tablas-decision/*` | Las tablas de decisión del motor de procesos |
+| `/api/v1/claves-cifrado/*` | BYOK: generar y revocar la clave del tenant |
+| `/api/v1/localizacion` | Idioma, huso y formatos del tenant |
+
+Y, ya de paso, las carpetas del expediente que se acababan de entregar
+(`/api/v1/adjuntos/carpetas/…`), porque el gateway resolvía los adjuntos por el
+segmento siguiente al recurso dando por hecho que era un tipo de objeto: buscaba
+uno llamado «carpetas» y no lo encontraba.
+
+### Por qué pasó, que es lo que importa
+
+La tabla de prefijos del gateway es **la única lista de acoplamiento del
+sistema**, y se mantenía a mano. Nada comprobaba que estuviera completa. Un
+servicio publicaba una familia nueva, en su propio OpenAPI salía, sus pruebas
+pasaban, y desde fuera no existía. El fallo no daba ningún síntoma hasta que
+alguien intentaba llamarla — y en el caso del SSO, ese alguien es un cliente
+intentando entrar.
+
+Ahora hay un gate que recorre **todas** las rutas publicadas por **todos** los
+servicios y comprueba que el gateway las enruta a su dueño. Mantener la lista
+deja de ser un acto de disciplina.
+
+### Dos decisiones de diseño que hubo que tomar
+
+**Los recursos transversales van bajo el nombre del servicio.** Retención,
+búsqueda y trabajos los monta la misma fábrica en varios servicios, y
+`/api/v1/trabajos/{id}` es ambiguo: el identificador no delata al dueño. La
+alternativa era que el gateway preguntara a todos hasta que uno no respondiera
+404, lo que dobla la latencia de cada llamada y convierte un identificador
+equivocado en una ronda por toda la instalación. Van a
+`/api/v1/party/trabajos/{id}` y `/api/v1/sales/retencion/…`: inequívoco, y se
+lee.
+
+**La superficie se agrega en el gateway.** `GET /api/v1/superficie` junta la de
+los diez servicios en una sola lista, cada operación con su método, su ruta
+pública, el permiso que exige y si es de administración. Quien la consume es un
+cliente de fuera, que no conoce —ni debe conocer— cómo está repartido el sistema
+por dentro. Y cuando un servicio no contesta, la respuesta **lo dice y lo
+nombra**: una superficie a la que le falta un servicio sin avisar haría que la
+consola escondiera media administración como si no existiera.
+
+---
+
+## 39. Lo que viene: front oficial, ABAC aplicado y GRC
+
+Tres bloques nuevos en el catálogo, con identificador cada uno, y por tanto en
+la hoja de estado desde ya.
+
+### El front oficial de referencia (`CRM-07.04.*`, 34 capacidades)
+
+contecrm es y sigue siendo **frontless**: quien quiera se hace su interfaz
+entera como le dé la gana, y no pierde nada por hacerlo — toda capacidad existe
+primero como servicio con contrato (RT-1). Lo que faltaba es la otra mitad de
+esa frase: **una interfaz oficial completa**, la que da la solución estándar,
+con la estética y el sistema de diseño de contecmind.
+
+Va desglosado en cuatro bloques: la base y el sistema de diseño, la sesión y la
+seguridad del cliente, los módulos funcionales y la calidad. Dos capacidades de
+ahí son gates y no pantallas, y son las que impiden que el front oficial se
+convierta en el privilegiado: **toda llamada que hace el front tiene que existir
+en la superficie**, y **cero lógica de negocio en el front** — ni cálculo de
+precios, ni de permisos, ni de reglas de estado.
+
+### ABAC aplicado (`CRM-00.05.02.17` a `CRM-00.05.02.21`)
+
+Lo dicho en «Lo que está a medias»: hay motor y no hay cumplimiento. Lo que
+viene es que las políticas se guarden y se versionen, que haya **un punto único
+de decisión** por el que pase toda lectura y escritura de un registro —con un
+gate que lo imponga, para que no vuelva a haber motor sin quien lo llame—, que
+los listados se filtren con la política traducida a SQL, que una política pueda
+hablar de un campo y no solo de un registro, y que exista un simulador para ver
+qué vería alguien **antes** de activarla. El motor externalizable
+(`CRM-00.05.02.06`, OPA/Cedar) deja de ser un adorno: es lo que permite que un
+front a medida evalúe la misma política sin reimplementarla.
+
+### GRC (`CRM-07.03.02.*`, 10 capacidades)
+
+Riesgos, controles, evaluaciones periódicas y segregación de funciones, que es
+el GRC que la casa ya sabe hacer —hay 740 líneas en contecmind y 786 en
+contecweb— con dos vueltas de tuerca.
+
+La primera: **cada control se ancla a capacidades del catálogo por su
+identificador**. Eso convierte la cobertura en algo medible —«de las 609
+capacidades, cuáles tienen control y cuáles no»— y hace que crezca sola con el
+producto en vez de quedarse vieja. Incluye el informe al revés, que es el que
+nadie hace: qué controles apuntan a capacidades que ya no existen.
+
+La segunda: **el mapeo a los marcos es recorrible en los dos sentidos**. Un
+auditor pregunta por ISO 27001 A.9 y salen las capacidades del producto que lo
+sostienen y con qué evidencia; y desde una capacidad se ve a qué obligaciones
+responde. Las evidencias salen del audit trail, de los certificados de
+destrucción y de los propios gates, en vez de adjuntarse a mano — que es como
+un GRC se queda desactualizado el segundo trimestre.

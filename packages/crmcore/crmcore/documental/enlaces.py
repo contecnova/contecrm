@@ -327,4 +327,106 @@ def mapear_organizacion(
     fila.estado = "activa"
     fila.ultimo_error = ""
     db.flush()
+    _propagar_organizacion(db, tenant_id=tenant_id, organizacion=fila.organizacion)
     return fila
+
+
+ORGANIZACION_CAMBIADA = "documental.organizacion_cambiada"
+
+
+def declarar_evento_organizacion() -> None:
+    """Declara el evento del mapeo, una sola vez.
+
+    Productor «core» y no un servicio: el mapeo se puede fijar desde cualquiera
+    de los que enlazan documentos, y darle dueño a uno sería mentir.
+    """
+    from crmcore.events.catalogo import TipoEvento, obtener, registrar
+
+    if obtener(ORGANIZACION_CAMBIADA) is not None:
+        return
+    registrar(
+        TipoEvento(
+            tipo=ORGANIZACION_CAMBIADA,
+            version=1,
+            productor="core",
+            descripcion=(
+                "Un tenant se ha mapeado a una organización del gestor documental. "
+                "Lo consumen TODOS los servicios para replicarlo en su esquema"
+            ),
+            campos=("tenant_id", "organizacion"),
+        )
+    )
+
+
+def _propagar_organizacion(db: Session, *, tenant_id: UUID, organizacion: str) -> None:
+    """Replica el mapeo al resto de servicios.
+
+    `organizaciones_documentales` vive en el esquema de CADA servicio y ninguno
+    lee el de otro, exactamente igual que `ajustes_runtime` y las claves BYOK.
+    Sin esto, mapear desde `party` dejaba a `sales` sin mapeo, y como **sin
+    mapeo no se llama al gestor**, el corpus de las oportunidades habría quedado
+    invisible mientras el de las cuentas funcionaba — con el administrador
+    viendo su mapeo guardado y correcto.
+
+    Va por la tabla de salida, en la misma transacción que la escritura.
+    """
+    from crmcore.bus.outbox import encolar
+
+    declarar_evento_organizacion()
+    encolar(
+        db,
+        tenant_id=tenant_id,
+        tipo=ORGANIZACION_CAMBIADA,
+        subject_tipo="tenant",
+        subject_id=tenant_id,
+        data={"tenant_id": str(tenant_id), "organizacion": organizacion},
+        # El hecho es «este tenant apunta a esta organización». Fijarlo dos
+        # veces al mismo valor es el mismo hecho.
+        dedup_key=f"orgdoc:{tenant_id}:{organizacion}"[:64],
+    )
+
+
+async def consumir_organizacion(mensaje: Any) -> None:
+    """Aplica en ESTE servicio el mapeo fijado en otro.
+
+    Idempotente: escribe el valor tal cual. La entrega es at-least-once y
+    recibirlo dos veces tiene que dejar el mismo estado.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+
+    if isinstance(mensaje, dict):
+        datos = mensaje.get("data") if isinstance(mensaje.get("data"), dict) else mensaje
+    else:
+        datos = getattr(mensaje, "data", None) or {}
+    try:
+        tenant_id = UUID(str(datos.get("tenant_id")))
+    except (TypeError, ValueError):
+        logger.error("documental.organizacion_sin_tenant", datos=str(datos)[:200])
+        return
+    organizacion = str(datos.get("organizacion") or "").strip()
+    if not organizacion:
+        return
+
+    with unidad_de_trabajo(sistema=True) as uow:
+        fila = (
+            uow.db.execute(
+                select(OrganizacionDocumental).where(OrganizacionDocumental.tenant_id == tenant_id)
+            )
+            .scalars()
+            .first()
+        )
+        if fila is None:
+            fila = OrganizacionDocumental(tenant_id=tenant_id)
+            uow.db.add(fila)
+        # NO se vuelve a llamar a `mapear_organizacion`: reemitiría el evento
+        # al aplicarlo y el bus entraría en un bucle que crece con el número de
+        # servicios. Es el mismo motivo por el que `_aplicar_local` está
+        # separado de `fijar` en los ajustes.
+        fila.organizacion = organizacion
+        fila.estado = "activa"
+        fila.ultimo_error = ""
+    logger.info(
+        "documental.organizacion_replicada",
+        tenant=str(tenant_id),
+        organizacion=organizacion,
+    )

@@ -146,3 +146,76 @@ def test_el_anexo_a_esta_cubierto_para_lo_que_dice_estar_hecho() -> None:
     )
     # Y que el anexo siga ahí completo, para que nadie lo recorte al implementarlo.
     assert len(catalogo["anexo_a_recursos"]["plataforma"]) >= 19
+
+
+# Un tipo de objeto real de cada servicio, para las rutas que lo llevan dentro.
+_OBJETOS_DE = {"party": "cuenta", "sales": "oportunidad"}
+_OBJETO_POR_DEFECTO = "x"
+
+# Rutas que el gateway NO reenvía: las sirve él juntando la de todos los
+# servicios. Preguntarlas a uno solo daría una respuesta parcial presentada
+# como completa, que es peor que no tenerlas.
+_AGREGADAS_EN_EL_GATEWAY = {"/api/v1/estado", "/api/v1/superficie"}
+
+# Operaciones del corpus documental que NO son de ningún registro concreto
+# —el estado del gestor, la búsqueda, el mapeo del tenant— y que publican los
+# dos servicios que enlazan documentos. El gateway manda a un dueño fijo, y da
+# igual cuál: el estado y la búsqueda preguntan al gestor, no a la base del
+# servicio, y el mapeo se replica por evento a todos (RT-5).
+_CORPUS_SIN_REGISTRO = {
+    "/api/v1/documentos/buscar",
+    "/api/v1/documentos/estado",
+    "/api/v1/documentos/organizacion",
+}
+
+
+def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
+    """Una ruta que el gateway no sabe enrutar no existe para nadie de fuera.
+
+    Este gate nació de un fallo real: las carpetas del expediente se publican en
+    `/api/v1/adjuntos/carpetas/{objeto_tipo}`, y el gateway resolvía los adjuntos
+    por el segmento siguiente al recurso dando por hecho que era un tipo de
+    objeto. Buscaba uno llamado «carpetas», no lo encontraba y respondía 404. La
+    funcionalidad estaba escrita, probada y documentada, y era inalcanzable.
+
+    Comprobarlo ruta a ruta —y no manteniendo a mano una lista de prefijos— es
+    lo que hace que el próximo recurso nuevo no repita el fallo: el día que
+    alguien publique `/api/v1/loquesea` sin declararlo, esta prueba lo dice.
+    """
+    from services.gateway.rutas import servicio_de
+
+    inalcanzables: list[str] = []
+
+    for servicio in SERVICIOS:
+        if servicio == "gateway":
+            continue
+        for ruta in _app(servicio).openapi()["paths"]:
+            if ruta in INFRAESTRUCTURA or not ruta.startswith("/api/"):
+                continue
+            if ruta in _AGREGADAS_EN_EL_GATEWAY:
+                continue
+            # Los parámetros se sustituyen por un valor cualquiera, salvo
+            # `{objeto_tipo}`: ese SÍ decide el destino en los recursos que
+            # cuelgan del registro —adjuntos, comentarios, documentos—, así que
+            # se pone uno real del servicio. Poner «x» habría dado por rota una
+            # ruta que funciona, que es la forma de que un gate deje de mirarse.
+            concreta = "/".join(
+                _OBJETOS_DE.get(servicio, _OBJETO_POR_DEFECTO)
+                if p == "{objeto_tipo}"
+                else "x"
+                if p.startswith("{")
+                else p
+                for p in ruta.split("/")
+            )
+            destino = servicio_de(concreta)
+            if ruta in _CORPUS_SIN_REGISTRO:
+                # Basta con que llegue a alguno de los dueños.
+                if destino in ("party", "sales"):
+                    continue
+            if destino != servicio:
+                inalcanzables.append(f"{servicio}: {ruta} → {destino or 'ningún servicio'}")
+
+    assert not inalcanzables, (
+        "Rutas publicadas que el gateway no enruta a su servicio:\n  "
+        + "\n  ".join(sorted(inalcanzables))
+    )

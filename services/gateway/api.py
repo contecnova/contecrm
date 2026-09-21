@@ -149,6 +149,68 @@ async def estado_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
     }
 
 
+@router.get(
+    "/superficie",
+    summary="Todo lo que sabe hacer el CRM, en una lista",
+    description=(
+        "Junta la superficie de **todos** los servicios: cada operación con su "
+        "método, su ruta pública, el permiso que exige y si es de "
+        "administración.\n\n"
+        "Es lo que hace comprobable la promesa de que la consola de "
+        "administración está replicada al 100 % por API (CRM-07.01.01.01): la "
+        "consola se construye leyendo esto, así que no puede existir una acción "
+        "de consola que no sea una llamada de esta lista.\n\n"
+        "Se agrega aquí y no se pide servicio a servicio porque quien la "
+        "consume es un cliente de fuera, que no conoce —ni debe conocer— cómo "
+        "está repartido el sistema por dentro."
+    ),
+)
+async def superficie_completa(_: AutenticadoDep) -> Any:
+    import asyncio
+    from datetime import datetime, timezone
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/superficie", timeout=5.0
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return respuesta.json()
+        except Exception:  # noqa: BLE001 — un servicio caído es información
+            # Se devuelve el hueco en vez de omitirlo: una superficie a la que
+            # le falta un servicio sin decirlo haría que la consola escondiera
+            # media administración como si no existiera.
+            return {"servicio": nombre, "alcanzable": False, "operaciones": []}
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+
+    operaciones: list[dict[str, Any]] = []
+    incompletos: list[str] = []
+    for parte in partes:
+        if parte.get("alcanzable") is False:
+            incompletos.append(str(parte.get("servicio")))
+            continue
+        for operacion in parte.get("operaciones", []):
+            operaciones.append({**operacion, "servicio": parte.get("servicio")})
+    operaciones.sort(key=lambda o: (o["ruta"], o["metodo"]))
+
+    return {
+        "consultado_at": datetime.now(timezone.utc).isoformat(),
+        "servicios": sorted(_destinos),
+        # Nombrar a quien no contesta es la diferencia entre una lista corta y
+        # una lista corta que se sabe corta.
+        "servicios_sin_contestar": incompletos,
+        "completa": not incompletos,
+        "total": len(operaciones),
+        "administracion": sum(1 for o in operaciones if o.get("administracion")),
+        "operaciones": operaciones,
+    }
+
+
 @router_proxy.api_route(
     "/api/{ruta:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],

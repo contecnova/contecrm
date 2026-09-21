@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**560 capacidades**: 🔧 1 en-curso · ✅ 175 hecho · ⬜ 384 pendiente
+**609 capacidades**: 🔧 2 en-curso · ✅ 174 hecho · ⬜ 433 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-217 capacidades · ✅ 112 · ⬜ 105
+222 capacidades · 🔧 1 · ✅ 111 · ⬜ 110
 
 ### 0.1 Multi-tenancy
 
@@ -299,8 +299,13 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.02` | Jerarquía de roles con visibilidad ascendente sobre subordinados | C | 0 | identity | ✅ | — |
 | `CRM-00.05.02.03` | Permisos por objeto (CRUD) y por campo (lectura/escritura/oculto) | C | 0 | identity | ✅ | contecweb:app/services/abac.py (394) + abac_enforce.py |
 | `CRM-00.05.02.04` | Reglas de compartición: por propietario, por equipo, por criterio, manual, temporal | C | 1 | identity | ✅ | contecweb:app/services/share_links.py (477 líneas) |
-| `CRM-00.05.02.05` | ABAC: decisiones basadas en atributos de usuario, registro y contexto | A | 0 | identity | ✅ | contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py |
+| `CRM-00.05.02.05` | ABAC: decisiones basadas en atributos de usuario, registro y contexto | A | 0 | identity | 🔧 | contecweb:app/services/abac_policies.py (354) + contecflow-PSA:app/services/abac.py + abac_recursos.py |
 | `CRM-00.05.02.06` | Motor de políticas externalizable (OPA/Cedar) evaluable también desde clientes headless | A | 0 | identity | ⬜ | — |
+| `CRM-00.05.02.17` | Políticas ABAC persistidas, versionadas y editables desde administración, replicadas a todos los servicios | C | 1 | identity | ⬜ | contecweb:app/services/abac_policies.py (354, políticas persistidas y versionadas) |
+| `CRM-00.05.02.18` | Punto único de decisión: toda lectura y escritura de un registro pasa por la evaluación de políticas, con gate que lo impone | C | 1 | core | ⬜ | contecweb:app/services/abac_enforce.py (punto único de decisión) |
+| `CRM-00.05.02.19` | Filtrado de listados por política traducida a SQL, coherente con la decisión de la ficha | C | 1 | core | ⬜ | — |
+| `CRM-00.05.02.20` | Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.02.21` | Simulador de acceso: ver qué vería un usuario dado antes de activar una política | A | 1 | identity | ⬜ | contecmind:app/api/admin_access_simulator.py |
 | `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ⬜ | — |
 | `CRM-00.05.02.08` | Restricción por unidad de negocio, marca, país o canal | A | 0 | identity | ⬜ | contecflow-PSA:app/services/organizations_service.py |
 | `CRM-00.05.02.09` | Registros ocultos vs. registros bloqueados (visibles sin detalle) | A | 1 | identity | ⬜ | — |
@@ -929,7 +934,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-25 capacidades · 🔧 1 · ✅ 14 · ⬜ 10
+69 capacidades · 🔧 1 · ✅ 14 · ⬜ 54
 
 ### 7.1 Administración funcional
 
@@ -976,6 +981,77 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ✅ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
 | `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ⬜ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
 | `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ⬜ | — |
+
+#### CRM-07.03.02 · GRC — gobierno, riesgo y cumplimiento
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.03.02.01` | Registro de riesgos con probabilidad, impacto, propietario, tratamiento y riesgo residual | C | 1 | core | ⬜ | contecmind:app/services/grc.py (740) + app/models/grc.py; contecweb:app/services/grc.py (786) |
+| `CRM-07.03.02.02` | Catálogo de controles con tipo, frecuencia, responsable y estado | C | 1 | core | ⬜ | contecmind:app/services/grc.py (Control, ControlAssessment) |
+| `CRM-07.03.02.03` | Evaluación periódica de controles con resultado, evidencia y plan de acción | C | 1 | core | ⬜ | contecmind:app/services/grc.py (ControlAssessment) |
+| `CRM-07.03.02.04` | Cada control anclado a capacidades del catálogo por su identificador, para que la cobertura sea medible y crezca con el producto | C | 1 | core | ⬜ | — |
+| `CRM-07.03.02.05` | Informe de cobertura: qué capacidades tienen control, cuáles no, y qué controles apuntan a capacidades que ya no existen | C | 1 | core | ⬜ | — |
+| `CRM-07.03.02.06` | Segregación de funciones (SoD): reglas de permisos incompatibles, detección de violaciones y excepciones aprobadas | C | 1 | identity | ⬜ | contecmind:app/services/grc.py (SodRule, SodViolation) |
+| `CRM-07.03.02.07` | Mapeo a marcos normativos (ISO 27001, SOC 2, ENS, GDPR) recorrible en los dos sentidos: del control al marco y del marco a la capacidad | A | 1 | core | ⬜ | — |
+| `CRM-07.03.02.08` | Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano | A | 1 | core | ⬜ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
+| `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ⬜ | — |
+| `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ⬜ | — |
+
+### 7.4 Front oficial de referencia
+
+#### CRM-07.04.01 · Base y sistema de diseño
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.04.01.01` | Aplicación de referencia con el mismo stack que el resto de soluciones de la casa | C | 1 | front | ⬜ | contecmind:frontend/ (React 18 + Vite + TypeScript + Tailwind, misma cadena de construcción) |
+| `CRM-07.04.01.02` | Sistema de diseño idéntico al de contecmind: tokens semánticos, tipografía, elevaciones y modo claro/oscuro | C | 1 | front | ⬜ | contecmind:frontend/tailwind.config.js + src/index.css (tokens paper/ink/accent, elevaciones, radios) |
+| `CRM-07.04.01.03` | Shell de la aplicación: navegación, buscador global, paleta de comandos y centro de notificaciones | C | 1 | front | ⬜ | contecmind:frontend/src/components (shell, navegación, paleta de comandos) |
+| `CRM-07.04.01.04` | Marca blanca por tenant: logotipo, color de acento y nombre, servidos por configuración y no compilados | A | 1 | front | ⬜ | — |
+| `CRM-07.04.01.05` | Internacionalización con paridad comprobada entre idiomas y formatos por localización del tenant | C | 1 | front | ⬜ | contecmind:frontend/src/i18n + scripts/check_i18n_parity.mjs |
+| `CRM-07.04.01.06` | Accesibilidad WCAG 2.2 AA: navegación por teclado, foco visible, contraste y lectores de pantalla | C | 1 | front | ⬜ | — |
+| `CRM-07.04.01.07` | Estados vacíos, de carga y de error homogéneos, con el Problem Details del servicio traducido a lenguaje de usuario | C | 1 | front | ⬜ | — |
+| `CRM-07.04.01.08` | Uso en tableta y móvil sin aplicación aparte | C | 1 | front | ⬜ | — |
+
+#### CRM-07.04.02 · Sesión y seguridad del cliente
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.04.02.01` | Inicio de sesión con OIDC/PKCE y SAML, MFA y passkeys, con el tenant resuelto por dominio | C | 1 | front | ⬜ | contecmind:frontend/src/lib/auth |
+| `CRM-07.04.02.02` | Renovación silenciosa de sesión, cierre por inactividad y revocación remota efectiva en el cliente | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.03` | El token de sesión nunca en almacenamiento accesible por script: cookie de sesión y memoria | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.04` | Cabeceras de seguridad del front: CSP estricta sin eval ni estilos en línea, integridad de subrecursos y aislamiento de origen | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.05` | La interfaz no decide permisos: pinta lo que declaran la superficie, los permisos efectivos y las capacidades del plan | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.06` | Escrituras con clave de idempotencia y control de concurrencia por ETag, con resolución de conflicto a la vista del usuario | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.07` | Gate: toda llamada que hace el front existe como ruta publicada en la superficie, y toda acción de administración es una de ellas | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.08` | Gate: cero lógica de negocio en el front — ni cálculo de precios, ni de permisos, ni de reglas de estado | C | 1 | front | ⬜ | — |
+| `CRM-07.04.02.09` | Sin datos de negocio en el almacenamiento del navegador salvo preferencias, y purga al cerrar sesión | A | 1 | front | ⬜ | — |
+
+#### CRM-07.04.03 · Módulos funcionales de la interfaz
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.04.03.01` | Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.02` | Cuentas y contactos: ficha 360, jerarquías, relaciones, calidad del dato y duplicados | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.03` | Actividades: agenda, tareas, delegación y recordatorios | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.04` | Leads y oportunidades: embudo arrastrable, cualificación, enrutamiento y previsión | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.05` | Búsqueda y listados: filtros guardados, columnas configurables, paginación por cursor y exportación | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.06` | Adjuntos, carpetas del expediente y corpus documental de contecmind embebido | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.07` | Comentarios, menciones y notificaciones en la ficha | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.08` | Operaciones masivas y trabajos: subida, validación previa, progreso e informe de errores descargable | C | 1 | front | ⬜ | — |
+| `CRM-07.04.03.09` | Informes y cuadros de mando de contecintelligence embebidos con la identidad del usuario | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.10` | Interfaz de GRC: riesgos, controles, evaluaciones, cobertura del catálogo y violaciones de SoD | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.11` | Editor visual de procesos y automatizaciones sobre el motor existente | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.12` | Constructor de políticas ABAC con simulador de acceso antes de activarlas | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.13` | Página de estado del tenant, consumo frente a cuotas y ejercicio de derechos del interesado | A | 1 | front | ⬜ | — |
+
+#### CRM-07.04.04 · Calidad del front
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.04.04.01` | Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada | C | 1 | front | ⬜ | contecmind:frontend/vitest.config.ts + playwright.config.ts |
+| `CRM-07.04.04.02` | Comprobación automática de accesibilidad en las pantallas principales | C | 1 | front | ⬜ | — |
+| `CRM-07.04.04.03` | Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local | A | 1 | front | ⬜ | — |
+| `CRM-07.04.04.04` | Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI | A | 1 | front | ⬜ | contecmind:frontend/scripts/check-dead-exports.mjs |
 
 ## Módulo 8 — Requisitos no funcionales
 

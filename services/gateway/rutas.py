@@ -52,6 +52,23 @@ PREFIJOS: dict[str, str] = {
     "plantillas": "tenancy",
     "calendarios": "tenancy",
     "monedas": "tenancy",
+    "claves-cifrado": "tenancy",
+    "localizacion": "tenancy",
+    "proveedores-identidad": "identity",
+    # El SSO entra por aquí desde el navegador del usuario y desde el proveedor
+    # de identidad —la vuelta de SAML y de OIDC—, así que si el gateway no lo
+    # enruta no hay inicio de sesión federado: no es una ruta de servicio, es
+    # LA puerta. Faltaba, y el síntoma habría sido un 404 en mitad del login.
+    "sso": "identity",
+    "tablas-decision": "orchestrator",
+    # Los recursos masivos publican el nombre del recurso en español mientras
+    # el CRUD usa el inglés (`/cuentas/masivo` junto a `/accounts`). La
+    # incoherencia está anotada; mientras exista, las dos formas se enrutan,
+    # porque enrutar solo una deja la mitad inalcanzable.
+    "cuentas": "party",
+    "contactos": "party",
+    "oportunidades": "sales",
+    "captura": "sales",
 }
 
 # Los adjuntos los guarda el servicio dueño del objeto, y `party` y `sales`
@@ -77,6 +94,36 @@ OBJETOS_ADJUNTO: dict[str, str] = {
     "oportunidad": "sales",
     "linea_oportunidad": "sales",
 }
+
+# Y lo mismo con los documentos del corpus (RT-5): el enlace lo guarda el
+# servicio dueño del registro, así que el tipo de objeto vuelve a decidir.
+OBJETOS_DOCUMENTO: dict[str, str] = {
+    "cuenta": "party",
+    "contacto": "party",
+    "lead": "sales",
+    "oportunidad": "sales",
+}
+
+# Segmentos literales que van DONDE iría el tipo de objeto. Sin esta lista,
+# `/api/v1/adjuntos/carpetas/cuenta` se resolvía buscando un objeto llamado
+# «carpetas», no lo encontraba y el gateway respondía 404: las carpetas
+# existían, estaban probadas y no se podían llamar desde fuera.
+SEGMENTOS_LITERALES = {"carpetas", "estado", "buscar", "organizacion", "enlace"}
+
+# Recursos TRANSVERSALES: los monta la misma fábrica en varios servicios, así
+# que el prefijo solo no dice a cuál va. `/api/v1/trabajos/{id}` es ambiguo
+# —party y sales tienen trabajos, y el identificador no delata al dueño—, y por
+# eso van bajo el nombre del servicio: `/api/v1/party/trabajos/{id}`.
+#
+# La alternativa era que el gateway preguntara a todos hasta que uno no
+# respondiera 404: dobla la latencia de cada llamada y convierte un identificador
+# equivocado en una ronda por toda la instalación. Un camino explícito no tiene
+# ese problema y además se lee.
+RECURSOS_TRANSVERSALES = {"trabajos", "retencion", "buscar"}
+
+# Los nombres de servicio salen de la propia tabla de prefijos en vez de
+# repetirse: dos listas que tienen que coincidir acaban no coincidiendo.
+_NOMBRES_DE_SERVICIO = frozenset(PREFIJOS.values())
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,16 +151,57 @@ def cargar_destinos(config: str) -> dict[str, Destino]:
     return destinos
 
 
-def servicio_de(ruta: str) -> str | None:
-    """Servicio que atiende una ruta de la API. `None` si ninguna lo hace."""
+def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | None:
+    """Servicio que atiende una ruta de la API. `None` si ninguna lo hace.
+
+    `servicios` son los nombres desplegados; sirve para el camino
+    `/api/v1/<servicio>/<recurso>` de los recursos transversales. Si no se pasa
+    se usan los nombres que ya salen de la tabla de prefijos, que son los mismos
+    y no hay que declararlos aparte.
+
+    Sin acotarlo a nombres de servicio, `/api/v1/documentos/buscar` se resolvía
+    al «servicio documentos», que no existe: el segmento del recurso se colaba
+    por el camino del servicio porque detrás iba un nombre transversal.
+    """
+    conocidos = servicios if servicios is not None else _NOMBRES_DE_SERVICIO
     partes = [p for p in ruta.split("/") if p]
     # `/api/v1/<recurso>/...` → el recurso es el tercer segmento.
     if len(partes) >= 3 and partes[0] == "api":
+        # Camino por servicio, para lo transversal. Se comprueba ANTES que los
+        # prefijos: si no, un servicio que se llamara como un recurso —hoy
+        # ninguno— se resolvería por el otro lado sin avisar.
+        if len(partes) >= 4 and partes[3] in RECURSOS_TRANSVERSALES:
+            if partes[2] in conocidos:
+                return partes[2]
         if partes[2] == "comentarios":
             return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":
             # Un tipo de objeto desconocido devuelve `None` y el gateway
             # responde 404, que es lo correcto: no hay servicio que lo tenga.
-            return OBJETOS_ADJUNTO.get(partes[3]) if len(partes) >= 4 else None
+            return _por_objeto(partes, OBJETOS_ADJUNTO)
+        if partes[2] == "documentos":
+            return _por_objeto(partes, OBJETOS_DOCUMENTO)
         return PREFIJOS.get(partes[2])
     return None
+
+
+def _por_objeto(partes: list[str], tabla: dict[str, str]) -> str | None:
+    """Resuelve el servicio por el tipo de objeto que lleva la ruta.
+
+    El tipo va justo detrás del recurso, salvo cuando ahí hay un segmento
+    literal (`/adjuntos/carpetas/<tipo>`), y entonces va uno más allá. Sin
+    contemplarlo, esas rutas se resolvían buscando un objeto llamado «carpetas»
+    y devolvían 404 con la funcionalidad entera detrás.
+
+    Un segmento literal sin tipo detrás —como `/documentos/buscar`, que no es de
+    ningún registro concreto— lo atiende cualquiera de los dueños; se manda al
+    primero en orden estable para que dos peticiones iguales no acaben en
+    servicios distintos.
+    """
+    if len(partes) < 4:
+        return None
+    if partes[3] in SEGMENTOS_LITERALES:
+        if len(partes) >= 5:
+            return tabla.get(partes[4])
+        return sorted(set(tabla.values()))[0] if tabla else None
+    return tabla.get(partes[3])

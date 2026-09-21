@@ -132,6 +132,10 @@ def crear_servicio(
                 # servicio que no consuma este evento se queda con la
                 # configuración de su `.env` mientras el resto usa la del
                 # cliente. Esa divergencia tarda semanas en atribuirse.
+                from crmcore.documental.enlaces import (
+                    ORGANIZACION_CAMBIADA,
+                    consumir_organizacion,
+                )
                 from crmcore.documental.inventario import (
                     INVENTARIO_SOLICITADO,
                     consumir_solicitud,
@@ -153,6 +157,13 @@ def crear_servicio(
                     # sus contratos fuera del certificado sin que nadie lo
                     # notara — y el cliente creería que ya no existen.
                     (INVENTARIO_SOLICITADO, consumir_solicitud, f"{nombre}-invdoc"),
+                    # El mapeo tenant → organización del gestor documental.
+                    # `organizaciones_documentales` vive en el esquema de cada
+                    # servicio, y **sin mapeo no se llama al gestor**: si uno no
+                    # lo replicara, el corpus de sus registros sería invisible
+                    # mientras el de los demás funciona, con el administrador
+                    # viendo su mapeo guardado y correcto.
+                    (ORGANIZACION_CAMBIADA, consumir_organizacion, f"{nombre}-orgdoc"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:
