@@ -76,6 +76,33 @@ def _devolver_el_servicio():
         limpiar_cache_settings()
 
 
+def _plantilla(paths: dict, ruta: str) -> str | None:
+    """Con qué plantilla del contrato se corresponde una ruta concreta.
+
+    La misma regla que usa el front (`lib/contrato.ts`), y tiene que ser la
+    misma: si aquí se comparara literalmente, el gate daría por rota una
+    pantalla que funciona —`/sales/vocabularios/motivos_perdida` se declara como
+    `/sales/vocabularios/{nombre}`— y la forma de callarlo sería declarar mal la
+    pantalla.
+    """
+    if ruta in paths:
+        return ruta
+    tramos = ruta.split("?")[0].split("/")
+    mejor, menos = None, len(tramos) + 1
+    for candidata in paths:
+        suyos = candidata.split("/")
+        if len(suyos) != len(tramos):
+            continue
+        parametros = sum(1 for t in suyos if t.startswith("{") and t.endswith("}"))
+        encaja = all(
+            (suyo.startswith("{") and suyo.endswith("}")) or suyo == mio
+            for suyo, mio in zip(suyos, tramos, strict=True)
+        )
+        if encaja and parametros < menos:
+            mejor, menos = candidata, parametros
+    return mejor
+
+
 def test_cada_pantalla_apunta_a_una_operacion_que_existe() -> None:
     declaradas = _declaraciones()
     contratos: dict[str, dict] = {}
@@ -83,7 +110,8 @@ def test_cada_pantalla_apunta_a_una_operacion_que_existe() -> None:
     for nombre, servicio, ruta, metodo in declaradas:
         if servicio not in contratos:
             contratos[servicio] = _contrato(servicio)
-        ops = contratos[servicio].get(ruta) or {}
+        plantilla = _plantilla(contratos[servicio], ruta)
+        ops = (contratos[servicio].get(plantilla) if plantilla else None) or {}
         if metodo not in ops:
             tiene = ",".join(sorted(ops)) or "la ruta no existe"
             rotas.append(f"{nombre} [{servicio}] {metodo.upper()} {ruta} → {tiene}")

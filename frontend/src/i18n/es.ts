@@ -373,6 +373,8 @@ export default {
   retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
 
   chat: {
+    sinLeerAviso_one: "Chat: {{count}} mensaje sin leer",
+    sinLeerAviso_other: "Chat: {{count}} mensajes sin leer",
     titulo: "Chat interno",
     intro:
       "Lo que se habla del trabajo, dentro del CRM. Una conversación puede colgar de un registro: la de esta oportunidad se abre desde su ficha, con el importe al lado.",

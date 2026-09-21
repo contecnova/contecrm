@@ -19,7 +19,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Tabla } from "@/componentes/Tabla";
 import { Formulario } from "@/componentes/Formulario";
-import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
+import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
 import {
   escalar,
   esIdentificadorTecnico,
@@ -33,7 +33,7 @@ import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
-import { moduloDe } from "@/lib/modulos";
+import { moduloDe, recursoDe } from "@/lib/modulos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 type Pestana = "datos" | "adjuntos" | "comentarios" | "documentos";
@@ -114,7 +114,10 @@ function Datos({
   const puedeOperar = usePuedeOperar();
   const { superficie, tiene } = useSuperficie();
   const m = moduloDe(modulo);
-  const recurso = m?.recursos[0];
+  // Por el objeto de la dirección y no `recursos[0]`: un módulo tiene varias
+  // pestañas y con la primera se pedía el registro contra la ruta equivocada,
+  // así que solo se podía abrir una fila de todo el módulo.
+  const recurso = m ? recursoDe(m, objeto) : undefined;
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -166,12 +169,17 @@ function Datos({
     if (!recurso || !editando) return;
     let vivo = true;
     void contratoDe(recurso.servicio).then((documento) => {
-      if (vivo) setCampos(camposDe(documento, plantillaFicha(ruta), "patch"));
+      // La ruta se la pedimos al contrato en vez de componerla: cada servicio
+      // nombra el parámetro por su objeto —`{oportunidad_id}`— y buscando
+      // `/{id}` no aparecía la operación, así que el formulario de edición
+      // salía sin ningún campo y no había nada que guardar.
+      const plantilla = fichaDe(documento, recurso.listar);
+      if (vivo) setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
     });
     return () => {
       vivo = false;
     };
-  }, [recurso, editando, ruta]);
+  }, [recurso, editando]);
 
   async function guardar(valores: Record<string, unknown>) {
     setEnviando(true);
@@ -353,11 +361,6 @@ function Campo({
       </dd>
     </div>
   );
-}
-
-/** `/api/v1/accounts/{id}` es la plantilla con la que el OpenAPI declara la ficha. */
-function plantillaFicha(ruta: string): string {
-  return ruta.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "/{id}");
 }
 
 function Adjuntos({ tipo, id }: { tipo: string; id: string }) {

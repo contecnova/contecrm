@@ -147,6 +147,10 @@ async def contexto_autenticado(
     secreto = s.secret_key.get_secret_value()
 
     principal: Principal
+    # El motivo por el que la cookie no valía, si traía una que no valía. Viaja
+    # en el contexto y no en la firma de las dependencias: cambiarla obligaría a
+    # que todo lo que llama a `exige_autenticacion` pasara la petición.
+    cookie_rechazada: NoAutenticado | None = None
     if request.headers.get(H_FIRMA):
         if not _verificar_firma(request, secreto):
             raise NoAutenticado(
@@ -166,7 +170,23 @@ async def contexto_autenticado(
         # token explícitamente tiene que mandar sobre la cookie que el navegador
         # arrastre, o una pestaña con sesión abierta cambiaría en silencio la
         # identidad de una llamada de API.
-        principal = _principal_de_token(request.cookies[s.sesion_cookie_nombre], secreto)
+        #
+        # Y una cookie que ya no vale deja la petición ANÓNIMA en vez de
+        # tumbarla. La diferencia con la cabecera es quién la manda: la cabecera
+        # la pone quien llama, para esta llamada; la cookie la arrastra el
+        # navegador solo, también cuando lo que se está pidiendo es justamente
+        # volver a entrar. Tumbándola, la cookie caducada hacía fallar con «el
+        # token ha caducado» al propio `POST /sesion/entrar` —la idempotencia es
+        # global y pide el principal en toda escritura—, así que la sesión
+        # expirada dejaba a la persona **encerrada fuera**: la pantalla de
+        # entrada rechazaba la contraseña correcta hasta borrar las cookies a
+        # mano. Quien exija identidad sigue respondiendo 401, y con este mismo
+        # motivo, porque va anotado en la petición.
+        try:
+            principal = _principal_de_token(request.cookies[s.sesion_cookie_nombre], secreto)
+        except NoAutenticado as sin_sesion:
+            cookie_rechazada = sin_sesion
+            principal = ANONIMO
     else:
         principal = ANONIMO
 
@@ -180,7 +200,12 @@ async def contexto_autenticado(
             scopes=principal.scopes,
             es_admin_plataforma=principal.es_admin_plataforma,
             actor_real_id=principal.actor_real_id,
-            extra={**ctx.extra, "principal": principal, "ip": _ip(request)},
+            extra={
+                **ctx.extra,
+                "principal": principal,
+                "ip": _ip(request),
+                "cookie_rechazada": cookie_rechazada,
+            },
         )
     )
     return principal
@@ -264,9 +289,26 @@ def principal_de_token(token: str, secreto: str) -> Principal:
 PrincipalDep = Annotated[Principal, Depends(contexto_autenticado)]
 
 
+def cookie_rechazada() -> NoAutenticado | None:
+    """Por qué no valía la cookie de sesión de esta petición, si traía una.
+
+    Una cookie caducada deja la petición anónima en vez de tumbarla —si no, no
+    se podría volver a entrar—, pero el motivo no se pierde: quien exija
+    identidad lo responde, y con él el navegador distingue una sesión que expiró
+    —renovar y reintentar— de una llamada que nunca trajo credencial.
+    """
+    from crmcore.tenancy.context import contexto_actual
+
+    valor = contexto_actual().extra.get("cookie_rechazada")
+    return valor if isinstance(valor, NoAutenticado) else None
+
+
 def exige_autenticacion(principal: PrincipalDep) -> Principal:
     """Endpoint que exige identidad, sea del tipo que sea."""
     if principal.es_anonimo:
+        rechazada = cookie_rechazada()
+        if rechazada is not None:
+            raise rechazada
         raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
     return principal
 

@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 from crmcore.config import get_settings
 from crmcore.errors import NoDisponible, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, PrincipalDep
+from crmcore.http.deps import AutenticadoDep, PrincipalDep, cookie_rechazada
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, Request, Response
 
@@ -530,6 +530,19 @@ async def superficie_completa(_: AutenticadoDep) -> Any:
 async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Response:
     if _cliente is None:
         raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    # Una cookie de sesión que ya no vale se responde AQUÍ, y con su motivo.
+    #
+    # `contexto_autenticado` no la tumba a propósito —si lo hiciera, la cookie
+    # caducada impediría volver a entrar, porque la idempotencia pide el
+    # principal en toda escritura, también en la de entrar—. Pero lo que se
+    # proxia no es entrar: es la API, y llamarla con una sesión expirada tiene
+    # que decir que expiró. Sin esto llegaba al servicio de destino como una
+    # llamada anónima y volvía un «hace falta autenticarse» genérico, con el que
+    # el navegador no sabe si le toca renovar o mandar a la pantalla de entrada.
+    rechazada = cookie_rechazada()
+    if rechazada is not None and f"/api/{ruta}" not in rutas.RUTAS_DE_SESION:
+        raise rechazada
 
     ruta_completa = f"/api/{ruta}"
     nombre = rutas.servicio_de(ruta_completa)

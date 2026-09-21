@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
+import { AvisoDeChat } from "@/componentes/AvisoDeChat";
 import { Icono } from "@/componentes/Icono";
 import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
@@ -218,6 +219,8 @@ export function BarraSuperior({
             ) : null}
           </div>
         ) : null}
+
+        <AvisoDeChat />
 
         <button
           type="button"

@@ -305,10 +305,15 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
     assert "jsx-a11y" in eslint, "el front no comprueba accesibilidad en cada cambio"
 
 
-# Tope del paquete servido al navegador, en kilobytes comprimidos. No es una
-# cifra redonda: es lo que hoy ocupa el front con margen para crecer un tercio.
-# Un presupuesto que no aprieta nunca no es un presupuesto.
+# Tope de lo que el navegador descarga para ABRIR la aplicación, en kilobytes
+# comprimidos. No es una cifra redonda: es lo que ocupa hoy con margen para
+# crecer un tercio. Un presupuesto que no aprieta nunca no es un presupuesto.
 PRESUPUESTO_KB = 120
+
+# Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
+# Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:
+# basta con diferir lo que engorda para que el primer tope no se entere.
+PRESUPUESTO_TOTAL_KB = 180
 
 
 def test_el_paquete_del_front_cabe_en_el_presupuesto() -> None:
@@ -319,20 +324,45 @@ def test_el_paquete_del_front_cabe_en_el_presupuesto() -> None:
     llega. Un tope que falla obliga a que la decisión sea explícita — o se
     justifica subir el número, o se quita algo.
 
+    Se mide **lo que pide el navegador al abrir**: el módulo de entrada y lo que
+    `index.html` manda precargar con él. No la suma de todos los trozos, que es
+    lo que se medía antes: con las pantallas partidas por ruta esa suma incluye
+    el recorrido guiado y la consola de despliegue, que nadie descarga para
+    mirar sus casos. Medida así, partir el paquete —que es la forma correcta de
+    adelgazar la apertura— hacía que el gate fallara más, es decir, empujaba
+    justo a lo contrario.
+
     Se mide sobre `dist/`, así que solo corre si el front está construido: pedir
     una construcción en cada prueba convertiría el ciclo rápido en uno de dos
     minutos.
     """
     import gzip
+    import re
 
-    dist = RAIZ / "frontend" / "dist" / "assets"
-    if not dist.exists():
+    dist = RAIZ / "frontend" / "dist"
+    if not (dist / "assets").exists():
         pytest.skip("el front no está construido (`npm run build` en `frontend/`)")
 
-    comprimido = sum(len(gzip.compress(f.read_bytes())) for f in dist.glob("*.js"))
+    html = (dist / "index.html").read_text("utf-8")
+    # El `src` del módulo de entrada y los `modulepreload` que Vite emite para
+    # lo que ese módulo importa de forma estática: exactamente lo que se baja
+    # antes de que se pinte nada.
+    iniciales = {m.group(1).lstrip("/") for m in re.finditer(r'(?:src|href)="([^"]+\.js)"', html)}
+    assert iniciales, "no se ha encontrado ningún script en `dist/index.html`"
+
+    comprimido = sum(len(gzip.compress((dist / r).read_bytes())) for r in iniciales)
     kb = comprimido / 1024
     assert kb <= PRESUPUESTO_KB, (
-        f"El paquete del front ocupa {kb:.0f} kB comprimidos y el tope son "
-        f"{PRESUPUESTO_KB} kB.\n\nO se justifica subir el tope, o se quita algo. "
-        "Lo que no vale es que crezca sin que nadie lo decida."
+        f"Abrir el front descarga {kb:.0f} kB comprimidos y el tope son "
+        f"{PRESUPUESTO_KB} kB.\n\nO se justifica subir el tope, o se difiere lo "
+        "que no haga falta para la primera pantalla. Lo que no vale es que "
+        "crezca sin que nadie lo decida."
+    )
+
+    total = sum(len(gzip.compress(f.read_bytes())) for f in (dist / "assets").glob("*.js"))
+    total_kb = total / 1024
+    assert total_kb <= PRESUPUESTO_TOTAL_KB, (
+        f"El front entero ocupa {total_kb:.0f} kB comprimidos y el tope son "
+        f"{PRESUPUESTO_TOTAL_KB} kB.\n\nDiferir una pantalla la saca de la "
+        "apertura, no del producto."
     )

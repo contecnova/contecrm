@@ -541,6 +541,37 @@ calendarios laborales y ajustes.
   ochenta cosas para empezar. Lo que se toca, se documenta solo en la referencia de
   ajustes.
 
+### Los vocabularios: las listas que decides tú
+
+Los motivos de pérdida, los motivos de descarte y las listas parecidas **no
+vienen cerradas**. El producto trae unos cuantos para que puedas trabajar desde
+el primer día, y en cuanto cambias uno la lista pasa a ser tuya entera.
+
+- Cada valor tiene un **rótulo** —lo que se lee— y un **código** —lo que se
+  guarda—. El rótulo se cambia cuando quieras; el código no, porque lo llevan
+  escrito los registros que ya lo usan.
+- Un valor que dejas de usar **se retira, no se borra**. Deja de ofrecerse en
+  los formularios y los registros antiguos siguen enseñando su etiqueta. Si se
+  borrara, tus informes de años anteriores quedarían en códigos sueltos.
+- Mientras no toques nada, la pantalla te avisa de que son **los de fábrica**.
+  Es la diferencia entre «esto lo eligió mi empresa» y «esto venía puesto».
+
+Están en la pestaña correspondiente de cada módulo: los de pérdida en Pipeline,
+los de descarte en Captación de leads.
+
+### Añadir y editar, en general
+
+Casi todas las pantallas que enseñan una lista permiten **dar de alta** y
+**abrir cada fila** para verla, cambiarla o borrarla. Lo que puedes hacer en
+cada una no lo decide la pantalla: lo decide el servidor, y la pantalla se
+limita a ofrecer lo que de verdad admite. Por eso no hay pantallas que ofrezcan
+un botón que luego falla, ni —lo que pasaba antes— pantallas que escondan algo
+que el sistema sí sabe hacer.
+
+Las que solo se miran son las que **no tienen nada que dar de alta**: un resumen
+del pipeline, una lista de contratos que vencen pronto, una cola de trabajo. Ahí
+lo que se ve se calcula a partir de otra cosa, y se cambia yendo a esa otra cosa.
+
 ---
 
 ## Cambios, entornos y vuelta atrás (sección 7.2)

@@ -87,6 +87,79 @@ export function contratoDe(servicio: string): Promise<Documento> {
 }
 
 /**
+ * ¿El servidor admite este método en esta ruta?
+ *
+ * Se pregunta al contrato en vez de declararlo en `modulos.ts` porque el
+ * contrato es el que manda: una pantalla que ofrece un alta que la API no
+ * acepta miente, y una que esconde un alta que la API sí acepta deja la
+ * capacidad sin usar. Declararlo a mano garantizaba una de las dos, y el
+ * recuento decía cuál: 64 listados tenían POST y ningún botón.
+ */
+export function admite(documento: Documento, ruta: string, metodo: string): boolean {
+  const plantilla = plantillaDe(documento, ruta);
+  return Boolean(plantilla && documento.paths?.[plantilla]?.[metodo.toLowerCase()]);
+}
+
+/**
+ * Con qué plantilla del contrato se corresponde una ruta concreta.
+ *
+ * Buscar la ruta tal cual solo acierta cuando el listado no lleva ningún
+ * parámetro dentro. `/sales/vocabularios/motivos_perdida` se declara como
+ * `/sales/vocabularios/{nombre}`, y buscándola literalmente no aparecía: la
+ * pantalla salía sin botón de alta y sin poder abrir una fila, aunque el
+ * servidor admitiera las dos cosas.
+ *
+ * Se compara tramo a tramo y un tramo `{…}` vale por cualquiera. Entre varias
+ * que encajen gana la que tenga menos parámetros, que es la más específica: con
+ * `/tenants/{id}` y `/tenants/{slug}` da igual, pero con una ruta literal y una
+ * con parámetro no, y quedarse con la del parámetro enseñaría el formulario
+ * equivocado.
+ */
+export function plantillaDe(documento: Documento, ruta: string): string | null {
+  const paths = documento.paths ?? {};
+  if (paths[ruta]) return ruta;
+  const tramos = (ruta.split("?")[0] ?? "").split("/");
+  let mejor: string | null = null;
+  let menos = Number.POSITIVE_INFINITY;
+  for (const candidata of Object.keys(paths)) {
+    const suyos = candidata.split("/");
+    if (suyos.length !== tramos.length) continue;
+    let parametros = 0;
+    let encaja = true;
+    for (let i = 0; i < suyos.length; i += 1) {
+      const suyo = suyos[i] ?? "";
+      if (suyo.startsWith("{") && suyo.endsWith("}")) parametros += 1;
+      else if (suyo !== tramos[i]) {
+        encaja = false;
+        break;
+      }
+    }
+    if (encaja && parametros < menos) {
+      mejor = candidata;
+      menos = parametros;
+    }
+  }
+  return mejor;
+}
+
+/**
+ * La ruta de la ficha de un listado, tal como la escribe el contrato.
+ *
+ * No se compone como `${listar}/{id}`: cada servicio nombra el parámetro por su
+ * objeto —`{oportunidad_id}`, `{caso_id}`— y buscando `{id}` no se encontraba
+ * ninguna. Eso se notaba al editar: el formulario salía sin campos, porque los
+ * campos se leen del esquema de esa operación y la operación no aparecía.
+ */
+export function fichaDe(documento: Documento, listar: string): string | null {
+  const base = plantillaDe(documento, listar) ?? listar;
+  const patron = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/\\{[a-z_]+\\}$`);
+  for (const ruta of Object.keys(documento.paths ?? {})) {
+    if (patron.test(ruta)) return ruta;
+  }
+  return null;
+}
+
+/**
  * Campos del cuerpo que espera una operación.
  *
  * Devuelve lista vacía cuando no hay esquema, y quien la use tiene que
@@ -94,9 +167,9 @@ export function contratoDe(servicio: string): Promise<Documento> {
  * haría crear registros incompletos sin que nadie lo notara.
  */
 export function camposDe(documento: Documento, ruta: string, metodo: string): CampoEsquema[] {
-  const operacion = documento.paths?.[ruta]?.[metodo.toLowerCase()] as
-    | { requestBody?: { content?: Record<string, { schema?: Esquema }> } }
-    | undefined;
+  const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[
+    metodo.toLowerCase()
+  ] as { requestBody?: { content?: Record<string, { schema?: Esquema }> } } | undefined;
   const bruto = operacion?.requestBody?.content?.["application/json"]?.schema;
   if (!bruto) return [];
   const esquema = resolver(documento, bruto);
@@ -226,7 +299,7 @@ export interface Proposito {
  * decisión entera y eso es para quien integra, no para quien abre la pantalla.
  */
 export function propositoDe(documento: Documento, ruta: string, metodo = "get"): Proposito {
-  const operacion = documento.paths?.[ruta]?.[metodo] as
+  const operacion = documento.paths?.[plantillaDe(documento, ruta) ?? ruta]?.[metodo] as
     | { summary?: string; description?: string }
     | undefined;
   const detalle = (operacion?.description ?? "").split("\n\n")[0] ?? "";

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.authz.proyeccion import exigir_campo_usable
 from crmcore.authz.visibilidad import aplicar_visibilidad
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -172,9 +173,14 @@ def convertir_lead(lead_id: UUID, datos: ConvertirLead, uow: UowDep) -> Any:
     response_model=list[str],
     dependencies=[Depends(exige_permiso("lead:read"))],
     summary="Motivos de descarte admitidos",
+    description=(
+        "Los que tiene esta empresa, que se gestionan en "
+        "`/sales/vocabularios/motivos_descarte`. Mientras no toque ninguno son "
+        "los que trae el producto."
+    ),
 )
-def motivos_descarte() -> Any:
-    return sorted(svc.MOTIVOS_DESCARTE)
+def motivos_descarte(db: DbDep, _: AutenticadoDep) -> Any:
+    return sorted(vocabulario.valores(db, "motivos_descarte"))
 
 
 @router_leads.get(
@@ -661,9 +667,14 @@ def estancadas(db: DbDep, principal: AutenticadoDep) -> Any:
     response_model=list[str],
     dependencies=[Depends(exige_permiso("opportunity:read"))],
     summary="Motivos de pérdida admitidos",
+    description=(
+        "Los que tiene esta empresa, que se gestionan en "
+        "`/sales/vocabularios/motivos_perdida`. Mientras no toque ninguno son "
+        "los que trae el producto."
+    ),
 )
-def motivos_perdida() -> Any:
-    return sorted(svc.MOTIVOS_PERDIDA)
+def motivos_perdida(db: DbDep, _: AutenticadoDep) -> Any:
+    return sorted(vocabulario.valores(db, "motivos_perdida"))
 
 
 # ── Reglas de enrutamiento de leads (CRM-01.01.03.04) ─────────────────────

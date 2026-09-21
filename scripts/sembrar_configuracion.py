@@ -3176,6 +3176,63 @@ def sembrar_chat(api: Api) -> None:
             )
 
 
+# ── Quién lleva cada cosa ─────────────────────────────────────────────────
+
+
+def sembrar_duenos(api: Api) -> None:
+    """Reparte cuentas, oportunidades, leads y casos entre el equipo.
+
+    Sin dueño no funciona **media aplicación**, y no de forma visible: «mis
+    oportunidades» sale vacía, la visibilidad por responsable no recorta nada,
+    la cuota no tiene contra qué medirse, la comisión no sabe de quién es la
+    venta y el tablero enseña tarjetas sin cara. Nada de eso falla: sale vacío,
+    que es peor, porque parece que la función no está hecha.
+
+    El reparto es **estable**: la misma cuenta cae siempre en el mismo
+    comercial, porque se reparte por la posición en una lista ordenada y no al
+    azar. Volver a sembrar y que cambien todos los dueños haría imposible
+    comprobar nada dos veces.
+    """
+    usuarios = sorted(
+        (u for u in api.listar("/api/v1/usuarios", 50) if u.get("id")),
+        key=lambda u: str(u.get("email", "")),
+    )
+    if not usuarios:
+        return
+
+    # A cada cosa le toca quien la lleva de verdad: las cuentas y el embudo a
+    # quien vende, los casos a quien atiende. Repartirlo todo entre todos daría
+    # colas de soporte a un comercial, y eso no lo mira nadie.
+    def de(prefijos: tuple[str, ...]) -> list[str]:
+        elegidos = [str(u["id"]) for u in usuarios if str(u.get("email", "")).startswith(prefijos)]
+        return elegidos or [str(u["id"]) for u in usuarios]
+
+    comerciales = de(("comercial", "ventas", "direccion"))
+    soporte = de(("soporte",))
+
+    # `estado=` vacío a propósito: el listado de oportunidades filtra por
+    # «abierta» si no se dice nada, y repartir solo lo abierto deja sin dueño lo
+    # ganado y lo perdido —que es justo el histórico con el que se calcula la
+    # consecución de cada comercial—.
+    repartos = [
+        ("/api/v1/accounts", "?estado=", "owner_id", comerciales),
+        ("/api/v1/opportunities", "?estado=", "owner_id", comerciales),
+        ("/api/v1/leads", "?estado=", "owner_id", comerciales),
+        ("/api/v1/casos", "?estado=", "owner_id", soporte),
+    ]
+    for ruta, filtro, campo, entre in repartos:
+        filas = api.listar(f"{ruta}{filtro}", 200)
+        for i, fila in enumerate(filas):
+            if not fila.get("id") or fila.get(campo):
+                continue
+            estado, cuerpo = api._llamar(
+                "PATCH", f"{ruta}/{fila['id']}", {campo: entre[i % len(entre)]}
+            )
+            if estado not in (200, 204):
+                api.fallos.append(f"PATCH {ruta}/{fila['id']} → {estado} {_motivo(cuerpo)}")
+                break
+
+
 def sembrar_rastro(api: Api) -> None:
     """Las pantallas que no se llenan creando, sino usando.
 
@@ -3270,6 +3327,7 @@ PARTES: dict[str, Any] = {
     "resto": sembrar_resto,
     "trabajo": sembrar_trabajo,
     "chat": sembrar_chat,
+    "duenos": sembrar_duenos,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
 }

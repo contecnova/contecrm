@@ -92,6 +92,10 @@ def _importar_modelos(servicio: str) -> None:
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",
+        # Los vocabularios de negocio: cada servicio guarda el suyo en su
+        # esquema, porque los valida en mitad de una operación y no puede
+        # preguntárselos a otro servicio.
+        "crmcore.vocabulario",
     ]
     for modulo in [*comunes, f"services.{servicio}.modelos"]:
         try:

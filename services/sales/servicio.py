@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import vocabulario
 from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
 from crmcore.datos.estados import aplicar as aplicar_estado
@@ -146,11 +147,12 @@ def descartar_lead(uow: UnidadDeTrabajo, lead_id: UUID, *, motivo: str, nota: st
             "Un lead ya convertido no se puede descartar",
             error_code="sales.lead_ya_convertido",
         )
-    if motivo not in MOTIVOS_DESCARTE:
+    admitidos = vocabulario.valores(uow.db, "motivos_descarte")
+    if motivo not in admitidos:
         raise ErrorValidacion(
             f"«{motivo}» no es un motivo de descarte reconocido",
             error_code="sales.motivo_descarte_invalido",
-            detalle={"admitidos": sorted(MOTIVOS_DESCARTE)},
+            detalle={"admitidos": sorted(admitidos)},
         )
 
     dias = int(rt.efectivo("lead_dias_reciclaje", uow.db) or 180)
@@ -176,6 +178,10 @@ def descartar_lead(uow: UnidadDeTrabajo, lead_id: UUID, *, motivo: str, nota: st
     return lead
 
 
+# Con los que se estrena el producto. **No son un límite**: la empresa los
+# cambia desde su pantalla y a partir de ahí manda su lista — ver
+# `crmcore.vocabulario`. Escritos como constante, los nueve que trae eran los
+# nueve que iba a tener siempre, y la pantalla los enseñaba sin dejar tocarlos.
 MOTIVOS_DESCARTE: frozenset[str] = frozenset(
     {
         "sin_presupuesto",
@@ -562,12 +568,26 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
     if bool(rt.efectivo("bloquear_al_cerrar", uow.db)):
         oportunidad.bloqueada = True
 
-    if not ganada and bool(rt.efectivo("exigir_motivo_perdida", uow.db)):
-        if not (oportunidad.motivo_perdida or motivo):
+    if not ganada:
+        admitidos = vocabulario.valores(uow.db, "motivos_perdida")
+        if bool(rt.efectivo("exigir_motivo_perdida", uow.db)) and not (
+            oportunidad.motivo_perdida or motivo
+        ):
             raise ErrorValidacion(
                 "Para cerrar como perdida hace falta un motivo normalizado",
                 error_code="sales.motivo_perdida_requerido",
-                detalle={"admitidos": sorted(MOTIVOS_PERDIDA)},
+                detalle={"admitidos": sorted(admitidos)},
+            )
+        # Y se comprueba que sea uno de los de la lista. No se comprobaba: la
+        # lista se enseñaba en el mensaje de error y luego entraba cualquier
+        # texto, así que el informe de motivos de pérdida —para el que existe
+        # el campo— salía con tantas categorías como formas de escribirlas.
+        elegido = oportunidad.motivo_perdida or motivo
+        if elegido and elegido not in admitidos:
+            raise ErrorValidacion(
+                f"«{elegido}» no es un motivo de pérdida reconocido",
+                error_code="sales.motivo_perdida_invalido",
+                detalle={"admitidos": sorted(admitidos)},
             )
         if not oportunidad.motivo_perdida:
             oportunidad.motivo_perdida = motivo
@@ -593,6 +613,8 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
     )
 
 
+# Los de fábrica, como los de descarte: el punto de partida de cada empresa, no
+# su techo.
 MOTIVOS_PERDIDA: frozenset[str] = frozenset(
     {
         "precio",
@@ -605,6 +627,24 @@ MOTIVOS_PERDIDA: frozenset[str] = frozenset(
         "solucion_interna",
         "sin_respuesta",
     }
+)
+
+vocabulario.registrar(
+    "motivos_perdida",
+    MOTIVOS_PERDIDA,
+    etiqueta="Motivos de pérdida",
+    descripcion=(
+        "Por qué se pierde una oportunidad. Se exige al cerrarla como perdida "
+        "si el ajuste correspondiente está activo, y es lo que agrupa el "
+        "informe de pérdidas."
+    ),
+)
+
+vocabulario.registrar(
+    "motivos_descarte",
+    MOTIVOS_DESCARTE,
+    etiqueta="Motivos de descarte",
+    descripcion="Por qué se descarta un lead sin llegar a convertirlo.",
 )
 
 

@@ -33,6 +33,7 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { escalar, importe } from "@/lib/formato";
+import { inicialesDe, nombreDe, usePersonas } from "@/lib/personas";
 import { puede, type Sesion } from "@/lib/sesion";
 
 interface Etapa {
@@ -63,9 +64,18 @@ interface Oportunidad {
   estado: string;
   fecha_cierre: string | null;
   cuenta_id: string | null;
+  owner_id: string | null;
+}
+
+/** Si la fecha de cierre ya pasó y la oportunidad sigue abierta. */
+function vencida(o: Oportunidad): boolean {
+  if (!o.fecha_cierre || o.estado !== "abierta") return false;
+  const cierre = Date.parse(o.fecha_cierre);
+  return !Number.isNaN(cierre) && cierre < Date.now();
 }
 
 export function Pipeline({ sesion }: { sesion: Sesion | null }) {
+  const personas = usePersonas();
   const { t } = useTranslation();
   const [pipelines, setPipelines] = useState<PipelineApi[] | null>(null);
   const [abierto, setAbierto] = useState("");
@@ -259,13 +269,45 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                       >
                         {o.nombre}
                       </Link>
-                      <p className="mt-1 text-2xs text-ink-muted">{importe(o.importe, o.moneda)}</p>
-                      {o.fecha_cierre ? (
-                        <p className="mt-0.5 inline-flex items-center gap-1 text-3xs text-ink-faint">
-                          <Icono nombre="event" tamano="sm" />
-                          {escalar(o.fecha_cierre)}
-                        </p>
-                      ) : null}
+                      {/* El importe, grande. Un número del mismo tamaño que
+                          todo lo demás no distingue una oportunidad de doce mil
+                          euros de una de doce millones, que es lo primero que
+                          se mira en un tablero. */}
+                      <p className="mt-1 text-sm font-semibold leading-none text-ink">
+                        {importe(o.importe, o.moneda)}
+                      </p>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {o.fecha_cierre ? (
+                          /* En rojo si ya pasó y sigue abierta: una fecha de
+                             cierre vencida es la señal más barata de que el
+                             embudo no está al día, y en gris se pierde. */
+                          <span
+                            className={`inline-flex items-center gap-1 text-3xs ${
+                              vencida(o) ? "font-medium text-danger" : "text-ink-faint"
+                            }`}
+                          >
+                            <Icono nombre="event" tamano="sm" />
+                            {escalar(o.fecha_cierre)}
+                          </span>
+                        ) : null}
+                        <span className="rounded-lg border border-line px-1.5 py-0.5 text-3xs text-ink-muted">
+                          {o.probabilidad} %
+                        </span>
+                        {o.owner_id ? (
+                          <span
+                            className="ml-auto inline-flex items-center gap-1 text-3xs text-ink-muted"
+                            title={nombreDe(personas, o.owner_id)}
+                          >
+                            <span
+                              aria-hidden
+                              className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-[0.6rem] font-medium"
+                            >
+                              {inicialesDe(nombreDe(personas, o.owner_id))}
+                            </span>
+                          </span>
+                        ) : null}
+                      </div>
 
                       {/* Mover sin arrastrar. Arrastrar no funciona con teclado
                           ni con lector de pantalla, y dejarlo como única forma

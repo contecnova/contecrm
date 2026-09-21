@@ -407,7 +407,14 @@ export const MODULOS: Modulo[] = [
         servicio: "sales",
         columnas: ["nombre", "descripcion", "activo", "por_defecto"],
       },
-      { nombre: "Motivos de pérdida", listar: "/api/v1/pipeline/motivos-perdida", servicio: "sales" },
+      {
+        // Al vocabulario y no a `/pipeline/motivos-perdida`: esa ruta solo los
+        // enseña. La empresa decide los suyos, y esta pestaña es donde lo hace.
+        nombre: "Motivos de pérdida",
+        listar: "/api/v1/sales/vocabularios/motivos_perdida",
+        servicio: "sales",
+        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+      },
     ],
   },
   {
@@ -435,7 +442,12 @@ export const MODULOS: Modulo[] = [
       { nombre: "Enrutamiento", listar: "/api/v1/lead-routing/reglas", servicio: "sales" },
       { nombre: "Canales de captura", listar: "/api/v1/captura/canales", servicio: "sales" },
       { nombre: "Recepciones", listar: "/api/v1/captura/recepciones", servicio: "sales" },
-      { nombre: "Motivos de descarte", listar: "/api/v1/leads/motivos-descarte", servicio: "sales" },
+      {
+        nombre: "Motivos de descarte",
+        listar: "/api/v1/sales/vocabularios/motivos_descarte",
+        servicio: "sales",
+        columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
+      },
       { nombre: "Campañas de origen", listar: "/api/v1/origen/campanas", servicio: "sales" },
       { nombre: "Toques", listar: "/api/v1/origen/toques", servicio: "sales" },
     ],
@@ -902,6 +914,34 @@ export const MODULOS: Modulo[] = [
 
 export function moduloDe(ruta: string): Modulo | undefined {
   return MODULOS.find((m) => m.ruta === ruta);
+}
+
+/**
+ * Con qué nombre viaja un recurso en la dirección de su ficha.
+ *
+ * El `objeto` declarado manda cuando lo hay, porque además de identificar la
+ * pestaña nombra el tipo en las rutas de lo que cuelga del registro
+ * (`/adjuntos/{tipo}/…`) y ahí «cuenta» no es intercambiable por «cuentas».
+ * Para el resto se deriva de la ruta que lista, y se deriva **entera**: dos
+ * pestañas del mismo módulo pueden acabar en el mismo segmento
+ * —`/procesos/definiciones` y `/definiciones`— y con el último tramo la ficha
+ * habría abierto la equivocada.
+ */
+export function objetoDe(recurso: Recurso): string {
+  if (recurso.objeto) return recurso.objeto;
+  return recurso.listar.replace(/^\/api\/v1\//, "").replace(/\?.*$/, "").replace(/\//g, "-");
+}
+
+/**
+ * Qué recurso del módulo abre esta ficha.
+ *
+ * Antes la ficha usaba siempre `recursos[0]`, así que en un módulo con varias
+ * pestañas solo se podía abrir la primera: al pinchar una fila de la segunda se
+ * pedía el registro contra la ruta de la primera y salía un 404. Por eso solo
+ * tenían ficha los módulos que declaraban `objeto` en su primer recurso.
+ */
+export function recursoDe(modulo: Modulo, objeto: string): Recurso | undefined {
+  return modulo.recursos.find((r) => objetoDe(r) === objeto) ?? modulo.recursos[0];
 }
 
 export function porGrupo(): Map<string, Modulo[]> {

@@ -37,7 +37,7 @@
  * qué mira.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -76,6 +76,21 @@ export interface Props {
    * dos tablas distintas no pueden compartir preferencia.
    */
   recuerdaComo?: string;
+  /**
+   * Lo que va a la izquierda de la fila de herramientas: normalmente el
+   * recuento de filas.
+   */
+  encabezado?: ReactNode;
+  /**
+   * Lo que va a la **derecha** del botón de columnas, en esa misma fila.
+   *
+   * Existe para que el selector de vista —listado, tarjetas, columnas— salga
+   * siempre en el mismo sitio y siempre a la derecha del de columnas. Antes lo
+   * pintaba la pantalla por su cuenta, en una fila propia encima de esta, así
+   * que los dos grupos de controles aparecían uno debajo del otro y cambiaban
+   * de orden según la vista.
+   */
+  acciones?: ReactNode;
 }
 
 const CLAVE_COLUMNAS = "contecrm.columnas";
@@ -98,6 +113,8 @@ export function Tabla({
   enlace,
   porDefecto = 6,
   recuerdaComo,
+  encabezado,
+  acciones,
 }: Props) {
   const { t } = useTranslation();
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
@@ -136,19 +153,27 @@ export function Tabla({
   const cabeceras = visibles;
   const escondidas = disponibles.length - cabeceras.length;
 
+  const hayQueElegir = disponibles.length > cabeceras.length || elegidas;
+
   return (
     <div>
-      {disponibles.length > cabeceras.length || elegidas ? (
-        <div className="mb-2 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setEligiendo((v) => !v)}
-            aria-expanded={eligiendo}
-            className="btn-secondary inline-flex items-center gap-1.5"
-          >
-            <Icono nombre="view_column" tamano="sm" />
-            {t("tabla.columnas", { visibles: cabeceras.length, total: disponibles.length })}
-          </button>
+      {hayQueElegir || encabezado || acciones ? (
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="min-w-0">{encabezado}</div>
+          <div className="flex shrink-0 items-center gap-2">
+            {hayQueElegir ? (
+              <button
+                type="button"
+                onClick={() => setEligiendo((v) => !v)}
+                aria-expanded={eligiendo}
+                className="btn-secondary inline-flex items-center gap-1.5"
+              >
+                <Icono nombre="view_column" tamano="sm" />
+                {t("tabla.columnas", { visibles: cabeceras.length, total: disponibles.length })}
+              </button>
+            ) : null}
+            {acciones}
+          </div>
         </div>
       ) : null}
 

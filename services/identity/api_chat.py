@@ -128,6 +128,26 @@ def listar_conversaciones(db: DbDep, principal: AutenticadoDep) -> Any:
     return [_conversacion_out(c, pendientes.get(str(c.id), 0)) for c in mias]
 
 
+@router_chat.get(
+    "/sin-leer",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Cuántos mensajes tengo sin leer",
+    description=(
+        "Para el aviso de la barra superior, que se pide a menudo y desde "
+        "todas las pantallas. Aparte del listado de conversaciones a propósito: "
+        "pintar un número no puede costar traerse los nombres de todos los "
+        "canales privados en los que está la persona."
+    ),
+)
+def cuantos_sin_leer(db: DbDep, principal: AutenticadoDep) -> Any:
+    pendientes = chat.sin_leer(db, tenant_id=principal.tenant_id, usuario_id=principal.id)
+    return {
+        "mensajes": sum(pendientes.values()),
+        "conversaciones": len([c for c, n in pendientes.items() if n > 0]),
+    }
+
+
 @router_chat.post(
     "/conversaciones",
     response_model=dict,

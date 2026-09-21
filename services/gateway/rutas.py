@@ -279,7 +279,23 @@ SEGMENTOS_LITERALES = {"carpetas", "estado", "buscar", "organizacion", "enlace"}
 # respondiera 404: dobla la latencia de cada llamada y convierte un identificador
 # equivocado en una ronda por toda la instalación. Un camino explícito no tiene
 # ese problema y además se lee.
+# Las rutas con las que se CONSIGUE una sesión.
+#
+# Una cookie caducada no puede hacerlas fallar: son justamente por donde se sale
+# de tener la sesión caducada. El resto de la API sí responde «el token ha
+# caducado», que es lo que el navegador necesita oír para renovar.
+RUTAS_DE_SESION = frozenset(
+    {
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/sso",
+    }
+)
+
 RECURSOS_TRANSVERSALES = {
+    # Los vocabularios de negocio: los publica cada servicio en su prefijo, como
+    # la papelera, y por lo mismo — los valida él, en su esquema.
+    "vocabularios",
     "trabajos",
     "retencion",
     "buscar",

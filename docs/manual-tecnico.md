@@ -96,6 +96,32 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### La sesión del navegador
+
+El navegador no guarda el token: lo lleva en una cookie `HttpOnly` que pone y
+quita el gateway (`/sesion/entrar`, `/sesion/renovar`, `/sesion/salir`). Una
+integración sigue usando `/auth/login` y recibiendo sus tokens en el cuerpo, que
+es lo correcto para un servicio y lo peor posible para un navegador.
+
+**Una cookie caducada no tumba la petición: la deja anónima.** La diferencia con
+la cabecera `Authorization` es quién la manda. La cabecera la pone quien llama,
+para esa llamada, así que un token caducado ahí es un error de quien llama y se
+le dice. La cookie la arrastra el navegador solo, también cuando lo que se está
+pidiendo es **volver a entrar**.
+
+Tumbándola pasaba esto: la idempotencia es una dependencia global y pide el
+principal en toda escritura, incluida la de entrar, así que con la sesión
+caducada la pantalla de entrada respondía «el token ha caducado» a la contraseña
+correcta. La única salida era borrar las cookies a mano — es decir, la sesión
+expirada dejaba a la persona encerrada fuera.
+
+Para no perder el motivo, que es lo que le dice al navegador si le toca renovar
+o mandar a la pantalla de entrada, el rechazo se anota en la petición y lo
+responde el proxy del gateway: cualquier llamada a la API con una sesión
+expirada sigue devolviendo `auth.token_caducado`. Las rutas con las que se
+**consigue** una sesión —las que declara el gateway en `rutas.py`— quedan fuera,
+porque volverían a cerrar la puerta.
+
 ---
 
 ### El front oficial
@@ -262,6 +288,48 @@ reapertura de casos, política de descuentos, frescura de los datos, pesos de la
 salud de cuenta, formatos y moneda. Todo ello **con historial**: se puede ver qué
 valor había en una fecha y quién lo cambió, que es lo que permite explicar por qué
 un cálculo de hace tres meses dio otro número.
+
+### 3.4 Vocabularios de negocio
+
+Un ajuste es un número o un interruptor. Un **vocabulario** es una lista de
+valores con los que el cliente cuenta su trabajo: los motivos de pérdida, los de
+descarte. No son estados de protocolo —esos siguen siendo constantes, y deben
+serlo— sino categorías de negocio, y por eso las decide cada empresa.
+
+    from crmcore import vocabulario
+
+    vocabulario.registrar("motivos_perdida", MOTIVOS_PERDIDA,
+                          etiqueta="Motivos de pérdida")
+    ...
+    if motivo not in vocabulario.valores(uow.db, "motivos_perdida"):
+        raise ErrorValidacion(...)
+
+Cómo está montado y por qué:
+
+- **La tabla `valores_vocabulario` es común a los trece esquemas**, como
+  `ajustes_runtime`. Cada servicio guarda el suyo en el suyo porque lo valida en
+  mitad de una operación, y los servicios no se llaman entre sí: hacerlo aquí
+  ataría el cierre de una oportunidad a que otro proceso esté vivo.
+- **Las constantes del código son los valores de fábrica, no un techo.**
+  Mientras el tenant no toque nada valen esas; en cuanto añade o cambia uno, la
+  lista es suya entera. Sin esa caída, una instalación nueva no podría cerrar
+  una oportunidad hasta que alguien poblara la tabla.
+- **Al primer cambio se materializan.** Añadir un valor copia antes los de
+  fábrica a la tabla. Sin ese paso la lista quedaría con **uno solo** —el recién
+  creado—, porque tener algo guardado es lo que apaga los defectos; es el fallo
+  clásico de este patrón y se nota tarde, cuando ya se ha perdido el resto.
+- **Se retira, no se borra.** El código de un valor lo llevan escrito los
+  registros que lo usan, así que solo se puede cambiar su rótulo, su orden y si
+  sigue en uso.
+
+Las rutas las monta `crear_servicio` en `/{servicio}/vocabularios`, y solo si el
+servicio declara alguno. Un servicio que no valide contra ninguna lista no gana
+ni una ruta.
+
+Para declarar uno nuevo: llamar a `vocabulario.registrar()` al importar el
+módulo que lo usa —no en el arranque, para que el que valida sea el mismo que se
+registra— y validar con `vocabulario.valores()`. No hace falta migración: la
+tabla ya está en todos los esquemas.
 
 ---
 

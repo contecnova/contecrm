@@ -26,6 +26,14 @@ import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { Celda } from "@/componentes/Tabla";
+import { inicialesDe, nombreDe, usePersonas, type Persona } from "@/lib/personas";
+import {
+  CAMPOS_DE_CIFRA,
+  CAMPOS_DE_ESTADO,
+  clasesDeTono,
+  retrasoDe,
+  tonoDe,
+} from "@/lib/semaforo";
 import { escalar, esIdentificadorTecnico, humanizar, nombreDelRegistro, tieneDato } from "@/lib/formato";
 import { cn } from "@/lib/utiles";
 
@@ -182,6 +190,114 @@ export function Etiquetas({ filas }: { filas: Record<string, unknown>[] }) {
   );
 }
 
+/**
+ * Una tarjeta que se lee de un vistazo.
+ *
+ * Una tabla lo enseña todo con el mismo peso: catorce columnas de texto del
+ * mismo tamaño donde hay que leerlas todas para encontrar el dato por el que se
+ * ha entrado. Una tarjeta decide qué manda, y en un CRM eso es siempre lo
+ * mismo: **cuánto, de quién, en qué estado y si va con retraso.**
+ *
+ * Todo sale de los datos, no de una configuración por recurso: configurarlo
+ * recurso a recurso significa que los veinte que nadie configure se queden con
+ * la tarjeta sosa para siempre.
+ *
+ *   * **La cifra va grande** y arriba. Un importe perdido entre catorce campos
+ *     del mismo tamaño no distingue una oportunidad de doce mil euros de una de
+ *     doce millones, que es lo primero que se mira.
+ *   * **El estado va en color**, y el color significa lo mismo en todas las
+ *     pantallas (`lib/semaforo.ts`). Con un color por valor sacado de un hash,
+ *     «perdida» sale verde aquí y morada allá, y el color deja de leerse.
+ *   * **El retraso se canta.** Es lo que más urge y lo que una tabla esconde
+ *     entre columnas: aquí va arriba y en rojo.
+ *   * **El responsable, con su cara.** Un `owner_id` en UUID no dice de quién
+ *     es nada, y «de quién es esto» es la segunda pregunta de cualquier lista.
+ */
+function Tarjeta({
+  fila,
+  campos,
+  personas,
+  compacta = false,
+}: {
+  fila: Record<string, unknown>;
+  campos: string[];
+  personas: Record<string, Persona>;
+  compacta?: boolean;
+}) {
+  const retraso = retrasoDe(fila);
+  const cifra = campos.find((c) => CAMPOS_DE_CIFRA.test(c) && tieneDato(fila[c]));
+  const estados = campos.filter((c) => CAMPOS_DE_ESTADO.includes(c) && tieneDato(fila[c]));
+  const responsable = ["owner_id", "asignado_a", "responsable_id", "autor_id", "propietario_id"]
+    .filter((c) => tieneDato(fila[c]))
+    .at(0);
+  // Lo que queda: ni la cifra, ni los estados, ni el responsable, ni el título.
+  const resto = campos.filter(
+    (c) => c !== cifra && c !== responsable && !estados.includes(c) && !esIdentificadorTecnico(c),
+  );
+
+  return (
+    <>
+      {retraso ? (
+        <p className="mb-1 flex items-center gap-1 text-3xs font-medium text-danger">
+          <Icono nombre="schedule" /> {humanizar(retraso)}
+        </p>
+      ) : null}
+
+      <p className={cn("font-medium text-ink", compacta ? "text-xs" : "text-sm")}>
+        {tituloDe(fila)}
+      </p>
+
+      {cifra ? (
+        <p className="mt-1 text-lg font-semibold leading-none text-ink">
+          {escalar(fila[cifra], cifra)}
+        </p>
+      ) : null}
+
+      {estados.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-1">
+          {estados.map((c) => (
+            <li
+              key={c}
+              title={humanizar(c)}
+              className={cn(
+                "rounded-lg border px-1.5 py-0.5 text-3xs",
+                clasesDeTono(tonoDe(fila[c])),
+              )}
+            >
+              {humanizar(String(fila[c]))}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {resto.length > 0 ? (
+        <dl className="mt-2 space-y-0.5">
+          {resto.slice(0, compacta ? 2 : 4).map((c) => (
+            <div key={c} className="flex items-baseline justify-between gap-3">
+              <dt className="text-3xs text-ink-faint">{humanizar(c)}</dt>
+              <dd className="min-w-0 text-right text-3xs text-ink-muted">
+                <Celda valor={fila[c]} campo={c} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
+      {responsable ? (
+        <p className="mt-2 flex items-center gap-1.5 text-3xs text-ink-muted">
+          <span
+            aria-hidden
+            className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-[0.6rem] font-medium text-ink-muted"
+          >
+            {inicialesDe(nombreDe(personas, fila[responsable]))}
+          </span>
+          {nombreDe(personas, fila[responsable])}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 export function Tarjetas({
   filas,
   columnas,
@@ -192,27 +308,12 @@ export function Tarjetas({
   enlace?: (fila: Record<string, unknown>) => string | null;
 }) {
   const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
+  const personas = usePersonas();
   return (
     <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {filas.map((fila, i) => {
         const a = enlace?.(fila) ?? null;
-        const cuerpo = (
-          <>
-            <p className="text-sm font-medium text-ink">{tituloDe(fila)}</p>
-            <dl className="mt-2 space-y-1">
-              {campos.map((c) =>
-                tieneDato(fila[c]) ? (
-                  <div key={c} className="flex items-baseline justify-between gap-3">
-                    <dt className="text-3xs text-ink-faint">{humanizar(c)}</dt>
-                    <dd className="min-w-0 text-right text-2xs text-ink-muted">
-                      <Celda valor={fila[c]} campo={c} />
-                    </dd>
-                  </div>
-                ) : null,
-              )}
-            </dl>
-          </>
-        );
+        const cuerpo = <Tarjeta fila={fila} campos={campos} personas={personas} />;
         return (
           <li key={String(fila.id ?? i)}>
             {a ? (
@@ -244,6 +345,7 @@ export function Agrupado({
   enlace?: (fila: Record<string, unknown>) => string | null;
 }) {
   const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
+  const personas = usePersonas();
   const sumable = useMemo(
     () => campos.find((c) => SUMABLES.test(c) && filas.some((f) => Number(f[c]) > 0)) ?? "",
     [campos, filas],
@@ -289,17 +391,15 @@ export function Agrupado({
               {suyas.map((fila, i) => {
                 const a = enlace?.(fila) ?? null;
                 const cuerpo = (
-                  <>
-                    <p className="text-xs font-medium text-ink">{tituloDe(fila)}</p>
-                    {campos
-                      .filter((c) => c !== campo && tieneDato(fila[c]))
-                      .slice(0, 3)
-                      .map((c) => (
-                        <p key={c} className="mt-1 text-3xs text-ink-muted">
-                          <Celda valor={fila[c]} campo={c} />
-                        </p>
-                      ))}
-                  </>
+                  <Tarjeta
+                    fila={fila}
+                    // Sin la columna por la que se agrupa: repetir «Cualificación»
+                    // en las doce tarjetas de la columna «Cualificación» no dice
+                    // nada y ocupa la línea que sí diría algo.
+                    campos={campos.filter((c) => c !== campo)}
+                    personas={personas}
+                    compacta
+                  />
                 );
                 return (
                   <li key={String(fila.id ?? i)}>

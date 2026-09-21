@@ -113,6 +113,11 @@ export const AREA_DE_GRUPO: Record<string, IdArea> = {
 export const ACCESOS: Entrada[] = [
   { a: "/", clave: "nav.inicio", icono: "home" },
   { a: "/puesto", clave: "nav.puesto", icono: "desk", recursos: ["agenda"] },
+  // El chat va aquí y no en un área porque no trata de un dominio: se habla de
+  // clientes, de ventas y de casos desde el mismo sitio. Estaba escrito, tenía
+  // ruta en el router y no salía en ningún menú, así que solo lo encontraba
+  // quien supiera teclear la dirección.
+  { a: "/chat", clave: "nav.chat", icono: "forum", recursos: ["chat"] },
 ];
 
 /**

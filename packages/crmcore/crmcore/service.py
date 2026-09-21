@@ -301,6 +301,15 @@ def crear_servicio(
         app.include_router(crear_router_papelera(nombre), prefix=s.api_prefix)
         app.include_router(crear_router_cumplimiento(nombre), prefix=s.api_prefix)
 
+        # Y sus vocabularios, si declara alguno. Solo entonces: en un servicio
+        # que no valida contra ninguna lista, estas rutas serían tres pantallas
+        # vacías más en la superficie.
+        from crmcore import vocabulario as _voc
+        from crmcore.http.vocabulario_router import crear_router_vocabulario
+
+        if _voc.registrados():
+            app.include_router(crear_router_vocabulario(nombre), prefix=s.api_prefix)
+
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
     for router in routers_sin_prefijo or []:

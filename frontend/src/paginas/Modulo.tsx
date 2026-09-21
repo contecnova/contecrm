@@ -33,13 +33,15 @@ import { Formulario } from "@/componentes/Formulario";
 import { Tabla } from "@/componentes/Tabla";
 import { llamar } from "@/lib/api";
 import {
+  admite,
   camposDe,
   contratoDe,
+  fichaDe,
   propositoDe,
   type CampoEsquema,
   type Proposito,
 } from "@/lib/contrato";
-import { moduloDe, recursoVisible, type Recurso } from "@/lib/modulos";
+import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
 import { usePermitidas } from "@/lib/permisos";
@@ -171,6 +173,17 @@ function RecursoVista({
   const [enviando, setEnviando] = useState(false);
   const [termino, setTermino] = useState("");
   const [proposito, setProposito] = useState<Proposito | null>(null);
+  /**
+   * La ruta a la que se da de alta, y si la fila se puede abrir.
+   *
+   * Las dos las dice el contrato, no esta lista: `recurso.crear` solo estaba
+   * escrito en 23 de 148 pestañas y `objeto` en 16, así que el resto enseñaba
+   * información que no se podía ni crear ni tocar aunque el servidor lo
+   * admitiera. Lo que se declara a mano sigue mandando —hay altas que van a una
+   * ruta distinta de la que lista—, y lo que no se declara se descubre.
+   */
+  const [rutaDeAlta, setRutaDeAlta] = useState<string | null>(recurso.crear ?? null);
+  const [hayFicha, setHayFicha] = useState(Boolean(recurso.objeto));
   const recuerdaComo = `${ruta}.${recurso.nombre}`;
   const [vista, setVista] = useState<Vista>(() => leerVista(recuerdaComo));
   // Por qué campo agrupar sale de los datos que hay: con un solo valor no hay
@@ -199,9 +212,9 @@ function RecursoVista({
 
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
   // vacía es peor que no tener enlace, porque parece que algo se ha roto.
-  const aLaFicha = recurso.objeto
+  const aLaFicha = hayFicha
     ? (fila: Record<string, unknown>) =>
-        typeof fila.id === "string" ? `/m/${ruta}/${recurso.objeto}/${fila.id}` : null
+        typeof fila.id === "string" ? `/m/${ruta}/${objetoDe(recurso)}/${fila.id}` : null
     : undefined;
 
   const busqueda = recurso.busqueda;
@@ -255,23 +268,23 @@ function RecursoVista({
     let vivo = true;
     setProposito(null);
     void contratoDe(recurso.servicio).then((documento) => {
-      if (vivo) setProposito(propositoDe(documento, recurso.listar, "get"));
+      if (!vivo) return;
+      setProposito(propositoDe(documento, recurso.listar, "get"));
+      // El alta: la declarada si la hay, y si no la de la propia ruta que
+      // lista, que es donde la pone el servidor salvo excepción.
+      const alta = recurso.crear ?? (admite(documento, recurso.listar, "post") ? recurso.listar : null);
+      setRutaDeAlta(alta);
+      setCampos(alta ? camposDe(documento, alta, "post") : null);
+      // La ficha: basta con que el contrato tenga la operación de un registro.
+      // Se enlaza aunque solo se pueda leer, porque casi todo lo que se hace
+      // con un registro —acciones, líneas, adjuntos, la conversación— cuelga de
+      // la ficha y sin abrirla no se alcanza nada de eso.
+      setHayFicha(Boolean(recurso.objeto) || fichaDe(documento, recurso.listar) !== null);
     });
     return () => {
       vivo = false;
     };
-  }, [recurso.servicio, recurso.listar]);
-
-  useEffect(() => {
-    if (!recurso.crear) return;
-    let vivo = true;
-    void contratoDe(recurso.servicio).then((documento) => {
-      if (vivo) setCampos(camposDe(documento, plantilla(recurso.crear!), "post"));
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [recurso.crear, recurso.servicio]);
+  }, [recurso.servicio, recurso.listar, recurso.crear, recurso.objeto]);
 
   if (!puedeVer) {
     // Con el mismo lenguaje que el resto de estados. Una línea de texto suelta
@@ -293,7 +306,7 @@ function RecursoVista({
   async function crear(valores: Record<string, unknown>) {
     setEnviando(true);
     try {
-      await llamar(recurso.crear!, { metodo: "POST", cuerpo: valores });
+      await llamar(rutaDeAlta!, { metodo: "POST", cuerpo: valores });
       setCreando(false);
       await cargar();
     } catch (error) {
@@ -308,7 +321,7 @@ function RecursoVista({
       {/* Cuando la lista está vacía el botón no va aquí: lo ofrece el propio
           estado vacío, y dos botones iguales a diez centímetros uno de otro
           hacen dudar de si son lo mismo. */}
-      {recurso.crear && (creando || (filas !== null && filas.length > 0)) ? (
+      {rutaDeAlta && (creando || (filas !== null && filas.length > 0)) ? (
         <button
           type="button"
           onClick={() => setCreando((v) => !v)}
@@ -374,32 +387,37 @@ function RecursoVista({
         <Vacio
           icono="inbox"
           titulo={t("modulo.sinRegistros")}
-          detalle={recurso.crear ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
+          detalle={rutaDeAlta ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
           accion={
-            recurso.crear && campos
+            rutaDeAlta && campos
               ? { texto: t("modulo.nuevo"), alPulsar: () => setCreando(true) }
               : undefined
           }
         />
       ) : (
         <>
-          {/* El selector va encima de la lista, alineado a la derecha, que es
-              donde lo pone todo el mercado y por tanto donde se busca. */}
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-3xs text-ink-faint" role="status">
-              {t("modulo.filasCargadas", { cuantas: filas.length })}
-            </p>
-            {/* Sin selector para un vocabulario: no hay tres formas de mirar
-                nueve palabras. */}
-            {vocabulario ? null : (
-              <SelectorVista
-                vista={vista}
-                alCambiar={setVista}
-                recuerdaComo={recuerdaComo}
-                puedeAgrupar={Boolean(campoAgrupacion)}
-              />
-            )}
-          </div>
+          {/* Los controles van a la derecha, que es donde los pone todo el
+              mercado y por tanto donde se buscan, y en **una sola fila**: el de
+              columnas primero y el de vista a su derecha, siempre en ese orden.
+              En la vista de tabla los pinta la propia tabla, porque el botón de
+              columnas es suyo; aquí solo cuando no hay tabla. */}
+          {vista === "tabla" && !vocabulario ? null : (
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-3xs text-ink-faint" role="status">
+                {t("modulo.filasCargadas", { cuantas: filas.length })}
+              </p>
+              {/* Sin selector para un vocabulario: no hay tres formas de mirar
+                  nueve palabras. */}
+              {vocabulario ? null : (
+                <SelectorVista
+                  vista={vista}
+                  alCambiar={setVista}
+                  recuerdaComo={recuerdaComo}
+                  puedeAgrupar={Boolean(campoAgrupacion)}
+                />
+              )}
+            </div>
+          )}
           {vocabulario ? (
             <Etiquetas filas={filas} />
           ) : vista === "agrupado" && campoAgrupacion ? (
@@ -425,6 +443,19 @@ function RecursoVista({
               // pantalla vacía es peor que no tener enlace, porque el usuario
               // cree que se ha roto algo.
               enlace={aLaFicha}
+              encabezado={
+                <p className="text-3xs text-ink-faint" role="status">
+                  {t("modulo.filasCargadas", { cuantas: filas.length })}
+                </p>
+              }
+              acciones={
+                <SelectorVista
+                  vista={vista}
+                  alCambiar={setVista}
+                  recuerdaComo={recuerdaComo}
+                  puedeAgrupar={Boolean(campoAgrupacion)}
+                />
+              }
             />
           )}
           <Retenidos campos={retenidos} />
@@ -458,9 +489,4 @@ export function ordenar(
   if (!preferidas) return [...todas];
   const delante = preferidas.filter((c) => todas.has(c));
   return [...delante, ...[...todas].filter((c) => !delante.includes(c))];
-}
-
-/** `/api/v1/politicas-acceso/{nombre}` es la plantilla que usa el OpenAPI. */
-function plantilla(ruta: string): string {
-  return ruta;
 }
