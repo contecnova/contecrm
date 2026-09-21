@@ -207,6 +207,15 @@ def _condicion_a_sql(
 
         valor = _leer(ambito, valor[1:])
 
+    if valor is None:
+        # El atributo del usuario está vacío. En SQL `columna = NULL` se traduce
+        # a `IS NULL`, así que la política dejaría pasar justo los registros que
+        # tampoco lo tienen. En una restricción, el dato que falta no puede
+        # abrir la puerta; se deniega y se registra, que es la misma regla que
+        # aplica el motor en Python y lo que mantiene coherentes ficha y listado.
+        logger.warning("abac.condicion_sin_valor", politica=politica, atributo=condicion.atributo)
+        return false()
+
     expresion = a_sql(columna, condicion.operador, valor)
     if expresion is None:
         logger.error(
@@ -217,6 +226,52 @@ def _condicion_a_sql(
         )
         return false()
     return expresion
+
+
+def bloqueados(
+    db: Session,
+    modelo: type,
+    *,
+    objeto: str,
+    accion: str = "read",
+    tenant_id: UUID | None = None,
+) -> tuple[Any, tuple[str, ...]]:
+    """Registros que se ven EXISTIR pero sin detalle (CRM-00.05.02.09).
+
+    Devuelve la condición que los identifica y qué campos siguen visibles. Quien
+    pinta el listado los enseña con esos campos y una marca; el resto se
+    sustituye.
+
+    Es distinto de esconderlos, y la diferencia importa: escondidos, los
+    recuentos mienten —la ficha dice «5 oportunidades» y la lista enseña 3, y
+    quien lo ve concluye que el sistema ha perdido dos—. Bloqueados, el recuento
+    cuadra y quien necesita el detalle sabe que existe y a quién pedírselo.
+    """
+    from crmcore.authz.politicas import campos_de, cargar
+    from crmcore.tenancy.context import contexto_actual
+
+    tid = tenant_id or contexto_actual().tenant_id
+    if tid is None:
+        return None, ()
+    politicas = [p for p in cargar(db, tid, alcance="bloqueado") if p.aplica_a(objeto, accion)]
+    if not politicas:
+        return None, ()
+
+    ambito = ambito_estandar()
+    visibles: set[str] = set()
+    condiciones = []
+    for politica in politicas:
+        visibles |= set(campos_de(tid, politica.nombre))
+        parte = _politica_a_sql(politica, modelo, ambito)
+        if parte is not None:
+            # Lo BLOQUEADO es lo que NO cumple la política: la condición se
+            # niega. Sin negarla se bloquearía justo lo que se puede ver, que es
+            # el error más fácil de cometer aquí y el más difícil de notar,
+            # porque el listado sigue teniendo el mismo número de filas.
+            condiciones.append(~parte)
+    if not condiciones:
+        return None, tuple(sorted(visibles))
+    return or_(*condiciones), tuple(sorted(visibles))
 
 
 def campos_ocultos(

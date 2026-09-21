@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**631 capacidades**: ✅ 240 hecho · ⬜ 391 pendiente
+**631 capacidades**: ✅ 242 hecho · ⬜ 389 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-222 capacidades · ✅ 126 · ⬜ 96
+222 capacidades · ✅ 128 · ⬜ 94
 
 ### 0.1 Multi-tenancy
 
@@ -307,8 +307,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.20` | Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro | A | 1 | identity | ✅ | — |
 | `CRM-00.05.02.21` | Simulador de acceso: ver qué vería un usuario dado antes de activar una política | A | 1 | identity | ✅ | contecmind:app/api/admin_access_simulator.py |
 | `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ⬜ | — |
-| `CRM-00.05.02.08` | Restricción por unidad de negocio, marca, país o canal | A | 0 | identity | ⬜ | contecflow-PSA:app/services/organizations_service.py |
-| `CRM-00.05.02.09` | Registros ocultos vs. registros bloqueados (visibles sin detalle) | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.02.08` | Restricción por unidad de negocio, marca, país o canal | A | 0 | identity | ✅ | contecflow-PSA:app/services/organizations_service.py |
+| `CRM-00.05.02.09` | Registros ocultos vs. registros bloqueados (visibles sin detalle) | A | 1 | identity | ✅ | — |
 | `CRM-00.05.02.10` | Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría | A | 0 | identity | ✅ | contecweb:app/services/sesion_cedida.py (suplantación auditada) |
 | `CRM-00.05.02.12` | Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados | C | 2 | identity | ⬜ | — |
 | `CRM-00.05.02.11` | Explicador de permisos: por qué este usuario ve este registro | D | 0 | identity | ✅ | contecmind:app/services/access_explainer.py + access_simulator.py |

@@ -3954,3 +3954,60 @@ quien tiene ese modelo delante.
 Por último, una columna real **manda sobre** un rollup del mismo nombre. Al
 revés, un campo de configuración podría tapar un dato del registro y el síntoma
 sería una ficha que enseña un número que no está en la base.
+
+---
+
+## 46. Ocultos, bloqueados, y el dato que falta abriendo la puerta
+
+Dos añadidos al ABAC (§40) que salieron juntos, y un agujero que apareció al
+probarlos.
+
+### Un registro bloqueado no es un registro escondido (`CRM-00.05.02.09`)
+
+Hasta ahora una política de alcance `registro` hacía desaparecer lo que no se
+puede ver. Eso está bien cuando la existencia misma es confidencial, y está mal
+en casi todo lo demás, porque **los recuentos mienten**: la ficha de una cuenta
+dice «5 oportunidades», el listado enseña 3, y quien lo ve concluye que el
+sistema ha perdido dos.
+
+Con el alcance `bloqueado`, el registro **se ve existir** con los campos que la
+política deje visibles —normalmente el identificador y poco más— y sin detalle.
+El recuento cuadra, se ve que hay algo que no se puede abrir, y quien lo
+necesita sabe a quién pedírselo. Eso es información distinta de «no hay nada».
+
+Una política de bloqueo **tiene que decir qué campos sí se ven**: un registro
+bloqueado del que no se ve nada es un registro escondido con otro nombre.
+
+Y un detalle de implementación que es fácil equivocar: lo bloqueado es lo que
+**no** cumple la política, así que la condición se **niega**. Sin negarla se
+bloquearía justo lo que se puede ver — y es el error más difícil de notar,
+porque el listado sigue teniendo el mismo número de filas.
+
+### Restringir por unidad, marca, país o canal (`CRM-00.05.02.08`)
+
+Las cuatro dimensiones habituales vienen declaradas, con el atributo del
+registro y el del usuario que tienen que coincidir. No es por comodidad:
+escritas a mano, la mitad acaba comparando el campo equivocado —el `pais` del
+registro contra el `pais` del usuario, cuando el del usuario es el de su oficina
+y no el de su cartera— y el resultado es una política que restringe de más o de
+menos sin que nadie sepa cuál.
+
+Se devuelve la política **construida pero sin guardar**: quién la activa y con
+qué alcance —esconder o bloquear— es una decisión de negocio, no algo que se
+pueda dar por hecho.
+
+### El agujero: dos ausencias no son una coincidencia
+
+Al probar la primera restricción por unidad de negocio apareció esto. Una cuenta
+sin unidad y un usuario sin unidad: `registro.business_unit_id =
+@usuario.business_unit_id` con las dos vacías daba **cierto**. En SQL peor
+todavía, porque `columna = NULL` se traduce a `IS NULL` y la política dejaba
+pasar exactamente los registros que tampoco tenían el dato.
+
+Es decir: **el dato que falta abría la puerta**. En una regla que restringe eso
+es un agujero, y en una que comparte es un acceso que nadie concedió.
+
+Ahora dos ausencias comparadas con `=` dan falso, en Python y en SQL, que es lo
+que mantiene coherentes la ficha y el listado. Y cuando el atributo del usuario
+viene vacío, la condición se traduce a «ninguno» y se registra: en una
+restricción, ante la duda, no se enseña.

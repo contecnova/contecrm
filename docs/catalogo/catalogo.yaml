@@ -398,8 +398,8 @@ modulos:
               - {id: CRM-00.05.02.20, c: A, fase: 1, svc: identity, estado: hecho, t: "Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro"}
               - {id: CRM-00.05.02.21, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/api/admin_access_simulator.py", t: "Simulador de acceso: ver qué vería un usuario dado antes de activar una política"}
               - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
-              - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: pendiente, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
-              - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: pendiente, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
+              - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
+              - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: hecho, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
               - {id: CRM-00.05.02.10, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sesion_cedida.py (suplantación auditada)", t: "Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría"}
               - {id: CRM-00.05.02.12, c: C, fase: 2, svc: identity, estado: pendiente, t: "Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados"}
               - {id: CRM-00.05.02.11, c: D, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/access_explainer.py + access_simulator.py", t: "Explicador de permisos: por qué este usuario ve este registro"}

@@ -424,3 +424,96 @@ def test_el_explicador_mira_las_politicas_guardadas_y_no_una_lista_de_ejemplo(
     db.flush()
     cargadas = cargar(db, tenant_id)
     assert [p.nombre for p in cargadas] == ["solo_propias"]
+
+
+# ── Ocultos frente a bloqueados (CRM-00.05.02.09) ─────────────────────────
+
+
+@pytest.mark.db
+def test_un_registro_bloqueado_se_ve_existir_sin_detalle(
+    db: Any, como_usuario: UUID, tenant_id: UUID
+) -> None:
+    """Esconder del todo hace que los recuentos mientan: la ficha dice «5
+    oportunidades», el listado enseña 3, y quien lo ve concluye que el sistema
+    ha perdido dos. Bloqueado, el recuento cuadra."""
+    from crmcore.authz.decision import bloqueados
+    from sqlalchemy import select
+
+    from services.party.modelos import Cuenta
+
+    mia = _cuenta(tenant_id, "Mía S.L.", como_usuario)
+    ajena = _cuenta(tenant_id, "Ajena S.L.", uuid4())
+    db.add_all([mia, ajena])
+    db.flush()
+    _guardar(
+        db,
+        tenant_id,
+        nombre="solo_las_mias_con_marca",
+        alcance="bloqueado",
+        campos=["id", "nombre"],
+    )
+    db.flush()
+
+    condicion, visibles = bloqueados(db, Cuenta, objeto="cuenta", tenant_id=tenant_id)
+    assert visibles == ("id", "nombre")
+
+    marcadas = {c.id for c in db.execute(select(Cuenta).where(condicion)).scalars().all()}
+    # Lo bloqueado es lo que NO cumple la política. Sin negar la condición se
+    # bloquearía justo lo que se puede ver, y el listado seguiría teniendo el
+    # mismo número de filas — que es lo que lo hace difícil de notar.
+    assert marcadas == {ajena.id}
+
+
+@pytest.mark.db
+def test_una_politica_de_bloqueo_sin_campos_se_rechaza(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Un registro bloqueado del que no se ve nada es un registro escondido con
+    otro nombre."""
+    with pytest.raises(ErrorValidacion) as e:
+        _guardar(db, tenant_id, nombre="bloqueo_mudo", alcance="bloqueado", campos=[])
+    assert e.value.error_code == "politica.bloqueo_sin_campos"
+
+
+# ── Dimensiones de restricción (CRM-00.05.02.08) ──────────────────────────
+
+
+def test_las_dimensiones_comparan_el_atributo_que_toca() -> None:
+    """Escritas a mano, la mitad acaba comparando el campo equivocado y el
+    resultado es una política que restringe de más o de menos sin que nadie
+    sepa cuál."""
+    from crmcore.authz.politicas import politica_por_dimension
+
+    politica = politica_por_dimension("unidad_de_negocio", objeto="cuenta")
+    condicion = politica["condiciones"][0]
+    assert condicion["atributo"] == "registro.business_unit_id"
+    assert condicion["valor"] == "@usuario.business_unit_id"
+
+
+def test_una_dimension_que_no_existe_se_rechaza() -> None:
+    from crmcore.authz.politicas import politica_por_dimension
+
+    with pytest.raises(ErrorValidacion) as e:
+        politica_por_dimension("color_favorito", objeto="cuenta")
+    assert e.value.error_code == "politica.dimension_desconocida"
+
+
+@pytest.mark.db
+def test_un_registro_sin_el_atributo_no_lo_ve_nadie(
+    db: Any, como_usuario: UUID, tenant_id: UUID
+) -> None:
+    """En una restricción, el dato que falta no puede abrir la puerta."""
+    from crmcore.authz.politicas import guardar, politica_por_dimension
+    from sqlalchemy import select
+
+    from services.party.modelos import Cuenta
+
+    sin_unidad = _cuenta(tenant_id, "Sin unidad S.L.", como_usuario)
+    db.add(sin_unidad)
+    db.flush()
+    plantilla = politica_por_dimension("unidad_de_negocio", objeto="cuenta")
+    guardar(db, tenant_id=tenant_id, activa=True, **plantilla)
+    db.flush()
+
+    condicion = filtro(db, Cuenta, objeto="cuenta", tenant_id=tenant_id)
+    assert db.execute(select(Cuenta).where(condicion)).scalars().all() == []

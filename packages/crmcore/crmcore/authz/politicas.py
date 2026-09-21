@@ -47,7 +47,19 @@ logger = get_logger(__name__)
 
 POLITICA_CAMBIADA = "seguridad.politica_abac_cambiada"
 
-ALCANCES = ("registro", "campos")
+# Qué esconde una política cuando no se cumple.
+#
+#   registro  — el registro no existe para quien pregunta.
+#   campos    — el registro se ve, algunos campos no.
+#   bloqueado — el registro se ve EXISTIR, sin detalle (CRM-00.05.02.09).
+#
+# El tercero no es un matiz. Esconder del todo hace que los recuentos mientan:
+# la ficha de una cuenta dice «5 oportunidades» y el listado enseña 3, y quien
+# lo ve concluye que el sistema ha perdido dos. Con el registro bloqueado el
+# recuento cuadra, se ve que existe algo que no se puede abrir, y quien lo
+# necesita sabe a quién pedírselo — que es información distinta de «no hay
+# nada».
+ALCANCES = ("registro", "campos", "bloqueado")
 COMBINACIONES = ("todas", "alguna")
 
 
@@ -286,6 +298,13 @@ def guardar(
             "Una política de campos tiene que decir qué campos",
             error_code="politica.campos_vacios",
         )
+    if alcance == "bloqueado" and not campos:
+        raise ErrorValidacion(
+            "Una política de bloqueo tiene que decir qué campos SÍ se ven: un "
+            "registro bloqueado del que no se ve nada es un registro escondido "
+            "con otro nombre",
+            error_code="politica.bloqueo_sin_campos",
+        )
 
     fila = db.execute(
         select(PoliticaAbac).where(
@@ -469,3 +488,58 @@ async def consumir_politica(mensaje: Any) -> None:
             fila.version = int(contenido.get("version") or 1)
     invalidar(tenant_id)
     logger.info("abac.politica_replicada", politica=nombre, tenant=str(tenant_id))
+
+
+# ── Dimensiones de restricción (CRM-00.05.02.08) ──────────────────────────
+
+# Las cuatro por las que se restringe el acceso en una organización con más de
+# una unidad: unidad de negocio, marca, país y canal. Se declaran aquí, con el
+# atributo del registro y el del usuario que tienen que coincidir, en vez de
+# dejar que cada tenant las escriba a mano.
+#
+# No es por comodidad: escritas a mano, la mitad acaba comparando el campo
+# equivocado —`pais` del registro contra `pais` del usuario cuando el del
+# usuario es el de su oficina, no el de su cartera— y el resultado es una
+# política que restringe de más o de menos sin que nadie sepa cuál.
+DIMENSIONES: dict[str, tuple[str, str]] = {
+    "unidad_de_negocio": ("registro.business_unit_id", "@usuario.business_unit_id"),
+    "marca": ("registro.marca", "@usuario.marca"),
+    "pais": ("registro.pais", "@usuario.pais"),
+    "canal": ("registro.canal", "@usuario.canal"),
+}
+
+
+def politica_por_dimension(
+    dimension: str,
+    *,
+    objeto: str,
+    acciones: list[str] | None = None,
+    alcance: str = "registro",
+    campos: list[str] | None = None,
+) -> dict[str, Any]:
+    """Construye la política de una dimensión, lista para guardar.
+
+    Devuelve el diccionario y no la guarda: quien administra decide si la activa
+    y con qué alcance —esconder el registro o dejarlo bloqueado— y eso es una
+    decisión de negocio, no algo que se pueda dar por hecho.
+    """
+    if dimension not in DIMENSIONES:
+        raise ErrorValidacion(
+            f"«{dimension}» no es una dimensión de restricción",
+            error_code="politica.dimension_desconocida",
+            detalle={"admitidas": sorted(DIMENSIONES)},
+        )
+    atributo, valor = DIMENSIONES[dimension]
+    return {
+        "nombre": f"{dimension}_{objeto}",
+        "objeto": objeto,
+        "acciones": acciones or ["read", "write"],
+        "condiciones": [{"atributo": atributo, "operador": "=", "valor": valor}],
+        "alcance": alcance,
+        "campos": campos or [],
+        "descripcion": (
+            f"Cada quien ve los {objeto} de su {dimension.replace('_', ' ')}. "
+            "Un registro sin ese atributo NO lo ve nadie: en una restricción, el "
+            "dato que falta no puede abrir la puerta."
+        ),
+    }

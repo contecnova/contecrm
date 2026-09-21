@@ -114,6 +114,13 @@ class Condicion:
             # seguridad, ante la duda, no.
             return False
         izquierda, derecha = _comparables(izquierda, derecha)
+        # Dos ausencias no son una coincidencia. `registro.business_unit_id =
+        # @usuario.business_unit_id` con las dos vacías daría cierto, y entonces
+        # quien no tiene unidad vería los registros que tampoco la tienen — el
+        # dato que falta abriendo la puerta. En una regla que restringe eso es
+        # un agujero, y en una que comparte es un acceso que nadie concedió.
+        if izquierda is None and derecha is None and self.operador == "=":
+            return False
         try:
             return fn(izquierda, derecha)
         except TypeError:
