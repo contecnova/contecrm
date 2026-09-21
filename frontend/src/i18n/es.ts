@@ -13,6 +13,7 @@ export default {
     estado: "Estado",
     cobertura: "Cobertura",
     recorrido: "Recorrido",
+    procesos: "Procesos",
   },
   entrar: {
     titulo: "Entrar",
@@ -22,6 +23,23 @@ export default {
     enviar: "Entrar",
     sso: "Entrar con el proveedor de mi organización",
     error: "No se ha podido iniciar sesión",
+  },
+  procesos: {
+    titulo: "Editor de procesos",
+    intro:
+      "El diagrama y el JSON son la misma definición: se puede escribir el proceso a mano y abrirlo como diagrama, o moverlo en el lienzo y leerlo como código. Validar y simular no publican nada — un error descubierto aquí es un mensaje; descubierto en ejecución, un proceso a medias en producción.",
+    clave: "Clave",
+    nombre: "Nombre",
+    validar: "Validar",
+    simular: "Simular",
+    guardarBorrador: "Guardar como borrador",
+    publicar: "Publicar",
+    valida: "La definición es válida.",
+    lienzo: "Diagrama",
+    codigo: "Definición",
+    recorrido: "Recorrido simulado",
+    jsonAMedias: "El JSON está a medias: el diagrama vuelve en cuanto sea válido.",
+    mover: "Mover",
   },
   ficha: {
     secciones: "Secciones de la ficha",

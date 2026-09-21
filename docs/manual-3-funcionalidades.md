@@ -3798,3 +3798,36 @@ compensación sin ejecutar, que es peor que dejarla terminar.
 Y no se vuelve de archivada a publicada. Si hace falta, se publica una versión
 nueva: resucitar una archivada haría que el historial dejara de explicar por qué
 una instancia siguió el camino que siguió.
+
+### El lienzo ES la definición (`CRM-00.03.05.01`, `CRM-00.03.05.02`, `CRM-00.03.02.02`)
+
+No hay dos documentos. El JSON es la definición y el diagrama es **una lectura
+de ese mismo JSON**: se escribe el proceso a mano y se abre como diagrama, o se
+mueve en el lienzo y se lee como código. Las dos direcciones, y eso es lo que
+hace que «intercambiables» sea cierto y no una forma de hablar.
+
+Lo único que el lienzo añade son las **posiciones de las cajas**, y van dentro de
+la propia definición bajo `grafico.posiciones`. El motor las ignora. Guardarlas
+aparte obligaría a sincronizar dos documentos y, el día que se desincronizaran,
+el diagrama enseñaría un proceso que no es el que se ejecuta — que es exactamente
+el fallo por el que un diagrama deja de ser fiable y la gente vuelve a leer el
+código.
+
+Tres decisiones del editor:
+
+- **Una definición escrita a mano, sin posiciones, se abre bien.** Se colocan por
+  capas, según la distancia al inicio. Sin eso se podría ir del gráfico al código
+  pero no al revés, y entonces no serían intercambiables.
+- **La posición guardada manda sobre la automática, paso a paso.** Añadir un paso
+  nuevo a un proceso ya colocado no reordena todo lo demás, que es lo que hace
+  que nadie vuelva a tocar el diagrama.
+- **Un paso inalcanzable se dibuja igual.** Esconderlo haría imposible arreglarlo
+  desde el propio editor, que es donde se está cuando se descubre.
+
+Las salidas de un paso se leen con la **misma lista de enlaces** que usa el
+validador del servidor. Si aquí faltara una, el diagrama enseñaría un proceso con
+menos caminos de los que tiene — y el que falta sería justo el que nadie revisa.
+
+Y el editor **valida y simula sin publicar** (`CRM-00.03.05.04`). Es el punto
+entero de la pantalla: un error descubierto aquí es un mensaje, y descubierto en
+ejecución es un proceso a medias en producción con su compensación pendiente.

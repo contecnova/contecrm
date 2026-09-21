@@ -73,6 +73,7 @@ export function Marco({ sesion, children }: Props) {
           <Enlace a="/administracion" texto={t("nav.consola")} />
           <Enlace a="/estado" texto={t("nav.estado")} />
           <Enlace a="/cobertura" texto={t("nav.cobertura")} />
+          <Enlace a="/procesos" texto={t("nav.procesos")} />
           <Enlace a="/recorrido" texto={t("nav.recorrido")} />
         </nav>
         <div className="flex items-center gap-3 sm:ml-auto">

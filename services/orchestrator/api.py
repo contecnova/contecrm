@@ -183,7 +183,7 @@ def validar(datos: PublicarDefinicion) -> Any:
     "/definiciones/simular",
     response_model=dict,
     dependencies=[Depends(exige_permiso("proceso:read"))],
-    summary="Simular un proceso con datos de ejemplo",
+    summary="Simular un proceso sin publicarlo (CRM-00.03.05.04)",
     description=(
         "Recorre el proceso sin tocar nada: las llamadas a servicios se "
         "registran en vez de ejecutarse y las tareas humanas se responden con "

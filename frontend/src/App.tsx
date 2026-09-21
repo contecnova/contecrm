@@ -10,6 +10,7 @@ import { Estado } from "@/paginas/Estado";
 import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
 import { Modulo } from "@/paginas/Modulo";
+import { Procesos } from "@/paginas/Procesos";
 import { Recorrido } from "@/paginas/Recorrido";
 import { llamar } from "@/lib/api";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
@@ -70,6 +71,7 @@ export function App() {
         <Route path="/estado" element={<Estado />} />
         <Route path="/cobertura" element={<Cobertura />} />
         <Route path="/recorrido" element={<Recorrido />} />
+        <Route path="/procesos" element={<Procesos />} />
       </Routes>
     </Marco>
   );
