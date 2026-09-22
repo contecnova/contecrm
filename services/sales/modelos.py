@@ -677,6 +677,16 @@ __all__ = [
 # con su lógica—, pero sus tablas son de este esquema y tienen que importarse
 # aquí: `alembic` solo mira `modelos.py`, y una tabla que no se importe no se
 # migra y falla en la primera consulta, lejos de donde se declaró.
+from services.sales.cadencias import (  # noqa: E402,F401
+    Cadencia,
+    DisponibilidadAgenda,
+    EvaluacionMetodologia,
+    Inscripcion,
+    Metodologia,
+    PlantillaCorreo,
+    Playbook,
+    ToqueCadencia,
+)
 from services.sales.catalogo import (  # noqa: E402,F401
     ListaPrecio,
     Producto,

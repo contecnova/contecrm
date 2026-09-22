@@ -778,9 +778,9 @@ modulos:
           - id: CRM-03.01.02
             nombre: Metodologías de venta
             capacidades:
-              - {id: CRM-03.01.02.01, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "metadata (campos y scoring configurables de la fase 0)", t: "Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling)"}
-              - {id: CRM-03.01.02.02, c: A, fase: 2, svc: sales, estado: pendiente, t: "Campos y scoring de metodología con indicador de calidad de la oportunidad"}
-              - {id: CRM-03.01.02.03, c: A, fase: 2, svc: sales, estado: pendiente, t: "Playbooks contextuales por etapa, segmento y tipo de deal"}
+              - {id: CRM-03.01.02.01, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "metadata (campos y scoring configurables de la fase 0)", t: "Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling)"}
+              - {id: CRM-03.01.02.02, c: A, fase: 2, svc: sales, estado: hecho, t: "Campos y scoring de metodología con indicador de calidad de la oportunidad"}
+              - {id: CRM-03.01.02.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Playbooks contextuales por etapa, segmento y tipo de deal"}
               - {id: CRM-03.01.02.04, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Guía de próximos pasos recomendados con contenido asociado"}
               - {id: CRM-03.01.02.05, c: D, fase: 3, svc: sales, estado: pendiente, t: "Mutual action plan / plan conjunto compartible con el cliente"}
               - {id: CRM-03.01.02.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Revisión de deal (deal review) estructurada y trazable"}
@@ -822,13 +822,13 @@ modulos:
           - id: CRM-03.03.01
             nombre: Cadencias y engagement
             capacidades:
-              - {id: CRM-03.03.01.01, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "orchestrator + marketing (recorridos multicanal)", t: "Secuencias multicanal (correo, llamada, LinkedIn, SMS, tarea manual)"}
-              - {id: CRM-03.03.01.02, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecmind:app/services/task_dispatch.py (cola priorizada)", t: "Cola de trabajo priorizada del comercial"}
-              - {id: CRM-03.03.01.03, c: A, fase: 2, svc: sales, estado: pendiente, t: "Plantillas de correo con seguimiento de apertura, clic y respuesta"}
-              - {id: CRM-03.03.01.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Detección de respuesta y salida automática de la secuencia"}
+              - {id: CRM-03.03.01.01, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "orchestrator + marketing (recorridos multicanal)", t: "Secuencias multicanal (correo, llamada, LinkedIn, SMS, tarea manual)"}
+              - {id: CRM-03.03.01.02, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/task_dispatch.py (cola priorizada)", t: "Cola de trabajo priorizada del comercial"}
+              - {id: CRM-03.03.01.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Plantillas de correo con seguimiento de apertura, clic y respuesta"}
+              - {id: CRM-03.03.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Detección de respuesta y salida automática de la secuencia"}
               - {id: CRM-03.03.01.05, c: A, fase: 3, svc: service, estado: pendiente, t: "Marcador integrado (click-to-call), grabación y registro automático"}
-              - {id: CRM-03.03.01.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Analítica de plantillas y cadencias: tasa de respuesta y reunión generada"}
-              - {id: CRM-03.03.01.07, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bookings_service.py + contecpos:services/agenda", t: "Programación de reuniones con enlace de disponibilidad y round-robin"}
+              - {id: CRM-03.03.01.06, c: A, fase: 2, svc: sales, estado: hecho, t: "Analítica de plantillas y cadencias: tasa de respuesta y reunión generada"}
+              - {id: CRM-03.03.01.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/bookings_service.py + contecpos:services/agenda", t: "Programación de reuniones con enlace de disponibilidad y round-robin"}
           - id: CRM-03.03.02
             nombre: Cotización y contratación
             capacidades:
@@ -1338,6 +1338,8 @@ anexo_b_eventos:
   - {type: analytics.source.registered, fase: 2, svc: analytics}
   - {type: dashboard.alert.fired, fase: 2, svc: analytics}
   - {type: dashboard.alert.cleared, fase: 2, svc: analytics}
+  - {type: cadence.step.due, fase: 2, svc: sales}
+  - {type: cadence.exited, fase: 2, svc: sales}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

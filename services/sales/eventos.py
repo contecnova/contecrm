@@ -185,3 +185,32 @@ SUBSCRIPTION_CHANGED = registrar(
         campos=("suscripcion_id", "cuenta_id", "tipo", "plan", "importe"),
     )
 )
+
+
+# ── Cadencias (CRM-03.03.01) ──────────────────────────────────────────────
+
+CADENCE_STEP_DUE = registrar(
+    TipoEvento(
+        tipo="cadence.step.due",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Toca un paso de cadencia. Lleva `manual` dentro: quien lo consuma "
+            "tiene que saber si crea una tarea o manda un correo, y adivinarlo "
+            "por el canal es cómo se manda un correo donde tocaba llamar"
+        ),
+        campos=("inscripcion_id", "cadencia", "paso", "canal"),
+    )
+)
+CADENCE_EXITED = registrar(
+    TipoEvento(
+        tipo="cadence.exited",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Alguien sale de una cadencia, con su motivo. Se emite también cuando "
+            "sale por haber contestado un compañero de su cuenta"
+        ),
+        campos=("inscripcion_id", "cadencia_id", "email", "motivo"),
+    )
+)

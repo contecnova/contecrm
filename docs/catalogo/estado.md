@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 452 hecho · ⬜ 255 pendiente
+**707 capacidades**: ✅ 461 hecho · ⬜ 246 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 27 · ⬜ 38
+65 capacidades · ✅ 36 · ⬜ 29
 
 ### 3.1 Pipeline y oportunidades
 
@@ -672,9 +672,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.01.02.01` | Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling) | A | 2 | sales | ⬜ | metadata (campos y scoring configurables de la fase 0) |
-| `CRM-03.01.02.02` | Campos y scoring de metodología con indicador de calidad de la oportunidad | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.02.03` | Playbooks contextuales por etapa, segmento y tipo de deal | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.02.01` | Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling) | A | 2 | sales | ✅ | metadata (campos y scoring configurables de la fase 0) |
+| `CRM-03.01.02.02` | Campos y scoring de metodología con indicador de calidad de la oportunidad | A | 2 | sales | ✅ | — |
+| `CRM-03.01.02.03` | Playbooks contextuales por etapa, segmento y tipo de deal | A | 2 | sales | ✅ | — |
 | `CRM-03.01.02.04` | Guía de próximos pasos recomendados con contenido asociado | A | 5 | intelligence | ⬜ | — |
 | `CRM-03.01.02.05` | Mutual action plan / plan conjunto compartible con el cliente | D | 3 | sales | ⬜ | — |
 | `CRM-03.01.02.06` | Revisión de deal (deal review) estructurada y trazable | A | 2 | sales | ⬜ | — |
@@ -722,13 +722,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.03.01.01` | Secuencias multicanal (correo, llamada, LinkedIn, SMS, tarea manual) | A | 2 | sales | ⬜ | orchestrator + marketing (recorridos multicanal) |
-| `CRM-03.03.01.02` | Cola de trabajo priorizada del comercial | A | 2 | sales | ⬜ | contecmind:app/services/task_dispatch.py (cola priorizada) |
-| `CRM-03.03.01.03` | Plantillas de correo con seguimiento de apertura, clic y respuesta | A | 2 | sales | ⬜ | — |
-| `CRM-03.03.01.04` | Detección de respuesta y salida automática de la secuencia | A | 2 | sales | ⬜ | — |
+| `CRM-03.03.01.01` | Secuencias multicanal (correo, llamada, LinkedIn, SMS, tarea manual) | A | 2 | sales | ✅ | orchestrator + marketing (recorridos multicanal) |
+| `CRM-03.03.01.02` | Cola de trabajo priorizada del comercial | A | 2 | sales | ✅ | contecmind:app/services/task_dispatch.py (cola priorizada) |
+| `CRM-03.03.01.03` | Plantillas de correo con seguimiento de apertura, clic y respuesta | A | 2 | sales | ✅ | — |
+| `CRM-03.03.01.04` | Detección de respuesta y salida automática de la secuencia | A | 2 | sales | ✅ | — |
 | `CRM-03.03.01.05` | Marcador integrado (click-to-call), grabación y registro automático | A | 3 | service | ⬜ | — |
-| `CRM-03.03.01.06` | Analítica de plantillas y cadencias: tasa de respuesta y reunión generada | A | 2 | sales | ⬜ | — |
-| `CRM-03.03.01.07` | Programación de reuniones con enlace de disponibilidad y round-robin | A | 2 | sales | ⬜ | contecflow-PSA:app/services/bookings_service.py + contecpos:services/agenda |
+| `CRM-03.03.01.06` | Analítica de plantillas y cadencias: tasa de respuesta y reunión generada | A | 2 | sales | ✅ | — |
+| `CRM-03.03.01.07` | Programación de reuniones con enlace de disponibilidad y round-robin | A | 2 | sales | ✅ | contecflow-PSA:app/services/bookings_service.py + contecpos:services/agenda |
 
 #### CRM-03.03.02 · Cotización y contratación
 

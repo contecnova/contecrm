@@ -7503,3 +7503,114 @@ recorridos** con sus bifurcaciones: lo que hay ahora es la lista, el estado y la
 cifras, que es lo que permite trabajar, pero montar un segmento o un recorrido
 sigue haciéndose por API. Están declarados en el catálogo como `CRM-02.02.02.01` y
 `CRM-02.01.02.01`, no dentro de estas dos.
+
+## Cadencias y el trabajo diario del comercial (`CRM-03.03.01`)
+
+Una cadencia es una secuencia de toques con esperas entre medias. Lo que decide si
+funciona **no es el diseño de la secuencia**: es qué pasa cuando el cliente
+contesta, que es lo que la mayoría de las herramientas resuelve mal y por eso la
+gente acaba mandando un quinto correo a alguien que ya respondió que sí.
+
+### Responder saca del recorrido, siempre (`CRM-03.03.01.04`)
+
+Es la regla que hace que una cadencia sea aceptable y no acoso. `POST
+/cadencias/respuesta` es **una sola puerta para todos los canales**: con una por
+canal, el que se olvide de registrar la llamada deja a alguien recibiendo el
+siguiente correo después de haber contestado.
+
+Y cuando la cadencia lo declara, saca **también a los compañeros de la misma
+cuenta**. En B2B contesta uno y se siguen persiguiendo sus tres compañeros, y el
+que contestó lo ve. Se puede apagar, porque hay ventas donde cada persona decide
+por su cuenta y sacarlas a todas sería perder tres conversaciones por una
+respuesta.
+
+Nadie puede estar en **dos cadencias a la vez**: dos secuencias sobre la misma
+persona es la forma más rápida de que pida la baja, y ocurre sin querer cuando dos
+comerciales importan la misma lista.
+
+### La secuencia (`CRM-03.03.01.01`)
+
+Cinco canales —correo, llamada, mensaje, social y tarea— con su espera. Los pasos
+de **correo se ejecutan solos**; los demás salen marcados como manuales y crean
+trabajo para una persona. Mandar un correo no es lo mismo que llamar, y una
+herramienta que finge que sí acaba con cadencias de cinco correos que nadie llamó.
+
+Lo que **rechaza** y lo que solo **avisa** van separados: un correo sin plantilla o
+un canal inventado se rechazan; dos toques el mismo día, doce pasos o una cadencia
+de solo correo avisan. No son errores, pero son las tres cosas que convierten una
+cadencia en bajas.
+
+Y los toques respetan el horario: un correo automático a las tres de la mañana
+dice «esto lo manda una máquina» más alto que cualquier firma, y el sábado dice
+además «y no le importas».
+
+### Una cola, no tres (`CRM-03.03.01.02`)
+
+Un comercial con tres listas —tareas, cadencias, leads— trabaja la que tiene
+delante, no la que importa. `GET /mi-cola` las junta.
+
+Cada entrada dice **por qué está ahí**, con nombre y no con un número: «toca el
+paso 2 de "Prospección fría", con 4 días de retraso». Una prioridad sin
+explicación se ignora, porque si no se dice por qué algo está arriba la gente baja
+hasta encontrar lo que reconoce.
+
+Una cola vacía se dice **vacía**, que es distinto de haberla terminado.
+
+### Lo que se mide de una plantilla es la respuesta (`CRM-03.03.01.03`, `CRM-03.03.01.06`)
+
+**La apertura la falsean los filtros de correo que cargan las imágenes por su
+cuenta**, y optimizar por aperturas lleva a asuntos que se abren y no se contestan
+— que es el peor sitio al que llegar, porque parece que va bien.
+
+Por eso la apertura sale como dato crudo y **sin tasa**, con su advertencia al
+lado: darle un porcentaje junto al de respuesta invita a compararlos. La tasa que
+sí se da es la de respuesta y la de reunión generada.
+
+Con menos de **treinta envíos no se da ninguna tasa**: con cinco envíos y una
+respuesta, el 20 % que saldría no describe nada y se usa para descartar una
+plantilla que nunca se probó.
+
+### Reuniones sobre huecos reales (`CRM-03.03.01.07`)
+
+La disponibilidad se declara por tramos, con **duración, margen entre reuniones y
+antelación mínima**. El margen existe porque sin él se encadenan reuniones sin
+respirar y la tercera empieza tarde; la antelación, porque proponer un hueco
+dentro de diez minutos produce la reunión a la que nadie llega.
+
+Los huecos se **contrastan con el calendario** que traiga quien llama, y cada uno
+dice si se contrastó. Una disponibilidad calculada sin mirar el calendario produce
+la reunión que hay que mover, y moverla cuesta más que no haberla propuesto.
+
+El reparto round-robin va por **quién lleva más tiempo sin recibir una**, no por
+orden alfabético ni por identificador: los dos dan siempre la misma persona
+primero, y el reparto deja de repartir.
+
+## Metodología de venta (`CRM-03.01.02.01`, `CRM-03.01.02.02`, `CRM-03.01.02.03`)
+
+MEDDIC, BANT, SPIN, Challenger o una propia. Con una familia conocida y sin
+criterios se usan **los de serie**: un tenant que elige MEDDIC espera MEDDIC, no
+una pantalla en blanco donde teclearlo.
+
+**Se dice lo que falta, no lo que hay.** Un indicador que sube al rellenar campos
+premia rellenar campos; el que sirve devuelve una lista de cosas que hacer, y por
+eso `lo_que_falta` va antes que la puntuación y sale **ordenado por peso**: lo
+primero de la lista es lo que más mueve la aguja, que es la única forma de que una
+lista de seis cosas se empiece.
+
+Con la mitad de los criterios sin contestar, la oportunidad sale como **no
+cualificada**. La puntuación entonces no dice si el negocio va bien: dice que no se
+ha cualificado, y son cosas distintas. La puntuación existe para ordenar un
+pipeline, no para felicitar a nadie.
+
+El **playbook** que se ofrece es el más específico que encaje: uno que nombra etapa
+y segmento manda sobre uno que solo nombra la etapa. Con el orden al revés, el
+genérico taparía siempre al que alguien escribió para su caso. Y dice **por qué**
+se eligió ese, porque un playbook que aparece sin explicación se cierra sin leerlo.
+
+### Lo que todavía no está
+
+El **marcador integrado** (`CRM-03.03.01.05`) —click-to-call, grabación y registro
+automático—, que necesita un proveedor de telefonía y va con el bloque de
+conectores nativos. Y de metodología quedan la **guía de próximos pasos con
+contenido** (`CRM-03.01.02.04`, fase 5), el **plan conjunto con el cliente**
+(`CRM-03.01.02.05`) y la **revisión de deal estructurada** (`CRM-03.01.02.06`).
