@@ -110,3 +110,78 @@ registrar_manejador(
         campos_permitidos=CAMPOS_CASO,
     )
 )
+
+
+# Lo que un comando puede traer al adjuntar un resumen de conversación
+# (CRM-04.02.02.06). **No incluye `estado` ni `resolucion`**: un resumen escrito
+# por un modelo no cierra un caso. Se queda como anotación, visible y atribuida a
+# la IA, y quien lo lea decide qué hacer con él.
+CAMPOS_RESUMEN = frozenset({"resumen_id", "texto", "pendientes", "momento", "parcial"})
+
+
+def _adjuntar_resumen(
+    db: Session,
+    *,
+    registro_id: Any = None,
+    datos: dict[str, Any],
+    origen: str,
+    origen_id: str | None = None,
+) -> None:
+    """Cuelga del caso el resumen que ha propuesto el servicio de inteligencia.
+
+    Se guarda como un evento del caso, **no como su resolución**: el texto lo ha
+    escrito un modelo y el caso es de quien lo atiende. Que quede en la historia
+    con su origen es lo que permite, meses después, distinguir «esto lo resumió
+    la IA» de «esto lo escribió el agente», que es exactamente la pregunta que se
+    hace cuando el resumen resulta estar mal.
+
+    Un resumen parcial se marca como tal también aquí: el aviso no puede quedarse
+    en el servicio que lo generó, porque quien lo lee es el agente que recoge el
+    caso.
+    """
+    from services.service.modelos import Caso
+
+    if registro_id is None:
+        logger.warning("service.resumen_sin_caso", origen=origen, origen_id=origen_id)
+        return
+    caso = db.get(Caso, registro_id)
+    if caso is None:
+        # No se crea un caso para colgar el resumen: inventar un caso a partir de
+        # una conversación que ya no existe deja basura que nadie reclama.
+        logger.warning("service.resumen_caso_inexistente", caso=str(registro_id), origen=origen)
+        return
+
+    texto = str(datos.get("texto") or "").strip()
+    if not texto:
+        logger.warning("service.resumen_vacio", caso=str(registro_id), origen=origen)
+        return
+
+    from services.service.servicio import _anotar
+
+    _anotar(
+        db,
+        caso,
+        "resumen_ia",
+        texto=texto,
+        pendientes=list(datos.get("pendientes") or []),
+        momento=str(datos.get("momento") or ""),
+        parcial=bool(datos.get("parcial")),
+        resumen_id=str(datos.get("resumen_id") or ""),
+        origen=origen,
+    )
+    logger.info(
+        "service.resumen_adjuntado",
+        caso=str(caso.id),
+        origen=origen,
+        parcial=bool(datos.get("parcial")),
+    )
+
+
+registrar_manejador(
+    Manejador(
+        objeto="caso",
+        accion="adjuntar_resumen",
+        ejecutar=_adjuntar_resumen,
+        campos_permitidos=CAMPOS_RESUMEN,
+    )
+)

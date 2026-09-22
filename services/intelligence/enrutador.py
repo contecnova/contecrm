@@ -67,7 +67,15 @@ CENTIMO = Decimal("0.0001")
 # Para qué sirve cada modelo. No es decorativo: el que redacta y el que extrae
 # datos estructurados no son el mismo, y elegir por «el mejor» acaba usando el
 # caro para todo.
-USOS = ("redaccion", "resumen", "extraccion", "traduccion", "consulta", "embeddings")
+USOS = (
+    "redaccion",
+    "resumen",
+    "extraccion",
+    "traduccion",
+    "consulta",
+    "embeddings",
+    "clasificacion",
+)
 
 # Dónde se procesa. Lista cerrada porque es lo que se le promete al cliente por
 # escrito, y un valor libre haría que «UE» y «eu-west» fueran regiones distintas

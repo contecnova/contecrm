@@ -795,7 +795,7 @@ modulos:
               - {id: CRM-03.02.01.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Ajustes de manager con trazabilidad del ajuste y su justificación"}
               - {id: CRM-03.02.01.04, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/graph_compare.py (instantáneas y comparación)", t: "Instantáneas periódicas (snapshots) y comparación entre periodos"}
               - {id: CRM-03.02.01.05, c: A, fase: 2, svc: sales, estado: hecho, t: "Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe"}
-              - {id: CRM-03.02.01.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_forecasting_service.py", t: "Forecast predictivo con intervalo de confianza y comparación con el humano"}
+              - {id: CRM-03.02.01.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_forecasting_service.py", t: "Forecast predictivo con intervalo de confianza y comparación con el humano"}
               - {id: CRM-03.02.01.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py", t: "Previsión multi-moneda con tipos de cambio históricos y dated exchange rates"}
               - {id: CRM-03.02.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Previsión por producto, por familia y por tipo de ingreso"}
               - {id: CRM-03.02.01.09, c: A, fase: 2, svc: sales, estado: hecho, t: "Bloqueo/cierre de periodo de forecast"}
@@ -911,8 +911,8 @@ modulos:
               - {id: CRM-04.02.02.03, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Presencia, estado y capacidad del agente"}
               - {id: CRM-04.02.02.04, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/canned_response_service.py", t: "Respuestas rápidas, macros y acciones compuestas"}
               - {id: CRM-04.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py", t: "Sugerencias de respuesta y de artículo generadas por IA"}
-              - {id: CRM-04.02.02.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/synthesis.py", t: "Resumen automático de la conversación al cerrar o al transferir"}
-              - {id: CRM-04.02.02.07, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/semantic_classifier.py", t: "Detección de sentimiento e intención en tiempo real"}
+              - {id: CRM-04.02.02.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py", t: "Resumen automático de la conversación al cerrar o al transferir"}
+              - {id: CRM-04.02.02.07, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/semantic_classifier.py", t: "Detección de sentimiento e intención en tiempo real"}
               - {id: CRM-04.02.02.08, c: A, fase: 3, svc: service, estado: hecho, t: "Consola embebible en cualquier frontend vía API/SDK (agente headless)"}
       - id: "4.3"
         nombre: Conocimiento y autoservicio
@@ -1023,13 +1023,13 @@ modulos:
           - id: CRM-05.02.01
             nombre: Modelos predictivos
             capacidades:
-              - {id: CRM-05.02.01.01, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/ml_trainer.py + risk_scoring.py", t: "Scoring de leads y de oportunidades con explicabilidad"}
-              - {id: CRM-05.02.01.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_forecasting_service.py", t: "Predicción de cierre, de importe y de fecha real"}
-              - {id: CRM-05.02.01.03, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/recommendations.py", t: "Propensión a compra, cross-sell y next best offer"}
-              - {id: CRM-05.02.01.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Predicción de churn y de riesgo de cuenta"}
-              - {id: CRM-05.02.01.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_anomaly_service.py; contecmind:app/services/drift.py", t: "Detección de anomalías en pipeline, actividad y servicio"}
-              - {id: CRM-05.02.01.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/predictive_retraining_service.py", t: "Reentrenamiento por tenant con datos propios y aislamiento del modelo"}
-              - {id: CRM-05.02.01.07, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/models/ml_model.py + ai_governance.py; contecmind:app/services/evals.py + drift.py", t: "Gobierno de modelos: versión, métricas, drift, fecha de entrenamiento"}
+              - {id: CRM-05.02.01.01, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/ml_trainer.py + risk_scoring.py", t: "Scoring de leads y de oportunidades con explicabilidad"}
+              - {id: CRM-05.02.01.02, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_forecasting_service.py", t: "Predicción de cierre, de importe y de fecha real"}
+              - {id: CRM-05.02.01.03, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/recommendations.py", t: "Propensión a compra, cross-sell y next best offer"}
+              - {id: CRM-05.02.01.04, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Predicción de churn y de riesgo de cuenta"}
+              - {id: CRM-05.02.01.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_anomaly_service.py; contecmind:app/services/drift.py", t: "Detección de anomalías en pipeline, actividad y servicio"}
+              - {id: CRM-05.02.01.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/predictive_retraining_service.py", t: "Reentrenamiento por tenant con datos propios y aislamiento del modelo"}
+              - {id: CRM-05.02.01.07, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/models/ml_model.py + ai_governance.py; contecmind:app/services/evals.py + drift.py", t: "Gobierno de modelos: versión, métricas, drift, fecha de entrenamiento"}
           - id: CRM-05.02.02
             nombre: IA generativa
             capacidades:

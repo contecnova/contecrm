@@ -9029,3 +9029,170 @@ proveedor es un módulo pequeño y aparte, que traduce al formato declarado. Eso
 lo que hace que cambiar de proveedor sea configuración y no un módulo nuevo, y lo
 que permite probar de verdad lo que importa: qué se manda y qué se hace con lo que
 vuelve.
+
+---
+
+## Modelos predictivos (`CRM-05.02.01`)
+
+Un predictor que siempre contesta algo es el que deja de usarse a los dos meses.
+La primera vez que un comercial comprueba una puntuación y no se sostiene, deja
+de comprobar las demás y vuelve a su intuición — con razón, porque él estuvo en
+la reunión y el modelo no. Todo este capítulo está construido alrededor de eso:
+**el sistema tiene que saber cuándo no sabe, y decirlo.**
+
+### Gobierno de modelos (`CRM-05.02.01.07`, `CRM-05.02.01.06`)
+
+Cada versión de modelo se registra con sus variables, sus métricas, el periodo de
+datos con el que se entrenó y cuántos ejemplos vio. Y **no se activa sin
+métricas**: sin ellas no se puede decir si la versión nueva mejora o empeora, y
+entonces cada reentrenamiento es un salto de fe con las puntuaciones de todo el
+mundo dentro.
+
+Al activar se devuelve **la comparación con la versión que estaba**. Activar algo
+peor es una decisión legítima —a veces se prefiere un modelo más simple— pero
+tiene que verse; sin la comparación, un modelo peor se queda meses en producción
+dando peores números sin que nadie lo note.
+
+Cada tenant entrena **con sus propios datos** (`CRM-05.02.01.06`). No hay una
+puerta trasera de «modelo global»: la tabla exige `tenant_id`, así que un modelo
+no puede nacer sin dueño y colarse en el cliente de al lado.
+
+Un modelo **caduca**. Entrenado con el mercado del año pasado sigue contestando
+tan seguro como el primer día, así que pasada su vigencia deja de puntuar y se
+dice por qué. Y la **deriva se mide contra lo que pasó de verdad**, no contra el
+conjunto de entrenamiento: lo segundo solo demuestra que el modelo se acuerda de
+lo que vio. Por debajo de cien muestras la medición se marca como **no
+concluyente**, porque treinta casos no dicen si el modelo se ha estropeado y
+reentrenar por ruido es cómo se empeora un modelo que iba bien.
+
+### Scoring con explicabilidad (`CRM-05.02.01.01`, `CRM-05.02.01.03`)
+
+Cada puntuación viene con **los factores que la sostienen, ordenados por cuánto
+empujaron, y en los dos sentidos**: lo que suma y lo que resta. «Esto puntúa 78
+porque han abierto tres presupuestos y porque llevan dos semanas sin contestar»
+es accionable; «esto puntúa 78» es un número de colores. Un scoring que solo
+enseñara lo bueno convertiría a todos los leads en buenos leads.
+
+Si al puntuar faltan variables que el modelo esperaba, **se puntúa y se avisa**:
+en la ficha, una puntuación incompleta se ve igual de rotunda que una completa, y
+quien la lea tiene que saber que es menos fiable.
+
+La propensión y la siguiente mejor oferta (`CRM-05.02.01.03`) salen del mismo
+mecanismo, con su modelo y sus variables: no hay dos motores de scoring, porque
+dos motores acaban dando dos respuestas distintas a la misma pregunta.
+
+### Predicción de cierre, importe y fecha (`CRM-05.02.01.02`)
+
+Las predicciones se guardan **con caducidad**. Una probabilidad de cierre
+calculada hace tres meses, con la oportunidad ya en otra etapa, es peor que
+ninguna: nadie mira la fecha de un número que aparece en una ficha. Pasado el
+plazo no se devuelve, y se dice que ha caducado en vez de callar.
+
+Cuando se sabe qué pasó de verdad, se anota. Es lo que permite medir **el acierto
+sobre lo ya cerrado** — y solo sobre eso: medir incluyendo lo que sigue abierto
+daría un acierto altísimo, porque lo abierto no ha tenido tiempo de desmentir
+nada. Con menos de veinte resultados conocidos, el acierto se declara **no
+medible**.
+
+### Forecast predictivo (`CRM-03.02.01.06`)
+
+El forecast del modelo **no sustituye al del comercial: se pone al lado**.
+Sustituirlo hace que el comercial deje de comprometerse con su número, y el
+compromiso es la mitad del valor de un forecast — un modelo no puede llamar al
+cliente para que firme antes de fin de mes.
+
+Se devuelven los dos, la diferencia y de dónde viene cada euro. La banda se
+calcula de forma explicable (lo que está por encima del 70 % y lo que está por
+encima del 30 %) y **se dice que no es un intervalo estadístico**, para que nadie
+la presente como tal. Y se declara **qué parte del pipeline no se ha podido
+puntuar**: un forecast predictivo calculado sobre la mitad de las oportunidades
+parece bajo y no lo es, y sin ese aviso alguien concluye que el trimestre va mal.
+
+### Salud de cuenta y churn (`CRM-05.02.01.04`)
+
+La salud se compone de **señales con nombre** —uso, soporte, relación, pago,
+valor y patrocinador—, cada una con su peso configurable por tenant: en una
+empresa de suscripción manda el uso del producto y en una de proyectos manda el
+margen.
+
+**Una señal sin dato no puntúa cero: no puntúa.** Contar «sin datos de uso» como
+uso nulo hundiría a todos los clientes de quien todavía no ha conectado la
+telemetría, y esa lista de críticos no la mira nadie dos veces. Se reparte el peso
+entre las señales que sí han llegado y se dice cuánto del total quedó sin medir;
+por debajo de la mitad, la medida se marca como **no fiable**.
+
+Las cuentas poco fiables **no desaparecen** de la lista de riesgo: se cuentan
+aparte. Si desaparecieran, una instalación a la que le falta la mitad de las
+señales vería una lista corta y creería que va bien.
+
+Y **riesgo no es churn confirmado**. La respuesta lo dice con esas palabras a
+propósito, para que la lista no acabe usándose como una baja anticipada en una
+reunión de dirección.
+
+### Anomalías (`CRM-05.02.01.05`)
+
+Un detector mal calibrado es peor que ninguno: avisa treinta veces, las treinta
+son normales, y a la trigésimo primera —la que importaba— ya nadie abre el correo.
+
+Por eso **sin línea base no hay anomalía**: por debajo del mínimo de
+observaciones configurado se devuelve «no medible» con cuántas faltan, en vez de
+un aviso que parece un hallazgo. Cada aviso lleva **su normalidad al lado**: «17
+cuando lo habitual son 40±6» se entiende sin saber estadística; «z = 3,8» no.
+
+Se avisa **en los dos sentidos**: un detector que solo mira hacia abajo deja pasar
+el mes en que alguien cargó el pipeline por duplicado. Y **no se inventa la
+causa**: se dice lo que se ve, y la explicación la pone quien conoce el negocio.
+
+Cada aviso se puede marcar como acertado o falso. Es lo único que permite saber
+después si el detector sirve: con menos de diez revisiones, la utilidad se declara
+**no concluyente**, porque tocar los umbrales a ciegas es cómo se acaba con un
+detector que no avisa de nada.
+
+## Señales sobre la conversación (`CRM-04.02.02.06`, `CRM-04.02.02.07`)
+
+Estas dos cosas se usan en caliente, con el cliente al otro lado, y por eso son
+las más fáciles de estropear.
+
+### Resumen al cerrar o al transferir (`CRM-04.02.02.06`)
+
+Un resumen que se inventa un compromiso hace que el agente que recoge el caso
+prometa algo que nadie dijo. Por eso **lo que quedó pendiente va en su propio
+campo**: es lo que el siguiente agente lee primero y lo que más se inventa un
+modelo, así que se revisa aparte en vez de tener que releer el resumen buscando
+compromisos.
+
+El resumen **se propone; no se escribe**. El caso vive en el servicio de soporte,
+y este servicio no escribe en su esquema: se manda un comando y el estado que se
+devuelve es **«pedido»**, no «hecho», porque el otro lado todavía puede
+rechazarlo. Al llegar, se cuelga del caso como una anotación con su origen —nunca
+como su resolución—, que es lo que permite meses después distinguir «esto lo
+resumió la IA» de «esto lo escribió el agente».
+
+Se guarda **sobre cuántos mensajes se hizo**: un resumen de cuarenta mensajes
+hecho con los cinco últimos es un resumen del final, y quien lo lea sin saberlo
+creerá que tiene toda la conversación. Lo que va al modelo pasa por los mismos
+guardarraíles que cualquier otro contexto, porque una conversación de soporte
+lleva datos personales por definición.
+
+### Sentimiento e intención (`CRM-04.02.02.07`)
+
+Un «cliente enfadado» que salta cada vez que alguien escribe en mayúsculas enseña
+al supervisor a ignorar el aviso justo antes del día que importa.
+
+La clasificación viene **con confianza y con umbral**: por debajo del umbral la
+respuesta es «no concluyente», no «neutro». Un neutro falso entra en las medias
+del día y las aplana, y entonces el panel dice que todo va bien porque el
+clasificador no se atrevía a decir nada. En la evolución de la conversación, las
+no concluyentes no entran en la media pero **sí se cuentan**: si desaparecieran,
+una conversación que el clasificador no entiende parecería una conversación
+tranquila.
+
+Las etiquetas son **listas cerradas**. Si el modelo devuelve «regulero», no
+aparece una categoría nueva en el informe: la lista es cerrada precisamente para
+que los paneles cuadren.
+
+Y **nada se escala solo**. La señal devuelve `sugiere_escalar` con su porqué y las
+palabras del cliente en las que se apoya; quién escala y cuándo lo decide una
+regla del cliente con su umbral, y queda registrado. El campo
+`escalado_automatico` va siempre a falso, dicho explícitamente, para que nadie
+tenga que deducirlo del JSON.

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 550 hecho · ⬜ 157 pendiente
+**707 capacidades**: ✅ 560 hecho · ⬜ 147 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 52 · ⬜ 13
+65 capacidades · ✅ 53 · ⬜ 12
 
 ### 3.1 Pipeline y oportunidades
 
@@ -690,7 +690,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.02.01.03` | Ajustes de manager con trazabilidad del ajuste y su justificación | A | 2 | sales | ✅ | — |
 | `CRM-03.02.01.04` | Instantáneas periódicas (snapshots) y comparación entre periodos | A | 2 | sales | ✅ | contecmind:app/services/graph_compare.py (instantáneas y comparación) |
 | `CRM-03.02.01.05` | Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe | A | 2 | sales | ✅ | — |
-| `CRM-03.02.01.06` | Forecast predictivo con intervalo de confianza y comparación con el humano | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/bi_forecasting_service.py |
+| `CRM-03.02.01.06` | Forecast predictivo con intervalo de confianza y comparación con el humano | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/bi_forecasting_service.py |
 | `CRM-03.02.01.07` | Previsión multi-moneda con tipos de cambio históricos y dated exchange rates | A | 2 | sales | ✅ | contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py |
 | `CRM-03.02.01.08` | Previsión por producto, por familia y por tipo de ingreso | A | 2 | sales | ✅ | — |
 | `CRM-03.02.01.09` | Bloqueo/cierre de periodo de forecast | A | 2 | sales | ✅ | — |
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 54 · ⬜ 8
+62 capacidades · ✅ 56 · ⬜ 6
 
 ### 4.1 Gestión de casos
 
@@ -820,8 +820,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.02.02.03` | Presencia, estado y capacidad del agente | A | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py |
 | `CRM-04.02.02.04` | Respuestas rápidas, macros y acciones compuestas | C | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/canned_response_service.py |
 | `CRM-04.02.02.05` | Sugerencias de respuesta y de artículo generadas por IA | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py |
-| `CRM-04.02.02.06` | Resumen automático de la conversación al cerrar o al transferir | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py |
-| `CRM-04.02.02.07` | Detección de sentimiento e intención en tiempo real | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/semantic_classifier.py |
+| `CRM-04.02.02.06` | Resumen automático de la conversación al cerrar o al transferir | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py |
+| `CRM-04.02.02.07` | Detección de sentimiento e intención en tiempo real | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/semantic_classifier.py |
 | `CRM-04.02.02.08` | Consola embebible en cualquier frontend vía API/SDK (agente headless) | A | 3 | service | ✅ | — |
 
 ### 4.3 Conocimiento y autoservicio
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ✅ 44 · ⬜ 13
+57 capacidades · ✅ 51 · ⬜ 6
 
 ### 5.1 Reporting y BI
 
@@ -947,13 +947,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.02.01.01` | Scoring de leads y de oportunidades con explicabilidad | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/ml_trainer.py + risk_scoring.py |
-| `CRM-05.02.01.02` | Predicción de cierre, de importe y de fecha real | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/bi_forecasting_service.py |
-| `CRM-05.02.01.03` | Propensión a compra, cross-sell y next best offer | A | 5 | intelligence | ⬜ | contecmind:app/services/recommendations.py |
-| `CRM-05.02.01.04` | Predicción de churn y de riesgo de cuenta | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/customer_health_service.py |
-| `CRM-05.02.01.05` | Detección de anomalías en pipeline, actividad y servicio | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/bi_anomaly_service.py; contecmind:app/services/drift.py |
-| `CRM-05.02.01.06` | Reentrenamiento por tenant con datos propios y aislamiento del modelo | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/predictive_retraining_service.py |
-| `CRM-05.02.01.07` | Gobierno de modelos: versión, métricas, drift, fecha de entrenamiento | A | 5 | intelligence | ⬜ | contecflow-PSA:app/models/ml_model.py + ai_governance.py; contecmind:app/services/evals.py + drift.py |
+| `CRM-05.02.01.01` | Scoring de leads y de oportunidades con explicabilidad | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/ml_trainer.py + risk_scoring.py |
+| `CRM-05.02.01.02` | Predicción de cierre, de importe y de fecha real | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/bi_forecasting_service.py |
+| `CRM-05.02.01.03` | Propensión a compra, cross-sell y next best offer | A | 5 | intelligence | ✅ | contecmind:app/services/recommendations.py |
+| `CRM-05.02.01.04` | Predicción de churn y de riesgo de cuenta | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/customer_health_service.py |
+| `CRM-05.02.01.05` | Detección de anomalías en pipeline, actividad y servicio | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/bi_anomaly_service.py; contecmind:app/services/drift.py |
+| `CRM-05.02.01.06` | Reentrenamiento por tenant con datos propios y aislamiento del modelo | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/predictive_retraining_service.py |
+| `CRM-05.02.01.07` | Gobierno de modelos: versión, métricas, drift, fecha de entrenamiento | A | 5 | intelligence | ✅ | contecflow-PSA:app/models/ml_model.py + ai_governance.py; contecmind:app/services/evals.py + drift.py |
 
 #### CRM-05.02.02 · IA generativa
 

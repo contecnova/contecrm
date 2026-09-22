@@ -194,12 +194,101 @@ def _extraer(
     return {**salida, "campos": datos.get("campos") or []}
 
 
+def _resumir(
+    *, proveedor: str, modelo: str, mensajes: list[dict[str, Any]], opt_out: bool
+) -> dict[str, Any]:
+    """Resume una conversación y separa lo que quedó pendiente.
+
+    Los pendientes van en su propio campo a propósito: es lo que el siguiente
+    agente lee primero y lo que más se inventa un modelo, así que se revisa
+    aparte en vez de tener que releer el resumen entero buscando compromisos.
+    """
+    import json
+
+    transcripcion = "\n".join(
+        f"[{m.get('origen') or 'desconocido'}] {m.get('texto') or ''}" for m in mensajes
+    )
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Resume esta conversación de atención al cliente para el agente que "
+                "la recoge. Devuelve SOLO un JSON con `resumen` (texto breve) y "
+                "`pendientes` (lista de compromisos EXPLÍCITOS que aparezcan en la "
+                "conversación). Si no se prometió nada, `pendientes` va vacío: no "
+                "inventes compromisos, porque el siguiente agente los dará por buenos."
+            ),
+        },
+        {"role": "user", "content": transcripcion},
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    return {
+        **salida,
+        "texto": str(datos.get("resumen") or ""),
+        "pendientes": list(datos.get("pendientes") or []),
+    }
+
+
+def _clasificar(
+    *,
+    proveedor: str,
+    modelo: str,
+    texto: str,
+    sentimientos: list[str],
+    intenciones: list[str],
+    opt_out: bool,
+) -> dict[str, Any]:
+    """Sentimiento e intención, con confianza y con las palabras en que se apoya.
+
+    Se le piden las etiquetas de una lista cerrada y se le exige la confianza: sin
+    ella no hay forma de separar «está enfadado» de «puede que esté enfadado», y
+    esa diferencia es la que decide si se avisa a un supervisor.
+    """
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Clasifica el mensaje del cliente. Devuelve SOLO un JSON con "
+                f"`sentimiento` (uno de {sentimientos}), `intencion` (una de "
+                f"{intenciones}), `confianza` (0-1) y `indicios` (fragmentos "
+                "LITERALES del mensaje en los que te apoyas). Si el mensaje no da "
+                "para decidir, baja la confianza en vez de elegir al azar."
+            ),
+        },
+        {"role": "user", "content": texto},
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    return {
+        **salida,
+        "sentimiento": datos.get("sentimiento"),
+        "intencion": datos.get("intencion"),
+        "confianza": datos.get("confianza") or 0,
+        "indicios": list(datos.get("indicios") or []),
+    }
+
+
 def conectar() -> None:
-    """Registra los tres puertos en sus módulos."""
-    from services.intelligence import extraccion, generacion, rag
+    """Registra los puertos en sus módulos."""
+    from services.intelligence import conversacion, extraccion, generacion, rag
 
     generacion.registrar_generador(_generar)
     rag.registrar_respondedor(_responder)
     rag.registrar_traductor(_traducir_a_plan)
     extraccion.registrar_extractor(_extraer)
+    conversacion.registrar_resumidor(_resumir)
+    conversacion.registrar_clasificador(_clasificar)
     logger.info("intelligence.puertos_conectados")
