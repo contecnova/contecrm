@@ -10,7 +10,7 @@
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 34 | 0 | 20 |
 | 2 — Marketing | 54 | 37 | 0 | 17 |
 | 3 — Ventas (SFA) | 65 | 52 | 0 | 13 |
-| 4 — Servicio y atención al cliente | 62 | 39 | 0 | 23 |
+| 4 — Servicio y atención al cliente | 62 | 49 | 0 | 13 |
 | 5 — Analítica, inteligencia e IA | 57 | 25 | 0 | 32 |
 | 6 — Productividad y colaboración | 29 | 13 | 0 | 16 |
 | 7 — Administración, ALM y gobierno | 91 | 75 | 0 | 16 |
@@ -21,8 +21,8 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 279 | 264 |
-| A — Avanzado | 384 | 222 |
-| D — Diferencial | 44 | 14 |
+| A — Avanzado | 384 | 227 |
+| D — Diferencial | 44 | 19 |
 
 ## Por fase
 
@@ -34,7 +34,7 @@
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 42 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 41 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 0 |
-| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 8 |
+| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 18 |
 
 ## Reutilización
 

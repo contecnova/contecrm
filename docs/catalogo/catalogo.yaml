@@ -941,19 +941,19 @@ modulos:
           - id: CRM-04.04.01
             nombre: Field service
             capacidades:
-              - {id: CRM-04.04.01.01, c: D, fase: 6, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/imputation_service.py + timesheet_service.py", t: "Órdenes de trabajo con líneas, materiales, tiempos y firma del cliente"}
-              - {id: CRM-04.04.01.02, c: D, fase: 6, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/resource_analytics.py + skill_service.py", t: "Programación y optimización de rutas por competencia, zona y disponibilidad"}
-              - {id: CRM-04.04.01.03, c: A, fase: 6, svc: service, estado: pendiente, t: "App móvil con modo offline y sincronización diferida"}
-              - {id: CRM-04.04.01.04, c: D, fase: 6, svc: service, estado: pendiente, reutiliza: "contecpos:services/inventario", t: "Gestión de repuestos, stock en furgoneta y consumos"}
-              - {id: CRM-04.04.01.05, c: D, fase: 6, svc: service, estado: pendiente, t: "Mantenimiento preventivo planificado y recurrente"}
-              - {id: CRM-04.04.01.06, c: D, fase: 6, svc: service, estado: pendiente, t: "Partes de trabajo, fotos, checklists y evidencias"}
+              - {id: CRM-04.04.01.01, c: D, fase: 6, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/imputation_service.py + timesheet_service.py", t: "Órdenes de trabajo con líneas, materiales, tiempos y firma del cliente"}
+              - {id: CRM-04.04.01.02, c: D, fase: 6, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/resource_analytics.py + skill_service.py", t: "Programación y optimización de rutas por competencia, zona y disponibilidad"}
+              - {id: CRM-04.04.01.03, c: A, fase: 6, svc: service, estado: hecho, t: "App móvil con modo offline y sincronización diferida"}
+              - {id: CRM-04.04.01.04, c: D, fase: 6, svc: service, estado: hecho, reutiliza: "contecpos:services/inventario", t: "Gestión de repuestos, stock en furgoneta y consumos"}
+              - {id: CRM-04.04.01.05, c: D, fase: 6, svc: service, estado: hecho, t: "Mantenimiento preventivo planificado y recurrente"}
+              - {id: CRM-04.04.01.06, c: D, fase: 6, svc: service, estado: hecho, t: "Partes de trabajo, fotos, checklists y evidencias"}
           - id: CRM-04.04.02
             nombre: Activos y productos instalados
             capacidades:
-              - {id: CRM-04.04.02.01, c: A, fase: 6, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/models/service_desk/assets.py + cmdb.py", t: "Registro de activos instalados con número de serie, ubicación y estado"}
-              - {id: CRM-04.04.02.02, c: A, fase: 6, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/models/cmdb.py (jerarquía de CIs)", t: "Jerarquía de activos y componentes"}
-              - {id: CRM-04.04.02.03, c: A, fase: 6, svc: service, estado: pendiente, t: "Garantías, extensiones y cobertura"}
-              - {id: CRM-04.04.02.04, c: A, fase: 6, svc: service, estado: pendiente, t: "Historial de servicio por activo"}
+              - {id: CRM-04.04.02.01, c: A, fase: 6, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/assets.py + cmdb.py", t: "Registro de activos instalados con número de serie, ubicación y estado"}
+              - {id: CRM-04.04.02.02, c: A, fase: 6, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/cmdb.py (jerarquía de CIs)", t: "Jerarquía de activos y componentes"}
+              - {id: CRM-04.04.02.03, c: A, fase: 6, svc: service, estado: hecho, t: "Garantías, extensiones y cobertura"}
+              - {id: CRM-04.04.02.04, c: A, fase: 6, svc: service, estado: hecho, t: "Historial de servicio por activo"}
               - {id: CRM-04.04.02.05, c: D, fase: 6, svc: integration, estado: pendiente, t: "Telemetría IoT: eventos de dispositivo que abren casos automáticamente"}
       - id: "4.5"
         nombre: Postventa y logística inversa
@@ -1350,6 +1350,10 @@ anexo_b_eventos:
   - {type: partner.deal.expired, fase: 6, svc: sales}
   - {type: commission.approval.needed, fase: 6, svc: sales}
   - {type: commission.paid, fase: 6, svc: sales}
+  - {type: asset.installed, fase: 6, svc: service}
+  - {type: workorder.created, fase: 6, svc: service}
+  - {type: workorder.assigned, fase: 6, svc: service}
+  - {type: workorder.completed, fase: 6, svc: service}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

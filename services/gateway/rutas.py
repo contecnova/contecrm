@@ -120,6 +120,13 @@ PREFIJOS: dict[str, str] = {
     "liquidaciones": "sales",
     "fondos-mdf": "marketing",
     "solicitudes-mdf": "marketing",
+    # Fase 6 — servicio de campo y activos instalados
+    "ordenes-trabajo": "service",
+    "tecnicos-campo": "service",
+    "repuestos": "service",
+    "planes-preventivos": "service",
+    "sincronizacion-campo": "service",
+    "activos": "service",
     "mi-cola": "sales",
     "plantillas-correo": "sales",
     "agenda": "sales",

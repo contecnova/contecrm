@@ -345,6 +345,25 @@ __all__ = [
     "VersionPoliticaAbac",
 ]
 
+# El servicio de campo y los activos instalados viven en sus propios módulos
+# —cada uno con su lógica— pero sus tablas son de este esquema y tienen que
+# importarse aquí: `alembic` solo mira `modelos.py`.
+from services.service.activos import (  # noqa: E402,F401
+    ActivoInstalado,
+    EventoActivo,
+    Garantia,
+)
+from services.service.campo import (  # noqa: E402,F401
+    LineaOrden,
+    MovimientoRepuesto,
+    OperacionSincronizada,
+    OrdenTrabajo,
+    ParteTrabajo,
+    PlanPreventivo,
+    Repuesto,
+    StockFurgoneta,
+    Tecnico,
+)
 from services.service.portal import (  # noqa: E402
     AccesoPortal,
     EnlaceAcceso,

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 500 hecho · ⬜ 207 pendiente
+**707 capacidades**: ✅ 510 hecho · ⬜ 197 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 39 · ⬜ 23
+62 capacidades · ✅ 49 · ⬜ 13
 
 ### 4.1 Gestión de casos
 
@@ -854,21 +854,21 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.04.01.01` | Órdenes de trabajo con líneas, materiales, tiempos y firma del cliente | D | 6 | service | ⬜ | contecflow-PSA:app/services/imputation_service.py + timesheet_service.py |
-| `CRM-04.04.01.02` | Programación y optimización de rutas por competencia, zona y disponibilidad | D | 6 | service | ⬜ | contecflow-PSA:app/services/resource_analytics.py + skill_service.py |
-| `CRM-04.04.01.03` | App móvil con modo offline y sincronización diferida | A | 6 | service | ⬜ | — |
-| `CRM-04.04.01.04` | Gestión de repuestos, stock en furgoneta y consumos | D | 6 | service | ⬜ | contecpos:services/inventario |
-| `CRM-04.04.01.05` | Mantenimiento preventivo planificado y recurrente | D | 6 | service | ⬜ | — |
-| `CRM-04.04.01.06` | Partes de trabajo, fotos, checklists y evidencias | D | 6 | service | ⬜ | — |
+| `CRM-04.04.01.01` | Órdenes de trabajo con líneas, materiales, tiempos y firma del cliente | D | 6 | service | ✅ | contecflow-PSA:app/services/imputation_service.py + timesheet_service.py |
+| `CRM-04.04.01.02` | Programación y optimización de rutas por competencia, zona y disponibilidad | D | 6 | service | ✅ | contecflow-PSA:app/services/resource_analytics.py + skill_service.py |
+| `CRM-04.04.01.03` | App móvil con modo offline y sincronización diferida | A | 6 | service | ✅ | — |
+| `CRM-04.04.01.04` | Gestión de repuestos, stock en furgoneta y consumos | D | 6 | service | ✅ | contecpos:services/inventario |
+| `CRM-04.04.01.05` | Mantenimiento preventivo planificado y recurrente | D | 6 | service | ✅ | — |
+| `CRM-04.04.01.06` | Partes de trabajo, fotos, checklists y evidencias | D | 6 | service | ✅ | — |
 
 #### CRM-04.04.02 · Activos y productos instalados
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.04.02.01` | Registro de activos instalados con número de serie, ubicación y estado | A | 6 | service | ⬜ | contecflow-PSA:app/models/service_desk/assets.py + cmdb.py |
-| `CRM-04.04.02.02` | Jerarquía de activos y componentes | A | 6 | service | ⬜ | contecflow-PSA:app/models/cmdb.py (jerarquía de CIs) |
-| `CRM-04.04.02.03` | Garantías, extensiones y cobertura | A | 6 | service | ⬜ | — |
-| `CRM-04.04.02.04` | Historial de servicio por activo | A | 6 | service | ⬜ | — |
+| `CRM-04.04.02.01` | Registro de activos instalados con número de serie, ubicación y estado | A | 6 | service | ✅ | contecflow-PSA:app/models/service_desk/assets.py + cmdb.py |
+| `CRM-04.04.02.02` | Jerarquía de activos y componentes | A | 6 | service | ✅ | contecflow-PSA:app/models/cmdb.py (jerarquía de CIs) |
+| `CRM-04.04.02.03` | Garantías, extensiones y cobertura | A | 6 | service | ✅ | — |
+| `CRM-04.04.02.04` | Historial de servicio por activo | A | 6 | service | ✅ | — |
 | `CRM-04.04.02.05` | Telemetría IoT: eventos de dispositivo que abren casos automáticamente | D | 6 | integration | ⬜ | — |
 
 ### 4.5 Postventa y logística inversa

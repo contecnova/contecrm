@@ -8263,3 +8263,216 @@ niveles**: los niveles se tocan una vez al año y los registros son lo que hay q
 decidir hoy, sobre todo cuando traen conflicto entre dos partners. Junto a ellos,
 los fondos de marketing con su saldo y las liquidaciones con su desglose, que es lo
 que el partner pregunta cuando llama.
+
+## Servicio de campo (`CRM-04.04.01`)
+
+El trabajo de campo tiene una particularidad que lo cambia todo: **quien ejecuta
+no está delante de un ordenador**. Está subido a una máquina, a veces sin
+cobertura, y con el cliente mirándole. Un sistema que le estorbe no se usa: se
+apunta en una libreta y se pasa el viernes — y entonces el CRM no tiene nada.
+
+De ahí salen las cuatro decisiones que se repiten en todo el módulo: al técnico
+**se le marca, no se le bloquea**; lo que se planifica **se explica**; lo que no
+se puede medir **se dice**; y el móvil trabaja sin red.
+
+### Órdenes con líneas, materiales, tiempos y firma (`CRM-04.04.01.01`)
+
+Una orden nace en borrador y **devuelve qué no se podrá hacer** con lo que le
+falta: sin coordenadas no entra en la optimización de ruta, sin competencias
+declaradas le puede tocar a cualquiera. Son avisos, no bloqueos: quien crea la
+orden muchas veces no tiene ese dato, y exigírselo hace que no la cree.
+
+Cada línea —material, tiempo, desplazamiento— se apunta con su **cobertura de
+garantía calculada en ese momento**, no al facturar. El técnico tiene que poder
+decirle al cliente ahí mismo si eso lo paga él.
+
+Y por eso **facturable y cubierto son dos campos**, no uno: una línea puede ser
+facturable y estar cubierta —la paga el fabricante, no el cliente—, y con un solo
+campo la reclamación al fabricante no se puede sacar. La orden devuelve **tres
+cestas**: lo que paga el cliente, lo que se reclama y lo que **no se sabe**.
+Fundir la tercera con cualquiera de las otras dos es facturar mal o perder una
+reclamación.
+
+La firma guarda **la huella de lo firmado**. Una conformidad que no dice sobre qué
+se dio no sirve de nada el día que se discute lo que se hizo, y el parte se puede
+editar después: con la huella, editarlo se nota. Se admite firmar **no conforme
+con motivo** — obligar a que el cliente firme conforme para poder cerrar hace que
+firme el técnico por él, y entonces ninguna firma vale nada.
+
+### Programación y rutas (`CRM-04.04.01.02`)
+
+Las competencias se guardan **con nivel**: «sabe de frigorífico» y «está
+certificado en gas fluorado» no son lo mismo, y mandar al primero a un trabajo que
+exige lo segundo es un viaje perdido y, a veces, una sanción.
+
+Al pedir candidatos se devuelve también **por qué se descarta a cada uno**. Es la
+mitad del valor: cuando el planificador dice «nadie disponible», hace falta saber
+si es por competencia, por zona o porque están todos de baja — son tres decisiones
+distintas. Un técnico **sin zonas declaradas cubre todas**: un dato que falta no
+puede dejar a alguien sin trabajo sin que nadie sepa por qué.
+
+Asignar a quien no tiene las competencias **se puede forzar con motivo**. En un
+día malo, mandar al que casi puede es mejor que no mandar a nadie, pero tiene que
+quedar escrito que se hizo a sabiendas. El solape de citas **avisa y no bloquea**:
+en campo, dos citas solapadas son a veces un trabajo de diez minutos metido entre
+dos, y prohibirlo obliga a planificar fuera del sistema.
+
+La ruta usa la **heurística del más cercano** desde la base del técnico. No es el
+óptimo del viajante y no se presenta como tal: para seis u ocho visitas la
+diferencia es pequeña, y una heurística que se explica en una frase se puede
+corregir a mano — que es lo que va a pasar igualmente. El tiempo de viaje sale de
+la **distancia en línea recta** y una velocidad media configurable, y se declara
+así (`estimacion: "linea_recta"`) para que nadie lo confunda con una ruta real.
+
+Lo que no tiene coordenadas **va al final y se dice**; sin la base del técnico, la
+ruta no se declara optimizada, porque el primer viaje del día no se estaría
+contando y la jornada parecería media hora más corta.
+
+### App móvil con modo offline (`CRM-04.04.01.03`)
+
+Trabajar sin red obliga a tres cosas, y ninguna es opcional.
+
+**Identificadores generados en el dispositivo.** El móvil crea el `id_cliente`
+antes de tener cobertura. Reenviar el lote —porque se cortó a mitad— no vuelve a
+aplicar nada. Sin esto, el técnico que sincroniza dos veces consume la pieza dos
+veces.
+
+**El reloj del móvil se guarda, pero no manda.** Va mal: zona horaria equivocada,
+hora cambiada a mano. Se guarda `capturado_at` tal cual junto al `recibido_at` del
+servidor, porque aun mintiendo es el único que sabe cuándo se hizo el trabajo — y
+el trabajo consta hecho cuando dijo el móvil, no cuando llegó la red.
+
+**Los conflictos se devuelven, no se resuelven.** Si alguien tocó la orden en la
+oficina mientras el técnico trabajaba sin red, ni se pisa lo del servidor ni se
+tira lo del técnico: se devuelve el conflicto y lo decide una persona. Elegir
+automáticamente significa perder trabajo de alguien en silencio, y en campo eso es
+media jornada.
+
+Y un cambio que no se puede aplicar **no tumba el lote**: el técnico trajo seis
+horas de trabajo, y perder las cinco buenas por una mala es exactamente lo que
+hace que se deje de sincronizar. La respuesta dice, por cada cambio, si quedó
+aplicado, duplicado, en conflicto o rechazado — y `todo_aplicado` solo es cierto
+cuando no queda nada pendiente de decidir.
+
+### Repuestos y stock de furgoneta (`CRM-04.04.01.04`)
+
+El vocabulario de movimientos es el mismo que el del inventario de contecpos
+—carga, consumo, devolución, ajuste, merma— en vez de uno nuevo: dos formas de
+decir lo mismo se pagan el día que hay que cuadrar con el almacén central.
+
+**No se bloquea por falta de stock.** Si el técnico dice que ha montado la pieza,
+la pieza está montada: lo que está mal es el stock. Se registra el consumo, el
+saldo queda en negativo y se marca — y esa es exactamente la lista que hay que
+revisar. Impedirlo hace que la pieza se monte y no se apunte, y entonces se
+pierden el stock **y** el histórico.
+
+El ajuste **fija** el saldo en vez de sumarlo, que es lo que se hace al recontar la
+furgoneta, y exige motivo: un inventario que se ajusta sin explicación es una
+opinión. Y la lista de reposición dice **cuántas referencias no tienen mínimo
+puesto**: con el mínimo a cero nunca se pide nada, la lista sale vacía y parece que
+todo está bien.
+
+### Mantenimiento preventivo (`CRM-04.04.01.05`)
+
+Va **por fecha y por uso**, lo que antes llegue. Un plan que solo sabe de fechas
+revisa una máquina parada y deja pasar la que trabaja a tres turnos.
+
+Se dice **por cuál de las dos** vence, porque cambia la conversación con el
+cliente: una es «toca la revisión anual» y la otra es «esta máquina ha trabajado el
+doble de lo previsto». Un plan que mide por uso y cuyo activo no tiene lectura
+sale como **no concluyente** — callarlo haría creer que está al día.
+
+Se genera **una orden por plan a la vez**: un plan mensual desatendido seis meses
+generaría seis órdenes idénticas, y lo que se hace entonces es cerrarlas todas sin
+mirar. Y al cerrarla, el plan se reprograma **desde que se hizo**, no desde que
+tocaba: si no, la siguiente nace vencida y el plan arrastra el retraso para
+siempre.
+
+### Partes, checklists y evidencias (`CRM-04.04.01.06`)
+
+Un checklist con ítems **obligatorios sin responder no cierra**, salvo que se
+fuerce: uno que se puede dejar a medias se deja a medias, y entonces no vale ni
+como control ni como prueba.
+
+Las fotos se guardan como **referencias al gestor documental**, no como binarios:
+cinco fotos por visita y veinte visitas diarias convierten el esquema del servicio
+en un almacén de imágenes sin retención ni antivirus.
+
+Al completar, el parte se escribe **en el historial del activo en ese momento**
+(`CRM-04.04.02.04`), y una vez firmado queda bloqueado: lo que se firmó tiene que
+seguir diciendo lo mismo. Para corregir, se abre una orden nueva.
+
+## Activos instalados (`CRM-04.04.02`)
+
+Un activo instalado es **la máquina que el cliente tiene puesta**, no el producto
+que se le vendió. La diferencia parece de matiz y es la que decide si una llamada
+se puede atender: el producto dice qué se compró; el activo dice qué hay en esa
+nave, con qué número de serie, desde cuándo y quién lo ha tocado.
+
+### Registro e identificación (`CRM-04.04.02.01`)
+
+**El número de serie identifica, y por eso no se repite.** Dos activos vivos con
+la misma serie significan que alguien sustituyó una máquina y no lo registró; si
+el sistema lo admite en silencio, el historial de la nueva arrastra averías de la
+vieja y la garantía se calcula sobre la fecha equivocada. La serie sí se puede
+reutilizar cuando el anterior está retirado, que es el caso legítimo.
+
+Dar de alta **sin** serie se permite y se avisa: un técnico que da de alta una
+máquina desde casa del cliente no siempre la tiene a mano, y bloquearle el alta
+hace que no la dé.
+
+El contador de uso —horas, ciclos, kilómetros— es lo que permite el preventivo por
+uso. Una lectura que **baja** se acepta y se marca: puede ser un cambio de placa o
+un error de lectura, y las dos cosas hay que verlas; rechazarla haría que el
+técnico no anotara nada, que es peor que las otras dos.
+
+Retirar exige motivo: sin él, el parque instalado mengua sin que nadie sepa si se
+cambió, se perdió o se dio de baja el cliente.
+
+### Jerarquía de activos y componentes (`CRM-04.04.02.02`)
+
+Los componentes **se mueven**: un compresor sale de una máquina y entra en otra. Si
+al moverlo se pierde de dónde venía, el análisis de fiabilidad —«este modelo de
+compresor falla a los dos años»— deja de poder hacerse, que es una de las dos
+razones para tener activos. El movimiento se anota en los dos: en el componente y
+en el equipo que lo perdió.
+
+Un ciclo se rechaza **al crearlo**, no al recorrer el árbol: si no, el fallo
+aparece en un sitio que no tiene nada que ver. Y el recorrido lleva tope de
+profundidad, porque un ciclo colado por una carga directa a la base colgaría la
+consulta.
+
+### Garantías y cobertura (`CRM-04.04.02.03`)
+
+La cobertura se guarda **por concepto** —piezas, mano de obra, desplazamiento—
+porque eso es lo que se discute en la puerta del cliente: casi ninguna garantía
+cubre el viaje, y la conversación siempre es esa. Una garantía que no declara qué
+cubre no se guarda.
+
+**Sin garantía registrada no se dice que no hay cobertura: se dice que no se
+sabe.** Son cosas distintas — una manda factura al cliente y la otra manda mirar
+el contrato—, y un `false` por ausencia de datos factura a quien sí tenía
+cobertura. Esa factura llega antes que la corrección.
+
+El **tope de uso** corta antes que la fecha: dos años **o** cuatro mil horas, lo
+que antes pase. Sin él, una máquina a triple turno sale cubierta el doble de lo
+pactado. Y cuando dos garantías cubren lo mismo gana la más específica —contrato
+sobre extensión sobre fabricante— y, con empate, la que dura más: declarado, no por
+orden de inserción, que cambiaría al restaurar una copia.
+
+### Historial por activo (`CRM-04.04.02.04`)
+
+El historial es **append-only y se escribe en el momento**. Si se reconstruyera
+consultando las órdenes de trabajo, editar una orden reescribiría el pasado del
+activo y borrarla lo borraría. Lo que pasó, pasó — aunque después se corrija la
+orden que lo originó.
+
+Al sustituir un equipo, los dos quedan **enlazados** y el historial recorre la
+cadena hacia atrás: la pregunta real del técnico no es «¿qué le pasó a esta
+máquina?», es «¿esto ya había fallado antes?», y la respuesta suele estar en el
+equipo anterior. Lo que viene de él sale **marcado**, porque contarlo como propio
+inflaría su tasa de avería.
+
+Las garantías **no se heredan** en una sustitución salvo que se pida: heredarlas en
+silencio daría cobertura a una máquina que nadie aseguró, y quien pague la
+reparación lo descubrirá al reclamar al fabricante.

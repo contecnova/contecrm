@@ -176,3 +176,13 @@ class _LimitsSettings(BaseSettings):
     # los indicadores del periodo en que se cerró, y esos números ya están en un
     # informe que alguien miró. 0 = sin límite, que se desaconseja.
     caso_reapertura_dias: int = Field(30, ge=0, le=3650)
+
+    # ── Servicio de campo (CRM-04.04.01) ──────────────────────────────────
+    # Velocidad media con la que se estima el tiempo de viaje entre visitas. Es
+    # un ajuste porque en ciudad son 20 y en carretera comarcal 70, y una
+    # constante haría que la jornada de un equipo cupiera y la del otro no.
+    campo_velocidad_media_kmh: int = Field(35, ge=5, le=130)
+    # Con cuánta antelación se avisa de una garantía que vence. Es la lista con
+    # la que se vende la extensión, y sobre todo la que evita la llamada en la
+    # que se descubre que venció hace un mes.
+    garantia_preaviso_dias: int = Field(90, ge=1, le=730)

@@ -296,6 +296,22 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="trabajo_retencion_h",
         ),
         _c(
+            "campo_velocidad_media_kmh",
+            "int",
+            "Velocidad media para estimar el viaje entre visitas de campo",
+            minimo=5,
+            maximo=130,
+            campo_settings="campo_velocidad_media_kmh",
+        ),
+        _c(
+            "garantia_preaviso_dias",
+            "int",
+            "Antelación con la que se avisa de una garantía de activo que vence",
+            minimo=1,
+            maximo=730,
+            campo_settings="garantia_preaviso_dias",
+        ),
+        _c(
             "caso_reapertura_dias",
             "int",
             "Días durante los que un caso cerrado se puede reabrir (0 = sin límite)",
