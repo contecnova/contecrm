@@ -277,6 +277,12 @@ from services.service.entitlements import (  # noqa: E402
     Encuesta,
     Entitlement,
 )
+from services.service.omnicanal import (  # noqa: E402
+    CanalServicio,
+    Conversacion,
+    Macro,
+    Mensaje,
+)
 from services.service.operacion import (  # noqa: E402
     AgenteServicio,
     ColaCasos,
@@ -286,6 +292,10 @@ from services.service.operacion import (  # noqa: E402
 )
 
 __all__ = [
+    "CanalServicio",
+    "Conversacion",
+    "Macro",
+    "Mensaje",
     "AgenteServicio",
     "ColaCasos",
     "ConsumoEntitlement",

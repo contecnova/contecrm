@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 332 hecho · ⬜ 354 pendiente
+**686 capacidades**: ✅ 342 hecho · ⬜ 344 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -731,7 +731,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 20 · ⬜ 42
+62 capacidades · ✅ 30 · ⬜ 32
 
 ### 4.1 Gestión de casos
 
@@ -771,27 +771,27 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.02.01.01` | Email-to-case con threading, análisis de cabeceras y anti-bucle | C | 3 | service | ⬜ | contecmind:app/services/email.py + contecweb:app/services/email.py |
-| `CRM-04.02.01.02` | Formulario web y portal de cliente | C | 3 | service | ⬜ | contecflow-PSA:app/models/client_portal.py + app/services/client_portal_service.py |
-| `CRM-04.02.01.03` | Chat en vivo y co-browsing | A | 3 | service | ⬜ | contecflow-PSA:app/services/ws_manager.py + portal_conversation_service.py |
-| `CRM-04.02.01.04` | WhatsApp, Messenger, Telegram y mensajería social | A | 3 | service | ⬜ | contecpos:services/notificaciones (WhatsApp) |
+| `CRM-04.02.01.01` | Email-to-case con threading, análisis de cabeceras y anti-bucle | C | 3 | service | ✅ | contecmind:app/services/email.py + contecweb:app/services/email.py |
+| `CRM-04.02.01.02` | Formulario web y portal de cliente | C | 3 | service | ✅ | contecflow-PSA:app/models/client_portal.py + app/services/client_portal_service.py |
+| `CRM-04.02.01.03` | Chat en vivo y co-browsing | A | 3 | service | ✅ | contecflow-PSA:app/services/ws_manager.py + portal_conversation_service.py |
+| `CRM-04.02.01.04` | WhatsApp, Messenger, Telegram y mensajería social | A | 3 | service | ✅ | contecpos:services/notificaciones (WhatsApp) |
 | `CRM-04.02.01.05` | Telefonía/CTI: screen pop, transferencia con contexto, IVR conectado | A | 3 | integration | ⬜ | — |
 | `CRM-04.02.01.06` | Redes sociales: escucha, respuesta y conversión a caso | A | 4 | marketing | ⬜ | — |
-| `CRM-04.02.01.07` | Canal de API para incrustar soporte en producto propio (in-app) | A | 3 | service | ⬜ | — |
+| `CRM-04.02.01.07` | Canal de API para incrustar soporte en producto propio (in-app) | A | 3 | service | ✅ | — |
 | `CRM-04.02.01.08` | Voz y asistentes conversacionales | D | 5 | intelligence | ⬜ | contecmind:app/api/voice.py + app/core/transcribe.py |
 
 #### CRM-04.02.02 · Experiencia unificada del agente
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.02.02.01` | Conversación unificada por cliente independientemente del canal | A | 3 | service | ⬜ | — |
-| `CRM-04.02.02.02` | Transferencia de canal conservando el contexto | A | 3 | service | ⬜ | — |
+| `CRM-04.02.02.01` | Conversación unificada por cliente independientemente del canal | A | 3 | service | ✅ | — |
+| `CRM-04.02.02.02` | Transferencia de canal conservando el contexto | A | 3 | service | ✅ | — |
 | `CRM-04.02.02.03` | Presencia, estado y capacidad del agente | A | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py |
-| `CRM-04.02.02.04` | Respuestas rápidas, macros y acciones compuestas | C | 3 | service | ⬜ | contecflow-PSA:app/services/service_desk/canned_response_service.py |
+| `CRM-04.02.02.04` | Respuestas rápidas, macros y acciones compuestas | C | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/canned_response_service.py |
 | `CRM-04.02.02.05` | Sugerencias de respuesta y de artículo generadas por IA | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py |
 | `CRM-04.02.02.06` | Resumen automático de la conversación al cerrar o al transferir | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py |
 | `CRM-04.02.02.07` | Detección de sentimiento e intención en tiempo real | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/semantic_classifier.py |
-| `CRM-04.02.02.08` | Consola embebible en cualquier frontend vía API/SDK (agente headless) | A | 3 | service | ⬜ | — |
+| `CRM-04.02.02.08` | Consola embebible en cualquier frontend vía API/SDK (agente headless) | A | 3 | service | ✅ | — |
 
 ### 4.3 Conocimiento y autoservicio
 
@@ -813,7 +813,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-04.03.02.01` | Portal de cliente headless: casos, pedidos, facturas, activos, contratos | A | 3 | service | ⬜ | contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py |
 | `CRM-04.03.02.02` | Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/ |
-| `CRM-04.03.02.03` | Escalado a humano preservando el contexto completo | A | 3 | service | ⬜ | — |
+| `CRM-04.03.02.03` | Escalado a humano preservando el contexto completo | A | 3 | service | ✅ | — |
 | `CRM-04.03.02.04` | Comunidad, foros y preguntas frecuentes | D | 6 | service | ⬜ | — |
 | `CRM-04.03.02.05` | Autenticación de clientes externos y permisos por contacto y por cuenta | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py |
 

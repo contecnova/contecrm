@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
-from services.service.api import ROUTERS
+from services.service.api import ROUTERS, ROUTERS_SIN_PREFIJO
 
 app = crear_servicio(
     nombre="service",
@@ -15,4 +15,8 @@ app = crear_servicio(
         "el vencimiento."
     ),
     routers=ROUTERS,
+    # La entrada de mensajes va sin el prefijo de versión: la URL se pega en la
+    # configuración de un buzón, de una pasarela de WhatsApp o en el HTML de una
+    # web, y una versión dentro invita a cambiarla el día que exista `v2`.
+    routers_sin_prefijo=ROUTERS_SIN_PREFIJO,
 )

@@ -5693,3 +5693,133 @@ El motivo de la decisión es obligatorio **en los dos sentidos**. Rechazar sin
 explicación deja al comercial que atiende a ese cliente sin nada que decirle, y
 aprobar sin explicación hace imposible saber después si fue una decisión o un
 descuido.
+
+## Omnicanal: correo, formulario, chat, mensajería y API (`CRM-04.02.01`, `CRM-04.02.02`, `CRM-04.03.02.03`)
+
+Reutiliza el patrón de captura de leads: **un canal declarado con su clave, su
+mapeo y su tope**, no un endpoint por integración. El formulario de la web manda
+`nombre_completo`, el chat manda `visitor_name` y WhatsApp manda `profile.name`;
+con un endpoint por cada uno, cada cliente nuevo es código nuevo. Con un mapa
+declarado, es una fila.
+
+Por eso **WhatsApp, Messenger y Telegram entran por el mismo canal declarativo
+que el formulario** (`CRM-04.02.01.04`), igual que el canal de API para empotrar
+soporte en el producto del cliente (`CRM-04.02.01.07`). Lo que cambia entre ellos
+—el nombre de los campos, cómo viene el remitente— es configuración.
+
+Los **valores fijos van en el canal y no en la petición**: si vinieran en la
+petición, quien escribe podría abrir todos sus casos como críticos.
+
+### La conversación es del cliente, no del canal (`CRM-04.02.02.01`)
+
+Quien escribe por correo el lunes, llama el martes y abre un chat el miércoles
+está teniendo **una** conversación. Tres hilos separados hacen que el agente
+pregunte tres veces lo mismo, que es lo que más enfada de un servicio de atención
+— y lo que el cliente resume como «no os enteráis de nada».
+
+Todo mensaje entra por **una sola tabla**, con su canal, su dirección y su
+identificador externo. Con una tabla por canal, «la conversación de este cliente»
+sería una unión de cinco consultas que nadie mantiene al día, y la mitad de las
+funciones acabarían soportando solo dos canales.
+
+El historial va **ordenado por tiempo y no agrupado por canal**: agrupar
+reproduce exactamente el problema que esto viene a resolver. Incluye las notas
+internas porque **es la vista del agente** —son justo lo que le ahorra releerse el
+caso—, y quien lo pinte en un portal de cliente tiene que pedirlas fuera
+explícitamente. Ese parámetro no se deduce del permiso a propósito: deducirlo
+pondría una nota interna delante del cliente el día que alguien reutilizara la
+función desde un sitio nuevo.
+
+### Email-to-case: el hilo y el anti-bucle (`CRM-04.02.01.01`)
+
+El bucle clásico: nuestra respuesta automática dispara el «estoy de vacaciones»
+del cliente, que abre un caso, que dispara nuestra respuesta automática, y así
+toda la noche. Se corta mirando las cabeceras estándar —`Auto-Submitted`,
+`Precedence`, `X-Auto-Response-Suppress`, `List-Id`— y comprobando que el
+remitente no sea **nuestra propia dirección**, que es el buzón contestándose a sí
+mismo.
+
+El **anti-bucle va antes del tope**: un bucle de respuestas automáticas agota el
+tope en minutos y dejaría fuera a los clientes de verdad.
+
+El hilo sale de `In-Reply-To` y, si falta, de la **última** referencia de
+`References` — la más cercana. Coger la primera colgaría toda la conversación del
+mensaje original y perdería las ramas.
+
+Y un reintento de la pasarela **no abre un caso duplicado**: el identificador
+externo lo hace idempotente. Igual de importante, se abre **un caso por
+conversación y no uno por mensaje**: si no, seis correos serían seis casos y el
+cliente recibiría seis respuestas distintas de seis personas.
+
+### Formulario, portal y chat: las tres protecciones (`CRM-04.02.01.02`, `CRM-04.02.01.03`)
+
+El **chat en vivo** entra por el mismo canal declarado que el formulario, y por
+eso comparte las tres protecciones. Son las mismas que en la captura de leads y
+por los mismos motivos. **Clave por
+canal** —el endpoint es público, tiene que serlo, pero no anónimo—. **Trampa**,
+que descarta con un 200 porque devolver un error le dice al robot qué cambiar
+para la próxima. Y **tope por canal y ventana**, porque la clave viaja en el HTML
+de una página pública y se filtra siempre.
+
+Una clave equivocada y un canal inexistente dan **el mismo error**: distinguirlos
+convertiría el endpoint en un comprobador de qué canales tiene cada tenant. Y al
+crear un canal público sin trampa se avisa: se admite —hay formularios detrás de
+autenticación donde sobra— pero uno público sin ella se llena de basura en una
+tarde.
+
+### Transferir de canal (`CRM-04.02.02.02`)
+
+Cambiar de canal **no abre una conversación nueva**. Si la abriera, pasar de chat
+a correo haría perder todo lo hablado y el cliente tendría que explicarse otra vez
+— que es exactamente lo que se siente como «me habéis pasado con otro y no sabe
+nada». El canal actual cambia; el historial de canales vive en los mensajes, así
+que una transferencia no borra por dónde empezó, que es lo que el cliente
+recuerda.
+
+### Primera respuesta y notas internas
+
+Una respuesta **no interna** marca la primera respuesta del caso. El indicador
+tiene que medir cuándo contestó una persona al cliente, y una nota interna no es
+contestar: si contaran, el tiempo de primera respuesta saldría siempre magnífico
+y no mediría nada.
+
+### Macros que escriben y hacen (`CRM-04.02.02.04`)
+
+Una macro puede contestar, cambiar el estado, poner una categoría y cerrar, todo
+de una vez. Que sea **una sola acción** es el punto: partida en cuatro clics, la
+mitad de las veces se queda a medias y el caso acaba contestado pero sin
+clasificar.
+
+Si quedan **variables sin resolver no se manda**, salvo que se fuerce. Es la
+diferencia entre una macro que ahorra tiempo y una que manda «Hola
+{contacto.nombre}» a un cliente — el error más visible y más barato de evitar que
+hay en un servicio de atención.
+
+Y una acción que no se puede aplicar **no se ignora en silencio**: ignorarla haría
+que la macro pareciera funcionar y el caso quedara a medias sin que nadie lo
+notara.
+
+### Escalar del bot a una persona (`CRM-04.03.02.03`)
+
+Lo que se traspasa es **el contexto completo**, no un aviso. Escalar diciendo solo
+«el cliente quiere hablar con alguien» obliga a la persona a leerse la
+conversación entera mientras el cliente espera, y eso hace que el cliente repita
+todo lo que acaba de contarle al bot — la peor experiencia posible, porque acaba
+de invertir cinco minutos en ello.
+
+El contexto va **en la respuesta** y no solo en un evento: quien recoge la
+conversación la abre ahí mismo y tiene que verlo sin buscar. El motivo es
+obligatorio.
+
+### Consola de agente embebible (`CRM-04.02.02.08`)
+
+Todo lo que necesita una consola —presencia, capacidad, mis casos ordenados por
+vencimiento, mis conversaciones y las macros— **en una sola llamada**. Una consola
+que abre seis peticiones para pintar una pantalla tarda lo que tarde la más
+lenta, y el agente lo ve como un producto lento aunque cinco vayan rápido.
+
+Devuelve **datos y no pantallas**: es lo que permite empotrarla en el front
+oficial, en el portal del cliente o en el producto del propio cliente sin
+reimplementar nada. Las macros van ordenadas **por uso**: la que se usa cuarenta
+veces al día tiene que estar la primera, y alfabéticamente obliga a buscarla cada
+vez.
