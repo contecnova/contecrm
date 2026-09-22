@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**661 capacidades**: ✅ 272 hecho · ⬜ 389 pendiente
+**661 capacidades**: ✅ 282 hecho · ⬜ 379 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-237 capacidades · ✅ 156 · ⬜ 81
+237 capacidades · ✅ 166 · ⬜ 71
 
 ### 0.1 Multi-tenancy
 
@@ -290,21 +290,21 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.08` | Gestión de sesiones: duración, sesiones concurrentes, revocación remota | C | 0 | identity | ✅ | contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py |
 | `CRM-00.05.01.09` | Políticas de acceso contextual: IP, dispositivo, geolocalización, horario | A | 0 | identity | ✅ | contecweb:app/services/security_rules.py |
 | `CRM-00.05.01.10` | Identidad de clientes externos (portal) separada de la de empleados (CIAM) | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py |
-| `CRM-00.05.01.11` | SSO iniciado por el proveedor (IdP-initiated) con protección contra reenvío de aserciones | C | 1 | identity | ⬜ | contecweb:app/services/saml.py |
-| `CRM-00.05.01.12` | Cierre de sesión único (Single Logout) propagado al IdP y a todos los servicios, por canal frontal y trasero | C | 1 | identity | ⬜ | — |
-| `CRM-00.05.01.13` | Forzar SSO por tenant: sin contraseña local ni vías de escape, con excepción nominal y auditada para el administrador de rescate | C | 1 | identity | ⬜ | — |
-| `CRM-00.05.01.14` | Descubrimiento de dominio (home realm discovery) y alias de correo, para no preguntar al usuario por su proveedor | A | 1 | identity | ⬜ | — |
-| `CRM-00.05.01.15` | Rotación y caducidad de los certificados de firma del IdP, con aviso antes de que expiren y convivencia de dos certificados | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.11` | SSO iniciado por el proveedor (IdP-initiated) con protección contra reenvío de aserciones | C | 1 | identity | ✅ | contecweb:app/services/saml.py |
+| `CRM-00.05.01.12` | Cierre de sesión único (Single Logout) propagado al IdP y a todos los servicios, por canal frontal y trasero | C | 1 | identity | ✅ | — |
+| `CRM-00.05.01.13` | Forzar SSO por tenant: sin contraseña local ni vías de escape, con excepción nominal y auditada para el administrador de rescate | C | 1 | identity | ✅ | — |
+| `CRM-00.05.01.14` | Descubrimiento de dominio (home realm discovery) y alias de correo, para no preguntar al usuario por su proveedor | A | 1 | identity | ✅ | — |
+| `CRM-00.05.01.15` | Rotación y caducidad de los certificados de firma del IdP, con aviso antes de que expiren y convivencia de dos certificados | C | 1 | identity | ✅ | — |
 | `CRM-00.05.01.16` | Conectores SSO por proveedor (Entra ID, Okta, Google Workspace, Keycloak, Ping) encima del genérico, nunca en su lugar | A | 2 | identity | ⬜ | — |
-| `CRM-00.05.01.17` | Segundo factor por SMS y por correo (OTP), marcados como el factor más débil y desactivables por política | C | 1 | identity | ⬜ | contecmind:app/services/mfa.py |
-| `CRM-00.05.01.18` | Reautenticación reforzada (step-up) ante operación sensible: exportación masiva, cambio de permisos, borrado, suplantación | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.17` | Segundo factor por SMS y por correo (OTP), marcados como el factor más débil y desactivables por política | C | 1 | identity | ✅ | contecmind:app/services/mfa.py |
+| `CRM-00.05.01.18` | Reautenticación reforzada (step-up) ante operación sensible: exportación masiva, cambio de permisos, borrado, suplantación | C | 1 | identity | ✅ | — |
 | `CRM-00.05.01.19` | Ciclo de vida del segundo factor: inscripción guiada, cambio de dispositivo y desbloqueo asistido con doble aprobación auditada | C | 1 | identity | ⬜ | — |
-| `CRM-00.05.01.20` | Dispositivos de confianza con caducidad y revocación remota, para no pedir el factor en cada entrada del mismo equipo | A | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.20` | Dispositivos de confianza con caducidad y revocación remota, para no pedir el factor en cada entrada del mismo equipo | A | 1 | identity | ✅ | — |
 | `CRM-00.05.01.21` | MFA adaptativa por riesgo: exigir el segundo factor solo cuando el contexto cambia (IP, país, dispositivo, horario) | A | 2 | identity | ⬜ | contecweb:app/services/security_rules.py |
 | `CRM-00.05.01.22` | Conectores MFA por proveedor (Duo, Okta Verify, Twilio Verify, RSA SecurID) encima del transporte genérico | A | 2 | identity | ⬜ | — |
 | `CRM-00.05.01.23` | Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor | A | 1 | identity | ⬜ | contecmind:app/services/webauthn.py |
-| `CRM-00.05.01.24` | Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces | A | 1 | identity | ⬜ | — |
-| `CRM-00.05.01.25` | Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.24` | Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces | A | 1 | identity | ✅ | — |
+| `CRM-00.05.01.25` | Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer | C | 1 | identity | ✅ | — |
 
 #### CRM-00.05.02 · Autorización
 

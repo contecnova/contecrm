@@ -4715,3 +4715,208 @@ Los apartados los **aporta cada servicio dueño del dato**, no el núcleo. Si el
 núcleo importara `tenancy` para leer la cobertura de controles, pasaría a
 depender de un servicio y se acabó el despliegue independiente. Invertido, cada
 servicio aporta lo suyo y el núcleo no conoce a ninguno.
+
+## SSO que se sostiene en una empresa de verdad (`CRM-00.05.01.11` a `.15`)
+
+Que el SSO funcione en la demo y que se sostenga en una empresa con seis
+dominios, tres filiales y un departamento de sistemas que rota certificados son
+dos cosas distintas. Esto es lo segundo.
+
+### El correo decide el proveedor, y el subdominio hereda (`CRM-00.05.01.14`)
+
+Preguntarle al usuario cuál es su proveedor es una pregunta que no sabe
+contestar: él sabe su correo, no si su empresa usa Entra ID o Ping. El dominio lo
+resuelve sin preguntar nada.
+
+Un proveedor lleva **varios dominios**, no uno. Las empresas los acumulan
+—adquisiciones, marcas, el de siempre y el nuevo— y con uno solo cada dominio
+extra obliga a duplicar el proveedor entero: la misma configuración, el mismo
+certificado y el mismo mapeo de roles, mantenidos por separado hasta que
+divergen.
+
+El **subdominio hereda del padre**: `ventas.ejemplo.com` va al proveedor de
+`ejemplo.com`. Si no, cada filial obligaría a una fila nueva y el día que falte
+una, esa gente no puede entrar. Y gana **el más específico**: si alguien
+configura `ventas.ejemplo.com` aparte, es porque quiere otra cosa para esa gente.
+
+### Forzar SSO, con una salida de emergencia que se ve (`CRM-00.05.01.13`)
+
+Con una contraseña local viva, el SSO es una comodidad y no un control: quien se
+va del directorio sigue entrando por la otra puerta, y esa puerta no la mira
+nadie. Forzar el SSO es lo que hace que la baja en el directorio corte el acceso
+de verdad.
+
+La comprobación va **después** de validar la contraseña y la membresía. Si fuera
+antes, el mensaje «esta organización exige SSO» le diría a quien prueba correos
+al azar cuáles existen y en qué tenant.
+
+**La excepción de rescate es nominal y queda escrita.** Sin ninguna, un IdP mal
+configurado —o un certificado caducado un sábado— deja al cliente fuera de su
+propio CRM sin forma de arreglarlo, y la salida acaba siendo tocar la base de
+datos a mano. Se permite, con nombre y apellidos en la configuración y con un
+apunte de auditoría en cada uso: una excepción que no se ve deja de ser una
+excepción y pasa a ser la puerta de siempre.
+
+También se puede preguntar **antes** de poner una contraseña si a ese correo se
+le va a admitir: dejar ponerla y después no aceptarla al entrar es un camino que
+acaba en un ticket.
+
+### Certificados: dos a la vez, y aviso antes (`CRM-00.05.01.15`)
+
+Un certificado de IdP que caduca no avisa. Un sábado por la noche deja de validar
+toda aserción y el lunes nadie de la empresa puede entrar.
+
+Los certificados son **una lista**, no uno solo, porque una rotación bien hecha
+tiene los dos válidos a la vez: el IdP empieza a firmar con el nuevo cuando le
+toca y, mientras, las aserciones firmadas con el viejo siguen valiendo.
+Sustituir uno por otro convierte la rotación en una ventana de caída para todo el
+tenant, coordinada al minuto con un departamento que no es el nuestro.
+
+Retirar el **último vigente** se niega: quitarlo dejaría al tenant sin poder
+validar nada, y eso se descubriría cuando alguien intentara entrar. Que falle
+ahí, con el administrador delante, es la diferencia entre un mensaje y una caída.
+
+Un proveedor **sin certificados declarados** no sale «en verde»: sale aparte. No
+es uno del que se sepa que está bien, es uno del que no se sabe nada, y la
+diferencia importa justo el día que caduca.
+
+### Aserciones que empiezan en el IdP (`CRM-00.05.01.11`)
+
+En el SSO que empieza aquí, nuestra petición lleva un identificador y la
+respuesta tiene que citarlo (`InResponseTo`): eso ata la aserción a una petición
+concreta e impide reenviarla. En el que empieza en el IdP **no hay petición**,
+así que no hay nada que citar, y una aserción interceptada —en un proxy, en un
+registro de servidor, en el historial del navegador— vale otra vez hasta que
+caduque.
+
+Lo único que lo cierra es **recordar las que ya se han usado**. Por eso eso es
+obligatorio y no una opción, y por eso el flujo entero va **apagado de fábrica**:
+activarlo tiene que ser la decisión de alguien que sepa que está aceptando
+aserciones que él no ha pedido. Una aserción sin identificador se rechaza:
+aceptar «porque no se puede comprobar» es no tener la comprobación.
+
+### Cierre de sesión único (`CRM-00.05.01.12`)
+
+Cuando la persona sale del IdP, lo que llega es **su** identificador de sesión
+(`SessionIndex` en SAML, `sid` en OIDC), que no se parece en nada al nuestro. Sin
+la correspondencia guardada, el aviso llega y no hay a quién aplicárselo: cerrar
+sesión en el IdP deja el CRM abierto, que es exactamente lo que el usuario cree
+que acaba de evitar.
+
+Se admite cerrar **por sesión o por sujeto**, porque los proveedores hacen las dos
+cosas: unos mandan la sesión concreta y otros dicen «esta persona ha salido de
+todo». Por sujeto cierra todas las suyas, que es lo que el usuario ha pedido al
+pulsar salir.
+
+Y al revés: cuando la salida empieza aquí, se cierra la sesión local y se
+devuelve a quién hay que avisar. Cerrar solo aquí deja la sesión del IdP viva, y
+volver a entrar no pide credenciales: para el usuario, el botón de salir no ha
+hecho nada.
+
+Que **no hubiera nada que cerrar no es un error**: el proveedor puede avisar de
+una sesión que aquí ya había caducado, y devolver error haría que reintentara en
+bucle. Una sesión que no vino de un IdP se marca como tal, para que nadie busque
+un fallo de propagación que no existe.
+
+## Segundo factor: SMS, correo, reverificación y equipos de confianza (`CRM-00.05.01.17`, `.18`, `.20`, `.24`, `.25`)
+
+### Códigos por SMS y correo, con lo que los hace seguros (`CRM-00.05.01.17`)
+
+**No hay código de ningún proveedor de SMS.** El tenant declara URL, cabeceras y
+plantilla sobre el transporte genérico, y con eso funciona Twilio, Vonage o la
+pasarela del operador local. Con un conector por casa, cada cliente con un
+proveedor distinto sería una versión del producto.
+
+**El SMS es el factor más débil y se dice.** Se intercepta con un cambio de SIM
+que no depende de nadie de aquí. Está apagado de fábrica, se marca como débil en
+el panel de adopción y una política puede prohibirlo sin quitar la MFA.
+Ofrecerlo callando eso sería vender una seguridad que no da.
+
+Lo que hace seguro un OTP **no es el código**: seis dígitos son un millón de
+combinaciones que, sin tope de intentos, se agotan a fuerza bruta en minutos. Lo
+seguro es el conjunto, y cada pieza está porque quitar cualquiera deja el resto
+sin valor:
+
+- **caduca pronto** y vale **una sola vez**;
+- los **intentos están contados**, y agotarlos invalida el desafío entero;
+- el **reenvío tiene espera**, porque si no, «reenviar código» es un amplificador
+  de SMS a costa del cliente: un bucle en el navegador y la factura del mes;
+- el código **nunca vuelve en la respuesta** — devolverlo «para pruebas» es el
+  atajo que acaba en producción — ni se escribe en la auditoría, que si no
+  convertiría el registro que sirve para investigar en el sitio donde se
+  encuentran credenciales;
+- la dirección se enseña **recortada** («\*\*\*34»), porque esa pantalla se ve
+  antes de estar autenticado del todo y enseñarla entera convertiría el login en
+  una forma de leer el teléfono de cualquiera con solo saber su correo;
+- y la comparación es en **tiempo constante**: comparar cadenas sale antes cuanto
+  más se diferencian, y ese tiempo se mide desde fuera.
+
+Si el envío falla, **se dice**. Tragárselo dejaría al usuario esperando un código
+que no va a llegar con el sistema diciendo que todo fue bien. Y que no haya
+dirección **no es un error del sistema**: es un dato que falta, y decirlo así
+evita que soporte busque un fallo de envío que no existe.
+
+### Reautenticación reforzada (`CRM-00.05.01.18`)
+
+Una sesión dura horas porque tener que renovarla cada cuarto de hora haría el
+producto inusable. Pero una exportación de toda la base a las seis de la tarde no
+puede apoyarse en un factor que se superó a las nueve de la mañana.
+
+Por eso el step-up pregunta **cuándo** fue el último factor fuerte, no **si** el
+usuario tiene MFA configurada. La sesión guarda los factores superados con su
+marca de tiempo, y las operaciones sensibles exigen uno reciente.
+
+La lista de operaciones sensibles es **una tabla de datos**, no `if` repartidos:
+lo que hace que una operación nueva quede cubierta es añadirla ahí, y lo que hace
+que se vea lo que **no** está cubierto es poder leerla entera de una vez. Hoy:
+exportación masiva, cambio de permisos, borrado en bloque, suplantación, claves
+de máquina, cambio de MFA, restauración y baja del tenant.
+
+Dos detalles que importan en la pantalla: sin sesión **no se deja pasar**
+—dejarlo pasar «porque no se puede comprobar» es como no tener la comprobación—,
+y la respuesta distingue «no tienes factor» de «vuelve a verificarte», porque
+para quien está delante son dos cosas muy distintas. El front puede consultar el
+nivel de la sesión **antes** de que el usuario rellene un formulario entero.
+
+### Equipos de confianza (`CRM-00.05.01.20`)
+
+Recordar un equipo es la razón número uno por la que la gente pide que le quiten
+la MFA, así que se puede. Tres cosas lo hacen aceptable y no un agujero:
+
+- **caduca** — la confianza no es para siempre; si lo fuera, el segundo factor se
+  pediría una vez en la vida del portátil;
+- **se revoca en remoto**, uno a uno o todos de golpe. El botón que de verdad se
+  usa es «he perdido el portátil», porque uno a uno no sirve cuando lo que ha
+  pasado es que ya no se sabe cuáles había;
+- es **por usuario**, no por equipo: un ordenador compartido no hereda la
+  confianza de quien lo usó antes.
+
+Va **desactivado de fábrica**: recordar un equipo es renunciar al segundo factor
+en ese equipo, y eso lo decide el cliente. El equipo solo se recuerda si en esa
+misma entrada se ha demostrado el factor —recordarlo sin haberlo pasado sería una
+forma de no tener MFA nunca—, y **nunca salta la contraseña**: ahorra el factor,
+no la credencial, y confundir las dos cosas convierte un portátil robado en una
+sesión abierta.
+
+### Delegar el factor al IdP (`CRM-00.05.01.24`)
+
+Pedir el segundo factor dos veces —una en el IdP corporativo y otra aquí— es la
+queja más repetida de cualquier despliegue de SSO, y lo que consigue de verdad es
+que el cliente pida que se quite la MFA del CRM.
+
+Se acepta el factor del proveedor, pero **no se da por hecho**: solo si el
+proveedor declara qué valores de `acr`/`amr` cuentan. Sin esa lista se pide el
+factor aquí, porque cualquier IdP puede mandar un `amr` que diga lo que sea, y
+creérselo sin acuerdo previo convierte la MFA en una casilla que rellena el otro
+lado. SAML trae el contexto en otro sitio y se admite con el mismo nombre, para
+que la configuración sea una sola y no una por protocolo.
+
+### Panel de adopción (`CRM-00.05.01.25`)
+
+Un panel que solo diga «78 % de adopción» no sirve para nada: lo que hace falta
+es **la lista de los que faltan**, porque el trabajo es hablar con ellos.
+
+Se separa por **fuerza del factor**, porque «tiene MFA» mete en el mismo saco una
+passkey y un SMS, que es precisamente la distinción que alguien va a querer hacer
+cuando decida apretar. Y con cero usuarios el porcentaje **no es 100**: es que no
+hay nada que medir, y decir 100 sería un verde que nadie se ha ganado.

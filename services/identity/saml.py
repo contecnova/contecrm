@@ -177,12 +177,19 @@ def metadatos(config: dict[str, Any]) -> str:
 
 def procesar_respuesta(
     config: dict[str, Any], datos_post: dict[str, Any]
-) -> tuple[str, str, list[str]]:
-    """Valida la aserción y devuelve (correo, nombre, grupos).
+) -> tuple[str, str, list[str], dict[str, str]]:
+    """Valida la aserción y devuelve (correo, nombre, grupos, contexto).
 
     La validación —firma, destinatario, vigencia, condiciones— la hace la
     librería. Aquí solo se traduce el resultado y se comprueba que trae lo
     mínimo para identificar a alguien.
+
+    El `contexto` lleva lo que hace falta **después** de identificar: el
+    `SessionIndex` para poder cerrar la sesión cuando el IdP avise
+    (CRM-00.05.01.12), el `NameID` para los proveedores que avisan por sujeto, y
+    el `AuthnContextClassRef` para saber si el IdP ya exigió segundo factor
+    (CRM-00.05.01.24). Sin sacarlo aquí se pierde: la librería lo tiene solo
+    mientras vive el objeto de autenticación.
     """
     exigir_disponible()
     from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -233,7 +240,12 @@ def procesar_respuesta(
             error_code="saml.sin_email",
             detalle={"atributos_recibidos": sorted(atributos)[:30]},
         )
-    return correo.strip().lower(), nombre.strip(), grupos
+    contexto = {
+        "session_index": str(auth.get_session_index() or ""),
+        "name_id": str(auth.get_nameid() or ""),
+        "authn_context": str((auth.get_last_authn_contexts() or [""])[0] or ""),
+    }
+    return correo.strip().lower(), nombre.strip(), grupos, contexto
 
 
 def _primero(atributos: dict[str, Any], configurado: Any, candidatos: tuple[str, ...]) -> str:

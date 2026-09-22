@@ -116,6 +116,7 @@ def autenticar(
     contrasena: str,
     tenant_id: UUID,
     codigo_mfa: str = "",
+    huella_dispositivo: str = "",
 ) -> Usuario:
     """Comprueba credenciales y devuelve el usuario. Lanza si no procede."""
     s = get_settings()
@@ -146,9 +147,27 @@ def autenticar(
         # tenant» confirmaría la existencia de la cuenta a quien no debe saberlo.
         raise NoAutenticado("Credenciales incorrectas", error_code="auth.credenciales_invalidas")
 
+    # Forzar SSO (CRM-00.05.01.13). Va DESPUÉS de comprobar la contraseña y la
+    # membresía a propósito: si fuera antes, el mensaje «esta organización exige
+    # SSO» diría, a quien probara correos al azar, cuáles existen y en qué
+    # tenant. Que la contraseña sea correcta y aun así no se entre es más caro de
+    # explicar y no filtra nada.
+    from services.identity.sso_gobierno import exigir_sso_si_toca
+
+    exigir_sso_si_toca(db, usuario, tenant_id)
+
     from crmcore.runtime import settings as rt
 
     exige_mfa = usuario.mfa_activo or bool(rt.efectivo("mfa_obligatoria", db))
+    # Un dispositivo de confianza vivo salta el segundo factor (CRM-00.05.01.20).
+    # No salta la contraseña: recordar el equipo ahorra el factor, no la
+    # credencial, y confundir las dos cosas convierte un portátil robado en una
+    # sesión abierta.
+    if exige_mfa and huella_dispositivo:
+        from services.identity import factores
+
+        if factores.dispositivo_de_confianza(db, usuario.id, tenant_id, huella_dispositivo):
+            exige_mfa = False
     if exige_mfa:
         if not usuario.mfa_activo:
             raise Prohibido(
@@ -157,7 +176,7 @@ def autenticar(
             )
         if not codigo_mfa:
             raise NoAutenticado("Falta el código de doble factor", error_code="auth.mfa_requerida")
-        if not _verificar_segundo_factor(db, usuario, codigo_mfa):
+        if not _verificar_segundo_factor(db, usuario, codigo_mfa, tenant_id):
             _anotar_fallo(db, usuario, s.login_max_intentos, s.login_bloqueo_minutos)
             raise NoAutenticado(
                 "El código de doble factor no es válido", error_code="auth.mfa_invalida"
@@ -169,10 +188,34 @@ def autenticar(
     return usuario
 
 
-def _verificar_segundo_factor(db: Session, usuario: Usuario, codigo: str) -> bool:
-    """TOTP o, si no, un código de recuperación (que se consume)."""
+def _verificar_segundo_factor(
+    db: Session, usuario: Usuario, codigo: str, tenant_id: UUID | None = None
+) -> bool:
+    """TOTP, código de un solo uso enviado por SMS o correo, o código de
+    recuperación (que se consume).
+
+    Se prueban en ese orden y el TOTP va primero porque es el caso normal: el
+    OTP solo existe si alguien lo pidió, y consultarlo siempre sería una
+    consulta a la base en cada entrada del sistema para nada.
+    """
     if usuario.mfa_secreto and verificar_totp(usuario.mfa_secreto, codigo):
         return True
+
+    # Segundo factor por SMS o correo (CRM-00.05.01.17).
+    if tenant_id is not None:
+        from crmcore.errors import CrmError
+
+        from services.identity import factores
+
+        try:
+            factores.comprobar_desafio(db, usuario.id, tenant_id, codigo, proposito="entrar")
+            return True
+        except CrmError:
+            # Que no case con un OTP no significa que el intento sea inválido:
+            # todavía puede ser un código de recuperación. Lo que NO se hace es
+            # tragarse el error y seguir como si no hubiera habido intento — el
+            # desafío ya ha contado el suyo dentro.
+            pass
     hash_codigo = hashlib.sha256(codigo.strip().encode()).hexdigest()
     if hash_codigo in (usuario.mfa_recuperacion or []):
         # Se consume: un código de recuperación vale una vez. Si valiera
@@ -251,8 +294,16 @@ def crear_sesion(
     user_agent: str = "",
     actor_real_id: UUID | None = None,
     motivo_suplantacion: str | None = None,
+    factores_superados: tuple[str, ...] = (),
 ) -> tuple[Sesion, str, str]:
-    """Crea la sesión y devuelve (sesión, token de acceso, token de refresco)."""
+    """Crea la sesión y devuelve (sesión, token de acceso, token de refresco).
+
+    `factores_superados` dice con qué se entró. Se guarda en la sesión porque la
+    reautenticación reforzada (CRM-00.05.01.18) pregunta *cuándo* fue el último
+    factor fuerte, no *si* lo hubo: sin la marca de tiempo, quien pasó el factor
+    por la mañana exportaría la base entera por la tarde sin volver a demostrar
+    nada.
+    """
     s = get_settings()
     ahora = datetime.now(timezone.utc)
 
@@ -293,6 +344,11 @@ def crear_sesion(
         motivo_suplantacion=motivo_suplantacion,
     )
     db.add(sesion)
+    if factores_superados:
+        from services.identity import factores as _factores
+
+        for factor in factores_superados:
+            _factores.anotar_factor(db, sesion, factor)
     db.flush()
 
     acceso = emitir_token_acceso(

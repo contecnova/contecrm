@@ -552,7 +552,9 @@ def test_una_asercion_firmada_se_acepta_y_trae_la_identidad() -> None:
     config = _config_saml(cert)
     respuesta = _respuesta("ana@cliente.com", ["G-Ventas"], clave, cert)
 
-    correo, nombre, grupos = saml_sp.procesar_respuesta(config, {"SAMLResponse": respuesta})
+    correo, nombre, grupos, contexto = saml_sp.procesar_respuesta(
+        config, {"SAMLResponse": respuesta}
+    )
 
     assert correo == "ana@cliente.com"
     assert nombre == "Ana Prueba"

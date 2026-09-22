@@ -20,7 +20,27 @@ class Credenciales(BaseModel):
             "cada uno"
         ),
     )
-    codigo_mfa: str = Field("", max_length=16, description="TOTP o código de recuperación")
+    codigo_mfa: str = Field(
+        "",
+        max_length=16,
+        description="TOTP, código enviado por SMS o correo, o código de recuperación",
+    )
+    huella_dispositivo: str = Field(
+        "",
+        max_length=200,
+        description=(
+            "Huella del equipo. Si es un dispositivo de confianza vigente "
+            "(CRM-00.05.01.20), no se pide el segundo factor. **Nunca** salta la "
+            "contraseña: recordar el equipo ahorra el factor, no la credencial"
+        ),
+    )
+    recordar_dispositivo: bool = Field(
+        False,
+        description=(
+            "Marcar este equipo como de confianza tras superar el segundo "
+            "factor. Solo tiene efecto si la instalación lo permite"
+        ),
+    )
 
 
 class Tokens(BaseModel):

@@ -310,7 +310,19 @@ def callback_oidc(datos: VueltaOIDC, uow: UowDep) -> Any:
         sujeto_externo=str(claims["sub"]),
         grupos=oidc_cli.grupos_de(claims),
     )
-    return _entrada(uow, usuario, estado.tenant_id, fila.nombre, estado.volver_a)
+    return _entrada(
+        uow,
+        usuario,
+        estado.tenant_id,
+        fila.nombre,
+        estado.volver_a,
+        fila=fila,
+        claims=claims,
+        # `sid` es el identificador de sesión del IdP en OIDC; sin él, el aviso
+        # de cierre solo puede resolverse por sujeto.
+        indice_idp=str(claims.get("sid") or ""),
+        sujeto_idp=str(claims.get("sub") or ""),
+    )
 
 
 @router_sso.post(
@@ -335,7 +347,7 @@ async def acs_saml(
     if fila.tipo != "saml":
         raise ErrorValidacion("Ese proveedor no es SAML", error_code="saml.proveedor_no_es_saml")
 
-    correo, nombre, grupos = saml_sp.procesar_respuesta(fila.config or {}, formulario)
+    correo, nombre, grupos, contexto = saml_sp.procesar_respuesta(fila.config or {}, formulario)
     usuario = sso.entrar_o_provisionar(
         uow.db,
         tenant_id=tenant_id,
@@ -345,7 +357,17 @@ async def acs_saml(
         sujeto_externo=correo,
         grupos=grupos,
     )
-    return _entrada(uow, usuario, tenant_id, fila.nombre, None)
+    return _entrada(
+        uow,
+        usuario,
+        tenant_id,
+        fila.nombre,
+        None,
+        fila=fila,
+        claims={"authn_context": contexto.get("authn_context", "")},
+        indice_idp=str(contexto.get("session_index") or ""),
+        sujeto_idp=str(contexto.get("name_id") or correo),
+    )
 
 
 def _como_proveedor(fila: ProveedorIdentidad) -> Any:
@@ -365,7 +387,18 @@ def _como_proveedor(fila: ProveedorIdentidad) -> Any:
     )
 
 
-def _entrada(uow: Any, usuario: Any, tenant_id: UUID, proveedor: str, volver_a: str | None) -> Any:
+def _entrada(
+    uow: Any,
+    usuario: Any,
+    tenant_id: UUID,
+    proveedor: str,
+    volver_a: str | None,
+    *,
+    fila: Any = None,
+    claims: dict[str, Any] | None = None,
+    indice_idp: str = "",
+    sujeto_idp: str = "",
+) -> Any:
     """Abre sesión y devuelve los tokens, igual que el inicio de sesión local.
 
     Pasa por `crear_sesion` y no por un camino propio: ahí viven el tope de
@@ -375,15 +408,56 @@ def _entrada(uow: Any, usuario: Any, tenant_id: UUID, proveedor: str, volver_a: 
     from crmcore.audit.chain import registrar
     from crmcore.config import get_settings
 
+    # ¿El IdP ya exigió segundo factor? (CRM-00.05.01.24). Solo se cree si el
+    # proveedor declara qué valores de `acr`/`amr` cuentan: cualquier IdP puede
+    # mandar un `amr` que diga lo que sea, y aceptarlo sin acuerdo previo
+    # convierte la MFA en una casilla que rellena el otro lado.
+    from services.identity import factores as _factores
     from services.identity import servicio as svc
 
-    _sesion, acceso, refresco = svc.crear_sesion(uow.db, usuario=usuario, tenant_id=tenant_id)
+    mfa_del_idp = bool(
+        fila is not None and claims and _factores.el_idp_ya_hizo_mfa(uow.db, fila, claims)
+    )
+    superados = ("sso", "idp") if mfa_del_idp else ("sso",)
+
+    _sesion, acceso, refresco = svc.crear_sesion(
+        uow.db, usuario=usuario, tenant_id=tenant_id, factores_superados=superados
+    )
+
+    # Atar la sesión a la del IdP para el cierre único (CRM-00.05.01.12). Sin
+    # esto, el aviso de cierre llega con el identificador del proveedor y no hay
+    # a quién aplicárselo: salir del IdP dejaría el CRM abierto.
+    enlazada = False
+    if fila is not None and (indice_idp or sujeto_idp):
+        from services.identity import sso_gobierno
+
+        enlazada = (
+            sso_gobierno.atar_sesion_al_idp(
+                uow.db,
+                sesion=_sesion,
+                proveedor_id=fila.id,
+                usuario_id=usuario.id,
+                tenant_id=tenant_id,
+                indice_idp=indice_idp,
+                sujeto_idp=sujeto_idp,
+            )
+            is not None
+        )
+
     registrar(
         uow.db,
         accion="sesion.iniciada",
         objeto="usuario",
         objeto_id=usuario.id,
-        datos={"via": "sso", "proveedor": proveedor},
+        datos={
+            "via": "sso",
+            "proveedor": proveedor,
+            "mfa_del_idp": mfa_del_idp,
+            # Se anota cuando NO se puede propagar el cierre: es una carencia
+            # del proveedor, no un fallo de aquí, y sin dejarla escrita se
+            # descubre el día que alguien se queja de que salir no sirve.
+            "cierre_unico": enlazada,
+        },
         tenant_id=tenant_id,
     )
     return {

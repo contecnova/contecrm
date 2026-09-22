@@ -45,6 +45,35 @@ class _AuthSettings(BaseSettings):
     # relojes desajustados. Cada paso son 30 s; 1 = ±30 s.
     totp_ventana_pasos: int = Field(1, ge=0, le=10)
 
+    # ── Segundo factor por SMS y correo (CRM-00.05.01.17) ─────────────────
+    # Van apagados por defecto, y a propósito: el SMS es el factor más débil de
+    # los que hay —se intercepta con un cambio de SIM que no depende de nadie de
+    # aquí—, y encenderlo tiene que ser una decisión consciente de quien acepta
+    # ese riesgo, no el estado de fábrica.
+    otp_sms_enabled: bool = False
+    otp_email_enabled: bool = False
+    otp_digitos: int = Field(6, ge=4, le=10)
+    # Vida del código. Corta a propósito: lo que hace seguro un OTP no es el
+    # código, es que caduque pronto y solo valga una vez.
+    otp_validez_segundos: int = Field(300, ge=30, le=1800)
+    # Intentos antes de invalidar el desafío. Seis dígitos son un millón de
+    # combinaciones: sin tope se agotan a fuerza bruta en minutos.
+    otp_max_intentos: int = Field(5, ge=1, le=20)
+    # Espera mínima entre reenvíos, para que «reenviar código» no sea un
+    # amplificador de SMS a costa del cliente.
+    otp_reenvio_segundos: int = Field(60, ge=10, le=900)
+
+    # ── Reautenticación reforzada, step-up (CRM-00.05.01.18) ──────────────
+    # Cuánto vale un segundo factor superado antes de volver a pedirlo para una
+    # operación sensible. Con la sesión entera valdría ocho horas, y quien pasó
+    # el factor por la mañana podría exportar la base a las seis de la tarde.
+    stepup_validez_minutos: int = Field(15, ge=1, le=480)
+
+    # ── Dispositivos de confianza (CRM-00.05.01.20) ───────────────────────
+    # 0 = desactivado, que es el valor de fábrica: recordar un equipo es
+    # renunciar al segundo factor en ese equipo, y eso lo decide el cliente.
+    dispositivo_confianza_dias: int = Field(0, ge=0, le=365)
+
     # ── Federación (CRM-00.05.01.01..05) ──────────────────────────────────
     oidc_enabled: bool = False
     saml_enabled: bool = False
@@ -53,6 +82,16 @@ class _AuthSettings(BaseSettings):
     # Cómodo y estándar, pero significa que quien controle el IdP crea usuarios
     # aquí: por eso es configurable y no un hecho.
     jit_provisioning: bool = True
+    # Forzar la entrada por el IdP (CRM-00.05.01.13). Se configura por tenant;
+    # esto es el interruptor global de la instalación.
+    sso_forzado: bool = False
+    # Aceptar el segundo factor que ya ha exigido el IdP (CRM-00.05.01.24), si
+    # el proveedor declara cuáles valen. Apagado, se pide aquí igualmente.
+    delegar_mfa_al_idp: bool = True
+    # Aviso previo a que caduque un certificado de firma del IdP
+    # (CRM-00.05.01.15). Treinta días es el plazo en el que todavía se puede
+    # pedir el certificado nuevo al departamento que lo custodia sin prisa.
+    idp_aviso_caducidad_dias: int = Field(30, ge=1, le=365)
 
     # ── Credenciales de máquina (CRM-00.05.01.07) ─────────────────────────
     # Caducidad por defecto de una clave de API nueva. 0 = sin caducidad, que se

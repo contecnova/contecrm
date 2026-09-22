@@ -70,14 +70,37 @@ def login(datos: Credenciales, request: Request) -> Any:
             contrasena=datos.contrasena,
             tenant_id=tenant_id,
             codigo_mfa=datos.codigo_mfa,
+            huella_dispositivo=datos.huella_dispositivo,
         )
+        # Qué factores se han superado de verdad en ESTA entrada. Se anota para
+        # la reautenticación reforzada (CRM-00.05.01.18), que pregunta cuándo
+        # fue el último factor fuerte y no si el usuario tiene MFA configurada.
+        superados: tuple[str, ...] = ("contrasena",)
+        if datos.codigo_mfa:
+            superados = ("contrasena", "totp")
         _sesion, acceso, refresco = svc.crear_sesion(
             db,
             usuario=usuario,
             tenant_id=tenant_id,
             ip=request.client.host if request.client else "",
             user_agent=request.headers.get("user-agent", ""),
+            factores_superados=superados,
         )
+        if datos.recordar_dispositivo and datos.huella_dispositivo and datos.codigo_mfa:
+            # Solo se recuerda el equipo si en ESTA entrada se ha demostrado el
+            # segundo factor. Recordarlo sin haberlo pasado convertiría la
+            # confianza en una forma de no tener MFA nunca.
+            from services.identity import factores as _f
+
+            dispositivo = _f.recordar_dispositivo(
+                db,
+                usuario.id,
+                tenant_id,
+                huella=datos.huella_dispositivo,
+                nombre=request.headers.get("user-agent", "")[:120],
+                ip=request.client.host if request.client else "",
+            )
+            _sesion.dispositivo_confianza_id = dispositivo.id
     return Tokens(
         access_token=acceso,
         refresh_token=refresco,
@@ -708,6 +731,7 @@ def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
+from services.identity.api_factores import ROUTERS_FACTORES  # noqa: E402
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
 from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
 from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
@@ -725,4 +749,5 @@ ROUTERS = [
     *ROUTERS_POLITICAS,
     *ROUTERS_SOD,
     *ROUTERS_SCIM,
+    *ROUTERS_FACTORES,
 ]

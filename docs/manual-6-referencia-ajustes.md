@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**183 ajustes** en total, de los cuales **60** son editables en caliente por tenant.
+**194 ajustes** en total, de los cuales **71** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -101,10 +101,21 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `MFA_ENABLED` | — | `True` |  |  |
 | `MFA_OBLIGATORIA` | 🔥 `mfa_obligatoria` | `False` |  | Exigir MFA a todo el mundo. Lo normal es exigirla por rol (se configura por tenant); esto es el interruptor global para instalaciones que la quieren obligatoria sin excepciones. |
 | `TOTP_VENTANA_PASOS` | — | `1` | 0–10 | Ventana de códigos TOTP aceptados hacia atrás y adelante, para absorber relojes desajustados. Cada paso son 30 s; 1 = ±30 s. |
+| `OTP_SMS_ENABLED` | 🔥 `otp_sms_enabled` | `False` |  | Van apagados por defecto, y a propósito: el SMS es el factor más débil de los que hay —se intercepta con un cambio de SIM que no depende de nadie de aquí—, y encenderlo tiene que ser una decisión consciente de quien acepta ese riesgo, no el estado de fábrica. |
+| `OTP_EMAIL_ENABLED` | 🔥 `otp_email_enabled` | `False` |  |  |
+| `OTP_DIGITOS` | 🔥 `otp_digitos` | `6` | 4–10 |  |
+| `OTP_VALIDEZ_SEGUNDOS` | 🔥 `otp_validez_segundos` | `300` | 30–1800 | Vida del código. Corta a propósito: lo que hace seguro un OTP no es el código, es que caduque pronto y solo valga una vez. |
+| `OTP_MAX_INTENTOS` | 🔥 `otp_max_intentos` | `5` | 1–20 | Intentos antes de invalidar el desafío. Seis dígitos son un millón de combinaciones: sin tope se agotan a fuerza bruta en minutos. |
+| `OTP_REENVIO_SEGUNDOS` | 🔥 `otp_reenvio_segundos` | `60` | 10–900 | Espera mínima entre reenvíos, para que «reenviar código» no sea un amplificador de SMS a costa del cliente. |
+| `STEPUP_VALIDEZ_MINUTOS` | 🔥 `stepup_validez_minutos` | `15` | 1–480 | Cuánto vale un segundo factor superado antes de volver a pedirlo para una operación sensible. Con la sesión entera valdría ocho horas, y quien pasó el factor por la mañana podría exportar la base a las seis de la tarde. |
+| `DISPOSITIVO_CONFIANZA_DIAS` | 🔥 `dispositivo_confianza_dias` | `0` | 0–365 | 0 = desactivado, que es el valor de fábrica: recordar un equipo es renunciar al segundo factor en ese equipo, y eso lo decide el cliente. |
 | `OIDC_ENABLED` | — | `False` |  |  |
 | `SAML_ENABLED` | — | `False` |  |  |
 | `SCIM_ENABLED` | — | `False` |  |  |
 | `JIT_PROVISIONING` | — | `True` |  | Crear el usuario la primera vez que entra por el proveedor de identidad. Cómodo y estándar, pero significa que quien controle el IdP crea usuarios aquí: por eso es configurable y no un hecho. |
+| `SSO_FORZADO` | 🔥 `sso_forzado` | `False` |  | Forzar la entrada por el IdP (CRM-00.05.01.13). Se configura por tenant; esto es el interruptor global de la instalación. |
+| `DELEGAR_MFA_AL_IDP` | 🔥 `delegar_mfa_al_idp` | `True` |  | Aceptar el segundo factor que ya ha exigido el IdP (CRM-00.05.01.24), si el proveedor declara cuáles valen. Apagado, se pide aquí igualmente. |
+| `IDP_AVISO_CADUCIDAD_DIAS` | 🔥 `idp_aviso_caducidad_dias` | `30` | 1–365 | Aviso previo a que caduque un certificado de firma del IdP (CRM-00.05.01.15). Treinta días es el plazo en el que todavía se puede pedir el certificado nuevo al departamento que lo custodia sin prisa. |
 | `API_KEY_CADUCIDAD_DIAS` | — | *(secreto)* | 0–3650 | Caducidad por defecto de una clave de API nueva. 0 = sin caducidad, que se desaconseja y por eso no es el default. |
 | `API_KEY_BYTES` | — | *(secreto)* | 16–128 | Longitud en bytes del secreto generado (se muestra en base64url una sola vez). 32 bytes = 256 bits. |
 | `SUPLANTACION_ENABLED` | 🔥 `suplantacion_enabled` | `True` |  | El soporte puede entrar como un usuario del tenant, pero: con motivo escrito, con caducidad corta y dejando rastro en la auditoría. Sin las tres cosas, es un agujero con buena intención. |

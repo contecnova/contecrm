@@ -172,6 +172,26 @@ class Sesion(Base):
     revocada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     motivo_revocacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
+    # ── Nivel de autenticación de ESTA sesión (CRM-00.05.01.18) ───────────
+    # Qué factores se han superado y cuándo. Se guarda la lista y no un
+    # booleano porque el step-up pregunta dos cosas distintas: «¿hubo segundo
+    # factor?» y «¿hace cuánto?». Con un booleano, alguien que pasó el factor
+    # por la mañana sigue autorizado a exportar la base entera por la tarde,
+    # que es justo lo que la reautenticación viene a impedir.
+    factores: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # Cuándo se superó el último factor fuerte. Denormalizado a propósito: la
+    # comprobación corre en CADA operación sensible y leerlo del JSONB obligaba
+    # a recorrerlo.
+    factor_fuerte_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Dispositivo de confianza con el que se entró, si lo hubo.
+    dispositivo_confianza_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True
+    )
+
     # Suplantación en curso: quién es realmente quien opera.
     actor_real_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     motivo_suplantacion: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -251,7 +271,162 @@ class ProveedorIdentidad(Base, TimestampMixin):
     )
     jit_provisioning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    # ── Gobierno del SSO ──────────────────────────────────────────────────
+    # Dominios de correo adicionales y alias (CRM-00.05.01.14). `dominio_email`
+    # se queda como el principal por compatibilidad; esta lista es la que hace
+    # que una empresa con seis dominios tras tres adquisiciones no necesite seis
+    # proveedores iguales.
+    dominios: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # Aceptar aserciones que empiezan en el IdP (CRM-00.05.01.11). Va apagado
+    # por defecto: sin `InResponseTo` que atar a una petición nuestra, una
+    # aserción robada se puede reenviar, y activarlo tiene que ser una decisión
+    # de alguien, no el estado de fábrica.
+    permite_idp_initiated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Valores de `acr`/`amr` del IdP que se aceptan como segundo factor ya
+    # cumplido (CRM-00.05.01.24). Vacío = no se delega y se pide aquí.
+    acr_con_mfa: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # Certificados de firma con su caducidad (CRM-00.05.01.15). Son una lista y
+    # no uno solo porque una rotación bien hecha tiene los dos válidos a la vez:
+    # con uno solo, cambiarlo es una ventana de caída para todo el tenant.
+    certificados: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+
     __table_args__ = (UniqueConstraint("tenant_id", "nombre", name="uq_idp_nombre"),)
+
+
+class DesafioFactor(Base):
+    """Un código de un solo uso enviado por SMS o correo (CRM-00.05.01.17).
+
+    El código se guarda **hasheado**, igual que una contraseña: quien lea la
+    tabla no puede entrar con él. Y se guarda la fila y no solo el código porque
+    lo que hace seguro un OTP no es el código, es el resto: que caduque pronto,
+    que solo valga una vez y que el número de intentos esté contado. Sin eso,
+    seis dígitos se agotan a fuerza bruta en minutos.
+    """
+
+    __tablename__ = "desafios_factor"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    canal: Mapped[str] = mapped_column(String(20), nullable=False)  # sms | email
+    # Dirección de destino, enmascarada. Se guarda enmascarada porque esta fila
+    # se enseña al usuario («te hemos enviado un código al ***34») y guardarla
+    # entera la convertiría en una filtración de teléfonos.
+    destino_visible: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    hash_codigo: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Para qué se pidió: entrar, o autorizar una operación concreta (step-up).
+    proposito: Mapped[str] = mapped_column(String(40), nullable=False, default="entrar")
+    intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expira_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_desafios_usuario", "usuario_id", "usado_at"),)
+
+
+class DispositivoConfianza(Base, TimestampMixin):
+    """Un equipo en el que este usuario ya demostró tener el segundo factor
+    (CRM-00.05.01.20).
+
+    Sirve para no pedir el factor en cada entrada desde el mismo portátil, que
+    es la razón número uno por la que la gente pide que le quiten la MFA. Tres
+    cosas lo hacen aceptable y no un agujero:
+
+    * **caduca** —la confianza no es para siempre—;
+    * **se revoca en remoto**, uno a uno o todos, que es lo que hace útil la
+      lista cuando alguien pierde el portátil;
+    * y **es por usuario y tenant**, no por equipo: un ordenador compartido no
+      hereda la confianza de quien lo usó antes.
+    """
+
+    __tablename__ = "dispositivos_confianza"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    # Hash de la huella del dispositivo. Hasheada porque la huella en claro
+    # identifica al equipo, y la tabla se consulta desde la pantalla de sesiones.
+    hash_huella: Mapped[str] = mapped_column(String(64), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    ip_alta: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expira_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ultimo_uso_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revocado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    motivo_revocacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "usuario_id", "hash_huella", name="uq_dispositivo"),
+    )
+
+
+class SesionIdP(Base):
+    """Lo que ata una sesión de aquí con la sesión del proveedor de identidad
+    (CRM-00.05.01.12).
+
+    Sin esta tabla no hay cierre de sesión único: cuando el IdP avisa de que la
+    persona ha salido, lo que manda es **su** identificador de sesión
+    (`SessionIndex` en SAML, `sid` en OIDC), que no se parece en nada al nuestro.
+    Sin la correspondencia, el aviso llega y no hay a quién aplicárselo, y
+    cerrar sesión en el IdP deja el CRM abierto — que es exactamente lo que el
+    usuario cree que acaba de evitar.
+    """
+
+    __tablename__ = "sesiones_idp"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    sesion_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    proveedor_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    # El identificador de sesión del IdP. Es el que llega en el aviso de cierre.
+    indice_idp: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    # El identificador del sujeto tal como lo da el IdP (NameID). Hay
+    # proveedores que avisan del cierre por sujeto y no por sesión.
+    sujeto_idp: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    creada_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    cerrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_sesiones_idp_indice", "tenant_id", "indice_idp"),)
+
+
+class AsercionConsumida(Base):
+    """Aserciones SAML ya usadas, para que no se puedan reenviar
+    (CRM-00.05.01.11).
+
+    En el SSO que empieza aquí, la petición lleva un identificador propio y la
+    respuesta tiene que citarlo (`InResponseTo`): eso ya impide el reenvío. En
+    el que empieza en el IdP **no hay petición**, así que no hay nada que citar,
+    y una aserción interceptada vale otra vez hasta que caduque.
+
+    Lo único que lo cierra es recordar las que ya se han usado. Se guardan solo
+    hasta que caduca la propia aserción: después es inútil por sí sola y la
+    tabla no tiene por qué crecer para siempre.
+    """
+
+    __tablename__ = "aserciones_consumidas"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    # El `ID` de la aserción, hasheado: no aporta nada guardarlo en claro y sí
+    # deja un rastro menos si la tabla se filtra.
+    hash_asercion: Mapped[str] = mapped_column(String(64), nullable=False)
+    proveedor_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    consumida_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expira_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "hash_asercion", name="uq_asercion_consumida"),)
 
 
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
@@ -284,6 +459,10 @@ from services.identity.sso import EstadoSSO  # noqa: E402
 
 __all__ = [
     "VersionAjuste",
+    "AsercionConsumida",
+    "DesafioFactor",
+    "DispositivoConfianza",
+    "SesionIdP",
     "ExcepcionSoD",
     "ReglaSoD",
     "PoliticaAbac",
