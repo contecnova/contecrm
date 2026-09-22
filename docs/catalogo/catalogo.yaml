@@ -441,7 +441,7 @@ modulos:
               - {id: CRM-00.04.04.03, c: C, fase: 2, svc: metadata, estado: hecho, t: "Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo"}
               - {id: CRM-00.04.04.04, c: C, fase: 2, svc: metadata, estado: hecho, t: "Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto"}
               - {id: CRM-00.04.04.05, c: A, fase: 2, svc: metadata, estado: hecho, t: "Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan"}
-              - {id: CRM-00.04.04.06, c: C, fase: 2, svc: integration, estado: pendiente, t: "Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto"}
+              - {id: CRM-00.04.04.06, c: C, fase: 2, svc: integration, estado: hecho, t: "Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto"}
               - {id: CRM-00.04.04.07, c: C, fase: 2, svc: front, estado: hecho, t: "Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo"}
               - {id: CRM-00.04.04.08, c: A, fase: 2, svc: metadata, estado: hecho, t: "Catálogo de módulos con versión, autor, firma y revisión antes de instalar"}
               - {id: CRM-00.04.04.09, c: A, fase: 2, svc: metadata, estado: hecho, t: "Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano"}
@@ -460,16 +460,16 @@ modulos:
             # «encargo seguido» con estados declarados por el módulo sirve a los
             # tres, y el módulo vertical le pone el vocabulario de su sector.
             capacidades:
-              - {id: CRM-00.04.05.01, c: C, fase: 2, svc: integration, estado: pendiente, t: "Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó"}
-              - {id: CRM-00.04.05.02, c: C, fase: 2, svc: integration, estado: pendiente, t: "Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código"}
-              - {id: CRM-00.04.05.03, c: C, fase: 2, svc: integration, estado: pendiente, t: "Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo"}
-              - {id: CRM-00.04.05.04, c: C, fase: 2, svc: integration, estado: pendiente, t: "Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte"}
+              - {id: CRM-00.04.05.01, c: C, fase: 2, svc: integration, estado: hecho, t: "Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó"}
+              - {id: CRM-00.04.05.02, c: C, fase: 2, svc: integration, estado: hecho, t: "Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código"}
+              - {id: CRM-00.04.05.03, c: C, fase: 2, svc: integration, estado: hecho, t: "Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo"}
+              - {id: CRM-00.04.05.04, c: C, fase: 2, svc: integration, estado: hecho, t: "Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte"}
               - {id: CRM-00.04.05.05, c: A, fase: 2, svc: integration, estado: pendiente, t: "Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5)"}
-              - {id: CRM-00.04.05.06, c: C, fase: 2, svc: service, estado: pendiente, t: "El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno"}
-              - {id: CRM-00.04.05.07, c: A, fase: 2, svc: integration, estado: pendiente, t: "Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla"}
-              - {id: CRM-00.04.05.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas"}
-              - {id: CRM-00.04.05.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio"}
-              - {id: CRM-00.04.05.10, c: A, fase: 2, svc: integration, estado: pendiente, t: "Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno"}
+              - {id: CRM-00.04.05.06, c: C, fase: 2, svc: integration, estado: hecho, t: "El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno"}
+              - {id: CRM-00.04.05.07, c: A, fase: 2, svc: integration, estado: hecho, t: "Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla"}
+              - {id: CRM-00.04.05.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas"}
+              - {id: CRM-00.04.05.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio"}
+              - {id: CRM-00.04.05.10, c: A, fase: 2, svc: integration, estado: hecho, t: "Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno"}
 
       - id: "0.5"
         nombre: Identidad, seguridad y control de acceso
@@ -1314,6 +1314,10 @@ anexo_b_eventos:
   - {type: tenant.provisioned, fase: 0, svc: tenancy}
   - {type: tenant.suspended, fase: 0, svc: tenancy}
   - {type: quota.threshold.reached, fase: 0, svc: tenancy}
+  - {type: order.tracked.created, fase: 5, svc: integration}
+  - {type: order.tracked.updated, fase: 5, svc: integration}
+  - {type: order.tracked.incident, fase: 5, svc: integration}
+  - {type: order.tracked.silent, fase: 5, svc: integration}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

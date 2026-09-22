@@ -93,6 +93,12 @@ PREFIJOS: dict[str, str] = {
     "atribucion": "marketing",
     "presion": "marketing",
     "rebotes": "marketing",
+    # Lo que se le encarga a un tercero y hay que seguir. `proveedores-servicio`
+    # se llama así y no `proveedores` porque en el CRM un proveedor es también
+    # una cuenta: dos rutas parecidas apuntando a servicios distintos es cómo se
+    # enruta mal una llamada y nadie entiende el 404.
+    "encargos": "integration",
+    "proveedores-servicio": "integration",
     "grc": "tenancy",
     "compromisos": "tenancy",
     "tablas-decision": "orchestrator",

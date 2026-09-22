@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 382 hecho · ⬜ 325 pendiente
+**707 capacidades**: ✅ 392 hecho · ⬜ 315 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 197 · ⬜ 86
+283 capacidades · ✅ 207 · ⬜ 76
 
 ### 0.1 Multi-tenancy
 
@@ -318,7 +318,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.04.03` | Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo | C | 2 | metadata | ✅ | — |
 | `CRM-00.04.04.04` | Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto | C | 2 | metadata | ✅ | — |
 | `CRM-00.04.04.05` | Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan | A | 2 | metadata | ✅ | — |
-| `CRM-00.04.04.06` | Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.04.06` | Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto | C | 2 | integration | ✅ | — |
 | `CRM-00.04.04.07` | Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo | C | 2 | front | ✅ | — |
 | `CRM-00.04.04.08` | Catálogo de módulos con versión, autor, firma y revisión antes de instalar | A | 2 | metadata | ✅ | — |
 | `CRM-00.04.04.09` | Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano | A | 2 | metadata | ✅ | — |
@@ -329,16 +329,16 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.04.05.01` | Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó | C | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.02` | Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código | C | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.03` | Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo | C | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.04` | Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.01` | Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó | C | 2 | integration | ✅ | — |
+| `CRM-00.04.05.02` | Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código | C | 2 | integration | ✅ | — |
+| `CRM-00.04.05.03` | Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo | C | 2 | integration | ✅ | — |
+| `CRM-00.04.05.04` | Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte | C | 2 | integration | ✅ | — |
 | `CRM-00.04.05.05` | Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5) | A | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.06` | El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno | C | 2 | service | ⬜ | — |
-| `CRM-00.04.05.07` | Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla | A | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.08` | Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas | A | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.09` | Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio | A | 2 | integration | ⬜ | — |
-| `CRM-00.04.05.10` | Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.06` | El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno | C | 2 | integration | ✅ | — |
+| `CRM-00.04.05.07` | Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla | A | 2 | integration | ✅ | — |
+| `CRM-00.04.05.08` | Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas | A | 2 | integration | ✅ | — |
+| `CRM-00.04.05.09` | Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio | A | 2 | integration | ✅ | — |
+| `CRM-00.04.05.10` | Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno | A | 2 | integration | ✅ | — |
 
 ### 0.5 Identidad, seguridad y control de acceso
 

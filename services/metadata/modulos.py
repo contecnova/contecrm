@@ -462,7 +462,17 @@ def instalar(
     uow.emitir(
         "module.installed",
         subject=("modulo", fila.id),
-        data={"modulo": clave, "version": version, "elementos": len(elementos)},
+        data={
+            "modulo": clave,
+            "version": version,
+            "elementos": len(elementos),
+            # Los conectores viajan **dentro del evento** (CRM-00.04.04.06).
+            # Quien tiene que materializarlos es `integration`, y no puede leer
+            # este esquema: o van aquí o alguien los vuelve a teclear en la otra
+            # pantalla, que es exactamente el trabajo manual que el módulo
+            # existe para quitar. Son declaración, no datos del tenant: caben.
+            "conectores": [dict(e) for seccion, e in elementos if seccion == "conectores"],
+        },
     )
     return {
         "simulado": False,
@@ -664,6 +674,22 @@ def actualizar(
             "huerfanos": len(huerfanos),
         },
         tenant_id=tenant_id,
+    )
+    # Se emite también al actualizar. Sin este evento, una versión nueva que
+    # corrige el mapa de estados de un transportista se quedaría en el
+    # manifiesto: el módulo diría una cosa y el seguimiento seguiría traduciendo
+    # con la tabla vieja, que es peor que no haberla corregido.
+    uow.emitir(
+        "module.updated",
+        subject=("modulo", actual.id),
+        data={
+            "modulo": clave,
+            "version": version,
+            "desde": anterior,
+            "conectores": [
+                dict(e) for (seccion, _), e in entrantes.items() if seccion == "conectores"
+            ],
+        },
     )
     return {
         "simulado": False,

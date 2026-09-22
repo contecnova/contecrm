@@ -103,6 +103,7 @@ ALIAS_MODELO = {
     "grupo_id": "roltenant",
     "dispositivo_id": "dispositivoconfianza",
     "sincronizacion_id": "sincronizacionsuite",
+    "incidencia_id": "incidenciaencargo",
 }
 
 

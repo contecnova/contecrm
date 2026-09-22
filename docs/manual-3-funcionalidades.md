@@ -6411,3 +6411,183 @@ cliente—, un conector con su mapa de estados del transportista y un SLA semill
 
 Está en el repositorio y **se valida en las pruebas**: un ejemplo que no valida no
 sirve de plantilla para escribir los demás.
+
+## Seguir lo que se le encarga a un tercero (`CRM-00.04.05`)
+
+Un operador logístico sigue envíos. Un instalador sigue instalaciones. Una
+aseguradora sigue peritajes. Los tres necesitan lo mismo: una referencia externa,
+un estado que cambia solo, unos hitos con fecha, unas incidencias y una prueba de
+que se hizo.
+
+**Por eso el modelo es genérico y no de paquetería.** Un objeto «envío» con bultos
+y código postal deja fuera al instalador y al perito; un «encargo seguido» sirve a
+los tres, y el módulo vertical le pone el vocabulario de su sector. Con un modelo
+por sector, cada cliente nuevo sería una versión del producto.
+
+### El encargo seguido (`CRM-00.04.05.01`)
+
+Se crea con `POST /encargos`. Nace con **referencia propia** —la del proveedor
+llega después, y hasta entonces el encargo tiene que poder nombrarse—, con el
+plazo prometido que declare el proveedor y con su primer hito.
+
+Cuelga de lo que lo originó (`objeto_origen`, `objeto_origen_id`) con
+identificadores opacos: el pedido vive en `sales` y el caso en `service`, y
+ningún servicio lee el esquema de otro.
+
+### El mapa de estados lo declara el conector (`CRM-00.04.05.02`)
+
+GLS dice `ENTREGADO`, otro dice `DELIVERED` y un tercero manda un número.
+Traducirlo en el código significa tocar el producto por cada transportista;
+declararlo significa una fila:
+
+```json
+{"ENTREGADO": "completado", "EN_REPARTO": "en_entrega", "INCIDENCIA": "incidencia"}
+```
+
+Los estados del sistema están cerrados a propósito —`creado`, `aceptado`,
+`recogido`, `en_curso`, `en_entrega`, `completado`, `incidencia`, `devuelto`,
+`cancelado`—: con estados libres, dos transportistas reportarían «en_ruta» y
+«EN_RUTA» y ningún informe podría agruparlos.
+
+**Un estado que no está en el mapa no se adivina.** Suponer que es «en curso»
+haría que un envío devuelto siguiera contando como en camino, y nadie lo mira
+hasta que el cliente pregunta. Se guarda sin aplicar y sale en
+`GET /encargos/estados-sin-mapear`, que es la lista a mirar al integrar un
+proveedor nuevo: cada entrada es un evento que se guardó y no hizo nada.
+
+### La ingesta: una puerta para el webhook y para el sondeo (`CRM-00.04.05.03`)
+
+`POST /encargos/eventos` es la misma puerta para las dos vías. Un transportista
+que empuja webhooks y otro al que hay que sondear tienen que acabar en el mismo
+hito, o cada informe dependería de cómo se enteró el sistema.
+
+**Es idempotente** por el identificador del evento del proveedor: las pasarelas
+reintentan, y sin esto un reintento duplicaría el hito y el cliente vería dos
+veces «salió de almacén».
+
+**Y es ordenada por encargo**: un evento anterior al estado actual se guarda pero
+no se aplica. Guardarlo importa —es la prueba de lo que dijo el proveedor y
+cuándo— y no aplicarlo también, porque un paquete que retrocede en la pantalla es
+una llamada al servicio de atención.
+
+Cada hito guarda **cuándo ocurrió según el proveedor** y **cuándo nos enteramos**.
+La diferencia entre las dos es la latencia de la integración, y sin las dos no se
+puede saber si un retraso fue del transportista o nuestro.
+
+### Incidencias con tipología y enlace al caso (`CRM-00.04.05.04`)
+
+El tipo sale del árbol que trae el módulo vertical (`retraso/aduana`,
+`dano/embalaje`). El **responsable** —proveedor, nuestro, cliente, tercero o sin
+determinar— se declara porque decide dos cosas distintas: si se le reclama al
+proveedor y si cuenta en su cumplimiento. «Sin determinar» es el valor de partida
+a propósito: forzar a elegir en caliente hace que se marque lo primero, y ese dato
+después se usa para negociar contratos.
+
+La incidencia **se enlaza al caso de soporte, no lo duplica**: el cliente escribe
+al soporte, no a la integración, y tener dos hilos sobre el mismo problema es cómo
+se le acaba contestando dos cosas distintas.
+
+### El cliente ve su seguimiento, no el nuestro (`CRM-00.04.05.06`)
+
+`GET /encargos/{id}/seguimiento` devuelve estado, hitos, plazo, si vamos tarde y
+las incidencias abiertas. **El coste, el proveedor alternativo, la regla que lo
+eligió y las notas internas no salen**, y eso lo decide el servidor: si dependiera
+del front, bastaría una pantalla nueva que se olvidara de filtrar para enseñarle
+al cliente lo que nos cuesta su envío.
+
+Tampoco salen los hitos no aplicados, ni **de quién fue la culpa** de una
+incidencia: esa conversación se tiene hablando, no leyendo en una pantalla que la
+culpa fue suya.
+
+Un encargo de otra cuenta da **404 y no 403**: un 403 confirma que ese encargo
+existe, y con eso se puede recorrer la base preguntando por referencias.
+
+### Varios proveedores, elegidos por regla y con alternativa (`CRM-00.04.05.07`)
+
+Las reglas usan la **misma gramática** que el reparto de leads y la asignación de
+casos: una sola en todo el producto, y un resultado que se puede explicar. Gana la
+primera que encaja, y `POST /proveedores-servicio/simular` dice **cuál ganó** sin
+crear nada: una elección que no se puede explicar no se puede corregir.
+
+Cada regla lleva sus **alternativos**. Sin ellos, una caída del transportista
+habitual para la operación entera y la única salida es cambiarlos a mano uno a
+uno.
+
+Si no encaja ninguna regla se usa el primer proveedor activo **y se dice**:
+elegir en silencio haría que un encargo saliera por un transportista que nadie
+decidió, y eso solo se descubre en la factura.
+
+### Conciliar lo facturado con lo entregado (`CRM-00.04.05.08`)
+
+`POST /encargos/conciliar` recibe las líneas de la factura del proveedor y
+devuelve **tres listas separadas**, porque llevan a tres acciones distintas:
+
+* lo facturado de más, que **se reclama**,
+* lo facturado sin constar entregado, que **se investiga**,
+* lo entregado y no facturado, que **se provisiona** — nadie quiere la sorpresa de
+  una factura de hace cuatro meses.
+
+Y una cuarta: las referencias que el proveedor factura y aquí no constan. No es un
+error de cálculo: o falta un encargo o la referencia está mal, y las dos exigen
+que alguien mire.
+
+### Cumplimiento por proveedor (`CRM-00.04.05.09`)
+
+`GET /encargos/cumplimiento` da plazo prometido contra real, incidencias por mil,
+encargos mudos y coste medio. Es la tabla con la que se renegocia un contrato, y
+por eso cuenta **solo lo que es suyo**: una incidencia cuya culpa fue del cliente o
+nuestra no cuenta contra el proveedor. Meterlas todas en el mismo saco hace que el
+número no se pueda defender en una reunión, y entonces no se usa.
+
+Un proveedor sin encargos completados con plazo sale como **no medible**, no con
+un 100 %. Recién contratado, no ha demostrado nada, y ese 100 % de cero envíos es
+el número con el que se firma un contrato que después no se cumple.
+
+### El encargo mudo: el fallo que no da error (`CRM-00.04.05.10`)
+
+**El fallo más caro de una integración de seguimiento no es el error: es el
+silencio.** Un envío del que el transportista no dice nada durante cuatro días
+parece que va bien —en la pantalla pone «en tránsito»— y no va bien. Nadie lo mira
+hasta que el cliente llama, y para entonces se ha perdido la semana de margen que
+había para arreglarlo.
+
+`POST /encargos/revisar-silencios` marca los que llevan demasiado callados y emite
+`order.tracked.silent`. Es un evento y no un informe porque el silencio hay que
+empujarlo: nadie entra a mirar una lista de encargos que parecen ir bien.
+
+El plazo es **por proveedor**: uno que reporta cada hora y otro que reporta una vez
+al día no pueden medirse con la misma vara, y usar una sola llenaría la lista de
+falsos avisos hasta que nadie la mire. Un encargo terminado no se marca: un envío
+entregado hace un mes no tiene por qué seguir dando noticias. Y si no hay encargos
+abiertos se dice que **no es medible**, no que todo va bien: un verde vacío se lee
+igual que uno ganado.
+
+### El conector viene dentro del módulo (`CRM-00.04.04.06`)
+
+Un módulo vertical declara sus conectores y `integration` los convierte en
+proveedores. La declaración viaja **dentro del evento** `module.installed` —y de
+`module.updated`, que se emite por esto— porque `integration` no puede leer el
+esquema de `metadata`: si no llegara, habría que teclear el transportista otra vez
+en la otra pantalla, que es justo el trabajo manual que el módulo existe para
+quitar. Son declaración, no datos del tenant: un mapa de estados y un plazo caben
+en un evento.
+
+Tres reglas, y las tres están probadas:
+
+* **Lo que el cliente cambió a mano no se pisa.** Un proveedor creado por una
+  persona no se lo queda el módulo, y perder un plazo ajustado a una ruta concreta
+  se nota semanas después, cuando los informes empiezan a decir que todo llega
+  tarde.
+* **Dos módulos que declaran el mismo transportista no se pisan**: gana el que ya
+  estaba. Instalar un módulo no puede cambiar el comportamiento de otro sin que
+  nadie lo pidiera.
+* **Desinstalar desactiva, no borra.** Los encargos en vuelo siguen apuntando al
+  proveedor, y borrar la ficha dejaría sin nombre ni mapa de estados a envíos que
+  todavía están en la calle.
+
+### Lo que todavía no está
+
+La **prueba de entrega** (`CRM-00.04.05.05`) —el albarán firmado o la foto, dentro
+del corpus documental y enlazado al encargo— no está hecha. El hito guarda lo que
+dice el proveedor, pero el documento que lo demuestra hoy no se archiva, y sin él
+una reclamación se sostiene sobre un registro nuestro en vez de sobre su firma.
