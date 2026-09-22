@@ -102,6 +102,7 @@ ALIAS_MODELO = {
     # rompería el contrato con los IdP.
     "grupo_id": "roltenant",
     "dispositivo_id": "dispositivoconfianza",
+    "sincronizacion_id": "sincronizacionsuite",
 }
 
 

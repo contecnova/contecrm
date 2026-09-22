@@ -274,6 +274,8 @@ def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     return salida
 
 
+from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402
+
 ROUTERS = [
     router,
     router_planes,
@@ -283,4 +285,5 @@ ROUTERS = [
     *ROUTERS_BYOK,
     *ROUTERS_GRC,
     *ROUTERS_COMPROMISOS,
+    *ROUTERS_SUITE,
 ]

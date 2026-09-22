@@ -5268,3 +5268,143 @@ La importación hace el camino inverso: las columnas del fichero que corresponde
 a campos propios se recogen y se validan contra el esquema publicado. Ignorarlas
 dejaría fuera precisamente los campos que el cliente añadió porque le importaban,
 y el importador que «funciona» sería el que pierde la mitad del fichero.
+
+## Gobierno único de la suite (`CRM-00.01.07`)
+
+contecrm ya depende de contecmind para el corpus documental (RT-5) y de
+contecintelligence para la explotación (RT-4). Hasta ahora, el tenant, los
+usuarios y la organización se configuraban **tres veces, a mano, en tres
+sitios**, y ese es el sitio por donde se rompe:
+
+- alguien entra en el CRM y no en el gestor documental, y lo descubre el día que
+  abre un contrato;
+- alguien se va de la empresa, se le da de baja aquí, y conserva el acceso a los
+  informes durante meses;
+- un departamento se reorganiza en una herramienta y no en las otras, y los
+  permisos que cuelgan de él dejan de coincidir sin que nadie lo haya cambiado a
+  propósito.
+
+La regla de la que sale todo lo demás: **contecrm es la fuente, las demás son
+réplicas.** De ahí la identidad única de tenant (`CRM-00.01.07.01`): un mismo
+identificador y unos mismos datos en las tres herramientas. Un único punto de administración, empuje automático y reconciliación
+que enseñe lo que ha divergido.
+
+### La baja pesa más que el alta, y va primero (`CRM-00.01.07.03`)
+
+Un alta que tarda es una molestia: la persona llama y alguien lo mira. **Una baja
+que tarda es una puerta abierta que no ve nadie.** Por eso el desaprovisionamiento
+tiene prioridad sobre todo lo demás en la cola, por eso su fallo se marca como
+grave en la cuarentena, y por eso el panel saca las bajas sin aplicar aparte del
+resto: es lo único que hay que mirar con prisa.
+
+Un detalle que parece menor y no lo es: **la baja se encola aunque el rol del
+usuario ya no esté mapeado.** Negarse a dar de baja a alguien porque su rol
+desapareció del mapeo sería el peor fallo posible — exactamente el caso en que
+hay que echarlo.
+
+### El orden se garantiza por sujeto, no en general (`CRM-00.01.07.10`)
+
+Dos cambios sobre personas distintas pueden aplicarse en cualquier orden; dos
+sobre la misma, no. Aplicar el alta después de la baja —que es lo que pasa con
+reintentos y entrega *at-least-once*— deja dentro al que se fue, y el sistema
+diría que todo fue bien.
+
+La cola guarda **el estado que se quiere, no el historial de intenciones**:
+encolar tres cambios seguidos de la misma persona reemplaza la fila en vez de
+añadir otra. Aplicarlos los tres sería aplicar dos estados intermedios que ya no
+interesan a nadie, y el último podría llegar primero. Y reencolar algo que ya está
+igual allí **no gasta una llamada**: empujar lo mismo otra vez cuenta como
+modificación en la auditoría de la otra herramienta, y eso es ruido que después
+nadie sabe interpretar.
+
+### Un empuje que falla en silencio es peor que no tener empuje (`CRM-00.01.07.02`)
+
+Porque entonces nadie mira. De ahí que se guarden **dos huellas por objeto**: la
+deseada y la aplicada. Con solo un sello de tiempo, un empuje que falló y otro
+que nunca se intentó se parecen demasiado.
+
+Lo que falla se reintenta con **espera creciente** —una herramienta caída diez
+minutos no puede costar diez minutos de martilleo— y tras agotar los intentos va
+a **cuarentena**: ni se reintenta para siempre, que esconde el problema en un log
+que nadie mira, ni se abandona a la primera, que convierte un fallo de red en
+trabajo manual. La cuarentena enseña **qué se mandó**, porque sin eso quien lo
+mira tiene que adivinar si el problema es el dato o la herramienta.
+
+Y una herramienta desactivada **no gasta intentos**: si los gastara, el objeto
+acabaría en cuarentena por algo que no tiene nada que ver con él.
+
+### El mapeo de roles es dato (`CRM-00.01.07.04`)
+
+El mismo usuario es «director comercial» aquí, «editor» en el gestor documental y
+«analista» en el de informes. Programarlo obligaría a tocar el producto cada vez
+que un cliente inventa un rol, que es todas las semanas.
+
+**Un rol sin mapear no concede nada.** Si concediera el rol básico, crear un rol
+nuevo en el CRM daría acceso a las otras herramientas sin que nadie lo hubiera
+decidido. Y un usuario sin rol mapeado **no se crea allí**: una cuenta sin rol no
+sirve para nada y encima hay que acordarse de darla de baja.
+
+Cuando encajan varios roles gana **el de mayor precedencia declarada**, no el
+primero: un usuario con dos roles no puede recibir un permiso distinto según el
+orden en que estén guardados sus roles.
+
+### La organización se define una vez (`CRM-00.01.07.05`)
+
+Áreas y departamentos salen del árbol de unidades del tenant y se replican a cada
+herramienta con su propia forma. Definirlo en tres sitios garantiza que a los tres
+meses son tres árboles distintos.
+
+Va **plano y con el padre dentro**, no anidado: un árbol anidado obliga a cada
+consumidor a recorrerlo, y la mitad de las herramientas quieren la lista.
+
+### Reconciliación: tres divergencias, tres conversaciones (`CRM-00.01.07.07`)
+
+- **Falta allí** — el empuje no llegó. Es el caso benigno: se reencola.
+- **Sobra allí** — hay alguien que aquí ya no está. Es el peligroso: suele ser
+  una baja que no se aplicó, y es literalmente un acceso que sigue abierto. El
+  aviso va pegado al resultado porque es lo que hay que mirar primero.
+- **Difiere** — alguien lo cambió en la otra herramienta. **No se pisa sin
+  decirlo**: puede ser un ajuste deliberado del administrador de allí, y
+  sobrescribirlo en silencio es cómo se pierde la confianza en el empuje
+  automático. Repararlo exige pedirlo explícitamente.
+
+Y cuando el conector **no sabe leer** el estado remoto, se dice. «No se ha podido
+comprobar» y «está todo bien» son cosas distintas, y confundirlas es precisamente
+por lo que nadie se fía de los paneles de sincronización.
+
+### Simular antes de aplicar (`CRM-00.01.07.11`)
+
+El error caro aquí no es el técnico: es **desactivar a media plantilla** en el
+gestor documental por un mapeo de roles mal escrito, y enterarse cuando llaman.
+La simulación dice, herramienta a herramienta, qué se crearía, qué cambiaría y
+qué se desactivaría.
+
+### Conectores: lo genérico es el suelo (`CRM-00.01.07.08`)
+
+Una herramienta cualquiera se conecta declarando **dirección, credencial y el
+mapeo de campos y de roles**. No hace falta escribir código, y por tanto un
+cliente con una herramienta que no conocemos no obliga a tocar el producto.
+
+Los conectores nativos —contecmind, contecintelligence— van **encima y heredan el
+transporte**: solo cambian lo que de verdad es distinto, que son sus rutas.
+Reescribir el transporte entero por producto es lo que hace que mantener cinco
+conectores sea imposible. Y siempre hay conector: un tipo desconocido cae en el
+genérico en vez de quedarse sin transporte.
+
+La dirección pasa por el **guard de salidas**, igual que un webhook o un IdP:
+aquí viajan datos de personas y una credencial de administración, y una dirección
+apuntando a la red interna convertiría el empuje en una forma de hablar con lo
+que no se alcanza desde fuera. Las credenciales se guardan **cifradas**: en claro
+serían la llave de administración de otra herramienta en una tabla que consulta
+media aplicación.
+
+El transporte **nunca lanza hacia arriba**: devuelve el resultado y la cola decide.
+Una excepción que subiera desde un envío detendría el proceso de todos los demás
+objetos del lote por culpa de uno.
+
+### Auditoría transversal (`CRM-00.01.07.12`)
+
+Un solo registro que dice quién cambió qué y **en qué herramienta acabó
+aplicándose**. Sin él, contestar «¿por qué este usuario sigue entrando en el
+gestor documental?» obliga a mirar tres registros de auditoría distintos y a
+cruzarlos de memoria.

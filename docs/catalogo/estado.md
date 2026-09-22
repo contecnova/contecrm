@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 302 hecho · ⬜ 384 pendiente
+**686 capacidades**: ✅ 312 hecho · ⬜ 374 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-262 capacidades · ✅ 176 · ⬜ 86
+262 capacidades · ✅ 186 · ⬜ 76
 
 ### 0.1 Multi-tenancy
 
@@ -99,18 +99,18 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.01.07.01` | Identidad única de tenant en toda la suite: un mismo identificador y unos mismos datos de la organización en contecrm, contecmind y contecintelligence | C | 1 | tenancy | ⬜ | — |
-| `CRM-00.01.07.02` | Alta del tenant en cascada: dar de alta un cliente en contecrm lo provisiona en las herramientas conectadas, o dice exactamente cuál ha fallado y por qué | C | 1 | tenancy | ⬜ | — |
-| `CRM-00.01.07.03` | Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez | C | 1 | identity | ⬜ | — |
-| `CRM-00.01.07.04` | Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa | C | 1 | identity | ⬜ | — |
-| `CRM-00.01.07.05` | Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma | C | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.01` | Identidad única de tenant en toda la suite: un mismo identificador y unos mismos datos de la organización en contecrm, contecmind y contecintelligence | C | 1 | tenancy | ✅ | — |
+| `CRM-00.01.07.02` | Alta del tenant en cascada: dar de alta un cliente en contecrm lo provisiona en las herramientas conectadas, o dice exactamente cuál ha fallado y por qué | C | 1 | tenancy | ✅ | — |
+| `CRM-00.01.07.03` | Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez | C | 1 | identity | ✅ | — |
+| `CRM-00.01.07.04` | Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa | C | 1 | identity | ✅ | — |
+| `CRM-00.01.07.05` | Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma | C | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.06` | Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado | C | 1 | front | ⬜ | — |
-| `CRM-00.01.07.07` | Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito | C | 1 | tenancy | ⬜ | — |
-| `CRM-00.01.07.08` | Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence | A | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.07` | Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito | C | 1 | tenancy | ✅ | — |
+| `CRM-00.01.07.08` | Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence | A | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.09` | SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión | C | 1 | identity | ⬜ | — |
-| `CRM-00.01.07.10` | Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola | A | 1 | tenancy | ⬜ | — |
-| `CRM-00.01.07.11` | Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta | A | 2 | tenancy | ⬜ | — |
-| `CRM-00.01.07.12` | Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose | A | 2 | tenancy | ⬜ | — |
+| `CRM-00.01.07.10` | Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola | A | 1 | tenancy | ✅ | — |
+| `CRM-00.01.07.11` | Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta | A | 2 | tenancy | ✅ | — |
+| `CRM-00.01.07.12` | Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose | A | 2 | tenancy | ✅ | — |
 | `CRM-00.01.07.13` | Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta | A | 2 | tenancy | ⬜ | — |
 
 ### 0.2 Arquitectura headless / API-first

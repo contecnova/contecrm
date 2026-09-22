@@ -259,8 +259,16 @@ from services.tenancy.grc import (  # noqa: E402
     EvaluacionControl,
     Riesgo,
 )
+from services.tenancy.suite import (  # noqa: E402
+    AplicacionSuite,
+    HerramientaConectada,
+    SincronizacionSuite,
+)
 
 __all__ = [
+    "AplicacionSuite",
+    "HerramientaConectada",
+    "SincronizacionSuite",
     "VersionAjuste",
     "Control",
     "EvaluacionControl",
