@@ -334,7 +334,22 @@ from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.marketing.campanas import (  # noqa: E402
+    Campana,
+    ContactoEnviado,
+    MiembroCampana,
+    Rebote,
+    ReglaFatiga,
+    ToqueCampana,
+)
+
 __all__ = [
+    "Campana",
+    "ContactoEnviado",
+    "MiembroCampana",
+    "Rebote",
+    "ReglaFatiga",
+    "ToqueCampana",
     "BloqueoLegal",
     "PerfilMarketing",
     "CalendarioLaboral",

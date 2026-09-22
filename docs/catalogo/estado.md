@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 362 hecho · ⬜ 324 pendiente
+**707 capacidades**: ✅ 372 hecho · ⬜ 335 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-262 capacidades · ✅ 187 · ⬜ 75
+283 capacidades · ✅ 187 · ⬜ 96
 
 ### 0.1 Multi-tenancy
 
@@ -309,6 +309,37 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.03.11` | Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants | A | 2 | metadata | ✅ | — |
 | `CRM-00.04.03.12` | Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira | A | 1 | metadata | ✅ | — |
 
+#### CRM-00.04.04 · Módulos verticales (caracterización por sector)
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-00.04.04.01` | Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado | C | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.02` | Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás | C | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.03` | Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo | C | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.04` | Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto | C | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.05` | Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.06` | Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.04.07` | Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo | C | 2 | front | ⬜ | — |
+| `CRM-00.04.04.08` | Catálogo de módulos con versión, autor, firma y revisión antes de instalar | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.09` | Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.10` | Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.11` | Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás | A | 2 | metadata | ⬜ | — |
+
+#### CRM-00.04.05 · Seguimiento de servicio externo (trazabilidad con proveedor)
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-00.04.05.01` | Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.02` | Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.03` | Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.04` | Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte | C | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.05` | Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5) | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.06` | El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno | C | 2 | service | ⬜ | — |
+| `CRM-00.04.05.07` | Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.08` | Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.09` | Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.10` | Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno | A | 2 | integration | ⬜ | — |
+
 ### 0.5 Identidad, seguridad y control de acceso
 
 #### CRM-00.05.01 · Autenticación
@@ -508,7 +539,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 10 · ⬜ 44
+54 capacidades · ✅ 20 · ⬜ 34
 
 ### 2.1 Segmentación y audiencias
 
@@ -522,7 +553,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.01.01.04` | Estimación de tamaño de audiencia en tiempo real antes de guardar | A | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.05` | Segmentos consultables por API para activarlos en canales externos | A | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.06` | Exclusiones, supresiones globales y listas negras | C | 4 | marketing | ✅ | — |
-| `CRM-02.01.01.07` | Solapamiento entre segmentos y análisis de canibalización | D | 4 | marketing | ⬜ | — |
+| `CRM-02.01.01.07` | Solapamiento entre segmentos y análisis de canibalización | D | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.08` | Segmentación predictiva por afinidad, propensión o valor esperado | A | 5 | intelligence | ⬜ | — |
 | `CRM-02.01.01.09` | Sincronización de audiencias con plataformas publicitarias | A | 4 | marketing | ⬜ | — |
 
@@ -543,13 +574,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.02.01.01` | Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste | C | 4 | marketing | ⬜ | contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto) |
-| `CRM-02.02.01.02` | Objetivos, KPIs y comparativa de plan vs. real | A | 4 | marketing | ⬜ | contecflow-PSA:app/services/okr_service.py + budgets_service.py |
-| `CRM-02.02.01.03` | Calendario de marketing compartido y gestión de solapamientos | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.01.04` | Miembros de campaña con estados de progresión y fuente de alta | C | 4 | marketing | ⬜ | — |
-| `CRM-02.02.01.05` | Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.01.06` | Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.01.07` | Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento | A | 4 | marketing | ⬜ | contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia) |
+| `CRM-02.02.01.01` | Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste | C | 4 | marketing | ✅ | contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto) |
+| `CRM-02.02.01.02` | Objetivos, KPIs y comparativa de plan vs. real | A | 4 | marketing | ✅ | contecflow-PSA:app/services/okr_service.py + budgets_service.py |
+| `CRM-02.02.01.03` | Calendario de marketing compartido y gestión de solapamientos | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.01.04` | Miembros de campaña con estados de progresión y fuente de alta | C | 4 | marketing | ✅ | — |
+| `CRM-02.02.01.05` | Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.01.06` | Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.01.07` | Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento | A | 4 | marketing | ✅ | contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia) |
 
 #### CRM-02.02.02 · Journey builder / automatización de marketing
 
@@ -560,7 +591,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.02.02.03` | Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió) | A | 4 | marketing | ⬜ | — |
 | `CRM-02.02.02.04` | Tests A/B y multivariante dentro del recorrido con selección automática de ganador | A | 4 | marketing | ⬜ | — |
 | `CRM-02.02.02.05` | Optimización de hora y canal de envío por destinatario | A | 5 | intelligence | ⬜ | — |
-| `CRM-02.02.02.06` | Reglas de fatiga y frecuencia máxima de contacto por persona | A | 4 | marketing | ⬜ | — |
+| `CRM-02.02.02.06` | Reglas de fatiga y frecuencia máxima de contacto por persona | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.07` | Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario | A | 4 | marketing | ⬜ | — |
 | `CRM-02.02.02.08` | Analítica por nodo del recorrido con embudo visual | A | 4 | marketing | ⬜ | — |
 | `CRM-02.02.02.09` | Recorridos para B2B basados en cuenta (ABM) y no solo en persona | A | 4 | marketing | ⬜ | — |
@@ -574,7 +605,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.03.01.01` | Editor de plantillas con bloques reutilizables y contenido dinámico | C | 4 | marketing | ⬜ | contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py |
 | `CRM-02.03.01.02` | Personalización con tokens, contenido condicional y recomendaciones | A | 4 | marketing | ⬜ | — |
 | `CRM-02.03.01.03` | Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up | A | 4 | marketing | ⬜ | — |
-| `CRM-02.03.01.04` | Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación | C | 4 | marketing | ⬜ | — |
+| `CRM-02.03.01.04` | Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación | C | 4 | marketing | ✅ | — |
 | `CRM-02.03.01.05` | Preferencias de suscripción granulares y centro de preferencias alojable | C | 4 | marketing | ⬜ | — |
 | `CRM-02.03.01.06` | Previsualización multi-cliente de correo y test de spam score | A | 4 | marketing | ⬜ | — |
 | `CRM-02.03.01.07` | Envío transaccional separado del promocional, con dominios distintos | A | 4 | marketing | ⬜ | — |

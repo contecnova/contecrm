@@ -6154,3 +6154,133 @@ distinto. Publicar una versión nueva **no repuntúa a nadie por sí solo**, as�
 hay una lista de los que se han quedado atrás: dejar la mitad de la base con el
 modelo viejo hace que dos leads iguales salgan distintos, y entonces la lista deja
 de servir para ordenar por prioridad, que es lo único para lo que se usa.
+
+## Campañas, atribución y presión de contacto (`CRM-02.02.01`, `CRM-02.02.02.06`, `CRM-02.03.01.04`)
+
+Marketing se mide de tres maneras y las tres tienen que cuadrar entre sí: **cuánto
+costó**, **qué pasó** y **cuánto trajo**. Cuando viven en tres sitios distintos —y
+viven, casi siempre en tres hojas de cálculo— la conversación de final de
+trimestre empieza con tres números que no coinciden y acaba sin decidir nada.
+
+### La jerarquía es real, no una etiqueta (`CRM-02.02.01.01`)
+
+Programa → campaña → táctica, y se comprueba: una táctica no puede tener debajo un
+programa. Sin la comprobación, el árbol se desordena en dos semanas y el consumo
+de presupuesto deja de poder subir.
+
+El presupuesto se declara arriba y **el gasto se imputa abajo**, donde ocurre, y
+sube al consultarlo — no al escribirlo. Sumarlo hacia arriba al escribir obligaría
+a recalcularlo todo cada vez que alguien mueve una táctica de campaña, y el primer
+fallo dejaría dos totales distintos sin forma de saber cuál es bueno.
+
+Si lo repartido abajo **supera lo asignado arriba, se dice**: no es un fallo, es
+un aviso de planificación, pero enseñarlo evita la sorpresa de octubre.
+
+Un **evento o feria es una campaña**, no una tabla aparte (`CRM-02.02.01.07`):
+tiene presupuesto, miembros y resultados, y separarlo obligaría a duplicar la
+atribución y el ROI solo para él.
+
+### El calendario: lo que se solapa no son las fechas (`CRM-02.02.01.03`)
+
+Es **la audiencia y el canal**. Dos campañas la misma semana a públicos distintos
+no molestan a nadie; dos al mismo público por el mismo canal sí, y esa es la que
+hay que ver antes de programar la tercera.
+
+Y se dice cuántas campañas en curso **no tienen fechas**: quedan fuera del
+calendario, y quien lo mira creería que no hay nada más en marcha.
+
+### Miembros y embudo (`CRM-02.02.01.04`)
+
+Repetir el alta **no reinicia el estado**: quien ya está en «clicado» no puede
+volver a «objetivo» porque alguien recargó el segmento — el embudo se quedaría a
+cero cada vez que se refresca la audiencia.
+
+El embudo **no retrocede**. Que alguien abra un correo después de haber respondido
+no lo devuelve a «abierto»: el embudo mide hasta dónde llegó cada uno, y permitir
+el retroceso haría que las tasas de conversión bajaran solas con el tiempo sin que
+nadie hubiera hecho nada peor.
+
+Y se cuenta **acumulado**, no por estado actual: quien respondió también abrió, y
+contar solo el actual daría «5 abiertos y 40 respondidos», que no se sostiene y
+hace que nadie se crea el resto del informe.
+
+En eventos, **inscribirse y aparecer no es lo mismo**, y la diferencia es el dato
+que decide si el evento salió bien. Se dice además cuántos **no se marcaron**: sin
+eso, una asistencia baja podría ser que no vino nadie o que nadie pasó lista, y
+son dos problemas opuestos.
+
+### La atribución es un modelo, no una verdad (`CRM-02.02.01.06`)
+
+First touch y last touch dan **respuestas opuestas sobre los mismos datos**, y las
+dos son defendibles: el primero premia a quien trajo al desconocido y el segundo a
+quien cerró. Por eso se calculan varios modelos sobre los mismos toques y se
+enseñan juntos — elegir uno y presentarlo como «el ROI» es lo que hace que nadie
+se crea los informes de marketing.
+
+Están los seis habituales: primer toque, último toque, lineal, en U, en W y por
+decaimiento. El decaimiento lleva **semivida configurable**: sin ella no hay
+decaimiento, hay una constante disfrazada.
+
+La **ventana** existe porque un toque de hace tres años no trajo esta venta. Sin
+ella, la primera campaña que hizo la empresa se lleva el crédito de todo lo que
+pase después — el resultado favorito de quien la lanzó y el motivo por el que
+nadie se fía del informe.
+
+Los toques **sin campaña no se descartan**: se agrupan como «(sin campaña)».
+Descartarlos repartiría todo el crédito entre las campañas y haría que el tráfico
+directo y el boca a boca parecieran no existir. Y **sin toques no se atribuye a
+nadie**: repartirlo «a la campaña más reciente» inventaría un origen que no
+consta.
+
+Los toques se replican desde `sales` por la misma razón que el perfil: `marketing`
+no puede leer su esquema, y la atribución recorre todos los toques de un lead —
+hacerlo por HTTP, por cada oportunidad de un informe trimestral, serían decenas de
+miles de llamadas.
+
+### ROI que dice cuándo no sabe (`CRM-02.02.01.05`, `CRM-02.02.01.02`)
+
+Los ingresos atribuidos llegan **de fuera**: los calcula quien conoce las
+oportunidades, que es `sales`. Se piden como parámetro en vez de inventarse un
+número, y si no llegan **se dice que el ROI no es medible** en vez de devolver
+cero — que se leería como «no trajo nada».
+
+El plan se compara con lo real por objetivo declarado, que es la otra mitad de la
+pregunta: un coste por lead bueno con la mitad de los leads previstos no es una
+campaña que fue bien.
+
+### Presión de contacto (`CRM-02.02.02.06`)
+
+Se **cuenta aunque las reglas estén apagadas**. Saber a cuánta gente le hemos
+escrito cuatro veces esta semana es la diferencia entre una campaña y una
+denuncia, y ese dato solo existe si se cuenta desde el principio: cuando alguien
+pregunta, ya es tarde para empezar a contar.
+
+Hay **dos límites y no uno**: un tope semanal no impide mandar los tres el mismo
+martes por la mañana, que es exactamente lo que el destinatario percibe como
+acoso.
+
+Las comunicaciones **transaccionales no cuentan**: un aviso de servicio, una
+factura o la respuesta a un caso no son marketing, y contarlas haría que un
+cliente con muchas incidencias dejara de recibir la información que ha pedido.
+
+Y la comprobación **devuelve la decisión en vez de lanzar**: hay envíos legítimos
+que justifican saltarse el tope —el aviso de fin de contrato— y esa decisión tiene
+que quedar en quien envía.
+
+### Rebotes y quejas (`CRM-02.03.01.04`)
+
+**Un duro suprime al instante**: la dirección no existe, y seguir escribiéndole es
+lo que hunde la reputación de envío del dominio — y con ella la entrega de todos
+los correos, incluidos los que sí importan.
+
+**Una queja suprime y es permanente**: alguien ha pulsado «esto es spam».
+
+**Los blandos se acumulan.** Uno aislado es normal —el buzón estaba lleno—; varios
+seguidos son una dirección muerta. Sin el histórico hay que elegir entre suprimir
+al primer fallo, perdiendo contactos buenos, o no suprimir nunca y hundir la
+reputación.
+
+Las tasas se enseñan **con el umbral del sector al lado**: una tasa de queja del
+0,3 % suena a poco y es el triple de lo que los proveedores toleran antes de
+empezar a mandar a la carpeta de spam. Un número sin referencia no dice si hay que
+hacer algo.

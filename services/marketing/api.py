@@ -401,4 +401,6 @@ def listar_modelos(db: DbDep, principal: AutenticadoDep) -> Any:
     ]
 
 
-ROUTERS = [router_segmentos, router_supresiones, router_puntuacion]
+from services.marketing.api_campanas import ROUTERS_CAMPANAS  # noqa: E402
+
+ROUTERS = [router_segmentos, router_supresiones, router_puntuacion, *ROUTERS_CAMPANAS]

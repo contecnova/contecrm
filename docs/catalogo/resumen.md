@@ -6,9 +6,9 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 262 | 187 | 0 | 75 |
+| 0 — Plataforma y arquitectura transversal | 283 | 187 | 0 | 96 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 31 | 0 | 23 |
-| 2 — Marketing | 54 | 10 | 0 | 44 |
+| 2 — Marketing | 54 | 20 | 0 | 34 |
 | 3 — Ventas (SFA) | 65 | 17 | 0 | 48 |
 | 4 — Servicio y atención al cliente | 62 | 39 | 0 | 23 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
@@ -20,9 +20,9 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 268 | 216 |
-| A — Avanzado | 374 | 141 |
-| D — Diferencial | 44 | 5 |
+| C — Core | 279 | 219 |
+| A — Avanzado | 384 | 147 |
+| D — Diferencial | 44 | 6 |
 
 ## Por fase
 
@@ -30,15 +30,15 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 152 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 138 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 154 | 22 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 175 | 22 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 39 |
-| 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 10 |
+| 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 20 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 0 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 1 |
 
 ## Reutilización
 
-**325 de 686** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**325 de 707** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

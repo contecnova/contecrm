@@ -419,6 +419,58 @@ modulos:
               - {id: CRM-00.04.03.11, c: A, fase: 2, svc: metadata, estado: hecho, t: "Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants"}
               - {id: CRM-00.04.03.12, c: A, fase: 1, svc: metadata, estado: hecho, t: "Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira"}
 
+          - id: CRM-00.04.04
+            nombre: Módulos verticales (caracterización por sector)
+            # La extensión sin código (CRM-00.04.03) resuelve el campo que falta
+            # en una implantación. Esto resuelve lo otro: que el producto llegue
+            # ya caracterizado para un sector. Un operador logístico no necesita
+            # «un campo más» — necesita envíos, expediciones, trazabilidad con el
+            # transportista, incidencias con su tipología, y que su cliente vea
+            # el seguimiento sin llamar.
+            #
+            # Un módulo es un PAQUETE INSTALABLE: objetos, campos, taxonomías,
+            # estados, flujos, permisos, pantallas y conectores, todo declarado.
+            # Que el producto sea headless lo hace posible —las pantallas salen
+            # de la superficie declarada— pero no lo hace gratis: lo que decide
+            # si esto funciona a los dos años es la ACTUALIZACIÓN, porque el
+            # cliente habrá tocado lo que el módulo trajo y una actualización que
+            # pise sus cambios se deja de instalar.
+            capacidades:
+              - {id: CRM-00.04.04.01, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado"}
+              - {id: CRM-00.04.04.02, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás"}
+              - {id: CRM-00.04.04.03, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo"}
+              - {id: CRM-00.04.04.04, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto"}
+              - {id: CRM-00.04.04.05, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan"}
+              - {id: CRM-00.04.04.06, c: C, fase: 2, svc: integration, estado: pendiente, t: "Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto"}
+              - {id: CRM-00.04.04.07, c: C, fase: 2, svc: front, estado: pendiente, t: "Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo"}
+              - {id: CRM-00.04.04.08, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Catálogo de módulos con versión, autor, firma y revisión antes de instalar"}
+              - {id: CRM-00.04.04.09, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano"}
+              - {id: CRM-00.04.04.10, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant"}
+              - {id: CRM-00.04.04.11, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás"}
+
+          - id: CRM-00.04.05
+            nombre: Seguimiento de servicio externo (trazabilidad con proveedor)
+            # El caso que motiva los módulos verticales, generalizado: cualquier
+            # cosa que se encarga a un tercero y hay que seguir —un envío, una
+            # instalación, una reparación, un peritaje— con su estado, sus hitos,
+            # sus incidencias y su prueba de entrega.
+            #
+            # Se declara GENÉRICO a propósito. Un modelo de «envío» con campos de
+            # paquetería dejaría fuera al instalador y al perito; un modelo de
+            # «encargo seguido» con estados declarados por el módulo sirve a los
+            # tres, y el módulo vertical le pone el vocabulario de su sector.
+            capacidades:
+              - {id: CRM-00.04.05.01, c: C, fase: 2, svc: integration, estado: pendiente, t: "Encargo seguido: objeto genérico con proveedor, referencia externa, hitos y estado, ligado al registro que lo originó"}
+              - {id: CRM-00.04.05.02, c: C, fase: 2, svc: integration, estado: pendiente, t: "Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código"}
+              - {id: CRM-00.04.05.03, c: C, fase: 2, svc: integration, estado: pendiente, t: "Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo"}
+              - {id: CRM-00.04.05.04, c: C, fase: 2, svc: integration, estado: pendiente, t: "Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte"}
+              - {id: CRM-00.04.05.05, c: A, fase: 2, svc: integration, estado: pendiente, t: "Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5)"}
+              - {id: CRM-00.04.05.06, c: C, fase: 2, svc: service, estado: pendiente, t: "El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno"}
+              - {id: CRM-00.04.05.07, c: A, fase: 2, svc: integration, estado: pendiente, t: "Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla"}
+              - {id: CRM-00.04.05.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas"}
+              - {id: CRM-00.04.05.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Cumplimiento por proveedor: plazos prometidos contra reales, incidencias por mil y coste medio"}
+              - {id: CRM-00.04.05.10, c: A, fase: 2, svc: integration, estado: pendiente, t: "Un encargo sin novedad del proveedor durante su plazo se marca como mudo y se avisa, en vez de darse por bueno"}
+
       - id: "0.5"
         nombre: Identidad, seguridad y control de acceso
         funciones:
@@ -621,7 +673,7 @@ modulos:
               - {id: CRM-02.01.01.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Estimación de tamaño de audiencia en tiempo real antes de guardar"}
               - {id: CRM-02.01.01.05, c: A, fase: 4, svc: marketing, estado: hecho, t: "Segmentos consultables por API para activarlos en canales externos"}
               - {id: CRM-02.01.01.06, c: C, fase: 4, svc: marketing, estado: hecho, t: "Exclusiones, supresiones globales y listas negras"}
-              - {id: CRM-02.01.01.07, c: D, fase: 4, svc: marketing, estado: pendiente, t: "Solapamiento entre segmentos y análisis de canibalización"}
+              - {id: CRM-02.01.01.07, c: D, fase: 4, svc: marketing, estado: hecho, t: "Solapamiento entre segmentos y análisis de canibalización"}
               - {id: CRM-02.01.01.08, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Segmentación predictiva por afinidad, propensión o valor esperado"}
               - {id: CRM-02.01.01.09, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Sincronización de audiencias con plataformas publicitarias"}
           - id: CRM-02.01.02
@@ -639,13 +691,13 @@ modulos:
           - id: CRM-02.02.01
             nombre: Gestión de campañas
             capacidades:
-              - {id: CRM-02.02.01.01, c: C, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto)", t: "Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste"}
-              - {id: CRM-02.02.01.02, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecflow-PSA:app/services/okr_service.py + budgets_service.py", t: "Objetivos, KPIs y comparativa de plan vs. real"}
-              - {id: CRM-02.02.01.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Calendario de marketing compartido y gestión de solapamientos"}
-              - {id: CRM-02.02.01.04, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Miembros de campaña con estados de progresión y fuente de alta"}
-              - {id: CRM-02.02.01.05, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline"}
-              - {id: CRM-02.02.01.06, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven"}
-              - {id: CRM-02.02.01.07, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia)", t: "Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento"}
+              - {id: CRM-02.02.01.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto)", t: "Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste"}
+              - {id: CRM-02.02.01.02, c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py + budgets_service.py", t: "Objetivos, KPIs y comparativa de plan vs. real"}
+              - {id: CRM-02.02.01.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Calendario de marketing compartido y gestión de solapamientos"}
+              - {id: CRM-02.02.01.04, c: C, fase: 4, svc: marketing, estado: hecho, t: "Miembros de campaña con estados de progresión y fuente de alta"}
+              - {id: CRM-02.02.01.05, c: A, fase: 4, svc: marketing, estado: hecho, t: "Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline"}
+              - {id: CRM-02.02.01.06, c: A, fase: 4, svc: marketing, estado: hecho, t: "Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven"}
+              - {id: CRM-02.02.01.07, c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia)", t: "Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento"}
           - id: CRM-02.02.02
             nombre: Journey builder / automatización de marketing
             capacidades:
@@ -654,7 +706,7 @@ modulos:
               - {id: CRM-02.02.02.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió)"}
               - {id: CRM-02.02.02.04, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Tests A/B y multivariante dentro del recorrido con selección automática de ganador"}
               - {id: CRM-02.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Optimización de hora y canal de envío por destinatario"}
-              - {id: CRM-02.02.02.06, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Reglas de fatiga y frecuencia máxima de contacto por persona"}
+              - {id: CRM-02.02.02.06, c: A, fase: 4, svc: marketing, estado: hecho, t: "Reglas de fatiga y frecuencia máxima de contacto por persona"}
               - {id: CRM-02.02.02.07, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario"}
               - {id: CRM-02.02.02.08, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Analítica por nodo del recorrido con embudo visual"}
               - {id: CRM-02.02.02.09, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Recorridos para B2B basados en cuenta (ABM) y no solo en persona"}
@@ -667,7 +719,7 @@ modulos:
               - {id: CRM-02.03.01.01, c: C, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py", t: "Editor de plantillas con bloques reutilizables y contenido dinámico"}
               - {id: CRM-02.03.01.02, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Personalización con tokens, contenido condicional y recomendaciones"}
               - {id: CRM-02.03.01.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up"}
-              - {id: CRM-02.03.01.04, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación"}
+              - {id: CRM-02.03.01.04, c: C, fase: 4, svc: marketing, estado: hecho, t: "Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación"}
               - {id: CRM-02.03.01.05, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Preferencias de suscripción granulares y centro de preferencias alojable"}
               - {id: CRM-02.03.01.06, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Previsualización multi-cliente de correo y test de spam score"}
               - {id: CRM-02.03.01.07, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Envío transaccional separado del promocional, con dominios distintos"}
