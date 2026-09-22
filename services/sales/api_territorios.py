@@ -1,0 +1,276 @@
+"""API de territorios, cuotas y capacidad (CRM-03.02.02)."""
+
+from __future__ import annotations
+
+from datetime import date
+from decimal import Decimal
+from typing import Any
+from uuid import UUID
+
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from services.sales import territorios as ter
+
+router = APIRouter(prefix="/territorios", tags=["territorios"])
+router_cuotas = APIRouter(prefix="/cuotas", tags=["territorios"])
+
+
+class CrearTerritorio(BaseModel):
+    clave: str = Field(..., min_length=1, max_length=80)
+    nombre: str = Field(..., min_length=1, max_length=200)
+    descripcion: str = ""
+    criterios: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="geografia · sector · tamano · producto · canal · nominal",
+        examples=[
+            [
+                {
+                    "tipo": "geografia",
+                    "condiciones": [
+                        {"atributo": "cuenta.provincia", "operador": "en", "valor": ["B", "GI"]}
+                    ],
+                }
+            ]
+        ],
+    )
+    padre_id: UUID | None = None
+    prioridad: int = Field(
+        100,
+        description=(
+            "Cuando dos encajan gana el más bajo. Declarado, no implícito: con "
+            "desempate por orden de inserción, el dueño de una cuenta cambiaría al "
+            "restaurar una copia"
+        ),
+    )
+    responsable_id: UUID | None = None
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Crear un territorio",
+    description=(
+        "Nace **en borrador** a propósito: es lo que permite montar el mapa entero "
+        "—con sus solapes y sus huecos— antes de que mueva una sola cuenta."
+    ),
+)
+def crear(datos: CrearTerritorio, uow: UowDep) -> Any:
+    fila, avisos = ter.crear(uow, **datos.model_dump())
+    return {"id": str(fila.id), "clave": fila.clave, "estado": fila.estado, "avisos": avisos}
+
+
+@router.get(
+    "",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="Territorios del tenant",
+)
+def listar(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(ter.Territorio)
+            .where(ter.Territorio.tenant_id == principal.tenant_id)
+            .order_by(ter.Territorio.prioridad, ter.Territorio.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "estado": f.estado,
+            "prioridad": f.prioridad,
+            "responsable_id": str(f.responsable_id) if f.responsable_id else None,
+        }
+        for f in filas
+    ]
+
+
+class Cuentas(BaseModel):
+    cuentas: list[dict[str, Any]] = Field(
+        ...,
+        description="Las cuentas a repartir, con los atributos que miran los criterios",
+        examples=[[{"id": "…", "nombre": "Acme", "provincia": "B", "sector": "industria"}]],
+    )
+
+
+@router.post(
+    "/simular",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="Qué pasaría si se publicara el mapa",
+    description=(
+        "**Publicar y ver qué pasa** significa que doscientas cuentas cambian de "
+        "dueño el lunes por la mañana, y deshacerlo no devuelve las conversaciones "
+        "que ya se tuvieron.\n\n"
+        "Dice lo que cambia, lo que se queda **sin territorio** y lo que queda en "
+        "**solape** —dos territorios con la misma prioridad—, que es el error que "
+        "produce una asignación dependiente del orden alfabético y que nadie busca "
+        "hasta que dos comerciales discuten."
+    ),
+)
+def simular(datos: Cuentas, db: DbDep, principal: AutenticadoDep) -> Any:
+    return ter.simular(db, principal.tenant_id, datos.cuentas)
+
+
+@router.post(
+    "/{territorio_id}/publicar",
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Publicar un territorio",
+)
+def publicar(territorio_id: UUID, uow: UowDep) -> Any:
+    return ter.publicar(uow, territorio_id)
+
+
+@router.post(
+    "/aplicar",
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Escribir las asignaciones calculadas",
+)
+def aplicar(datos: Cuentas, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return ter.aplicar(uow, principal.tenant_id, datos.cuentas)
+
+
+@router.post(
+    "/resolver",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="A qué territorio va esta cuenta, y por qué",
+    description=(
+        "El **porqué** se devuelve siempre. Sin él, «¿por qué esta cuenta es de "
+        "Norte?» no tiene respuesta, y esa es justo la pregunta que abre la "
+        "discusión entre dos comerciales — que no se cierra con un número, se "
+        "cierra con una regla."
+    ),
+)
+def resolver(
+    cuenta: dict[str, Any], db: DbDep, principal: AutenticadoDep, cuenta_id: UUID | None = None
+) -> Any:
+    return ter.resolver(db, principal.tenant_id, cuenta, cuenta_id=cuenta_id)
+
+
+class Excepcion(BaseModel):
+    cuenta_id: UUID
+    territorio_id: UUID
+    motivo: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "Obligatorio. Una excepción sin motivo es indistinguible de un error, y "
+            "nadie se atreve a quitarla dos años después"
+        ),
+    )
+    hasta: date | None = None
+
+
+@router.post(
+    "/excepciones",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Sacar una cuenta de su territorio por decisión",
+    description=(
+        "La excepción **manda sobre cualquier regla**: es el punto entero de que "
+        "exista. Siempre hay una cuenta nominal que lleva el director aunque esté "
+        "en la zona de otro, y si no se puede declarar, alguien la reasigna a mano "
+        "y el siguiente recálculo se la quita — y entonces nadie vuelve a fiarse "
+        "del recálculo."
+    ),
+)
+def excepcion(datos: Excepcion, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = ter.declarar_excepcion(uow, por=principal.id, **datos.model_dump())
+    return {"id": str(fila.id), "cuenta_id": str(fila.cuenta_id)}
+
+
+class CrearCuota(BaseModel):
+    desde: date
+    hasta: date
+    objetivo: Decimal
+    usuario_id: UUID | None = None
+    equipo: str | None = None
+    territorio_id: UUID | None = None
+    periodo: str = Field("trimestral", description="mensual · trimestral · anual")
+    metrica: str = Field(
+        "importe", description="importe · unidades · oportunidades · nuevos_clientes · margen"
+    )
+    moneda: str = "EUR"
+    familia: str | None = None
+    activa_desde: date | None = Field(
+        None, description="Para quien entra a mitad de periodo: de aquí sale el prorrateo"
+    )
+    activa_hasta: date | None = None
+
+
+@router_cuotas.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("forecast:write"))],
+    summary="Fijar una cuota",
+)
+def crear_cuota(datos: CrearCuota, uow: UowDep) -> Any:
+    fila = ter.crear_cuota(uow, **datos.model_dump())
+    return {"id": str(fila.id), "prorrateo": ter.prorratear(fila)}
+
+
+@router_cuotas.get(
+    "/consecucion",
+    dependencies=[Depends(exige_permiso("forecast:read"))],
+    summary="Cuánto lleva cada uno, y el ranking",
+    description=(
+        "El ranking sale **por porcentaje y no por importe**: por importe, quien "
+        "lleva la cuenta grande gana siempre y el ranking deja de decir nada sobre "
+        "quién trabaja bien.\n\n"
+        "Lo logrado lo trae quien llama: vive en las oportunidades, y calcularlo "
+        "aquí sería recalcular el forecast con otro criterio — y dos números "
+        "distintos de lo mismo es peor que uno solo."
+    ),
+)
+def consecucion(
+    db: DbDep,
+    principal: AutenticadoDep,
+    desde: date = Query(...),
+    hasta: date = Query(...),
+) -> Any:
+    return ter.consecucion(db, principal.tenant_id, desde=desde, hasta=hasta)
+
+
+class Cobertura(BaseModel):
+    desde: date
+    hasta: date
+    pipeline_por_sujeto: dict[str, Decimal] = Field(default_factory=dict)
+    logrado_por_sujeto: dict[str, Decimal] = Field(default_factory=dict)
+    minimo: Decimal = Field(
+        Decimal(3),
+        description=(
+            "Cobertura mínima. No es una ley: un equipo que cierra el 50 % necesita "
+            "dos y uno que cierra el 15 % necesita casi siete"
+        ),
+    )
+
+
+@router_cuotas.post(
+    "/cobertura",
+    dependencies=[Depends(exige_permiso("forecast:read"))],
+    summary="Si hay pipeline suficiente para llegar",
+    description=(
+        "Se mide contra la cuota que **queda**, no contra la del periodo. A mitad "
+        "de trimestre, comparar el pipeline con la cuota entera dice que todo el "
+        "mundo va mal incluso cuando van bien, y a fuerza de decirlo deja de "
+        "mirarse."
+    ),
+)
+def cobertura(datos: Cobertura, db: DbDep, principal: AutenticadoDep) -> Any:
+    return ter.cobertura(
+        db,
+        principal.tenant_id,
+        desde=datos.desde,
+        hasta=datos.hasta,
+        pipeline_por_sujeto=datos.pipeline_por_sujeto,
+        logrado_por_sujeto=datos.logrado_por_sujeto,
+        minimo=datos.minimo,
+    )
+
+
+ROUTERS_TERRITORIOS = [router, router_cuotas]

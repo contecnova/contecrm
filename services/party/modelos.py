@@ -671,3 +671,9 @@ __all__ = [
     "RelacionCuenta",
     "SolicitudDerechos",
 ]
+
+from services.party.actividades_extra import (  # noqa: E402,F401
+    PlantillaActividades,
+    Recurrencia,
+    Visita,
+)

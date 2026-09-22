@@ -12,6 +12,7 @@ from services.party import (
     visibilidad,  # noqa: F401 — registra el resolutor de equipos
 )
 from services.party.api import ROUTERS
+from services.party.api_actividades_extra import ROUTERS_ACTIVIDADES_EXTRA
 from services.party.consumidores import consumir_comando
 
 
@@ -33,7 +34,7 @@ app = crear_servicio(
         "consentimientos con prueba, deduplicación con fusión reversible y vista "
         "360 consultable por cualquier frontend."
     ),
-    routers=ROUTERS,
+    routers=[*ROUTERS, *ROUTERS_ACTIVIDADES_EXTRA],
     al_arrancar=_al_arrancar,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho

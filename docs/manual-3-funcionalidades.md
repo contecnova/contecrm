@@ -7898,3 +7898,134 @@ de apertura por envío, que hoy no se guarda.
 Quedan también la **publicidad digital y el retargeting** (`CRM-02.03.02.04`), el
 **correo postal y el telemarketing como pasos del recorrido** (`CRM-02.03.02.05`) y
 la **personalización web** (`CRM-02.03.02.07`).
+
+## Territorios, cuotas y capacidad (`CRM-03.02.02`)
+
+Un territorio decide **de quién es un cliente**, y por eso es la pieza que más
+discusiones provoca de todo un CRM: cuando dos comerciales creen que una cuenta es
+suya, el problema no es técnico.
+
+### La asignación se calcula y se explica (`CRM-03.02.02.01`, `CRM-03.02.02.02`)
+
+Con asignación manual, el territorio existe en una hoja de cálculo y el CRM dice
+otra cosa; con reglas, el CRM **es** la hoja de cálculo.
+
+Un territorio se recorta por geografía, sector, tamaño, producto, canal o cuenta
+nominal, con la gramática de condiciones de siempre, y cuelga de otro en jerarquía
+—quien lleva el padre ve lo de los hijos—. Cuando dos encajan gana **la prioridad
+más baja, declarada**: con desempate por orden de inserción, el dueño de una cuenta
+cambiaría al restaurar una copia de seguridad.
+
+`POST /territorios/resolver` devuelve **siempre el porqué**. Sin él, «¿por qué esta
+cuenta es de Norte?» no tiene respuesta, y esa es justo la pregunta que abre la
+discusión — que no se cierra con un número, se cierra con una regla.
+
+Una cuenta que no encaja en ningún sitio **se dice**, no se asigna al primero
+disponible: una cuenta sin dueño es un problema que hay que ver, y rellenarlo solo
+lo esconde.
+
+Un territorio nace **en borrador** y no asigna nada hasta publicarse. Es lo que
+permite montar el mapa entero —con sus solapes y sus huecos— antes de que mueva
+una sola cuenta.
+
+### Las excepciones son parte del modelo (`CRM-03.02.02.02`)
+
+Siempre hay una cuenta nominal que lleva el director aunque esté en la zona de
+otro. Si no se puede declarar, alguien la reasigna a mano y el siguiente recálculo
+se la quita — y entonces nadie vuelve a fiarse del recálculo.
+
+La excepción **manda sobre cualquier regla**: es el punto entero de que exista. Y
+el **motivo es obligatorio**, porque una excepción sin motivo es indistinguible de
+un error y dos años después nadie se atreve a quitarla.
+
+### Simular antes de publicar (`CRM-03.02.02.03`)
+
+**Publicar y ver qué pasa** significa que doscientas cuentas cambian de dueño el
+lunes por la mañana, y deshacerlo no devuelve las conversaciones que ya se
+tuvieron.
+
+La simulación dice tres cosas: qué cambia de dueño, qué se queda **sin
+territorio** y qué queda en **solape** —dos territorios con la misma prioridad—.
+El solape es el error que produce una asignación dependiente del orden alfabético,
+y nadie lo busca hasta que dos comerciales discuten.
+
+### La cuota se prorratea por días (`CRM-03.02.02.04`, `CRM-03.02.02.05`)
+
+Un comercial que entra el 20 de febrero no tiene el mes entero, y darle la cuota
+completa hace que su primer periodo sea imposible y el del equipo, injusto: alguien
+tendrá que cubrir lo que él no podía hacer.
+
+Se devuelven **los dos números** —el del plan y el efectivo— porque el objetivo
+anual sigue siendo el primero, y además el **hueco**: lo que nadie cubre si la
+cuota se prorratea y no se reparte. Ese es el número que se olvida.
+
+### Consecución y ranking (`CRM-03.02.02.06`)
+
+El ranking sale **por porcentaje y no por importe**: por importe, quien lleva la
+cuenta grande gana siempre y el ranking deja de decir nada sobre quién trabaja
+bien.
+
+Lo logrado **lo trae quien llama**. Vive en las oportunidades, y calcularlo desde
+aquí sería recalcular el forecast con otro criterio — y dos números distintos de lo
+mismo es peor que uno solo.
+
+### Cobertura de pipeline (`CRM-03.02.02.07`)
+
+Se mide contra la cuota que **queda**, no contra la del periodo. A mitad de
+trimestre, comparar el pipeline con la cuota entera dice que todo el mundo va mal
+incluso cuando van bien, y a fuerza de decirlo deja de mirarse.
+
+La cobertura mínima —tres veces lo que falta— es un ajuste y **no una ley**: un
+equipo que cierra el 50 % necesita dos y uno que cierra el 15 % necesita casi
+siete. Se devuelve el valor usado para que quien lo lea sepa contra qué se compara.
+Y quien ya cumplió sale como `ya_cumplida`, no como «cobertura infinita»: no
+necesita más pipeline, que es distinto de tener muchísimo.
+
+## Plantillas de actividad, visitas y recurrencias (`CRM-01.02.01.07` a `CRM-01.02.01.09`)
+
+### Plantillas (`CRM-01.02.01.07`)
+
+Es lo que convierte «hay que hacer una implantación» en catorce tareas con fechas.
+Sin ellas, cada persona inventa su lista y la mitad se olvida de lo mismo.
+
+Los desfases se cuentan **desde la fecha de arranque**, no desde hoy: una
+implantación que empieza el mes que viene tiene sus tareas colgando de esa fecha, y
+calcularlas desde hoy las pone todas vencidas antes de empezar.
+
+Y se devuelve **cuántas cayeron en quien la lanzó** por no decir de quién eran. Sin
+ese número, una plantilla mal repartida parece bien repartida, y la implantación
+acaba siendo la lista de tareas de una sola persona.
+
+### Visitas con check-in (`CRM-01.02.01.08`)
+
+Un check-in demuestra que se estuvo, no que se dijo que se iba. La diferencia
+importa cuando el cliente dice que nadie fue.
+
+**La distancia se calcula en el servidor**: un check-in cuya distancia la manda el
+móvil se falsifica cambiando un número.
+
+Estar lejos **no bloquea**: se marca. Hay polígonos donde el GPS falla cien metros
+y direcciones mal geocodificadas, y rechazar el check-in deja sin registrar una
+visita que sí ocurrió — que es peor que registrarla con un aviso. Si la precisión
+que informa el dispositivo es peor que el tope, se dice: una distancia de 300 m con
+una precisión de ±800 m no significa nada.
+
+Y una visita de dos minutos se **señala**, no se rechaza: puede ser un error al
+pulsar y puede ser que no le recibieran, y son cosas distintas.
+
+### Recurrencias (`CRM-01.02.01.09`)
+
+Una tarea recurrente que no se reprograma sola se convierte en una lista de tareas
+vencidas, y una lista de vencidas es una lista que se deja de mirar.
+
+Hace falta **un final** —fecha o número de repeticiones—: una recurrencia sin fin
+sigue creando tareas cuando el proyecto lleva dos años cerrado, y quien las recibe
+no sabe ni por qué.
+
+Con `una_a_una`, **la siguiente no se crea hasta que se cierra la anterior**. Crear
+las 52 de golpe llena la bandeja de tareas de dentro de un año, y lo que hace la
+gente entonces es dejar de mirar la bandeja. Las que esperan salen aparte del
+informe: no son un fallo, y confundirlas con uno lleva a apagar el `una_a_una`.
+
+Los meses se suman **como meses**: una revisión mensual el día 31 cae el último día
+del mes siguiente, no el 3 del otro.

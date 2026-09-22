@@ -701,3 +701,10 @@ from services.sales.presupuestos import (  # noqa: E402,F401
     Presupuesto,
     SuscripcionCliente,
 )
+from services.sales.territorios import (  # noqa: E402,F401
+    AsignacionTerritorio,
+    Cuota,
+    ExcepcionTerritorio,
+    MiembroTerritorio,
+    Territorio,
+)

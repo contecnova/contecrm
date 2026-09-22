@@ -654,9 +654,9 @@ modulos:
               - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
               - {id: CRM-01.02.01.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/transcribe.py + app/services/audio_overview", t: "Transcripción y resumen automático de llamadas y reuniones"}
               - {id: CRM-01.02.01.06, c: D, fase: 5, svc: intelligence, estado: pendiente, t: "Extracción de compromisos y próximos pasos desde la transcripción"}
-              - {id: CRM-01.02.01.09, c: A, fase: 2, svc: party, estado: pendiente, t: "Recordatorios recurrentes y reprogramación automática de la actividad no atendida"}
-              - {id: CRM-01.02.01.07, c: A, fase: 2, svc: sales, estado: pendiente, t: "Plantillas de actividad y secuencias predefinidas por tipo de proceso"}
-              - {id: CRM-01.02.01.08, c: A, fase: 2, svc: sales, estado: pendiente, t: "Geolocalización y check-in de visita comercial"}
+              - {id: CRM-01.02.01.09, c: A, fase: 2, svc: party, estado: hecho, t: "Recordatorios recurrentes y reprogramación automática de la actividad no atendida"}
+              - {id: CRM-01.02.01.07, c: A, fase: 2, svc: sales, estado: hecho, t: "Plantillas de actividad y secuencias predefinidas por tipo de proceso"}
+              - {id: CRM-01.02.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Geolocalización y check-in de visita comercial"}
 
   - id: "2"
     nombre: Marketing
@@ -802,13 +802,13 @@ modulos:
           - id: CRM-03.02.02
             nombre: Territorios, cuotas y capacidad
             capacidades:
-              - {id: CRM-03.02.02.01, c: A, fase: 2, svc: sales, estado: pendiente, t: "Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal"}
-              - {id: CRM-03.02.02.02, c: A, fase: 2, svc: sales, estado: pendiente, t: "Jerarquía de territorios con asignación automática y reglas de excepción"}
-              - {id: CRM-03.02.02.03, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/scenarios_service.py (simulación)", t: "Simulación y planificación de territorios antes de publicar"}
-              - {id: CRM-03.02.02.04, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/okr_service.py", t: "Cuotas por usuario, equipo, periodo, producto y métrica"}
-              - {id: CRM-03.02.02.05, c: A, fase: 2, svc: sales, estado: pendiente, t: "Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo"}
-              - {id: CRM-03.02.02.06, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/performance_service.py", t: "Seguimiento de consecución y ranking"}
-              - {id: CRM-03.02.02.07, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py", t: "Planificación de capacidad y cobertura de pipeline vs. cuota"}
+              - {id: CRM-03.02.02.01, c: A, fase: 2, svc: sales, estado: hecho, t: "Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal"}
+              - {id: CRM-03.02.02.02, c: A, fase: 2, svc: sales, estado: hecho, t: "Jerarquía de territorios con asignación automática y reglas de excepción"}
+              - {id: CRM-03.02.02.03, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/scenarios_service.py (simulación)", t: "Simulación y planificación de territorios antes de publicar"}
+              - {id: CRM-03.02.02.04, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py", t: "Cuotas por usuario, equipo, periodo, producto y métrica"}
+              - {id: CRM-03.02.02.05, c: A, fase: 2, svc: sales, estado: hecho, t: "Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo"}
+              - {id: CRM-03.02.02.06, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/performance_service.py", t: "Seguimiento de consecución y ranking"}
+              - {id: CRM-03.02.02.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py", t: "Planificación de capacidad y cobertura de pipeline vs. cuota"}
           - id: CRM-03.02.03
             nombre: Incentivos y comisiones (interfaz)
             capacidades:
@@ -1343,6 +1343,7 @@ anexo_b_eventos:
   - {type: journey.action.due, fase: 4, svc: marketing}
   - {type: preferences.changed, fase: 4, svc: marketing}
   - {type: channel.optout, fase: 4, svc: marketing}
+  - {type: territory.published, fase: 2, svc: sales}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

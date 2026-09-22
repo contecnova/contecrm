@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 480 hecho · ⬜ 227 pendiente
+**707 capacidades**: ✅ 490 hecho · ⬜ 217 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 31 · ⬜ 23
+54 capacidades · ✅ 34 · ⬜ 20
 
 ### 1.1 Modelo de parties
 
@@ -533,9 +533,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ⬜ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
 | `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ⬜ | contecmind:app/core/transcribe.py + app/services/audio_overview |
 | `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ⬜ | — |
-| `CRM-01.02.01.09` | Recordatorios recurrentes y reprogramación automática de la actividad no atendida | A | 2 | party | ⬜ | — |
-| `CRM-01.02.01.07` | Plantillas de actividad y secuencias predefinidas por tipo de proceso | A | 2 | sales | ⬜ | — |
-| `CRM-01.02.01.08` | Geolocalización y check-in de visita comercial | A | 2 | sales | ⬜ | — |
+| `CRM-01.02.01.09` | Recordatorios recurrentes y reprogramación automática de la actividad no atendida | A | 2 | party | ✅ | — |
+| `CRM-01.02.01.07` | Plantillas de actividad y secuencias predefinidas por tipo de proceso | A | 2 | sales | ✅ | — |
+| `CRM-01.02.01.08` | Geolocalización y check-in de visita comercial | A | 2 | sales | ✅ | — |
 
 ## Módulo 2 — Marketing
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 36 · ⬜ 29
+65 capacidades · ✅ 43 · ⬜ 22
 
 ### 3.1 Pipeline y oportunidades
 
@@ -699,13 +699,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.02.02.01` | Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal | A | 2 | sales | ⬜ | — |
-| `CRM-03.02.02.02` | Jerarquía de territorios con asignación automática y reglas de excepción | A | 2 | sales | ⬜ | — |
-| `CRM-03.02.02.03` | Simulación y planificación de territorios antes de publicar | A | 2 | sales | ⬜ | contecflow-PSA:app/services/scenarios_service.py (simulación) |
-| `CRM-03.02.02.04` | Cuotas por usuario, equipo, periodo, producto y métrica | A | 2 | sales | ⬜ | contecflow-PSA:app/services/okr_service.py |
-| `CRM-03.02.02.05` | Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo | A | 2 | sales | ⬜ | — |
-| `CRM-03.02.02.06` | Seguimiento de consecución y ranking | A | 2 | sales | ⬜ | contecflow-PSA:app/services/performance_service.py |
-| `CRM-03.02.02.07` | Planificación de capacidad y cobertura de pipeline vs. cuota | A | 2 | sales | ⬜ | contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py |
+| `CRM-03.02.02.01` | Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal | A | 2 | sales | ✅ | — |
+| `CRM-03.02.02.02` | Jerarquía de territorios con asignación automática y reglas de excepción | A | 2 | sales | ✅ | — |
+| `CRM-03.02.02.03` | Simulación y planificación de territorios antes de publicar | A | 2 | sales | ✅ | contecflow-PSA:app/services/scenarios_service.py (simulación) |
+| `CRM-03.02.02.04` | Cuotas por usuario, equipo, periodo, producto y métrica | A | 2 | sales | ✅ | contecflow-PSA:app/services/okr_service.py |
+| `CRM-03.02.02.05` | Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo | A | 2 | sales | ✅ | — |
+| `CRM-03.02.02.06` | Seguimiento de consecución y ranking | A | 2 | sales | ✅ | contecflow-PSA:app/services/performance_service.py |
+| `CRM-03.02.02.07` | Planificación de capacidad y cobertura de pipeline vs. cuota | A | 2 | sales | ✅ | contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py |
 
 #### CRM-03.02.03 · Incentivos y comisiones (interfaz)
 
