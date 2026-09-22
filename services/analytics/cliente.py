@@ -68,7 +68,8 @@ def _config() -> Any:
 
 
 def estado() -> dict[str, Any]:
-    """Lo último que se sabe de la integración, sin volver a preguntar.
+    """Lo último que se sabe de la integración: versión, latencia y último error
+    (CRM-05.01.04.12).
 
     No comprueba en el momento: lo llama el `/health/ready`, y una comprobación
     de salud que hace una llamada de red a otro sistema convierte la lentitud de
@@ -136,7 +137,7 @@ def comprobar() -> dict[str, Any]:
 
 
 def comprobar_al_arrancar() -> None:
-    """Comprobación de arranque. El fallo se dice aquí, no al abrir un informe.
+    """Comprobación de arranque (CRM-05.01.04.11). El fallo se dice aquí, no al abrir un informe.
 
     **No impide arrancar por defecto** (CRM-05.01.04.08): el CRM operativo no
     puede depender de la herramienta de consulta, y dejar el alta de un cliente

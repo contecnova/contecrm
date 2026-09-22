@@ -995,17 +995,17 @@ modulos:
           - id: CRM-05.01.04
             nombre: Explotación delegada en contecintelligence
             capacidades:
-              - {id: CRM-05.01.04.01, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence:sdk (canje de credencial por token de usuario final)", t: "Canje en el servidor de la credencial de aplicación por un token de usuario final con tenant, sujeto, rol y alcances"}
-              - {id: CRM-05.01.04.02, c: C, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence:/api/admin/apps (mapeo de organizaciones)", t: "Correspondencia entre cada tenant de contecrm y su organización en contecintelligence, creada al provisionar"}
-              - {id: CRM-05.01.04.03, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Pantalla de explotación dentro de contecrm: se pregunta y se ven tablas y gráficos sin salir del CRM"}
-              - {id: CRM-05.01.04.04, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Registro del CRM como fuente consultable, descrita en lenguaje natural y mantenida al día con el modelo"}
-              - {id: CRM-05.01.04.05, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Propagacion de permisos y comparticion: la consulta analitica nunca devuelve mas de lo que el usuario ve en el CRM"}
-              - {id: CRM-05.01.04.06, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM"}
-              - {id: CRM-05.01.04.07, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió"}
-              - {id: CRM-05.01.04.08, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
+              - {id: CRM-05.01.04.01, c: C, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecintelligence:sdk (canje de credencial por token de usuario final)", t: "Canje en el servidor de la credencial de aplicación por un token de usuario final con tenant, sujeto, rol y alcances"}
+              - {id: CRM-05.01.04.02, c: C, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecintelligence:/api/admin/apps (mapeo de organizaciones)", t: "Correspondencia entre cada tenant de contecrm y su organización en contecintelligence, creada al provisionar"}
+              - {id: CRM-05.01.04.03, c: C, fase: 2, svc: analytics, estado: hecho, t: "Pantalla de explotación dentro de contecrm: se pregunta y se ven tablas y gráficos sin salir del CRM"}
+              - {id: CRM-05.01.04.04, c: C, fase: 2, svc: analytics, estado: hecho, t: "Registro del CRM como fuente consultable, descrita en lenguaje natural y mantenida al día con el modelo"}
+              - {id: CRM-05.01.04.05, c: C, fase: 2, svc: analytics, estado: hecho, t: "Propagacion de permisos y comparticion: la consulta analitica nunca devuelve mas de lo que el usuario ve en el CRM"}
+              - {id: CRM-05.01.04.06, c: A, fase: 2, svc: analytics, estado: hecho, t: "Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM"}
+              - {id: CRM-05.01.04.07, c: A, fase: 2, svc: analytics, estado: hecho, t: "Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió"}
+              - {id: CRM-05.01.04.08, c: A, fase: 2, svc: analytics, estado: hecho, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
               - {id: CRM-05.01.04.10, c: C, fase: 2, svc: analytics, estado: pendiente, t: "contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha"}
-              - {id: CRM-05.01.04.11, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe"}
-              - {id: CRM-05.01.04.12, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM"}
+              - {id: CRM-05.01.04.11, c: C, fase: 2, svc: analytics, estado: hecho, t: "Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe"}
+              - {id: CRM-05.01.04.12, c: A, fase: 2, svc: analytics, estado: hecho, t: "Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM"}
               - {id: CRM-05.01.04.09, c: A, fase: 5, svc: analytics, estado: pendiente, t: "Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro"}
           - id: CRM-05.01.03
             nombre: Analítica avanzada

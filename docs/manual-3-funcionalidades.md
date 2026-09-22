@@ -7235,3 +7235,131 @@ De los cuadros de mando quedan los **componentes con su catálogo de tipos**
 **dashboards dinámicos por usuario** (`.04` —el mecanismo `solo_mios` del informe
 ya está, falta llevarlo al cuadro—), las **alertas por umbral** (`.05`) y el
 **embebido con SSO** (`.06`).
+
+## Explotación delegada en contecintelligence (`CRM-05.01.04`)
+
+La restricción RT-4 dice que la explotación no se reimplementa aquí. Esta sección
+es la puerta: el canje del token, la correspondencia de organizaciones, la
+descripción del CRM para que se le pueda preguntar, la auditoría de lo que se
+pregunta y —lo que cierra el círculo— el **ejecutor** que el motor de informes
+tenía registrado y vacío.
+
+Antes de este bloque, toda la sección estaba construida y **sin una sola prueba**.
+Escribirlas destapó dos defectos reales, los dos contados abajo.
+
+### El canje ocurre en el servidor (`CRM-05.01.04.01`)
+
+La credencial de aplicación puede representar a *todos* los tenants: si bajara al
+navegador sería la llave de todos. Lo que baja es un token que nombra una
+organización, una persona y unos alcances, y que dura minutos.
+
+### Una organización por tenant (`CRM-05.01.04.02`)
+
+La organización sale de la correspondencia guardada, **nunca de lo que mande el
+cliente**: contecintelligence solo acepta nombrar organizaciones mapeadas, y ese
+control se pierde si el nombre viaja desde el navegador.
+
+### Los permisos viajan con la pregunta (`CRM-05.01.04.05`)
+
+El rol que se manda es el que corresponde a lo que la persona ve **aquí**, y la
+traducción es **a la baja**: ante la duda se manda el rol que menos ve.
+Equivocarse hacia arriba en una herramienta que responde con tablas enteras es
+enseñar de una vez lo que en el CRM se ve ficha a ficha.
+
+Un plan sin token **no sale**. Sin él la consulta se haría con la credencial de
+aplicación, que puede verlo todo: eso es una fuga con otro nombre.
+
+**Un defecto que encontraron estas pruebas.** El filtro que retira del informe los
+campos marcados como personales leía la clave `clave` de la definición del campo,
+y la clave canónica del metamodelo es `nombre`. Nunca coincidía: el filtro existía
+y no filtraba nada, así que un campo personal habría salido en el informe. La
+prueba que lo cubría pasaba porque cometía el mismo error al declarar el campo.
+Corregidos los dos.
+
+### El CRM descrito para poder preguntarle (`CRM-05.01.04.04`)
+
+Sobre el modelo semántico que ya existía, con la etiqueta de cada campo y su papel
+analítico. **Va la descripción y ni una fila**: mandar datos convertiría una
+descripción del esquema en una copia del CRM fuera de su sitio, y el propio
+paquete lo dice (`sin_datos`) para que se vea al leerlo.
+
+El registro **se rehace cuando cambia el esquema, no cada noche**. Uno que se
+refresca por reloj está desfasado justo después de que alguien añada un campo —que
+es cuando lo va a buscar—, y uno que se refresca en cada consulta paga el coste en
+la pregunta de todo el mundo. Y no se reenvía si nada ha cambiado: lo decide una
+huella.
+
+Un tenant que **nunca** se registró no se registra solo por un cambio de esquema:
+registrarlo es una decisión de implantación, y hacerlo automáticamente mandaría a
+contecintelligence tenants que nadie quería allí.
+
+### Preguntas guardadas y publicadas (`CRM-05.01.04.06`)
+
+Una pregunta nace **sin publicar**: una pregunta a medio afinar que aparece en la
+lista de todos se usa como si estuviera bien, y su autor ni se entera.
+
+`POST /explotacion/preguntas/{id}/publicar` la convierte en un **informe del
+tenant**, con su programación y su distribución. Es lo que cierra el círculo: se
+pregunta en lenguaje natural hasta dar con la respuesta buena, y entonces esa
+respuesta se congela. Sin este paso, lo que funciona vive en la cabeza de quien
+supo preguntar, y cuando se va se va con él.
+
+Se publica desde una **definición estructurada**, no desde el texto de la
+pregunta: una pregunta en lenguaje natural puede dar dos consultas distintas en dos
+días —el modelo cambia—, y un informe programado que cambia solo de significado es
+peor que no tenerlo.
+
+### Auditoría de lo que se pregunta (`CRM-05.01.04.07`)
+
+La explotación es la vía por la que más dato sale de un CRM de una sola vez. Sin
+este registro, «¿quién sacó la lista de clientes antes de irse?» no tiene
+respuesta — y esa es la pregunta que se hace después. Se guarda la pregunta y el
+**recuento** de lo devuelto, no las filas: copiarlas duplicaría el dato personal y
+multiplicaría la superficie que hay que proteger.
+
+### Cuando no responde, se dice qué sí funciona (`CRM-05.01.04.08`)
+
+«Servicio no disponible» deja a quien lo lee sin saber si su CRM está roto. No lo
+está: lo que no funciona es **preguntar**, y el CRM entero sigue operativo.
+`GET /explotacion/diagnostico` devuelve las dos mitades —lo que falla, con su
+motivo concreto, y lo que sigue funcionando—, y la pantalla las enseña **en la
+misma tarjeta**: quien lee un aviso en rojo cierra la pantalla, y si la
+tranquilidad está más abajo no la lee nadie.
+
+**El segundo defecto que encontraron estas pruebas.** La comprobación de «el plan
+no trae token» iba después de leer la configuración, así que en un despliegue sin
+contecintelligence configurado el error que salía era «falta configurar», mandando
+a arreglar lo que no estaba roto. Ahora se comprueba antes: que falte el token es
+un error nuestro, no del despliegue.
+
+### La pantalla (`CRM-05.01.04.03`)
+
+`/explotacion` en el front oficial. No calcula nada, no agrega nada y no
+interpreta los datos: pide, enseña y guarda la pregunta. Separa **mis preguntas
+sin publicar** de **las publicadas**, por lo mismo que el servidor las distingue.
+
+### Comprobación al arrancar y salud visible (`CRM-05.01.04.11`, `CRM-05.01.04.12`)
+
+La comprobación va **al arranque**, para que el fallo le llegue a quien despliega y
+no a quien abre el primer informe tres días después. No impide arrancar salvo que
+se pida (`CI_OBLIGATORIO_PARA_ARRANCAR`): el CRM operativo no puede depender del
+motor analítico.
+
+El estado —versión, latencia y último error— se guarda **en memoria del proceso** a
+propósito: es información de *este* proceso sobre *su* conectividad, y compartirla
+entre réplicas diría que la integración va bien en una réplica que no puede
+llegar. Y `/health/ready` lee lo último conocido sin volver a preguntar: una
+comprobación de salud que hace una llamada de red a otro sistema convierte la
+lentitud de ese sistema en la nuestra y, si el orquestador la usa para reiniciar,
+en un reinicio en cascada.
+
+Aquí es también donde se **conecta el ejecutor** del motor de informes. Por eso un
+despliegue sin contecintelligence deja los informes definibles y no ejecutables,
+que es exactamente lo que se le dice a quien los abra.
+
+### Lo que todavía no está
+
+La **dependencia de despliegue declarada** (`CRM-05.01.04.10`) está en
+`docker-compose.yml` con su perfil, pero sin prueba que lo verifique; y el
+**contexto del registro en curso** (`CRM-05.01.04.09`) —preguntar sobre la cuenta
+abierta sin repetir su nombre— es de fase 5.

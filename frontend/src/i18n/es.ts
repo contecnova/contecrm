@@ -14,6 +14,25 @@ export default {
     cobertura: "Cobertura",
     recorrido: "Recorrido",
     procesos: "Procesos",
+    explotacion: "Explotación",
+  },
+  explotacion: {
+    titulo: "Explotación",
+    entradilla:
+      "Preguntar sobre los datos del CRM sin salir de aquí. Las respuestas las " +
+      "resuelve contecintelligence con tus permisos: nunca verás más de lo que " +
+      "ves en las fichas.",
+    noDisponible: "Ahora mismo no se puede preguntar",
+    sigueFuncionando: "Esto sigue funcionando con normalidad",
+    publicadas: "Preguntas publicadas",
+    mias: "Mis preguntas sin publicar",
+    sinPublicadas: "Todavía no hay preguntas publicadas",
+    sinPublicadasDetalle:
+      "Cuando una pregunta funcione bien, publícala para que la use todo el equipo.",
+    sinMias: "No tienes preguntas guardadas",
+    sinMiasDetalle: "Guarda una pregunta para no volver a escribirla.",
+    esInforme: "Es informe",
+    vecesUsada: "Usada {{veces}} veces",
   },
   entrar: {
     titulo: "Entrar",

@@ -156,12 +156,12 @@ def test_un_campo_personal_no_sale_en_el_informe(
         version=1,
         campos=[
             {
-                "clave": "dni_contacto",
+                "nombre": "dni_contacto",
                 "tipo": "texto",
                 "etiqueta": "DNI",
                 "sensibilidad": "personal",
             },
-            {"clave": "region", "tipo": "texto", "etiqueta": "Región"},
+            {"nombre": "region", "tipo": "texto", "etiqueta": "Región"},
         ],
     )
     fila = _informe(uow, columnas=["region", "dni_contacto"])
@@ -178,7 +178,7 @@ def test_el_administrador_si_lo_ve(uow: UnidadDeTrabajo, db: Any, tenant_id: UUI
         tenant_id=tenant_id,
         objeto="oportunidad",
         version=1,
-        campos=[{"clave": "dni", "tipo": "texto", "etiqueta": "DNI", "sensibilidad": "personal"}],
+        campos=[{"nombre": "dni", "tipo": "texto", "etiqueta": "DNI", "sensibilidad": "personal"}],
     )
     fila = _informe(uow, columnas=["dni"])
     plan = inf.compilar(uow.db, uow.tenant_id, fila, es_admin=True)
@@ -235,8 +235,8 @@ def test_un_calculado_sobre_un_campo_prohibido_se_para(
         objeto="oportunidad",
         version=1,
         campos=[
-            {"clave": "coste", "tipo": "numero", "etiqueta": "Coste", "sensibilidad": "especial"},
-            {"clave": "importe", "tipo": "numero", "etiqueta": "Importe"},
+            {"nombre": "coste", "tipo": "numero", "etiqueta": "Coste", "sensibilidad": "especial"},
+            {"nombre": "importe", "tipo": "numero", "etiqueta": "Importe"},
         ],
     )
     fila = _informe(
@@ -339,7 +339,7 @@ def test_la_ejecucion_guarda_que_campos_se_retiraron(
         tenant_id=tenant_id,
         objeto="oportunidad",
         version=1,
-        campos=[{"clave": "dni", "tipo": "texto", "etiqueta": "DNI", "sensibilidad": "personal"}],
+        campos=[{"nombre": "dni", "tipo": "texto", "etiqueta": "DNI", "sensibilidad": "personal"}],
     )
     inf.registrar_ejecutor(_ejecutor([]))
     fila = _informe(uow, columnas=["dni"])

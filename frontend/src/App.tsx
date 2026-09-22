@@ -7,6 +7,7 @@ import { Cobertura } from "@/paginas/Cobertura";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Estado } from "@/paginas/Estado";
+import { Explotacion } from "@/paginas/Explotacion";
 import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
 import { Modulo } from "@/paginas/Modulo";
@@ -72,6 +73,7 @@ export function App() {
         <Route path="/cobertura" element={<Cobertura />} />
         <Route path="/recorrido" element={<Recorrido />} />
         <Route path="/procesos" element={<Procesos />} />
+        <Route path="/explotacion" element={<Explotacion />} />
       </Routes>
     </Marco>
   );

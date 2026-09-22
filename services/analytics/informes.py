@@ -579,7 +579,10 @@ def _campo_usable(
     if es_admin:
         return True
     for definicion in metamodelo.campos_de(db, tenant_id, objeto):
-        if str(definicion.get("clave")) == campo:
+        # La clave canónica del metamodelo es `nombre`, no `clave`. Leerla mal
+        # hacía que NINGÚN campo coincidiera y que un campo marcado personal
+        # saliera igual en el informe: el filtro existía y no filtraba nada.
+        if str(definicion.get("nombre")) == campo:
             return str(definicion.get("sensibilidad") or "interno") not in ("personal", "especial")
     return True
 

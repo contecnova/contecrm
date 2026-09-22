@@ -24,7 +24,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class OrganizacionExterna(Base, TimestampMixin):
-    """A qué organización de contecintelligence corresponde este tenant.
+    """Correspondencia entre este tenant y su organización en contecintelligence
+    (CRM-05.01.04.02).
 
     Se guarda aquí y no se deduce del identificador del tenant porque el mapeo
     es **suyo**: contecintelligence solo acepta nombrar organizaciones que tenga
@@ -101,6 +102,9 @@ __all__ = [
 # El motor de informes vive en su propio módulo —tiene su lógica de compilación y
 # de seguridad—, pero sus tablas son de este esquema y tienen que importarse
 # aquí: `alembic` solo mira `modelos.py`.
+# El registro de la fuente y las preguntas guardadas viven en su propio módulo,
+# pero sus tablas son de este esquema y tienen que importarse aquí.
+from services.analytics.fuente import FuenteRegistrada, PreguntaGuardada  # noqa: E402,F401
 from services.analytics.informes import (  # noqa: E402,F401
     CuadroMando,
     EjecucionInforme,

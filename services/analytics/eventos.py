@@ -31,3 +31,18 @@ REPORT_FAILED = registrar(
         campos=("informe_id", "programacion_id", "error", "fallos_seguidos"),
     )
 )
+
+ANALYTICS_SOURCE_REGISTERED = registrar(
+    TipoEvento(
+        tipo="analytics.source.registered",
+        version=1,
+        productor="analytics",
+        descripcion=(
+            "El CRM se ha registrado (o re-registrado) como fuente consultable. "
+            "Se emite al cambiar el esquema y no cada noche: un registro que se "
+            "refresca por reloj está desfasado justo después de que alguien "
+            "añada un campo, que es cuando lo va a buscar"
+        ),
+        campos=("organizacion", "objetos", "campos"),
+    )
+)
