@@ -7084,3 +7084,154 @@ se toma, y se persiguen de forma distinta.
 Y fuera de este capítulo queda `CRM-03.03.02.07`: enviar a firma un presupuesto
 desde la oportunidad y que el estado del sobre mueva la oportunidad. El motor ya
 emite los eventos que hacen falta; lo que falta es que `sales` los escuche.
+
+## Motor de informes (`CRM-05.01.01`) y cuadros de mando (`CRM-05.01.02.01`)
+
+**Aquí no se ejecuta SQL contra el dato.** La restricción RT-4 dice que la
+explotación la resuelve contecintelligence, y la de arquitectura dice que ningún
+servicio lee el esquema de otro. Lo que vive aquí es lo que no puede vivir allí:
+la definición del informe —que es del tenant y tiene que sobrevivir a un cambio de
+motor analítico—, el sobre de seguridad, el plan ya compilado, la programación y
+la distribución, y el histórico de instantáneas.
+
+**El plan no es SQL: es una estructura de datos.** La primera versión de este
+módulo compilaba a SQL y estaba mal por dos motivos, los dos reales y los dos
+cazados por un gate: escribir SQL aquí es un segundo motor de explotación —lo que
+RT-4 dice que no se haga—, y obligaba a **interpolar los nombres de campo**. Los
+valores iban como parámetros, pero un campo llamado `importe"; DROP TABLE x; --`
+se habría salido de sus comillas. Ahora los nombres van como nombres, se
+comprueban contra un patrón estricto, y quien ejecute el plan los resuelve contra
+su propio modelo.
+
+Quién ejecuta el plan **se registra** (`registrar_ejecutor`), no se importa. Es la
+misma inversión que usa el núcleo con los apartados de cumplimiento, y por lo
+mismo: si este módulo importara al ejecutor, el motor de informes quedaría atado a
+un producto concreto y cambiarlo sería reescribirlo.
+
+### El constructor y sus tipos (`CRM-05.01.01.01`, `CRM-05.01.01.02`)
+
+Cuatro tipos —tabular, agrupado, matricial y de unión— con columnas,
+agrupaciones (con periodo: día, semana, mes, trimestre, año), métricas y orden.
+
+La validación **separa lo que rechaza de lo que solo avisa**, igual que los
+módulos verticales: rechazar por un aviso deja a alguien sin poder guardar un
+borrador a medias, y aceptar en silencio lo grave produce un informe que falla al
+ejecutarse delante del cliente. Se rechaza un agregado inventado, un operador que
+no existe, un agrupado sin agrupaciones o un matricial sin pivote; se avisa de que
+un informe no enseña nada o agrupa sin calcular.
+
+Los agregados y los operadores son **listas cerradas**, por la misma razón que en
+ABAC: una definición es dato del tenant y no puede convertirse en SQL arbitrario.
+
+### Filtros (`CRM-05.01.01.03`)
+
+Los fijos van en la definición; los de **ejecución** los rellena quien lo abre. En
+los dos casos **los valores van como parámetros y nunca interpolados**: un filtro
+es un dato que escribe un usuario, y concatenarlo es una inyección esperando a que
+alguien lo pruebe.
+
+### Campos calculados (`CRM-05.01.01.04`)
+
+Una **operación entre dos columnas** —suma, resta, producto, división—, no SQL
+libre. Se limita a propósito: un campo calculado que aceptara una expresión libre
+sería SQL arbitrario escrito por un usuario final sobre la base de producción, y
+la comodidad de poder escribir un `CASE WHEN` no compensa eso.
+
+La división sale del plan marcada con `proteger_division`, para que quien la
+ejecute se guarde del cero: en SQL, dividir por cero revienta la consulta entera,
+y en un informe eso es una pantalla en blanco en vez de una fila rara.
+
+### La seguridad se resuelve al compilar (`CRM-05.01.01.08`)
+
+Un informe que trae la facturación y la esconde en la pantalla **ya la ha sacado
+de la base**: la respuesta de la API la ve cualquiera que abra las herramientas
+del navegador.
+
+Un campo que quien lo pide no puede usar **se quita del informe y se dice cuál**
+(`campos_retirados`), en vez de fallar. Fallar deja a media plantilla sin poder
+abrir los informes de la empresa; quitarlo en silencio hace que dos personas vean
+cifras distintas del mismo informe y ninguna sepa por qué.
+
+Un informe marcado `solo_mios` lleva el filtro por dueño puesto **por el
+servidor**. Si viniera del cliente, bastaría quitarlo de la petición para ver los
+datos de todos, que es exactamente lo que ese informe quería impedir.
+
+Y el registro de cada ejecución guarda **qué campos se retiraron**: es la prueba
+de que el informe no enseñó más de lo permitido, y lo que permite auditarlo sin
+volver a ejecutarlo.
+
+### Ejecutar (`CRM-05.01.01.09`)
+
+Si no hay motor analítico conectado **se dice**, en vez de devolver una tabla
+vacía: un informe vacío se lee como «no hay datos» y manda a buscar el problema al
+sitio equivocado. El intento queda registrado igualmente, porque si no nadie
+sabría que alguien lo abrió y no pudo.
+
+Se pide **una fila más que el tope** —es lo que permite decir «hay más» sin contar
+la tabla entera, que en un informe grande cuesta más que el propio informe— y si
+se cortó, se dice: un informe truncado en silencio se lee como el total, y con eso
+se toman decisiones.
+
+Un informe que no es del rol de quien pregunta da **404 y no 403**: un 403
+confirma que ese informe existe y de qué va su nombre.
+
+### Exportar (`CRM-05.01.01.07`)
+
+CSV se genera aquí porque es texto y no necesita nada. **Excel y PDF no**: se
+devuelve el encargo para el generador documental, común a toda la suite. Meter una
+librería de PDF en el servicio de explotación obligaría a desplegarlo para cambiar
+una tipografía, y acabaría habiendo dos maquetaciones distintas del mismo dato.
+
+### Programación y distribución (`CRM-05.01.01.06`)
+
+Diaria, semanal o mensual, a destinatarios o a un destino externo, y **al menos
+uno de los dos**: una programación sin destino no manda el informe a ninguna
+parte.
+
+**Un informe programado que falla avisa** (`report.failed`), y a los tres fallos
+seguidos se desactiva y se dice. Un informe que deja de llegar no se echa de menos
+—la gente supone que no había nada que contar— y eso convierte un fallo en un
+punto ciego de semanas; pero seguir intentándolo cada día contra un informe roto
+llena la bandeja de todo el mundo con el mismo error.
+
+`omitir_si_vacio` viene **apagado** por defecto, por lo mismo: el silencio se lee
+como «no pasa nada» en vez de como «no se ejecutó».
+
+### Instantáneas y tendencia (`CRM-05.01.01.05`)
+
+Es la única forma de contestar «¿cómo íbamos en marzo?»: el dato operativo ya
+cambió —una oportunidad cerrada se recategoriza, un importe se corrige— y
+recalcular marzo con los datos de hoy da un número que nunca existió.
+
+Se guardan **los resúmenes, no las filas**: guardar el detalle entero convertiría
+la tabla en una copia del CRM que crece sin fin y que nadie purga. Dos
+instantáneas el mismo día no crean dos puntos, se sustituye la del día: con dos,
+cualquier gráfico de tendencia saldría con un pico que no ocurrió.
+
+Y con menos de dos puntos **no se dice que hay tendencia**: una sola instantánea
+es una foto, y llamarla tendencia hace que alguien saque una conclusión de un
+punto.
+
+### Cuadros de mando (`CRM-05.01.02.01`)
+
+Un cuadro es una colección de componentes, y cada uno apunta a un informe y dice
+**cómo se pinta**. El «cómo» va en el cuadro y no en el informe porque el mismo
+informe se enseña como tabla en un sitio y como gráfico en otro, y duplicar la
+definición para cambiar el dibujo es cómo se acaba con dos informes que dicen
+cosas distintas.
+
+Se ve por rol, por equipo o por ser el propietario. **Un cuadro sin roles ni
+equipos es de todos**: exigir declarar el público de cada uno haría que el primero
+que alguien crea no lo vea nadie, y la conclusión sería que los cuadros no
+funcionan.
+
+Solo puede haber **un cuadro por defecto por rol**: con dos, cuál se abre
+dependería del orden de la consulta, y eso cambia al restaurar una copia.
+
+### Lo que todavía no está
+
+De los cuadros de mando quedan los **componentes con su catálogo de tipos**
+(`CRM-05.01.02.02`), los **filtros globales y el drill-down** (`.03`), los
+**dashboards dinámicos por usuario** (`.04` —el mecanismo `solo_mios` del informe
+ya está, falta llevarlo al cuadro—), las **alertas por umbral** (`.05`) y el
+**embebido con SSO** (`.06`).

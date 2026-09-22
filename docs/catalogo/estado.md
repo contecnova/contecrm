@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 422 hecho · ⬜ 285 pendiente
+**707 capacidades**: ✅ 432 hecho · ⬜ 275 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ⬜ 57
+57 capacidades · ✅ 10 · ⬜ 47
 
 ### 5.1 Reporting y BI
 
@@ -891,21 +891,21 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.01.01.01` | Constructor de informes por el usuario final, sin código | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.02` | Informes tabulares, agrupados, matriciales y de unión de fuentes | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.03` | Filtros dinámicos, filtros de ejecución y filtros cruzados | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.04` | Campos calculados, fórmulas de resumen y agrupaciones por periodo | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.05` | Informes históricos con instantáneas periódicas (trending) | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.06` | Programación y distribución automática por correo o a un destino externo | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.07` | Exportación a CSV, Excel y PDF con control de permisos y volumen | C | 2 | analytics | ⬜ | contecintelligence (RT-4: la consulta la resuelve él) + contecflow-PSA:app/services/bi_export_service.py (generación del fichero) |
-| `CRM-05.01.01.08` | Seguridad del dato respetada en el informe (nunca expone más de lo permitido) | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.01.09` | API de informes para consumir resultados desde cualquier frontend | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.01` | Constructor de informes por el usuario final, sin código | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.02` | Informes tabulares, agrupados, matriciales y de unión de fuentes | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.03` | Filtros dinámicos, filtros de ejecución y filtros cruzados | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.04` | Campos calculados, fórmulas de resumen y agrupaciones por periodo | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.05` | Informes históricos con instantáneas periódicas (trending) | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.06` | Programación y distribución automática por correo o a un destino externo | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.07` | Exportación a CSV, Excel y PDF con control de permisos y volumen | C | 2 | analytics | ✅ | contecintelligence (RT-4: la consulta la resuelve él) + contecflow-PSA:app/services/bi_export_service.py (generación del fichero) |
+| `CRM-05.01.01.08` | Seguridad del dato respetada en el informe (nunca expone más de lo permitido) | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.01.09` | API de informes para consumir resultados desde cualquier frontend | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
 
 #### CRM-05.01.02 · Cuadros de mando
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.01.02.01` | Dashboards configurables por rol, equipo y usuario | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.01` | Dashboards configurables por rol, equipo y usuario | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
 | `CRM-05.01.02.02` | Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
 | `CRM-05.01.02.03` | Filtros globales y drill-down hasta el registro | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
 | `CRM-05.01.02.04` | Dashboards dinámicos que muestran los datos del usuario que los abre | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |

@@ -181,6 +181,10 @@ ROLES_BASE: dict[str, Rol] = {
                 # Mandar a firmar NO: un contrato sale una vez, y quien lo manda
                 # tiene que ser quien responde de lo que dice.
                 "firma:read",
+                # Leer informes es de todos: un CRM cuyos números solo ve
+                # dirección se convierte en un sitio donde se meten datos y no
+                # se saca nada, y entonces se meten peor.
+                "informe:read",
                 "contract:read",
                 "order:read",
                 "toque:registrar",
@@ -204,6 +208,10 @@ ROLES_BASE: dict[str, Rol] = {
             {
                 "forecast:read",
                 "forecast:write",
+                # Crear informes va con el mando: un informe mal definido que se
+                # distribuye a cien personas es una cifra equivocada repetida
+                # cien veces.
+                "informe:write",
                 "opportunity:approve",
                 # Decidir va separado de pedir a propósito: si fueran el mismo
                 # permiso, cualquiera que pueda pedir una aprobación podría

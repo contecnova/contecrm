@@ -204,6 +204,7 @@ def _importar_todos_los_modelos() -> None:
         "services.sales.catalogo",
         "services.sales.presupuestos",
         "services.integration.firma",
+        "services.analytics.informes",
     ]
     for modulo in modulos:
         try:

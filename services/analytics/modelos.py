@@ -97,3 +97,14 @@ __all__ = [
     "OrganizacionExterna",
     "PoliticaRetencion",
 ]
+
+# El motor de informes vive en su propio módulo —tiene su lógica de compilación y
+# de seguridad—, pero sus tablas son de este esquema y tienen que importarse
+# aquí: `alembic` solo mira `modelos.py`.
+from services.analytics.informes import (  # noqa: E402,F401
+    CuadroMando,
+    EjecucionInforme,
+    Informe,
+    InstantaneaInforme,
+    ProgramacionInforme,
+)
