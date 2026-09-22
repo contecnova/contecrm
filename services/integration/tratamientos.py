@@ -28,3 +28,27 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+declarar(
+    Tratamiento(
+        objeto="buzones",
+        finalidad="Registrar en el CRM las conversaciones y reuniones con clientes",
+        base_legal="interes_legitimo",
+        plazo="Mientras la persona tenga el buzón conectado",
+        destinatarios=("Proveedor de correo y calendario que use el cliente",),
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="firmas_presenciales",
+        # Categoría especial del artículo 9: el trazo de una firma —velocidad,
+        # presión, tiempos— identifica a una persona. Por eso va con
+        # consentimiento explícito y cifrado, y por eso se declara aparte.
+        finalidad="Probar que una persona firmó un documento concreto, delante de un testigo",
+        base_legal="consentimiento",
+        plazo="6 años desde la firma, por la obligación de conservar la prueba del acuerdo",
+        responsable=RESPONSABLE,
+    )
+)

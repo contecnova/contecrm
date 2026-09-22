@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 580 hecho · ⬜ 127 pendiente
+**707 capacidades**: ✅ 590 hecho · ⬜ 117 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-29 capacidades · ✅ 13 · ⬜ 16
+29 capacidades · ✅ 23 · ⬜ 6
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -991,12 +991,12 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-06.01.01.01` | Sincronización bidireccional de correo y calendario (Microsoft 365, Google) | C | 2 | integration | ⬜ | contecmind:app/services/microsoft_drive.py + drive.py; contecflow-PSA:app/services/m365_service.py |
-| `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | ⬜ | contecmind:extension/ (complemento de navegador) |
-| `CRM-06.01.01.03` | Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat | A | 2 | integration | ⬜ | contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py |
-| `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.01.01` | Sincronización bidireccional de correo y calendario (Microsoft 365, Google) | C | 2 | integration | ✅ | contecmind:app/services/microsoft_drive.py + drive.py; contecflow-PSA:app/services/m365_service.py |
+| `CRM-06.01.01.02` | Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo | A | 2 | integration | ✅ | contecmind:extension/ (complemento de navegador) |
+| `CRM-06.01.01.03` | Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat | A | 2 | integration | ✅ | contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py |
+| `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ✅ | — |
 | `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ✅ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
-| `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ⬜ | contecmind:app/services/generated_documents.py + templates.py |
+| `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ✅ | contecmind:app/services/generated_documents.py + templates.py |
 
 #### CRM-06.01.02 · Firma electrónica
 
@@ -1010,13 +1010,13 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.02.06` | Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento | A | 2 | core | ✅ | — |
 | `CRM-06.01.02.07` | El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5) | A | 2 | core | ✅ | — |
 | `CRM-06.01.02.08` | Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido | A | 2 | core | ✅ | — |
-| `CRM-06.01.02.09` | Firma presencial en tableta y firma biométrica con captura de trazo | D | 3 | core | ⬜ | — |
+| `CRM-06.01.02.09` | Firma presencial en tableta y firma biométrica con captura de trazo | D | 3 | core | ✅ | — |
 | `CRM-06.01.02.10` | Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta | A | 2 | core | ✅ | — |
-| `CRM-06.01.02.11` | Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook | C | 2 | integration | ⬜ | contecflow-PSA:app/services/esign_providers.py |
+| `CRM-06.01.02.11` | Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook | C | 2 | integration | ✅ | contecflow-PSA:app/services/esign_providers.py |
 | `CRM-06.01.02.12` | Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe | C | 2 | integration | ✅ | — |
-| `CRM-06.01.02.13` | Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.02.14` | Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.02.15` | Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.02.13` | Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro | A | 2 | integration | ✅ | — |
+| `CRM-06.01.02.14` | Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad | A | 2 | integration | ✅ | — |
+| `CRM-06.01.02.15` | Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado | A | 2 | integration | ✅ | — |
 
 ### 6.2 Colaboración y movilidad
 

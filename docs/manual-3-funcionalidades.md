@@ -7184,22 +7184,14 @@ se toma, y se persiguen de forma distinta.
 
 ### Lo que todavía no está
 
-* **Conectores nativos por proveedor** (`CRM-06.01.02.11`): posicionado por API,
-  descarga del certificado y devolución por webhook. El transporte genérico llega
-  hasta donde llega, y lo que falta es la capa nativa encima — igual que con los
-  transportistas.
-* **Cambiar de proveedor sin perder lo enviado** (`CRM-06.01.02.13`) está a medias:
-  la marca `solo_en_curso` ya lo permite, pero no hay migración asistida ni informe
-  de lo que quedó con el proveedor antiguo.
-* **Prueba de conexión y envío en vacío** (`CRM-06.01.02.14`) y el **registro
-  completo de llamadas con coste** (`CRM-06.01.02.15`): la tabla existe y está
-  documentada, pero no la alimenta nadie todavía porque la llamada real la hará el
-  conector nativo.
-* **Firma presencial en tableta** (`CRM-06.01.02.09`).
+Enviar a firma un presupuesto desde la oportunidad y que el estado del sobre la
+mueva —`CRM-03.03.02.07`, que consta pendiente en el catálogo—. El motor ya emite
+los eventos necesarios; lo que queda es que `sales` los escuche.
 
-Y fuera de este capítulo queda `CRM-03.03.02.07`: enviar a firma un presupuesto
-desde la oportunidad y que el estado del sobre mueva la oportunidad. El motor ya
-emite los eventos que hacen falta; lo que falta es que `sales` los escuche.
+Lo demás de este capítulo se cerró después: llamar al proveedor sin un módulo por
+casa, probar la conexión antes de mandar un contrato, el registro de llamadas con
+su coste, el cambio de proveedor y la firma presencial en tableta están explicados
+en «Lo que faltaba de la firma electrónica», al final de este manual.
 
 ## Motor de informes (`CRM-05.01.01`) y cuadros de mando (`CRM-05.01.02.01`)
 
@@ -9602,3 +9594,149 @@ lee está ocupado.
   alguien lo pensó. El contenido se adjunta solo si encaja con el paso —adjuntar
   «lo más reciente» a cualquier recomendación es lo que hace que el comercial
   deje de mirar lo que se le adjunta.
+
+---
+
+## Correo, calendario y chat (`CRM-06.01.01`)
+
+Un CRM sin las conversaciones es una agenda cara, y la conversación está en el
+correo de cada comercial. Conectarlo tiene dos formas de salir mal, y las dos son
+peores que no conectarlo: **volcar el buzón entero dentro del CRM**, que
+multiplica el dato personal y la superficie que hay que proteger para algo que
+casi nadie vuelve a leer; y **sincronizar en los dos sentidos sin regla de
+conflicto**, que hace que una reunión movida en el móvil vuelva sola a la hora
+vieja.
+
+### Sincronización bidireccional (`CRM-06.01.01.01`, `CRM-06.01.01.04`)
+
+**Nada de un conector por casa.** Los dos grandes proveedores de correo son la
+misma cosa con otras direcciones y otro formato de token: lo que cambia es
+configuración —endpoints, campos, cómo se pagina y cómo se pide el incremento— y
+eso se declara. Un módulo por proveedor convierte cada implantación nueva en una
+versión del producto.
+
+- **Se sincroniza lo que tiene que ver con el CRM, no todo.** Por defecto, los
+  correos con alguien que está en el CRM y las reuniones con asistentes externos.
+  Lo que no entra no hay que protegerlo.
+- **Lo privado no entra nunca**, y se cuenta aparte: si desapareciera sin más,
+  nadie sabría que hubo algo que no se trajo.
+- **El CRM no gana los conflictos por ser el CRM.** Cuando los dos lados
+  cambiaron desde la última sincronización, se marca y lo resuelve una persona.
+  Pisar el calendario de alguien es la forma más rápida de que desconecte esto.
+- **Idempotencia por identificador del proveedor.** El calendario reenvía el
+  mismo evento cada vez que alguien lo toca; sin esto, una reunión aparece cuatro
+  veces en la ficha.
+- **La marca de incremento solo avanza sobre lo confirmado.** Si avanzara con un
+  fallo dentro, el hueco no se recuperaría nunca y nadie lo notaría hasta que
+  faltara una reunión.
+
+El panel cuenta lo que **no** está entrando —buzones sin credencial, en error y
+conflictos sin resolver—, porque uno que solo cuente lo sincronizado enseña un
+número que sube mientras tres llevan una semana desconectados. Y un buzón sin
+credencial no está roto: está esperando a que la persona autorice, que es otra
+cosa.
+
+### El complemento del cliente de correo (`CRM-06.01.01.02`)
+
+El complemento es una pieza de Outlook o de Gmail; lo que el CRM tiene que dar es
+**el contexto**, y acotado: sin una respuesta pequeña y rápida, el panel carga
+medio CRM en trescientos píxeles y la gente lo desinstala.
+
+Lo sirve `party`, no `integration`: resolver una dirección a un contacto exige
+leer los contactos, y ningún servicio lee el esquema de otro. Devuelve **también
+a quién no conoce**, que es la lista de contactos que faltan por dar de alta — y
+registrar el correo de alguien que no está en el CRM es justo el caso en que
+registrar vale la pena.
+
+### Chat corporativo (`CRM-06.01.01.03`)
+
+Se vende como notificaciones y se usa para otra cosa: lo que ahorra tiempo es no
+tener que abrir el CRM para contestar «¿en qué está esto?». Si solo manda avisos,
+a las dos semanas el canal está silenciado.
+
+- **Un canal declarado, no un módulo por casa.** Un endpoint, un formato y una
+  firma: eso es configuración.
+- **Un mensaje entrante se comprueba antes de creerlo.** Cualquiera que sepa la
+  URL puede mandar un POST; sin firma verificada, «actuar desde el chat» es
+  «actuar desde internet». Se compara en tiempo constante, porque una comparación
+  normal filtra el secreto a quien sepa medir.
+- **Sin declarar órdenes, el canal solo consulta.** Es lo menos que puede hacer y
+  lo que menos daño hace si alguien se equivoca al declararlo. Y una orden no
+  admitida se explica en vez de fallar, para que nadie conceda todas «para que
+  funcione».
+- **Lo que escribe pasa por comandos** al servicio dueño, como cualquier otra
+  automatización: venir de un chat no da permisos distintos, así que el estado
+  que se devuelve es «pedido».
+- **Y el aviso lleva enlace.** Un mensaje que dice «oportunidad ganada» sin decir
+  cuál obliga a buscarla, y a la tercera vez se deja de mirar el canal.
+
+### Generación documental (`CRM-06.01.01.06`)
+
+El documento que se le manda a un cliente se hace casi siempre copiando el del
+cliente anterior. Eso funciona hasta que alguien no borra un nombre.
+
+- **Lo que no se puede rellenar se dice antes de generar.** Un documento con
+  `{{importe}}` sin sustituir llega al cliente igual que uno bueno: nadie relee un
+  contrato de doce páginas antes de mandarlo.
+- **Las cláusulas bloqueadas se comprueban DESPUÉS de sustituir.** El caso real no
+  es que alguien borre la cláusula: es un marcador dentro de ella que la rompe al
+  rellenarse.
+- **Cada cambio es una versión nueva.** Cuando una cláusula resulta estar mal, la
+  pregunta no es cuál está mal: es **a quién se le mandó**, y sin versiones la
+  respuesta es «no consta».
+- **El documento se enlaza al corpus, no se guarda aquí.** Dos copias del mismo
+  contrato divergen, y la del CRM sería la que no tiene ni política de borrado ni
+  antivirus.
+
+## Lo que faltaba de la firma electrónica (`CRM-06.01.02`)
+
+### Firma presencial en tableta (`CRM-06.01.02.09`)
+
+Es la firma de toda la vida: el cliente está delante y firma con el dedo. Casi
+todas las implementaciones guardan una imagen de la rúbrica y la llaman firma;
+eso no sostiene nada, porque una imagen se copia y se pega en otro documento.
+
+- **El trazo es dato biométrico del artículo 9.** Velocidad, presión y tiempos
+  identifican a una persona: va cifrado, declarado en el registro de tratamiento
+  y **exige consentimiento explícito**. La firma se puede hacer igual sin
+  capturarlo.
+- **Lo que ata la firma al documento es la huella, no la imagen.** Si el
+  documento cambia una coma, deja de cuadrar y se ve. Es la única pregunta que
+  importa cuando alguien dice «yo no firmé eso».
+- **Se guarda quién sostenía la tableta.** En presencial la identificación la
+  hace una persona mirando un documento; sin constancia de quién fue, esto es una
+  rúbrica.
+- **Un trazo de tres puntos no es una firma.** Un toque accidental produce una
+  rúbrica que el sistema daría por válida, y eso es peor que no capturar nada.
+- **El trazo no sale en los listados**: devolverlo en una consulta de rutina
+  reparte biometría por los registros de acceso, las cachés y los navegadores.
+
+### Llamar al proveedor sin un módulo por casa (`CRM-06.01.02.11`, `CRM-06.01.02.15`)
+
+Un proveedor de firma es una API más: endpoints, credencial y mapeo de campos. Se
+declaran **cinco operaciones** —crear sobre, consultar estado, descargar firmado,
+descargar certificado y cancelar— y eso es el contrato: quien añade un proveedor
+sabe exactamente qué tiene que mapear.
+
+Cada llamada queda registrada con su operación, su código, su duración y su
+coste, **también cuando falla**: un registro que solo guarda lo que salió bien
+sirve para la factura y no sirve para depurar, que es para lo que se mira a las
+dos de la mañana.
+
+### Probar antes de mandar un contrato (`CRM-06.01.02.14`)
+
+Descubrir que la credencial estaba mal cuando ya hay un contrato a medias es caro
+de arreglar: el cliente recibió un correo que no lleva a ninguna parte.
+
+La prueba **en vacío** crea un sobre y lo cancela. Solo consultar no vale: hay
+proveedores donde leer funciona con una credencial que no puede escribir, y
+entonces la prueba pasa y el primer envío falla.
+
+### Cambiar de proveedor sin perder lo enviado (`CRM-06.01.02.13`)
+
+Los sobres en vuelo **terminan con el suyo**: el enlace que tiene el cliente en su
+correo apunta al proveedor viejo, y moverlo de sitio no lo cambia.
+
+Lo que se devuelve al migrar es cuántos quedan y cuál es el más antiguo, porque
+eso es lo que decide **cuándo se puede apagar la credencial vieja** — la pregunta
+que nadie sabe contestar cuando llega el momento.

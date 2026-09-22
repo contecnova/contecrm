@@ -35,13 +35,13 @@ from __future__ import annotations
 import hashlib
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable
 from uuid import UUID
 
 from crmcore.audit import registrar
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.errors import Conflicto, ErrorDependencia, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -1257,4 +1257,249 @@ def panel(db: Session, tenant_id: UUID, *, limite: int = 100) -> dict[str, Any]:
         # Sin sobres abiertos no se dice «todo firmado»: es que no hay nada
         # esperando, y un verde vacío se lee igual que uno ganado.
         "medible": bool(filas),
+    }
+
+
+# ── Llamar al proveedor por el conector declarativo (CRM-06.01.02.11) ─────
+
+# Qué operaciones tiene que saber hacer un proveedor de firma. La lista es
+# cerrada porque es el contrato: quien declara un proveedor nuevo sabe
+# exactamente qué tiene que mapear, y quien lee el código sabe qué se le pide.
+#
+# Que sean cinco y no una es lo que hace que esto no necesite «un conector
+# nativo por casa»: lo que cambia entre proveedores es la dirección de cada
+# operación y el nombre de los campos, y eso es configuración.
+OPERACIONES = (
+    "crear_sobre",
+    "consultar_estado",
+    "descargar_firmado",
+    "descargar_certificado",
+    "cancelar_sobre",
+)
+
+
+# Quién habla de verdad con el proveedor. Se registra desde fuera, como el puerto
+# del modelo de IA: lo que hay que poder probar es qué se le pide y qué se hace
+# con lo que vuelve, no que su servidor conteste.
+_operador: Callable[..., dict[str, Any]] | None = None
+
+
+def registrar_operador(fn: Callable[..., dict[str, Any]]) -> None:
+    """Conecta quien ejecuta las operaciones contra los proveedores de firma."""
+    global _operador
+    _operador = fn
+
+
+def _puerto_llamada(
+    db: Session,
+    proveedor: ProveedorFirma,
+    *,
+    operacion: str,
+    parametros: dict[str, Any],
+) -> dict[str, Any]:
+    """Ejecuta una operación contra el proveedor usando su conexión declarada.
+
+    No hay código por proveedor: se resuelve con el mismo conector declarativo
+    que lee un ERP, porque un proveedor de firma es una API más — endpoints,
+    credencial y mapeo de campos. Un módulo por casa convierte cada implantación
+    nueva en una versión del producto, y son diez años de mantenerlas.
+    """
+    if operacion not in OPERACIONES:
+        raise ErrorValidacion(
+            f"Operación de firma desconocida: «{operacion}»",
+            error_code="firma.operacion_desconocida",
+            detalle={"admitidas": list(OPERACIONES)},
+        )
+    if proveedor.conexion_id is None:
+        raise ErrorDependencia(
+            f"El proveedor «{proveedor.clave}» no tiene conexión declarada: sin "
+            "ella se puede configurar pero no llamar, y un sobre que no sale no "
+            "es un sobre enviado.",
+            error_code="firma.sin_conexion",
+        )
+    if _operador is None:
+        raise ErrorDependencia(
+            "Este despliegue no tiene conectado el operador de firma: se puede "
+            "declarar un proveedor pero no llamarle.",
+            error_code="firma.sin_operador",
+        )
+    return _operador(
+        conexion_id=proveedor.conexion_id,
+        operacion=operacion,
+        parametros=parametros,
+    )
+
+
+def anotar_llamada(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    proveedor: str,
+    operacion: str,
+    ok: bool,
+    codigo: int | None = None,
+    duracion_ms: int = 0,
+    coste: Decimal | None = None,
+    error: str = "",
+    sobre_id: UUID | None = None,
+) -> LlamadaProveedorFirma:
+    """Deja constancia de una llamada al proveedor (CRM-06.01.02.15).
+
+    Se llama **siempre**, también cuando falla: un registro que solo guarda lo
+    que salió bien sirve para la factura y no sirve para depurar, que es para lo
+    que se mira a las dos de la mañana.
+    """
+    fila = LlamadaProveedorFirma(
+        tenant_id=tenant_id,
+        proveedor=proveedor,
+        sobre_id=sobre_id,
+        operacion=operacion,
+        codigo=codigo,
+        ok=ok,
+        duracion_ms=max(0, int(duracion_ms)),
+        coste=coste,
+        error=(error or None),
+    )
+    db.add(fila)
+    db.flush()
+    return fila
+
+
+def probar_conexion(uow: UnidadDeTrabajo, *, clave: str, en_vacio: bool = True) -> dict[str, Any]:
+    """Comprueba las credenciales **antes** de mandar un contrato
+    (CRM-06.01.02.14).
+
+    Descubrir que la credencial estaba mal cuando ya hay un contrato firmado a
+    medias es caro de arreglar: el cliente recibió un correo que no lleva a
+    ninguna parte y hay que explicárselo.
+
+    `en_vacio` crea un sobre de prueba y lo cancela acto seguido. Solo consultar
+    no vale: hay proveedores donde leer funciona con una credencial que no puede
+    escribir, y entonces la prueba pasa y el primer envío falla.
+    """
+    proveedor = _proveedor(uow.db, uow.tenant_id, clave)
+    inicio = _ahora()
+    detalle = ""
+    ok = False
+    try:
+        _puerto_llamada(
+            uow.db, proveedor, operacion="consultar_estado", parametros={"prueba": True}
+        )
+        if en_vacio:
+            creado = _puerto_llamada(
+                uow.db,
+                proveedor,
+                operacion="crear_sobre",
+                parametros={"prueba": True, "asunto": "Prueba de conexión"},
+            )
+            referencia = str((creado or {}).get("id") or "")
+            if referencia:
+                _puerto_llamada(
+                    uow.db,
+                    proveedor,
+                    operacion="cancelar_sobre",
+                    parametros={"id": referencia, "motivo": "Prueba de conexión"},
+                )
+            detalle = "Credenciales válidas para leer y para escribir."
+        else:
+            detalle = (
+                "Credenciales válidas para LEER. No se ha probado a escribir: hay "
+                "proveedores donde leer funciona con una credencial que no puede "
+                "crear sobres, y entonces el primer envío real falla."
+            )
+        ok = True
+    except Exception as exc:  # noqa: BLE001 — el fallo de la prueba ES el resultado
+        detalle = str(exc)[:400]
+
+    duracion = int((_ahora() - inicio).total_seconds() * 1000)
+    anotar_llamada(
+        uow.db,
+        tenant_id=uow.tenant_id,
+        proveedor=clave,
+        operacion="prueba_conexion",
+        ok=ok,
+        duracion_ms=duracion,
+        error="" if ok else detalle,
+    )
+    proveedor.probado_at = _ahora()
+    proveedor.prueba_ok = ok
+    proveedor.prueba_detalle = detalle
+    uow.db.flush()
+
+    return {
+        "proveedor": clave,
+        "ok": ok,
+        "en_vacio": en_vacio,
+        "duracion_ms": duracion,
+        "detalle": detalle,
+        "que_significa": (
+            "Se puede mandar por este proveedor."
+            if ok and en_vacio
+            else "Se puede leer, pero no se ha comprobado que se pueda mandar."
+            if ok
+            else "NO se puede mandar por este proveedor hasta arreglar esto."
+        ),
+    }
+
+
+def migrar_proveedor(
+    uow: UnidadDeTrabajo, *, desde: str, hacia: str, motivo: str = ""
+) -> dict[str, Any]:
+    """Cambia de proveedor **sin perder lo enviado** (CRM-06.01.02.13).
+
+    Los sobres en vuelo terminan con el suyo: un sobre a medias no se puede mover
+    de proveedor, porque el enlace que tiene el cliente en su correo apunta al
+    viejo. Lo que cambia es a dónde van los nuevos.
+
+    Y se devuelve **cuántos quedan con el antiguo y cuál es el más viejo**: es lo
+    que decide cuándo se puede apagar del todo la credencial vieja, que es la
+    pregunta que nadie sabe contestar cuando llega el momento.
+    """
+    viejo = _proveedor(uow.db, uow.tenant_id, desde)
+    nuevo = _proveedor(uow.db, uow.tenant_id, hacia)
+    if not nuevo.activo:
+        raise Conflicto(
+            f"El proveedor «{hacia}» no está activo: migrar hacia uno apagado "
+            "dejaría los sobres nuevos sin por dónde salir.",
+            error_code="firma.destino_inactivo",
+        )
+
+    viejo.solo_en_curso = True
+    uow.db.flush()
+
+    en_vuelo = (
+        uow.db.execute(
+            select(Sobre).where(
+                Sobre.tenant_id == uow.tenant_id,
+                Sobre.proveedor == desde,
+                Sobre.estado.in_(("enviado", "en_curso")),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    registrar(
+        uow.db,
+        accion="firma.proveedor_migrado",
+        objeto="proveedor_firma",
+        objeto_id=viejo.id,
+        datos={"desde": desde, "hacia": hacia, "en_vuelo": len(en_vuelo)},
+        motivo=motivo or None,
+        tenant_id=uow.tenant_id,
+    )
+    mas_viejo = min((s.created_at for s in en_vuelo), default=None)
+    return {
+        "desde": desde,
+        "hacia": hacia,
+        "sobres_en_vuelo_con_el_antiguo": len(en_vuelo),
+        "el_mas_viejo": mas_viejo.isoformat() if mas_viejo else None,
+        # La pregunta que nadie sabe contestar cuando llega el momento.
+        "se_puede_apagar_el_antiguo": not en_vuelo,
+        "porque": (
+            "No queda ningún sobre en vuelo con el antiguo: su credencial ya se " "puede retirar."
+            if not en_vuelo
+            else f"Quedan {len(en_vuelo)} sobres en vuelo con «{desde}». Su enlace "
+            "apunta a ese proveedor, así que su credencial tiene que seguir viva "
+            "hasta que terminen o caduquen."
+        ),
     }

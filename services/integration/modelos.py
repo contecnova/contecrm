@@ -143,12 +143,18 @@ class Ejecucion(Base):
 # Tabla común: la clave propia del tenant (BYOK, CRM-00.01.04.09) se replica
 # al esquema de cada servicio, porque cada uno cifra y descifra los campos de sus
 # propias tablas dentro de sus transacciones.
+from crmcore.documental.firma_presencial import FirmaPresencial  # noqa: E402,F401
+from crmcore.documental.plantillas import (  # noqa: E402,F401
+    DocumentoGenerado,
+    PlantillaDocumento,
+)
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
 # Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
 # al final y solo por su efecto: declararlas al cargar los modelos es lo que
 # garantiza que el RAT y los objetos no puedan separarse.
 from services.integration import tratamientos  # noqa: E402,F401
+from services.integration.buzon import Buzon, ElementoSincronizado  # noqa: E402,F401
 from services.integration.canales_entrada import (  # noqa: E402,F401
     CanalEntrada,
     Interaccion,
@@ -159,6 +165,7 @@ from services.integration.canonico import (  # noqa: E402,F401
     ObjetoCanonico,
     Vinculo,
 )
+from services.integration.colaboracion import CanalChat  # noqa: E402,F401
 from services.integration.convivencia import (  # noqa: E402,F401
     ProgresoMigracion,
     ReglaConvivencia,

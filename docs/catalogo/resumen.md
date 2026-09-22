@@ -12,7 +12,7 @@
 | 3 — Ventas (SFA) | 65 | 54 | 0 | 11 |
 | 4 — Servicio y atención al cliente | 62 | 58 | 0 | 4 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
-| 6 — Productividad y colaboración | 29 | 13 | 0 | 16 |
+| 6 — Productividad y colaboración | 29 | 23 | 0 | 6 |
 | 7 — Administración, ALM y gobierno | 91 | 82 | 0 | 9 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
@@ -20,9 +20,9 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 279 | 271 |
-| A — Avanzado | 384 | 280 |
-| D — Diferencial | 44 | 29 |
+| C — Core | 279 | 273 |
+| A — Avanzado | 384 | 287 |
+| D — Diferencial | 44 | 30 |
 
 ## Por fase
 
@@ -30,8 +30,8 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 152 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 138 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 175 | 132 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 44 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 175 | 141 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 45 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 49 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 37 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 28 |

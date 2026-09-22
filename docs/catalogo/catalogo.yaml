@@ -1062,12 +1062,12 @@ modulos:
           - id: CRM-06.01.01
             nombre: Puesto de trabajo
             capacidades:
-              - {id: CRM-06.01.01.01, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/microsoft_drive.py + drive.py; contecflow-PSA:app/services/m365_service.py", t: "Sincronización bidireccional de correo y calendario (Microsoft 365, Google)"}
-              - {id: CRM-06.01.01.02, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:extension/ (complemento de navegador)", t: "Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo"}
-              - {id: CRM-06.01.01.03, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py", t: "Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat"}
-              - {id: CRM-06.01.01.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro automático de reuniones y de asistentes"}
+              - {id: CRM-06.01.01.01, c: C, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:app/services/microsoft_drive.py + drive.py; contecflow-PSA:app/services/m365_service.py", t: "Sincronización bidireccional de correo y calendario (Microsoft 365, Google)"}
+              - {id: CRM-06.01.01.02, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:extension/ (complemento de navegador)", t: "Complemento en Outlook/Gmail para registrar y consultar sin salir del cliente de correo"}
+              - {id: CRM-06.01.01.03, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:app/services/teams_bot/ + teams_*.py (10 módulos); contecflow-PSA:app/services/slack_service.py", t: "Integración con Teams/Slack: notificaciones, consulta y acciones desde el chat"}
+              - {id: CRM-06.01.01.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Registro automático de reuniones y de asistentes"}
               - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
-              - {id: CRM-06.01.01.06, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/generated_documents.py + templates.py", t: "Generación documental desde plantillas (propuesta, contrato, acta)"}
+              - {id: CRM-06.01.01.06, c: A, fase: 2, svc: core, estado: hecho, reutiliza: "contecmind:app/services/generated_documents.py + templates.py", t: "Generación documental desde plantillas (propuesta, contrato, acta)"}
           - id: CRM-06.01.02
             nombre: Firma electrónica
             capacidades:
@@ -1079,13 +1079,13 @@ modulos:
               - {id: CRM-06.01.02.06, c: A, fase: 2, svc: core, estado: hecho, t: "Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento"}
               - {id: CRM-06.01.02.07, c: A, fase: 2, svc: core, estado: hecho, t: "El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5)"}
               - {id: CRM-06.01.02.08, c: A, fase: 2, svc: core, estado: hecho, t: "Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido"}
-              - {id: CRM-06.01.02.09, c: D, fase: 3, svc: core, estado: pendiente, t: "Firma presencial en tableta y firma biométrica con captura de trazo"}
+              - {id: CRM-06.01.02.09, c: D, fase: 3, svc: core, estado: hecho, t: "Firma presencial en tableta y firma biométrica con captura de trazo"}
               - {id: CRM-06.01.02.10, c: A, fase: 2, svc: core, estado: hecho, t: "Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta"}
-              - {id: CRM-06.01.02.11, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/services/esign_providers.py", t: "Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook"}
+              - {id: CRM-06.01.02.11, c: C, fase: 2, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/esign_providers.py", t: "Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook"}
               - {id: CRM-06.01.02.12, c: C, fase: 2, svc: integration, estado: hecho, t: "Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe"}
-              - {id: CRM-06.01.02.13, c: A, fase: 2, svc: integration, estado: pendiente, t: "Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro"}
-              - {id: CRM-06.01.02.14, c: A, fase: 2, svc: integration, estado: pendiente, t: "Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad"}
-              - {id: CRM-06.01.02.15, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado"}
+              - {id: CRM-06.01.02.13, c: A, fase: 2, svc: integration, estado: hecho, t: "Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro"}
+              - {id: CRM-06.01.02.14, c: A, fase: 2, svc: integration, estado: hecho, t: "Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad"}
+              - {id: CRM-06.01.02.15, c: A, fase: 2, svc: integration, estado: hecho, t: "Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado"}
       - id: "6.2"
         nombre: Colaboración y movilidad
         funciones:

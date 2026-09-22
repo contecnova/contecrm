@@ -1829,3 +1829,82 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
     if tocadas:
         db.commit()
     return cuenta
+
+
+# ── Panel para el cliente de correo (CRM-06.01.01.02) ─────────────────────
+
+
+def contexto_de_direcciones(
+    db: Session, tenant_id: UUID, *, direcciones: list[str], limite: int = 20
+) -> dict[str, Any]:
+    """Quién es esta gente y qué hay abierto con ellos.
+
+    Es lo que el complemento de Outlook o Gmail enseña al lado del correo. El
+    complemento en sí es una pieza del cliente de correo; lo que el CRM tiene que
+    dar es esto, y **acotado**: sin una respuesta pequeña y rápida, el panel carga
+    medio CRM en trescientos píxeles y la gente lo desinstala.
+
+    Devuelve **también a quién no conoce**. Esa es la lista de contactos que
+    faltan por dar de alta, y es lo que hace que el complemento sirva para algo
+    más que consultar: registrar el correo de alguien que no está en el CRM es
+    justo el caso en que registrar vale la pena.
+    """
+    buscadas = sorted({d.strip().lower() for d in direcciones if d and d.strip()})
+    if not buscadas:
+        return {
+            "conocidos": [],
+            "desconocidos": [],
+            "porque": "No se ha dado ninguna dirección que buscar.",
+        }
+
+    from sqlalchemy import or_
+
+    filas = (
+        db.execute(
+            select(Contacto)
+            .where(
+                Contacto.deleted_at.is_(None),
+                or_(
+                    Contacto.email.in_(buscadas),
+                    Contacto.email_secundario.in_(buscadas),
+                ),
+            )
+            .limit(max(1, limite))
+        )
+        .scalars()
+        .all()
+    )
+    encontradas = {
+        str(valor).lower()
+        for fila in filas
+        for valor in (fila.email, fila.email_secundario)
+        if valor
+    }
+    return {
+        "conocidos": [
+            {
+                "contacto_id": str(f.id),
+                "nombre": f.nombre_completo,
+                "email": f.email,
+                # La cuenta va por la tabla de relación, no por una columna: un
+                # contacto puede trabajar en dos empresas, y colgarlo de una sola
+                # obligaría a elegir cuál en el peor momento.
+                "cuentas": [
+                    str(r.cuenta_id)
+                    for r in db.execute(
+                        select(RelacionContactoCuenta).where(
+                            RelacionContactoCuenta.contacto_id == f.id
+                        )
+                    ).scalars()
+                ],
+            }
+            for f in filas
+        ],
+        "desconocidos": [d for d in buscadas if d not in encontradas],
+        "como_se_registra": (
+            "El complemento registra el correo por el canal de entrada, que es el "
+            "mismo por el que entran el chat y la centralita: un camino por canal "
+            "acabaría con cuatro sitios creando actividades y solo uno aplicando "
+            "las reglas."
+        ),
+    }

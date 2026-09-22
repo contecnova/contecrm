@@ -99,6 +99,12 @@ PREFIJOS: dict[str, str] = {
     "dominios-envio": "marketing",
     "correo": "marketing",
     "preferencias": "marketing",
+    # Correo, calendario, chat, plantillas documentales y firma presencial
+    # (CRM-06.01.01, CRM-06.01.02.09).
+    "buzones": "integration",
+    "canales-chat": "integration",
+    "plantillas-documento": "integration",
+    "firma-presencial": "integration",
     # Consentimiento: el doble opt-in, las cookies y las reglas de contenido
     # (CRM-02.04.02.02, CRM-07.03.01.08, CRM-02.04.01.03).
     "optin": "marketing",
