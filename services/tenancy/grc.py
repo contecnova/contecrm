@@ -697,3 +697,119 @@ def registrar_apartados() -> None:
 
 
 registrar_apartados()
+
+
+# ── Panel de GRC (CRM-07.03.02.10) ────────────────────────────────────────
+
+# A partir de aquí, un riesgo se considera alto. Sobre 25 —probabilidad por
+# impacto, los dos de 1 a 5—, 12 es la mitad larga: lo que un comité mira. Va
+# como constante del módulo y no como ajuste porque mover el umbral cambiaría
+# qué sale en el panel sin cambiar ningún riesgo, y eso es maquillar el informe;
+# quien quiera menos ruido tiene que bajar el impacto o la probabilidad de un
+# riesgo concreto, que es una decisión que deja rastro.
+UMBRAL_RIESGO_ALTO = 12
+
+
+def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Todo lo que no cuadra, en un sitio y **ordenado por lo que urge**.
+
+    Las piezas ya estaban —cobertura, vencimientos, riesgos sin control— y cada
+    una en su pantalla. El problema de tenerlas separadas es el de siempre: hay
+    que abrir cuatro sitios para saber si se está bien, así que no se abre
+    ninguno.
+
+    Dos decisiones:
+
+    **Se ordena por urgencia, no por fecha.** Una lista por fecha entierra lo
+    grave debajo de lo viejo. Aquí lo primero es lo que tiene consecuencia —un
+    riesgo alto sin control, un control fuera de plazo— y lo último, lo que
+    conviene mirar.
+
+    **Se dice qué NO se ha podido medir.** Un panel en verde porque no hay nada
+    declarado es el que más tranquiliza y el que peor informa: sin controles, sin
+    riesgos y sin evaluaciones, esto no dice que se cumpla — dice que no hay
+    nada con lo que comprobarlo.
+    """
+    datos_vencidos = vencidos(db, tenant_id)
+    datos_cobertura = cobertura(db, tenant_id, solo_hechas=True)
+
+    riesgos = (
+        db.execute(select(Riesgo).where(Riesgo.tenant_id == tenant_id, Riesgo.estado == "abierto"))
+        .scalars()
+        .all()
+    )
+    controles = (
+        db.execute(select(Control).where(Control.tenant_id == tenant_id, Control.activo.is_(True)))
+        .scalars()
+        .all()
+    )
+    ultimas = _ultimas_evaluaciones(db, tenant_id)
+
+    # Un riesgo alto sin control es la fila que un auditor mira primero, así que
+    # es la que va arriba.
+    # La severidad no es un campo: es probabilidad × impacto, que es como se
+    # calcula de verdad. Buscar un campo «severidad» habría dejado esta lista
+    # vacía para siempre sin un solo error — la clase de fallo que hace que un
+    # panel de riesgos enseñe todo en verde.
+    altos_sin_control = [
+        r.codigo
+        for r in riesgos
+        if r.inherente >= UMBRAL_RIESGO_ALTO
+        and r.codigo in datos_vencidos["riesgos_a_mitigar_sin_control"]
+    ]
+
+    urgente: list[dict[str, Any]] = []
+    for codigo in sorted(altos_sin_control):
+        urgente.append(
+            {
+                "que": f"Riesgo {codigo} de severidad alta sin ningún control",
+                "inherente": next((r.inherente for r in riesgos if r.codigo == codigo), None),
+                "por_que_urge": "Se decidió mitigarlo y no hay nada ejecutándolo",
+                "orden": 1,
+            }
+        )
+    for fila in datos_vencidos["controles_no_efectivos"]:
+        urgente.append(
+            {
+                "que": f"Control {fila['control']} evaluado como «{fila['resultado']}»",
+                "por_que_urge": "Está declarado y no protege: peor que no tenerlo, porque consta",
+                "orden": 2,
+            }
+        )
+    for fila in datos_vencidos["controles_fuera_de_plazo"]:
+        urgente.append(
+            {
+                "que": f"Control {fila['control']} sin evaluar desde su plazo ({fila['vencio']})",
+                "por_que_urge": "Nadie sabe si sigue funcionando",
+                "orden": 3,
+            }
+        )
+    for codigo in datos_vencidos["controles_nunca_evaluados"]:
+        urgente.append(
+            {
+                "que": f"Control {codigo} nunca evaluado",
+                "por_que_urge": "Declarado y sin comprobar ni una vez",
+                "orden": 4,
+            }
+        )
+
+    hay_con_que_medir = bool(controles) and bool(ultimas)
+    return {
+        "generado_at": datetime.now(timezone.utc).isoformat(),
+        "riesgos_abiertos": len(riesgos),
+        "controles_activos": len(controles),
+        "controles_evaluados": len(ultimas),
+        "cobertura_pct": datos_cobertura.get("cobertura_pct"),
+        "lo_que_urge": sorted(urgente, key=lambda f: f["orden"]),
+        "detalle": datos_vencidos,
+        # La diferencia entre «se cumple» y «no hay nada con lo que comprobarlo»,
+        # que es la que decide si este panel sirve o tranquiliza en falso.
+        "medible": hay_con_que_medir,
+        "porque": (
+            "Hay controles declarados y evaluaciones con las que comprobarlo."
+            if hay_con_que_medir
+            else "No hay controles declarados o ninguno se ha evaluado: este panel "
+            "no dice que se cumpla, dice que no hay nada con lo que comprobarlo."
+        ),
+        "todo_en_orden": hay_con_que_medir and not urgente,
+    }

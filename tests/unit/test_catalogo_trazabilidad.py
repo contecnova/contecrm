@@ -280,3 +280,39 @@ def test_el_manual_no_declara_ausente_nada_que_conste_hecho(catalogo: dict) -> N
         "texto se quedó viejo al terminarla. Mira el código antes de decidir cuál "
         "de las dos, y arregla la que toque."
     )
+
+
+def test_la_hoja_de_estado_no_publica_un_hueco_como_algo_construido() -> None:
+    """Lo que falta no puede salir en la web bajo la etiqueta «hay».
+
+    Pasó: el lector de la hoja daba por hecho que toda tabla de capacidades tenía
+    tres columnas —capacidad, qué hay, qué falta—, y la del capítulo de huecos
+    tiene dos. Su «qué falta» se publicaba como «qué hay», así que la web
+    presentaba como construido exactamente lo que no lo estaba. Es la peor forma
+    posible de equivocarse en ese documento, porque es el que se enseña.
+
+    Lo caza un invariante simple: una capacidad **pendiente** no puede tener nada
+    escrito en «hay». Si algo hay de una capacidad pendiente, o está mal
+    etiquetado o la capacidad no está pendiente.
+    """
+    import json
+
+    ruta = RAIZ / "docs" / "hoja-estado.html"
+    if not ruta.exists():
+        pytest.skip("la hoja de estado no está generada")
+
+    html = ruta.read_text(encoding="utf-8")
+    encontrado = re.search(r"const DATOS = (\{.*?\});", html, re.S)
+    assert encontrado, "la hoja no lleva sus datos dentro: no se puede comprobar"
+    datos = json.loads(encontrado.group(1))
+
+    mal = [
+        f"{c['id']} ({c['estado']}): «hay» dice «{c['hay'][:70]}…»"
+        for c in datos["capacidades"]
+        if c.get("estado") == "pendiente" and (c.get("hay") or "").strip()
+    ]
+    assert not mal, (
+        "La hoja de estado publica como construido algo de una capacidad "
+        "pendiente:\n  " + "\n  ".join(mal) + "\n\nRevisa cómo se leen las "
+        "columnas del manual en `scripts/gen_hoja_estado.py`."
+    )

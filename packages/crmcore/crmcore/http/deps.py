@@ -243,6 +243,12 @@ def exige_permiso(permiso: str) -> Any:
         principal.exigir(permiso)
         return principal
 
+    # El permiso queda colgado de la dependencia para que la matriz de permisos
+    # (CRM-07.03.02.09) pueda leerlo de las rutas montadas. Deducirlo del código
+    # fuente obligaría a mantener un inventario aparte, y un inventario y la
+    # realidad dejan de coincidir el día que alguien cambia una y no el otro —
+    # que es el día en que la auditoría deja de valer.
+    _dep.permiso_exigido = permiso  # type: ignore[attr-defined]
     return _dep
 
 

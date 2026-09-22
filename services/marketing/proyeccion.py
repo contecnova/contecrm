@@ -146,6 +146,12 @@ async def consumir(mensaje: Any) -> None:
     if str(tipo or "") == "partner.activated":
         await _consumir_partner(mensaje)
         return
+    if str(tipo or "") == "contact.processing_limited":
+        await _consumir_limitacion(mensaje)
+        return
+    if str(tipo or "") == "contact.processing_lifted":
+        await _consumir_levantamiento(mensaje)
+        return
     encaje = EVENTOS.get(str(tipo or ""))
     if encaje is None:
         return
@@ -248,5 +254,132 @@ declarar_consumo(
             "Poder abrir fondos de marketing a nombre de un partner sin leer el "
             "esquema de ventas"
         ),
+    )
+)
+
+
+async def _consumir_limitacion(mensaje: Any) -> None:
+    """Deja de escribir a quien ha ejercido su limitación u oposición
+    (CRM-02.04.02.03, CRM-02.04.02.05).
+
+    Es el otro extremo del derecho: `party` anota la limitación y **aquí** es
+    donde se deja de enviar, porque quien manda los correos es este servicio y
+    no puede leer aquel esquema.
+
+    Se suprime **por dirección**, no por identificador, y todas las que traiga el
+    evento. La misma persona suele estar en tres fichas duplicadas: bloquear solo
+    la que ejerció el derecho deja que las otras dos le sigan escribiendo, que es
+    la queja que acaba en denuncia.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+
+    from services.marketing.segmentos import suprimir
+
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    destinos = datos.get("destinos") or []
+    if not bruto:
+        logger.warning("marketing.limitacion_sin_tenant")
+        return
+    if not destinos:
+        # Sin direcciones no hay nada que bloquear aquí, y **se dice**: una
+        # limitación que no se puede aplicar no puede pasar en silencio, porque
+        # el interesado cree que ya no le escriben.
+        logger.warning("marketing.limitacion_sin_destinos", contacto=str(datos.get("contacto_id")))
+        return
+
+    contacto = datos.get("contacto_id")
+    tenant_id = UUID(str(bruto))
+    with unidad_de_trabajo(tenant_id) as uow:
+        for destino in destinos:
+            suprimir(
+                uow,
+                direccion=str(destino.get("destino") or ""),
+                canal=str(destino.get("canal") or "email"),
+                motivo="baja",
+                detalle=(
+                    "Limitación u oposición del interesado "
+                    f"({datos.get('motivo') or 'sin motivo declarado'})"
+                ),
+                contacto_id=UUID(str(contacto)) if contacto else None,
+            )
+    logger.info("marketing.limitacion_aplicada", destinos=len(destinos))
+
+
+async def _consumir_levantamiento(mensaje: Any) -> None:
+    """Quita la supresión cuando se levanta la limitación.
+
+    **No se quita a ciegas.** Una supresión puede venir de una queja por spam o
+    de un rebote duro, y esas no las levanta el fin de una limitación: quitarlas
+    haría que volver a escribir a quien nos denunció fuera un efecto colateral de
+    otro trámite. Solo se retira la que puso la propia limitación.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+    from sqlalchemy import select as _select
+
+    from services.marketing.modelos import Supresion
+
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    destinos = datos.get("destinos") or []
+    if not bruto or not destinos:
+        return
+
+    tenant_id = UUID(str(bruto))
+    with unidad_de_trabajo(tenant_id) as uow:
+        for destino in destinos:
+            fila = uow.db.execute(
+                _select(Supresion).where(
+                    Supresion.tenant_id == tenant_id,
+                    Supresion.canal == str(destino.get("canal") or "email"),
+                    Supresion.direccion == str(destino.get("destino") or "").strip().lower(),
+                )
+            ).scalar_one_or_none()
+            if fila is None:
+                continue
+            if fila.permanente or fila.motivo in ("queja", "rebote_duro", "lista_negra"):
+                logger.info(
+                    "marketing.supresion_no_levantada",
+                    motivo=fila.motivo,
+                    porque="no la puso la limitación",
+                )
+                continue
+            uow.db.delete(fila)
+    logger.info("marketing.levantamiento_aplicado", destinos=len(destinos))
+
+
+declarar_consumo(
+    Consumo(
+        consumidor="marketing",
+        evento="contact.processing_limited",
+        campos=("contacto_id", "destinos"),
+        obligatorio=True,
+        motivo=(
+            "Dejar de escribir a quien ejerció su limitación u oposición. Sin las "
+            "direcciones no se puede bloquear: aquí se suprime por dirección, "
+            "porque la misma persona está a menudo en varias fichas"
+        ),
+    )
+)
+
+declarar_consumo(
+    Consumo(
+        consumidor="marketing",
+        evento="contact.processing_lifted",
+        campos=("contacto_id", "destinos"),
+        obligatorio=True,
+        motivo="Volver a permitir el envío solo de lo que bloqueó la limitación",
     )
 )

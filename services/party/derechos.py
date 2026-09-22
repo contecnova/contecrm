@@ -48,10 +48,18 @@ logger = get_logger(__name__)
 # solicitud sin forma de resolverse.
 TIPOS = ("acceso", "rectificacion", "supresion", "portabilidad", "oposicion", "limitacion")
 
-# Los que este módulo sabe **ejecutar** solo. Los demás exigen una decisión
-# humana —qué rectificar, qué tratamiento limitar— y fingir que se automatizan
-# produciría resoluciones que nadie ha revisado.
-EJECUTABLES = ("acceso", "portabilidad", "supresion")
+# Los que este módulo sabe ejecutar. La rectificación necesita que una persona
+# diga QUÉ cambia y a qué valor —de una solicitud en prosa no se deduce—, y la
+# oposición y la limitación, sobre qué tratamientos; pero una vez decidido eso,
+# los seis se ejecutan y dejan evidencia (CRM-02.04.02.04, CRM-02.04.02.05).
+EJECUTABLES = (
+    "acceso",
+    "portabilidad",
+    "supresion",
+    "rectificacion",
+    "oposicion",
+    "limitacion",
+)
 
 # Campos que se vacían al anonimizar un contacto. Lo que identifica a la
 # persona, y nada más: el resto —fechas, importes, qué compró— es el hecho
@@ -386,6 +394,17 @@ def _resumen(accion: str, datos: dict[str, Any]) -> str:
             f"{len(datos.get('anonimizados', []))} contacto(s) anonimizado(s), "
             f"{len(datos.get('bloqueados', []))} bloqueado(s) por retención legal"
         )
+    if accion == "rectificacion":
+        tocados = datos.get("rectificados", [])
+        campos = sorted({c for t in tocados for c in (t.get("antes") or {})})
+        return f"{len(tocados)} ficha(s) rectificada(s) en: {', '.join(campos) or 'ningún campo'}"
+    if accion in ("oposicion", "limitacion"):
+        limitaciones = datos.get("limitaciones", [])
+        tratamientos = sorted({t for lim in limitaciones for t in lim.get("limitados", [])})
+        return (
+            f"{len(limitaciones)} contacto(s) con tratamiento limitado: "
+            f"{', '.join(tratamientos) or 'ninguno'}"
+        )
     return f"{len(datos.get('contactos', []))} ficha(s) entregada(s)"
 
 
@@ -401,3 +420,209 @@ def comprobar_evidencia(solicitud: Any, accion: str, contenido: dict[str, Any]) 
         return False
     serializado = json.dumps(contenido, sort_keys=True, default=str, ensure_ascii=False)
     return hashlib.sha256(serializado.encode()).hexdigest() == registro.get("huella")
+
+
+# ── Rectificación, portabilidad y oposición (CRM-02.04.02.04) ─────────────
+
+
+def ejecutar_portabilidad(
+    db: Session, solicitud_id: UUID, *, por: UUID | None = None
+) -> dict[str, Any]:
+    """Entrega los datos en formato de lectura mecánica (art. 20).
+
+    Comparte contenido con el acceso porque **son los mismos datos**; lo que
+    cambia es el encuadre legal y, sobre todo, el alcance: la portabilidad cubre
+    solo lo que el interesado **aportó** o generó con su actividad, no lo que la
+    empresa dedujo sobre él. Entregar un scoring interno como si fuera «sus
+    datos» es regalar el trabajo propio y, peor, dar por bueno ante el
+    interesado un juicio que nunca pidió.
+
+    Así que se entrega lo mismo y **se dice qué queda fuera y por qué**.
+    """
+    salida = ejecutar_acceso(db, solicitud_id, por=por)
+    salida["formato"] = "JSON estructurado, de uso común y lectura mecánica (art. 20.1)"
+    salida["fuera_del_derecho"] = {
+        "puntuaciones_y_segmentos": (
+            "Inferencias de la empresa, no datos aportados por el interesado: el "
+            "derecho de portabilidad no las cubre (art. 20.1)."
+        ),
+        "notas_internas_de_terceros": (
+            "Lo que escribió un empleado sobre la conversación es también dato de "
+            "ese empleado; se entrega en el derecho de ACCESO, no en el de portabilidad."
+        ),
+    }
+    return salida
+
+
+def ejecutar_rectificacion(
+    db: Session,
+    solicitud_id: UUID,
+    *,
+    cambios: dict[str, Any],
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Corrige los datos que el interesado dice que están mal (art. 16).
+
+    **Los cambios los decide una persona, no el sistema.** Llegan como parámetro
+    porque nadie puede deducir de una solicitud en prosa qué campo hay que
+    cambiar y a qué valor; automatizarlo produciría rectificaciones inventadas
+    sobre datos que nadie ha comprobado.
+
+    Se guarda **lo que había antes**. Sin el valor anterior, una rectificación es
+    indistinguible de una edición cualquiera, y lo que hay que poder demostrar es
+    justo que se corrigió lo que el interesado señaló.
+    """
+    solicitud = _solicitud(db, solicitud_id)
+    if not cambios:
+        raise ErrorValidacion(
+            "Una rectificación sin cambios no rectifica nada. Di qué campo y con "
+            "qué valor: nadie puede deducirlo de la solicitud.",
+            error_code="derechos.rectificacion_vacia",
+        )
+    contactos = _contactos_del_solicitante(db, solicitud)
+    if not contactos:
+        raise NoEncontrado(
+            "No hay ninguna ficha de esta persona que rectificar",
+            error_code="derechos.sin_fichas",
+        )
+
+    permitidos = set(CAMPOS_IDENTIFICATIVOS) | {"nombre_pila", "departamento", "idioma"}
+    desconocidos = sorted(set(cambios) - permitidos)
+    if desconocidos:
+        raise ErrorValidacion(
+            f"Estos campos no se rectifican por esta vía: {desconocidos}. La "
+            "rectificación cubre los datos de la persona; cambiar importes o "
+            "estados desde aquí sería usar un derecho para saltarse las reglas "
+            "de negocio.",
+            error_code="derechos.campo_no_rectificable",
+            detalle={"permitidos": sorted(permitidos)},
+        )
+
+    tocados = []
+    for contacto in contactos:
+        antes = {}
+        for campo, valor in cambios.items():
+            if not hasattr(contacto, campo):
+                continue
+            antes[campo] = getattr(contacto, campo)
+            setattr(contacto, campo, valor)
+        if antes:
+            tocados.append({"contacto_id": str(contacto.id), "antes": antes, "despues": cambios})
+    db.flush()
+
+    return _con_evidencia(
+        db,
+        solicitud,
+        accion="rectificacion",
+        datos={
+            "rectificados": tocados,
+            # Lo que este servicio NO ha podido corregir: el dato equivocado
+            # puede estar copiado en una oportunidad o en un caso, y decir
+            # «rectificado» sin avisar dejaría al interesado creyendo que ya no
+            # existe en ninguna parte.
+            "aviso": (
+                "Rectificado en «party». Si el mismo dato se copió a otro servicio "
+                "—una oportunidad, un caso— hay que pedírselo a él: ninguno escribe "
+                "en el esquema de otro."
+            ),
+        },
+        por=por,
+    )
+
+
+def ejecutar_oposicion(
+    db: Session,
+    solicitud_id: UUID,
+    *,
+    tratamientos: list[str] | None = None,
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Atiende la oposición al tratamiento (art. 21) **limitándolo de verdad**.
+
+    La oposición se resuelve casi siempre anotando «no contactar» en un campo de
+    texto, y eso dura hasta la siguiente importación. Aquí se traduce en una
+    limitación con su fila, su fecha y su motivo, que es lo que el punto de
+    decisión consulta antes de cada envío.
+
+    Y se dice **qué no para**: oponerse a la publicidad no para la facturación,
+    y prometerlo sería prometer lo que la ley no pide.
+    """
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.party import limitacion as lim
+
+    solicitud = _solicitud(db, solicitud_id)
+    contactos = _contactos_del_solicitante(db, solicitud)
+    if not contactos:
+        raise NoEncontrado(
+            "No hay ninguna ficha de esta persona a la que aplicar la oposición",
+            error_code="derechos.sin_fichas",
+        )
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=solicitud.tenant_id)
+    aplicadas = []
+    for contacto in contactos:
+        salida = lim.limitar(
+            uow,
+            contacto_id=contacto.id,
+            tratamientos=tratamientos or ["marketing", "perfilado", "cesion_terceros"],
+            motivo="oposicion_en_estudio",
+            detalle=f"Oposición del interesado, solicitud {solicitud.id}",
+            solicitud_id=solicitud.id,
+            por=por,
+        )
+        aplicadas.append(salida)
+
+    return _con_evidencia(
+        db,
+        solicitud,
+        accion="oposicion",
+        datos={
+            "limitaciones": aplicadas,
+            "no_se_paran": lim.NO_SE_PUEDE_LIMITAR,
+        },
+        por=por,
+    )
+
+
+def ejecutar_limitacion(
+    db: Session,
+    solicitud_id: UUID,
+    *,
+    tratamientos: list[str] | None = None,
+    motivo: str = "exactitud_discutida",
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Aplica el derecho de limitación (art. 18) sin borrar nada
+    (CRM-02.04.02.05)."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.party import limitacion as lim
+
+    solicitud = _solicitud(db, solicitud_id)
+    contactos = _contactos_del_solicitante(db, solicitud)
+    if not contactos:
+        raise NoEncontrado(
+            "No hay ninguna ficha de esta persona que limitar",
+            error_code="derechos.sin_fichas",
+        )
+    uow = UnidadDeTrabajo(db=db, tenant_id=solicitud.tenant_id)
+    aplicadas = [
+        lim.limitar(
+            uow,
+            contacto_id=c.id,
+            tratamientos=tratamientos,
+            motivo=motivo,
+            detalle=f"Limitación pedida en la solicitud {solicitud.id}",
+            solicitud_id=solicitud.id,
+            por=por,
+        )
+        for c in contactos
+    ]
+    return _con_evidencia(
+        db,
+        solicitud,
+        accion="limitacion",
+        datos={"limitaciones": aplicadas, "no_se_paran": lim.NO_SE_PUEDE_LIMITAR},
+        por=por,
+    )

@@ -22,6 +22,7 @@ from crmcore.http.documental_router import crear_router_documental
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Body, Depends, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.party import administracion as admin
@@ -730,6 +731,179 @@ def ejecutar_supresion(
     return derechos.ejecutar_supresion(
         db, solicitud_id, por=principal.id, confirmado=cuerpo.confirmo_que_es_irreversible
     )
+
+
+class RectificacionEntrada(BaseModel):
+    cambios: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Qué campo y con qué valor. Lo decide una persona: de una solicitud "
+            "en prosa no se deduce qué hay que corregir."
+        ),
+    )
+
+
+class LimitacionEntrada(BaseModel):
+    tratamientos: list[str] | None = Field(
+        None,
+        description=(
+            "Qué se limita. Vacío = TODO lo limitable, que es lo que pide quien "
+            "invoca el artículo 18 sin entrar en detalle."
+        ),
+    )
+    motivo: str = "exactitud_discutida"
+
+
+class LevantarLimitacionEntrada(BaseModel):
+    motivo: str = Field(
+        ...,
+        min_length=3,
+        description=(
+            "Por qué se levanta. Obligatorio: una limitación que desaparece sin "
+            "rastro deja a nadie pudiendo decir desde cuándo se volvió a tratar."
+        ),
+    )
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-portabilidad",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Entregar los datos en formato de lectura mecánica",
+    description=(
+        "Mismo contenido que el acceso, porque son los mismos datos, pero **se "
+        "dice qué queda fuera**: la portabilidad cubre lo que el interesado "
+        "aportó, no lo que la empresa dedujo sobre él. Entregar un scoring "
+        "interno como «sus datos» regala el trabajo propio y da por bueno ante "
+        "el interesado un juicio que nunca pidió."
+    ),
+)
+def ejecutar_portabilidad(solicitud_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_portabilidad(db, solicitud_id, por=principal.id)
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-rectificacion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Corregir los datos que el interesado dice que están mal",
+    description=(
+        "Se guarda **lo que había antes**: sin el valor anterior, una "
+        "rectificación es indistinguible de una edición cualquiera, y lo que hay "
+        "que poder demostrar es justo que se corrigió lo que el interesado "
+        "señaló.\n\n"
+        "Solo campos de la persona. Cambiar importes o estados desde aquí sería "
+        "usar un derecho para saltarse las reglas de negocio."
+    ),
+)
+def ejecutar_rectificacion(
+    solicitud_id: UUID, cuerpo: RectificacionEntrada, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_rectificacion(
+        db, solicitud_id, cambios=cuerpo.cambios, por=principal.id
+    )
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-oposicion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Atender la oposición al tratamiento",
+    description=(
+        "Se traduce en una limitación de verdad —con su fila, su fecha y su "
+        "motivo—, no en un «no contactar» escrito en un campo de texto que la "
+        "siguiente importación pisa. Y **se avisa a quien envía**: la limitación "
+        "que se queda en este servicio no limita nada."
+    ),
+)
+def ejecutar_oposicion(
+    solicitud_id: UUID, cuerpo: LimitacionEntrada, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_oposicion(
+        db, solicitud_id, tratamientos=cuerpo.tratamientos, por=principal.id
+    )
+
+
+@router_derechos.post(
+    "/{solicitud_id}/ejecutar-limitacion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Bloquear el tratamiento sin borrar nada (CRM-02.04.02.05)",
+    description=(
+        "El derecho que casi nadie implementa y el que más problemas evita: los "
+        "datos se conservan y dejan de usarse. No se borran, porque si la "
+        "exactitud estaba en discusión y el interesado tenía razón hay que poder "
+        "rectificarlos.\n\n"
+        "La respuesta dice **qué no se para**: la ley permite seguir tratando "
+        "para defender reclamaciones y para cumplir obligaciones legales, y "
+        "prometer un bloqueo total sería prometer lo que el sistema no puede dar."
+    ),
+)
+def ejecutar_limitacion(
+    solicitud_id: UUID, cuerpo: LimitacionEntrada, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import derechos
+
+    return derechos.ejecutar_limitacion(
+        db,
+        solicitud_id,
+        tratamientos=cuerpo.tratamientos,
+        motivo=cuerpo.motivo,
+        por=principal.id,
+    )
+
+
+@router_derechos.get(
+    "/limitaciones/{contacto_id}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Qué tratamientos tiene limitados esta persona",
+)
+def limitaciones_de(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import limitacion as lim
+
+    # Se carga el contacto por el cargador de siempre, que comprueba el tenant y
+    # las políticas y devuelve 404 si no es de aquí. Sin esto, preguntar por un
+    # identificador ajeno respondía 200 con «no está limitado», que confirma que
+    # ese identificador existe en alguna parte — lo cazó el fuzzer de tenants.
+    svc.exigir_contacto(db, contacto_id)
+
+    estado = {
+        t: lim.esta_limitado(db, principal.tenant_id, contacto_id, tratamiento=t)
+        for t in lim.TRATAMIENTOS
+    }
+    return {
+        "contacto_id": str(contacto_id),
+        "por_tratamiento": estado,
+        "alguno_limitado": any(v["limitado"] for v in estado.values()),
+        "no_se_paran": lim.NO_SE_PUEDE_LIMITAR,
+    }
+
+
+@router_derechos.post(
+    "/limitaciones/{contacto_id}/levantar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Levantar la limitación, dejando dicho por qué",
+)
+def levantar_limitacion(
+    contacto_id: UUID, cuerpo: LevantarLimitacionEntrada, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import limitacion as lim
+
+    fila = lim.levantar(uow, contacto_id=contacto_id, motivo=cuerpo.motivo, por=principal.id)
+    return {
+        "contacto_id": str(contacto_id),
+        "levantada": True,
+        "hasta": fila.hasta.isoformat() if fila.hasta else None,
+        "motivo": fila.motivo_levantamiento,
+    }
 
 
 def _solicitud_out(solicitud: SolicitudDerechos) -> dict[str, Any]:

@@ -9292,3 +9292,183 @@ palabras del cliente en las que se apoya; quién escala y cuándo lo decide una
 regla del cliente con su umbral, y queda registrado. El campo
 `escalado_automatico` va siempre a falso, dicho explícitamente, para que nadie
 tenga que deducirlo del JSON.
+
+---
+
+## Consentimiento, derechos y cumplimiento (`CRM-02.04.02`, `CRM-07.03`)
+
+Todo este capítulo existe para lo mismo: **poder demostrar algo dos años
+después**. Lo que hace que un consentimiento valga no es la casilla, es saber
+quién la marcó, cuándo, desde dónde y aceptando qué texto. Casi todos los
+sistemas guardan el «sí» y tiran el resto, y entonces la prueba que se enseña
+ante una reclamación es una fila que dice `acepta = true`.
+
+### El registro de consentimiento (`CRM-02.04.02.01`)
+
+Ya existía por finalidad y canal, con su base legal y su prueba, y **cada cambio
+como una fila nueva**: la historia de consentimientos de una persona es lo que
+demuestra que en el momento del envío había permiso. Lo que se le ha añadido es
+lo que lo hace exigible —el doble opt-in, la caducidad y la propagación de la
+baja—, porque un registro impecable que nadie consulta antes de enviar no ha
+impedido nunca un solo correo.
+
+### Limitación de tratamiento (`CRM-02.04.02.05`)
+
+Es el derecho que casi nadie implementa y el que más problemas evita. Alguien
+discute la exactitud de sus datos o se opone a un tratamiento, y mientras se
+resuelve **no se pueden usar** — pero tampoco borrar, porque si al final tenía
+razón hay que poder rectificarlos.
+
+Lo que suele hacerse en su lugar es anotar «no contactar» en un campo de texto, y
+eso dura hasta la siguiente importación.
+
+- **Es una fila, no una casilla en la ficha.** Con su motivo, su fecha y quién la
+  puso: eso sobrevive a una importación y se puede auditar.
+- **Sin detalle se limita todo lo limitable.** Es lo que pide quien invoca el
+  artículo 18 sin entrar en detalle; interpretar la lista vacía como «ninguno»
+  registraría una limitación que no limita nada.
+- **Se dice lo que NO para.** La ley permite seguir tratando para defender
+  reclamaciones y para cumplir obligaciones legales. Prometer un bloqueo total
+  sería prometer lo que el sistema no puede dar y la ley no pide.
+- **Levantarla exige motivo.** Una limitación que desaparece sin rastro es peor
+  que no haberla puesto: nadie puede decir desde cuándo se volvió a tratar.
+
+Y sobre todo: **se avisa a quien envía**. La limitación que se queda en el
+servicio que la anotó no limita nada, porque quien manda los correos es
+`marketing` y no puede leer ese esquema. Viaja por evento con **las direcciones**
+dentro, porque allí se suprime por dirección y no por identificador: la misma
+persona suele estar en tres fichas duplicadas, y bloquear solo la que ejerció el
+derecho deja que las otras dos le sigan escribiendo.
+
+#### La baja se propaga a todos los canales y a lo que está en curso (`CRM-02.04.02.03`)
+
+No sirve de nada dar de baja el correo si la campaña que ya está corriendo sigue
+escribiendo. La supresión se aplica **por encima de cualquier segmento y de
+cualquier recorrido**: si fuese una condición más, bastaría con que alguien
+montara un segmento sin acordarse de ponerla.
+
+Al levantarla no se quita cualquier supresión: una queja por spam o un rebote
+duro no los levanta el fin de una limitación. Solo se retira la que puso la
+propia limitación — si no, volver a escribir a quien nos denunció sería un efecto
+colateral de otro trámite.
+
+### Los seis derechos, ejecutados (`CRM-02.04.02.04`)
+
+El registro de la solicitud con su plazo legal ya estaba, y también el acceso y
+la supresión. Faltaban tres, y los tres son decisiones que **una persona tiene
+que tomar** antes de que el sistema las ejecute:
+
+- **Rectificación.** Qué campo y con qué valor no se deduce de una solicitud en
+  prosa. Se guarda **lo que había antes**: sin el valor anterior, una
+  rectificación es indistinguible de una edición cualquiera, y lo que hay que
+  demostrar es justo que se corrigió lo que el interesado señaló. Solo campos de
+  la persona: cambiar importes o estados desde aquí sería usar un derecho para
+  saltarse las reglas de negocio.
+- **Portabilidad.** Mismo contenido que el acceso, porque son los mismos datos,
+  pero se dice **qué queda fuera**: cubre lo que el interesado aportó, no lo que
+  la empresa dedujo sobre él. Entregar un scoring interno como «sus datos» regala
+  el trabajo propio y da por bueno ante el interesado un juicio que nunca pidió.
+- **Oposición.** Se traduce en una limitación de verdad, no en una nota.
+
+### Doble opt-in y renovación (`CRM-02.04.02.02`)
+
+Un alta sin confirmar **no es un alta**: quien pregunte si se le puede escribir
+recibe que no. Registrarla como válida y mandar mientras tanto es peor que no
+tener doble opt-in, porque da apariencia de rigor a lo contrario.
+
+- **El enlace caduca.** Uno que vale para siempre acaba usándose meses después
+  por alguien que ya no recuerda haberse apuntado.
+- **Confirmar dos veces no falla pero no mueve la fecha.** La gente pincha el
+  enlace otra vez; la fecha que prueba el consentimiento es la primera.
+- **Hace falta el texto que se enseñó.** Sin él la prueba es una casilla marcada.
+- **Lo caducado deja de valer solo.** El envío consulta la caducidad, así que la
+  lista de renovaciones sirve para renovar a tiempo, no para seguir enviando
+  mientras alguien la revisa.
+
+### Cookies y rastreo (`CRM-07.03.01.08`)
+
+Por **categoría** y con la **versión del aviso**: un «acepto» sobre un texto que
+después cambió no prueba nada sobre el texto nuevo, y es exactamente lo que se
+discute cuando llega una reclamación. Cada decisión es una fila nueva, porque
+actualizar la anterior borraría la prueba de lo que se aceptó cuando se puso la
+cookie.
+
+**Sin decisión previa la respuesta es no.** El silencio no es un sí: tratarlo
+como tal es la infracción más común de todas. Y las cookies necesarias no se
+ofrecen como interruptor, porque un botón que no apaga nada hace que el usuario
+deje de creerse el panel entero.
+
+### Cumplimiento del contenido (`CRM-02.04.01.03`)
+
+Reglas por marca, país e idioma, donde el campo vacío es **comodín**: así la
+regla general se escribe una vez y las excepciones se añaden encima.
+
+**Una plantilla bloqueada no se puede editar.** Si el bloqueo fuese un aviso, se
+ignoraría el día que hay prisa — justo el día en que se manda a otro país el
+texto que allí no cumple. Se compara con el cuerpo original: cambiar una palabra
+de una plantilla legal la deja de ser.
+
+Y que no haya reglas declaradas **no es cumplir**: la respuesta lo dice, para que
+nadie lea un «se puede mandar» como una aprobación.
+
+### Archivado consultable (`CRM-07.03.01.02`)
+
+Entre tenerlo todo en las tablas vivas y purgarlo hay un hueco donde cae casi
+todo el dato viejo de un CRM. No se puede borrar y tenerlo delante hace lento
+todo lo demás; lo que suele pasar es que se sube la retención a «nunca» y las
+tablas crecen hasta que alguien, un viernes, borra a mano lo que le parece viejo.
+
+- **Archivar no es borrar, y el archivo se consulta.** Si el dato archivado no se
+  pudiera leer, esto sería una purga con otro nombre — y la primera vez que
+  alguien lo necesitara y no estuviera, nadie volvería a archivar nada.
+- **La fila archivada conserva su identificador**, que es lo que permite que una
+  solicitud de acceso la encuentre. Con un identificador nuevo, el expediente
+  saldría incompleto sin que nadie se diera cuenta.
+- **Se simula por defecto**, como la purga: lo que va a mover diez mil filas hay
+  que poder verlo antes.
+- **Un bloqueo legal no impide archivar.** Lo que prohíbe es destruir, y esto no
+  destruye. Se deja anotado que lo había, para que quien audite vea que se tuvo
+  en cuenta.
+
+Cada servicio archiva lo suyo, en su propio esquema: un archivo común obligaría a
+que un servicio leyera datos de otro.
+
+### Matriz de permisos (`CRM-07.03.02.09`)
+
+«¿Quién puede borrar una cuenta?» se contesta casi siempre leyendo código, y se
+contesta mal: alguien mira la pantalla de roles, ve que «comercial» no tiene el
+permiso y dice que nadie — sin saber que hay un rol con `*:*` y tres personas
+dentro.
+
+Esto sale de las **rutas montadas** cruzadas con los **permisos de los roles**,
+no de un inventario: lo que un inventario dice y lo que la ruta exige dejan de
+coincidir el día que alguien cambia una y no el otro, y ese es el día en que la
+auditoría deja de valer.
+
+Los comodines **se expanden**, porque el asterisco es donde se esconden los
+privilegios que nadie contó. Y se enseñan los dos huecos, que son opuestos: un
+permiso que una ruta exige y ningún rol tiene es funcionalidad muerta; uno
+concedido que ninguna ruta exige es un privilegio que alguien dio por si acaso.
+El primero es un fallo de configuración, el segundo un riesgo.
+
+El ABAC se enseña **al lado y no mezclado**: tener el permiso no significa poder
+sobre todos los registros. Presentar solo el RBAC haría creer que un comercial ve
+todas las cuentas; presentar solo lo efectivo escondería lo que pasaría si mañana
+se quita una política.
+
+### Panel de GRC (`CRM-07.03.02.10`)
+
+Las piezas ya estaban —cobertura, vencimientos, riesgos sin control— y cada una
+en su pantalla. El problema de tenerlas separadas es el de siempre: hay que abrir
+cuatro sitios para saber si se está bien, así que no se abre ninguno.
+
+Se ordena **por urgencia y no por fecha**, porque una lista por fecha entierra lo
+grave debajo de lo viejo: primero el riesgo alto sin ningún control, después el
+control evaluado como no efectivo —declarado y sin proteger, que es peor que no
+tenerlo porque consta—, después los que se pasaron de plazo y al final los que
+nunca se evaluaron.
+
+Y dice qué **no se ha podido medir**. Un panel en verde porque no hay nada
+declarado es el que más tranquiliza y el que peor informa: sin controles ni
+evaluaciones, no dice que se cumpla — dice que no hay nada con lo que
+comprobarlo.

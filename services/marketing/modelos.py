@@ -393,6 +393,11 @@ from services.marketing.canales import (  # noqa: E402,F401
     Landing,
     PlantillaCanal,
 )
+from services.marketing.consentimiento import (  # noqa: E402,F401
+    ConfirmacionOptin,
+    ConsentimientoCookies,
+    ReglaContenido,
+)
 from services.marketing.correo import (  # noqa: E402,F401
     BloqueCorreo,
     CategoriaPreferencia,

@@ -626,6 +626,7 @@ from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
+from crmcore.datos.archivado import FilaArchivada  # noqa: E402,F401
 from crmcore.datos.cambio import TipoCambio  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402

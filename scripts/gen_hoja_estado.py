@@ -27,18 +27,78 @@ CATALOGO = RAIZ / "docs" / "catalogo" / "catalogo.yaml"
 MANUAL = RAIZ / "docs" / "manual-3-funcionalidades.md"
 SALIDA = RAIZ / "docs" / "hoja-estado.html"
 
-# `| `CRM-…` Nombre | Qué hay | Qué falta |`
-RE_MEDIAS = re.compile(r"^\| `(CRM-[\d.]+)` [^|]+\|([^|]+)\|([^|]+)\|", re.M)
+# Las notas salen de las tablas del manual, y **se leen por su cabecera**, no por
+# la posición de las columnas. La versión anterior daba por hecho que toda tabla
+# de capacidades tenía tres columnas —capacidad, qué hay, qué falta—; la del
+# capítulo de huecos tiene dos, así que su «qué falta» acababa publicado en la
+# web bajo la etiqueta «qué hay». Es decir: la hoja presentaba como construido
+# exactamente lo que no lo estaba, que es la peor forma posible de equivocarse
+# en este documento.
+RE_FILA = re.compile(r"^\|\s*`?(CRM-[\d.]+)`?\s*([^|]*)\|(.+)$", re.M)
+
+
+def _tablas(texto: str) -> list[tuple[list[str], list[str]]]:
+    """Cada tabla Markdown del manual como (cabeceras, filas)."""
+    salida: list[tuple[list[str], list[str]]] = []
+    cabeceras: list[str] = []
+    filas: list[str] = []
+    for linea in texto.split("\n"):
+        if linea.startswith("|"):
+            celdas = [c.strip() for c in linea.strip().strip("|").split("|")]
+            if not cabeceras:
+                cabeceras = celdas
+            elif set("".join(celdas)) <= set("-: "):
+                continue  # la línea separadora
+            else:
+                filas.append(linea)
+        else:
+            if cabeceras and filas:
+                salida.append((cabeceras, filas))
+            cabeceras, filas = [], []
+    if cabeceras and filas:
+        salida.append((cabeceras, filas))
+    return salida
 
 
 def _notas_a_medias() -> dict[str, dict[str, str]]:
+    """Qué hay y qué falta de cada capacidad, según el manual.
+
+    Se busca la columna por su título. Si una tabla no declara «qué hay», su
+    texto es lo que FALTA y así se publica: adivinarlo por la posición fue
+    exactamente el fallo que hizo que la web enseñara un hueco como si fuera
+    algo construido.
+    """
     if not MANUAL.exists():
         return {}
-    texto = MANUAL.read_text(encoding="utf-8")
-    return {
-        cid: {"hay": _limpiar(hay), "falta": _limpiar(falta)}
-        for cid, hay, falta in RE_MEDIAS.findall(texto)
-    }
+
+    notas: dict[str, dict[str, str]] = {}
+    for cabeceras, filas in _tablas(MANUAL.read_text(encoding="utf-8")):
+        titulos = [c.lower() for c in cabeceras]
+        col_hay = next((i for i, t in enumerate(titulos) if "qué hay" in t or "que hay" in t), None)
+        col_falta = next(
+            (i for i, t in enumerate(titulos) if "falta" in t or "no está" in t or "no esta" in t),
+            None,
+        )
+        if col_falta is None and col_hay is None:
+            continue
+        for linea in filas:
+            celdas = [c.strip() for c in linea.strip().strip("|").split("|")]
+            encontrado = re.search(r"CRM-[\d.]+", celdas[0] if celdas else "")
+            if not encontrado:
+                continue
+            nota = {
+                "hay": _limpiar(celdas[col_hay])
+                if col_hay is not None and col_hay < len(celdas)
+                else "",
+                "falta": (
+                    _limpiar(celdas[col_falta])
+                    if col_falta is not None and col_falta < len(celdas)
+                    else ""
+                ),
+            }
+            if nota["hay"] or nota["falta"]:
+                notas[encontrado.group(0)] = nota
+    return notas
 
 
 def _limpiar(texto: str) -> str:

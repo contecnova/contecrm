@@ -659,6 +659,7 @@ from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
+from crmcore.datos.archivado import FilaArchivada  # noqa: E402,F401
 from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
@@ -712,3 +713,4 @@ from services.party.actividades_extra import (  # noqa: E402,F401
     Visita,
 )
 from services.party.identidad import Senal, Union  # noqa: E402,F401
+from services.party.limitacion import LimitacionTratamiento  # noqa: E402,F401

@@ -99,6 +99,11 @@ PREFIJOS: dict[str, str] = {
     "dominios-envio": "marketing",
     "correo": "marketing",
     "preferencias": "marketing",
+    # Consentimiento: el doble opt-in, las cookies y las reglas de contenido
+    # (CRM-02.04.02.02, CRM-07.03.01.08, CRM-02.04.01.03).
+    "optin": "marketing",
+    "cookies": "marketing",
+    "reglas-contenido": "marketing",
     # Lo que se le encarga a un tercero y hay que seguir. `proveedores-servicio`
     # se llama así y no `proveedores` porque en el CRM un proveedor es también
     # una cuenta: dos rutas parecidas apuntando a servicios distintos es cómo se

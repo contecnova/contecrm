@@ -233,6 +233,27 @@ def obligaciones(capacidad_id: str, db: DbDep, principal: AutenticadoDep) -> Any
 
 
 @router_grc.get(
+    "/panel",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Panel de GRC: todo lo que no cuadra, ordenado por lo que urge",
+    description=(
+        "Las piezas ya estaban, cada una en su pantalla, y el problema de "
+        "tenerlas separadas es el de siempre: hay que abrir cuatro sitios para "
+        "saber si se está bien, así que no se abre ninguno (CRM-07.03.02.10).\n\n"
+        "Se ordena por **urgencia y no por fecha**: una lista por fecha entierra "
+        "lo grave debajo de lo viejo.\n\n"
+        "Y dice qué **no se ha podido medir**. Un panel en verde porque no hay "
+        "nada declarado es el que más tranquiliza y el que peor informa: sin "
+        "controles ni evaluaciones, esto no dice que se cumpla, dice que no hay "
+        "nada con lo que comprobarlo."
+    ),
+)
+def panel(db: DbDep, principal: AutenticadoDep) -> Any:
+    return grc.panel(db, principal.tenant_id)
+
+
+@router_grc.get(
     "/pendiente",
     response_model=dict,
     dependencies=[Depends(exige_permiso("tenant:read"))],

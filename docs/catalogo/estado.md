@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 560 hecho · ⬜ 147 pendiente
+**707 capacidades**: ✅ 570 hecho · ⬜ 137 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -539,7 +539,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 37 · ⬜ 17
+54 capacidades · ✅ 43 · ⬜ 11
 
 ### 2.1 Segmentación y audiencias
 
@@ -630,18 +630,18 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-02.04.01.01` | Biblioteca de activos con metadatos, versiones y vigencia | A | 4 | marketing | ⬜ | contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia) |
 | `CRM-02.04.01.02` | Flujo de aprobación de contenidos y de campañas | A | 4 | marketing | ⬜ | contecmind:app/services/approval_engine/ |
-| `CRM-02.04.01.03` | Cumplimiento por marca, país e idioma con plantillas bloqueadas | A | 4 | marketing | ⬜ | — |
+| `CRM-02.04.01.03` | Cumplimiento por marca, país e idioma con plantillas bloqueadas | A | 4 | marketing | ✅ | — |
 | `CRM-02.04.01.04` | Generación de variantes de copy asistida por IA con revisión humana | A | 5 | intelligence | ⬜ | contecmind:app/services/transformations.py (generación con revisión humana) |
 
 #### CRM-02.04.02 · Privacidad y consentimiento
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.04.02.01` | Registro de consentimiento con finalidad, canal, base legal, fecha y prueba | C | 4 | party | ⬜ | contecweb:app/services/grc.py + contecmind:app/services/compliance.py |
-| `CRM-02.04.02.02` | Doble opt-in configurable y renovación periódica del consentimiento | A | 4 | marketing | ⬜ | — |
-| `CRM-02.04.02.03` | Baja inmediata propagada a todos los canales y campañas en curso | C | 4 | marketing | ⬜ | — |
-| `CRM-02.04.02.04` | Gestión de derechos ARCO/GDPR: acceso, rectificación, supresión, portabilidad, oposición | C | 4 | party | ⬜ | contecflow-PSA:app/services/bi_gdpr_service.py + contecmind:app/services/compliance.py |
-| `CRM-02.04.02.05` | Bloqueo de tratamiento sin borrado (derecho de limitación) | A | 4 | party | ⬜ | contecmind:app/services/legal_hold.py |
+| `CRM-02.04.02.01` | Registro de consentimiento con finalidad, canal, base legal, fecha y prueba | C | 4 | party | ✅ | contecweb:app/services/grc.py + contecmind:app/services/compliance.py |
+| `CRM-02.04.02.02` | Doble opt-in configurable y renovación periódica del consentimiento | A | 4 | marketing | ✅ | — |
+| `CRM-02.04.02.03` | Baja inmediata propagada a todos los canales y campañas en curso | C | 4 | marketing | ✅ | — |
+| `CRM-02.04.02.04` | Gestión de derechos ARCO/GDPR: acceso, rectificación, supresión, portabilidad, oposición | C | 4 | party | ✅ | contecflow-PSA:app/services/bi_gdpr_service.py + contecmind:app/services/compliance.py |
+| `CRM-02.04.02.05` | Bloqueo de tratamiento sin borrado (derecho de limitación) | A | 4 | party | ✅ | contecmind:app/services/legal_hold.py |
 
 ## Módulo 3 — Ventas (SFA)
 
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 78 · ⬜ 13
+91 capacidades · ✅ 82 · ⬜ 9
 
 ### 7.1 Administración funcional
 
@@ -1075,13 +1075,13 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-07.03.01.01` | Políticas de retención y eliminación automática por tipo de dato | C | 0 | core | ✅ | contecmind:scripts/audit_purge.py + purge_old_conversations.py |
-| `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ⬜ | — |
+| `CRM-07.03.01.02` | Archivado de datos históricos con acceso consultable | A | 2 | core | ✅ | — |
 | `CRM-07.03.01.03` | Gestión de solicitudes de derechos del interesado, con flujo y plazos | C | 1 | party | ✅ | contecflow-PSA:app/services/bi_gdpr_service.py |
 | `CRM-07.03.01.04` | Registro de actividades de tratamiento (RAT) y mapa de datos personales | A | 1 | core | ✅ | contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py |
 | `CRM-07.03.01.05` | Clasificación de datos por sensibilidad y etiquetado de campos | A | 0 | metadata | ✅ | contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad) |
 | `CRM-07.03.01.06` | Legal hold: bloqueo de eliminación por litigio | D | 1 | core | ✅ | contecmind:app/services/legal_hold.py + app/models/legal_hold.py |
 | `CRM-07.03.01.07` | Informes de cumplimiento y evidencias para auditoría | A | 1 | core | ✅ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
-| `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ⬜ | — |
+| `CRM-07.03.01.08` | Gestión de consentimiento de cookies y tracking cuando hay captación web | A | 4 | marketing | ✅ | — |
 
 #### CRM-07.03.02 · GRC — gobierno, riesgo y cumplimiento
 
@@ -1095,8 +1095,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.03.02.06` | Segregación de funciones (SoD): reglas de permisos incompatibles, detección de violaciones y excepciones aprobadas | C | 1 | identity | ✅ | contecmind:app/services/grc.py (SodRule, SodViolation) |
 | `CRM-07.03.02.07` | Mapeo a marcos normativos (ISO 27001, SOC 2, ENS, GDPR) recorrible en los dos sentidos: del control al marco y del marco a la capacidad | A | 1 | core | ✅ | — |
 | `CRM-07.03.02.08` | Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano | A | 1 | core | ✅ | contecmind:app/services/compliance.py + app/api/admin_compliance.py |
-| `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ⬜ | — |
-| `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ⬜ | — |
+| `CRM-07.03.02.09` | Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales | A | 2 | core | ✅ | — |
+| `CRM-07.03.02.10` | Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo | A | 2 | core | ✅ | — |
 
 ### 7.4 Front oficial de referencia
 

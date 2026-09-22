@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 
@@ -89,6 +89,41 @@ def crear_router_cumplimiento(servicio: str) -> APIRouter:
         return {
             "servicio": servicio,
             **informe_de_cumplimiento(db, principal.tenant_id, modelos_del_servicio()),
+        }
+
+    @router.get(
+        "/matriz-permisos",
+        dependencies=[Depends(exige_permiso("cumplimiento:leer"))],
+        summary=f"Quién puede hacer qué en «{servicio}» (CRM-07.03.02.09)",
+        description=(
+            "«¿Quién puede borrar una cuenta?» se contesta casi siempre leyendo "
+            "código, y se contesta mal: alguien mira la pantalla de roles, ve que "
+            "«comercial» no tiene el permiso y dice que nadie — sin saber que hay "
+            "un rol con `*:*` y tres personas dentro.\n\n"
+            "Esto sale de las **rutas montadas** cruzadas con los **permisos de "
+            "los roles**, con los comodines expandidos: el asterisco es donde se "
+            "esconden los privilegios que nadie contó.\n\n"
+            "Y enseña los dos huecos, que son opuestos: un permiso que una ruta "
+            "exige y ningún rol tiene es funcionalidad muerta; uno concedido que "
+            "ninguna ruta exige es un privilegio que alguien dio por si acaso."
+        ),
+    )
+    def matriz_permisos(request: Request, db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.authz.matriz import matriz
+        from crmcore.authz.politicas import cargar
+        from crmcore.authz.rbac import ROLES_BASE
+
+        # Los roles propios del tenant viven en `identity` y este servicio no lee
+        # su esquema: se publican los de base, y se dice. Enseñar solo estos como
+        # si fueran todos sería justo el error que esta matriz existe para evitar.
+        return {
+            "servicio": servicio,
+            **matriz(request.app, dict(ROLES_BASE), politicas=cargar(db, principal.tenant_id)),
+            "alcance_de_los_roles": (
+                "Roles de base del producto. Los roles propios del tenant los "
+                "gobierna «identity» y hay que pedírselos a él: ningún servicio "
+                "lee el esquema de otro."
+            ),
         }
 
     return router

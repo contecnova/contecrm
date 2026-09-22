@@ -741,16 +741,16 @@ modulos:
             capacidades:
               - {id: CRM-02.04.01.01, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia)", t: "Biblioteca de activos con metadatos, versiones y vigencia"}
               - {id: CRM-02.04.01.02, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/", t: "Flujo de aprobación de contenidos y de campañas"}
-              - {id: CRM-02.04.01.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Cumplimiento por marca, país e idioma con plantillas bloqueadas"}
+              - {id: CRM-02.04.01.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Cumplimiento por marca, país e idioma con plantillas bloqueadas"}
               - {id: CRM-02.04.01.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/transformations.py (generación con revisión humana)", t: "Generación de variantes de copy asistida por IA con revisión humana"}
           - id: CRM-02.04.02
             nombre: Privacidad y consentimiento
             capacidades:
-              - {id: CRM-02.04.02.01, c: C, fase: 4, svc: party, estado: pendiente, reutiliza: "contecweb:app/services/grc.py + contecmind:app/services/compliance.py", t: "Registro de consentimiento con finalidad, canal, base legal, fecha y prueba"}
-              - {id: CRM-02.04.02.02, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Doble opt-in configurable y renovación periódica del consentimiento"}
-              - {id: CRM-02.04.02.03, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Baja inmediata propagada a todos los canales y campañas en curso"}
-              - {id: CRM-02.04.02.04, c: C, fase: 4, svc: party, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_gdpr_service.py + contecmind:app/services/compliance.py", t: "Gestión de derechos ARCO/GDPR: acceso, rectificación, supresión, portabilidad, oposición"}
-              - {id: CRM-02.04.02.05, c: A, fase: 4, svc: party, estado: pendiente, reutiliza: "contecmind:app/services/legal_hold.py", t: "Bloqueo de tratamiento sin borrado (derecho de limitación)"}
+              - {id: CRM-02.04.02.01, c: C, fase: 4, svc: party, estado: hecho, reutiliza: "contecweb:app/services/grc.py + contecmind:app/services/compliance.py", t: "Registro de consentimiento con finalidad, canal, base legal, fecha y prueba"}
+              - {id: CRM-02.04.02.02, c: A, fase: 4, svc: marketing, estado: hecho, t: "Doble opt-in configurable y renovación periódica del consentimiento"}
+              - {id: CRM-02.04.02.03, c: C, fase: 4, svc: marketing, estado: hecho, t: "Baja inmediata propagada a todos los canales y campañas en curso"}
+              - {id: CRM-02.04.02.04, c: C, fase: 4, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_gdpr_service.py + contecmind:app/services/compliance.py", t: "Gestión de derechos ARCO/GDPR: acceso, rectificación, supresión, portabilidad, oposición"}
+              - {id: CRM-02.04.02.05, c: A, fase: 4, svc: party, estado: hecho, reutiliza: "contecmind:app/services/legal_hold.py", t: "Bloqueo de tratamiento sin borrado (derecho de limitación)"}
 
   - id: "3"
     nombre: Ventas (SFA)
@@ -1140,13 +1140,13 @@ modulos:
             nombre: Gobierno del dato
             capacidades:
               - {id: CRM-07.03.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:scripts/audit_purge.py + purge_old_conversations.py", t: "Políticas de retención y eliminación automática por tipo de dato"}
-              - {id: CRM-07.03.01.02, c: A, fase: 2, svc: core, estado: pendiente, t: "Archivado de datos históricos con acceso consultable"}
+              - {id: CRM-07.03.01.02, c: A, fase: 2, svc: core, estado: hecho, t: "Archivado de datos históricos con acceso consultable"}
               - {id: CRM-07.03.01.03, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_gdpr_service.py", t: "Gestión de solicitudes de derechos del interesado, con flujo y plazos"}
               - {id: CRM-07.03.01.04, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecweb:app/services/grc.py (786) + contecmind:app/services/grc.py", t: "Registro de actividades de tratamiento (RAT) y mapa de datos personales"}
               - {id: CRM-07.03.01.05, c: A, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecmind:app/services/sensitive_policy.py (clasificación por sensibilidad)", t: "Clasificación de datos por sensibilidad y etiquetado de campos"}
               - {id: CRM-07.03.01.06, c: D, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/legal_hold.py + app/models/legal_hold.py", t: "Legal hold: bloqueo de eliminación por litigio"}
               - {id: CRM-07.03.01.07, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/compliance.py + app/api/admin_compliance.py", t: "Informes de cumplimiento y evidencias para auditoría"}
-              - {id: CRM-07.03.01.08, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Gestión de consentimiento de cookies y tracking cuando hay captación web"}
+              - {id: CRM-07.03.01.08, c: A, fase: 4, svc: marketing, estado: hecho, t: "Gestión de consentimiento de cookies y tracking cuando hay captación web"}
           - id: CRM-07.03.02
             nombre: GRC — gobierno, riesgo y cumplimiento
             capacidades:
@@ -1158,8 +1158,8 @@ modulos:
               - {id: CRM-07.03.02.06, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/grc.py (SodRule, SodViolation)", t: "Segregación de funciones (SoD): reglas de permisos incompatibles, detección de violaciones y excepciones aprobadas"}
               - {id: CRM-07.03.02.07, c: A, fase: 1, svc: core, estado: hecho, t: "Mapeo a marcos normativos (ISO 27001, SOC 2, ENS, GDPR) recorrible en los dos sentidos: del control al marco y del marco a la capacidad"}
               - {id: CRM-07.03.02.08, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/compliance.py + app/api/admin_compliance.py", t: "Evidencias automáticas: el audit trail, los certificados y los gates alimentan el control en vez de adjuntarse a mano"}
-              - {id: CRM-07.03.02.09, c: A, fase: 2, svc: core, estado: pendiente, t: "Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales"}
-              - {id: CRM-07.03.02.10, c: A, fase: 2, svc: core, estado: pendiente, t: "Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo"}
+              - {id: CRM-07.03.02.09, c: A, fase: 2, svc: core, estado: hecho, t: "Matriz de capacidades de permisos inspeccionable para auditoría, derivada del RBAC y del ABAC reales"}
+              - {id: CRM-07.03.02.10, c: A, fase: 2, svc: core, estado: hecho, t: "Panel de GRC con vencimientos, riesgos sin tratamiento y controles sin evaluar en plazo"}
       - id: "7.4"
         nombre: Front oficial de referencia
         funciones:

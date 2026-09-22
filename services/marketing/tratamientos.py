@@ -67,3 +67,26 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+declarar(
+    Tratamiento(
+        objeto="confirmaciones_optin",
+        # Se guarda la IP de quien pide el alta y la de quien confirma porque son
+        # dos momentos distintos, y la diferencia entre ellos es lo que prueba
+        # que confirmó quien recibió el correo y no quien rellenó el formulario.
+        finalidad="Probar que la persona confirmó su alta, y que fue ella",
+        base_legal="obligacion_legal",
+        plazo="3 años desde la baja, para poder acreditar que el alta fue válida",
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="consentimientos_cookies",
+        finalidad="Probar qué aceptó cada visitante, sobre qué versión del aviso y cuándo",
+        base_legal="obligacion_legal",
+        plazo="2 años desde la decisión, que es lo que suele durar el propio consentimiento",
+        responsable=RESPONSABLE,
+    )
+)

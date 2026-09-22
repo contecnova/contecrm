@@ -24,6 +24,33 @@ ACCOUNT_CREATED = registrar(
         campos=("cuenta_id", "nombre"),
     )
 )
+CONTACT_PROCESSING_LIMITED = registrar(
+    TipoEvento(
+        tipo="contact.processing_limited",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Una persona ha ejercido su derecho de limitación u oposición "
+            "(CRM-02.04.02.05, CRM-02.04.02.04). Quien envíe algo en su nombre "
+            "tiene que dejar de hacerlo: la limitación no sirve de nada si se "
+            "queda en el servicio que la anotó"
+        ),
+        campos=("contacto_id", "tratamientos", "destinos", "motivo"),
+    )
+)
+CONTACT_PROCESSING_LIFTED = registrar(
+    TipoEvento(
+        tipo="contact.processing_lifted",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Se ha levantado la limitación. Va con su motivo: una limitación que "
+            "desaparece sin rastro deja a nadie pudiendo decir desde cuándo se "
+            "volvió a tratar"
+        ),
+        campos=("contacto_id", "destinos", "motivo"),
+    )
+)
 ACCOUNT_MERGED = registrar(
     TipoEvento(
         tipo="account.merged",
