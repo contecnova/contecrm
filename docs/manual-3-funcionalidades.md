@@ -2716,8 +2716,37 @@ entre en la aplicación haría que avisara justo a quien no hacía falta avisar.
   aplaza una tarea espera que le avisen otra vez.
 - **Un recordatorio en el pasado se rechaza** al programarlo: no avisa de nada y
   deja al usuario creyendo que sí.
-- **Una tarea vencida avisa una sola vez.** Un aviso diario de la misma tarea
-  enseña a ignorarlos todos.
+- **Una tarea vencida avisa una sola vez**, salvo que se pida lo contrario. Un
+  aviso diario de la misma tarea enseña a ignorarlos todos.
+
+#### El aviso que insiste, y la tarea que se mueve sola (`CRM-01.02.01.09`)
+
+Lo anterior vale para la mayoría de las tareas y no vale para la que de verdad
+importa: esa hay que volver a ponerla delante. Un recordatorio puede pedir
+**insistir** cada tantos minutos, y entonces se rearma solo hasta que la tarea se
+cierra o se agota el tope.
+
+El tope es **obligatorio**. Sin él, un aviso sigue sonando cuando el proyecto
+lleva dos años cerrado, y lo único que se consigue es que la gente aprenda a
+cerrar avisos sin leerlos — con lo que deja de servir también el que sí
+importaba. Por eso insistir es una decisión de quien crea la tarea y no el
+comportamiento por defecto.
+
+Cada aviso dice **cuál de cuántos es**. El tercero llega igual que el primero, y
+sin ese dato quien lo recibe no sabe si están insistiendo o si el sistema se ha
+atascado. La deduplicación del bus lleva ese número dentro: sin él, el segundo
+recordatorio de la misma tarea se descartaría por repetido, que es exactamente lo
+contrario de insistir.
+
+Y una tarea que nadie atiende puede **reprogramarse sola**, empujando su
+vencimiento. Con dos condiciones que no son negociables:
+
+- **Primero se avisa de que venció y después se mueve.** Moverla en silencio
+  haría que la tarea no constara vencida nunca, que es la forma más limpia de que
+  no se haga y no lo sepa nadie.
+- **Queda escrito quién la movió y cuántas veces lleva.** Una tarea que va por la
+  cuarta reprogramación no es una tarea con fecha nueva: es una tarea que nadie
+  va a hacer, y eso tiene que verse. También aquí el tope es obligatorio.
 
 Y un fallo que encontró la propia prueba: el barrido solo hacía `commit` si
 había emitido algo, así que una actividad con recordatorio y **sin asignado** se
@@ -2754,7 +2783,6 @@ con el motivo por el que no se cerraron entonces.
 | `CRM-06.02.01.07` Plantilla de notificación por canal | El repartidor **no renderiza plantillas de `tenancy`** porque son de otro servicio. El mismo texto va al correo y al SMS, recortado a 160 en el segundo. Tenerla exige replicar las plantillas a cada esquema (§29) |
 | `CRM-06.02.01.08` Estadísticas de entrega del correo | SMTP no da apertura ni rebote; eso solo lo dan las APIs propietarias. Se hará como transporte aparte **para quien lo quiera**, diciendo que ata la instalación a ese proveedor (§29) |
 | `CRM-01.01.01.13` Reverificación periódica | Un veredicto caduca a los 90 días y se vuelve a preguntar **cuando alguien lo pide**. Falta la cola que reverifique sola lo caducado, con su cuota: muchos registros oficiales la tienen, y un barrido sin control la agota en una mañana (§32) |
-| `CRM-01.02.01.09` Recordatorios recurrentes | Hoy un recordatorio avisa una vez. Falta el que insiste —«cada día hasta que la cierres»— y la reprogramación automática de la tarea no atendida (§33) |
 
 Y dos cosas que estaban a medias **dentro de lo entregado** y se cerraron al
 verlas, en vez de anotarlas:
@@ -8121,6 +8149,12 @@ informe: no son un fallo, y confundirlas con uno lleva a apagar el `una_a_una`.
 
 Los meses se suman **como meses**: una revisión mensual el día 31 cae el último día
 del mes siguiente, no el 3 del otro.
+
+Esto es la **actividad que vuelve** —una revisión trimestral, un seguimiento
+mensual—, que es distinto del **aviso que insiste** sobre una misma tarea y de la
+**tarea que se empuja sola** cuando nadie la atiende. Las tres se explican en
+«Los recordatorios los dispara el reloj, no el usuario» (§33); confundirlas lleva
+a crear cincuenta y dos tareas para conseguir que suene un aviso tres veces.
 
 ## Canal indirecto: PRM (`CRM-03.04.01`)
 

@@ -1545,12 +1545,28 @@ def delegar_actividad(
     return actividad
 
 
-def programar_recordatorio(uow: UnidadDeTrabajo, actividad_id: UUID, *, cuando: Any) -> Actividad:
-    """Fija cuándo avisar de una actividad.
+def programar_recordatorio(
+    uow: UnidadDeTrabajo,
+    actividad_id: UUID,
+    *,
+    cuando: Any,
+    repetir_cada_min: int | None = None,
+    max_avisos: int | None = None,
+    reprogramar_cada_dias: int | None = None,
+    max_reprogramaciones: int | None = None,
+) -> Actividad:
+    """Fija cuándo avisar de una actividad, y si el aviso **insiste**
+    (CRM-01.02.01.09).
 
     Cambiar la fecha **rearma** el recordatorio aunque ya se hubiera enviado:
     quien la mueve espera que le avisen otra vez, y mantener la marca de enviado
     haría que una tarea aplazada nunca volviera a avisar.
+
+    Insistir exige un tope. Sin él, una tarea que nadie cierra avisa para siempre
+    —también cuando el proyecto lleva dos años cerrado— y lo único que se
+    consigue es enseñar a la gente a cerrar avisos sin leerlos. Lo mismo con la
+    reprogramación automática: una tarea que se empuja sola sin límite deja de
+    estar vencida nunca, que es la forma más silenciosa de no hacerla.
     """
     from datetime import datetime, timezone
 
@@ -1560,8 +1576,41 @@ def programar_recordatorio(uow: UnidadDeTrabajo, actividad_id: UUID, *, cuando: 
             "Un recordatorio en el pasado no avisa de nada",
             error_code="party.recordatorio_pasado",
         )
+    if repetir_cada_min is not None:
+        if repetir_cada_min < 1:
+            raise ErrorValidacion(
+                "El intervalo de insistencia tiene que ser de al menos un minuto",
+                error_code="party.repeticion_invalida",
+            )
+        if not max_avisos or max_avisos < 1:
+            raise ErrorValidacion(
+                "Un recordatorio que insiste necesita un tope de avisos: sin él "
+                "sigue sonando cuando la tarea ya no le importa a nadie, y "
+                "entonces se ignoran todos.",
+                error_code="party.insistencia_sin_tope",
+            )
+    if reprogramar_cada_dias is not None:
+        if reprogramar_cada_dias < 1:
+            raise ErrorValidacion(
+                "La reprogramación tiene que ser de al menos un día",
+                error_code="party.reprogramacion_invalida",
+            )
+        if not max_reprogramaciones or max_reprogramaciones < 1:
+            raise ErrorValidacion(
+                "Reprogramar sin tope hace que la tarea no esté vencida nunca, "
+                "que es la forma más silenciosa de no hacerla.",
+                error_code="party.reprogramacion_sin_tope",
+            )
+
     actividad.recordar_at = cuando
     actividad.recordatorio_enviado = False
+    # Se reinician las cuentas: quien reprograma el aviso espera empezar de
+    # cero, no continuar una serie que ya iba por el cuarto de cinco.
+    actividad.avisos_enviados = 0
+    actividad.repetir_cada_min = repetir_cada_min
+    actividad.max_avisos = max_avisos
+    actividad.reprogramar_cada_dias = reprogramar_cada_dias
+    actividad.max_reprogramaciones = max_reprogramaciones
     uow.db.flush()
     return actividad
 
@@ -1633,7 +1682,7 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
     from crmcore.bus.outbox import encolar
 
     ahora = datetime.now(timezone.utc)
-    cuenta = {"recordatorios": 0, "vencidas": 0}
+    cuenta = {"recordatorios": 0, "vencidas": 0, "reprogramadas": 0}
     # Cuenta aparte de lo emitido: una actividad con recordatorio y sin
     # asignado se MARCA pero no emite nada, y si el commit dependiera de lo
     # emitido esa marca se perdería y la actividad volvería en cada vuelta para
@@ -1658,7 +1707,19 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
         .all()
     )
     for actividad in pendientes:
-        actividad.recordatorio_enviado = True
+        actividad.avisos_enviados += 1
+        # Si insiste y le queda cuerda, se rearma en vez de marcarse enviado.
+        # Va ANTES de emitir, como la marca: si se hiciera después y el proceso
+        # muriera en medio, el aviso saldría otra vez en cada vuelta.
+        if (
+            actividad.repetir_cada_min
+            and actividad.max_avisos
+            and actividad.avisos_enviados < actividad.max_avisos
+        ):
+            actividad.recordar_at = ahora + timedelta(minutes=actividad.repetir_cada_min)
+            actividad.recordatorio_enviado = False
+        else:
+            actividad.recordatorio_enviado = True
         tocadas += 1
         if actividad.asignada_a is None:
             # Un recordatorio de una tarea sin dueño no tiene a quién avisar. Se
@@ -1678,10 +1739,18 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
                 "asunto": actividad.asunto,
                 "asignada_a": str(actividad.asignada_a),
                 "vence_at": actividad.vence_at.isoformat() if actividad.vence_at else None,
+                # Cuál de cuántos. Sin esto, el tercer aviso de la misma tarea
+                # llega igual que el primero y quien lo recibe no sabe si está
+                # insistiendo o si el sistema se ha atascado.
+                "aviso": actividad.avisos_enviados,
+                "de": actividad.max_avisos,
                 "objeto_tipo": "actividad",
                 "objeto_id": str(actividad.id),
             },
-            dedup_key=f"recordatorio:{actividad.id}",
+            # La deduplicación lleva el número de aviso: sin él, el segundo
+            # recordatorio de la misma tarea se descartaría por repetido, que es
+            # exactamente lo contrario de insistir.
+            dedup_key=f"recordatorio:{actividad.id}:{actividad.avisos_enviados}",
         )
         cuenta["recordatorios"] += 1
 
@@ -1705,9 +1774,57 @@ def barrer_recordatorios(db: Session, *, limite: int = 200) -> dict[str, int]:
                 "objeto_tipo": "actividad",
                 "objeto_id": str(actividad.id),
             },
-            dedup_key=f"vencida:{actividad.id}",
+            dedup_key=f"vencida:{actividad.id}:{actividad.veces_reprogramada}",
         )
         cuenta["vencidas"] += 1
+
+        # Reprogramación automática de la tarea no atendida (CRM-01.02.01.09).
+        # Se hace DESPUÉS de avisar de que venció, no en vez de: mover la fecha
+        # en silencio haría que una tarea nunca constara como vencida, que es la
+        # forma más limpia de que no se haga nunca y no lo sepa nadie.
+        if (
+            actividad.reprogramar_cada_dias
+            and actividad.max_reprogramaciones
+            and actividad.veces_reprogramada < actividad.max_reprogramaciones
+            and actividad.vence_at is not None
+        ):
+            anterior = actividad.vence_at
+            actividad.vence_at = ahora + timedelta(days=actividad.reprogramar_cada_dias)
+            actividad.veces_reprogramada += 1
+            # Vuelve a poder avisar: si no, la tarea reprogramada se quedaría
+            # muda hasta que alguien la tocara a mano.
+            actividad.recordatorio_enviado = False
+            actividad.avisos_enviados = 0
+            encolar(
+                db,
+                tenant_id=actividad.tenant_id,
+                tipo="activity.rescheduled",
+                subject_tipo="actividad",
+                subject_id=str(actividad.id),
+                data={
+                    "actividad_id": str(actividad.id),
+                    "asunto": actividad.asunto,
+                    "asignada_a": str(actividad.asignada_a),
+                    "vencia_at": anterior.isoformat(),
+                    "vence_at": actividad.vence_at.isoformat(),
+                    # Quién la movió, y cuántas veces lleva. Una tarea que va por
+                    # la cuarta reprogramación no es una tarea con fecha nueva:
+                    # es una tarea que nadie va a hacer, y hay que verlo.
+                    "motivo": "no atendida en plazo",
+                    "reprogramada_por": "sistema",
+                    "veces": actividad.veces_reprogramada,
+                    "de": actividad.max_reprogramaciones,
+                    "objeto_tipo": "actividad",
+                    "objeto_id": str(actividad.id),
+                },
+                dedup_key=f"reprogramada:{actividad.id}:{actividad.veces_reprogramada}",
+            )
+            cuenta["reprogramadas"] = cuenta.get("reprogramadas", 0) + 1
+            logger.info(
+                "party.actividad_reprogramada",
+                actividad=str(actividad.id),
+                veces=actividad.veces_reprogramada,
+            )
 
     if tocadas:
         db.commit()

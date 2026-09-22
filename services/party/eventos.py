@@ -135,6 +135,20 @@ ACTIVITY_REMINDER = registrar(
         campos=("actividad_id", "asunto", "asignada_a", "vence_at"),
     )
 )
+ACTIVITY_RESCHEDULED = registrar(
+    TipoEvento(
+        tipo="activity.rescheduled",
+        version=1,
+        productor="party",
+        descripcion=(
+            "El sistema ha empujado la fecha de una tarea que nadie atendió "
+            "(CRM-01.02.01.09). Va aparte del vencimiento a propósito: primero "
+            "se avisa de que venció y luego de que se movió, porque moverla en "
+            "silencio haría que no constara vencida nunca"
+        ),
+        campos=("actividad_id", "asunto", "asignada_a", "vencia_at", "vence_at", "veces"),
+    )
+)
 ACTIVITY_OVERDUE = registrar(
     TipoEvento(
         tipo="activity.overdue",

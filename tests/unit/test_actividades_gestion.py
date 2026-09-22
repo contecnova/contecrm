@@ -398,3 +398,138 @@ def test_el_recordatorio_acaba_en_la_bandeja_de_quien_toca(
     avisos = db.query(Notificacion).filter_by(usuario_id=quien).all()
     assert len(avisos) == 1
     assert avisos[0].cuerpo == tarea.asunto
+
+
+# ── Recordatorios que insisten y reprogramación (CRM-01.02.01.09) ─────────
+
+
+@pytest.mark.db
+def test_un_recordatorio_puede_insistir_hasta_su_tope(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Un aviso que suena una vez y se calla se pierde entre otros treinta. La
+    tarea que de verdad importa es justo la que hay que volver a poner delante.
+
+    Y para en el tope: sin él seguiría sonando cuando el proyecto lleva dos años
+    cerrado, y lo único que se consigue es que la gente cierre avisos sin
+    leerlos.
+    """
+    tarea = _tarea(
+        db,
+        tenant_id,
+        asignada_a=uuid4(),
+        recordar_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+        repetir_cada_min=1,
+        max_avisos=3,
+    )
+    db.commit()
+
+    emitidos = 0
+    for _ in range(6):
+        emitidos += svc.barrer_recordatorios(db)["recordatorios"]
+        # Se adelanta el reloj moviendo el próximo aviso al pasado, que es lo
+        # que haría el tiempo.
+        db.refresh(tarea)
+        if tarea.recordar_at and not tarea.recordatorio_enviado:
+            tarea.recordar_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+            db.commit()
+
+    assert emitidos == 3, "insiste tres veces y para en el tope"
+    db.refresh(tarea)
+    assert tarea.recordatorio_enviado is True
+
+
+@pytest.mark.db
+def test_cada_insistencia_dice_cual_de_cuantas_es(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """El tercer aviso de la misma tarea llega igual que el primero, y quien lo
+    recibe no sabe si están insistiendo o si el sistema se ha atascado."""
+    _tarea(
+        db,
+        tenant_id,
+        asignada_a=uuid4(),
+        recordar_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+        repetir_cada_min=1,
+        max_avisos=2,
+    )
+    db.commit()
+
+    svc.barrer_recordatorios(db)
+    evento = _salientes(db, "activity.reminder")[0]
+    assert evento.sobre["data"]["aviso"] == 1
+    assert evento.sobre["data"]["de"] == 2
+
+
+@pytest.mark.db
+def test_insistir_sin_tope_se_rechaza(db: Any, tenant_id: UUID, contexto_tenant: UUID) -> None:
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.errors import ErrorValidacion
+
+    tarea = _tarea(db, tenant_id, asignada_a=uuid4())
+    db.commit()
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    with pytest.raises(ErrorValidacion) as fallo:
+        svc.programar_recordatorio(
+            uow,
+            tarea.id,
+            cuando=datetime.now(timezone.utc) + timedelta(hours=1),
+            repetir_cada_min=10,
+        )
+    assert fallo.value.error_code == "party.insistencia_sin_tope"
+
+
+@pytest.mark.db
+def test_la_tarea_no_atendida_se_reprograma_y_se_dice(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Se avisa de que venció **y luego** se mueve. Moverla en silencio haría que
+    una tarea no constara vencida nunca, que es la forma más limpia de que no se
+    haga y no lo sepa nadie."""
+    tarea = _tarea(
+        db,
+        tenant_id,
+        asignada_a=uuid4(),
+        vence_at=datetime.now(timezone.utc) - timedelta(days=1),
+        reprogramar_cada_dias=3,
+        max_reprogramaciones=2,
+    )
+    db.commit()
+    vencia = tarea.vence_at
+
+    cuenta = svc.barrer_recordatorios(db)
+
+    assert cuenta["vencidas"] == 1, "primero se avisa de que venció"
+    assert cuenta["reprogramadas"] == 1
+    db.refresh(tarea)
+    assert tarea.vence_at > vencia
+    evento = _salientes(db, "activity.rescheduled")[0]
+    assert evento.sobre["data"]["reprogramada_por"] == "sistema"
+    assert evento.sobre["data"]["motivo"] == "no atendida en plazo"
+    assert evento.sobre["data"]["veces"] == 1
+
+
+@pytest.mark.db
+def test_la_reprogramacion_para_en_su_tope(db: Any, tenant_id: UUID, contexto_tenant: UUID) -> None:
+    """Una tarea que va por la cuarta reprogramación no es una tarea con fecha
+    nueva: es una tarea que nadie va a hacer, y tiene que verse."""
+    tarea = _tarea(
+        db,
+        tenant_id,
+        asignada_a=uuid4(),
+        vence_at=datetime.now(timezone.utc) - timedelta(days=1),
+        reprogramar_cada_dias=1,
+        max_reprogramaciones=2,
+    )
+    db.commit()
+
+    reprogramadas = 0
+    for _ in range(5):
+        reprogramadas += svc.barrer_recordatorios(db).get("reprogramadas", 0)
+        db.refresh(tarea)
+        tarea.vence_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        db.commit()
+
+    assert reprogramadas == 2
+    db.refresh(tarea)
+    assert tarea.veces_reprogramada == 2

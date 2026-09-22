@@ -126,6 +126,17 @@ AVISOS: dict[str, dict[str, Any]] = {
         "prioridad": "alta",
         "destinatario_campo": "asignada_a",
     },
+    # La tarea que el sistema ha movido solo. Se avisa con prioridad normal y no
+    # alta: lo urgente era el vencimiento, que ya se avisó aparte; este es el
+    # apunte de que la fecha cambió y quién la cambió.
+    "activity.rescheduled": {
+        "objeto_tipo": "actividad",
+        "campo_id": "actividad_id",
+        "titulo": "Tarea reprogramada automáticamente",
+        "cuerpo_campo": "asunto",
+        "prioridad": "normal",
+        "destinatario_campo": "asignada_a",
+    },
     "activity.overdue": {
         "objeto_tipo": "actividad",
         "campo_id": "actividad_id",

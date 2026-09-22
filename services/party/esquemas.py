@@ -390,6 +390,35 @@ class AsignarActividad(BaseModel):
 
 class RecordatorioEntrada(BaseModel):
     cuando: datetime | None = Field(None, description="Cuándo avisar. Nulo quita el recordatorio.")
+    repetir_cada_min: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Minutos entre insistencias. Nulo = avisa una vez, que es lo normal: "
+            "si todo insiste, la gente aprende a cerrar avisos sin leerlos."
+        ),
+    )
+    max_avisos: int | None = Field(
+        None,
+        ge=1,
+        description="Tope de avisos. Obligatorio si se insiste: sin él suena para siempre.",
+    )
+    reprogramar_cada_dias: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Días que se empuja el vencimiento cuando la tarea no se atiende. "
+            "Nulo = no se reprograma."
+        ),
+    )
+    max_reprogramaciones: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Tope de reprogramaciones. Obligatorio si se reprograma: sin él la "
+            "tarea no está vencida nunca."
+        ),
+    )
 
 
 class SupresionEntrada(BaseModel):

@@ -917,11 +917,26 @@ def delegar_actividad(
         "Cambiar la fecha **rearma** el recordatorio aunque ya se hubiera "
         "enviado: quien la mueve espera que le avisen otra vez, y mantener la "
         "marca haría que una tarea aplazada nunca volviera a avisar.\n\n"
-        "Con `cuando` a nulo se quita."
+        "Con `cuando` a nulo se quita.\n\n"
+        "Con `repetir_cada_min` el aviso **insiste** hasta que la tarea se "
+        "cierra o se agota el tope (CRM-01.02.01.09), y con "
+        "`reprogramar_cada_dias` la tarea no atendida se empuja sola — siempre "
+        "después de avisar de que venció, y dejándolo dicho: una tarea que "
+        "cambia de fecha en silencio hace que nadie se fíe de ninguna fecha.\n\n"
+        "Las dos exigen tope. Sin él, un aviso suena cuando ya no le importa a "
+        "nadie y una tarea no consta vencida nunca."
     ),
 )
 def programar_recordatorio(cuerpo: RecordatorioEntrada, actividad_id: UUID, uow: UowDep) -> Any:
-    return svc.programar_recordatorio(uow, actividad_id, cuando=cuerpo.cuando)
+    return svc.programar_recordatorio(
+        uow,
+        actividad_id,
+        cuando=cuerpo.cuando,
+        repetir_cada_min=cuerpo.repetir_cada_min,
+        max_avisos=cuerpo.max_avisos,
+        reprogramar_cada_dias=cuerpo.reprogramar_cada_dias,
+        max_reprogramaciones=cuerpo.max_reprogramaciones,
+    )
 
 
 @router_actividades.get(

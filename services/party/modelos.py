@@ -522,6 +522,26 @@ class Actividad(EntidadBase, SoftDeleteMixin):
         DateTime(timezone=True), nullable=True, index=True
     )
     recordatorio_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Recordatorio que INSISTE (CRM-01.02.01.09). Un aviso que suena una vez y
+    # se calla es un aviso que se pierde entre otros treinta: la tarea que de
+    # verdad importa es justo la que hay que volver a poner delante.
+    #
+    # Nulo = avisa una vez, que sigue siendo lo normal. Insistir es una decisión
+    # de quien crea la tarea, no el comportamiento por defecto: si todo insiste,
+    # la gente aprende a cerrar avisos sin leerlos y entonces no sirve ninguno.
+    repetir_cada_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Cuántas veces se ha avisado ya y cuántas como mucho. El tope es obligatorio
+    # cuando se insiste: sin él, una tarea que nadie cierra avisa para siempre —
+    # también cuando el proyecto lleva dos años cerrado.
+    avisos_enviados: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_avisos: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Reprogramación automática de la tarea no atendida (CRM-01.02.01.09).
+    # Nulo = no se reprograma. Cuando se usa, la fecha de vencimiento se empuja
+    # y **queda dicho** que lo movió el sistema: una tarea que cambia de fecha
+    # sola y sin rastro hace que nadie se fíe de ninguna fecha.
+    reprogramar_cada_dias: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    veces_reprogramada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_reprogramaciones: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # ── Datos propios del tipo ────────────────────────────────────────────
     # Duración de una llamada, asistentes de una reunión, coordenadas de una
