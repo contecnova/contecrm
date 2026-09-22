@@ -281,9 +281,83 @@ def _clasificar(
     }
 
 
+def _planificar(
+    *,
+    proveedor: str,
+    modelo: str,
+    objetivo: str,
+    contexto: dict[str, Any],
+    herramientas: list[dict[str, Any]],
+    opt_out: bool,
+) -> dict[str, Any]:
+    """Pide un plan de pasos, no una respuesta.
+
+    Se le da el catálogo de herramientas **que el agente tiene**, no todas las del
+    CRM: un modelo al que se le enseña una herramienta que no puede usar la pide,
+    y entonces el plan se llena de pasos que van a fallar.
+    """
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Eres un planificador. Devuelve SOLO un JSON con `pasos`: lista de "
+                "{herramienta, argumentos, porque, importe (si lo hay), "
+                "compensacion {herramienta, argumentos} si el paso se puede "
+                "deshacer}. Usa ÚNICAMENTE las herramientas de la lista. Si un "
+                "paso no se puede deshacer, no inventes una compensación: deja el "
+                "campo fuera."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Objetivo: {objetivo}\n\n"
+                f"Contexto: {json.dumps(contexto, ensure_ascii=False)}\n\n"
+                f"Herramientas: {json.dumps(herramientas, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    salida = _llamar(
+        proveedor=proveedor, modelo=modelo, mensajes=peticion, opt_out=opt_out, formato_json=True
+    )
+    try:
+        datos = json.loads(salida.get("texto") or "{}")
+    except json.JSONDecodeError:
+        datos = {}
+    return {**salida, "pasos": list(datos.get("pasos") or [])}
+
+
+def _invocar_herramienta(
+    *,
+    herramienta: str,
+    argumentos: dict[str, Any],
+    principal_id: Any = None,
+    permisos: list[str] | None = None,
+) -> dict[str, Any]:
+    """Llama a la herramienta por la API del CRM, con la identidad del agente.
+
+    Por la API y no por la base de datos: un agente que escribiera directamente
+    se saltaría el metamodelo, los permisos y las reglas de negocio, que es lo
+    que hace que un CRM tenga una sola verdad sobre qué se puede hacer.
+
+    Va sin implementar contra un despliegue concreto a propósito: la dirección
+    del gateway y la credencial del agente son configuración, y el módulo que las
+    resuelve es el mismo que resuelve las de cualquier otra llamada saliente.
+    """
+    raise ErrorDependencia(
+        "Este despliegue no tiene conectado el invocador de herramientas del "
+        "agente. Sin él, un agente puede planificar pero no actuar — y eso es "
+        "mejor que actuar a medias.",
+        error_code="agente.invocador_no_configurado",
+        detalle={"herramienta": herramienta},
+    )
+
+
 def conectar() -> None:
     """Registra los puertos en sus módulos."""
-    from services.intelligence import conversacion, extraccion, generacion, rag
+    from services.intelligence import agentes, conversacion, extraccion, generacion, rag
 
     generacion.registrar_generador(_generar)
     rag.registrar_respondedor(_responder)
@@ -291,4 +365,6 @@ def conectar() -> None:
     extraccion.registrar_extractor(_extraer)
     conversacion.registrar_resumidor(_resumir)
     conversacion.registrar_clasificador(_clasificar)
+    agentes.registrar_planificador(_planificar)
+    agentes.registrar_invocador(_invocar_herramienta)
     logger.info("intelligence.puertos_conectados")

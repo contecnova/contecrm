@@ -14,6 +14,11 @@ from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E40
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402,F401
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
+from services.intelligence.agentes import (  # noqa: F401
+    Agente,
+    EjecucionAgente,
+    PasoAgente,
+)
 from services.intelligence.anomalias import (  # noqa: F401
     Anomalia,
     ObservacionSerie,
@@ -40,16 +45,19 @@ from services.intelligence.salud import SaludCuenta  # noqa: F401
 from services.intelligence.uso import LlamadaIA  # noqa: F401
 
 __all__ = [
+    "Agente",
     "Anomalia",
     "BloqueoIA",
     "BloqueoLegal",
     "CampoExtraido",
     "ClaveTenant",
+    "EjecucionAgente",
     "GastoIA",
     "LlamadaIA",
     "MedicionDeriva",
     "ModeloML",
     "ObservacionSerie",
+    "PasoAgente",
     "PlantillaPrompt",
     "PoliticaAbac",
     "PoliticaIA",

@@ -639,7 +639,7 @@ modulos:
               - {id: CRM-01.01.05.02, c: A, fase: 4, svc: party, estado: hecho, t: "Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP)"}
               - {id: CRM-01.01.05.03, c: C, fase: 1, svc: party, estado: hecho, t: "Perfil unificado consultable por API para uso en cualquier frontend o canal"}
               - {id: CRM-01.01.05.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Composición de datos externos en la vista sin replicarlos (federación / virtualización)"}
-              - {id: CRM-01.01.05.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/synthesis.py + holistic.py (resumen con citación)", t: "Resumen de cuenta generado por IA con puntos clave y riesgos"}
+              - {id: CRM-01.01.05.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py + holistic.py (resumen con citación)", t: "Resumen de cuenta generado por IA con puntos clave y riesgos"}
               - {id: CRM-01.01.05.06, c: A, fase: 2, svc: party, estado: pendiente, t: "Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad"}
               - {id: CRM-01.01.05.07, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Salud del cliente (health score) y señales de churn"}
       - id: "1.2"
@@ -781,7 +781,7 @@ modulos:
               - {id: CRM-03.01.02.01, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "metadata (campos y scoring configurables de la fase 0)", t: "Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling)"}
               - {id: CRM-03.01.02.02, c: A, fase: 2, svc: sales, estado: hecho, t: "Campos y scoring de metodología con indicador de calidad de la oportunidad"}
               - {id: CRM-03.01.02.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Playbooks contextuales por etapa, segmento y tipo de deal"}
-              - {id: CRM-03.01.02.04, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Guía de próximos pasos recomendados con contenido asociado"}
+              - {id: CRM-03.01.02.04, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Guía de próximos pasos recomendados con contenido asociado"}
               - {id: CRM-03.01.02.05, c: D, fase: 3, svc: sales, estado: pendiente, t: "Mutual action plan / plan conjunto compartible con el cliente"}
               - {id: CRM-03.01.02.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Revisión de deal (deal review) estructurada y trazable"}
       - id: "3.2"
@@ -910,7 +910,7 @@ modulos:
               - {id: CRM-04.02.02.02, c: A, fase: 3, svc: service, estado: hecho, t: "Transferencia de canal conservando el contexto"}
               - {id: CRM-04.02.02.03, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Presencia, estado y capacidad del agente"}
               - {id: CRM-04.02.02.04, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/canned_response_service.py", t: "Respuestas rápidas, macros y acciones compuestas"}
-              - {id: CRM-04.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py", t: "Sugerencias de respuesta y de artículo generadas por IA"}
+              - {id: CRM-04.02.02.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py", t: "Sugerencias de respuesta y de artículo generadas por IA"}
               - {id: CRM-04.02.02.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py", t: "Resumen automático de la conversación al cerrar o al transferir"}
               - {id: CRM-04.02.02.07, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/semantic_classifier.py", t: "Detección de sentimiento e intención en tiempo real"}
               - {id: CRM-04.02.02.08, c: A, fase: 3, svc: service, estado: hecho, t: "Consola embebible en cualquier frontend vía API/SDK (agente headless)"}
@@ -931,7 +931,7 @@ modulos:
             nombre: Autoservicio
             capacidades:
               - {id: CRM-04.03.02.01, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py", t: "Portal de cliente headless: casos, pedidos, facturas, activos, contratos"}
-              - {id: CRM-04.03.02.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/", t: "Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales"}
+              - {id: CRM-04.03.02.02, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/", t: "Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales"}
               - {id: CRM-04.03.02.03, c: A, fase: 3, svc: service, estado: hecho, t: "Escalado a humano preservando el contexto completo"}
               - {id: CRM-04.03.02.04, c: D, fase: 6, svc: service, estado: hecho, t: "Comunidad, foros y preguntas frecuentes"}
               - {id: CRM-04.03.02.05, c: A, fase: 3, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/portal_session.py", t: "Autenticación de clientes externos y permisos por contacto y por cuenta"}
@@ -1046,12 +1046,12 @@ modulos:
           - id: CRM-05.02.03
             nombre: Agentes autónomos
             capacidades:
-              - {id: CRM-05.02.03.01, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/agent/ + orchestrator/", t: "Agentes que ejecutan procesos con herramientas definidas y permisos acotados"}
-              - {id: CRM-05.02.03.02, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Definición de herramientas a partir de las propias APIs del CRM"}
-              - {id: CRM-05.02.03.03, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/ (human-in-the-loop)", t: "Puntos de control humano (human-in-the-loop) por criticidad o importe"}
-              - {id: CRM-05.02.03.04, c: C, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/entitlements.py (presupuesto de tokens) + inference_gate.py", t: "Límites de acción, presupuesto de tokens y kill switch por tenant"}
-              - {id: CRM-05.02.03.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/autonomous_agent_service.py + ai_governance.py", t: "Auditoría completa de la actuación del agente y reversión de sus cambios"}
-              - {id: CRM-05.02.03.06, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Agente de calificación de leads, de respuesta de soporte y de actualización de datos"}
+              - {id: CRM-05.02.03.01, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/agent/ + orchestrator/", t: "Agentes que ejecutan procesos con herramientas definidas y permisos acotados"}
+              - {id: CRM-05.02.03.02, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Definición de herramientas a partir de las propias APIs del CRM"}
+              - {id: CRM-05.02.03.03, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (human-in-the-loop)", t: "Puntos de control humano (human-in-the-loop) por criticidad o importe"}
+              - {id: CRM-05.02.03.04, c: C, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py (presupuesto de tokens) + inference_gate.py", t: "Límites de acción, presupuesto de tokens y kill switch por tenant"}
+              - {id: CRM-05.02.03.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/autonomous_agent_service.py + ai_governance.py", t: "Auditoría completa de la actuación del agente y reversión de sus cambios"}
+              - {id: CRM-05.02.03.06, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Agente de calificación de leads, de respuesta de soporte y de actualización de datos"}
 
   - id: "6"
     nombre: Productividad y colaboración

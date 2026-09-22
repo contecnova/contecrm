@@ -9472,3 +9472,133 @@ Y dice qué **no se ha podido medir**. Un panel en verde porque no hay nada
 declarado es el que más tranquiliza y el que peor informa: sin controles ni
 evaluaciones, no dice que se cumpla — dice que no hay nada con lo que
 comprobarlo.
+
+---
+
+## Agentes de IA (`CRM-05.02.03`)
+
+Un agente es una automatización que decide sola qué paso dar. Eso es lo que lo
+hace útil y lo que lo hace peligroso, y las dos cosas salen de la misma
+propiedad: **nadie escribió de antemano lo que va a hacer**. Así que todo este
+capítulo está construido alrededor de poder contestar, meses después, «¿por qué
+el CRM hizo esto?» y, sobre todo, «¿cómo lo deshago?».
+
+### Las herramientas son la API (`CRM-05.02.03.02`)
+
+Lo que un agente puede hacer se define casi siempre a mano: alguien escribe
+quince herramientas, las mantiene un tiempo y luego el CRM crece por otro lado. A
+los seis meses el agente sabe hacer lo que alguien recordó declarar.
+
+Aquí se derivan del contrato que cada servicio ya publica —el mismo que consume
+un integrador—, así que una ruta nueva es una herramienta nueva sin que nadie la
+transcriba, y una retirada deja de existir para el agente el mismo día.
+
+- **Solo lo que su principal puede.** Un agente que hereda los permisos del jefe
+  convierte cualquier error suyo en un error con los permisos del jefe.
+- **Lo destructivo no entra por defecto.** Una herramienta de borrado disponible
+  «porque la API la tiene» es la que acaba usándose por una instrucción mal
+  entendida.
+- **Se dice lo que ha quedado fuera, y en dos listas distintas**: lo que no puede
+  y lo que no se le ha querido dar. Confundirlas lleva a conceder permisos que no
+  hacían falta.
+
+### El plan se guarda antes de ejecutarlo (`CRM-05.02.03.01`)
+
+Lanzar un agente **no ejecuta nada**: planifica, guarda el plan y deja esperando
+lo que necesita aprobación. Sin plan previo, la auditoría es una lista de cosas
+que pasaron y no hay forma de ver dónde se torció: si el primer paso ya iba mal,
+los cuatro siguientes son consecuencia y no decisiones.
+
+Después se avanza **un paso por llamada**. Uno y no todos, porque entre paso y
+paso es donde caben el apagado, el tope y la aprobación; un bucle que los ejecuta
+todos de golpe convierte esos tres controles en decoración.
+
+Si un paso falla, la ejecución para. Seguir con los siguientes pasos de un plan
+cuyo tercer paso falló es ejecutar un plan que ya no tiene sentido.
+
+Y lo que el modelo pide y no se le va a dar **se dice**: la herramienta que el
+agente no tiene se descarta —intentarla daría un 403 del otro lado y un paso
+fallido que parece un error del sistema— y el plan que supera el tope se recorta
+avisando, porque uno de cuarenta pasos cortado en el diez deja treinta a medias y
+nadie sabe cuáles.
+
+### Control humano (`CRM-05.02.03.03`)
+
+Por **riesgo de la herramienta** o por **importe**, y el umbral es configurable.
+Un control humano que depende de que el modelo pida permiso no es un control, así
+que la decisión se toma fuera del modelo.
+
+Dos detalles que deciden si sirve:
+
+- **`aprobacion_por_riesgo` vacío no es «ninguno»**: es el valor por defecto, que
+  incluye lo destructivo. Leerlo como «ninguno» haría que declarar un agente sin
+  pensar quitara justo el control que más falta hace.
+- **Un importe ilegible se trata como si superara el umbral.** Al revés —dejarlo
+  pasar— haría que un dato mal formado se saltara el control.
+
+### Tres límites, tres problemas distintos (`CRM-05.02.03.04`)
+
+- **Cuántas acciones por ejecución** acota un bucle: el agente que se llama a sí
+  mismo cuarenta veces.
+- **Cuántos tokens por periodo** acota una factura: el agente que funciona y
+  cuesta lo que nadie previó.
+- **El interruptor de apagado** acota un incidente: el agente que hay que parar
+  ahora mismo.
+
+Tener solo uno de los tres deja fuera dos de los tres problemas. Y apagar
+**detiene también sus ejecuciones en vuelo**: un agente que sigue terminando lo
+que empezó no está apagado. Por encima de todo eso sigue estando el apagado de
+toda la IA del tenant, porque cuando algo va mal de verdad no hay tiempo de
+decidir cuál de los seis agentes era.
+
+### Auditoría y reversión (`CRM-05.02.03.05`)
+
+El plan y lo ejecutado se enseñan **juntos**: ver solo lo que pasó no dice dónde
+se torció, y ver solo el plan no dice qué llegó a hacerse. Cada paso guarda por
+qué el agente creyó que hacía falta, que es lo que se lee cuando alguien pregunta
+por qué el CRM hizo algo.
+
+La reversión va **en orden inverso**, porque los pasos se apoyan unos en otros:
+deshacer el primero antes que el tercero deja el tercero apuntando a algo que ya
+no está. Cada paso de escritura guarda **cómo deshacerse antes de ejecutarse**;
+calcularlo después obligaría a saber qué había antes, y para entonces ya se
+cambió.
+
+Y lo que no tiene vuelta atrás **no se toca y se dice**. Un correo enviado no se
+«des-envía»: fingir que la reversión es total sería peor que no tenerla, porque
+alguien confiaría.
+
+### Los agentes concretos son configuración (`CRM-05.02.03.06`)
+
+Calificar leads, contestar soporte y actualizar datos son el mismo mecanismo con
+otras herramientas y otros umbrales. Escribir un agente por caso llevaría a tener
+tantos agentes como implantaciones, y entonces ninguno estaría revisado.
+
+## Lo que la IA le sugiere a una persona (`CRM-04.02.02.05`, `CRM-04.03.02.02`, `CRM-01.01.05.05`, `CRM-03.01.02.04`)
+
+Todo esto acaba delante de alguien que está en mitad de otra cosa. Eso cambia lo
+que hay que cuidar: no es la calidad media de la sugerencia, es **qué pasa con la
+mala**. Una sugerencia mala que parece buena se manda tal cual, porque quien la
+lee está ocupado.
+
+- **Sugerencia de respuesta y de artículo** (`CRM-04.02.02.05`). Si no hay con
+  qué contestar, **no contesta**: un agente con el cliente esperando manda lo que
+  le den, y el que responde de la respuesta es él. Los artículos van aparte del
+  texto, porque muchas veces lo que necesita no es el párrafo sino el enlace que
+  puede leer y juzgar.
+- **Asistente conversacional con acciones** (`CRM-04.03.02.02`). Contesta citando
+  o no contesta, y la parte transaccional **no se ejecuta ahí**: devuelve qué
+  acción propone para que la ejecute el agente, con su tope, su aprobación y su
+  reversión. Un chatbot que escribe directamente en el CRM es un chatbot sin
+  ninguno de esos cuatro controles.
+- **Resumen de cuenta** (`CRM-01.01.05.05`). Separa **lo que consta de lo que
+  interpreta**: los hechos son del CRM y el texto es una lectura sobre esos
+  hechos. Un riesgo inventado en un resumen de cuenta acaba en una reunión con el
+  cliente.
+- **Próximos pasos recomendados** (`CRM-03.01.02.04`). Salen de señales del
+  propio negocio y por eso cada paso lleva el dato que lo justifica. Con menos de
+  tres señales **no se recomienda nada**: lo que saldría es el orden por defecto
+  del producto disfrazado de consejo, que es peor que callar porque parece que
+  alguien lo pensó. El contenido se adjunta solo si encaja con el paso —adjuntar
+  «lo más reciente» a cualquier recomendación es lo que hace que el comercial
+  deje de mirar lo que se le adjunta.

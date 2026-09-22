@@ -377,6 +377,7 @@ def historial(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep
     return med.historial_de(db, principal.tenant_id, objeto=objeto, objeto_id=objeto_id)
 
 
+from services.intelligence.api_agentes import ROUTERS_AGENTES  # noqa: E402
 from services.intelligence.api_prediccion import ROUTERS_PREDICCION  # noqa: E402
 
-ROUTERS = [router, router_modelos, router_uso, *ROUTERS_PREDICCION]
+ROUTERS = [router, router_modelos, router_uso, *ROUTERS_PREDICCION, *ROUTERS_AGENTES]

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 570 hecho · ⬜ 137 pendiente
+**707 capacidades**: ✅ 580 hecho · ⬜ 127 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 37 · ⬜ 17
+54 capacidades · ✅ 38 · ⬜ 16
 
 ### 1.1 Modelo de parties
 
@@ -517,7 +517,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.05.02` | Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP) | A | 4 | party | ✅ | — |
 | `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ✅ | — |
 | `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ✅ | — |
-| `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
+| `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
 | `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ⬜ | — |
 | `CRM-01.01.05.07` | Salud del cliente (health score) y señales de churn | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/customer_health_service.py |
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 53 · ⬜ 12
+65 capacidades · ✅ 54 · ⬜ 11
 
 ### 3.1 Pipeline y oportunidades
 
@@ -675,7 +675,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.02.01` | Soporte de metodologías configurables (MEDDIC, BANT, SPIN, Challenger, Value Selling) | A | 2 | sales | ✅ | metadata (campos y scoring configurables de la fase 0) |
 | `CRM-03.01.02.02` | Campos y scoring de metodología con indicador de calidad de la oportunidad | A | 2 | sales | ✅ | — |
 | `CRM-03.01.02.03` | Playbooks contextuales por etapa, segmento y tipo de deal | A | 2 | sales | ✅ | — |
-| `CRM-03.01.02.04` | Guía de próximos pasos recomendados con contenido asociado | A | 5 | intelligence | ⬜ | — |
+| `CRM-03.01.02.04` | Guía de próximos pasos recomendados con contenido asociado | A | 5 | intelligence | ✅ | — |
 | `CRM-03.01.02.05` | Mutual action plan / plan conjunto compartible con el cliente | D | 3 | sales | ⬜ | — |
 | `CRM-03.01.02.06` | Revisión de deal (deal review) estructurada y trazable | A | 2 | sales | ⬜ | — |
 
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 56 · ⬜ 6
+62 capacidades · ✅ 58 · ⬜ 4
 
 ### 4.1 Gestión de casos
 
@@ -819,7 +819,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.02.02.02` | Transferencia de canal conservando el contexto | A | 3 | service | ✅ | — |
 | `CRM-04.02.02.03` | Presencia, estado y capacidad del agente | A | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/agent_group_service.py |
 | `CRM-04.02.02.04` | Respuestas rápidas, macros y acciones compuestas | C | 3 | service | ✅ | contecflow-PSA:app/services/service_desk/canned_response_service.py |
-| `CRM-04.02.02.05` | Sugerencias de respuesta y de artículo generadas por IA | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py |
+| `CRM-04.02.02.05` | Sugerencias de respuesta y de artículo generadas por IA | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py |
 | `CRM-04.02.02.06` | Resumen automático de la conversación al cerrar o al transferir | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py |
 | `CRM-04.02.02.07` | Detección de sentimiento e intención en tiempo real | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/semantic_classifier.py |
 | `CRM-04.02.02.08` | Consola embebible en cualquier frontend vía API/SDK (agente headless) | A | 3 | service | ✅ | — |
@@ -843,7 +843,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-04.03.02.01` | Portal de cliente headless: casos, pedidos, facturas, activos, contratos | A | 3 | service | ✅ | contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py |
-| `CRM-04.03.02.02` | Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/ |
+| `CRM-04.03.02.02` | Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/ |
 | `CRM-04.03.02.03` | Escalado a humano preservando el contexto completo | A | 3 | service | ✅ | — |
 | `CRM-04.03.02.04` | Comunidad, foros y preguntas frecuentes | D | 6 | service | ✅ | — |
 | `CRM-04.03.02.05` | Autenticación de clientes externos y permisos por contacto y por cuenta | A | 3 | identity | ✅ | contecweb:app/services/portal_session.py |
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ✅ 51 · ⬜ 6
+57 capacidades · ✅ 57
 
 ### 5.1 Reporting y BI
 
@@ -974,12 +974,12 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.02.03.01` | Agentes que ejecutan procesos con herramientas definidas y permisos acotados | A | 5 | intelligence | ⬜ | contecmind:app/services/agent/ + orchestrator/ |
-| `CRM-05.02.03.02` | Definición de herramientas a partir de las propias APIs del CRM | A | 5 | intelligence | ⬜ | — |
-| `CRM-05.02.03.03` | Puntos de control humano (human-in-the-loop) por criticidad o importe | A | 5 | intelligence | ⬜ | contecmind:app/services/approval_engine/ (human-in-the-loop) |
-| `CRM-05.02.03.04` | Límites de acción, presupuesto de tokens y kill switch por tenant | C | 5 | intelligence | ⬜ | contecmind:app/services/entitlements.py (presupuesto de tokens) + inference_gate.py |
-| `CRM-05.02.03.05` | Auditoría completa de la actuación del agente y reversión de sus cambios | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/autonomous_agent_service.py + ai_governance.py |
-| `CRM-05.02.03.06` | Agente de calificación de leads, de respuesta de soporte y de actualización de datos | A | 5 | intelligence | ⬜ | — |
+| `CRM-05.02.03.01` | Agentes que ejecutan procesos con herramientas definidas y permisos acotados | A | 5 | intelligence | ✅ | contecmind:app/services/agent/ + orchestrator/ |
+| `CRM-05.02.03.02` | Definición de herramientas a partir de las propias APIs del CRM | A | 5 | intelligence | ✅ | — |
+| `CRM-05.02.03.03` | Puntos de control humano (human-in-the-loop) por criticidad o importe | A | 5 | intelligence | ✅ | contecmind:app/services/approval_engine/ (human-in-the-loop) |
+| `CRM-05.02.03.04` | Límites de acción, presupuesto de tokens y kill switch por tenant | C | 5 | intelligence | ✅ | contecmind:app/services/entitlements.py (presupuesto de tokens) + inference_gate.py |
+| `CRM-05.02.03.05` | Auditoría completa de la actuación del agente y reversión de sus cambios | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/service_desk/autonomous_agent_service.py + ai_governance.py |
+| `CRM-05.02.03.06` | Agente de calificación de leads, de respuesta de soporte y de actualización de datos | A | 5 | intelligence | ✅ | — |
 
 ## Módulo 6 — Productividad y colaboración
 
