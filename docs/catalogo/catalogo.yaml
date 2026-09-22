@@ -812,9 +812,9 @@ modulos:
           - id: CRM-03.02.03
             nombre: Incentivos y comisiones (interfaz)
             capacidades:
-              - {id: CRM-03.02.03.01, c: D, fase: 2, svc: sales, estado: pendiente, t: "Planes de comisión por porcentaje, escalado, acelerador y SPIFF"}
-              - {id: CRM-03.02.03.02, c: D, fase: 2, svc: sales, estado: pendiente, t: "Cálculo por periodo con simulación y previsión de comisión"}
-              - {id: CRM-03.02.03.03, c: D, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/ (aprobación y disputa)", t: "Aprobación, disputa y trazabilidad del pago"}
+              - {id: CRM-03.02.03.01, c: D, fase: 2, svc: sales, estado: hecho, t: "Planes de comisión por porcentaje, escalado, acelerador y SPIFF"}
+              - {id: CRM-03.02.03.02, c: D, fase: 2, svc: sales, estado: hecho, t: "Cálculo por periodo con simulación y previsión de comisión"}
+              - {id: CRM-03.02.03.03, c: D, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (aprobación y disputa)", t: "Aprobación, disputa y trazabilidad del pago"}
               - {id: CRM-03.02.03.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Integración con motor externo de compensación"}
       - id: "3.3"
         nombre: Prospección y ejecución comercial
@@ -850,12 +850,12 @@ modulos:
           - id: CRM-03.04.01
             nombre: Gestión de partners
             capacidades:
-              - {id: CRM-03.04.01.01, c: D, fase: 6, svc: sales, estado: pendiente, reutiliza: "contecweb:app/services/suppliers.py (alta y certificaciones)", t: "Registro y onboarding de partners con niveles y certificaciones"}
-              - {id: CRM-03.04.01.02, c: D, fase: 6, svc: sales, estado: pendiente, reutiliza: "contecweb:app/services/supplier_api + portal_session.py", t: "Portal de partner headless: registro de oportunidades (deal registration) y protección"}
-              - {id: CRM-03.04.01.03, c: A, fase: 6, svc: identity, estado: pendiente, t: "Aislamiento de datos por partner dentro del tenant (visibilidad estanca)"}
-              - {id: CRM-03.04.01.04, c: D, fase: 6, svc: marketing, estado: pendiente, reutiliza: "contecflow-PSA:app/services/budgets_service.py", t: "Fondos de marketing (MDF), solicitudes y justificación"}
-              - {id: CRM-03.04.01.05, c: A, fase: 6, svc: sales, estado: pendiente, t: "Precios y descuentos específicos de canal"}
-              - {id: CRM-03.04.01.06, c: D, fase: 6, svc: sales, estado: pendiente, t: "Rendimiento por partner, cuotas de canal y planes de negocio conjuntos"}
+              - {id: CRM-03.04.01.01, c: D, fase: 6, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/suppliers.py (alta y certificaciones)", t: "Registro y onboarding de partners con niveles y certificaciones"}
+              - {id: CRM-03.04.01.02, c: D, fase: 6, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/supplier_api + portal_session.py", t: "Portal de partner headless: registro de oportunidades (deal registration) y protección"}
+              - {id: CRM-03.04.01.03, c: A, fase: 6, svc: identity, estado: hecho, t: "Aislamiento de datos por partner dentro del tenant (visibilidad estanca)"}
+              - {id: CRM-03.04.01.04, c: D, fase: 6, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/budgets_service.py", t: "Fondos de marketing (MDF), solicitudes y justificación"}
+              - {id: CRM-03.04.01.05, c: A, fase: 6, svc: sales, estado: hecho, t: "Precios y descuentos específicos de canal"}
+              - {id: CRM-03.04.01.06, c: D, fase: 6, svc: sales, estado: hecho, t: "Rendimiento por partner, cuotas de canal y planes de negocio conjuntos"}
 
   - id: "4"
     nombre: Servicio y atención al cliente
@@ -1204,7 +1204,7 @@ modulos:
               - {id: CRM-07.04.03.13, c: C, fase: 1, svc: front, estado: hecho, cubre: "3.1", t: "Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre"}
               - {id: CRM-07.04.03.14, c: A, fase: 2, svc: front, estado: hecho, cubre: "3.2", t: "Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios"}
               - {id: CRM-07.04.03.15, c: C, fase: 2, svc: front, estado: hecho, cubre: "3.3", t: "Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques"}
-              - {id: CRM-07.04.03.16, c: D, fase: 6, svc: front, estado: pendiente, cubre: "3.4", t: "Canal indirecto: portal de partner, registro de oportunidad y liquidaciones"}
+              - {id: CRM-07.04.03.16, c: D, fase: 6, svc: front, estado: hecho, cubre: "3.4", t: "Canal indirecto: portal de partner, registro de oportunidad y liquidaciones"}
               - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: hecho, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
               - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
               - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
@@ -1344,6 +1344,12 @@ anexo_b_eventos:
   - {type: preferences.changed, fase: 4, svc: marketing}
   - {type: channel.optout, fase: 4, svc: marketing}
   - {type: territory.published, fase: 2, svc: sales}
+  - {type: partner.activated, fase: 6, svc: sales}
+  - {type: partner.deal.registered, fase: 6, svc: sales}
+  - {type: partner.deal.decided, fase: 6, svc: sales}
+  - {type: partner.deal.expired, fase: 6, svc: sales}
+  - {type: commission.approval.needed, fase: 6, svc: sales}
+  - {type: commission.paid, fase: 6, svc: sales}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

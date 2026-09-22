@@ -10,6 +10,7 @@ from services.marketing import (
 )
 from services.marketing.api import ROUTERS
 from services.marketing.api_canales import ROUTERS_CANALES
+from services.marketing.api_fondos import ROUTERS_FONDOS
 from services.marketing.api_recorridos import ROUTERS_RECORRIDOS
 from services.marketing.proyeccion import consumir
 
@@ -23,7 +24,7 @@ app = crear_servicio(
         "definición, las salidas se comprueban antes de cada paso y la "
         "supresión manda sobre lo que diga el recorrido."
     ),
-    routers=[*ROUTERS, *ROUTERS_RECORRIDOS, *ROUTERS_CANALES],
+    routers=[*ROUTERS, *ROUTERS_RECORRIDOS, *ROUTERS_CANALES, *ROUTERS_FONDOS],
     # El perfil de marketing se alimenta por evento: este servicio no puede leer
     # el esquema de `party` ni el de `sales`, y calcular un segmento no puede
     # depender de que estén en pie. El patrón es ancho porque el propio

@@ -54,6 +54,22 @@ class AjustesSales(Settings):
     # Prefijo y formato del código legible de oportunidad.
     codigo_prefijo: str = "OPP"
 
+    # ── Canal indirecto (CRM-03.04.01) ────────────────────────────────────
+    # Días que protege un registro de oportunidad aprobado cuando el nivel del
+    # partner no declara los suyos. Noventa días es lo habitual en software y se
+    # queda muy corto en proyecto industrial: por eso es ajuste, no constante.
+    partner_proteccion_dias: int = Field(90, ge=1, le=1095)
+    # Con cuánta antelación se avisa de una certificación que caduca. Certificar
+    # a alguien lleva semanas; avisar el mismo día no sirve de nada.
+    partner_preaviso_certificacion_dias: int = Field(60, ge=1, le=365)
+    # Validez del enlace de entrada al portal de partner.
+    partner_enlace_validez_minutos: int = Field(30, ge=5, le=1440)
+
+    # ── Comisiones (CRM-03.02.03) ─────────────────────────────────────────
+    # Plazo para reclamar una liquidación. Pasado, la disputa se registra igual
+    # pero marcada fuera de plazo: ni se pierde ni se acepta en silencio.
+    comision_dias_disputa: int = Field(30, ge=1, le=365)
+
     # ── Cotización (CRM-03.03.02.04) ──────────────────────────────────────
     # Descuento que un comercial puede dar sin que nadie lo apruebe. Es un
     # ajuste y no una constante porque cambia con cada campaña, y un despliegue
@@ -160,6 +176,41 @@ registrar_claves(
             tipo="bool",
             descripcion="Exigir motivo normalizado al marcar una oportunidad como perdida",
             campo_settings="exigir_motivo_perdida",
+        ),
+        ClaveAjuste(
+            clave="partner_proteccion_dias",
+            tipo="int",
+            descripcion="Días que protege un registro de oportunidad aprobado, si el nivel no dice otra cosa",
+            minimo=1,
+            maximo=1095,
+            campo_settings="partner_proteccion_dias",
+            sensible=True,
+        ),
+        ClaveAjuste(
+            clave="partner_preaviso_certificacion_dias",
+            tipo="int",
+            descripcion="Antelación con la que se avisa de una certificación de partner que caduca",
+            minimo=1,
+            maximo=365,
+            campo_settings="partner_preaviso_certificacion_dias",
+        ),
+        ClaveAjuste(
+            clave="partner_enlace_validez_minutos",
+            tipo="int",
+            descripcion="Minutos que vale el enlace de entrada al portal de partner",
+            minimo=5,
+            maximo=1440,
+            campo_settings="partner_enlace_validez_minutos",
+            sensible=True,
+        ),
+        ClaveAjuste(
+            clave="comision_dias_disputa",
+            tipo="int",
+            descripcion="Plazo para reclamar una liquidación de comisión",
+            minimo=1,
+            maximo=365,
+            campo_settings="comision_dias_disputa",
+            sensible=True,
         ),
         ClaveAjuste(
             clave="dias_estancamiento_defecto",

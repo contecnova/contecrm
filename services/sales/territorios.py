@@ -182,6 +182,11 @@ class Cuota(Base, TimestampMixin):
     usuario_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     equipo: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     territorio_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # …o un partner del canal indirecto (CRM-03.04.01.06). La cuota de canal es
+    # la misma cuota: mismo prorrateo, mismo ranking y misma consecución. Con una
+    # tabla aparte, el primer informe que mezclara canal y venta directa habría
+    # tenido que sumar dos números calculados de dos maneras.
+    partner_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
 
     periodo: Mapped[str] = mapped_column(String(20), nullable=False, default="trimestral")
     desde: Mapped[date] = mapped_column(Date, nullable=False)
@@ -549,6 +554,7 @@ def crear_cuota(
     usuario_id: UUID | None = None,
     equipo: str | None = None,
     territorio_id: UUID | None = None,
+    partner_id: UUID | None = None,
     periodo: str = "trimestral",
     metrica: str = "importe",
     moneda: str = "EUR",
@@ -573,10 +579,10 @@ def crear_cuota(
         raise ErrorValidacion(
             "El periodo acaba antes de empezar.", error_code="cuota.periodo_invalido"
         )
-    if not any((usuario_id, equipo, territorio_id)):
+    if not any((usuario_id, equipo, territorio_id, partner_id)):
         raise ErrorValidacion(
             "Una cuota sin sujeto no la cumple nadie: hace falta una persona, un "
-            "equipo o un territorio.",
+            "equipo, un territorio o un partner.",
             error_code="cuota.sin_sujeto",
         )
     fila = Cuota(
@@ -584,6 +590,7 @@ def crear_cuota(
         usuario_id=usuario_id,
         equipo=equipo,
         territorio_id=territorio_id,
+        partner_id=partner_id,
         periodo=periodo,
         desde=desde,
         hasta=hasta,
@@ -665,7 +672,11 @@ def consecucion(
         sujeto = (
             str(cuota.usuario_id)
             if cuota.usuario_id
-            else (cuota.equipo or str(cuota.territorio_id or ""))
+            else (
+                cuota.equipo
+                or (str(cuota.partner_id) if cuota.partner_id else "")
+                or str(cuota.territorio_id or "")
+            )
         )
         detalle = prorratear(cuota)
         objetivo = Decimal(detalle["objetivo_efectivo"])
@@ -675,7 +686,9 @@ def consecucion(
                 "sujeto": sujeto,
                 "tipo": "usuario"
                 if cuota.usuario_id
-                else ("equipo" if cuota.equipo else "territorio"),
+                else (
+                    "equipo" if cuota.equipo else ("partner" if cuota.partner_id else "territorio")
+                ),
                 "metrica": cuota.metrica,
                 "objetivo": str(objetivo),
                 "objetivo_sin_prorratear": detalle["objetivo_periodo"],

@@ -8029,3 +8029,237 @@ informe: no son un fallo, y confundirlas con uno lleva a apagar el `una_a_una`.
 
 Los meses se suman **como meses**: una revisión mensual el día 31 cae el último día
 del mes siguiente, no el 3 del otro.
+
+## Canal indirecto: PRM (`CRM-03.04.01`)
+
+Vender por canal no es vender con más gente: es vender con gente **que no trabaja
+aquí y que a veces compite entre sí**. Todo lo que sigue sale de esa frase.
+
+### Alta, niveles y certificaciones (`CRM-03.04.01.01`)
+
+El nivel de un partner no es una etiqueta: es un contrato. «Oro» significa un
+descuento mayor, una protección más larga y unos requisitos que hay que **seguir**
+cumpliendo. Por eso los niveles son filas configurables y no una lista en el
+código: los de un fabricante de maquinaria no se parecen a los de una editorial de
+software, y con tres niveles fijos el primer cliente pide el cuarto.
+
+Los requisitos se guardan **medidos** —facturación mínima, certificaciones
+exigidas—, no descritos. Un requisito en prosa no se comprueba nunca y el nivel
+acaba asignándose a dedo.
+
+Un partner **nace en alta, no activo**. Uno que entra activo entra al portal y
+registra oportunidades antes de haber firmado nada; y cuando se revise el
+programa, nadie sabrá cuáles completaron el alta. Se puede **forzar la activación
+con motivo**: hay altas que se cierran con un trámite pendiente por decisión
+comercial, y sin esa puerta lo que se hace es marcar el trámite como hecho sin
+hacerlo — y entonces la lista de pendientes deja de decir la verdad.
+
+Las certificaciones **caducan de verdad**, y son de una persona, no de una
+empresa: si esa persona se va, el partner deja de cumplir aunque el logotipo siga.
+El preaviso es un ajuste porque certificar a alguien lleva semanas y avisar el
+mismo día no sirve de nada.
+
+Y la facturación **la trae quien llama**: vive en los pedidos y en el ERP.
+Mientras no se pasa, el nivel sale como **no concluyente** en vez de incumplido —
+dar cero por bueno bajaría de nivel a quien factura.
+
+### Portal de partner y registro de oportunidades (`CRM-03.04.01.02`)
+
+El registro de oportunidad es lo único que sostiene un canal. Un partner invierte
+semanas en un cliente; si el fabricante —o el partner de al lado— puede entrar
+detrás y cerrarlo, deja de traer negocio y pasa a esperar el suyo.
+
+El cliente final se identifica por **NIF, dominio o cuenta**, nunca por el nombre:
+«Talleres García SL», «Talleres Garcia» y «T. García» son la misma empresa y tres
+registros distintos, y con tres registros la protección no protege de nada.
+
+**Aprobar es fijar una fecha.** Una protección «mientras trabaje el cliente» no se
+puede comprobar y acaba discutiéndose por correo. Los días salen del nivel del
+partner y, si no lo declara, del ajuste del programa. **Rechazar exige motivo**:
+sin él, el partner no sabe si fue por conflicto, por territorio o porque el cliente
+ya era nuestro, y lo que aprende es a no registrar.
+
+Cuando dos partners van al mismo cliente, el segundo registro **se guarda igual**,
+marcado en conflicto. Tirarlo dejaría al fabricante sin saber que dos partners van
+al mismo sitio, que es justo lo que tiene que saber. Y al segundo **no se le dice
+de quién es el otro registro**: para un competidor que también es partner, el
+nombre es la información que estaba buscando. Al propio partner sí se le dice que
+ya lo tenía él — es su dato, y no decírselo le hace registrar lo mismo cada
+semana.
+
+La caducidad de la protección es **explícita y auditada**, no un cálculo al vuelo:
+el partner tiene derecho a ver qué día se le cayó y por qué.
+
+El portal tiene su propia identidad, como el de cliente: quien entra no es un
+empleado, no cuenta para licencias y su ciclo de vida lo manda el acuerdo de canal.
+El enlace es de un solo uso, y a un correo que no tiene acceso se le responde
+**igual que a uno que sí**: distinguirlos convertiría el portal en un comprobador
+de qué empresas son partners nuestros.
+
+### Aislamiento entre partners (`CRM-03.04.01.03`)
+
+La RLS aísla tenants; esto aísla **dentro** de un tenant. Dos partners del mismo
+fabricante comparten tablas y hasta clientes finales, y sin embargo lo que uno
+registra no puede existir para el otro.
+
+Tres decisiones, y las tres son lo contrario de lo cómodo:
+
+El compartimento vive **en el token**, no en un parámetro de la petición. Si el
+filtro saliera de un identificador que manda el cliente, colarse sería cambiar un
+número en la URL.
+
+Un registro **sin** compartimento no se ve desde dentro de uno. La tentación es
+dejar que el partner vea «lo general»; lo general es la cartera directa del
+fabricante, que es justo lo que no puede ver.
+
+Cruzar el compartimento devuelve **404, no 403**. Un 403 confirma que ese registro
+existe, y entre competidores la existencia ya es la información: saber que hay una
+oportunidad registrada en ese cliente le dice que vaya a por ella.
+
+El mecanismo es genérico: se llama `partner` porque es el primer uso, pero sirve
+igual para una franquicia, un concesionario o un despacho colaborador.
+
+### Fondos de marketing — MDF (`CRM-03.04.01.04`)
+
+Dinero del fabricante que gasta el partner. Quien decide no es quien paga, quien
+justifica no trabaja aquí, y el ejercicio se cierra pase lo que pase.
+
+**Lo comprometido cuenta como gastado.** Es el error clásico: un fondo que solo
+descuenta lo ya pagado enseña saldo disponible cuando está todo aprobado y
+pendiente de factura. Se sobrecompromete, y en noviembre alguien tiene que decirle
+a un partner que su campaña aprobada no se paga. Aprobar por encima del saldo se
+rechaza: ese es el momento exacto en que el fondo se rompe.
+
+**Se puede pedir aunque no haya saldo.** Impedirlo escondería la demanda real, y
+el fabricante necesita saber cuánto se le está pidiendo de más para decidir si
+amplía el fondo.
+
+**Justificar tiene fecha**, y el plazo nunca se pasa del cierre del fondo:
+justificar en marzo contra un presupuesto que cerró en diciembre no lo cobra nadie.
+Vencido, el dinero vuelve al fondo de forma explícita y auditada. Fuera de plazo
+se admite justificar, **marcándolo**: no dejar hace que la factura llegue por
+correo y alguien la meta a mano sin plazo ninguno.
+
+**Lo aceptado es lo menor de lo aprobado y lo justificado.** Se aprueba una campaña
+de 10.000 y se justifican 6.000: se pagan 6.000 y vuelven 4.000 al fondo. Pagar lo
+aprobado sin mirar la justificación es regalar dinero; no devolver el resto es
+perderlo.
+
+Y el retorno **se declara, no se supone**: junto a los leads se da la **cobertura
+de la medición**, porque un retorno estupendo calculado sobre el 10 % del gasto no
+es el retorno del fondo.
+
+### Precios y descuentos de canal (`CRM-03.04.01.05`)
+
+No hay un motor nuevo. El de precios ya sabe de canal, listas, vigencias y
+prioridades; aquí solo se declara **qué canal y qué lista** le tocan a este partner
+y **cuánto puede descontar por su cuenta**. Duplicarlo habría dado dos precios
+distintos para el mismo producto, que es peor que no tener precios de canal.
+
+Se devuelve el **precio suelo**: por debajo de ahí hace falta aprobación. Sin ese
+número, el tope existe en el acuerdo y no existe en la pantalla, y entonces se
+descubre al firmar. Y sin acuerdo no se dice que el tope es cero: se dice que **no
+hay acuerdo**, que lleva a otra conversación con el partner.
+
+### Rendimiento y planes conjuntos (`CRM-03.04.01.06`)
+
+Lo cerrado lo trae quien llama, igual que en las cuotas de venta directa. El número
+propio del canal es la **conversión**: un partner que registra treinta clientes y
+cierra uno no está trabajando, está bloqueando treinta clientes a los demás, y eso
+no se ve en el importe.
+
+La cuota de canal **es la misma cuota** de ventas, con el mismo prorrateo y el
+mismo ranking. Con una tabla aparte, el primer informe que mezclara canal y venta
+directa habría tenido que sumar dos números calculados de dos maneras.
+
+Los objetivos del plan conjunto se guardan con su métrica y su número. Un plan
+escrito en prosa —«crecer en el sector sanitario»— no se puede revisar en el
+trimestre siguiente, y no revisarlo es lo que le pasa a casi todos. Un objetivo sin
+dato sale como **no medible**, no como incumplido.
+
+## Incentivos y comisiones (`CRM-03.02.03`)
+
+La comisión es lo único del CRM que la gente comprueba a mano, con una hoja de
+cálculo propia, todos los meses. Y tienen razón en hacerlo: es su sueldo. Un motor
+que no se pueda cuadrar con esa hoja no se usa, se discute.
+
+### Planes: porcentaje, escalado, acelerador y SPIFF (`CRM-03.02.03.01`)
+
+El plan nace **en borrador** y no liquida hasta activarse; una vez activo ya no se
+modifica —se cierra y se crea el siguiente—, porque cambiarlo en caliente haría que
+dos liquidaciones del mismo periodo salieran distintas según cuándo se calcularan.
+
+**El escalado declara si es marginal o retroactivo.** Es la ambigüedad que más
+disputas causa: al pasar de tramo, ¿se cobra el porcentaje nuevo solo por lo que
+excede, o por todo lo vendido? Las dos formas existen, ninguna es «la obvia», y la
+diferencia en la nómina es enorme. Aquí hay que decirlo, y se dice en cada tramo.
+
+El tramo se decide por **lo acumulado del periodo**, no por la operación suelta. Si
+se mirara operación a operación, un pedido grande pagaría al tipo alto y diez
+pequeños al bajo por el mismo total, y el comercial aprendería a agrupar pedidos en
+vez de a vender.
+
+Antes de activar, el plan **se revisa**: huecos, solapes y mezcla de modos. Un hueco
+entre 50.000 y 60.000 no da error en ningún sitio: **da cero**. Quien venda 55.000
+cobrará menos que quien vendió 49.000 y nadie sabrá por qué hasta que lo reclame.
+
+El SPIFF tiene ventana y condición, y **la condición se valida al guardarla**: un
+operador mal escrito no falla, deja de premiar en silencio — y no protesta nadie
+porque nadie sabía que le tocaba.
+
+El acelerador necesita cuota. **Sin ella no se evalúa y se dice**: aplicarlo sobre
+una cuota supuesta de cero lo dispararía siempre.
+
+### Cálculo, simulación y previsión (`CRM-03.02.03.02`)
+
+Simular y liquidar son **la misma función**. Una simulación calculada por otro
+camino acaba no coincidiendo con la nómina, que es exactamente lo que nadie
+perdona.
+
+Las operaciones las trae quien llama: lo vendido vive en oportunidades y pedidos, y
+recalcularlo aquí daría un segundo número del mismo negocio. Las que no traen el
+dato sobre el que comisiona el plan salen aparte como `sin_base`: tratarlas como
+cero las haría desaparecer del desglose, y el que falta en la lista es siempre el
+que más protesta.
+
+En la previsión, el pipeline entra **ponderado por su probabilidad** y se devuelven
+los dos números por separado —lo devengado y lo previsto—. Mezclarlos da una cifra
+que parece ganada y no lo está, y esa cifra se acaba gastando.
+
+### Aprobación, disputa y trazabilidad del pago (`CRM-03.02.03.03`)
+
+La aprobación la resuelve **el motor del orquestador**, el mismo que aprueba todo lo
+demás: montar una segunda cadena aquí daría dos sitios donde mirar quién aprobó qué.
+
+**La disputa es parte del proceso, no una incidencia.** Mientras esté abierta, el
+pago no sale; sin ese freno lo que pasa es que se paga, luego se corrige en la
+siguiente y nadie entiende su nómina. Hay plazo, y pasado el plazo la disputa **se
+registra igual, marcada fuera de plazo**: ni se pierde —el dato es real— ni se
+acepta en silencio.
+
+El ajuste de una disputa aceptada entra como **línea nueva**, nunca editando la
+original: corregir en sitio deja un número que ya no coincide con lo que se comunicó
+y sin nada que explique la diferencia.
+
+Una comisión que se cae —el pedido se anuló, el cliente devolvió— se **revierte con
+una línea negativa que apunta a la original**. Una reversión invisible es la forma
+más rápida de que alguien vea su nómina, no la reconozca y deje de fiarse del resto.
+
+**Pagar exige referencia** —nómina, remesa o factura—. «Pagada» sin dónde mirarlo no
+se puede comprobar, y es lo primero que se pregunta cuando alguien dice que no lo ha
+cobrado.
+
+Y lo liquidado es **una foto, no una vista**: se guarda el plan aplicado junto a la
+liquidación. Quien cobró en marzo tiene derecho a que marzo siga diciendo lo mismo
+en junio.
+
+El mismo motor liquida a un partner del canal (`CRM-03.04.01.06`): un segundo motor
+para el rappel habría dado dos formas de calcular lo mismo.
+
+## Canal indirecto en la interfaz (`CRM-07.04.03.16`)
+
+La pantalla del canal pone **los registros de oportunidad por delante de los
+niveles**: los niveles se tocan una vez al año y los registros son lo que hay que
+decidir hoy, sobre todo cuando traen conflicto entre dos partners. Junto a ellos,
+los fondos de marketing con su saldo y las liquidaciones con su desglose, que es lo
+que el partner pregunta cuando llama.

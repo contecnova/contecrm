@@ -693,6 +693,24 @@ from services.sales.catalogo import (  # noqa: E402,F401
     ReglaPrecio,
     RelacionProducto,
 )
+from services.sales.comisiones import (  # noqa: E402,F401
+    AsignacionPlan,
+    DisputaComision,
+    LineaComision,
+    Liquidacion,
+    PlanComision,
+    ReglaComision,
+)
+from services.sales.partners import (  # noqa: E402,F401
+    AccesoPartner,
+    AcuerdoCanal,
+    CertificacionPartner,
+    EnlaceAccesoPartner,
+    NivelPartner,
+    Partner,
+    PlanConjunto,
+    RegistroOportunidad,
+)
 from services.sales.presupuestos import (  # noqa: E402,F401
     CambioSuscripcion,
     Contrato,

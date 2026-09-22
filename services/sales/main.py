@@ -7,7 +7,9 @@ from crmcore.service import crear_servicio
 from services.sales import eventos  # noqa: F401  — registra los tipos de evento
 from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.sales.api_cadencias import ROUTERS_CADENCIAS
+from services.sales.api_comisiones import ROUTERS_COMISIONES
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
+from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
 from services.sales.consumidores import consumir_comando
 
@@ -34,7 +36,14 @@ app = crear_servicio(
         "contratos con preaviso, suscripciones con prorrateo y traspaso al ERP "
         "que no se cierra hasta que el ERP contesta."
     ),
-    routers=[*ROUTERS, *ROUTERS_COTIZACION, *ROUTERS_CADENCIAS, *ROUTERS_TERRITORIOS],
+    routers=[
+        *ROUTERS,
+        *ROUTERS_COTIZACION,
+        *ROUTERS_CADENCIAS,
+        *ROUTERS_TERRITORIOS,
+        *ROUTERS_PARTNERS,
+        *ROUTERS_COMISIONES,
+    ],
     al_arrancar=_al_arrancar,
     routers_sin_prefijo=ROUTERS_SIN_PREFIJO,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus

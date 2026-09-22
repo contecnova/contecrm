@@ -51,6 +51,10 @@ EVENTOS: dict[str, tuple[str, str]] = {
     "account.created": ("cuenta", "cuenta_id"),
     "account.merged": ("cuenta", "cuenta_id"),
     "record.deleted": ("", "objeto_id"),
+    # El partner no alimenta el perfil de marketing: alimenta la proyección de
+    # los fondos (CRM-03.04.01.04). Se despacha aparte, unas líneas más abajo,
+    # porque escribe en otra tabla y mezclarlo aquí habría metido un partner en
+    # la lista de contactos segmentables.
 }
 
 # Campos del evento que se copian tal cual al perfil.
@@ -139,6 +143,9 @@ async def consumir(mensaje: Any) -> None:
     tipo = getattr(mensaje, "tipo", None) or (
         mensaje.get("tipo") if isinstance(mensaje, dict) else None
     )
+    if str(tipo or "") == "partner.activated":
+        await _consumir_partner(mensaje)
+        return
     encaje = EVENTOS.get(str(tipo or ""))
     if encaje is None:
         return
@@ -175,6 +182,41 @@ async def consumir(mensaje: Any) -> None:
         )
 
 
+async def _consumir_partner(mensaje: Any) -> None:
+    """Guarda el partner que llega por evento, para los fondos de canal.
+
+    `marketing` no puede leer el esquema de `sales`, así que el nombre del
+    partner llega por aquí. Si el evento no trae el identificador no se inventa
+    nada: sin él no hay a quién apuntar el fondo.
+    """
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    partner_id = datos.get("partner_id")
+    if not bruto or not partner_id:
+        logger.warning("marketing.partner_sin_identificador", tenant=str(bruto))
+        return
+
+    from crmcore.db.uow import unidad_de_trabajo
+
+    from services.marketing.fondos import registrar_partner
+
+    tenant_id = UUID(str(bruto))
+    with unidad_de_trabajo(tenant_id) as uow:
+        registrar_partner(
+            uow.db,
+            tenant_id=tenant_id,
+            partner_id=UUID(str(partner_id)),
+            clave=str(datos.get("clave") or ""),
+            canal=str(datos.get("canal") or ""),
+        )
+
+
 from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
 
 # Contract testing dirigido por el consumidor (CRM-00.03.01.03). Los campos van
@@ -195,3 +237,16 @@ for _evento, (_objeto, _clave) in EVENTOS.items():
             ),
         )
     )
+
+declarar_consumo(
+    Consumo(
+        consumidor="marketing",
+        evento="partner.activated",
+        campos=("partner_id",),
+        obligatorio=True,
+        motivo=(
+            "Poder abrir fondos de marketing a nombre de un partner sin leer el "
+            "esquema de ventas"
+        ),
+    )
+)

@@ -260,6 +260,64 @@ export const MODULOS: Modulo[] = [
     ],
   },
 
+  {
+    ruta: "canal",
+    titulo: "Canal indirecto",
+    seccion: "3.4",
+    capacidad: "CRM-07.04.03.16",
+    grupo: "Ventas",
+    recursos: [
+      {
+        nombre: "Partners",
+        listar: "/api/v1/partners",
+        crear: "/api/v1/partners",
+        servicio: "sales",
+        columnas: ["clave", "nombre", "tipo", "canal", "estado"],
+        permiso: "partner:read",
+      },
+      // Los registros delante de los niveles: es lo que se mira todos los días,
+      // y es donde aparece el conflicto entre dos partners, que es lo que hay
+      // que decidir hoy y no la semana que viene.
+      {
+        nombre: "Registros de oportunidad",
+        listar: "/api/v1/registros-oportunidad",
+        servicio: "sales",
+        columnas: ["cliente", "estado", "importe_estimado", "protegido_hasta", "en_conflicto"],
+        permiso: "partner:read",
+      },
+      { nombre: "Niveles", listar: "/api/v1/niveles-partner", servicio: "sales" },
+      {
+        nombre: "Certificaciones por caducar",
+        listar: "/api/v1/partners/certificaciones/por-caducar",
+        servicio: "sales",
+      },
+      {
+        nombre: "Fondos de marketing",
+        listar: "/api/v1/fondos-mdf",
+        crear: "/api/v1/fondos-mdf",
+        servicio: "marketing",
+        columnas: ["nombre", "desde", "hasta", "asignado", "moneda", "cerrado"],
+        permiso: "campaign:read",
+      },
+      {
+        nombre: "Solicitudes de fondos",
+        listar: "/api/v1/solicitudes-mdf",
+        servicio: "marketing",
+        columnas: ["titulo", "estado", "solicitado", "aprobado", "justificado", "justificar_antes_de"],
+      },
+      // Las liquidaciones cuelgan del canal *y* de la retribución interna: es
+      // el mismo motor, y enseñarlas dos veces daría dos listas del mismo dinero.
+      {
+        nombre: "Liquidaciones",
+        listar: "/api/v1/liquidaciones",
+        servicio: "sales",
+        columnas: ["estado", "desde", "hasta", "total", "moneda", "pago_referencia"],
+        permiso: "commission:read",
+      },
+      { nombre: "Planes de comisión", listar: "/api/v1/planes-comision", servicio: "sales" },
+    ],
+  },
+
   // ── Módulo 5 · Analítica ────────────────────────────────────────────────
   {
     ruta: "explotacion",

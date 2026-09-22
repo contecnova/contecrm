@@ -389,6 +389,12 @@ from services.marketing.correo import (  # noqa: E402,F401
     PlantillaMarketing,
     Preferencia,
 )
+from services.marketing.fondos import (  # noqa: E402,F401
+    FondoMdf,
+    JustificacionMdf,
+    PartnerConocido,
+    SolicitudMdf,
+)
 from services.marketing.recorridos import (  # noqa: E402,F401
     EnRecorrido,
     PasoRecorrido,

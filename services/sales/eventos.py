@@ -214,3 +214,79 @@ CADENCE_EXITED = registrar(
         campos=("inscripcion_id", "cadencia_id", "email", "motivo"),
     )
 )
+
+# ── Canal indirecto y retribución variable ────────────────────────────────
+PARTNER_ACTIVATED = registrar(
+    TipoEvento(
+        tipo="partner.activated",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Un partner ha quedado activo. Lo escucha marketing para poder abrir "
+            "fondos a su nombre sin leer el esquema de ventas"
+        ),
+        campos=("partner_id", "clave", "canal"),
+    )
+)
+PARTNER_DEAL_REGISTERED = registrar(
+    TipoEvento(
+        tipo="partner.deal.registered",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Un partner ha registrado una oportunidad. Trae si hay conflicto "
+            "—no con quién—: quien avise al fabricante necesita saber que dos "
+            "partners van al mismo cliente"
+        ),
+        campos=("registro_id", "partner_id", "importe", "hay_conflicto"),
+    )
+)
+PARTNER_DEAL_DECIDED = registrar(
+    TipoEvento(
+        tipo="partner.deal.decided",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Se ha decidido un registro de oportunidad. `protegido_hasta` viaja "
+            "con él **solo cuando se aprueba** y por eso no está entre los campos "
+            "prometidos: un rechazo no tiene fecha de protección, y prometerla "
+            "para mandarla vacía es la forma de que el consumidor se fíe de un "
+            "campo que a veces no significa nada"
+        ),
+        campos=("registro_id", "partner_id", "estado"),
+    )
+)
+PARTNER_DEAL_EXPIRED = registrar(
+    TipoEvento(
+        tipo="partner.deal.expired",
+        version=1,
+        productor="sales",
+        descripcion="Ha vencido la protección de un registro de oportunidad",
+        campos=("registro_id", "partner_id"),
+    )
+)
+COMMISSION_APPROVAL_NEEDED = registrar(
+    TipoEvento(
+        tipo="commission.approval.needed",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Una liquidación de comisión pide aprobación. La cadena la resuelve el "
+            "motor de aprobaciones del orquestador: montar una segunda aquí daría "
+            "dos sitios donde mirar quién aprobó qué"
+        ),
+        campos=("liquidacion_id", "total", "moneda"),
+    )
+)
+COMMISSION_PAID = registrar(
+    TipoEvento(
+        tipo="commission.paid",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Una liquidación se ha pagado, con su referencia. Es el evento que "
+            "permite cuadrar el CRM con la nómina o la remesa sin abrir las dos"
+        ),
+        campos=("liquidacion_id", "total", "referencia"),
+    )
+)

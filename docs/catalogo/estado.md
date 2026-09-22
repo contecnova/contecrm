@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 490 hecho · ⬜ 217 pendiente
+**707 capacidades**: ✅ 500 hecho · ⬜ 207 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 43 · ⬜ 22
+65 capacidades · ✅ 52 · ⬜ 13
 
 ### 3.1 Pipeline y oportunidades
 
@@ -711,9 +711,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.02.03.01` | Planes de comisión por porcentaje, escalado, acelerador y SPIFF | D | 2 | sales | ⬜ | — |
-| `CRM-03.02.03.02` | Cálculo por periodo con simulación y previsión de comisión | D | 2 | sales | ⬜ | — |
-| `CRM-03.02.03.03` | Aprobación, disputa y trazabilidad del pago | D | 2 | sales | ⬜ | contecmind:app/services/approval_engine/ (aprobación y disputa) |
+| `CRM-03.02.03.01` | Planes de comisión por porcentaje, escalado, acelerador y SPIFF | D | 2 | sales | ✅ | — |
+| `CRM-03.02.03.02` | Cálculo por periodo con simulación y previsión de comisión | D | 2 | sales | ✅ | — |
+| `CRM-03.02.03.03` | Aprobación, disputa y trazabilidad del pago | D | 2 | sales | ✅ | contecmind:app/services/approval_engine/ (aprobación y disputa) |
 | `CRM-03.02.03.04` | Integración con motor externo de compensación | A | 2 | integration | ⬜ | — |
 
 ### 3.3 Prospección y ejecución comercial
@@ -753,12 +753,12 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.04.01.01` | Registro y onboarding de partners con niveles y certificaciones | D | 6 | sales | ⬜ | contecweb:app/services/suppliers.py (alta y certificaciones) |
-| `CRM-03.04.01.02` | Portal de partner headless: registro de oportunidades (deal registration) y protección | D | 6 | sales | ⬜ | contecweb:app/services/supplier_api + portal_session.py |
-| `CRM-03.04.01.03` | Aislamiento de datos por partner dentro del tenant (visibilidad estanca) | A | 6 | identity | ⬜ | — |
-| `CRM-03.04.01.04` | Fondos de marketing (MDF), solicitudes y justificación | D | 6 | marketing | ⬜ | contecflow-PSA:app/services/budgets_service.py |
-| `CRM-03.04.01.05` | Precios y descuentos específicos de canal | A | 6 | sales | ⬜ | — |
-| `CRM-03.04.01.06` | Rendimiento por partner, cuotas de canal y planes de negocio conjuntos | D | 6 | sales | ⬜ | — |
+| `CRM-03.04.01.01` | Registro y onboarding de partners con niveles y certificaciones | D | 6 | sales | ✅ | contecweb:app/services/suppliers.py (alta y certificaciones) |
+| `CRM-03.04.01.02` | Portal de partner headless: registro de oportunidades (deal registration) y protección | D | 6 | sales | ✅ | contecweb:app/services/supplier_api + portal_session.py |
+| `CRM-03.04.01.03` | Aislamiento de datos por partner dentro del tenant (visibilidad estanca) | A | 6 | identity | ✅ | — |
+| `CRM-03.04.01.04` | Fondos de marketing (MDF), solicitudes y justificación | D | 6 | marketing | ✅ | contecflow-PSA:app/services/budgets_service.py |
+| `CRM-03.04.01.05` | Precios y descuentos específicos de canal | A | 6 | sales | ✅ | — |
+| `CRM-03.04.01.06` | Rendimiento por partner, cuotas de canal y planes de negocio conjuntos | D | 6 | sales | ✅ | — |
 
 ## Módulo 4 — Servicio y atención al cliente
 
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 74 · ⬜ 17
+91 capacidades · ✅ 75 · ⬜ 16
 
 ### 7.1 Administración funcional
 
@@ -1146,7 +1146,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.13` | Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.14` | Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.15` | Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques | C | 2 | front | ✅ | — |
-| `CRM-07.04.03.16` | Canal indirecto: portal de partner, registro de oportunidad y liquidaciones | D | 6 | front | ⬜ | — |
+| `CRM-07.04.03.16` | Canal indirecto: portal de partner, registro de oportunidad y liquidaciones | D | 6 | front | ✅ | — |
 | `CRM-07.04.03.17` | Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución | C | 3 | front | ✅ | — |
 | `CRM-07.04.03.18` | Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola | A | 3 | front | ✅ | — |
 | `CRM-07.04.03.19` | Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente | A | 3 | front | ✅ | — |

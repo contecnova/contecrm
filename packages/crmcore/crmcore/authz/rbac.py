@@ -188,6 +188,12 @@ ROLES_BASE: dict[str, Rol] = {
                 "contract:read",
                 "order:read",
                 "toque:registrar",
+                # Ver el canal es parte de vender con él: quién es partner, qué
+                # nivel tiene y qué hay registrado. Gestionarlo no (CRM-03.04.01).
+                "partner:read",
+                # Cada uno ve su propia liquidación. Es lo que evita la hoja de
+                # cálculo paralela: si no la puede mirar, se la hace él.
+                "commission:read",
                 # Retirar un adjunto o un comentario ajeno no es de todos: el
                 # autor edita el suyo por la comprobación de dentro, y borrar
                 # es una acción que deja hueco en una conversación.
@@ -223,6 +229,13 @@ ROLES_BASE: dict[str, Rol] = {
                 "contract:write",
                 "order:write",
                 "firma:write",
+                # El canal y la retribución variable los lleva el mando: dar de
+                # alta un partner, decidir un registro de oportunidad y liquidar.
+                "partner:write",
+                "commission:write",
+                # Aprobar y pagar una liquidación va aparte de calcularla: quien
+                # calcula su propia comisión no puede ser quien la aprueba.
+                "commission:approve",
             }
         ),
         descripcion="Además, previsión y aprobación sobre su equipo",
