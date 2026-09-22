@@ -147,7 +147,7 @@ class DescargaAdjunto(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     adjunto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     usuario_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    ip: Mapped[str] = mapped_column(String(45), nullable=False, default="")
+    ip: Mapped[str] = mapped_column(String(45), nullable=False, default="", info={"sensibilidad": "personal"})
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

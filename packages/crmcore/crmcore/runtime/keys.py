@@ -630,6 +630,16 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=6,
             minimo_ambito="usuario",
         ),
+        # Registro de tratamiento (CRM-07.03.01.04). Una sola clave JSON y no
+        # cuatro por cada objeto: con veinticinco objetos serían cien palancas en
+        # la consola, y una consola con cien palancas es una consola que nadie
+        # toca. Dentro va {objeto: {finalidad, base_legal, plazo, responsable}},
+        # y lo que no se ponga se queda con lo que declara el producto.
+        _c(
+            "rat_ajustes",
+            "json",
+            "Finalidad, base legal, plazo y responsable propios de este tenant, por objeto",
+        ),
     )
 }
 

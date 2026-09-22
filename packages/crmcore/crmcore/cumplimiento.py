@@ -32,6 +32,26 @@ logger = get_logger(__name__)
 # separan porque su régimen legal es distinto: no basta el interés legítimo.
 PERSONALES = frozenset({"personal", "especial"})
 
+# Bases legales del artículo 6 del RGPD. Lista cerrada: es el campo que un
+# auditor mira primero, y un valor libre acabaría teniendo «legítimo interés»,
+# «interes legitimo» e «interés legítimo (ver contrato)» como tres bases
+# distintas en el mismo registro.
+BASES_LEGALES = (
+    "consentimiento",
+    "contrato",
+    "obligacion_legal",
+    "interes_vital",
+    "interes_publico",
+    "interes_legitimo",
+)
+
+# Campos del tratamiento que cada cliente puede ajustar para sí. Son decisiones
+# suyas —él es el responsable del tratamiento, no el fabricante— y la misma
+# tabla de contactos se trata por contrato en una empresa y por interés legítimo
+# en otra. Lo que se declara en el código es lo que hace el software; lo que se
+# ajusta aquí es lo que decide quien responde ante la autoridad.
+AJUSTABLES = ("finalidad", "base_legal", "plazo", "responsable")
+
 
 @dataclass(frozen=True, slots=True)
 class Tratamiento:
@@ -64,6 +84,12 @@ def declarar(tratamiento: Tratamiento) -> None:
     en el mismo sitio que el objeto y se cambia con él; en un documento aparte,
     lo que se actualiza es el objeto y lo que se queda viejo es el documento.
     """
+    if tratamiento.base_legal not in BASES_LEGALES:
+        raise ValueError(
+            f"Base legal «{tratamiento.base_legal}» no reconocida. Las del "
+            f"artículo 6 son {list(BASES_LEGALES)}: un valor libre acaba con la "
+            "misma base escrita de tres formas en el mismo registro."
+        )
     _tratamientos[tratamiento.objeto] = tratamiento
 
 
@@ -102,7 +128,32 @@ def mapa_de_datos(modelos: dict[str, type]) -> list[CampoPersonal]:
     return sorted(salida, key=lambda c: (c.objeto, c.campo))
 
 
-def registro_de_tratamiento(modelos: dict[str, type]) -> dict[str, Any]:
+def _ajustes_del_tenant(db: Any, objeto: str) -> dict[str, str]:
+    """Lo que este cliente haya cambiado de la declaración por defecto.
+
+    Se lee de los ajustes en vigor, no de una tabla propia: el mecanismo de
+    configuración por tenant ya existe y tiene su historial de versiones, y
+    duplicarlo aquí habría dejado el RAT fuera de ese historial — justo el
+    documento donde más importa saber quién cambió qué y cuándo.
+
+    Todo va en una sola clave JSON. Cuatro claves por cada objeto serían cien
+    palancas en la consola de configuración, y una consola con cien palancas es
+    una consola que nadie toca.
+    """
+    if db is None:
+        return {}
+    from crmcore.runtime.settings import efectivo
+
+    todos = efectivo("rat_ajustes", db, default=None) or {}
+    if not isinstance(todos, dict):
+        return {}
+    propios = todos.get(objeto) or {}
+    if not isinstance(propios, dict):
+        return {}
+    return {campo: str(valor) for campo, valor in propios.items() if campo in AJUSTABLES and valor}
+
+
+def registro_de_tratamiento(modelos: dict[str, type], db: Any = None) -> dict[str, Any]:
     """El RAT compuesto: lo derivado del modelo y lo declarado a mano.
 
     **Lo que falta se dice**, y es la parte que hace que esto valga para algo:
@@ -122,13 +173,21 @@ def registro_de_tratamiento(modelos: dict[str, type]) -> dict[str, Any]:
         if tratamiento is None:
             sin_declarar.append(objeto)
             continue
+        # Lo que el cliente haya ajustado manda sobre lo declarado: él es el
+        # responsable del tratamiento y el fabricante solo el encargado.
+        propios = _ajustes_del_tenant(db, objeto)
         actividades.append(
             {
                 "objeto": objeto,
-                "finalidad": tratamiento.finalidad,
-                "base_legal": tratamiento.base_legal,
-                "plazo": tratamiento.plazo,
-                "responsable": tratamiento.responsable,
+                "finalidad": propios.get("finalidad", tratamiento.finalidad),
+                "base_legal": propios.get("base_legal", tratamiento.base_legal),
+                "plazo": propios.get("plazo", tratamiento.plazo),
+                "responsable": propios.get("responsable", tratamiento.responsable),
+                # Qué campos ha decidido este cliente y cuáles son los que trae
+                # el producto. Sin esta distinción, un responsable cree haber
+                # revisado lo que solo venía puesto de fábrica.
+                "ajustado_por_el_cliente": sorted(propios),
+                "sin_revisar_por_el_cliente": sorted(set(AJUSTABLES) - set(propios)),
                 "destinatarios": list(tratamiento.destinatarios),
                 "transferencias": list(tratamiento.transferencias),
                 "categorias": sorted({c.sensibilidad for c in suyos}),
@@ -171,7 +230,7 @@ def informe_de_cumplimiento(db: Any, tenant_id: UUID, modelos: dict[str, type]) 
     informe: dict[str, Any] = {
         "generado_at": datetime.now(timezone.utc).isoformat(),
         "tenant": str(tenant_id),
-        "rat": registro_de_tratamiento(modelos),
+        "rat": registro_de_tratamiento(modelos, db),
         "avisos": [],
     }
 

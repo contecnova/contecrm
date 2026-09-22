@@ -162,6 +162,10 @@ _OBJETO_POR_DEFECTO = "x"
 _AGREGADAS_EN_EL_GATEWAY = {
     "/api/v1/estado",
     "/api/v1/estado/contratos",
+    # El presupuesto de error lo compone el gateway (CRM-00.06.01.04): cada
+    # servicio publica su consumo y solo el gateway sabe el tier contratado,
+    # porque lo pregunta a `tenancy`.
+    "/api/v1/estado/slo",
     "/api/v1/superficie",
 }
 

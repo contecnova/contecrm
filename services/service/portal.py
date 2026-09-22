@@ -84,7 +84,9 @@ class AccesoPortal(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     contacto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
-    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
 
     nivel: Mapped[str] = mapped_column(String(20), nullable=False, default="propio")
     # Qué secciones ve. Vacío = las de su nivel; con valores, se acota más.
@@ -129,7 +131,9 @@ class EnlaceAcceso(Base):
     hash_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ip_uso: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip_uso: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

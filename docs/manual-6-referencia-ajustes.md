@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**194 ajustes** en total, de los cuales **71** son editables en caliente por tenant.
+**197 ajustes** en total, de los cuales **75** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -175,6 +175,9 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
 | `METADATA_MAX_CAMPOS` | — | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
 | `METADATA_AVISO_PCT` | — | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |
+| `CASO_REAPERTURA_DIAS` | 🔥 `caso_reapertura_dias` | `30` | 0–3650 | Días durante los que un caso cerrado se puede reabrir. Pasado el plazo se abre uno nuevo enlazado: reabrir un caso de hace ocho meses falsea todos los indicadores del periodo en que se cerró, y esos números ya están en un informe que alguien miró. 0 = sin límite, que se desaconseja. |
+| `CAMPO_VELOCIDAD_MEDIA_KMH` | 🔥 `campo_velocidad_media_kmh` | `35` | 5–130 | Velocidad media con la que se estima el tiempo de viaje entre visitas. Es un ajuste porque en ciudad son 20 y en carretera comarcal 70, y una constante haría que la jornada de un equipo cupiera y la del otro no. |
+| `GARANTIA_PREAVISO_DIAS` | 🔥 `garantia_preaviso_dias` | `90` | 1–730 | Con cuánta antelación se avisa de una garantía que vence. Es la lista con la que se vende la extensión, y sobre todo la que evita la llamada en la que se descubre que venció hace un mes. |
 
 ## Observabilidad y auditoría
 

@@ -348,6 +348,10 @@ __all__ = [
 # El servicio de campo y los activos instalados viven en sus propios módulos
 # —cada uno con su lógica— pero sus tablas son de este esquema y tienen que
 # importarse aquí: `alembic` solo mira `modelos.py`.
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.service import tratamientos  # noqa: E402,F401
 from services.service.activos import (  # noqa: E402,F401
     ActivoInstalado,
     EventoActivo,

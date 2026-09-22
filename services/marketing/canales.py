@@ -118,7 +118,9 @@ class ConsentimientoCanal(Base, TimestampMixin):
     # respuesta.
     origen: Mapped[str] = mapped_column(String(40), nullable=False, default="formulario")
     prueba: Mapped[str | None] = mapped_column(Text, nullable=True)
-    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     cambiado_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

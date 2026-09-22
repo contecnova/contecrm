@@ -311,18 +311,17 @@ desarrolla: están descritos uno a uno en [Gates locales](QUALITY_GATES.md).
 
 ## Lo que está a medias
 
-Lo que está **en curso ahora mismo**. Todo lo demás que consta como hecho
-cumple su enunciado, tiene prueba que lo cita y está explicado aquí; lo que no
-está hecho consta como pendiente y no aparece.
+**Nada.** Todo lo que consta como hecho cumple su enunciado, tiene prueba que lo
+cita y está explicado aquí; lo que no está hecho consta como pendiente y no
+aparece en este manual.
 
-| Capacidad | Qué hay | Qué falta |
-|---|---|---|
-| `CRM-00.03.01.03` Contratos internos verificados | El OpenAPI de cada servicio y el gate de alcanzabilidad | Que un cambio incompatible falle en quien lo consume, no en producción |
-| `CRM-00.06.02.03` Restauración selectiva | La papelera y la exportación completa | Recuperar registros concretos desde una exportación sin restaurar nada más |
-| `CRM-00.05.01.05` SCIM 2.0 | Usuarios, roles y membresías | El protocolo de aprovisionamiento, y sobre todo el DESaprovisionamiento |
-| `CRM-00.06.01.04` SLO y error budget | Métricas por servicio | El objetivo declarado y cuánto margen queda antes de incumplirlo |
-| `CRM-07.03.01.04` Registro de tratamiento (RAT) | La sensibilidad declarada campo a campo | El mapa de datos personales y el registro que exige el RGPD |
-| `CRM-07.03.01.07` Informes de cumplimiento | GRC, audit trail y certificados | Juntarlo en evidencia que un auditor pueda leer sin pedir nada |
+Esta sección existía con seis capacidades dentro, y la mitad de ellas eran texto
+viejo: estaban terminadas y nadie había quitado la fila. Las otras cuatro
+faltaban de verdad —el SLO no lo alimentaba nadie, la restauración selectiva no
+tenía ni una ruta que llegara hasta ella, el RAT salía vacío porque ningún
+servicio declaraba sus tratamientos, y el informe de cumplimiento no se podía
+pedir— y se han terminado. La sección se queda escrita, y vacía, porque el día
+que algo vuelva a quedarse a medias tiene que haber un sitio donde decirlo.
 
 ---
 
@@ -4656,6 +4655,45 @@ presupuesto de error, con tres decisiones que cambian cómo se lee:
 Cuando el presupuesto se agota, la respuesta lo dice con todas las letras: toca
 arreglar antes que seguir sacando.
 
+### De dónde salen los números
+
+Lo cuenta **el propio tránsito**, no una sonda aparte. Cada petición que atiende
+un servicio se apunta al pasar por el middleware de tiempos, y se apunta ahí y no
+en cada endpoint porque el presupuesto tiene que contar **todas** las peticiones:
+engancharlo ruta a ruta significa contar las que alguien se acordó de enganchar,
+que son justo las que menos fallan.
+
+Un 4xx no gasta presupuesto. Es un error de quien llama —una integración que
+manda mal los datos—, y contarlo haría que el equipo se quedara sin margen por
+culpa de un cliente mal programado.
+
+**Los contadores viven fuera del proceso**, en el mismo Redis que ya sostiene los
+límites de tasa. En memoria sobrevivirían hasta el siguiente despliegue y, con
+tres réplicas, cada una tendría su propia verdad: un presupuesto mensual que se
+reinicia al desplegar dice siempre que queda margen, que es lo que uno quiere oír
+y exactamente por lo que no serviría. Si no hay Redis se cuenta en memoria y la
+respuesta **lo dice**, porque un número calculado sobre una ventana de dos horas
+no es el presupuesto del mes.
+
+### Por qué se cuenta por tenant y el tier se aplica al leer
+
+Cada servicio sabe de qué tenant es cada petición, pero **no** qué tier ha
+contratado: eso vive en `tenancy` y ningún servicio lee el esquema de otro. Así
+que se cuenta por tenant, que es lo fino, y el tier se aplica al leer, que es
+donde sí se sabe. Lo fino se puede agregar; lo agregado no se puede desglosar.
+
+La lentitud se cuenta **contra los tres umbrales a la vez**. La misma respuesta
+de 1,5 s es normal en estándar y es una falta en enterprise, y esa es exactamente
+la diferencia que el cliente está pagando. Decidirlo al escribir obligaría a
+saber el tier donde no se sabe, y recalcularlo después sería imposible porque los
+milisegundos de cada petición ya no están.
+
+La vista completa la compone el gateway en `GET /api/v1/estado/slo`: pregunta el
+tier una vez a `tenancy`, se lo pasa a todos los servicios y junta los
+presupuestos. Y **dice lo que no ha podido consultar**: un servicio que no
+responde y desaparece de la lista deja una página que enseña margen de sobra
+precisamente cuando algo va mal.
+
 ## Restauración selectiva (`CRM-00.06.02.03`)
 
 Restaurar la copia entera para recuperar veinte registros borrados por error
@@ -4673,7 +4711,19 @@ Las tres reglas que la hacen usable:
   explícita que queda escrita en la auditoría.
 - **Nunca entre tenants.** Sería la peor fuga posible: datos de un cliente
   escritos en la base de otro, con un rastro que dice que fue una recuperación
-  legítima. Se rechaza de plano.
+  legítima. Se rechaza de plano, y al recrear un registro borrado se comprueba
+  sobre lo exportado, porque ahí no hay fila viva con la que contrastar.
+- **Un registro que ya no está se vuelve a crear.** Es el caso más común de
+  todos —alguien borró lo que no tocaba— y saltárselo dejaría la recuperación
+  sirviendo solo para el caso raro: el registro que sigue existiendo con los
+  campos mal. La auditoría distingue lo recreado de lo sobrescrito, porque una
+  cosa devolvió algo que no estaba y la otra pisó algo que sí.
+
+Cada servicio publica la suya en `/{servicio}/restauracion`, y los objetos que
+se pueden restaurar **se leen del propio modelo**: una lista escrita a mano se
+queda corta al primer modelo nuevo, y ese sería justo el que no se puede
+recuperar el día que alguien lo borre. Los catálogos de instalación quedan fuera,
+porque restaurarlos «para un tenant» no significa nada.
 
 ## Registro de tratamiento e informes de cumplimiento (`CRM-07.03.01.04`, `CRM-07.03.01.07`)
 
@@ -4702,6 +4752,48 @@ Y lo que falta **se dice**, que es la parte que hace que esto valga:
 
 Un RAT que presenta como completo lo que no lo está es peor que no tenerlo,
 porque nadie vuelve a mirarlo.
+
+### Dos comprobaciones que impiden que se quede viejo
+
+El mecanismo era correcto y el registro salía **vacío**, porque ningún servicio
+había declarado sus tratamientos y casi ningún campo personal estaba marcado como
+tal. Un RAT correcto por dentro y vacío por fuera es exactamente el papel que
+nadie lee. Ahora hay veinticinco actividades declaradas, el mapa recoge los
+campos personales de todos los servicios —correos, teléfonos, apellidos,
+direcciones, NIF y las IP, que también lo son— y dos gates lo sostienen:
+
+- **Una columna que parece dato personal y no declara su sensibilidad rompe el
+  preflight.** Sin esto, el registro es correcto el día que se escribe y mentira
+  un mes después: alguien añade un `email_facturacion`, nadie lo marca, y el RAT
+  que se le enseña a un auditor dice que ese dato no existe. Las excepciones
+  —`direccion` cuando significa «entrante o saliente», un `manifiesto` que
+  contiene «nif» por casualidad— se justifican una a una, con su motivo escrito.
+- **Un objeto con datos personales y sin tratamiento declarado también rompe el
+  preflight.** Marcar un campo y no decir para qué se trata deja el registro a
+  medias: el auditor ve que el dato existe y no ve por qué.
+
+### La finalidad la decide el cliente, no el fabricante
+
+La misma tabla de contactos se trata **por contrato** en una empresa y **por
+interés legítimo** en otra. El responsable del tratamiento es quien responde ante
+la autoridad —el cliente— y no quien escribe el software, así que lo declarado en
+el código es el punto de partida y cada tenant puede cambiar finalidad, base
+legal, plazo y responsable desde la configuración, con el mismo historial de
+versiones que cualquier otro ajuste.
+
+El registro dice, campo a campo, **qué ha decidido el cliente y qué venía puesto
+de fábrica**. Sin esa distinción, un responsable cree haber revisado lo que solo
+viene de serie.
+
+La base legal es una **lista cerrada** —las seis del artículo 6—: con texto libre
+acaban conviviendo «legítimo interés», «interes legitimo» e «interés legítimo
+(ver contrato)» como tres bases distintas en el mismo registro, que es justo el
+campo que un auditor mira primero.
+
+Las dos cosas se piden en `/{servicio}/cumplimiento/rat` y
+`/{servicio}/cumplimiento/informe`. Cada servicio publica lo suyo porque ninguno
+lee el esquema de otro, y por tanto ninguno puede hablar de los datos de otro: el
+registro completo de una instalación es la unión de los doce.
 
 El **informe de cumplimiento** se compone de lo que ya existe —cobertura de
 controles GRC, verificación de la cadena de auditoría, políticas activas,

@@ -233,9 +233,13 @@ class TiemposMiddleware:
     que acaba haciendo que nadie mire los logs.
     """
 
-    def __init__(self, app: ASGIApp, *, umbral_lento_s: float = 1.0) -> None:
+    def __init__(self, app: ASGIApp, *, umbral_lento_s: float = 1.0, servicio: str = "") -> None:
         self.app = app
         self._umbral = umbral_lento_s
+        # El nombre del servicio se necesita para el SLO: el presupuesto de
+        # error es por servicio, y una cuenta agregada de todos no dice cuál
+        # hay que arreglar.
+        self._servicio = servicio
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("path") in RUTAS_INFRAESTRUCTURA:
@@ -274,6 +278,37 @@ class TiemposMiddleware:
                     status=estado["status"],
                     duracion_ms=round(duracion * 1000, 1),
                 )
+            await self._anotar_slo(estado["status"], duracion)
+
+    async def _anotar_slo(self, status: int, duracion_s: float) -> None:
+        """Apunta la petición contra el presupuesto de error (CRM-00.06.01.04).
+
+        Aquí y no en cada endpoint: el presupuesto tiene que contar **todas** las
+        peticiones, y engancharlo ruta a ruta significa que cuenta las que
+        alguien se acordó de enganchar — que son justo las que menos fallan.
+
+        Se apunta por tenant y no por tier, porque el tier vive en `tenancy` y
+        ningún servicio lee el esquema de otro. La lentitud se cuenta contra los
+        tres umbrales a la vez, de modo que al leer se pueda aplicar el del tier
+        contratado sin haber perdido la información.
+        """
+        if not self._servicio:
+            return
+        try:
+            from crmcore.obs import slo
+            from crmcore.tenancy.context import contexto_actual
+
+            await slo.anotar(
+                self._servicio,
+                contexto_actual().tenant_id,
+                # Un 4xx es un error del cliente, no del servicio: contarlo
+                # gastaría el presupuesto del equipo por culpa de una
+                # integración que manda mal los datos.
+                ok=status < 500,
+                ms=duracion_s * 1000,
+            )
+        except Exception as exc:  # noqa: BLE001 — medir no puede tirar la petición
+            logger.warning("slo.no_anotado_middleware", motivo=str(exc)[:120])
 
 
 def _plantilla_de_ruta(scope: Scope) -> str:

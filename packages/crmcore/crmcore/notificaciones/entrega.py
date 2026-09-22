@@ -53,7 +53,9 @@ class EntregaNotificacion(Base):
     # guarda aunque esté en la ficha del usuario: la ficha cambia, y la pregunta
     # que se hace después es «¿a qué dirección lo mandasteis?», no «¿cuál tiene
     # ahora?».
-    direccion: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    direccion: Mapped[str] = mapped_column(
+        String(320), nullable=False, default="", info={"sensibilidad": "personal"}
+    )
 
     intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ultimo_error: Mapped[str] = mapped_column(Text, nullable=False, default="")

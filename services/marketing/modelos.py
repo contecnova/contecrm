@@ -65,8 +65,12 @@ class PerfilMarketing(Base, TimestampMixin):
     objeto: Mapped[str] = mapped_column(String(20), nullable=False)
     objeto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
 
-    email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
-    telefono: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    email: Mapped[str | None] = mapped_column(
+        String(320), nullable=True, index=True, info={"sensibilidad": "personal"}
+    )
+    telefono: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
     nombre: Mapped[str | None] = mapped_column(String(300), nullable=True)
     pais: Mapped[str | None] = mapped_column(String(2), nullable=True)
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -210,7 +214,9 @@ class Supresion(Base, TimestampMixin):
     # estar en tres fichas duplicadas, y suprimir una sola dejaría que las otras
     # dos le siguieran escribiendo.
     canal: Mapped[str] = mapped_column(String(20), nullable=False, default="email")
-    direccion: Mapped[str] = mapped_column(String(320), nullable=False)
+    direccion: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
     # baja | rebote_duro | queja | manual | lista_negra
     motivo: Mapped[str] = mapped_column(String(30), nullable=False, default="baja")
     detalle: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -376,6 +382,10 @@ __all__ = [
 
 # Los recorridos y el correo viven en sus propios módulos —cada uno con su
 # lógica— pero sus tablas son de este esquema y tienen que importarse aquí.
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.marketing import tratamientos  # noqa: E402,F401
 from services.marketing.canales import (  # noqa: E402,F401
     Canal,
     ConsentimientoCanal,

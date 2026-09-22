@@ -223,7 +223,9 @@ class AccesoPartner(Base, TimestampMixin):
     partner_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("partners.id", ondelete="CASCADE"), nullable=False
     )
-    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     # admin: además da de alta a sus compañeros. Dos niveles y no tres: en el
     # canal no existe el equivalente al «técnico que solo ve lo suyo», porque el
@@ -255,7 +257,9 @@ class EnlaceAccesoPartner(Base):
     hash_token: Mapped[str] = mapped_column(String(64), nullable=False)
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ip_uso: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip_uso: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -279,8 +283,12 @@ class RegistroOportunidad(Base, TimestampMixin):
     partner_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("partners.id", ondelete="CASCADE"), nullable=False
     )
-    cliente_nombre: Mapped[str] = mapped_column(String(200), nullable=False)
-    nif: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    cliente_nombre: Mapped[str] = mapped_column(
+        String(200), nullable=False, info={"sensibilidad": "personal"}
+    )
+    nif: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
     dominio: Mapped[str | None] = mapped_column(String(200), nullable=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     contacto: Mapped[dict[str, Any]] = mapped_column(

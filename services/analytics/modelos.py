@@ -104,6 +104,10 @@ __all__ = [
 # aquí: `alembic` solo mira `modelos.py`.
 # El registro de la fuente y las preguntas guardadas viven en su propio módulo,
 # pero sus tablas son de este esquema y tienen que importarse aquí.
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.analytics import tratamientos  # noqa: E402,F401
 from services.analytics.almacen import (  # noqa: E402,F401
     CargaAnalitica,
     DestinoExportacion,

@@ -123,7 +123,9 @@ class Inscripcion(Base, TimestampMixin):
     contacto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     lead_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
-    email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, default="", info={"sensibilidad": "personal"}
+    )
     responsable_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), nullable=True, index=True
     )

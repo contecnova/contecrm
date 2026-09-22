@@ -138,13 +138,17 @@ class Preferencia(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
     categoria: Mapped[str] = mapped_column(String(80), nullable=False)
     acepta: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Cómo y cuándo lo dijo. Es la prueba del consentimiento, y sin ella la
     # respuesta a «¿quién autorizó esto?» es «no consta».
     origen: Mapped[str] = mapped_column(String(40), nullable=False, default="centro")
-    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     cambiada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (

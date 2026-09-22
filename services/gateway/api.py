@@ -151,6 +151,92 @@ async def estado_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/estado/slo",
+    summary="Cuánto margen queda antes de incumplir lo prometido",
+    description=(
+        "El presupuesto de error de cada servicio para este tenant "
+        "(CRM-00.06.01.04), con el objetivo del **tier contratado**.\n\n"
+        "Se compone aquí porque el tier lo sabe `tenancy` y el tráfico lo sabe "
+        "cada servicio, y ninguno lee las tablas del otro. El gateway pregunta "
+        "el tier una vez y se lo pasa a todos: así el objetivo que se aplica es "
+        "el que se firmó, y no el que cada servicio se hubiera supuesto.\n\n"
+        "Lo que no se ha podido consultar **se dice**. Un servicio que no "
+        "responde y desaparece de la lista deja una página que enseña margen de "
+        "sobra precisamente cuando algo va mal."
+    ),
+)
+async def slo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
+    import asyncio
+    from datetime import datetime, timezone
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    tier = "estandar"
+    tier_conocido = False
+    if "tenancy" in _destinos:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos['tenancy'].url_base}/api/v1/compromisos",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code == 200:
+                tier = str(respuesta.json().get("tier") or "estandar")
+                tier_conocido = True
+        except Exception:  # noqa: BLE001 — sin tier se aplica el estándar y se dice
+            tier_conocido = False
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/slo",
+                headers=cabeceras,
+                params={"tier": tier},
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return {"servicio": nombre, **respuesta.json()}
+        except Exception:  # noqa: BLE001 — un servicio que no contesta es información
+            return {
+                "servicio": nombre,
+                "medible": False,
+                "motivo": "El servicio no ha respondido a la consulta de SLO",
+            }
+
+    presupuestos = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    medibles = [p for p in presupuestos if p.get("medible")]
+    agotados = [p["servicio"] for p in medibles if p.get("agotado")]
+    sin_respuesta = [p["servicio"] for p in presupuestos if not p.get("medible")]
+
+    return {
+        "tier": tier,
+        # Que el tier salga por defecto no es lo mismo que que sea el contratado,
+        # y la diferencia cambia el objetivo que se está aplicando.
+        "tier_confirmado": tier_conocido,
+        "consultado_at": datetime.now(timezone.utc).isoformat(),
+        "servicios": presupuestos,
+        "servicios_medibles": len(medibles),
+        "sin_medicion": sin_respuesta,
+        "presupuesto_agotado_en": agotados,
+        "se_puede_desplegar": not agotados,
+        "que_significa": (
+            f"Presupuesto agotado en {', '.join(agotados)}: toca parar de añadir y "
+            "arreglar lo que falla"
+            if agotados
+            else "Queda margen en todos los servicios medibles: se puede seguir desplegando"
+        ),
+    }
+
+
+@router.get(
     "/estado/contratos",
     summary="Contratos de evento de toda la instalación",
     description=(

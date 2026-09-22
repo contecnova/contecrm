@@ -159,7 +159,9 @@ class OrdenTrabajo(Base, TimestampMixin):
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     plan_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
-    direccion: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    direccion: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", info={"sensibilidad": "personal"}
+    )
     latitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     longitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     zona: Mapped[str | None] = mapped_column(String(80), nullable=True)

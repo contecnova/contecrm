@@ -266,7 +266,9 @@ class Rebote(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # Sin `index=True`: el índice compuesto de abajo ya lo cubre y con los dos
     # el nombre colisiona, que rompe la creación del esquema entera.
-    direccion: Mapped[str] = mapped_column(String(320), nullable=False)
+    direccion: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
     # duro | blando | queja
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)
     codigo: Mapped[str | None] = mapped_column(String(20), nullable=True)

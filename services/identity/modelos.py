@@ -43,8 +43,12 @@ class Usuario(Base, TimestampMixin):
     __tablename__ = "usuarios"
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
-    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
-    nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, unique=True, info={"sensibilidad": "personal"}
+    )
+    nombre: Mapped[str] = mapped_column(
+        String(200), nullable=False, default="", info={"sensibilidad": "personal"}
+    )
     # Nulo cuando el usuario solo entra por un proveedor de identidad externo.
     # Que sea nulable es lo que permite forzar SSO: sin contraseña local no hay
     # forma de saltarse el IdP corporativo.
@@ -156,7 +160,9 @@ class Sesion(Base):
     # se lleva el atacante no sirve para renovar nada.
     hash_refresco: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
 
-    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     user_agent: Mapped[str | None] = mapped_column(String(400), nullable=True)
     # Huella del dispositivo, para detectar que un refresco se usa desde otro
     # sitio distinto al que lo obtuvo.
@@ -356,7 +362,9 @@ class DispositivoConfianza(Base, TimestampMixin):
     # identifica al equipo, y la tabla se consulta desde la pantalla de sesiones.
     hash_huella: Mapped[str] = mapped_column(String(64), nullable=False)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    ip_alta: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip_alta: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     expira_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ultimo_uso_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revocado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -486,3 +494,9 @@ __all__ = [
     "Sesion",
     "Usuario",
 ]
+
+
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.identity import tratamientos  # noqa: E402,F401

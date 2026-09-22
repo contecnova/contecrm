@@ -42,6 +42,20 @@ class _ServicioSettings(BaseSettings):
     disponibilidad_premium: float = Field(99.9, ge=90.0, le=100.0)
     disponibilidad_enterprise: float = Field(99.95, ge=90.0, le=100.0)
 
+    # ── Latencia comprometida ─────────────────────────────────────────────
+    # Percentil 95 en milisegundos. El p95 y no la media: la media la arregla un
+    # montón de respuestas rápidas mientras el 5 % de los usuarios espera cuatro
+    # segundos, y son esos los que llaman. Por encima de este número, la
+    # petición cuenta como gastada del presupuesto aunque haya devuelto 200:
+    # para quien la espera, cuatro segundos son un error.
+    latencia_p95_ms_estandar: int = Field(2_000, ge=50, le=60_000)
+    latencia_p95_ms_premium: int = Field(1_000, ge=50, le=60_000)
+    latencia_p95_ms_enterprise: int = Field(500, ge=50, le=60_000)
+
+    # Días del periodo sobre el que se cuenta el presupuesto de error. Mensual
+    # por defecto porque es el periodo en el que se firman los compromisos.
+    slo_dias_periodo: int = Field(30, ge=1, le=365)
+
     # Aviso cuando la última copia supera este porcentaje del RPO. Al 80 % queda
     # margen para reaccionar; al 100 % el aviso llega cuando ya se ha incumplido.
     rpo_aviso_pct: int = Field(80, ge=10, le=100)

@@ -182,7 +182,9 @@ class Direccion(Base, TimestampMixin):
 
     linea1: Mapped[str] = mapped_column(String(300), nullable=False)
     linea2: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    codigo_postal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    codigo_postal: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, info={"sensibilidad": "personal"}
+    )
     ciudad: Mapped[str | None] = mapped_column(String(150), nullable=True)
     provincia: Mapped[str | None] = mapped_column(String(150), nullable=True)
     pais: Mapped[str] = mapped_column(String(2), nullable=False, default="ES")
@@ -308,7 +310,9 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     __tablename__ = "contactos"
 
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    apellidos: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    apellidos: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, info={"sensibilidad": "personal"}
+    )
     # Nombre completo calculado, para buscar y para mostrar sin recomponerlo en
     # cada consulta. Se mantiene al escribir.
     nombre_completo: Mapped[str] = mapped_column(String(350), nullable=False, index=True)
@@ -356,8 +360,12 @@ class Contacto(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     no_contactar: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     owner_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
-    estado_email: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    estado_telefono: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    estado_email: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, info={"sensibilidad": "personal"}
+    )
+    estado_telefono: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, info={"sensibilidad": "personal"}
+    )
     calidad: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     calidad_faltan: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
@@ -592,7 +600,9 @@ class SolicitudDerechos(Base, TimestampMixin):
     contacto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     # Se guarda también el correo: una solicitud puede llegar de alguien que no
     # está identificado todavía en el sistema, y tiene el mismo plazo legal.
-    email_solicitante: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_solicitante: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
     tipo: Mapped[str] = mapped_column(String(30), nullable=False)
     # recibida | verificando_identidad | en_curso | resuelta | rechazada
     estado: Mapped[str] = mapped_column(String(30), nullable=False, default="recibida")
@@ -672,6 +682,10 @@ __all__ = [
     "SolicitudDerechos",
 ]
 
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.party import tratamientos  # noqa: E402,F401
 from services.party.actividades_extra import (  # noqa: E402,F401
     PlantillaActividades,
     Recurrencia,

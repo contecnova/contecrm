@@ -267,7 +267,7 @@ def crear_servicio(
         openapi_url=f"{s.api_prefix}/openapi.json" if s.api_docs_enabled else None,
     )
 
-    _montar_middlewares(app, s)
+    _montar_middlewares(app, s, nombre)
     from crmcore.http.problems import registrar_manejadores
 
     registrar_manejadores(app)
@@ -281,6 +281,16 @@ def crear_servicio(
         from crmcore.http.estado_router import crear_router_estado
 
         app.include_router(crear_router_estado(nombre), prefix=s.api_prefix)
+
+        # Igual con la restauración selectiva (CRM-00.06.02.03) y con el RAT y
+        # el informe de cumplimiento (CRM-07.03.01.04, CRM-07.03.01.07): cada
+        # servicio restaura lo suyo y declara lo suyo, y montarlo aquí es lo que
+        # impide que un servicio se quede sin ello sin que nadie lo note.
+        from crmcore.http.cumplimiento_router import crear_router_cumplimiento
+        from crmcore.http.restauracion_router import crear_router_restauracion
+
+        app.include_router(crear_router_restauracion(nombre), prefix=s.api_prefix)
+        app.include_router(crear_router_cumplimiento(nombre), prefix=s.api_prefix)
 
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
@@ -297,7 +307,7 @@ def crear_servicio(
     return app
 
 
-def _montar_middlewares(app: FastAPI, s: Any) -> None:
+def _montar_middlewares(app: FastAPI, s: Any, nombre: str = "") -> None:
     """Monta los middlewares en el orden correcto.
 
     Starlette ejecuta el ÚLTIMO añadido como el más externo, así que se añaden
@@ -320,7 +330,7 @@ def _montar_middlewares(app: FastAPI, s: Any) -> None:
     # reintento es la del endpoint, y la cabecera se recalcula al repetirla.
     app.add_middleware(ETagMiddleware)
     app.add_middleware(LimitesMiddleware)
-    app.add_middleware(TiemposMiddleware)
+    app.add_middleware(TiemposMiddleware, servicio=nombre)
     # El más externo después del contexto: una respuesta que no pase por aquí
     # sale sin HSTS, y una petición en claro que no pase por aquí ya ha viajado.
     app.add_middleware(CifradoEnTransitoMiddleware)

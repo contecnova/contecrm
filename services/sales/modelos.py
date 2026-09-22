@@ -42,12 +42,20 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # Datos tal como llegaron, sin normalizar en exceso: un lead es información
     # cruda y limpiarla de más pierde señal (un cargo escrito raro puede decir
     # mucho de la fuente).
-    nombre: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    apellidos: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    nombre: Mapped[str | None] = mapped_column(
+        String(150), nullable=True, info={"sensibilidad": "personal"}
+    )
+    apellidos: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, info={"sensibilidad": "personal"}
+    )
     empresa: Mapped[str | None] = mapped_column(String(300), nullable=True)
     cargo: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
-    telefono: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    email: Mapped[str | None] = mapped_column(
+        String(320), nullable=True, index=True, info={"sensibilidad": "personal"}
+    )
+    telefono: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
     web: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pais: Mapped[str | None] = mapped_column(String(2), nullable=True)
 
@@ -677,6 +685,10 @@ __all__ = [
 # con su lógica—, pero sus tablas son de este esquema y tienen que importarse
 # aquí: `alembic` solo mira `modelos.py`, y una tabla que no se importe no se
 # migra y falla en la primera consulta, lejos de donde se declaró.
+# Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
+# al final y solo por su efecto: declararlas al cargar los modelos es lo que
+# garantiza que el RAT y los objetos no puedan separarse.
+from services.sales import tratamientos  # noqa: E402,F401
 from services.sales.cadencias import (  # noqa: E402,F401
     Cadencia,
     DisponibilidadAgenda,

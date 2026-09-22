@@ -30,7 +30,6 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
-_redis: Any = None
 # Contadores en memoria: clave -> (inicio_ventana, cuenta_actual, cuenta_previa)
 _memoria: dict[str, tuple[float, int, int]] = {}
 
@@ -45,26 +44,24 @@ class Dimension:
 
 
 async def _conectar_redis() -> Any:
-    global _redis
-    if _redis is not None:
-        return _redis
-    from crmcore.config import get_settings
+    """El cliente compartido, atado al bucle en curso.
 
-    s = get_settings()
-    try:
-        import redis.asyncio as redis
+    Va por `crmcore.redis_cliente` por la misma razón que el SLO: un cliente
+    guardado en un global de este módulo sobrevive al bucle que lo creó y, a
+    partir de ahí, falla en cada operación. El límite seguiría aplicándose —pero
+    por proceso—, que es como no tener límite en un despliegue de tres réplicas,
+    y sin un solo error visible que lo delate.
+    """
+    from crmcore.redis_cliente import cliente
 
-        _redis = redis.from_url(s.redis_url, decode_responses=True)
-        await _redis.ping()
-        logger.info("rate_limit.redis_conectado")
-    except Exception as exc:  # noqa: BLE001 — sin Redis se degrada a memoria, avisando
+    conexion = await cliente()
+    if conexion is None:
         logger.warning(
             "rate_limit.sin_redis",
-            error=str(exc)[:160],
             aviso="el límite pasa a ser POR PROCESO, no del despliegue",
         )
-        _redis = False
-    return _redis
+        return False
+    return conexion
 
 
 def _dimensiones(scope: Scope) -> list[Dimension]:

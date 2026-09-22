@@ -57,4 +57,29 @@ def crear_router_estado(servicio: str) -> APIRouter:
 
         return {"servicio": servicio, **contratos.informe()}
 
+    @router.get(
+        "/slo",
+        summary=f"Presupuesto de error de «{servicio}» para este tenant",
+        description=(
+            "SLO y error budget (CRM-00.06.01.04): cuántas peticiones de este "
+            "tenant ha servido este servicio en el periodo, cuántas fallaron y "
+            "cuántas llegaron tarde, y cuánto margen queda antes de incumplir "
+            "lo prometido.\n\n"
+            "El tier se pasa como parámetro porque **este servicio no lo sabe**: "
+            "el plan contratado vive en `tenancy` y ningún servicio lee el "
+            "esquema de otro. Quien compone la vista completa —el gateway— lo "
+            "resuelve una vez y se lo dice a todos. Sin tier se responde con el "
+            "estándar, que es lo que se promete por defecto.\n\n"
+            "Sin tráfico se responde «no medible» en vez de 100 %: un servicio "
+            "que nadie ha usado no ha demostrado nada."
+        ),
+    )
+    async def slo_del_servicio(principal: AutenticadoDep, tier: str = "estandar") -> Any:
+        from crmcore.config import get_settings
+        from crmcore.obs import slo
+
+        objetivo = slo.objetivo_de(servicio, tier)
+        consumo = await slo.consumo_de(servicio, principal.tenant_id, tier=objetivo.tier)
+        return slo.presupuesto(objetivo, consumo, dias_del_periodo=get_settings().slo_dias_periodo)
+
     return router

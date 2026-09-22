@@ -681,3 +681,138 @@ def test_todo_cargador_de_registro_pasa_por_el_punto_de_decision() -> None:
         "registro=...)` antes de devolverlo, o delega en el cargador compartido "
         "que ya lo hace."
     )
+
+
+# ── Mapa de datos personales (CRM-07.03.01.04) ────────────────────────────
+
+# Columnas que **parecen** dato personal por el nombre y no lo son, con el
+# motivo. Va aquí y no en un comentario del modelo porque la excepción tiene que
+# costar algo: escribir una línea con su razón es barato, y es exactamente lo que
+# hace que nadie añada una a la ligera.
+#
+# El listado inverso —lo que sí es personal— no se escribe en ningún sitio: sale
+# del modelo. Una lista de campos personales mantenida a mano se queda corta al
+# primer campo nuevo, y ese campo no existiría para el RAT hasta que alguien se
+# acordara. Nadie se acuerda.
+COLUMNAS_QUE_NO_SON_PERSONALES = {
+    "adaptadores_canonicos.direccion": "sentido del mapeo (entrante/saliente), no una dirección postal",
+    "adaptadores_canonicos.direccion_por_campo": "sentido del mapeo campo a campo",
+    "mensajes.direccion": "sentido del mensaje (entrante/saliente)",
+    "interacciones_entrantes.direccion": "sentido de la interacción",
+    "canales_servicio.direccion_propia": "el buzón de la EMPRESA, no de una persona",
+    "dominios_envio.ip_dedicada": "IP de infraestructura de envío, no de un visitante",
+    "proveedores_identidad.dominio_email": "un dominio corporativo, no la dirección de nadie",
+    "exportaciones_tenant.manifiesto": "el nombre contiene «nif» por casualidad",
+    "modulos_publicados.manifiesto": "el nombre contiene «nif» por casualidad",
+    "modulos_instalados.manifiesto": "el nombre contiene «nif» por casualidad",
+    "instalaciones_conector.manifiesto_id": "el nombre contiene «nif» por casualidad",
+}
+
+# Lo que dispara la comprobación. No pretende encontrar todo el dato personal
+# —un campo llamado `notas` puede llevar media vida de alguien— sino cerrar el
+# camino por el que se cuela sin querer: los campos de contacto e identificación,
+# que son los que se añaden a diario.
+NOMBRES_DE_DATO_PERSONAL = re.compile(
+    r"(correo|email|telefono|movil|apellid|nif|cif|iban|direccion|codigo_postal"
+    r"|fecha_nacimiento|(^|_)ip($|_))"
+)
+
+
+def test_toda_columna_que_parece_personal_declara_su_sensibilidad() -> None:
+    """El mapa de datos personales sale del modelo, así que el modelo tiene que
+    decir la verdad.
+
+    Sin este gate, el RAT es correcto el día que se escribe y mentira un mes
+    después: alguien añade un `email_facturacion`, nadie lo marca, y el registro
+    que se le enseña a un auditor dice que ese dato no existe. La diferencia
+    entre un RAT útil y una hoja de cálculo vieja es exactamente esta
+    comprobación.
+    """
+    from crmcore.db.base import Base
+
+    sin_declarar: list[str] = []
+    for mapper in Base.registry.mappers:
+        tabla = getattr(mapper.class_, "__table__", None)
+        if tabla is None:
+            continue
+        for columna in tabla.columns:
+            if not NOMBRES_DE_DATO_PERSONAL.search(columna.name):
+                continue
+            if (columna.info or {}).get("sensibilidad"):
+                continue
+            clave = f"{tabla.name}.{columna.name}"
+            if clave in COLUMNAS_QUE_NO_SON_PERSONALES:
+                continue
+            sin_declarar.append(clave)
+
+    assert not sin_declarar, (
+        "Columnas que parecen dato personal y no declaran su sensibilidad:\n  "
+        + "\n  ".join(sorted(sin_declarar))
+        + '\n\nAñade `info={"sensibilidad": "personal"}` —o `"especial"` si es '
+        "del artículo 9— al `mapped_column`, o justifícala en "
+        "`COLUMNAS_QUE_NO_SON_PERSONALES` diciendo por qué no lo es."
+    )
+
+
+def test_las_justificaciones_de_no_personal_siguen_existiendo() -> None:
+    """Una excepción sobre una columna que ya no existe es una excepción que
+    nadie ha revisado, y la siguiente que se añada se colará detrás de ella."""
+    from crmcore.db.base import Base
+
+    reales = {
+        f"{t.name}.{c.name}"
+        for m in Base.registry.mappers
+        if (t := getattr(m.class_, "__table__", None)) is not None
+        for c in t.columns
+    }
+    sobran = sorted(set(COLUMNAS_QUE_NO_SON_PERSONALES) - reales)
+    assert not sobran, (
+        "Justificaciones de «no es dato personal» sobre columnas que ya no "
+        "existen:\n  " + "\n  ".join(sobran) + "\n\nQuítalas."
+    )
+
+
+def test_todo_objeto_con_datos_personales_declara_su_tratamiento() -> None:
+    """Un objeto con datos personales y sin actividad declarada es un hueco en el
+    RAT, y un RAT con huecos no lo mira nadie dos veces.
+
+    Marcar la sensibilidad de un campo y no decir para qué se trata deja el
+    registro a medias: el auditor ve que el dato existe y no ve por qué. Las dos
+    mitades van juntas o no sirven.
+    """
+    import importlib
+    import pathlib
+
+    from crmcore.cumplimiento import registro_de_tratamiento
+    from crmcore.db.base import Base
+
+    # Se cargan y se recargan las declaraciones aquí mismo. Depender de que otro
+    # fichero las haya dejado puestas convierte este gate en algo que pasa o
+    # falla según el orden de la suite, y un gate así acaba desactivado.
+    raiz = pathlib.Path(__file__).resolve().parents[2] / "services"
+    for servicio in sorted(d.name for d in raiz.iterdir() if d.is_dir()):
+        if (raiz / servicio / "modelos.py").exists():
+            importlib.import_module(f"services.{servicio}.modelos")
+        if (raiz / servicio / "tratamientos.py").exists():
+            importlib.reload(importlib.import_module(f"services.{servicio}.tratamientos"))
+
+    modelos = {
+        t.name: m.class_
+        for m in Base.registry.mappers
+        if (t := getattr(m.class_, "__table__", None)) is not None
+    }
+    rat = registro_de_tratamiento(modelos)
+
+    assert not rat["objetos_sin_tratamiento_declarado"], (
+        "Objetos con datos personales y sin actividad de tratamiento declarada:\n  "
+        + "\n  ".join(rat["objetos_sin_tratamiento_declarado"])
+        + "\n\nDeclárala en el `tratamientos.py` del servicio: finalidad, base "
+        "legal y plazo. Son decisiones, no datos técnicos, y por eso no se "
+        "pueden deducir del modelo."
+    )
+    assert not rat["tratamientos_sobre_objetos_sin_datos_personales"], (
+        "Tratamientos declarados sobre objetos que ya no tienen datos "
+        "personales:\n  "
+        + "\n  ".join(rat["tratamientos_sobre_objetos_sin_datos_personales"])
+        + "\n\nSuele significar que el objeto cambió y el RAT no."
+    )

@@ -218,7 +218,16 @@ SEGMENTOS_LITERALES = {"carpetas", "estado", "buscar", "organizacion", "enlace"}
 # respondiera 404: dobla la latencia de cada llamada y convierte un identificador
 # equivocado en una ronda por toda la instalación. Un camino explícito no tiene
 # ese problema y además se lee.
-RECURSOS_TRANSVERSALES = {"trabajos", "retencion", "buscar"}
+RECURSOS_TRANSVERSALES = {
+    "trabajos",
+    "retencion",
+    "buscar",
+    # Cada servicio restaura lo suyo y declara lo suyo (CRM-00.06.02.03,
+    # CRM-07.03.01.04): la ruta lleva el nombre del servicio porque los doce
+    # publican la misma, y sin él no habría a quién mandarla.
+    "restauracion",
+    "cumplimiento",
+}
 
 # Los nombres de servicio salen de la propia tabla de prefijos en vez de
 # repetirse: dos listas que tienen que coincidir acaban no coincidiendo.

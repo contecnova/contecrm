@@ -48,7 +48,9 @@ class ApunteAuditoria(Base):
     actor_real_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     origen: Mapped[str] = mapped_column(String(32), nullable=False, default="api")
 
-    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     datos: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     # Justificación obligatoria en las acciones que la exigen: acceso de soporte

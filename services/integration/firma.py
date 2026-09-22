@@ -263,8 +263,12 @@ class Firmante(Base, TimestampMixin):
     )
     orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
-    email: Mapped[str] = mapped_column(String(320), nullable=False)
-    telefono: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, info={"sensibilidad": "personal"}
+    )
+    telefono: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, info={"sensibilidad": "personal"}
+    )
     # firmante | aprobador | copia. La copia no firma: recibe el resultado.
     papel: Mapped[str] = mapped_column(String(20), nullable=False, default="firmante")
     identificacion: Mapped[str] = mapped_column(String(30), nullable=False, default="correo")
@@ -300,7 +304,9 @@ class EvidenciaFirma(Base):
     # cancelado | completado | error
     tipo: Mapped[str] = mapped_column(String(30), nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ip: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"sensibilidad": "personal"}
+    )
     agente: Mapped[str | None] = mapped_column(String(300), nullable=True)
     # Cuándo lo dice el proveedor y cuándo nos enteramos: la diferencia es la
     # latencia de la integración, y sin las dos no se puede defender una fecha.
