@@ -5543,3 +5543,153 @@ El informe de cumplimiento cuenta **la primera respuesta y la resolución por
 separado**: un porcentaje único esconde que se contesta rápido y se resuelve
 tarde, que es el patrón más común y el que más queja genera. Sin casos con
 compromiso no dice 100 %, dice que no es medible.
+
+## Colas, escalado, derechos y satisfacción (`CRM-04.01.01.05` a `.12`, `CRM-04.01.02.01`, `.06`, `.07`, `.08`, `CRM-04.02.02.03`)
+
+El bloque anterior dio el caso y su reloj. Este da la operación: quién lo coge,
+qué pasa cuando va mal, a qué tiene derecho el cliente y qué opina al final.
+
+### Presencia y capacidad del agente (`CRM-04.02.02.03`)
+
+**`ausente` y `no_molestar` no son lo mismo**: el primero es «no está» y el
+segundo «está pero no puede». Fundirlos hace que un supervisor no pueda saber si
+le falta gente o le falta capacidad, que son dos problemas con soluciones
+opuestas. Se guarda **desde cuándo**: «lleva cuarenta minutos en no molestar» es
+una conversación distinta de «acaba de ponerse».
+
+La capacidad es **por canal** y no un número único: alguien puede llevar tres
+chats a la vez y una sola llamada. Con un número único, o se infradotan los chats
+o se satura el teléfono. Y un canal **sin tope declarado es sin límite, no cero**:
+un agente al que nadie configuró la capacidad tiene que poder trabajar, y tratarlo
+como saturado dejaría la cola llena sin que nadie entendiera por qué.
+
+### Asignación y colas (`CRM-04.01.01.05`, `CRM-04.01.01.06`)
+
+Las reglas tienen **la misma forma que las de leads** —condiciones en el formato
+de ABAC, prioridad ascendente, gana la primera que encaja—. No es por ahorrar
+líneas: es para que el operador aprenda una sola sintaxis de condición en todo el
+producto.
+
+Lo que cambia respecto a un lead es que **un caso tiene reloj**. Un lead sin
+asignar es una oportunidad que se enfría; un caso sin asignar está consumiendo un
+SLA que alguien va a incumplir. Por eso la asignación mira la **capacidad** y no
+solo el turno: repartir a quien ya tiene doce casos abiertos no es repartir, es
+esconder la cola. Saltarse la capacidad convierte el reparto en un reparto formal
+—el caso figura asignado, nadie lo mira y el SLA corre igual—, que es peor que
+dejarlo en cola, porque en cola al menos se ve.
+
+La estrategia **ponderada reparte por hueco libre** y no por carga absoluta: con
+carga absoluta, quien tiene capacidad 20 y lleva 5 casos parece más ocupado que
+quien tiene capacidad 5 y lleva 4, y el reparto acaba saturando justo al que menos
+cabe.
+
+La **cola no es redundante** con la asignación automática: es el sitio donde cae
+lo que no se ha podido asignar. Sin ella, un caso que ninguna regla sabe repartir
+se queda sin dueño y sin lista, que es el único estado del que nadie se entera.
+Se ordena por **lo que vence antes**, no por prioridad: la pregunta de quien coge
+de una cola es «qué se me va a incumplir primero», y por prioridad un caso medio a
+punto de vencer queda debajo de uno crítico con dos días. Los casos **sin SLA se
+marcan**: si no, quedan al final y parecen los menos urgentes cuando son los que
+nadie ha medido.
+
+Al coger de la cola **se comprueba que siga libre**: dos agentes mirando la misma
+cola pulsan a la vez, y sin eso el segundo se queda con el caso del primero sin
+que ninguno lo sepa.
+
+Y toda asignación deja escrito **por qué**, con las reglas descartadas dentro. Se
+distingue «la regla no encaja» de «encajaba pero no había nadie con hueco»: son
+dos problemas distintos y confundirlos lleva a reescribir una regla que estaba
+bien.
+
+### Escalado (`CRM-04.01.01.07`)
+
+Se decide por **lo que queda, no por lo que ha pasado**: escalar cuando el SLA ya
+se ha incumplido llega tarde por definición. El disparador normal es el porcentaje
+consumido; escalar al incumplir es una opción aparte, y sirve para que alguien con
+autoridad hable con el cliente antes de que llame él, no para llegar a tiempo.
+
+Los disparadores van **declarados por separado** —porcentaje, severidad, cliente
+VIP, incumplimiento— y no como una condición genérica, porque son los cuatro que
+se usan de verdad y tenerlos explícitos es lo que permite explicarle al cliente
+por qué se escaló su caso.
+
+Un caso **no se escala dos veces por la misma regla**: si se escalara en cada
+pasada, el responsable recibiría el mismo aviso cada cinco minutos y dejaría de
+leerlos, que es la forma habitual de que un escalado deje de servir. Y cambiar de
+cola **suelta al dueño**: si no, el caso figura en la cola nueva y sigue asignado
+al de antes, y los dos equipos creen que lo lleva el otro.
+
+### Derivación a otro nivel (`CRM-04.01.01.08`)
+
+El motivo es obligatorio. Una derivación sin motivo obliga a quien la recibe a
+leerse el caso entero para averiguar qué se espera de él, y eso es lo que hace que
+las derivaciones reboten.
+
+**El caso sigue siendo del cliente.** Derivar no crea un caso nuevo ni reinicia el
+reloj: el cliente no tiene por qué esperar otra vez desde cero porque nosotros
+hayamos movido su problema de mesa. Lo interno se marca para que no se le enseñe
+al cliente, no para que cuente distinto.
+
+### Derechos de servicio (`CRM-04.01.02.01`, `CRM-04.01.02.06`)
+
+Gana el **más específico**: contrato sobre producto, producto sobre cuenta y
+cuenta sobre plan. Al revés, un cliente con un contrato de soporte negociado
+aparte recibiría lo que le da su plan comercial — que es justo lo que pagó por
+mejorar.
+
+**Sin límite no es cero.** Cero significa «no tienes derecho a ninguno» y nulo «no
+se cuentan». Se devuelven **las dos bolsas** —casos y horas— aunque solo una esté
+limitada: enseñar solo la limitada hace que quien mira no sepa si la otra no se
+cuenta o es que nadie ha gastado. Y se avisa de la **caducidad** además del saldo:
+un derecho con 200 horas libres que vence el viernes es tan inservible como uno
+agotado, y en las hojas de cálculo eso se descubre siempre tarde.
+
+El consumo **se anota siempre, aunque esté agotado**. Negarse a imputar haría que
+el trabajo ya hecho no se registrara, que es la peor combinación: se ha gastado y
+no consta. Qué pasa al agotar lo **decide el contrato** —avisar, bloquear o
+facturar el exceso—, porque las tres son legítimas y elegir por el cliente
+significaría cortarle el soporte a quien pagaba por el exceso.
+
+Y es **una fila por apunte, no un contador**: con un contador, un cliente que
+discute la factura no puede ver *qué* consumió, y la única respuesta posible es
+«el sistema dice que 40 horas».
+
+### Satisfacción (`CRM-04.01.01.12`)
+
+Se guarda **la invitación y no solo la respuesta**. Guardando solo las respuestas,
+el CSAT lo calculan los que contestan —los muy contentos y los muy enfadados—: sin
+saber a cuántos se preguntó, el número no significa nada y siempre sale bien o
+siempre sale mal. Por eso la **tasa de respuesta va junto al número**, no aparte:
+un CSAT de 4,8 sobre el 3 % de los clientes no es un CSAT de 4,8, y enseñarlos
+separados hace que el primero se cite y el segundo no.
+
+La encuesta **no se manda dos veces**: recibir la misma cada vez que alguien toca
+el caso es la forma más rápida de que el cliente la marque como correo no deseado,
+y entonces se pierden todas las siguientes. El token se devuelve una vez y se
+guarda hasheado, para que quien lea la tabla no pueda contestar por el cliente. Y
+la respuesta marca al **detractor** en el evento: un NPS de 2 avisado tres semanas
+después, en el informe mensual, ya no sirve para recuperar a ese cliente.
+
+### Cumplimiento por cliente y créditos (`CRM-04.01.02.07`, `CRM-04.01.02.08`)
+
+El total global esconde lo único accionable: un 94 % de cumplimiento puede ser
+«todo va bien» o «va bien con todos menos con el cliente grande». Solo el desglose
+distingue esas dos situaciones, y son opuestas. Se ordena por **el peor primero**:
+la lista existe para actuar, y ordenarla alfabéticamente obliga a buscar el
+problema en vez de enseñarlo.
+
+La escala de penalización es **dato** —tramos de cumplimiento y crédito—, porque
+cada contrato tiene la suya y escribirla en el código haría que un cliente con una
+escala distinta fuera una versión del producto.
+
+El crédito **se propone, no se aplica**. Descontar dinero de una factura
+automáticamente por un incumplimiento que puede tener explicación —una parada
+acordada, un dato que faltaba del cliente— convertiría cada incidencia en una
+reclamación. Lo que sí hace el sistema es no dejar que se olvide. Y un crédito ya
+decidido **no se recalcula**: cambiaría un importe que el cliente ya ha visto en su
+factura.
+
+El motivo de la decisión es obligatorio **en los dos sentidos**. Rechazar sin
+explicación deja al comercial que atiende a ese cliente sin nada que decirle, y
+aprobar sin explicación hace imposible saber después si fue una decisión o un
+descuido.

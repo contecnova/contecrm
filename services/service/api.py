@@ -479,4 +479,6 @@ def duplicado(caso_id: UUID, datos: Duplicado, uow: UowDep, principal: Autentica
     return {"id": str(caso.id), "duplicado_de": str(caso.duplicado_de_id)}
 
 
-ROUTERS = [router_casos, router_taxonomia, router_sla]
+from services.service.api_operacion import ROUTERS_OPERACION  # noqa: E402
+
+ROUTERS = [router_casos, router_taxonomia, router_sla, *ROUTERS_OPERACION]

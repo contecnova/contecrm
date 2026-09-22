@@ -271,7 +271,30 @@ from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.service.entitlements import (  # noqa: E402
+    ConsumoEntitlement,
+    CreditoServicio,
+    Encuesta,
+    Entitlement,
+)
+from services.service.operacion import (  # noqa: E402
+    AgenteServicio,
+    ColaCasos,
+    RegistroAsignacion,
+    ReglaAsignacion,
+    ReglaEscalada,
+)
+
 __all__ = [
+    "AgenteServicio",
+    "ColaCasos",
+    "ConsumoEntitlement",
+    "CreditoServicio",
+    "Encuesta",
+    "Entitlement",
+    "RegistroAsignacion",
+    "ReglaAsignacion",
+    "ReglaEscalada",
     "Adjunto",
     "BloqueoLegal",
     "CalendarioLaboral",

@@ -818,25 +818,25 @@ modulos:
               - {id: CRM-04.01.01.02, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/catalog.py + app/services/service_desk/catalog_service.py", t: "Taxonomía configurable con árboles de clasificación por línea de servicio"}
               - {id: CRM-04.01.01.03, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/cmdb.py + assets.py", t: "Relación del caso con cuenta, contacto, producto, activo, pedido, contrato"}
               - {id: CRM-04.01.01.04, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/problems.py", t: "Jerarquía de casos: padre-hijo, casos relacionados y duplicados"}
-              - {id: CRM-04.01.01.05, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Colas de trabajo, asignación automática y balanceo por carga y competencia"}
-              - {id: CRM-04.01.01.06, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/capacity_planning_service.py", t: "Enrutamiento omnicanal con capacidad por agente y por canal"}
-              - {id: CRM-04.01.01.07, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/sla_service.py (escalados)", t: "Escalados automáticos por tiempo, severidad, cliente VIP o incumplimiento"}
-              - {id: CRM-04.01.01.08, c: A, fase: 3, svc: service, estado: pendiente, t: "Casos internos, derivación a segundo/tercer nivel y a ingeniería"}
+              - {id: CRM-04.01.01.05, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Colas de trabajo, asignación automática y balanceo por carga y competencia"}
+              - {id: CRM-04.01.01.06, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/capacity_planning_service.py", t: "Enrutamiento omnicanal con capacidad por agente y por canal"}
+              - {id: CRM-04.01.01.07, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py (escalados)", t: "Escalados automáticos por tiempo, severidad, cliente VIP o incumplimiento"}
+              - {id: CRM-04.01.01.08, c: A, fase: 3, svc: service, estado: hecho, t: "Casos internos, derivación a segundo/tercer nivel y a ingeniería"}
               - {id: CRM-04.01.01.09, c: C, fase: 3, svc: service, estado: hecho, t: "Motivos de cierre, resolución tipificada y validación de cierre por el cliente"}
               - {id: CRM-04.01.01.10, c: A, fase: 3, svc: service, estado: hecho, t: "Reapertura con ventana configurable y trazabilidad"}
               - {id: CRM-04.01.01.11, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py", t: "Gestión de problemas e incidentes masivos (varios casos vinculados a una causa)"}
-              - {id: CRM-04.01.01.12, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/nps_service.py + app/models/nps.py", t: "Encuesta de satisfacción automática (CSAT/CES/NPS) tras el cierre"}
+              - {id: CRM-04.01.01.12, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/nps_service.py + app/models/nps.py", t: "Encuesta de satisfacción automática (CSAT/CES/NPS) tras el cierre"}
           - id: CRM-04.01.02
             nombre: SLA y derechos de servicio
             capacidades:
-              - {id: CRM-04.01.02.01, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/entitlements.py", t: "Entitlements por contrato, producto, cliente o plan"}
+              - {id: CRM-04.01.02.01, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py", t: "Entitlements por contrato, producto, cliente o plan"}
               - {id: CRM-04.01.02.02, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/sla.py + app/services/sla_service.py", t: "Definición de SLA por prioridad y por tipo de cliente"}
               - {id: CRM-04.01.02.03, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py (relojes)", t: "Relojes de primera respuesta, resolución y actualización periódica"}
               - {id: CRM-04.01.02.04, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecpos:services/agenda (calendarios y festivos)", t: "Calendarios laborales, festivos por país y pausas de reloj"}
               - {id: CRM-04.01.02.05, c: C, fase: 3, svc: service, estado: hecho, t: "Alertas de riesgo de incumplimiento antes del vencimiento"}
-              - {id: CRM-04.01.02.06, c: A, fase: 3, svc: service, estado: pendiente, t: "Bolsas de horas, contadores de incidencias y consumo del entitlement"}
-              - {id: CRM-04.01.02.07, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/analytics_service.py", t: "Informe de cumplimiento de SLA por periodo, cliente y equipo"}
-              - {id: CRM-04.01.02.08, c: D, fase: 3, svc: service, estado: pendiente, t: "Penalizaciones y créditos de servicio calculados"}
+              - {id: CRM-04.01.02.06, c: A, fase: 3, svc: service, estado: hecho, t: "Bolsas de horas, contadores de incidencias y consumo del entitlement"}
+              - {id: CRM-04.01.02.07, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/analytics_service.py", t: "Informe de cumplimiento de SLA por periodo, cliente y equipo"}
+              - {id: CRM-04.01.02.08, c: D, fase: 3, svc: service, estado: hecho, t: "Penalizaciones y créditos de servicio calculados"}
       - id: "4.2"
         nombre: Omnicanalidad
         funciones:
@@ -856,7 +856,7 @@ modulos:
             capacidades:
               - {id: CRM-04.02.02.01, c: A, fase: 3, svc: service, estado: pendiente, t: "Conversación unificada por cliente independientemente del canal"}
               - {id: CRM-04.02.02.02, c: A, fase: 3, svc: service, estado: pendiente, t: "Transferencia de canal conservando el contexto"}
-              - {id: CRM-04.02.02.03, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Presencia, estado y capacidad del agente"}
+              - {id: CRM-04.02.02.03, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py", t: "Presencia, estado y capacidad del agente"}
               - {id: CRM-04.02.02.04, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/canned_response_service.py", t: "Respuestas rápidas, macros y acciones compuestas"}
               - {id: CRM-04.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/ai_suggest_service.py; contecmind:app/services/rag.py", t: "Sugerencias de respuesta y de artículo generadas por IA"}
               - {id: CRM-04.02.02.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/synthesis.py", t: "Resumen automático de la conversación al cerrar o al transferir"}
