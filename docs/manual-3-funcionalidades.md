@@ -3208,10 +3208,12 @@ enseña ninguna pantalla**. Es la lista de potencia escondida en la API.
 
 ### ABAC aplicado (`CRM-00.05.02.17` a `CRM-00.05.02.21`)
 
-Lo dicho en «Lo que está a medias»: hay motor y no hay cumplimiento. Lo que
-viene es que las políticas se guarden y se versionen, que haya **un punto único
-de decisión** por el que pase toda lectura y escritura de un registro —con un
-gate que lo imponga, para que no vuelva a haber motor sin quien lo llame—, que
+Se partía de un motor de evaluación **que no llamaba nadie**, que es la forma más
+silenciosa de no tener control de acceso: el código existe, las pruebas del motor
+pasan y ningún registro está protegido. Lo que se construyó encima fue que las
+políticas se guarden y se versionen, que haya **un punto único de decisión** por
+el que pase toda lectura y escritura de un registro —con un gate que lo imponga,
+para que no vuelva a haber motor sin quien lo llame—, que
 los listados se filtren con la política traducida a SQL, que una política pueda
 hablar de un campo y no solo de un registro, y que exista un simulador para ver
 qué vería alguien **antes** de activarla. El motor externalizable
@@ -3417,8 +3419,8 @@ es dato de producto.
 El que todo el mundo hace es «qué capacidades no tienen control», agrupado por
 sección para que se lea —una lista de cuatrocientos identificadores no la mira
 nadie—. Y se puede medir sobre **lo entregado** o sobre el catálogo entero: lo
-primero es lo que un auditor puede comprobar hoy, lo segundo es lo que queda por
-cubrir cuando el resto se entregue.
+primero es lo que un auditor puede comprobar hoy; lo segundo mide contra el
+alcance completo, incluido lo que todavía no se ha entregado.
 
 El que **nadie** hace es el de vuelta: **qué controles apuntan a capacidades que
 ya no existen**. Es como se detecta que un control lleva un año cubriendo algo
@@ -3739,7 +3741,8 @@ Hay un **recorrido guiado** por la solución (`CRM-07.04.05.04`) construido desd
 el catálogo de módulos, no escrito a mano: un guion de demostración aparte se
 queda viejo a la tercera pantalla que alguien añade, y el día que se enseña el
 producto lo que se cuenta ya no es lo que hay. Cada paso sale de un módulo real
-y lleva a la pantalla real, y lo que no aparece ahí es que no está hecho.
+y lleva a la pantalla real: si algo no aparece en el recorrido, es que no existe
+como módulo instalado.
 
 Y **cada pantalla dice qué capacidad del catálogo implementa**
 (`CRM-07.04.05.05`), con el identificador a la vista. Desde él se llega al
@@ -6834,8 +6837,8 @@ front, y si viniera de aquí, cambiar la paleta sería un despliegue del backend
 Se pinta **la versión con la que arrancó la instancia**, no la publicada: una
 instancia en vuelo termina con su versión, y enseñarla sobre el gráfico nuevo
 señalaría nodos que no tiene. Un nodo sin ejecutar en una instancia terminada sale
-como `no_recorrido` y no como `pendiente`: decir «pendiente» haría pensar que
-falta hacerlo.
+como `no_recorrido` y no como `pendiente`: «pendiente» haría pensar que alguien
+tiene que ejecutarlo todavía, cuando el proceso ya terminó por otro camino.
 
 ### Dónde se atasca un proceso (`CRM-00.03.05.16`)
 

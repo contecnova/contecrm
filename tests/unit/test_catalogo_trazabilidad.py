@@ -217,3 +217,66 @@ def test_el_front_oficial_cubre_todas_las_secciones(catalogo: dict) -> None:
         "El front declara cubrir secciones que no existen en el catálogo:\n  "
         + "\n  ".join(huerfanas)
     )
+
+
+# Palabras con las que el manual declara que algo **no está**. No son todas las
+# formas de decirlo en castellano, y no pretenden serlo: son las que se usan en
+# este manual, comprobadas contra su texto. Ampliarla es barato; lo que no se
+# puede es sustituirla por un juicio humano que haya que repetir cada mes.
+SE_DECLARA_AUSENTE = re.compile(
+    r"(no est[áa] hech[oa]|no est[áa] implementad|todav[íi]a no est[áa]|"
+    r"est[áa] a medias|queda[n]? (por|el|la|los|las)|falta (hacer|la|el|los|las|que)|"
+    r"lo que falta es)",
+    re.I,
+)
+
+MANUALES = ("manual-3-funcionalidades.md",)
+
+
+def test_el_manual_no_declara_ausente_nada_que_conste_hecho(catalogo: dict) -> None:
+    """Un capítulo que dice «esto no está» sobre una capacidad marcada hecha.
+
+    Este gate nació de un barrido a mano que encontró **doce** capacidades así:
+    seis en una tabla de «lo que está a medias» y cinco en bloques de «lo que
+    todavía no está», más una en otro capítulo. La mitad eran texto viejo que
+    nadie quitó al terminar el trabajo; la otra mitad eran agujeros de verdad en
+    cosas que el catálogo daba por hechas, y dos de ellas escondían fallos que
+    reventaban en cuanto alguien los tocaba.
+
+    Las dos mitades son igual de malas. Una hace que el recuento mienta hacia
+    abajo y la otra hacia arriba, y las dos se descubren leyendo con cuidado un
+    manual de nueve mil líneas — es decir, no se descubren.
+
+    Se comprueba por **cercanía**: si el identificador de una capacidad hecha
+    aparece a menos de seis líneas de una frase que declara algo ausente, hay que
+    mirarlo. Puede dar algún falso positivo; entonces se reescribe la frase para
+    que no se confunda, que es trabajo bien empleado: si el gate se confunde
+    leyéndola, un cliente también.
+    """
+    estados = {c["id"]: c.get("estado", "") for c in _capacidades(catalogo)}
+    sospechas: list[str] = []
+
+    for nombre in MANUALES:
+        ruta = RAIZ / "docs" / nombre
+        if not ruta.exists():
+            continue
+        lineas = ruta.read_text(encoding="utf-8").split("\n")
+        for i, linea in enumerate(lineas):
+            if not SE_DECLARA_AUSENTE.search(linea):
+                continue
+            # Hacia atrás sobre todo: el identificador suele ir en el título o
+            # en la frase anterior, y mirar tres líneas hacia delante metía el
+            # ENCABEZADO DEL CAPÍTULO SIGUIENTE, que no tiene nada que ver con lo
+            # que la frase declara ausente.
+            ventana = "\n".join(lineas[max(0, i - 5) : i + 1])
+            for cid in sorted(set(re.findall(r"CRM-\d\d\.\d\d\.\d\d\.\d\d", ventana))):
+                if estados.get(cid) == "hecho":
+                    sospechas.append(f"{nombre}:{i + 1}  {cid}  «{linea.strip()[:110]}»")
+
+    assert not sospechas, (
+        "El manual declara ausente algo que el catálogo da por hecho:\n  "
+        + "\n  ".join(sorted(set(sospechas)))
+        + "\n\nO la capacidad no está hecha —y entonces el catálogo miente— o el "
+        "texto se quedó viejo al terminarla. Mira el código antes de decidir cuál "
+        "de las dos, y arregla la que toque."
+    )
