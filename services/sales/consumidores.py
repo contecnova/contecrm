@@ -105,3 +105,84 @@ declarar_consumo(
         ),
     )
 )
+
+
+async def consumir_firma(mensaje: Any) -> None:
+    """Mueve la oportunidad cuando su sobre cambia de estado (CRM-03.03.02.07).
+
+    El motor de firma ya emitía estos eventos con el registro que los originó
+    dentro; lo que faltaba era que este servicio los escuchara. Sin eso, el
+    comercial firmaba el presupuesto y luego tenía que entrar a mover la
+    oportunidad a mano — que es justo el trabajo que la integración existía para
+    quitar, y el que se olvida.
+
+    **Solo se mueve lo que el sobre demuestra.** Un sobre completado dice que
+    está firmado, no que el negocio esté ganado: puede faltar el pedido, el pago
+    o la aprobación interna. Se marca la firma y se deja la etapa a quien la
+    gobierna; forzar «ganada» desde aquí se saltaría el motivo de cierre, la
+    aprobación de descuento y el forecast.
+    """
+    from uuid import UUID
+
+    from crmcore.db.uow import unidad_de_trabajo
+
+    tipo = str(
+        getattr(mensaje, "tipo", None)
+        or (mensaje.get("tipo") if isinstance(mensaje, dict) else "")
+        or ""
+    )
+    if not tipo.startswith("signature.envelope."):
+        return
+
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    objeto = str(datos.get("objeto_origen") or "")
+    origen_id = datos.get("objeto_origen_id")
+    if not bruto or objeto != "oportunidad" or not origen_id:
+        # Un sobre que no sale de una oportunidad no es asunto de este servicio,
+        # y no tenerlo no es un error: se firman contratos que nacen de un caso,
+        # de un pedido o de nada.
+        return
+
+    from services.sales.modelos import Oportunidad
+
+    tenant_id = UUID(str(bruto))
+    with unidad_de_trabajo(tenant_id) as uow:
+        oportunidad = uow.db.get(Oportunidad, UUID(str(origen_id)))
+        if oportunidad is None:
+            logger.warning("sales.firma_sobre_oportunidad_inexistente", oportunidad=str(origen_id))
+            return
+
+        campos = dict(oportunidad.campos or {})
+        campos["firma_estado"] = tipo.rsplit(".", 1)[-1]
+        campos["firma_sobre_id"] = str(datos.get("sobre_id") or "")
+        campos["firma_referencia"] = str(datos.get("referencia") or "")
+        if datos.get("motivo"):
+            campos["firma_motivo"] = str(datos["motivo"])
+        oportunidad.campos = campos
+        uow.db.flush()
+        logger.info(
+            "sales.oportunidad_marcada_por_firma",
+            oportunidad=str(origen_id),
+            estado=campos["firma_estado"],
+        )
+
+
+declarar_consumo(
+    Consumo(
+        consumidor="sales",
+        evento="signature.envelope.completed",
+        campos=("sobre_id", "objeto_origen", "objeto_origen_id"),
+        obligatorio=True,
+        motivo=(
+            "Marcar en la oportunidad que su presupuesto ya está firmado, sin que "
+            "el comercial tenga que entrar a moverla a mano"
+        ),
+    )
+)

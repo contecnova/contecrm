@@ -321,3 +321,91 @@ def proveedor_para(
         error_code="sso.dominio_sin_proveedor",
         detalle={"dominios": sorted({p.dominio_email for p in candidatos if p.dominio_email})},
     )
+
+
+# ── Perfiles de proveedor, sin un módulo por casa (CRM-00.05.01.16, .22) ──
+
+# Lo que cambia entre proveedores de identidad: las direcciones, los nombres de
+# los campos y poco más. Eso es configuración. Un conector por casa —uno para
+# cada proveedor de SSO, otro para cada uno de MFA— convierte cada implantación
+# nueva en una versión del producto que hay que mantener diez años.
+#
+# Lo que SÍ cambia de verdad entre ellos, y por eso se declara, es qué campo trae
+# el correo y cómo llaman a los grupos: equivocarse ahí no da un error, da un
+# usuario sin permisos que nadie entiende.
+PERFILES_SSO = {
+    "saml_generico": {
+        "protocolo": "saml2",
+        "campo_email": "email",
+        "campo_nombre": "displayName",
+        "campo_grupos": "groups",
+    },
+    "oidc_generico": {
+        "protocolo": "oidc",
+        "campo_email": "email",
+        "campo_nombre": "name",
+        "campo_grupos": "groups",
+    },
+}
+
+# Igual con el segundo factor: lo que cambia es el endpoint, la credencial y cómo
+# se llama a «empujar una notificación» o «validar un código».
+PERFILES_MFA = {
+    "otp_generico": {"tipo": "otp", "operaciones": ("enviar", "validar")},
+    "push_generico": {"tipo": "push", "operaciones": ("empujar", "consultar")},
+    "webauthn": {"tipo": "webauthn", "operaciones": ("reto", "verificar")},
+}
+
+
+def perfil_sso(clave: str, ajustes: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Resuelve un perfil de proveedor de identidad y lo que lo ajusta.
+
+    Devuelve el perfil base con los ajustes del cliente encima. Lo importante es
+    que **los campos son configuración**: quien conecta un proveedor nuevo escribe
+    qué campo trae el correo y cómo llaman a los grupos, no un módulo.
+
+    Un perfil desconocido **no cae al genérico en silencio**: se dice. Caer al
+    genérico produce un usuario que entra sin grupos y sin permisos, y nadie
+    relaciona eso con que el perfil estaba mal escrito.
+    """
+    base = PERFILES_SSO.get(clave)
+    if base is None:
+        raise ErrorValidacion(
+            f"Perfil de SSO desconocido: «{clave}». Los declarados son "
+            f"{sorted(PERFILES_SSO)}; añadir uno es configuración, no código.",
+            error_code="sso.perfil_desconocido",
+            detalle={"declarados": sorted(PERFILES_SSO)},
+        )
+    resuelto = {**base, **(ajustes or {})}
+    faltan = [c for c in ("campo_email",) if not resuelto.get(c)]
+    return {
+        "perfil": clave,
+        "config": resuelto,
+        "completo": not faltan,
+        "faltan": faltan,
+        "porque": (
+            "El perfil sabe de dónde sacar el correo y los grupos."
+            if not faltan
+            else "Sin saber qué campo trae el correo, el usuario entra sin identidad "
+            "utilizable: no es un error visible, es un usuario que no encaja con "
+            "ninguna cuenta."
+        ),
+    }
+
+
+def perfil_mfa(clave: str) -> dict[str, Any]:
+    """Resuelve un perfil de proveedor de segundo factor (CRM-00.05.01.22).
+
+    Igual que el de SSO: lo que cambia entre proveedores de MFA es el endpoint,
+    la credencial y cómo llaman a «empujar una notificación» o «validar un
+    código». Un módulo por casa —uno por cada proveedor— sería el mismo error
+    repetido en otra capa.
+    """
+    base = PERFILES_MFA.get(clave)
+    if base is None:
+        raise ErrorValidacion(
+            f"Perfil de MFA desconocido: «{clave}». Los declarados son " f"{sorted(PERFILES_MFA)}.",
+            error_code="mfa.perfil_desconocido",
+            detalle={"declarados": sorted(PERFILES_MFA)},
+        )
+    return {"perfil": clave, **base, "operaciones": list(base["operaciones"])}

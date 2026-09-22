@@ -703,3 +703,199 @@ def usuarios_sin_factor(db: Session, tenant_id: UUID) -> int:
         ).scalar_one()
         or 0
     )
+
+
+# ── Ciclo de vida del segundo factor (CRM-00.05.01.19, .21, .23) ──────────
+
+# Por qué se puede pedir un segundo factor aunque el dispositivo sea de
+# confianza. Lista cerrada: cada motivo se explica al usuario, y «por seguridad»
+# no explica nada — al tercer aviso así, la gente escribe el código sin mirar.
+MOTIVOS_RIESGO = {
+    "ip_nueva": "Estás entrando desde una red desde la que no habías entrado",
+    "pais_nuevo": "Estás entrando desde un país distinto al habitual",
+    "dispositivo_nuevo": "Es la primera vez que entras desde este equipo",
+    "salto_imposible": "Has entrado desde otro país hace muy poco: uno de los dos no eras tú",
+    "operacion_sensible": "Vas a hacer algo que puede costar dinero o borrar datos",
+    "tiempo_sin_entrar": "Hace mucho que no entrabas",
+}
+
+# Cuántos factores hacen falta para poder desbloquear a alguien sin soporte. Dos
+# personas y no una: el desbloqueo es la puerta de atrás de toda la MFA, y una
+# sola persona con ese poder es el eslabón que se ataca.
+APROBADORES_DESBLOQUEO = 2
+
+
+def evaluar_riesgo(
+    *,
+    ip_conocida: bool,
+    pais_conocido: bool,
+    dispositivo_conocido: bool,
+    minutos_desde_otro_pais: int | None = None,
+    dias_sin_entrar: int = 0,
+    operacion_sensible: bool = False,
+    dias_para_considerar_ausencia: int = 30,
+) -> dict[str, Any]:
+    """Si hay que pedir el segundo factor **ahora** (CRM-00.05.01.21).
+
+    La MFA adaptativa se vende como comodidad y su valor real es otro: pedir el
+    factor **cuando el contexto cambia** detecta el robo de sesión, que es lo que
+    la MFA de siempre no ve — una vez dentro, ya estás dentro.
+
+    Y cada motivo se dice con palabras. «Por seguridad» no explica nada, y al
+    tercer aviso así la gente teclea el código sin mirar — que es exactamente la
+    costumbre que un atacante necesita.
+    """
+    motivos: list[str] = []
+    if not dispositivo_conocido:
+        motivos.append("dispositivo_nuevo")
+    if not ip_conocida:
+        motivos.append("ip_nueva")
+    if not pais_conocido:
+        motivos.append("pais_nuevo")
+    if minutos_desde_otro_pais is not None and minutos_desde_otro_pais < 120:
+        # Dos países en dos horas: o hay un avión imposible o hay dos personas.
+        # Es la señal más fiable de las seis y por eso va sola al principio.
+        motivos.append("salto_imposible")
+    if dias_sin_entrar >= dias_para_considerar_ausencia:
+        motivos.append("tiempo_sin_entrar")
+    if operacion_sensible:
+        motivos.append("operacion_sensible")
+
+    return {
+        "exigir_factor": bool(motivos),
+        "motivos": motivos,
+        # El texto que se le enseña, no el código del motivo: quien lo lee es una
+        # persona con prisa, no un programa.
+        "explicacion": (
+            " · ".join(MOTIVOS_RIESGO[m] for m in motivos)
+            if motivos
+            else "Nada ha cambiado desde la última vez: no hace falta el segundo factor."
+        ),
+        # La señal más fuerte, aparte: un salto imposible no se resuelve pidiendo
+        # un código, se resuelve mirando qué ha pasado.
+        "sospechoso": "salto_imposible" in motivos,
+        "que_hacer_si_sospechoso": (
+            "Además del factor, conviene avisar a la persona y revisar sus sesiones "
+            "abiertas: si uno de los dos accesos no era ella, el otro sigue vivo."
+            if "salto_imposible" in motivos
+            else ""
+        ),
+    }
+
+
+def plan_de_inscripcion(*, factores_activos: list[str], politica_minima: int = 1) -> dict[str, Any]:
+    """Qué le falta a esta persona para tener el segundo factor en condiciones
+    (CRM-00.05.01.19).
+
+    **Un solo factor no es tener MFA: es tener un único punto de fallo.** Quien
+    solo tiene el móvil y lo pierde se queda fuera, y entonces alguien de soporte
+    lo desbloquea por teléfono — que es la puerta de atrás por la que se entra de
+    verdad.
+
+    Por eso el plan pide siempre un **segundo método de respaldo**, y lo dice con
+    esas palabras en vez de dejarlo como una recomendación que nadie sigue.
+    """
+    activos = sorted(set(factores_activos))
+    pasos: list[dict[str, str]] = []
+    if not activos:
+        pasos.append(
+            {
+                "paso": "inscribir_primero",
+                "porque": "Sin ningún factor, la cuenta depende solo de la contraseña",
+            }
+        )
+    if len(activos) < max(2, politica_minima):
+        pasos.append(
+            {
+                "paso": "inscribir_respaldo",
+                "porque": (
+                    "Con un solo método, perder el móvil deja fuera a la persona y "
+                    "obliga a un desbloqueo manual — que es la puerta de atrás de "
+                    "toda la MFA"
+                ),
+            }
+        )
+    return {
+        "activos": activos,
+        "pasos": pasos,
+        "completo": not pasos,
+        "porque": (
+            "Tiene un método y un respaldo: puede perder uno sin quedarse fuera."
+            if not pasos
+            else "Le falta respaldo. Mientras tanto, cualquier pérdida acaba en el "
+            "mostrador de soporte."
+        ),
+    }
+
+
+def cambio_de_dispositivo(*, tiene_respaldo: bool, factor_verificado: bool) -> dict[str, Any]:
+    """Si se puede mover el segundo factor a un móvil nuevo.
+
+    El caso real es siempre el mismo: la persona cambia de teléfono y el factor
+    se queda en el viejo, que ya ha devuelto o formateado. Dos caminos y ninguno
+    es «llama a soporte»:
+
+    **Con respaldo**, se hace sola: es exactamente para esto que se pide un
+    segundo método al inscribirse.
+
+    **Sin respaldo**, hace falta desbloqueo con dos aprobadores. No es burocracia:
+    sin el factor viejo, lo único que demuestra quién es esa persona es que alguien
+    responda por ella, y una sola firma convierte una llamada convincente en un
+    acceso.
+    """
+    if tiene_respaldo and factor_verificado:
+        return {
+            "puede_solo": True,
+            "camino": "respaldo",
+            "porque": "Ha demostrado el segundo método: puede inscribir el nuevo sin ayuda.",
+        }
+    return {
+        "puede_solo": False,
+        "camino": "desbloqueo_asistido",
+        "aprobadores_necesarios": APROBADORES_DESBLOQUEO,
+        "porque": (
+            "Sin el factor viejo ni respaldo, lo único que demuestra quién es esta "
+            f"persona es que otras {APROBADORES_DESBLOQUEO} respondan por ella. Una "
+            "sola firma convierte una llamada convincente en un acceso."
+        ),
+    }
+
+
+def puede_entrar_sin_contrasena(
+    *, factor: str, resistente_a_phishing: bool, tiene_respaldo: bool
+) -> dict[str, Any]:
+    """Si este factor vale como método **único** de entrada (CRM-00.05.01.23).
+
+    La entrada sin contraseña solo es más segura con un factor resistente a
+    phishing —una llave FIDO2 o el biométrico del dispositivo, atados al dominio—.
+    Con un código por SMS como método único se quita la contraseña y se deja lo
+    más débil de los dos: el SMS se intercepta y se pide por teléfono, y ya no
+    queda nada detrás.
+
+    Y exige respaldo. Sin contraseña que valga de red, perder la llave deja a la
+    persona fuera del todo.
+    """
+    if not resistente_a_phishing:
+        return {
+            "puede": False,
+            "porque": (
+                f"«{factor}» no resiste phishing: como método único dejaría la cuenta "
+                "peor que con contraseña, porque se quita la contraseña y se queda lo "
+                "más débil de los dos."
+            ),
+        }
+    if not tiene_respaldo:
+        return {
+            "puede": False,
+            "porque": (
+                "Sin contraseña no hay red debajo: perder la llave deja a la persona "
+                "fuera del todo. Hace falta un segundo método antes de quitarla."
+            ),
+        }
+    return {
+        "puede": True,
+        "porque": (
+            f"«{factor}» está atado al dominio, así que una web falsa no puede usarlo, "
+            "y hay respaldo si se pierde."
+        ),
+    }

@@ -499,4 +499,11 @@ __all__ = [
 # Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
 # al final y solo por su efecto: declararlas al cargar los modelos es lo que
 # garantiza que el RAT y los objetos no puedan separarse.
+# Las plantillas de aviso, replicadas por evento desde `tenancy`: es lo que
+# permite tener plantilla POR CANAL (CRM-06.02.01.07). Antes, el mismo texto iba
+# al correo y al SMS recortado a 160.
+from crmcore.notificaciones.plantillas_replicadas import (  # noqa: E402,F401
+    PlantillaNotificacion,
+)
+
 from services.identity import tratamientos  # noqa: E402,F401

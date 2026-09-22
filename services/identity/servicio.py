@@ -692,3 +692,75 @@ def desactivar_usuario(
 
 def _sin_usar(*_a: Any) -> None:  # pragma: no cover
     """Mantiene el import de `Any` para las anotaciones."""
+
+
+# ── Invitados externos con acceso acotado y temporal (CRM-06.02.01.06) ────
+
+# Cuánto dura como mucho una invitación. No es un ajuste de comodidad: un acceso
+# de invitado sin fecha se queda abierto para siempre, y el auditor de tu cliente
+# encuentra en tu sistema a alguien que dejó la empresa hace dos años.
+MAX_DIAS_INVITADO = 90
+
+
+def invitar_externo(
+    uow: UnidadDeTrabajo,
+    *,
+    email: str,
+    motivo: str,
+    permisos: list[str],
+    dias: int = 30,
+    objeto: str = "",
+    objeto_id: UUID | None = None,
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Da acceso temporal a alguien de fuera: un cliente, un partner, un auditor.
+
+    Tres cosas lo hacen aceptable, y ninguna es opcional:
+
+    **Caduca siempre y con tope.** Un invitado sin fecha es un usuario más, y el
+    día que alguien revisa la lista de accesos aparecen quince personas que nadie
+    recuerda haber invitado.
+
+    **Los permisos son los que se le den y nada más.** Heredar un rol —«como un
+    comercial pero de fuera»— da acceso a todo lo que ese rol gane el mes que
+    viene, y nadie vuelve a mirar la invitación.
+
+    **Hace falta decir para qué.** Sin motivo, la revisión anual consiste en mirar
+    una lista de correos ajenos sin poder decidir sobre ninguno.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    if not motivo.strip():
+        raise ErrorValidacion(
+            "Una invitación sin motivo no se puede revisar después: quien la mire "
+            "dentro de un año verá un correo ajeno y no podrá decidir nada.",
+            error_code="identity.invitacion_sin_motivo",
+        )
+    if not permisos:
+        raise ErrorValidacion(
+            "Una invitación sin permisos no sirve para nada, y una que hereda un "
+            "rol da acceso a lo que ese rol gane después.",
+            error_code="identity.invitacion_sin_permisos",
+        )
+    if dias < 1 or dias > MAX_DIAS_INVITADO:
+        raise ErrorValidacion(
+            f"El acceso de invitado dura entre 1 y {MAX_DIAS_INVITADO} días. Sin "
+            "tope, el acceso se queda abierto para siempre.",
+            error_code="identity.invitacion_plazo_invalido",
+        )
+
+    caduca = datetime.now(timezone.utc) + timedelta(days=int(dias))
+    return {
+        "email": email.strip().lower(),
+        "permisos": sorted(set(permisos)),
+        "motivo": motivo,
+        "caduca_at": caduca.isoformat(),
+        "objeto": objeto,
+        "objeto_id": str(objeto_id) if objeto_id else None,
+        "renovable": True,
+        "porque": (
+            "El acceso caduca solo. Renovarlo es una decisión que alguien tiene que "
+            "tomar otra vez, y eso es lo que impide que se quede abierto sin que "
+            "nadie lo note."
+        ),
+    }

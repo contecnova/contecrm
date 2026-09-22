@@ -14,7 +14,11 @@ from services.sales.api_comisiones import ROUTERS_COMISIONES
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
 from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
-from services.sales.consumidores import consumir_comando, consumir_organigrama
+from services.sales.consumidores import (
+    consumir_comando,
+    consumir_firma,
+    consumir_organigrama,
+)
 
 
 def _al_arrancar() -> None:
@@ -58,5 +62,9 @@ app = crear_servicio(
         # jerarquía aplique en los listados (CRM-00.05.02.12): `superior_id` vive
         # en la membresía de identity y este servicio no lee su esquema.
         ("user.org.changed", consumir_organigrama, f"{__name__.split('.')[1]}-organigrama"),
+        # El sobre firmado mueve la oportunidad (CRM-03.03.02.07): el motor ya
+        # emitía el evento con el registro de origen dentro, y lo que faltaba
+        # era que alguien lo escuchara.
+        ("signature.envelope.*", consumir_firma, f"{__name__.split('.')[1]}-firma"),
     ],
 )

@@ -2779,9 +2779,6 @@ con el motivo por el que no se cerraron entonces.
 
 | Capacidad | Qué falta y por qué no se hizo ya |
 |---|---|
-| `CRM-06.02.01.07` Plantilla de notificación por canal | El repartidor **no renderiza plantillas de `tenancy`** porque son de otro servicio. El mismo texto va al correo y al SMS, recortado a 160 en el segundo. Tenerla exige replicar las plantillas a cada esquema (§29) |
-| `CRM-06.02.01.08` Estadísticas de entrega del correo | SMTP no da apertura ni rebote; eso solo lo dan las APIs propietarias. Se hará como transporte aparte **para quien lo quiera**, diciendo que ata la instalación a ese proveedor (§29) |
-| `CRM-01.01.01.13` Reverificación periódica | Un veredicto caduca a los 90 días y se vuelve a preguntar **cuando alguien lo pide**. Falta la cola que reverifique sola lo caducado, con su cuota: muchos registros oficiales la tienen, y un barrido sin control la agota en una mañana (§32) |
 
 Y dos cosas que estaban a medias **dentro de lo entregado** y se cerraron al
 verlas, en vez de anotarlas:
@@ -10011,3 +10008,146 @@ no depende de la promesa de nadie.
 
 Si no hay ninguno que cumpla, **no se llama a ninguno**. Usar el de fuera «porque
 es mejor» sería incumplir exactamente lo que se le prometió.
+
+---
+
+## Los huecos que este manual declaraba, cerrados
+
+Todo lo de este capítulo estaba escrito como pendiente en la tabla «Lo que falta
+y por qué no se hizo ya». No son mejoras: son promesas que el producto tenía
+apuntadas contra sí mismo.
+
+### Plantilla de notificación por canal (`CRM-06.02.01.07`)
+
+El repartidor no renderizaba plantillas porque son de `tenancy` y ningún servicio
+lee el esquema de otro, así que el mismo texto iba al correo y al SMS, recortado
+a 160 caracteres en el segundo. Lo sufría el destinatario: un aviso pensado para
+correo llegaba al móvil cortado a mitad de frase.
+
+Se **replican** al esquema del que reparte, igual que la jerarquía de mando y los
+ajustes en caliente. Eso es lo que permite tener plantilla **por canal**, que es
+el punto: la de SMS no es la de correo con menos letras, es otra —dice lo
+imprescindible y pone un enlace—.
+
+- **Si no hay plantilla, el aviso sale igual.** El mecanismo existe para que se
+  vea mejor, no para que el aviso dependa de que alguien la haya creado.
+- **Una plantilla a la que le falta un dato no se manda a medias.** «Hola
+  {{nombre}}» llegando así es peor que un texto genérico, porque el genérico no
+  parece roto y quien lo recibe deduce que el sistema está mal cuidado.
+- **El idioma cae hacia atrás con orden**: el del destinatario, el del tenant, el
+  de la instalación. «La primera que haya» manda un aviso en alemán a quien pidió
+  español.
+
+### Estadísticas de entrega del correo (`CRM-06.02.01.08`)
+
+SMTP da por entregado lo que aceptó el primer servidor y ahí acaba lo que sabe:
+si el buzón rebota media hora después, el CRM nunca se entera. La apertura y el
+rebote solo los dan las APIs de los proveedores, y por eso esto entra por un
+camino **aparte y opcional** — engancharlo ata la instalación a ese proveedor, y
+decirlo es parte de la capacidad.
+
+Lo que **no** es opcional es la consecuencia: un rebote duro o una queja **cierran
+la dirección**. Anotarlos y seguir escribiendo sería tener la información y no
+usarla, que es peor que no tenerla — y quema la reputación del dominio, que la
+pagan también los demás clientes.
+
+Y el panel dice cuándo **no puede medir**. Un 0 % de apertura hace que alguien
+concluya que sus correos no interesan, cuando lo que pasa es que su transporte no
+lo mide: la apertura no es cero, es que nadie la cuenta.
+
+### Reverificación periódica con cuota (`CRM-01.01.01.13`)
+
+Un veredicto caducaba a los noventa días y se volvía a preguntar **cuando alguien
+lo pedía**. Ahora hay barrido, y lo que lo hace utilizable es el **tope**: muchos
+registros oficiales tienen cuota diaria, y un barrido sin control la agota en una
+mañana dejando sin verificar las altas del día — que son las que alguien está
+esperando.
+
+- **Los más viejos primero.** Un veredicto de hace dos años es el que más
+  probablemente ya no es cierto.
+- **Si el registro no contesta, se para.** Seguir con los cuarenta y nueve
+  siguientes gasta la cuota en fallos y marca todo el lote como no concluyente
+  por un corte que puede durar un minuto.
+- **Y se dice cuántos quedan.** Sin ese número nadie sabe si el barrido va al día
+  o lleva tres semanas sin alcanzar la cola. Que tarde varios días en ponerse al
+  corriente es lo correcto: un veredicto caducado no es una urgencia y una cuota
+  agotada sí.
+
+### La firma mueve la oportunidad (`CRM-03.03.02.07`)
+
+El motor de firma ya emitía el evento con el registro de origen dentro; lo que
+faltaba era que `sales` lo escuchara. Sin eso, el comercial firmaba el
+presupuesto y entraba a mover la oportunidad a mano — el trabajo que la
+integración existía para quitar, y el que se olvida.
+
+**Solo se mueve lo que el sobre demuestra.** Un sobre completado dice que está
+firmado, no que el negocio esté ganado: puede faltar el pedido, el pago o la
+aprobación interna. Se marca la firma y la etapa la sigue gobernando quien la
+gobierna; forzar «ganada» desde aquí se saltaría el motivo de cierre, la
+aprobación de descuento y el forecast.
+
+## Segundo factor: ciclo de vida, riesgo y sin contraseña (`CRM-00.05.01`)
+
+### MFA adaptativa (`CRM-00.05.01.21`)
+
+Se vende como comodidad y su valor real es otro: pedir el factor **cuando el
+contexto cambia** detecta el robo de sesión, que es lo que la MFA de siempre no
+ve — una vez dentro, ya estás dentro.
+
+Cada motivo se dice **con palabras**. «Por seguridad» no explica nada, y al
+tercer aviso así la gente teclea el código sin mirar, que es exactamente la
+costumbre que un atacante necesita.
+
+El **salto imposible** —dos países en dos horas— va aparte: o hay un avión que no
+existe o hay dos personas, y eso no se resuelve pidiendo un código. Se pide el
+factor **y** se avisa de que hay que mirar las sesiones abiertas, porque si uno
+de los dos accesos no era la persona, el otro sigue vivo.
+
+### Inscripción, respaldo y cambio de dispositivo (`CRM-00.05.01.19`)
+
+**Un solo factor no es tener MFA: es tener un único punto de fallo.** Quien solo
+tiene el móvil y lo pierde se queda fuera, y entonces alguien de soporte lo
+desbloquea por teléfono — que es la puerta de atrás por la que se entra de verdad.
+Por eso el plan pide siempre un segundo método, y lo dice así en vez de dejarlo
+como una recomendación que nadie sigue.
+
+El cambio de móvil tiene dos caminos y ninguno es «llama a soporte»: **con
+respaldo** se hace solo, y **sin respaldo** hace falta desbloqueo con dos
+aprobadores. No es burocracia: sin el factor viejo, lo único que demuestra quién
+es esa persona es que otras respondan por ella, y una sola firma convierte una
+llamada convincente en un acceso.
+
+### Entrada sin contraseña (`CRM-00.05.01.23`)
+
+Solo con un factor **resistente a phishing** —una llave FIDO2 o el biométrico del
+dispositivo, atados al dominio—. Con un código por SMS como método único se quita
+la contraseña y se queda lo más débil de los dos: el SMS se intercepta y se pide
+por teléfono, y ya no hay nada detrás.
+
+Y exige respaldo, porque sin contraseña no hay red debajo: perder la llave deja a
+la persona fuera del todo.
+
+### Conectores de SSO y de MFA sin un módulo por casa (`CRM-00.05.01.16`, `CRM-00.05.01.22`)
+
+Lo que cambia entre proveedores son las direcciones y los nombres de los campos:
+eso es configuración. Un conector por casa convierte cada implantación nueva en
+una versión del producto que hay que mantener diez años.
+
+Lo que **sí** cambia de verdad, y por eso se declara, es qué campo trae el correo
+y cómo llaman a los grupos: equivocarse ahí no da un error, da un usuario sin
+permisos que nadie entiende. Y un perfil desconocido **no cae al genérico en
+silencio** — caer al genérico produce exactamente ese usuario fantasma.
+
+## Invitados externos con acceso acotado (`CRM-06.02.01.06`)
+
+Un cliente, un partner o un auditor que necesita entrar un mes. Tres cosas lo
+hacen aceptable y ninguna es opcional:
+
+- **Caduca siempre y con tope.** Un invitado sin fecha es un usuario más, y el
+  día que alguien revisa la lista de accesos aparecen quince personas que nadie
+  recuerda haber invitado. Renovar es una decisión que hay que tomar otra vez.
+- **Los permisos son los que se le den y nada más.** Heredar un rol —«como un
+  comercial pero de fuera»— da acceso a todo lo que ese rol gane el mes que
+  viene, y nadie vuelve a mirar la invitación.
+- **Hace falta decir para qué.** Sin motivo, la revisión anual consiste en mirar
+  una lista de correos ajenos sin poder decidir sobre ninguno.

@@ -1908,3 +1908,102 @@ def contexto_de_direcciones(
             "las reglas."
         ),
     }
+
+
+# ── Reverificación periódica con cuota (CRM-01.01.01.13) ──────────────────
+
+# Cuántos identificadores se reverifican como mucho en cada pasada. Es el número
+# que hace que esto sea utilizable: muchos registros oficiales tienen cuota
+# diaria, y un barrido sin control la agota en una mañana — dejando sin verificar
+# lo que de verdad hacía falta, que son las altas nuevas.
+TOPE_REVERIFICACION = 50
+
+
+def caducados_por_reverificar(
+    db: Session, tenant_id: UUID, *, limite: int = TOPE_REVERIFICACION
+) -> list[IdentificadorFiscal]:
+    """Identificadores cuyo veredicto ha caducado, **los más viejos primero**.
+
+    Los más viejos y no los más nuevos: un veredicto de hace dos años es el que
+    más probablemente ya no es cierto, y con cuota limitada hay que gastarla en
+    lo que más ha cambiado.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    limite_fecha = datetime.now(timezone.utc) - timedelta(days=DIAS_VEREDICTO_VIGENTE)
+    return list(
+        db.execute(
+            select(IdentificadorFiscal)
+            .join(Cuenta, Cuenta.id == IdentificadorFiscal.cuenta_id)
+            .where(
+                Cuenta.tenant_id == tenant_id,
+                Cuenta.deleted_at.is_(None),
+                IdentificadorFiscal.verificado_at.is_not(None),
+                IdentificadorFiscal.verificado_at < limite_fecha,
+            )
+            .order_by(IdentificadorFiscal.verificado_at.asc())
+            .limit(max(1, int(limite)))
+        )
+        .scalars()
+        .all()
+    )
+
+
+def barrer_reverificaciones(
+    uow: UnidadDeTrabajo, *, limite: int = TOPE_REVERIFICACION
+) -> dict[str, Any]:
+    """Vuelve a preguntar por los veredictos caducados, **con tope**.
+
+    Sin tope, un tenant con veinte mil cuentas agota la cuota del registro
+    oficial en la primera pasada y deja sin verificar las altas del día — que son
+    las que alguien está esperando. Con tope, el barrido tarda varios días en
+    ponerse al corriente y eso es exactamente lo correcto: un veredicto caducado
+    no es una urgencia, y una cuota agotada sí.
+
+    **Si el registro no contesta, se para.** Seguir intentándolo con los
+    cuarenta y nueve siguientes gasta la cuota en fallos y, si el corte era
+    temporal, deja todo el lote marcado como no concluyente sin necesidad.
+    """
+    pendientes = caducados_por_reverificar(uow.db, uow.tenant_id, limite=limite)
+    cuenta = {"revisados": 0, "confirmados": 0, "cambiados": 0, "no_concluyentes": 0}
+    parado_por: str = ""
+
+    for identificador in pendientes:
+        antes = identificador.verificado
+        salida = verificar_identificador_fiscal(
+            uow,
+            cuenta_id=identificador.cuenta_id,
+            identificador_id=identificador.id,
+            forzar=True,
+        )
+        cuenta["revisados"] += 1
+        if salida.get("no_concluyente"):
+            cuenta["no_concluyentes"] += 1
+            parado_por = (
+                "El registro oficial no ha contestado. Se para el barrido: seguir "
+                "gastaría la cuota en fallos y marcaría todo el lote como no "
+                "concluyente por un corte que puede ser de un minuto."
+            )
+            break
+        if bool(identificador.verificado) != bool(antes):
+            cuenta["cambiados"] += 1
+        else:
+            cuenta["confirmados"] += 1
+
+    quedan = len(caducados_por_reverificar(uow.db, uow.tenant_id, limite=limite + 1))
+    return {
+        **cuenta,
+        "tope": limite,
+        # Cuántos siguen esperando. Sin este número, nadie sabe si el barrido va
+        # al día o lleva tres semanas sin alcanzar la cola.
+        "quedan_caducados": quedan,
+        "al_dia": quedan == 0,
+        "parado_por": parado_por,
+        "que_significa": (
+            "Todos los veredictos están vigentes."
+            if quedan == 0
+            else f"Quedan {quedan} por reverificar. El barrido va con tope a "
+            "propósito: un veredicto caducado no es una urgencia y una cuota "
+            "agotada sí."
+        ),
+    }

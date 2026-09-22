@@ -99,18 +99,18 @@ def _destino(db: Session, tenant_id: UUID, usuario_id: UUID, canal: str) -> Dest
 
 
 def _mensaje(db: Session, notificacion: Any, canal: str) -> Mensaje:
-    """Compone el texto del aviso, con los formatos del tenant.
+    """Compone el texto del aviso, con la plantilla del tenant si la tiene.
 
-    **No renderiza plantillas de `tenancy`.** La primera versión lo hacía, y es
-    acoplamiento entre servicios: las plantillas son de `tenancy` y ningún
-    servicio lee el esquema de otro. El título y el cuerpo los compone quien
-    crea la notificación, que sí tiene sus plantillas a mano; aquí solo se
-    localiza y se adapta al canal.
+    Las plantillas son de `tenancy` y ningún servicio lee el esquema de otro, así
+    que **se replican por evento** a este esquema (CRM-06.02.01.07) igual que los
+    ajustes en caliente y la jerarquía de mando. Eso es lo que permite tener
+    **plantilla por canal**, que es el punto: una de SMS no es la de correo con
+    menos letras, es otra —dice lo imprescindible y pone un enlace—, y recortar la
+    de correo a 160 caracteres era exactamente el problema.
 
-    La consecuencia honesta: **hoy no hay plantilla por canal**. El mismo texto
-    va al correo y al SMS. Para tenerla habría que replicar las plantillas a
-    cada esquema como se hace con los ajustes, y es una capacidad aparte que
-    todavía no está — decirlo aquí es mejor que fingir que existe.
+    Si no hay plantilla, el aviso sale igual con el texto que trae la
+    notificación. El mecanismo existe para que se vea mejor, no para que el aviso
+    dependa de que alguien haya creado una.
     """
     from crmcore import i18n
 
@@ -122,6 +122,42 @@ def _mensaje(db: Session, notificacion: Any, canal: str) -> Mensaje:
         # Se dice cuántos hechos hay detrás. Sin esto, un aviso agrupado que
         # resume doce cambios parece uno solo y el destinatario no abre.
         titulo = f"{titulo} (+{notificacion.agrupadas - 1})"
+
+    # Plantilla replicada, si la hay para este canal e idioma.
+    from crmcore.notificaciones.plantillas_replicadas import elegir, render
+
+    clave_plantilla = str(getattr(notificacion, "clave_plantilla", "") or "")
+    if clave_plantilla:
+        plantilla = elegir(
+            db,
+            notificacion.tenant_id,
+            clave=clave_plantilla,
+            canal=canal,
+            # El orden importa: el del destinatario manda sobre el del tenant, y
+            # el del tenant sobre el de la instalación. «La primera que haya»
+            # manda avisos en un idioma que nadie pidió.
+            idiomas=[x for x in (loc.idioma, "es") if x],
+        )
+        if plantilla is not None:
+            compuesto = render(
+                plantilla,
+                {
+                    "titulo": notificacion.titulo,
+                    "cuerpo": notificacion.cuerpo,
+                    **(getattr(notificacion, "datos", None) or {}),
+                },
+            )
+            if compuesto["sirve"]:
+                titulo = compuesto["asunto"] or titulo
+                cuerpo = compuesto["cuerpo"]
+            else:
+                # No se manda a medias: «Hola {{nombre}}» llegando así parece roto,
+                # y quien lo recibe deduce que el sistema está mal cuidado.
+                logger.warning(
+                    "reparto.plantilla_incompleta",
+                    clave=clave_plantilla,
+                    faltan=compuesto["faltan"],
+                )
 
     if canal == "sms":
         # El SMS no tiene asunto y se corta a 160 caracteres. Mandar el cuerpo

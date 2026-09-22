@@ -19,7 +19,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, func, select
+from sqlalchemy import DateTime, Index, Integer, String, Text, func, select, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -63,6 +64,14 @@ class EntregaNotificacion(Base):
 
     proximo_intento_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # Lo que el proveedor cuenta DESPUÉS de entregar (CRM-06.02.01.08): abierto,
+    # click, rebote, queja. Va como historial y no como estado porque los
+    # webhooks llegan desordenados —un «entregado» después de un «abierto» pasa a
+    # diario— y quedarse con el último dejaría la ficha contando una cosa que no
+    # fue. SMTP nunca rellena esto: no sabe nada después de entregar.
+    sucesos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     entregada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -216,3 +225,147 @@ def historial(db: Session, notificacion_id: UUID) -> list[dict[str, Any]]:
         }
         for f in filas
     ]
+
+
+# ── Qué pasó DESPUÉS de entregar (CRM-06.02.01.08) ────────────────────────
+
+# Lo que un transporte puede decirnos después. SMTP no dice nada de esto: da por
+# entregado lo que aceptó el primer servidor, y ahí se acaba su información. La
+# apertura y el rebote solo los dan las APIs de los proveedores de correo, y por
+# eso esto entra por un camino aparte y OPCIONAL: engancharlo ata la instalación
+# a ese proveedor, y decirlo es parte de la capacidad.
+SUCESOS_POSTERIORES = ("entregado", "abierto", "click", "rebote_duro", "rebote_blando", "queja")
+
+# Cuáles obligan a dejar de escribir a esa dirección. No son opinables: un rebote
+# duro es una dirección que no existe y una queja es alguien que nos ha marcado
+# como spam. Seguir escribiendo a cualquiera de los dos es como se pierde la
+# reputación de envío de todo el dominio, que afecta a los demás clientes.
+CIERRAN_LA_DIRECCION = ("rebote_duro", "queja")
+
+
+def anotar_suceso(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    entrega_id: UUID | None,
+    direccion: str,
+    suceso: str,
+    detalle: str = "",
+    proveedor: str = "",
+    ocurrido_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Anota lo que el proveedor cuenta que pasó con un correo ya mandado.
+
+    **SMTP no da esto.** Da por entregado lo que aceptó el primer servidor y ahí
+    termina lo que sabe: si el buzón rebota media hora después, el CRM nunca se
+    entera. Por eso esta vía existe y por eso es opcional — usarla ata la
+    instalación a la API de un proveedor concreto, y esa es una decisión del
+    cliente, no una que se le imponga por traer la función.
+
+    Lo que **no** es opcional es la consecuencia: un rebote duro o una queja
+    cierran la dirección. Anotarlos y seguir escribiendo sería tener la
+    información y no usarla, que es peor que no tenerla.
+    """
+    if suceso not in SUCESOS_POSTERIORES:
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            f"Suceso de entrega desconocido: «{suceso}»",
+            error_code="entrega.suceso_desconocido",
+            detalle={"admitidos": list(SUCESOS_POSTERIORES)},
+        )
+
+    momento = ocurrido_at or datetime.now(timezone.utc)
+    fila = db.get(EntregaNotificacion, entrega_id) if entrega_id else None
+    if fila is not None:
+        historial = list(fila.sucesos or [])
+        historial.append(
+            {
+                "suceso": suceso,
+                "cuando": momento.isoformat(),
+                "detalle": detalle[:300],
+                "proveedor": proveedor,
+            }
+        )
+        fila.sucesos = historial
+        # El estado solo avanza: un «entregado» que llega después de un «abierto»
+        # —pasa, porque los webhooks se desordenan— no puede retroceder la ficha.
+        if suceso == "entregado" and fila.estado == "pendiente":
+            fila.estado = "entregada"
+        elif suceso in CIERRAN_LA_DIRECCION:
+            fila.estado = "fallida"
+        db.flush()
+
+    cierra = suceso in CIERRAN_LA_DIRECCION
+    if cierra:
+        logger.warning(
+            "notificaciones.direccion_cerrada",
+            suceso=suceso,
+            proveedor=proveedor,
+        )
+    return {
+        "suceso": suceso,
+        "direccion": direccion,
+        "cierra_la_direccion": cierra,
+        "que_hacer": (
+            "Hay que dejar de escribir a esta dirección: un rebote duro es un buzón "
+            "que no existe y una queja es alguien que nos ha marcado como spam. "
+            "Seguir escribiendo quema la reputación del dominio, y eso lo pagan "
+            "también los demás clientes."
+            if cierra
+            else ""
+        ),
+    }
+
+
+def estadisticas_de_entrega(db: Session, tenant_id: UUID, *, dias: int = 30) -> dict[str, Any]:
+    """Cuántos llegaron, cuántos se abrieron y cuántos rebotaron.
+
+    **Lo que no se puede medir se dice.** Si el tenant manda por SMTP, la
+    apertura y el rebote no existen: no son cero, es que nadie los cuenta. Un
+    panel con un 0 % de apertura hace que alguien concluya que sus correos no
+    interesan, cuando lo que pasa es que su transporte no lo mide.
+    """
+    from datetime import timedelta
+
+    desde = datetime.now(timezone.utc) - timedelta(days=max(1, dias))
+    filas = (
+        db.execute(
+            select(EntregaNotificacion).where(
+                EntregaNotificacion.tenant_id == tenant_id,
+                EntregaNotificacion.created_at >= desde,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    con_sucesos = [f for f in filas if f.sucesos]
+    cuenta: dict[str, int] = {}
+    for fila in con_sucesos:
+        for suceso in fila.sucesos or []:
+            clave = str(suceso.get("suceso") or "")
+            cuenta[clave] = cuenta.get(clave, 0) + 1
+
+    mandados = len(filas)
+    medible = bool(con_sucesos)
+    return {
+        "dias": dias,
+        "mandados": mandados,
+        "por_suceso": cuenta,
+        "aperturas": cuenta.get("abierto", 0),
+        "rebotes_duros": cuenta.get("rebote_duro", 0),
+        "quejas": cuenta.get("queja", 0),
+        # La diferencia que decide si este panel informa o engaña.
+        "medible": medible,
+        "tasa_apertura_pct": (
+            round(100 * cuenta.get("abierto", 0) / mandados, 1) if medible and mandados else None
+        ),
+        "porque": (
+            "Hay sucesos de al menos un proveedor que los reporta."
+            if medible
+            else "Ningún transporte de este tenant reporta lo que pasa después de "
+            "entregar. La apertura y el rebote NO son cero: es que nadie los "
+            "cuenta. SMTP da por entregado lo que aceptó el primer servidor y ahí "
+            "acaba lo que sabe."
+        ),
+    }

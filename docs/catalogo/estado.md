@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 610 hecho · ⬜ 97 pendiente
+**707 capacidades**: ✅ 620 hecho · ⬜ 87 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 247 · ⬜ 36
+283 capacidades · ✅ 252 · ⬜ 31
 
 ### 0.1 Multi-tenancy
 
@@ -361,14 +361,14 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.13` | Forzar SSO por tenant: sin contraseña local ni vías de escape, con excepción nominal y auditada para el administrador de rescate | C | 1 | identity | ✅ | — |
 | `CRM-00.05.01.14` | Descubrimiento de dominio (home realm discovery) y alias de correo, para no preguntar al usuario por su proveedor | A | 1 | identity | ✅ | — |
 | `CRM-00.05.01.15` | Rotación y caducidad de los certificados de firma del IdP, con aviso antes de que expiren y convivencia de dos certificados | C | 1 | identity | ✅ | — |
-| `CRM-00.05.01.16` | Conectores SSO por proveedor (Entra ID, Okta, Google Workspace, Keycloak, Ping) encima del genérico, nunca en su lugar | A | 2 | identity | ⬜ | — |
+| `CRM-00.05.01.16` | Conectores SSO por proveedor (Entra ID, Okta, Google Workspace, Keycloak, Ping) encima del genérico, nunca en su lugar | A | 2 | identity | ✅ | — |
 | `CRM-00.05.01.17` | Segundo factor por SMS y por correo (OTP), marcados como el factor más débil y desactivables por política | C | 1 | identity | ✅ | contecmind:app/services/mfa.py |
 | `CRM-00.05.01.18` | Reautenticación reforzada (step-up) ante operación sensible: exportación masiva, cambio de permisos, borrado, suplantación | C | 1 | identity | ✅ | — |
-| `CRM-00.05.01.19` | Ciclo de vida del segundo factor: inscripción guiada, cambio de dispositivo y desbloqueo asistido con doble aprobación auditada | C | 1 | identity | ⬜ | — |
+| `CRM-00.05.01.19` | Ciclo de vida del segundo factor: inscripción guiada, cambio de dispositivo y desbloqueo asistido con doble aprobación auditada | C | 1 | identity | ✅ | — |
 | `CRM-00.05.01.20` | Dispositivos de confianza con caducidad y revocación remota, para no pedir el factor en cada entrada del mismo equipo | A | 1 | identity | ✅ | — |
-| `CRM-00.05.01.21` | MFA adaptativa por riesgo: exigir el segundo factor solo cuando el contexto cambia (IP, país, dispositivo, horario) | A | 2 | identity | ⬜ | contecweb:app/services/security_rules.py |
-| `CRM-00.05.01.22` | Conectores MFA por proveedor (Duo, Okta Verify, Twilio Verify, RSA SecurID) encima del transporte genérico | A | 2 | identity | ⬜ | — |
-| `CRM-00.05.01.23` | Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor | A | 1 | identity | ⬜ | contecmind:app/services/webauthn.py |
+| `CRM-00.05.01.21` | MFA adaptativa por riesgo: exigir el segundo factor solo cuando el contexto cambia (IP, país, dispositivo, horario) | A | 2 | identity | ✅ | contecweb:app/services/security_rules.py |
+| `CRM-00.05.01.22` | Conectores MFA por proveedor (Duo, Okta Verify, Twilio Verify, RSA SecurID) encima del transporte genérico | A | 2 | identity | ✅ | — |
+| `CRM-00.05.01.23` | Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor | A | 1 | identity | ✅ | contecmind:app/services/webauthn.py |
 | `CRM-00.05.01.24` | Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces | A | 1 | identity | ✅ | — |
 | `CRM-00.05.01.25` | Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer | C | 1 | identity | ✅ | — |
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 38 · ⬜ 16
+54 capacidades · ✅ 39 · ⬜ 15
 
 ### 1.1 Modelo de parties
 
@@ -465,7 +465,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
 | `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
 | `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | ✅ | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
-| `CRM-01.01.01.13` | Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota | A | 2 | party | ⬜ | — |
+| `CRM-01.01.01.13` | Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota | A | 2 | party | ✅ | — |
 | `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ⬜ | — |
 | `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ⬜ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 54 · ⬜ 11
+65 capacidades · ✅ 55 · ⬜ 10
 
 ### 3.1 Pipeline y oportunidades
 
@@ -740,7 +740,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.03.02.04` | Descuentos con matriz de aprobación por umbral y margen mínimo | C | 2 | sales | ✅ | contecmind:app/services/approval_engine/ (matriz de aprobación por umbral) |
 | `CRM-03.03.02.05` | Cálculo de margen y rentabilidad en el propio presupuesto | A | 2 | sales | ✅ | contecflow-PSA:app/services/profitability_service.py + cost_service.py |
 | `CRM-03.03.02.06` | Generación documental (PDF) con plantillas por marca e idioma | C | 2 | sales | ✅ | contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py |
-| `CRM-03.03.02.07` | Enviar a firma un presupuesto o contrato desde la oportunidad, y que su estado mueva la etapa (usa CRM-06.01.02) | A | 2 | sales | ⬜ | — |
+| `CRM-03.03.02.07` | Enviar a firma un presupuesto o contrato desde la oportunidad, y que su estado mueva la etapa (usa CRM-06.01.02) | A | 2 | sales | ✅ | — |
 | `CRM-03.03.02.08` | Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos | A | 2 | sales | ✅ | contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py |
 | `CRM-03.03.02.09` | Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación | A | 2 | sales | ✅ | contecpos:services/identidad (suscripciones y planes) |
 | `CRM-03.03.02.10` | Gestión de renovaciones con alertas y pipeline específico | A | 2 | sales | ✅ | — |
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-29 capacidades · ✅ 23 · ⬜ 6
+29 capacidades · ✅ 26 · ⬜ 3
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -1029,9 +1029,9 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
-| `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ⬜ | — |
-| `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ⬜ | — |
-| `CRM-06.02.01.06` | Usuarios invitados externos con acceso acotado y temporal | A | 1 | identity | ⬜ | contecweb:app/services/share_links.py (acceso acotado y temporal) |
+| `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ✅ | — |
+| `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ✅ | — |
+| `CRM-06.02.01.06` | Usuarios invitados externos con acceso acotado y temporal | A | 1 | identity | ✅ | contecweb:app/services/share_links.py (acceso acotado y temporal) |
 
 ## Módulo 7 — Administración, ALM y gobierno
 
