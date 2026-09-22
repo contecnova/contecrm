@@ -768,3 +768,202 @@ def instalar_paquete(datos: InstalarPaquete, uow: UowDep, principal: Autenticado
         simular=not datos.aplicar,
         por=principal.usuario_id,
     )
+
+
+# ── Módulos verticales (CRM-00.04.04) ─────────────────────────────────────
+
+
+class InstalarModulo(BaseModel):
+    manifiesto: dict[str, Any]
+    aplicar: bool = Field(
+        False,
+        description=(
+            "Falso simula y no toca nada. Es el valor por defecto a propósito: "
+            "instalar un módulo es un cambio de modelo de datos en producción, y "
+            "el error más caro es pulsar el botón creyendo que aún se estaba "
+            "mirando"
+        ),
+    )
+
+
+@router.post(
+    "/modulos/instalar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Instalar un módulo vertical",
+    description=(
+        "Un módulo es un paquete declarativo: objetos, campos, taxonomías, "
+        "estados, flujos, permisos, plantillas, pantallas y conectores. Que el "
+        "producto sea headless es lo que permite que sus pantallas salgan de la "
+        "superficie declarada, sin escribir front.\n\n"
+        "Todo lo que trae va **prefijado con su clave**: sin prefijo, dos módulos "
+        "que llamen «envío» a cosas distintas se pisan, y el segundo que se "
+        "instale rompe al primero.\n\n"
+        "Las dependencias se comprueban **antes y todas juntas**: instalar, "
+        "fallar, corregir y repetir cinco veces es la experiencia que hace que "
+        "nadie quiera instalar módulos."
+    ),
+)
+def instalar_modulo(datos: InstalarModulo, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.instalar(uow, datos.manifiesto, aplicar=datos.aplicar, por=principal.usuario_id)
+
+
+class ActualizarModulo(BaseModel):
+    manifiesto: dict[str, Any]
+    aplicar: bool = False
+    forzar_fijos: bool = Field(
+        False,
+        description=(
+            "Pisa los elementos que el módulo gobierna y el cliente modificó. "
+            "Hacerlo en silencio es cómo se pierde la confianza en las "
+            "actualizaciones, así que hay que pedirlo"
+        ),
+    )
+
+
+@router.post(
+    "/modulos/actualizar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Actualizar un módulo respetando lo que el cliente ajustó",
+    description=(
+        "**Lo que decide si los módulos funcionan a los dos años es esto.** El "
+        "cliente habrá tocado lo que el módulo trajo, y una actualización que "
+        "pise sus cambios se deja de instalar — y entonces cada cliente se queda "
+        "congelado en su versión.\n\n"
+        "Tres reglas: lo **fijo** lo gobierna el módulo y se actualiza, avisando "
+        "si el cliente lo tocó; lo **editable** que el cliente tocó no se toca "
+        "nunca más, porque es suyo desde que lo tocó; lo **semilla** se crea una "
+        "vez y ya está.\n\n"
+        "Lo que la versión nueva ya no trae **no se borra**: se marca como "
+        "huérfano y se dice. Borrarlo se llevaría por delante los registros que "
+        "cuelgan de él sin que nadie lo hubiera decidido."
+    ),
+)
+def actualizar_modulo(datos: ActualizarModulo, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.actualizar(
+        uow,
+        datos.manifiesto,
+        aplicar=datos.aplicar,
+        forzar_fijos=datos.forzar_fijos,
+        por=principal.usuario_id,
+    )
+
+
+class DesinstalarModulo(BaseModel):
+    aplicar: bool = False
+    borrar_datos: bool = Field(
+        False,
+        description=(
+            "Por defecto los registros se conservan. Un «desinstalado "
+            "correctamente» que deja doscientos mil registros huérfanos es peor "
+            "que no poder desinstalar"
+        ),
+    )
+
+
+@router.post(
+    "/modulos/{clave}/desinstalar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Quitar un módulo diciendo qué pasa con los datos",
+    description=(
+        "Se niega si otro módulo depende de este. Y se dice **cuántos registros "
+        "hay por objeto**; cuando no se pueden contar, se dice que no se han "
+        "podido contar en vez de suponer que son cero."
+    ),
+)
+def desinstalar_modulo(
+    clave: str, datos: DesinstalarModulo, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.metadata import modulos
+
+    return modulos.desinstalar(
+        uow,
+        clave,
+        aplicar=datos.aplicar,
+        borrar_datos=datos.borrar_datos,
+        por=principal.usuario_id,
+    )
+
+
+@router.get(
+    "/modulos",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Módulos instalados en este tenant",
+)
+def listar_modulos(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.instalados(db, principal.tenant_id)
+
+
+@router.get(
+    "/modulos/catalogo",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Módulos disponibles para instalar",
+    description=(
+        "Se dice si está **firmado y revisado**, porque de eso depende si se "
+        "instala a ciegas: un módulo sin firma puede haber sido modificado por "
+        "cualquiera entre quien lo escribió y quien lo instala."
+    ),
+)
+def catalogo_modulos(
+    db: DbDep, principal: AutenticadoDep, sector: str = Query("", max_length=80)
+) -> Any:
+    from services.metadata import modulos
+
+    return modulos.catalogo(db, sector=sector)
+
+
+@router.get(
+    "/modulos/{clave}/integridad",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="¿Lo instalado es lo que se publicó?",
+    description=(
+        "Compara la huella de lo instalado con la del catálogo. Cuando la versión "
+        "ya no está publicada **se dice que no se puede comparar**, en vez de "
+        "darlo por bueno."
+    ),
+)
+def integridad_modulo(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.comprobar_integridad(db, principal.tenant_id, clave)
+
+
+@router.get(
+    "/modulos/{clave}/telemetria",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué del módulo se usa de verdad",
+    description=(
+        "Dice si el módulo está bien recortado: uno con quince objetos de los que "
+        "se usan dos no está completo, está inflado — y cada objeto que sobra es "
+        "una entrada de menú que el usuario tiene que aprender a ignorar.\n\n"
+        "Se dice cuándo el dato **todavía no es concluyente**: un módulo instalado "
+        "ayer con todo sin usar no está inflado, está recién puesto."
+    ),
+)
+def telemetria_modulo(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.telemetria(db, principal.tenant_id, clave)
+
+
+@router.get(
+    "/modulos/superficie",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Pantallas que aportan los módulos instalados",
+    description=(
+        "El front oficial pinta lo que la superficie declara, así que un módulo "
+        "añade pantallas **declarándolas**, sin escribir front.\n\n"
+        "Solo las de los módulos instalados y activos: servir las de uno "
+        "desinstalado dejaría un menú con entradas que llevan a un 404, que es "
+        "peor que no tener la entrada."
+    ),
+)
+def superficie_modulos(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import modulos
+
+    return modulos.superficie_de_modulos(db, principal.tenant_id)

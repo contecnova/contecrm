@@ -6284,3 +6284,130 @@ Las tasas se enseñan **con el umbral del sector al lado**: una tasa de queja de
 0,3 % suena a poco y es el triple de lo que los proveedores toleran antes de
 empezar a mandar a la carpeta de spam. Un número sin referencia no dice si hay que
 hacer algo.
+
+## Módulos verticales: caracterizar el producto para un sector (`CRM-00.04.04`)
+
+La extensión sin código (`CRM-00.04.03`) resuelve «falta un campo». Esto resuelve
+lo otro: que el producto llegue **ya caracterizado**. Un operador logístico no
+necesita un campo más — necesita expediciones, trazabilidad con el transportista,
+incidencias con su tipología y que su cliente vea el seguimiento sin llamar.
+
+Un módulo es un **paquete declarativo y versionado**: objetos, campos, taxonomías,
+estados, flujos, permisos, plantillas, pantallas, conectores y datos semilla. Que
+el producto sea headless es lo que lo hace posible —las pantallas salen de la
+superficie declarada, sin escribir front— pero no lo hace gratis.
+
+### Lo que decide si esto funciona a los dos años (`CRM-00.04.04.04`)
+
+**La actualización.** El cliente habrá tocado lo que el módulo trajo: habrá
+renombrado una etiqueta, añadido un campo, cambiado un umbral. Una actualización
+que pise esos cambios **se deja de instalar**, y entonces cada cliente se queda
+congelado en su versión — que es exactamente cómo mueren los productos con
+verticales.
+
+Por eso cada elemento declara **quién lo gobierna**, y se declara por adelantado,
+no se descubre en el conflicto:
+
+- **Fijo** — lo gobierna el módulo y se actualiza. Si el cliente lo tocó, se
+  avisa, y solo se pisa pidiéndolo: pisarlo en silencio es cómo se pierde la
+  confianza en las actualizaciones.
+- **Editable** — el cliente lo puede tocar, y desde que lo toca **es suyo**. No se
+  vuelve a tocar nunca. Ese es el trato.
+- **Semilla** — se crea una vez y ya está. Actualizarlo sería reescribir datos que
+  el cliente lleva un año usando.
+
+Y lo que la versión nueva **ya no trae no se borra**: se marca como huérfano y se
+dice. Borrarlo con la actualización se llevaría por delante los registros que
+cuelgan de él sin que nadie lo hubiera decidido.
+
+### Espacio de nombres (`CRM-00.04.04.03`)
+
+Todo lo que trae un módulo va **prefijado con su clave**. Sin prefijo, dos módulos
+que llamen «envío» a cosas distintas se pisan: el segundo que se instale rompe al
+primero sin que nadie entienda por qué, y desinstalar cualquiera de los dos se
+lleva por delante lo del otro.
+
+Las versiones se comparan **por número y no como texto**: como texto, «1.10» es
+menor que «1.9» y una actualización se saltaría sin avisar.
+
+### Instalar es una decisión (`CRM-00.04.04.02`)
+
+**Simular es el valor por defecto.** Instalar un módulo es un cambio de modelo de
+datos en producción, y el error más caro que puede cometer quien lo maneja es
+pulsar el botón creyendo que todavía estaba mirando.
+
+La simulación dice qué se crearía, qué dependencias faltan y qué avisos hay. Y las
+dependencias se comprueban **todas juntas y antes**: instalar, fallar, corregir y
+repetir cinco veces es exactamente la experiencia que hace que nadie quiera
+instalar módulos.
+
+### Qué rechaza y qué solo avisa (`CRM-00.04.04.01`, `CRM-00.04.04.05`)
+
+Lo que está mal **lanza**; lo dudoso **avisa**. La diferencia importa: rechazar por
+algo dudoso deja módulos correctos sin instalar, y aceptar en silencio algo dudoso
+deja al cliente con un módulo que no hace lo que promete.
+
+Una **sección desconocida se rechaza**: ignorarla instalaría un módulo a medias que
+parece completo, y el cliente descubriría lo que falta el día que lo necesite. Un
+módulo **sin descripción** o **sin pantallas** se instala, pero avisando — el
+segundo significa que sus objetos existirán en la API y no aparecerán en el front.
+
+Un módulo que pida una versión del núcleo que no existe se **rechaza al instalar**,
+no falla a mitad.
+
+### Desinstalar dice qué pasa con los datos (`CRM-00.04.04.09`)
+
+Un «desinstalado correctamente» que deja doscientos mil registros huérfanos es
+**peor que no poder desinstalar**: el cliente cree que se fue y los datos siguen
+ahí, sin pantalla que los enseñe y sin nadie que los borre cuando toque.
+
+Por eso la configuración se quita y **los datos se conservan salvo que se pida lo
+contrario**, y se dice cuántos hay por objeto. Cuando no se pueden contar **se dice
+que no se han podido contar**, no se supone que son cero. Y no se desinstala si
+otro módulo depende de este.
+
+### El catálogo y la firma (`CRM-00.04.04.08`)
+
+El catálogo es **de la instalación, no de cada tenant**: quién puede publicar un
+módulo es una decisión de quien opera la plataforma, y dejar que cada tenant
+publique el suyo convertiría el catálogo en una vía para ejecutar configuración
+ajena en casa de otro.
+
+Una versión publicada **no se reescribe**: hacerlo dejaría a quien ya la instaló
+con un contenido distinto del que consta. Y el catálogo dice si cada módulo está
+**firmado y revisado**, porque de eso depende si se instala a ciegas: uno sin firma
+puede haber sido modificado por cualquiera entre quien lo escribió y quien lo
+instala.
+
+La comprobación de integridad compara la huella instalada con la publicada. Cuando
+esa versión ya no está en el catálogo **se dice que no se puede comparar**, en vez
+de darlo por bueno.
+
+### Las pantallas salen de la superficie (`CRM-00.04.04.07`)
+
+El front oficial pinta lo que la superficie declara, así que un módulo añade
+pantallas **declarándolas**. Solo se sirven las de los módulos instalados y
+activos: servir las de uno desinstalado dejaría un menú con entradas que llevan a
+un 404, que es peor que no tener la entrada.
+
+### Telemetría: saber qué sobra (`CRM-00.04.04.10`)
+
+Un módulo con quince objetos de los que se usan dos no está completo, **está
+inflado** — y cada objeto que sobra es una entrada de menú que el usuario tiene
+que aprender a ignorar.
+
+Se cuenta el uso por elemento y se dice cuáles no se han tocado nunca. Y se dice
+también **cuándo el dato todavía no es concluyente**: un módulo instalado ayer con
+todo sin usar no está inflado, está recién puesto, y tratarlo igual llevaría a
+recortar lo que aún nadie ha tenido tiempo de abrir.
+
+### Un módulo de ejemplo completo (`CRM-00.04.04.11`)
+
+En `docs/modulos/logistica.json` hay un módulo de operador logístico entero:
+expediciones con referencia externa y transportista, taxonomía de incidencias de
+envío, máquina de estados con sus transiciones, un flujo de aviso, permisos,
+plantilla de correo, dos pantallas —una interna y otra para el portal del
+cliente—, un conector con su mapa de estados del transportista y un SLA semilla.
+
+Está en el repositorio y **se valida en las pruebas**: un ejemplo que no valida no
+sirve de plantilla para escribir los demás.

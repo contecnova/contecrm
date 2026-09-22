@@ -101,6 +101,13 @@ SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
         "quien acota es `membresias`, y las consultas de usuarios unen por ella"
     ),
     "planes": "catálogo comercial común a todos los tenants",
+    "modulos_publicados": (
+        "catálogo de módulos verticales DE LA INSTALACIÓN, no de cada tenant. "
+        "Quién puede publicar un módulo es una decisión de quien opera la "
+        "plataforma: dejar que cada tenant publique el suyo convertiría el "
+        "catálogo en una vía para ejecutar configuración ajena en casa de otro. "
+        "Lo que sí es por tenant es `modulos_instalados`, que sí lleva tenant_id"
+    ),
     "alembic_version": "tabla de control de migraciones, no de negocio",
     "ajustes_runtime": (
         "guarda valores de CINCO ámbitos a la vez (global, tier, tenant, unidad "

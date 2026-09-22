@@ -436,17 +436,17 @@ modulos:
             # cliente habrá tocado lo que el módulo trajo y una actualización que
             # pise sus cambios se deja de instalar.
             capacidades:
-              - {id: CRM-00.04.04.01, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado"}
-              - {id: CRM-00.04.04.02, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás"}
-              - {id: CRM-00.04.04.03, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo"}
-              - {id: CRM-00.04.04.04, c: C, fase: 2, svc: metadata, estado: pendiente, t: "Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto"}
-              - {id: CRM-00.04.04.05, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan"}
+              - {id: CRM-00.04.04.01, c: C, fase: 2, svc: metadata, estado: hecho, t: "Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado"}
+              - {id: CRM-00.04.04.02, c: C, fase: 2, svc: metadata, estado: hecho, t: "Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás"}
+              - {id: CRM-00.04.04.03, c: C, fase: 2, svc: metadata, estado: hecho, t: "Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo"}
+              - {id: CRM-00.04.04.04, c: C, fase: 2, svc: metadata, estado: hecho, t: "Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto"}
+              - {id: CRM-00.04.04.05, c: A, fase: 2, svc: metadata, estado: hecho, t: "Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan"}
               - {id: CRM-00.04.04.06, c: C, fase: 2, svc: integration, estado: pendiente, t: "Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto"}
-              - {id: CRM-00.04.04.07, c: C, fase: 2, svc: front, estado: pendiente, t: "Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo"}
-              - {id: CRM-00.04.04.08, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Catálogo de módulos con versión, autor, firma y revisión antes de instalar"}
-              - {id: CRM-00.04.04.09, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano"}
-              - {id: CRM-00.04.04.10, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant"}
-              - {id: CRM-00.04.04.11, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás"}
+              - {id: CRM-00.04.04.07, c: C, fase: 2, svc: front, estado: hecho, t: "Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo"}
+              - {id: CRM-00.04.04.08, c: A, fase: 2, svc: metadata, estado: hecho, t: "Catálogo de módulos con versión, autor, firma y revisión antes de instalar"}
+              - {id: CRM-00.04.04.09, c: A, fase: 2, svc: metadata, estado: hecho, t: "Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano"}
+              - {id: CRM-00.04.04.10, c: A, fase: 2, svc: metadata, estado: hecho, t: "Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant"}
+              - {id: CRM-00.04.04.11, c: A, fase: 2, svc: metadata, estado: hecho, t: "Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás"}
 
           - id: CRM-00.04.05
             nombre: Seguimiento de servicio externo (trazabilidad con proveedor)

@@ -189,10 +189,18 @@ from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.metadata.modulos import (  # noqa: E402
+    ElementoModulo,
+    ModuloInstalado,
+    ModuloPublicado,
+)
 from services.metadata.publicacion import PublicacionEsquema  # noqa: E402
 from services.metadata.relaciones import RelacionDefinida  # noqa: E402
 
 __all__ = [
+    "ElementoModulo",
+    "ModuloInstalado",
+    "ModuloPublicado",
     "PublicacionEsquema",
     "UsoCampo",
     "EsquemaTenant",

@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 372 hecho · ⬜ 335 pendiente
+**707 capacidades**: ✅ 382 hecho · ⬜ 325 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 187 · ⬜ 96
+283 capacidades · ✅ 197 · ⬜ 86
 
 ### 0.1 Multi-tenancy
 
@@ -313,17 +313,17 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.04.04.01` | Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado | C | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.02` | Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás | C | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.03` | Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo | C | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.04` | Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto | C | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.05` | Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.01` | Manifiesto de módulo declarativo: objetos, campos, taxonomías, estados, flujos, permisos, plantillas y pantallas en un solo paquete versionado | C | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.02` | Instalar, actualizar y desinstalar un módulo en un tenant, con simulación previa y vuelta atrás | C | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.03` | Espacio de nombres por módulo: sus objetos y su configuración no chocan con los del tenant ni con los de otro módulo | C | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.04` | Actualización que respeta lo que el cliente ajustó: el módulo declara qué es suyo, qué es editable y qué pasa en cada conflicto | C | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.05` | Dependencias y compatibilidad: un módulo declara qué versión del núcleo y qué otros módulos necesita, y se rechaza si no encajan | A | 2 | metadata | ✅ | — |
 | `CRM-00.04.04.06` | Conectores de proveedor que vienen dentro del módulo, sobre el transporte genérico: credenciales, mapeo y estados por proveedor sin tocar el producto | C | 2 | integration | ⬜ | — |
-| `CRM-00.04.04.07` | Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo | C | 2 | front | ⬜ | — |
-| `CRM-00.04.04.08` | Catálogo de módulos con versión, autor, firma y revisión antes de instalar | A | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.09` | Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano | A | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.10` | Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant | A | 2 | metadata | ⬜ | — |
-| `CRM-00.04.04.11` | Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.04.07` | Las pantallas del módulo salen de la superficie declarada: el front oficial las pinta sin desarrollo | C | 2 | front | ✅ | — |
+| `CRM-00.04.04.08` | Catálogo de módulos con versión, autor, firma y revisión antes de instalar | A | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.09` | Desinstalar diciendo qué pasa con los datos: qué se borra, qué se conserva y qué queda huérfano | A | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.10` | Telemetría por módulo: qué objetos y qué flujos se usan de verdad en cada tenant | A | 2 | metadata | ✅ | — |
+| `CRM-00.04.04.11` | Módulo de ejemplo completo y documentado, que sirva de plantilla para escribir los demás | A | 2 | metadata | ✅ | — |
 
 #### CRM-00.04.05 · Seguimiento de servicio externo (trazabilidad con proveedor)
 

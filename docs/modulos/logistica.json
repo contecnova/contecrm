@@ -1,0 +1,127 @@
+{
+  "formato": 1,
+  "clave": "logistica",
+  "nombre": "Operador logístico",
+  "version": "1.0.0",
+  "autor": "Contec",
+  "descripcion": "Caracteriza el CRM para un operador logístico: expediciones seguidas con el transportista, incidencias con su tipología y visibilidad para el cliente final.",
+  "requiere": { "nucleo": 1, "modulos": {} },
+  "contenido": {
+    "objetos": [
+      {
+        "clave": "expedicion",
+        "gobierno": "fijo",
+        "etiqueta": "Expedición",
+        "etiqueta_plural": "Expediciones",
+        "campos": [
+          { "nombre": "referencia_externa", "tipo": "texto", "obligatorio": true, "restricciones": { "indexado": true } },
+          { "nombre": "transportista", "tipo": "lista", "obligatorio": true, "restricciones": { "opciones": ["gls", "tnt", "seur", "correos"], "indexado": true } },
+          { "nombre": "bultos", "tipo": "numero" },
+          { "nombre": "peso_kg", "tipo": "numero" },
+          { "nombre": "destino_cp", "tipo": "texto" },
+          { "nombre": "entrega_prometida", "tipo": "fecha", "restricciones": { "indexado": true } },
+          { "nombre": "entrega_real", "tipo": "fecha_hora" },
+          { "nombre": "estado_transportista", "tipo": "texto" }
+        ]
+      }
+    ],
+    "taxonomias": [
+      {
+        "clave": "incidencia_envio",
+        "gobierno": "editable",
+        "linea": "logistica",
+        "nodos": [
+          { "clave": "retraso", "nombre": "Retraso", "hijos": ["trafico", "aduana", "falta_stock"] },
+          { "clave": "dano", "nombre": "Daño", "hijos": ["embalaje", "manipulacion"] },
+          { "clave": "extravio", "nombre": "Extravío" },
+          { "clave": "direccion", "nombre": "Dirección incorrecta" }
+        ]
+      }
+    ],
+    "estados": [
+      {
+        "clave": "expedicion",
+        "gobierno": "fijo",
+        "estados": ["preparando", "recogida", "en_transito", "en_reparto", "entregada", "incidencia", "devuelta"],
+        "transiciones": {
+          "preparando": ["recogida", "incidencia"],
+          "recogida": ["en_transito", "incidencia"],
+          "en_transito": ["en_reparto", "incidencia"],
+          "en_reparto": ["entregada", "incidencia"],
+          "incidencia": ["en_transito", "en_reparto", "devuelta", "entregada"]
+        }
+      }
+    ],
+    "flujos": [
+      {
+        "clave": "avisar_retraso",
+        "gobierno": "editable",
+        "disparador": "modificacion",
+        "objetivo": "expedicion",
+        "condiciones": [{ "atributo": "expedicion.estado", "operador": "=", "valor": "incidencia" }],
+        "acciones": [{ "tipo": "notificar", "a": "owner", "plantilla": "logistica__aviso_incidencia" }]
+      }
+    ],
+    "permisos": [
+      { "clave": "expedicion:read", "gobierno": "fijo", "roles": ["usuario", "agente_soporte"] },
+      { "clave": "expedicion:write", "gobierno": "fijo", "roles": ["agente_soporte"] }
+    ],
+    "plantillas": [
+      {
+        "clave": "aviso_incidencia",
+        "gobierno": "editable",
+        "canal": "email",
+        "asunto": "Incidencia en tu envío {expedicion.referencia_externa}",
+        "cuerpo": "Hemos detectado una incidencia en tu envío. Te mantendremos informado."
+      }
+    ],
+    "pantallas": [
+      {
+        "clave": "expediciones",
+        "gobierno": "editable",
+        "titulo": "Expediciones",
+        "icono": "camion",
+        "tipo": "lista",
+        "objeto": "logistica__expedicion",
+        "columnas": ["referencia_externa", "transportista", "estado", "entrega_prometida"],
+        "filtros": ["transportista", "estado"],
+        "orden": 10
+      },
+      {
+        "clave": "seguimiento_cliente",
+        "gobierno": "editable",
+        "titulo": "Seguimiento",
+        "tipo": "portal",
+        "objeto": "logistica__expedicion",
+        "audiencia": "cliente",
+        "columnas": ["referencia_externa", "estado", "entrega_prometida", "entrega_real"],
+        "orden": 20
+      }
+    ],
+    "conectores": [
+      {
+        "clave": "gls",
+        "gobierno": "editable",
+        "tipo": "generico",
+        "descripcion": "Seguimiento de GLS por API. La dirección y la credencial las pone el cliente.",
+        "mapeo_estados": {
+          "PREPARADO": "preparando",
+          "RECOGIDO": "recogida",
+          "EN_RUTA": "en_transito",
+          "REPARTO": "en_reparto",
+          "ENTREGADO": "entregada",
+          "INCIDENCIA": "incidencia"
+        }
+      }
+    ],
+    "datos_semilla": [
+      {
+        "clave": "sla_entrega_24h",
+        "gobierno": "semilla",
+        "tipo": "sla",
+        "nombre": "Entrega 24 h",
+        "horas_resolucion": 24
+      }
+    ]
+  }
+}
