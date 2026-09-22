@@ -601,3 +601,101 @@ def test_un_contacto_con_una_sola_senal_no_es_cruzable(uow: UnidadDeTrabajo) -> 
     assert salida["cruzable"] is False
     # Y lo que se enseña son pistas, no valores.
     assert all("solo@empresa.com" != s["pista"] for s in salida["senales"])
+
+
+# ── Explotación en contexto y despliegue (CRM-05.01.04.09, CRM-05.01.04.10) ─
+
+
+@pytest.mark.db
+def test_la_pregunta_en_contexto_acota_de_verdad_y_lo_dice(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Un número que parece de toda la empresa y es de una cuenta se lleva a una
+    reunión y allí no cuadra con nada.
+
+    Por eso el filtro se **añade** —no se sugiere, que el otro lado podría
+    ignorarlo— y el aviso viaja con la respuesta.
+    """
+    from services.analytics import fuente as fue
+
+    cuenta_id = uuid4()
+    salida = fue.contexto_del_registro(
+        db,
+        tenant_id,
+        pregunta="¿Cómo va esta cuenta?",
+        objeto="cuenta",
+        registro_id=cuenta_id,
+        etiqueta="Acme",
+    )
+    assert salida["filtros"] == [{"campo": "id", "operador": "=", "valor": str(cuenta_id)}]
+    assert "Acme" in salida["acotada_a"]
+    assert "no es el dato de toda la empresa" in salida["aviso"]
+
+
+@pytest.mark.db
+def test_preguntar_sobre_un_objeto_no_publicado_se_rechaza(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Es el caso peor de los tres: el filtro se ignoraría en silencio al otro
+    lado y la respuesta saldría sin acotar, pareciendo acotada."""
+    from services.analytics import fuente as fue
+
+    descripcion = fue.describir(db, tenant_id)
+    publicados = (descripcion.get("modelo") or {}).get("objetos") or []
+    if not publicados:
+        # Sin modelo publicado no hay contra qué comprobar, y eso **se dice** en
+        # vez de dar por buena una respuesta que parece acotada y puede no estarlo.
+        salida = fue.contexto_del_registro(
+            db,
+            tenant_id,
+            pregunta="¿Y esto?",
+            objeto="objeto_que_no_existe",
+            registro_id=uuid4(),
+        )
+        assert salida["objeto_comprobado"] is False
+        assert "no se ha podido comprobar" in salida["aviso_modelo"]
+        return
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        fue.contexto_del_registro(
+            db,
+            tenant_id,
+            pregunta="¿Y esto?",
+            objeto="objeto_que_no_existe",
+            registro_id=uuid4(),
+        )
+    assert fallo.value.error_code == "analytics.objeto_no_publicado"
+
+
+def test_sin_url_de_contecintelligence_se_dice_que_no_habra_informes() -> None:
+    """Callar aquí deja el CRM sin explotación y con un error que parece de red.
+
+    Es la capacidad de **dependencia de despliegue declarada**
+    (CRM-05.01.04.10): la pila lo levanta con el perfil `bi` o se apunta a uno ya
+    en marcha, y las dos son válidas — lo que no vale es no saber cuál está en
+    uso, porque entonces nadie sabe a quién reiniciar cuando los informes dejan
+    de salir.
+    """
+    from crmcore.config import get_settings
+
+    from services.analytics import cliente as ci
+
+    s = get_settings()
+    original = s.ci_base_url
+    try:
+        s.ci_base_url = ""
+        salida = ci.modo_despliegue()
+        assert salida["resuelta"] is False
+        assert salida["modo"] == "sin_configurar"
+        assert "no habrá informes" in salida["porque"]
+
+        s.ci_base_url = "http://contecintelligence:8000"
+        salida = ci.modo_despliegue()
+        assert salida["modo"] == "levantado_por_la_pila"
+
+        s.ci_base_url = "https://bi.cliente.example.com"
+        salida = ci.modo_despliegue()
+        assert salida["modo"] == "externo"
+        assert "no hace falta" in salida["porque"]
+    finally:
+        s.ci_base_url = original

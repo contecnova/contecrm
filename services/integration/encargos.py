@@ -1132,7 +1132,12 @@ def entregados_sin_prueba(
         db.execute(
             select(Encargo).where(
                 Encargo.tenant_id == tenant_id,
-                Encargo.estado == "entregado",
+                # «completado», que es el estado que existe: la máquina de
+                # estados no tiene ninguno llamado «entregado». Filtrar por uno
+                # inexistente devolvía SIEMPRE la lista vacía, y una lista vacía
+                # aquí se lee como «todo tiene su prueba archivada» — la mentira
+                # más cómoda de todas, porque nadie pregunta por qué no sale nada.
+                Encargo.estado == "completado",
                 Encargo.completado_at >= desde,
             )
         )

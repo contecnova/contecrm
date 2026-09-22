@@ -6705,13 +6705,6 @@ Tres reglas, y las tres están probadas:
   proveedor, y borrar la ficha dejaría sin nombre ni mapa de estados a envíos que
   todavía están en la calle.
 
-### Lo que todavía no está
-
-La **prueba de entrega** (`CRM-00.04.05.05`) —el albarán firmado o la foto, dentro
-del corpus documental y enlazado al encargo— no está hecha. El hito guarda lo que
-dice el proveedor, pero el documento que lo demuestra hoy no se archiva, y sin él
-una reclamación se sostiene sobre un registro nuestro en vez de sobre su firma.
-
 ## Aprobaciones: quién decide y qué pasa si no decide nadie (`CRM-00.03.05`)
 
 Una aprobación no es una tarea con un botón. Es una pregunta con cuatro partes
@@ -7348,14 +7341,6 @@ funcionan.
 Solo puede haber **un cuadro por defecto por rol**: con dos, cuál se abre
 dependería del orden de la consulta, y eso cambia al restaurar una copia.
 
-### Lo que todavía no está
-
-De los cuadros de mando quedan los **componentes con su catálogo de tipos**
-(`CRM-05.01.02.02`), los **filtros globales y el drill-down** (`.03`), los
-**dashboards dinámicos por usuario** (`.04` —el mecanismo `solo_mios` del informe
-ya está, falta llevarlo al cuadro—), las **alertas por umbral** (`.05`) y el
-**embebido con SSO** (`.06`).
-
 ## Explotación delegada en contecintelligence (`CRM-05.01.04`)
 
 La restricción RT-4 dice que la explotación no se reimplementa aquí. Esta sección
@@ -7476,13 +7461,6 @@ en un reinicio en cascada.
 Aquí es también donde se **conecta el ejecutor** del motor de informes. Por eso un
 despliegue sin contecintelligence deja los informes definibles y no ejecutables,
 que es exactamente lo que se le dice a quien los abra.
-
-### Lo que todavía no está
-
-La **dependencia de despliegue declarada** (`CRM-05.01.04.10`) está en
-`docker-compose.yml` con su perfil, pero sin prueba que lo verifique; y el
-**contexto del registro en curso** (`CRM-05.01.04.09`) —preguntar sobre la cuenta
-abierta sin repetir su nombre— es de fase 5.
 
 ## Cuadros de mando completos (`CRM-05.01.02`)
 
@@ -7615,14 +7593,6 @@ ese 14.000 es de hoy o de hace tres semanas.
 Una campaña enseña **su estado antes que sus cifras**: las de una campaña en
 borrador son cero y se leen como un fracaso, y las de una pausada son las de
 cuando se paró y se leen como las de hoy.
-
-### Lo que todavía no está
-
-De estas pantallas queda el **constructor visual** de audiencias y el **lienzo de
-recorridos** con sus bifurcaciones: lo que hay ahora es la lista, el estado y las
-cifras, que es lo que permite trabajar, pero montar un segmento o un recorrido
-sigue haciéndose por API. Están declarados en el catálogo como `CRM-02.02.02.01` y
-`CRM-02.01.02.01`, no dentro de estas dos.
 
 ## Cadencias y el trabajo diario del comercial (`CRM-03.03.01`)
 
@@ -7893,11 +7863,8 @@ separados en vez de fingir que sí con un valor inventado. Si no lo están, se a
 
 ### Lo que todavía no está
 
-De marketing quedan la **personalización con contenido condicional**
-(`CRM-02.03.01.02`), la **entregabilidad** con SPF/DKIM/DMARC y calentamiento de IP
-(`CRM-02.03.01.03`), la **previsualización multi-cliente y el test de spam**
-(`CRM-02.03.01.06`), y de los recorridos la **optimización de hora y canal por
-destinatario** (`CRM-02.02.02.05`, fase 5).
+De los recorridos, la **optimización de hora y canal por destinatario**
+(`CRM-02.02.02.05`), que es de fase 5 y consta como pendiente en el catálogo.
 
 ## Canales de ejecución y entregabilidad (`CRM-02.03.02`, `CRM-02.03.01`)
 

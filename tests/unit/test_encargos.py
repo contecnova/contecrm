@@ -555,3 +555,59 @@ def test_desinstalar_desactiva_pero_no_borra(db: Any, tenant_id: UUID) -> None:
     proy.aplicar_conectores(db, tenant_id, modulo="logistica", conectores=[{"clave": "gls"}])
     assert proy.retirar_conectores(db, tenant_id, modulo="logistica") == ["gls"]
     assert enc._proveedor(db, tenant_id, "gls").activo is False
+
+
+# ── Prueba de entrega y documentos del proveedor (CRM-00.04.05.05) ────────
+
+
+def test_el_albaran_se_enlaza_al_encargo_y_no_se_copia(uow: UnidadDeTrabajo, gls: Any) -> None:
+    """El documento vive en el corpus documental, con su retención, su antivirus
+    y sus permisos. Guardar aquí el binario daría dos copias que divergen, y la
+    del CRM sin política de borrado (RT-5)."""
+    encargo = enc.crear(uow, proveedor="gls")
+    salida = enc.archivar_documento(
+        uow, encargo.id, documento_id="doc-pod-1", rol="prueba_entrega", titulo="Albarán firmado"
+    )
+    assert salida["documento_id"] == "doc-pod-1"
+    assert salida["rol"] == "prueba_entrega"
+
+
+def test_lo_entregado_sin_prueba_sale_en_la_lista(uow: UnidadDeTrabajo, gls: Any) -> None:
+    """Es la lista que hay que mirar ANTES de que el cliente llame diciendo que
+    no le llegó: después ya no se puede pedir la prueba al transportista, porque
+    casi todos la conservan unas semanas y luego la borran.
+
+    Salía siempre vacía: filtraba por un estado —«entregado»— que la máquina de
+    estados no tiene. Y una lista vacía aquí se lee como «todo tiene su prueba»,
+    que es la mentira más cómoda de todas porque nadie pregunta por qué no sale
+    nada.
+    """
+    entregado = enc.crear(uow, proveedor="gls")
+    entregado.estado = "completado"
+    entregado.completado_at = datetime.now(timezone.utc) - timedelta(days=1)
+    uow.db.flush()
+
+    salida = enc.entregados_sin_prueba(uow.db, uow.tenant_id)
+
+    assert salida["medible"] is True
+    assert salida["cuantos"] == 1
+    assert salida["sin_prueba"][0]["encargo_id"] == str(entregado.id)
+
+
+def test_con_la_prueba_archivada_deja_de_salir(uow: UnidadDeTrabajo, gls: Any) -> None:
+    entregado = enc.crear(uow, proveedor="gls")
+    entregado.estado = "completado"
+    entregado.completado_at = datetime.now(timezone.utc) - timedelta(days=1)
+    uow.db.flush()
+    enc.archivar_documento(uow, entregado.id, documento_id="doc-pod-2")
+
+    salida = enc.entregados_sin_prueba(uow.db, uow.tenant_id)
+
+    assert salida["cuantos"] == 0
+
+
+def test_sin_entregas_no_se_dice_que_todo_este_probado(uow: UnidadDeTrabajo, gls: Any) -> None:
+    """Se dice que no había nada que probar, que no es lo mismo."""
+    salida = enc.entregados_sin_prueba(uow.db, uow.tenant_id)
+    assert salida["medible"] is False
+    assert salida["cuantos"] == 0

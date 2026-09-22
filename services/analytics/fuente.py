@@ -542,8 +542,13 @@ def contexto_del_registro(
     de un objeto que la fuente no conoce daría un filtro que el otro lado ignora
     en silencio, que es el caso peor de los tres.
     """
-    modelo = describir(db, tenant_id)
-    objetos = {str(o.get("clave") or o.get("nombre")) for o in (modelo.get("objetos") or [])}
+    # `describir` devuelve {"modelo": {...}, "objetos": <cuántos>}: la LISTA está
+    # dentro del modelo y el nivel de arriba trae el recuento. Leerla del sitio
+    # equivocado dejaba `objetos` en un entero, y con un modelo publicado esto
+    # reventaba al iterarlo. No se veía porque no había prueba que llegara aquí.
+    descripcion = describir(db, tenant_id)
+    publicados = (descripcion.get("modelo") or {}).get("objetos") or []
+    objetos = {str(o.get("clave") or o.get("nombre")) for o in publicados}
     if objetos and objeto not in objetos:
         raise ErrorValidacion(
             f"«{objeto}» no está en el modelo publicado a contecintelligence: el "
@@ -557,7 +562,17 @@ def contexto_del_registro(
         "filtros": [{"campo": "id", "operador": "=", "valor": str(registro_id)}],
         # Lo que la pantalla enseña junto a la respuesta.
         "acotada_a": etiqueta or f"{objeto} {registro_id}",
-        "aviso": (
-            f"Respuesta acotada a {etiqueta or objeto}: no es el dato de toda la " "empresa."
+        "aviso": (f"Respuesta acotada a {etiqueta or objeto}: no es el dato de toda la empresa."),
+        # Sin modelo publicado no se ha podido comprobar que el objeto exista al
+        # otro lado. Se dice: callarlo daría una respuesta que parece acotada y
+        # puede no estarlo, que es peor que no acotar nada.
+        "objeto_comprobado": bool(objetos),
+        "aviso_modelo": (
+            ""
+            if objetos
+            else "Todavía no hay modelo publicado a contecintelligence, así que no "
+            "se ha podido comprobar que «"
+            + objeto
+            + "» exista allí: si no existe, el filtro se ignorará."
         ),
     }
