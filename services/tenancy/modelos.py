@@ -258,11 +258,17 @@ from services.tenancy.catalogos import (  # noqa: E402
     Plantilla,
     TipoCambio,
 )
+from services.tenancy.ciclo_vida import (  # noqa: E402,F401
+    AplicacionPerfil,
+    OperacionTenant,
+    PerfilIndustria,
+)
 from services.tenancy.grc import (  # noqa: E402
     Control,
     EvaluacionControl,
     Riesgo,
 )
+from services.tenancy.marca import MarcaTenant  # noqa: E402,F401
 from services.tenancy.residencia import (  # noqa: E402,F401
     ResidenciaDato,
     Subprocesador,

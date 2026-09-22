@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 600 hecho · ⬜ 107 pendiente
+**707 capacidades**: ✅ 610 hecho · ⬜ 97 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 237 · ⬜ 46
+283 capacidades · ✅ 247 · ⬜ 36
 
 ### 0.1 Multi-tenancy
 
@@ -49,11 +49,11 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.01.03.01` | Provisioning automatizado (API + autoservicio) con plantilla de datos semilla | C | 0 | tenancy | ✅ | contecmind:app/services/tenants.py + app/services/onboarding.py |
-| `CRM-00.01.03.02` | Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos | A | 0 | tenancy | ⬜ | contecmind:app/services/onboarding_guide.py |
-| `CRM-00.01.03.03` | Clonado de tenant (para sandbox, demo, pre-producción) | A | 0 | tenancy | ⬜ | — |
+| `CRM-00.01.03.02` | Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos | A | 0 | tenancy | ✅ | contecmind:app/services/onboarding_guide.py |
+| `CRM-00.01.03.03` | Clonado de tenant (para sandbox, demo, pre-producción) | A | 0 | tenancy | ✅ | — |
 | `CRM-00.01.03.04` | Suspensión, reactivación y congelación en modo solo lectura | C | 0 | tenancy | ✅ | — |
 | `CRM-00.01.03.05` | Offboarding con exportación completa verificable y certificado de destrucción | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py |
-| `CRM-00.01.03.06` | Fusión de tenants (M&A) y escisión de un tenant en dos | D | 0 | tenancy | ⬜ | — |
+| `CRM-00.01.03.06` | Fusión de tenants (M&A) y escisión de un tenant en dos | D | 0 | tenancy | ✅ | — |
 | `CRM-00.01.03.07` | Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding | A | 0 | tenancy | ✅ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
 | `CRM-00.01.03.08` | Sub-tenants / business units con herencia configurable de configuración y datos | A | 0 | tenancy | ✅ | contecflow-PSA:app/services/organizations_service.py |
 | `CRM-00.01.03.09` | Migración entre regiones con ventana de solo lectura y verificación de integridad | A | 0 | tenancy | ✅ | — |
@@ -68,7 +68,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.04.03` | Modelo de datos extensible por tenant sin afectar a los demás | C | 0 | metadata | ✅ | contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py |
 | `CRM-00.01.04.04` | Feature flags por tenant, por usuario y por porcentaje de tráfico | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py |
 | `CRM-00.01.04.05` | Catálogo de planes/entitlements que activa capacidades declarativamente | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes |
-| `CRM-00.01.04.06` | Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío | A | 0 | tenancy | ⬜ | contecflow-PSA:app/services/branding_service.py |
+| `CRM-00.01.04.06` | Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío | A | 0 | tenancy | ✅ | contecflow-PSA:app/services/branding_service.py |
 | `CRM-00.01.04.07` | Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional | C | 0 | core | ✅ | contecmind:app/services/i18n_labels.py + languages.py |
 | `CRM-00.01.04.08` | Gestión de secretos y claves de integración por tenant (vault segmentado) | C | 0 | core | ✅ | contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py |
 | `CRM-00.01.04.09` | BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación | A | 0 | core | ✅ | contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py |
@@ -80,7 +80,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.05.01` | Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC) | A | 0 | tenancy | ✅ | — |
 | `CRM-00.01.05.02` | Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs) | A | 0 | tenancy | ✅ | — |
 | `CRM-00.01.05.03` | Control de subprocesadores y trazabilidad de transferencias internacionales | A | 0 | tenancy | ✅ | contecmind:docs/COMPLIANCE.md |
-| `CRM-00.01.05.04` | Modo sin salida de datos para IA: inferencia en región o modelo dedicado | A | 5 | core | ⬜ | contecmind:app/core/inference_gate.py + model_router.py |
+| `CRM-00.01.05.04` | Modo sin salida de datos para IA: inferencia en región o modelo dedicado | A | 5 | core | ✅ | contecmind:app/core/inference_gate.py + model_router.py |
 | `CRM-00.01.05.05` | Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales | C | 0 | docs | ✅ | contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md |
 
 #### CRM-00.01.06 · Cuotas, límites y equidad (noisy neighbour)
@@ -91,7 +91,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.06.02` | Cuotas de almacenamiento, registros, llamadas API, correos, workflows y tokens de IA | C | 0 | tenancy | ✅ | contecmind:app/services/entitlements.py (cuotas) + metering.py |
 | `CRM-00.01.06.03` | Aislamiento de carga: bulkheads, circuit breakers y colas de prioridad por tier | A | 0 | core | ✅ | contecmind:app/core/circuit_breaker.py |
 | `CRM-00.01.06.04` | Backpressure y degradación elegante bajo saturación (diferir lo no crítico) | A | 0 | core | ✅ | contecmind:app/core/degradation.py |
-| `CRM-00.01.06.05` | Detección de tenants anómalos y throttling adaptativo automático | A | 0 | gateway | ⬜ | — |
+| `CRM-00.01.06.05` | Detección de tenants anómalos y throttling adaptativo automático | A | 0 | gateway | ✅ | — |
 | `CRM-00.01.06.06` | Panel de consumo por tenant con alertas de aproximación al límite | C | 0 | tenancy | ✅ | contecmind:app/services/metering.py + app/api/admin_observability.py |
 | `CRM-00.01.06.07` | Medición para facturación (metering) exportable a sistema de billing | A | 0 | tenancy | ✅ | contecmind:app/services/metering.py |
 
@@ -107,11 +107,11 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.07.06` | Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado | C | 1 | front | ⬜ | — |
 | `CRM-00.01.07.07` | Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito | C | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.08` | Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence | A | 1 | tenancy | ✅ | — |
-| `CRM-00.01.07.09` | SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión | C | 1 | identity | ⬜ | — |
+| `CRM-00.01.07.09` | SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión | C | 1 | identity | ✅ | — |
 | `CRM-00.01.07.10` | Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola | A | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.11` | Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta | A | 2 | tenancy | ✅ | — |
 | `CRM-00.01.07.12` | Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose | A | 2 | tenancy | ✅ | — |
-| `CRM-00.01.07.13` | Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta | A | 2 | tenancy | ⬜ | — |
+| `CRM-00.01.07.13` | Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta | A | 2 | tenancy | ✅ | — |
 
 ### 0.2 Arquitectura headless / API-first
 
@@ -387,11 +387,11 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.02.19` | Filtrado de listados por política traducida a SQL, coherente con la decisión de la ficha | C | 1 | core | ✅ | — |
 | `CRM-00.05.02.20` | Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro | A | 1 | identity | ✅ | — |
 | `CRM-00.05.02.21` | Simulador de acceso: ver qué vería un usuario dado antes de activar una política | A | 1 | identity | ✅ | contecmind:app/api/admin_access_simulator.py |
-| `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ⬜ | — |
+| `CRM-00.05.02.07` | Territorios y jerarquías de territorio que condicionan la visibilidad | A | 2 | identity | ✅ | — |
 | `CRM-00.05.02.08` | Restricción por unidad de negocio, marca, país o canal | A | 0 | identity | ✅ | contecflow-PSA:app/services/organizations_service.py |
 | `CRM-00.05.02.09` | Registros ocultos vs. registros bloqueados (visibles sin detalle) | A | 1 | identity | ✅ | — |
 | `CRM-00.05.02.10` | Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría | A | 0 | identity | ✅ | contecweb:app/services/sesion_cedida.py (suplantación auditada) |
-| `CRM-00.05.02.12` | Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados | C | 2 | identity | ⬜ | — |
+| `CRM-00.05.02.12` | Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados | C | 2 | identity | ✅ | — |
 | `CRM-00.05.02.11` | Explicador de permisos: por qué este usuario ve este registro | D | 0 | identity | ✅ | contecmind:app/services/access_explainer.py + access_simulator.py |
 
 #### CRM-00.05.03 · Protección del dato

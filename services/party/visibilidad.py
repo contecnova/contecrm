@@ -4,12 +4,16 @@ El equipo de cuenta (`CRM-01.01.01.10`) es una tabla de este servicio, así que
 el núcleo no puede consultarla: registra aquí el resolutor y la vía «está en el
 equipo de la cuenta» empieza a aplicar en los listados.
 
-La jerarquía de mando **no** se resuelve aquí, y conviene decir por qué: vive en
-la membresía del tenant, que es de `identity`, y ningún servicio lee el esquema
-de otro. Hasta que se replique —como se replican los ajustes y la clave del
-tenant— un responsable no ve por jerarquía las cuentas de su equipo en este
-servicio. Ve las suyas, aquellas en cuyo equipo está, y lo que le compartan.
-Está anotado en el manual y no escondido aquí.
+Y la **jerarquía de mando** también aplica ya (`CRM-00.05.02.12`). Vive en la
+membresía del tenant, que es de `identity`, así que no se consulta: se **replica**
+por evento a este esquema, igual que se replican los ajustes en caliente y la
+clave del tenant. Un responsable ve ahora, además de lo suyo y de aquello en cuyo
+equipo está, lo de quien depende de él.
+
+La réplica puede ir con retraso si el evento no llega, y eso se nota en la
+consulta de frescura. El retraso es molesto —un jefe que acaba de heredar un
+equipo no lo ve todavía— y es el lado correcto en el que equivocarse: lo grave
+sería lo contrario, que alguien que ya no manda siguiera viendo.
 """
 
 from __future__ import annotations
@@ -65,3 +69,11 @@ def equipos(db: Session, principal: Any, objeto: str) -> dict[UUID, str]:
 
 
 registrar_resolutor("equipos", equipos)
+
+
+# La jerarquía replicada, conectada a la visibilidad. Sin esta llamada las tablas
+# estarían llenas y los listados seguirían sin aplicar la jerarquía — que es
+# exactamente el hueco que esto cierra.
+from crmcore.authz.jerarquia import registrar_resolutores  # noqa: E402
+
+registrar_resolutores()

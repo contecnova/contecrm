@@ -2779,7 +2779,6 @@ con el motivo por el que no se cerraron entonces.
 
 | Capacidad | Qué falta y por qué no se hizo ya |
 |---|---|
-| `CRM-00.05.02.12` Replicar la jerarquía de mando | La compartición por jerarquía **no aplica en los listados** de `party` y `sales`: `superior_id` vive en la membresía, que es de `identity`, y ningún servicio lee el esquema de otro. Hoy un responsable ve lo suyo, lo de los equipos en los que está y lo que le compartan, pero no lo de sus subordinados por serlo. Cerrarlo exige replicar la jerarquía como se replican los ajustes y la clave del tenant (§30) |
 | `CRM-06.02.01.07` Plantilla de notificación por canal | El repartidor **no renderiza plantillas de `tenancy`** porque son de otro servicio. El mismo texto va al correo y al SMS, recortado a 160 en el segundo. Tenerla exige replicar las plantillas a cada esquema (§29) |
 | `CRM-06.02.01.08` Estadísticas de entrega del correo | SMTP no da apertura ni rebote; eso solo lo dan las APIs propietarias. Se hará como transporte aparte **para quien lo quiera**, diciendo que ata la instalación a ese proveedor (§29) |
 | `CRM-01.01.01.13` Reverificación periódica | Un veredicto caduca a los 90 días y se vuelve a preguntar **cuando alguien lo pide**. Falta la cola que reverifique sola lo caducado, con su cuota: muchos registros oficiales la tienen, y un barrido sin control la agota en una mañana (§32) |
@@ -9854,3 +9853,161 @@ no tiene garantía y que alguien lo arregle donde sí se puede.
 
 Y el informe lo dice claro: **lo que consta es lo que se ha anotado**. Que no
 aparezca ninguna transferencia no significa que no las haya.
+
+---
+
+## Ciclo de vida del tenant: onboarding, clonado, fusión y baja (`CRM-00.01.03`)
+
+Las cuatro operaciones de este capítulo son las que más miedo dan de un producto
+multi-tenant, y todas fallan igual: **a medias y en silencio**. Un clonado que
+copia nueve tablas de diez deja una demo que funciona hasta que alguien abre la
+pantalla que falta; una fusión que se para a la mitad deja a dos clientes
+viéndose los datos.
+
+Por eso las cuatro **se simulan antes de hacerse**: dicen primero qué van a mover
+y qué no saben mover. Descubrirlo después es descubrirlo con los datos ya movidos.
+
+### Onboarding por industria (`CRM-00.01.03.02`)
+
+Un perfil trae objetos, pipelines, flujos y plantillas, y es **datos y no
+código**: una industria nueva no puede ser un despliegue del producto, porque
+entonces el comercial que la vende depende de una versión.
+
+- **Nada se pisa.** Lo que ya existe con la misma clave se salta y se cuenta:
+  aplicar un perfil sobre un tenant que lleva tres semanas trabajando es el caso
+  que rompe, y pisar su configuración es la forma más rápida de perder su trabajo.
+- **El perfil dice lo que NO trae.** Uno que promete «todo lo de tu sector» y
+  deja fuera la mitad hace que el cliente descubra los huecos cuando ya ha metido
+  datos. Y lo que no trae se queda sin configurar: un valor inventado por defecto
+  es peor que un hueco visible.
+
+### Clonado (`CRM-00.01.03.03`)
+
+- **Hay cosas que no se copian nunca**, y cada una con su motivo: credenciales
+  —copiarlas da acceso al sistema real desde una copia de pruebas—, claves de
+  cifrado, consentimientos y la cadena de auditoría. Las supresiones se copian
+  **siempre**, al revés que todo lo demás: una baja tiene que respetarse también
+  en el clon.
+- **El destino nace marcado como copia y con las integraciones apagadas.** Si no
+  se marca, a las dos semanas alguien manda una campaña de verdad desde la copia
+  de demostración; y un sandbox que sincroniza con el ERP de producción no es un
+  sandbox.
+- **Un clon incompleto no se da por bueno**: se comparan los recuentos y, si no
+  cuadran, la operación queda fallida.
+
+### Fusión y escisión (`CRM-00.01.03.06`)
+
+**Fusionar no es copiar: es decidir qué gana.** Dos empresas que se fusionan
+traen dos catálogos de productos, dos pipelines y el mismo cliente dado de alta
+dos veces. Aquí se cuenta lo que choca; resolver cada choque es de quien conoce el
+negocio, porque automatizarlo produce un catálogo que no es de ninguna de las dos
+y nadie sabe cuál era el suyo.
+
+Al escindir, **lo que no se asigna se queda donde estaba**. Repartir «lo que no se
+dijo» por la mitad, o dárselo al nuevo, es cómo se pierden carteras enteras: nadie
+revisa una lista de tres mil cuentas antes de aprobar.
+
+### Baja en cascada con certificado único (`CRM-00.01.07.13`)
+
+O se cierra en las tres herramientas de la suite **o se dice cuál ha quedado
+abierta**. Firmar que se destruyó todo sin comprobar la tercera es firmar sobre
+algo que sigue ahí, y eso es peor que no dar certificado.
+
+## Marca blanca (`CRM-00.01.04.06`)
+
+Poner un logo es fácil. Lo que cuesta es que no se escape la marca del fabricante
+por ningún sitio, y se escapa siempre por los mismos **cuatro puntos**: el
+remitente de los correos, el dominio de los enlaces, el pie de las plantillas y el
+título de la pestaña del navegador. Con uno solo mal, el cliente descubre a su
+proveedor delante de su propio cliente.
+
+- **Guardar y activar van separados.** Se configura por partes, en varias
+  sesiones, y activar a medias es lo que hace que el primer correo salga con el
+  dominio de origen. No se activa hasta que los cuatro puntos están cubiertos.
+- **Cambiar un dominio lo deja sin verificar.** Arrastrar la marca de verificado
+  haría que los correos salieran por un dominio que nadie ha comprobado.
+- **El contraste se calcula, no se estima.** Una paleta corporativa preciosa con
+  texto gris sobre blanco deja media aplicación ilegible, y quien la eligió no lo
+  ve porque la mira en su pantalla buena.
+
+## Tenants anómalos y throttling adaptativo (`CRM-00.01.06.05`)
+
+El límite fijo protege del abuso y no protege de lo que de verdad tumba un
+sistema multi-tenant: **un cliente que hace lo de siempre, pero diez veces más**.
+Su importación nocturna se vuelve diurna y el resto empieza a esperar sin que
+nadie haya pasado de su límite.
+
+- **Se compara con lo suyo, no con un número global.** Un cliente grande haciendo
+  mil peticiones por minuto es normal; uno pequeño haciendo cien no lo es. Un
+  umbral único castiga al grande y deja pasar al pequeño.
+- **Sin historia no se frena.** Antes del mínimo de observación se mira y se
+  dice, pero no se actúa: frenar por ruido es frenar a quien está trabajando.
+- **El freno es gradual, temporal y se suelta solo.** Se ralentiza, no se corta:
+  cortar a un cliente porque su importación va rápida convierte un problema de
+  reparto en una incidencia. Y un freno que hay que quitar a mano se queda puesto.
+- **Y se le dice al frenado que está frenado**, con qué cuota y hasta cuándo. Un
+  `429` sin explicación hace que la integración reintente más fuerte, que es
+  exactamente lo contrario de lo que hace falta.
+
+## La jerarquía de mando, replicada (`CRM-00.05.02.12`, `CRM-00.05.02.07`)
+
+Esto cierra un hueco que este mismo manual llevaba tiempo declarando: **la
+compartición por jerarquía no aplicaba en los listados** de `party` ni de `sales`.
+Un responsable veía lo suyo, lo de los equipos de cuenta en los que estaba y lo
+que le compartieran, pero no lo de sus subordinados por serlo. El motivo era
+correcto —`superior_id` vive en la membresía, que es de `identity`— y la solución
+es la misma que ya se usa para los ajustes en caliente y la clave del tenant:
+**replicar**.
+
+- **Se replica lo mínimo**: quién depende de quién y quién está en qué
+  territorio. Ni nombres ni correos: una réplica es otra copia de dato personal
+  que hay que proteger.
+- **El vacío también se aplica.** Alguien que deja de depender de nadie tiene que
+  dejar de contarse como subordinado ese mismo día; ignorar el nulo dejaría a su
+  antiguo jefe viendo su cartera para siempre.
+- **Los ciclos se cortan y la profundidad se acota.** «A depende de B y B depende
+  de A» pasa de verdad —dos cambios de organigrama el mismo día— y sin cortarlo el
+  cálculo no termina nunca, con todo el mundo esperando a que cargue un listado.
+- **Una réplica vieja se nota.** Cada fila lleva cuándo se actualizó y hay una
+  consulta que lo dice. El retraso es molesto —un jefe que acaba de heredar un
+  equipo no lo ve todavía— y es el lado correcto en el que equivocarse: lo grave
+  sería que alguien que ya no manda siguiera viendo.
+
+Los **territorios** condicionan la visibilidad por el mismo camino, con una regla
+que se equivoca fácil: **heredan hacia abajo y no hacia arriba**. Quien lleva
+«Europa» ve lo de «España»; quien lleva «España» no ve lo del resto de Europa. Al
+revés se nota tarde: cuando alguien pregunta por qué un comercial veía la cartera
+entera. Y salir de un territorio **quita visibilidad por su propio camino**, sin
+esperar a que llegue un alta que lo sustituya.
+
+El territorio se asigna a la **cuenta**, no a la oportunidad: una empresa está en
+una zona y sus negocios van detrás. Filtrar por un territorio en la oportunidad
+habría sido más cómodo y habría dejado fuera exactamente las oportunidades que
+importan.
+
+## SSO compartido por la suite (`CRM-00.01.07.09`)
+
+El proveedor de identidad se configura **una vez** y lo usan las tres
+herramientas. Repetir la configuración en cada una es cómo se acaba con tres
+certificados distintos, dos caducados y nadie sabiendo cuál es el bueno.
+
+Lo que se publica es el **estado real y no la intención**: una herramienta que
+dice estar conectada y tiene otro certificado no comparte el SSO, tiene el suyo —
+y el día que el cliente rote el certificado se cae solo esa, sin que nadie
+entienda por qué.
+
+## IA sin salida de datos (`CRM-00.01.05.04`)
+
+Es el modo que piden los clientes que no pueden mandar nada fuera. Lo que hacen
+casi todos los productos es ofrecer una casilla «no usar IA», que no es lo mismo:
+el cliente quiere la función, lo que no quiere es la salida.
+
+Tres condiciones, y las tres tienen que cumplirse: que el proveedor esté **en la
+región del tenant** —no en «una región europea», porque un modelo en otro país de
+la UE sigue siendo una transferencia que no es lo que se pidió—, que **garantice
+que no entrena** con lo que recibe —un modelo que aprende saca los datos por el
+peso, no por la red— **o que sea del propio cliente**, que es la única opción que
+no depende de la promesa de nadie.
+
+Si no hay ninguno que cumpla, **no se llama a ninguno**. Usar el de fuera «porque
+es mejor» sería incumplir exactamente lo que se le prometió.

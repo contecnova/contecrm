@@ -148,11 +148,11 @@ modulos:
             nombre: Ciclo de vida del tenant
             capacidades:
               - {id: CRM-00.01.03.01, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/tenants.py + app/services/onboarding.py", t: "Provisioning automatizado (API + autoservicio) con plantilla de datos semilla"}
-              - {id: CRM-00.01.03.02, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/onboarding_guide.py", t: "Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos"}
-              - {id: CRM-00.01.03.03, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Clonado de tenant (para sandbox, demo, pre-producción)"}
+              - {id: CRM-00.01.03.02, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/onboarding_guide.py", t: "Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos"}
+              - {id: CRM-00.01.03.03, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Clonado de tenant (para sandbox, demo, pre-producción)"}
               - {id: CRM-00.01.03.04, c: C, fase: 0, svc: tenancy, estado: hecho, t: "Suspensión, reactivación y congelación en modo solo lectura"}
               - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción"}
-              - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
+              - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: hecho, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
               - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
               - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
               - {id: CRM-00.01.03.09, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Migración entre regiones con ventana de solo lectura y verificación de integridad"}
@@ -166,7 +166,7 @@ modulos:
               - {id: CRM-00.01.04.03, c: C, fase: 0, svc: metadata, estado: hecho, reutiliza: "contecweb:app/services/custom_fields.py + contecflow-PSA:app/services/custom_fields_service.py", t: "Modelo de datos extensible por tenant sin afectar a los demás"}
               - {id: CRM-00.01.04.04, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py", t: "Feature flags por tenant, por usuario y por porcentaje de tráfico"}
               - {id: CRM-00.01.04.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py + contecpos:services/identidad/src/planes", t: "Catálogo de planes/entitlements que activa capacidades declarativamente"}
-              - {id: CRM-00.01.04.06, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecflow-PSA:app/services/branding_service.py", t: "Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío"}
+              - {id: CRM-00.01.04.06, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/branding_service.py", t: "Marca blanca: logo, paleta, dominio propio, plantillas de correo, dominio de envío"}
               - {id: CRM-00.01.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/i18n_labels.py + languages.py", t: "Localización por tenant: idiomas, formatos, calendarios, husos, moneda funcional"}
               - {id: CRM-00.01.04.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/models/tenant_credential.py + contecweb:app/services/credentials.py", t: "Gestión de secretos y claves de integración por tenant (vault segmentado)"}
               - {id: CRM-00.01.04.09, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/crypto.py + app/db/encrypted_text.py + contecflow-PSA:app/services/key_management.py", t: "BYOK / CMEK: clave de cifrado gestionada por el cliente, con rotación y revocación"}
@@ -177,7 +177,7 @@ modulos:
               - {id: CRM-00.01.05.01, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC)"}
               - {id: CRM-00.01.05.02, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs)"}
               - {id: CRM-00.01.05.03, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md", t: "Control de subprocesadores y trazabilidad de transferencias internacionales"}
-              - {id: CRM-00.01.05.04, c: A, fase: 5, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/inference_gate.py + model_router.py", t: "Modo sin salida de datos para IA: inferencia en región o modelo dedicado"}
+              - {id: CRM-00.01.05.04, c: A, fase: 5, svc: core, estado: hecho, reutiliza: "contecmind:app/core/inference_gate.py + model_router.py", t: "Modo sin salida de datos para IA: inferencia en región o modelo dedicado"}
               - {id: CRM-00.01.05.05, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md", t: "Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales"}
 
           - id: CRM-00.01.06
@@ -187,7 +187,7 @@ modulos:
               - {id: CRM-00.01.06.02, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/entitlements.py (cuotas) + metering.py", t: "Cuotas de almacenamiento, registros, llamadas API, correos, workflows y tokens de IA"}
               - {id: CRM-00.01.06.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/circuit_breaker.py", t: "Aislamiento de carga: bulkheads, circuit breakers y colas de prioridad por tier"}
               - {id: CRM-00.01.06.04, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/degradation.py", t: "Backpressure y degradación elegante bajo saturación (diferir lo no crítico)"}
-              - {id: CRM-00.01.06.05, c: A, fase: 0, svc: gateway, estado: pendiente, t: "Detección de tenants anómalos y throttling adaptativo automático"}
+              - {id: CRM-00.01.06.05, c: A, fase: 0, svc: gateway, estado: hecho, t: "Detección de tenants anómalos y throttling adaptativo automático"}
               - {id: CRM-00.01.06.06, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py + app/api/admin_observability.py", t: "Panel de consumo por tenant con alertas de aproximación al límite"}
               - {id: CRM-00.01.06.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py", t: "Medición para facturación (metering) exportable a sistema de billing"}
 
@@ -215,11 +215,11 @@ modulos:
               - {id: CRM-00.01.07.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado"}
               - {id: CRM-00.01.07.07, c: C, fase: 1, svc: tenancy, estado: hecho, t: "Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito"}
               - {id: CRM-00.01.07.08, c: A, fase: 1, svc: tenancy, estado: hecho, t: "Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence"}
-              - {id: CRM-00.01.07.09, c: C, fase: 1, svc: identity, estado: pendiente, t: "SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión"}
+              - {id: CRM-00.01.07.09, c: C, fase: 1, svc: identity, estado: hecho, t: "SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión"}
               - {id: CRM-00.01.07.10, c: A, fase: 1, svc: tenancy, estado: hecho, t: "Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola"}
               - {id: CRM-00.01.07.11, c: A, fase: 2, svc: tenancy, estado: hecho, t: "Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta"}
               - {id: CRM-00.01.07.12, c: A, fase: 2, svc: tenancy, estado: hecho, t: "Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose"}
-              - {id: CRM-00.01.07.13, c: A, fase: 2, svc: tenancy, estado: pendiente, t: "Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta"}
+              - {id: CRM-00.01.07.13, c: A, fase: 2, svc: tenancy, estado: hecho, t: "Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta"}
 
       - id: "0.2"
         nombre: Arquitectura headless / API-first
@@ -520,11 +520,11 @@ modulos:
               - {id: CRM-00.05.02.19, c: C, fase: 1, svc: core, estado: hecho, t: "Filtrado de listados por política traducida a SQL, coherente con la decisión de la ficha"}
               - {id: CRM-00.05.02.20, c: A, fase: 1, svc: identity, estado: hecho, t: "Políticas por campo: una política puede ocultar o bloquear un campo concreto, no solo el registro"}
               - {id: CRM-00.05.02.21, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/api/admin_access_simulator.py", t: "Simulador de acceso: ver qué vería un usuario dado antes de activar una política"}
-              - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: pendiente, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
+              - {id: CRM-00.05.02.07, c: A, fase: 2, svc: identity, estado: hecho, t: "Territorios y jerarquías de territorio que condicionan la visibilidad"}
               - {id: CRM-00.05.02.08, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Restricción por unidad de negocio, marca, país o canal"}
               - {id: CRM-00.05.02.09, c: A, fase: 1, svc: identity, estado: hecho, t: "Registros ocultos vs. registros bloqueados (visibles sin detalle)"}
               - {id: CRM-00.05.02.10, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sesion_cedida.py (suplantación auditada)", t: "Acceso delegado temporal (suplantación) con consentimiento, caducidad y auditoría"}
-              - {id: CRM-00.05.02.12, c: C, fase: 2, svc: identity, estado: pendiente, t: "Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados"}
+              - {id: CRM-00.05.02.12, c: C, fase: 2, svc: identity, estado: hecho, t: "Replicar la jerarquía de mando a cada servicio para que la compartición por jerarquía aplique en los listados"}
               - {id: CRM-00.05.02.11, c: D, fase: 0, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/access_explainer.py + access_simulator.py", t: "Explicador de permisos: por qué este usuario ve este registro"}
 
           - id: CRM-00.05.03

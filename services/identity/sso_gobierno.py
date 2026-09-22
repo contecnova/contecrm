@@ -580,3 +580,110 @@ def salida_propagada(db: Session, sesion: Sesion, tenant_id: UUID) -> dict[str, 
         # propagar y decirlo evita que alguien busque un fallo de propagación.
         "sin_federacion": not pendientes,
     }
+
+
+# ── SSO compartido por la suite (CRM-00.01.07.09) ─────────────────────────
+
+# Las herramientas de la casa que comparten proveedor de identidad. Es una lista
+# y no un descubrimiento automático porque conectar una herramienta nueva al SSO
+# de un cliente es una decisión suya, no un efecto de que aparezca un servicio.
+HERRAMIENTAS_SUITE = ("contecrm", "contecmind", "contecflow")
+
+
+def _huella_certificados(certificados: Any) -> str:
+    """Un resumen estable de los certificados que acepta el proveedor.
+
+    Estable importa: durante una rotación conviven el viejo y el nuevo, y si la
+    huella cambiara según el orden en que llegan, las tres herramientas parecerían
+    tener certificados distintos justo el día de la rotación — que es el día en
+    que hay que poder mirarlo.
+    """
+    valores = sorted(str(c) for c in (certificados or []))
+    return hashlib.sha256("|".join(valores).encode()).hexdigest()[:32] if valores else ""
+
+
+def plan_de_sso_compartido(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    herramientas_conectadas: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Qué herramientas de la suite usan ya el proveedor de identidad del tenant.
+
+    El proveedor se configura **una vez** y lo usan las tres: repetir la
+    configuración en cada herramienta es cómo se acaba con tres certificados
+    distintos, dos caducados, y nadie sabiendo cuál es el bueno.
+
+    Lo que devuelve es el **estado real**, no la intención. Una herramienta que
+    dice estar conectada y tiene otro certificado no está compartiendo el SSO:
+    está teniendo el suyo, y el día que el cliente rote el certificado se caerá
+    solo esa.
+    """
+    from services.identity.modelos import ProveedorIdentidad
+
+    proveedor = (
+        db.execute(
+            select(ProveedorIdentidad).where(
+                ProveedorIdentidad.tenant_id == tenant_id,
+                ProveedorIdentidad.activo.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if proveedor is None:
+        return {
+            "hay_proveedor": False,
+            "porque": (
+                "Este tenant no tiene proveedor de identidad activo: no hay nada "
+                "que compartir todavía."
+            ),
+            "herramientas": [],
+        }
+
+    estado = herramientas_conectadas or {}
+    filas = []
+    for herramienta in HERRAMIENTAS_SUITE:
+        suyo = estado.get(herramienta) or {}
+        conectada = bool(suyo.get("conectada"))
+        # La huella se calcula de los certificados declarados: el modelo guarda
+        # la lista, no un resumen, porque durante una rotación conviven dos.
+        misma_huella = str(suyo.get("huella_certificado") or "") == _huella_certificados(
+            proveedor.certificados
+        )
+        filas.append(
+            {
+                "herramienta": herramienta,
+                "conectada": conectada,
+                # Conectada y compartiendo no son lo mismo, y es la distinción que
+                # decide qué se cae el día que el cliente rote el certificado.
+                "comparte_de_verdad": conectada and misma_huella,
+                "porque": (
+                    "Usa el mismo proveedor y el mismo certificado."
+                    if conectada and misma_huella
+                    else "Está conectada con OTRO certificado: tiene su propio SSO, no "
+                    "el compartido. El día que el cliente rote el suyo, esta se cae "
+                    "sola y nadie sabrá por qué."
+                    if conectada
+                    else "No está conectada al SSO del tenant: sus usuarios entran por "
+                    "otro camino."
+                ),
+            }
+        )
+
+    comparten = [f["herramienta"] for f in filas if f["comparte_de_verdad"]]
+    return {
+        "hay_proveedor": True,
+        "proveedor": proveedor.nombre,
+        "tipo": proveedor.tipo,
+        "herramientas": filas,
+        "comparten": comparten,
+        "completo": len(comparten) == len(HERRAMIENTAS_SUITE),
+        "que_significa": (
+            "Las tres herramientas entran por el mismo proveedor: una rotación de "
+            "certificado se hace una vez."
+            if len(comparten) == len(HERRAMIENTAS_SUITE)
+            else "No todas comparten. Cada una que no lo haga es una configuración "
+            "más que mantener y un certificado más que caduca por su cuenta."
+        ),
+    }

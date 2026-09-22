@@ -13,7 +13,7 @@ from services.party import (
 )
 from services.party.api import ROUTERS
 from services.party.api_actividades_extra import ROUTERS_ACTIVIDADES_EXTRA
-from services.party.consumidores import consumir_comando
+from services.party.consumidores import consumir_comando, consumir_organigrama
 
 
 def _al_arrancar() -> None:
@@ -39,5 +39,11 @@ app = crear_servicio(
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho
     # porque el despachador ya filtra por manejador registrado.
-    consumidores=[("comando.*", consumir_comando, f"{__name__.split('.')[1]}-comandos")],
+    consumidores=[
+        ("comando.*", consumir_comando, f"{__name__.split('.')[1]}-comandos"),
+        # La jerarquía de mando se replica aquí para que la compartición por
+        # jerarquía aplique en los listados (CRM-00.05.02.12): `superior_id` vive
+        # en la membresía de identity y este servicio no lee su esquema.
+        ("user.org.changed", consumir_organigrama, f"{__name__.split('.')[1]}-organigrama"),
+    ],
 )

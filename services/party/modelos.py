@@ -706,6 +706,15 @@ __all__ = [
 # Las actividades de tratamiento de este servicio (CRM-07.03.01.04). Se importa
 # al final y solo por su efecto: declararlas al cargar los modelos es lo que
 # garantiza que el RAT y los objetos no puedan separarse.
+# La jerarquía de mando y los territorios, replicados por evento para que la
+# compartición por jerarquía aplique en los listados (CRM-00.05.02.12,
+# CRM-00.05.02.07). Viven aquí porque el filtro tiene que resolverse en SQL, y
+# un `WHERE` no puede consultar el esquema de otro servicio.
+from crmcore.authz.jerarquia import (  # noqa: E402,F401
+    MandoReplicado,
+    TerritorioReplicado,
+)
+
 from services.party import tratamientos  # noqa: E402,F401
 from services.party.actividades_extra import (  # noqa: E402,F401
     PlantillaActividades,

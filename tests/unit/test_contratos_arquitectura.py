@@ -101,6 +101,13 @@ SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
         "quien acota es `membresias`, y las consultas de usuarios unen por ella"
     ),
     "planes": "catálogo comercial común a todos los tenants",
+    "perfiles_industria": (
+        "catálogo de preconfiguraciones DE LA INSTALACIÓN, como `modulos_publicados` "
+        "y por el mismo motivo: un perfil de industria lo escribe quien opera la "
+        "plataforma y lo aplican muchos tenants. Lo que sí es por tenant es "
+        "`aplicaciones_perfil`, que sí lleva tenant_id y guarda qué se le aplicó a "
+        "cada uno y qué se saltó"
+    ),
     "modulos_publicados": (
         "catálogo de módulos verticales DE LA INSTALACIÓN, no de cada tenant. "
         "Quién puede publicar un módulo es una decisión de quien opera la "
@@ -703,6 +710,11 @@ COLUMNAS_QUE_NO_SON_PERSONALES = {
     "dominios_envio.ip_dedicada": "IP de infraestructura de envío, no de un visitante",
     "proveedores_identidad.dominio_email": "un dominio corporativo, no la dirección de nadie",
     "exportaciones_tenant.manifiesto": "el nombre contiene «nif» por casualidad",
+    "marca_tenants.pie_correo": (
+        "es el pie que el CLIENTE pone en sus correos —su razón social, su "
+        "dirección fiscal—, no datos de una persona: es justo lo contrario, la "
+        "identificación de quien manda"
+    ),
     "modulos_publicados.manifiesto": "el nombre contiene «nif» por casualidad",
     "modulos_instalados.manifiesto": "el nombre contiene «nif» por casualidad",
     "instalaciones_conector.manifiesto_id": "el nombre contiene «nif» por casualidad",

@@ -528,3 +528,94 @@ def exigir_disponible(db: Session, tenant_id: UUID, *, uso: str) -> dict[str, An
         raise NoEncontrado(eleccion["porque"], error_code="ia.sin_proveedor", detalle=eleccion)
     exigir_presupuesto(db, tenant_id)
     return eleccion
+
+
+# ── Modo sin salida de datos (CRM-00.01.05.04) ────────────────────────────
+
+
+def exigir_sin_salida(
+    db: Session, tenant_id: UUID, *, uso: str, region_del_tenant: str = "ue"
+) -> dict[str, Any]:
+    """Elige proveedor **sin que el dato salga de la región** del tenant.
+
+    Es el modo que piden los clientes que no pueden mandar nada fuera: sector
+    público, sanidad, banca. Lo que hacen casi todos los productos es ofrecer una
+    casilla «no usar IA» — que no es lo mismo: el cliente quiere la función, no
+    quiere la salida.
+
+    Tres condiciones, y las tres tienen que cumplirse:
+
+    **El proveedor está en la región del tenant**, no en «una región europea».
+    Un modelo alojado en otro país de la UE sigue siendo una transferencia dentro
+    del EEE, que es legal, pero no es lo que se pidió cuando se pidió esto.
+
+    **Garantiza que no entrena con lo que se le manda.** Un modelo en la región
+    que aprende de los datos los saca de otra forma: no por la red, por el peso.
+
+    **O es del propio cliente.** Un modelo suyo, en su infraestructura, es la
+    única forma de que esto no dependa de la promesa de nadie — y por eso se
+    prefiere cuando está.
+    """
+    eleccion = elegir(db, tenant_id, uso=uso)
+    if not eleccion["puede_llamar"]:
+        return {
+            **eleccion,
+            "sin_salida": False,
+            "porque_sin_salida": "No hay ningún proveedor disponible, ni dentro ni fuera.",
+        }
+
+    candidatos = (
+        db.execute(
+            select(ProveedorIA).where(
+                ProveedorIA.tenant_id == tenant_id,
+                ProveedorIA.activo.is_(True),
+                ProveedorIA.region == region_del_tenant,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    propios = [p for p in candidatos if p.propio]
+    con_opt_out = [p for p in candidatos if p.admite_opt_out]
+
+    # El del cliente primero: es la única opción que no depende de la promesa de
+    # nadie. Después, el que garantiza por escrito que no entrena.
+    elegido = (propios or con_opt_out or [None])[0]
+    if elegido is None:
+        return {
+            "puede_llamar": False,
+            "sin_salida": False,
+            "porque_sin_salida": (
+                f"No hay ningún modelo en «{region_del_tenant}» que garantice que no "
+                "entrena con lo que se le manda. Este tenant ha pedido que el dato no "
+                "salga, así que no se llama a ninguno: usar el de fuera «porque es "
+                "mejor» sería incumplir lo que se le prometió."
+            ),
+            "descartados": [
+                {"proveedor": p.clave, "region": p.region, "opt_out": p.admite_opt_out}
+                for p in db.execute(
+                    select(ProveedorIA).where(
+                        ProveedorIA.tenant_id == tenant_id, ProveedorIA.activo.is_(True)
+                    )
+                ).scalars()
+            ],
+        }
+
+    return {
+        "puede_llamar": True,
+        "sin_salida": True,
+        "elegido": elegido.clave,
+        "modelo": str(
+            next((m.get("nombre") for m in (elegido.modelos or []) if m.get("uso") == uso), "")
+        ),
+        "region": elegido.region,
+        "propio_del_tenant": elegido.propio,
+        "opt_out": elegido.admite_opt_out,
+        "porque_sin_salida": (
+            "Modelo del propio cliente en su infraestructura: el dato no sale de "
+            "donde ya estaba."
+            if elegido.propio
+            else f"Modelo alojado en «{elegido.region}», la misma región del tenant, "
+            "y con garantía escrita de que no entrena con lo que recibe."
+        ),
+    }
