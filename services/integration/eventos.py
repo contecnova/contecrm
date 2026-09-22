@@ -121,3 +121,17 @@ SIGNATURE_REMINDER_SENT = registrar(
         campos=("sobre_id", "referencia", "destinatarios"),
     )
 )
+
+DEVICE_ALERT = registrar(
+    TipoEvento(
+        tipo="device.alert",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Una lectura de dispositivo ha cruzado el umbral de una regla "
+            "(CRM-04.04.02.05). El caso, si lo hay, lo abre el servicio dueño por "
+            "comando: este evento dice que saltó, no que exista un caso"
+        ),
+        campos=("dispositivo_id", "regla", "severidad"),
+    )
+)

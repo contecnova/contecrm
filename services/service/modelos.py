@@ -370,3 +370,14 @@ from services.service.portal import (  # noqa: E402
     HiloComunidad,
     RespuestaComunidad,
 )
+from services.service.postventa import (  # noqa: E402,F401
+    Devolucion,
+    Expediente,
+    LineaDevolucion,
+    Resolucion,
+)
+from services.service.problemas import (  # noqa: E402,F401
+    CasoDeProblema,
+    ComunicacionProblema,
+    Problema,
+)

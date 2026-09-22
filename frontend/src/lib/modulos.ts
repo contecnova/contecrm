@@ -318,6 +318,87 @@ export const MODULOS: Modulo[] = [
     ],
   },
 
+  {
+    ruta: "campo",
+    titulo: "Servicio de campo",
+    seccion: "4.4",
+    capacidad: "CRM-07.04.03.20",
+    grupo: "Servicio",
+    recursos: [
+      {
+        nombre: "Órdenes de trabajo",
+        listar: "/api/v1/ordenes-trabajo",
+        crear: "/api/v1/ordenes-trabajo",
+        servicio: "service",
+        columnas: ["codigo", "titulo", "tipo", "estado", "prioridad", "cita_desde"],
+        permiso: "case:read",
+      },
+      {
+        nombre: "Activos instalados",
+        listar: "/api/v1/activos",
+        crear: "/api/v1/activos",
+        servicio: "service",
+        columnas: ["codigo", "nombre", "modelo", "numero_serie", "estado", "ubicacion"],
+        permiso: "case:read",
+      },
+      { nombre: "Técnicos", listar: "/api/v1/tecnicos-campo", servicio: "service" },
+      // El preventivo por delante de los repuestos: es lo que hay que mirar cada
+      // semana, y los repuestos solo cuando falta uno.
+      { nombre: "Planes preventivos", listar: "/api/v1/planes-preventivos", servicio: "service" },
+      {
+        nombre: "Vencimientos",
+        listar: "/api/v1/planes-preventivos/vencimientos",
+        servicio: "service",
+      },
+      { nombre: "Repuestos", listar: "/api/v1/repuestos", servicio: "service" },
+      { nombre: "Reposición", listar: "/api/v1/repuestos/reposicion", servicio: "service" },
+      {
+        nombre: "Garantías por vencer",
+        listar: "/api/v1/activos/garantias/por-vencer",
+        servicio: "service",
+      },
+      { nombre: "Dispositivos", listar: "/api/v1/dispositivos", servicio: "integration" },
+      {
+        nombre: "Aparatos callados",
+        listar: "/api/v1/dispositivos/silenciosos",
+        servicio: "integration",
+      },
+    ],
+  },
+  {
+    ruta: "postventa",
+    titulo: "Postventa",
+    seccion: "4.5",
+    capacidad: "CRM-07.04.03.21",
+    grupo: "Servicio",
+    recursos: [
+      {
+        nombre: "Devoluciones",
+        listar: "/api/v1/devoluciones",
+        crear: "/api/v1/devoluciones",
+        servicio: "service",
+        columnas: ["codigo", "estado", "motivo", "fuera_de_plazo", "disposicion"],
+        permiso: "case:read",
+      },
+      // Los expedientes ordenados por vencimiento, y los vencidos aparte: el
+      // plazo legal no es una cola de trabajo, es una fecha que se pasa.
+      {
+        nombre: "Expedientes",
+        listar: "/api/v1/expedientes",
+        servicio: "service",
+        columnas: ["codigo", "asunto", "estado", "via", "vence_at", "sin_acuse"],
+      },
+      { nombre: "Vencen pronto", listar: "/api/v1/expedientes/vencen", servicio: "service" },
+      {
+        nombre: "Problemas",
+        listar: "/api/v1/problemas",
+        servicio: "service",
+        columnas: ["codigo", "titulo", "estado", "severidad", "error_conocido", "solo_apano"],
+      },
+      { nombre: "Correlación", listar: "/api/v1/problemas/correlacion", servicio: "service" },
+    ],
+  },
+
   // ── Módulo 5 · Analítica ────────────────────────────────────────────────
   {
     ruta: "explotacion",

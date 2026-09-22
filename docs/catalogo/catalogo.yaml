@@ -341,8 +341,8 @@ modulos:
               - {id: CRM-00.03.04.05, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py", t: "Gestión de credenciales por conexión con rotación y prueba de conectividad"}
               - {id: CRM-00.03.04.06, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/integration_test_service.py", t: "Monitor de integraciones: ejecuciones, errores, reproceso, alertas"}
               - {id: CRM-00.03.04.07, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Cola de mensajes fallidos con corrección y reenvío asistido"}
-              - {id: CRM-00.03.04.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Sincronización bidireccional con resolución de conflictos configurable"}
-              - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
+              - {id: CRM-00.03.04.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Sincronización bidireccional con resolución de conflictos configurable"}
+              - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
               - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
               - {id: CRM-00.03.04.11, c: D, fase: 6, svc: integration, estado: pendiente, t: "Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA"}
 
@@ -464,7 +464,7 @@ modulos:
               - {id: CRM-00.04.05.02, c: C, fase: 2, svc: integration, estado: hecho, t: "Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código"}
               - {id: CRM-00.04.05.03, c: C, fase: 2, svc: integration, estado: hecho, t: "Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo"}
               - {id: CRM-00.04.05.04, c: C, fase: 2, svc: integration, estado: hecho, t: "Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte"}
-              - {id: CRM-00.04.05.05, c: A, fase: 2, svc: integration, estado: pendiente, t: "Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5)"}
+              - {id: CRM-00.04.05.05, c: A, fase: 2, svc: integration, estado: hecho, t: "Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5)"}
               - {id: CRM-00.04.05.06, c: C, fase: 2, svc: integration, estado: hecho, t: "El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno"}
               - {id: CRM-00.04.05.07, c: A, fase: 2, svc: integration, estado: hecho, t: "Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla"}
               - {id: CRM-00.04.05.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas"}
@@ -876,7 +876,7 @@ modulos:
               - {id: CRM-04.01.01.08, c: A, fase: 3, svc: service, estado: hecho, t: "Casos internos, derivación a segundo/tercer nivel y a ingeniería"}
               - {id: CRM-04.01.01.09, c: C, fase: 3, svc: service, estado: hecho, t: "Motivos de cierre, resolución tipificada y validación de cierre por el cliente"}
               - {id: CRM-04.01.01.10, c: A, fase: 3, svc: service, estado: hecho, t: "Reapertura con ventana configurable y trazabilidad"}
-              - {id: CRM-04.01.01.11, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py", t: "Gestión de problemas e incidentes masivos (varios casos vinculados a una causa)"}
+              - {id: CRM-04.01.01.11, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py", t: "Gestión de problemas e incidentes masivos (varios casos vinculados a una causa)"}
               - {id: CRM-04.01.01.12, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/services/nps_service.py + app/models/nps.py", t: "Encuesta de satisfacción automática (CSAT/CES/NPS) tras el cierre"}
           - id: CRM-04.01.02
             nombre: SLA y derechos de servicio
@@ -954,16 +954,16 @@ modulos:
               - {id: CRM-04.04.02.02, c: A, fase: 6, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/cmdb.py (jerarquía de CIs)", t: "Jerarquía de activos y componentes"}
               - {id: CRM-04.04.02.03, c: A, fase: 6, svc: service, estado: hecho, t: "Garantías, extensiones y cobertura"}
               - {id: CRM-04.04.02.04, c: A, fase: 6, svc: service, estado: hecho, t: "Historial de servicio por activo"}
-              - {id: CRM-04.04.02.05, c: D, fase: 6, svc: integration, estado: pendiente, t: "Telemetría IoT: eventos de dispositivo que abren casos automáticamente"}
+              - {id: CRM-04.04.02.05, c: D, fase: 6, svc: integration, estado: hecho, t: "Telemetría IoT: eventos de dispositivo que abren casos automáticamente"}
       - id: "4.5"
         nombre: Postventa y logística inversa
         funciones:
           - id: CRM-04.05.01
             nombre: Devoluciones y reclamaciones
             capacidades:
-              - {id: CRM-04.05.01.01, c: D, fase: 6, svc: service, estado: pendiente, reutiliza: "contecpos:services/tpv (devoluciones y abonos)", t: "RMA / devoluciones con autorización, motivo y disposición"}
-              - {id: CRM-04.05.01.02, c: D, fase: 6, svc: service, estado: pendiente, t: "Reparaciones, sustituciones y abonos"}
-              - {id: CRM-04.05.01.03, c: D, fase: 6, svc: service, estado: pendiente, reutiliza: "contecweb:app/services/incidents.py (expedientes con plazos)", t: "Reclamaciones formales y expedientes con plazos legales"}
+              - {id: CRM-04.05.01.01, c: D, fase: 6, svc: service, estado: hecho, reutiliza: "contecpos:services/tpv (devoluciones y abonos)", t: "RMA / devoluciones con autorización, motivo y disposición"}
+              - {id: CRM-04.05.01.02, c: D, fase: 6, svc: service, estado: hecho, t: "Reparaciones, sustituciones y abonos"}
+              - {id: CRM-04.05.01.03, c: D, fase: 6, svc: service, estado: hecho, reutiliza: "contecweb:app/services/incidents.py (expedientes con plazos)", t: "Reclamaciones formales y expedientes con plazos legales"}
 
   - id: "5"
     nombre: Analítica, inteligencia e IA
@@ -1208,8 +1208,8 @@ modulos:
               - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: hecho, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
               - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
               - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
-              - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
-              - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
+              - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: hecho, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
+              - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: hecho, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
               - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: hecho, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
               - {id: CRM-07.04.03.23, c: A, fase: 5, svc: front, estado: pendiente, cubre: "5.2", t: "Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista"}
               - {id: CRM-07.04.03.24, c: A, fase: 1, svc: front, estado: pendiente, cubre: "6.1", t: "Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo"}
@@ -1354,6 +1354,16 @@ anexo_b_eventos:
   - {type: workorder.created, fase: 6, svc: service}
   - {type: workorder.assigned, fase: 6, svc: service}
   - {type: workorder.completed, fase: 6, svc: service}
+  - {type: return.requested, fase: 6, svc: service}
+  - {type: return.authorized, fase: 6, svc: service}
+  - {type: return.closed, fase: 6, svc: service}
+  - {type: refund.requested, fase: 6, svc: service}
+  - {type: complaint.opened, fase: 6, svc: service}
+  - {type: complaint.answered, fase: 6, svc: service}
+  - {type: problem.opened, fase: 6, svc: service}
+  - {type: problem.resolved, fase: 6, svc: service}
+  - {type: problem.communicated, fase: 6, svc: service}
+  - {type: device.alert, fase: 6, svc: integration}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

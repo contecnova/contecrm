@@ -1057,3 +1057,113 @@ def cumplimiento_proveedor(
             }
         )
     return salida
+
+
+# ── Prueba de entrega y documentos del proveedor (CRM-00.04.05.05) ────────
+
+
+def archivar_documento(
+    uow: UnidadDeTrabajo,
+    encargo_id: UUID,
+    *,
+    documento_id: str,
+    rol: str = "prueba_entrega",
+    titulo: str = "",
+    tipo: str = "",
+    sistema: str = "contecmind",
+    por: UUID | None = None,
+) -> dict[str, Any]:
+    """Enlaza al encargo un documento del proveedor: albarán, POD, foto de
+    entrega (CRM-00.04.05.05).
+
+    **Se enlaza, no se copia** (RT-5). El documento vive en el corpus documental,
+    con su retención, su antivirus y sus permisos; guardar aquí el binario daría
+    dos copias que divergen y una de ellas —la del CRM— sin política de borrado.
+
+    Y la prueba de entrega importa por una razón concreta: cuando el cliente dice
+    que no le llegó, lo que se enseña es eso. Sin ella, la discusión se resuelve
+    dándole la razón al cliente.
+    """
+    from crmcore.documental.enlaces import enlazar
+
+    encargo = _encargo(uow.db, uow.tenant_id, encargo_id)
+    enlace = enlazar(
+        uow.db,
+        tenant_id=uow.tenant_id,
+        objeto_tipo="encargo",
+        objeto_id=encargo.id,
+        documento_id=documento_id,
+        titulo=titulo,
+        tipo=tipo,
+        rol=rol,
+        sistema=sistema,
+        por=por,
+    )
+    registrar(
+        uow.db,
+        accion="encargo.documento_archivado",
+        objeto="encargo",
+        objeto_id=encargo.id,
+        datos={"documento_id": documento_id, "rol": rol, "sistema": sistema},
+        tenant_id=uow.tenant_id,
+    )
+    return {
+        "encargo_id": str(encargo.id),
+        "enlace_id": str(enlace.id),
+        "documento_id": documento_id,
+        "rol": rol,
+    }
+
+
+def entregados_sin_prueba(
+    db: Session, tenant_id: UUID, *, dias: int = 30, en_fecha: datetime | None = None
+) -> dict[str, Any]:
+    """Qué se dio por entregado sin dejar prueba archivada.
+
+    Es la lista que hay que mirar **antes** de que el cliente llame diciendo que
+    no le llegó: entonces ya no se puede pedir la prueba al transportista, porque
+    casi todos la conservan unas semanas y luego la borran.
+    """
+    from crmcore.documental.enlaces import DocumentoEnlazado
+
+    momento = en_fecha or _ahora()
+    desde = momento - timedelta(days=dias)
+    entregados = (
+        db.execute(
+            select(Encargo).where(
+                Encargo.tenant_id == tenant_id,
+                Encargo.estado == "entregado",
+                Encargo.completado_at >= desde,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    con_prueba = {
+        fila.objeto_id
+        for fila in db.execute(
+            select(DocumentoEnlazado).where(
+                DocumentoEnlazado.tenant_id == tenant_id,
+                DocumentoEnlazado.objeto_tipo == "encargo",
+                DocumentoEnlazado.rol == "prueba_entrega",
+            )
+        ).scalars()
+    }
+    faltan = [e for e in entregados if e.id not in con_prueba]
+    return {
+        "desde": desde.isoformat(),
+        "entregados": len(entregados),
+        "sin_prueba": [
+            {
+                "encargo_id": str(e.id),
+                "proveedor": e.proveedor,
+                "referencia_externa": e.referencia_externa,
+                "entregado_at": (e.completado_at.isoformat() if e.completado_at else None),
+            }
+            for e in faltan
+        ],
+        "cuantos": len(faltan),
+        # Sin entregas en la ventana no se dice que todo esté probado: se dice
+        # que no había nada que probar.
+        "medible": bool(entregados),
+    }

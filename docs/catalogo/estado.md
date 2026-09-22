@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 510 hecho · ⬜ 197 pendiente
+**707 capacidades**: ✅ 520 hecho · ⬜ 187 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 217 · ⬜ 66
+283 capacidades · ✅ 220 · ⬜ 63
 
 ### 0.1 Multi-tenancy
 
@@ -237,8 +237,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.04.05` | Gestión de credenciales por conexión con rotación y prueba de conectividad | C | 0 | integration | ✅ | contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py |
 | `CRM-00.03.04.06` | Monitor de integraciones: ejecuciones, errores, reproceso, alertas | C | 0 | integration | ✅ | contecflow-PSA:app/services/integration_test_service.py |
 | `CRM-00.03.04.07` | Cola de mensajes fallidos con corrección y reenvío asistido | C | 0 | integration | ✅ | contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py |
-| `CRM-00.03.04.08` | Sincronización bidireccional con resolución de conflictos configurable | A | 2 | integration | ⬜ | — |
-| `CRM-00.03.04.09` | Modelo canónico de intercambio y adaptadores por sistema externo | A | 2 | integration | ⬜ | — |
+| `CRM-00.03.04.08` | Sincronización bidireccional con resolución de conflictos configurable | A | 2 | integration | ✅ | — |
+| `CRM-00.03.04.09` | Modelo canónico de intercambio y adaptadores por sistema externo | A | 2 | integration | ✅ | — |
 | `CRM-00.03.04.10` | Marketplace / registro de integraciones instalables por tenant | A | 6 | integration | ⬜ | contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py |
 | `CRM-00.03.04.11` | Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA | D | 6 | integration | ⬜ | — |
 
@@ -333,7 +333,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.05.02` | Mapa de estados del proveedor a los del sistema, declarado por conector y no en el código | C | 2 | integration | ✅ | — |
 | `CRM-00.04.05.03` | Ingesta de eventos del proveedor por webhook y por sondeo, idempotente y con orden garantizado por encargo | C | 2 | integration | ✅ | — |
 | `CRM-00.04.05.04` | Incidencias del encargo con tipología, responsable (nuestro o del proveedor) y enlace al caso de soporte | C | 2 | integration | ✅ | — |
-| `CRM-00.04.05.05` | Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5) | A | 2 | integration | ⬜ | — |
+| `CRM-00.04.05.05` | Prueba de entrega y documentos del proveedor archivados en el corpus documental (RT-5) | A | 2 | integration | ✅ | — |
 | `CRM-00.04.05.06` | El cliente ve la trazabilidad de sus encargos en el portal, sin ver lo que no es suyo ni el detalle interno | C | 2 | integration | ✅ | — |
 | `CRM-00.04.05.07` | Varios proveedores a la vez, elegibles por regla (destino, peso, urgencia, coste) con alternativa si uno falla | A | 2 | integration | ✅ | — |
 | `CRM-00.04.05.08` | Conciliación: lo que el proveedor factura contra lo que consta entregado, con las diferencias señaladas | A | 2 | integration | ✅ | — |
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 49 · ⬜ 13
+62 capacidades · ✅ 54 · ⬜ 8
 
 ### 4.1 Gestión de casos
 
@@ -780,7 +780,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.01.01.08` | Casos internos, derivación a segundo/tercer nivel y a ingeniería | A | 3 | service | ✅ | — |
 | `CRM-04.01.01.09` | Motivos de cierre, resolución tipificada y validación de cierre por el cliente | C | 3 | service | ✅ | — |
 | `CRM-04.01.01.10` | Reapertura con ventana configurable y trazabilidad | A | 3 | service | ✅ | — |
-| `CRM-04.01.01.11` | Gestión de problemas e incidentes masivos (varios casos vinculados a una causa) | A | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py |
+| `CRM-04.01.01.11` | Gestión de problemas e incidentes masivos (varios casos vinculados a una causa) | A | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py |
 | `CRM-04.01.01.12` | Encuesta de satisfacción automática (CSAT/CES/NPS) tras el cierre | A | 3 | service | ✅ | contecflow-PSA:app/services/nps_service.py + app/models/nps.py |
 
 #### CRM-04.01.02 · SLA y derechos de servicio
@@ -869,7 +869,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.04.02.02` | Jerarquía de activos y componentes | A | 6 | service | ✅ | contecflow-PSA:app/models/cmdb.py (jerarquía de CIs) |
 | `CRM-04.04.02.03` | Garantías, extensiones y cobertura | A | 6 | service | ✅ | — |
 | `CRM-04.04.02.04` | Historial de servicio por activo | A | 6 | service | ✅ | — |
-| `CRM-04.04.02.05` | Telemetría IoT: eventos de dispositivo que abren casos automáticamente | D | 6 | integration | ⬜ | — |
+| `CRM-04.04.02.05` | Telemetría IoT: eventos de dispositivo que abren casos automáticamente | D | 6 | integration | ✅ | — |
 
 ### 4.5 Postventa y logística inversa
 
@@ -877,9 +877,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.05.01.01` | RMA / devoluciones con autorización, motivo y disposición | D | 6 | service | ⬜ | contecpos:services/tpv (devoluciones y abonos) |
-| `CRM-04.05.01.02` | Reparaciones, sustituciones y abonos | D | 6 | service | ⬜ | — |
-| `CRM-04.05.01.03` | Reclamaciones formales y expedientes con plazos legales | D | 6 | service | ⬜ | contecweb:app/services/incidents.py (expedientes con plazos) |
+| `CRM-04.05.01.01` | RMA / devoluciones con autorización, motivo y disposición | D | 6 | service | ✅ | contecpos:services/tpv (devoluciones y abonos) |
+| `CRM-04.05.01.02` | Reparaciones, sustituciones y abonos | D | 6 | service | ✅ | — |
+| `CRM-04.05.01.03` | Reclamaciones formales y expedientes con plazos legales | D | 6 | service | ✅ | contecweb:app/services/incidents.py (expedientes con plazos) |
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 75 · ⬜ 16
+91 capacidades · ✅ 77 · ⬜ 14
 
 ### 7.1 Administración funcional
 
@@ -1150,8 +1150,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.17` | Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución | C | 3 | front | ✅ | — |
 | `CRM-07.04.03.18` | Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola | A | 3 | front | ✅ | — |
 | `CRM-07.04.03.19` | Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente | A | 3 | front | ✅ | — |
-| `CRM-07.04.03.20` | Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados | D | 6 | front | ⬜ | — |
-| `CRM-07.04.03.21` | Postventa: devoluciones, garantías y logística inversa | D | 6 | front | ⬜ | — |
+| `CRM-07.04.03.20` | Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados | D | 6 | front | ✅ | — |
+| `CRM-07.04.03.21` | Postventa: devoluciones, garantías y logística inversa | D | 6 | front | ✅ | — |
 | `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ✅ | — |
 | `CRM-07.04.03.23` | Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista | A | 5 | front | ⬜ | — |
 | `CRM-07.04.03.24` | Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo | A | 1 | front | ⬜ | — |

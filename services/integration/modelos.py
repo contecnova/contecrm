@@ -145,6 +145,13 @@ class Ejecucion(Base):
 # propias tablas dentro de sus transacciones.
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
+from services.integration.canonico import (  # noqa: E402,F401
+    Adaptador,
+    ConflictoSincronizacion,
+    ObjetoCanonico,
+    Vinculo,
+)
+
 # Los encargos seguidos viven en su propio módulo porque tienen lógica propia
 # —traducción de estados, ingesta ordenada, conciliación—, pero sus tablas son de
 # este esquema y tienen que estar aquí: `alembic` solo importa `modelos.py`, y una
@@ -168,4 +175,10 @@ from services.integration.firma import (  # noqa: E402,F401
     ProveedorFirma,
     ReglaProveedorFirma,
     Sobre,
+)
+from services.integration.telemetria import (  # noqa: E402,F401
+    Dispositivo,
+    EstadoRegla,
+    Lectura,
+    ReglaTelemetria,
 )

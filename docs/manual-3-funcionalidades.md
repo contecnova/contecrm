@@ -8476,3 +8476,219 @@ inflaría su tasa de avería.
 Las garantías **no se heredan** en una sustitución salvo que se pida: heredarlas en
 silencio daría cobertura a una máquina que nadie aseguró, y quien pague la
 reparación lo descubrirá al reclamar al fabricante.
+
+## Postventa y logística inversa (`CRM-04.05.01`)
+
+Lo que devuelve un cliente es la parte del negocio que peor se lleva, y siempre
+por lo mismo: **el material vuelve y nadie sabe dónde está, ni quién autorizó qué,
+ni qué se le prometió**.
+
+### Devoluciones con autorización (`CRM-04.05.01.01`)
+
+Una devolución se **autoriza**, y la autorización tiene número. Sin RMA, el
+paquete llega al almacén sin remite reconocible y se queda en una estantería hasta
+que alguien pregunta; con RMA, el almacén sabe qué espera, de quién y por qué.
+
+El motivo es obligatorio y **normalizado**: «no me gusta», «llegó roto» y «no es
+lo que pedí» llevan a disposiciones distintas del material, y en texto libre no se
+pueden agrupar ni al cabo de un año.
+
+Sin fecha de compra **no se dice que esté fuera de plazo**: se dice que no se sabe.
+Darlo por fuera rechaza devoluciones legítimas por un dato que falta en nuestro
+sistema, no en el del cliente. Y fuera de la ventana **se puede autorizar con
+motivo**, quedando marcado como excepción: es una decisión comercial legítima y
+frecuente, pero si pasa en silencio la ventana no significa nada y nadie puede
+medir cuánto se está regalando.
+
+Al recibir se anota **lo que ha llegado de verdad** y se devuelven las diferencias
+con lo autorizado. Es el dato que se pierde siempre: se autorizan tres unidades,
+llegan dos, y la tercera aparece meses después en un descuadre de inventario que
+nadie sabe explicar.
+
+**La disposición es obligatoria al cerrar.** Reacondicionar, reparar, chatarra o
+devolver al proveedor: es lo único que impide que el material desaparezca del
+mundo. Una devolución cerrada sin disposición es una pieza que consta devuelta y
+que nadie ha vuelto a ver. Si lo devuelto era un activo instalado y se va a
+chatarra o al proveedor, **se retira del parque del cliente**; si no, el CRM
+seguiría contando una máquina que está en nuestro almacén o destruida.
+
+Una serie que no consta como activo instalado **se avisa, no se bloquea**: puede
+ser material que nunca se dio de alta, y puede ser una serie que no es nuestra.
+
+### Reparaciones, sustituciones y abonos (`CRM-04.05.01.02`)
+
+**El abono lo emite quien factura, no el CRM.** Aquí se registra la decisión, el
+abono queda en `solicitado` y se espera la confirmación del ERP, igual que con los
+pedidos. Un CRM que se inventa un abono deja dos contabilidades y la que se mira
+es la otra; y la devolución **no se cierra con un abono pendiente**, porque
+cerrarla dejaría al cliente esperando un dinero que nadie ha emitido.
+
+Un abono rechazado guarda **por qué**: sin eso, alguien lo vuelve a mandar igual y
+vuelve a rebotar.
+
+Resolver dos veces la misma línea —repararla y abonarla— se avisa: es un error de
+tramitación que acaba en la factura del cliente, y aquí todavía se puede deshacer.
+Y «a cargo de» va aparte del importe: cliente, garantía o cortesía es lo que
+decide si esto va a una factura o a una reclamación al fabricante.
+
+### Reclamaciones con plazos legales (`CRM-04.05.01.03`)
+
+Un plazo de ley no es un SLA comercial: no se amplía porque haya mucho trabajo, y
+el que vence sin contestar se pierde.
+
+El plazo cuenta **desde que entró la reclamación**, no desde que se grabó en el
+sistema. Esa diferencia es el tiempo que estuvo en un cajón, y se la come la
+empresa, no el cliente — por eso se guardan las dos fechas y se avisa de los días
+ya consumidos.
+
+Se declara si es en días **naturales o hábiles**, porque la diferencia son
+semanas. Sin calendario laboral configurado se cuentan naturales **y se dice**:
+dejar que parezca lo mismo es cómo un plazo de «diez días hábiles» vence en
+Navidad sin que nadie lo entienda.
+
+**La suspensión exige un motivo tipificado** —subsanación, prueba pericial,
+traslado a un tercero, acuerdo con el cliente—. Con texto libre, el plazo se
+suspendería por «mucho trabajo» y dejaría de ser un plazo. Al reanudar, el
+vencimiento **se desplaza** lo que estuvo parado: dejarlo donde estaba haría que
+una suspensión legítima de una semana se comiera el plazo de respuesta.
+
+Al responder se calcula y se guarda **si se llegó a tiempo**, en ese momento y no
+después: el vencimiento puede desplazarse por una suspensión posterior, y entonces
+un incumplimiento se convertiría en cumplimiento sin que nadie lo decidiera. Y se
+dice si es **demostrable**: sin acuse de recibo, «contestamos en plazo» es nuestra
+palabra contra la suya.
+
+La lista de vencimientos separa **los que vencen pronto de los ya vencidos**:
+mezclarlos hace leer el incumplimiento como una cola de trabajo, y ya no se puede
+evitar, solo explicar.
+
+## Problemas e incidentes masivos (`CRM-04.01.01.11`)
+
+El caso maestro ya permitía colgar cien llamadas de una caída y cerrarlas juntas.
+Lo que faltaba es lo que viene después: **la caída se arregla y la causa sigue
+ahí**.
+
+**Problema e incidente son cosas distintas.** El incidente es «está caído ahora»;
+el problema es «se cae cada tres semanas». Fundirlos hace que, al restablecer el
+servicio, se cierre también la investigación — y la siguiente caída empieza de
+cero con la misma gente buscando lo mismo.
+
+**Un apaño se declara apaño.** El apaño y la solución definitiva son dos campos, y
+el problema **no se resuelve con el primero**: cerrarlo con «reiniciamos el
+servicio» lo hace desaparecer de la lista y volver dentro de tres semanas con otro
+nombre. Con causa identificada y apaño, el problema pasa a **error conocido**, que
+es lo que permite que quien coge la llamada 101 sepa qué contestar.
+
+**La correlación propone, no agrupa.** Mira coincidencias —misma categoría, misma
+línea, misma ventana de tiempo— y sugiere. Agrupar automáticamente cien casos que
+no eran lo mismo le da a cien clientes una respuesta que no tiene que ver con su
+problema, y eso no se deshace: ya la han leído. La coincidencia es deliberadamente
+tosca, porque una más lista acierta más y se explica peor.
+
+Desvincular un caso **exige motivo**: casi siempre significa que era otra cosa, y
+eso es información sobre la causa. Los desvinculados siguen viéndose en el
+impacto — si no, nadie sabría que la correlación se equivocó veinte veces.
+
+Y las comunicaciones se registran **con su alcance**: en un incidente grande, «ya
+avisamos» sin fecha ni destinatarios es lo mismo que no haber avisado, y es lo
+primero que pregunta un cliente grande al día siguiente.
+
+## Telemetría de dispositivo (`CRM-04.04.02.05`)
+
+Un equipo que avisa antes de romperse es la promesa de todo el IoT industrial, y
+donde casi siempre se estrella es en el volumen: una máquina manda una lectura cada
+diez segundos, mil máquinas son ocho millones de lecturas al día, y un CRM que abra
+un caso por cada una deja de servir para atender clientes en una tarde.
+
+**No se guarda todo**: solo lo que cruza un umbral. Guardar la serie completa
+convierte el CRM en una base de datos de series temporales que no es y contra la
+que no puede competir.
+
+**El caso lo abre `service`, no el módulo de integración.** `integration` no
+escribe en el esquema de atención: manda un **comando** por el bus y el dueño del
+objeto decide, aplicando su taxonomía, su SLA y su enrutamiento. Por eso la
+respuesta dice que el caso está **pedido**, no creado: lo crea el otro servicio y
+puede rechazarlo.
+
+**Un aparato que se vuelve loco no abre mil casos.** Cada regla tiene ventana de
+silencio y repeticiones: un pico de un segundo no es una avería, y superado el
+primer aviso lo siguiente se agrupa y se cuenta. Sin eso, la primera avería real de
+una flota tumba la cola de soporte y alguien apaga la regla entera.
+
+**Dejar de recibir es una señal.** Un sensor averiado no dispara ninguna alerta
+porque no manda nada, y así lleva tres días sin que nadie lo mire. Se detecta
+comparando con la cadencia declarada, y los que **nunca** dieron señal salen
+aparte: un aparato roto y uno sin instalar no son lo mismo. Los que no declaran
+cadencia no se cuentan como sanos: se cuentan aparte, y el informe deja de ser
+concluyente.
+
+Las condiciones se validan **al guardar la regla**: un operador mal escrito no
+falla, deja de disparar en silencio — y de una regla que no salta nunca nadie
+sospecha, porque «no ha habido averías».
+
+## Prueba de entrega y documentos del proveedor (`CRM-00.04.05.05`)
+
+El albarán firmado, la foto de la entrega o el POD del transportista **se enlazan
+al encargo, no se copian** (RT-5): el documento vive en el corpus documental, con
+su retención, su antivirus y sus permisos. Guardar aquí el binario daría dos copias
+que divergen, y la del CRM sin política de borrado.
+
+Importa por una razón concreta: cuando el cliente dice que no le llegó, lo que se
+enseña es eso. Por eso hay una lista de **entregados sin prueba archivada**, que
+hay que mirar *antes* de que llame — luego ya no se puede pedir al transportista,
+porque casi todos la conservan unas semanas y después la borran.
+
+## Modelo canónico y sincronización bidireccional (`CRM-00.03.04.09`, `CRM-00.03.04.08`)
+
+Con dos sistemas conectados hace falta un mapeo; con seis hacen falta quince, y ahí
+es donde las integraciones dejan de mantenerse.
+
+**El modelo canónico es el idioma común**: cada sistema traduce solo a él y desde
+él, y las traducciones pasan de N×(N−1) a 2N. Y **es del tenant, no del código**:
+cada empresa llama a las cosas a su manera, y un canónico fijo obliga a meter lo
+propio en un `extra` que nadie mapea, que es donde acaba el dato que importa.
+
+Un mapeo a un campo que no existe **se rechaza al guardarlo**: un campo mal escrito
+no falla, deja de sincronizarse en silencio y se descubre meses después con los
+datos ya divergidos. Lo que el sistema externo manda y no está mapeado se devuelve
+**aparte**: es la lista con la que se descubre que el cliente añadió un campo nuevo
+en su ERP y nadie se enteró.
+
+La sincronización bidireccional añade el problema de verdad: **los dos lados
+cambian a la vez**.
+
+La política de conflicto se declara **por campo si hace falta**. «Gana el último»
+no vale para todo: el correo que corrigió el comercial no puede perder contra una
+carga masiva del ERP de las 3:00. Las cuatro —gana el nuestro, gana el suyo, gana
+el más reciente, páralo y que lo mire alguien— cubren los casos reales, y ninguna
+es el valor por defecto sensato para todos los campos.
+
+**Sin marca de tiempo comparable no se decide por tiempo.** Muchos sistemas no la
+dan, o la dan en su zona horaria sin decirlo; aplicar «gana el más reciente» sobre
+una fecha que no se puede comparar es echarlo a suertes y presentarlo como una
+regla. Se para y se deja para revisión.
+
+**Un eco no es un cambio.** Lo que acabamos de escribir allí nos vuelve como
+novedad suya; sin detectarlo, los dos sistemas se rebotan el mismo dato para
+siempre, cada rebote con su llamada de API y su registro de auditoría. Se guarda la
+huella de lo último escrito y lo que vuelve igual se ignora, diciéndolo.
+
+Un campo que cambió **en un solo lado no es un conflicto**: es un hueco, y se
+propaga. Y el mismo conflicto repetido **se cuenta, no se duplica**: uno que vuelve
+cada hora significa que alguien escribe en los dos lados a la vez, y eso se arregla
+cambiando la política, no resolviéndolo cien veces.
+
+Mientras hay un conflicto abierto, el vínculo queda **parado**: seguir
+sincronizando lo demás dejaría el registro mitad de uno y mitad de otro, que es
+peor que tenerlo parado y visible.
+
+## Campo y postventa en la interfaz (`CRM-07.04.03.20`, `CRM-07.04.03.21`)
+
+En la pantalla de campo, el **preventivo va por delante de los repuestos**: los
+vencimientos se miran cada semana y los repuestos solo cuando falta uno. Junto a
+ellos, los aparatos que han dejado de dar señal, que es la avería que no se ve.
+
+En postventa, los expedientes salen **ordenados por vencimiento** y los ya vencidos
+en su propia lista: un plazo legal no es una cola de trabajo, es una fecha que se
+pasa. Y los problemas enseñan `solo_apano` como columna, para que se vea de un
+vistazo cuáles están tapados y no resueltos.

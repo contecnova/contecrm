@@ -56,3 +56,94 @@ WORKORDER_COMPLETED = registrar(
         campos=("orden_id", "tipo"),
     )
 )
+
+RETURN_REQUESTED = registrar(
+    TipoEvento(
+        tipo="return.requested",
+        version=1,
+        productor="service",
+        descripcion="Un cliente ha pedido devolver algo; todavía no está autorizado",
+        campos=("devolucion_id", "motivo"),
+    )
+)
+RETURN_AUTHORIZED = registrar(
+    TipoEvento(
+        tipo="return.authorized",
+        version=1,
+        productor="service",
+        descripcion=(
+            "Devolución autorizada, con su número de RMA: es lo que el almacén "
+            "necesita para reconocer el paquete cuando llegue"
+        ),
+        campos=("devolucion_id", "codigo"),
+    )
+)
+RETURN_CLOSED = registrar(
+    TipoEvento(
+        tipo="return.closed",
+        version=1,
+        productor="service",
+        descripcion="Devolución cerrada, con la disposición del material",
+        campos=("devolucion_id", "disposicion"),
+    )
+)
+REFUND_REQUESTED = registrar(
+    TipoEvento(
+        tipo="refund.requested",
+        version=1,
+        productor="service",
+        descripcion=(
+            "Se ha decidido un abono. Lo **emite quien factura**: este evento pide, "
+            "no afirma que el dinero haya salido"
+        ),
+        campos=("devolucion_id", "resolucion_id", "importe"),
+    )
+)
+COMPLAINT_OPENED = registrar(
+    TipoEvento(
+        tipo="complaint.opened",
+        version=1,
+        productor="service",
+        descripcion="Expediente de reclamación abierto, con su fecha de vencimiento legal",
+        campos=("expediente_id", "tipo", "vence_at"),
+    )
+)
+COMPLAINT_ANSWERED = registrar(
+    TipoEvento(
+        tipo="complaint.answered",
+        version=1,
+        productor="service",
+        descripcion="Expediente contestado, diciendo si se llegó dentro del plazo",
+        campos=("expediente_id", "en_plazo"),
+    )
+)
+PROBLEM_OPENED = registrar(
+    TipoEvento(
+        tipo="problem.opened",
+        version=1,
+        productor="service",
+        descripcion="Se ha abierto un problema: una causa que produce casos",
+        campos=("problema_id", "severidad"),
+    )
+)
+PROBLEM_RESOLVED = registrar(
+    TipoEvento(
+        tipo="problem.resolved",
+        version=1,
+        productor="service",
+        descripcion="Problema resuelto con solución definitiva, y cuántos casos se cerraron con él",
+        campos=("problema_id", "casos_cerrados"),
+    )
+)
+PROBLEM_COMMUNICATED = registrar(
+    TipoEvento(
+        tipo="problem.communicated",
+        version=1,
+        productor="service",
+        descripcion=(
+            "Se ha comunicado algo a los afectados por un problema, con su alcance: "
+            "«ya avisamos» sin fecha ni alcance es lo mismo que no haber avisado"
+        ),
+        campos=("problema_id", "tipo", "casos_alcanzados"),
+    )
+)
