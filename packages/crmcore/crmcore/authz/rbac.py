@@ -135,6 +135,12 @@ ROLES_BASE: dict[str, Rol] = {
                 # Comentar y adjuntar es lo que hace cualquiera que trabaje una
                 # ficha; negárselo al rol básico convierte la colaboración en un
                 # privilegio y la conversación se vuelve al correo.
+                # Pedir una aprobación es parte de trabajar, no un privilegio:
+                # quien no puede pedirla acaba pidiéndosela a alguien por
+                # teléfono, y entonces la decisión no queda registrada en ningún
+                # sitio. Decidir SÍ es otra cosa y va aparte.
+                "aprobacion:read",
+                "aprobacion:write",
                 "comentario:escribir",
                 "comentario:resolver",
                 "adjunto:subir",
@@ -184,7 +190,17 @@ ROLES_BASE: dict[str, Rol] = {
     "responsable_ventas": Rol(
         nombre="responsable_ventas",
         hereda_de="comercial",
-        permisos=frozenset({"forecast:read", "forecast:write", "opportunity:approve"}),
+        permisos=frozenset(
+            {
+                "forecast:read",
+                "forecast:write",
+                "opportunity:approve",
+                # Decidir va separado de pedir a propósito: si fueran el mismo
+                # permiso, cualquiera que pueda pedir una aprobación podría
+                # firmarla, y la cadena entera dejaría de significar nada.
+                "aprobacion:decidir",
+            }
+        ),
         descripcion="Además, previsión y aprobación sobre su equipo",
         es_sistema=True,
     ),

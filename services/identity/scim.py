@@ -43,6 +43,7 @@ from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from services.identity import organigrama
 from services.identity import servicio as svc
 from services.identity.modelos import Membresia, RolTenant, Usuario
 
@@ -380,6 +381,7 @@ def actualizar_usuario(
         membresia.roles = roles
     if "active" in cuerpo:
         _fijar_actividad(uow, usuario_id, tenant_id, membresia, como_booleano(cuerpo["active"]))
+    organigrama.publicar(uow, tenant_id, usuario_id)
     return usuario, membresia
 
 
@@ -464,6 +466,7 @@ def aplicar_patch(
             error_code="scim.patch_sin_efecto",
             detalle={"gestionables": ["active", "userName", "displayName", "groups"]},
         )
+    organigrama.publicar(uow, tenant_id, usuario_id)
     return usuario, membresia
 
 
@@ -521,6 +524,7 @@ def reactivar(
             "reactivacion": True,
         },
     )
+    organigrama.publicar(uow, tenant_id, usuario_id)
 
 
 # ── Grupos ────────────────────────────────────────────────────────────────

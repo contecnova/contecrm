@@ -24,6 +24,7 @@ from crmcore.logging import get_logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from services.identity import organigrama
 from services.identity.modelos import ClaveApi, Membresia, RolTenant, Sesion, Usuario
 
 logger = get_logger(__name__)
@@ -647,6 +648,9 @@ def crear_usuario(
         subject=("usuario", usuario.id),
         data={"user_id": str(usuario.id), "email": email, "via": via},
     )
+    # Y su posición en la organización, que es lo que necesita quien tiene que
+    # decidir a quién le toca aprobar (CRM-00.03.05.07).
+    organigrama.publicar(uow, tenant_id, usuario.id)
     return usuario
 
 
@@ -680,6 +684,10 @@ def desactivar_usuario(
         subject=("usuario", usuario_id),
         data={"user_id": str(usuario_id), "via": via},
     )
+    # La baja también es un cambio de organigrama: quien se va no puede seguir
+    # saliendo como aprobador de nadie, y el evento de baja no dice a quién
+    # dejaba de mandar.
+    organigrama.publicar(uow, tenant_id, usuario_id)
 
 
 def _sin_usar(*_a: Any) -> None:  # pragma: no cover

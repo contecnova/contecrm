@@ -199,6 +199,8 @@ def _importar_todos_los_modelos() -> None:
         "services.tenancy.baja",
         "crmcore.authz.comparticion",
         "services.identity.sso",
+        "services.orchestrator.aprobaciones",
+        "services.orchestrator.organizacion",
     ]
     for modulo in modulos:
         try:

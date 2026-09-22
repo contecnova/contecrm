@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 392 hecho · ⬜ 315 pendiente
+**707 capacidades**: ✅ 402 hecho · ⬜ 305 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 207 · ⬜ 76
+283 capacidades · ✅ 217 · ⬜ 66
 
 ### 0.1 Multi-tenancy
 
@@ -251,17 +251,17 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.05.03` | Validación antes de publicar: nodos inalcanzables, ciclos sin salida, ramas sin destino, tareas sin responsable posible | C | 1 | orchestrator | ✅ | — |
 | `CRM-00.03.05.04` | Simulación con datos reales antes de publicar: qué ruta seguiría, quién aprobaría y cuánto tardaría | C | 1 | orchestrator | ✅ | contecflow-PSA:app/services/approval_engine/workflows.py (simulate_workflow) |
 | `CRM-00.03.05.05` | Versionado con borrador, publicado y archivado; las instancias en vuelo terminan con su versión | C | 1 | orchestrator | ✅ | — |
-| `CRM-00.03.05.06` | Aprobaciones en cadena y en paralelo con quórum configurable: todos, mayoría, cualquiera, N de M | C | 2 | orchestrator | ⬜ | contecflow-PSA:app/services/approval_engine/requests.py (quórum y decisiones) |
-| `CRM-00.03.05.07` | Resolución del aprobador por regla: jerarquía de mando, importe, unidad de negocio, rol o campo del registro | C | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.08` | Delegación y sustitución por ausencia con vigencia, sin perder la traza de quién decidió de verdad | C | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.09` | Escalado por tiempo, por inactividad y por jerarquía, con aviso antes de escalar y no solo después | C | 2 | orchestrator | ⬜ | contecflow-PSA:app/services/approval_engine/timeouts.py |
-| `CRM-00.03.05.10` | Reaprobación automática cuando cambia lo aprobado: un descuento aprobado que sube vuelve a aprobación | C | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.11` | Aprobación automática bajo umbral, registrada como tal: quién la habría tenido que dar y por qué no hizo falta | A | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.12` | Decidir desde el correo o el móvil sin entrar al CRM, con enlace firmado de un solo uso y caducidad | C | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.13` | Bandeja unificada de lo que me toca decidir, con el contexto suficiente para decidir sin abrir el registro | C | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.14` | Vista de la instancia sobre el propio gráfico: por dónde va, qué queda y dónde falló | A | 2 | orchestrator | ⬜ | — |
+| `CRM-00.03.05.06` | Aprobaciones en cadena y en paralelo con quórum configurable: todos, mayoría, cualquiera, N de M | C | 2 | orchestrator | ✅ | contecflow-PSA:app/services/approval_engine/requests.py (quórum y decisiones) |
+| `CRM-00.03.05.07` | Resolución del aprobador por regla: jerarquía de mando, importe, unidad de negocio, rol o campo del registro | C | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.08` | Delegación y sustitución por ausencia con vigencia, sin perder la traza de quién decidió de verdad | C | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.09` | Escalado por tiempo, por inactividad y por jerarquía, con aviso antes de escalar y no solo después | C | 2 | orchestrator | ✅ | contecflow-PSA:app/services/approval_engine/timeouts.py |
+| `CRM-00.03.05.10` | Reaprobación automática cuando cambia lo aprobado: un descuento aprobado que sube vuelve a aprobación | C | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.11` | Aprobación automática bajo umbral, registrada como tal: quién la habría tenido que dar y por qué no hizo falta | A | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.12` | Decidir desde el correo o el móvil sin entrar al CRM, con enlace firmado de un solo uso y caducidad | C | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.13` | Bandeja unificada de lo que me toca decidir, con el contexto suficiente para decidir sin abrir el registro | C | 2 | orchestrator | ✅ | — |
+| `CRM-00.03.05.14` | Vista de la instancia sobre el propio gráfico: por dónde va, qué queda y dónde falló | A | 2 | orchestrator | ✅ | — |
 | `CRM-00.03.05.15` | Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero | A | 2 | orchestrator | ⬜ | — |
-| `CRM-00.03.05.16` | Analítica del flujo: dónde se atasca, cuánto tarda cada paso y quién es el cuello de botella | A | 2 | analytics | ⬜ | contecflow-PSA:app/services/approval_engine/analytics.py |
+| `CRM-00.03.05.16` | Analítica del flujo: dónde se atasca, cuánto tarda cada paso y quién es el cuello de botella | A | 2 | analytics | ✅ | contecflow-PSA:app/services/approval_engine/analytics.py |
 
 ### 0.4 Extensibilidad y modelo de datos
 

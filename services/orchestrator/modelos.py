@@ -239,3 +239,16 @@ class TablaDecision(Base, TimestampMixin):
 # al esquema de cada servicio, porque cada uno cifra y descifra los campos de sus
 # propias tablas dentro de sus transacciones.
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
+
+# Las aprobaciones y el organigrama replicado viven en sus propios módulos —cada
+# uno con su lógica— pero sus tablas son de este esquema y tienen que importarse
+# aquí: `alembic` solo mira `modelos.py`, y una tabla que no se importe no se
+# migra y falla en la primera consulta, lejos de donde se declaró.
+from services.orchestrator.aprobaciones import (  # noqa: E402,F401
+    DecisionAprobacion,
+    Delegacion,
+    EnlaceDecision,
+    EtapaAprobacion,
+    SolicitudAprobacion,
+)
+from services.orchestrator.organizacion import PersonaOrg  # noqa: E402,F401

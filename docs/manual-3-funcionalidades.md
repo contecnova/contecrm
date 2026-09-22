@@ -6591,3 +6591,157 @@ La **prueba de entrega** (`CRM-00.04.05.05`) —el albarán firmado o la foto, d
 del corpus documental y enlazado al encargo— no está hecha. El hito guarda lo que
 dice el proveedor, pero el documento que lo demuestra hoy no se archiva, y sin él
 una reclamación se sostiene sobre un registro nuestro en vez de sobre su firma.
+
+## Aprobaciones: quién decide y qué pasa si no decide nadie (`CRM-00.03.05`)
+
+Una aprobación no es una tarea con un botón. Es una pregunta con cuatro partes
+que se equivocan por separado: **a quién le toca**, **cuántos hacen falta**, **qué
+pasa si nadie contesta** —que es lo que ocurre de verdad la mayoría de las veces—
+y **qué pasa si lo aprobado cambia después**.
+
+Todo lo que decide es dato del tenant, no código: la política de aprobaciones
+cambia cada trimestre, y un `if` en el producto la convierte en una versión nueva
+por cliente.
+
+### El organigrama, replicado (`CRM-00.03.05.07`)
+
+Quién manda sobre quién vive en `membresias`, dentro de `identity`, y el
+orquestador no lee el esquema de otro servicio. Llega por el evento
+`user.org.changed`, que se emite desde **las siete vías** que tocan una
+membresía: alta manual, alta JIT por OIDC, alta JIT por SAML, `PUT` de SCIM,
+`PATCH` de SCIM, reactivación y baja. Un organigrama que se publicara solo en el
+alta sería peor que no tenerlo: las aprobaciones seguirían yendo al jefe anterior
+con toda la apariencia de funcionar.
+
+El aprobador se resuelve por cinco orígenes —`jerarquia`, `rol`, `usuario`,
+`campo` y `unidad`— y **ninguno por defecto**. Tres reglas que están probadas:
+
+* **A quien no consta, no se le asigna nada.** Si el organigrama no conoce a una
+  persona, resolver falla y lo dice. Un aprobador elegido por defecto es una firma
+  que alguien pone sin que le correspondiera, y eso se descubre en una auditoría.
+* **Una etapa sin aprobadores no se salta**, se para. Saltarla haría que una
+  cadena mal configurada aprobara sola y en silencio.
+* **Quien pide no se aprueba a sí mismo** aunque la regla le señale. Es la
+  separación de funciones más básica y la que más veces se cuela, porque el
+  responsable de zona suele ser también el dueño de la cuenta.
+
+Un jefe de baja **se salta y se sube un escalón más**, que es lo que haría una
+persona; y un ciclo en la jerarquía da una cadena corta y rara en vez de tumbar el
+proceso.
+
+### Quórum: todos, mayoría, cualquiera, N de M (`CRM-00.03.05.06`)
+
+Las etapas van en cadena y dentro de cada una el voto es en paralelo. Los
+aprobadores **se congelan al abrir la etapa**: si se recalcularan a cada consulta,
+una reorganización a mitad de una aprobación cambiaría a quién le tocaba mientras
+está decidiendo.
+
+**Cuando el quórum ya no puede salir, se cierra sin esperar al resto.** Con
+«todos» y un voto en contra ya está decidido: seguir pidiendo firmas es hacer
+perder el tiempo a gente con algo que no puede aprobarse, y encima retrasa el
+rechazo a quien lo pidió.
+
+Y un `n_de_m` imposible —tres de dos— **se caza al crear la solicitud**, no seis
+semanas después, cuando alguien pregunta por qué aquello sigue parado.
+
+### Delegación con vigencia (`CRM-00.03.05.08`)
+
+La vigencia es obligatoria: una delegación sin fecha de fin es una cesión
+permanente que nadie recuerda haber hecho, y en la práctica se queda. Se puede
+acotar a una política, porque delegar las vacaciones no es delegar la firma de los
+contratos.
+
+Cada voto guarda **el titular y quien firmó de verdad**. Perder esa diferencia
+convierte la delegación en un agujero de responsabilidad.
+
+### Escalado que avisa antes (`CRM-00.03.05.09`)
+
+`POST /aprobaciones/revisar-plazos` avisa a las etapas que se acercan al plazo
+—por defecto, al 70 %— y escala las vencidas. **Primero se avisa y después se
+escala**: un escalado que llega sin aviso previo se vive como un castigo, y la
+reacción es discutirlo en vez de decidir.
+
+Al escalar, el superior **se añade**, no sustituye. Quitar al titular le quitaría
+la decisión a quien todavía puede tomarla, y borraría el rastro de a quién le
+tocaba. Si no hay nadie por encima se marca igual para no reintentarlo cada
+minuto, y queda escrito en el registro: una etapa vencida sin a quién escalar
+necesita que alguien la mire, y callarlo la deja parada para siempre.
+
+### Reaprobación cuando cambia lo aprobado (`CRM-00.03.05.10`)
+
+Un descuento del 10 % aprobado que alguien sube al 30 % está aprobado por el papel
+y no por la persona. Se guarda una **huella de los campos vigilados**, y cuando no
+coincide la aprobación vuelve a empezar **desde la primera etapa**.
+
+Solo de los campos vigilados, no del registro entero: si entrara todo, un cambio
+en la descripción obligaría a volver a aprobar un importe que nadie ha tocado, y a
+la tercera vez la gente aprueba sin mirar, que es peor que no tener reaprobación.
+
+Los votos anteriores **no se borran**: son la prueba de que aquella versión sí se
+aprobó. Cada reapertura abre una **vuelta** nueva, y los votos solo cuentan en la
+suya. Sin ese número, un descuento reabierto se aprobaría solo con las firmas de
+lo que ya no es — que es un fallo silencioso, no un error.
+
+### Aprobación automática bajo umbral (`CRM-00.03.05.11`)
+
+Se comprueba **después** de resolver los aprobadores, a propósito: así queda
+escrito a quién le habría tocado firmar y por qué no hizo falta. Sin ese nombre,
+«aprobación automática» es una decisión sin responsable, y la primera pregunta de
+cualquier auditoría es de quién era la firma.
+
+### Decidir desde el correo o el móvil (`CRM-00.03.05.12`)
+
+Enlace firmado, de un solo uso y con caducidad. En la base queda **el hash y no el
+token**: quien lea esa tabla —una copia de seguridad, un volcado de soporte— no
+puede aprobar en nombre de nadie.
+
+Un token inexistente, usado o caducado dan **el mismo error**: distinguirlos le
+diría a quien prueba si ese enlace existió, y con eso ya se sabe que hay una
+aprobación en marcha sobre algo. Y el enlace se marca usado **antes** de decidir:
+si decidir falla hay que pedir otro, que es molesto y mucho mejor que dejar vivo
+un enlace que ya ha viajado por un correo reenviable.
+
+### La bandeja de lo que me toca (`CRM-00.03.05.13`)
+
+`GET /aprobaciones/bandeja` trae el contexto dentro y en una sola llamada. Una
+bandeja que solo dice «tienes 14 cosas» obliga a abrir catorce pantallas, y lo que
+pasa entonces es que se aprueba en bloque sin mirar.
+
+Lo vencido primero y después lo que lleva más esperando. Lo que toca **por
+delegación** sale marcado y con el nombre del titular: si no se distinguiera, el
+suplente no sabría que está firmando por otro.
+
+### Por dónde va una instancia, sobre su gráfico (`CRM-00.03.05.14`)
+
+`GET /analitica-procesos/instancias/{id}/grafico` devuelve cada nodo con su estado
+—`recorrido`, `actual`, `fallido`, `compensado`, `pendiente`, `no_recorrido`— para
+que el lienzo lo pinte encima. No devuelve colores ni posiciones: eso es del
+front, y si viniera de aquí, cambiar la paleta sería un despliegue del backend.
+
+Se pinta **la versión con la que arrancó la instancia**, no la publicada: una
+instancia en vuelo termina con su versión, y enseñarla sobre el gráfico nuevo
+señalaría nodos que no tiene. Un nodo sin ejecutar en una instancia terminada sale
+como `no_recorrido` y no como `pendiente`: decir «pendiente» haría pensar que
+falta hacerlo.
+
+### Dónde se atasca un proceso (`CRM-00.03.05.16`)
+
+`GET /analitica-procesos/{clave}` da tiempo por paso, fallos, reintentos y ciclo
+completo. Tres decisiones sobre cómo se mide:
+
+* **El paso humano se cuenta desde que se creó la tarea hasta que alguien
+  respondió**, no lo que tardó el motor. Medir el motor da milisegundos en todos
+  los pasos y esconde los tres días que esperó la firma.
+* **La mediana va junto a la media.** Un proceso con una instancia de treinta días
+  y cien de una hora tiene una media que no describe a ninguna, y con solo la
+  media se optimiza el paso equivocado.
+* **Con menos de diez ejecuciones se dice que no es concluyente.** Y a nadie se le
+  señala con menos de tres tareas: publicar ese número es señalar a una persona
+  por una casualidad.
+
+### Lo que todavía no está
+
+Las **plantillas de flujo por sector** (`CRM-00.03.05.15`) no están. Van con los
+módulos verticales —un manifiesto ya trae su sección de `flujos`—, y ponerlas
+aquí como una lista aparte habría creado dos sitios donde vive un flujo de
+ejemplo.

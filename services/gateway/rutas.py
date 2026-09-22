@@ -97,6 +97,8 @@ PREFIJOS: dict[str, str] = {
     # se llama así y no `proveedores` porque en el CRM un proveedor es también
     # una cuenta: dos rutas parecidas apuntando a servicios distintos es cómo se
     # enruta mal una llamada y nadie entiende el 404.
+    "aprobaciones": "orchestrator",
+    "analitica-procesos": "orchestrator",
     "encargos": "integration",
     "proveedores-servicio": "integration",
     "grc": "tenancy",

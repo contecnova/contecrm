@@ -18,8 +18,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.identity import oidc as oidc_cli
+from services.identity import organigrama, sso
 from services.identity import saml as saml_sp
-from services.identity import sso
 from services.identity.modelos import ProveedorIdentidad
 
 logger = get_logger(__name__)
@@ -310,6 +310,10 @@ def callback_oidc(datos: VueltaOIDC, uow: UowDep) -> Any:
         sujeto_externo=str(claims["sub"]),
         grupos=oidc_cli.grupos_de(claims),
     )
+    # El IdP recalcula los roles en CADA entrada, así que el organigrama se
+    # vuelve a publicar aquí: si solo se publicara al crear el usuario, quien
+    # cambia de departamento seguiría apareciendo como aprobador del anterior.
+    organigrama.publicar(uow, estado.tenant_id, usuario.id)
     return _entrada(
         uow,
         usuario,
@@ -357,6 +361,7 @@ async def acs_saml(
         sujeto_externo=correo,
         grupos=grupos,
     )
+    organigrama.publicar(uow, tenant_id, usuario.id)
     return _entrada(
         uow,
         usuario,

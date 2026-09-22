@@ -104,6 +104,10 @@ ALIAS_MODELO = {
     "dispositivo_id": "dispositivoconfianza",
     "sincronizacion_id": "sincronizacionsuite",
     "incidencia_id": "incidenciaencargo",
+    # La aprobación NO se llama `solicitud_id` en la ruta: ese nombre ya es de
+    # las solicitudes de derechos de `party`, y dos rutas con el mismo parámetro
+    # apuntando a objetos distintos dejan este gate sin poder resolver ninguna.
+    "aprobacion_id": "solicitudaprobacion",
 }
 
 

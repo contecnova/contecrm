@@ -208,6 +208,22 @@ USER_DEPROVISIONED = registrar(
         campos=("user_id", "via"),
     )
 )
+USER_ORG_CHANGED = registrar(
+    TipoEvento(
+        tipo="user.org.changed",
+        version=1,
+        productor="identity",
+        descripcion=(
+            "La posición de una persona en la organización: sus roles, quién es "
+            "su superior y en qué unidad está. Va aparte de `user.provisioned` "
+            "porque cambia mucho más a menudo que el alta —un ascenso, una "
+            "reorganización, un cambio de equipo— y porque quien lo necesita no "
+            "es quien da la bienvenida: es quien tiene que decidir a QUIÉN le "
+            "toca aprobar algo"
+        ),
+        campos=("user_id", "roles", "superior_id", "unidad_id", "activa"),
+    )
+)
 RECORD_DELETED = registrar(
     TipoEvento(
         tipo="record.deleted",
