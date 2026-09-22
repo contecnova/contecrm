@@ -376,6 +376,13 @@ __all__ = [
 
 # Los recorridos y el correo viven en sus propios módulos —cada uno con su
 # lógica— pero sus tablas son de este esquema y tienen que importarse aquí.
+from services.marketing.canales import (  # noqa: E402,F401
+    Canal,
+    ConsentimientoCanal,
+    DominioEnvio,
+    Landing,
+    PlantillaCanal,
+)
 from services.marketing.correo import (  # noqa: E402,F401
     BloqueCorreo,
     CategoriaPreferencia,

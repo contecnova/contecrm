@@ -94,6 +94,9 @@ PREFIJOS: dict[str, str] = {
     "presion": "marketing",
     "rebotes": "marketing",
     "recorridos": "marketing",
+    "canales-marketing": "marketing",
+    "landings": "marketing",
+    "dominios-envio": "marketing",
     "correo": "marketing",
     "preferencias": "marketing",
     # Lo que se le encarga a un tercero y hay que seguir. `proveedores-servicio`

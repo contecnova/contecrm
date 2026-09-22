@@ -10,6 +10,7 @@ from uuid import UUID
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from services.marketing import ajustes as _ajustes  # noqa: F401  (registra las claves)
 from services.marketing import correo as cor
@@ -263,6 +264,33 @@ def crear_bloque(datos: CrearBloque, db: DbDep, principal: AutenticadoDep) -> An
     return {"id": str(fila.id), "clave": fila.clave}
 
 
+@router_correo.get(
+    "/bloques",
+    dependencies=[Depends(exige_permiso("campana:read"))],
+    summary="Bloques reutilizables",
+)
+def listar_bloques(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(cor.BloqueCorreo)
+            .where(cor.BloqueCorreo.tenant_id == principal.tenant_id)
+            .order_by(cor.BloqueCorreo.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "tipo": f.tipo,
+            "obligatorio_en_promocional": f.obligatorio_en_promocional,
+        }
+        for f in filas
+    ]
+
+
 class CrearPlantillaMarketing(BaseModel):
     clave: str = Field(..., min_length=1, max_length=80)
     nombre: str = Field(..., min_length=1, max_length=200)
@@ -287,6 +315,34 @@ def crear_plantilla(datos: CrearPlantillaMarketing, db: DbDep, principal: Autent
     db.add(fila)
     db.flush()
     return {"id": str(fila.id), "clave": fila.clave}
+
+
+@router_correo.get(
+    "/plantillas",
+    dependencies=[Depends(exige_permiso("campana:read"))],
+    summary="Plantillas del tenant",
+)
+def listar_plantillas(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(cor.PlantillaMarketing)
+            .where(cor.PlantillaMarketing.tenant_id == principal.tenant_id)
+            .order_by(cor.PlantillaMarketing.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "clase": f.clase,
+            "categoria": f.categoria,
+            "idioma": f.idioma,
+        }
+        for f in filas
+    ]
 
 
 @router_correo.get(
@@ -378,6 +434,33 @@ def crear_categoria(datos: CrearCategoria, db: DbDep, principal: AutenticadoDep)
     db.add(fila)
     db.flush()
     return {"id": str(fila.id), "clave": fila.clave}
+
+
+@router_preferencias.get(
+    "/categorias",
+    dependencies=[Depends(exige_permiso("campana:read"))],
+    summary="Categorías de preferencia declaradas",
+)
+def listar_categorias(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(cor.CategoriaPreferencia)
+            .where(cor.CategoriaPreferencia.tenant_id == principal.tenant_id)
+            .order_by(cor.CategoriaPreferencia.orden, cor.CategoriaPreferencia.nombre)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "obligatoria": f.obligatoria,
+            "por_defecto": f.por_defecto,
+        }
+        for f in filas
+    ]
 
 
 @router_preferencias.get(

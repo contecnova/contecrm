@@ -420,6 +420,69 @@ export const MODULOS: Modulo[] = [
       { nombre: "Comunidad", listar: "/api/v1/comunidad/hilos", servicio: "service" },
     ],
   },
+  {
+    ruta: "canales",
+    titulo: "Canales de ejecución",
+    seccion: "2.3",
+    capacidad: "CRM-07.04.03.11",
+    grupo: "Marketing",
+    recursos: [
+      {
+        nombre: "Canales",
+        listar: "/api/v1/canales-marketing",
+        crear: "/api/v1/canales-marketing",
+        servicio: "marketing",
+        columnas: ["clave", "nombre", "tipo", "activo"],
+        permiso: "campana:read",
+      },
+      {
+        nombre: "Landings",
+        listar: "/api/v1/landings",
+        crear: "/api/v1/landings",
+        servicio: "marketing",
+        columnas: ["clave", "titulo", "visitas", "envios"],
+      },
+      {
+        nombre: "Dominios de envío",
+        listar: "/api/v1/dominios-envio",
+        crear: "/api/v1/dominios-envio",
+        servicio: "marketing",
+        columnas: ["dominio", "uso", "spf", "dkim", "dmarc"],
+      },
+    ],
+  },
+  {
+    ruta: "contenido",
+    titulo: "Contenido y gobierno",
+    seccion: "2.4",
+    capacidad: "CRM-07.04.03.12",
+    grupo: "Marketing",
+    recursos: [
+      {
+        nombre: "Plantillas",
+        listar: "/api/v1/correo/plantillas",
+        crear: "/api/v1/correo/plantillas",
+        servicio: "marketing",
+        columnas: ["clave", "nombre", "clase", "categoria", "idioma"],
+        permiso: "campana:read",
+      },
+      {
+        nombre: "Bloques",
+        listar: "/api/v1/correo/bloques",
+        crear: "/api/v1/correo/bloques",
+        servicio: "marketing",
+        columnas: ["clave", "nombre", "tipo"],
+      },
+      {
+        nombre: "Categorías de preferencia",
+        listar: "/api/v1/preferencias/categorias",
+        crear: "/api/v1/preferencias/categorias",
+        servicio: "marketing",
+        columnas: ["clave", "nombre", "obligatoria"],
+      },
+      { nombre: "Supresiones", listar: "/api/v1/supresiones", servicio: "marketing" },
+    ],
+  },
 ];
 
 export function moduloDe(ruta: string): Modulo | undefined {

@@ -57,3 +57,18 @@ PREFERENCES_CHANGED = registrar(
         campos=("email", "guardadas", "origen"),
     )
 )
+
+CHANNEL_OPTOUT = registrar(
+    TipoEvento(
+        tipo="channel.optout",
+        version=1,
+        productor="marketing",
+        descripcion=(
+            "Alguien se ha dado de baja por el propio canal —una palabra en un "
+            "SMS, un bloqueo en WhatsApp—. Es público porque quien manda desde "
+            "fuera tiene que dejar de mandar en el momento, no en la próxima "
+            "sincronización"
+        ),
+        campos=("canal", "destino"),
+    )
+)

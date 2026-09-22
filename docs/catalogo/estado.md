@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 471 hecho · ⬜ 236 pendiente
+**707 capacidades**: ✅ 480 hecho · ⬜ 227 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -539,7 +539,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 30 · ⬜ 24
+54 capacidades · ✅ 37 · ⬜ 17
 
 ### 2.1 Segmentación y audiencias
 
@@ -603,23 +603,23 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-02.03.01.01` | Editor de plantillas con bloques reutilizables y contenido dinámico | C | 4 | marketing | ✅ | contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py |
-| `CRM-02.03.01.02` | Personalización con tokens, contenido condicional y recomendaciones | A | 4 | marketing | ⬜ | — |
-| `CRM-02.03.01.03` | Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up | A | 4 | marketing | ⬜ | — |
+| `CRM-02.03.01.02` | Personalización con tokens, contenido condicional y recomendaciones | A | 4 | marketing | ✅ | — |
+| `CRM-02.03.01.03` | Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up | A | 4 | marketing | ✅ | — |
 | `CRM-02.03.01.04` | Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación | C | 4 | marketing | ✅ | — |
 | `CRM-02.03.01.05` | Preferencias de suscripción granulares y centro de preferencias alojable | C | 4 | marketing | ✅ | — |
-| `CRM-02.03.01.06` | Previsualización multi-cliente de correo y test de spam score | A | 4 | marketing | ⬜ | — |
+| `CRM-02.03.01.06` | Previsualización multi-cliente de correo y test de spam score | A | 4 | marketing | ✅ | — |
 | `CRM-02.03.01.07` | Envío transaccional separado del promocional, con dominios distintos | A | 4 | marketing | ✅ | — |
 
 #### CRM-02.03.02 · Otros canales
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.03.02.01` | SMS y RCS con gestión de consentimiento y palabras clave de baja | A | 4 | marketing | ⬜ | contecpos:services/notificaciones (SMS/WhatsApp) |
-| `CRM-02.03.02.02` | WhatsApp Business: plantillas aprobadas, ventana de 24h, sesión y opt-in | A | 4 | marketing | ⬜ | contecpos:services/notificaciones + simuladores/sim-whatsapp |
-| `CRM-02.03.02.03` | Notificaciones push web y móvil | A | 4 | marketing | ⬜ | contecmind:app/services/push.py + app/models/push_subscription.py |
+| `CRM-02.03.02.01` | SMS y RCS con gestión de consentimiento y palabras clave de baja | A | 4 | marketing | ✅ | contecpos:services/notificaciones (SMS/WhatsApp) |
+| `CRM-02.03.02.02` | WhatsApp Business: plantillas aprobadas, ventana de 24h, sesión y opt-in | A | 4 | marketing | ✅ | contecpos:services/notificaciones + simuladores/sim-whatsapp |
+| `CRM-02.03.02.03` | Notificaciones push web y móvil | A | 4 | marketing | ✅ | contecmind:app/services/push.py + app/models/push_subscription.py |
 | `CRM-02.03.02.04` | Publicidad digital: sincronización de audiencias y retargeting | A | 4 | marketing | ⬜ | — |
 | `CRM-02.03.02.05` | Correo postal y telemarketing como pasos orquestados del recorrido | D | 4 | marketing | ⬜ | — |
-| `CRM-02.03.02.06` | Landing pages y formularios alojados o embebidos, con pre-relleno para conocidos | A | 4 | marketing | ⬜ | contecflow-PSA:app/services/public_forms_service.py |
+| `CRM-02.03.02.06` | Landing pages y formularios alojados o embebidos, con pre-relleno para conocidos | A | 4 | marketing | ✅ | contecflow-PSA:app/services/public_forms_service.py |
 | `CRM-02.03.02.07` | Personalización web / contenido dinámico en el sitio del cliente vía API | D | 4 | marketing | ⬜ | — |
 
 ### 2.4 Contenido y gobierno
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 72 · ⬜ 19
+91 capacidades · ✅ 74 · ⬜ 17
 
 ### 7.1 Administración funcional
 
@@ -1141,8 +1141,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.08` | Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.09` | Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas | A | 4 | front | ✅ | — |
 | `CRM-07.04.03.10` | Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición | A | 4 | front | ✅ | — |
-| `CRM-07.04.03.11` | Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío | A | 4 | front | ⬜ | — |
-| `CRM-07.04.03.12` | Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión | A | 4 | front | ⬜ | — |
+| `CRM-07.04.03.11` | Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío | A | 4 | front | ✅ | — |
+| `CRM-07.04.03.12` | Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión | A | 4 | front | ✅ | — |
 | `CRM-07.04.03.13` | Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.14` | Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.15` | Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques | C | 2 | front | ✅ | — |

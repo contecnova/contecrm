@@ -7778,3 +7778,123 @@ De marketing quedan la **personalización con contenido condicional**
 (`CRM-02.03.01.03`), la **previsualización multi-cliente y el test de spam**
 (`CRM-02.03.01.06`), y de los recorridos la **optimización de hora y canal por
 destinatario** (`CRM-02.02.02.05`, fase 5).
+
+## Canales de ejecución y entregabilidad (`CRM-02.03.02`, `CRM-02.03.01`)
+
+**Un canal es configuración, no un módulo por proveedor.** Twilio, MessageBird o el
+agregador del cliente son la misma cosa con otra dirección y otra credencial,
+sobre el transporte declarativo que ya existe. Un módulo por casa convierte cada
+implantación con otro proveedor en una versión del producto.
+
+Lo que sí es propio de cada canal se declara, porque tratarlos igual produce el
+mensaje que no se puede parar:
+
+| Canal | Cómo se da de baja |
+|---|---|
+| correo | enlace en el pie |
+| SMS y RCS | palabra clave de respuesta |
+| WhatsApp | botón de la plantilla y bloqueo del proveedor |
+| push | permiso del navegador o del dispositivo (`CRM-02.03.02.03`) |
+
+Las **notificaciones push** (`CRM-02.03.02.03`) entran por el mismo sitio que los
+demás: su destino es el token del dispositivo, su baja es el permiso del navegador
+—que se revoca fuera de aquí— y por eso tienen hora de silencio como el SMS. Un
+push a las tres de la mañana vibra en la mesilla igual que un mensaje.
+
+### El consentimiento es por canal (`CRM-02.03.02.01`)
+
+Quien aceptó el correo **no ha aceptado el SMS**, y mandarle uno «porque ya nos dio
+permiso» es exactamente lo que sanciona un regulador. Cada consentimiento guarda
+además **su prueba** —de dónde salió—, porque sin ella la respuesta a «¿quién
+autorizó esto?» es «no consta», que ante un regulador equivale a «nadie».
+
+La baja se reconoce por **la primera palabra, sin acentos ni mayúsculas**. Quien
+escribe «BAJA» desde el móvil manda tantas variantes como teclados hay, y exigir
+una exacta deja sin efecto una baja que la persona sí pidió — que es lo que acaba
+en denuncia.
+
+Y hay **horas de silencio** por canal: un SMS a las once de la noche despierta a
+alguien, y el coste de eso no es una baja, es una queja. El correo no las tiene,
+porque a las tres de la mañana espera en la bandeja sin molestar a nadie.
+
+### WhatsApp: la ventana y las plantillas (`CRM-02.03.02.02`)
+
+Fuera de la ventana de 24 horas solo vale una **plantilla aprobada**. Mandar texto
+libre fuera de ella **no da error**: el proveedor lo descarta y el mensaje no llega
+nunca, que es peor que un error porque nadie se entera. Por eso el estado de la
+plantilla se comprueba antes, y una no aprobada se para aquí.
+
+Quien escribe **abre la ventana**: el que te habla autoriza a contestarle sin
+plantilla, y eso se anota en el mismo sitio que la baja.
+
+### Una sola comprobación antes de mandar
+
+`GET /canales-marketing/comprobar` mira cinco cosas de una vez: canal activo,
+consentimiento **de ese canal**, hora de silencio, ventana de WhatsApp y plantilla
+aprobada. Repartidas por el código, la que se olvida es siempre la del
+consentimiento.
+
+### Landings y formularios (`CRM-02.03.02.06`)
+
+**Recoger un teléfono no autoriza a mandar SMS.** El consentimiento se pide aparte
+y por canal, y si la landing no lo declaraba se ignora **y se dice**: dar por
+consentido lo que solo se ha escrito en una casilla es justo la práctica que
+sanciona un regulador, y si no se avisara, quien monta la landing creería que está
+recogiendo un permiso que no recoge.
+
+El pre-rellenado devuelve **solo los campos que la landing pide**, no la ficha
+entera: pre-rellenar con datos que no estaba pidiendo le enseña a quien lo abre —o
+a quien recibió el enlace reenviado— lo que sabemos de otra persona.
+
+### Personalización (`CRM-02.03.01.02`)
+
+Tokens con **valor por defecto** (`{{nombre|cliente}}`), que es la diferencia entre
+«Hola cliente» y «Hola », que es lo que se manda cuando el dato falta y nadie lo
+previó. Y condicionales de «si existe», nada más: darle a una plantilla un lenguaje
+con condiciones convierte cada campaña en código sin revisar.
+
+### Entregabilidad (`CRM-02.03.01.03`)
+
+**Un dominio sin SPF, sin DKIM o sin DMARC no rebota: llega a basura.** Y eso no
+aparece en ningún informe de rebotes — aparece como una campaña que nadie abrió,
+que es el diagnóstico equivocado y lleva a reescribir el asunto en vez de arreglar
+el DNS.
+
+DMARC en `none` se señala aparte: detecta pero no bloquea, así que sirve para medir
+y no para proteger.
+
+El **calentamiento** pone un tope por día. Una IP nueva que manda cien mil el
+primer día se quema, y quemarla cuesta semanas.
+
+### Revisión antes de enviar (`CRM-02.03.01.06`)
+
+Es una **ayuda, no un veredicto**: nunca bloquea. Un sistema que bloquea por una
+palabra acaba con la gente escribiendo «gr4tis», que es peor para el filtro y para
+quien lee. Señala las palabras que marcan los filtros, el asunto demasiado largo
+—en el móvil se corta sobre los 40 y lo que importa suele estar al final—, los
+tokens sin sustituir y el dominio sin autenticar.
+
+### Las pantallas (`CRM-07.04.03.11`, `CRM-07.04.03.12`)
+
+Dos módulos en el front oficial: **canales de ejecución** —canales, landings y
+dominios de envío, con su estado de autenticación a la vista— y **contenido y
+gobierno** —plantillas, bloques, categorías de preferencia y supresiones—.
+
+Van separados a propósito: lo primero lo toca quien monta la campaña y lo segundo
+quien responde de lo que se manda. Juntarlos en una sola pantalla hace que el
+consentimiento se vea como un detalle de configuración del canal, y es al revés.
+
+### Lo que no está, y por qué
+
+La **optimización de hora de envío por destinatario** (`CRM-02.02.02.05`) **sigue
+pendiente**, y esto se descubrió construyéndola: la única señal de apertura que
+existe hoy es el estado del miembro de campaña, y una persona está **una sola vez
+en cada campaña**. Diez aperturas son diez campañas, así que para la mayoría de los
+contactos nunca habrá datos suficientes. La función existe y devuelve la hora
+cuando los hay —en UTC y diciéndolo—, pero llamar «hecha» a la capacidad sería
+prometer una optimización que casi nunca se va a poder hacer. Hace falta telemetría
+de apertura por envío, que hoy no se guarda.
+
+Quedan también la **publicidad digital y el retargeting** (`CRM-02.03.02.04`), el
+**correo postal y el telemarketing como pasos del recorrido** (`CRM-02.03.02.05`) y
+la **personalización web** (`CRM-02.03.02.07`).
