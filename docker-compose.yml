@@ -77,6 +77,7 @@ x-servicio: &servicio
       automation=http://automation:8000,integration=http://integration:8000,
       eventing=http://eventing:8000,party=http://party:8000,
       sales=http://sales:8000,analytics=http://analytics:8000,
+      intelligence=http://intelligence:8000,
       service=http://service:8000,
       marketing=http://marketing:8000
   depends_on:
@@ -354,6 +355,20 @@ services:
       CI_CLIENT_SECRET: ${CI_CLIENT_SECRET:-}
       CI_ENABLED: ${CI_ENABLED:-true}
     ports: ["127.0.0.1:8010:8000"]
+
+  # IA generativa sobre los datos del CRM. Servicio propio porque su esquema
+  # guarda cosas que no son de nadie más —qué modelo atiende a quién, qué se
+  # filtró, qué costó— y porque apagarlo tiene que poder hacerse sin tocar el
+  # resto: el día que haya que parar la IA, se para esto.
+  intelligence:
+    <<: *servicio
+    command: ["servicio", "intelligence"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: intelligence
+      DATABASE_URL: postgresql+psycopg://crm_intelligence_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_intelligence_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8015:8000"]
 
   # ── Explotación del dato ─────────────────────────────────────────────────
   #

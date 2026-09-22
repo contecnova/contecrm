@@ -194,6 +194,10 @@ ROLES_BASE: dict[str, Rol] = {
                 # Cada uno ve su propia liquidación. Es lo que evita la hoja de
                 # cálculo paralela: si no la puede mirar, se la hace él.
                 "commission:read",
+                # Usar la IA es de todos los que trabajan fichas: lo que genera
+                # son borradores que hay que revisar, no escrituras. Administrarla
+                # —elegir modelo, región y presupuesto— es otra cosa y va aparte.
+                "ia:usar",
                 # Retirar un adjunto o un comentario ajeno no es de todos: el
                 # autor edita el suyo por la comprobación de dentro, y borrar
                 # es una acción que deja hueco en una conversación.

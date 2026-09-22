@@ -153,6 +153,7 @@ PREFIJOS: dict[str, str] = {
     "almacen": "analytics",
     "metricas": "analytics",
     "analisis": "analytics",
+    "ia": "intelligence",
     "cuadros-mando": "analytics",
     "explotacion": "analytics",
     "proveedores-servicio": "integration",

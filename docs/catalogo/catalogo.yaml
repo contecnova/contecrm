@@ -1033,16 +1033,16 @@ modulos:
           - id: CRM-05.02.02
             nombre: IA generativa
             capacidades:
-              - {id: CRM-05.02.02.01, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/transformations.py + prompts.py", t: "Redacción y reescritura de correos, propuestas y respuestas"}
-              - {id: CRM-05.02.02.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/synthesis.py + briefings.py", t: "Resumen de cuenta, de oportunidad, de caso y de hilo de conversación"}
-              - {id: CRM-05.02.02.03, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/rag.py + retrieval/ (RAG con citación de fuente)", t: "Respuesta sobre datos propios con RAG y citación de la fuente"}
-              - {id: CRM-05.02.02.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/ask_the_data.py; contecmind:app/services/intent.py", t: "Consulta en lenguaje natural sobre los datos del CRM"}
-              - {id: CRM-05.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/llm_json.py + app/services/metadata_enrichment.py", t: "Extracción estructurada desde correos, PDFs y transcripciones a campos del CRM"}
-              - {id: CRM-05.02.02.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/languages.py", t: "Traducción automática de contenidos e interacciones"}
-              - {id: CRM-05.02.02.07, c: C, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/inference_gate.py + app/services/sensitive_policy.py", t: "Guardrails: filtros de contenido, verificación de permisos antes de recuperar contexto"}
-              - {id: CRM-05.02.02.08, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/metering.py (coste por tenant y modelo)", t: "Trazabilidad de uso de IA: prompt, modelo, coste, usuario, registro afectado"}
-              - {id: CRM-05.02.02.09, c: C, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:docs/COMPLIANCE.md (opt-out contractual)", t: "Opt-out de entrenamiento y garantía de no uso de datos del tenant"}
-              - {id: CRM-05.02.02.10, c: D, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/model_router.py + providers/", t: "Selección de modelo y región por tenant, incluido modelo propio del cliente"}
+              - {id: CRM-05.02.02.01, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/transformations.py + prompts.py", t: "Redacción y reescritura de correos, propuestas y respuestas"}
+              - {id: CRM-05.02.02.02, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py + briefings.py", t: "Resumen de cuenta, de oportunidad, de caso y de hilo de conversación"}
+              - {id: CRM-05.02.02.03, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/rag.py + retrieval/ (RAG con citación de fuente)", t: "Respuesta sobre datos propios con RAG y citación de la fuente"}
+              - {id: CRM-05.02.02.04, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/ask_the_data.py; contecmind:app/services/intent.py", t: "Consulta en lenguaje natural sobre los datos del CRM"}
+              - {id: CRM-05.02.02.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/core/llm_json.py + app/services/metadata_enrichment.py", t: "Extracción estructurada desde correos, PDFs y transcripciones a campos del CRM"}
+              - {id: CRM-05.02.02.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/languages.py", t: "Traducción automática de contenidos e interacciones"}
+              - {id: CRM-05.02.02.07, c: C, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/core/inference_gate.py + app/services/sensitive_policy.py", t: "Guardrails: filtros de contenido, verificación de permisos antes de recuperar contexto"}
+              - {id: CRM-05.02.02.08, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/metering.py (coste por tenant y modelo)", t: "Trazabilidad de uso de IA: prompt, modelo, coste, usuario, registro afectado"}
+              - {id: CRM-05.02.02.09, c: C, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md (opt-out contractual)", t: "Opt-out de entrenamiento y garantía de no uso de datos del tenant"}
+              - {id: CRM-05.02.02.10, c: D, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/core/model_router.py + providers/", t: "Selección de modelo y región por tenant, incluido modelo propio del cliente"}
           - id: CRM-05.02.03
             nombre: Agentes autónomos
             capacidades:

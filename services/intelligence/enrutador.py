@@ -1,0 +1,522 @@
+"""Qué modelo atiende a quién, dónde y con qué límite
+(CRM-05.02.02.10, CRM-05.02.02.09).
+
+La primera pregunta de cualquier comité de compras sobre IA en un CRM no es qué
+sabe hacer: es **dónde se procesan mis datos y quién los usa después**. Y la
+respuesta no puede ser «depende del proveedor que tengamos configurado esta
+semana».
+
+De ahí las decisiones de este módulo:
+
+**El modelo se elige por tenant, no por instalación.** Una empresa exige que todo
+se quede en la UE, otra tiene su propio modelo en su infraestructura y una tercera
+solo quiere el más barato. Los tres son el mismo producto con configuración
+distinta, y con un modelo fijo en el código el primero se pierde.
+
+**La región es una condición, no una preferencia.** Si un tenant declara que sus
+datos no salen de la UE y el modelo elegido está fuera, **no se llama**. Llamar
+igual y anotarlo en una traza es contarle después a alguien que sus datos ya
+salieron.
+
+**El opt-out de entrenamiento se guarda y se manda en cada llamada.** No basta con
+haberlo firmado en un contrato: tiene que viajar con la petición, porque la
+garantía que se le da al cliente es técnica y no comercial. Y si el proveedor
+configurado no lo admite, **se dice y no se llama**.
+
+**Sin presupuesto no hay llamada.** Un modelo sin tope es una factura que llega a
+final de mes y que nadie autorizó; y el tope se comprueba **antes**, porque
+comprobarlo después es descubrir que ya se gastó.
+
+El proveedor se declara con su dirección y su formato: aquí no hay código por
+casa. Lo que cambia entre dos despliegues es la configuración.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
+from uuid import UUID
+
+from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.uow import UnidadDeTrabajo
+from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.ids import nuevo_id
+from crmcore.logging import get_logger
+from sqlalchemy import (
+    Boolean,
+    Date,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    select,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.orm import Mapped, Session, mapped_column
+
+logger = get_logger(__name__)
+
+CENTIMO = Decimal("0.0001")
+
+# Para qué sirve cada modelo. No es decorativo: el que redacta y el que extrae
+# datos estructurados no son el mismo, y elegir por «el mejor» acaba usando el
+# caro para todo.
+USOS = ("redaccion", "resumen", "extraccion", "traduccion", "consulta", "embeddings")
+
+# Dónde se procesa. Lista cerrada porque es lo que se le promete al cliente por
+# escrito, y un valor libre haría que «UE» y «eu-west» fueran regiones distintas
+# para el filtro.
+REGIONES = ("ue", "ee_uu", "reino_unido", "suiza", "local", "otra")
+
+
+class ProveedorIA(Base, TimestampMixin):
+    """Un sitio al que se le pueden mandar peticiones de IA (CRM-05.02.02.10).
+
+    **Cada tenant declara los suyos**, y `tenant_id` no admite nulos: un catálogo
+    común con tenant nulo quedaría fuera de la RLS, que es la garantía que
+    sostiene todo el aislamiento. Lo que distingue el modelo del cliente del que
+    contrata el proveedor del CRM es `propio`, y no la ausencia de tenant.
+    """
+
+    __tablename__ = "proveedores_ia"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    clave: Mapped[str] = mapped_column(String(80), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    # El modelo del propio cliente, en su infraestructura. Gana siempre que
+    # exista: es su casa, y sus datos no se mueven de ella.
+    propio: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # La dirección y el formato del protocolo. Sin código por casa: lo que cambia
+    # entre dos proveedores es esto.
+    base_url: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    formato: Mapped[str] = mapped_column(String(40), nullable=False, default="openai_chat")
+    region: Mapped[str] = mapped_column(String(20), nullable=False, default="otra")
+    # Si el proveedor admite pedir que no se entrene con lo enviado. Cuando no,
+    # un tenant con opt-out **no puede usarlo**, y eso se comprueba antes de
+    # llamar, no después.
+    admite_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Coste declarado por millón de tokens. Declarado y no medido: lo cobra el
+    # proveedor y aquí solo se usa para poder avisar antes de gastarlo.
+    coste_entrada_millon: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    coste_salida_millon: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    modelos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    config: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "clave", name="uq_proveedor_ia"),
+        Index("ix_proveedores_ia", "activo", "region"),
+    )
+
+
+class PoliticaIA(Base, TimestampMixin):
+    """Lo que un tenant admite y lo que no (CRM-05.02.02.09, .10)."""
+
+    __tablename__ = "politicas_ia"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Dónde pueden procesarse sus datos. Vacío = sin restricción declarada, que
+    # **no** es lo mismo que «en cualquier sitio»: se anota y se puede exigir.
+    regiones_admitidas: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # Exigir que el proveedor garantice no entrenar con lo enviado. Encendido por
+    # defecto: es lo que un cliente asume sin preguntarlo, y descubrir que no era
+    # así se descubre tarde y mal.
+    exigir_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Preferencias por uso: {uso: clave_proveedor}. El que redacta y el que
+    # extrae no tienen por qué ser el mismo.
+    preferencias: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    presupuesto_mes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Interruptor por tenant (CRM-05.02.03.04). Apagarlo corta toda la IA de ese
+    # cliente sin tocar nada más.
+    ia_activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    motivo_apagado: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", name="uq_politica_ia"),
+        Index("ix_politicas_ia", "tenant_id"),
+    )
+
+
+class GastoIA(Base):
+    """Lo gastado por tenant y día, para poder cortar antes de la factura."""
+
+    __tablename__ = "gasto_ia"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    dia: Mapped[date] = mapped_column(Date, nullable=False)
+    proveedor: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    tokens_entrada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tokens_salida: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    coste: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    llamadas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "dia", "proveedor", name="uq_gasto_ia_dia"),
+        Index("ix_gasto_ia", "tenant_id", "dia"),
+    )
+
+
+def _ahora() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _hoy() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def registrar_proveedor(
+    uow: UnidadDeTrabajo,
+    *,
+    clave: str,
+    base_url: str,
+    region: str,
+    nombre: str = "",
+    formato: str = "openai_chat",
+    admite_opt_out: bool = False,
+    modelos: list[dict[str, Any]] | None = None,
+    coste_entrada_millon: Decimal = Decimal(0),
+    coste_salida_millon: Decimal = Decimal(0),
+    config: dict[str, Any] | None = None,
+    solo_este_tenant: bool = False,
+) -> tuple[ProveedorIA, list[str]]:
+    """Declara un proveedor de IA."""
+    if region not in REGIONES:
+        raise ErrorValidacion(
+            f"Región «{region}» no reconocida.",
+            error_code="ia.region_no_valida",
+            detalle={"validas": list(REGIONES)},
+        )
+    if not base_url.strip():
+        raise ErrorValidacion(
+            "Un proveedor sin dirección no se puede llamar.", error_code="ia.sin_url"
+        )
+    avisos: list[str] = []
+    if not admite_opt_out:
+        avisos.append(
+            "Este proveedor no garantiza el opt-out de entrenamiento: los tenants "
+            "que lo exijan no podrán usarlo, y es lo que casi todos exigen."
+        )
+    if coste_entrada_millon == 0 and coste_salida_millon == 0:
+        avisos.append(
+            "Sin coste declarado no se puede avisar antes de gastar: el presupuesto "
+            "no cortará nada."
+        )
+    fila = ProveedorIA(
+        tenant_id=uow.tenant_id,
+        propio=solo_este_tenant,
+        clave=clave.strip(),
+        nombre=nombre.strip() or clave.strip(),
+        base_url=base_url.strip(),
+        formato=formato,
+        region=region,
+        admite_opt_out=admite_opt_out,
+        modelos=list(modelos or []),
+        coste_entrada_millon=coste_entrada_millon,
+        coste_salida_millon=coste_salida_millon,
+        config=dict(config or {}),
+    )
+    uow.db.add(fila)
+    uow.db.flush()
+    return fila, avisos
+
+
+def politica(db: Session, tenant_id: UUID) -> PoliticaIA | None:
+    return db.execute(
+        select(PoliticaIA).where(PoliticaIA.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+
+
+def fijar_politica(
+    uow: UnidadDeTrabajo,
+    *,
+    regiones_admitidas: list[str] | None = None,
+    exigir_opt_out: bool = True,
+    preferencias: dict[str, str] | None = None,
+    presupuesto_mes: Decimal | None = None,
+) -> PoliticaIA:
+    """Declara qué admite este tenant."""
+    for region in regiones_admitidas or []:
+        if region not in REGIONES:
+            raise ErrorValidacion(
+                f"Región «{region}» no reconocida.",
+                error_code="ia.region_no_valida",
+                detalle={"validas": list(REGIONES)},
+            )
+    fila = politica(uow.db, uow.tenant_id)
+    if fila is None:
+        fila = PoliticaIA(tenant_id=uow.tenant_id)
+        uow.db.add(fila)
+    fila.regiones_admitidas = list(regiones_admitidas or [])
+    fila.exigir_opt_out = exigir_opt_out
+    fila.preferencias = dict(preferencias or {})
+    fila.presupuesto_mes = presupuesto_mes
+    uow.db.flush()
+    return fila
+
+
+def apagar(uow: UnidadDeTrabajo, *, motivo: str) -> PoliticaIA:
+    """Corta toda la IA de este tenant (CRM-05.02.03.04).
+
+    Sin borrar configuración: lo que se quiere el día que algo va mal es parar
+    ahora y decidir después.
+    """
+    if not motivo.strip():
+        raise ErrorValidacion(
+            "Apagar la IA exige motivo: alguien preguntará por qué dejó de " "funcionar.",
+            error_code="ia.motivo_obligatorio",
+        )
+    fila = politica(uow.db, uow.tenant_id) or PoliticaIA(tenant_id=uow.tenant_id)
+    fila.ia_activa = False
+    fila.motivo_apagado = motivo.strip()
+    if fila.id is None:
+        uow.db.add(fila)
+    uow.db.flush()
+    return fila
+
+
+def elegir(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    uso: str,
+    preferido: str = "",
+) -> dict[str, Any]:
+    """Qué proveedor atiende esta petición, **y por qué** (CRM-05.02.02.10).
+
+    El orden de las comprobaciones es deliberado: **interruptor, opt-out,
+    región, presupuesto**. El interruptor primero porque tiene que cortar aunque
+    todo lo demás esté bien; y la región y el opt-out antes que el presupuesto
+    porque son condiciones del contrato, no cuestión de dinero.
+
+    Cuando no se puede llamar se dice **cuál de las condiciones lo impide**. Un
+    «no disponible» a secas manda a revisar la conexión cuando lo que pasa es que
+    el cliente no admite esa región.
+    """
+    if uso not in USOS:
+        raise ErrorValidacion(
+            f"Uso «{uso}» no reconocido.",
+            error_code="ia.uso_no_valido",
+            detalle={"validos": list(USOS)},
+        )
+    ficha = politica(db, tenant_id)
+    if ficha is not None and not ficha.ia_activa:
+        return {
+            "elegido": None,
+            "puede_llamar": False,
+            "porque": "La IA está apagada para este tenant: " + (ficha.motivo_apagado or ""),
+            "motivo_codigo": "apagada",
+        }
+
+    candidatos = (
+        db.execute(
+            select(ProveedorIA).where(
+                ProveedorIA.tenant_id == tenant_id, ProveedorIA.activo.is_(True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not candidatos:
+        return {
+            "elegido": None,
+            "puede_llamar": False,
+            "porque": "No hay ningún proveedor de IA declarado.",
+            "motivo_codigo": "sin_proveedor",
+        }
+
+    # El modelo del propio cliente gana siempre que exista: es su casa.
+    candidatos.sort(key=lambda p: (not p.propio, p.clave))
+    clave_preferida = preferido or (ficha.preferencias or {}).get(uso, "") if ficha else preferido
+    if clave_preferida:
+        candidatos.sort(key=lambda p: p.clave != clave_preferida)
+
+    descartados: list[dict[str, str]] = []
+    exigir_opt_out = ficha.exigir_opt_out if ficha else True
+    regiones = [str(r) for r in (ficha.regiones_admitidas or [])] if ficha else []
+
+    for proveedor in candidatos:
+        if proveedor.modelos and uso not in {
+            str(m.get("uso")) for m in proveedor.modelos if m.get("uso")
+        }:
+            descartados.append(
+                {"proveedor": proveedor.clave, "porque": f"no declara ningún modelo para «{uso}»"}
+            )
+            continue
+        if exigir_opt_out and not proveedor.admite_opt_out:
+            descartados.append(
+                {
+                    "proveedor": proveedor.clave,
+                    "porque": (
+                        "no garantiza que no se entrene con lo enviado, y este tenant " "lo exige"
+                    ),
+                }
+            )
+            continue
+        if regiones and proveedor.region not in regiones:
+            descartados.append(
+                {
+                    "proveedor": proveedor.clave,
+                    "porque": (
+                        f"procesa en «{proveedor.region}» y este tenant solo admite "
+                        f"{', '.join(regiones)}"
+                    ),
+                }
+            )
+            continue
+
+        modelo = next(
+            (m for m in (proveedor.modelos or []) if str(m.get("uso")) == uso),
+            None,
+        )
+        return {
+            "elegido": proveedor.clave,
+            "proveedor_id": str(proveedor.id),
+            "modelo": str((modelo or {}).get("nombre") or ""),
+            "region": proveedor.region,
+            "propio_del_tenant": proveedor.propio,
+            "opt_out": proveedor.admite_opt_out,
+            "puede_llamar": True,
+            "descartados": descartados,
+            "porque": (
+                f"Modelo del propio cliente en {proveedor.region}."
+                if proveedor.propio
+                else f"ProveedorIA «{proveedor.clave}» en {proveedor.region}, "
+                + ("con opt-out garantizado." if proveedor.admite_opt_out else "sin opt-out.")
+            ),
+        }
+
+    return {
+        "elegido": None,
+        "puede_llamar": False,
+        # Se dice exactamente qué condición lo impide: «no disponible» a secas
+        # manda a revisar la conexión cuando el problema es el contrato.
+        "porque": "Ningún proveedor cumple lo que este tenant exige.",
+        "motivo_codigo": "sin_candidato",
+        "descartados": descartados,
+    }
+
+
+def anotar_gasto(
+    uow: UnidadDeTrabajo,
+    *,
+    proveedor: str,
+    tokens_entrada: int,
+    tokens_salida: int,
+    coste: Decimal | None = None,
+    dia: date | None = None,
+) -> GastoIA:
+    """Suma lo gastado hoy."""
+    cuando = dia or _hoy()
+    fila = uow.db.execute(
+        select(GastoIA).where(
+            GastoIA.tenant_id == uow.tenant_id,
+            GastoIA.dia == cuando,
+            GastoIA.proveedor == proveedor,
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        # Los valores se ponen aquí y no se dejan al `default` de la columna: ese
+        # solo se aplica al hacer el INSERT, y hasta entonces son `None` — sumarle
+        # tokens reventaría antes de llegar a la base.
+        fila = GastoIA(
+            tenant_id=uow.tenant_id,
+            dia=cuando,
+            proveedor=proveedor,
+            tokens_entrada=0,
+            tokens_salida=0,
+            coste=Decimal(0),
+            llamadas=0,
+        )
+        uow.db.add(fila)
+    fila.tokens_entrada += max(0, int(tokens_entrada))
+    fila.tokens_salida += max(0, int(tokens_salida))
+    fila.coste = Decimal(fila.coste) + Decimal(coste or 0)
+    fila.llamadas += 1
+    uow.db.flush()
+    return fila
+
+
+def coste_estimado(
+    db: Session, *, proveedor: str, tokens_entrada: int, tokens_salida: int
+) -> Decimal:
+    """Lo que costaría, según el coste declarado del proveedor."""
+    fila = db.execute(select(ProveedorIA).where(ProveedorIA.clave == proveedor)).scalars().first()
+    if fila is None:
+        return Decimal(0)
+    entrada = Decimal(tokens_entrada) / Decimal(1_000_000) * Decimal(fila.coste_entrada_millon)
+    salida = Decimal(tokens_salida) / Decimal(1_000_000) * Decimal(fila.coste_salida_millon)
+    return (entrada + salida).quantize(CENTIMO, rounding=ROUND_HALF_UP)
+
+
+def presupuesto(db: Session, tenant_id: UUID, *, hoy: date | None = None) -> dict[str, Any]:
+    """Cuánto se lleva gastado este mes y cuánto queda.
+
+    Se comprueba **antes** de llamar: comprobarlo después es descubrir que ya se
+    gastó, y la factura llega igual.
+    """
+    cuando = hoy or _hoy()
+    desde = cuando.replace(day=1)
+    gastado = (
+        db.execute(
+            select(func.coalesce(func.sum(GastoIA.coste), 0)).where(
+                GastoIA.tenant_id == tenant_id, GastoIA.dia >= desde
+            )
+        )
+    ).scalar_one()
+    ficha = politica(db, tenant_id)
+    tope = Decimal(ficha.presupuesto_mes) if ficha and ficha.presupuesto_mes else None
+    return {
+        "mes_desde": str(desde),
+        "gastado": str(Decimal(gastado or 0)),
+        "presupuesto": str(tope) if tope is not None else None,
+        "queda": str(tope - Decimal(gastado or 0)) if tope is not None else None,
+        "agotado": bool(tope is not None and Decimal(gastado or 0) >= tope),
+        # Sin presupuesto declarado no se dice que quede mucho: se dice que no hay
+        # tope, que es lo que alguien tiene que decidir.
+        "con_tope": tope is not None,
+    }
+
+
+def exigir_presupuesto(db: Session, tenant_id: UUID) -> None:
+    """Corta si el mes ya se ha gastado."""
+    estado = presupuesto(db, tenant_id)
+    if estado["agotado"]:
+        raise Conflicto(
+            "Se ha agotado el presupuesto de IA de este mes",
+            error_code="ia.presupuesto_agotado",
+            detalle=estado,
+        )
+
+
+def exigir_disponible(db: Session, tenant_id: UUID, *, uso: str) -> dict[str, Any]:
+    """Comprueba todo y devuelve el proveedor elegido, o falla explicando cuál.
+
+    Es la puerta por la que pasa **todo** lo de este servicio: si cada módulo
+    comprobara por su cuenta, el día que se añada una condición habría seis sitios
+    donde ponerla y solo cinco la tendrían.
+    """
+    eleccion = elegir(db, tenant_id, uso=uso)
+    if not eleccion["puede_llamar"]:
+        codigo = str(eleccion.get("motivo_codigo") or "sin_candidato")
+        if codigo == "apagada":
+            raise Prohibido(eleccion["porque"], error_code="ia.apagada", detalle=eleccion)
+        raise NoEncontrado(eleccion["porque"], error_code="ia.sin_proveedor", detalle=eleccion)
+    exigir_presupuesto(db, tenant_id)
+    return eleccion

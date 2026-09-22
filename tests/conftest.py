@@ -231,6 +231,7 @@ def _importar_todos_los_modelos() -> None:
         "services.analytics.almacen",
         "services.analytics.semantico",
         "services.party.identidad",
+        "services.intelligence.modelos",
     ]
     for modulo in modulos:
         try:

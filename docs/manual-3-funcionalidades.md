@@ -8874,3 +8874,158 @@ par, ese texto es lo único que explica por qué estaba mal.
 Las señales se guardan **con huella y pista, no en claro**: una tabla de
 identidades es un índice de todos los correos y teléfonos del CRM, y para saber de
 cuál se habla basta con «termina en 4321».
+
+## IA generativa (`CRM-05.02.02`)
+
+La IA en un CRM es útil por lo mismo que es peligrosa: hace en un segundo lo que
+una persona tardaría una tarde, y con los datos de clientes delante. Todo este
+módulo está construido alrededor de esa frase, y vive en un servicio propio
+—`intelligence`— para que apagarlo no toque nada más.
+
+### Qué modelo, dónde y con qué límite (`CRM-05.02.02.10`, `CRM-05.02.02.09`)
+
+La primera pregunta de un comité de compras no es qué sabe hacer: es **dónde se
+procesan mis datos y quién los usa después**.
+
+El modelo se elige **por tenant**: una empresa exige que todo se quede en la UE,
+otra tiene su propio modelo en su infraestructura y una tercera quiere el más
+barato. Los tres son el mismo producto con configuración distinta. Un proveedor
+declarado **solo para un tenant** es su modelo, en su casa, y gana siempre.
+
+**La región es una condición, no una preferencia.** Si el tenant declara que sus
+datos no salen de la UE y el modelo está fuera, **no se llama**. Llamar igual y
+anotarlo en una traza es contarle después a alguien que sus datos ya salieron.
+
+**El opt-out de entrenamiento se exige por defecto y viaja en cada petición.** No
+basta con haberlo firmado: la garantía que se le da al cliente es técnica. Si el
+proveedor configurado no lo admite, se descarta — y se dice cuál de las
+condiciones lo impide, porque un «no disponible» a secas manda a revisar la
+conexión cuando el problema es el contrato.
+
+**Sin presupuesto no hay llamada**, y se comprueba antes: comprobarlo después es
+descubrir que ya se gastó, y la factura llega igual. Sin tope declarado no se dice
+que quede mucho: se dice que **no hay tope**, que es lo que alguien tiene que
+decidir.
+
+Y hay **interruptor por tenant**: corta toda la IA sin borrar configuración,
+porque el día que algo va mal lo que se quiere es parar ahora y decidir después.
+
+### Guardarraíles (`CRM-05.02.02.07`)
+
+El agujero de la IA en un CRM no es que el modelo diga tonterías: es que **le
+enseñe a alguien lo que no puede ver**. Un resumen construido con documentos que
+el usuario no podía abrir es una fuga elegante: sale redactada, sin fuente, y
+nadie puede reconstruir de dónde salió.
+
+**Los permisos se comprueban antes de recuperar el contexto**, no después de
+generar: filtrar una respuesta ya redactada es imposible, porque el modelo ya
+mezcló lo que podía con lo que no y quitar una frase no quita lo que implicaba. Un
+fragmento **sin permiso declarado se descarta**: ante la duda no se enseña.
+
+**Lo personal y lo especial no salen salvo declaración expresa**, y autorizarlo
+avisa de que hace falta base legal y contrato. Además se **tapan patrones en el
+texto libre** —IBAN, tarjeta, NIF, correo—, porque en una nota escrita a mano no
+hay ningún campo que los declare.
+
+Y lo que se quita **se dice**: una respuesta más corta sin explicación se lee como
+que no había información. Los bloqueos se cuentan, con las dos lecturas que
+importan y son opuestas: uno que salta mil veces al día estorba; uno que no salta
+nunca tampoco protege.
+
+### Redacción, resumen y traducción (`CRM-05.02.02.01`, `CRM-05.02.02.02`, `CRM-05.02.02.06`)
+
+**La plantilla del prompt es un objeto versionado**, no una cadena en el código:
+el día que los textos salgan raros, la primera pregunta será qué cambió, y
+cambiarla exige decir por qué.
+
+**Nada se escribe solo.** Lo generado es un **borrador**: alguien lo lee, lo
+corrige y lo manda. Un correo enviado automáticamente con un dato inventado no se
+puede retirar, y el modelo inventa —poco, pero inventa—.
+
+**El idioma se decide, no se adivina**: contestar en castellano a un cliente
+francés es el error más frecuente y el más caro de los baratos. Sin idioma
+declarado, no se genera.
+
+**Sin contexto suficiente no se llama al modelo.** Resumiría igual, y lo que sale
+es plausible y vacío: cuesta dinero y engaña, que es la peor combinación.
+
+Y se anota qué hizo la persona con el borrador —aceptar, editar o tirar—, porque
+sin eso se sabe lo que cuesta la IA y no lo que vale. Lo descartado **no se
+conserva**: es un texto sobre un cliente que nadie ha validado, y esos textos
+acaban leyéndose como si fueran datos.
+
+### Respuesta con citación y consulta en lenguaje natural (`CRM-05.02.02.03`, `CRM-05.02.02.04`)
+
+Una respuesta sobre los datos del cliente **sin decir de dónde sale** no vale:
+quien la lee no puede comprobarla, y cuando alguna esté mal no habrá forma de
+saber si el fallo fue del dato o del modelo.
+
+Por eso, **sin citas comprobables la respuesta no se presenta como buena**, aunque
+el párrafo sea perfecto — un párrafo perfecto sin fuente es justo lo que escribe un
+modelo cuando no encontró nada. Y **se comprueba que lo citado existía**: una cita
+a un fragmento que no se pasó es una referencia inventada con la misma forma que
+una buena.
+
+Que el modelo diga **que no lo sabe es un acierto**, no un fallo: es la respuesta
+más difícil de conseguir y la única que hace que las demás se puedan creer. Y «no
+hay datos» se distingue de «no puedes verlos», porque solo uno se arregla pidiendo
+permiso.
+
+Para preguntar en lenguaje natural, **el modelo no toca la base de datos**:
+traduce la pregunta a un **plan** —el mismo formato que compila el motor de
+informes— y ese plan lo ejecuta quien tiene el dato, con los permisos de quien
+pregunta. Dejar que escriba SQL sería darle a un generador de texto acceso a
+cualquier tabla, y ningún filtro posterior arregla eso. El plan **se valida contra
+el modelo publicado** antes de devolverlo, y se devuelve **cómo entendió la
+pregunta** en una frase: es lo que permite ver que preguntaste por «este
+trimestre» y filtró por «este año» antes de llevarte el número a una reunión.
+
+### Extracción estructurada (`CRM-05.02.02.05`)
+
+Sacar campos de un correo o de un PDF es lo que más tiempo ahorra, y lo que más
+daño hace si se aplica solo: un importe mal leído entra en una oportunidad, sale
+en el forecast y llega a una reunión.
+
+**Se propone, no se escribe**, y cada campo viene con su **cita literal** del
+texto: sin ella no se puede comprobar, y comprobar es más rápido que buscarlo a
+mano — que es todo el ahorro que esto promete. Una cita que no aparece en el texto
+se descarta: es una referencia inventada.
+
+**Lo que ya tiene valor no se pisa**: queda en **conflicto** y decide una persona.
+El dato que estaba lo puso alguien, y una máquina no tiene autoridad para
+corregirlo en silencio. Por eso los conflictos salen primero en la lista: son los
+únicos donde equivocarse borra algo que ya existía.
+
+**El esquema manda**: si el destino es una fecha y el modelo devuelve «el martes»,
+la propuesta se marca como no convertible en vez de guardar basura con buena cara.
+Y aceptar **pide** el cambio al servicio dueño por comando: escribir desde aquí
+saltaría el metamodelo y las reglas de negocio para la IA y para nadie más.
+
+### Trazabilidad y coste (`CRM-05.02.02.08`)
+
+Cuando alguien pregunte «¿por qué el CRM escribió esto?» —a veces con un abogado
+delante— la respuesta tiene que existir: qué tarea, con qué modelo, en qué región,
+con qué plantilla y versión, quién lo pidió y de qué fuentes salió.
+
+**El prompt se guarda por huella, no por texto**: guardarlo duplicaría dentro del
+registro de auditoría todos los datos personales del CRM, y sin la retención de su
+tabla de origen. Con la plantilla versionada y la huella se puede reproducir sin
+duplicar.
+
+**El coste va por llamada**, porque una factura mensual no dice quién gastó. Y
+**lo que salió mal también se registra**: un módulo que solo apunta los aciertos da
+una tasa de éxito del 100 %.
+
+La llamada nace **pendiente**, no aceptada: marcarla aceptada al generarla
+inflaría la tasa de descarte hasta dejarla sin significado, y ese es precisamente
+el número con el que se decide si esto sirve. El consumo enseña las tres cifras
+juntas —coste, descarte y bloqueos—, porque enseñar solo el coste hace que se
+discuta el precio de algo cuyo valor nadie ha medido.
+
+### El puerto hacia el modelo
+
+Todo lo anterior funciona **sin saber que existe HTTP**. Lo único que habla con un
+proveedor es un módulo pequeño y aparte, que traduce al formato declarado. Eso es
+lo que hace que cambiar de proveedor sea configuración y no un módulo nuevo, y lo
+que permite probar de verdad lo que importa: qué se manda y qué se hace con lo que
+vuelve.

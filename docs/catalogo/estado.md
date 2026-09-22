@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 540 hecho · ⬜ 167 pendiente
+**707 capacidades**: ✅ 550 hecho · ⬜ 157 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ✅ 34 · ⬜ 23
+57 capacidades · ✅ 44 · ⬜ 13
 
 ### 5.1 Reporting y BI
 
@@ -959,16 +959,16 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.02.02.01` | Redacción y reescritura de correos, propuestas y respuestas | A | 5 | intelligence | ⬜ | contecmind:app/services/transformations.py + prompts.py |
-| `CRM-05.02.02.02` | Resumen de cuenta, de oportunidad, de caso y de hilo de conversación | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py + briefings.py |
-| `CRM-05.02.02.03` | Respuesta sobre datos propios con RAG y citación de la fuente | A | 5 | intelligence | ⬜ | contecmind:app/services/rag.py + retrieval/ (RAG con citación de fuente) |
-| `CRM-05.02.02.04` | Consulta en lenguaje natural sobre los datos del CRM | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/ask_the_data.py; contecmind:app/services/intent.py |
-| `CRM-05.02.02.05` | Extracción estructurada desde correos, PDFs y transcripciones a campos del CRM | A | 5 | intelligence | ⬜ | contecmind:app/core/llm_json.py + app/services/metadata_enrichment.py |
-| `CRM-05.02.02.06` | Traducción automática de contenidos e interacciones | A | 5 | intelligence | ⬜ | contecmind:app/services/languages.py |
-| `CRM-05.02.02.07` | Guardrails: filtros de contenido, verificación de permisos antes de recuperar contexto | C | 5 | intelligence | ⬜ | contecmind:app/core/inference_gate.py + app/services/sensitive_policy.py |
-| `CRM-05.02.02.08` | Trazabilidad de uso de IA: prompt, modelo, coste, usuario, registro afectado | A | 5 | intelligence | ⬜ | contecmind:app/services/metering.py (coste por tenant y modelo) |
-| `CRM-05.02.02.09` | Opt-out de entrenamiento y garantía de no uso de datos del tenant | C | 5 | intelligence | ⬜ | contecmind:docs/COMPLIANCE.md (opt-out contractual) |
-| `CRM-05.02.02.10` | Selección de modelo y región por tenant, incluido modelo propio del cliente | D | 5 | intelligence | ⬜ | contecmind:app/core/model_router.py + providers/ |
+| `CRM-05.02.02.01` | Redacción y reescritura de correos, propuestas y respuestas | A | 5 | intelligence | ✅ | contecmind:app/services/transformations.py + prompts.py |
+| `CRM-05.02.02.02` | Resumen de cuenta, de oportunidad, de caso y de hilo de conversación | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py + briefings.py |
+| `CRM-05.02.02.03` | Respuesta sobre datos propios con RAG y citación de la fuente | A | 5 | intelligence | ✅ | contecmind:app/services/rag.py + retrieval/ (RAG con citación de fuente) |
+| `CRM-05.02.02.04` | Consulta en lenguaje natural sobre los datos del CRM | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/ask_the_data.py; contecmind:app/services/intent.py |
+| `CRM-05.02.02.05` | Extracción estructurada desde correos, PDFs y transcripciones a campos del CRM | A | 5 | intelligence | ✅ | contecmind:app/core/llm_json.py + app/services/metadata_enrichment.py |
+| `CRM-05.02.02.06` | Traducción automática de contenidos e interacciones | A | 5 | intelligence | ✅ | contecmind:app/services/languages.py |
+| `CRM-05.02.02.07` | Guardrails: filtros de contenido, verificación de permisos antes de recuperar contexto | C | 5 | intelligence | ✅ | contecmind:app/core/inference_gate.py + app/services/sensitive_policy.py |
+| `CRM-05.02.02.08` | Trazabilidad de uso de IA: prompt, modelo, coste, usuario, registro afectado | A | 5 | intelligence | ✅ | contecmind:app/services/metering.py (coste por tenant y modelo) |
+| `CRM-05.02.02.09` | Opt-out de entrenamiento y garantía de no uso de datos del tenant | C | 5 | intelligence | ✅ | contecmind:docs/COMPLIANCE.md (opt-out contractual) |
+| `CRM-05.02.02.10` | Selección de modelo y región por tenant, incluido modelo propio del cliente | D | 5 | intelligence | ✅ | contecmind:app/core/model_router.py + providers/ |
 
 #### CRM-05.02.03 · Agentes autónomos
 

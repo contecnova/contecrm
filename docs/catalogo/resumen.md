@@ -11,7 +11,7 @@
 | 2 — Marketing | 54 | 37 | 0 | 17 |
 | 3 — Ventas (SFA) | 65 | 52 | 0 | 13 |
 | 4 — Servicio y atención al cliente | 62 | 54 | 0 | 8 |
-| 5 — Analítica, inteligencia e IA | 57 | 34 | 0 | 23 |
+| 5 — Analítica, inteligencia e IA | 57 | 44 | 0 | 13 |
 | 6 — Productividad y colaboración | 29 | 13 | 0 | 16 |
 | 7 — Administración, ALM y gobierno | 91 | 78 | 0 | 13 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
@@ -20,9 +20,9 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 279 | 265 |
-| A — Avanzado | 384 | 247 |
-| D — Diferencial | 44 | 28 |
+| C — Core | 279 | 267 |
+| A — Avanzado | 384 | 254 |
+| D — Diferencial | 44 | 29 |
 
 ## Por fase
 
@@ -33,7 +33,7 @@
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 175 | 129 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 44 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 42 |
-| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 7 |
+| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 17 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 28 |
 
 ## Reutilización
