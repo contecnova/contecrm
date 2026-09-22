@@ -72,7 +72,13 @@ _lock = threading.Lock()
 # en la base: el código lo interpretaba como «desactivado» y la deduplicación
 # por identificador fiscal no se aplicaba nunca. Se descubrió con la prueba de
 # duplicados, no leyendo el código.
-_ajustes_servicio: Any = None
+# Proveedores de ajustes de servicio. Es una LISTA y no uno solo: en producción
+# cada servicio es su propio proceso y solo hay uno, pero en las pruebas se
+# importan todos, y con una variable única el último import pisaba a los
+# anteriores. El síntoma era un ajuste de `party` devolviendo `None` porque quien
+# había registrado el último era `marketing`, y lo que se veía era una
+# comprobación de duplicados que dejaba de detectarlos — en verde, sin error.
+_ajustes_servicio: list[Any] = []
 
 
 def registrar_ajustes_servicio(proveedor: Any) -> None:
@@ -80,9 +86,12 @@ def registrar_ajustes_servicio(proveedor: Any) -> None:
 
     `proveedor` es un invocable sin argumentos que devuelve el objeto de
     configuración del servicio (normalmente su `ajustes()` cacheado).
+
+    Se **añade** a la lista en vez de sustituir: dos servicios en el mismo
+    proceso —las pruebas— tienen que poder resolver los ajustes de los dos.
     """
-    global _ajustes_servicio
-    _ajustes_servicio = proveedor
+    if proveedor not in _ajustes_servicio:
+        _ajustes_servicio.append(proveedor)
 
 
 def _clave_cache(ambito: str, ambito_id: str) -> str:
@@ -128,11 +137,15 @@ def efectivo(clave: str, db: Session | None = None, *, default: Any = None) -> A
     por_defecto = default
     if por_defecto is None and decl and decl.campo_settings:
         por_defecto = getattr(s, decl.campo_settings, None)
-        if por_defecto is None and _ajustes_servicio is not None:
+        for proveedor in _ajustes_servicio:
+            if por_defecto is not None:
+                break
             # El ajuste lo declara el servicio, no el núcleo: se busca en su
-            # propia configuración antes de darlo por inexistente.
+            # propia configuración antes de darlo por inexistente. Se recorren
+            # todos los registrados porque en un proceso con varios servicios
+            # —las pruebas— el ajuste puede ser de cualquiera de ellos.
             try:
-                por_defecto = getattr(_ajustes_servicio(), decl.campo_settings, None)
+                por_defecto = getattr(proveedor(), decl.campo_settings, None)
             except Exception:  # noqa: BLE001 — leer un default nunca debe romper la petición
                 por_defecto = None
 
