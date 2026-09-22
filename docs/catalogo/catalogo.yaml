@@ -615,23 +615,23 @@ modulos:
           - id: CRM-02.01.01
             nombre: Constructor de segmentos
             capacidades:
-              - {id: CRM-02.01.01.01, c: C, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecweb:app/services/saved_searches.py (678, constructor de criterios) + contecflow-PSA:app/services/bi_query_builder_service.py", t: "Segmentación por atributos, comportamiento, transacciones y eventos"}
-              - {id: CRM-02.01.01.02, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Condiciones anidadas con lógica booleana y operadores temporales"}
-              - {id: CRM-02.01.01.03, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Segmentos dinámicos que se recalculan y estáticos congelados"}
-              - {id: CRM-02.01.01.04, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Estimación de tamaño de audiencia en tiempo real antes de guardar"}
-              - {id: CRM-02.01.01.05, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Segmentos consultables por API para activarlos en canales externos"}
-              - {id: CRM-02.01.01.06, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Exclusiones, supresiones globales y listas negras"}
+              - {id: CRM-02.01.01.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecweb:app/services/saved_searches.py (678, constructor de criterios) + contecflow-PSA:app/services/bi_query_builder_service.py", t: "Segmentación por atributos, comportamiento, transacciones y eventos"}
+              - {id: CRM-02.01.01.02, c: C, fase: 4, svc: marketing, estado: hecho, t: "Condiciones anidadas con lógica booleana y operadores temporales"}
+              - {id: CRM-02.01.01.03, c: C, fase: 4, svc: marketing, estado: hecho, t: "Segmentos dinámicos que se recalculan y estáticos congelados"}
+              - {id: CRM-02.01.01.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Estimación de tamaño de audiencia en tiempo real antes de guardar"}
+              - {id: CRM-02.01.01.05, c: A, fase: 4, svc: marketing, estado: hecho, t: "Segmentos consultables por API para activarlos en canales externos"}
+              - {id: CRM-02.01.01.06, c: C, fase: 4, svc: marketing, estado: hecho, t: "Exclusiones, supresiones globales y listas negras"}
               - {id: CRM-02.01.01.07, c: D, fase: 4, svc: marketing, estado: pendiente, t: "Solapamiento entre segmentos y análisis de canibalización"}
               - {id: CRM-02.01.01.08, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Segmentación predictiva por afinidad, propensión o valor esperado"}
               - {id: CRM-02.01.01.09, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Sincronización de audiencias con plataformas publicitarias"}
           - id: CRM-02.01.02
             nombre: Perfilado y scoring
             capacidades:
-              - {id: CRM-02.01.02.01, c: C, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas)", t: "Lead scoring por reglas configurables (demográfico + comportamental)"}
+              - {id: CRM-02.01.02.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas)", t: "Lead scoring por reglas configurables (demográfico + comportamental)"}
               - {id: CRM-02.01.02.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/ml_trainer.py + ml_features.py", t: "Scoring predictivo entrenado con histórico de conversión"}
-              - {id: CRM-02.01.02.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Grading de encaje con el ICP, independiente del engagement"}
-              - {id: CRM-02.01.02.04, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Decaimiento temporal del score por inactividad"}
-              - {id: CRM-02.01.02.05, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Umbrales que disparan MQL/SQL y traspaso automático a ventas"}
+              - {id: CRM-02.01.02.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Grading de encaje con el ICP, independiente del engagement"}
+              - {id: CRM-02.01.02.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Decaimiento temporal del score por inactividad"}
+              - {id: CRM-02.01.02.05, c: C, fase: 4, svc: marketing, estado: hecho, t: "Umbrales que disparan MQL/SQL y traspaso automático a ventas"}
               - {id: CRM-02.01.02.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/confidence_audit.py (explicabilidad)", t: "Explicabilidad del score: qué factores lo componen"}
       - id: "2.2"
         nombre: Campañas y customer journeys

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 352 hecho · ⬜ 334 pendiente
+**686 capacidades**: ✅ 362 hecho · ⬜ 324 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -508,7 +508,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ⬜ 54
+54 capacidades · ✅ 10 · ⬜ 44
 
 ### 2.1 Segmentación y audiencias
 
@@ -516,12 +516,12 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.01.01.01` | Segmentación por atributos, comportamiento, transacciones y eventos | C | 4 | marketing | ⬜ | contecweb:app/services/saved_searches.py (678, constructor de criterios) + contecflow-PSA:app/services/bi_query_builder_service.py |
-| `CRM-02.01.01.02` | Condiciones anidadas con lógica booleana y operadores temporales | C | 4 | marketing | ⬜ | — |
-| `CRM-02.01.01.03` | Segmentos dinámicos que se recalculan y estáticos congelados | C | 4 | marketing | ⬜ | — |
-| `CRM-02.01.01.04` | Estimación de tamaño de audiencia en tiempo real antes de guardar | A | 4 | marketing | ⬜ | — |
-| `CRM-02.01.01.05` | Segmentos consultables por API para activarlos en canales externos | A | 4 | marketing | ⬜ | — |
-| `CRM-02.01.01.06` | Exclusiones, supresiones globales y listas negras | C | 4 | marketing | ⬜ | — |
+| `CRM-02.01.01.01` | Segmentación por atributos, comportamiento, transacciones y eventos | C | 4 | marketing | ✅ | contecweb:app/services/saved_searches.py (678, constructor de criterios) + contecflow-PSA:app/services/bi_query_builder_service.py |
+| `CRM-02.01.01.02` | Condiciones anidadas con lógica booleana y operadores temporales | C | 4 | marketing | ✅ | — |
+| `CRM-02.01.01.03` | Segmentos dinámicos que se recalculan y estáticos congelados | C | 4 | marketing | ✅ | — |
+| `CRM-02.01.01.04` | Estimación de tamaño de audiencia en tiempo real antes de guardar | A | 4 | marketing | ✅ | — |
+| `CRM-02.01.01.05` | Segmentos consultables por API para activarlos en canales externos | A | 4 | marketing | ✅ | — |
+| `CRM-02.01.01.06` | Exclusiones, supresiones globales y listas negras | C | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.07` | Solapamiento entre segmentos y análisis de canibalización | D | 4 | marketing | ⬜ | — |
 | `CRM-02.01.01.08` | Segmentación predictiva por afinidad, propensión o valor esperado | A | 5 | intelligence | ⬜ | — |
 | `CRM-02.01.01.09` | Sincronización de audiencias con plataformas publicitarias | A | 4 | marketing | ⬜ | — |
@@ -530,11 +530,11 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.01.02.01` | Lead scoring por reglas configurables (demográfico + comportamental) | C | 4 | marketing | ⬜ | contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas) |
+| `CRM-02.01.02.01` | Lead scoring por reglas configurables (demográfico + comportamental) | C | 4 | marketing | ✅ | contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas) |
 | `CRM-02.01.02.02` | Scoring predictivo entrenado con histórico de conversión | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/ml_trainer.py + ml_features.py |
-| `CRM-02.01.02.03` | Grading de encaje con el ICP, independiente del engagement | A | 4 | marketing | ⬜ | — |
-| `CRM-02.01.02.04` | Decaimiento temporal del score por inactividad | A | 4 | marketing | ⬜ | — |
-| `CRM-02.01.02.05` | Umbrales que disparan MQL/SQL y traspaso automático a ventas | C | 4 | marketing | ⬜ | — |
+| `CRM-02.01.02.03` | Grading de encaje con el ICP, independiente del engagement | A | 4 | marketing | ✅ | — |
+| `CRM-02.01.02.04` | Decaimiento temporal del score por inactividad | A | 4 | marketing | ✅ | — |
+| `CRM-02.01.02.05` | Umbrales que disparan MQL/SQL y traspaso automático a ventas | C | 4 | marketing | ✅ | — |
 | `CRM-02.01.02.06` | Explicabilidad del score: qué factores lo componen | A | 5 | intelligence | ⬜ | contecmind:app/services/confidence_audit.py (explicabilidad) |
 
 ### 2.2 Campañas y customer journeys

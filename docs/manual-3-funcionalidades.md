@@ -5987,3 +5987,170 @@ qué no se publica. Y un hilo **solo se convierte en artículo si tiene respuest
 aceptada**: convertir uno sin resolver crea un artículo que describe un problema y
 no su solución, que es lo peor que puede haber en una base de conocimiento porque
 parece una respuesta y no lo es.
+
+## Segmentos y puntuación de leads (`CRM-02.01.01`, `CRM-02.01.02`)
+
+Con este bloque nace el servicio `marketing`.
+
+### La proyección: por qué marketing tiene su propia copia
+
+`marketing` no puede leer el esquema de `party` ni el de `sales`, y las otras dos
+salidas eran peores: pedirle a `party` cien mil contactos por HTTP cada vez que
+alguien calcula el tamaño de un segmento, o saltarse la regla. Así que existe
+`PerfilMarketing`, una proyección local que se rellena **por evento** — el mismo
+patrón que los ajustes en caliente, los tipos de cambio, los calendarios y el
+esquema del tenant.
+
+Se replica **lo que sirve para segmentar**, no la ficha entera: copiar la ficha
+completa convertiría esta tabla en una segunda base de clientes, con su propia
+deriva y su propio problema de borrado.
+
+El precio se dice en voz alta: **un segmento se calcula sobre lo replicado**, así
+que un contacto creado hace dos segundos puede no estar todavía. Para marketing
+es aceptable —una campaña no se lanza en el mismo segundo en que entra un lead— y
+a cambio el cálculo no depende de que otro servicio esté en pie. Por eso se
+guarda y se enseña cuándo se sincronizó.
+
+Y lo que el evento no trae, **aquí no existe**: un atributo que el productor no
+publica sale nulo, y el segmento que dependa de él no encontrará a nadie. Es
+preferible a rellenarlo con un valor por defecto, que daría un segmento que parece
+funcionar y selecciona mal.
+
+Los perfiles se **fusionan, no se reemplazan**: cada evento trae lo suyo —el de
+alta trae el correo, el de asignación trae el dueño— y reemplazar dejaría el
+perfil con solo lo del último. Un borrado en origen **marca de baja y no borra**:
+un segmento congelado tiene que poder seguir explicando a quién incluía.
+
+### Un segmento es una definición, no una lista (`CRM-02.01.01.01`, `CRM-02.01.01.03`)
+
+Guardar la lista parece más rápido y es lo que hace que a la semana esté
+desfasada sin que nadie lo sepa. La lista se calcula cuando se pide.
+
+Hacen falta **los dos tipos y por motivos opuestos**: el dinámico, para que
+«clientes activos» signifique lo que significa hoy; el estático, para que «a quién
+se le mandó la campaña de marzo» siga siendo cierto en junio. Se congela **antes
+de un envío**, no después.
+
+La definición se **valida y se traduce a SQL al crear**: descubrir que un segmento
+no se puede calcular el día del envío es descubrirlo tarde. Y si alguna condición
+no se puede traducir, **se lanza en vez de omitirla**: omitirla daría un segmento
+más grande que el pedido, y el error se descubriría al recibir la queja de alguien
+a quien no había que escribir. Un segmento que casi acierta no se detecta
+mirándolo.
+
+### Condiciones anidadas y tiempo relativo (`CRM-02.01.01.02`)
+
+«(sector = construcción o sector = obra pública) y no ha comprado en 12 meses» es
+la consulta normal en marketing. Con una lista plana solo se puede expresar «todo
+y» o «todo o», y entonces el segmento se parte en tres que nadie mantiene iguales.
+
+Se reutiliza la gramática de condiciones de las políticas de acceso y del
+enrutamiento de leads: los mismos operadores. No es por ahorrar código — es para
+que quien aprende a escribir una condición la sepa escribir en todos los sitios.
+
+El `no` **niega exactamente una condición**: «no de varias cosas» es ambiguo —
+¿ninguna, o no todas?— y obligar a envolverlas primero deja escrito cuál de las
+dos se quería. Y hay **tope de anidamiento**, porque una definición sin fin haría
+que la evaluación no terminara y el síntoma sería una petición que no responde.
+
+Los operadores temporales son **relativos y se evalúan al consultar**. Guardada la
+fecha calculada, «leads recientes» seguiría devolviendo los mismos de hace medio
+año.
+
+La **misma definición** decide sobre uno concreto —«¿este lead entra en el
+recorrido?»— y sobre todos —el listado—. Dos gramáticas para lo mismo es cómo se
+acaba con un recorrido que admite a alguien que el segmento no lista.
+
+### El tamaño y la API de audiencias (`CRM-02.01.01.04`, `CRM-02.01.01.05`)
+
+Un número sin fecha se lee como actual aunque sea de hace tres semanas, y sobre
+eso se decide un envío. Se devuelven **el bruto, los alcanzables y cuántos caen
+por supresión**: enseñar solo el total haría que alguien planificara un envío a
+diez mil y saliera a siete mil sin saber por qué faltan tres mil.
+
+Quien no tiene dirección **no cuenta como alcanzable**: contarlo infla la
+audiencia y después el envío sale más pequeño de lo prometido, sin explicación.
+
+La lista de miembros es además la **API con la que se activan audiencias en
+canales externos** (`CRM-02.01.01.05`): una plataforma publicitaria pide el
+segmento y recibe los identificadores, ya restadas las exclusiones y las
+supresiones. Que el filtrado ocurra aquí y no en el consumidor es lo que impide
+que una integración nueva se olvide de las supresiones y acabe anunciándole a
+quien pidió no ser contactado.
+
+### Las supresiones se aplican siempre (`CRM-02.01.01.06`)
+
+Es una tabla aparte y se aplica **por encima de cualquier segmento**. Si fuera una
+condición más, bastaría con que alguien montara un segmento sin acordarse de
+ponerla para escribirle a quien pidió que no se le escribiera — y eso, además de
+una multa, es la clase de error que el cliente cuenta a los demás.
+
+Se suprime **por dirección y no por identificador**: la misma persona puede estar
+en tres fichas duplicadas, y suprimir una sola dejaría que las otras dos le
+siguieran escribiendo.
+
+Un segmento **congelado también respeta las supresiones**: la baja pudo llegar
+después de congelarlo, que es exactamente el caso que la supresión existe para
+impedir.
+
+El **ámbito** permite la baja selectiva —«no quiero la newsletter pero sí los
+avisos de servicio»—, que es lo que evita que alguien se dé de baja de todo por no
+poder darse de baja de una cosa. Una **queja por spam es permanente**: deshacerla
+con un clic convierte la protección en una casilla. Y levantar cualquier otra
+exige motivo escrito, porque es volver a escribir a alguien que había dicho que no.
+
+### Solapamiento (`CRM-02.01.01.07`)
+
+La pregunta real no es de estadística: es «si lanzo las dos campañas esta semana,
+¿a cuánta gente le van a llegar las dos?». Por eso se devuelve el número **y el
+porcentaje sobre cada uno**: mil personas comunes es mucho si uno de los segmentos
+tiene mil doscientos y poco si tiene cien mil.
+
+### Puntuación: dos ejes y no uno (`CRM-02.01.02.01`, `CRM-02.01.02.03`)
+
+El error clásico del *lead scoring* es tener **un solo número**. Un estudiante que
+abre diez correos suma lo mismo que un director de compras que abrió uno, ventas
+recibe los dos como «lead caliente», y a la tercera vez que le pasan uno que no
+compra deja de fiarse de la lista. A partir de ahí el scoring está puesto y no
+sirve para nada — peor que no tenerlo, porque nadie lo revisa.
+
+- **Encaje**: ¿es el cliente que buscamos? Sector, tamaño, país, cargo.
+- **Interés**: ¿nos está haciendo caso? Visitas, descargas, respuestas.
+
+El **grado** (A, B, C) sale del encaje y es independiente del interés. Los tramos
+se ordenan de mayor a menor y gana el primero que alcanza: con el orden al revés,
+un encaje de 95 caería en el tramo de 0 y todo el mundo sería «C».
+
+### Decaimiento (`CRM-02.01.02.04`)
+
+Solo decae **el interés**. El encaje no: que alguien sea director de compras de
+una empresa de quinientas personas no deja de ser cierto porque lleve dos meses
+sin abrir un correo.
+
+Y el interés **nunca baja del mínimo declarado**: si bajara a cero, un lead que
+fue muy activo hace un año quedaría indistinguible de uno que no ha hecho nada
+nunca, y esos dos merecen tratos distintos.
+
+El decaimiento **se enseña aparte** en la explicación: sin él, quien mira no
+entiende por qué un lead que hizo muchas cosas tiene poco interés, y concluye que
+el scoring está roto.
+
+### Umbrales y traspaso a ventas (`CRM-02.01.02.05`)
+
+Para pasar a MQL se exigen **los dos ejes**. Con uno solo, o pasan estudiantes muy
+activos o directores que no han mostrado ningún interés. Un umbral sin declarar se
+trata como «no aplica» y no como cero — cero dejaría pasar a todo el mundo.
+
+El cambio de calificación se emite **solo cuando cambia**: emitirlo en cada
+recálculo llenaría la cola de eventos idénticos y haría que la regla «avisa a
+ventas cuando pase a MQL» disparara cada hora sobre el mismo lead. Y el evento
+lleva **los motivos dentro**: «lead caliente» sin el porqué obliga al comercial a
+abrir la ficha antes de llamar, y la mitad de las veces no la abre.
+
+El modelo se **versiona**, como los SLA y el esquema del tenant: editar en
+caliente hace que las puntuaciones de ayer y las de hoy no sean comparables sin
+que nadie lo sepa — el lead que ayer tenía 80 y hoy tiene 40 no ha hecho nada
+distinto. Publicar una versión nueva **no repuntúa a nadie por sí solo**, así que
+hay una lista de los que se han quedado atrás: dejar la mitad de la base con el
+modelo viejo hace que dos leads iguales salgan distintos, y entonces la lista deja
+de servir para ordenar por prioridad, que es lo único para lo que se usa.

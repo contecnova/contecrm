@@ -171,14 +171,32 @@ def test_el_informe_dice_lo_incumplido_y_lo_no_comprobado(limpio: Any) -> None:
 
 
 def test_los_contratos_reales_del_sistema_se_cumplen() -> None:
-    """Esta es la que vale: corre sobre lo declarado de verdad y es la que
-    rompe cuando alguien quita un campo de un evento."""
+    """Esta es la que vale: corre sobre lo declarado de verdad y es la que rompe
+    cuando alguien quita un campo de un evento.
+
+    Se cargan **todos** los productores y **todos** los consumidores. Cargar solo
+    unos pocos haría que el gate pasara por no conocer al productor del evento
+    que un consumidor espera —un falso positivo que llevaría a borrar un consumo
+    correcto— o, peor, que no viera un incumplimiento real.
+    """
+    import importlib
+    from pathlib import Path as _Path
+
     from crmcore.authz import politicas  # noqa: F401
+    from crmcore.datos import calendario, cambio  # noqa: F401
     from crmcore.documental import enlaces, inventario  # noqa: F401
     from crmcore.runtime import settings  # noqa: F401
     from crmcore.security import byok  # noqa: F401
 
-    import services.tenancy.main  # noqa: F401 — registra eventos y consumos
+    raiz = _Path(__file__).resolve().parents[2] / "services"
+    servicios = sorted(d.name for d in raiz.iterdir() if d.is_dir() and not d.name.startswith("_"))
+    # Los PRODUCTORES primero y los consumidores después. No es cosmético: si un
+    # consumidor se cargara antes que el productor de su evento, el gate diría
+    # que nadie lo publica.
+    for modulo in ("eventos", "modelos", "proyeccion", "consumidores"):
+        for servicio in servicios:
+            if (raiz / servicio / f"{modulo}.py").exists():
+                importlib.import_module(f"services.{servicio}.{modulo}")
 
     fallos = contratos.verificar()
     assert not fallos, "\n".join(str(f) for f in fallos)
