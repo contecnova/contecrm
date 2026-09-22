@@ -237,7 +237,16 @@ SCHEMA_CHANGED = registrar(
         tipo="metadata.schema.changed",
         version=1,
         productor="metadata",
-        descripcion="Ha cambiado el esquema de un objeto: campos, validaciones o layout",
-        campos=("objeto", "cambio"),
+        descripcion=(
+            "Ha cambiado el esquema de un objeto: campos, validaciones o layout. "
+            "Lo consumen TODOS los servicios para replicarlo y poder validar, "
+            "filtrar e indexar los campos propios del tenant"
+        ),
+        # Va la lista ENTERA de campos y no el delta. Un delta obliga a que el
+        # consumidor tenga el estado anterior correcto, y con entrega
+        # at-least-once y sin orden garantizado eso no se puede afirmar: un
+        # evento perdido dejaría la réplica desalineada para siempre y nadie lo
+        # vería hasta que alguien no pudiera guardar un campo.
+        campos=("objeto", "cambio", "campos", "version"),
     )
 )

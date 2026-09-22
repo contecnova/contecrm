@@ -75,6 +75,19 @@ def crear_cuenta(
             },
         )
 
+    # Campos propios del tenant (CRM-00.04.03.02): se validan contra el esquema
+    # que el cliente se definió en su implantación, sin una línea de código por
+    # campo. Un campo que no está definido se RECHAZA: aceptarlo convertiría una
+    # errata en un dato que se guarda, no sale en ningún formulario y no lo
+    # encuentra nadie, y al año la mitad del JSONB sería basura que nadie se
+    # atreve a borrar porque no se sabe quién la puso.
+    if "campos" in datos:
+        from crmcore import metamodelo
+
+        datos["campos"] = metamodelo.validar_y_anotar(
+            uow.db, tenant_id, "cuenta", datos.get("campos")
+        )
+
     cuenta = Cuenta(
         tenant_id=tenant_id,
         nombre=nombre.strip(),
@@ -112,7 +125,17 @@ def crear_cuenta(
     uow.emitir(
         "account.created",
         subject=("cuenta", cuenta.id),
-        data={"cuenta_id": str(cuenta.id), "nombre": cuenta.nombre},
+        data={
+            "cuenta_id": str(cuenta.id),
+            "nombre": cuenta.nombre,
+            # Los campos propios del tenant viajan en el evento
+            # (CRM-00.04.03.05). Sin ellos, un flujo no puede condicionar por un
+            # campo de la implantación: `automation` no lee el esquema de
+            # `party`, así que si el dato no va aquí, para el flujo no existe. Es
+            # el eslabón que convierte «puedo crear campos» en «puedo automatizar
+            # con ellos», que es lo que de verdad pide un cliente.
+            "campos": dict(cuenta.campos or {}),
+        },
     )
     _indexar(uow.db, "cuenta", cuenta)
     return cuenta
@@ -142,6 +165,20 @@ def actualizar_cuenta(uow: UnidadDeTrabajo, cuenta_id: UUID, cambios: dict[str, 
     if "email" in cambios:
         cambios["email"] = norm.normalizar_email(cambios["email"]) or None
         cuenta.dominio = norm.dominio_de(cambios["email"]) or cuenta.dominio
+
+    if "campos" in cambios:
+        from crmcore import metamodelo
+
+        # `parcial=True`: en una actualización solo llegan los campos que se
+        # tocan, y exigir los obligatorios que no vienen rechazaría un cambio de
+        # teléfono por un campo que el registro ya tiene relleno.
+        validados = metamodelo.validar_y_anotar(
+            uow.db, uow.tenant_id, "cuenta", cambios.get("campos"), parcial=True
+        )
+        # Se fusiona con lo que ya había en vez de reemplazar: mandar solo el
+        # campo que cambia es lo natural desde un formulario, y reemplazar
+        # borraría en silencio todos los demás.
+        cambios["campos"] = {**(cuenta.campos or {}), **validados}
 
     for campo, valor in cambios.items():
         if hasattr(cuenta, campo):

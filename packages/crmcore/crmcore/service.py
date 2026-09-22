@@ -148,6 +148,7 @@ def crear_servicio(
                     INVENTARIO_SOLICITADO,
                     consumir_solicitud,
                 )
+                from crmcore.metamodelo import ESQUEMA_CAMBIADO, consumir_esquema
                 from crmcore.runtime.settings import AJUSTE_CAMBIADO, consumir_ajuste
                 from crmcore.security.byok import CLAVE_CAMBIADA, consumir_clave
 
@@ -185,6 +186,11 @@ def crear_servicio(
                     # mil llamadas de red, y porque una previsión no puede
                     # depender de que otro servicio esté en pie.
                     (TIPO_CAMBIO_FIJADO, consumir_tipo_cambio, f"{nombre}-fx"),
+                    # El esquema que el tenant se define (CRM-00.04.03.02). Un
+                    # servicio que no lo replicara seguiría validando con los
+                    # campos de ayer: rechazaría el campo que el consultor acaba
+                    # de crear —con el cliente delante— o aceptaría uno retirado.
+                    (ESQUEMA_CAMBIADO, consumir_esquema, f"{nombre}-esquema"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:

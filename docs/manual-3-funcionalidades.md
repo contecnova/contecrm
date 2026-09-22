@@ -5068,3 +5068,203 @@ es lo que era desde el principio.
 
 Importa porque si el ajuste se pisa, el comercial deja de ajustar a la tercera
 vez y el dato se convierte en decorativo — y con él, el ponderado del pipeline.
+
+## Extensión sin código, de punta a punta (`CRM-00.04.03`)
+
+Definir un campo por configuración ya se podía: el metamodelo (`CRM-00.04.01`)
+guarda la definición, la valida y la publica en el `describe`. Lo que no se podía
+era **usarlo**. Y esa es la diferencia que decide si una implantación necesita
+desarrollo o no.
+
+La promesa es concreta: un consultor añade un campo en casa del cliente y ese
+campo **llega solo** a la base de datos, a la API, a los filtros, a los flujos y
+a los informes. Cada eslabón que falte la convierte en media verdad — el campo
+existe, pero no se puede filtrar, o no sale en el informe — y devuelve al cliente
+al mismo sitio: pedir desarrollo.
+
+### Por qué el esquema es dato y no `ALTER TABLE`
+
+Añadir una columna es un DDL, y con mil tenants en la misma tabla el campo que
+añade uno **bloquea a los novecientos noventa y nueve restantes**. Por eso los
+campos del tenant viven en una columna JSONB y la definición en el servicio de
+metadatos.
+
+Lo que se pierde así —tipado e índices— se recupera de forma explícita: índices
+de expresión declarados por campo y una vista tipada por tenant. Y cuando el
+volumen justifique una columna real, existe el camino (`CRM-00.04.03.11`), pero
+como excepción medida.
+
+### El esquema se replica, no se consulta
+
+`party` no puede leer el esquema de `metadata`, y preguntárselo por HTTP en cada
+escritura pondría el alta de una cuenta a depender de que otro servicio esté en
+pie, además de duplicar la latencia. Se replica por evento, igual que los ajustes
+en caliente, las claves de tenant y los tipos de cambio.
+
+Viaja **la lista entera de campos, no el delta**. Un delta obliga a que el
+consumidor tenga el estado anterior correcto, y con entrega *at-least-once* sin
+orden garantizado eso no se puede afirmar: un evento perdido dejaría la réplica
+desalineada para siempre y nadie lo vería hasta que alguien no pudiera guardar.
+Por lo mismo, cada publicación lleva **versión**, y un evento viejo reenviado se
+descarta en vez de devolver campos que ya se habían quitado.
+
+### Publicar es un acto, configurar no (`CRM-00.04.03.02`)
+
+Mientras alguien define campos, el esquema a medias **no viaja**. Si viajara, el
+cliente vería su formulario cambiar mientras el consultor todavía está pensando,
+y una validación a medio escribir rechazaría altas buenas. Se publica cuando se
+decide, y a partir de ahí cada servicio valida, filtra e indexa por esos campos.
+
+**Un campo que no está definido se rechaza.** Aceptarlo convertiría una errata
+—`fecha_visita` escrito `fecha_vista`— en un dato que se guarda, no sale en
+ningún formulario y no lo encuentra nadie; al año, la mitad del JSONB sería
+basura que nadie se atreve a borrar porque no se sabe quién la puso. El error
+dice además **qué campos sí existen**: sin eso, quien lo recibe prueba a ciegas.
+
+Otras tres decisiones del validador:
+
+- **Se normaliza al escribir, no al leer.** Si cada lector convirtiera por su
+  cuenta, dos lectores acabarían discrepando —uno leyendo `"10"` y otro `10`— y
+  el filtro no encontraría lo que la ficha enseña.
+- **En una actualización solo se miran los campos que llegan.** Exigir los
+  obligatorios que no vienen rechazaría un cambio de teléfono por un campo que el
+  registro ya tiene relleno. Y lo que llega **se fusiona**, no reemplaza: mandar
+  solo el campo que cambia es lo natural desde un formulario, y reemplazar
+  borraría los demás en silencio.
+- **Un campo deprecado se lee pero no se escribe.** Es lo que permite retirarlo
+  sin romper de golpe una integración que aún lo manda: se ignora el valor y se
+  avisa, en vez de cortarle el alta.
+
+### Filtro, orden e índice (`CRM-00.04.03.03`)
+
+El casteo al tipo declarado es lo que separa un filtro que funciona de uno que
+miente: sin él, JSONB compara **texto**, y `"9" > "10"` es cierto. Un filtro
+«importe mayor que 10» que devuelve el de 9 es peor que no tener filtro, porque
+quien lo usa se lo cree.
+
+La gramática de operadores está **cerrada**. Una abierta sobre JSONB acaba siendo
+SQL interpolado, y ahí es donde entra la inyección.
+
+Los índices son **parciales por tenant**, y ese es el punto: un índice global
+sobre una expresión JSONB indexaría las filas de los mil tenants para servir las
+consultas de uno, y crecería con todos ellos. Parcial, cada tenant paga solo lo
+suyo y el índice no existe para quien no lo pidió. Y un índice que sobra **se
+retira**: no falla nada, solo hace más lenta cada escritura de la tabla para
+siempre, que es la forma más cara de no enterarse.
+
+### La vista tipada, que es lo que lo hace explotable (`CRM-00.04.03.04`)
+
+Cada tenant tiene una vista que proyecta **cada campo personalizado como columna
+tipada**. Es lo que permite que Power BI, Metabase o un `SELECT` de alguien de
+sistemas lean los campos de la implantación sin saber que por debajo hay JSONB y
+sin que nadie recuerde castear.
+
+Sin ella, «el campo está en la base de datos» es cierto y a la vez inútil: está,
+pero en un formato que ninguna herramienta de informes entiende sola.
+
+Es una **vista y no una tabla materializada** a propósito: una materializada se
+queda vieja, y un informe que enseña el dato de ayer presentándolo como el de hoy
+es peor que uno que tarda un segundo más.
+
+### Los campos llegan a los flujos (`CRM-00.04.03.05`)
+
+El motor de condiciones ya sabía resolver rutas con puntos (`@campos.obra`). Lo
+que faltaba era que **el dato llegara**: `automation` no lee el esquema de
+`party`, así que si los campos propios no viajan en el evento, para el flujo no
+existen. Ahora viajan, y el consumo está declarado en el contract testing
+(`CRM-00.03.01.03`) para que quitarlos del evento rompa el preflight en vez de
+dejar de disparar una automatización que el cliente configuró.
+
+### Previsualizar antes de publicar (`CRM-00.04.03.09`)
+
+Quien añade un campo obligatorio a un objeto con ochenta mil registros no sabe
+que los ochenta mil se quedan sin rellenar — y no lo sabe hasta que alguien
+intenta guardar uno viejo y no puede. La previsualización lo dice antes: qué se
+añade, qué se retira, qué cambia de tipo, a cuántos registros afecta y cuántos se
+quedarían sin el dato obligatorio.
+
+Cuando no se puede contar, **se dice**. «No se ha podido contar» y «no afecta a
+nadie» son cosas distintas, y la diferencia es justo la que importa antes de
+publicar.
+
+### Paquetes entre entornos (`CRM-00.04.03.10`)
+
+Se configura en pruebas y después hay que repetirlo en producción, a menudo de
+memoria. Con paquetes, el esquema se exporta y se instala.
+
+Lo que se lleva es **la configuración, nunca los datos**: un paquete que
+arrastrara registros convertiría una promoción a producción en una fuga, porque
+los datos de pruebas suelen ser copias anonimizadas a medias de clientes reales.
+
+**Simular es el valor por defecto.** Un paquete es un cambio de modelo de datos
+en producción, y el error más caro que puede cometer quien lo maneja es pulsar el
+botón creyendo que todavía estaba mirando. Y lo que ya existe con otro tipo **no
+se pisa**: sobrescribir la configuración que alguien ajustó en producción con la
+de un entorno de pruebas es la forma habitual de perder dos semanas de trabajo de
+un consultor. Instalar deja la configuración puesta pero **no la publica**: eso es
+un paso aparte y deliberado.
+
+### Saber si un campo se usa (`CRM-00.04.03.12`)
+
+El uso se cuenta **al escribir y no al leer**: leer mide quién mira, escribir mide
+si el campo se rellena, que es la pregunta de quien se plantea retirarlo. Un
+campo vacío no cuenta — contarlo haría que todo campo pareciera usado y la
+métrica no serviría para decidir nada.
+
+Sin esto, la respuesta a «¿puedo quitar este campo?» es siempre «no lo sé», y por
+si acaso no se quita nada: es como un modelo de datos acaba con trescientos
+campos de los que nadie recuerda la mitad.
+
+El contador vive en el esquema de **cada servicio**, porque quien ve pasar las
+escrituras es el servicio dueño del dato: `metadata` define el campo y no lo
+guarda nunca.
+
+### Materializar a columna real (`CRM-00.04.03.11`)
+
+No es la norma, es la excepción, y se decide **con una medida**: sin número, cada
+cliente que note su lista lenta pediría columna y acabaríamos con el `ALTER
+TABLE` de siempre disfrazado de optimización.
+
+El orden importa: se añade la columna nullable (que no bloquea), se rellena por
+lotes desde el JSONB, se crea el índice y **solo entonces** se empieza a leer de
+ella. Al revés, la columna se lee vacía mientras se rellena y las listas salen
+incompletas sin que falle nada.
+
+### Informes sin modelar aparte (`CRM-00.04.03.06`)
+
+La explotación la resuelve contecintelligence de forma frontless (RT-4), pero
+para ofrecer un campo como dimensión o como métrica hace falta **saber que existe
+y de qué tipo es** — y los campos que un cliente añade en su implantación no
+están en ningún esquema que contecintelligence pueda leer.
+
+El modelo semántico es el puente: publica, por tenant, qué objetos hay, qué
+campos propios tienen, **qué papel analítico** juega cada uno y en qué vista SQL
+están ya proyectados como columnas tipadas. Con eso, un campo nuevo aparece como
+dimensión sin que nadie modele nada aparte — que es la diferencia entre «se puede
+informar» y «se puede informar después de que alguien lo configure».
+
+El papel va **explícito y no deducido por el consumidor**: si cada herramienta
+decidiera por su cuenta, una acabaría ofreciendo «sumar» sobre un código postal,
+que es un número que no se suma.
+
+Va el modelo, **nunca el dato**: mandar valores convertiría una descripción de
+esquema en una copia del CRM fuera de su sitio. Y los campos **personales y de
+categoría especial se dejan fuera, diciendo cuáles**: acabarían en un cuadro de
+mando que alguien comparte por correo, y el enmascaramiento por rol de la API no
+llega hasta ahí. Omitirlos en silencio haría que alguien buscara un campo que
+existe, no lo encontrara y concluyera que el sistema no lo tiene.
+
+### Importación, exportación y plantillas (`CRM-00.04.03.08`)
+
+La exportación trae los campos propios **por su nombre, igual que los de serie**:
+quien exporta no tiene por qué saber cuáles vienen con el producto y cuáles añadió
+su consultor, y obligarle a distinguirlos sería trasladarle una decisión de
+implementación nuestra. Sin esto, la exportación es incompleta de una forma que
+solo nota quien conoce el dato — y lo nota demasiado tarde, cuando ya ha mandado
+el fichero. Las columnas salen en **orden estable**, porque una exportación cuyo
+orden cambia entre dos descargas rompe cualquier hoja de cálculo que la consuma.
+
+La importación hace el camino inverso: las columnas del fichero que corresponden
+a campos propios se recogen y se validan contra el esquema publicado. Ignorarlas
+dejaría fuera precisamente los campos que el cliente añadió porque le importaban,
+y el importador que «funciona» sería el que pierde la mitad del fichero.

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -626,3 +626,145 @@ def retirar_campo_viejo(
 
 
 ROUTERS = [router, router_gobierno]
+
+
+# ── Publicar, previsualizar, empaquetar y rastrear (CRM-00.04.03) ─────────
+
+
+@router.get(
+    "/objetos/{nombre}/previsualizar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Qué pasaría al publicar este esquema",
+    description=(
+        "Quien añade un campo obligatorio a un objeto con ochenta mil registros "
+        "no sabe que los ochenta mil se quedan sin rellenar — y no lo sabe hasta "
+        "que alguien intenta guardar uno viejo y no puede. Esto lo dice antes, "
+        "que es la diferencia entre una decisión y una sorpresa.\n\n"
+        "Cuando no se puede contar los registros afectados **se dice**: «no se ha "
+        "podido contar» y «no afecta a nadie» son cosas distintas."
+    ),
+)
+def previsualizar_esquema(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.previsualizar(db, principal.tenant_id, nombre)
+
+
+class Publicar(BaseModel):
+    nota: str = Field("", max_length=1000)
+
+
+@router.post(
+    "/objetos/{nombre}/publicar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Publicar el esquema a todos los servicios",
+    description=(
+        "Publicar es un acto explícito porque configurar no lo es: mientras "
+        "alguien define campos, el esquema a medias no puede viajar. Si viajara, "
+        "el cliente vería su formulario cambiar mientras el consultor todavía "
+        "está pensando, y una validación a medio escribir rechazaría altas "
+        "buenas.\n\n"
+        "A partir de aquí, cada servicio valida, filtra e indexa por esos campos "
+        "sin que nadie escriba código."
+    ),
+)
+def publicar_esquema(nombre: str, datos: Publicar, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.publicar(
+        uow.db, principal.tenant_id, nombre, por=principal.usuario_id, nota=datos.nota
+    )
+
+
+@router.get(
+    "/objetos/{nombre}/trazabilidad",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Quién puso cada campo, cuándo y si se usa",
+    description=(
+        "Sin esto, la respuesta a «¿puedo quitar este campo?» es siempre «no lo "
+        "sé», y por si acaso no se quita nada: es como un modelo de datos acaba "
+        "con trescientos campos de los que nadie recuerda la mitad.\n\n"
+        "El uso se cuenta al **escribir** y no al leer: leer mide quién mira, "
+        "escribir mide si el campo se rellena."
+    ),
+)
+def trazabilidad_esquema(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.trazabilidad(db, principal.tenant_id, nombre)
+
+
+@router.get(
+    "/objetos/{nombre}/candidatos-columna",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Campos que ya justifican una columna real",
+    description=(
+        "Materializar **no** es la norma: un `ALTER TABLE` en una tabla "
+        "compartida por mil tenants los bloquea a todos, así que el JSONB con "
+        "índice de expresión es el camino normal y esto es la excepción.\n\n"
+        "La excepción se decide con una medida y no con una intuición: sin "
+        "número, cada cliente que note su lista lenta pediría columna."
+    ),
+)
+def candidatos_columna(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.candidatos_a_materializar(db, principal.tenant_id, nombre)
+
+
+@router.get(
+    "/paquete",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Exportar el esquema para llevarlo a otro entorno",
+    description=(
+        "Lo que se lleva es **la configuración, nunca los datos**. Un paquete "
+        "que arrastrara registros convertiría una promoción a producción en una "
+        "fuga: los datos de pruebas suelen ser copias anonimizadas a medias de "
+        "clientes reales."
+    ),
+)
+def exportar_paquete(
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: list[str] = Query(default=[], description="Vacío = todos"),
+) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.exportar_paquete(db, principal.tenant_id, list(objeto) or None)
+
+
+class InstalarPaquete(BaseModel):
+    paquete: dict[str, Any]
+    aplicar: bool = Field(
+        False,
+        description=(
+            "Falso simula y no toca nada. Es el valor por defecto a propósito: "
+            "un paquete es un cambio de modelo de datos en producción, y el "
+            "error más caro es pulsar el botón creyendo que aún se estaba mirando"
+        ),
+    )
+
+
+@router.post(
+    "/paquete/instalar",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Instalar un paquete de esquema",
+    description=(
+        "Lo que ya existe y difiere **no se pisa en silencio**: se informa y se "
+        "deja fuera. Sobrescribir la configuración que alguien ajustó en "
+        "producción con la de un entorno de pruebas es la forma habitual de "
+        "perder dos semanas de trabajo de un consultor.\n\n"
+        "Instalar deja la configuración puesta pero **no la publica**: eso es un "
+        "paso aparte y deliberado."
+    ),
+)
+def instalar_paquete(datos: InstalarPaquete, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import publicacion
+
+    return publicacion.instalar_paquete(
+        uow.db,
+        principal.tenant_id,
+        datos.paquete,
+        simular=not datos.aplicar,
+        por=principal.usuario_id,
+    )

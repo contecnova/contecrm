@@ -233,3 +233,29 @@ def listar_consultas(
 
 
 ROUTERS = [router]
+
+
+@router.get(
+    "/modelo-semantico",
+    summary="Qué puede explotar contecintelligence de este tenant",
+    description=(
+        "Los campos que un cliente añade en su implantación no están en ningún "
+        "esquema que contecintelligence pueda leer. Esto los publica —con su "
+        "tipo, su papel analítico y la vista SQL donde ya están proyectados como "
+        "columnas tipadas— para que aparezcan como dimensión o métrica **sin que "
+        "nadie modele nada aparte** (CRM-00.04.03.06).\n\n"
+        "Va el modelo, **nunca el dato**: mandar valores aquí convertiría una "
+        "descripción de esquema en una copia del CRM fuera de su sitio.\n\n"
+        "Los campos personales y de categoría especial se dejan fuera **y se "
+        "dice cuáles**: acabarían en un cuadro de mando que alguien comparte, y "
+        "el enmascaramiento por rol de la API no llega hasta ahí."
+    ),
+)
+def modelo_semantico(
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: list[str] = Query(default=[], description="Vacío = todos"),
+) -> Any:
+    from services.analytics import modelo_semantico as sem
+
+    return sem.modelo_de(db, principal.tenant_id, list(objeto) or None)

@@ -79,7 +79,13 @@ def crear_lead(uow: UnidadDeTrabajo, **datos: Any) -> Lead:
     uow.emitir(
         "lead.created",
         subject=("lead", lead.id),
-        data={"lead_id": str(lead.id), "origen": lead.origen or ""},
+        data={
+            "lead_id": str(lead.id),
+            "origen": lead.origen or "",
+            # Ver `account.created`: sin los campos propios aquí, un flujo no
+            # puede condicionar por ellos (CRM-00.04.03.05).
+            "campos": dict(lead.campos or {}),
+        },
     )
     if registro is not None and registro.asignado_a is not None:
         uow.emitir(
@@ -395,6 +401,8 @@ def crear_oportunidad_nueva(
             "cuenta_id": str(cuenta_id) if cuenta_id else "",
             "importe": str(oportunidad.importe),
             "moneda": oportunidad.moneda,
+            # Ver `account.created` (CRM-00.04.03.05).
+            "campos": dict(oportunidad.campos or {}),
         },
     )
     from services.sales.indexacion import indexar_oportunidad

@@ -173,6 +173,11 @@ class PlanImportacion:
     # opcional porque no todo plan escribe en una sola tabla; sin él, la carga
     # funciona igual pero las consultas van lentas hasta que pase autovacuum.
     modelo: type | None = None
+    # Tenant para el que se importa. Hace falta para resolver los campos propios
+    # del esquema publicado (CRM-00.04.03.08); sin él, esas columnas se tratan
+    # como desconocidas y el importador pierde en silencio justo los campos que
+    # el cliente añadió porque le importaban.
+    tenant_id: Any = None
 
 
 def importar(
@@ -202,6 +207,23 @@ def importar(
             error_code="importacion.lote_demasiado_grande",
             detalle={"maximo": tope, "recibido": len(filas)},
         )
+
+    # Campos propios del tenant en la importación (CRM-00.04.03.08): el plan
+    # declara qué columnas conoce, y las que no son de serie se validan contra el
+    # esquema publicado. Ignorarlas dejaría fuera precisamente los campos que el
+    # cliente añadió porque le importaban, y el importador que «funciona» sería
+    # el que pierde la mitad del fichero.
+    if plan.objeto and plan.tenant_id is not None and filas:
+        from crmcore import metamodelo
+
+        propios = {
+            str(c.get("nombre")) for c in metamodelo.campos_de(db, plan.tenant_id, plan.objeto)
+        }
+        if propios:
+            for fila in filas:
+                sueltos = {k: fila.pop(k) for k in list(fila) if k in propios}
+                if sueltos:
+                    fila.setdefault("campos", {}).update(sueltos)
 
     if plan.columnas_obligatorias and filas:
         faltan = [c for c in plan.columnas_obligatorias if c not in filas[0]]
@@ -314,7 +336,39 @@ def exportar(
     for fila in filas:
         registro: dict[str, Any] = {}
         for columna in columnas:
-            valor = getattr(fila, columna, None)
+            # Campos propios del tenant (CRM-00.04.03.08). Se piden por su
+            # nombre, igual que los de serie: quien exporta no tiene por qué
+            # saber cuáles vienen con el producto y cuáles añadió su consultor,
+            # y obligarle a distinguirlos sería trasladarle una decisión de
+            # implementación nuestra.
+            propios = getattr(fila, "campos", None)
+            if columna not in ("campos",) and isinstance(propios, dict) and columna in propios:
+                valor = propios[columna]
+            else:
+                valor = getattr(fila, columna, None)
             registro[columna] = enmascarar(columna, valor) if enmascarar else valor
         salida.append(registro)
     return salida
+
+
+def columnas_exportables(
+    db: Session, tenant_id: Any, objeto: str, columnas_base: list[str]
+) -> list[str]:
+    """Las columnas de serie más los campos propios del tenant.
+
+    Es lo que hace que una exportación traiga lo que el cliente ve en su ficha y
+    no lo que traía el producto de fábrica. Sin esto, la exportación es
+    incompleta de una forma que solo nota quien conoce el dato — y lo nota
+    demasiado tarde, cuando ya ha mandado el fichero.
+    """
+    from crmcore import metamodelo
+
+    propios = [
+        str(c.get("nombre"))
+        for c in metamodelo.campos_de(db, tenant_id, objeto)
+        if c.get("activo", True)
+    ]
+    # Sin duplicar y en orden estable: una exportación cuyas columnas cambian de
+    # orden entre dos descargas rompe cualquier hoja de cálculo que la consuma.
+    vistos = set(columnas_base)
+    return [*columnas_base, *[c for c in propios if c not in vistos]]

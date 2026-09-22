@@ -122,3 +122,25 @@ def _registro_de(datos: dict[str, Any], objetivo: str) -> str | None:
         if valor:
             return str(valor)
     return None
+
+
+from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
+
+# Contract testing dirigido por el consumidor (CRM-00.03.01.03). `campos` está
+# declarado porque una regla puede condicionar por un campo de la implantación
+# (CRM-00.04.03.05): quitarlo del evento no rompería nada visible en el
+# productor, y dejaría de dispararse una automatización que el cliente configuró
+# sin que nadie lo relacionara con el cambio.
+for _evento, (_disparador, _objetivo) in DISPARADORES.items():
+    declarar_consumo(
+        Consumo(
+            consumidor="automation",
+            evento=_evento,
+            campos=("campos",),
+            obligatorio=False,
+            motivo=(
+                "Condicionar reglas por los campos propios del tenant sin leer "
+                "el esquema del servicio dueño del dato"
+            ),
+        )
+    )

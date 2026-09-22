@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**673 capacidades**: ✅ 292 hecho · ⬜ 381 pendiente
+**686 capacidades**: ✅ 302 hecho · ⬜ 384 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-249 capacidades · ✅ 166 · ⬜ 83
+262 capacidades · ✅ 176 · ⬜ 86
 
 ### 0.1 Multi-tenancy
 
@@ -94,6 +94,24 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.06.05` | Detección de tenants anómalos y throttling adaptativo automático | A | 0 | gateway | ⬜ | — |
 | `CRM-00.01.06.06` | Panel de consumo por tenant con alertas de aproximación al límite | C | 0 | tenancy | ✅ | contecmind:app/services/metering.py + app/api/admin_observability.py |
 | `CRM-00.01.06.07` | Medición para facturación (metering) exportable a sistema de billing | A | 0 | tenancy | ✅ | contecmind:app/services/metering.py |
+
+#### CRM-00.01.07 · Gobierno único de la suite (contecrm, contecmind, contecintelligence)
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-00.01.07.01` | Identidad única de tenant en toda la suite: un mismo identificador y unos mismos datos de la organización en contecrm, contecmind y contecintelligence | C | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.02` | Alta del tenant en cascada: dar de alta un cliente en contecrm lo provisiona en las herramientas conectadas, o dice exactamente cuál ha fallado y por qué | C | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.03` | Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez | C | 1 | identity | ⬜ | — |
+| `CRM-00.01.07.04` | Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa | C | 1 | identity | ⬜ | — |
+| `CRM-00.01.07.05` | Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma | C | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.06` | Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado | C | 1 | front | ⬜ | — |
+| `CRM-00.01.07.07` | Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito | C | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.08` | Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence | A | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.09` | SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión | C | 1 | identity | ⬜ | — |
+| `CRM-00.01.07.10` | Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola | A | 1 | tenancy | ⬜ | — |
+| `CRM-00.01.07.11` | Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta | A | 2 | tenancy | ⬜ | — |
+| `CRM-00.01.07.12` | Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose | A | 2 | tenancy | ⬜ | — |
+| `CRM-00.01.07.13` | Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta | A | 2 | tenancy | ⬜ | — |
 
 ### 0.2 Arquitectura headless / API-first
 
@@ -279,17 +297,17 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.04.03.01` | Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada | C | 1 | metadata | ⬜ | — |
-| `CRM-00.04.03.02` | Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código | C | 1 | metadata | ⬜ | — |
-| `CRM-00.04.03.03` | Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema | C | 1 | core | ⬜ | — |
-| `CRM-00.04.03.04` | Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB | A | 1 | core | ⬜ | — |
-| `CRM-00.04.03.05` | Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación | C | 1 | automation | ⬜ | — |
-| `CRM-00.04.03.06` | Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte | C | 1 | analytics | ⬜ | — |
+| `CRM-00.04.03.02` | Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código | C | 1 | metadata | ✅ | — |
+| `CRM-00.04.03.03` | Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema | C | 1 | core | ✅ | — |
+| `CRM-00.04.03.04` | Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB | A | 1 | core | ✅ | — |
+| `CRM-00.04.03.05` | Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación | C | 1 | automation | ✅ | — |
+| `CRM-00.04.03.06` | Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte | C | 1 | analytics | ✅ | — |
 | `CRM-00.04.03.07` | Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos | A | 2 | intelligence | ⬜ | — |
-| `CRM-00.04.03.08` | Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial | C | 1 | core | ⬜ | — |
-| `CRM-00.04.03.09` | Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar | A | 1 | metadata | ⬜ | — |
-| `CRM-00.04.03.10` | Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás | A | 2 | metadata | ⬜ | — |
-| `CRM-00.04.03.11` | Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants | A | 2 | metadata | ⬜ | — |
-| `CRM-00.04.03.12` | Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira | A | 1 | metadata | ⬜ | — |
+| `CRM-00.04.03.08` | Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial | C | 1 | core | ✅ | — |
+| `CRM-00.04.03.09` | Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar | A | 1 | metadata | ✅ | — |
+| `CRM-00.04.03.10` | Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás | A | 2 | metadata | ✅ | — |
+| `CRM-00.04.03.11` | Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants | A | 2 | metadata | ✅ | — |
+| `CRM-00.04.03.12` | Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira | A | 1 | metadata | ✅ | — |
 
 ### 0.5 Identidad, seguridad y control de acceso
 

@@ -624,6 +624,7 @@ from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 from crmcore.datos.trabajos import Trabajo  # noqa: E402
 from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental  # noqa: E402
+from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
@@ -632,6 +633,8 @@ from services.sales.enrutamiento import RegistroEnrutamiento, ReglaEnrutamiento 
 from services.sales.origen import Toque  # noqa: E402
 
 __all__ = [
+    "EsquemaTenant",
+    "UsoCampo",
     "VersionAjuste",
     "TipoCambio",
     "AjusteForecast",

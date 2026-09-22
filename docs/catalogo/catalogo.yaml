@@ -191,6 +191,36 @@ modulos:
               - {id: CRM-00.01.06.06, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py + app/api/admin_observability.py", t: "Panel de consumo por tenant con alertas de aproximación al límite"}
               - {id: CRM-00.01.06.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/metering.py", t: "Medición para facturación (metering) exportable a sistema de billing"}
 
+          - id: CRM-00.01.07
+            nombre: Gobierno único de la suite (contecrm, contecmind, contecintelligence)
+            # contecrm ya depende de contecmind (corpus documental, RT-5) y de
+            # contecintelligence (explotación, RT-4). Hoy el tenant, los usuarios
+            # y la organización se configuran TRES VECES, a mano, en tres sitios.
+            # Eso no es un detalle de implantación: es el sitio por donde se
+            # rompe. Alguien entra en el CRM y no en el gestor documental; alguien
+            # se va de la empresa y conserva el acceso a los informes; un
+            # departamento se reorganiza en uno y no en los otros, y los permisos
+            # dejan de coincidir sin que nadie lo vea.
+            #
+            # La regla: **contecrm es la fuente**, los demás son réplicas. Un
+            # único punto de administración, empuje automático, y reconciliación
+            # que enseñe lo que ha divergido — porque un empuje que falla en
+            # silencio deja el problema peor que no tener empuje.
+            capacidades:
+              - {id: CRM-00.01.07.01, c: C, fase: 1, svc: tenancy, estado: pendiente, t: "Identidad única de tenant en toda la suite: un mismo identificador y unos mismos datos de la organización en contecrm, contecmind y contecintelligence"}
+              - {id: CRM-00.01.07.02, c: C, fase: 1, svc: tenancy, estado: pendiente, t: "Alta del tenant en cascada: dar de alta un cliente en contecrm lo provisiona en las herramientas conectadas, o dice exactamente cuál ha fallado y por qué"}
+              - {id: CRM-00.01.07.03, c: C, fase: 1, svc: identity, estado: pendiente, t: "Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez"}
+              - {id: CRM-00.01.07.04, c: C, fase: 1, svc: identity, estado: pendiente, t: "Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa"}
+              - {id: CRM-00.01.07.05, c: C, fase: 1, svc: tenancy, estado: pendiente, t: "Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma"}
+              - {id: CRM-00.01.07.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado"}
+              - {id: CRM-00.01.07.07, c: C, fase: 1, svc: tenancy, estado: pendiente, t: "Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito"}
+              - {id: CRM-00.01.07.08, c: A, fase: 1, svc: tenancy, estado: pendiente, t: "Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence"}
+              - {id: CRM-00.01.07.09, c: C, fase: 1, svc: identity, estado: pendiente, t: "SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión"}
+              - {id: CRM-00.01.07.10, c: A, fase: 1, svc: tenancy, estado: pendiente, t: "Cola de aprovisionamiento con reintento, orden garantizado por usuario y cuarentena de lo que no se puede aplicar, visible desde la consola"}
+              - {id: CRM-00.01.07.11, c: A, fase: 2, svc: tenancy, estado: pendiente, t: "Simulación antes de aplicar: qué usuarios, roles y unidades se crearían, cambiarían o desactivarían en cada herramienta"}
+              - {id: CRM-00.01.07.12, c: A, fase: 2, svc: tenancy, estado: pendiente, t: "Auditoría transversal: un solo registro que dice quién cambió qué y en qué herramienta acabó aplicándose"}
+              - {id: CRM-00.01.07.13, c: A, fase: 2, svc: tenancy, estado: pendiente, t: "Baja del tenant en cascada con certificado único: se cierra en las tres o se dice cuál ha quedado abierta"}
+
       - id: "0.2"
         nombre: Arquitectura headless / API-first
         funciones:
@@ -377,17 +407,17 @@ modulos:
             # campo existe, pero no se puede filtrar, o no sale en el informe.
             capacidades:
               - {id: CRM-00.04.03.01, c: C, fase: 1, svc: metadata, estado: pendiente, t: "Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada"}
-              - {id: CRM-00.04.03.02, c: C, fase: 1, svc: metadata, estado: pendiente, t: "Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código"}
-              - {id: CRM-00.04.03.03, c: C, fase: 1, svc: core, estado: pendiente, t: "Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema"}
-              - {id: CRM-00.04.03.04, c: A, fase: 1, svc: core, estado: pendiente, t: "Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB"}
-              - {id: CRM-00.04.03.05, c: C, fase: 1, svc: automation, estado: pendiente, t: "Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación"}
-              - {id: CRM-00.04.03.06, c: C, fase: 1, svc: analytics, estado: pendiente, t: "Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte"}
+              - {id: CRM-00.04.03.02, c: C, fase: 1, svc: metadata, estado: hecho, t: "Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código"}
+              - {id: CRM-00.04.03.03, c: C, fase: 1, svc: core, estado: hecho, t: "Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema"}
+              - {id: CRM-00.04.03.04, c: A, fase: 1, svc: core, estado: hecho, t: "Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB"}
+              - {id: CRM-00.04.03.05, c: C, fase: 1, svc: automation, estado: hecho, t: "Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación"}
+              - {id: CRM-00.04.03.06, c: C, fase: 1, svc: analytics, estado: hecho, t: "Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte"}
               - {id: CRM-00.04.03.07, c: A, fase: 2, svc: intelligence, estado: pendiente, t: "Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos"}
-              - {id: CRM-00.04.03.08, c: C, fase: 1, svc: core, estado: pendiente, t: "Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial"}
-              - {id: CRM-00.04.03.09, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar"}
-              - {id: CRM-00.04.03.10, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás"}
-              - {id: CRM-00.04.03.11, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants"}
-              - {id: CRM-00.04.03.12, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira"}
+              - {id: CRM-00.04.03.08, c: C, fase: 1, svc: core, estado: hecho, t: "Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial"}
+              - {id: CRM-00.04.03.09, c: A, fase: 1, svc: metadata, estado: hecho, t: "Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar"}
+              - {id: CRM-00.04.03.10, c: A, fase: 2, svc: metadata, estado: hecho, t: "Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás"}
+              - {id: CRM-00.04.03.11, c: A, fase: 2, svc: metadata, estado: hecho, t: "Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants"}
+              - {id: CRM-00.04.03.12, c: A, fase: 1, svc: metadata, estado: hecho, t: "Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira"}
 
       - id: "0.5"
         nombre: Identidad, seguridad y control de acceso
