@@ -99,6 +99,9 @@ PREFIJOS: dict[str, str] = {
     "dominios-envio": "marketing",
     "correo": "marketing",
     "preferencias": "marketing",
+    # Aislamiento y residencia del dato por tenant (CRM-00.01.01, CRM-00.01.05).
+    "aislamiento": "tenancy",
+    "residencia": "tenancy",
     # Correo, calendario, chat, plantillas documentales y firma presencial
     # (CRM-06.01.01, CRM-06.01.02.09).
     "buzones": "integration",

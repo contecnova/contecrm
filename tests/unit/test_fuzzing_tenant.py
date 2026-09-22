@@ -92,6 +92,10 @@ ALIAS_MODELO = {
     "bloqueo_id": "bloqueolegal",
     "calendario_id": "calendariolaboral",
     "clave_id": "claveapi",
+    # La migración de aislamiento se llama así y no «migracion» a secas porque
+    # ya hay otra cosa que migra —la convivencia con el sistema antiguo— y dos
+    # clases con el mismo nombre acabarían tapándose la una a la otra.
+    "migracion_id": "migracionaislamiento",
     "solicitud_id": "solicitudderechos",
     "relacion_id": "relacioncuenta",
     "direccion_id": "direccion",

@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from services.tenancy import servicio as svc
+from services.tenancy.api_aislamiento import ROUTERS_AISLAMIENTO
 from services.tenancy.api_byok import ROUTERS_BYOK
 from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
@@ -286,4 +287,5 @@ ROUTERS = [
     *ROUTERS_GRC,
     *ROUTERS_COMPROMISOS,
     *ROUTERS_SUITE,
+    *ROUTERS_AISLAMIENTO,
 ]

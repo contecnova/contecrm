@@ -243,6 +243,10 @@ from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.tenancy.aislamiento import (  # noqa: E402,F401
+    AislamientoTenant,
+    MigracionAislamiento,
+)
 from services.tenancy.baja import (  # noqa: E402
     CertificadoDestruccion,
     Exportacion,
@@ -258,6 +262,11 @@ from services.tenancy.grc import (  # noqa: E402
     Control,
     EvaluacionControl,
     Riesgo,
+)
+from services.tenancy.residencia import (  # noqa: E402,F401
+    ResidenciaDato,
+    Subprocesador,
+    TransferenciaInternacional,
 )
 from services.tenancy.suite import (  # noqa: E402
     AplicacionSuite,

@@ -9740,3 +9740,117 @@ correo apunta al proveedor viejo, y moverlo de sitio no lo cambia.
 Lo que se devuelve al migrar es cuántos quedan y cuál es el más antiguo, porque
 eso es lo que decide **cuándo se puede apagar la credencial vieja** — la pregunta
 que nadie sabe contestar cuando llega el momento.
+
+---
+
+## Aislamiento, residencia y migración de tenants (`CRM-00.01.01`, `CRM-00.01.05`)
+
+Un CRM multi-tenant se vende con una frase: «sus datos están aislados». Lo que
+significa esa frase cambia mucho —y lo que cuesta, también—, así que aquí se
+declara con precisión y, sobre todo, **se comprueba**.
+
+Lo que pasa siempre: se vende una base dedicada a un cliente grande, alguien
+aprovisiona con la plantilla de siempre y el tenant acaba en el pool compartido.
+Nadie lo nota, porque funcionar funciona igual. Se nota el día de la auditoría, o
+el día de la incidencia, y entonces ya no hay forma de explicarlo.
+
+### Cinco modalidades, y ninguna es la mala (`CRM-00.01.01.02` a `.05`)
+
+`compartido` —filas separadas por RLS y por el guard del ORM—, `esquema`, `base`,
+`cluster` y `cliente` (`CRM-00.01.01.05`), esta última cuando la base la pone él
+en su propia infraestructura: marcarlo es lo que cambia de quién es la copia de
+seguridad y a quién se le pide el acceso cuando hay una incidencia. Las cinco
+son legítimas y cada una tiene su coste. **Lo que no es legítimo es cobrar una y
+dar otra.**
+
+Declarar exige lo que hace falta para comprobar después: una base dedicada sin
+decir cuál no se acepta, porque sin ese dato la comprobación no se puede hacer y
+la declaración se queda en una promesa comercial dentro de una tabla.
+
+### La comprobación es lo que justifica todo esto (`CRM-00.01.01.02`, `.03`)
+
+Se le pregunta a la propia conexión a qué base y a qué esquema está atada, y se
+contrasta con lo declarado. Y se comprueba además que **el aislamiento de abajo
+sigue puesto**: una tabla con `tenant_id` y sin RLS activa es un agujero, y
+quitarlo «porque ya está aislado» deja la protección dependiendo de que el
+aprovisionamiento no falle nunca.
+
+Cambiar la declaración **invalida la comprobación anterior**: seguía diciendo que
+sí sobre una declaración que ya no es la misma.
+
+Los que no cuadran salen aparte y primero, y no como recordatorio: son una
+promesa incumplida en vigor. Y los que nadie ha contrastado en mucho tiempo
+también, porque una comprobación de hace ocho meses no dice nada de hoy — entre
+medias ha habido despliegues, restauraciones y un cambio de plantilla.
+
+### El cómputo también se aísla (`CRM-00.01.01.06`)
+
+De nada sirve una base dedicada si la importación de cincuenta mil filas de otro
+cliente deja sin workers al que paga por no esperar. Cada tenant declara su pool.
+
+### Migrar de modalidad (`CRM-00.01.01.04`, `CRM-00.01.03.10`)
+
+- **Se planifica antes de tocar nada**, porque lo que hay que poder enseñar al
+  cliente es la ventana: cuánto tiempo va a poder leer y no escribir. Prometer
+  «sin corte» es prometer lo que no se puede; lo que se puede es que el corte sea
+  corto, anunciado y reversible.
+- **Bajar de aislamiento no es simétrico a subir.** Mueve los datos a un sitio
+  donde conviven con los de otros clientes, y eso se dice con esas palabras: no
+  es un cambio de configuración, es un cambio de lo que se prometió.
+- **Dos migraciones a la vez se rechazan**: dejarían dos copias y ninguna forma
+  de saber cuál manda.
+- **Se verifica tabla a tabla antes de cerrar.** Sin eso, «migrado» significa «el
+  script terminó sin error», que no es lo mismo: una tabla que falló al copiarse
+  y se saltó en silencio deja un tenant con la mitad de sus datos y la migración
+  marcada como buena. Las filas **de más** también cuentan: copiar algo dos veces
+  es tan malo como que falte.
+- **Se guarda lo que de verdad duró**, no lo que se prometió. Guardar solo lo
+  prometido haría que la siguiente estimación se hiciera sobre un número
+  inventado.
+- Y al terminar, el aislamiento queda **por comprobar**: la comprobación anterior
+  era sobre el sitio viejo.
+
+El mismo mecanismo sirve para **cambiar de región** (`CRM-00.01.03.09`): ventana
+de solo lectura anunciada, copia, verificación tabla a tabla y cierre solo si
+cuadra. Que el destino esté en otro continente no cambia el procedimiento —cambia
+lo que hay que decirle al cliente antes y lo que hay que declarar después en la
+residencia.
+
+## Residencia de datos y subprocesadores (`CRM-00.01.05`)
+
+«Sus datos se quedan en Europa» es la frase que cierra contratos y la que más
+veces se incumple sin que nadie lo sepa. No por mala fe: los datos
+transaccionales sí se quedan, y luego los registros van a un servicio de
+observabilidad en otro continente, las copias a un almacenamiento replicado y lo
+que se manda a un modelo de IA a una API que ni siquiera se preguntó dónde está.
+
+### Por tipo de dato, no por tenant (`CRM-00.01.05.01`, `.02`)
+
+Seis tipos se ubican por separado (`CRM-00.01.05.02`): transaccional, analítico,
+copias, registros, IA y adjuntos. **Esa lista es la capacidad**: lo transaccional casi siempre está
+bien, y lo que se escapa son los otros cinco.
+
+**Lo no declarado no se da por bueno.** Un tipo sin región sale como hueco y no
+como «europeo por defecto», porque el defecto silencioso es exactamente cómo se
+incumple sin enterarse: un tipo sin declarar no es un tipo que esté en la región,
+es uno que nadie ha mirado.
+
+### Subprocesadores (`CRM-00.01.05.03`)
+
+Se declaran con **qué tratan y para qué**, no solo con su nombre: una lista de
+nombres no sirve para contestar a un cliente que pregunta por el artículo 28, que
+es exactamente para lo que se pide esta lista. La garantía es una lista cerrada
+—las que reconoce el RGPD—, y «contrato firmado» no es ninguna de ellas.
+
+Un subprocesador **sin comunicar al cliente** sale en el informe: es un
+incumplimiento del contrato, no un detalle administrativo.
+
+### Las transferencias se anotan, no se bloquean
+
+Bloquear una salida desde aquí sería fingir un control que no existe: el dato sale
+por el conector, por el correo o por el modelo de IA, y esta tabla no está en
+medio de ninguno de los tres. Lo que sí se puede es que conste, que se vea cuál
+no tiene garantía y que alguien lo arregle donde sí se puede.
+
+Y el informe lo dice claro: **lo que consta es lo que se ha anotado**. Que no
+aparezca ninguna transferencia no significa que no las haya.

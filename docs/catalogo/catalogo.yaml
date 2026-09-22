@@ -123,11 +123,11 @@ modulos:
             nombre: Modelo de aislamiento
             capacidades:
               - {id: CRM-00.01.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/tenant_guard.py + alembic/versions/0119_rls.py", t: "Aislamiento lógico — esquema compartido con discriminador tenant_id en toda entidad"}
-              - {id: CRM-00.01.01.02, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:deploy/crear-bases.sh (un esquema y un rol por servicio)", t: "Aislamiento por esquema — un esquema por tenant sobre instancia compartida"}
-              - {id: CRM-00.01.01.03, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Aislamiento físico — base de datos o clúster dedicado por tenant"}
-              - {id: CRM-00.01.01.04, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers"}
-              - {id: CRM-00.01.01.05, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Política de bring your own database / despliegue en la infraestructura del cliente"}
-              - {id: CRM-00.01.01.06, c: A, fase: 0, svc: core, estado: pendiente, t: "Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier"}
+              - {id: CRM-00.01.01.02, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:deploy/crear-bases.sh (un esquema y un rol por servicio)", t: "Aislamiento por esquema — un esquema por tenant sobre instancia compartida"}
+              - {id: CRM-00.01.01.03, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Aislamiento físico — base de datos o clúster dedicado por tenant"}
+              - {id: CRM-00.01.01.04, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers"}
+              - {id: CRM-00.01.01.05, c: D, fase: 0, svc: tenancy, estado: hecho, t: "Política de bring your own database / despliegue en la infraestructura del cliente"}
+              - {id: CRM-00.01.01.06, c: A, fase: 0, svc: core, estado: hecho, t: "Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier"}
               - {id: CRM-00.01.01.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/cache_registry.py", t: "Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva"}
               - {id: CRM-00.01.01.08, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py (S3/MinIO, URLs firmadas)", t: "Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta"}
               - {id: CRM-00.01.01.09, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/search (filtro forzado por tenant)", t: "Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor)"}
@@ -155,8 +155,8 @@ modulos:
               - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
               - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
               - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
-              - {id: CRM-00.01.03.09, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Migración entre regiones con ventana de solo lectura y verificación de integridad"}
-              - {id: CRM-00.01.03.10, c: D, fase: 0, svc: tenancy, estado: pendiente, t: "Migración entre tiers de aislamiento sin downtime perceptible"}
+              - {id: CRM-00.01.03.09, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Migración entre regiones con ventana de solo lectura y verificación de integridad"}
+              - {id: CRM-00.01.03.10, c: D, fase: 0, svc: tenancy, estado: hecho, t: "Migración entre tiers de aislamiento sin downtime perceptible"}
 
           - id: CRM-00.01.04
             nombre: Configuración y metadatos por tenant
@@ -174,9 +174,9 @@ modulos:
           - id: CRM-00.01.05
             nombre: Residencia, soberanía y cumplimiento por tenant
             capacidades:
-              - {id: CRM-00.01.05.01, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC)"}
-              - {id: CRM-00.01.05.02, c: A, fase: 0, svc: tenancy, estado: pendiente, t: "Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs)"}
-              - {id: CRM-00.01.05.03, c: A, fase: 0, svc: tenancy, estado: pendiente, reutiliza: "contecmind:docs/COMPLIANCE.md", t: "Control de subprocesadores y trazabilidad de transferencias internacionales"}
+              - {id: CRM-00.01.05.01, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC)"}
+              - {id: CRM-00.01.05.02, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs)"}
+              - {id: CRM-00.01.05.03, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md", t: "Control de subprocesadores y trazabilidad de transferencias internacionales"}
               - {id: CRM-00.01.05.04, c: A, fase: 5, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/inference_gate.py + model_router.py", t: "Modo sin salida de datos para IA: inferencia en región o modelo dedicado"}
               - {id: CRM-00.01.05.05, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md", t: "Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales"}
 

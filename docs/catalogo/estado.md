@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 590 hecho · ⬜ 117 pendiente
+**707 capacidades**: ✅ 600 hecho · ⬜ 107 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 227 · ⬜ 56
+283 capacidades · ✅ 237 · ⬜ 46
 
 ### 0.1 Multi-tenancy
 
@@ -22,11 +22,11 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.01.01.01` | Aislamiento lógico — esquema compartido con discriminador tenant_id en toda entidad | C | 0 | core | ✅ | contecmind:app/db/tenant_guard.py + alembic/versions/0119_rls.py |
-| `CRM-00.01.01.02` | Aislamiento por esquema — un esquema por tenant sobre instancia compartida | A | 0 | core | ⬜ | contecpos:deploy/crear-bases.sh (un esquema y un rol por servicio) |
-| `CRM-00.01.01.03` | Aislamiento físico — base de datos o clúster dedicado por tenant | A | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.01.04` | Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers | A | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.01.05` | Política de bring your own database / despliegue en la infraestructura del cliente | D | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.01.06` | Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier | A | 0 | core | ⬜ | — |
+| `CRM-00.01.01.02` | Aislamiento por esquema — un esquema por tenant sobre instancia compartida | A | 0 | core | ✅ | contecpos:deploy/crear-bases.sh (un esquema y un rol por servicio) |
+| `CRM-00.01.01.03` | Aislamiento físico — base de datos o clúster dedicado por tenant | A | 0 | tenancy | ✅ | — |
+| `CRM-00.01.01.04` | Modelo híbrido por tiers (silo para enterprise, pool para SMB) con promoción entre tiers | A | 0 | tenancy | ✅ | — |
+| `CRM-00.01.01.05` | Política de bring your own database / despliegue en la infraestructura del cliente | D | 0 | tenancy | ✅ | — |
+| `CRM-00.01.01.06` | Aislamiento a nivel de cómputo: pools de workers dedicados por tenant o por tier | A | 0 | core | ✅ | — |
 | `CRM-00.01.01.07` | Aislamiento de caché: namespacing obligatorio de claves por tenant y purga selectiva | C | 0 | core | ✅ | contecmind:app/core/cache_registry.py |
 | `CRM-00.01.01.08` | Aislamiento de almacenamiento de ficheros: bucket/prefijo por tenant, URLs firmadas de vida corta | C | 0 | core | ✅ | contecmind:app/core/storage.py (S3/MinIO, URLs firmadas) |
 | `CRM-00.01.01.09` | Aislamiento de índices de búsqueda (índice por tenant o filtro forzado a nivel de motor) | C | 0 | core | ✅ | contecmind:app/core/search (filtro forzado por tenant) |
@@ -56,8 +56,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.03.06` | Fusión de tenants (M&A) y escisión de un tenant en dos | D | 0 | tenancy | ⬜ | — |
 | `CRM-00.01.03.07` | Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding | A | 0 | tenancy | ✅ | contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones) |
 | `CRM-00.01.03.08` | Sub-tenants / business units con herencia configurable de configuración y datos | A | 0 | tenancy | ✅ | contecflow-PSA:app/services/organizations_service.py |
-| `CRM-00.01.03.09` | Migración entre regiones con ventana de solo lectura y verificación de integridad | A | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.03.10` | Migración entre tiers de aislamiento sin downtime perceptible | D | 0 | tenancy | ⬜ | — |
+| `CRM-00.01.03.09` | Migración entre regiones con ventana de solo lectura y verificación de integridad | A | 0 | tenancy | ✅ | — |
+| `CRM-00.01.03.10` | Migración entre tiers de aislamiento sin downtime perceptible | D | 0 | tenancy | ✅ | — |
 
 #### CRM-00.01.04 · Configuración y metadatos por tenant
 
@@ -77,9 +77,9 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.01.05.01` | Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC) | A | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.05.02` | Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs) | A | 0 | tenancy | ⬜ | — |
-| `CRM-00.01.05.03` | Control de subprocesadores y trazabilidad de transferencias internacionales | A | 0 | tenancy | ⬜ | contecmind:docs/COMPLIANCE.md |
+| `CRM-00.01.05.01` | Pinning de región de datos por tenant (UE, EE. UU., LATAM, APAC) | A | 0 | tenancy | ✅ | — |
+| `CRM-00.01.05.02` | Residencia diferenciada por tipo de dato (transaccional vs. analítico vs. backups vs. logs) | A | 0 | tenancy | ✅ | — |
+| `CRM-00.01.05.03` | Control de subprocesadores y trazabilidad de transferencias internacionales | A | 0 | tenancy | ✅ | contecmind:docs/COMPLIANCE.md |
 | `CRM-00.01.05.04` | Modo sin salida de datos para IA: inferencia en región o modelo dedicado | A | 5 | core | ⬜ | contecmind:app/core/inference_gate.py + model_router.py |
 | `CRM-00.01.05.05` | Cumplimiento verificable: ENS, ISO 27001, SOC 2 Tipo II, GDPR, sectoriales | C | 0 | docs | ✅ | contecmind:docs/COMPLIANCE.md + PENTEST_HARDENING.md |
 
