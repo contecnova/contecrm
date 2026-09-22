@@ -6,6 +6,7 @@ from crmcore.service import crear_servicio
 
 from services.analytics import eventos  # noqa: F401  (registra los tipos de evento)
 from services.analytics.api import ROUTERS
+from services.analytics.api_almacen import ROUTERS_ALMACEN
 from services.analytics.api_cuadros import ROUTERS_CUADROS
 from services.analytics.api_fuente import ROUTERS_FUENTE
 from services.analytics.api_informes import ROUTERS_INFORMES
@@ -36,7 +37,13 @@ app = crear_servicio(
         "plan compilado, la programación y el histórico de instantáneas. La "
         "consulta la ejecuta quien tiene el dato."
     ),
-    routers=[*ROUTERS, *ROUTERS_INFORMES, *ROUTERS_FUENTE, *ROUTERS_CUADROS],
+    routers=[
+        *ROUTERS,
+        *ROUTERS_INFORMES,
+        *ROUTERS_FUENTE,
+        *ROUTERS_CUADROS,
+        *ROUTERS_ALMACEN,
+    ],
     # Cuando el tenant cambia su esquema, la descripción que tiene
     # contecintelligence se queda vieja. Se rehace por evento y no por reloj: un
     # registro que se refresca cada noche está desfasado justo después de que

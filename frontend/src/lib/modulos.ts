@@ -428,6 +428,12 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/analitica/organizaciones",
         servicio: "analytics",
       },
+      // El diccionario de métricas delante de las tablas: la pregunta que abre
+      // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».
+      { nombre: "Métricas", listar: "/api/v1/metricas", servicio: "analytics" },
+      { nombre: "Frescura del almacén", listar: "/api/v1/almacen/frescura", servicio: "analytics" },
+      { nombre: "Exportaciones", listar: "/api/v1/almacen/destinos", servicio: "analytics" },
+      { nombre: "Despliegue de BI", listar: "/api/v1/analisis/despliegue", servicio: "analytics" },
     ],
   },
 

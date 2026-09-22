@@ -8692,3 +8692,185 @@ En postventa, los expedientes salen **ordenados por vencimiento** y los ya venci
 en su propia lista: un plazo legal no es una cola de trabajo, es una fecha que se
 pasa. Y los problemas enseñan `solo_apano` como columna, para que se vea de un
 vistazo cuáles están tapados y no resueltos.
+
+## Analítica avanzada (`CRM-05.01.03`)
+
+### Almacén analítico separado (`CRM-05.01.03.01`)
+
+La primera regla de la analítica en un CRM es que **no puede degradar el CRM**.
+Una consulta de dirección que recorre tres años de oportunidades bloquea la misma
+tabla en la que un comercial está guardando la suya, y lo que se nota es que «el
+CRM va lento por las mañanas» — que es cuando se sacan los informes.
+
+El almacén es **otro sitio**, y se alimenta por cargas declaradas: cada servicio
+entrega sus filas, nadie lee el esquema de nadie. Las columnas se declaran, y lo
+que no encaja **se descarta y se cuenta** en vez de entrar a medias: una fila con
+la mitad de los campos produce un informe que suma mal sin que nadie sepa por qué.
+
+Cada fila trae su **clave de origen**, y eso es lo que hace la carga idempotente.
+Sin ella, repetir una carga duplica las filas y todos los recuentos salen al
+doble.
+
+Y todo lo que se sirve **dice de cuándo es**. Una tabla se marca obsoleta al doble
+de su frecuencia declarada —una carga perdida es normal, dos seguidas ya no— y el
+informe de frescura dice si los paneles son de fiar. Una tabla que no se ha
+cargado nunca no pasa por fresca.
+
+### Exportación continua al almacén del cliente (`CRM-05.01.03.02`)
+
+El destino se declara con su tipo, y el tipo **no cambia el comportamiento**: lo
+que cambia es la configuración. Si el tipo decidiera algo, volveríamos a tener
+código por proveedor.
+
+La lista de tablas que salen es **obligatoria**: exportar «todo» por defecto saca
+datos personales a un sitio que quizá no está preparado para tenerlos, y eso no se
+deshace.
+
+Se **prepara, no se envía**: el envío lo hace quien sabe hablar con ese almacén.
+Lo que este módulo garantiza es qué sale y desde dónde — y la **marca de agua solo
+avanza cuando el envío se confirma**. Avanzarla antes es cómo se pierde un día
+entero de cambios sin que nadie lo note: el sistema siguiente cree que ya lo tiene.
+Con error no se avanza nada y se guarda el porqué.
+
+Cuando el lote sale lleno **se dice que hay más**: quien envía tiene que volver a
+llamar, y si no lo sabe deja la mitad sin mandar creyendo que terminó.
+
+### Modelo semántico y métricas certificadas (`CRM-05.01.03.03`)
+
+Lo que esto resuelve no es técnico: es que **«ingresos» significa cinco cosas
+distintas** en la misma empresa. El de ventas cuenta lo firmado, el de finanzas lo
+facturado, el de dirección lo cobrado, y los tres llevan su cifra a la misma
+reunión. Nadie miente; nadie usa la misma definición.
+
+Una métrica es un **plan, no SQL** —igual que en el motor de informes—, con su
+definición **en palabras**, que es lo único que distingue «ingresos firmados» de
+«ingresos cobrados» para quien lee el panel y no va a mirar el plan.
+
+Nace **en borrador**: una métrica que nace certificada no la ha revisado nadie.
+Certificar **exige dueño**, porque una métrica que nadie responde no se puede
+corregir cuando falla — y entonces alguien crea otra al lado, que es como se llega
+a las cinco definiciones.
+
+Cambiarla crea una **versión nueva, con motivo**, y la anterior queda consultable:
+los informes de hace tres meses se hicieron con la definición de entonces, y
+reescribirla en sitio haría que un número publicado cambiara solo. Se puede pedir
+el plan de una versión concreta, que es lo que permite reproducir aquel informe en
+vez de recalcularlo con otra definición y decir que es el mismo número.
+
+Agrupar por una dimensión que no forma parte de la definición **se rechaza**: da
+un número que no es esa métrica. Y las no certificadas **se sirven igual, marcadas**:
+prohibirlas haría que se calcularan en una hoja aparte, que es justo lo que se
+quiere evitar.
+
+### Cohortes y retención (`CRM-05.01.03.04`)
+
+Un periodo que **aún no ha terminado** no cuenta como caída: la cohorte de este
+mes no ha tenido tiempo de volver, y marcarla al 0 % la pinta como un desastre que
+no ha pasado. Sale como `inmaduro`.
+
+Una cohorte **pequeña no da porcentaje**: con tres clientes, uno que se va es un
+−33 % que se lee como un desplome. Se devuelve el recuento y se dice que no es
+significativa — y los dos motivos para no dar porcentaje se distinguen, porque uno
+se arregla esperando y el otro no se arregla.
+
+La retención se mide **contra la propia cohorte**, no contra el total: si no, una
+cohorte grande parecería mejor que una pequeña aunque se comportaran igual. Y los
+sujetos sin fecha de alta se cuentan aparte: meterlos en la primera cohorte sería
+inventarse su origen.
+
+### Embudo multi-etapa (`CRM-05.01.03.05`)
+
+**Lo abierto no cuenta como perdido.** Una oportunidad que está en la etapa 3 no ha
+fallado en la 4: todavía no ha llegado. Contarla como caída hunde la tasa de las
+etapas finales y hace parecer que el equipo cierra peor de lo que cierra.
+
+El tiempo entre etapas es la **mediana, no la media**: un solo negocio de dos años
+mueve la media de todo el trimestre y hace irreconocible el dato. Y se devuelve la
+**mayor caída**, porque la pregunta que sigue a «¿cómo va el embudo?» es siempre
+«¿dónde se atasca?».
+
+### Actividad y resultados (`CRM-05.01.03.06`)
+
+Se devuelve la correlación **con el aviso de que no es causa, junto al número**:
+quien lee el panel no va a leer la documentación. El comercial que cierra más hace
+más llamadas porque tiene más clientes interesados; exigir el mismo número de
+llamadas al resto infla la actividad sin mover los cierres, y un CRM que presenta
+esta cifra como una instrucción hace daño real.
+
+Con **pocos sujetos no se calcula**: con cinco comerciales, un valor atípico da
+0,9 o −0,3 según quién esté de vacaciones. Y si no hay variación, **no hay
+correlación**: devolver cero se leería como «no influye», que es otra cosa.
+
+Lo accionable son los **atípicos**: quien hace mucho y cierra poco necesita ayuda
+con la cualificación, no con el teléfono.
+
+### Consulta federada contra el lake del cliente (`CRM-05.01.03.07`)
+
+Se declara contra qué lake se pregunta y **qué objetos** se pueden consultar: sin
+esa lista, una consulta federada puede leer el lake entero del cliente con nuestra
+credencial, que es lo que nadie autorizó al conectar la cuenta.
+
+Se devuelve un **plan, no SQL** (RT-4), con tope de filas y de tiempo — una
+consulta federada mal hecha no se cancela sola y se lleva por delante el
+presupuesto del lake, que lo paga el cliente. Si el tope recorta, **se dice**: un
+resultado recortado en silencio se lee como completo.
+
+Y se dice lo que **no** se puede hacer: cruzarlo con tablas del CRM en la misma
+consulta exigiría traer una de las dos, que es copiar con otro nombre. Dejar que
+alguien lo descubra con una consulta que no termina es peor que decirlo.
+
+## Explotación en contexto y despliegue de BI (`CRM-05.01.04.09`, `CRM-05.01.04.10`)
+
+Preguntar «¿cómo va esta cuenta?» desde la ficha abierta tiene que acotar solo.
+Sin eso, la explotación en contexto no se usa: nadie copia un UUID a mano.
+
+El filtro **se añade, no se sugiere** —si el otro lado pudiera ignorarlo, la
+respuesta traería datos de todas las cuentas mientras el usuario cree que pregunta
+por una— y **se devuelve visible**, porque un número que parece de toda la empresa
+y es de una cuenta se lleva a una reunión y allí no cuadra con nada. El objeto se
+valida contra el modelo publicado: preguntar en el contexto de algo que la fuente
+no conoce daría un filtro ignorado en silencio.
+
+Sobre el despliegue: contecintelligence es una **dependencia**, no un extra. La
+pila lo levanta con el perfil `bi`, o se apunta con `CI_BASE_URL` a uno ya en
+marcha —lo normal en una instalación con varias soluciones de la casa—. Las dos
+valen; lo que no vale es no saber cuál está en uso, porque entonces nadie sabe a
+quién reiniciar cuando los informes dejan de salir. El estado dice en qué modo
+está, y avisa si en producción apunta al servicio del compose sin haberlo
+levantado.
+
+## Resolución de identidad entre canales (`CRM-01.01.05.02`)
+
+La misma persona llega como correo, como teléfono, como cookie y como referencia
+del ERP. Sin resolverlo, el CRM tiene cuatro fichas de una persona y ninguna sabe
+lo que hicieron las otras — que es justo lo que deja las interacciones entrantes
+sin atribuir.
+
+Y resolver identidades es peligroso por lo que se rompe al hacerlo mal: **unir dos
+personas distintas es peor que no unirlas**, porque alguien ve el historial de otro
+cliente y eso no se deshace aunque se deshaga la unión.
+
+**Hay señales fuertes y débiles.** Un NIF o un identificador de ERP identifican; un
+fijo de oficina lo comparte media planta. Cada tipo declara su peso, y el criterio
+es simple: pesa lo que no comparten dos personas distintas. **El nombre no une
+nada** — «García» hay miles—, y se guarda solo para poder explicar una propuesta.
+
+**Una señal compartida pesa menos, no más.** Un teléfono que aparece en cinco
+fichas no identifica a ninguna: su peso se reparte. Sin esto, la centralita de una
+empresa uniría a toda su plantilla.
+
+**Dos candidatos casi empatados no resuelven.** Elegir uno sería jugársela a cara o
+cruz con el historial de un cliente. Y por debajo del umbral **se propone, no se
+afirma**.
+
+**Nada se une solo.** Las propuestas se revisan; y una unión automática, si algún
+día se activa, pide una puntuación mucho más alta que una manual — quien une a mano
+está mirando las dos fichas y un proceso nocturno no mira nada.
+
+**Unir es reversible y deja rastro**: qué señales lo justificaron y quién lo
+aprobó. Deshacer **exige motivo**, porque si la regla vuelve a proponer el mismo
+par, ese texto es lo único que explica por qué estaba mal.
+
+Las señales se guardan **con huella y pista, no en claro**: una tabla de
+identidades es un índice de todos los correos y teléfonos del CRM, y para saber de
+cuál se habla basta con «termina en 4321».

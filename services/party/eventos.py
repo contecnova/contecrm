@@ -147,3 +147,18 @@ ACTIVITY_OVERDUE = registrar(
         campos=("actividad_id", "asunto", "asignada_a", "delegada_por", "vence_at"),
     )
 )
+
+IDENTITY_LINKED = registrar(
+    TipoEvento(
+        tipo="identity.linked",
+        version=1,
+        productor="party",
+        descripcion=(
+            "Dos identidades se han declarado la misma persona (CRM-01.01.05.02). "
+            "`modo` dice si lo decidió alguien o una regla: unir mal enseña a uno "
+            "el historial de otro, y saber quién lo decidió es lo que permite "
+            "revisarlo"
+        ),
+        campos=("principal_id", "secundario_id", "modo"),
+    )
+)

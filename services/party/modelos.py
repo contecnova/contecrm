@@ -677,3 +677,4 @@ from services.party.actividades_extra import (  # noqa: E402,F401
     Recurrencia,
     Visita,
 )
+from services.party.identidad import Senal, Union  # noqa: E402,F401

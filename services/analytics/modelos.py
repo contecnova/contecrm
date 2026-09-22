@@ -104,6 +104,13 @@ __all__ = [
 # aquí: `alembic` solo mira `modelos.py`.
 # El registro de la fuente y las preguntas guardadas viven en su propio módulo,
 # pero sus tablas son de este esquema y tienen que importarse aquí.
+from services.analytics.almacen import (  # noqa: E402,F401
+    CargaAnalitica,
+    DestinoExportacion,
+    FilaAnalitica,
+    FuenteFederada,
+    TablaAnalitica,
+)
 from services.analytics.cuadros import (  # noqa: E402,F401
     AlertaUmbral,
     EnlaceEmbebido,
@@ -117,3 +124,4 @@ from services.analytics.informes import (  # noqa: E402,F401
     InstantaneaInforme,
     ProgramacionInforme,
 )
+from services.analytics.semantico import Metrica  # noqa: E402,F401

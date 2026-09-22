@@ -37,7 +37,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import ErrorDependencia, NoDisponible
+from crmcore.errors import ErrorDependencia, ErrorValidacion, NoDisponible
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -510,3 +510,54 @@ def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
         )
     datos = respuesta.json()
     return {"filas": list(datos.get("rows") or datos.get("filas") or [])}
+
+
+def contexto_del_registro(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    pregunta: str,
+    objeto: str,
+    registro_id: UUID,
+    etiqueta: str = "",
+) -> dict[str, Any]:
+    """Prepara una pregunta acotada al registro que se está mirando
+    (CRM-05.01.04.09).
+
+    Es la diferencia entre «¿cómo va esta cuenta?» y tener que escribir «ingresos
+    de la cuenta cuyo identificador es 0f3a…». Sin esto, la explotación en
+    contexto no se usa: nadie copia un UUID a mano.
+
+    Tres decisiones:
+
+    **El filtro se añade, no se sugiere.** Si fuera una sugerencia que el otro
+    lado puede ignorar, la respuesta podría traer datos de todas las cuentas
+    mientras el usuario cree que está preguntando por una.
+
+    **Y se devuelve visible.** Quien lea la respuesta tiene que poder ver que
+    estaba acotada: un número que parece de toda la empresa y es de una cuenta se
+    lleva a una reunión y allí no cuadra con nada.
+
+    **El objeto se valida contra el modelo publicado.** Preguntar en el contexto
+    de un objeto que la fuente no conoce daría un filtro que el otro lado ignora
+    en silencio, que es el caso peor de los tres.
+    """
+    modelo = describir(db, tenant_id)
+    objetos = {str(o.get("clave") or o.get("nombre")) for o in (modelo.get("objetos") or [])}
+    if objetos and objeto not in objetos:
+        raise ErrorValidacion(
+            f"«{objeto}» no está en el modelo publicado a contecintelligence: el "
+            "filtro se ignoraría y la respuesta saldría sin acotar.",
+            error_code="analytics.objeto_no_publicado",
+            detalle={"publicados": sorted(objetos)},
+        )
+    return {
+        "pregunta": pregunta.strip(),
+        "objeto": objeto,
+        "filtros": [{"campo": "id", "operador": "=", "valor": str(registro_id)}],
+        # Lo que la pantalla enseña junto a la respuesta.
+        "acotada_a": etiqueta or f"{objeto} {registro_id}",
+        "aviso": (
+            f"Respuesta acotada a {etiqueta or objeto}: no es el dato de toda la " "empresa."
+        ),
+    }

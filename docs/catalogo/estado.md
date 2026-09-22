@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 530 hecho · ⬜ 177 pendiente
+**707 capacidades**: ✅ 540 hecho · ⬜ 167 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 36 · ⬜ 18
+54 capacidades · ✅ 37 · ⬜ 17
 
 ### 1.1 Modelo de parties
 
@@ -514,7 +514,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-01.01.05.01` | Timeline unificado de todas las interacciones y transacciones | C | 1 | party | ✅ | contecmind:app/services/timeline.py |
-| `CRM-01.01.05.02` | Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP) | A | 4 | party | ⬜ | — |
+| `CRM-01.01.05.02` | Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP) | A | 4 | party | ✅ | — |
 | `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ✅ | — |
 | `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ✅ | — |
 | `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ✅ 25 · ⬜ 32
+57 capacidades · ✅ 34 · ⬜ 23
 
 ### 5.1 Reporting y BI
 
@@ -924,22 +924,22 @@ puede decir que algo está hecho si no lo está.
 | `CRM-05.01.04.06` | Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM | A | 2 | analytics | ✅ | — |
 | `CRM-05.01.04.07` | Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió | A | 2 | analytics | ✅ | — |
 | `CRM-05.01.04.08` | Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa | A | 2 | analytics | ✅ | — |
-| `CRM-05.01.04.10` | contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha | C | 2 | analytics | ⬜ | — |
+| `CRM-05.01.04.10` | contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha | C | 2 | analytics | ✅ | — |
 | `CRM-05.01.04.11` | Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe | C | 2 | analytics | ✅ | — |
 | `CRM-05.01.04.12` | Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM | A | 2 | analytics | ✅ | — |
-| `CRM-05.01.04.09` | Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro | A | 5 | analytics | ⬜ | — |
+| `CRM-05.01.04.09` | Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro | A | 5 | analytics | ✅ | — |
 
 #### CRM-05.01.03 · Analítica avanzada
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-05.01.03.01` | Almacén analítico separado del operacional (sin degradar el CRM) | A | 2 | analytics | ⬜ | contecflow-PSA:app/services/bi_etl_service.py + olap/ |
-| `CRM-05.01.03.02` | Exportación continua a data warehouse del cliente (Snowflake, BigQuery, Databricks) | A | 5 | analytics | ⬜ | — |
-| `CRM-05.01.03.03` | Modelo semántico documentado y métricas certificadas | A | 5 | analytics | ⬜ | contecweb (compilador de métricas con SQL verificable) |
-| `CRM-05.01.03.04` | Análisis de cohortes, retención y ciclo de vida | A | 5 | analytics | ⬜ | — |
-| `CRM-05.01.03.05` | Análisis de embudo multi-etapa con tiempos y tasas de conversión | A | 5 | analytics | ⬜ | — |
-| `CRM-05.01.03.06` | Analítica de actividad comercial y correlación con resultados | A | 5 | analytics | ⬜ | — |
-| `CRM-05.01.03.07` | Zero-copy / consulta federada contra el lake del cliente | D | 5 | analytics | ⬜ | — |
+| `CRM-05.01.03.01` | Almacén analítico separado del operacional (sin degradar el CRM) | A | 2 | analytics | ✅ | contecflow-PSA:app/services/bi_etl_service.py + olap/ |
+| `CRM-05.01.03.02` | Exportación continua a data warehouse del cliente (Snowflake, BigQuery, Databricks) | A | 5 | analytics | ✅ | — |
+| `CRM-05.01.03.03` | Modelo semántico documentado y métricas certificadas | A | 5 | analytics | ✅ | contecweb (compilador de métricas con SQL verificable) |
+| `CRM-05.01.03.04` | Análisis de cohortes, retención y ciclo de vida | A | 5 | analytics | ✅ | — |
+| `CRM-05.01.03.05` | Análisis de embudo multi-etapa con tiempos y tasas de conversión | A | 5 | analytics | ✅ | — |
+| `CRM-05.01.03.06` | Analítica de actividad comercial y correlación con resultados | A | 5 | analytics | ✅ | — |
+| `CRM-05.01.03.07` | Zero-copy / consulta federada contra el lake del cliente | D | 5 | analytics | ✅ | — |
 
 ### 5.2 Inteligencia artificial
 

@@ -87,6 +87,56 @@ def estado() -> dict[str, Any]:
     }
 
 
+def modo_despliegue() -> dict[str, Any]:
+    """Cómo está resuelta la dependencia de contecintelligence (CRM-05.01.04.10).
+
+    La pila lo levanta —`docker compose --profile bi`— o se apunta a uno ya en
+    marcha con `CI_BASE_URL`. Las dos son válidas y una instalación con varias
+    soluciones de la casa normalmente usa la segunda; lo que no vale es no saber
+    cuál está en uso, porque entonces nadie sabe a quién reiniciar cuando los
+    informes dejan de salir.
+
+    Se distingue por el nombre del servicio en la URL, que es lo que hay: dentro
+    de la red de compose el nombre **es** la dirección. No se resuelve por DNS
+    para averiguarlo — una comprobación de configuración que hace red convierte un
+    despliegue lento en un arranque fallido.
+    """
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    url = (s.ci_base_url or "").strip()
+    if not url:
+        return {
+            "resuelta": False,
+            "modo": "sin_configurar",
+            "porque": (
+                "No hay CI_BASE_URL: ni se levanta con la pila ni se apunta a uno "
+                "existente, así que no habrá informes ni cuadros de mando."
+            ),
+        }
+    de_la_pila = "contecintelligence" in url
+    return {
+        "resuelta": True,
+        "modo": "levantado_por_la_pila" if de_la_pila else "externo",
+        "url": url,
+        "porque": (
+            "La URL apunta al servicio del compose: lo levanta la propia pila con "
+            "el perfil `bi`."
+            if de_la_pila
+            else "Apunta a una instancia ya en marcha fuera de esta pila; el perfil "
+            "`bi` no hace falta."
+        ),
+        # En producción, apuntar al nombre del compose cuando no se levanta ese
+        # perfil deja el CRM sin explotación y con un error que parece de red.
+        "aviso": (
+            "Está configurado el servicio de la pila: asegúrate de levantar el "
+            "perfil `bi`, o cambia CI_BASE_URL a la instancia que ya tengáis."
+            if de_la_pila and s.env == "prod"
+            else ""
+        ),
+    }
+
+
 def comprobar() -> dict[str, Any]:
     """Pregunta a contecintelligence si está vivo y guarda el resultado.
 
