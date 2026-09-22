@@ -479,6 +479,7 @@ def duplicado(caso_id: UUID, datos: Duplicado, uow: UowDep, principal: Autentica
     return {"id": str(caso.id), "duplicado_de": str(caso.duplicado_de_id)}
 
 
+from services.service.api_conocimiento import ROUTERS_CONOCIMIENTO  # noqa: E402
 from services.service.api_omnicanal import (  # noqa: E402
     ROUTERS_OMNICANAL,
     ROUTERS_SIN_PREFIJO,
@@ -491,6 +492,7 @@ ROUTERS = [
     router_sla,
     *ROUTERS_OPERACION,
     *ROUTERS_OMNICANAL,
+    *ROUTERS_CONOCIMIENTO,
 ]
 
 __all__ = ["ROUTERS", "ROUTERS_SIN_PREFIJO"]

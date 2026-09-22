@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 342 hecho · ⬜ 344 pendiente
+**686 capacidades**: ✅ 352 hecho · ⬜ 334 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-262 capacidades · ✅ 186 · ⬜ 76
+262 capacidades · ✅ 187 · ⬜ 75
 
 ### 0.1 Multi-tenancy
 
@@ -324,7 +324,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.07` | Credenciales máquina: client credentials, service accounts, claves con scope y caducidad | C | 0 | identity | ✅ | contecflow-PSA:app/models/oauth_apps.py |
 | `CRM-00.05.01.08` | Gestión de sesiones: duración, sesiones concurrentes, revocación remota | C | 0 | identity | ✅ | contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py |
 | `CRM-00.05.01.09` | Políticas de acceso contextual: IP, dispositivo, geolocalización, horario | A | 0 | identity | ✅ | contecweb:app/services/security_rules.py |
-| `CRM-00.05.01.10` | Identidad de clientes externos (portal) separada de la de empleados (CIAM) | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py |
+| `CRM-00.05.01.10` | Identidad de clientes externos (portal) separada de la de empleados (CIAM) | A | 3 | identity | ✅ | contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py |
 | `CRM-00.05.01.11` | SSO iniciado por el proveedor (IdP-initiated) con protección contra reenvío de aserciones | C | 1 | identity | ✅ | contecweb:app/services/saml.py |
 | `CRM-00.05.01.12` | Cierre de sesión único (Single Logout) propagado al IdP y a todos los servicios, por canal frontal y trasero | C | 1 | identity | ✅ | — |
 | `CRM-00.05.01.13` | Forzar SSO por tenant: sin contraseña local ni vías de escape, con excepción nominal y auditada para el administrador de rescate | C | 1 | identity | ✅ | — |
@@ -731,7 +731,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 30 · ⬜ 32
+62 capacidades · ✅ 39 · ⬜ 23
 
 ### 4.1 Gestión de casos
 
@@ -799,23 +799,23 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.03.01.01` | Artículos con versiones, estados, vigencia y flujo de aprobación | C | 3 | service | ⬜ | contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica) |
-| `CRM-04.03.01.02` | Visibilidad por canal y por audiencia (interno, cliente, partner, público) | C | 3 | service | ⬜ | contecmind:app/services/acl.py + share_tokens.py |
-| `CRM-04.03.01.03` | Multilingüe con gestión de traducciones y estado de sincronía | A | 3 | service | ⬜ | contecmind:app/services/languages.py + i18n_labels.py |
+| `CRM-04.03.01.01` | Artículos con versiones, estados, vigencia y flujo de aprobación | C | 3 | service | ✅ | contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica) |
+| `CRM-04.03.01.02` | Visibilidad por canal y por audiencia (interno, cliente, partner, público) | C | 3 | service | ✅ | contecmind:app/services/acl.py + share_tokens.py |
+| `CRM-04.03.01.03` | Multilingüe con gestión de traducciones y estado de sincronía | A | 3 | service | ✅ | contecmind:app/services/languages.py + i18n_labels.py |
 | `CRM-04.03.01.04` | Búsqueda semántica y sugerencia contextual en el caso | A | 5 | intelligence | ⬜ | contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida) |
-| `CRM-04.03.01.05` | Knowledge-Centered Service: crear artículo desde la resolución de un caso | A | 3 | service | ⬜ | contecmind:app/services/sop.py (artículo desde resolución) |
-| `CRM-04.03.01.06` | Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos) | A | 3 | service | ⬜ | contecmind:app/services/quality_sampler.py + insights.py |
-| `CRM-04.03.01.07` | API de conocimiento para alimentar portales, chatbots y agentes externos | A | 3 | service | ⬜ | — |
+| `CRM-04.03.01.05` | Knowledge-Centered Service: crear artículo desde la resolución de un caso | A | 3 | service | ✅ | contecmind:app/services/sop.py (artículo desde resolución) |
+| `CRM-04.03.01.06` | Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos) | A | 3 | service | ✅ | contecmind:app/services/quality_sampler.py + insights.py |
+| `CRM-04.03.01.07` | API de conocimiento para alimentar portales, chatbots y agentes externos | A | 3 | service | ✅ | — |
 
 #### CRM-04.03.02 · Autoservicio
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.03.02.01` | Portal de cliente headless: casos, pedidos, facturas, activos, contratos | A | 3 | service | ⬜ | contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py |
+| `CRM-04.03.02.01` | Portal de cliente headless: casos, pedidos, facturas, activos, contratos | A | 3 | service | ✅ | contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py |
 | `CRM-04.03.02.02` | Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/ |
 | `CRM-04.03.02.03` | Escalado a humano preservando el contexto completo | A | 3 | service | ✅ | — |
-| `CRM-04.03.02.04` | Comunidad, foros y preguntas frecuentes | D | 6 | service | ⬜ | — |
-| `CRM-04.03.02.05` | Autenticación de clientes externos y permisos por contacto y por cuenta | A | 3 | identity | ⬜ | contecweb:app/services/portal_session.py |
+| `CRM-04.03.02.04` | Comunidad, foros y preguntas frecuentes | D | 6 | service | ✅ | — |
+| `CRM-04.03.02.05` | Autenticación de clientes externos y permisos por contacto y por cuenta | A | 3 | identity | ✅ | contecweb:app/services/portal_session.py |
 
 ### 4.4 Servicio de campo y activos
 

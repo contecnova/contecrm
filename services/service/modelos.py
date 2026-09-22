@@ -271,6 +271,11 @@ from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.service.conocimiento import (  # noqa: E402
+    Articulo,
+    ValoracionArticulo,
+    VersionArticulo,
+)
 from services.service.entitlements import (  # noqa: E402
     ConsumoEntitlement,
     CreditoServicio,
@@ -292,6 +297,13 @@ from services.service.operacion import (  # noqa: E402
 )
 
 __all__ = [
+    "AccesoPortal",
+    "Articulo",
+    "EnlaceAcceso",
+    "HiloComunidad",
+    "RespuestaComunidad",
+    "ValoracionArticulo",
+    "VersionArticulo",
     "CanalServicio",
     "Conversacion",
     "Macro",
@@ -332,3 +344,10 @@ __all__ = [
     "VersionAjuste",
     "VersionPoliticaAbac",
 ]
+
+from services.service.portal import (  # noqa: E402
+    AccesoPortal,
+    EnlaceAcceso,
+    HiloComunidad,
+    RespuestaComunidad,
+)

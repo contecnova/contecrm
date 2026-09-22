@@ -5823,3 +5823,167 @@ oficial, en el portal del cliente o en el producto del propio cliente sin
 reimplementar nada. Las macros van ordenadas **por uso**: la que se usa cuarenta
 veces al día tiene que estar la primera, y alfabéticamente obliga a buscarla cada
 vez.
+
+## Conocimiento y portal de cliente (`CRM-04.03.01`, `CRM-04.03.02`, `CRM-00.05.01.10`)
+
+### Por qué fracasa una base de conocimiento (`CRM-04.03.01.01`)
+
+Casi nunca por falta de artículos: es porque **nadie sabe cuáles siguen siendo
+verdad**. A los dos años hay ochocientos, la mitad describe una versión que ya no
+existe, y como nadie se atreve a borrar nada, quien busca encuentra tres
+respuestas contradictorias y deja de buscar.
+
+De ahí que un artículo tenga **versiones y estado**, no solo texto. Cada cambio
+es una versión nueva: editar sobre lo publicado hace que un texto a medias esté
+en el portal del cliente mientras alguien lo escribe, y deja sin forma de volver a
+lo anterior. Y mientras se revisa la nueva, **el cliente sigue viendo la versión
+buena**.
+
+Al publicar hacia el cliente hay dos comprobaciones que no son formalismo:
+
+- **Aprobación de alguien distinto del autor.** Quien escribe un artículo no es
+  quien mejor detecta que lleva dentro el nombre de un cliente.
+- **Fecha de revisión obligatoria.** Sin ella nadie vuelve a mirarlo, y es el que
+  sigue apareciendo tres años después describiendo una versión que ya no existe.
+
+Para lo interno no se exigen: exigirlas ahí haría que nadie documentara nada, que
+es peor.
+
+Retirar **no borra**. Borrar rompe los enlaces que alguien pegó en un correo hace
+dos años, y quien los sigue recibe un «no existe» que parece un error del sistema.
+Marcado como obsoleto se sigue pudiendo abrir con un aviso, y apuntando al que lo
+sustituye — que es lo que la persona buscaba de verdad.
+
+### La audiencia se declara y se filtra en el servidor (`CRM-04.03.01.02`)
+
+Un artículo nace **en borrador y con audiencia interna**, y las dos cosas son
+deliberadas: el fallo caro —publicar hacia fuera un procedimiento interno con
+nombres de clientes dentro— ocurre siempre por omisión, nunca por decisión.
+
+El filtro por audiencia se aplica **dentro de la función de búsqueda**, no por un
+parámetro de quien llama: si dependiera del llamante, bastaría una ruta nueva que
+se olvidara de pasarlo para que el portal público sirviera los procedimientos
+internos.
+
+Un artículo fuera de la audiencia devuelve **404 y no 403**: un 403 confirma que
+existe, y con eso se puede recorrer el catálogo interno preguntando por
+identificadores.
+
+### Traducciones que dicen si están al día (`CRM-04.03.01.03`)
+
+Cada traducción se ata a su original y guarda **contra qué versión se tradujo**.
+Una traducción que se quedó en la versión 2 mientras el original va por la 5 es
+peor que no tenerla, porque el cliente que la lee cree que está leyendo lo
+vigente. «Desincronizada» se dice explícitamente en vez de dejar que se note: una
+traducción vieja no falla, simplemente miente.
+
+### Conocimiento desde el caso (`CRM-04.03.01.05`)
+
+El momento importa: se escribe **cuando se resuelve**, con el problema fresco y
+por quien lo resolvió. Pedirlo después, en una sesión dedicada, es como no
+pedirlo — el conocimiento se pierde entre el caso cerrado y la reunión del
+viernes. Por eso no se puede documentar un caso sin resolver: el artículo saldría
+de una solución que aún no se sabe si funciona.
+
+Nace **en borrador e interno** aunque venga de un caso resuelto: el texto de una
+resolución lleva casi siempre el nombre del cliente, su configuración y a veces
+sus credenciales. Publicarlo directo hacia fuera sería la fuga más tonta posible.
+
+Y se registra **qué artículo resolvió qué caso**: es la métrica que de verdad dice
+si sirve. Un artículo muy valorado que nadie usa en un caso es un artículo bonito.
+
+### Medir qué sirve y qué estorba (`CRM-04.03.01.06`)
+
+Un voto **por votante**, no uno por pulsación: sin eso el mismo visitante puede
+votar cien veces y la métrica deja de significar nada — y el primero que lo
+descubra decidirá qué artículos parecen buenos. Se guarda el comentario, que es lo
+único que dice **por qué** no sirve; el pulgar abajo solo dice que no.
+
+Tres listas, para tres decisiones distintas:
+
+- **Dañinos** — muchas visitas y pulgar abajo. Es **peor que no tenerlos**: el
+  cliente pierde el tiempo y *además* se queda sin llamar.
+- **Huérfanos** — publicados y sin visitas. O no se encuentran o no hacían falta;
+  en los dos casos ocupan sitio en los resultados de búsqueda.
+- **Caducados** — pasada su fecha de revisión.
+
+La deflexión se da como **aproximada** a propósito: no se puede distinguir a quien
+leyó y le sirvió de quien leyó y se rindió, y presentarlo como exacto sería
+inventarse un número que después alguien cita en una reunión.
+
+Un artículo caducado **se marca en la búsqueda** en vez de esconderse: ocultarlo
+dejaría al cliente sin respuesta, y enseñarlo sin avisar le daría una que puede
+estar vieja.
+
+### La misma API para portales, chatbots y agentes (`CRM-04.03.01.07`)
+
+No hay una API de conocimiento por consumidor: es una, y se le pasa la audiencia
+que le corresponde. Un chatbot público recibe lo público; el del portal de
+partners, lo de partners. Con una API por consumidor, la tercera se olvidaría del
+filtro.
+
+### El portal de cliente cambia todas las reglas (`CRM-04.03.02.01`)
+
+**La identidad del cliente no es la del empleado** (`CRM-04.03.02.05`,
+`CRM-00.05.01.10`). Un contacto no tiene roles del CRM, no cuenta para licencias y
+su ciclo de vida lo manda la relación comercial, no el directorio corporativo.
+Reutilizar la tabla de usuarios parece que ahorra trabajo y lo que hace es dejar
+abierta la puerta a que un contacto acabe con permisos de empleado porque alguien
+le asignó un rol por comodidad.
+
+Se entra por **enlace de un solo uso**, que evita gestionar contraseñas de gente
+que entra tres veces al año y las olvida siempre. El token se guarda hasheado y
+caduca pronto: un enlace de acceso viaja por correo, y el correo se reenvía — sin
+caducidad, el que alguien reenvió hace seis meses sigue abriendo la cuenta de su
+empresa. Pedir enlace para un correo desconocido **responde igual** que para uno
+conocido: distinguirlos convertiría el portal en un comprobador de qué correos son
+clientes nuestros, que es exactamente la lista que quiere un competidor.
+
+Revocar el acceso **invalida los enlaces vivos en el acto**: si no, alguien a quien
+acaban de retirar el acceso sigue entrando con el correo que recibió esta mañana,
+y en la lista figura como revocado.
+
+**Tres niveles y no dos**, porque el caso real es exactamente ese: el técnico que
+solo ve lo suyo, el responsable que ve lo de su empresa y el que además da de alta
+a sus compañeros sin llamarnos. El acceso nace en el más bajo: eso impide que
+quien abrió una incidencia acabe viendo las facturas de su empresa porque alguien
+creó el acceso deprisa.
+
+**El filtro va en el servidor y por el nivel del acceso.** Filtrar en el cliente
+funciona hasta que alguien mira la respuesta de la API, y entonces el portal deja
+de ser un portal para ser una copia del CRM con un filtro de pantalla. Un nivel de
+cuenta **sin cuenta asignada no ve nada**: enseñar todo «porque tiene nivel de
+cuenta» sería el peor fallo posible aquí. Y declarar secciones concretas **se
+interseca** con las del nivel en vez de sustituirlas, porque si mandaran las
+declaradas, declarar una sección sería una forma de saltarse el nivel.
+
+Al abrir un caso desde el portal, el contacto y la cuenta los pone **el acceso**,
+no la petición: aceptarlos de quien llama permitiría abrir casos en nombre de otra
+empresa, que es la fuga más fácil de un portal.
+
+La portada devuelve **datos y no pantallas**, lo que permite que el cliente monte
+su propio portal con su marca sin que nosotros hagamos uno por cliente. Y dice qué
+secciones puede abrir, para que no pinte botones que después dan 403: un botón que
+falla al pulsarlo es peor que uno que no está.
+
+### Comunidad (`CRM-04.03.02.04`)
+
+Un hilo nace **en moderación**. Un foro de soporte sin moderación previa acaba con
+un cliente publicando su clave de licencia, la configuración de su red o el nombre
+de su proveedor — y eso, una vez público, ya no se retira del todo. Lo que está en
+moderación **no se sirve** salvo que se pida explícitamente.
+
+La respuesta del fabricante **se marca**. En un foro de soporte, la diferencia
+entre «lo dice el fabricante» y «lo dice otro cliente» es toda, y sin marcarla el
+cliente aplica el consejo de cualquiera creyendo que es oficial.
+
+La **respuesta aceptada** es lo que separa un foro útil de un archivo de
+conversaciones: sin ella, quien llega el mes que viene tiene que leerse los treinta
+mensajes para saber cuál funcionó — y la mitad de las veces se rinde y abre un
+caso.
+
+Rechazar un hilo exige motivo: el cliente que lo escribió tiene derecho a saber por
+qué no se publica. Y un hilo **solo se convierte en artículo si tiene respuesta
+aceptada**: convertir uno sin resolver crea un artículo que describe un problema y
+no su solución, que es lo peor que puede haber en una base de conocimiento porque
+parece una respuesta y no lo es.

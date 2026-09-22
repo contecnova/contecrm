@@ -195,6 +195,19 @@ ROLES_BASE: dict[str, Rol] = {
         descripcion="Atiende casos y consulta el conocimiento",
         es_sistema=True,
     ),
+    "responsable_soporte": Rol(
+        nombre="responsable_soporte",
+        hereda_de="agente_soporte",
+        permisos=frozenset({"knowledge:write", "entitlement:write"}),
+        descripcion=(
+            "Además, publica conocimiento y gestiona derechos de servicio. "
+            "Escribir conocimiento va aparte de atender casos a propósito: lo que "
+            "se publica hacia el cliente lo aprueba alguien distinto de quien lo "
+            "escribe (CRM-04.03.01.01), y con un solo permiso eso sería una "
+            "convención en vez de un control"
+        ),
+        es_sistema=True,
+    ),
     "solo_lectura": Rol(
         nombre="solo_lectura",
         permisos=frozenset({"*:read"}),

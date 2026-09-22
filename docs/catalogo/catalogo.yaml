@@ -435,7 +435,7 @@ modulos:
               - {id: CRM-00.05.01.07, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/models/oauth_apps.py", t: "Credenciales máquina: client credentials, service accounts, claves con scope y caducidad"}
               - {id: CRM-00.05.01.08, c: C, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/sessions.py + contecflow-PSA:app/services/session_security.py", t: "Gestión de sesiones: duración, sesiones concurrentes, revocación remota"}
               - {id: CRM-00.05.01.09, c: A, fase: 0, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/security_rules.py", t: "Políticas de acceso contextual: IP, dispositivo, geolocalización, horario"}
-              - {id: CRM-00.05.01.10, c: A, fase: 3, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py", t: "Identidad de clientes externos (portal) separada de la de empleados (CIAM)"}
+              - {id: CRM-00.05.01.10, c: A, fase: 3, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/portal_session.py + contecflow-PSA:app/models/client_portal.py", t: "Identidad de clientes externos (portal) separada de la de empleados (CIAM)"}
               # ── SSO en profundidad ────────────────────────────────────
               - {id: CRM-00.05.01.11, c: C, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/saml.py", t: "SSO iniciado por el proveedor (IdP-initiated) con protección contra reenvío de aserciones"}
               - {id: CRM-00.05.01.12, c: C, fase: 1, svc: identity, estado: hecho, t: "Cierre de sesión único (Single Logout) propagado al IdP y a todos los servicios, por canal frontal y trasero"}
@@ -868,21 +868,21 @@ modulos:
           - id: CRM-04.03.01
             nombre: Base de conocimiento
             capacidades:
-              - {id: CRM-04.03.01.01, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica)", t: "Artículos con versiones, estados, vigencia y flujo de aprobación"}
-              - {id: CRM-04.03.01.02, c: C, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/acl.py + share_tokens.py", t: "Visibilidad por canal y por audiencia (interno, cliente, partner, público)"}
-              - {id: CRM-04.03.01.03, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/languages.py + i18n_labels.py", t: "Multilingüe con gestión de traducciones y estado de sincronía"}
+              - {id: CRM-04.03.01.01, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica)", t: "Artículos con versiones, estados, vigencia y flujo de aprobación"}
+              - {id: CRM-04.03.01.02, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/acl.py + share_tokens.py", t: "Visibilidad por canal y por audiencia (interno, cliente, partner, público)"}
+              - {id: CRM-04.03.01.03, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/languages.py + i18n_labels.py", t: "Multilingüe con gestión de traducciones y estado de sincronía"}
               - {id: CRM-04.03.01.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida)", t: "Búsqueda semántica y sugerencia contextual en el caso"}
-              - {id: CRM-04.03.01.05, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/sop.py (artículo desde resolución)", t: "Knowledge-Centered Service: crear artículo desde la resolución de un caso"}
-              - {id: CRM-04.03.01.06, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecmind:app/services/quality_sampler.py + insights.py", t: "Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos)"}
-              - {id: CRM-04.03.01.07, c: A, fase: 3, svc: service, estado: pendiente, t: "API de conocimiento para alimentar portales, chatbots y agentes externos"}
+              - {id: CRM-04.03.01.05, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/sop.py (artículo desde resolución)", t: "Knowledge-Centered Service: crear artículo desde la resolución de un caso"}
+              - {id: CRM-04.03.01.06, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/quality_sampler.py + insights.py", t: "Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos)"}
+              - {id: CRM-04.03.01.07, c: A, fase: 3, svc: service, estado: hecho, t: "API de conocimiento para alimentar portales, chatbots y agentes externos"}
           - id: CRM-04.03.02
             nombre: Autoservicio
             capacidades:
-              - {id: CRM-04.03.02.01, c: A, fase: 3, svc: service, estado: pendiente, reutiliza: "contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py", t: "Portal de cliente headless: casos, pedidos, facturas, activos, contratos"}
+              - {id: CRM-04.03.02.01, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py", t: "Portal de cliente headless: casos, pedidos, facturas, activos, contratos"}
               - {id: CRM-04.03.02.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/", t: "Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales"}
               - {id: CRM-04.03.02.03, c: A, fase: 3, svc: service, estado: hecho, t: "Escalado a humano preservando el contexto completo"}
-              - {id: CRM-04.03.02.04, c: D, fase: 6, svc: service, estado: pendiente, t: "Comunidad, foros y preguntas frecuentes"}
-              - {id: CRM-04.03.02.05, c: A, fase: 3, svc: identity, estado: pendiente, reutiliza: "contecweb:app/services/portal_session.py", t: "Autenticación de clientes externos y permisos por contacto y por cuenta"}
+              - {id: CRM-04.03.02.04, c: D, fase: 6, svc: service, estado: hecho, t: "Comunidad, foros y preguntas frecuentes"}
+              - {id: CRM-04.03.02.05, c: A, fase: 3, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/portal_session.py", t: "Autenticación de clientes externos y permisos por contacto y por cuenta"}
       - id: "4.4"
         nombre: Servicio de campo y activos
         funciones:
