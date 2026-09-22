@@ -443,3 +443,193 @@ con una prueba que lo respalda.
 
 Lo que ninguna de esas cuatro cosas da es una certificación. La certificación la
 obtiene la organización que despliega, con este producto dentro de su alcance.
+
+## Conectores como manifiestos, y catálogo instalable (`CRM-00.03.04.01`, `CRM-00.03.04.10`, `CRM-07.02.01.09`)
+
+«Conectores nativos para ERP, facturación, firma, telefonía y mensajería» suele
+significar un módulo de código por cada casa. Eso es lo que hace que la lista de
+integraciones envejezca: cada proveedor cambia su API y hay que desplegar para
+seguirle.
+
+Aquí un conector **es un manifiesto**: declara qué operaciones tiene, qué
+credenciales pide, a qué dominios llama y cómo mapea sus campos. El motor es el
+declarativo de siempre. Añadir un ERP nuevo no es escribir código, es publicar un
+documento.
+
+**Se valida al publicarlo.** Un mapeo con un campo mal escrito falla dentro de un
+proceso nocturno tres semanas después, y el error que aparece no se parece a la
+causa. Y se valida **todo de golpe**: quien escribe un manifiesto de veinte
+operaciones no puede descubrir los errores de uno en uno.
+
+**Se versiona, y lo instalado no cambia solo.** Un tenant con la versión 3 sigue
+con la 3 aunque se publique la 4: actualizar automáticamente cambiaría una
+integración de producción sin que nadie lo decida, y eso es que algo que
+funcionaba deja de funcionar un martes sin ningún despliegue de por medio.
+Publicar una versión nueva **exige decir qué cambia**, porque quien decide si
+actualiza no puede hacerlo a ciegas.
+
+**Lo que pide se enseña antes de instalar**: credenciales y dominios. Instalar y
+descubrir después que hace falta un certificado que tarda dos semanas es el final
+de esa integración; y descubrir a dónde manda los datos mirando el tráfico llega
+tarde.
+
+Instalar devuelve **qué credenciales faltan** en vez de fallar —instalar y
+configurar son dos momentos distintos— pero no da la integración por operativa: la
+pantalla puede decir «esta no va a funcionar todavía» sin tener que probarla.
+
+Retirar una versión **no rompe lo instalado**, y dice a cuántos tenants afecta. Y
+desinstalar **deja los datos ya traídos**: son de la empresa, no del conector que
+los trajo.
+
+## Transportes heredados: SOAP, SFTP, ficheros planos, EDI y AMQP (`CRM-00.03.04.03`)
+
+El conector declarativo resolvió las integraciones modernas, que son HTTP con
+JSON. Lo que queda es lo que paga las facturas: el ERP que solo habla SOAP, el
+mayorista que deja un fichero en un SFTP a las 3:00, el operador logístico que
+manda EDIFACT y la fábrica que publica en una cola.
+
+**Ficheros planos sin adivinar el formato.** Separador, columnas y anchos se
+declaran. Detectarlo automáticamente funciona el 95 % de las veces, y el 5 %
+restante son cargas que entran mal **sin fallar**, que es la peor forma de fallar
+que hay. Una línea rota no tumba el fichero: se cuenta y se sigue, porque un
+fichero de 50.000 pedidos no se descarta entero por uno malo.
+
+**EDI se parte, no se interpreta.** Se devuelven los segmentos con sus elementos;
+traducir aquí un ORDERS a un pedido metería el vocabulario de un sector en el
+núcleo. Esa traducción es del adaptador canónico, que existe para eso. Y si el fin
+de segmento declarado **no aparece** en el mensaje, se avisa: sin eso, el mensaje
+entero sale como un único segmento con un nombre absurdo y sin ningún error.
+
+**SOAP sin generar código por servicio.** El sobre y el cuerpo se declaran; un
+WSDL completo obligaría a generar un cliente por cada servicio, que es justo lo
+que este proyecto evita. Dos comprobaciones que no son opcionales: el **Fault**
+—que llega con HTTP 200 en muchísimos servicios, y sin mirarlo un error se procesa
+como cero filas—, y que la respuesta **sea un sobre SOAP**: una página de error de
+un proxy es XML perfectamente formado y pasaría por respuesta vacía.
+
+**SFTP no acepta cualquier host.** Sin la huella declarada, la conexión se
+rechaza: aceptar la clave que venga es abrir la puerta a que alguien se ponga en
+medio del canal por el que viaja el maestro de clientes. Y el fichero **no se
+borra al leerlo**: se archiva después, porque media integración heredada se pierde
+cuando el proceso falla tras borrar el origen y el mayorista no lo vuelve a
+mandar.
+
+**AMQP publica persistente por defecto** y confirma **tras procesar**: confirmar al
+recibir perdería el mensaje en un fallo posterior sin que nadie se enterara.
+
+## Exposición a agentes de IA (`CRM-00.03.04.11`)
+
+Un agente que puede leer y escribir en el CRM es útil y peligroso por lo mismo:
+hace en un segundo lo que una persona tardaría una tarde.
+
+**El agente tiene su propio principal.** Actuar «en nombre de» heredando permisos
+convierte cualquier fallo del agente en un fallo con los permisos del jefe. El
+catálogo de herramientas que ve cada agente sale de cruzar lo publicado con lo que
+**su** principal puede: enseñarle todo y fallar al invocar le hace gastar llamadas
+—y dinero— en lo que no puede hacer, y peor, intentar rodearlo.
+
+**Lo que escribe pasa por donde pasa lo de una persona.** Las herramientas de
+escritura emiten un **comando** al servicio dueño, que aplica sus reglas. La
+respuesta dice «pedido», no «hecho». Y una herramienta de escritura puede exigir
+**confirmación humana**: el agente prepara y alguien firma.
+
+**Cuota e interruptor.** Un agente sin cuota es una factura sorpresa; un agente sin
+interruptor obliga a revocar roles mientras sigue llamando. El orden de las
+comprobaciones es interruptor, permiso, cuota y parámetros — la cuota antes de
+validar porque un agente en bucle manda miles de llamadas y validar cada una
+cuesta más que rechazarla.
+
+Y todo queda contado. Los **rechazos** importan tanto como las ejecuciones: muchos
+por permisos significan que lo publicado y lo que el agente puede no coinciden, y
+eso se arregla configurando, no reintentando.
+
+## Canales sin interfaz y registro automático de interacciones (`CRM-00.02.03.09`, `CRM-01.02.01.04`)
+
+Un CRM headless tiene que poder usarse **sin abrirlo**: se contesta un correo, se
+cuelga una llamada, se cierra una reunión, y eso queda registrado sin que nadie
+teclee. Si registrarlo cuesta un minuto por interacción, no se registra — y un CRM
+sin interacciones es una agenda cara.
+
+**Todos los canales entran por el mismo sitio.** Correo, SMS, voz, chat, CLI,
+calendario o un agente: cambia el sobre, no el camino. Un camino por canal acaba
+con cuatro sitios donde se crea una actividad y solo uno aplicando las reglas.
+
+**Idempotencia por el identificador del canal.** El proveedor de correo reintenta,
+la centralita reenvía el CDR y el calendario manda el mismo evento cada vez que
+alguien lo toca; sin esto, una reunión sale cuatro veces en la ficha.
+
+**Lo que no se puede atribuir se queda visible.** Un correo de una dirección
+desconocida es un contacto que falta, no basura: se guarda sin atribuir y se
+cuenta —con los interlocutores más frecuentes primero, que es por donde hay que
+empezar—. Descartarlo hace que la ficha del cliente parezca tranquila cuando lo
+que pasa es que escribe desde otro correo.
+
+**Registrar no es leer.** Se guarda que hubo una llamada o un correo, con quién y
+cuándo; el contenido **solo si el canal lo declara**. Volcar el buzón dentro del
+CRM multiplica el dato personal y la superficie que hay que proteger para algo que
+casi nadie vuelve a leer.
+
+Lo que se crea con ello —actividad, caso o lead— lo crea el servicio dueño por
+comando, y solo si se pudo atribuir: una actividad colgando de nadie no la ve
+nadie.
+
+## Datos externos sin replicar, y CRM embebido (`CRM-01.01.05.04`, `CRM-00.02.03.10`)
+
+Hay datos que no deben copiarse: el saldo del cliente, su riesgo, sus facturas. No
+porque no quepan, sino porque copiarlos crea una segunda verdad que envejece — la
+ficha dice que debe 3.000 € y la realidad son cero desde ayer, y alguien llama a
+reclamar a quien ya pagó.
+
+**Si el sistema externo no contesta, se dice.** `disponible: false` con el porqué,
+nunca un hueco ni un cero: un saldo vacío se lee como «no debe nada». Y el porqué
+llega hasta la pantalla, porque «no se ha podido consultar» a secas manda a abrir
+un ticket que nadie sabe diagnosticar.
+
+**Tiempo máximo y caché corta, con la edad visible.** Una ficha no puede tardar
+seis segundos porque el ERP va lento. Y un dato de hace diez minutos presentado
+como actual es el mismo problema que copiarlo: por eso cada bloque dice si viene
+de caché y cuántos segundos tiene.
+
+**Lo federado no se puede filtrar ni ordenar**, y se dice en voz alta: para buscar
+«clientes con saldo > 1.000» habría que traer todos los saldos, y eso es replicar
+con otro nombre.
+
+Para el **CRM embebido** dentro del ERP o del portal, la lista de orígenes es
+obligatoria y en https: sin ella, cualquier página podría incrustarlo y pedir
+datos con la sesión de quien la abra. Un origen no admitido se rechaza **sin decir
+cuáles valen** — decirlo sería indicarle a quien prueba dónde ponerse. Y si el
+anfitrión no manda el contexto declarado, se dice qué falta: un CRM embebido que
+enseña la pantalla de inicio en vez del cliente que el usuario tiene delante no
+sirve para nada.
+
+## Convivencia con el CRM heredado: strangler (`CRM-00.03.01.07`)
+
+Nadie apaga su CRM un viernes y enciende otro el lunes. La migración dura meses y
+durante esos meses los dos sistemas están vivos. Lo único que evita el caos es que
+**en todo momento se sepa quién manda sobre cada objeto**.
+
+**El dueño se declara por objeto y por criterio**, no por sistema entero: «las
+cuentas ya son nuestras, los pedidos siguen siendo del viejo» es la situación
+normal durante meses, y «los clientes nuevos aquí, los antiguos allí» es como se
+migra de verdad. Se usa la gramática de condiciones de siempre.
+
+**Sin ninguna regla declarada manda el heredado.** Es el valor seguro: equivocarse
+hacia el viejo produce un dato que hay que traer; hacia el nuevo, dos verdades. Y
+se devuelve siempre **el porqué**, porque «¿por qué este pedido no me deja
+editarlo?» es la pregunta de cada día, y sin respuesta la gente lo edita en el
+sistema viejo por si acaso — que es como se duplica todo.
+
+**Doble escritura solo con un dueño declarado.** Si nadie manda, cuando los dos
+cambien el mismo dato se decidirá por orden de llegada, que es perder información
+sin que nadie se entere.
+
+**Se mide lo que queda.** Un strangler sin medida no termina: se queda años «en
+migración» porque nadie sabe cuánto falta. Los números los trae quien migra —
+contarlos en el sistema viejo exigiría leer su base de datos, que es justo lo que
+este patrón evita—, y la **edad de la medida va delante**: una de hace tres meses
+presentada como actual hace creer que va bien. Los objetos con regla y sin ninguna
+medida se señalan aparte: son los que hacen que la migración no acabe nunca.
+
+Y dar un objeto por migrado **con registros aún en el viejo** exige forzarlo con
+motivo: cerrarlo dejaría fuera lo que queda allí, y nadie volvería a mirarlo
+porque ya constaría migrado.

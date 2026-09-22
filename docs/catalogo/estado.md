@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 520 hecho · ⬜ 187 pendiente
+**707 capacidades**: ✅ 530 hecho · ⬜ 177 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 220 · ⬜ 63
+283 capacidades · ✅ 227 · ⬜ 56
 
 ### 0.1 Multi-tenancy
 
@@ -162,8 +162,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.03.06` | Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.07` | API de validación consultable antes de enviar (dry-run de reglas) | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.08` | Server-driven UI: definición de formularios y vistas servida como JSON | D | 1 | metadata | ⬜ | — |
-| `CRM-00.02.03.09` | Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI | A | 3 | integration | ⬜ | — |
-| `CRM-00.02.03.10` | Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros | D | 6 | gateway | ⬜ | — |
+| `CRM-00.02.03.09` | Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI | A | 3 | integration | ✅ | — |
+| `CRM-00.02.03.10` | Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros | D | 6 | gateway | ✅ | — |
 
 #### CRM-00.02.04 · Gateway y capa de acceso
 
@@ -189,7 +189,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.01.04` | Service registry / catálogo interno con owner, SLO, dependencias y runbook | A | 0 | docs | ⬜ | — |
 | `CRM-00.03.01.05` | Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red | A | 2 | infra | ⬜ | — |
 | `CRM-00.03.01.06` | Despliegue independiente por servicio, sin ventanas de release coordinadas | A | 0 | infra | ✅ | — |
-| `CRM-00.03.01.07` | Strangler pattern soportado para convivir con CRM heredado durante la migración | A | 2 | integration | ⬜ | — |
+| `CRM-00.03.01.07` | Strangler pattern soportado para convivir con CRM heredado durante la migración | A | 2 | integration | ✅ | — |
 
 #### CRM-00.03.02 · Motor de orquestación de procesos
 
@@ -230,17 +230,17 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.03.04.01` | Conectores nativos: ERP, facturación, firma electrónica, telefonía, mensajería | A | 2 | integration | ⬜ | contecflow-PSA:app/services/{salesforce,stripe,jira,git,m365,slack}_service.py; contecweb:app/services/supplier_api |
+| `CRM-00.03.04.01` | Conectores nativos: ERP, facturación, firma electrónica, telefonía, mensajería | A | 2 | integration | ✅ | contecflow-PSA:app/services/{salesforce,stripe,jira,git,m365,slack}_service.py; contecweb:app/services/supplier_api |
 | `CRM-00.03.04.02` | Conector genérico HTTP/REST configurable sin código (auth, mapeo, paginación) | A | 0 | integration | ✅ | contecweb:app/connectors/api + base.py (conector HTTP genérico, verificado 2026-09-14) |
-| `CRM-00.03.04.03` | Soporte SOAP, SFTP, ficheros planos, EDI y colas AMQP para entornos legacy | A | 2 | integration | ⬜ | — |
+| `CRM-00.03.04.03` | Soporte SOAP, SFTP, ficheros planos, EDI y colas AMQP para entornos legacy | A | 2 | integration | ✅ | — |
 | `CRM-00.03.04.04` | Motor de transformación y mapeo de datos con funciones y validación | A | 0 | integration | ✅ | contecweb:app/services/normalization/ |
 | `CRM-00.03.04.05` | Gestión de credenciales por conexión con rotación y prueba de conectividad | C | 0 | integration | ✅ | contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py |
 | `CRM-00.03.04.06` | Monitor de integraciones: ejecuciones, errores, reproceso, alertas | C | 0 | integration | ✅ | contecflow-PSA:app/services/integration_test_service.py |
 | `CRM-00.03.04.07` | Cola de mensajes fallidos con corrección y reenvío asistido | C | 0 | integration | ✅ | contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py |
 | `CRM-00.03.04.08` | Sincronización bidireccional con resolución de conflictos configurable | A | 2 | integration | ✅ | — |
 | `CRM-00.03.04.09` | Modelo canónico de intercambio y adaptadores por sistema externo | A | 2 | integration | ✅ | — |
-| `CRM-00.03.04.10` | Marketplace / registro de integraciones instalables por tenant | A | 6 | integration | ⬜ | contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py |
-| `CRM-00.03.04.11` | Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA | D | 6 | integration | ⬜ | — |
+| `CRM-00.03.04.10` | Marketplace / registro de integraciones instalables por tenant | A | 6 | integration | ✅ | contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py |
+| `CRM-00.03.04.11` | Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA | D | 6 | integration | ✅ | — |
 
 #### CRM-00.03.05 · Workflows de negocio — aprobaciones, escalados y revisiones
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 34 · ⬜ 20
+54 capacidades · ✅ 36 · ⬜ 18
 
 ### 1.1 Modelo de parties
 
@@ -516,7 +516,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.05.01` | Timeline unificado de todas las interacciones y transacciones | C | 1 | party | ✅ | contecmind:app/services/timeline.py |
 | `CRM-01.01.05.02` | Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP) | A | 4 | party | ⬜ | — |
 | `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ✅ | — |
-| `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ⬜ | — |
+| `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ✅ | — |
 | `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ⬜ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
 | `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ⬜ | — |
 | `CRM-01.01.05.07` | Salud del cliente (health score) y señales de churn | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/customer_health_service.py |
@@ -530,7 +530,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.02.01.01` | Tareas, eventos, llamadas, notas y visitas con modelo común de actividad | C | 1 | party | ✅ | contecflow-PSA:app/models/activity.py + app/services/activity_service.py |
 | `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.03` | Relación polimórfica de la actividad con cualquier objeto | C | 1 | party | ✅ | — |
-| `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ⬜ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
+| `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ✅ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
 | `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ⬜ | contecmind:app/core/transcribe.py + app/services/audio_overview |
 | `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ⬜ | — |
 | `CRM-01.02.01.09` | Recordatorios recurrentes y reprogramación automática de la actividad no atendida | A | 2 | party | ✅ | — |
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 77 · ⬜ 14
+91 capacidades · ✅ 78 · ⬜ 13
 
 ### 7.1 Administración funcional
 
@@ -1066,7 +1066,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.02.01.06` | Detección de cambios en producción fuera del pipeline (drift) | A | 1 | metadata | ⬜ | — |
 | `CRM-07.02.01.07` | Rollback de despliegues y de configuraciones | A | 1 | metadata | ⬜ | — |
 | `CRM-07.02.01.08` | Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión | C | 0 | docs | ✅ | contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py |
-| `CRM-07.02.01.09` | Paquetes instalables por tenant y gestión de dependencias | A | 6 | metadata | ⬜ | contecflow-PSA:app/services/marketplace_service.py |
+| `CRM-07.02.01.09` | Paquetes instalables por tenant y gestión de dependencias | A | 6 | metadata | ✅ | contecflow-PSA:app/services/marketplace_service.py |
 
 ### 7.3 Gobierno y cumplimiento
 

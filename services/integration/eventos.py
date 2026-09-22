@@ -135,3 +135,30 @@ DEVICE_ALERT = registrar(
         campos=("dispositivo_id", "regla", "severidad"),
     )
 )
+
+CONNECTOR_INSTALLED = registrar(
+    TipoEvento(
+        tipo="connector.installed",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Un tenant ha instalado un conector del catálogo (CRM-00.03.04.10). "
+            "Lleva la versión porque es lo que decide con qué está funcionando ese "
+            "tenant, que no tiene por qué ser la última publicada"
+        ),
+        campos=("clave", "version"),
+    )
+)
+INTERACTION_RECORDED = registrar(
+    TipoEvento(
+        tipo="interaction.recorded",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Se ha registrado una interacción llegada por un canal sin interfaz "
+            "(CRM-01.02.01.04). `atribuida` dice si se pudo colgar de alguien: lo "
+            "que no se atribuye no es basura, es un contacto que falta"
+        ),
+        campos=("interaccion_id", "canal", "atribuida"),
+    )
+)

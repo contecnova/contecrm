@@ -54,3 +54,11 @@ uuid6==2024.7.10
 python-dateutil==2.9.0.post0
 pyyaml==6.0.2
 orjson==3.10.12
+
+# ── Transportes de sistemas heredados (CRM-00.03.04.03) ───────────────────
+# SFTP y AMQP no se pueden hacer con la librería estándar, y un CRM que se
+# integra con ERPs de verdad los necesita: media industria sigue intercambiando
+# ficheros por SFTP y colas por AMQP. SOAP, ficheros planos y EDI sí van con lo
+# que ya hay —son HTTP con XML y texto con separadores— y no añaden dependencia.
+paramiko==5.0.0
+aio-pika==10.0.1

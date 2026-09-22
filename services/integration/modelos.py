@@ -145,11 +145,19 @@ class Ejecucion(Base):
 # propias tablas dentro de sus transacciones.
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
+from services.integration.canales_entrada import (  # noqa: E402,F401
+    CanalEntrada,
+    Interaccion,
+)
 from services.integration.canonico import (  # noqa: E402,F401
     Adaptador,
     ConflictoSincronizacion,
     ObjetoCanonico,
     Vinculo,
+)
+from services.integration.convivencia import (  # noqa: E402,F401
+    ProgresoMigracion,
+    ReglaConvivencia,
 )
 
 # Los encargos seguidos viven en su propio módulo porque tienen lógica propia
@@ -163,6 +171,7 @@ from services.integration.encargos import (  # noqa: E402,F401
     Proveedor,
     ReglaProveedor,
 )
+from services.integration.federacion import Embebido, VistaFederada  # noqa: E402,F401
 
 # La firma electrónica vive en su propio módulo —tiene su propia lógica de
 # evidencia y de niveles—, pero sus tablas son de este esquema y tienen que
@@ -175,6 +184,12 @@ from services.integration.firma import (  # noqa: E402,F401
     ProveedorFirma,
     ReglaProveedorFirma,
     Sobre,
+)
+from services.integration.manifiestos import Instalacion, Manifiesto  # noqa: E402,F401
+from services.integration.mcp import (  # noqa: E402,F401
+    Exposicion,
+    Herramienta,
+    LlamadaAgente,
 )
 from services.integration.telemetria import (  # noqa: E402,F401
     Dispositivo,

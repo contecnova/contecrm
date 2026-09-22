@@ -108,6 +108,15 @@ SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
         "catálogo en una vía para ejecutar configuración ajena en casa de otro. "
         "Lo que sí es por tenant es `modulos_instalados`, que sí lleva tenant_id"
     ),
+    "manifiestos_conector": (
+        "catálogo de conectores DE LA INSTALACIÓN, no de cada tenant, por el "
+        "mismo motivo que `modulos_publicados`: publicar un manifiesto es "
+        "declarar a qué sistemas externos se puede llamar y con qué mapeo, y "
+        "dejar que cada tenant publique el suyo lo convertiría en una vía para "
+        "ejecutar configuración ajena en casa de otro. Lo que sí es por tenant "
+        "es `instalaciones_conector`, que lleva tenant_id y es lo único que "
+        "decide qué conector usa cada cliente"
+    ),
     "alembic_version": "tabla de control de migraciones, no de negocio",
     "ajustes_runtime": (
         "guarda valores de CINCO ámbitos a la vez (global, tier, tenant, unidad "

@@ -269,8 +269,8 @@ modulos:
               - {id: CRM-00.02.03.06, c: A, fase: 0, svc: metadata, estado: hecho, t: "Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente"}
               - {id: CRM-00.02.03.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "API de validación consultable antes de enviar (dry-run de reglas)"}
               - {id: CRM-00.02.03.08, c: D, fase: 1, svc: metadata, estado: pendiente, t: "Server-driven UI: definición de formularios y vistas servida como JSON"}
-              - {id: CRM-00.02.03.09, c: A, fase: 3, svc: integration, estado: pendiente, t: "Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI"}
-              - {id: CRM-00.02.03.10, c: D, fase: 6, svc: gateway, estado: pendiente, t: "Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros"}
+              - {id: CRM-00.02.03.09, c: A, fase: 3, svc: integration, estado: hecho, t: "Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI"}
+              - {id: CRM-00.02.03.10, c: D, fase: 6, svc: gateway, estado: hecho, t: "Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros"}
 
           - id: CRM-00.02.04
             nombre: Gateway y capa de acceso
@@ -296,7 +296,7 @@ modulos:
               - {id: CRM-00.03.01.04, c: A, fase: 0, svc: docs, estado: pendiente, t: "Service registry / catálogo interno con owner, SLO, dependencias y runbook"}
               - {id: CRM-00.03.01.05, c: A, fase: 2, svc: infra, estado: pendiente, t: "Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red"}
               - {id: CRM-00.03.01.06, c: A, fase: 0, svc: infra, estado: hecho, t: "Despliegue independiente por servicio, sin ventanas de release coordinadas"}
-              - {id: CRM-00.03.01.07, c: A, fase: 2, svc: integration, estado: pendiente, t: "Strangler pattern soportado para convivir con CRM heredado durante la migración"}
+              - {id: CRM-00.03.01.07, c: A, fase: 2, svc: integration, estado: hecho, t: "Strangler pattern soportado para convivir con CRM heredado durante la migración"}
 
           - id: CRM-00.03.02
             nombre: Motor de orquestación de procesos
@@ -334,17 +334,17 @@ modulos:
           - id: CRM-00.03.04
             nombre: Integración y conectividad
             capacidades:
-              - {id: CRM-00.03.04.01, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{salesforce,stripe,jira,git,m365,slack}_service.py; contecweb:app/services/supplier_api", t: "Conectores nativos: ERP, facturación, firma electrónica, telefonía, mensajería"}
+              - {id: CRM-00.03.04.01, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/{salesforce,stripe,jira,git,m365,slack}_service.py; contecweb:app/services/supplier_api", t: "Conectores nativos: ERP, facturación, firma electrónica, telefonía, mensajería"}
               - {id: CRM-00.03.04.02, c: A, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/connectors/api + base.py (conector HTTP genérico, verificado 2026-09-14)", t: "Conector genérico HTTP/REST configurable sin código (auth, mapeo, paginación)"}
-              - {id: CRM-00.03.04.03, c: A, fase: 2, svc: integration, estado: pendiente, t: "Soporte SOAP, SFTP, ficheros planos, EDI y colas AMQP para entornos legacy"}
+              - {id: CRM-00.03.04.03, c: A, fase: 2, svc: integration, estado: hecho, t: "Soporte SOAP, SFTP, ficheros planos, EDI y colas AMQP para entornos legacy"}
               - {id: CRM-00.03.04.04, c: A, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/normalization/", t: "Motor de transformación y mapeo de datos con funciones y validación"}
               - {id: CRM-00.03.04.05, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/credentials.py + contecflow-PSA:app/services/integration_credentials_service.py", t: "Gestión de credenciales por conexión con rotación y prueba de conectividad"}
               - {id: CRM-00.03.04.06, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/integration_test_service.py", t: "Monitor de integraciones: ejecuciones, errores, reproceso, alertas"}
               - {id: CRM-00.03.04.07, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Cola de mensajes fallidos con corrección y reenvío asistido"}
               - {id: CRM-00.03.04.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Sincronización bidireccional con resolución de conflictos configurable"}
               - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
-              - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
-              - {id: CRM-00.03.04.11, c: D, fase: 6, svc: integration, estado: pendiente, t: "Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA"}
+              - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
+              - {id: CRM-00.03.04.11, c: D, fase: 6, svc: integration, estado: hecho, t: "Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA"}
 
           - id: CRM-00.03.05
             nombre: Workflows de negocio — aprobaciones, escalados y revisiones
@@ -638,7 +638,7 @@ modulos:
               - {id: CRM-01.01.05.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecmind:app/services/timeline.py", t: "Timeline unificado de todas las interacciones y transacciones"}
               - {id: CRM-01.01.05.02, c: A, fase: 4, svc: party, estado: pendiente, t: "Resolución de identidad entre canales (correo, cookie, teléfono, ID de app, ID de ERP)"}
               - {id: CRM-01.01.05.03, c: C, fase: 1, svc: party, estado: hecho, t: "Perfil unificado consultable por API para uso en cualquier frontend o canal"}
-              - {id: CRM-01.01.05.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Composición de datos externos en la vista sin replicarlos (federación / virtualización)"}
+              - {id: CRM-01.01.05.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Composición de datos externos en la vista sin replicarlos (federación / virtualización)"}
               - {id: CRM-01.01.05.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/synthesis.py + holistic.py (resumen con citación)", t: "Resumen de cuenta generado por IA con puntos clave y riesgos"}
               - {id: CRM-01.01.05.06, c: A, fase: 2, svc: party, estado: pendiente, t: "Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad"}
               - {id: CRM-01.01.05.07, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Salud del cliente (health score) y señales de churn"}
@@ -651,7 +651,7 @@ modulos:
               - {id: CRM-01.02.01.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/activity.py + app/services/activity_service.py", t: "Tareas, eventos, llamadas, notas y visitas con modelo común de actividad"}
               - {id: CRM-01.02.01.02, c: C, fase: 1, svc: party, estado: hecho, t: "Asignación, delegación, recordatorios y seguimiento de vencidas"}
               - {id: CRM-01.02.01.03, c: C, fase: 1, svc: party, estado: hecho, t: "Relación polimórfica de la actividad con cualquier objeto"}
-              - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
+              - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
               - {id: CRM-01.02.01.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/transcribe.py + app/services/audio_overview", t: "Transcripción y resumen automático de llamadas y reuniones"}
               - {id: CRM-01.02.01.06, c: D, fase: 5, svc: intelligence, estado: pendiente, t: "Extracción de compromisos y próximos pasos desde la transcripción"}
               - {id: CRM-01.02.01.09, c: A, fase: 2, svc: party, estado: hecho, t: "Recordatorios recurrentes y reprogramación automática de la actividad no atendida"}
@@ -1132,7 +1132,7 @@ modulos:
               - {id: CRM-07.02.01.06, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Detección de cambios en producción fuera del pipeline (drift)"}
               - {id: CRM-07.02.01.07, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Rollback de despliegues y de configuraciones"}
               - {id: CRM-07.02.01.08, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py", t: "Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión"}
-              - {id: CRM-07.02.01.09, c: A, fase: 6, svc: metadata, estado: pendiente, reutiliza: "contecflow-PSA:app/services/marketplace_service.py", t: "Paquetes instalables por tenant y gestión de dependencias"}
+              - {id: CRM-07.02.01.09, c: A, fase: 6, svc: metadata, estado: hecho, reutiliza: "contecflow-PSA:app/services/marketplace_service.py", t: "Paquetes instalables por tenant y gestión de dependencias"}
       - id: "7.3"
         nombre: Gobierno y cumplimiento
         funciones:
@@ -1364,6 +1364,8 @@ anexo_b_eventos:
   - {type: problem.resolved, fase: 6, svc: service}
   - {type: problem.communicated, fase: 6, svc: service}
   - {type: device.alert, fase: 6, svc: integration}
+  - {type: connector.installed, fase: 6, svc: integration}
+  - {type: interaction.recorded, fase: 2, svc: integration}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

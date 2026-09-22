@@ -223,6 +223,11 @@ def _importar_todos_los_modelos() -> None:
         "services.service.problemas",
         "services.integration.telemetria",
         "services.integration.canonico",
+        "services.integration.manifiestos",
+        "services.integration.mcp",
+        "services.integration.canales_entrada",
+        "services.integration.federacion",
+        "services.integration.convivencia",
     ]
     for modulo in modulos:
         try:

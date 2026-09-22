@@ -6,6 +6,7 @@ from crmcore.service import crear_servicio
 
 from services.integration import eventos  # noqa: F401  (registra los tipos de evento)
 from services.integration.api import ROUTERS
+from services.integration.api_conectividad import ROUTERS_CONECTIVIDAD
 from services.integration.api_encargos import ROUTERS_ENCARGOS
 from services.integration.api_firma import ROUTERS_FIRMA
 from services.integration.api_telemetria import ROUTERS_TELEMETRIA
@@ -25,7 +26,13 @@ app = crear_servicio(
         "identificación, y la cadena de custodia guardada aquí y no solo en el "
         "proveedor."
     ),
-    routers=[*ROUTERS, *ROUTERS_ENCARGOS, *ROUTERS_FIRMA, *ROUTERS_TELEMETRIA],
+    routers=[
+        *ROUTERS,
+        *ROUTERS_ENCARGOS,
+        *ROUTERS_FIRMA,
+        *ROUTERS_TELEMETRIA,
+        *ROUTERS_CONECTIVIDAD,
+    ],
     # Los conectores que declara un módulo vertical se convierten aquí en
     # proveedores. Llegan por evento porque este servicio no puede leer el
     # esquema de `metadata`, y si no llegaran habría que teclearlos otra vez en

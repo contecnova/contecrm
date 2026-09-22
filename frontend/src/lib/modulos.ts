@@ -91,6 +91,17 @@ export const MODULOS: Modulo[] = [
       { nombre: "Webhooks", listar: "/api/v1/webhooks", servicio: "eventing" },
       { nombre: "Trabajos de clientes", listar: "/api/v1/party/trabajos", servicio: "party" },
       { nombre: "Trabajos de ventas", listar: "/api/v1/sales/trabajos", servicio: "sales" },
+      // El catálogo de conectores y lo instalado aquí, juntos: la pregunta real
+      // es «¿qué tengo puesto y qué versión?», no «¿qué existe?».
+      { nombre: "Catálogo de conectores", listar: "/api/v1/conectores", servicio: "integration" },
+      { nombre: "Conectores instalados", listar: "/api/v1/conectores/instalados", servicio: "integration" },
+      { nombre: "Canales de entrada", listar: "/api/v1/canales-entrada/sin-atribuir", servicio: "integration" },
+      { nombre: "Agentes: uso", listar: "/api/v1/agentes-ia/uso", servicio: "integration" },
+      { nombre: "Vistas federadas", listar: "/api/v1/federacion/vistas", servicio: "integration" },
+      // El progreso de la migración, por delante de la lista de reglas: lo que
+      // se pregunta cada semana es cuánto falta.
+      { nombre: "Migración: progreso", listar: "/api/v1/convivencia/progreso", servicio: "integration" },
+      { nombre: "Transportes", listar: "/api/v1/conectores/transportes", servicio: "integration" },
     ],
   },
   {
