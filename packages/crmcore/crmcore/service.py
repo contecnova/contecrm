@@ -136,6 +136,10 @@ def crear_servicio(
                     POLITICA_CAMBIADA,
                     consumir_politica,
                 )
+                from crmcore.datos.cambio import (
+                    TIPO_CAMBIO_FIJADO,
+                    consumir_tipo_cambio,
+                )
                 from crmcore.documental.enlaces import (
                     ORGANIZACION_CAMBIADA,
                     consumir_organizacion,
@@ -175,6 +179,12 @@ def crear_servicio(
                     # permisos esa es la divergencia más cara: no falla nada,
                     # simplemente alguien ve lo que ya no debería.
                     (POLITICA_CAMBIADA, consumir_politica, f"{nombre}-abac"),
+                    # Los tipos de cambio con fecha (CRM-03.02.01.07). Van aquí
+                    # y no en una llamada a `tenancy` porque sumar un pipeline
+                    # de diez mil oportunidades en cuatro monedas serían diez
+                    # mil llamadas de red, y porque una previsión no puede
+                    # depender de que otro servicio esté en pie.
+                    (TIPO_CAMBIO_FIJADO, consumir_tipo_cambio, f"{nombre}-fx"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:

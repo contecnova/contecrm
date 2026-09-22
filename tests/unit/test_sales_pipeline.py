@@ -179,13 +179,32 @@ def test_la_probabilidad_ajustada_a_mano_no_se_pisa(db: Any, tenant_id: UUID, uo
 
     Es su valoración del caso concreto, y sustituirla por el valor de tabla
     borra información que el sistema no tiene.
+
+    El ajuste se hace por el camino real y no tocando el atributo: lo que marca
+    la probabilidad como manual es pasar por el servicio (CRM-03.01.01.04).
+    Antes se deducía comparando con la probabilidad de la etapa de origen, y esa
+    heurística fallaba por los dos lados —un ajuste que coincidiera con la etapa
+    se perdía, y uno que no coincidiera se arrastraba para siempre—.
     """
     pipeline = _pipeline(db, tenant_id, criterios=[])
     oportunidad = svc.crear_oportunidad_nueva(uow, nombre="Ajustada")
-    oportunidad.probabilidad = 25  # el comercial la baja a mano
+    svc.actualizar_oportunidad(uow, oportunidad.id, {"probabilidad": 25})
     svc.cambiar_etapa(uow, oportunidad.id, etapa_id=_etapa(db, pipeline, "negociacion").id)
 
     assert oportunidad.probabilidad == 25
+    assert oportunidad.probabilidad_manual is True
+
+
+def test_sin_ajuste_manual_la_probabilidad_sigue_a_la_etapa(
+    db: Any, tenant_id: UUID, uow: Any
+) -> None:
+    """El caso normal, que la heurística anterior también podía romper."""
+    pipeline = _pipeline(db, tenant_id, criterios=[])
+    oportunidad = svc.crear_oportunidad_nueva(uow, nombre="Sin ajustar")
+    destino = _etapa(db, pipeline, "negociacion")
+    svc.cambiar_etapa(uow, oportunidad.id, etapa_id=destino.id)
+
+    assert oportunidad.probabilidad == destino.probabilidad
 
 
 # ── Cierre y reapertura ───────────────────────────────────────────────────

@@ -14,12 +14,10 @@ festivos y husos) y CRM-07.01.01.06 (monedas y tipos de cambio con histórico).
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from crmcore.db.base import Base, TimestampMixin
-from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -27,7 +25,6 @@ from sqlalchemy import (
     Date,
     DateTime,
     Index,
-    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -301,148 +298,16 @@ def sumar_horas_laborables(
 
 
 # ── Monedas y tipos de cambio (CRM-07.01.01.06) ───────────────────────────
-
-
-class TipoCambio(Base):
-    """Tipo de cambio con fecha (CRM-03.02.01.07: *dated exchange rates*).
-
-    Con **histórico**, no solo el último: una oportunidad cerrada en marzo tiene
-    que seguir valiendo lo que valía en marzo. Convertirla siempre al cambio de
-    hoy hace que el histórico de ventas se mueva solo, y que dos informes del
-    mismo trimestre den números distintos según cuándo se sacaron.
-    """
-
-    __tablename__ = "tipos_cambio"
-
-    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
-    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    desde_moneda: Mapped[str] = mapped_column(String(3), nullable=False)
-    hasta_moneda: Mapped[str] = mapped_column(String(3), nullable=False)
-    fecha: Mapped[date] = mapped_column(Date, nullable=False)
-    # Alta precisión: un cambio redondeado a cuatro decimales desvía miles de
-    # euros en una conversión de varios millones.
-    tasa: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
-    origen: Mapped[str | None] = mapped_column(String(60), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "desde_moneda", "hasta_moneda", "fecha", name="uq_tipo_cambio"
-        ),
-        Index("ix_tipos_cambio_busqueda", "tenant_id", "desde_moneda", "hasta_moneda", "fecha"),
-    )
-
-
-def convertir(
-    db: Session,
-    *,
-    tenant_id: UUID,
-    importe: Decimal,
-    desde: str,
-    hasta: str,
-    en_fecha: date | None = None,
-) -> Decimal:
-    """Convierte un importe con el cambio vigente en una fecha.
-
-    Usa el tipo **más reciente que no sea posterior** a la fecha pedida, no el
-    más cercano: un cambio publicado el día después no existía cuando se cerró
-    la operación, y usarlo sería reescribir el pasado con información futura.
-    """
-    from decimal import ROUND_HALF_UP
-
-    desde, hasta = desde.upper(), hasta.upper()
-    if desde == hasta:
-        return importe
-
-    # Volcado explícito antes de leer. Lo aprendió antes
-    # `contecflow-PSA/app/services/exchange_rate_service.py`: con autoflush
-    # desactivado —que es como corren varias pruebas y algún proceso por lotes—
-    # un tipo de cambio cargado en esta misma transacción todavía no está en la
-    # base, así que la conversión que viene justo detrás no lo encuentra y falla
-    # con «no hay tipo de cambio» teniéndolo delante.
-    db.flush()
-
-    en_fecha = en_fecha or date.today()
-    fila = db.execute(
-        select(TipoCambio)
-        .where(
-            TipoCambio.tenant_id == tenant_id,
-            TipoCambio.desde_moneda == desde,
-            TipoCambio.hasta_moneda == hasta,
-            TipoCambio.fecha <= en_fecha,
-        )
-        .order_by(TipoCambio.fecha.desc())
-        .limit(1)
-    ).scalar_one_or_none()
-
-    if fila is None:
-        # Se busca la inversa antes de rendirse: quien carga EUR→USD rara vez
-        # carga también USD→EUR, y calcularla es exacto.
-        inversa = db.execute(
-            select(TipoCambio)
-            .where(
-                TipoCambio.tenant_id == tenant_id,
-                TipoCambio.desde_moneda == hasta,
-                TipoCambio.hasta_moneda == desde,
-                TipoCambio.fecha <= en_fecha,
-            )
-            .order_by(TipoCambio.fecha.desc())
-            .limit(1)
-        ).scalar_one_or_none()
-        if inversa is None or inversa.tasa == 0:
-            raise NoEncontrado(
-                f"No hay tipo de cambio de {desde} a {hasta} para el {en_fecha.isoformat()}",
-                error_code="tenancy.sin_tipo_cambio",
-                detalle={"desde": desde, "hasta": hasta, "fecha": en_fecha.isoformat()},
-            )
-        tasa = Decimal(1) / inversa.tasa
-    else:
-        tasa = fila.tasa
-
-    return (importe * tasa).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-
-def fijar_tipo_cambio(
-    db: Session,
-    *,
-    tenant_id: UUID,
-    desde: str,
-    hasta: str,
-    tasa: Decimal,
-    en_fecha: date | None = None,
-    origen: str = "manual",
-) -> TipoCambio:
-    """Registra un tipo de cambio para una fecha. Idempotente por (par, fecha)."""
-    if tasa <= 0:
-        raise ErrorValidacion(
-            "El tipo de cambio tiene que ser mayor que cero",
-            error_code="tenancy.tipo_cambio_invalido",
-        )
-    en_fecha = en_fecha or date.today()
-    existente = db.execute(
-        select(TipoCambio).where(
-            TipoCambio.tenant_id == tenant_id,
-            TipoCambio.desde_moneda == desde.upper(),
-            TipoCambio.hasta_moneda == hasta.upper(),
-            TipoCambio.fecha == en_fecha,
-        )
-    ).scalar_one_or_none()
-    if existente is not None:
-        # Se actualiza en vez de fallar: corregir un cambio mal cargado es una
-        # operación normal, y obligar a borrar antes solo añade fricción.
-        existente.tasa = tasa
-        existente.origen = origen
-        return existente
-
-    fila = TipoCambio(
-        tenant_id=tenant_id,
-        desde_moneda=desde.upper(),
-        hasta_moneda=hasta.upper(),
-        fecha=en_fecha,
-        tasa=tasa,
-        origen=origen,
-    )
-    db.add(fila)
-    return fila
+#
+# El modelo y la conversión viven en el núcleo y NO aquí. Se movieron al montar
+# la previsión multi-moneda (CRM-03.02.01.07): `sales` no puede leer el esquema
+# de `tenancy` —lo impide el gate de arquitectura— así que la tabla vive en el
+# esquema de cada servicio y se replica por evento, igual que los ajustes en
+# caliente. Esto se reexporta para que la API de administración de aquí siga
+# siendo la misma: los tipos se administran en un sitio aunque se lean en todos.
+from crmcore.datos.cambio import (  # noqa: E402,F401
+    TIPO_CAMBIO_FIJADO,
+    TipoCambio,
+    convertir,
+    fijar_tipo_cambio,
+)

@@ -230,6 +230,15 @@ class Oportunidad(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # aplicar tipos de cambio en cada consulta.
     importe_funcional: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     probabilidad: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    # Si alguien la ha fijado a mano (CRM-03.01.01.04). Sin esta bandera, mover
+    # la oportunidad de etapa pisa la probabilidad que el comercial ajustó
+    # sabiendo algo que el sistema no sabe, y a la tercera vez deja de
+    # ajustarla: el dato se convierte en decorativo.
+    probabilidad_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Categoría de previsión (CRM-03.02.01.01). Texto y no clave foránea porque
+    # la categoría es del tenant y borrarla no puede impedir leer una
+    # oportunidad histórica; la integridad la impone el servicio al escribir.
+    categoria_forecast: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
 
     fecha_cierre: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     fecha_cierre_real: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -298,6 +307,11 @@ class LineaOportunidad(Base, TimestampMixin):
     # Coste, para el margen. Nullable porque no siempre se conoce, y un cero
     # fingido daría un margen del 100 % que nadie cuestionaría.
     coste_unitario: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    # Familia del producto, copiada igual que la descripción y por el mismo
+    # motivo (CRM-03.02.01.08): si se leyera del catálogo al hacer el informe,
+    # recategorizar un producto reescribiría la previsión de trimestres ya
+    # cerrados, y dos informes del mismo periodo darían números distintos.
+    familia: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     # puntual | recurrente — de aquí salen el ARR y el MRR en la fase 2.
     tipo_ingreso: Mapped[str] = mapped_column(String(20), nullable=False, default="puntual")
     periodicidad: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -371,6 +385,223 @@ class CompetidorEnOportunidad(Base, TimestampMixin):
     )
 
 
+# ── Previsión de ventas (CRM-03.02.01) ────────────────────────────────────
+
+
+class CategoriaForecast(Base, TimestampMixin):
+    """Categoría de previsión: pipeline, best case, commit, cerrado
+    (CRM-03.02.01.01).
+
+    Son **datos y no una enumeración en el código**. La lista de cuatro es la
+    habitual, pero hay organizaciones con «upside» entre best case y commit, y
+    otras que llaman «compromiso» al commit. Con la lista a fuego, cada una de
+    esas es una versión del producto; como tabla, es configuración del tenant.
+
+    Lo que sí es del sistema es el **significado operativo** de cada una, y por
+    eso hay dos banderas explícitas en vez de deducirlo del nombre: si cuenta
+    para el número comprometido y si es terminal. Deducirlo de la palabra
+    «commit» rompería en cuanto alguien la tradujera.
+    """
+
+    __tablename__ = "categorias_forecast"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    clave: Mapped[str] = mapped_column(String(40), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False)
+    orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Si suma al número que el comercial «se compromete» a cerrar. Es la
+    # pregunta que hace el director, y la única que no admite interpretación.
+    cuenta_como_compromiso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Si es una categoría de cierre (ganado/perdido) y por tanto ya no se mueve.
+    terminal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    color: Mapped[str] = mapped_column(String(7), nullable=False, default="#6B7280")
+    # Categoría a la que caen las oportunidades que no tienen ninguna asignada.
+    por_defecto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_categoria_forecast"),)
+
+
+class PeriodoForecast(Base, TimestampMixin):
+    """Un periodo de previsión y su estado de cierre (CRM-03.02.01.09).
+
+    Cerrar el periodo es lo que hace que un número signifique algo: mientras
+    esté abierto, el «commit» del trimestre cambia cada vez que alguien toca una
+    oportunidad, y comparar dos informes de fechas distintas es comparar dos
+    cosas que no son la misma. Cerrado, el número queda y lo que pase después se
+    ve como variación, que es la información útil.
+    """
+
+    __tablename__ = "periodos_forecast"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    clave: Mapped[str] = mapped_column(String(40), nullable=False)  # 2026-Q1, 2026-03
+    nombre: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    desde: Mapped[date] = mapped_column(Date, nullable=False)
+    hasta: Mapped[date] = mapped_column(Date, nullable=False)
+    cerrado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cerrado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Reabrir un periodo cerrado es un acto explícito y contado: si fuera
+    # gratis, «cerrado» dejaría de significar nada.
+    reaperturas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    motivo_reapertura: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_periodo_forecast"),)
+
+
+class AjusteForecast(Base, TimestampMixin):
+    """Ajuste de un responsable sobre el número de su equipo
+    (CRM-03.02.01.03).
+
+    Los managers ajustan siempre —saben cosas que no están en el CRM: que un
+    cliente ha cambiado de director de compras, que el competidor ha bajado el
+    precio—. El problema nunca ha sido que ajusten: es que el ajuste se hace en
+    una hoja aparte y nadie sabe después **quién** quitó doscientos mil euros ni
+    **por qué**.
+
+    Aquí el ajuste es un registro, con autor, motivo obligatorio y el número
+    original al lado. Se guarda el bruto junto al ajustado a propósito: sin él
+    no se puede medir si los ajustes de alguien acertaron, que es la única forma
+    de saber si conviene hacerle caso el trimestre que viene.
+    """
+
+    __tablename__ = "ajustes_forecast"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    periodo: Mapped[str] = mapped_column(String(40), nullable=False)
+    # Sobre quién se ajusta: un comercial, un equipo entero o la compañía.
+    ambito: Mapped[str] = mapped_column(String(20), nullable=False, default="usuario")
+    ambito_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    categoria: Mapped[str] = mapped_column(String(40), nullable=False, default="commit")
+    importe_bruto: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
+    importe_ajustado: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
+    moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    # Obligatorio por contrato del servicio, no por la base: un ajuste sin
+    # motivo es exactamente el problema que esto viene a resolver.
+    motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "periodo", "ambito", "ambito_id", "categoria", name="uq_ajuste_forecast"
+        ),
+        Index("ix_ajustes_forecast_periodo", "tenant_id", "periodo"),
+    )
+
+
+class InstantaneaForecast(Base):
+    """Foto de la previsión en un momento (CRM-03.02.01.04).
+
+    Reutiliza la idea de `contecmind:app/services/graph_compare.py`. Sin fotos no
+    hay *waterfall* posible: la pregunta «qué ha cambiado desde el lunes» no se
+    puede contestar mirando solo el estado de hoy, y reconstruirla desde el
+    historial de cambios es caro y frágil.
+
+    Se guarda la foto entera aunque ocupe: el coste de almacenar unas cuantas
+    filas por periodo es ridículo comparado con no poder explicar por qué el
+    trimestre se cayó.
+    """
+
+    __tablename__ = "instantaneas_forecast"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    periodo: Mapped[str] = mapped_column(String(40), nullable=False)
+    etiqueta: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    tomada_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    tomada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    # Totales precalculados por categoría, para no recorrer las líneas cuando
+    # solo se quiere comparar dos fotos.
+    totales: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    oportunidades: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (Index("ix_instantaneas_periodo", "tenant_id", "periodo", "tomada_at"),)
+
+
+class LineaInstantanea(Base):
+    """Una oportunidad dentro de una foto de previsión.
+
+    Guarda el estado que tenía **entonces**, no una referencia: si apuntara a la
+    oportunidad, la foto cambiaría con ella y dejaría de ser una foto. Ese es el
+    fallo clásico de los «históricos» que se construyen con joins.
+    """
+
+    __tablename__ = "lineas_instantanea"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    instantanea_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("instantaneas_forecast.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    nombre: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    categoria: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    etapa_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    owner_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    importe: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
+    importe_funcional: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
+    moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    probabilidad: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    fecha_cierre: Mapped[date | None] = mapped_column(Date, nullable=True)
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta")
+
+    __table_args__ = (Index("ix_lineas_instantanea", "tenant_id", "instantanea_id"),)
+
+
+class CambioPrevision(Base):
+    """Cada cambio de importe o de fecha de cierre (CRM-03.01.01.13).
+
+    `CambioEtapa` solo anota cuando la oportunidad se mueve de etapa, y el
+    deslizamiento casi nunca va acompañado de un cambio de etapa: lo normal es
+    que la fecha se empuje dos semanas sin tocar nada más. Sin esta tabla, el
+    dato que explica por qué el trimestre no salió como se dijo no existe.
+
+    Se guardan los dos valores, el de antes y el de después. Con solo el nuevo,
+    reconstruir el anterior obliga a recorrer el historial hacia atrás y a
+    acertar con el orden; con los dos delante, el deslizamiento es una resta.
+    """
+
+    __tablename__ = "cambios_prevision"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    oportunidad_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("oportunidades.id", ondelete="CASCADE"), nullable=False
+    )
+    campo: Mapped[str] = mapped_column(String(30), nullable=False)  # importe | fecha_cierre
+    valor_anterior: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    valor_nuevo: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Días que se ha movido la fecha. Denormalizado porque es LA consulta:
+    # «cuánto se ha deslizado este trimestre» no puede obligar a parsear fechas
+    # en cada fila de un histórico de cien mil apuntes.
+    dias_deslizados: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    delta_importe: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        # `clock_timestamp()` por el mismo motivo que en `CambioEtapa`: `now()`
+        # da la hora de inicio de la transacción y dos cambios seguidos
+        # compartirían instante, dejando el historial sin orden.
+        DateTime(timezone=True),
+        server_default=text("clock_timestamp()"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_cambios_prevision_op", "tenant_id", "oportunidad_id", "created_at"),
+        Index("ix_cambios_prevision_campo", "tenant_id", "campo", "created_at"),
+    )
+
+
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 #
 # Se importan aquí, y no solo donde se usan, porque `modelos.py` es lo que lee
@@ -387,6 +618,7 @@ from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E
 from crmcore.authz.proyeccion import PoliticaCampo  # noqa: E402
 from crmcore.busqueda import DocumentoIndexado  # noqa: E402
 from crmcore.datos.adjuntos import Adjunto, DescargaAdjunto  # noqa: E402
+from crmcore.datos.cambio import TipoCambio  # noqa: E402
 from crmcore.datos.comentarios import Comentario  # noqa: E402
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
@@ -401,6 +633,13 @@ from services.sales.origen import Toque  # noqa: E402
 
 __all__ = [
     "VersionAjuste",
+    "TipoCambio",
+    "AjusteForecast",
+    "CambioPrevision",
+    "CategoriaForecast",
+    "InstantaneaForecast",
+    "LineaInstantanea",
+    "PeriodoForecast",
     "PoliticaAbac",
     "VersionPoliticaAbac",
     "DocumentoEnlazado",

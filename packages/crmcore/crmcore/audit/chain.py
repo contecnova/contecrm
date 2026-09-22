@@ -187,6 +187,7 @@ def registrar_cambios(
     anterior: dict[str, Any],
     nuevo: dict[str, Any],
     ignorar: set[str] | None = None,
+    tenant_id: Any = None,
 ) -> list[CambioCampo]:
     """Anota campo a campo lo que cambió (CRM-00.05.04.02).
 
@@ -198,6 +199,22 @@ def registrar_cambios(
     from crmcore.tenancy.context import contexto_actual
 
     ctx = contexto_actual()
+    # El tenant se puede pasar a mano. Antes salía solo del contexto ambiental,
+    # y eso hacía que cualquier camino sin contexto —un proceso por lotes, un
+    # ejecutor de trabajos, un consumidor de eventos— escribiera un historial
+    # con `tenant_id` nulo y reventara contra la restricción al hacer commit:
+    # lejos de la llamada y con un mensaje del motor, no del dominio.
+    tenant = tenant_id or ctx.tenant_id
+    if tenant is None:
+        from crmcore.errors import ErrorInterno
+
+        raise ErrorInterno(
+            "No se puede anotar el historial de campos sin saber de qué tenant "
+            "es: ni se ha pasado y ni hay contexto.",
+            error_code="auditoria.sin_tenant",
+            detalle={"objeto": objeto},
+        )
+
     # `updated_at` y `version` cambian en toda escritura y no son información:
     # su sitio es la traza de auditoría, no el historial de campo.
     ignorar = (ignorar or set()) | {"updated_at", "version", "updated_by", "updated_origen"}
@@ -209,7 +226,7 @@ def registrar_cambios(
         if valor_anterior == valor_nuevo:
             continue
         fila = CambioCampo(
-            tenant_id=ctx.tenant_id,
+            tenant_id=tenant,
             objeto=objeto,
             objeto_id=str(objeto_id),
             campo=campo,

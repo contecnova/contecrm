@@ -365,6 +365,30 @@ modulos:
               - {id: CRM-00.04.02.06, c: A, fase: 6, svc: automation, estado: pendiente, t: "Observabilidad de extensiones: logs, métricas, errores y coste atribuido"}
               - {id: CRM-00.04.02.07, c: A, fase: 6, svc: automation, estado: pendiente, t: "Firma y revisión de extensiones de terceros antes de su instalación"}
 
+          - id: CRM-00.04.03
+            nombre: Extensión sin código, de punta a punta
+            # Lo que se pide es que un campo añadido por configuración en la
+            # implantación de un cliente llegue SOLO hasta el final: base de
+            # datos, API, formularios, búsqueda, flujos, informes e IA, sin
+            # tocar código ni desplegar. El metamodelo (CRM-00.04.01) ya guarda
+            # la definición y ya valida; lo que falta es que ese campo aparezca
+            # en cada uno de los sitios donde alguien espera encontrarlo. Cada
+            # eslabón que falte convierte la promesa en una media verdad: el
+            # campo existe, pero no se puede filtrar, o no sale en el informe.
+            capacidades:
+              - {id: CRM-00.04.03.01, c: C, fase: 1, svc: metadata, estado: pendiente, t: "Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada"}
+              - {id: CRM-00.04.03.02, c: C, fase: 1, svc: metadata, estado: pendiente, t: "Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código"}
+              - {id: CRM-00.04.03.03, c: C, fase: 1, svc: core, estado: pendiente, t: "Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema"}
+              - {id: CRM-00.04.03.04, c: A, fase: 1, svc: core, estado: pendiente, t: "Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB"}
+              - {id: CRM-00.04.03.05, c: C, fase: 1, svc: automation, estado: pendiente, t: "Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación"}
+              - {id: CRM-00.04.03.06, c: C, fase: 1, svc: analytics, estado: pendiente, t: "Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte"}
+              - {id: CRM-00.04.03.07, c: A, fase: 2, svc: intelligence, estado: pendiente, t: "Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos"}
+              - {id: CRM-00.04.03.08, c: C, fase: 1, svc: core, estado: pendiente, t: "Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial"}
+              - {id: CRM-00.04.03.09, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar"}
+              - {id: CRM-00.04.03.10, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás"}
+              - {id: CRM-00.04.03.11, c: A, fase: 2, svc: metadata, estado: pendiente, t: "Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants"}
+              - {id: CRM-00.04.03.12, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira"}
+
       - id: "0.5"
         nombre: Identidad, seguridad y control de acceso
         funciones:
@@ -658,7 +682,7 @@ modulos:
               - {id: CRM-03.01.01.01, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/pipeline.py (311) + app/services/pipeline_service.py", t: "Oportunidad con importe, moneda, fecha de cierre, probabilidad y etapa"}
               - {id: CRM-03.01.01.02, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/pipeline_stages_service.py", t: "Múltiples pipelines por línea de negocio, producto, canal o región"}
               - {id: CRM-03.01.01.03, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/pipeline_stages_service.py", t: "Etapas configurables con criterios de salida obligatorios y checklist"}
-              - {id: CRM-03.01.01.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Probabilidad por etapa, ajustable manualmente y por modelo predictivo"}
+              - {id: CRM-03.01.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Probabilidad por etapa, ajustable manualmente y por modelo predictivo"}
               - {id: CRM-03.01.01.05, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/catalog + contecpos:services/catalogo", t: "Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento"}
               - {id: CRM-03.01.01.06, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py", t: "Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados"}
               - {id: CRM-03.01.01.07, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/revenue_service.py", t: "Planificación de ingresos por periodos (revenue schedule)"}
@@ -667,7 +691,7 @@ modulos:
               - {id: CRM-03.01.01.10, c: A, fase: 2, svc: sales, estado: pendiente, t: "Buying group / mapa de decisión asociado a la oportunidad"}
               - {id: CRM-03.01.01.11, c: A, fase: 2, svc: sales, estado: pendiente, t: "Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución"}
               - {id: CRM-03.01.01.12, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa)", t: "Antigüedad por etapa, estancamiento y alertas de inactividad"}
-              - {id: CRM-03.01.01.13, c: A, fase: 2, svc: sales, estado: pendiente, t: "Historial de cambios de importe y fecha (slippage tracking)"}
+              - {id: CRM-03.01.01.13, c: A, fase: 2, svc: sales, estado: hecho, t: "Historial de cambios de importe y fecha (slippage tracking)"}
               - {id: CRM-03.01.01.14, c: A, fase: 1, svc: sales, estado: hecho, t: "Bloqueo de edición tras cierre y proceso de reapertura auditado"}
           - id: CRM-03.01.02
             nombre: Metodologías de venta
@@ -684,15 +708,15 @@ modulos:
           - id: CRM-03.02.01
             nombre: Forecasting
             capacidades:
-              - {id: CRM-03.02.01.01, c: C, fase: 2, svc: sales, estado: pendiente, t: "Categorías de forecast (pipeline, best case, commit, closed)"}
-              - {id: CRM-03.02.01.02, c: C, fase: 2, svc: sales, estado: pendiente, t: "Previsión por jerarquía: comercial → equipo → región → compañía"}
-              - {id: CRM-03.02.01.03, c: A, fase: 2, svc: sales, estado: pendiente, t: "Ajustes de manager con trazabilidad del ajuste y su justificación"}
-              - {id: CRM-03.02.01.04, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecmind:app/services/graph_compare.py (instantáneas y comparación)", t: "Instantáneas periódicas (snapshots) y comparación entre periodos"}
-              - {id: CRM-03.02.01.05, c: A, fase: 2, svc: sales, estado: pendiente, t: "Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe"}
+              - {id: CRM-03.02.01.01, c: C, fase: 2, svc: sales, estado: hecho, t: "Categorías de forecast (pipeline, best case, commit, closed)"}
+              - {id: CRM-03.02.01.02, c: C, fase: 2, svc: sales, estado: hecho, t: "Previsión por jerarquía: comercial → equipo → región → compañía"}
+              - {id: CRM-03.02.01.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Ajustes de manager con trazabilidad del ajuste y su justificación"}
+              - {id: CRM-03.02.01.04, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/graph_compare.py (instantáneas y comparación)", t: "Instantáneas periódicas (snapshots) y comparación entre periodos"}
+              - {id: CRM-03.02.01.05, c: A, fase: 2, svc: sales, estado: hecho, t: "Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe"}
               - {id: CRM-03.02.01.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/bi_forecasting_service.py", t: "Forecast predictivo con intervalo de confianza y comparación con el humano"}
-              - {id: CRM-03.02.01.07, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py", t: "Previsión multi-moneda con tipos de cambio históricos y dated exchange rates"}
-              - {id: CRM-03.02.01.08, c: A, fase: 2, svc: sales, estado: pendiente, t: "Previsión por producto, por familia y por tipo de ingreso"}
-              - {id: CRM-03.02.01.09, c: A, fase: 2, svc: sales, estado: pendiente, t: "Bloqueo/cierre de periodo de forecast"}
+              - {id: CRM-03.02.01.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py", t: "Previsión multi-moneda con tipos de cambio históricos y dated exchange rates"}
+              - {id: CRM-03.02.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Previsión por producto, por familia y por tipo de ingreso"}
+              - {id: CRM-03.02.01.09, c: A, fase: 2, svc: sales, estado: hecho, t: "Bloqueo/cierre de periodo de forecast"}
           - id: CRM-03.02.02
             nombre: Territorios, cuotas y capacidad
             capacidades:

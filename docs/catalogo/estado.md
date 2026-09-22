@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**661 capacidades**: ✅ 282 hecho · ⬜ 379 pendiente
+**673 capacidades**: ✅ 292 hecho · ⬜ 381 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-237 capacidades · ✅ 166 · ⬜ 71
+249 capacidades · ✅ 166 · ⬜ 83
 
 ### 0.1 Multi-tenancy
 
@@ -273,6 +273,23 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.02.05` | Gestión de dependencias, versiones y rollback del código de extensión | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.06` | Observabilidad de extensiones: logs, métricas, errores y coste atribuido | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.07` | Firma y revisión de extensiones de terceros antes de su instalación | A | 6 | automation | ⬜ | — |
+
+#### CRM-00.04.03 · Extensión sin código, de punta a punta
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-00.04.03.01` | Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada | C | 1 | metadata | ⬜ | — |
+| `CRM-00.04.03.02` | Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código | C | 1 | metadata | ⬜ | — |
+| `CRM-00.04.03.03` | Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema | C | 1 | core | ⬜ | — |
+| `CRM-00.04.03.04` | Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB | A | 1 | core | ⬜ | — |
+| `CRM-00.04.03.05` | Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación | C | 1 | automation | ⬜ | — |
+| `CRM-00.04.03.06` | Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte | C | 1 | analytics | ⬜ | — |
+| `CRM-00.04.03.07` | Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos | A | 2 | intelligence | ⬜ | — |
+| `CRM-00.04.03.08` | Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial | C | 1 | core | ⬜ | — |
+| `CRM-00.04.03.09` | Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar | A | 1 | metadata | ⬜ | — |
+| `CRM-00.04.03.10` | Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.03.11` | Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants | A | 2 | metadata | ⬜ | — |
+| `CRM-00.04.03.12` | Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira | A | 1 | metadata | ⬜ | — |
 
 ### 0.5 Identidad, seguridad y control de acceso
 
@@ -579,7 +596,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 7 · ⬜ 58
+65 capacidades · ✅ 17 · ⬜ 48
 
 ### 3.1 Pipeline y oportunidades
 
@@ -590,7 +607,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.01` | Oportunidad con importe, moneda, fecha de cierre, probabilidad y etapa | C | 1 | sales | ✅ | contecflow-PSA:app/models/pipeline.py (311) + app/services/pipeline_service.py |
 | `CRM-03.01.01.02` | Múltiples pipelines por línea de negocio, producto, canal o región | C | 1 | sales | ✅ | contecflow-PSA:app/services/pipeline_stages_service.py |
 | `CRM-03.01.01.03` | Etapas configurables con criterios de salida obligatorios y checklist | A | 1 | sales | ✅ | contecflow-PSA:app/services/pipeline_stages_service.py |
-| `CRM-03.01.01.04` | Probabilidad por etapa, ajustable manualmente y por modelo predictivo | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.04` | Probabilidad por etapa, ajustable manualmente y por modelo predictivo | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.05` | Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento | C | 1 | sales | ✅ | contecweb:app/services/catalog + contecpos:services/catalogo |
 | `CRM-03.01.01.06` | Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py |
 | `CRM-03.01.01.07` | Planificación de ingresos por periodos (revenue schedule) | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py |
@@ -599,7 +616,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.10` | Buying group / mapa de decisión asociado a la oportunidad | A | 2 | sales | ⬜ | — |
 | `CRM-03.01.01.11` | Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución | A | 2 | sales | ⬜ | — |
 | `CRM-03.01.01.12` | Antigüedad por etapa, estancamiento y alertas de inactividad | C | 1 | sales | ✅ | contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa) |
-| `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ✅ | — |
 
 #### CRM-03.01.02 · Metodologías de venta
@@ -619,15 +636,15 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.02.01.01` | Categorías de forecast (pipeline, best case, commit, closed) | C | 2 | sales | ⬜ | — |
-| `CRM-03.02.01.02` | Previsión por jerarquía: comercial → equipo → región → compañía | C | 2 | sales | ⬜ | — |
-| `CRM-03.02.01.03` | Ajustes de manager con trazabilidad del ajuste y su justificación | A | 2 | sales | ⬜ | — |
-| `CRM-03.02.01.04` | Instantáneas periódicas (snapshots) y comparación entre periodos | A | 2 | sales | ⬜ | contecmind:app/services/graph_compare.py (instantáneas y comparación) |
-| `CRM-03.02.01.05` | Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe | A | 2 | sales | ⬜ | — |
+| `CRM-03.02.01.01` | Categorías de forecast (pipeline, best case, commit, closed) | C | 2 | sales | ✅ | — |
+| `CRM-03.02.01.02` | Previsión por jerarquía: comercial → equipo → región → compañía | C | 2 | sales | ✅ | — |
+| `CRM-03.02.01.03` | Ajustes de manager con trazabilidad del ajuste y su justificación | A | 2 | sales | ✅ | — |
+| `CRM-03.02.01.04` | Instantáneas periódicas (snapshots) y comparación entre periodos | A | 2 | sales | ✅ | contecmind:app/services/graph_compare.py (instantáneas y comparación) |
+| `CRM-03.02.01.05` | Waterfall de cambios del pipeline: entradas, salidas, deslizamientos, variación de importe | A | 2 | sales | ✅ | — |
 | `CRM-03.02.01.06` | Forecast predictivo con intervalo de confianza y comparación con el humano | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/bi_forecasting_service.py |
-| `CRM-03.02.01.07` | Previsión multi-moneda con tipos de cambio históricos y dated exchange rates | A | 2 | sales | ⬜ | contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py |
-| `CRM-03.02.01.08` | Previsión por producto, por familia y por tipo de ingreso | A | 2 | sales | ⬜ | — |
-| `CRM-03.02.01.09` | Bloqueo/cierre de periodo de forecast | A | 2 | sales | ⬜ | — |
+| `CRM-03.02.01.07` | Previsión multi-moneda con tipos de cambio históricos y dated exchange rates | A | 2 | sales | ✅ | contecflow-PSA:app/services/exchange_rate_service.py + app/models/exchange_rates_log.py |
+| `CRM-03.02.01.08` | Previsión por producto, por familia y por tipo de ingreso | A | 2 | sales | ✅ | — |
+| `CRM-03.02.01.09` | Bloqueo/cierre de periodo de forecast | A | 2 | sales | ✅ | — |
 
 #### CRM-03.02.02 · Territorios, cuotas y capacidad
 

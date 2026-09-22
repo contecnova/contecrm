@@ -480,10 +480,13 @@ def cambiar_etapa(
 
     oportunidad.etapa_id = destino.id
     oportunidad.etapa_desde = datetime.now(timezone.utc)
-    # La probabilidad sigue a la etapa salvo que alguien la haya ajustado a
-    # mano. Se detecta comparando con la de la etapa de origen: si coincidían,
-    # no había ajuste manual que respetar.
-    if origen is not None and oportunidad.probabilidad == origen.probabilidad:
+    # La probabilidad sigue a la etapa salvo que alguien la haya fijado a mano
+    # (CRM-03.01.01.04). Antes se deducía comparando con la probabilidad de la
+    # etapa de origen, y esa heurística fallaba por los dos lados: un ajuste
+    # manual que coincidiera con la etapa se perdía al avanzar, y uno que no
+    # coincidiera se arrastraba para siempre por todas las etapas siguientes.
+    # Ahora es una bandera explícita, que es lo que era desde el principio.
+    if not oportunidad.probabilidad_manual:
         oportunidad.probabilidad = destino.probabilidad
 
     uow.db.add(
@@ -689,15 +692,43 @@ def actualizar_oportunidad(
     oportunidad = _oportunidad(uow.db, oportunidad_id)
     _exigir_editable(uow.db, oportunidad)
     anterior = oportunidad.a_dict()
+    importe_antes = oportunidad.importe
+    fecha_antes = oportunidad.fecha_cierre
+
+    # Fijar la probabilidad a mano la marca como manual (CRM-03.01.01.04): si no,
+    # el siguiente cambio de etapa la pisaría y el comercial dejaría de
+    # ajustarla a la tercera vez, convirtiendo el dato en decorativo.
+    if "probabilidad" in cambios and cambios["probabilidad"] != oportunidad.probabilidad:
+        oportunidad.probabilidad_manual = True
+
     for campo, valor in cambios.items():
         if hasattr(oportunidad, campo):
             setattr(oportunidad, campo, valor)
+
+    # Deslizamiento (CRM-03.01.01.13). Se anota aquí y no en quien llame: un
+    # historial que dependa de que alguien se acuerde tiene huecos justo donde
+    # importa, y el hueco típico es el cambio de fecha sin cambio de etapa, que
+    # es precisamente el deslizamiento que explica el trimestre.
+    from services.sales.forecast import anotar_cambio_de_prevision
+
+    anotar_cambio_de_prevision(
+        uow.db,
+        oportunidad,
+        importe_antes=importe_antes,
+        fecha_antes=fecha_antes,
+        motivo=str(cambios.get("motivo_cambio") or ""),
+    )
+
     registrar_cambios(
         uow.db,
         objeto="oportunidad",
         objeto_id=oportunidad.id,
         anterior=anterior,
         nuevo=oportunidad.a_dict(),
+        # Se pasa explícito: este camino lo recorren también el ejecutor de
+        # trabajos y los consumidores de eventos, que no tienen contexto
+        # ambiental, y sin esto el historial se escribía con tenant nulo.
+        tenant_id=uow.tenant_id,
     )
     return oportunidad
 

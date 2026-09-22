@@ -1129,6 +1129,8 @@ async def recibir_lead(
 router_documental = crear_router_documental({"lead", "oportunidad"})
 
 
+from services.sales.api_forecast import ROUTERS_FORECAST  # noqa: E402
+
 ROUTERS = [
     router_leads,
     router_pipelines,
@@ -1144,6 +1146,7 @@ ROUTERS = [
     router_trabajos,
     router_captura,
     *routers_masivos,
+    *ROUTERS_FORECAST,
 ]
 
 # El endpoint público de captura va aparte y **sin el prefijo de versión**: lo

@@ -4920,3 +4920,151 @@ Se separa por **fuerza del factor**, porque «tiene MFA» mete en el mismo saco 
 passkey y un SMS, que es precisamente la distinción que alguien va a querer hacer
 cuando decida apretar. Y con cero usuarios el porcentaje **no es 100**: es que no
 hay nada que medir, y decir 100 sería un verde que nadie se ha ganado.
+
+## Previsión de ventas (`CRM-03.02.01`, `CRM-03.01.01.04` y `CRM-03.01.01.13`)
+
+La previsión es el entregable que más se mira y el que peor envejece. Todo lo que
+hay aquí sale de una idea: **un número de previsión solo vale si se puede
+explicar**. Un total sin desglose no se discute —se cree o no se cree— y uno que
+cambia cada vez que se consulta no se puede ni comparar consigo mismo.
+
+### Categorías: datos, no una lista en el código (`CRM-03.02.01.01`)
+
+«Pipeline, best case, commit, cerrado» es lo habitual, pero hay quien mete
+«upside» en medio y quien lo llama todo de otra manera. Con la lista escrita en
+el código, cada organización es una versión del producto; como tabla, es
+configuración del tenant. Se siembran las cuatro de serie la primera vez, para
+que se pueda empezar sin configurar nada y renombrarlas después.
+
+Lo que sí es del sistema es el **significado operativo**, y va en dos banderas
+explícitas y no deducido del nombre: si cuenta como compromiso y si es terminal.
+Deducirlo de la palabra «commit» se rompería en cuanto alguien la traduzca.
+
+Una categoría que no existe **se rechaza**. Aceptar cualquier texto haría que una
+errata creara una categoría fantasma que no sale en ningún informe y cuyo importe
+desaparece del total sin que nadie lo eche en falta: el peor tipo de error de
+datos, el que resta en silencio.
+
+### Multi-moneda con el cambio del día, no el de hoy (`CRM-03.02.01.07`)
+
+Una oportunidad cerrada en marzo tiene que seguir valiendo lo que valía en marzo.
+Convertirla siempre al cambio actual hace que el histórico de ventas se mueva
+solo y que dos informes del mismo trimestre den números distintos según cuándo se
+sacaron.
+
+Los tipos de cambio **se administran en `tenancy` y se leen en todos los
+servicios**. Estaban solo en `tenancy`, y al montar la previsión apareció el
+problema: `sales` no puede leer el esquema de otro servicio —lo impide el gate de
+arquitectura, y con razón—. Las salidas eran tres: llamar a `tenancy` por HTTP
+por cada línea de un forecast de diez mil oportunidades, saltarse la regla, o que
+la tabla viva en el esquema de cada servicio y se replique por evento. Se eligió
+la tercera, que es la misma que ya usan los ajustes en caliente y las claves de
+tenant. El precio es una copia por servicio; lo que compra es que una previsión
+no dependa de que otro servicio esté en pie.
+
+Lo que **no se ha podido convertir sale aparte y no se cuenta como cero**. Un
+total al que le faltan importes en silencio es peor que uno que avisa, porque
+nadie lo cuestiona. El aviso va pegado al número, no en un campo que nadie mira.
+
+### Por jerarquía, y el agujero que se ve (`CRM-03.02.01.02`)
+
+La jerarquía llega **resuelta** —nodo → comerciales— porque el organigrama vive
+en `identity`. Tiene además la ventaja de que la misma llamada sirve para agrupar
+por territorio, por canal o por lo que el cliente use, sin tocar nada.
+
+El total de la compañía se calcula **aparte y no sumando los nodos**. Una
+oportunidad cuyo dueño no esté en ninguna rama —alguien recién incorporado, un
+registro huérfano tras una baja— desaparecería de la suma sin que nadie lo
+notara, y el agujero se descubre al final del trimestre. Si la resta no da cero,
+se dice y se cuantifica.
+
+### Desglose por líneas (`CRM-03.02.01.08`)
+
+Por producto, familia o tipo de ingreso, calculado sobre **las líneas** y no
+sobre la cabecera. Es lo único que permite que una oportunidad con software y
+servicios cuente en las dos familias por su parte correspondiente; repartir la
+cabecera a ojo daría un desglose que suma bien y reparte mal, que es peor que no
+tenerlo.
+
+La familia se **copia en la línea**, igual que la descripción y el precio: si se
+leyera del catálogo al hacer el informe, recategorizar un producto reescribiría
+la previsión de trimestres ya cerrados.
+
+### Ajustes del responsable, con nombre y motivo (`CRM-03.02.01.03`)
+
+Los managers ajustan siempre, porque saben cosas que no están en el CRM: que un
+cliente ha cambiado de director de compras, que el competidor ha bajado el
+precio. **El problema nunca fue que ajusten**: es que el ajuste se hacía en una
+hoja aparte y nadie sabía después quién quitó doscientos mil euros ni por qué.
+
+Aquí el ajuste es un registro con autor y **motivo obligatorio**, y se guarda el
+número bruto al lado del ajustado. El bruto no es redundante: sin él no se puede
+medir si los ajustes de alguien acertaron, que es la única forma de saber si
+conviene hacerle caso el trimestre que viene. Esa medición está —«¿el ajuste
+acercó al número real?»— y cuando no hay nada cerrado todavía **dice que no es
+medible** en vez de devolver un cero que parecería un acierto perfecto.
+
+### Instantáneas y *waterfall* (`CRM-03.02.01.04`, `CRM-03.02.01.05`)
+
+Sin fotos no hay *waterfall*: «qué ha cambiado desde el lunes» no se puede
+contestar mirando solo el estado de hoy, y reconstruirlo desde el historial de
+cambios es caro y frágil. La foto guarda **el estado de cada oportunidad, no una
+referencia**: si apuntara a la oportunidad, la foto cambiaría con ella y dejaría
+de ser una foto — el fallo clásico de los «históricos» hechos con *joins*.
+
+La diferencia entre dos totales no explica nada. «Hemos bajado 300.000» no dice
+si es porque se ha perdido una operación grande, porque tres se han ido al
+trimestre siguiente o porque han bajado los importes. Se separan cinco causas
+porque cada una lleva a una conversación distinta: **entradas, salidas, ganadas,
+perdidas, deslizadas y variación de importe**.
+
+Y **salir de la foto no es lo mismo que perderse**: puede haberse ido a otro
+trimestre. Mezclarlo inflaría la tasa de pérdida y llevaría a revisar un problema
+que no existe. Dos fotos en monedas distintas no se comparan: restar euros de
+dólares daría un *waterfall* precioso y falso.
+
+### Cierre de periodo (`CRM-03.02.01.09`)
+
+Cerrar es lo que hace que un número signifique algo. Mientras el periodo está
+abierto, el commit del trimestre cambia cada vez que alguien toca una
+oportunidad, y comparar dos informes de fechas distintas es comparar dos cosas
+que no son la misma. Cerrado, el número queda y lo que pase después se ve como
+variación, que es la información útil.
+
+La foto se toma **dentro** del cierre y no se deja para después: un cierre sin
+foto es un número que ya no se puede reconstruir. Y cerrar **impide tocar** las
+oportunidades cuyo cierre cae dentro; sin eso, cerrar sería un gesto decorativo y
+al trimestre siguiente nadie entendería por qué la foto no cuadra con el detalle.
+
+Reabrir es un acto explícito, **motivado y contado**. Si fuera gratis, «cerrado»
+dejaría de significar nada. El contador de reaperturas está para que se vea
+cuántas veces ha pasado, que es la señal de que el proceso de cierre no se está
+respetando.
+
+### Deslizamiento (`CRM-03.01.01.13`)
+
+`CambioEtapa` solo anotaba cuando la oportunidad se movía de etapa, y el
+deslizamiento **casi nunca va acompañado de un cambio de etapa**: lo normal es que
+la fecha se empuje dos semanas sin tocar nada más. Sin registrarlo, el dato que
+explica por qué el trimestre no salió como se dijo sencillamente no existía.
+
+Se guardan **los dos valores**, el de antes y el de después: con solo el nuevo,
+reconstruir el anterior obliga a recorrer el historial hacia atrás y a acertar con
+el orden; con los dos delante, el deslizamiento es una resta.
+
+Y se cuenta **el número de veces**, no solo los días. Una oportunidad empujada
+cuatro veces dos semanas cada una no es lo mismo que otra movida dos meses de
+golpe, aunque el total coincida: la primera es un problema de calificación y la
+segunda, un cliente que cambió de plan.
+
+### Probabilidad manual (`CRM-03.01.01.04`)
+
+La probabilidad sigue a la etapa salvo que alguien la haya fijado a mano. Antes
+eso se **deducía** comparando con la probabilidad de la etapa de origen, y la
+heurística fallaba por los dos lados: un ajuste manual que coincidiera con el
+valor de la etapa se perdía al avanzar, y uno que no coincidiera se arrastraba
+para siempre por todas las etapas siguientes. Ahora es una bandera explícita, que
+es lo que era desde el principio.
+
+Importa porque si el ajuste se pisa, el comercial deja de ajustar a la tercera
+vez y el dato se convierte en decorativo — y con él, el ponderado del pipeline.

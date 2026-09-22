@@ -68,6 +68,7 @@ PREFIJOS: dict[str, str] = {
     "factores": "identity",
     "dispositivos-confianza": "identity",
     "sso-gobierno": "identity",
+    "forecast": "sales",
     "grc": "tenancy",
     "compromisos": "tenancy",
     "tablas-decision": "orchestrator",
