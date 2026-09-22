@@ -1071,18 +1071,18 @@ modulos:
           - id: CRM-06.01.02
             nombre: Firma electrónica
             capacidades:
-              - {id: CRM-06.01.02.01, c: C, fase: 2, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/esign_service.py + esign_providers.py", t: "Envío a firma desde cualquier registro, con varios firmantes, orden y plazo"}
-              - {id: CRM-06.01.02.02, c: C, fase: 2, svc: core, estado: pendiente, t: "Proveedor de firma configurable y varios a la vez: transporte declarativo, sin un conector por producto ni lista de proveedores en el código"}
-              - {id: CRM-06.01.02.03, c: C, fase: 2, svc: core, estado: pendiente, t: "Estado de cada firmante en la propia ficha, con recordatorios y cancelación"}
-              - {id: CRM-06.01.02.04, c: C, fase: 2, svc: core, estado: pendiente, reutiliza: "contecflow-PSA:app/services/signature_pdf.py", t: "Evidencia legal: hash del documento firmado, sello de tiempo, certificado de finalización y trazabilidad de cada acceso"}
-              - {id: CRM-06.01.02.05, c: A, fase: 2, svc: core, estado: pendiente, t: "Niveles eIDAS: simple, avanzada y cualificada, elegibles por tipo de documento"}
-              - {id: CRM-06.01.02.06, c: A, fase: 2, svc: core, estado: pendiente, t: "Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento"}
-              - {id: CRM-06.01.02.07, c: A, fase: 2, svc: core, estado: pendiente, t: "El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5)"}
-              - {id: CRM-06.01.02.08, c: A, fase: 2, svc: core, estado: pendiente, t: "Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido"}
+              - {id: CRM-06.01.02.01, c: C, fase: 2, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/esign_service.py + esign_providers.py", t: "Envío a firma desde cualquier registro, con varios firmantes, orden y plazo"}
+              - {id: CRM-06.01.02.02, c: C, fase: 2, svc: core, estado: hecho, t: "Proveedor de firma configurable y varios a la vez: transporte declarativo, sin un conector por producto ni lista de proveedores en el código"}
+              - {id: CRM-06.01.02.03, c: C, fase: 2, svc: core, estado: hecho, t: "Estado de cada firmante en la propia ficha, con recordatorios y cancelación"}
+              - {id: CRM-06.01.02.04, c: C, fase: 2, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/signature_pdf.py", t: "Evidencia legal: hash del documento firmado, sello de tiempo, certificado de finalización y trazabilidad de cada acceso"}
+              - {id: CRM-06.01.02.05, c: A, fase: 2, svc: core, estado: hecho, t: "Niveles eIDAS: simple, avanzada y cualificada, elegibles por tipo de documento"}
+              - {id: CRM-06.01.02.06, c: A, fase: 2, svc: core, estado: hecho, t: "Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento"}
+              - {id: CRM-06.01.02.07, c: A, fase: 2, svc: core, estado: hecho, t: "El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5)"}
+              - {id: CRM-06.01.02.08, c: A, fase: 2, svc: core, estado: hecho, t: "Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido"}
               - {id: CRM-06.01.02.09, c: D, fase: 3, svc: core, estado: pendiente, t: "Firma presencial en tableta y firma biométrica con captura de trazo"}
-              - {id: CRM-06.01.02.10, c: A, fase: 2, svc: core, estado: pendiente, t: "Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta"}
+              - {id: CRM-06.01.02.10, c: A, fase: 2, svc: core, estado: hecho, t: "Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta"}
               - {id: CRM-06.01.02.11, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecflow-PSA:app/services/esign_providers.py", t: "Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook"}
-              - {id: CRM-06.01.02.12, c: C, fase: 2, svc: integration, estado: pendiente, t: "Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe"}
+              - {id: CRM-06.01.02.12, c: C, fase: 2, svc: integration, estado: hecho, t: "Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe"}
               - {id: CRM-06.01.02.13, c: A, fase: 2, svc: integration, estado: pendiente, t: "Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro"}
               - {id: CRM-06.01.02.14, c: A, fase: 2, svc: integration, estado: pendiente, t: "Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad"}
               - {id: CRM-06.01.02.15, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado"}
@@ -1327,6 +1327,12 @@ anexo_b_eventos:
   - {type: approval.decided, fase: 2, svc: orchestrator}
   - {type: quote.created, fase: 2, svc: sales}
   - {type: quote.approval.needed, fase: 2, svc: sales}
+  - {type: signature.envelope.sent, fase: 2, svc: integration}
+  - {type: signature.envelope.completed, fase: 2, svc: integration}
+  - {type: signature.envelope.rejected, fase: 2, svc: integration}
+  - {type: signature.envelope.cancelled, fase: 2, svc: integration}
+  - {type: signature.envelope.expired, fase: 2, svc: integration}
+  - {type: signature.reminder.sent, fase: 2, svc: integration}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

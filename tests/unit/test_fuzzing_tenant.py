@@ -111,6 +111,7 @@ ALIAS_MODELO = {
     "presupuesto_id": "presupuesto",
     "suscripcion_cliente_id": "suscripcioncliente",
     "pedido_id": "pedido",
+    "sobre_id": "sobre",
 }
 
 

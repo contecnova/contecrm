@@ -6926,3 +6926,161 @@ ERP que nadie mira es una venta cerrada que no se sirve.
 con compensaciones** (`CRM-03.03.02.12`). La primera va con el bloque de firma
 electrónica, que está entero pendiente; la segunda encima de él, porque una saga
 que no puede compensar la firma no compensa el ciclo entero.
+
+## Firma electrónica (`CRM-06.01.02`)
+
+Un sobre de firma es un objeto con una vida larga y un final legal. Lo que decide
+si sirve no es mandarlo: es poder demostrar, dos años después y ante quien lo
+discuta, **qué se firmó, quién lo firmó y cuándo**.
+
+### El proveedor es configuración, no código (`CRM-06.01.02.02`)
+
+Sobre el mismo transporte declarativo que usa cualquier otra integración:
+dirección, credencial cifrada y mapeo. **No hay un conector por producto ni una
+lista de proveedores en el código.** Un conector por casa —DocuSign, Signaturit,
+Viafirma— convierte cada cliente con otro proveedor en una versión del producto, y
+la lista en el código convierte cada alta en un despliegue.
+
+Cada proveedor declara **qué niveles sabe hacer** y **cómo sabe identificar**.
+Mandarle un contrato que exige firma cualificada a quien no la hace produce una
+firma que parece válida y no lo es; se para al crear el sobre, no en el juzgado.
+
+Los estados se traducen con un mapa declarado, igual que en el seguimiento de
+encargos. Un estado que no está en el mapa **no se adivina**: suponer que el
+«completed» de un proveedor nuevo significa firmado haría dar por firmado un sobre
+que fue rechazado, y con eso se factura.
+
+### Varios proveedores a la vez, elegidos por regla (`CRM-06.01.02.12`)
+
+Un grupo con filial portuguesa firma allí con otro proveedor, y un contrato de
+cien mil no va por el mismo sitio que un albarán. Un solo proveedor por tenant
+obliga a elegir el peor denominador común.
+
+Las reglas usan la gramática de siempre y `POST /firma/simular` dice **qué regla
+ganó** sin crear nada: una elección que no se puede explicar no se puede corregir,
+y aquí decide con qué validez legal sale un contrato.
+
+Una regla puede **subir** el nivel pedido, nunca bajarlo. Dejar que lo rebaje
+convierte la política en una sugerencia.
+
+Un proveedor se puede poner **en retirada** (`solo_en_curso`): deja de recibir
+sobres nuevos y los que tiene en vuelo terminan con él. Es lo que permite cambiar
+de proveedor sin que los contratos a medio firmar se queden huérfanos.
+
+### El nivel decide la identificación (`CRM-06.01.02.05`, `CRM-06.01.02.08`)
+
+| Nivel | Identificaciones que admite |
+|---|---|
+| simple | correo, SMS, vídeo, certificado, DNI electrónico |
+| avanzada | SMS, vídeo, certificado, DNI electrónico |
+| cualificada | certificado, DNI electrónico |
+
+Pedir «avanzada» y verificar por correo es decir que es avanzada sin serlo: el
+correo demuestra acceso a un buzón, no identidad. Y sin certificado cualificado no
+es cualificada, por mucho que el proveedor lo llame así en su folleto. Eso solo se
+descubre cuando alguien impugna la firma — el único momento en que la firma
+importaba.
+
+Quien recibe **copia** no pasa por esa comprobación: no firma, y exigirle
+certificado sería pedir un trámite para leer un correo.
+
+### Sobres, firmantes y orden (`CRM-06.01.02.01`)
+
+Crear **no manda**. Separarlo es a propósito: mandar un contrato a firmar es
+irreversible de cara al cliente —le llega un correo— y el error más caro que puede
+cometer quien lo maneja es pulsar creyendo que aún estaba montándolo.
+
+Con **orden estricto**, solo le llega al siguiente cuando firma el anterior. Es lo
+que hace que un contrato lo firme el cliente *después* del nuestro, que es el orden
+que pide quien redacta contratos. Sin orden, les llega a todos a la vez.
+
+Un sobre que solo lleva copias no se manda: no lo firmaría nadie.
+
+### Plantillas con anclajes (`CRM-06.01.02.06`)
+
+Dónde va cada firma y qué rellena cada uno, de dos formas: por página y
+coordenadas, o por **anclaje de texto** (`/firma_cliente/`). El anclaje existe
+porque las coordenadas se rompen en cuanto el contrato gana un párrafo, y eso pasa
+siempre. La plantilla puede subir el nivel exigido, como las reglas y por lo mismo.
+
+### La evidencia se guarda aquí (`CRM-06.01.02.04`)
+
+La cadena de custodia es `append-only` y vive en el CRM, **no solo en el
+proveedor**: el día que se cambia de proveedor —o que cierra— se perdería la
+prueba de todo lo firmado con él, y eso se descubre justo cuando hace falta.
+
+Cada apunte guarda **cuándo ocurrió según el proveedor** y **cuándo nos
+enteramos**. La diferencia es la latencia de la integración, y sin las dos no se
+puede defender una fecha.
+
+La ingesta es **idempotente** por el identificador del evento: sin eso la custodia
+tendría el mismo acceso dos veces, que es exactamente lo que un perito mira para
+decidir si la evidencia es fiable. Y la evidencia **se guarda aunque el estado no
+se entienda**: perder un acceso porque no supimos traducir su nombre deja un hueco
+que después no se puede rellenar.
+
+Se guardan **dos huellas**: la de lo que se mandó y la de lo que volvió. El
+expediente sale marcado como `verificable` solo cuando están las dos, porque sin
+ellas «esto no es lo que yo firmé» no se puede contestar.
+
+### El firmado vuelve al expediente (`CRM-06.01.02.07`)
+
+El documento firmado es **otro documento**, no una versión del original: el
+original tiene que seguir existiendo tal como salió, porque es la mitad de la
+prueba de que lo firmado es lo que se mandó.
+
+Se enlaza al registro que originó el sobre, y **el certificado se enlaza aparte,
+con su propio rol**: es el documento que se lleva a un juzgado, y mezclarlo con el
+contrato hace que nadie lo encuentre cuando hace falta.
+
+No se archiva el firmado de un sobre que sigue abierto: es cómo se acaba con un
+contrato a medio firmar en el expediente, con toda la apariencia de estar cerrado.
+Y si el sobre no colgaba de ningún registro, se dice (`sin_origen`): un firmado que
+no aparece en ninguna ficha existe en el corpus y nadie lo echa de menos hasta que
+hace falta.
+
+### Recordatorios, cancelación y caducidad (`CRM-06.01.02.03`)
+
+El recordatorio tiene un **mínimo entre envíos**. Sin él, un botón pulsado tres
+veces manda tres correos en un minuto, y el resultado no es que firme antes: es
+que marque el remitente como no deseado y deje de recibir los siguientes.
+
+Cancelar **exige motivo**: al cliente le llegó un correo que va a dejar de
+funcionar, y sin motivo nadie sabe por qué — la pregunta llega por teléfono.
+
+Un **rechazo cierra el sobre**. El documento ya no se puede completar, y seguir
+mandando recordatorios a los demás es hacerles perder el tiempo con algo muerto.
+
+Caducar es un paso explícito, porque un sobre que sigue diciendo «en curso» tres
+meses después aparece en el panel como negocio vivo esperando una firma que ya no
+va a llegar.
+
+### El panel (`CRM-06.01.02.10`)
+
+Ordenado por **antigüedad y no por fecha de creación**: lo que lleva más esperando
+es lo que hay que empujar, y una lista por fecha entierra lo viejo debajo de lo
+nuevo, que es al revés de lo que hace falta.
+
+Dice **a quién se espera** en cada sobre —sin el nombre, el panel dice que algo
+está parado y no qué hacer— y distingue **el que nadie ha abierto** del abierto y
+no firmado: el primero es un correo que no llegó y el segundo una decisión que no
+se toma, y se persiguen de forma distinta.
+
+### Lo que todavía no está
+
+* **Conectores nativos por proveedor** (`CRM-06.01.02.11`): posicionado por API,
+  descarga del certificado y devolución por webhook. El transporte genérico llega
+  hasta donde llega, y lo que falta es la capa nativa encima — igual que con los
+  transportistas.
+* **Cambiar de proveedor sin perder lo enviado** (`CRM-06.01.02.13`) está a medias:
+  la marca `solo_en_curso` ya lo permite, pero no hay migración asistida ni informe
+  de lo que quedó con el proveedor antiguo.
+* **Prueba de conexión y envío en vacío** (`CRM-06.01.02.14`) y el **registro
+  completo de llamadas con coste** (`CRM-06.01.02.15`): la tabla existe y está
+  documentada, pero no la alimenta nadie todavía porque la llamada real la hará el
+  conector nativo.
+* **Firma presencial en tableta** (`CRM-06.01.02.09`).
+
+Y fuera de este capítulo queda `CRM-03.03.02.07`: enviar a firma un presupuesto
+desde la oportunidad y que el estado del sobre mueva la oportunidad. El motor ya
+emite los eventos que hacen falta; lo que falta es que `sales` los escuche.

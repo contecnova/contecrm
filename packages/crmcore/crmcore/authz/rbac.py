@@ -177,6 +177,10 @@ ROLES_BASE: dict[str, Rol] = {
                 # que prepare una oferta. Escribir el catálogo NO: un producto
                 # mal dado de alta se cuela en todos los presupuestos siguientes.
                 "producto:read",
+                # Ver el estado de una firma es parte de trabajar una venta.
+                # Mandar a firmar NO: un contrato sale una vez, y quien lo manda
+                # tiene que ser quien responde de lo que dice.
+                "firma:read",
                 "contract:read",
                 "order:read",
                 "toque:registrar",
@@ -210,6 +214,7 @@ ROLES_BASE: dict[str, Rol] = {
                 # qué coste no es quien lo vende.
                 "contract:write",
                 "order:write",
+                "firma:write",
             }
         ),
         descripcion="Además, previsión y aprobación sobre su equipo",

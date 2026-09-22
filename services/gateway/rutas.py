@@ -106,6 +106,7 @@ PREFIJOS: dict[str, str] = {
     "aprobaciones": "orchestrator",
     "analitica-procesos": "orchestrator",
     "encargos": "integration",
+    "firma": "integration",
     "proveedores-servicio": "integration",
     "grc": "tenancy",
     "compromisos": "tenancy",

@@ -156,3 +156,16 @@ from services.integration.encargos import (  # noqa: E402,F401
     Proveedor,
     ReglaProveedor,
 )
+
+# La firma electrónica vive en su propio módulo —tiene su propia lógica de
+# evidencia y de niveles—, pero sus tablas son de este esquema y tienen que
+# importarse aquí: `alembic` solo mira `modelos.py`.
+from services.integration.firma import (  # noqa: E402,F401
+    EvidenciaFirma,
+    Firmante,
+    LlamadaProveedorFirma,
+    PlantillaFirma,
+    ProveedorFirma,
+    ReglaProveedorFirma,
+    Sobre,
+)

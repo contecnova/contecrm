@@ -55,3 +55,69 @@ ORDER_TRACKED_SILENT = registrar(
         campos=("encargo_id", "referencia", "proveedor", "horas_sin_novedad"),
     )
 )
+
+
+# ── Firma electrónica (CRM-06.01.02) ──────────────────────────────────────
+
+SIGNATURE_ENVELOPE_SENT = registrar(
+    TipoEvento(
+        tipo="signature.envelope.sent",
+        version=1,
+        productor="integration",
+        descripcion="Un documento ha salido a firmar",
+        campos=("sobre_id", "referencia", "proveedor", "nivel"),
+    )
+)
+SIGNATURE_ENVELOPE_COMPLETED = registrar(
+    TipoEvento(
+        tipo="signature.envelope.completed",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Han firmado todos. Lleva el registro que lo originó porque lo que "
+            "desbloquea una firma vive fuera de aquí: la oportunidad avanza, el "
+            "contrato entra en vigor, el pedido sale"
+        ),
+        campos=("sobre_id", "referencia", "objeto_origen", "objeto_origen_id"),
+    )
+)
+SIGNATURE_ENVELOPE_REJECTED = registrar(
+    TipoEvento(
+        tipo="signature.envelope.rejected",
+        version=1,
+        productor="integration",
+        descripcion="Alguien ha rechazado firmar, con su motivo",
+        campos=("sobre_id", "referencia", "objeto_origen", "motivo"),
+    )
+)
+SIGNATURE_ENVELOPE_CANCELLED = registrar(
+    TipoEvento(
+        tipo="signature.envelope.cancelled",
+        version=1,
+        productor="integration",
+        descripcion="Se ha cancelado un sobre en curso, con su motivo",
+        campos=("sobre_id", "referencia", "motivo"),
+    )
+)
+SIGNATURE_ENVELOPE_EXPIRED = registrar(
+    TipoEvento(
+        tipo="signature.envelope.expired",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Un sobre ha pasado su plazo sin completarse. Es un evento y no una "
+            "lista porque lo que caduca hay que empujarlo: nadie entra a mirar "
+            "una pantalla de sobres que parecen en curso"
+        ),
+        campos=("sobre_id", "referencia", "objeto_origen"),
+    )
+)
+SIGNATURE_REMINDER_SENT = registrar(
+    TipoEvento(
+        tipo="signature.reminder.sent",
+        version=1,
+        productor="integration",
+        descripcion="Se ha recordado a quien tiene la firma pendiente",
+        campos=("sobre_id", "referencia", "destinatarios"),
+    )
+)

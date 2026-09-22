@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 412 hecho · ⬜ 295 pendiente
+**707 capacidades**: ✅ 422 hecho · ⬜ 285 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-29 capacidades · ✅ 3 · ⬜ 26
+29 capacidades · ✅ 13 · ⬜ 16
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -1002,18 +1002,18 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-06.01.02.01` | Envío a firma desde cualquier registro, con varios firmantes, orden y plazo | C | 2 | core | ⬜ | contecflow-PSA:app/services/esign_service.py + esign_providers.py |
-| `CRM-06.01.02.02` | Proveedor de firma configurable y varios a la vez: transporte declarativo, sin un conector por producto ni lista de proveedores en el código | C | 2 | core | ⬜ | — |
-| `CRM-06.01.02.03` | Estado de cada firmante en la propia ficha, con recordatorios y cancelación | C | 2 | core | ⬜ | — |
-| `CRM-06.01.02.04` | Evidencia legal: hash del documento firmado, sello de tiempo, certificado de finalización y trazabilidad de cada acceso | C | 2 | core | ⬜ | contecflow-PSA:app/services/signature_pdf.py |
-| `CRM-06.01.02.05` | Niveles eIDAS: simple, avanzada y cualificada, elegibles por tipo de documento | A | 2 | core | ⬜ | — |
-| `CRM-06.01.02.06` | Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento | A | 2 | core | ⬜ | — |
-| `CRM-06.01.02.07` | El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5) | A | 2 | core | ⬜ | — |
-| `CRM-06.01.02.08` | Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.01` | Envío a firma desde cualquier registro, con varios firmantes, orden y plazo | C | 2 | core | ✅ | contecflow-PSA:app/services/esign_service.py + esign_providers.py |
+| `CRM-06.01.02.02` | Proveedor de firma configurable y varios a la vez: transporte declarativo, sin un conector por producto ni lista de proveedores en el código | C | 2 | core | ✅ | — |
+| `CRM-06.01.02.03` | Estado de cada firmante en la propia ficha, con recordatorios y cancelación | C | 2 | core | ✅ | — |
+| `CRM-06.01.02.04` | Evidencia legal: hash del documento firmado, sello de tiempo, certificado de finalización y trazabilidad de cada acceso | C | 2 | core | ✅ | contecflow-PSA:app/services/signature_pdf.py |
+| `CRM-06.01.02.05` | Niveles eIDAS: simple, avanzada y cualificada, elegibles por tipo de documento | A | 2 | core | ✅ | — |
+| `CRM-06.01.02.06` | Plantillas de firma: posiciones, campos a rellenar por el firmante y anclajes en el documento | A | 2 | core | ✅ | — |
+| `CRM-06.01.02.07` | El documento firmado vuelve al corpus documental y al registro que lo originó, con su versión (RT-5) | A | 2 | core | ✅ | — |
+| `CRM-06.01.02.08` | Identificación del firmante: SMS, correo, vídeo o certificado, según el nivel exigido | A | 2 | core | ✅ | — |
 | `CRM-06.01.02.09` | Firma presencial en tableta y firma biométrica con captura de trazo | D | 3 | core | ⬜ | — |
-| `CRM-06.01.02.10` | Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta | A | 2 | core | ⬜ | — |
+| `CRM-06.01.02.10` | Panel de lo pendiente de firma, con antigüedad y bloqueos del ciclo de venta | A | 2 | core | ✅ | — |
 | `CRM-06.01.02.11` | Conectores nativos de firma, uno por proveedor, para lo que el transporte genérico no alcanza: posicionado por API, descarga del certificado y devolución de estado por webhook | C | 2 | integration | ⬜ | contecflow-PSA:app/services/esign_providers.py |
-| `CRM-06.01.02.12` | Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.02.12` | Varios proveedores a la vez en el mismo tenant, elegibles por tipo de documento, por país o por importe | C | 2 | integration | ✅ | — |
 | `CRM-06.01.02.13` | Cambiar de proveedor sin perder lo enviado: los sobres en curso terminan con el suyo y los nuevos salen con el otro | A | 2 | integration | ⬜ | — |
 | `CRM-06.01.02.14` | Prueba de conexión y de envío en vacío por proveedor, para validar credenciales antes de mandar un contrato de verdad | A | 2 | integration | ⬜ | — |
 | `CRM-06.01.02.15` | Registro de llamadas al proveedor con petición, respuesta y coste, para conciliar la factura y depurar un sobre atascado | A | 2 | integration | ⬜ | — |
