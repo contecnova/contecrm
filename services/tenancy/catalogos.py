@@ -13,7 +13,6 @@ festivos y husos) y CRM-07.01.01.06 (monedas y tipos de cambio con histórico).
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -22,19 +21,15 @@ from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
     Boolean,
-    Date,
-    DateTime,
     Index,
     String,
     Text,
     UniqueConstraint,
-    func,
-    select,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 logger = get_logger(__name__)
 
@@ -163,139 +158,20 @@ def variables_sin_resolver(texto: str, datos: dict[str, Any]) -> list[str]:
 
 
 # ── Calendarios laborales (CRM-07.01.01.05) ───────────────────────────────
-
-
-class CalendarioLaboral(Base, TimestampMixin):
-    """Horario y festivos de una sede o país.
-
-    Es lo que hace que un SLA de «4 horas» signifique cuatro horas **laborables**
-    y no que un aviso entrado el viernes a las 18:00 se incumpla el sábado a las
-    22:00, cuando no había nadie.
-    """
-
-    __tablename__ = "calendarios_laborales"
-
-    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
-    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    clave: Mapped[str] = mapped_column(String(60), nullable=False)
-    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    zona_horaria: Mapped[str] = mapped_column(String(60), nullable=False, default="Europe/Madrid")
-    pais: Mapped[str] = mapped_column(String(2), nullable=False, default="ES")
-
-    # Horario por día de la semana (0 = lunes): [{"desde":"09:00","hasta":"18:00"}].
-    # Una lista por día porque la jornada partida existe y es lo normal en varios
-    # sectores: con un solo intervalo, la hora de comer cuenta como laborable.
-    horario: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
-    )
-    por_defecto: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "clave", name="uq_calendario_clave"),
-        Index(
-            "ix_calendarios_defecto",
-            "tenant_id",
-            unique=True,
-            postgresql_where=text("por_defecto"),
-        ),
-    )
-
-
-class Festivo(Base):
-    """Un día no laborable de un calendario."""
-
-    __tablename__ = "festivos"
-
-    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
-    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    calendario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    fecha: Mapped[date] = mapped_column(Date, nullable=False)
-    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    # Si se repite cada año en la misma fecha (Navidad sí, Semana Santa no).
-    anual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    __table_args__ = (
-        UniqueConstraint("calendario_id", "fecha", name="uq_festivo_fecha"),
-        Index("ix_festivos_calendario", "tenant_id", "calendario_id", "fecha"),
-    )
-
-
-def es_laborable(db: Session, calendario: CalendarioLaboral, momento: datetime) -> bool:
-    """Si ese instante cae en horario laborable del calendario."""
-    dia = str(momento.weekday())
-    tramos = (calendario.horario or {}).get(dia) or []
-    if not tramos:
-        return False
-    if _es_festivo(db, calendario, momento.date()):
-        return False
-    hora = momento.time()
-    return any(
-        _hora(t.get("desde", "00:00")) <= hora < _hora(t.get("hasta", "23:59")) for t in tramos
-    )
-
-
-def _hora(texto: str) -> time:
-    try:
-        h, m = texto.split(":")[:2]
-        return time(int(h), int(m))
-    except (ValueError, AttributeError):
-        return time(0, 0)
-
-
-def _es_festivo(db: Session, calendario: CalendarioLaboral, dia: date) -> bool:
-    filas = db.execute(
-        select(Festivo).where(
-            Festivo.calendario_id == calendario.id,
-            Festivo.fecha == dia,
-        )
-    ).scalar_one_or_none()
-    if filas is not None:
-        return True
-    # Los anuales se comparan por día y mes, sin el año.
-    anuales = (
-        db.execute(
-            select(Festivo).where(Festivo.calendario_id == calendario.id, Festivo.anual.is_(True))
-        )
-        .scalars()
-        .all()
-    )
-    return any(f.fecha.month == dia.month and f.fecha.day == dia.day for f in anuales)
-
-
-def sumar_horas_laborables(
-    db: Session, calendario: CalendarioLaboral, desde: datetime, horas: float
-) -> datetime:
-    """Suma horas **laborables** a un instante.
-
-    Es la función que calcula cuándo vence un SLA de verdad. Avanza en pasos de
-    quince minutos: es suficiente resolución para un plazo de horas y evita el
-    bucle minuto a minuto, que con un plazo de 40 horas serían 2.400 vueltas.
-
-    Tiene un tope de 365 días para no colgarse si el calendario está vacío —un
-    calendario sin ningún tramo laborable haría que este bucle no terminara
-    nunca, y el síntoma sería una petición que no responde.
-    """
-    restantes = timedelta(hours=horas)
-    paso = timedelta(minutes=15)
-    actual = desde
-    limite = desde + timedelta(days=365)
-
-    while restantes > timedelta(0) and actual < limite:
-        if es_laborable(db, calendario, actual):
-            restantes -= paso
-        actual += paso
-
-    if actual >= limite:
-        logger.warning(
-            "calendario.sin_horario_laborable",
-            calendario=calendario.clave,
-            aviso="no se alcanzó el plazo en 365 días; revisa el horario",
-        )
-    return actual
-
+#
+# El modelo y el cálculo de horas laborables viven en el núcleo y NO aquí. Se
+# movieron al montar los relojes de SLA (CRM-04.01.02.04): `service` no puede
+# leer el esquema de `tenancy`, y un reloj que preguntara por HTTP en cada paso
+# del cálculo pondría el vencimiento de un caso a depender de otro servicio. La
+# tabla vive en el esquema de cada servicio y se replica por evento; se
+# administra aquí y se lee en todos.
+from crmcore.datos.calendario import (  # noqa: E402,F401
+    CALENDARIO_CAMBIADO,
+    CalendarioLaboral,
+    Festivo,
+    es_laborable,
+    sumar_horas_laborables,
+)
 
 # ── Monedas y tipos de cambio (CRM-07.01.01.06) ───────────────────────────
 #

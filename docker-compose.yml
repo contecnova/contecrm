@@ -76,7 +76,8 @@ x-servicio: &servicio
       metadata=http://metadata:8000,orchestrator=http://orchestrator:8000,
       automation=http://automation:8000,integration=http://integration:8000,
       eventing=http://eventing:8000,party=http://party:8000,
-      sales=http://sales:8000,analytics=http://analytics:8000
+      sales=http://sales:8000,analytics=http://analytics:8000,
+      service=http://service:8000
   depends_on:
     postgres: { condition: service_healthy }
     nats: { condition: service_started }
@@ -213,6 +214,16 @@ services:
       DATABASE_URL: postgresql+psycopg://crm_eventing_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_eventing_mig:contecrm_dev_only@postgres:5432/contecrm
     ports: ["127.0.0.1:8007:8000"]
+
+  service:
+    <<: *servicio
+    command: ["servicio", "service"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: service
+      DATABASE_URL: postgresql+psycopg://crm_service_app:contecrm_dev_only@postgres:5432/contecrm
+      DATABASE_ADMIN_URL: postgresql+psycopg://crm_service_mig:contecrm_dev_only@postgres:5432/contecrm
+    ports: ["127.0.0.1:8010:8000"]
 
   party:
     <<: *servicio

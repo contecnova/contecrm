@@ -169,3 +169,10 @@ class _LimitsSettings(BaseSettings):
     # Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el
     # modelo; al 100 % el aviso llega cuando ya no se puede añadir nada.
     metadata_aviso_pct: int = Field(80, ge=10, le=100)
+
+    # ── Casos (CRM-04.01.01.10) ───────────────────────────────────────────
+    # Días durante los que un caso cerrado se puede reabrir. Pasado el plazo se
+    # abre uno nuevo enlazado: reabrir un caso de hace ocho meses falsea todos
+    # los indicadores del periodo en que se cerró, y esos números ya están en un
+    # informe que alguien miró. 0 = sin límite, que se desaconseja.
+    caso_reapertura_dias: int = Field(30, ge=0, le=3650)

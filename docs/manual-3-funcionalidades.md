@@ -5408,3 +5408,138 @@ Un solo registro que dice quién cambió qué y **en qué herramienta acabó
 aplicándose**. Sin él, contestar «¿por qué este usuario sigue entrando en el
 gestor documental?» obliga a mirar tres registros de auditoría distintos y a
 cruzarlos de memoria.
+
+## Casos y SLA (`CRM-04.01.01`, `CRM-04.01.02`)
+
+Con este bloque nace el servicio `service`, el pilar de atención al cliente. Lo
+que gobierna todo lo demás: **un SLA que no se puede explicar no se puede
+exigir**.
+
+### Severidad y prioridad son dos campos (`CRM-04.01.01.01`)
+
+La **severidad** es del problema —qué está roto y cuánto—. La **prioridad** es de
+la respuesta —en qué orden se atiende—. Fundirlas en un solo campo, que es lo
+habitual, hace imposible decir «esto es grave pero puede esperar a mañana» y
+«esto es menor pero es para el cliente que renueva el viernes». Y en cuanto se
+funden, alguien empieza a marcar todo como crítico y el campo deja de significar
+nada.
+
+El caso lleva **código legible** (`CAS-2026-00042`): es lo que el cliente escribe
+en el asunto de un correo y lo que se dice por teléfono. Sin él, la referencia
+acaba siendo un identificador opaco que nadie transcribe bien.
+
+### La taxonomía es un árbol (`CRM-04.01.01.02`)
+
+Un árbol y no dos campos fijos —categoría y subcategoría— porque cada línea de
+servicio clasifica a su profundidad: soporte de software llega a tres niveles y
+mantenimiento de instalaciones a cinco. Con dos campos, el tercer nivel acaba
+concatenado dentro del segundo y los informes dejan de poder agrupar.
+
+**Solo las hojas clasifican.** Dejar elegir un nodo intermedio convierte
+«software» en un cajón donde acaba la mitad de los casos, y entonces la taxonomía
+no sirve para lo único que sirve: agrupar. La hoja puede **sugerir** prioridad,
+que propone y no impone: quien atiende sabe cosas que la taxonomía no.
+
+Y se guarda **la ruta hasta la raíz**, no solo la hoja: «cuántos casos de
+software» no se puede contestar si solo consta «error de licencia» sin saber de
+qué cuelga.
+
+### Con qué se relaciona (`CRM-04.01.01.03`)
+
+Cuenta, contacto, producto, activo, contrato y pedido van como **identificadores
+opacos y no como claves foráneas**: cuenta y contacto viven en `party`, y ningún
+servicio lee el esquema de otro. La integridad se apoya en el evento de borrado,
+no en la base de datos.
+
+### Jerarquía e incidencias masivas (`CRM-04.01.01.04`, `CRM-04.01.01.11`)
+
+Cien casos que son la misma caída se cuelgan de un **maestro**: se investiga una
+vez y se cierran juntos. Cerrarlos uno a uno no solo es trabajo — es que la
+respuesta que recibe cada cliente acaba siendo distinta.
+
+Un maestro **no cuelga de otro maestro**: la cadena se aplana a propósito, porque
+una cadena deja algo que nadie sabe cerrar.
+
+Un **duplicado no se borra**, se marca. El cliente que lo abrió tiene derecho a
+ver su caso y su respuesta; borrarlo hace que su referencia deje de existir, y
+quien pregunta por ella recibe un «no existe» que suena a que nadie le atendió.
+
+### Cierre tipificado y reapertura con ventana (`CRM-04.01.01.09`, `CRM-04.01.01.10`)
+
+El **motivo de cierre es obligatorio**. Sin él, el informe de cierres dice cuántos
+se cerraron y no por qué, que es la única parte útil: «resuelto», «no era un
+problema» y «el cliente no contestó» llevan a tres decisiones distintas.
+
+La reapertura tiene **ventana**. Pasada, no se reabre: se abre uno nuevo enlazado.
+Reabrir un caso de hace ocho meses falsea todos los indicadores del periodo en
+que se cerró —tiempo de resolución, cumplimiento de SLA, casos cerrados— y esos
+números ya están en un informe que alguien miró. El plazo es un ajuste en
+caliente, no una constante.
+
+### El SLA se versiona (`CRM-04.01.02.02`)
+
+Cambiar el SLA **no reescribe el pasado**. Cada publicación es una versión nueva,
+y el caso guarda con cuál se abrió. Un contrato renegociado no puede convertir en
+incumplidos casos que se atendieron a tiempo con las reglas de entonces, ni al
+revés — y esa es exactamente la trampa del SLA guardado como una fila que se
+edita.
+
+Gana **lo más específico**: un SLA nominal para una cuenta manda sobre el del
+tier, y el del tier sobre el general. Cogiendo el primero que encaje, un cliente
+con contrato especial recibiría el trato estándar, que es justo el que paga por no
+tener. Ante dos igual de específicas gana la **versión más alta**, porque publicar
+una versión nueva es la forma de decir «a partir de ahora, esta».
+
+Un caso **sin SLA aplicable se dice** en la respuesta del alta: un caso sin
+compromiso no es un caso cumplido, y si no se dice ahí nadie lo mira hasta el
+informe de fin de mes, donde sale como «sin datos».
+
+### Los relojes y las pausas (`CRM-04.01.02.03`, `CRM-04.01.02.04`)
+
+Los plazos son en **horas laborables**. Es lo que hace que un aviso entrado el
+viernes a las 18:00 no se incumpla el sábado a las 22:00, cuando no había nadie.
+
+Esto obligó a mover los calendarios laborales al núcleo: `service` no puede leer
+el esquema de `tenancy`, y un reloj que preguntara por HTTP cada vez que avanza
+pondría el vencimiento de un caso a depender de que otro servicio esté en pie.
+Se replican por evento, como los ajustes en caliente y los tipos de cambio; se
+administran en un sitio y se leen en todos. Si un tenant no tiene calendario, el
+plazo se cuenta en horas de reloj **y se avisa**: no es lo mismo, y dejar que
+parezca lo mismo es cómo un SLA de «4 horas» acaba venciendo un domingo de
+madrugada sin que nadie lo entienda.
+
+Los vencimientos se **guardan calculados**, no se recalculan al consultar. Es la
+otra cara del SLA versionado: recalcular haría que cambiar la definición
+reescribiera el pasado.
+
+Entrar en «esperando cliente» **para el reloj**, y salir lo reanuda **desplazando
+el vencimiento** por el tiempo parado. Si no se desplazara, parar el reloj sería
+decorativo: el caso se marcaría incumplido por una espera que era del cliente. Y
+la pausa **se acumula**: un caso que entra y sale cuatro veces perdería tres de
+las cuatro esperas si solo se guardara la última, y el tiempo de resolución
+saldría peor de lo que fue — lo que acaba en una discusión con el cliente que no
+se puede ganar sin el dato.
+
+**Solo la primera respuesta cuenta como primera.** Registrar cada respuesta como
+tal haría que el indicador midiera la última, que es el número que siempre sale
+bien.
+
+Y los dos incumplimientos se marcan **por separado**: incumplir la primera
+respuesta y incumplir la resolución son dos conversaciones distintas con el
+cliente.
+
+### Avisar antes, no después (`CRM-04.01.02.05`)
+
+Avisar **cuando ya se ha incumplido** no sirve para nada: el incumplimiento ya
+está. Lo único que cambia algo es avisar antes, y por eso el umbral es parte del
+SLA y no una constante.
+
+La lista de casos en riesgo se ordena por **lo que queda**, no por prioridad: un
+caso crítico con seis horas por delante puede esperar a uno medio que vence en
+diez minutos. Y lo **ya incumplido se marca aparte**: mezclarlo haría que la lista
+de «en riesgo» se llenara de cosas sin remedio y dejara de mirarse.
+
+El informe de cumplimiento cuenta **la primera respuesta y la resolución por
+separado**: un porcentaje único esconde que se contesta rápido y se resuelve
+tarde, que es el patrón más común y el que más queja genera. Sin casos con
+compromiso no dice 100 %, dice que no es medible.

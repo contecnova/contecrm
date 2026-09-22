@@ -136,6 +136,10 @@ def crear_servicio(
                     POLITICA_CAMBIADA,
                     consumir_politica,
                 )
+                from crmcore.datos.calendario import (
+                    CALENDARIO_CAMBIADO,
+                    consumir_calendario,
+                )
                 from crmcore.datos.cambio import (
                     TIPO_CAMBIO_FIJADO,
                     consumir_tipo_cambio,
@@ -186,6 +190,12 @@ def crear_servicio(
                     # mil llamadas de red, y porque una previsión no puede
                     # depender de que otro servicio esté en pie.
                     (TIPO_CAMBIO_FIJADO, consumir_tipo_cambio, f"{nombre}-fx"),
+                    # Los calendarios laborales (CRM-04.01.02.04). Un servicio
+                    # que no los replicara calcularía los vencimientos con el
+                    # horario de fábrica mientras el resto usa el del cliente, y
+                    # el incumplimiento que reportara no coincidiría con el que
+                    # ve el cliente.
+                    (CALENDARIO_CAMBIADO, consumir_calendario, f"{nombre}-cal"),
                     # El esquema que el tenant se define (CRM-00.04.03.02). Un
                     # servicio que no lo replicara seguiría validando con los
                     # campos de ayer: rechazaría el campo que el consultor acaba

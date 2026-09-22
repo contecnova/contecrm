@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**686 capacidades**: ✅ 312 hecho · ⬜ 374 pendiente
+**686 capacidades**: ✅ 322 hecho · ⬜ 364 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -731,7 +731,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ⬜ 62
+62 capacidades · ✅ 10 · ⬜ 52
 
 ### 4.1 Gestión de casos
 
@@ -739,16 +739,16 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-04.01.01.01` | Caso con tipo, categoría, subcategoría, prioridad, severidad, origen y estado | C | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/tickets.py + app/services/service_desk/ |
-| `CRM-04.01.01.02` | Taxonomía configurable con árboles de clasificación por línea de servicio | C | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/catalog.py + app/services/service_desk/catalog_service.py |
-| `CRM-04.01.01.03` | Relación del caso con cuenta, contacto, producto, activo, pedido, contrato | C | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/cmdb.py + assets.py |
-| `CRM-04.01.01.04` | Jerarquía de casos: padre-hijo, casos relacionados y duplicados | A | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/problems.py |
+| `CRM-04.01.01.01` | Caso con tipo, categoría, subcategoría, prioridad, severidad, origen y estado | C | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/tickets.py + app/services/service_desk/ |
+| `CRM-04.01.01.02` | Taxonomía configurable con árboles de clasificación por línea de servicio | C | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/catalog.py + app/services/service_desk/catalog_service.py |
+| `CRM-04.01.01.03` | Relación del caso con cuenta, contacto, producto, activo, pedido, contrato | C | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/cmdb.py + assets.py |
+| `CRM-04.01.01.04` | Jerarquía de casos: padre-hijo, casos relacionados y duplicados | A | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/problems.py |
 | `CRM-04.01.01.05` | Colas de trabajo, asignación automática y balanceo por carga y competencia | C | 3 | service | ⬜ | contecflow-PSA:app/services/service_desk/agent_group_service.py |
 | `CRM-04.01.01.06` | Enrutamiento omnicanal con capacidad por agente y por canal | A | 3 | service | ⬜ | contecflow-PSA:app/services/service_desk/capacity_planning_service.py |
 | `CRM-04.01.01.07` | Escalados automáticos por tiempo, severidad, cliente VIP o incumplimiento | C | 3 | service | ⬜ | contecflow-PSA:app/services/sla_service.py (escalados) |
 | `CRM-04.01.01.08` | Casos internos, derivación a segundo/tercer nivel y a ingeniería | A | 3 | service | ⬜ | — |
-| `CRM-04.01.01.09` | Motivos de cierre, resolución tipificada y validación de cierre por el cliente | C | 3 | service | ⬜ | — |
-| `CRM-04.01.01.10` | Reapertura con ventana configurable y trazabilidad | A | 3 | service | ⬜ | — |
+| `CRM-04.01.01.09` | Motivos de cierre, resolución tipificada y validación de cierre por el cliente | C | 3 | service | ✅ | — |
+| `CRM-04.01.01.10` | Reapertura con ventana configurable y trazabilidad | A | 3 | service | ✅ | — |
 | `CRM-04.01.01.11` | Gestión de problemas e incidentes masivos (varios casos vinculados a una causa) | A | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/problems.py + app/services/service_desk/alert_correlation_service.py |
 | `CRM-04.01.01.12` | Encuesta de satisfacción automática (CSAT/CES/NPS) tras el cierre | A | 3 | service | ⬜ | contecflow-PSA:app/services/nps_service.py + app/models/nps.py |
 
@@ -757,10 +757,10 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-04.01.02.01` | Entitlements por contrato, producto, cliente o plan | A | 3 | service | ⬜ | contecmind:app/services/entitlements.py |
-| `CRM-04.01.02.02` | Definición de SLA por prioridad y por tipo de cliente | C | 3 | service | ⬜ | contecflow-PSA:app/models/service_desk/sla.py + app/services/sla_service.py |
-| `CRM-04.01.02.03` | Relojes de primera respuesta, resolución y actualización periódica | C | 3 | service | ⬜ | contecflow-PSA:app/services/sla_service.py (relojes) |
-| `CRM-04.01.02.04` | Calendarios laborales, festivos por país y pausas de reloj | A | 3 | service | ⬜ | contecpos:services/agenda (calendarios y festivos) |
-| `CRM-04.01.02.05` | Alertas de riesgo de incumplimiento antes del vencimiento | C | 3 | service | ⬜ | — |
+| `CRM-04.01.02.02` | Definición de SLA por prioridad y por tipo de cliente | C | 3 | service | ✅ | contecflow-PSA:app/models/service_desk/sla.py + app/services/sla_service.py |
+| `CRM-04.01.02.03` | Relojes de primera respuesta, resolución y actualización periódica | C | 3 | service | ✅ | contecflow-PSA:app/services/sla_service.py (relojes) |
+| `CRM-04.01.02.04` | Calendarios laborales, festivos por país y pausas de reloj | A | 3 | service | ✅ | contecpos:services/agenda (calendarios y festivos) |
+| `CRM-04.01.02.05` | Alertas de riesgo de incumplimiento antes del vencimiento | C | 3 | service | ✅ | — |
 | `CRM-04.01.02.06` | Bolsas de horas, contadores de incidencias y consumo del entitlement | A | 3 | service | ⬜ | — |
 | `CRM-04.01.02.07` | Informe de cumplimiento de SLA por periodo, cliente y equipo | C | 3 | service | ⬜ | contecflow-PSA:app/services/service_desk/analytics_service.py |
 | `CRM-04.01.02.08` | Penalizaciones y créditos de servicio calculados | D | 3 | service | ⬜ | — |

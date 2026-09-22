@@ -295,6 +295,14 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=8_760,
             campo_settings="trabajo_retencion_h",
         ),
+        _c(
+            "caso_reapertura_dias",
+            "int",
+            "Días durante los que un caso cerrado se puede reabrir (0 = sin límite)",
+            minimo=0,
+            maximo=3650,
+            campo_settings="caso_reapertura_dias",
+        ),
         # Identidad
         _c(
             "mfa_obligatoria",

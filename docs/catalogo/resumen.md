@@ -10,7 +10,7 @@
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 31 | 0 | 23 |
 | 2 — Marketing | 54 | 0 | 0 | 54 |
 | 3 — Ventas (SFA) | 65 | 17 | 0 | 48 |
-| 4 — Servicio y atención al cliente | 62 | 0 | 0 | 62 |
+| 4 — Servicio y atención al cliente | 62 | 10 | 0 | 52 |
 | 5 — Analítica, inteligencia e IA | 57 | 0 | 0 | 57 |
 | 6 — Productividad y colaboración | 29 | 3 | 0 | 26 |
 | 7 — Administración, ALM y gobierno | 91 | 67 | 0 | 24 |
@@ -20,8 +20,8 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 268 | 195 |
-| A — Avanzado | 374 | 114 |
+| C — Core | 268 | 202 |
+| A — Avanzado | 374 | 117 |
 | D — Diferencial | 44 | 3 |
 
 ## Por fase
@@ -31,7 +31,7 @@
 | 0 · Cimientos | Módulo 0 completo | 179 | 152 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 138 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 154 | 22 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 0 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 10 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 0 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 0 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 0 |
