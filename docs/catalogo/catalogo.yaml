@@ -701,28 +701,28 @@ modulos:
           - id: CRM-02.02.02
             nombre: Journey builder / automatización de marketing
             capacidades:
-              - {id: CRM-02.02.02.01, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "orchestrator (motor de procesos de la fase 0)", t: "Diseñador visual de recorridos con disparadores, esperas, ramas y objetivos"}
-              - {id: CRM-02.02.02.02, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Entrada por evento, por segmento, por API o manual"}
-              - {id: CRM-02.02.02.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió)"}
-              - {id: CRM-02.02.02.04, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Tests A/B y multivariante dentro del recorrido con selección automática de ganador"}
+              - {id: CRM-02.02.02.01, c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "orchestrator (motor de procesos de la fase 0)", t: "Diseñador visual de recorridos con disparadores, esperas, ramas y objetivos"}
+              - {id: CRM-02.02.02.02, c: A, fase: 4, svc: marketing, estado: hecho, t: "Entrada por evento, por segmento, por API o manual"}
+              - {id: CRM-02.02.02.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió)"}
+              - {id: CRM-02.02.02.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Tests A/B y multivariante dentro del recorrido con selección automática de ganador"}
               - {id: CRM-02.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Optimización de hora y canal de envío por destinatario"}
               - {id: CRM-02.02.02.06, c: A, fase: 4, svc: marketing, estado: hecho, t: "Reglas de fatiga y frecuencia máxima de contacto por persona"}
-              - {id: CRM-02.02.02.07, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario"}
-              - {id: CRM-02.02.02.08, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Analítica por nodo del recorrido con embudo visual"}
-              - {id: CRM-02.02.02.09, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Recorridos para B2B basados en cuenta (ABM) y no solo en persona"}
+              - {id: CRM-02.02.02.07, c: A, fase: 4, svc: marketing, estado: hecho, t: "Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario"}
+              - {id: CRM-02.02.02.08, c: A, fase: 4, svc: marketing, estado: hecho, t: "Analítica por nodo del recorrido con embudo visual"}
+              - {id: CRM-02.02.02.09, c: A, fase: 4, svc: marketing, estado: hecho, t: "Recorridos para B2B basados en cuenta (ABM) y no solo en persona"}
       - id: "2.3"
         nombre: Canales de ejecución
         funciones:
           - id: CRM-02.03.01
             nombre: Email marketing
             capacidades:
-              - {id: CRM-02.03.01.01, c: C, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py", t: "Editor de plantillas con bloques reutilizables y contenido dinámico"}
+              - {id: CRM-02.03.01.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py", t: "Editor de plantillas con bloques reutilizables y contenido dinámico"}
               - {id: CRM-02.03.01.02, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Personalización con tokens, contenido condicional y recomendaciones"}
               - {id: CRM-02.03.01.03, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up"}
               - {id: CRM-02.03.01.04, c: C, fase: 4, svc: marketing, estado: hecho, t: "Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación"}
-              - {id: CRM-02.03.01.05, c: C, fase: 4, svc: marketing, estado: pendiente, t: "Preferencias de suscripción granulares y centro de preferencias alojable"}
+              - {id: CRM-02.03.01.05, c: C, fase: 4, svc: marketing, estado: hecho, t: "Preferencias de suscripción granulares y centro de preferencias alojable"}
               - {id: CRM-02.03.01.06, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Previsualización multi-cliente de correo y test de spam score"}
-              - {id: CRM-02.03.01.07, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Envío transaccional separado del promocional, con dominios distintos"}
+              - {id: CRM-02.03.01.07, c: A, fase: 4, svc: marketing, estado: hecho, t: "Envío transaccional separado del promocional, con dominios distintos"}
           - id: CRM-02.03.02
             nombre: Otros canales
             capacidades:
@@ -1340,6 +1340,8 @@ anexo_b_eventos:
   - {type: dashboard.alert.cleared, fase: 2, svc: analytics}
   - {type: cadence.step.due, fase: 2, svc: sales}
   - {type: cadence.exited, fase: 2, svc: sales}
+  - {type: journey.action.due, fase: 4, svc: marketing}
+  - {type: preferences.changed, fase: 4, svc: marketing}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

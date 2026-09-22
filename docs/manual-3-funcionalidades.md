@@ -7614,3 +7614,167 @@ automático—, que necesita un proveedor de telefonía y va con el bloque de
 conectores nativos. Y de metodología quedan la **guía de próximos pasos con
 contenido** (`CRM-03.01.02.04`, fase 5), el **plan conjunto con el cliente**
 (`CRM-03.01.02.05`) y la **revisión de deal estructurada** (`CRM-03.01.02.06`).
+
+## Recorridos de cliente (`CRM-02.02.02`)
+
+Un recorrido es un proceso con una diferencia: lo ejecutan miles de personas a la
+vez y **cada una va por su sitio**. Eso es lo que hace que no viva en el motor de
+procesos: un proceso tiene una instancia por expediente, un recorrido tiene una
+por contacto y decenas de miles vivas, y meterlas en el motor convertiría cada
+envío masivo en cien mil instancias duraderas con su compensación.
+
+### El lienzo es la definición (`CRM-02.02.02.01`)
+
+Como en el motor de procesos: nodos con su tipo, sus salidas y sus posiciones
+dentro del mismo documento. Con el dibujo aparte, el día que se desincronizaran el
+diagrama enseñaría un recorrido que no es el que se ejecuta.
+
+Se valida **antes de publicar y no al ejecutar**: un recorrido roto descubierto en
+ejecución son diez mil personas paradas a mitad de camino, y sacarlas de ahí cuesta
+más que el error. Se rechaza un destino que no existe, una decisión sin ramas, una
+prueba cuyos pesos no suman cien y —esta es la que importa— **una decisión por
+comportamiento sin plazo**: nadie «no ha abierto» hasta que se decide cuándo se
+deja de esperar.
+
+Se avisa, sin impedir, de los nodos a los que no llega nadie y de que no haya
+salidas declaradas.
+
+Al publicar, **quien está dentro sigue con su versión**. Cambiar el recorrido bajo
+los pies de quien ya recibió tres correos produce saltos que nadie puede explicar
+después, y son justo los que se descubren por una queja.
+
+### Entrar (`CRM-02.02.02.02`)
+
+Cuatro comprobaciones, ninguna opcional: que esté publicado, que no esté ya dentro
+—quien recorrió la bienvenida no la necesita otra vez—, que no esté en un recorrido
+**excluyente** —sin eso, quien pasa de captación a cliente recibe las dos cosas a
+la vez— y que se le pueda escribir.
+
+Y cuando no se puede, **se dice por qué exactamente**: «suprimido» y «sin
+dirección» son cosas distintas, y llamar suprimido a quien no tiene correo manda a
+buscar una baja que no existe. Esa distinción salió al escribir las pruebas: el
+filtro de marketing devuelve los dos casos juntos, y pasarlos tal cual habría
+convertido dos problemas en uno mal etiquetado.
+
+En B2B se puede limitar a **uno por cuenta**: cuatro personas de la misma empresa
+recibiendo la misma secuencia es cuatro veces el mismo mensaje en la misma
+reunión.
+
+### Salir es lo que más importa (`CRM-02.02.02.07`)
+
+Las salidas se declaran **arriba, valen para todos los nodos y se comprueban antes
+de cada paso**. Un recorrido del que no se sale a tiempo manda la oferta de
+bienvenida a quien ya compró; comprobarlo solo al entrar lo dejaría recibiéndola
+hasta el final.
+
+Hay además un **tope de días**: sin él la gente se queda dentro años, recibiendo un
+paso que alguien añadió al final sin pensar en ellos.
+
+### Decisiones por comportamiento (`CRM-02.02.02.03`)
+
+«Abrió», «hizo clic», «visitó», «compró» y «no respondió» son eventos que ocurren
+fuera, y la rama se resuelve cuando llegan o cuando vence la espera.
+
+Un comportamiento se anota **en todos los recorridos donde esté la persona a la
+vez**: el mismo clic resuelve la rama de los tres, y anotarlo en uno solo dejaría a
+los otros dos esperando algo que ya ocurrió. Y si estaba esperando, **se despierta
+ya**: esperar al plazo cuando la respuesta ya está es hacer esperar cinco días a
+quien contestó en cinco minutos.
+
+### Pruebas A/B (`CRM-02.02.02.04`)
+
+El reparto es **estable por persona**, calculado desde su identificador y no al
+azar. Con `random`, reintentar un paso movería a alguien de la rama A a la B y su
+historial diría dos cosas distintas.
+
+Y **con pocos datos no se declara ganadora**. Con treinta personas por rama la
+diferencia que se ve es ruido, y elegir por ella es peor que no probar: consolida
+una variante peor con la confianza de haberla medido.
+
+### Supresión y fatiga se heredan, no se reinventan
+
+Antes de cada acción se comprueban las dos. Lo que se salta sale en `omitidos` y
+**no cuenta como enviado**: contarlo inflaría el embudo con correos que nadie
+recibió.
+
+Un suprimido a mitad **no para el recorrido**: se salta el envío y se sigue.
+Pararlo dejaría a la persona atascada en un nodo para siempre, y volver a meterla
+después sería imposible sin tocar la base a mano.
+
+### Analítica por nodo (`CRM-02.02.02.08`)
+
+Se cuenta **gente distinta por nodo**, no pasos: un bucle haría que un nodo tuviera
+más pasos que personas y el embudo saldría al revés. Y la caída se dice entre nodos
+**consecutivos del camino**, no contra el total: contra el total, un nodo al que
+solo llega una rama parece un desastre cuando está funcionando.
+
+Si el recorrido tiene ramas **se avisa**, porque entonces el camino principal es
+una aproximación y fingir que hay uno solo daría un embudo que no describe a nadie.
+
+### Recorridos por cuenta (`CRM-02.02.02.09`)
+
+El mismo mecanismo de `por_cuenta` de la entrada: en B2B el sujeto es la empresa y
+no la persona, y tratarlo al revés multiplica el mensaje por el número de contactos
+que tenga.
+
+## Plantillas y preferencias de correo (`CRM-02.03.01`)
+
+### Bloques reutilizables (`CRM-02.03.01.01`)
+
+El pie legal, la cabecera y el bloque de baja viven **en un solo sitio**. Con
+plantillas enteras copiadas, cambiar el pie exige tocar cuarenta y siempre quedan
+seis con el viejo — que es exactamente el que trae la dirección que ya no existe.
+
+Los bloques marcados como obligatorios **se añaden a toda plantilla promocional
+aunque quien la monte se olvide**, y se dice cuáles se añadieron: quien
+previsualiza tiene que entender por qué aparece un pie que él no puso. El de baja
+lo es por ley, y confiar en que alguien lo arrastre es cómo se manda una campaña
+sin él.
+
+Un bloque que falta **no se ignora**: la plantilla saldría con un hueco y nadie
+sabría de dónde salió.
+
+Y los tokens se comprueban antes de mandar: un «Hola {{nombre}}» sin sustituir no
+es un fallo técnico, es un correo que dice en voz alta que es automático y lo
+reciben miles de personas a la vez.
+
+### Darse de baja no puede ser todo o nada (`CRM-02.03.01.05`)
+
+Quien solo quiere dejar de recibir la newsletter y se encuentra un botón que le
+saca de todo, incluidas las facturas, marca el correo como basura. Y eso no se
+puede deshacer.
+
+Por eso hay **categorías**. Las obligatorias —avisos de servicio, facturación— no
+se pueden apagar, y salen **marcadas como tales y no como una casilla apagada**:
+enseñar una casilla que no se puede desmarcar se lee como un engaño, y decir «esto
+no se puede quitar porque es tu factura» se entiende.
+
+Si alguien intenta apagar una obligatoria **se dice cuál se ha ignorado** en vez de
+fingir que se guardó: dejar creer que se apagó el aviso de facturación produce la
+queja de «sigo recibiendo lo que quité».
+
+Una plantilla promocional **sin categoría no se manda**: no se podría rechazar por
+categorías, así que darle paso equivaldría a un canal que nadie puede apagar.
+
+Y la comprobación previa al envío junta bloques y preferencias **en una sola
+llamada**: la que se olvida es siempre la misma —las preferencias— y el resultado
+es un correo a quien se dio de baja.
+
+### Transaccional y promocional por dominios distintos (`CRM-02.03.01.07`)
+
+No es una manía: **comparten reputación de dominio**, así que una campaña con
+muchas quejas hunde la entrega de las facturas. Y al revés, mezclarlos hace que
+darse de baja de la newsletter parezca que apaga los avisos de servicio.
+
+Los dos dominios son ajustes (`dominio_promocional`, `dominio_transaccional`) y
+están **vacíos por defecto a propósito**: así el sistema dice que no están
+separados en vez de fingir que sí con un valor inventado. Si no lo están, se avisa
+— porque el día que la entrega se hunda, nadie sabrá por qué.
+
+### Lo que todavía no está
+
+De marketing quedan la **personalización con contenido condicional**
+(`CRM-02.03.01.02`), la **entregabilidad** con SPF/DKIM/DMARC y calentamiento de IP
+(`CRM-02.03.01.03`), la **previsualización multi-cliente y el test de spam**
+(`CRM-02.03.01.06`), y de los recorridos la **optimización de hora y canal por
+destinatario** (`CRM-02.02.02.05`, fase 5).

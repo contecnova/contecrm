@@ -373,3 +373,17 @@ __all__ = [
     "VersionAjuste",
     "VersionPoliticaAbac",
 ]
+
+# Los recorridos y el correo viven en sus propios módulos —cada uno con su
+# lógica— pero sus tablas son de este esquema y tienen que importarse aquí.
+from services.marketing.correo import (  # noqa: E402,F401
+    BloqueCorreo,
+    CategoriaPreferencia,
+    PlantillaMarketing,
+    Preferencia,
+)
+from services.marketing.recorridos import (  # noqa: E402,F401
+    EnRecorrido,
+    PasoRecorrido,
+    Recorrido,
+)

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 461 hecho · ⬜ 246 pendiente
+**707 capacidades**: ✅ 471 hecho · ⬜ 236 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -539,7 +539,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 20 · ⬜ 34
+54 capacidades · ✅ 30 · ⬜ 24
 
 ### 2.1 Segmentación y audiencias
 
@@ -586,15 +586,15 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.02.02.01` | Diseñador visual de recorridos con disparadores, esperas, ramas y objetivos | A | 4 | marketing | ⬜ | orchestrator (motor de procesos de la fase 0) |
-| `CRM-02.02.02.02` | Entrada por evento, por segmento, por API o manual | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.02.03` | Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió) | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.02.04` | Tests A/B y multivariante dentro del recorrido con selección automática de ganador | A | 4 | marketing | ⬜ | — |
+| `CRM-02.02.02.01` | Diseñador visual de recorridos con disparadores, esperas, ramas y objetivos | A | 4 | marketing | ✅ | orchestrator (motor de procesos de la fase 0) |
+| `CRM-02.02.02.02` | Entrada por evento, por segmento, por API o manual | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.02.03` | Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió) | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.02.04` | Tests A/B y multivariante dentro del recorrido con selección automática de ganador | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.05` | Optimización de hora y canal de envío por destinatario | A | 5 | intelligence | ⬜ | — |
 | `CRM-02.02.02.06` | Reglas de fatiga y frecuencia máxima de contacto por persona | A | 4 | marketing | ✅ | — |
-| `CRM-02.02.02.07` | Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.02.08` | Analítica por nodo del recorrido con embudo visual | A | 4 | marketing | ⬜ | — |
-| `CRM-02.02.02.09` | Recorridos para B2B basados en cuenta (ABM) y no solo en persona | A | 4 | marketing | ⬜ | — |
+| `CRM-02.02.02.07` | Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.02.08` | Analítica por nodo del recorrido con embudo visual | A | 4 | marketing | ✅ | — |
+| `CRM-02.02.02.09` | Recorridos para B2B basados en cuenta (ABM) y no solo en persona | A | 4 | marketing | ✅ | — |
 
 ### 2.3 Canales de ejecución
 
@@ -602,13 +602,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.03.01.01` | Editor de plantillas con bloques reutilizables y contenido dinámico | C | 4 | marketing | ⬜ | contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py |
+| `CRM-02.03.01.01` | Editor de plantillas con bloques reutilizables y contenido dinámico | C | 4 | marketing | ✅ | contecmind:app/services/email.py + plantillas; contecweb:app/services/email.py |
 | `CRM-02.03.01.02` | Personalización con tokens, contenido condicional y recomendaciones | A | 4 | marketing | ⬜ | — |
 | `CRM-02.03.01.03` | Gestión de entregabilidad: SPF, DKIM, DMARC, BIMI, IP dedicada, warm-up | A | 4 | marketing | ⬜ | — |
 | `CRM-02.03.01.04` | Gestión de rebotes duros y blandos, quejas y bucles de retroalimentación | C | 4 | marketing | ✅ | — |
-| `CRM-02.03.01.05` | Preferencias de suscripción granulares y centro de preferencias alojable | C | 4 | marketing | ⬜ | — |
+| `CRM-02.03.01.05` | Preferencias de suscripción granulares y centro de preferencias alojable | C | 4 | marketing | ✅ | — |
 | `CRM-02.03.01.06` | Previsualización multi-cliente de correo y test de spam score | A | 4 | marketing | ⬜ | — |
-| `CRM-02.03.01.07` | Envío transaccional separado del promocional, con dominios distintos | A | 4 | marketing | ⬜ | — |
+| `CRM-02.03.01.07` | Envío transaccional separado del promocional, con dominios distintos | A | 4 | marketing | ✅ | — |
 
 #### CRM-02.03.02 · Otros canales
 

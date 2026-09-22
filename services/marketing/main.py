@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
+from services.marketing import (
+    ajustes,  # noqa: F401  (registra las claves de ajuste)
+    eventos,  # noqa: F401  (registra los tipos de evento)
+)
 from services.marketing.api import ROUTERS
+from services.marketing.api_recorridos import ROUTERS_RECORRIDOS
 from services.marketing.proyeccion import consumir
 
 app = crear_servicio(
@@ -13,9 +18,11 @@ app = crear_servicio(
         "Segmentos con condiciones anidadas y operadores temporales, dinámicos o "
         "congelados, con supresiones que se aplican siempre por encima; y "
         "puntuación de leads en dos ejes —encaje e interés— con decaimiento y "
-        "umbrales que exigen los dos."
+        "umbrales que exigen los dos. Encima, los recorridos: el lienzo es la "
+        "definición, las salidas se comprueban antes de cada paso y la "
+        "supresión manda sobre lo que diga el recorrido."
     ),
-    routers=ROUTERS,
+    routers=[*ROUTERS, *ROUTERS_RECORRIDOS],
     # El perfil de marketing se alimenta por evento: este servicio no puede leer
     # el esquema de `party` ni el de `sales`, y calcular un segmento no puede
     # depender de que estén en pie. El patrón es ancho porque el propio
