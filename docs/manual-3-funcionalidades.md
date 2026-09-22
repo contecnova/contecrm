@@ -6745,3 +6745,184 @@ Las **plantillas de flujo por sector** (`CRM-00.03.05.15`) no están. Van con lo
 módulos verticales —un manifiesto ya trae su sección de `flujos`—, y ponerlas
 aquí como una lista aparte habría creado dos sitios donde vive un flujo de
 ejemplo.
+
+## Cotización: del catálogo al pedido (`CRM-03.03.02`)
+
+La oportunidad ya llevaba líneas con `producto_id`, pero ese identificador no
+apuntaba a nada: el comercial escribía la descripción y el precio a mano. Eso
+funciona en una demostración y se rompe en el segundo cliente, porque nadie puede
+responder «¿qué le cobramos a este por esto?» sin abrir presupuestos antiguos.
+
+### El precio no es un campo: es el resultado de unas reglas (`CRM-03.03.02.03`)
+
+El precio de catálogo es el punto de partida; encima van las listas por cliente,
+por canal, por volumen, por moneda y por vigencia. Con un campo `precio` en el
+producto, cada acuerdo comercial acaba siendo un producto duplicado —«CAJA-10
+ACME»— y a los dos años el catálogo tiene tres mil referencias y doscientas
+reales.
+
+`GET /listas-precio/calcular` devuelve el precio **y qué reglas lo produjeron, en
+orden**. Un precio que no se puede explicar se discute con el cliente delante, y
+entonces se acaba dando el descuento igual.
+
+Cuatro decisiones del motor:
+
+* **Cuando dos listas encajan gana la de prioridad más baja**, declarada. Si el
+  desempate fuera implícito, el precio dependería del orden de inserción en la
+  base y cambiaría al restaurar una copia.
+* **Una regla puede ser exclusiva** y cortar el paso a las siguientes. Hace falta
+  para los precios cerrados por contrato: sin ella, una promoción posterior
+  bajaría un precio ya pactado y nadie lo vería hasta la factura.
+* **El precio nunca baja de cero.** Una regla mal escrita que lo dejara en
+  negativo produciría un abono en vez de una venta, y eso llega a contabilidad
+  antes de que nadie lo mire.
+* **Cuando no se aplicó ninguna regla se dice** (`de_catalogo`): es la diferencia
+  entre «le cobramos su tarifa» y «le cobramos la de catálogo porque no tiene
+  tarifa».
+
+El motor está portado de la forma del de contecpos
+(`services/catalogo/src/pricing/pricing.engine.ts`): reglas ordenadas por
+prioridad, acciones tipadas y rastro de lo aplicado. Cambia el lenguaje de
+condiciones —allí JSON-logic, aquí la misma gramática que ya usan el reparto de
+leads, la asignación de casos, los segmentos y la elección de transportista—
+porque dos gramáticas en el mismo producto obligarían a aprender las dos para
+configurar una implantación.
+
+### Qué va con qué (`CRM-03.03.02.02`)
+
+Las relaciones entre productos —`requiere`, `excluye`, `incluye`, `sugiere`— son
+reglas del cliente, y meterlas en el código convierte cada implantación en una
+rama del producto.
+
+`POST /productos/comprobar-configuracion` devuelve **problemas y sugerencias por
+separado**, y no bloquea por las segundas: una regla `sugiere` que impidiera
+guardar convertiría una recomendación comercial en un obstáculo, y lo que se hace
+entonces es borrarla del catálogo. Lo que falta por `requiere` sale con el motivo
+escrito en la regla, porque un «no se puede» sin motivo hace que quien está con el
+cliente delante lo salte por otro camino.
+
+### Un presupuesto no se edita: se versiona (`CRM-03.03.02.01`)
+
+La versión 2 es otro documento, no la 1 corregida. Editar en sitio hace imposible
+responder a «esto no es lo que me mandaste», que es la conversación que de verdad
+ocurre. La anterior queda `sustituido`, no borrada: sigue siendo lo que el cliente
+tiene en su correo.
+
+Copiar una versión **no recalcula los precios**. Si lo hiciera, cambiar una coma
+del título movería el precio porque las tarifas habrían cambiado entre medias, y
+nadie entendería por qué.
+
+`GET /presupuestos/{id}/cambios` calcula la diferencia al pedirla y no la guarda:
+una diferencia guardada se queda desfasada en cuanto alguien corrige una línea, y
+entonces miente con toda la apariencia de ser un dato.
+
+Un presupuesto lleva **fecha de caducidad**. Sin ella el precio se vuelve eterno y
+el cliente lo saca dos años después; y `POST /presupuestos/caducar-vencidos` los
+marca, porque uno que sigue diciendo «enviado» seis meses más tarde aparece en el
+pipeline como negocio vivo y la previsión lo cuenta.
+
+### El descuento se decide contra el margen (`CRM-03.03.02.04`, `CRM-03.03.02.05`)
+
+Un 20 % sobre un producto con 60 puntos de margen y un 20 % sobre uno con 12 son
+cosas distintas, y una matriz que solo mire el porcentaje aprueba la segunda sin
+que nadie se entere. La política mira **las dos cosas**, y además el suelo propio
+del producto, que existe porque el general no le vale.
+
+**Cuando el margen no se sabe, no se deja pasar.** Se exige aprobación y se dice
+que es por eso. Tratar «no lo sé» como «está bien» es cómo se firma un presupuesto
+que pierde dinero. Por el mismo motivo, el margen del presupuesto solo se calcula
+si se conoce el coste de **todas** las líneas: con una sola sin coste saldría
+inflado y se usaría para aprobar un descuento que no se puede dar.
+
+El control está **en el servidor y no en la pantalla**: si dependiera del front,
+bastaría una integración que llamara a la API para saltarse la matriz entera. Los
+dos umbrales son ajustes en caliente (`descuento_libre_pct`, `margen_minimo_pct`),
+no constantes: la política cambia con cada campaña, y un despliegue por cada
+cambio hace que se acabe aprobando a mano «esta vez».
+
+Cuando hace falta aprobación, el presupuesto se para y emite
+`quote.approval.needed` **con los motivos dentro**, para que quien abra la
+aprobación —el motor del capítulo anterior— no tenga que recalcular la matriz para
+explicarla.
+
+### El documento (`CRM-03.03.02.06`)
+
+`GET /presupuestos/{id}/documento` devuelve **datos y no un PDF**. La maquetación,
+la marca y el idioma son del generador documental, común a toda la suite; generar
+el binario aquí metería tipografías y plantillas dentro del servicio de ventas y
+obligaría a desplegarlo para cambiar un logotipo.
+
+Lleva la marca y el idioma **del propio presupuesto**, no los del tenant: un grupo
+con tres marcas manda ofertas con la que corresponda y quien la compone no tiene
+que adivinarlo.
+
+**El coste y el margen no salen**, y el descuento solo se enseña si lo hay: una
+columna de ceros invita a pedir descuento a quien no lo había pedido. Las dos
+cosas se deciden en el servidor y no en la plantilla, porque enseñarle al cliente
+lo que nos cuesta su pedido es el error más caro que se puede cometer al componer
+una oferta.
+
+### Aceptar: nace el pedido
+
+Se comprueba la vigencia —aceptar un presupuesto caducado sin decir nada es cómo
+se sirve a precio de hace un año— y se comprueba que **haya cuenta**. Un
+presupuesto se puede preparar para un posible cliente que todavía no es cuenta; un
+pedido no: sin cuenta no hay a quién facturar, y dejarlo pasar convierte el
+problema en un rechazo del ERP dos días después, con el pedido ya prometido.
+
+### Contratos y renovaciones (`CRM-03.03.02.08`, `CRM-03.03.02.10`)
+
+**El preaviso es la fecha que importa**, no el vencimiento: el día que vence ya es
+tarde para no renovar, y quien quería negociar se encuentra con otro año firmado.
+Por eso `contract.renewal.due` se emite en el preaviso, y solo una vez: sin esa
+marca el aviso se mandaría cada noche hasta que alguien lo silenciara apagando la
+alerta entera.
+
+Los contratos **sin** renovación automática también avisan. Son los que se
+olvidan: nadie los renueva y el cliente se va sin que nadie lo haya decidido.
+
+Un contrato renovado queda `renovado` y no `terminado`. La diferencia dice si el
+cliente sigue con nosotros, y mezclarlas hace que la tasa de bajas cuente como
+pérdidas las renovaciones. La fecha se calcula sumando **meses**, no días: un
+contrato que vence el 31 de enero y se renueva doce meses no puede convertirse en
+el 3 de marzo.
+
+### Suscripciones (`CRM-03.03.02.09`)
+
+El prorrateo se calcula **por días reales del periodo**, no por treintavos: un
+cambio a mitad de febrero con treintavos cobra de menos, y es la diferencia que el
+cliente encuentra cuando revisa la factura.
+
+El histórico de cambios es **append-only**, con el antes y el después. Sin él,
+responder «¿desde cuándo paga esto?» exige mirar facturas y el ARR de hace seis
+meses no se puede reconstruir.
+
+En el recurrente, **las pausadas no cuentan**: una suscripción pausada no factura,
+y contarla infla el MRR con dinero que no entra. Se dicen aparte, porque es la
+cifra que avisa de una fuga antes de que se convierta en baja.
+
+### El traspaso al ERP no se cierra al enviar (`CRM-03.03.02.11`)
+
+`POST /pedidos/{id}/enviar-erp` deja el pedido **esperando confirmación**. No se
+da por bueno porque la llamada no diera error: el ERP puede aceptar el mensaje y
+rechazar el pedido después, y un traspaso que se cierra al enviar es cómo se
+descubre en el cierre de mes que faltan pedidos.
+
+La llamada la hace `integration` con su conector declarativo; aquí solo se emite
+`order.submitted` **con las líneas dentro**, con clave de deduplicación por
+pedido. Pedirlas después ataría el traspaso a que `sales` esté en pie en ese
+instante, y sin la clave un reintento del relevo crearía dos pedidos en el ERP del
+cliente.
+
+`GET /pedidos/conciliacion-erp` es el mismo problema que el encargo mudo del
+seguimiento externo, y se resuelve igual: **el silencio no es una confirmación**.
+Un pedido enviado del que nadie contesta parece en curso, y detrás casi siempre
+hay un mensaje perdido. Los rechazados salen también: un pedido rechazado por el
+ERP que nadie mira es una venta cerrada que no se sirve.
+
+### Lo que todavía no está
+
+**Enviar a firma** (`CRM-03.03.02.07`) y la **orquestación order-to-cash como saga
+con compensaciones** (`CRM-03.03.02.12`). La primera va con el bloque de firma
+electrónica, que está entero pendiente; la segunda encima de él, porque una saga
+que no puede compensar la firma no compensa el ciclo entero.

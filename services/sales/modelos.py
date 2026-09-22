@@ -672,3 +672,22 @@ __all__ = [
     "Toque",
     "Trabajo",
 ]
+
+# El catálogo de productos y la cotización viven en sus propios módulos —cada uno
+# con su lógica—, pero sus tablas son de este esquema y tienen que importarse
+# aquí: `alembic` solo mira `modelos.py`, y una tabla que no se importe no se
+# migra y falla en la primera consulta, lejos de donde se declaró.
+from services.sales.catalogo import (  # noqa: E402,F401
+    ListaPrecio,
+    Producto,
+    ReglaPrecio,
+    RelacionProducto,
+)
+from services.sales.presupuestos import (  # noqa: E402,F401
+    CambioSuscripcion,
+    Contrato,
+    LineaPresupuesto,
+    Pedido,
+    Presupuesto,
+    SuscripcionCliente,
+)

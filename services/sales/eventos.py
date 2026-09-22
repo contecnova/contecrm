@@ -98,3 +98,90 @@ LEAD_ASSIGNED = registrar(
         campos=("lead_id", "asignado_a", "regla"),
     )
 )
+
+# ── Cotización y contratación (CRM-03.03.02) ──────────────────────────────
+
+QUOTE_CREATED = registrar(
+    TipoEvento(
+        tipo="quote.created",
+        version=1,
+        productor="sales",
+        descripcion="Se ha creado un presupuesto (o una versión nueva de uno)",
+        campos=("presupuesto_id", "numero", "version", "total"),
+    )
+)
+QUOTE_APPROVAL_NEEDED = registrar(
+    TipoEvento(
+        tipo="quote.approval.needed",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "El presupuesto se ha parado porque el descuento o el margen pasan "
+            "de lo que se puede dar solo. Lleva los motivos: quien abra la "
+            "aprobación no tiene que recalcular la matriz para explicarla"
+        ),
+        campos=("presupuesto_id", "numero", "total", "motivos"),
+    )
+)
+QUOTE_SENT = registrar(
+    TipoEvento(
+        tipo="quote.sent",
+        version=1,
+        productor="sales",
+        descripcion="El presupuesto ha salido hacia el cliente",
+        campos=("presupuesto_id", "numero", "version", "total"),
+    )
+)
+QUOTE_ACCEPTED = registrar(
+    TipoEvento(
+        tipo="quote.accepted",
+        version=1,
+        productor="sales",
+        descripcion="El cliente ha aceptado el presupuesto y ha nacido el pedido",
+        campos=("presupuesto_id", "numero", "pedido_id", "total"),
+    )
+)
+ORDER_SUBMITTED = registrar(
+    TipoEvento(
+        tipo="order.submitted",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Un pedido sale hacia el ERP. Lleva las líneas dentro para que el "
+            "conector no tenga que volver a preguntarlas: pedirlas después "
+            "ataría el traspaso a que `sales` esté en pie en ese instante"
+        ),
+        campos=("pedido_id", "numero", "cuenta_id", "total"),
+    )
+)
+CONTRACT_SIGNED = registrar(
+    TipoEvento(
+        tipo="contract.signed",
+        version=1,
+        productor="sales",
+        descripcion="Alta de contrato con su vigencia",
+        campos=("contrato_id", "numero", "cuenta_id", "importe"),
+    )
+)
+CONTRACT_RENEWAL_DUE = registrar(
+    TipoEvento(
+        tipo="contract.renewal.due",
+        version=1,
+        productor="sales",
+        descripcion=(
+            "Un contrato entra en su periodo de preaviso. Se emite en el "
+            "preaviso y no al vencer, porque el día del vencimiento ya es tarde "
+            "para no renovar"
+        ),
+        campos=("contrato_id", "numero", "cuenta_id", "vence", "dias_restantes"),
+    )
+)
+SUBSCRIPTION_CHANGED = registrar(
+    TipoEvento(
+        tipo="subscription.changed",
+        version=1,
+        productor="sales",
+        descripcion="Alta, baja, pausa o cambio de plan de una suscripción, con su prorrateo",
+        campos=("suscripcion_id", "cuenta_id", "tipo", "plan", "importe"),
+    )
+)

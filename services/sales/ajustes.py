@@ -54,9 +54,57 @@ class AjustesSales(Settings):
     # Prefijo y formato del código legible de oportunidad.
     codigo_prefijo: str = "OPP"
 
+    # ── Cotización (CRM-03.03.02.04) ──────────────────────────────────────
+    # Descuento que un comercial puede dar sin que nadie lo apruebe. Es un
+    # ajuste y no una constante porque cambia con cada campaña, y un despliegue
+    # por cada cambio hace que se acabe aprobando a mano «esta vez».
+    descuento_libre_pct: int = Field(10, ge=0, le=100)
+    # Margen por debajo del cual el presupuesto necesita aprobación aunque el
+    # descuento sea pequeño: un 5 % sobre un producto de 8 puntos de margen deja
+    # la venta en pérdidas, y mirar solo el porcentaje no lo ve.
+    margen_minimo_pct: int = Field(20, ge=0, le=100)
+    # Días de validez por defecto de un presupuesto. Sin caducidad, el precio se
+    # vuelve eterno y el cliente lo saca dos años después.
+    presupuesto_dias_validez: int = Field(30, ge=1, le=365)
+    # Horas que se espera la confirmación del ERP antes de dar el pedido por
+    # perdido en la conciliación.
+    erp_espera_confirmacion_horas: int = Field(24, ge=1, le=720)
+
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="descuento_libre_pct",
+            tipo="int",
+            descripcion="Descuento que se puede dar sin aprobación",
+            minimo=0,
+            maximo=100,
+            campo_settings="descuento_libre_pct",
+        ),
+        ClaveAjuste(
+            clave="margen_minimo_pct",
+            tipo="int",
+            descripcion="Margen por debajo del cual el presupuesto necesita aprobación",
+            minimo=0,
+            maximo=100,
+            campo_settings="margen_minimo_pct",
+        ),
+        ClaveAjuste(
+            clave="presupuesto_dias_validez",
+            tipo="int",
+            descripcion="Días de validez por defecto de un presupuesto",
+            minimo=1,
+            maximo=365,
+            campo_settings="presupuesto_dias_validez",
+        ),
+        ClaveAjuste(
+            clave="erp_espera_confirmacion_horas",
+            tipo="int",
+            descripcion="Horas que se espera la confirmación del ERP antes de avisar",
+            minimo=1,
+            maximo=720,
+            campo_settings="erp_espera_confirmacion_horas",
+        ),
         ClaveAjuste(
             clave="lead_sla_primera_respuesta_horas",
             tipo="int",

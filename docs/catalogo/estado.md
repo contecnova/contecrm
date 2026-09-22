@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 402 hecho · ⬜ 305 pendiente
+**707 capacidades**: ✅ 412 hecho · ⬜ 295 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 17 · ⬜ 48
+65 capacidades · ✅ 27 · ⬜ 38
 
 ### 3.1 Pipeline y oportunidades
 
@@ -734,17 +734,17 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-03.03.02.01` | Presupuestos con versiones, vigencia y estado | C | 2 | sales | ⬜ | contecflow-PSA:app/services/proposal_service.py; contecweb:app/services/rfq |
-| `CRM-03.03.02.02` | Configuración de producto con reglas de compatibilidad y dependencias (CPQ) | A | 2 | sales | ⬜ | contecweb:app/services/bom (configuración con dependencias) |
-| `CRM-03.03.02.03` | Motor de precios: listas por cliente, canal, volumen, moneda y vigencia | C | 2 | sales | ⬜ | contecpos:services/catalogo (listas de precios) + contecflow-PSA:app/services/rate_card_service.py |
-| `CRM-03.03.02.04` | Descuentos con matriz de aprobación por umbral y margen mínimo | C | 2 | sales | ⬜ | contecmind:app/services/approval_engine/ (matriz de aprobación por umbral) |
-| `CRM-03.03.02.05` | Cálculo de margen y rentabilidad en el propio presupuesto | A | 2 | sales | ⬜ | contecflow-PSA:app/services/profitability_service.py + cost_service.py |
-| `CRM-03.03.02.06` | Generación documental (PDF) con plantillas por marca e idioma | C | 2 | sales | ⬜ | contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py |
+| `CRM-03.03.02.01` | Presupuestos con versiones, vigencia y estado | C | 2 | sales | ✅ | contecflow-PSA:app/services/proposal_service.py; contecweb:app/services/rfq |
+| `CRM-03.03.02.02` | Configuración de producto con reglas de compatibilidad y dependencias (CPQ) | A | 2 | sales | ✅ | contecweb:app/services/bom (configuración con dependencias) |
+| `CRM-03.03.02.03` | Motor de precios: listas por cliente, canal, volumen, moneda y vigencia | C | 2 | sales | ✅ | contecpos:services/catalogo (listas de precios) + contecflow-PSA:app/services/rate_card_service.py |
+| `CRM-03.03.02.04` | Descuentos con matriz de aprobación por umbral y margen mínimo | C | 2 | sales | ✅ | contecmind:app/services/approval_engine/ (matriz de aprobación por umbral) |
+| `CRM-03.03.02.05` | Cálculo de margen y rentabilidad en el propio presupuesto | A | 2 | sales | ✅ | contecflow-PSA:app/services/profitability_service.py + cost_service.py |
+| `CRM-03.03.02.06` | Generación documental (PDF) con plantillas por marca e idioma | C | 2 | sales | ✅ | contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py |
 | `CRM-03.03.02.07` | Enviar a firma un presupuesto o contrato desde la oportunidad, y que su estado mueva la etapa (usa CRM-06.01.02) | A | 2 | sales | ⬜ | — |
-| `CRM-03.03.02.08` | Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos | A | 2 | sales | ⬜ | contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py |
-| `CRM-03.03.02.09` | Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación | A | 2 | sales | ⬜ | contecpos:services/identidad (suscripciones y planes) |
-| `CRM-03.03.02.10` | Gestión de renovaciones con alertas y pipeline específico | A | 2 | sales | ⬜ | — |
-| `CRM-03.03.02.11` | Traspaso de pedido a ERP con confirmación y conciliación de estado | C | 2 | integration | ⬜ | contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py |
+| `CRM-03.03.02.08` | Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos | A | 2 | sales | ✅ | contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py |
+| `CRM-03.03.02.09` | Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación | A | 2 | sales | ✅ | contecpos:services/identidad (suscripciones y planes) |
+| `CRM-03.03.02.10` | Gestión de renovaciones con alertas y pipeline específico | A | 2 | sales | ✅ | — |
+| `CRM-03.03.02.11` | Traspaso de pedido a ERP con confirmación y conciliación de estado | C | 2 | integration | ✅ | contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py |
 | `CRM-03.03.02.12` | Orquestación order-to-cash como saga con compensaciones | A | 2 | orchestrator | ⬜ | — |
 
 ### 3.4 Canal indirecto (PRM)

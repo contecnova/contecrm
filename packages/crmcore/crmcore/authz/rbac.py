@@ -173,6 +173,12 @@ ROLES_BASE: dict[str, Rol] = {
                 "opportunity:write",
                 "quote:read",
                 "quote:write",
+                # Ver el catálogo y calcular un precio es lo que hace cualquiera
+                # que prepare una oferta. Escribir el catálogo NO: un producto
+                # mal dado de alta se cuela en todos los presupuestos siguientes.
+                "producto:read",
+                "contract:read",
+                "order:read",
                 "toque:registrar",
                 # Retirar un adjunto o un comentario ajeno no es de todos: el
                 # autor edita el suyo por la comprobación de dentro, y borrar
@@ -199,6 +205,11 @@ ROLES_BASE: dict[str, Rol] = {
                 # permiso, cualquiera que pueda pedir una aprobación podría
                 # firmarla, y la cadena entera dejaría de significar nada.
                 "aprobacion:decidir",
+                # El responsable firma contratos y pedidos. Dar de alta el
+                # catálogo es de administración: quien decide qué se vende y a
+                # qué coste no es quien lo vende.
+                "contract:write",
+                "order:write",
             }
         ),
         descripcion="Además, previsión y aprobación sobre su equipo",

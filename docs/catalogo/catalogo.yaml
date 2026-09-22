@@ -832,17 +832,17 @@ modulos:
           - id: CRM-03.03.02
             nombre: Cotización y contratación
             capacidades:
-              - {id: CRM-03.03.02.01, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/proposal_service.py; contecweb:app/services/rfq", t: "Presupuestos con versiones, vigencia y estado"}
-              - {id: CRM-03.03.02.02, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecweb:app/services/bom (configuración con dependencias)", t: "Configuración de producto con reglas de compatibilidad y dependencias (CPQ)"}
-              - {id: CRM-03.03.02.03, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecpos:services/catalogo (listas de precios) + contecflow-PSA:app/services/rate_card_service.py", t: "Motor de precios: listas por cliente, canal, volumen, moneda y vigencia"}
-              - {id: CRM-03.03.02.04, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/ (matriz de aprobación por umbral)", t: "Descuentos con matriz de aprobación por umbral y margen mínimo"}
-              - {id: CRM-03.03.02.05, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/profitability_service.py + cost_service.py", t: "Cálculo de margen y rentabilidad en el propio presupuesto"}
-              - {id: CRM-03.03.02.06, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py", t: "Generación documental (PDF) con plantillas por marca e idioma"}
+              - {id: CRM-03.03.02.01, c: C, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/proposal_service.py; contecweb:app/services/rfq", t: "Presupuestos con versiones, vigencia y estado"}
+              - {id: CRM-03.03.02.02, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/bom (configuración con dependencias)", t: "Configuración de producto con reglas de compatibilidad y dependencias (CPQ)"}
+              - {id: CRM-03.03.02.03, c: C, fase: 2, svc: sales, estado: hecho, reutiliza: "contecpos:services/catalogo (listas de precios) + contecflow-PSA:app/services/rate_card_service.py", t: "Motor de precios: listas por cliente, canal, volumen, moneda y vigencia"}
+              - {id: CRM-03.03.02.04, c: C, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (matriz de aprobación por umbral)", t: "Descuentos con matriz de aprobación por umbral y margen mínimo"}
+              - {id: CRM-03.03.02.05, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/profitability_service.py + cost_service.py", t: "Cálculo de margen y rentabilidad en el propio presupuesto"}
+              - {id: CRM-03.03.02.06, c: C, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/{invoice_pdf,report_pdf,pdf_export_service}.py", t: "Generación documental (PDF) con plantillas por marca e idioma"}
               - {id: CRM-03.03.02.07, c: A, fase: 2, svc: sales, estado: pendiente, t: "Enviar a firma un presupuesto o contrato desde la oportunidad, y que su estado mueva la etapa (usa CRM-06.01.02)"}
-              - {id: CRM-03.03.02.08, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py", t: "Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos"}
-              - {id: CRM-03.03.02.09, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecpos:services/identidad (suscripciones y planes)", t: "Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación"}
-              - {id: CRM-03.03.02.10, c: A, fase: 2, svc: sales, estado: pendiente, t: "Gestión de renovaciones con alertas y pipeline específico"}
-              - {id: CRM-03.03.02.11, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py", t: "Traspaso de pedido a ERP con confirmación y conciliación de estado"}
+              - {id: CRM-03.03.02.08, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/contracts.py (648) + contecflow-PSA:app/services/contract_service.py", t: "Contratos: alta, vigencia, renovación automática, preaviso, cláusulas, anexos"}
+              - {id: CRM-03.03.02.09, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecpos:services/identidad (suscripciones y planes)", t: "Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación"}
+              - {id: CRM-03.03.02.10, c: A, fase: 2, svc: sales, estado: hecho, t: "Gestión de renovaciones con alertas y pipeline específico"}
+              - {id: CRM-03.03.02.11, c: C, fase: 2, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py", t: "Traspaso de pedido a ERP con confirmación y conciliación de estado"}
               - {id: CRM-03.03.02.12, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Orquestación order-to-cash como saga con compensaciones"}
       - id: "3.4"
         nombre: Canal indirecto (PRM)
@@ -1325,6 +1325,8 @@ anexo_b_eventos:
   - {type: approval.escalated, fase: 2, svc: orchestrator}
   - {type: approval.reopened, fase: 2, svc: orchestrator}
   - {type: approval.decided, fase: 2, svc: orchestrator}
+  - {type: quote.created, fase: 2, svc: sales}
+  - {type: quote.approval.needed, fase: 2, svc: sales}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que

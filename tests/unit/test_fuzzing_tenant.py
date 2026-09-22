@@ -108,16 +108,36 @@ ALIAS_MODELO = {
     # las solicitudes de derechos de `party`, y dos rutas con el mismo parámetro
     # apuntando a objetos distintos dejan este gate sin poder resolver ninguna.
     "aprobacion_id": "solicitudaprobacion",
+    "presupuesto_id": "presupuesto",
+    "suscripcion_cliente_id": "suscripcioncliente",
+    "pedido_id": "pedido",
 }
 
 
 def _modelos_por_nombre() -> dict[str, Any]:
-    """Todos los modelos con `tenant_id`, indexados por su nombre en minúsculas."""
+    """Todos los modelos con `tenant_id`, indexados por su nombre en minúsculas.
+
+    **Un nombre repetido para el gate en seco**, en vez de dejar que uno pise al
+    otro. Dos clases llamadas igual en servicios distintos —pasó con
+    `Suscripcion`, la de los webhooks y la comercial— hacen que este diccionario
+    se quede con una sola, y la ruta de la otra se deja de probar sin que falle
+    nada: el gate seguiría en verde sin mirar esa tabla, que es la peor forma de
+    perder una comprobación.
+    """
     modelos: dict[str, Any] = {}
+    repetidos: list[str] = []
     for mapper in Base.registry.mappers:
         clase = mapper.class_
-        if "tenant_id" in clase.__table__.columns:
-            modelos[clase.__name__.lower()] = clase
+        if "tenant_id" not in clase.__table__.columns:
+            continue
+        nombre = clase.__name__.lower()
+        if nombre in modelos and modelos[nombre] is not clase:
+            repetidos.append(f"{nombre}: {modelos[nombre].__module__} y {clase.__module__}")
+        modelos[nombre] = clase
+    assert not repetidos, (
+        "Hay modelos con el mismo nombre de clase, y este gate los indexa por ese "
+        "nombre: uno pisaría al otro y su ruta dejaría de probarse.\n  " + "\n  ".join(repetidos)
+    )
     return modelos
 
 
