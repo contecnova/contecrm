@@ -74,6 +74,11 @@ export function Marco({ sesion, children }: Props) {
           <Enlace a="/estado" texto={t("nav.estado")} />
           <Enlace a="/cobertura" texto={t("nav.cobertura")} />
           <Enlace a="/procesos" texto={t("nav.procesos")} />
+          <Enlace a="/cuadros" texto={t("nav.cuadros")} />
+          <Enlace a="/casos" texto={t("nav.casos")} />
+          <Enlace a="/consola-agente" texto={t("nav.consolaAgente")} />
+          <Enlace a="/conocimiento" texto={t("nav.conocimiento")} />
+          <Enlace a="/marketing" texto={t("nav.marketing")} />
           <Enlace a="/explotacion" texto={t("nav.explotacion")} />
           <Enlace a="/recorrido" texto={t("nav.recorrido")} />
         </nav>

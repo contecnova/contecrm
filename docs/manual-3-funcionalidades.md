@@ -7363,3 +7363,143 @@ La **dependencia de despliegue declarada** (`CRM-05.01.04.10`) está en
 `docker-compose.yml` con su perfil, pero sin prueba que lo verifique; y el
 **contexto del registro en curso** (`CRM-05.01.04.09`) —preguntar sobre la cuenta
 abierta sin repetir su nombre— es de fase 5.
+
+## Cuadros de mando completos (`CRM-05.01.02`)
+
+El cuadro y su permiso ya estaban; faltaba lo que hace que sirva: los tipos de
+componente, los filtros que valen para todo el cuadro, el camino hasta el
+registro, las alertas y el embebido.
+
+### El catálogo de componentes es cerrado (`CRM-05.01.02.02`)
+
+Siete tipos —KPI, tabla, gráfico, embudo, mapa, gauge y texto— y **cada uno
+declara qué necesita**. Se publica en `GET /cuadros-mando/componentes` para que la
+pantalla de montaje ofrezca lo que existe: dos listas que tienen que coincidir
+acaban no coincidiendo, y la que se queda corta es siempre la del front.
+
+La validación ocurre **al guardar, no al pintar**. Un componente mal configurado
+que solo falla al abrirse se descubre delante de alguien, y lo que se ve es un
+hueco sin explicación. Dos ejemplos de por qué cada tipo declara lo suyo:
+
+* un **embudo** exige `orden`, porque sus etapas no se ordenan solas: alfabético
+  daría «Cierre, Negociación, Propuesta» y el embudo saldría al revés;
+* un **gauge** exige `objetivo`, porque un gauge sin objetivo es un KPI con una
+  aguja, y la aguja solo significa algo contra una meta.
+
+Lo que solo es un consejo **avisa y deja guardar**: un KPI sin comparación no dice
+si va bien o mal, pero impedirlo dejaría a alguien sin poder montar el cuadro a
+trozos.
+
+### Filtros globales y drill-down (`CRM-05.01.02.03`)
+
+El filtro es **del cuadro**, no de cada componente. Si cada uno llevara el suyo,
+cambiar el trimestre exigiría tocar ocho sitios y siempre quedaría uno sin
+cambiar — y nadie se daría cuenta, porque un número plausible no se cuestiona.
+
+Un componente puede declararse **inmune** (`ignora_filtros`), y hace falta para
+los que enseñan contexto («total del año pasado»), que dejarían de decir lo que
+dicen si les llegara el filtro del trimestre. Se declara, no se adivina, y la
+pantalla lo enseña: si no, quien cambia el trimestre y ve una cifra que no se
+mueve concluye que el filtro no funciona.
+
+El drill-down baja **hasta el registro**, no hasta otra agregación, y se lleva los
+filtros del cuadro **más el del punto pulsado**: sin lo segundo, pulsar en la
+barra de marzo llevaría a la lista del año entero. Un cuadro del que no se puede
+bajar al detalle obliga a rehacer la consulta a mano en otra pantalla, y ahí ya no
+coinciden los números — y entonces se deja de creer al cuadro.
+
+### Dashboards que enseñan lo del que los abre (`CRM-05.01.02.04`)
+
+Es el mismo mecanismo `solo_mios` del informe: el filtro por dueño **lo pone el
+servidor**. Si viniera del cliente, bastaría quitarlo de la petición para ver los
+datos de todos. Con eso, un cuadro sirve para los treinta comerciales en vez de
+hacer falta treinta cuadros.
+
+### Alertas por umbral y anomalías (`CRM-05.01.02.05`)
+
+**Una alerta que se dispara siempre deja de leerse.** Por eso hay dos frenos:
+
+* **histéresis** — un margen para volver al verde. Una alerta que se apaga en el
+  mismo punto en que se enciende manda un aviso por cada oscilación;
+* **silencio mínimo** entre avisos de la misma alerta.
+
+Sin ellos, un indicador que baila alrededor del umbral manda cuarenta correos en
+una tarde y al día siguiente la regla está desactivada — que es la forma más común
+de perder una alerta buena.
+
+La comparación `cambia_mas_de` detecta anomalías por salto, y **no se dispara la
+primera vez**: sin valor anterior no hay salto que medir, y decir que sí lo hay
+dispararía la alerta siempre al principio.
+
+Lo que **no se ha podido medir** sale aparte (`no_medibles`) y no cuenta como
+verde. Dar por bueno lo que no se ha medido es la forma más silenciosa de perder
+una alerta.
+
+Y uno se suscribe **a sí mismo**: suscribir a otro convierte un cuadro en correo
+no deseado que el receptor no sabe cómo parar, y lo que hace es marcarlo como
+basura — y con él, todo lo que mande el CRM.
+
+### Embebido en aplicaciones externas (`CRM-05.01.02.06`)
+
+**Sin dominios no se crea.** Vacío no significa «desde cualquier sitio»: significa
+que no se sirve, porque un cuadro embebible desde cualquier parte es un cuadro
+público, y lo normal es que traiga cifras de negocio.
+
+La comprobación del dominio es por coincidencia exacta o de subdominio, **nunca
+«contiene»**: con «contiene», `micrm.com.ataque.net` pasaría por `micrm.com`.
+
+El enlace **actúa como una persona concreta** y se dice cuál. El embebido no
+autentica a quien está delante de la pantalla ajena, así que fijar a quién
+representa es lo que impide que un cuadro incrustado enseñe más de lo que ve quien
+lo montó. El secreto se devuelve una vez y en la base queda su hash; revocar no
+borra, porque el uso queda en el histórico.
+
+Un secreto inexistente, revocado o de otro dominio dan **el mismo error**:
+distinguirlos le diría a quien prueba si ese cuadro existe y desde dónde se sirve.
+
+## Las pantallas que faltaban
+
+### Casos, con el reloj del SLA (`CRM-07.04.03.17`)
+
+El reloj se **pinta** en la pantalla y se **calcula** en el servidor: si lo
+calculara el navegador, dos equipos con la hora mal darían dos incumplimientos
+distintos del mismo caso.
+
+La bandeja separa **lo que ya incumplió** de **lo que va a incumplir**. Son dos
+trabajos distintos: lo primero hay que explicarlo y lo segundo todavía se puede
+salvar. Una bandeja que los mezcla hace que se atienda por orden de llegada, que
+es el único orden que garantiza incumplir los dos.
+
+### Consola de agente (`CRM-07.04.03.18`)
+
+El punto de la omnicanalidad no es tener cinco bandejas bonitas: es **una sola
+cola**. Con una bandeja por canal, el correo se mira dos veces al día y el chat
+todo el rato, y quien escribe por correo espera el doble sin que nadie lo haya
+decidido. Por eso el canal es una etiqueta y no una pestaña, y lo que se enseña no
+es cuándo llegó la conversación sino **cuánto lleva esperando esa persona**.
+
+### Conocimiento (`CRM-07.04.03.19`)
+
+**Lo publicado se distingue de lo que está en revisión, y el estado va al lado del
+título.** Un artículo a medias que se lee como bueno se copia y se pega en una
+respuesta a un cliente, y ahí ya no hay quien lo recoja. Se marca también lo que
+el cliente ve en el portal: escribir para dentro y escribir para fuera no es lo
+mismo, y confundirlo es cómo se publica el procedimiento interno de descuentos.
+
+### Segmentación y campañas (`CRM-07.04.03.09`, `CRM-07.04.03.10`)
+
+El recuento de un segmento lleva **siempre su fecha**. Un número sin fecha se lee
+como el de ahora, y quien va a mandar un correo a 14.000 personas merece saber si
+ese 14.000 es de hoy o de hace tres semanas.
+
+Una campaña enseña **su estado antes que sus cifras**: las de una campaña en
+borrador son cero y se leen como un fracaso, y las de una pausada son las de
+cuando se paró y se leen como las de hoy.
+
+### Lo que todavía no está
+
+De estas pantallas queda el **constructor visual** de audiencias y el **lienzo de
+recorridos** con sus bifurcaciones: lo que hay ahora es la lista, el estado y las
+cifras, que es lo que permite trabajar, pero montar un segmento o un recorrido
+sigue haciéndose por API. Están declarados en el catálogo como `CRM-02.02.02.01` y
+`CRM-02.01.02.01`, no dentro de estas dos.

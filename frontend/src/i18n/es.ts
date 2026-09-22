@@ -15,6 +15,68 @@ export default {
     recorrido: "Recorrido",
     procesos: "Procesos",
     explotacion: "Explotación",
+    cuadros: "Cuadros",
+    casos: "Casos",
+    consolaAgente: "Consola",
+    conocimiento: "Conocimiento",
+    marketing: "Marketing",
+  },
+  cuadros: {
+    titulo: "Cuadros de mando",
+    elegir: "Elegir cuadro",
+    ninguno: "Todavía no hay cuadros de mando",
+    ningunoDetalle: "Un cuadro junta varios informes en una pantalla.",
+    sinComponentes: "Este cuadro no tiene componentes",
+    sinComponentesDetalle: "Añade uno apuntando a un informe.",
+    ignoraFiltros: "No le afectan los filtros del cuadro",
+  },
+  casos: {
+    titulo: "Casos",
+    entradilla:
+      "Lo que va a incumplir se separa de lo que ya incumplió: lo primero se " +
+      "puede salvar y lo segundo hay que explicarlo.",
+    incumplidos: "Fuera de plazo",
+    enRiesgo: "A punto de vencer",
+    resto: "Con margen",
+    ninguno: "Ninguno aquí",
+    escalado: "Escalado",
+    sinSla: "Sin plazo",
+    vence: "vence en {{tiempo}}",
+    vencidoHace: "vencido hace {{tiempo}}",
+  },
+  consolaAgente: {
+    titulo: "Consola de agente",
+    entradilla:
+      "Una sola cola con todos los canales. Con una bandeja por canal, el correo " +
+      "se mira dos veces al día y el chat todo el rato.",
+    vacia: "No hay nada esperando",
+    vaciaDetalle: "Cuando entre una conversación aparecerá aquí.",
+    sinAsunto: "(sin asunto)",
+    esperando: "{{minutos}} min esperando",
+  },
+  conocimiento: {
+    titulo: "Conocimiento",
+    entradilla:
+      "Lo publicado se distingue de lo que está en revisión: un artículo a medias " +
+      "que se lee como bueno acaba pegado en una respuesta a un cliente.",
+    buscar: "Buscar por título",
+    sinResultados: "Ningún artículo coincide",
+    enPortal: "En el portal",
+    vistas: "{{vistas}} vistas",
+  },
+  marketing: {
+    titulo: "Marketing",
+    entradilla:
+      "Segmentos y campañas. El recuento de un segmento lleva siempre su fecha: " +
+      "un número sin fecha se lee como el de ahora.",
+    segmentos: "Segmentos",
+    campanas: "Campañas",
+    sinSegmentos: "Todavía no hay segmentos",
+    sinCampanas: "Todavía no hay campañas",
+    sinCalcular: "sin calcular",
+    calculado: "calculado el {{fecha}}",
+    nuncaCalculado: "nunca calculado",
+    cifras: "{{miembros}} miembros · {{enviados}} enviados · {{respuestas}} respuestas",
   },
   explotacion: {
     titulo: "Explotación",

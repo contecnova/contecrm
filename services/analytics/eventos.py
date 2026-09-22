@@ -46,3 +46,29 @@ ANALYTICS_SOURCE_REGISTERED = registrar(
         campos=("organizacion", "objetos", "campos"),
     )
 )
+
+DASHBOARD_ALERT_FIRED = registrar(
+    TipoEvento(
+        tipo="dashboard.alert.fired",
+        version=1,
+        productor="analytics",
+        descripcion=(
+            "Una métrica ha cruzado su umbral. Lleva el valor y el umbral para "
+            "que quien avise no tenga que volver a consultarlos"
+        ),
+        campos=("alerta_id", "nombre", "valor", "umbral"),
+    )
+)
+DASHBOARD_ALERT_CLEARED = registrar(
+    TipoEvento(
+        tipo="dashboard.alert.cleared",
+        version=1,
+        productor="analytics",
+        descripcion=(
+            "Una alerta vuelve al verde. Se emite porque quien recibió el aviso "
+            "merece saber que ya está: sin el cierre, cada alerta deja una "
+            "preocupación abierta que nadie retira"
+        ),
+        campos=("alerta_id", "nombre", "valor"),
+    )
+)

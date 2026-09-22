@@ -1070,6 +1070,9 @@ def crear_cuadro(
                 error_code="cuadro.defecto_duplicado",
             )
 
+    from services.analytics.cuadros import validar_componentes
+
+    avisos = validar_componentes(list(componentes or []))
     fila = CuadroMando(
         tenant_id=tenant_id,
         clave=clave,
@@ -1083,6 +1086,9 @@ def crear_cuadro(
     )
     uow.db.add(fila)
     uow.db.flush()
+    # Los avisos se cuelgan del objeto para que la API los devuelva sin cambiar
+    # la firma: son consejos, no errores, y no deben impedir guardar.
+    fila.avisos = avisos  # type: ignore[attr-defined]
     return fila
 
 

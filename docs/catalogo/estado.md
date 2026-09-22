@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 442 hecho · ⬜ 265 pendiente
+**707 capacidades**: ✅ 452 hecho · ⬜ 255 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -883,7 +883,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 5 — Analítica, inteligencia e IA
 
-57 capacidades · ✅ 20 · ⬜ 37
+57 capacidades · ✅ 25 · ⬜ 32
 
 ### 5.1 Reporting y BI
 
@@ -906,11 +906,11 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-05.01.02.01` | Dashboards configurables por rol, equipo y usuario | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.02.02` | Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto | C | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.02.03` | Filtros globales y drill-down hasta el registro | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.02.04` | Dashboards dinámicos que muestran los datos del usuario que los abre | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.02.05` | Suscripción, alertas por umbral y notificación de anomalías | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
-| `CRM-05.01.02.06` | Embebido de dashboards en aplicaciones externas con SSO | A | 2 | analytics | ⬜ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.02` | Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto | C | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.03` | Filtros globales y drill-down hasta el registro | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.04` | Dashboards dinámicos que muestran los datos del usuario que los abre | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.05` | Suscripción, alertas por umbral y notificación de anomalías | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
+| `CRM-05.01.02.06` | Embebido de dashboards en aplicaciones externas con SSO | A | 2 | analytics | ✅ | contecintelligence (RT-4: delegado, no se reimplementa) |
 
 #### CRM-05.01.04 · Explotación delegada en contecintelligence
 
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 67 · ⬜ 24
+91 capacidades · ✅ 72 · ⬜ 19
 
 ### 7.1 Administración funcional
 
@@ -1139,17 +1139,17 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.06` | Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.07` | Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.08` | Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente | C | 1 | front | ✅ | — |
-| `CRM-07.04.03.09` | Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas | A | 4 | front | ⬜ | — |
-| `CRM-07.04.03.10` | Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición | A | 4 | front | ⬜ | — |
+| `CRM-07.04.03.09` | Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas | A | 4 | front | ✅ | — |
+| `CRM-07.04.03.10` | Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición | A | 4 | front | ✅ | — |
 | `CRM-07.04.03.11` | Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío | A | 4 | front | ⬜ | — |
 | `CRM-07.04.03.12` | Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión | A | 4 | front | ⬜ | — |
 | `CRM-07.04.03.13` | Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.14` | Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.15` | Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques | C | 2 | front | ✅ | — |
 | `CRM-07.04.03.16` | Canal indirecto: portal de partner, registro de oportunidad y liquidaciones | D | 6 | front | ⬜ | — |
-| `CRM-07.04.03.17` | Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución | C | 3 | front | ⬜ | — |
-| `CRM-07.04.03.18` | Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola | A | 3 | front | ⬜ | — |
-| `CRM-07.04.03.19` | Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente | A | 3 | front | ⬜ | — |
+| `CRM-07.04.03.17` | Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución | C | 3 | front | ✅ | — |
+| `CRM-07.04.03.18` | Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola | A | 3 | front | ✅ | — |
+| `CRM-07.04.03.19` | Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente | A | 3 | front | ✅ | — |
 | `CRM-07.04.03.20` | Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados | D | 6 | front | ⬜ | — |
 | `CRM-07.04.03.21` | Postventa: devoluciones, garantías y logística inversa | D | 6 | front | ⬜ | — |
 | `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ✅ | — |

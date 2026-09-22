@@ -7,7 +7,12 @@ import { Cobertura } from "@/paginas/Cobertura";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Estado } from "@/paginas/Estado";
+import { Casos } from "@/paginas/Casos";
+import { Conocimiento } from "@/paginas/Conocimiento";
+import { ConsolaAgente } from "@/paginas/Consola.agente";
+import { Cuadros } from "@/paginas/Cuadros";
 import { Explotacion } from "@/paginas/Explotacion";
+import { Marketing } from "@/paginas/Marketing";
 import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
 import { Modulo } from "@/paginas/Modulo";
@@ -74,6 +79,11 @@ export function App() {
         <Route path="/recorrido" element={<Recorrido />} />
         <Route path="/procesos" element={<Procesos />} />
         <Route path="/explotacion" element={<Explotacion />} />
+        <Route path="/cuadros" element={<Cuadros />} />
+        <Route path="/casos" element={<Casos />} />
+        <Route path="/consola-agente" element={<ConsolaAgente />} />
+        <Route path="/conocimiento" element={<Conocimiento />} />
+        <Route path="/marketing" element={<Marketing />} />
       </Routes>
     </Marco>
   );

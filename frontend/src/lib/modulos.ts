@@ -309,6 +309,117 @@ export const MODULOS: Modulo[] = [
       { nombre: "Clases de dato", listar: "/api/v1/party/retencion/clases", servicio: "party" },
     ],
   },
+  // ── Módulo 2 · Marketing ────────────────────────────────────────────────
+  {
+    ruta: "segmentos",
+    titulo: "Segmentación",
+    seccion: "2.1",
+    capacidad: "CRM-07.04.03.09",
+    grupo: "Marketing",
+    recursos: [
+      {
+        nombre: "Segmentos",
+        objeto: "segmento",
+        listar: "/api/v1/segmentos",
+        crear: "/api/v1/segmentos",
+        servicio: "marketing",
+        columnas: ["nombre", "tipo", "miembros", "calculado_at"],
+        permiso: "segmento:read",
+      },
+      { nombre: "Supresiones", listar: "/api/v1/supresiones", servicio: "marketing" },
+      { nombre: "Puntuación", listar: "/api/v1/puntuacion/modelos", servicio: "marketing" },
+    ],
+  },
+  {
+    ruta: "campanas",
+    titulo: "Campañas",
+    seccion: "2.2",
+    capacidad: "CRM-07.04.03.10",
+    grupo: "Marketing",
+    recursos: [
+      {
+        nombre: "Campañas",
+        objeto: "campana",
+        listar: "/api/v1/campanas",
+        crear: "/api/v1/campanas",
+        servicio: "marketing",
+        columnas: ["nombre", "estado", "canal", "desde", "hasta"],
+        permiso: "campana:read",
+      },
+      // La atribución NO se lista: se consulta por lead (`/atribucion/leads/{id}`).
+      // Ponerla aquí como lista sería inventar un endpoint que no existe, y el
+      // gate del front lo caza — que es para lo que está.
+      { nombre: "Presión de contacto", listar: "/api/v1/presion/reglas", servicio: "marketing" },
+      { nombre: "Rebotes", listar: "/api/v1/rebotes", servicio: "marketing" },
+    ],
+  },
+
+  // ── Módulo 4 · Servicio ─────────────────────────────────────────────────
+  {
+    ruta: "casos",
+    titulo: "Casos",
+    seccion: "4.1",
+    capacidad: "CRM-07.04.03.17",
+    grupo: "Servicio",
+    recursos: [
+      {
+        nombre: "Casos",
+        objeto: "caso",
+        listar: "/api/v1/casos",
+        crear: "/api/v1/casos",
+        servicio: "service",
+        columnas: ["codigo", "asunto", "estado", "prioridad"],
+        permiso: "case:read",
+      },
+      { nombre: "Categorías", listar: "/api/v1/categorias-caso", servicio: "service" },
+      { nombre: "SLA", listar: "/api/v1/sla", servicio: "service" },
+      { nombre: "Colas", listar: "/api/v1/colas", servicio: "service" },
+      { nombre: "Escalado", listar: "/api/v1/escalado/reglas", servicio: "service" },
+      { nombre: "Entitlements", listar: "/api/v1/entitlements", servicio: "service" },
+    ],
+  },
+  {
+    ruta: "omnicanal",
+    titulo: "Omnicanalidad",
+    seccion: "4.2",
+    capacidad: "CRM-07.04.03.18",
+    grupo: "Servicio",
+    recursos: [
+      // Las conversaciones no tienen listado general a propósito: se trabajan
+      // desde la consola de agente, que las da junto a los casos en una sola
+      // cola. Una lista aparte reintroduciría la bandeja por canal que la
+      // omnicanalidad viene a quitar.
+      {
+        nombre: "Canales",
+        listar: "/api/v1/canales-servicio",
+        crear: "/api/v1/canales-servicio",
+        servicio: "service",
+        columnas: ["nombre", "tipo", "activo"],
+        permiso: "case:read",
+      },
+      { nombre: "Macros", listar: "/api/v1/macros", servicio: "service" },
+    ],
+  },
+  {
+    ruta: "conocimiento",
+    titulo: "Conocimiento",
+    seccion: "4.3",
+    capacidad: "CRM-07.04.03.19",
+    grupo: "Servicio",
+    recursos: [
+      {
+        nombre: "Artículos",
+        objeto: "articulo",
+        listar: "/api/v1/conocimiento/articulos",
+        crear: "/api/v1/conocimiento/articulos",
+        servicio: "service",
+        columnas: ["titulo", "estado", "categoria"],
+        permiso: "knowledge:read",
+      },
+      { nombre: "Portal", listar: "/api/v1/portal/accesos", servicio: "service" },
+      { nombre: "Comunidad", listar: "/api/v1/comunidad/hilos", servicio: "service" },
+    ],
+  },
 ];
 
 export function moduloDe(ruta: string): Modulo | undefined {

@@ -987,11 +987,11 @@ modulos:
             nombre: Cuadros de mando
             capacidades:
               - {id: CRM-05.01.02.01, c: C, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Dashboards configurables por rol, equipo y usuario"}
-              - {id: CRM-05.01.02.02, c: C, fase: 2, svc: analytics, estado: pendiente, t: "Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
-              - {id: CRM-05.01.02.03, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Filtros globales y drill-down hasta el registro", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
-              - {id: CRM-05.01.02.04, c: A, fase: 2, svc: analytics, estado: pendiente, t: "Dashboards dinámicos que muestran los datos del usuario que los abre", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
-              - {id: CRM-05.01.02.05, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Suscripción, alertas por umbral y notificación de anomalías"}
-              - {id: CRM-05.01.02.06, c: A, fase: 2, svc: analytics, estado: pendiente, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Embebido de dashboards en aplicaciones externas con SSO"}
+              - {id: CRM-05.01.02.02, c: C, fase: 2, svc: analytics, estado: hecho, t: "Componentes: KPI, tabla, gráfico, embudo, mapa, gauge, texto", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.03, c: A, fase: 2, svc: analytics, estado: hecho, t: "Filtros globales y drill-down hasta el registro", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.04, c: A, fase: 2, svc: analytics, estado: hecho, t: "Dashboards dinámicos que muestran los datos del usuario que los abre", reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)"}
+              - {id: CRM-05.01.02.05, c: A, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Suscripción, alertas por umbral y notificación de anomalías"}
+              - {id: CRM-05.01.02.06, c: A, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecintelligence (RT-4: delegado, no se reimplementa)", t: "Embebido de dashboards en aplicaciones externas con SSO"}
           - id: CRM-05.01.04
             nombre: Explotación delegada en contecintelligence
             capacidades:
@@ -1197,17 +1197,17 @@ modulos:
               - {id: CRM-07.04.03.06, c: C, fase: 1, svc: front, estado: hecho, cubre: "0.6", t: "Operación: estado del tenant, auditoría consultable, historial de campo, trazas de una petición y avisos"}
               - {id: CRM-07.04.03.07, c: C, fase: 1, svc: front, estado: hecho, cubre: "1.1", t: "Parties: cuentas, contactos, jerarquías múltiples, relaciones, identificadores fiscales, calidad del dato, duplicados y fusión"}
               - {id: CRM-07.04.03.08, c: C, fase: 1, svc: front, estado: hecho, cubre: "1.2", t: "Actividades e interacciones: agenda, tareas, delegación, recordatorios y cronología unificada del cliente"}
-              - {id: CRM-07.04.03.09, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.1", t: "Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas"}
-              - {id: CRM-07.04.03.10, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.2", t: "Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición"}
+              - {id: CRM-07.04.03.09, c: A, fase: 4, svc: front, estado: hecho, cubre: "2.1", t: "Segmentación: constructor visual de audiencias, recuentos en vivo, listas estáticas y dinámicas"}
+              - {id: CRM-07.04.03.10, c: A, fase: 4, svc: front, estado: hecho, cubre: "2.2", t: "Campañas y journeys: lienzo de recorridos, disparadores, esperas, bifurcaciones y medición"}
               - {id: CRM-07.04.03.11, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.3", t: "Canales de ejecución: correo, SMS, notificaciones y formularios, con previsualización y prueba de envío"}
               - {id: CRM-07.04.03.12, c: A, fase: 4, svc: front, estado: pendiente, cubre: "2.4", t: "Contenido y gobierno de marketing: plantillas, activos, consentimiento y supresión"}
               - {id: CRM-07.04.03.13, c: C, fase: 1, svc: front, estado: hecho, cubre: "3.1", t: "Pipeline: embudo arrastrable, ficha de oportunidad, líneas, competidores y motivos de cierre"}
               - {id: CRM-07.04.03.14, c: A, fase: 2, svc: front, estado: hecho, cubre: "3.2", t: "Previsión: pipeline por periodo, categorías de previsión, envío por jerarquía, cuotas y territorios"}
               - {id: CRM-07.04.03.15, c: C, fase: 2, svc: front, estado: hecho, cubre: "3.3", t: "Prospección y ejecución: leads, cualificación, enrutamiento, secuencias de contacto y registro de toques"}
               - {id: CRM-07.04.03.16, c: D, fase: 6, svc: front, estado: pendiente, cubre: "3.4", t: "Canal indirecto: portal de partner, registro de oportunidad y liquidaciones"}
-              - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: pendiente, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
-              - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
-              - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: pendiente, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
+              - {id: CRM-07.04.03.17, c: C, fase: 3, svc: front, estado: hecho, cubre: "4.1", t: "Casos: bandeja, ficha, SLA con reloj, escalado, jerarquía de casos y resolución"}
+              - {id: CRM-07.04.03.18, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.2", t: "Omnicanalidad: consola de agente con conversaciones de varios canales en una sola cola"}
+              - {id: CRM-07.04.03.19, c: A, fase: 3, svc: front, estado: hecho, cubre: "4.3", t: "Conocimiento y autoservicio: artículos, aprobación, búsqueda y portal del cliente"}
               - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
               - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: pendiente, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
               - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: hecho, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
@@ -1335,6 +1335,9 @@ anexo_b_eventos:
   - {type: signature.reminder.sent, fase: 2, svc: integration}
   - {type: report.delivered, fase: 2, svc: analytics}
   - {type: report.failed, fase: 2, svc: analytics}
+  - {type: analytics.source.registered, fase: 2, svc: analytics}
+  - {type: dashboard.alert.fired, fase: 2, svc: analytics}
+  - {type: dashboard.alert.cleared, fase: 2, svc: analytics}
 
 # ── ANEXO C — Preguntas de verificación ────────────────────────────────────
 # Sirven para distinguir un CRM genuinamente headless y multi-tenant de uno que
