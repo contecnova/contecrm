@@ -12054,3 +12054,137 @@ Y dos prácticas del sector que aquí no existen: **no se cobra por exportar**
 La recomendación es pedir la exportación una vez durante la implantación, que es el
 único momento en el que comprobar el plan de salida no cuesta nada y en el que
 descubrir que falta algo tiene arreglo.
+
+## Chat interno (`CRM-06.02.02.01` a `CRM-06.02.02.09`)
+
+Media conversación de un CRM ocurre fuera de él. Se habla de una oportunidad en
+otra herramienta, se decide bajar un precio, y lo que queda dentro es una etapa
+cambiada sin el porqué. Seis meses después, cuando hay que renovar, nadie sabe
+por qué se dio aquel ocho por ciento.
+
+### Lo que lo distingue de poner un enlace a Teams
+
+Una conversación puede **colgar de un registro** (`CRM-06.02.02.02`). No es «un
+canal donde además pegamos enlaces»: es la conversación de *esta* oportunidad,
+que se abre desde su ficha con el botón **Hablar de esto** y se lee con el
+importe y la etapa al lado. Un chat genérico obliga a copiar el enlace y a que
+quien lo recibe cambie de aplicación, y ese salto es justo donde se pierde el
+contexto.
+
+Hay **una sola conversación por registro**, garantizada por un índice único: dos
+serían dos sitios donde mirar lo que se dijo de la misma oportunidad, que es
+peor que ninguno.
+
+La conversación **no se crea al abrir la ficha**, sino al pulsar el botón. Si se
+creara sola, la lista se llenaría de conversaciones vacías de cada registro que
+alguien haya mirado, y una lista así deja de mirarse.
+
+### Canales, grupos y directos
+
+Tres tipos y no más (`CRM-06.02.02.01`), porque cada uno tiene reglas distintas
+de quién entra y quién ve, y un cuarto tipo «otro» sería un tipo sin reglas, es
+decir, sin permisos:
+
+| Tipo | Quién entra | Tiene clave |
+|---|---|---|
+| `canal` | se entra y se sale; `#ventas` | sí, es lo que lo nombra siempre igual |
+| `grupo` | lista fija con nombre | no |
+| `directo` | dos personas, sin invitados | no |
+
+**Un directo con alguien con quien ya se habló devuelve el que hay.** Abrir uno
+nuevo al lado del que tiene el histórico es cómo se acaban teniendo tres
+conversaciones con la misma persona y buscando en las tres.
+
+**A un directo no se añade gente.** Lo que se quiere entonces es un grupo, y un
+grupo nuevo no arrastra lo que ya se dijo en privado — que es exactamente lo que
+no debe arrastrar.
+
+### Quién lee qué
+
+Quien no está en la conversación no la lee, y la respuesta es **404 y no 403**:
+decir «existe pero no puedes» sobre un canal privado confirma que ese canal
+existe, y el nombre de un canal —`due-diligence`, `salida-de-javier`— ya es
+información.
+
+Por lo mismo, el listado devuelve **solo las conversaciones propias** y la
+búsqueda (`CRM-06.02.02.08`) busca solo dentro de ellas. Una búsqueda global
+encontraría texto de canales en los que no se está, que es una fuga por la
+puerta de atrás.
+
+### Hilos, reacciones y correcciones
+
+Un mensaje puede responder a otro (`CRM-06.02.02.03`). Sin hilos, una
+conversación con dos temas a la vez es ilegible; con hilos de verdad —no
+«citas»— cada tema se sigue por separado. En la pantalla el hilo se abre **al
+lado** y no sustituye a la conversación: entrar en un hilo y perder de vista lo
+demás obliga a salir y volver, que es lo que un hilo existe para evitar.
+
+Las reacciones salen de una **lista corta y cerrada** (👍 👎 ✅ ❓ 🎉 👀). Con
+emoji libre, la misma reacción se escribe de cinco maneras y contar «cuántos lo
+han aprobado» deja de ser posible. Son un interruptor: pulsar dos veces el mismo
+emoji lo quita.
+
+**Editar guarda lo que decía antes.** En una conversación donde se decide algo,
+saber qué decía es justo lo que hace falta cuando alguien lo discute. El mensaje
+enseña cuántas veces se corrigió y el texto anterior se consulta aparte —no se
+pinta en cada mensaje— porque el histórico es para cuando se necesita, no ruido
+permanente.
+
+**Solo edita un mensaje quien lo escribió.** Que un administrador pueda
+reescribir lo que dijo otro convierte el histórico en algo que no se puede
+citar, y la única razón de tener histórico es poder citarlo.
+
+### Menciones
+
+Las menciones (`CRM-06.02.02.04`) avisan por el **mismo camino que todo lo
+demás**: `crmcore.datos.seguimiento`. Así respetan las preferencias por canal de
+cada quien y aparecen en la misma bandeja que el resto de avisos. Un chat con su
+propio sistema de notificaciones obliga a configurar dos veces y a mirar en dos
+sitios, y lo que pasa es que se mira en ninguno.
+
+**Solo se avisa a quien está dentro** de la conversación: mencionar a alguien
+que no puede leerla le mandaría a una pantalla que le dirá que no existe.
+
+### Leídos y no leídos
+
+Cada miembro guarda **hasta cuándo** ha leído (`CRM-06.02.02.05`), no el último
+mensaje leído. Con el identificador, un mensaje que llega desordenado —o uno
+borrado— deja el contador en un número que no se corresponde con nada.
+
+### Presencia
+
+El estado (`CRM-06.02.02.06`) va con **texto libre corto**: «en un cliente hasta
+las 5» vale más que el color, porque responde a la pregunta de verdad, que es si
+esperar o llamar.
+
+### Entrega en vivo
+
+Por SSE (`CRM-06.02.02.07`), leyendo **por cursor contra la base** y no de una
+cola en memoria. El gateway tiene una cola en proceso para su empuje de eventos
+y aquí no sirve: con dos réplicas de `identity`, un mensaje escrito en la
+primera nunca llegaría a quien escucha en la segunda, y ese fallo solo aparece
+al escalar —con dos personas hablando y una que no recibe nada—. Leer por cursor
+cuesta una consulta cada pocos segundos y funciona con las réplicas que haga
+falta, sin bus y sin estado compartido.
+
+La sesión de base de datos **se cierra entre vueltas**: mantenerla abierta
+reservaría una conexión por persona conectada, y con cincuenta personas con el
+chat abierto eso agota el pool sin que nadie esté haciendo nada.
+
+Lleva latido: un flujo sin datos durante minutos lo cierra cualquier
+intermediario por inactividad, y el cliente cree que el servidor se ha caído
+cuando lo que pasa es que no pasa nada.
+
+### Borrado y retención
+
+Los mensajes y las conversaciones tienen papelera (`CRM-06.02.02.09`): se
+borran a la papelera del servicio, como cualquier otro registro, y de ahí se
+restauran o se purgan cuando cumplen el plazo.
+
+### Lo que no hay, dicho claro
+
+**No hay llamadas, vídeo ni grabaciones.** Eso es una herramienta de
+comunicaciones, no un CRM, y hacerlo a medias sería peor que no hacerlo: la
+mitad de una videollamada es una videollamada que no funciona. Quien necesite
+eso seguirá teniendo su herramienta, y lo que aporta contecrm —la conversación
+pegada al registro— no se lo da ninguna.

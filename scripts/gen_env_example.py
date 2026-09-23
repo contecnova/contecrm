@@ -143,6 +143,16 @@ def _formatear(valor: object) -> str:
     return "" if valor is None else str(valor)
 
 
+def _alias_de(nodo: ast.AnnAssign) -> str:
+    """El `alias=` del `Field(...)`, si lo tiene. Es el nombre real del ajuste."""
+    if not isinstance(nodo.value, ast.Call):
+        return ""
+    for clave in nodo.value.keywords:
+        if clave.arg == "alias" and isinstance(clave.value, ast.Constant):
+            return str(clave.value.value)
+    return ""
+
+
 def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
     """Valor de ejemplo. Nunca un secreto real, ni siquiera de desarrollo."""
     es_secreto = any(p in nombre for p in ("secret", "password", "key", "token"))
@@ -212,6 +222,11 @@ def generar() -> str:
                 nombre = nodo.target.id
                 if nombre.startswith("_") or nombre == "model_config":
                     continue
+                # El alias manda sobre el nombre del campo: un ajuste declarado
+                # como `x_bruto` con `alias="x"` se lee del entorno como `X`, y
+                # escribir aquí `X_BRUTO` documentaría una variable que nadie
+                # lee —y dejaría la de verdad sin documentar—.
+                nombre = _alias_de(nodo) or nombre
                 for comentario in _comentarios_previos(lineas, nodo.lineno):
                     # Una línea de comentario vacía se escribe `#` a secas. Con
                     # el espacio, el gancho `trailing-whitespace` la recortaba

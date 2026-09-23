@@ -49,6 +49,9 @@ PREFIJOS: dict[str, str] = {
     "sharing-rules": "identity",
     "notificaciones": "identity",
     "seguimientos": "identity",
+    # El chat interno vive en identidad porque es quien conoce a las personas,
+    # sus permisos y por dónde quieren que se les avise (CRM-06.02.02).
+    "chat": "identity",
     "plantillas": "tenancy",
     "calendarios": "tenancy",
     "monedas": "tenancy",

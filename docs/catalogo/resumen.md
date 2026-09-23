@@ -12,7 +12,7 @@
 | 3 — Ventas (SFA) | 65 | 65 | 0 | 0 |
 | 4 — Servicio y atención al cliente | 62 | 62 | 0 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
-| 6 — Productividad y colaboración | 49 | 49 | 0 | 0 |
+| 6 — Productividad y colaboración | 58 | 58 | 0 | 0 |
 | 7 — Administración, ALM y gobierno | 106 | 106 | 0 | 0 |
 | 8 — Requisitos no funcionales | 12 | 12 | 0 | 0 |
 | 9 — Proveedores, coste y capacidad | 20 | 20 | 0 | 0 |
@@ -22,7 +22,7 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 308 | 308 |
-| A — Avanzado | 410 | 410 |
+| A — Avanzado | 419 | 419 |
 | D — Diferencial | 44 | 44 |
 
 ## Por fase
@@ -30,8 +30,8 @@
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 179 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 172 | 172 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 211 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 177 | 177 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 215 | 215 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 50 |
@@ -39,12 +39,12 @@
 
 ## Reutilización
 
-**327 de 762** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**329 de 771** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|
 | contecmind | 145 |
-| contecflow-PSA | 97 |
+| contecflow-PSA | 99 |
 | contecweb | 43 |
 | contecpos | 20 |
 | contecintelligence (RT-4 | 15 |

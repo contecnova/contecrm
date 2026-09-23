@@ -135,10 +135,18 @@ class _AuthSettings(BaseSettings):
     # los que tardan en atribuirse.
     sesion_cookie_nombre: str = "contecrm_sesion"
     # `secure` en producción SIEMPRE: una cookie sin él viaja en claro si
-    # alguien fuerza http, y con ella va la sesión entera. Se deja configurable
-    # para poder trabajar en local sobre http, y el arranque avisa si se
-    # despliega en producción con esto apagado.
-    sesion_cookie_secure: bool = True
+    # alguien fuerza http, y con ella va la sesión entera.
+    #
+    # Sin decidir (`None`) lo resuelve el entorno: apagado en desarrollo,
+    # encendido en el resto. Estaba fijo a `True`, y en local sobre http eso
+    # hace que **Safari descarte la cookie y no se pueda entrar**: el acceso
+    # contesta 200, la sesión no se guarda y la aplicación devuelve a la
+    # pantalla de acceso sin decir por qué. Chrome la acepta en `localhost` y
+    # Safari no, así que el fallo dependía del navegador, que es la peor forma
+    # de tenerlo.
+    sesion_cookie_secure_bruto: bool | None = Field(
+        None, alias="sesion_cookie_secure", description="Sin poner: apagado solo en desarrollo"
+    )
     # `lax` y no `strict`: con `strict` la vuelta del proveedor de identidad
     # —que es una navegación desde otro dominio— llega sin cookie y el SSO no
     # completa nunca. `lax` sigue bloqueando el envío en peticiones cruzadas de

@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**762 capacidades**: ✅ 762 hecho
+**771 capacidades**: ✅ 771 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-49 capacidades · ✅ 49
+58 capacidades · ✅ 58
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -1057,6 +1057,20 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ✅ | — |
 | `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ✅ | — |
 | `CRM-06.02.01.06` | Usuarios invitados externos con acceso acotado y temporal | A | 1 | identity | ✅ | contecweb:app/services/share_links.py (acceso acotado y temporal) |
+
+#### CRM-06.02.02 · Chat interno
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-06.02.02.01` | Conversaciones de equipo: canales, grupos y mensajes directos, con miembros y permisos | A | 1 | identity | ✅ | contecflow-PSA:app/models/collaboration.py + app/services/collaboration/ |
+| `CRM-06.02.02.02` | Una conversación puede colgar de un registro: hablar de ESTA oportunidad, con su contexto al lado y sin pegar enlaces | A | 1 | identity | ✅ | — |
+| `CRM-06.02.02.03` | Hilos, reacciones y edición con historial: lo que se corrige se ve corregido, no reescrito | A | 1 | identity | ✅ | contecflow-PSA:app/models/collaboration.py (threads, reactions) |
+| `CRM-06.02.02.04` | Menciones que avisan por el mismo camino que el resto: seguimiento, bandeja y preferencias por canal | A | 1 | identity | ✅ | — |
+| `CRM-06.02.02.05` | Leídos por conversación y no leídos por persona, con marca de hasta dónde llegó cada quien | A | 1 | identity | ✅ | — |
+| `CRM-06.02.02.06` | Presencia y estado escrito, con «visto por última vez» para saber si esperar respuesta o llamar | A | 2 | identity | ✅ | — |
+| `CRM-06.02.02.07` | Entrega en vivo por SSE, con reconexión y recuperación de lo perdido por cursor | A | 2 | identity | ✅ | — |
+| `CRM-06.02.02.08` | Búsqueda dentro de las conversaciones a las que se pertenece, y solo en esas | A | 2 | identity | ✅ | — |
+| `CRM-06.02.02.09` | Retención y papelera del chat: un mensaje borrado se puede recuperar y lo que caduca se purga con motivo | A | 2 | identity | ✅ | — |
 
 ## Módulo 7 — Administración, ALM y gobierno
 

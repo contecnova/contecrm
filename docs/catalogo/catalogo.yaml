@@ -1124,6 +1124,18 @@ modulos:
               - {id: CRM-06.02.01.07, c: A, fase: 2, svc: core, estado: hecho, t: "Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio"}
               - {id: CRM-06.02.01.08, c: D, fase: 4, svc: core, estado: hecho, t: "Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor"}
               - {id: CRM-06.02.01.06, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/share_links.py (acceso acotado y temporal)", t: "Usuarios invitados externos con acceso acotado y temporal"}
+          - id: CRM-06.02.02
+            nombre: Chat interno
+            capacidades:
+              - {id: CRM-06.02.02.01, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/models/collaboration.py + app/services/collaboration/", t: "Conversaciones de equipo: canales, grupos y mensajes directos, con miembros y permisos"}
+              - {id: CRM-06.02.02.02, c: A, fase: 1, svc: identity, estado: hecho, t: "Una conversación puede colgar de un registro: hablar de ESTA oportunidad, con su contexto al lado y sin pegar enlaces"}
+              - {id: CRM-06.02.02.03, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecflow-PSA:app/models/collaboration.py (threads, reactions)", t: "Hilos, reacciones y edición con historial: lo que se corrige se ve corregido, no reescrito"}
+              - {id: CRM-06.02.02.04, c: A, fase: 1, svc: identity, estado: hecho, t: "Menciones que avisan por el mismo camino que el resto: seguimiento, bandeja y preferencias por canal"}
+              - {id: CRM-06.02.02.05, c: A, fase: 1, svc: identity, estado: hecho, t: "Leídos por conversación y no leídos por persona, con marca de hasta dónde llegó cada quien"}
+              - {id: CRM-06.02.02.06, c: A, fase: 2, svc: identity, estado: hecho, t: "Presencia y estado escrito, con «visto por última vez» para saber si esperar respuesta o llamar"}
+              - {id: CRM-06.02.02.07, c: A, fase: 2, svc: identity, estado: hecho, t: "Entrega en vivo por SSE, con reconexión y recuperación de lo perdido por cursor"}
+              - {id: CRM-06.02.02.08, c: A, fase: 2, svc: identity, estado: hecho, t: "Búsqueda dentro de las conversaciones a las que se pertenece, y solo en esas"}
+              - {id: CRM-06.02.02.09, c: A, fase: 2, svc: identity, estado: hecho, t: "Retención y papelera del chat: un mensaje borrado se puede recuperar y lo que caduca se purga con motivo"}
 
   - id: "7"
     nombre: Administración, ALM y gobierno

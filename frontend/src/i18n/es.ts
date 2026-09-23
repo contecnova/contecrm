@@ -55,6 +55,7 @@ export default {
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",
     proveedores: "Proveedores",
+    chat: "Chat",
     embudo: "Tablero de ventas",
     coste: "Coste",
     inteligencia: "Inteligencia",
@@ -370,6 +371,30 @@ export default {
   },
   retenidos_uno: "Hay un campo que no puedes ver: {{campos}}",
   retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
+
+  chat: {
+    titulo: "Chat interno",
+    intro:
+      "Lo que se habla del trabajo, dentro del CRM. Una conversación puede colgar de un registro: la de esta oportunidad se abre desde su ficha, con el importe al lado.",
+    conversaciones: "Conversaciones",
+    nuevoCanal: "Crear un canal",
+    claveDelCanal: "Nombre del canal, sin almohadilla (por ejemplo: ventas)",
+    sinConversaciones: "Todavía no estás en ninguna conversación.",
+    eligeUna: "Elige una conversación",
+    eligeUnaDetalle: "O crea un canal para lo que aún no tiene sitio.",
+    escribe: "Escribe un mensaje. Menciona con @correo.",
+    enviar: "Enviar",
+    responder: "Responder en hilo",
+    respondiendo: "Respondiendo en un hilo",
+    reaccionar: "Reaccionar",
+    editado: "editado",
+    editadoVeces: "Corregido {{veces}} vez/veces",
+    alguien: "Alguien",
+    sobreEl: "Sobre un registro de tipo {{objeto}}",
+    ultimoDe: "Último mensaje, de {{quien}}: {{texto}}",
+    hablarDeEsto: "Hablar de esto",
+    noSePudoAbrir: "No se ha podido abrir la conversación.",
+  },
 
   proveedores: {
     titulo: "Proveedores",

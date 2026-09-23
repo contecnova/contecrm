@@ -19,6 +19,7 @@ import { Inicio } from "@/paginas/Inicio";
 import { Pipeline } from "@/paginas/Pipeline";
 import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
+import { Chat } from "@/paginas/Chat";
 import { Recorrido } from "@/paginas/Recorrido";
 import { Alm } from "@/paginas/Alm";
 import { Ayuda } from "@/paginas/Ayuda";
@@ -90,6 +91,7 @@ export function App() {
         <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
         <Route path="/estado" element={<Estado />} />
         <Route path="/cobertura" element={<Cobertura />} />
+        <Route path="/chat" element={<Chat sesion={sesion} />} />
         <Route path="/recorrido" element={<Recorrido />} />
         <Route path="/procesos" element={<Procesos />} />
         <Route path="/explotacion" element={<Explotacion />} />

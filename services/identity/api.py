@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.identity import servicio as svc
+from services.identity.api_chat import ROUTERS_CHAT
 from services.identity.api_sso import router_idp, router_sso
 from services.identity.esquemas import (
     ActivarMfa,
@@ -760,4 +761,5 @@ ROUTERS = [
     *ROUTERS_SOD,
     *ROUTERS_SCIM,
     *ROUTERS_FACTORES,
+    *ROUTERS_CHAT,
 ]

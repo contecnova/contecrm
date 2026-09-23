@@ -115,6 +115,20 @@ class Settings(
         return self.env != "dev"
 
     @property
+    def sesion_cookie_secure(self) -> bool:
+        """`Secure` en la cookie de sesión: sí, salvo que se trabaje en local.
+
+        Sin decisión explícita lo resuelve el entorno. Fijo a `True` hacía que
+        en desarrollo sobre http Safari descartara la cookie y no se pudiera
+        entrar —el acceso contesta 200 y la aplicación vuelve a la pantalla de
+        acceso— mientras que en Chrome funcionaba. Un fallo que depende del
+        navegador es de los que se atribuyen a cualquier otra cosa.
+        """
+        if self.sesion_cookie_secure_bruto is not None:
+            return self.sesion_cookie_secure_bruto
+        return self.env != "dev"
+
+    @property
     def esquema_resuelto(self) -> str:
         """Esquema de base de datos del servicio.
 

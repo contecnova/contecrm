@@ -507,3 +507,14 @@ from crmcore.notificaciones.plantillas_replicadas import (  # noqa: E402,F401
 )
 
 from services.identity import tratamientos  # noqa: E402,F401
+
+# Las tablas del chat interno (CRM-06.02.02). Se importan aquí para que las
+# migraciones las vean: un modelo que solo importa su API nace sin tabla, y el
+# fallo aparece la primera vez que alguien escribe un mensaje.
+from services.identity.chat import (  # noqa: E402,F401
+    ConversacionChat,
+    MensajeChat,
+    MiembroConversacion,
+    Presencia,
+    ReaccionMensaje,
+)

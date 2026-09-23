@@ -3111,6 +3111,71 @@ def sembrar_trabajo(api: Api) -> None:
         api.crear("/api/v1/liquidaciones", cuerpo)
 
 
+# ── Chat interno ──────────────────────────────────────────────────────────
+
+
+def sembrar_chat(api: Api) -> None:
+    """Canales de equipo, una conversación de oportunidad y algo dicho.
+
+    Un chat vacío no se entiende: parece que no funciona. Con tres canales y
+    una conversación colgada de una oportunidad se ve de un vistazo para qué
+    sirve —y sobre todo qué lo diferencia de poner un enlace a otra
+    herramienta—.
+    """
+    canales = [
+        ("ventas", "Ventas", "Lo que pasa en el embudo cada día"),
+        ("soporte", "Soporte", "Lo que se está cociendo en la cola de casos"),
+        ("anuncios", "Anuncios", "Lo que hay que leer aunque no se conteste"),
+    ]
+    creados: dict[str, str] = {}
+    for clave, nombre, proposito in canales:
+        hecho = api.crear(
+            "/api/v1/chat/conversaciones",
+            {"tipo": "canal", "clave": clave, "nombre": nombre, "proposito": proposito},
+        )
+        if hecho and hecho.get("id"):
+            creados[clave] = str(hecho["id"])
+
+    # Todo el mundo en los canales: un canal con una sola persona dentro no
+    # enseña nada de lo que hace un chat.
+    usuarios = [str(u["id"]) for u in api.listar("/api/v1/usuarios", 30) if u.get("id")]
+    for conversacion_id in creados.values():
+        for usuario_id in usuarios[:6]:
+            api._llamar(
+                "POST",
+                f"/api/v1/chat/conversaciones/{conversacion_id}/miembros",
+                {"usuario_id": usuario_id},
+            )
+
+    conversacion = [
+        ("ventas", "Metalúrgica del Norte pide un 8 % sobre la tarifa OEM en el programa 2027."),
+        ("ventas", "Con ese volumen entra. Lo paso por aprobación de descuento."),
+        ("soporte", "Dos casos de la misma planta con el sensor RS-220 bajo lluvia intensa."),
+        ("soporte", "Los agrupo en un problema: si es la misma causa se arregla una vez."),
+        ("anuncios", "El martes cambia la tarifa de recambio. Está ya en Listas de precio."),
+    ]
+    for clave, texto in conversacion:
+        if clave in creados:
+            api.crear(f"/api/v1/chat/conversaciones/{creados[clave]}/mensajes", {"cuerpo": texto})
+
+    # Y la que cuelga de una oportunidad, que es lo que distingue este chat.
+    oportunidades = api.listar("/api/v1/opportunities", 5)
+    if oportunidades and oportunidades[0].get("id"):
+        estado, cuerpo = api._llamar(
+            "GET", f"/api/v1/chat/conversaciones/de/oportunidad/{oportunidades[0]['id']}"
+        )
+        if estado == 200 and isinstance(cuerpo, dict) and cuerpo.get("id"):
+            api.crear(
+                f"/api/v1/chat/conversaciones/{cuerpo['id']}/mensajes",
+                {
+                    "cuerpo": (
+                        "El cliente pide entrega en dos fases. Lo hablo con planta y "
+                        "lo dejo aquí para que quede con la oportunidad."
+                    )
+                },
+            )
+
+
 def sembrar_rastro(api: Api) -> None:
     """Las pantallas que no se llenan creando, sino usando.
 
@@ -3204,6 +3269,7 @@ PARTES: dict[str, Any] = {
     "integracion": sembrar_integracion,
     "resto": sembrar_resto,
     "trabajo": sembrar_trabajo,
+    "chat": sembrar_chat,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
 }
