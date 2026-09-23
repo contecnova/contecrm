@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -18,6 +19,7 @@ from services.analytics import cliente as ci
 from services.analytics import cohortes as coh
 from services.analytics import fuente as fue
 from services.analytics import semantico as sem
+from services.analytics.almacen import FuenteFederada, TablaAnalitica
 
 router = APIRouter(prefix="/almacen", tags=["analitica"])
 router_metricas = APIRouter(prefix="/metricas", tags=["analitica"])
@@ -397,6 +399,29 @@ def contexto(datos: PreguntaEnContexto, db: DbDep, principal: AutenticadoDep) ->
 )
 def despliegue() -> Any:
     return ci.modo_despliegue()
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router,
+    modelo=TablaAnalitica,
+    objeto="tabla_analitica",
+    permiso="informe:read",
+    ruta="/tablas",
+    nombre="Tablas del almacén",
+)
+montar_listado(
+    router,
+    modelo=FuenteFederada,
+    objeto="fuente_federada",
+    permiso="informe:read",
+    ruta="/federadas",
+    nombre="Fuentes federadas",
+)
 
 
 ROUTERS_ALMACEN = [router, router_metricas, router_analisis]

@@ -674,7 +674,7 @@ def publicar_esquema(nombre: str, datos: Publicar, uow: UowDep, principal: Auten
     from services.metadata import publicacion
 
     return publicacion.publicar(
-        uow.db, principal.tenant_id, nombre, por=principal.usuario_id, nota=datos.nota
+        uow.db, principal.tenant_id, nombre, por=principal.id, nota=datos.nota
     )
 
 
@@ -768,7 +768,7 @@ def instalar_paquete(datos: InstalarPaquete, uow: UowDep, principal: Autenticado
         principal.tenant_id,
         datos.paquete,
         simular=not datos.aplicar,
-        por=principal.usuario_id,
+        por=principal.id,
     )
 
 
@@ -808,7 +808,7 @@ class InstalarModulo(BaseModel):
 def instalar_modulo(datos: InstalarModulo, uow: UowDep, principal: AutenticadoDep) -> Any:
     from services.metadata import modulos
 
-    return modulos.instalar(uow, datos.manifiesto, aplicar=datos.aplicar, por=principal.usuario_id)
+    return modulos.instalar(uow, datos.manifiesto, aplicar=datos.aplicar, por=principal.id)
 
 
 class ActualizarModulo(BaseModel):
@@ -850,7 +850,7 @@ def actualizar_modulo(datos: ActualizarModulo, uow: UowDep, principal: Autentica
         datos.manifiesto,
         aplicar=datos.aplicar,
         forzar_fijos=datos.forzar_fijos,
-        por=principal.usuario_id,
+        por=principal.id,
     )
 
 
@@ -886,7 +886,7 @@ def desinstalar_modulo(
         clave,
         aplicar=datos.aplicar,
         borrar_datos=datos.borrar_datos,
-        por=principal.usuario_id,
+        por=principal.id,
     )
 
 

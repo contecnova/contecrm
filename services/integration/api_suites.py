@@ -14,12 +14,15 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.integration import suites as su
 from services.integration import suites_operacion as sop
 from services.integration import suites_recursos as sur
+from services.integration.modelos import Conexion
+from services.integration.suites import ConsentimientoSuite
 
 router_suites = APIRouter(prefix="/suites", tags=["suites de productividad"])
 
@@ -493,6 +496,33 @@ def transferir(cuerpo: TransferirIn, principal: AutenticadoDep) -> Any:
         caso_id=cuerpo.caso_id,
         lo_ya_hablado=cuerpo.lo_ya_hablado,
     )
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router_suites,
+    modelo=ConsentimientoSuite,
+    objeto="consentimiento_suite",
+    permiso="integration:read",
+    ruta="/consentimiento",
+    nombre="Consentimientos de suite",
+)
+montar_listado(
+    router_suites,
+    modelo=Conexion,
+    objeto="perfil_suite",
+    permiso="integration:read",
+    ruta="/perfiles",
+    nombre="Perfiles de suite",
+    # Los perfiles viven en la tabla de conexiones junto a las demás
+    # integraciones: sin acotar, este listado devolvería conectores que no
+    # tienen nada que ver con productividad.
+    filtro=lambda c: c.where(Conexion.config["clase"].astext == "suite_productividad"),
+)
 
 
 ROUTERS_SUITES = [router_suites, router_compensacion, router_telefonia]

@@ -122,7 +122,11 @@ def principal_de_metadatos(metadatos: list[tuple[str, str]] | dict[str, str]) ->
             "cookies ni sesión: la identidad viaja en los metadatos de cada llamada.",
             error_code="rpc.sin_token",
         )
-    return principal_de_token(autorizacion[7:].strip(), get_settings().jwt_secret)
+    # `secret_key`, no `jwt_secret`: ese ajuste no existe. Toda llamada gRPC
+    # autenticada moría con `AttributeError` antes de validar nada.
+    return principal_de_token(
+        autorizacion[7:].strip(), get_settings().secret_key.get_secret_value()
+    )
 
 
 def limites(settings: Any) -> dict[str, int]:

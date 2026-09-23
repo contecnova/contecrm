@@ -47,6 +47,7 @@ H_PERMISOS = "x-crm-permisos"
 H_ROLES = "x-crm-roles"
 H_SCOPES = "x-crm-scopes"
 H_ACTOR_REAL = "x-crm-actor-real"
+H_SESION = "x-crm-sesion"
 H_PLATAFORMA = "x-crm-plataforma"
 H_FIRMA = "x-crm-firma"
 H_MOMENTO = "x-crm-momento"
@@ -85,7 +86,16 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
         return False
     valores = {
         h: request.headers.get(h, "")
-        for h in (H_TENANT, H_USER, H_PERMISOS, H_ROLES, H_SCOPES, H_ACTOR_REAL, H_PLATAFORMA)
+        for h in (
+            H_TENANT,
+            H_USER,
+            H_PERMISOS,
+            H_ROLES,
+            H_SCOPES,
+            H_ACTOR_REAL,
+            H_PLATAFORMA,
+            H_SESION,
+        )
     }
     esperada = hmac.new(
         secreto.encode(), _material(valores, momento).encode(), hashlib.sha256
@@ -198,6 +208,7 @@ def _principal_de_cabeceras(request: Request) -> Principal:
         id=_uuid(H_USER),
         tenant_id=_uuid(H_TENANT),
         actor_real_id=_uuid(H_ACTOR_REAL),
+        sesion_id=_uuid(H_SESION),
         permisos=frozenset(p for p in request.headers.get(H_PERMISOS, "").split(",") if p),
         roles=frozenset(r for r in request.headers.get(H_ROLES, "").split(",") if r),
         scopes=frozenset(p for p in request.headers.get(H_SCOPES, "").split(",") if p),
@@ -232,6 +243,7 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
             scopes=frozenset(datos.get("scopes", [])),
             es_admin_plataforma=bool(datos.get("plataforma")),
             actor_real_id=UUID(datos["actor_real"]) if datos.get("actor_real") else None,
+            sesion_id=UUID(datos["sid"]) if datos.get("sid") else None,
         )
     except (ValueError, KeyError):
         raise NoAutenticado(

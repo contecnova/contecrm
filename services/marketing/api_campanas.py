@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.marketing import campanas as cmp
-from services.marketing.campanas import Campana, Rebote
+from services.marketing.campanas import Campana, Rebote, ReglaFatiga
 
 router_campanas = APIRouter(prefix="/campanas", tags=["campañas"])
 router_atribucion = APIRouter(prefix="/atribucion", tags=["campañas"])
@@ -438,6 +438,14 @@ def salud(db: DbDep, principal: AutenticadoDep, dias: int = Query(30, ge=1, le=3
 # contestaba 405 y el front —que las declara listables— enseñaba una pantalla
 # vacía sin decir por qué.
 
+montar_listado(
+    router_presion,
+    modelo=ReglaFatiga,
+    objeto="regla_fatiga",
+    permiso="campaign:read",
+    ruta="/reglas",
+    nombre="Reglas de presión de contacto",
+)
 montar_listado(
     router_campanas,
     modelo=Campana,

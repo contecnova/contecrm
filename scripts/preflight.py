@@ -89,6 +89,12 @@ GATES: list[Gate] = [
         "servicios desacoplados, tenant_id obligatorio, permisos declarados",
     ),
     Gate(
+        "atributos",
+        [PY, "scripts/comprobar_atributos.py"],
+        "tests",
+        "nadie lee un campo que no existe (lo que en ejecución es un 500)",
+    ),
+    Gate(
         "trazabilidad",
         [PY, "-m", "pytest", "tests/unit/test_catalogo_trazabilidad.py", "-q", "--no-header"],
         "fast",

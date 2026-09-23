@@ -61,7 +61,7 @@ def crear(datos: CrearArticulo, uow: UowDep, principal: AutenticadoDep) -> Any:
         resumen=cuerpo.pop("resumen"),
         idioma=cuerpo.pop("idioma"),
         audiencia=cuerpo.pop("audiencia"),
-        autor_id=principal.usuario_id,
+        autor_id=principal.id,
         **cuerpo,
     )
     return {"id": str(articulo.id), "clave": articulo.clave, "version": version.version}
@@ -95,7 +95,7 @@ def nueva_version(
         cuerpo=datos.cuerpo,
         resumen=datos.resumen,
         notas_cambio=datos.notas_cambio,
-        autor_id=principal.usuario_id,
+        autor_id=principal.id,
     )
     return {"version": fila.version}
 
@@ -124,7 +124,7 @@ def publicar(articulo_id: UUID, datos: Publicar, uow: UowDep, principal: Autenti
         uow,
         articulo_id,
         version=datos.version,
-        aprobada_por=principal.usuario_id,
+        aprobada_por=principal.id,
         audiencia=datos.audiencia,
     )
     return {"id": str(fila.id), "estado": fila.estado, "version": fila.version_publicada}
@@ -259,7 +259,7 @@ def valorar(articulo_id: UUID, datos: Valorar, uow: UowDep, principal: Autentica
         uow,
         articulo_id,
         util=datos.util,
-        votante=datos.votante or str(principal.usuario_id),
+        votante=datos.votante or str(principal.id),
         comentario=datos.comentario,
     )
     return {"id": str(fila.id), "util": fila.util}
@@ -590,7 +590,7 @@ def responder_hilo(
         hilo_id,
         cuerpo=datos.cuerpo,
         contacto_id=contacto_id,
-        usuario_id=None if contacto_id else principal.usuario_id,
+        usuario_id=None if contacto_id else principal.id,
     )
     return {"id": str(fila.id), "oficial": fila.oficial}
 

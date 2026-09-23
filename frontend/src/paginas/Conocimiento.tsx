@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { ErrorApi, llamar } from "@/lib/api";
+import { ErrorApi, filas, llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Articulo {
@@ -36,8 +36,8 @@ export function Conocimiento() {
 
   const cargar = useCallback(() => {
     const control = new AbortController();
-    llamar<Articulo[]>("/api/v1/conocimiento/articulos", { signal: control.signal })
-      .then((r) => setArticulos(r.datos))
+    llamar<unknown>("/api/v1/conocimiento/articulos", { signal: control.signal })
+      .then((r) => setArticulos(filas<Articulo>(r.datos)))
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
       });

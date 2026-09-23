@@ -83,7 +83,7 @@ class CrearInforme(BaseModel):
 def crear(datos: CrearInforme, db: DbDep, principal: AutenticadoDep) -> Any:
     avisos = inf.validar(datos.model_dump())
     fila = inf.Informe(
-        tenant_id=principal.tenant_id, propietario_id=principal.usuario_id, **datos.model_dump()
+        tenant_id=principal.tenant_id, propietario_id=principal.id, **datos.model_dump()
     )
     db.add(fila)
     db.flush()
@@ -156,7 +156,7 @@ def ejecutar(informe_id: UUID, datos: Ejecutar, uow: UowDep, principal: Autentic
         informe_id,
         roles=frozenset(principal.roles or []),
         es_admin=principal.es_admin_plataforma,
-        usuario_id=principal.usuario_id,
+        usuario_id=principal.id,
         filtros=datos.filtros,
         formato=datos.formato,
     )
@@ -195,7 +195,7 @@ def plan(informe_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         fila,
         roles=frozenset(principal.roles or []),
         es_admin=principal.es_admin_plataforma,
-        usuario_id=principal.usuario_id,
+        usuario_id=principal.id,
     )
 
 
@@ -306,7 +306,7 @@ class CrearCuadro(BaseModel):
     summary="Crear un cuadro de mando",
 )
 def crear_cuadro(datos: CrearCuadro, uow: UowDep, principal: AutenticadoDep) -> Any:
-    fila = inf.crear_cuadro(uow, propietario_id=principal.usuario_id, **datos.model_dump())
+    fila = inf.crear_cuadro(uow, propietario_id=principal.id, **datos.model_dump())
     return {"id": str(fila.id), "clave": fila.clave}
 
 
@@ -325,7 +325,7 @@ def listar_cuadros(db: DbDep, principal: AutenticadoDep) -> Any:
         db,
         principal.tenant_id,
         roles=frozenset(principal.roles or []),
-        usuario_id=principal.usuario_id,
+        usuario_id=principal.id,
         es_admin=principal.es_admin_plataforma,
     )
 

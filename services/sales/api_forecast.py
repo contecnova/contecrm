@@ -8,10 +8,12 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.sales import forecast
+from services.sales.modelos import PeriodoForecast
 
 router_forecast = APIRouter(prefix="/forecast", tags=["previsión"])
 
@@ -118,7 +120,7 @@ def abrir_periodo(datos: PeriodoNuevo, uow: UowDep, principal: AutenticadoDep) -
     ),
 )
 def cerrar_periodo(clave: str, uow: UowDep, principal: AutenticadoDep) -> Any:
-    return forecast.cerrar_periodo(uow.db, principal.tenant_id, clave, por=principal.usuario_id)
+    return forecast.cerrar_periodo(uow.db, principal.tenant_id, clave, por=principal.id)
 
 
 class Reapertura(BaseModel):
@@ -138,7 +140,7 @@ class Reapertura(BaseModel):
 )
 def reabrir_periodo(clave: str, datos: Reapertura, uow: UowDep, principal: AutenticadoDep) -> Any:
     fila = forecast.reabrir_periodo(
-        uow.db, principal.tenant_id, clave, motivo=datos.motivo, por=principal.usuario_id
+        uow.db, principal.tenant_id, clave, motivo=datos.motivo, por=principal.id
     )
     return {"clave": fila.clave, "reaperturas": fila.reaperturas}
 
@@ -270,7 +272,7 @@ def ajustar(clave: str, datos: Ajuste, uow: UowDep, principal: AutenticadoDep) -
         motivo=datos.motivo,
         ambito=datos.ambito,
         ambito_id=datos.ambito_id,
-        por=principal.usuario_id,
+        por=principal.id,
         moneda=datos.moneda,
     )
     return {"id": str(fila.id), "delta": str(fila.importe_ajustado - fila.importe_bruto)}
@@ -328,7 +330,7 @@ def tomar_instantanea(
         principal.tenant_id,
         clave,
         etiqueta=datos.etiqueta,
-        por=principal.usuario_id,
+        por=principal.id,
         moneda=datos.moneda or None,
     )
     return {
@@ -405,6 +407,21 @@ def deslizamiento(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
 )
 def historial(oportunidad_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     return forecast.historial_de(db, principal.tenant_id, oportunidad_id)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router_forecast,
+    modelo=PeriodoForecast,
+    objeto="periodo_forecast",
+    permiso="opportunity:read",
+    ruta="/periodos",
+    nombre="Periodos de previsión",
+)
 
 
 ROUTERS_FORECAST = [router_forecast]

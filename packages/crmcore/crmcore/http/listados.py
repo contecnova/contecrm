@@ -27,6 +27,7 @@ ya lo tienen leads, cuentas u oportunidades— y este deja de usarse para él.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import Depends, Query
@@ -46,8 +47,13 @@ def montar_listado(
     descripcion: str = "",
     orden: str = "-created_at",
     columnas_orden: frozenset[str] = frozenset({"created_at"}),
+    filtro: Callable[[Any], Any] | None = None,
 ) -> None:
     """Registra en `router` el listado paginado de `modelo`.
+
+    `filtro` acota la consulta cuando una tabla guarda más de una cosa —los
+    perfiles de suite viven en la tabla de conexiones, junto a las demás—. Sin
+    él, ese listado devolvería registros que no son de ese recurso.
 
     `objeto` es el nombre con el que este registro se conoce en las políticas de
     acceso: de él salen la proyección de campos y las excepciones. Se pide
@@ -78,6 +84,8 @@ def montar_listado(
     ) -> Any:
         params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden=orden)
         consulta = select(modelo)
+        if filtro is not None:
+            consulta = filtro(consulta)
         if tiene_borrado:
             # Lo borrado no se lista. Sigue estando —el borrado es lógico— pero
             # devolverlo haría que una papelera se pareciera a un listado.

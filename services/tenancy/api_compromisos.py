@@ -44,10 +44,8 @@ def compromisos(db: DbDep, principal: AutenticadoDep) -> Any:
     s = get_settings()
     tenant = db.get(Tenant, principal.tenant_id) if principal.tenant_id else None
     tier = "estandar"
-    if tenant is not None and tenant.plan_codigo:
-        plan = db.execute(
-            select(Plan).where(Plan.codigo == tenant.plan_codigo)
-        ).scalar_one_or_none()
+    if tenant is not None and tenant.plan:
+        plan = db.execute(select(Plan).where(Plan.codigo == tenant.plan)).scalar_one_or_none()
         # El tier sale del plan contratado. Si el plan no declara ninguno se usa
         # el estándar: prometer de más por un dato que falta sería prometer lo
         # que no se puede cumplir.

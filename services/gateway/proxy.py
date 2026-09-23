@@ -94,6 +94,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_PLATAFORMA,
         H_ROLES,
         H_SCOPES,
+        H_SESION,
         H_TENANT,
         H_USER,
         firmar_cabeceras_internas,
@@ -107,5 +108,6 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_SCOPES: ",".join(sorted(principal.scopes)),
         H_ACTOR_REAL: str(principal.actor_real_id or ""),
         H_PLATAFORMA: "1" if principal.es_admin_plataforma else "",
+        H_SESION: str(principal.sesion_id or ""),
     }
     return firmar_cabeceras_internas(valores, secreto)

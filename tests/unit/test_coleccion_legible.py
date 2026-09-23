@@ -51,30 +51,77 @@ SERVICIOS = [
 ACCIONES: dict[str, str] = {}
 
 
-def _rutas_montadas(servicio: str) -> dict[str, set[str]]:
-    """Prefijo de colección → métodos que admite su raíz."""
+@pytest.fixture(autouse=True)
+def _devolver_el_servicio():
+    """Deja `SERVICE_NAME` como estaba.
+
+    Estas pruebas cambian el servicio en curso para cargar el contrato de cada
+    uno. Sin devolverlo, la siguiente prueba del fichero siguiente arranca
+    creyendo que es otro servicio y falla por un motivo que no tiene nada que
+    ver con lo que comprueba — que es la peor forma de fallo que puede tener una
+    suite, porque se busca donde no está.
+    """
+    from crmcore.config import limpiar_cache_settings
+
+    previo = os.environ.get("SERVICE_NAME")
+    try:
+        yield
+    finally:
+        if previo is None:
+            os.environ.pop("SERVICE_NAME", None)
+        else:
+            os.environ["SERVICE_NAME"] = previo
+        limpiar_cache_settings()
+
+
+def _contrato(servicio: str) -> dict[str, dict[str, set[str]]]:
+    """Camino → métodos, leído del contrato OpenAPI del servicio.
+
+    Del contrato y no de `app.routes`: esta versión de FastAPI envuelve los
+    routers incluidos en objetos `_IncludedRouter`, así que recorrer `routes`
+    devuelve envoltorios y no rutas — y un gate que recorre envoltorios no ve
+    nada y pasa siempre. Pasó: la primera versión de este fichero daba verde
+    sobre un sistema con cuarenta colecciones ilegibles.
+    """
     os.environ["SERVICE_NAME"] = servicio
     from crmcore.config import limpiar_cache_settings
 
     limpiar_cache_settings()
-    modulo = importlib.import_module(f"services.{servicio}.main")
-    app = modulo.app
+    app = importlib.import_module(f"services.{servicio}.main").app
+    por_camino: dict[str, set[str]] = defaultdict(set)
+    for camino, operaciones in (app.openapi().get("paths") or {}).items():
+        if camino.startswith("/api/v1/"):
+            por_camino[camino].update(m.upper() for m in operaciones)
+    return por_camino
 
-    por_prefijo: dict[str, set[str]] = defaultdict(set)
-    for ruta in app.routes:
-        camino = getattr(ruta, "path", "")
-        metodos = getattr(ruta, "methods", set())
-        if not camino.startswith("/api/v1/") or "{" in camino:
+
+def _colecciones(por_camino: dict[str, set[str]]) -> list[str]:
+    """Los caminos que son una colección, no una acción.
+
+    El criterio: hay fichas colgando de él, es decir existe `<camino>/{algo}`.
+    Sin esta distinción el gate marcaría también `/activos-marketing/aprobacion`
+    —aprobar un activo— y exigirle un listado, que no significa nada: lo que hay
+    ahí es un efecto, no un conjunto.
+    """
+    caminos = set(por_camino)
+    salida = []
+    for camino in caminos:
+        if "{" in camino:
             continue
-        por_prefijo[camino].update(metodos)
-    return por_prefijo
+        if any(
+            otro.startswith(camino + "/") and otro[len(camino) + 1 :].startswith("{")
+            for otro in caminos
+        ):
+            salida.append(camino)
+    return sorted(salida)
 
 
 @pytest.mark.parametrize("servicio", SERVICIOS)
 def test_toda_coleccion_que_admite_alta_se_puede_listar(servicio: str) -> None:
-    por_prefijo = _rutas_montadas(servicio)
+    por_camino = _contrato(servicio)
     sin_listado: list[str] = []
-    for camino, metodos in sorted(por_prefijo.items()):
+    for camino in _colecciones(por_camino):
+        metodos = por_camino[camino]
         if "POST" not in metodos or "GET" in metodos:
             continue
         relativo = camino[len("/api/v1") :]
@@ -91,16 +138,16 @@ def test_toda_coleccion_que_admite_alta_se_puede_listar(servicio: str) -> None:
 
 
 def test_las_excepciones_declaradas_siguen_existiendo() -> None:
-    """Una excepción que sobra es una excepción que tapará algo el día que vuelva.
+    """Una excepción que sobra es la que tapará algo el día que vuelva.
 
-    Si una de estas rutas desaparece o se convierte en colección con su listado,
-    su línea aquí deja de tener sentido y hay que quitarla. Sin esta
-    comprobación, la lista solo crece.
+    Si una de estas rutas desaparece o gana su listado, su línea aquí deja de
+    tener sentido. Sin esta comprobación, la lista solo crece.
     """
     vistas: set[str] = set()
     for servicio in SERVICIOS:
-        for camino, metodos in _rutas_montadas(servicio).items():
-            if "POST" in metodos and "GET" not in metodos:
+        por_camino = _contrato(servicio)
+        for camino in _colecciones(por_camino):
+            if "POST" in por_camino[camino] and "GET" not in por_camino[camino]:
                 vistas.add(camino[len("/api/v1") :])
 
     sobran = sorted(set(ACCIONES) - vistas)

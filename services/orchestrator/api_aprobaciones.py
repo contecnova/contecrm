@@ -100,7 +100,7 @@ def crear(datos: CrearSolicitud, uow: UowDep, principal: AutenticadoDep) -> Any:
         titulo=datos.titulo,
         etapas=[e.model_dump() for e in datos.etapas],
         contexto=datos.contexto,
-        solicitante_id=principal.usuario_id,
+        solicitante_id=principal.id,
         campos_vigilados=datos.campos_vigilados,
         umbral_automatico=datos.umbral_automatico,
         instancia_id=datos.instancia_id,
@@ -129,7 +129,7 @@ def decidir(aprobacion_id: UUID, datos: Decidir, uow: UowDep, principal: Autenti
     return apr.decidir(
         uow,
         aprobacion_id,
-        usuario_id=principal.usuario_id,
+        usuario_id=principal.id,
         decision=datos.decision,
         comentario=datos.comentario,
     )
@@ -147,7 +147,7 @@ def decidir(aprobacion_id: UUID, datos: Decidir, uow: UowDep, principal: Autenti
     ),
 )
 def bandeja(db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, le=200)) -> Any:
-    return apr.bandeja(db, principal.tenant_id, principal.usuario_id, limite=limite)
+    return apr.bandeja(db, principal.tenant_id, principal.id, limite=limite)
 
 
 @router.get(

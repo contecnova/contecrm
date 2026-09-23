@@ -186,6 +186,7 @@ export default {
       "Estos documentos viven en el gestor documental. Aquí está el enlace y para qué está enlazado; el estado real —versión, aprobación, obsolescencia— es de allí.",
   },
   modulo: {
+    escribeParaBuscar: "Escribe al menos {{minimo}} caracteres para buscar.",
     nuevo: "Nuevo",
     cancelar: "Cancelar",
     guardar: "Guardar",
@@ -244,6 +245,8 @@ export default {
     noSeMide: "no se mide desde aquí",
   },
   errores: {
+    soloPlataforma:
+      "Esto es de quien administra la plataforma, no de una empresa concreta.",
     generico: "Algo ha ido mal",
     sinPermiso: "No tienes permiso para esto",
     politica: "Una política de acceso lo impide",

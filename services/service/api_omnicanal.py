@@ -194,7 +194,7 @@ def responder(
         cuerpo=datos.cuerpo,
         canal=datos.canal,
         interno=datos.interno,
-        autor_id=principal.usuario_id,
+        autor_id=principal.id,
     )
     return {"id": str(mensaje.id), "interno": mensaje.interno}
 
@@ -301,7 +301,7 @@ def aplicar_macro(clave: str, datos: AplicarMacro, uow: UowDep, principal: Auten
         macro_clave=clave,
         conversacion_id=datos.conversacion_id,
         contexto=datos.contexto,
-        autor_id=principal.usuario_id,
+        autor_id=principal.id,
         forzar=datos.forzar,
     )
 
@@ -343,7 +343,7 @@ def listar_macros(db: DbDep, principal: AutenticadoDep) -> Any:
     ),
 )
 def consola(db: DbDep, principal: AutenticadoDep) -> Any:
-    return omni.consola(db, principal.tenant_id, principal.usuario_id)
+    return omni.consola(db, principal.tenant_id, principal.id)
 
 
 # ── Listados ──────────────────────────────────────────────────────────────

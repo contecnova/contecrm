@@ -388,12 +388,16 @@ def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dic
         return {}
     try:
         if fuente == "audit_trail":
-            from crmcore.audit.modelos import EntradaAuditoria
+            # `ApunteAuditoria`, no `EntradaAuditoria`: ese nombre no existe.
+            # El `except` de abajo convertía el `ImportError` en un control
+            # que informaba de un error de evidencia — nunca en una cifra—,
+            # así que este control no se pudo evaluar jamás.
+            from crmcore.audit.modelos import ApunteAuditoria
 
             cuantas = db.execute(
                 select(func.count())
-                .select_from(EntradaAuditoria)
-                .where(EntradaAuditoria.tenant_id == tenant_id)
+                .select_from(ApunteAuditoria)
+                .where(ApunteAuditoria.tenant_id == tenant_id)
             ).scalar_one()
             return {"fuente": fuente, "entradas_de_auditoria": int(cuantas)}
         if fuente == "politicas_abac":

@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from services.party import cuenta_360 as c360
 from services.party import mdm
 from services.party import stewardship as stw
-from services.party.cuenta_360 import PlanCuenta, RelacionPersona
+from services.party.cuenta_360 import EstadoFinanciero, PlanCuenta, RelacionPersona
 
 router_calidad = APIRouter(prefix="/calidad-dato", tags=["calidad del dato"])
 router_plan = APIRouter(prefix="/planes-cuenta", tags=["plan de cuenta"])
@@ -362,6 +362,21 @@ montar_listado(
     objeto="relacion_persona",
     permiso="party:read",
     nombre="Mapa de personas",
+)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router_plan,
+    modelo=EstadoFinanciero,
+    objeto="estado_financiero",
+    permiso="party:read",
+    ruta="/financiero",
+    nombre="Estados financieros",
 )
 
 

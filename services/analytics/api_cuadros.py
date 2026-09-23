@@ -7,10 +7,12 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Header, status
 from pydantic import BaseModel, Field
 
 from services.analytics import cuadros as cua
+from services.analytics.cuadros import EnlaceEmbebido
 
 router = APIRouter(prefix="/cuadros-mando", tags=["informes"])
 
@@ -234,6 +236,21 @@ def embebido(
         "actua_como": str(fila.actua_como_id),
         "usos": fila.usos,
     }
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router,
+    modelo=EnlaceEmbebido,
+    objeto="enlace_embebido",
+    permiso="informe:read",
+    ruta="/embebidos",
+    nombre="Enlaces embebidos",
+)
 
 
 ROUTERS_CUADROS = [router]

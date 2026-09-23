@@ -367,7 +367,7 @@ def cambiar_estado(
     ),
 )
 def primera_respuesta(caso_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
-    caso = svc.registrar_primera_respuesta(uow, caso_id, por=principal.usuario_id)
+    caso = svc.registrar_primera_respuesta(uow, caso_id, por=principal.id)
     return {
         "id": str(caso.id),
         "primera_respuesta_at": (

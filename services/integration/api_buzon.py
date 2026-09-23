@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.documental.firma_presencial import FirmaPresencial
 from crmcore.documental.plantillas import PlantillaDocumento
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
@@ -406,6 +407,20 @@ montar_listado(
     objeto="plantilla_documento",
     permiso="integracion:read",
     nombre="Plantillas de documento",
+)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router_presencial,
+    modelo=FirmaPresencial,
+    objeto="firma_presencial",
+    permiso="firma:read",
+    nombre="Firmas presenciales",
 )
 
 

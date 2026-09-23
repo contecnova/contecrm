@@ -34,13 +34,15 @@ def _llamar(
     se le da al cliente es técnica. Si el proveedor no lo admite, el enrutador ya
     ha descartado usarlo antes de llegar aquí.
     """
-    from crmcore.db.session import sesion_admin
+    # `sesion(sistema=True)`: `sesion_admin` no existe, así que esta llamada
+    # reventaba con ImportError en cuanto se usaba un proveedor de IA.
+    from crmcore.db.session import sesion
     from crmcore.red import cliente_seguro
     from sqlalchemy import select
 
     from services.intelligence.enrutador import ProveedorIA
 
-    with sesion_admin() as db:
+    with sesion(sistema=True) as db:
         ficha = (
             db.execute(select(ProveedorIA).where(ProveedorIA.clave == proveedor)).scalars().first()
         )

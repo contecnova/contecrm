@@ -164,3 +164,37 @@ function problema(estado: number, cuerpo: unknown): ErrorApi {
     p.detalle ?? p.detail ?? null,
   );
 }
+
+/**
+ * Las filas de una respuesta de listado, venga como venga.
+ *
+ * La API devuelve dos formas: unos extremos dan el array pelado y otros una
+ * página `{items, siguiente, hay_mas}`. Que convivan las dos no es un
+ * despiste puntual —la paginación por cursor se fue añadiendo por recursos— y
+ * obligar a cada pantalla a saber cuál le toca garantiza que alguna se
+ * equivoque. Cuando se equivoca no sale un error legible: sale
+ * `datos.map is not a function` y **la pantalla entera se queda en blanco**.
+ * Pasó en conocimiento y en marketing en cuanto sus extremos dejaron de dar
+ * 405 y empezaron a devolver una página.
+ *
+ * Aquí se normaliza en un solo sitio. Y si llega algo que no es ninguna de las
+ * dos cosas, se devuelve lista vacía en vez de reventar: una pantalla vacía es
+ * recuperable, una pantalla en blanco no.
+ */
+export function filas<T>(datos: unknown): T[] {
+  if (Array.isArray(datos)) return datos as T[];
+  if (datos && typeof datos === "object") {
+    const items = (datos as { items?: unknown }).items;
+    if (Array.isArray(items)) return items as T[];
+  }
+  return [];
+}
+
+/** El cursor de la página siguiente, o cadena vacía si no hay más. */
+export function siguientePagina(datos: unknown): string {
+  if (datos && typeof datos === "object") {
+    const s = (datos as { siguiente?: unknown }).siguiente;
+    if (typeof s === "string") return s;
+  }
+  return "";
+}

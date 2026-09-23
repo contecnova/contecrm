@@ -23,6 +23,7 @@ from services.integration import federacion as fed
 from services.integration import manifiestos as man
 from services.integration import mcp as mcp_mod
 from services.integration import transportes_legado as transportes
+from services.integration.mcp import Exposicion
 
 router = APIRouter(prefix="/conectores", tags=["conectores"])
 # `/agentes` ya es del servicio de atención —los agentes de soporte y su
@@ -584,6 +585,29 @@ montar_listado(
     objeto="regla_convivencia",
     permiso="integracion:read",
     nombre="Reglas de convivencia",
+)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, un subprocesador o una transferencia internacional
+# que no se pueden listar no existen para quien tiene que auditarlos.
+
+montar_listado(
+    router_mcp,
+    modelo=Exposicion,
+    objeto="exposicion_mcp",
+    permiso="integracion:read",
+    ruta="/exposiciones",
+    nombre="Exposiciones de agentes",
+)
+montar_listado(
+    router_canales,
+    modelo=canales.Interaccion,
+    objeto="interaccion",
+    permiso="integracion:read",
+    ruta="/interacciones",
+    nombre="Interacciones de canal",
 )
 
 

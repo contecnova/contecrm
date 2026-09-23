@@ -8,11 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.integration import firma as fir
+from services.integration.firma import Sobre
 
 router = APIRouter(prefix="/firma", tags=["firma electrónica"])
 
@@ -413,6 +415,21 @@ def caducar(uow: UowDep, principal: AutenticadoDep) -> Any:
 )
 def panel(db: DbDep, principal: AutenticadoDep, limite: int = Query(100, ge=1, le=500)) -> Any:
     return fir.panel(db, principal.tenant_id, limite=limite)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router,
+    modelo=Sobre,
+    objeto="sobre_firma",
+    permiso="firma:read",
+    ruta="/sobres",
+    nombre="Sobres de firma",
+)
 
 
 ROUTERS_FIRMA = [router]

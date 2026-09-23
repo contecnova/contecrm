@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from services.marketing import activos as act
 from services.marketing import audiencias_externas as aud
 from services.marketing import social as soc
-from services.marketing.activos import Activo
+from services.marketing.activos import Activo, Aprobacion
 
 router_audiencias = APIRouter(prefix="/audiencias-externas", tags=["publicidad y audiencias"])
 # `/activos-marketing` y no `/activos`: ese prefijo ya lo usa el servicio de
@@ -322,6 +322,21 @@ montar_listado(
     objeto="activo_marketing",
     permiso="marketing:read",
     nombre="Activos de marketing",
+)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, un subprocesador o una transferencia internacional
+# que no se pueden listar no existen para quien tiene que auditarlos.
+
+montar_listado(
+    router_activos,
+    modelo=Aprobacion,
+    objeto="aprobacion_activo",
+    permiso="marketing:read",
+    ruta="/aprobacion",
+    nombre="Aprobaciones de activos",
 )
 
 

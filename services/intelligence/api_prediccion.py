@@ -15,6 +15,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,8 @@ from services.intelligence import conversacion as conv
 from services.intelligence import gobierno as gob
 from services.intelligence import prediccion as pred
 from services.intelligence import salud as sal
+from services.intelligence.prediccion import Prediccion
+from services.intelligence.salud import SaludCuenta
 
 router_modelos_ml = APIRouter(prefix="/ia/modelos", tags=["ia"])
 router_prediccion = APIRouter(prefix="/ia/prediccion", tags=["ia"])
@@ -393,6 +396,27 @@ def clasificar(cuerpo: Clasificar, uow: UowDep) -> Any:
 )
 def evolucion(conversacion_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     return conv.evolucion(db, principal.tenant_id, conversacion_id)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, una tabla del almacén o una predicción que no se
+# pueden listar no existen para quien tiene que revisarlos.
+
+montar_listado(
+    router_prediccion,
+    modelo=Prediccion,
+    objeto="prediccion",
+    permiso="ia:usar",
+    nombre="Predicciones",
+)
+montar_listado(
+    router_salud,
+    modelo=SaludCuenta,
+    objeto="salud_cuenta",
+    permiso="ia:usar",
+    nombre="Salud de cuentas",
+)
 
 
 ROUTERS_PREDICCION = [

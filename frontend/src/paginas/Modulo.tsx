@@ -92,13 +92,36 @@ function RecursoVista({
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
   const [creando, setCreando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [termino, setTermino] = useState("");
+
+  // Se decide ANTES de pedir nada. Estaba después de los efectos, así que la
+  // pantalla pedía igualmente la lista, recibía un 403 y lo pintaba como un
+  // error del sistema: el usuario veía algo roto donde lo que pasa es que no le
+  // toca. Y `solo_plataforma` no es un permiso —el administrador de una empresa
+  // tiene `tenant:read` y aun así recibe 403—, por eso va aparte.
+  const puedeVer =
+    puede(sesion, recurso.permiso) &&
+    (!recurso.solo_plataforma || Boolean(sesion?.es_admin_plataforma));
+
+  const busqueda = recurso.busqueda;
+  const terminoValido = !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);
 
   const cargar = useCallback(
     async (cursor?: string) => {
+      if (!puedeVer) return;
+      // Un recurso de búsqueda no se pide sin término: la API contesta 422 y la
+      // pantalla enseñaría un error donde lo que falta es que alguien escriba.
+      if (busqueda && !terminoValido) {
+        setFilas(null);
+        return;
+      }
       setFallo(null);
       try {
+        const partes: string[] = [];
+        if (busqueda) partes.push(`${busqueda.parametro}=${encodeURIComponent(termino.trim())}`);
+        if (cursor) partes.push(`cursor=${encodeURIComponent(cursor)}`);
         const separador = recurso.listar.includes("?") ? "&" : "?";
-        const ruta = cursor ? `${recurso.listar}${separador}cursor=${encodeURIComponent(cursor)}` : recurso.listar;
+        const ruta = partes.length ? `${recurso.listar}${separador}${partes.join("&")}` : recurso.listar;
         const respuesta = await llamar<unknown>(ruta);
         const nuevas = comoFilas(respuesta.datos);
         // Se ACUMULA al paginar: sustituir haría que «cargar más» pareciera
@@ -111,7 +134,7 @@ function RecursoVista({
         setFallo(error);
       }
     },
-    [recurso.listar],
+    [recurso.listar, puedeVer, busqueda, termino, terminoValido],
   );
 
   useEffect(() => {
@@ -131,9 +154,12 @@ function RecursoVista({
     };
   }, [recurso.crear, recurso.servicio]);
 
-  const puedeVer = puede(sesion, recurso.permiso);
   if (!puedeVer) {
-    return <p className="mt-4 text-2xs text-ink-faint">{t("errores.sinPermiso")}</p>;
+    return (
+      <p className="mt-4 text-2xs text-ink-faint" role="status">
+        {recurso.solo_plataforma ? t("errores.soloPlataforma") : t("errores.sinPermiso")}
+      </p>
+    );
   }
 
   async function crear(valores: Record<string, unknown>) {
@@ -172,9 +198,34 @@ function RecursoVista({
         </div>
       ) : null}
 
+      {busqueda ? (
+        <div className="mb-4 max-w-md">
+          <label htmlFor="modulo-busqueda" className="label-base">
+            {busqueda.etiqueta}
+          </label>
+          <input
+            id="modulo-busqueda"
+            value={termino}
+            onChange={(e) => setTermino(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void cargar();
+              }
+            }}
+            onBlur={() => void cargar()}
+            className="input-base"
+          />
+        </div>
+      ) : null}
+
       {fallo ? <Fallo error={fallo} reintentar={() => void cargar()} /> : null}
 
-      {filas === null ? (
+      {busqueda && !terminoValido ? (
+        <p className="text-2xs text-ink-faint" role="status">
+          {t("modulo.escribeParaBuscar", { minimo: busqueda.minimo ?? 1 })}
+        </p>
+      ) : filas === null ? (
         <Cargando />
       ) : filas.length === 0 ? (
         <Vacio />

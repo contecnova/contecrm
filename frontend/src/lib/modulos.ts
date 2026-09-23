@@ -38,6 +38,26 @@ export interface Recurso {
   /** Permiso que hace falta para verlo. Lo declara el servicio; aquí se lee. */
   permiso?: string;
   /**
+   * Solo para administradores de plataforma, no de empresa.
+   *
+   * No es lo mismo que un permiso y por eso es un campo aparte: el
+   * administrador de una empresa tiene `tenant:read` y aun así la API le
+   * responde 403, porque listar tenants es de quien opera la plataforma. Sin
+   * esta marca, a ese administrador se le enseñaba una pestaña que nunca podría
+   * abrir y lo único que veía era un error.
+   */
+  solo_plataforma?: boolean;
+  /**
+   * El recurso no es un listado: es una búsqueda que **exige** un término.
+   *
+   * `/data-quality/accounts/duplicates` no devuelve «los duplicados»: compara
+   * un nombre contra el maestro y dice a qué se parece. Pedido sin nombre
+   * responde 422, y la pestaña salía con un error incomprensible. Declarándolo
+   * aquí, la pantalla enseña un buscador y no pide nada hasta que hay algo que
+   * buscar.
+   */
+  busqueda?: { parametro: string; etiqueta: string; minimo?: number };
+  /**
    * Tipo de objeto para lo que cuelga del registro: adjuntos, comentarios y
    * documentos. Sin él no hay ficha, porque esas rutas lo llevan dentro.
    */
@@ -58,6 +78,7 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/tenants",
         crear: "/api/v1/tenants",
         servicio: "tenancy",
+        solo_plataforma: true,
         columnas: ["slug", "nombre", "estado", "plan_codigo"],
         permiso: "tenant:read",
       },
@@ -178,7 +199,12 @@ export const MODULOS: Modulo[] = [
         columnas: ["nombre_completo", "email", "telefono"],
         permiso: "contact:read",
       },
-      { nombre: "Duplicados", listar: "/api/v1/data-quality/accounts/duplicates", servicio: "party" },
+      {
+        nombre: "Duplicados",
+        listar: "/api/v1/data-quality/accounts/duplicates",
+        servicio: "party",
+        busqueda: { parametro: "nombre", etiqueta: "Nombre de la cuenta", minimo: 2 },
+      },
       {
         nombre: "Derechos del interesado",
         listar: "/api/v1/data-subject-requests",
@@ -427,6 +453,7 @@ export const MODULOS: Modulo[] = [
         nombre: "Organizaciones",
         listar: "/api/v1/analitica/organizaciones",
         servicio: "analytics",
+        solo_plataforma: true,
       },
       // El diccionario de métricas delante de las tablas: la pregunta que abre
       // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».

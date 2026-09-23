@@ -122,30 +122,6 @@ def listar_leads(
     return pagina.a_dict(lambda lead: LeadOut.model_validate(lead).model_dump(mode="json"))
 
 
-@router_leads.get(
-    "/{lead_id}",
-    response_model=dict,
-    dependencies=[Depends(exige_permiso("lead:read"))],
-    summary="Ficha de un lead",
-    description=(
-        "Faltaba, y el efecto era que se podía descartar o convertir un lead "
-        "que no se podía abrir: todas las acciones sobre `/leads/{lead_id}` "
-        "existían y el `GET` que lo enseña, no."
-    ),
-)
-def obtener_lead(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    lead = db.get(Lead, lead_id)
-    # 404 y no 403 cuando es de otro tenant o está borrado: un 403 confirmaría
-    # que ese identificador existe, y eso ya es información.
-    if lead is None or lead.deleted_at is not None:
-        raise NoEncontrado("El lead no existe", error_code="sales.lead_no_encontrado")
-    # El permiso dice si puedes leer leads; la decisión dice si puedes leer
-    # ESTE. Sin ella, dar `lead:read` sería dar la cartera entera.
-    exigir(db, objeto="lead", accion="leer", registro=lead)
-    proyecta = proyectar_para(principal, db, objeto="lead", modelo=Lead)
-    return proyecta(lead)
-
-
 @router_leads.post(
     "/{lead_id}/primera-respuesta",
     response_model=LeadOut,
@@ -199,6 +175,30 @@ def convertir_lead(lead_id: UUID, datos: ConvertirLead, uow: UowDep) -> Any:
 )
 def motivos_descarte() -> Any:
     return sorted(svc.MOTIVOS_DESCARTE)
+
+
+@router_leads.get(
+    "/{lead_id}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("lead:read"))],
+    summary="Ficha de un lead",
+    description=(
+        "Faltaba, y el efecto era que se podía descartar o convertir un lead "
+        "que no se podía abrir: todas las acciones sobre `/leads/{lead_id}` "
+        "existían y el `GET` que lo enseña, no."
+    ),
+)
+def obtener_lead(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    lead = db.get(Lead, lead_id)
+    # 404 y no 403 cuando es de otro tenant o está borrado: un 403 confirmaría
+    # que ese identificador existe, y eso ya es información.
+    if lead is None or lead.deleted_at is not None:
+        raise NoEncontrado("El lead no existe", error_code="sales.lead_no_encontrado")
+    # El permiso dice si puedes leer leads; la decisión dice si puedes leer
+    # ESTE. Sin ella, dar `lead:read` sería dar la cartera entera.
+    exigir(db, objeto="lead", accion="leer", registro=lead)
+    proyecta = proyectar_para(principal, db, objeto="lead", modelo=Lead)
+    return proyecta(lead)
 
 
 # ── Pipelines ─────────────────────────────────────────────────────────────

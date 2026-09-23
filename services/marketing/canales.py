@@ -124,6 +124,17 @@ class ConsentimientoCanal(Base, TimestampMixin):
     cambiado_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Hasta cuándo vale. Vacío = no caduca.
+    #
+    # Existía en el código que lo consulta y NO existía en la tabla: la lista de
+    # renovaciones pendientes preguntaba por `caduca_at` y reventaba con
+    # `AttributeError`, así que esa pantalla nunca funcionó. Y lo que decía su
+    # documentación —«el envío consulta la caducidad»— era falso: sin columna no
+    # se consultaba nada, y un consentimiento con fecha de caducidad seguía
+    # valiendo para siempre.
+    caduca_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     # Para WhatsApp: cuándo escribió por última vez. De ahí sale la ventana de 24
     # horas, fuera de la cual solo se puede mandar una plantilla aprobada.
     ultimo_mensaje_entrante_at: Mapped[datetime | None] = mapped_column(
@@ -233,6 +244,7 @@ def fijar_consentimiento(
     origen: str = "formulario",
     prueba: str = "",
     ip: str = "",
+    caduca_at: datetime | None = None,
 ) -> ConsentimientoCanal:
     """Anota que alguien acepta —o deja de aceptar— un canal.
 
@@ -264,6 +276,7 @@ def fijar_consentimiento(
         fila = ConsentimientoCanal(tenant_id=uow.tenant_id, canal=canal, destino=destino)
         uow.db.add(fila)
     fila.acepta = acepta
+    fila.caduca_at = caduca_at
     fila.origen = origen
     fila.prueba = prueba or None
     fila.ip = ip or None
@@ -388,6 +401,15 @@ def comprobar_envio(
         motivos.append(
             f"No consta consentimiento para «{canal.tipo}». Haberlo dado para otro "
             "canal no vale: aceptar el correo no es aceptar el SMS."
+        )
+    elif consentimiento.caduca_at and (_con_tz(consentimiento.caduca_at) or _ahora()) < _ahora():
+        # Un consentimiento caducado no vale, y hasta ahora valía: la columna no
+        # existía, así que nadie la miraba. Se comprueba aquí, en el envío, y no
+        # en una revisión periódica: si dependiera de que alguien repase la lista,
+        # la caducidad sería decorativa.
+        motivos.append(
+            f"El consentimiento para «{canal.tipo}» caducó el "
+            f"{consentimiento.caduca_at.date()}. Hay que volver a pedirlo."
         )
 
     # Horas de silencio. Un SMS a las once de la noche despierta a alguien, y el

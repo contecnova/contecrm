@@ -93,7 +93,7 @@ def ver_cola(
     ),
 )
 def coger(clave: str, caso_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
-    caso = ope.coger_de_cola(uow, caso_id, principal.usuario_id)
+    caso = ope.coger_de_cola(uow, caso_id, principal.id)
     return {"id": str(caso.id), "owner_id": str(caso.owner_id), "estado": caso.estado}
 
 
@@ -199,7 +199,7 @@ def fijar_presencia(datos: Presencia, uow: UowDep, principal: AutenticadoDep) ->
     fila = ope.fijar_presencia(
         uow.db,
         principal.tenant_id,
-        principal.usuario_id,
+        principal.id,
         presencia=datos.presencia,
         motivo=datos.motivo,
     )
@@ -468,7 +468,7 @@ def imputar(entitlement_id: UUID, datos: Imputar, uow: UowDep, principal: Autent
         horas=datos.horas,
         concepto=datos.concepto,
         cuenta_como_caso=datos.cuenta_como_caso,
-        por=principal.usuario_id,
+        por=principal.id,
     )
     return {"id": str(fila.id), "saldo": ent.saldo(uow.db, principal.tenant_id, entitlement_id)}
 
@@ -648,7 +648,7 @@ def decidir(credito_id: UUID, datos: DecidirCredito, uow: UowDep, principal: Aut
         aprobar=datos.aprobar,
         motivo=datos.motivo,
         importe=datos.importe,
-        por=principal.usuario_id,
+        por=principal.id,
     )
     return {"id": str(fila.id), "estado": fila.estado}
 

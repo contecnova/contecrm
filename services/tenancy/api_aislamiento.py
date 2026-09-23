@@ -19,8 +19,8 @@ from pydantic import BaseModel, Field
 
 from services.tenancy import aislamiento as ais
 from services.tenancy import residencia as res
-from services.tenancy.aislamiento import AislamientoTenant
-from services.tenancy.residencia import ResidenciaDato
+from services.tenancy.aislamiento import AislamientoTenant, MigracionAislamiento
+from services.tenancy.residencia import ResidenciaDato, Subprocesador, TransferenciaInternacional
 
 router_aislamiento = APIRouter(prefix="/aislamiento", tags=["aislamiento y residencia"])
 router_residencia = APIRouter(prefix="/residencia", tags=["aislamiento y residencia"])
@@ -332,6 +332,37 @@ montar_listado(
     objeto="residencia",
     permiso="tenant:read",
     nombre="Residencia del dato",
+)
+
+
+# ── Listados de las sub-colecciones ───────────────────────────────────────
+# Mismo agujero que en las colecciones raíz: se podían crear y no se podían
+# leer. Un sobre de firma, un subprocesador o una transferencia internacional
+# que no se pueden listar no existen para quien tiene que auditarlos.
+
+montar_listado(
+    router_aislamiento,
+    modelo=MigracionAislamiento,
+    objeto="migracion_aislamiento",
+    permiso="tenant:read",
+    ruta="/migraciones",
+    nombre="Migraciones de aislamiento",
+)
+montar_listado(
+    router_residencia,
+    modelo=Subprocesador,
+    objeto="subprocesador",
+    permiso="tenant:read",
+    ruta="/subprocesadores",
+    nombre="Subprocesadores",
+)
+montar_listado(
+    router_residencia,
+    modelo=TransferenciaInternacional,
+    objeto="transferencia_internacional",
+    permiso="tenant:read",
+    ruta="/transferencias",
+    nombre="Transferencias internacionales",
 )
 
 

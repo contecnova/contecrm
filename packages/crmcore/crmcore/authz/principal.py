@@ -50,6 +50,13 @@ class Principal:
     es_admin_plataforma: bool = False
     # Quién suplanta, si hay suplantación en curso.
     actor_real_id: UUID | None = None
+    # La sesión con la que se entró (`sid` del token). Va aquí y no se saca del
+    # token en cada sitio que la necesita porque **a los servicios de detrás no
+    # les llega el token**: la identidad viaja en cabeceras firmadas desde el
+    # gateway. Sin propagarla, el nivel de autenticación multifactor de la
+    # sesión —qué factores se superaron y cuándo— no se podía consultar, y los
+    # tres sitios que lo intentaban leían un campo inexistente y devolvían 500.
+    sesion_id: UUID | None = None
     # Atributos para las decisiones ABAC (departamento, país, territorio…).
     atributos: dict[str, object] = field(default_factory=dict)
 

@@ -53,7 +53,7 @@ class PedirCodigo(BaseModel):
     ),
 )
 def pedir_codigo(datos: PedirCodigo, uow: UowDep, principal: AutenticadoDep) -> Any:
-    usuario = uow.db.get(Usuario, principal.usuario_id)
+    usuario = uow.db.get(Usuario, principal.id)
     if usuario is None:
         raise NoEncontrado("Usuario no encontrado", error_code="usuario.no_encontrado")
 
@@ -99,7 +99,7 @@ class ComprobarCodigo(BaseModel):
 def comprobar_codigo(datos: ComprobarCodigo, uow: UowDep, principal: AutenticadoDep) -> Any:
     fila = factores.comprobar_desafio(
         uow.db,
-        principal.usuario_id,
+        principal.id,
         principal.tenant_id,
         datos.codigo,
         proposito=datos.proposito,
@@ -177,7 +177,7 @@ def adopcion(db: DbDep, principal: AutenticadoDep) -> Any:
 
 @router_dispositivos.get("", summary="Mis equipos recordados")
 def listar_dispositivos(db: DbDep, principal: AutenticadoDep) -> Any:
-    return factores.dispositivos_de(db, principal.usuario_id, principal.tenant_id)
+    return factores.dispositivos_de(db, principal.id, principal.tenant_id)
 
 
 @router_dispositivos.delete(
@@ -200,9 +200,7 @@ def revocar_dispositivo(dispositivo_id: UUID, uow: UowDep, principal: Autenticad
     ),
 )
 def revocar_todos(uow: UowDep, principal: AutenticadoDep) -> Any:
-    cuantos = factores.revocar_todos_los_dispositivos(
-        uow.db, principal.usuario_id, principal.tenant_id
-    )
+    cuantos = factores.revocar_todos_los_dispositivos(uow.db, principal.id, principal.tenant_id)
     return {"revocados": cuantos}
 
 
