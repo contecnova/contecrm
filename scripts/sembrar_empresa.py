@@ -530,7 +530,12 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
                     tamano=(
                         "pequena" if plantilla < 50 else "mediana" if plantilla < 250 else "grande"
                     ),
-                    facturacion_anual=rnd.randrange(2, 400) * 1_000_000,
+                    # La facturación sale de la plantilla, no de un sorteo
+                    # aparte. Sorteada daba cuentas de 25 personas facturando
+                    # 254 M€, y un dato así no es «de muestra»: es falso, y
+                    # cualquier segmento o informe que lo use sale absurdo.
+                    # 90–260 k€ por empleado es la horquilla industrial.
+                    facturacion_anual=plantilla * rnd.randrange(90, 260) * 1_000,
                     identificadores=[{"tipo": "nif", "valor": _cif(rnd)}],
                     forzar=True,
                 )
