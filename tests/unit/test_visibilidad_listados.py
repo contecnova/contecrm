@@ -431,3 +431,29 @@ def test_un_objeto_sin_propietario_no_se_filtra(
         )
         is None
     )
+
+
+@pytest.mark.db
+def test_dos_servicios_resuelven_la_misma_via_sin_borrarse(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """`party` resuelve «equipos» para cuentas y `sales` para oportunidades.
+
+    Con un único resolutor por clave, el último módulo en importarse borraba al
+    anterior **en silencio**: la vía por equipo de cuenta dejaba de aplicar sin
+    que nada fallara, y el listado enseñaba de menos. En producción cada servicio
+    va en su proceso y no se cruzaban; en cualquier proceso que cargue los dos,
+    sí — y esta prueba carga los dos a propósito.
+    """
+    import services.party.visibilidad  # noqa: F401
+    import services.sales.visibilidad  # noqa: F401
+
+    yo = uuid4()
+    ajena = _cuenta(db, tenant_id, "Ajena", owner_id=uuid4())
+    db.flush()
+    db.add(
+        MiembroEquipoCuenta(tenant_id=tenant_id, cuenta_id=ajena.id, usuario_id=yo, rol="tecnico")
+    )
+    db.flush()
+
+    assert _visibles(db, _quien(tenant_id, yo)) == {"Ajena"}

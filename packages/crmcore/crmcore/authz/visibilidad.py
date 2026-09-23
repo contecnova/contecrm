@@ -115,8 +115,10 @@ def subordinados_de(db: Session, principal: Any) -> set[UUID]:
     """
     from crmcore.authz.comparticion import ReglaComparticion  # noqa: F401 — ancla el módulo
 
-    resolver = _RESOLUTORES.get("subordinados")
-    return resolver(db, principal) if resolver else set()
+    salida: set[UUID] = set()
+    for resolver in _RESOLUTORES.get("subordinados", []):
+        salida |= set(resolver(db, principal))
+    return salida
 
 
 def equipos_de(db: Session, principal: Any, objeto: str) -> set[UUID]:
@@ -125,25 +127,41 @@ def equipos_de(db: Session, principal: Any, objeto: str) -> set[UUID]:
     Igual que arriba: lo resuelve el servicio que tiene la tabla de equipos, y
     se registra al arrancar. Sin resolutor, la vía no aplica.
     """
-    resolver = _RESOLUTORES.get("equipos")
-    return resolver(db, principal, objeto) if resolver else set()
+    salida: set[UUID] = set()
+    for resolver in _RESOLUTORES.get("equipos", []):
+        # Cada resolutor devuelve {} para los objetos que no son suyos: el de
+        # `party` sabe de cuentas y el de `sales` de oportunidades.
+        salida |= set(resolver(db, principal, objeto))
+    return salida
 
 
 # Resolutores que cada servicio registra para las vías que sabe calcular. Es el
 # mismo patrón que los componentes de la página de estado, y por la misma razón:
 # la jerarquía de mando y los equipos de cuenta viven en tablas de servicios
 # concretos, y el núcleo no puede leerlas.
-_RESOLUTORES: dict[str, Any] = {}
+#
+# Es una lista por clave y no uno solo, y esa diferencia importa: `party` resuelve
+# «equipos» para cuentas y `sales` para oportunidades. Con un único resolutor por
+# clave, el último en importarse **borraba al anterior en silencio** —la vía por
+# equipo de cuenta dejaba de aplicar sin que nada fallara, que es exactamente el
+# tipo de error que enseña de menos y no se nota—. En producción cada servicio va
+# en su proceso y no se cruzaban; en cualquier proceso que cargue dos, sí.
+_RESOLUTORES: dict[str, list[Any]] = {}
 
 
 def registrar_resolutor(clave: str, fn: Any) -> None:
     """Declara cómo se resuelve una vía en este servicio.
 
-    `clave` es `subordinados` o `equipos`. Registrar el de un servicio en otro
-    no tiene sentido y no se impide aquí: cada uno registra el suyo al
-    importarse, y un servicio que no lo haga sencillamente no aplica esa vía.
+    `clave` es `subordinados` o `equipos`. Se **añade**, no se sustituye: dos
+    servicios pueden resolver la misma vía para objetos distintos, y cada uno
+    devuelve vacío para lo que no es suyo.
+
+    Registrar dos veces la misma función no duplica nada: el módulo que la
+    registra puede importarse más de una vez.
     """
-    _RESOLUTORES[clave] = fn
+    registrados = _RESOLUTORES.setdefault(clave, [])
+    if fn not in registrados:
+        registrados.append(fn)
 
 
 def resolutores_registrados() -> list[str]:
