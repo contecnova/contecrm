@@ -15,7 +15,25 @@ import { llamar } from "@/lib/api";
 
 export interface CampoEsquema {
   nombre: string;
-  tipo: "texto" | "numero" | "booleano" | "fecha" | "lista" | "objeto";
+  /**
+   * Cómo se edita, no de qué tipo es en JSON.
+   *
+   * `etiquetas` y `lista_multiple` existen porque antes **todo lo que fuera
+   * array o objeto se pintaba como un textarea de JSON**, y el resultado era
+   * pedirle a una persona que escribiera `["a","b"]` a mano —o peor, que lo
+   * separara por comas y esperara acertar—. Eso no es un formulario: es una
+   * consola con otro nombre.
+   */
+  tipo:
+    | "texto"
+    | "texto_largo"
+    | "numero"
+    | "booleano"
+    | "fecha"
+    | "lista"
+    | "lista_multiple"
+    | "etiquetas"
+    | "objeto";
   obligatorio: boolean;
   titulo: string;
   descripcion: string;
@@ -33,6 +51,7 @@ interface Esquema {
   enum?: unknown[];
   maxLength?: number;
   format?: string;
+  items?: Esquema;
   anyOf?: Esquema[];
   $ref?: string;
 }
@@ -76,13 +95,17 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
   const obligatorios = new Set(esquema.required ?? []);
   return Object.entries(propiedades).map(([nombre, prop]) => {
     const p = resolver(documento, prop);
+    const elemento = p.items ? resolver(documento, p.items) : undefined;
     return {
       nombre,
-      tipo: tipoDe(p),
+      tipo: tipoDe(p, elemento),
       obligatorio: obligatorios.has(nombre),
-      titulo: p.title ?? nombre,
+      titulo: humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
-      opciones: (p.enum ?? []).map(String),
+      // Las opciones salen del propio campo o de los elementos de la lista: en
+      // un array de enum, el `enum` está en `items`, y mirándolo solo en el
+      // campo se perdían todas las listas de opciones múltiples.
+      opciones: ((p.enum ?? elemento?.enum ?? []) as unknown[]).map(String),
       maximo: p.maxLength ?? null,
       formato: p.format ?? "",
     };
@@ -111,7 +134,7 @@ function resolver(documento: Documento, esquema: Esquema): Esquema {
   return actual;
 }
 
-function tipoDe(esquema: Esquema): CampoEsquema["tipo"] {
+function tipoDe(esquema: Esquema, elemento?: Esquema): CampoEsquema["tipo"] {
   if (esquema.enum) return "lista";
   switch (esquema.type) {
     case "integer":
@@ -120,9 +143,31 @@ function tipoDe(esquema: Esquema): CampoEsquema["tipo"] {
     case "boolean":
       return "booleano";
     case "array":
+      // Una lista de opciones cerradas se elige; una lista de textos se escribe
+      // uno a uno. Las dos son listas y ninguna es JSON.
+      if (elemento?.enum) return "lista_multiple";
+      if (!elemento || elemento.type === "string" || elemento.type === "number") return "etiquetas";
+      return "objeto";
     case "object":
       return "objeto";
     default:
-      return esquema.format === "date" || esquema.format === "date-time" ? "fecha" : "texto";
+      if (esquema.format === "date" || esquema.format === "date-time") return "fecha";
+      // Un campo sin tope de longitud suele ser una descripción o unas notas:
+      // en una línea de una sola altura no se ve lo que se escribe.
+      return esquema.maxLength && esquema.maxLength > 400 ? "texto_largo" : "texto";
   }
+}
+
+/**
+ * El nombre del campo, escrito como se lee.
+ *
+ * El contrato trae `sector_codigo` y `facturacion_anual`, que son nombres de
+ * campo, no rótulos. Se transforma con una regla y no con una tabla de
+ * traducciones: una tabla se queda corta al primer campo nuevo, y entonces
+ * conviven rótulos bonitos con rótulos en crudo, que es peor que tenerlos todos
+ * en crudo.
+ */
+export function humanizar(nombre: string): string {
+  const limpio = nombre.replace(/_/g, " ").trim();
+  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
 }
