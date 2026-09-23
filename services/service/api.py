@@ -486,10 +486,85 @@ from services.service.api_omnicanal import (  # noqa: E402
 )
 from services.service.api_operacion import ROUTERS_OPERACION  # noqa: E402
 
+# ── Marcador integrado (CRM-03.03.01.05) ──────────────────────────────────
+
+router_marcador = APIRouter(prefix="/marcador", tags=["marcador"])
+
+
+class LlamadaIn(BaseModel):
+    contacto_id: UUID
+    numero: str
+    consiente_grabacion: bool = False
+    grabar_por_politica: bool = False
+    en_lista_de_exclusion: bool = False
+
+
+class ColgarIn(BaseModel):
+    contacto_id: UUID
+    duracion_s: int = 0
+    resultado: str
+    nota: str = ""
+    grabacion_ref: str = ""
+    proxima_fecha: date | None = None
+
+
+@router_marcador.post(
+    "/llamar",
+    dependencies=[Depends(exige_permiso("service:write"))],
+    summary="Comprobar lo que hay que comprobar antes de que suene",
+    description=(
+        "Llamar a alguien que pidió no ser llamado no es un descuido: es una "
+        "sanción y una conversación desagradable. Se comprueba aquí, no al "
+        "registrar.\n\n"
+        "Y si la política dice grabar pero la persona no consiente, **la llamada "
+        "se hace igual sin grabar**: bloquearla convertiría una cuestión de "
+        "privacidad en un cliente que no puede hablar con nadie."
+    ),
+)
+def marcar(cuerpo: LlamadaIn, principal: AutenticadoDep) -> Any:
+    from services.service import marcador
+
+    return marcador.preparar_llamada(
+        contacto_id=cuerpo.contacto_id,
+        numero=cuerpo.numero,
+        consiente_grabacion=cuerpo.consiente_grabacion,
+        grabar_por_politica=cuerpo.grabar_por_politica,
+        en_lista_de_exclusion=cuerpo.en_lista_de_exclusion,
+    )
+
+
+@router_marcador.post(
+    "/colgar",
+    dependencies=[Depends(exige_permiso("service:write"))],
+    summary="Registrar la llamada al colgar",
+    description=(
+        "La actividad se crea **sola** con lo que el sistema sabe: a quién, "
+        "cuánto y cómo terminó. Pedirle al comercial que anote cada llamada es "
+        "pedirle el 20 % de su día, no lo hace, y entonces el CRM dice que ese "
+        "cliente lleva tres meses sin contacto cuando se habló el martes.\n\n"
+        "Lo que **no** se inventa es qué se dijo: «contestada, 3 minutos» no es "
+        "información comercial, y rellenar la nota con una frase genérica es peor "
+        "que dejarla vacía porque parece que hay contenido."
+    ),
+)
+def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
+    from services.service import marcador
+
+    return marcador.registrar_al_colgar(
+        contacto_id=cuerpo.contacto_id,
+        duracion_s=cuerpo.duracion_s,
+        resultado=cuerpo.resultado,
+        nota=cuerpo.nota,
+        grabacion_ref=cuerpo.grabacion_ref,
+        proxima_fecha=cuerpo.proxima_fecha,
+    )
+
+
 ROUTERS = [
     router_casos,
     router_taxonomia,
     router_sla,
+    router_marcador,
     *ROUTERS_OPERACION,
     *ROUTERS_OMNICANAL,
     *ROUTERS_CONOCIMIENTO,

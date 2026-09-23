@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**749 capacidades**: ✅ 720 hecho · ⬜ 29 pendiente
+**762 capacidades**: ✅ 730 hecho · ⬜ 32 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -539,7 +539,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 48 · ⬜ 6
+54 capacidades · ✅ 54
 
 ### 2.1 Segmentación y audiencias
 
@@ -555,7 +555,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.01.01.06` | Exclusiones, supresiones globales y listas negras | C | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.07` | Solapamiento entre segmentos y análisis de canibalización | D | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.08` | Segmentación predictiva por afinidad, propensión o valor esperado | A | 5 | intelligence | ✅ | — |
-| `CRM-02.01.01.09` | Sincronización de audiencias con plataformas publicitarias | A | 4 | marketing | ⬜ | — |
+| `CRM-02.01.01.09` | Sincronización de audiencias con plataformas publicitarias | A | 4 | marketing | ✅ | — |
 
 #### CRM-02.01.02 · Perfilado y scoring
 
@@ -617,10 +617,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.03.02.01` | SMS y RCS con gestión de consentimiento y palabras clave de baja | A | 4 | marketing | ✅ | contecpos:services/notificaciones (SMS/WhatsApp) |
 | `CRM-02.03.02.02` | WhatsApp Business: plantillas aprobadas, ventana de 24h, sesión y opt-in | A | 4 | marketing | ✅ | contecpos:services/notificaciones + simuladores/sim-whatsapp |
 | `CRM-02.03.02.03` | Notificaciones push web y móvil | A | 4 | marketing | ✅ | contecmind:app/services/push.py + app/models/push_subscription.py |
-| `CRM-02.03.02.04` | Publicidad digital: sincronización de audiencias y retargeting | A | 4 | marketing | ⬜ | — |
-| `CRM-02.03.02.05` | Correo postal y telemarketing como pasos orquestados del recorrido | D | 4 | marketing | ⬜ | — |
+| `CRM-02.03.02.04` | Publicidad digital: sincronización de audiencias y retargeting | A | 4 | marketing | ✅ | — |
+| `CRM-02.03.02.05` | Correo postal y telemarketing como pasos orquestados del recorrido | D | 4 | marketing | ✅ | — |
 | `CRM-02.03.02.06` | Landing pages y formularios alojados o embebidos, con pre-relleno para conocidos | A | 4 | marketing | ✅ | contecflow-PSA:app/services/public_forms_service.py |
-| `CRM-02.03.02.07` | Personalización web / contenido dinámico en el sitio del cliente vía API | D | 4 | marketing | ⬜ | — |
+| `CRM-02.03.02.07` | Personalización web / contenido dinámico en el sitio del cliente vía API | D | 4 | marketing | ✅ | — |
 
 ### 2.4 Contenido y gobierno
 
@@ -628,8 +628,8 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-02.04.01.01` | Biblioteca de activos con metadatos, versiones y vigencia | A | 4 | marketing | ⬜ | contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia) |
-| `CRM-02.04.01.02` | Flujo de aprobación de contenidos y de campañas | A | 4 | marketing | ⬜ | contecmind:app/services/approval_engine/ |
+| `CRM-02.04.01.01` | Biblioteca de activos con metadatos, versiones y vigencia | A | 4 | marketing | ✅ | contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia) |
+| `CRM-02.04.01.02` | Flujo de aprobación de contenidos y de campañas | A | 4 | marketing | ✅ | contecmind:app/services/approval_engine/ |
 | `CRM-02.04.01.03` | Cumplimiento por marca, país e idioma con plantillas bloqueadas | A | 4 | marketing | ✅ | — |
 | `CRM-02.04.01.04` | Generación de variantes de copy asistida por IA con revisión humana | A | 5 | intelligence | ✅ | contecmind:app/services/transformations.py (generación con revisión humana) |
 
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 64 · ⬜ 1
+65 capacidades · ✅ 65
 
 ### 3.1 Pipeline y oportunidades
 
@@ -726,7 +726,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.03.01.02` | Cola de trabajo priorizada del comercial | A | 2 | sales | ✅ | contecmind:app/services/task_dispatch.py (cola priorizada) |
 | `CRM-03.03.01.03` | Plantillas de correo con seguimiento de apertura, clic y respuesta | A | 2 | sales | ✅ | — |
 | `CRM-03.03.01.04` | Detección de respuesta y salida automática de la secuencia | A | 2 | sales | ✅ | — |
-| `CRM-03.03.01.05` | Marcador integrado (click-to-call), grabación y registro automático | A | 3 | service | ⬜ | — |
+| `CRM-03.03.01.05` | Marcador integrado (click-to-call), grabación y registro automático | A | 3 | service | ✅ | — |
 | `CRM-03.03.01.06` | Analítica de plantillas y cadencias: tasa de respuesta y reunión generada | A | 2 | sales | ✅ | — |
 | `CRM-03.03.01.07` | Programación de reuniones con enlace de disponibilidad y round-robin | A | 2 | sales | ✅ | contecflow-PSA:app/services/bookings_service.py + contecpos:services/agenda |
 
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 59 · ⬜ 3
+62 capacidades · ✅ 62
 
 ### 4.1 Gestión de casos
 
@@ -806,10 +806,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.02.01.02` | Formulario web y portal de cliente | C | 3 | service | ✅ | contecflow-PSA:app/models/client_portal.py + app/services/client_portal_service.py |
 | `CRM-04.02.01.03` | Chat en vivo y co-browsing | A | 3 | service | ✅ | contecflow-PSA:app/services/ws_manager.py + portal_conversation_service.py |
 | `CRM-04.02.01.04` | WhatsApp, Messenger, Telegram y mensajería social | A | 3 | service | ✅ | contecpos:services/notificaciones (WhatsApp) |
-| `CRM-04.02.01.05` | Telefonía/CTI: screen pop, transferencia con contexto, IVR conectado | A | 3 | integration | ⬜ | — |
-| `CRM-04.02.01.06` | Redes sociales: escucha, respuesta y conversión a caso | A | 4 | marketing | ⬜ | — |
+| `CRM-04.02.01.05` | Telefonía/CTI: screen pop, transferencia con contexto, IVR conectado | A | 3 | integration | ✅ | — |
+| `CRM-04.02.01.06` | Redes sociales: escucha, respuesta y conversión a caso | A | 4 | marketing | ✅ | — |
 | `CRM-04.02.01.07` | Canal de API para incrustar soporte en producto propio (in-app) | A | 3 | service | ✅ | — |
-| `CRM-04.02.01.08` | Voz y asistentes conversacionales | D | 5 | intelligence | ⬜ | contecmind:app/api/voice.py + app/core/transcribe.py |
+| `CRM-04.02.01.08` | Voz y asistentes conversacionales | D | 5 | intelligence | ✅ | contecmind:app/api/voice.py + app/core/transcribe.py |
 
 #### CRM-04.02.02 · Experiencia unificada del agente
 
@@ -1060,7 +1060,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-93 capacidades · ✅ 86 · ⬜ 7
+106 capacidades · ✅ 86 · ⬜ 20
 
 ### 7.1 Administración funcional
 
@@ -1188,6 +1188,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.30` | Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.31` | Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos | A | 2 | front | ⬜ | — |
 | `CRM-07.04.03.32` | Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.33` | Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio | A | 1 | front | ⬜ | — |
 
 #### CRM-07.04.04 · Calidad del front
 
@@ -1207,6 +1208,30 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.05.03` | Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales | C | 1 | front | ✅ | — |
 | `CRM-07.04.05.04` | Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy | A | 1 | front | ✅ | — |
 | `CRM-07.04.05.05` | Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz | A | 2 | front | ✅ | — |
+
+### 7.5 Documentación de producto
+
+#### CRM-07.05.01 · Manual de usuario
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.05.01.01` | Manual de usuario completo e independiente: una funcionalidad por capítulo, escrito para quien usa el CRM y no para quien lo construyó | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.02` | Casos de uso de punta a punta: del primer contacto al cobro, del alta de una incidencia a su cierre, con las decisiones que hay que tomar por el camino | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.03` | Ejemplos con datos reales de la demo, reproducibles paso a paso, para que el lector pueda hacerlo mientras lee | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.04` | Qué hacer cuando algo no sale: los errores que ve un usuario, qué significan y qué hacer, sin mandarle a soporte | A | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.05` | Recorridos por perfil: comercial, agente de servicio, marketing y administrador, cada uno con lo suyo y sin lo demás | A | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.06` | Gate: cada capacidad `hecho` de cara al usuario aparece en el manual de usuario, no solo en el técnico | A | 1 | docs | ⬜ | — |
+
+#### CRM-07.05.02 · Manual técnico
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-07.05.02.01` | Manual técnico completo e independiente: arquitectura, servicios, datos y por qué cada decisión es como es | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.02` | Instalación y despliegue de punta a punta: desarrollo, un solo servidor y despliegue distribuido, con lo que hace falta de verdad | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.03` | Configuración: cada ajuste, qué hace, qué pasa si se toca y cuál es el valor sensato, generado desde los Settings reales | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.04` | Integración: API, eventos, conectores declarativos y contratos, con ejemplos que se pueden ejecutar | C | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.05` | Operación: copias, restauración, migraciones, observabilidad y qué mirar cuando algo va lento | A | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.06` | Gate: el manual técnico no describe ningún ajuste ni ninguna ruta que ya no exista | A | 1 | docs | ⬜ | — |
 
 ## Módulo 8 — Requisitos no funcionales
 

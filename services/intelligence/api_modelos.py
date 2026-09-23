@@ -19,6 +19,7 @@ from services.intelligence import caso_semantico as sem
 from services.intelligence import entrenamiento as ent
 from services.intelligence import transcripcion as trs
 from services.intelligence import variantes as var
+from services.intelligence import voz
 
 router_modelos = APIRouter(prefix="/modelos", tags=["modelos entrenados"])
 router_transcripcion = APIRouter(prefix="/transcripciones", tags=["transcripción y compromisos"])
@@ -263,4 +264,104 @@ def sugerir(caso_id: UUID, cuerpo: SugerirIn, principal: AutenticadoDep) -> Any:
     return {**sem.sugerir_para(caso_id=caso_id, sugerencias=salida["sugerencias"]), **salida}
 
 
-ROUTERS_MODELOS = [router_modelos, router_transcripcion, router_variantes, router_sugerencias]
+# ── Voz y asistentes conversacionales (CRM-04.02.01.08) ───────────────────
+
+router_voz = APIRouter(prefix="/voz", tags=["voz y asistentes"])
+
+
+class EntenderIn(BaseModel):
+    texto: str = ""
+    confianza: float = 0.0
+    intento: int = 0
+
+
+class AperturaIn(BaseModel):
+    nombre_asistente: str
+    es_maquina: bool = True
+    graba: bool = False
+
+
+class RendimientoVozIn(BaseModel):
+    conversaciones: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_voz.post(
+    "/entender",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Qué hacer con lo que ha entendido el reconocedor",
+    description=(
+        "**La confianza decide, no el texto.** Un reconocimiento flojo no es una "
+        "frase con erratas: puede significar lo contrario —«no quiero cancelar» y "
+        "«quiero cancelar» se parecen mucho a bajo volumen—, y actuar sobre eso "
+        "es peor que no entender nada.\n\n"
+        "A la tercera se pasa a una persona. Pedirlo otra vez no mejora el "
+        "reconocimiento: solo confirma al cliente que está hablando con una "
+        "máquina que no funciona."
+    ),
+)
+def entender(cuerpo: EntenderIn, principal: AutenticadoDep) -> Any:
+    return voz.entender(texto=cuerpo.texto, confianza=cuerpo.confianza, intento=cuerpo.intento)
+
+
+@router_voz.get(
+    "/puede-hacerse/{accion}",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Si esa acción se puede hacer por voz",
+    description=(
+        "Cambiar unos datos bancarios por teléfono, con reconocimiento de voz de "
+        "por medio y sin que nadie más lo mire, es el fraude telefónico más común "
+        "que existe.\n\n"
+        "No es una limitación técnica: es una decisión que se toma una vez y **no "
+        "se deja configurable**, porque configurable significa que alguien la va "
+        "a abrir."
+    ),
+)
+def puede_hacerse(accion: str, principal: AutenticadoDep) -> Any:
+    voz.exigir_que_se_puede_hacer_por_voz(accion=accion)
+    return {"puede": True, "accion": accion, "lo_que_si": list(voz.PUEDE_SOLO)}
+
+
+@router_voz.post(
+    "/apertura",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Lo que se dice al empezar la llamada",
+    description=(
+        "Se avisa de que es una máquina porque la gente habla distinto —más corto "
+        "y más claro— cuando lo sabe, así que el sistema funciona mejor; y porque "
+        "descubrirlo a los tres minutos sienta francamente mal.\n\n"
+        "Y avisar de que se graba **no es** consentimiento para entrenar con esa "
+        "voz: son dos permisos distintos, y confundirlos es lo más frecuente en "
+        "cualquier proyecto de voz."
+    ),
+)
+def apertura(cuerpo: AperturaIn, principal: AutenticadoDep) -> Any:
+    return voz.guion_de_apertura(
+        nombre_asistente=cuerpo.nombre_asistente,
+        es_maquina=cuerpo.es_maquina,
+        graba=cuerpo.graba,
+    )
+
+
+@router_voz.post(
+    "/rendimiento",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Si el asistente sirve, medido como se mide de verdad",
+    description=(
+        "No por «llamadas atendidas» —eso lo hace una locución— sino por "
+        "**resueltas sin persona y sin que el cliente vuelva a llamar en 48 "
+        "horas**. Una llamada que el asistente «resolvió» y que el cliente repite "
+        "al día siguiente no se resolvió: se aplazó, y encima con el cliente ya "
+        "molesto."
+    ),
+)
+def rendimiento_voz(cuerpo: RendimientoVozIn, principal: AutenticadoDep) -> Any:
+    return voz.rendimiento(conversaciones=cuerpo.conversaciones)
+
+
+ROUTERS_MODELOS = [
+    router_modelos,
+    router_transcripcion,
+    router_variantes,
+    router_sugerencias,
+    router_voz,
+]

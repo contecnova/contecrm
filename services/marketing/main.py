@@ -10,6 +10,7 @@ from services.marketing import (
 )
 from services.marketing.api import ROUTERS
 from services.marketing.api_canales import ROUTERS_CANALES
+from services.marketing.api_canales_externos import ROUTERS_CANALES_EXTERNOS
 from services.marketing.api_consentimiento import ROUTERS_CONSENTIMIENTO
 from services.marketing.api_fondos import ROUTERS_FONDOS
 from services.marketing.api_momento import ROUTERS_MOMENTO
@@ -33,6 +34,7 @@ app = crear_servicio(
         *ROUTERS_FONDOS,
         *ROUTERS_CONSENTIMIENTO,
         *ROUTERS_MOMENTO,
+        *ROUTERS_CANALES_EXTERNOS,
     ],
     # El perfil de marketing se alimenta por evento: este servicio no puede leer
     # el esquema de `party` ni el de `sales`, y calcular un segmento no puede

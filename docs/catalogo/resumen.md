@@ -8,12 +8,12 @@
 |---|--:|--:|--:|--:|
 | 0 — Plataforma y arquitectura transversal | 283 | 276 | 0 | 7 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 54 | 0 | 0 |
-| 2 — Marketing | 54 | 48 | 0 | 6 |
-| 3 — Ventas (SFA) | 65 | 64 | 0 | 1 |
-| 4 — Servicio y atención al cliente | 62 | 59 | 0 | 3 |
+| 2 — Marketing | 54 | 54 | 0 | 0 |
+| 3 — Ventas (SFA) | 65 | 65 | 0 | 0 |
+| 4 — Servicio y atención al cliente | 62 | 62 | 0 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
 | 6 — Productividad y colaboración | 49 | 48 | 0 | 1 |
-| 7 — Administración, ALM y gobierno | 93 | 86 | 0 | 7 |
+| 7 — Administración, ALM y gobierno | 106 | 86 | 0 | 20 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 | 9 — Proveedores, coste y capacidad | 20 | 20 | 0 | 0 |
 
@@ -21,25 +21,25 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 301 | 300 |
-| A — Avanzado | 404 | 379 |
-| D — Diferencial | 44 | 41 |
+| C — Core | 308 | 300 |
+| A — Avanzado | 410 | 386 |
+| D — Diferencial | 44 | 44 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 171 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 155 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 172 | 155 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 205 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 50 |
-| 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 58 |
-| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 48 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
+| 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |
+| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 49 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 33 |
 
 ## Reutilización
 
-**327 de 749** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**327 de 762** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

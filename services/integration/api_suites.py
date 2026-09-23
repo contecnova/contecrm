@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, status
@@ -432,4 +433,66 @@ def conciliar(cuerpo: ConciliarIn, principal: AutenticadoDep) -> Any:
     )
 
 
-ROUTERS_SUITES = [router_suites, router_compensacion]
+# ── Telefonía conectada al CRM (CRM-04.02.01.05) ──────────────────────────
+
+router_telefonia = APIRouter(prefix="/telefonia", tags=["telefonía"])
+
+
+class IdentificarIn(BaseModel):
+    numero: str
+    candidatos: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class TransferirIn(BaseModel):
+    a: str
+    resumen: str = ""
+    contacto_id: UUID | None = None
+    caso_id: UUID | None = None
+    lo_ya_hablado: list[str] = Field(default_factory=list)
+
+
+@router_telefonia.post(
+    "/identificar",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Quién llama, y con qué confianza",
+    description=(
+        "Tres respuestas distintas y ninguna se redondea: **una ficha**, "
+        "**varias** y **ninguna**. Abrir la primera de tres «porque suele ser "
+        "esa» hace que el agente salude por el nombre equivocado, que es peor que "
+        "no saludar por ninguno.\n\n"
+        "Se compara por el final del número a propósito: el mismo teléfono "
+        "aparece como `+34600…`, `0034600…` y `600…` según quién lo escribiera, y "
+        "comparar literalmente hace que no salte justo con los clientes de toda "
+        "la vida, que son los que están mal escritos."
+    ),
+)
+def identificar(cuerpo: IdentificarIn, principal: AutenticadoDep) -> Any:
+    from services.integration import telefonia
+
+    return telefonia.identificar(numero=cuerpo.numero, candidatos=cuerpo.candidatos)
+
+
+@router_telefonia.post(
+    "/transferir",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Transferir con el contexto dentro",
+    description=(
+        "El resumen es obligatorio: pasar la llamada sin lo que ya se ha hablado "
+        "obliga al cliente a empezar de cero, y esa es literalmente la queja "
+        "número uno de cualquier servicio de atención. Una transferencia sin "
+        "resumen es la que se hace por quitarse la llamada de encima."
+    ),
+)
+def transferir(cuerpo: TransferirIn, principal: AutenticadoDep) -> Any:
+    from services.integration import telefonia
+
+    return telefonia.transferir(
+        a=cuerpo.a,
+        resumen=cuerpo.resumen,
+        contacto_id=cuerpo.contacto_id,
+        caso_id=cuerpo.caso_id,
+        lo_ya_hablado=cuerpo.lo_ya_hablado,
+    )
+
+
+ROUTERS_SUITES = [router_suites, router_compensacion, router_telefonia]

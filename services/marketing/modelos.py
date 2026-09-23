@@ -386,6 +386,9 @@ __all__ = [
 # al final y solo por su efecto: declararlas al cargar los modelos es lo que
 # garantiza que el RAT y los objetos no puedan separarse.
 from services.marketing import tratamientos  # noqa: E402,F401
+
+# Biblioteca de activos y aprobación de contenidos (CRM-02.04.01.01, .02).
+from services.marketing.activos import Activo, Aprobacion  # noqa: E402,F401
 from services.marketing.canales import (  # noqa: E402,F401
     Canal,
     ConsentimientoCanal,

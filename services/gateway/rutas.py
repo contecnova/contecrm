@@ -111,6 +111,9 @@ PREFIJOS: dict[str, str] = {
     "suites": "integration",
     # Motor externo de compensación (CRM-03.02.03.04).
     "compensacion": "integration",
+    # Telefonía conectada: screen pop y transferencia con contexto
+    # (CRM-04.02.01.05).
+    "telefonia": "integration",
     "plantillas-documento": "integration",
     "firma-presencial": "integration",
     # Consentimiento: el doble opt-in, las cookies y las reglas de contenido
@@ -206,8 +209,17 @@ PREFIJOS: dict[str, str] = {
     "transcripciones": "intelligence",
     "variantes": "intelligence",
     "sugerencias-caso": "intelligence",
+    # Voz y asistentes conversacionales (CRM-04.02.01.08).
+    "voz": "intelligence",
+    # Marcador integrado, grabación y registro automático (CRM-03.03.01.05).
+    "marcador": "service",
     # Hora y canal por destinatario (CRM-02.02.02.05).
     "momento": "marketing",
+    # Publicidad, biblioteca de activos y redes sociales (CRM-02.03, CRM-02.04,
+    # CRM-04.02.01.06).
+    "audiencias-externas": "marketing",
+    "activos-marketing": "marketing",
+    "social": "marketing",
     "captura": "sales",
 }
 

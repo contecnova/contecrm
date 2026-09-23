@@ -7688,13 +7688,13 @@ y segmento manda sobre uno que solo nombra la etapa. Con el orden al revés, el
 genérico taparía siempre al que alguien escribió para su caso. Y dice **por qué**
 se eligió ese, porque un playbook que aparece sin explicación se cierra sin leerlo.
 
-### Lo que todavía no está
+### Dónde está el resto de esta sección
 
-El **marcador integrado** (`CRM-03.03.01.05`) —click-to-call, grabación y registro
-automático—, que necesita un proveedor de telefonía y va con el bloque de
-conectores nativos. Y de metodología quedan la **guía de próximos pasos con
-contenido** (`CRM-03.01.02.04`, fase 5), el **plan conjunto con el cliente**
-(`CRM-03.01.02.05`) y la **revisión de deal estructurada** (`CRM-03.01.02.06`).
+El **marcador integrado** —click-to-call, grabación y registro automático— tiene
+su propio capítulo más abajo, junto con la telefonía y la voz. La **guía de
+próximos pasos con contenido**, el **plan conjunto con el cliente** y la
+**revisión de oportunidad** también: la primera con lo de inteligencia y las otras
+dos en el capítulo de plan conjunto y revisión.
 
 ## Recorridos de cliente (`CRM-02.02.02`)
 
@@ -11579,3 +11579,177 @@ retroactivo—; eso no es un cálculo, es un producto, y hay empresas que lo fab
 - **Y lo que se mandó y no ha vuelto se comprueba antes de cerrar el periodo.** Un
   hecho perdido por el camino no da ningún error: esa venta simplemente no aparece
   en la comisión de nadie, y lo descubre el comercial al mirar su nómina.
+
+## Audiencias publicitarias, retargeting y canales offline (`CRM-02.01.01.09`, `CRM-02.03.02.04`, `CRM-02.03.02.05`)
+
+Sincronizar una audiencia con una plataforma de anuncios es de las cosas más
+fáciles de hacer y de las que más problemas legales dan, porque lo que se manda es
+**una lista de personas a un tercero que la usa para perfilar**. Y casi siempre se
+hace sin mirar nada: se filtra un segmento, se pulsa «sincronizar», y a partir de
+ahí esa lista vive fuera, se actualiza sola y nadie sabe quién está dentro.
+
+- **Sin base legal para publicidad no sale nadie**, y no vale el consentimiento
+  del boletín: aceptar correos comerciales no es aceptar que tu dirección se suba
+  a una red de anuncios. Se comprueba **persona a persona**, porque un segmento
+  «clientes activos» tiene dentro gente que nunca aceptó publicidad y mandarlo
+  entero porque el segmento parece inocuo es exactamente como pasa.
+- **Lo que sale va troceado**, nunca en claro. No es una formalidad: es la
+  diferencia entre mandar una lista de correos y mandar identificadores que solo
+  sirven para cruzar.
+- **Una baja aquí es una baja allí, y el mismo día.** Es el punto donde todas
+  estas integraciones fallan: darse de baja en el CRM y seguir viendo anuncios es
+  lo que la gente denuncia, y con razón, así que la baja no espera al ciclo normal.
+- **Las audiencias pequeñas no se mandan.** Con veinte personas la plataforma no
+  puede anonimizar nada y el segmento se convierte en señalar a alguien con el
+  dedo.
+- **Y en retargeting no se persigue a quien ya compró** —es la queja más habitual
+  de cualquier campaña y da imagen de no saber con quién se habla— ni a quien se
+  dio de baja: un anuncio no es un correo, pero para la persona es la misma
+  empresa siguiéndole después de haberle dicho que no.
+
+**El canal offline** —correo postal y telemarketing— es un paso del recorrido como
+los demás con una diferencia que lo cambia todo: **no se puede cancelar**. Una
+carta impresa ya está impresa y una llamada hecha no se deshace, así que la
+comprobación va antes del lanzamiento y el recorrido tiene que poder pararse en el
+paso anterior. Cuesta además dinero por unidad y mucho: mandar diez mil cartas por
+error no es un incidente, es una factura. Quien está en una lista de exclusión no
+entra —llamar a alguien que está en Robinson es una sanción, no un descuido—. Y al
+medir resultados se dice lo que no se puede saber: **una carta no tiene apertura
+ni clic**, lo único medible es lo que vuelve, y fingir métricas de digital en un
+canal que no las tiene hace que las comparaciones entre canales no valgan nada.
+
+**En la personalización web**, un visitante que no se ha identificado no es «uno
+cualquiera» al que enseñarle algo: es alguien de quien no se sabe nada, y se le
+sirve lo genérico — adivinar por IP o por el dispositivo produce personalizaciones
+que dan entre risa y susto. La regla que se aplica **se devuelve**, porque cuando
+el cliente pregunte por qué a su director le salió el bloque de «pymes» la
+respuesta no puede ser «lo decide el algoritmo». Y lo que rompe una
+personalización no es una regla mal escrita: son **dos reglas que encajan a la vez
+sin prioridad declarada**, y entonces el contenido depende del orden en que
+lleguen de la base, cambia solo y nadie puede reproducirlo.
+
+## Biblioteca de activos y aprobación de contenidos (`CRM-02.04.01.01`, `CRM-02.04.01.02`)
+
+Una biblioteca de activos se monta, se suben trescientos ficheros y a los seis
+meses nadie encuentra nada y todo el mundo sigue mandando el PDF por correo. Lo
+que la salva o la hunde no es el buscador: es **si lo que hay dentro se puede usar
+sin preguntar**.
+
+- **Un activo sin vigencia es un activo caducado esperando.** El folleto con los
+  precios del año pasado sigue ahí, alguien lo manda y el cliente pide ese precio.
+  Lo vencido no se borra —hace falta para saber qué se mandó— pero deja de poder
+  usarse.
+- **Los derechos de uso van dentro.** Una foto de banco con licencia para web no
+  vale para una valla, y esa diferencia la conoce quien la compró y nadie más:
+  sin ella la biblioteca es una fuente de problemas legales con buscador. «Uso
+  general» no existe en ningún contrato.
+- **La versión nueva no borra la anterior.** Lo que se mandó al cliente el martes
+  tiene que poder recuperarse aunque el jueves se corrigiera una errata.
+- **Y lo que no declara vigencia es lo más peligroso**: nunca aparecerá en ninguna
+  lista de caducados, así que se queda ahí para siempre. Sale en su propia lista.
+
+Al preguntar si algo se puede usar, las tres respuestas negativas son distintas y
+llevan a acciones distintas: **no está aprobado** (falta una firma), **ha
+caducado** (hay que renovar o rehacer) y **no cubre este uso** (hay que comprar
+otra licencia o buscar otra pieza).
+
+**La aprobación** es de personas y va **antes de publicar**: un flujo donde el
+contenido sale y luego alguien revisa es un flujo sin aprobación, porque lo que
+está fuera, fuera está. Cada paso tiene un aprobador concreto —«que lo vea
+marketing» no lo ve nadie, porque nadie en particular lo tiene asignado—, rechazar
+exige comentario —un rechazo sin motivo devuelve el trabajo al principio y la
+segunda versión suele traer el mismo problema— y nadie aprueba en nombre de otro,
+que dejaría una firma que no corresponde con quien miró el contenido. Un rechazo
+**para el conjunto**: seguir pidiendo las firmas siguientes es hacer trabajar a
+gente sobre algo que va a cambiar. Y se anota si el aprobador **vio qué cambió**,
+porque revisar treinta páginas enteras cada vez es lo que hace que se apruebe sin
+leer, y ese número dice si el flujo sirve o es un trámite.
+
+## Redes sociales (`CRM-04.02.01.06`)
+
+Una queja en público no es un caso más: es un caso **con testigos**. Y ahí está
+todo lo que hace distinto este canal, porque recoger mensajes, abrir un caso y
+contestar ya lo hace la omnicanalidad.
+
+- **No todo lo que menciona a la marca es un caso.** Un «gracias por el envío
+  rápido» no necesita un expediente con SLA, y meterlo en la cola hace que el
+  agente aprenda a cerrar sin leer — y entonces se dejan de mirar todos, incluidos
+  los cuatro que sí eran una queja.
+- **Lo público se contesta en público y lo demás en privado.** Contestar un
+  problema concreto en un hilo abierto obliga al cliente a dar datos suyos delante
+  de todo el mundo; no contestar nada en público deja la queja sola en el hilo,
+  que es lo que la gente lee.
+- **El tiempo se mide en minutos.** Una respuesta a las veinticuatro horas es
+  normal en correo y en una red social es una captura de pantalla circulando con
+  el reloj al lado. Y las menciones **sin contestar** se cuentan aparte: una media
+  de treinta minutos calculada solo sobre las contestadas esconde las cinco que
+  nadie ha mirado.
+- **Lo que se publica en nombre de la marca lo escribe una persona.** Una
+  respuesta automática a una queja pública convierte a un cliente enfadado en un
+  hilo viral, y la frase «entendemos tu frustración» generada por una máquina se
+  reconoce a la primera.
+- **La crisis se detecta por cambio de ritmo, no por un número fijo.** Veinte
+  menciones a la hora son normales para una marca grande y un incendio para una
+  pequeña; un umbral fijo solo funciona para el tamaño con el que se escribió. Con
+  menos de seis horas de historial no se concluye: un pico un martes puede ser un
+  anuncio que salió bien.
+- **Y del perfil se guarda lo justo.** Un perfil público sigue siendo dato
+  personal, y traerse su biografía y su historial «por contexto» es crear la ficha
+  de alguien que nunca nos dio nada — y esa ficha hay que protegerla, conservarla
+  y borrarla como cualquier otra.
+
+## Telefonía, marcador y voz (`CRM-04.02.01.05`, `CRM-03.03.01.05`, `CRM-04.02.01.08`)
+
+Lo que se le pide a una integración de telefonía es que **cuando suene el teléfono
+ya esté la ficha abierta**. Suena a comodidad y no lo es: son quince segundos por
+llamada buscando quién llama, multiplicados por doscientas llamadas al día, y
+sobre todo es el cliente contando otra vez lo mismo.
+
+Se identifica por el número **y se dice con qué confianza**: una ficha, varias o
+ninguna, y abrir la primera de tres «porque suele ser esa» hace que el agente
+salude por el nombre equivocado, que es peor que no saludar por ninguno. La
+comparación es por el final del número, porque el mismo teléfono aparece como
+`+34600…`, `0034600…` y `600…` según quién lo escribiera — y comparar
+literalmente hace que el aviso no salte justo con los clientes de toda la vida,
+que son los que están mal escritos. Lo que el cliente **ya tecleó en el IVR viaja
+con la llamada**: volver a pedírselo al descolgar es la forma más rápida de que se
+enfade antes de empezar. La **transferencia lleva contexto o no es una
+transferencia** —pasar la llamada sin lo hablado obliga al cliente a empezar de
+cero, que es literalmente la queja número uno de cualquier servicio—. Y la llamada
+se registra pase lo que pase: una perdida es un cliente que lo intentó, y si no
+consta, el panel enseña un servicio impecable construido solo con las que se
+atendieron.
+
+**Del marcador**, lo difícil no es lanzar la llamada: es lo que pasa al colgar. La
+actividad se crea **sola** con lo que el sistema sabe, porque pedirle al comercial
+que anote cada llamada es pedirle el 20 % de su día —no lo hace, y entonces el CRM
+dice que ese cliente lleva tres meses sin contacto cuando se habló el martes—. Lo
+que **no se inventa** es qué se dijo: «contestada, 3 minutos» no es información
+comercial, y rellenar la nota con una frase genérica es peor que dejarla vacía,
+porque parece que hay contenido. Grabar exige avisar siempre —no es configurable— y
+una llamada que no se puede grabar **se hace igual sin grabar**: bloquearla
+convertiría una cuestión de privacidad en un cliente que no puede hablar con
+nadie. Y el marcado automático tiene un tope de abandono que no se negocia: marcar
+a más gente de la que hay para atender produce llamadas que suenan y cuelgan, está
+regulado, y además es lo que hace que el número acabe marcado como spam en el
+teléfono de todo el mundo — que no se arregla pagando una multa.
+
+**El asistente de voz** es la funcionalidad que mejor demo tiene y la que peor sale
+en producción, siempre por lo mismo: en una demo el que habla colabora. Aquí **la
+confianza decide, no el texto** —un reconocimiento flojo puede significar lo
+contrario, «no quiero cancelar» y «quiero cancelar» se parecen mucho a bajo
+volumen— y a la tercera se pasa a una persona, porque pedirlo otra vez solo
+confirma que se está hablando con una máquina que no funciona. **Lo irreversible
+no lo hace una voz**: cancelar un contrato, devolver un cobro o cambiar unos datos
+bancarios por teléfono es la clase de decisión que solo se toma porque es fácil de
+programar, y el cambio de datos bancarios es el fraude telefónico más común que
+existe. Se avisa de que es una máquina —la gente habla más corto y más claro
+cuando lo sabe, así que el sistema funciona mejor, y descubrirlo a los tres
+minutos sienta francamente mal—, y **avisar de que se graba no es consentimiento
+para entrenar**: son dos permisos distintos y confundirlos es lo más frecuente en
+cualquier proyecto de voz. El traspaso a una persona lleva todo lo hablado, porque
+si el asistente estuvo tres minutos preguntando y la persona empieza de cero, lo
+que hizo fue perder tres minutos del cliente. Y se mide por lo que importa:
+**resueltas sin persona y sin que el cliente vuelva a llamar en 48 horas** — una
+llamada que el asistente «resolvió» y que el cliente repite al día siguiente no se
+resolvió, se aplazó, y encima con el cliente ya molesto.
