@@ -11264,3 +11264,186 @@ ser dos casualidades, y colgarle la etiqueta de impreciso por eso es injusto y
 hace que nadie se crea el informe. Con datos suficientes, en cambio, la
 conversación cambia: un proveedor que siempre acaba costando un 15 % más no es
 caro, es **impreciso**, y eso es peor — sus ofertas no sirven para decidir.
+
+## Modelos entrenados con el histórico (`CRM-02.01.02.02`, `CRM-02.01.02.06`, `CRM-02.01.01.08`)
+
+Un modelo entrenado con el histórico de conversión es lo más útil y lo más
+peligroso que hay en un CRM, por una razón que casi nunca se dice en voz alta:
+**aprende lo que hizo el equipo comercial, no lo que funciona**. Si durante tres
+años solo se llamó a las empresas grandes de Madrid, el modelo concluirá que esas
+convierten — tendrá razón en los datos y estará equivocado en el mundo. Por eso,
+antes de entrenar, se dice qué sesgo trae el histórico que hay.
+
+**Se exige tamaño y equilibrio.** Con cuarenta casos y tres ganados no sale un
+modelo: sale una superstición con decimales, y decirlo antes es lo único que evita
+que alguien tome decisiones con ella durante un año. Un modelo que casi no ha
+visto perder aprende a decir que sí.
+
+**Se prueba contra un periodo que no ha visto**, y la separación es por fecha, no
+al azar: repartir aleatoriamente mete casos posteriores en el entrenamiento, el
+modelo ve cómo acabó lo que tiene que predecir y el acierto sale magnífico y
+completamente inútil — en producción no existe el futuro.
+
+**Y se compara con la regla tonta.** Si solo se gana el 15 %, decir «todos
+pierden» acierta el 85 % de las veces: un modelo con un 86 % suena bien y no
+aporta nada, y con ese número se justifica un proyecto entero. Es la comparación
+que nadie hace y la que decide si el modelo sirve. Se enseñan además los **falsos
+negativos**, que son los que duelen: las oportunidades que el modelo descartó y se
+ganaron son las que nadie habría llamado.
+
+**Los porqués van siempre**, ordenados por cuánto empujaron, y con los que
+**restan** también: un panel que solo cuenta lo que suma hace pensar que la
+puntuación es baja por falta de datos cuando puede ser por algo concreto que se
+puede arreglar. Una puntuación sin explicación se mira una vez, no coincide con lo
+que el comercial sabe de su cliente y a partir de ahí no se mira más — y hace
+bien, porque él estuvo en la reunión y el modelo no.
+
+**Lo que no puede entrar en el modelo no entra**: sexo, edad, nacionalidad, y el
+código postal como sustituto de todo lo anterior. Un modelo que decide a quién se
+llama con esas variables es discriminación con un informe bonito delante, y se
+rechaza **al declararlo**, no al usarlo.
+
+De ahí sale también la **segmentación predictiva**: un segmento definido por
+propensión en lugar de por filtros, con la advertencia que lo hace honesto —
+**cambia solo**. La lista de hoy no es la de la semana que viene, y comparar los
+resultados de dos ejecuciones es comparar dos audiencias distintas creyendo que
+son la misma. Y un modelo **no avisa cuando deja de valer**: sigue dando números
+con la misma seguridad, así que se vigila si el mix de casos se ha movido desde
+que se entrenó.
+
+## Transcripción, resumen y compromisos (`CRM-01.02.01.05`, `CRM-01.02.01.06`)
+
+Lo que hace que un comercial no registre una reunión no es la pereza: es que
+escribirla cuesta diez minutos que no tiene. Transcribir y resumir se los ahorra,
+y por eso es de lo que más se usa cuando funciona. Los problemas que trae no son
+técnicos:
+
+**Grabar a alguien sin decírselo es ilegal en media Europa y una ruptura de
+confianza en la otra media.** El permiso es la primera comprobación, antes de
+mandar nada a transcribir — el cliente que se entera después no vuelve a hablar
+con soltura delante de nadie.
+
+**Una transcripción no es un acta.** El modelo confunde nombres, se pierde con dos
+personas hablando a la vez y traduce mal las cifras: se guarda con su nivel de
+confianza, y por debajo de ese nivel no se propone ningún dato a partir de ella.
+La **atribución de quién dijo qué** es lo menos fiable de todo y se marca como
+tal: en una llamada a tres, poner una frase en boca de quien no la dijo puede
+cambiar una negociación.
+
+**Y un compromiso extraído es una propuesta, no una tarea.** «Te mando la oferta
+el jueves» y «si me la mandas el jueves, la miro» se parecen mucho en un texto y
+significan lo contrario. Crear la tarea directamente llena la agenda de
+compromisos que nadie adquirió, y entonces se deja de mirar la agenda. Un
+compromiso **sin dueño tampoco se propone**: asignárselo al comercial por defecto
+le llena la lista de cosas que dijo el cliente.
+
+Se guarda **lo que propuso el modelo y lo que quedó**, porque de las correcciones
+es de donde se sabe si esto sirve. Y el número que decide si se sigue usando es
+cuánto hay que corregir: por encima del 40 % no ahorra tiempo, lo cambia de sitio
+—de escribir a revisar, que cansa más—. Transcribir, además, cuesta dinero por
+minuto: una biblioteca de tres años de llamadas es una factura, no un botón, y se
+dice antes.
+
+## Variantes de texto y hora de envío (`CRM-02.04.01.04`, `CRM-02.02.02.05`)
+
+Generar cinco versiones de un asunto es de lo más barato que hace un modelo y de
+lo que más se agradece: la sexta variante a mano un viernes por la tarde no la
+escribe nadie, y por eso se manda siempre la primera que salió. Lo que hay que
+resolver no es generar, es qué pasa con lo generado.
+
+**Nada sale sin que una persona lo apruebe**, y no hay aprobación en bloque sin
+leer: el texto lleva el nombre de la empresa y quien lo firma tiene que haberlo
+leído. Permitir el atajo «por comodidad» lo convertiría en la única forma que se
+usa. **Las afirmaciones comprobables se marcan** —«un 40 % más rápido», «el mejor
+del mercado», «garantizado»—: un modelo las escribe con la misma naturalidad con
+la que escribe «buenos días», y el revisor que lee deprisa no distingue lo uno de
+lo otro.
+
+**La ganadora se elige con datos o no se elige.** Con doscientos envíos por rama,
+la diferencia entre un 4,1 % y un 4,4 % es ruido: declararla ganadora convierte el
+azar en una decisión de marca que luego se repite dos años porque «los datos lo
+decían». Y se mide cuánto se reescribe de lo propuesto: si es casi todo, el modelo
+da un punto de partida —que también vale— pero no es lo que se vendió.
+
+De la **hora y el canal** por destinatario, lo importante es cuándo *no* se puede
+personalizar: con pocas interacciones, lo que se optimiza es el ruido. Concluir
+que alguien prefiere las tardes porque abrió dos correos por la tarde es echar una
+moneda dos veces y creerse el resultado, así que por debajo del mínimo se usa la
+hora del segmento y se dice. El canal se mide **por respuesta, no por apertura**:
+abrir un correo no significa nada, y optimizar por aperturas lleva a escribir más
+a quien los abre y nunca contesta. Lo que la persona pidió manda sobre lo que dice
+el modelo — si dijo que no se le llame, eso no es una preferencia estimada, es una
+instrucción. La franja es **la suya**, que es el fallo más tonto y el más
+frecuente: la campaña «a las nueve» llega a las tres de la mañana a quien está en
+otro huso. Y se dice cuántos envíos van a la hora general: si es el 90 %, la
+personalización no está haciendo nada, y conviene saberlo antes de contarlo como
+una mejora.
+
+## Sugerencia semántica en el caso y campos explicados (`CRM-04.03.01.04`, `CRM-00.04.03.07`)
+
+Un agente con un caso abierto no quiere buscar: quiere que le pongan delante los
+tres casos parecidos que ya se resolvieron y el artículo que los explica. Eso
+ahorra la llamada al compañero veterano, que es el cuello de botella real de
+cualquier servicio. La búsqueda por palabras se queda corta aquí —el cliente
+escribe «no me va el correo» y el artículo dice «configuración IMAP»— y la
+semántica trae sus propios problemas:
+
+- **Un resultado sin cita no vale.** Sin poder abrir la fuente, el agente tiene
+  que creerse un párrafo generado y responder con él; cuando esté mal, y alguno
+  estará mal, no habrá forma de saber si falló el dato o el modelo.
+- **Lo parecido no es lo aplicable.** Dos casos pueden hablar de lo mismo y ser de
+  productos, versiones o contratos distintos: se enseña en qué coinciden y en qué
+  no, y lo decide el agente.
+- **No se sugiere lo que no se ha resuelto.** Un caso parecido que sigue abierto
+  no es una solución: es otro que tiene el mismo problema.
+- **Los permisos se aplican antes de indexar**, no al filtrar resultados. Filtrar
+  después ya ha metido en el índice el contenido de casos que ese agente no puede
+  ver, y basta con que un fragmento salga en un resumen. Lo que se descarta por
+  permiso ni siquiera dice de qué iba — decir «hay un caso parecido que no puedes
+  ver» ya filtra información sobre otro cliente.
+- **Y al modelo no se le manda el nombre de quien tiene el problema**: para
+  encontrar casos parecidos hace falta el problema, no la ficha.
+
+Nada de esto funciona si los campos del tenant no significan nada. Un tenant crea
+`cmp_2`, de tipo lista, con valores `A`, `B` y `C`: para el CRM es perfecto y para
+cualquier cosa que tenga que **razonar** es basura. Por eso los campos
+personalizados se describen, y se exige que la descripción **diga algo más que la
+etiqueta** —«Segmento: segmento» es la forma más común de rellenarlo y deja el
+catálogo igual de inútil, con la diferencia de que ahora parece completo—. Los
+valores de una lista se explican uno a uno: saber que `C` significa «cliente en
+revisión de crédito» cambia lo que se puede preguntar. Lo sensible se marca y
+queda fuera del contexto que se manda a un proveedor de inferencia, porque quien
+crea el campo rara vez lo piensa. Y se publica la **cobertura**: con el 30 % de
+los campos descritos, la IA entiende el 30 %, y la distancia entre eso y lo que la
+gente cree que compró es la razón de la mayoría de los proyectos de IA
+decepcionantes.
+
+## La salud del cliente donde se ve (`CRM-01.01.05.07`)
+
+La salud se calcula en el servicio de inteligencia, que es donde están las señales
+y los pesos. Pero quien tiene al cliente delante abre **la ficha de la cuenta**, y
+un número que solo existe en otro servicio no lo ve nadie — con lo cual no cambia
+ninguna conversación, que era todo el objetivo. Como ningún servicio lee el
+esquema de otro, llega por evento y se guarda una copia local.
+
+De ahí salen tres decisiones:
+
+**La copia lleva su fecha.** Un 42 en rojo de hace tres meses no es una alerta: es
+un recuerdo, y llamar por él molesta a un cliente cuyo problema ya se resolvió.
+
+**La fiabilidad viaja dentro del evento.** Si se quedara en el otro lado, aquí se
+pintaría un número calculado con la mitad de las señales sin saberlo — y eso es lo
+que hace que la lista de clientes en riesgo deje de mirarse.
+
+**Y una medida vieja no pisa a la buena.** Los eventos llegan desordenados, y una
+reentrega antigua haría que la ficha volviera a decir «en riesgo» un mes después
+de que se arreglara.
+
+Las tres respuestas posibles son distintas y ninguna se redondea a otra: hay
+medida fiable, hay medida que no vale para actuar, y **no hay medida** — que no es
+«va bien», es que nadie lo ha calculado, normalmente porque faltan las señales. La
+lista de cuentas en riesgo deja fuera las poco fiables y las caducadas y las
+cuenta aparte: una lista donde la mitad son falsos positivos se abre dos veces y
+no se abre más, y entonces se pierden también los que sí lo estaban. Y desde esta
+copia **no se dispara nada automático**: llegaría con retraso y mandaría correos
+de retención a quien renovó ayer.

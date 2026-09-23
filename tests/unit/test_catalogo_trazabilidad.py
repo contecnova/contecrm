@@ -223,10 +223,14 @@ def test_el_front_oficial_cubre_todas_las_secciones(catalogo: dict) -> None:
 # formas de decirlo en castellano, y no pretenden serlo: son las que se usan en
 # este manual, comprobadas contra su texto. Ampliarla es barato; lo que no se
 # puede es sustituirla por un juicio humano que haya que repetir cada mes.
+# `\b` al principio de cada alternativa: sin él, «búsQUEDA POR palabras» encajaba
+# con «queda por» y este gate señalaba una frase que no declara nada ausente. Un
+# gate que se equivoca se acaba desactivando, así que la precisión importa tanto
+# como la cobertura.
 SE_DECLARA_AUSENTE = re.compile(
-    r"(no est[áa] hech[oa]|no est[áa] implementad|todav[íi]a no est[áa]|"
-    r"est[áa] a medias|queda[n]? (por|el|la|los|las)|falta (hacer|la|el|los|las|que)|"
-    r"lo que falta es)",
+    r"(\bno est[áa] hech[oa]|\bno est[áa] implementad|\btodav[íi]a no est[áa]|"
+    r"\best[áa] a medias|\bqueda[n]? (por|el|la|los|las)\b|"
+    r"\bfalta (hacer|la|el|los|las|que)\b|\blo que falta es)",
     re.I,
 )
 

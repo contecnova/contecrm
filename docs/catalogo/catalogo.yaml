@@ -412,7 +412,7 @@ modulos:
               - {id: CRM-00.04.03.04, c: A, fase: 1, svc: core, estado: hecho, t: "Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB"}
               - {id: CRM-00.04.03.05, c: C, fase: 1, svc: automation, estado: hecho, t: "Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación"}
               - {id: CRM-00.04.03.06, c: C, fase: 1, svc: analytics, estado: hecho, t: "Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte"}
-              - {id: CRM-00.04.03.07, c: A, fase: 2, svc: intelligence, estado: pendiente, t: "Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos"}
+              - {id: CRM-00.04.03.07, c: A, fase: 2, svc: intelligence, estado: hecho, t: "Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos"}
               - {id: CRM-00.04.03.08, c: C, fase: 1, svc: core, estado: hecho, t: "Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial"}
               - {id: CRM-00.04.03.09, c: A, fase: 1, svc: metadata, estado: hecho, t: "Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar"}
               - {id: CRM-00.04.03.10, c: A, fase: 2, svc: metadata, estado: hecho, t: "Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás"}
@@ -641,7 +641,7 @@ modulos:
               - {id: CRM-01.01.05.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Composición de datos externos en la vista sin replicarlos (federación / virtualización)"}
               - {id: CRM-01.01.05.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py + holistic.py (resumen con citación)", t: "Resumen de cuenta generado por IA con puntos clave y riesgos"}
               - {id: CRM-01.01.05.06, c: A, fase: 2, svc: party, estado: pendiente, t: "Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad"}
-              - {id: CRM-01.01.05.07, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Salud del cliente (health score) y señales de churn"}
+              - {id: CRM-01.01.05.07, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Salud del cliente (health score) y señales de churn"}
       - id: "1.2"
         nombre: Actividades e interacciones
         funciones:
@@ -652,8 +652,8 @@ modulos:
               - {id: CRM-01.02.01.02, c: C, fase: 1, svc: party, estado: hecho, t: "Asignación, delegación, recordatorios y seguimiento de vencidas"}
               - {id: CRM-01.02.01.03, c: C, fase: 1, svc: party, estado: hecho, t: "Relación polimórfica de la actividad con cualquier objeto"}
               - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
-              - {id: CRM-01.02.01.05, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/core/transcribe.py + app/services/audio_overview", t: "Transcripción y resumen automático de llamadas y reuniones"}
-              - {id: CRM-01.02.01.06, c: D, fase: 5, svc: intelligence, estado: pendiente, t: "Extracción de compromisos y próximos pasos desde la transcripción"}
+              - {id: CRM-01.02.01.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/core/transcribe.py + app/services/audio_overview", t: "Transcripción y resumen automático de llamadas y reuniones"}
+              - {id: CRM-01.02.01.06, c: D, fase: 5, svc: intelligence, estado: hecho, t: "Extracción de compromisos y próximos pasos desde la transcripción"}
               - {id: CRM-01.02.01.09, c: A, fase: 2, svc: party, estado: hecho, t: "Recordatorios recurrentes y reprogramación automática de la actividad no atendida"}
               - {id: CRM-01.02.01.07, c: A, fase: 2, svc: sales, estado: hecho, t: "Plantillas de actividad y secuencias predefinidas por tipo de proceso"}
               - {id: CRM-01.02.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Geolocalización y check-in de visita comercial"}
@@ -674,17 +674,17 @@ modulos:
               - {id: CRM-02.01.01.05, c: A, fase: 4, svc: marketing, estado: hecho, t: "Segmentos consultables por API para activarlos en canales externos"}
               - {id: CRM-02.01.01.06, c: C, fase: 4, svc: marketing, estado: hecho, t: "Exclusiones, supresiones globales y listas negras"}
               - {id: CRM-02.01.01.07, c: D, fase: 4, svc: marketing, estado: hecho, t: "Solapamiento entre segmentos y análisis de canibalización"}
-              - {id: CRM-02.01.01.08, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Segmentación predictiva por afinidad, propensión o valor esperado"}
+              - {id: CRM-02.01.01.08, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Segmentación predictiva por afinidad, propensión o valor esperado"}
               - {id: CRM-02.01.01.09, c: A, fase: 4, svc: marketing, estado: pendiente, t: "Sincronización de audiencias con plataformas publicitarias"}
           - id: CRM-02.01.02
             nombre: Perfilado y scoring
             capacidades:
               - {id: CRM-02.01.02.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas)", t: "Lead scoring por reglas configurables (demográfico + comportamental)"}
-              - {id: CRM-02.01.02.02, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecflow-PSA:app/services/ml_trainer.py + ml_features.py", t: "Scoring predictivo entrenado con histórico de conversión"}
+              - {id: CRM-02.01.02.02, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/ml_trainer.py + ml_features.py", t: "Scoring predictivo entrenado con histórico de conversión"}
               - {id: CRM-02.01.02.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Grading de encaje con el ICP, independiente del engagement"}
               - {id: CRM-02.01.02.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Decaimiento temporal del score por inactividad"}
               - {id: CRM-02.01.02.05, c: C, fase: 4, svc: marketing, estado: hecho, t: "Umbrales que disparan MQL/SQL y traspaso automático a ventas"}
-              - {id: CRM-02.01.02.06, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/confidence_audit.py (explicabilidad)", t: "Explicabilidad del score: qué factores lo componen"}
+              - {id: CRM-02.01.02.06, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/confidence_audit.py (explicabilidad)", t: "Explicabilidad del score: qué factores lo componen"}
       - id: "2.2"
         nombre: Campañas y customer journeys
         funciones:
@@ -705,7 +705,7 @@ modulos:
               - {id: CRM-02.02.02.02, c: A, fase: 4, svc: marketing, estado: hecho, t: "Entrada por evento, por segmento, por API o manual"}
               - {id: CRM-02.02.02.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió)"}
               - {id: CRM-02.02.02.04, c: A, fase: 4, svc: marketing, estado: hecho, t: "Tests A/B y multivariante dentro del recorrido con selección automática de ganador"}
-              - {id: CRM-02.02.02.05, c: A, fase: 5, svc: intelligence, estado: pendiente, t: "Optimización de hora y canal de envío por destinatario"}
+              - {id: CRM-02.02.02.05, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Optimización de hora y canal de envío por destinatario"}
               - {id: CRM-02.02.02.06, c: A, fase: 4, svc: marketing, estado: hecho, t: "Reglas de fatiga y frecuencia máxima de contacto por persona"}
               - {id: CRM-02.02.02.07, c: A, fase: 4, svc: marketing, estado: hecho, t: "Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario"}
               - {id: CRM-02.02.02.08, c: A, fase: 4, svc: marketing, estado: hecho, t: "Analítica por nodo del recorrido con embudo visual"}
@@ -742,7 +742,7 @@ modulos:
               - {id: CRM-02.04.01.01, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia)", t: "Biblioteca de activos con metadatos, versiones y vigencia"}
               - {id: CRM-02.04.01.02, c: A, fase: 4, svc: marketing, estado: pendiente, reutiliza: "contecmind:app/services/approval_engine/", t: "Flujo de aprobación de contenidos y de campañas"}
               - {id: CRM-02.04.01.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Cumplimiento por marca, país e idioma con plantillas bloqueadas"}
-              - {id: CRM-02.04.01.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/transformations.py (generación con revisión humana)", t: "Generación de variantes de copy asistida por IA con revisión humana"}
+              - {id: CRM-02.04.01.04, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/transformations.py (generación con revisión humana)", t: "Generación de variantes de copy asistida por IA con revisión humana"}
           - id: CRM-02.04.02
             nombre: Privacidad y consentimiento
             capacidades:
@@ -923,7 +923,7 @@ modulos:
               - {id: CRM-04.03.01.01, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica)", t: "Artículos con versiones, estados, vigencia y flujo de aprobación"}
               - {id: CRM-04.03.01.02, c: C, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/acl.py + share_tokens.py", t: "Visibilidad por canal y por audiencia (interno, cliente, partner, público)"}
               - {id: CRM-04.03.01.03, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/languages.py + i18n_labels.py", t: "Multilingüe con gestión de traducciones y estado de sincronía"}
-              - {id: CRM-04.03.01.04, c: A, fase: 5, svc: intelligence, estado: pendiente, reutiliza: "contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida)", t: "Búsqueda semántica y sugerencia contextual en el caso"}
+              - {id: CRM-04.03.01.04, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida)", t: "Búsqueda semántica y sugerencia contextual en el caso"}
               - {id: CRM-04.03.01.05, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/sop.py (artículo desde resolución)", t: "Knowledge-Centered Service: crear artículo desde la resolución de un caso"}
               - {id: CRM-04.03.01.06, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecmind:app/services/quality_sampler.py + insights.py", t: "Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos)"}
               - {id: CRM-04.03.01.07, c: A, fase: 3, svc: service, estado: hecho, t: "API de conocimiento para alimentar portales, chatbots y agentes externos"}

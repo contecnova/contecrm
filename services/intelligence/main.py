@@ -6,6 +6,7 @@ from crmcore.service import crear_servicio
 
 from services.intelligence import eventos  # noqa: F401  (registra los tipos de evento)
 from services.intelligence.api import ROUTERS
+from services.intelligence.api_modelos import ROUTERS_MODELOS
 
 
 def _al_arrancar() -> None:
@@ -30,6 +31,6 @@ app = crear_servicio(
         "se escribe, lo que responde cita sus fuentes, y cada llamada queda "
         "registrada con su coste y su resultado."
     ),
-    routers=ROUTERS,
+    routers=[*ROUTERS, *ROUTERS_MODELOS],
     al_arrancar=_al_arrancar,
 )

@@ -248,6 +248,28 @@ def medir(
     )
     uow.db.add(fila)
     uow.db.flush()
+
+    # Se publica para que `party` lo pueda enseñar en la ficha de la cuenta
+    # (CRM-01.01.05.07). Por evento y no por lectura directa: ningún servicio lee
+    # el esquema de otro, y una salud que solo existe aquí no la ve quien tiene
+    # al cliente delante.
+    uow.emitir(
+        "account.health.scored",
+        subject=("cuenta", str(cuenta_id)),
+        data={
+            "cuenta_id": str(cuenta_id),
+            "puntuacion": float(puntuacion),
+            "nivel": fila.nivel,
+            # La fiabilidad viaja DENTRO del evento: si se quedara aquí, el que
+            # lo pinta enseñaría un 62 en rojo calculado con la mitad de las
+            # señales sin saberlo.
+            "fiable": fiable,
+            "motivo": motivo,
+            "medida_at": fila.medida_at.isoformat(),
+        },
+        dedup_key=f"salud:{uow.tenant_id}:{cuenta_id}:{fila.medida_at.isoformat()}",
+    )
+
     logger.info(
         "salud.medida",
         cuenta_id=str(cuenta_id),

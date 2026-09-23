@@ -342,3 +342,46 @@ def anotar_relacion(cuerpo: RelacionIn, uow: UowDep, principal: AutenticadoDep) 
 
 
 ROUTERS_CALIDAD = [router_calidad, router_plan, router_personas]
+
+
+# ── Salud de la cuenta, replicada (CRM-01.01.05.07) ───────────────────────
+
+
+@router_calidad.get(
+    "/salud/{cuenta_id}",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="La salud de esta cuenta, con todo lo que la matiza",
+    description=(
+        "Se calcula en el servicio de inteligencia y aquí vive una **copia**: un "
+        "número que solo existe allí no lo ve quien tiene al cliente delante, con "
+        "lo cual no cambia ninguna conversación.\n\n"
+        "Las tres respuestas son distintas y ninguna se redondea a otra: **hay "
+        "medida fiable**, **hay medida pero no vale para actuar** y **no hay "
+        "medida** — y la tercera no es «va bien», es que nadie lo ha calculado, "
+        "normalmente porque faltan las señales.\n\n"
+        "Un número en rojo de hace tres meses no es una alerta: es un recuerdo, y "
+        "llamar por él molesta a un cliente cuyo problema ya se resolvió."
+    ),
+)
+def salud_de_la_cuenta(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import salud_replicada
+
+    return salud_replicada.de_la_cuenta(db, principal.tenant_id, cuenta_id=cuenta_id)
+
+
+@router_calidad.get(
+    "/salud",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Las cuentas que hay que mirar",
+    description=(
+        "**Sin las que no se pueden mirar.** Se dejan fuera las medidas poco "
+        "fiables y las caducadas, y se cuentan aparte: una lista de «clientes en "
+        "riesgo» donde la mitad son falsos positivos por falta de datos se abre "
+        "dos veces y no se abre más — y entonces se pierden también los que sí lo "
+        "estaban."
+    ),
+)
+def cuentas_en_riesgo(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import salud_replicada
+
+    return salud_replicada.en_riesgo(db, principal.tenant_id)

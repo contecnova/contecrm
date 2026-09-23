@@ -753,5 +753,8 @@ from services.party.proveedores import (  # noqa: E402,F401
     Homologacion,
 )
 
+# Salud de la cuenta replicada desde `intelligence` (CRM-01.01.05.07).
+from services.party.salud_replicada import SaludCuentaReplicada  # noqa: E402,F401
+
 # Cola de excepciones de calidad (CRM-01.01.04.08).
 from services.party.stewardship import ExcepcionCalidad  # noqa: E402,F401

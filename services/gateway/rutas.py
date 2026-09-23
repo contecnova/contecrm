@@ -194,6 +194,14 @@ PREFIJOS: dict[str, str] = {
     "oportunidades": "sales",
     # Coste, tarifas de proveedor y capacidad (CRM-09.02.01).
     "coste": "sales",
+    # Modelos entrenados, transcripción, variantes y sugerencia en el caso
+    # (CRM-02.01.02, CRM-01.02.01.05, CRM-02.04.01.04, CRM-04.03.01.04).
+    "modelos": "intelligence",
+    "transcripciones": "intelligence",
+    "variantes": "intelligence",
+    "sugerencias-caso": "intelligence",
+    # Hora y canal por destinatario (CRM-02.02.02.05).
+    "momento": "marketing",
     "captura": "sales",
 }
 

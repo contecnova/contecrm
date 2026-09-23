@@ -15,7 +15,11 @@ from services.party.api import ROUTERS
 from services.party.api_actividades_extra import ROUTERS_ACTIVIDADES_EXTRA
 from services.party.api_calidad import ROUTERS_CALIDAD
 from services.party.api_proveedores import ROUTERS_PROVEEDORES
-from services.party.consumidores import consumir_comando, consumir_organigrama
+from services.party.consumidores import (
+    consumir_comando,
+    consumir_organigrama,
+    consumir_salud,
+)
 
 
 def _al_arrancar() -> None:
@@ -47,5 +51,9 @@ app = crear_servicio(
         # jerarquía aplique en los listados (CRM-00.05.02.12): `superior_id` vive
         # en la membresía de identity y este servicio no lee su esquema.
         ("user.org.changed", consumir_organigrama, f"{__name__.split('.')[1]}-organigrama"),
+        # La salud de la cuenta se calcula en `intelligence` y aquí se proyecta
+        # (CRM-01.01.05.07): un número que solo existe allí no lo ve quien tiene
+        # al cliente delante, y entonces no cambia ninguna conversación.
+        ("account.health.scored", consumir_salud, f"{__name__.split('.')[1]}-salud"),
     ],
 )

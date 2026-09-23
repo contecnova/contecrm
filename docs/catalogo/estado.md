@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**749 capacidades**: ✅ 700 hecho · ⬜ 49 pendiente
+**749 capacidades**: ✅ 710 hecho · ⬜ 39 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 275 · ⬜ 8
+283 capacidades · ✅ 276 · ⬜ 7
 
 ### 0.1 Multi-tenancy
 
@@ -302,7 +302,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.03.04` | Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB | A | 1 | core | ✅ | — |
 | `CRM-00.04.03.05` | Campos personalizados usables en condiciones, acciones y formularios de los flujos y los procesos, y en las reglas de asignación | C | 1 | automation | ✅ | — |
 | `CRM-00.04.03.06` | Campos personalizados como dimensión y métrica en informes y cuadros de mando, sin modelado aparte | C | 1 | analytics | ✅ | — |
-| `CRM-00.04.03.07` | Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos | A | 2 | intelligence | ⬜ | — |
+| `CRM-00.04.03.07` | Campos personalizados explotables por contecintelligence: descritos en el contexto semántico, consultables en lenguaje natural y utilizables por los modelos | A | 2 | intelligence | ✅ | — |
 | `CRM-00.04.03.08` | Campos personalizados en importación, exportación, plantillas de documento y de correo, y en las vistas del front oficial | C | 1 | core | ✅ | — |
 | `CRM-00.04.03.09` | Previsualización del cambio de esquema antes de aplicarlo: a cuántos registros afecta, qué se rompe y qué queda sin rellenar | A | 1 | metadata | ✅ | — |
 | `CRM-00.04.03.10` | Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás | A | 2 | metadata | ✅ | — |
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 49 · ⬜ 5
+54 capacidades · ✅ 52 · ⬜ 2
 
 ### 1.1 Modelo de parties
 
@@ -519,7 +519,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ✅ | — |
 | `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
 | `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ⬜ | — |
-| `CRM-01.01.05.07` | Salud del cliente (health score) y señales de churn | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/customer_health_service.py |
+| `CRM-01.01.05.07` | Salud del cliente (health score) y señales de churn | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/customer_health_service.py |
 
 ### 1.2 Actividades e interacciones
 
@@ -531,15 +531,15 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.02.01.02` | Asignación, delegación, recordatorios y seguimiento de vencidas | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.03` | Relación polimórfica de la actividad con cualquier objeto | C | 1 | party | ✅ | — |
 | `CRM-01.02.01.04` | Registro automático de interacciones desde correo, teléfono y calendario | A | 2 | integration | ✅ | contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py |
-| `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ⬜ | contecmind:app/core/transcribe.py + app/services/audio_overview |
-| `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ⬜ | — |
+| `CRM-01.02.01.05` | Transcripción y resumen automático de llamadas y reuniones | A | 5 | intelligence | ✅ | contecmind:app/core/transcribe.py + app/services/audio_overview |
+| `CRM-01.02.01.06` | Extracción de compromisos y próximos pasos desde la transcripción | D | 5 | intelligence | ✅ | — |
 | `CRM-01.02.01.09` | Recordatorios recurrentes y reprogramación automática de la actividad no atendida | A | 2 | party | ✅ | — |
 | `CRM-01.02.01.07` | Plantillas de actividad y secuencias predefinidas por tipo de proceso | A | 2 | sales | ✅ | — |
 | `CRM-01.02.01.08` | Geolocalización y check-in de visita comercial | A | 2 | sales | ✅ | — |
 
 ## Módulo 2 — Marketing
 
-54 capacidades · ✅ 43 · ⬜ 11
+54 capacidades · ✅ 48 · ⬜ 6
 
 ### 2.1 Segmentación y audiencias
 
@@ -554,7 +554,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.01.01.05` | Segmentos consultables por API para activarlos en canales externos | A | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.06` | Exclusiones, supresiones globales y listas negras | C | 4 | marketing | ✅ | — |
 | `CRM-02.01.01.07` | Solapamiento entre segmentos y análisis de canibalización | D | 4 | marketing | ✅ | — |
-| `CRM-02.01.01.08` | Segmentación predictiva por afinidad, propensión o valor esperado | A | 5 | intelligence | ⬜ | — |
+| `CRM-02.01.01.08` | Segmentación predictiva por afinidad, propensión o valor esperado | A | 5 | intelligence | ✅ | — |
 | `CRM-02.01.01.09` | Sincronización de audiencias con plataformas publicitarias | A | 4 | marketing | ⬜ | — |
 
 #### CRM-02.01.02 · Perfilado y scoring
@@ -562,11 +562,11 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-02.01.02.01` | Lead scoring por reglas configurables (demográfico + comportamental) | C | 4 | marketing | ✅ | contecflow-PSA:app/services/risk_scoring.py (motor de scoring por reglas) |
-| `CRM-02.01.02.02` | Scoring predictivo entrenado con histórico de conversión | A | 5 | intelligence | ⬜ | contecflow-PSA:app/services/ml_trainer.py + ml_features.py |
+| `CRM-02.01.02.02` | Scoring predictivo entrenado con histórico de conversión | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/ml_trainer.py + ml_features.py |
 | `CRM-02.01.02.03` | Grading de encaje con el ICP, independiente del engagement | A | 4 | marketing | ✅ | — |
 | `CRM-02.01.02.04` | Decaimiento temporal del score por inactividad | A | 4 | marketing | ✅ | — |
 | `CRM-02.01.02.05` | Umbrales que disparan MQL/SQL y traspaso automático a ventas | C | 4 | marketing | ✅ | — |
-| `CRM-02.01.02.06` | Explicabilidad del score: qué factores lo componen | A | 5 | intelligence | ⬜ | contecmind:app/services/confidence_audit.py (explicabilidad) |
+| `CRM-02.01.02.06` | Explicabilidad del score: qué factores lo componen | A | 5 | intelligence | ✅ | contecmind:app/services/confidence_audit.py (explicabilidad) |
 
 ### 2.2 Campañas y customer journeys
 
@@ -590,7 +590,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.02.02.02` | Entrada por evento, por segmento, por API o manual | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.03` | Decisión por comportamiento (abrió, hizo clic, visitó, compró, no respondió) | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.04` | Tests A/B y multivariante dentro del recorrido con selección automática de ganador | A | 4 | marketing | ✅ | — |
-| `CRM-02.02.02.05` | Optimización de hora y canal de envío por destinatario | A | 5 | intelligence | ⬜ | — |
+| `CRM-02.02.02.05` | Optimización de hora y canal de envío por destinatario | A | 5 | intelligence | ✅ | — |
 | `CRM-02.02.02.06` | Reglas de fatiga y frecuencia máxima de contacto por persona | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.07` | Salidas por conversión, por exclusión o por entrada en otro recorrido prioritario | A | 4 | marketing | ✅ | — |
 | `CRM-02.02.02.08` | Analítica por nodo del recorrido con embudo visual | A | 4 | marketing | ✅ | — |
@@ -631,7 +631,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-02.04.01.01` | Biblioteca de activos con metadatos, versiones y vigencia | A | 4 | marketing | ⬜ | contecmind:app/services/documents.py + doc_versions.py (versiones y vigencia) |
 | `CRM-02.04.01.02` | Flujo de aprobación de contenidos y de campañas | A | 4 | marketing | ⬜ | contecmind:app/services/approval_engine/ |
 | `CRM-02.04.01.03` | Cumplimiento por marca, país e idioma con plantillas bloqueadas | A | 4 | marketing | ✅ | — |
-| `CRM-02.04.01.04` | Generación de variantes de copy asistida por IA con revisión humana | A | 5 | intelligence | ⬜ | contecmind:app/services/transformations.py (generación con revisión humana) |
+| `CRM-02.04.01.04` | Generación de variantes de copy asistida por IA con revisión humana | A | 5 | intelligence | ✅ | contecmind:app/services/transformations.py (generación con revisión humana) |
 
 #### CRM-02.04.02 · Privacidad y consentimiento
 
@@ -762,7 +762,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 4 — Servicio y atención al cliente
 
-62 capacidades · ✅ 58 · ⬜ 4
+62 capacidades · ✅ 59 · ⬜ 3
 
 ### 4.1 Gestión de casos
 
@@ -833,7 +833,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-04.03.01.01` | Artículos con versiones, estados, vigencia y flujo de aprobación | C | 3 | service | ✅ | contecmind:app/services/document_control.py (versiones + aprobación + publicación atómica) |
 | `CRM-04.03.01.02` | Visibilidad por canal y por audiencia (interno, cliente, partner, público) | C | 3 | service | ✅ | contecmind:app/services/acl.py + share_tokens.py |
 | `CRM-04.03.01.03` | Multilingüe con gestión de traducciones y estado de sincronía | A | 3 | service | ✅ | contecmind:app/services/languages.py + i18n_labels.py |
-| `CRM-04.03.01.04` | Búsqueda semántica y sugerencia contextual en el caso | A | 5 | intelligence | ⬜ | contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida) |
+| `CRM-04.03.01.04` | Búsqueda semántica y sugerencia contextual en el caso | A | 5 | intelligence | ✅ | contecmind:app/services/retrieval/ + search/ (búsqueda semántica híbrida) |
 | `CRM-04.03.01.05` | Knowledge-Centered Service: crear artículo desde la resolución de un caso | A | 3 | service | ✅ | contecmind:app/services/sop.py (artículo desde resolución) |
 | `CRM-04.03.01.06` | Valoración, feedback y analítica de eficacia (deflexión, artículos huérfanos) | A | 3 | service | ✅ | contecmind:app/services/quality_sampler.py + insights.py |
 | `CRM-04.03.01.07` | API de conocimiento para alimentar portales, chatbots y agentes externos | A | 3 | service | ✅ | — |

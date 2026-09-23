@@ -1145,3 +1145,74 @@ def comprobar_lista(objeto: str, cuerpo: ColumnasIn, db: DbDep, principal: Auten
         columnas=cuerpo.columnas,
         campos_del_esquema=esquema_actual(db, principal.tenant_id, objeto),
     )
+
+
+# ── Contexto semántico de los campos personalizados (CRM-00.04.03.07) ─────
+
+
+class CampoSemanticoIn(BaseModel):
+    clave: str
+    etiqueta: str
+    tipo: str
+    descripcion: str
+    rol: str
+    valores: list[dict[str, Any]] = Field(default_factory=list)
+    sensible: bool = False
+    explotable: bool = True
+
+
+@router.post(
+    "/objetos/{objeto}/semantica",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Declarar qué significa un campo personalizado",
+    description=(
+        "Un tenant crea `cmp_2`, de tipo lista, con valores `A`, `B` y `C`. Para "
+        "el CRM es perfecto; para cualquier cosa que tenga que **razonar** sobre "
+        "esos datos es basura: no sabe qué es `cmp_2` ni qué significa `B`.\n\n"
+        "Se exige que la descripción diga algo más que la etiqueta. «Segmento: "
+        "segmento» es la forma más común de rellenar esto y deja el catálogo "
+        "igual de inútil, con la diferencia de que ahora parece completo.\n\n"
+        "Y lo sensible se marca para que quede fuera: un campo con el diagnóstico "
+        "de un paciente no entra en un contexto que se manda a un proveedor de "
+        "inferencia, y quien lo creó rara vez lo piensa."
+    ),
+)
+def declarar_semantica(objeto: str, cuerpo: CampoSemanticoIn, principal: AutenticadoDep) -> Any:
+    from services.metadata import semantica
+
+    return semantica.describir_campo(
+        clave=cuerpo.clave,
+        etiqueta=cuerpo.etiqueta,
+        tipo=cuerpo.tipo,
+        descripcion=cuerpo.descripcion,
+        rol=cuerpo.rol,
+        valores=cuerpo.valores,
+        sensible=cuerpo.sensible,
+        explotable=cuerpo.explotable,
+    )
+
+
+@router.get(
+    "/objetos/{objeto}/semantica",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="El diccionario que se le pasa a lo que razona sobre este objeto",
+    description=(
+        "Va **sin los campos sensibles y sin los internos**, y dice cuántos ha "
+        "dejado fuera: un contexto recortado en silencio hace que el asistente "
+        "conteste «no hay ningún campo de eso» cuando lo que pasa es que no se lo "
+        "hemos enseñado.\n\n"
+        "Y devuelve la **cobertura**: con el 30 % de los campos descritos, la IA "
+        "entiende el 30 %, y la diferencia entre eso y lo que la gente cree que "
+        "compró es la razón de la mayoría de los proyectos de IA decepcionantes."
+    ),
+)
+def contexto_semantico(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.metamodelo import campos_de
+
+    from services.metadata import semantica
+
+    campos = campos_de(db, principal.tenant_id, objeto)
+    return {
+        **semantica.contexto_semantico(objeto=objeto, campos=campos),
+        "cobertura": semantica.cobertura(campos=campos),
+    }

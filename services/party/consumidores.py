@@ -105,3 +105,60 @@ declarar_consumo(
         ),
     )
 )
+
+
+async def consumir_salud(mensaje: Any) -> None:
+    """Replica la salud de la cuenta para poder enseñarla en la ficha
+    (CRM-01.01.05.07).
+
+    Se calcula en `intelligence`, que es donde están las señales, y este servicio
+    no lee su esquema. Un número que solo existe allí no lo ve quien tiene al
+    cliente delante, con lo cual no cambia ninguna conversación — que era todo el
+    objetivo.
+    """
+    from uuid import UUID
+
+    from crmcore.db.uow import unidad_de_trabajo
+
+    from services.party.salud_replicada import proyectar
+
+    tipo = getattr(mensaje, "tipo", None) or (
+        mensaje.get("tipo") if isinstance(mensaje, dict) else None
+    )
+    if str(tipo or "") != "account.health.scored":
+        return
+
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    if not bruto or not datos.get("cuenta_id"):
+        logger.warning("party.salud_sin_identificador")
+        return
+
+    tenant_id = UUID(str(bruto))
+    with unidad_de_trabajo(tenant_id) as uow:
+        proyectar(uow.db, tenant_id=tenant_id, datos=dict(datos))
+
+
+# Contract testing dirigido por el consumidor (CRM-00.03.01.03): queda declarado
+# que `party` lee estos campos, para que quitarlos del productor sea una decisión
+# y no un descuido. `fiable` va en la lista a propósito — sin él aquí se pintaría
+# un número en rojo calculado con la mitad de las señales sin saberlo.
+from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402
+
+declarar_consumo(
+    Consumo(
+        consumidor="party",
+        evento="account.health.scored",
+        campos=("cuenta_id", "puntuacion", "nivel", "fiable", "medida_at"),
+        motivo=(
+            "Enseñar la salud en la ficha de la cuenta sin leer el esquema de "
+            "intelligence, y poder decir cuándo se midió y si es fiable"
+        ),
+    )
+)

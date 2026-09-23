@@ -30,3 +30,18 @@ AI_BUDGET_EXHAUSTED = registrar(
         campos=("tenant", "gastado"),
     )
 )
+ACCOUNT_HEALTH_SCORED = registrar(
+    TipoEvento(
+        tipo="account.health.scored",
+        version=1,
+        productor="intelligence",
+        descripcion=(
+            "Se ha medido la salud de una cuenta (CRM-01.01.05.07). Lo consume "
+            "`party` para poder enseñarlo en la ficha sin leer el esquema de "
+            "este servicio. Va con su fiabilidad dentro: una salud calculada con "
+            "la mitad de las señales no es un dato y quien la pinte tiene que "
+            "poder decirlo"
+        ),
+        campos=("cuenta_id", "puntuacion", "nivel", "fiable", "motivo", "medida_at"),
+    )
+)
