@@ -252,3 +252,11 @@ from services.orchestrator.aprobaciones import (  # noqa: E402,F401
     SolicitudAprobacion,
 )
 from services.orchestrator.organizacion import PersonaOrg  # noqa: E402,F401
+
+# Sagas con compensación y plantillas de flujo (CRM-03.03.02.12,
+# CRM-00.03.05.15).
+from services.orchestrator.sagas import (  # noqa: E402,F401
+    PasoSaga,
+    PlantillaFlujo,
+    Saga,
+)

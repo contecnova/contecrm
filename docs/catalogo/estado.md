@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 630 hecho · ⬜ 77 pendiente
+**707 capacidades**: ✅ 640 hecho · ⬜ 67 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 262 · ⬜ 21
+283 capacidades · ✅ 267 · ⬜ 16
 
 ### 0.1 Multi-tenancy
 
@@ -161,7 +161,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.03.05` | Componentes embebibles opcionales (web components) para incrustar en portales propios | A | 3 | core | ✅ | — |
 | `CRM-00.02.03.06` | Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.07` | API de validación consultable antes de enviar (dry-run de reglas) | A | 0 | metadata | ✅ | — |
-| `CRM-00.02.03.08` | Server-driven UI: definición de formularios y vistas servida como JSON | D | 1 | metadata | ⬜ | — |
+| `CRM-00.02.03.08` | Server-driven UI: definición de formularios y vistas servida como JSON | D | 1 | metadata | ✅ | — |
 | `CRM-00.02.03.09` | Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI | A | 3 | integration | ✅ | — |
 | `CRM-00.02.03.10` | Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros | D | 6 | gateway | ✅ | — |
 
@@ -207,7 +207,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.02.10` | Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio | C | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.11` | Instancias de proceso consultables: estado, historial, variables, punto de fallo | C | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.12` | Reintento, salto de paso y edición de variables en caliente por un administrador | A | 0 | orchestrator | ✅ | — |
-| `CRM-00.03.02.13` | Migración de instancias en vuelo a una nueva versión del proceso | D | 2 | orchestrator | ⬜ | — |
+| `CRM-00.03.02.13` | Migración de instancias en vuelo a una nueva versión del proceso | D | 2 | orchestrator | ✅ | — |
 | `CRM-00.03.02.14` | Simulación y pruebas de proceso con datos de ejemplo antes de publicar | A | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.15` | Multi-tenancy del motor: definiciones y aislamiento de ejecución por tenant | C | 0 | orchestrator | ✅ | — |
 | `CRM-00.03.02.16` | Límites de recursión, bucles y ejecución para evitar procesos desbocados | C | 0 | orchestrator | ✅ | — |
@@ -223,8 +223,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.03.05` | Ejecución inmediata vs. diferida vs. programada | C | 0 | automation | ✅ | — |
 | `CRM-00.03.03.06` | Gestión de orden de ejecución y prevención de bucles infinitos entre reglas | C | 0 | automation | ✅ | — |
 | `CRM-00.03.03.07` | Depurador con ejecución paso a paso y log de decisiones por registro | A | 0 | automation | ✅ | — |
-| `CRM-00.03.03.08` | Entorno de pruebas y despliegue de automatizaciones entre entornos | A | 0 | automation | ⬜ | — |
-| `CRM-00.03.03.09` | Biblioteca de plantillas de automatización por industria | A | 1 | automation | ⬜ | — |
+| `CRM-00.03.03.08` | Entorno de pruebas y despliegue de automatizaciones entre entornos | A | 0 | automation | ✅ | — |
+| `CRM-00.03.03.09` | Biblioteca de plantillas de automatización por industria | A | 1 | automation | ✅ | — |
 
 #### CRM-00.03.04 · Integración y conectividad
 
@@ -260,7 +260,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.03.05.12` | Decidir desde el correo o el móvil sin entrar al CRM, con enlace firmado de un solo uso y caducidad | C | 2 | orchestrator | ✅ | — |
 | `CRM-00.03.05.13` | Bandeja unificada de lo que me toca decidir, con el contexto suficiente para decidir sin abrir el registro | C | 2 | orchestrator | ✅ | — |
 | `CRM-00.03.05.14` | Vista de la instancia sobre el propio gráfico: por dónde va, qué queda y dónde falló | A | 2 | orchestrator | ✅ | — |
-| `CRM-00.03.05.15` | Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero | A | 2 | orchestrator | ⬜ | — |
+| `CRM-00.03.05.15` | Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero | A | 2 | orchestrator | ✅ | — |
 | `CRM-00.03.05.16` | Analítica del flujo: dónde se atasca, cuánto tarda cada paso y quién es el cuello de botella | A | 2 | analytics | ✅ | contecflow-PSA:app/services/approval_engine/analytics.py |
 
 ### 0.4 Extensibilidad y modelo de datos
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 55 · ⬜ 10
+65 capacidades · ✅ 56 · ⬜ 9
 
 ### 3.1 Pipeline y oportunidades
 
@@ -745,7 +745,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.03.02.09` | Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación | A | 2 | sales | ✅ | contecpos:services/identidad (suscripciones y planes) |
 | `CRM-03.03.02.10` | Gestión de renovaciones con alertas y pipeline específico | A | 2 | sales | ✅ | — |
 | `CRM-03.03.02.11` | Traspaso de pedido a ERP con confirmación y conciliación de estado | C | 2 | integration | ✅ | contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py |
-| `CRM-03.03.02.12` | Orquestación order-to-cash como saga con compensaciones | A | 2 | orchestrator | ⬜ | — |
+| `CRM-03.03.02.12` | Orquestación order-to-cash como saga con compensaciones | A | 2 | orchestrator | ✅ | — |
 
 ### 3.4 Canal indirecto (PRM)
 
@@ -1035,7 +1035,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 82 · ⬜ 9
+91 capacidades · ✅ 86 · ⬜ 5
 
 ### 7.1 Administración funcional
 
@@ -1060,11 +1060,11 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-07.02.01.01` | Entornos separados: desarrollo, pruebas, UAT, producción | C | 0 | infra | ✅ | contecmind:setup.sh (perfiles dev/prodlike) + docker-compose.yml |
 | `CRM-07.02.01.02` | Sandboxes con copia parcial o total de datos y anonimización opcional | A | 1 | tenancy | ⬜ | contecmind:app/services/pii.py (anonimización) |
-| `CRM-07.02.01.03` | Empaquetado de cambios y despliegue promocionable entre entornos | A | 1 | metadata | ⬜ | contecmind:app/services/environment_profiles.py |
-| `CRM-07.02.01.04` | Configuración como código con control de versiones (Git) y revisión | A | 1 | metadata | ⬜ | — |
+| `CRM-07.02.01.03` | Empaquetado de cambios y despliegue promocionable entre entornos | A | 1 | metadata | ✅ | contecmind:app/services/environment_profiles.py |
+| `CRM-07.02.01.04` | Configuración como código con control de versiones (Git) y revisión | A | 1 | metadata | ✅ | — |
 | `CRM-07.02.01.05` | Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto) | A | 0 | infra | ✅ | contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI) |
-| `CRM-07.02.01.06` | Detección de cambios en producción fuera del pipeline (drift) | A | 1 | metadata | ⬜ | — |
-| `CRM-07.02.01.07` | Rollback de despliegues y de configuraciones | A | 1 | metadata | ⬜ | — |
+| `CRM-07.02.01.06` | Detección de cambios en producción fuera del pipeline (drift) | A | 1 | metadata | ✅ | — |
+| `CRM-07.02.01.07` | Rollback de despliegues y de configuraciones | A | 1 | metadata | ✅ | — |
 | `CRM-07.02.01.08` | Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión | C | 0 | docs | ✅ | contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py |
 | `CRM-07.02.01.09` | Paquetes instalables por tenant y gestión de dependencias | A | 6 | metadata | ✅ | contecflow-PSA:app/services/marketplace_service.py |
 

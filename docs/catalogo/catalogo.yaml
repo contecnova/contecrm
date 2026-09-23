@@ -268,7 +268,7 @@ modulos:
               - {id: CRM-00.02.03.05, c: A, fase: 3, svc: core, estado: hecho, t: "Componentes embebibles opcionales (web components) para incrustar en portales propios"}
               - {id: CRM-00.02.03.06, c: A, fase: 0, svc: metadata, estado: hecho, t: "Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente"}
               - {id: CRM-00.02.03.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "API de validación consultable antes de enviar (dry-run de reglas)"}
-              - {id: CRM-00.02.03.08, c: D, fase: 1, svc: metadata, estado: pendiente, t: "Server-driven UI: definición de formularios y vistas servida como JSON"}
+              - {id: CRM-00.02.03.08, c: D, fase: 1, svc: metadata, estado: hecho, t: "Server-driven UI: definición de formularios y vistas servida como JSON"}
               - {id: CRM-00.02.03.09, c: A, fase: 3, svc: integration, estado: hecho, t: "Canales alternativos sin UI: e-mail-in, SMS, voz, chatbot, MCP/agentes, CLI"}
               - {id: CRM-00.02.03.10, c: D, fase: 6, svc: gateway, estado: hecho, t: "Modo CRM invisible: el sistema opera embebido en ERP, portal o herramienta de terceros"}
 
@@ -313,7 +313,7 @@ modulos:
               - {id: CRM-00.03.02.10, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Reglas de decisión declarativas (DMN / tablas de decisión) editables por negocio"}
               - {id: CRM-00.03.02.11, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Instancias de proceso consultables: estado, historial, variables, punto de fallo"}
               - {id: CRM-00.03.02.12, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Reintento, salto de paso y edición de variables en caliente por un administrador"}
-              - {id: CRM-00.03.02.13, c: D, fase: 2, svc: orchestrator, estado: pendiente, t: "Migración de instancias en vuelo a una nueva versión del proceso"}
+              - {id: CRM-00.03.02.13, c: D, fase: 2, svc: orchestrator, estado: hecho, t: "Migración de instancias en vuelo a una nueva versión del proceso"}
               - {id: CRM-00.03.02.14, c: A, fase: 0, svc: orchestrator, estado: hecho, t: "Simulación y pruebas de proceso con datos de ejemplo antes de publicar"}
               - {id: CRM-00.03.02.15, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Multi-tenancy del motor: definiciones y aislamiento de ejecución por tenant"}
               - {id: CRM-00.03.02.16, c: C, fase: 0, svc: orchestrator, estado: hecho, t: "Límites de recursión, bucles y ejecución para evitar procesos desbocados"}
@@ -328,8 +328,8 @@ modulos:
               - {id: CRM-00.03.03.05, c: C, fase: 0, svc: automation, estado: hecho, t: "Ejecución inmediata vs. diferida vs. programada"}
               - {id: CRM-00.03.03.06, c: C, fase: 0, svc: automation, estado: hecho, t: "Gestión de orden de ejecución y prevención de bucles infinitos entre reglas"}
               - {id: CRM-00.03.03.07, c: A, fase: 0, svc: automation, estado: hecho, t: "Depurador con ejecución paso a paso y log de decisiones por registro"}
-              - {id: CRM-00.03.03.08, c: A, fase: 0, svc: automation, estado: pendiente, t: "Entorno de pruebas y despliegue de automatizaciones entre entornos"}
-              - {id: CRM-00.03.03.09, c: A, fase: 1, svc: automation, estado: pendiente, t: "Biblioteca de plantillas de automatización por industria"}
+              - {id: CRM-00.03.03.08, c: A, fase: 0, svc: automation, estado: hecho, t: "Entorno de pruebas y despliegue de automatizaciones entre entornos"}
+              - {id: CRM-00.03.03.09, c: A, fase: 1, svc: automation, estado: hecho, t: "Biblioteca de plantillas de automatización por industria"}
 
           - id: CRM-00.03.04
             nombre: Integración y conectividad
@@ -363,7 +363,7 @@ modulos:
               - {id: CRM-00.03.05.12, c: C, fase: 2, svc: orchestrator, estado: hecho, t: "Decidir desde el correo o el móvil sin entrar al CRM, con enlace firmado de un solo uso y caducidad"}
               - {id: CRM-00.03.05.13, c: C, fase: 2, svc: orchestrator, estado: hecho, t: "Bandeja unificada de lo que me toca decidir, con el contexto suficiente para decidir sin abrir el registro"}
               - {id: CRM-00.03.05.14, c: A, fase: 2, svc: orchestrator, estado: hecho, t: "Vista de la instancia sobre el propio gráfico: por dónde va, qué queda y dónde falló"}
-              - {id: CRM-00.03.05.15, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero"}
+              - {id: CRM-00.03.05.15, c: A, fase: 2, svc: orchestrator, estado: hecho, t: "Plantillas de flujo por sector y caso de uso, clonables y modificables sin partir de cero"}
               - {id: CRM-00.03.05.16, c: A, fase: 2, svc: analytics, estado: hecho, reutiliza: "contecflow-PSA:app/services/approval_engine/analytics.py", t: "Analítica del flujo: dónde se atasca, cuánto tarda cada paso y quién es el cuello de botella"}
 
       - id: "0.4"
@@ -843,7 +843,7 @@ modulos:
               - {id: CRM-03.03.02.09, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecpos:services/identidad (suscripciones y planes)", t: "Suscripciones: altas, bajas, cambios de plan, prorrateos, ciclos de facturación"}
               - {id: CRM-03.03.02.10, c: A, fase: 2, svc: sales, estado: hecho, t: "Gestión de renovaciones con alertas y pipeline específico"}
               - {id: CRM-03.03.02.11, c: C, fase: 2, svc: integration, estado: hecho, reutiliza: "contecweb:app/services/purchase (traspaso a ERP) + contecflow-PSA:app/services/accounting_hub_service.py", t: "Traspaso de pedido a ERP con confirmación y conciliación de estado"}
-              - {id: CRM-03.03.02.12, c: A, fase: 2, svc: orchestrator, estado: pendiente, t: "Orquestación order-to-cash como saga con compensaciones"}
+              - {id: CRM-03.03.02.12, c: A, fase: 2, svc: orchestrator, estado: hecho, t: "Orquestación order-to-cash como saga con compensaciones"}
       - id: "3.4"
         nombre: Canal indirecto (PRM)
         funciones:
@@ -1126,11 +1126,11 @@ modulos:
             capacidades:
               - {id: CRM-07.02.01.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:setup.sh (perfiles dev/prodlike) + docker-compose.yml", t: "Entornos separados: desarrollo, pruebas, UAT, producción"}
               - {id: CRM-07.02.01.02, c: A, fase: 1, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/pii.py (anonimización)", t: "Sandboxes con copia parcial o total de datos y anonimización opcional"}
-              - {id: CRM-07.02.01.03, c: A, fase: 1, svc: metadata, estado: pendiente, reutiliza: "contecmind:app/services/environment_profiles.py", t: "Empaquetado de cambios y despliegue promocionable entre entornos"}
-              - {id: CRM-07.02.01.04, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Configuración como código con control de versiones (Git) y revisión"}
+              - {id: CRM-07.02.01.03, c: A, fase: 1, svc: metadata, estado: hecho, reutiliza: "contecmind:app/services/environment_profiles.py", t: "Empaquetado de cambios y despliegue promocionable entre entornos"}
+              - {id: CRM-07.02.01.04, c: A, fase: 1, svc: metadata, estado: hecho, t: "Configuración como código con control de versiones (Git) y revisión"}
               - {id: CRM-07.02.01.05, c: A, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI)", t: "Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto)"}
-              - {id: CRM-07.02.01.06, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Detección de cambios en producción fuera del pipeline (drift)"}
-              - {id: CRM-07.02.01.07, c: A, fase: 1, svc: metadata, estado: pendiente, t: "Rollback de despliegues y de configuraciones"}
+              - {id: CRM-07.02.01.06, c: A, fase: 1, svc: metadata, estado: hecho, t: "Detección de cambios en producción fuera del pipeline (drift)"}
+              - {id: CRM-07.02.01.07, c: A, fase: 1, svc: metadata, estado: hecho, t: "Rollback de despliegues y de configuraciones"}
               - {id: CRM-07.02.01.08, c: C, fase: 0, svc: docs, estado: hecho, reutiliza: "contecmind:CHANGELOG.md + tests/unit/test_changelog_frescura.py", t: "Gestión de releases del proveedor: ventanas, previsualización, pruebas de regresión"}
               - {id: CRM-07.02.01.09, c: A, fase: 6, svc: metadata, estado: hecho, reutiliza: "contecflow-PSA:app/services/marketplace_service.py", t: "Paquetes instalables por tenant y gestión de dependencias"}
       - id: "7.3"

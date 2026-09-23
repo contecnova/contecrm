@@ -10283,3 +10283,147 @@ por medio.
   forma de detectar lo que de verdad pasa: un script de corrección, una migración o
   un arreglo a mano un viernes. A partir de ahí el rastro deja de ser una prueba, y
   en silencio.
+
+---
+
+## Configuración como código: paquetes, promoción, drift y vuelta atrás (`CRM-07.02.01`)
+
+Un CRM configurable acaba siempre igual: alguien toca producción un viernes
+porque «es un cambio pequeño», y a los tres meses nadie sabe qué hay configurado
+ni por qué. El entorno de pruebas dice una cosa y producción otra, y la diferencia
+no está escrita en ninguna parte.
+
+Lo que arregla eso no es prohibir tocar producción —se va a tocar igual— sino
+**verlo**: que un cambio hecho fuera del camino aparezca en una lista al día
+siguiente, con su autor y su hora.
+
+- **La configuración puede vivir en Git** (`CRM-07.02.01.04`): el paquete guarda
+  su referencia cuando la hay. Vacío es legítimo —hay tenants que configuran desde
+  la consola y no tienen repositorio— y por eso no se exige; lo que no se admite
+  es inventársela, porque una referencia que no existe hace perder media mañana a
+  quien la busque.
+- **El paquete lleva de dónde sale** (`CRM-07.02.01.03`), y cada empaquetado es
+  una versión nueva.
+  Sobrescribir la anterior dejaría sin sitio al que está desplegado en producción,
+  y volver atrás exigiría reconstruirlo de memoria.
+- **La huella se calcula con las claves ordenadas.** Si no, el mismo paquete daría
+  huellas distintas según cómo se serializara y el drift saltaría cada día sin que
+  nadie hubiera tocado nada — que es la forma más rápida de que se deje de mirar.
+- **Promocionar comprueba antes de aplicar.** Lo que en pruebas era un campo nuevo
+  puede ser en producción uno que ya existe con otro tipo; aplicar y descubrirlo a
+  la mitad deja el entorno con medio paquete dentro y sin forma de saber cuál.
+  Un cambio de tipo con datos dentro **no se aplica solo**: puede perderlos.
+- **El drift se mide contra el paquete desplegado** (`CRM-07.02.01.06`)**, no
+  contra otro entorno.**
+  Comparar dos entornos dice en qué se diferencian, que puede ser legítimo porque
+  uno va por delante; comparar contra lo desplegado dice **qué tocó alguien a
+  mano**, que es la pregunta. Y lo que el paquete traía y ya no está también es
+  drift, aunque no lo parezca.
+- **Volver atrás es reaplicar el paquete anterior** (`CRM-07.02.01.07`)**, no
+  deshacer cambios.** Deshacer
+  uno a uno falla en cuanto hay dependencias —un campo que se creó y una vista que
+  lo usa— y deja el entorno en un estado que no ha existido nunca.
+
+Y no se juzga el drift: tocar producción un viernes a veces es lo correcto. Lo que
+no puede pasar es que no conste, porque el siguiente despliegue lo pisará sin
+avisar.
+
+## Probar y promocionar automatizaciones (`CRM-00.03.03.08`, `CRM-00.03.03.09`)
+
+Una automatización se escribe en producción porque es donde están los datos de
+verdad, y se prueba **activándola**. Eso funciona hasta el día en que la regla que
+debía avisar a una persona manda cuatro mil correos.
+
+- **La prueba en seco va contra datos reales.** Contra datos inventados la regla
+  siempre funciona: los casos raros que la rompen son los que tiene el cliente, no
+  los que a uno se le ocurren.
+- **Y dice a cuántos habría afectado.** Es el número que para una mano: nadie
+  activa una regla cuando ve «afectaría a 19.480 registros», y casi todo el mundo
+  la activa si solo ve «la regla es válida». Con la muestra al lado, porque el
+  número asusta y la muestra es lo que hace decir «espera, ese no debería estar
+  ahí».
+- **No se promociona a producción lo que no se ha probado en seco.** La prueba
+  cuesta un minuto; la regla que manda cuatro mil correos cuesta una semana de
+  explicaciones.
+- **Se copia la definición, no el estado.** Lo que ya procesó en pruebas no lo ha
+  procesado en producción: copiarlo haría que se saltara justo los registros que
+  tiene que tocar.
+- **Y llega apagada.** Una automatización que se enciende sola al promocionarse
+  empieza a actuar en el momento en que alguien pulsa «desplegar», que no es el
+  momento en que alguien ha decidido que actúe. Lo mismo con las plantillas por
+  industria: una biblioteca que instala reglas activas empieza a mandar correos en
+  cuanto alguien la mira por curiosidad.
+
+## Sagas con compensación (`CRM-03.03.02.12`)
+
+Un pedido que se cobra toca cuatro servicios y ninguna base de datos los abarca a
+todos. No hay transacción que valga: o se orquesta con compensaciones, o el día
+que falla el tercer paso queda un pedido confirmado, un stock reservado y un cobro
+que no existe — y alguien lo arregla a mano leyendo logs.
+
+- **Cada paso declara cómo se deshace antes de ejecutarse.** Calcularlo cuando
+  falle el tercero obliga a saber qué había antes del primero, y para entonces ya
+  se cambió.
+- **Compensar no es deshacer: es hacer lo contrario.** Un cobro no se borra, se
+  devuelve; un pedido no desaparece, se cancela. Lo primero pierde el rastro de
+  que pasó, y lo que pasó tiene consecuencias contables aunque uno se arrepienta.
+- **Se compensa hacia atrás**, porque los pasos se apoyan unos en otros.
+- **Lo que no se puede compensar se declara así desde el principio**, y eso cambia
+  el orden: lo irreversible va al final, cuando ya no puede fallar nada detrás. Un
+  correo al cliente en el paso dos deja una saga que, al compensarse, ha avisado a
+  alguien de algo que no ha pasado — y el sistema avisa de esa colocación al
+  arrancar.
+- **Y una saga con algo sin compensar queda ATASCADA, no compensada.** Decir que
+  está compensada haría que nadie se fiara de esa palabra: alguien tiene que
+  decidir qué se hace con lo que quedó hecho.
+
+### Instancias en vuelo (`CRM-00.03.02.13`)
+
+Las que están corriendo **terminan con su versión**. Cambiarles el guion a la
+mitad las deja en un paso que en la versión nueva no existe, y entonces ni avanzan
+ni se pueden cancelar sin dejar cosas a medias.
+
+Lo que sí se puede es decir **cuántas hay y en qué paso**, porque de eso depende
+si la versión nueva puede esperar a que terminen o hay que resolverlas una a una.
+
+### Plantillas de flujo por sector (`CRM-00.03.05.15`)
+
+**Se clonan, no se heredan.** Si heredaran, mejorar la plantilla cambiaría los
+procesos que ya están corriendo en veinte clientes — incluido uno que la ajustó
+hace seis meses y no espera que le cambie nada.
+
+Y el clon necesita nombre propio: si se queda con el de la plantilla, nadie sabe
+después cuál es el suyo y cuál el de fábrica. Se devuelve además **lo que la
+plantilla no resuelve**, porque una que promete el proceso entero y deja fuera la
+aprobación hace que el cliente lo descubra en producción.
+
+## Formularios y vistas servidos como datos (`CRM-00.02.03.08`, `CRM-00.04.03.01`)
+
+Si el formulario vive en el código del front, cada cambio de cada cliente es un
+despliegue del producto, y a los seis meses hay cuatro versiones del front y
+ninguna está bien. Servirlo como datos lo arregla y trae su propio problema: **el
+front deja de saber qué va a recibir**.
+
+- **El contrato es cerrado.** Los tipos de componente son una lista: un front que
+  recibe uno que no conoce solo puede no pintar nada o pintar una caja de texto que
+  guarda basura en un campo numérico. Y un tipo del metamodelo sin componente
+  asignado **no cae a texto**: caer a texto deja escribir «mañana» en un campo de
+  fecha, y eso se descubre meses después al intentar ordenar por esa columna.
+- **Cada vista dice con qué versión del contrato se hizo**, para que un front
+  viejo pueda decir «no sé pintar esto» en vez de pintarlo mal.
+- **Los permisos se resuelven al servir, no al pintar.** Mandar el formulario
+  completo y esconder lo que no toca deja el dato viajando hasta el navegador:
+  basta con abrir las herramientas de desarrollo. Y se dice cuántos campos se han
+  quitado, porque si no el usuario cree que su ficha tiene doce campos cuando tiene
+  veinte.
+- **La validación viaja pero no sustituye a la del servidor.** Se manda para que
+  nadie descubra el error después de rellenar veinte campos; la que protege el dato
+  es la del servidor, porque lo que llega por la API no pasa por ningún formulario.
+
+El diseñador comprueba antes de publicar las tres cosas que se rompen siempre al
+arrastrar campos y que **no dan error al guardar**: un obligatorio escondido en una
+pestaña secundaria —el formulario no se puede guardar y el usuario no ve por qué,
+porque el error sale abajo y el campo está en otra pantalla—, un campo en una
+sección que no existe —desaparece y nadie lo echa de menos— y un formulario sin
+ningún campo obligatorio, que es la forma más silenciosa de llenar el CRM de
+fichas vacías.

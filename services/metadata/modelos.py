@@ -218,4 +218,9 @@ __all__ = [
     "ValorLista",
 ]
 
+# Empaquetado, promoción entre entornos y drift (CRM-07.02.01.03, .04, .06, .07).
+from services.metadata.entornos import (  # noqa: E402,F401
+    DespliegueConfiguracion,
+    PaqueteConfiguracion,
+)
 from services.metadata.gobierno import CambioEsquema, TipoRegistro  # noqa: E402

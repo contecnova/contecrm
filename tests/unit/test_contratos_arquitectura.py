@@ -101,6 +101,12 @@ SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
         "quien acota es `membresias`, y las consultas de usuarios unen por ella"
     ),
     "planes": "catálogo comercial común a todos los tenants",
+    "plantillas_flujo": (
+        "catálogo de procesos de ejemplo DE LA INSTALACIÓN, como `perfiles_industria`. "
+        "Se CLONAN a cada tenant y el clon sí es suyo: si la plantilla llevara "
+        "tenant_id, cada uno tendría que escribir la suya y la biblioteca no "
+        "serviría para nada"
+    ),
     "perfiles_industria": (
         "catálogo de preconfiguraciones DE LA INSTALACIÓN, como `modulos_publicados` "
         "y por el mismo motivo: un perfil de industria lo escribe quien opera la "
