@@ -14,7 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,7 @@ from services.party import cuenta_360 as c360
 from services.party import mdm
 from services.party import stewardship as stw
 from services.party.cuenta_360 import EstadoFinanciero, PlanCuenta, RelacionPersona
+from services.party.stewardship import ExcepcionCalidad
 
 router_calidad = APIRouter(prefix="/calidad-dato", tags=["calidad del dato"])
 router_plan = APIRouter(prefix="/planes-cuenta", tags=["plan de cuenta"])
@@ -464,3 +465,18 @@ def salud_de_las_metricas(db: DbDep, principal: AutenticadoDep) -> Any:
     from services.party import metricas_embebidas
 
     return metricas_embebidas.salud_de_la_integracion(db, principal.tenant_id)
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_calidad,
+    modelo=ExcepcionCalidad,
+    objeto="excepcion_calidad",
+    permiso_leer="account:read",
+    permiso_escribir="account:write",
+    nombre="Calidad del dato",
+    ruta="/cola",
+    parametro="excepcion_id",
+)

@@ -378,6 +378,13 @@ export default {
     cuenta: "Cuenta del proveedor",
     cuentaAyuda: "Identificador de la cuenta",
     sinProveedores: "Todavía no hay ningún proveedor",
+    alta_documento: "Añadir documento",
+    alta_homologacion: "Homologar en una categoría",
+    alta_contacto: "Añadir contacto",
+    homologaciones: "Homologaciones",
+    contactos: "Contactos",
+    guardia: "Guardia",
+    guardar: "Guardar",
     comoSeCrea:
       "Un proveedor es una cuenta a la que se le ha dado ese papel. " +
       "Se marca desde la ficha de la cuenta, en «Dar papel de proveedor».",

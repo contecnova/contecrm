@@ -87,6 +87,29 @@ def _permiso_de(ruta: Any) -> str | None:
     return None
 
 
+def _es_de_plataforma(ruta: Any) -> bool:
+    """Si esta operación solo la puede hacer quien opera la plataforma.
+
+    Se lee de sus dependencias, como el permiso, y por el mismo motivo: la
+    alternativa es una lista en el front que hay que acordarse de actualizar, y
+    lo que pasa cuando no se actualiza es que a un administrador de empresa se
+    le enseña un menú entero —«Tenants y unidades»— cuyo contenido no puede ver
+    y que al abrirlo solo dice que no es para él.
+
+    `es_admin_plataforma` no es un permiso: un administrador de empresa tiene
+    `tenant:read` y aun así recibe 403. Por eso no basta con mirar permisos.
+    """
+    dependant = getattr(ruta, "dependant", None)
+    for dependencia in getattr(dependant, "dependencies", []) or []:
+        if getattr(dependencia.call, "__name__", "") == "exige_plataforma":
+            return True
+        # `PlataformaDep` llega como sub-dependencia del propio parámetro.
+        for hija in getattr(dependencia, "dependencies", []) or []:
+            if getattr(hija.call, "__name__", "") == "exige_plataforma":
+                return True
+    return False
+
+
 def _rutas_planas(app: FastAPI) -> list[tuple[str, Any]]:
     """Todas las rutas del servicio, incluidas las de routers incluidos.
 
@@ -150,6 +173,7 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
                         "etiquetas": etiquetas,
                         "permiso": _permiso_de(ruta),
                         "administracion": es_administracion(etiquetas),
+                        "solo_plataforma": _es_de_plataforma(ruta),
                     }
                 )
         operaciones.sort(key=lambda o: (o["ruta"], o["metodo"]))
@@ -157,6 +181,7 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
             "servicio": nombre,
             "total": len(operaciones),
             "administracion": sum(1 for o in operaciones if o["administracion"]),
+            "solo_plataforma": sum(1 for o in operaciones if o["solo_plataforma"]),
             "operaciones": operaciones,
         }
 

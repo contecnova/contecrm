@@ -1284,3 +1284,17 @@ montar_ficha(
     parametro="oportunidad_id",
     con_lectura=False,
 )
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_pipelines,
+    modelo=Pipeline,
+    objeto="pipeline",
+    permiso_leer="pipeline:read",
+    permiso_escribir="pipeline:write",
+    nombre="Procesos de venta",
+    parametro="pipeline_id",
+)

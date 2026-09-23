@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -425,3 +425,27 @@ montar_listado(
 
 
 ROUTERS_ALMACEN = [router, router_metricas, router_analisis]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_metricas,
+    modelo=sem.Metrica,
+    objeto="metrica",
+    permiso_leer="analitica:consultar",
+    permiso_escribir="analitica:administrar",
+    nombre="Métricas",
+    parametro="metrica_id",
+)
+montar_ficha(
+    router,
+    modelo=alm.DestinoExportacion,
+    objeto="destino_exportacion",
+    permiso_leer="analitica:consultar",
+    permiso_escribir="analitica:administrar",
+    nombre="Destinos de exportación",
+    ruta="/destinos",
+    parametro="destino_id",
+)

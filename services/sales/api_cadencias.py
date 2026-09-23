@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -399,3 +399,17 @@ ROUTERS_CADENCIAS = [
     router_agenda,
     router_metodologia,
 ]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=cad.Cadencia,
+    objeto="cadencia",
+    permiso_leer="lead:read",
+    permiso_escribir="lead:write",
+    nombre="Cadencias",
+    parametro="cadencia_id",
+)

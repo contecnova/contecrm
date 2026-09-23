@@ -33,6 +33,7 @@ from crmcore.datos.seguimiento import (
 )
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, status
 from pydantic import BaseModel, Field
@@ -591,3 +592,17 @@ def canales() -> Any:
 
 
 ROUTERS_NOTIFICACION = [router_seguimiento, router_notificaciones]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_seguimiento,
+    modelo=Seguimiento,
+    objeto="seguimiento",
+    permiso_leer="user:read",
+    permiso_escribir="user:write",
+    nombre="Seguimientos",
+    parametro="seguimiento_id",
+)

@@ -830,3 +830,17 @@ montar_ficha(
     nombre="Repuestos",
     parametro="repuesto_id",
 )
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_tecnicos,
+    modelo=campo.Tecnico,
+    objeto="tecnico_campo",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Técnicos de campo",
+    parametro="tecnico_id",
+)

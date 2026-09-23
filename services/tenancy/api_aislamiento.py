@@ -325,6 +325,10 @@ montar_listado(
     objeto="aislamiento",
     permiso="tenant:read",
     nombre="Declaraciones de aislamiento",
+    # Sin ficha: hay **una declaración por tenant**, así que abrirla por
+    # identificador no añade nada que el listado no enseñe ya, y el listado de
+    # un solo elemento es el sitio donde se mira.
+    ficha=False,
 )
 montar_listado(
     router_residencia,

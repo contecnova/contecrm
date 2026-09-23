@@ -10,6 +10,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.red import exigir
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
@@ -409,3 +410,35 @@ def reenviar(fallido_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 ROUTERS = [router, router_catalogo, router_dlq]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=Suscripcion,
+    objeto="webhook",
+    permiso_leer="webhook:read",
+    permiso_escribir="webhook:write",
+    nombre="Webhooks",
+    parametro="webhook_id",
+)
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+from crmcore.bus.modelos import EventoFallido as _EventoFallido  # noqa: E402
+
+montar_ficha(
+    # El router de fallidos ya lleva el prefijo entero, así que la ficha cuelga
+    # de su raíz y no de una subruta.
+    router_dlq,
+    modelo=_EventoFallido,
+    objeto="evento_fallido",
+    permiso_leer="event:read",
+    permiso_escribir="event:write",
+    nombre="Eventos fallidos",
+    parametro="fallido_id",
+)

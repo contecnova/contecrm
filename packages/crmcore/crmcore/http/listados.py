@@ -48,6 +48,8 @@ def montar_listado(
     orden: str = "-created_at",
     columnas_orden: frozenset[str] = frozenset({"created_at"}),
     filtro: Callable[[Any], Any] | None = None,
+    permiso_escribir: str = "",
+    ficha: bool = True,
 ) -> None:
     """Registra en `router` el listado paginado de `modelo`.
 
@@ -60,6 +62,17 @@ def montar_listado(
     aparte del permiso porque no son lo mismo —el permiso dice si puedes leer la
     colección, la proyección qué columnas ves de cada fila—, y confundirlos es
     cómo se acaba dando el maestro entero a quien solo tenía que ver el nombre.
+
+    **Monta también la ficha**, salvo que el router ya tenga una. Una colección
+    y su registro son la misma cosa, y tenerlas separadas fue el agujero de
+    siempre: treinta y cuatro recursos publicaban acciones sobre un registro
+    —enviar una oferta, aceptarla, inscribir en una cadencia— y no había ninguna
+    ficha desde la que llegar a ellas, así que ochenta acciones existían y no se
+    alcanzaban desde ninguna pantalla.
+
+    El permiso de escritura se deduce del de lectura (`x:read` → `x:write`)
+    cuando no se dice: es la convención de todo el sistema y escribirlo en las
+    cincuenta y nueve llamadas solo garantiza que alguna se quede sin él.
     """
     from sqlalchemy import select
 
@@ -120,6 +133,29 @@ def montar_listado(
     if ruta and "{" not in ruta:
         router.routes.insert(0, router.routes.pop())
 
+    if not ficha:
+        return
+    # No se pisa una ficha escrita a mano: si ya hay una ruta con parámetro
+    # colgando de esta colección, esa manda —tendrá sus reglas propias— y aquí
+    # no se monta nada.
+    prefijo = f"{getattr(router, 'prefix', '')}{ruta}/"
+    if any(
+        getattr(r, "path", "").startswith(prefijo)
+        and "{" in getattr(r, "path", "")[len(prefijo) :]
+        and getattr(r, "path", "")[len(prefijo) :].count("/") == 0
+        for r in router.routes
+    ):
+        return
+    montar_ficha(
+        router,
+        modelo=modelo,
+        objeto=objeto,
+        permiso_leer=permiso,
+        permiso_escribir=permiso_escribir or permiso.replace(":read", ":write"),
+        nombre=nombre,
+        ruta=ruta,
+    )
+
 
 # Columnas que nunca se editan desde la ficha: las pone el sistema y dejarlas
 # escribibles es cómo un registro acaba cambiando de tenant o de fecha de alta.
@@ -173,7 +209,7 @@ def montar_ficha(
     permiso_escribir: str,
     nombre: str,
     ruta: str = "",
-    parametro: str = "registro_id",
+    parametro: str = "",
     permiso_borrar: str = "",
     editable: frozenset[str] | None = None,
     con_lectura: bool = True,
@@ -232,6 +268,11 @@ def montar_ficha(
         },
     )
 
+    # El nombre del parámetro sale del objeto —`toque` → `toque_id`— y no de un
+    # genérico. No es cosmético: la prueba de aislamiento entre tenants resuelve
+    # el modelo **por el nombre del parámetro**, así que con `registro_id` no lo
+    # encontraba y esas rutas se quedaban sin probar, en silencio.
+    parametro = parametro or f"{objeto}_id"
     ruta_registro = f"{ruta}/{{{parametro}}}"
 
     def _buscar(db: Any, registro_id: Any) -> Any:

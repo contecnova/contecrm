@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -386,3 +387,17 @@ def revertir(liquidacion_id: UUID, datos: Revertir, uow: UowDep) -> Any:
 
 
 ROUTERS_COMISIONES = [router, router_liq]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=com.PlanComision,
+    objeto="plan_comision",
+    permiso_leer="commission:read",
+    permiso_escribir="commission:write",
+    nombre="Planes de comisión",
+    parametro="plan_id",
+)

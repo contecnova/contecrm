@@ -486,14 +486,12 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
     enlaces: dict[str, object] = {"cuentas": [], "contactos": []}
 
     with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
-        ya = list(uow.db.execute(select(Cuenta).limit(1)).scalars())
-        if ya:
-            print("Ya hay cuentas en este tenant. Se reutilizan para enlazar.")
-            for cuenta in uow.db.execute(select(Cuenta)).scalars():
-                enlaces["cuentas"].append(  # type: ignore[union-attr]
-                    {"id": str(cuenta.id), "nombre": cuenta.nombre, "tier": cuenta.tier}
-                )
-            return enlaces
+        # No se sale si ya hay cuentas: se **completa** lo que falte. Salir era
+        # lo que dejaba a un tenant con cuatro cuentas de la demo mínima sin
+        # poder crecer nunca —el sembrado se daba por hecho y no creaba nada—,
+        # y con cuatro cuentas no se ve ni un embudo ni una cola de casos. El
+        # alta ya rechaza los duplicados por nombre, así que repetirlo es
+        # seguro.
 
         cuentas: list[tuple[UUID, str, str]] = []
         for i in range(vol.cuentas):
@@ -546,6 +544,17 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
                 {"id": str(cuenta.id), "nombre": nombre, "tier": tier, "sector": sector}
             )
         print(f"{len(cuentas)} cuentas creadas")
+
+        # A lo que viene después se le cuelgan TODAS las cuentas del tenant, no
+        # solo las de esta pasada: si no, al completar un tenant que ya tenía
+        # cuentas, los contactos y las oportunidades se amontonarían en las
+        # nuevas y las viejas se quedarían sin nada.
+        for fila in uow.db.execute(select(Cuenta)).scalars():
+            if all(str(fila.id) != c["id"] for c in enlaces["cuentas"]):  # type: ignore[index,union-attr]
+                enlaces["cuentas"].append(  # type: ignore[union-attr]
+                    {"id": str(fila.id), "nombre": fila.nombre, "tier": fila.tier, "sector": ""}
+                )
+                cuentas.append((fila.id, fila.nombre, fila.tier or "C"))
 
         contactos: list[tuple[UUID, UUID]] = []
         for i in range(vol.contactos):
@@ -612,7 +621,7 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
 
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tenancy.context import con_contexto
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
     from services.sales import servicio as svc
     from services.sales.modelos import Etapa, Lead, Oportunidad, Pipeline
@@ -673,10 +682,17 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
         ganada = next((e for e in etapas if e.ganada), None)
         perdida = next((e for e in etapas if e.terminal and not e.ganada), None)
 
-        if uow.db.execute(select(Lead).limit(1)).scalar_one_or_none():
-            print("Ya hay leads en este tenant. No se tocan.")
+        # Se cuenta lo que ya hay y se crea **lo que falta** hasta el volumen
+        # pedido. Antes, con un solo registro el sembrado se daba por hecho y no
+        # creaba nada: un tenant con las cuatro filas de la demo mínima no podía
+        # crecer nunca, y con cuatro filas no se ve ni un embudo ni una cola.
+        ya_leads = int(
+            uow.db.execute(select(func.count()).select_from(Lead)).scalar_one_or_none() or 0
+        )
+        if ya_leads >= vol.leads:
+            print(f"Ya hay {ya_leads} leads: no hacen falta más.")
         else:
-            for i in range(vol.leads):
+            for i in range(ya_leads, vol.leads):
                 nombre = NOMBRES[(i * 3) % len(NOMBRES)]
                 apellidos = APELLIDOS[(i * 13) % len(APELLIDOS)]
                 empresa = f"{RAICES_EMPRESA[(i * 5) % len(RAICES_EMPRESA)]} {rnd.choice(FORMAS)}"
@@ -689,15 +705,18 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
                     telefono=_telefono(rnd),
                     origen=rnd.choice(CANALES_LEAD),
                 )
-            print(f"{vol.leads} leads creados")
+            print(f"{vol.leads - ya_leads} leads creados")
 
-        if uow.db.execute(select(Oportunidad).limit(1)).scalar_one_or_none():
-            print("Ya hay oportunidades en este tenant. No se tocan.")
+        ya_oport = int(
+            uow.db.execute(select(func.count()).select_from(Oportunidad)).scalar_one_or_none() or 0
+        )
+        if ya_oport >= vol.oportunidades:
+            print(f"Ya hay {ya_oport} oportunidades: no hacen falta más.")
         elif not cuentas:
             print("Sin fichero de enlace no se pueden atar oportunidades a cuentas: se omiten.")
         else:
             hoy = date.today()
-            for i in range(vol.oportunidades):
+            for i in range(ya_oport, vol.oportunidades):
                 cuenta = cuentas[i % len(cuentas)]
                 titulo, minimo, maximo = PROYECTOS[i % len(PROYECTOS)]
                 # Una de cada cuatro está cerrada, y de esas, dos de cada tres
@@ -740,7 +759,7 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
 
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tenancy.context import con_contexto
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
     from services.service.modelos import Caso, CategoriaCaso, DefinicionSLA
     from services.service.operacion import ColaCasos
@@ -836,8 +855,11 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
             uow.db.flush()
             print("4 colas de casos creadas")
 
-        if uow.db.execute(select(Caso).limit(1)).scalar_one_or_none():
-            print("Ya hay casos en este tenant. No se tocan.")
+        ya_casos = int(
+            uow.db.execute(select(func.count()).select_from(Caso)).scalar_one_or_none() or 0
+        )
+        if ya_casos >= vol.casos:
+            print(f"Ya hay {ya_casos} casos: no hacen falta más.")
             return
         if not cuentas:
             print("Sin fichero de enlace no se pueden atar casos a cuentas: se omiten.")
@@ -866,7 +888,7 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
         )
         horas_por_tier = {"A": 8, "B": 24, "C": 72}
         incumplidos = 0
-        for i in range(vol.casos):
+        for i in range(ya_casos, vol.casos):
             cuenta = cuentas[i % len(cuentas)]
             hoja = hojas[i % len(hojas)] if hojas else None
             estado = estados[i % len(estados)]

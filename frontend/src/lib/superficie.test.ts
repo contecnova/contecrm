@@ -24,6 +24,7 @@ function op(parcial: Partial<Operacion>): Operacion {
     ruta: "/api/v1/tenants",
     resumen: "",
     etiquetas: ["tenants"],
+    solo_plataforma: false,
     permiso: null,
     administracion: true,
     servicio: "tenancy",

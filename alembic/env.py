@@ -83,6 +83,12 @@ def _importar_modelos(servicio: str) -> None:
         # un 500**. Y si no hubiera reventado sería peor: una política escrita
         # por el cliente no se aplicaría ahí, en silencio.
         "crmcore.authz.proyeccion",
+        # Y las políticas ABAC, por lo mismo y con el mismo síntoma: la tabla
+        # existía en nueve esquemas de trece, y en los otros cuatro cualquier
+        # listado que pasara por el filtro de acceso reventaba con un 500
+        # —«relation "politicas_abac" does not exist»— sobre una pantalla que
+        # no tiene nada que ver con la seguridad.
+        "crmcore.authz.politicas",
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",

@@ -231,4 +231,19 @@ def crear_router_retencion(prefijo: str = "/retencion") -> APIRouter:
     ) -> Any:
         return levantar(uow.db, bloqueo_id, motivo=datos.motivo, por=principal.id)
 
+    # La ficha del bloqueo: «Levantar» cuelga de él, y a un bloqueo que no se
+    # abre no se llega desde ninguna pantalla.
+    from crmcore.http.listados import montar_ficha
+
+    montar_ficha(
+        router,
+        modelo=BloqueoLegal,
+        objeto="bloqueo_legal",
+        permiso_leer="retencion:bloquear",
+        permiso_escribir="retencion:bloquear",
+        nombre="Bloqueos legales",
+        ruta="/bloqueos",
+        parametro="bloqueo_id",
+    )
+
     return router

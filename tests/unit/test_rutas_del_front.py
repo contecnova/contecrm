@@ -100,3 +100,41 @@ def test_el_gate_ve_las_pantallas() -> None:
     """
     total = len(_declaraciones())
     assert total > 100, f"solo se leen {total} declaraciones de modulos.ts; el gate no está mirando"
+
+
+def test_lo_que_se_lista_se_puede_abrir() -> None:
+    """Una colección con acciones sobre un registro tiene ficha.
+
+    Las acciones de un registro —enviar una oferta, aceptarla, inscribir en una
+    cadencia, levantar un bloqueo— se ofrecen desde su ficha, y la ficha se
+    abre con `GET /coleccion/{id}`. Sin esa ruta no hay por dónde llegar:
+    treinta y cuatro recursos publicaban ochenta acciones que no aparecían en
+    ninguna pantalla, y la que sí enlazaba contestaba 404.
+
+    Se mira solo lo que el front declara: una colección interna sin pantalla no
+    necesita ficha, y exigírsela sería trabajo por el trabajo.
+    """
+    import re as _re
+
+    declaradas = {(s, r) for _, s, r, metodo in _declaraciones() if metodo == "get"}
+    contratos: dict[str, dict] = {}
+    huerfanas: list[str] = []
+    for servicio, listar in sorted(declaradas):
+        if servicio not in contratos:
+            contratos[servicio] = _contrato(servicio)
+        paths = contratos[servicio]
+        if listar not in paths:
+            continue
+        ficha = any(_re.fullmatch(_re.escape(listar) + r"/\{[a-z_]+\}", p) for p in paths)
+        acciones = [
+            p
+            for p in paths
+            if p.startswith(listar + "/{") and p.count("/") == listar.count("/") + 2
+        ]
+        if not ficha and acciones:
+            huerfanas.append(f"{listar} [{servicio}]: {len(acciones)} acciones y ninguna ficha")
+
+    assert not huerfanas, (
+        "Colecciones con acciones sobre un registro y sin ficha desde la que "
+        "llegar a ellas:\n  " + "\n  ".join(huerfanas)
+    )

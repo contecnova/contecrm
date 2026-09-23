@@ -8,6 +8,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from crmcore.rpc.esquema import CAMPOS_QUE_NO_SALEN
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import PlainTextResponse
@@ -1252,3 +1253,18 @@ def contexto_semantico(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any
         **semantica.contexto_semantico(objeto=objeto, campos=campos),
         "cobertura": semantica.cobertura(campos=campos),
     }
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=ObjetoDefinido,
+    objeto="objeto_definido",
+    permiso_leer="metadata:read",
+    permiso_escribir="metadata:write",
+    nombre="Objetos del modelo",
+    ruta="/objetos",
+    parametro="objeto_id",
+)

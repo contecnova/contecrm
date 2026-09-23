@@ -551,3 +551,26 @@ montar_ficha(
     parametro="devolucion_id",
     con_lectura=False,
 )
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_exp,
+    modelo=pv.Expediente,
+    objeto="expediente",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Expedientes",
+    parametro="expediente_id",
+)
+montar_ficha(
+    router_prb,
+    modelo=prb.Problema,
+    objeto="problema",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Problemas",
+    parametro="problema_id",
+)

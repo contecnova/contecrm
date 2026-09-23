@@ -39,9 +39,10 @@ import {
   type CampoEsquema,
   type Proposito,
 } from "@/lib/contrato";
-import { moduloDe, type Recurso } from "@/lib/modulos";
+import { moduloDe, recursoVisible, type Recurso } from "@/lib/modulos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
+import { usePermitidas } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { iconoDeGrupo } from "@/lib/navegacion";
 
@@ -59,18 +60,37 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     modulo?.recursos.findIndex((r) => r.nombre === pedido) ?? 0,
   );
   const [activo, setActivo] = useState(inicial);
-  // Las pestañas rotuladas con icono —hoy, la papelera— se llevan al final.
-  // Se calcula una vez y no en cada pintado, y se conserva el índice original
-  // porque es lo que identifica al recurso activo.
+  const permitidas = usePermitidas();
+  /**
+   * Las pestañas que esta persona puede abrir, con la papelera al final.
+   *
+   * Se filtran igual que los módulos del menú, y no se filtraban: al
+   * administrador de una empresa se le enseñaba la pestaña «Tenants», que es
+   * de quien opera la plataforma, y al abrirla lo único que decía era que no
+   * es para él. Ofrecer lo que no se puede hacer obliga a probarlo para
+   * descubrirlo, y lo que se descubre es un error.
+   *
+   * Se conserva el índice original porque es lo que identifica al recurso
+   * activo.
+   */
   const pestañas = useMemo(
     () =>
       (modulo?.recursos ?? [])
         .map((r, i) => ({ r, i }))
+        .filter(({ r }) => recursoVisible(sesion, r, permitidas))
         .sort((a, b) => Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono))),
-    [modulo?.recursos],
+    [modulo?.recursos, sesion, permitidas],
   );
 
   useEffect(() => setActivo(inicial), [ruta, inicial]);
+
+  // Si la activa no es visible —porque se llegó con `?r=` a una que no toca, o
+  // porque la superficie llegó después—, se cae a la primera que sí lo es.
+  useEffect(() => {
+    if (pestañas.length > 0 && !pestañas.some(({ i }) => i === activo)) {
+      setActivo(pestañas[0]!.i);
+    }
+  }, [pestañas, activo]);
 
   if (!modulo) return <Vacio />;
   const recurso = modulo.recursos[activo] ?? modulo.recursos[0];

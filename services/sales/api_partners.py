@@ -631,3 +631,16 @@ montar_ficha(
     nombre="Partners",
     parametro="partner_id",
 )
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_registros,
+    modelo=prt.RegistroOportunidad,
+    objeto="registro_oportunidad",
+    permiso_leer="partner:read",
+    permiso_escribir="partner:write",
+    nombre="Registros de oportunidad",
+)

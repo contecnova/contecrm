@@ -21,6 +21,15 @@ export interface Operacion {
   etiquetas: string[];
   permiso: string | null;
   administracion: boolean;
+  /**
+   * Solo la puede hacer quien opera la plataforma.
+   *
+   * No es un permiso y por eso va aparte: el administrador de una empresa
+   * tiene `tenant:read` y aun así recibe 403 al listar tenants. Sin esta
+   * marca, el menú le enseñaba «Tenants y unidades» entero, y al abrirlo lo
+   * único que decía era que no es para él.
+   */
+  solo_plataforma: boolean;
   servicio: string;
 }
 
@@ -113,11 +122,16 @@ export function acciones(area: Area): Operacion[] {
 export function rutasPermitidas(
   superficie: Superficie | null,
   puede: (permiso: string | null) => boolean,
+  esDePlataforma = false,
 ): Set<string> {
   const permitidas = new Set<string>();
   if (!superficie) return permitidas;
   for (const operacion of superficie.operaciones) {
     if (operacion.metodo.toUpperCase() !== "GET") continue;
+    // Lo de plataforma no entra si no se opera la plataforma, tenga el permiso
+    // que tenga: es la única forma de que el menú no ofrezca lo que va a
+    // contestar 403.
+    if (operacion.solo_plataforma && !esDePlataforma) continue;
     if (puede(operacion.permiso)) permitidas.add(operacion.ruta);
   }
   return permitidas;

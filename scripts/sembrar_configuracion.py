@@ -1645,6 +1645,10 @@ def sembrar_servicio(api: Api, aprobador: Api | None = None) -> None:
         {
             "clave": "kb-homologacion",
             "titulo": "Documentación de homologación por mercado",
+            # Con fecha de revisión, como todos: un artículo publicado hacia
+            # fuera sin ella es el que sigue ahí tres años después describiendo
+            # una versión que ya no existe.
+            "revisar_el": _f(120),
             "resumen": "Qué certificados pide cada mercado y quién los emite.",
             "cuerpo": "Europa: ECE R46. Estados Unidos: FMVSS 111. China: CCC.\n"
             "Los certificados los emite calidad y se adjuntan a la ficha del programa.",
@@ -1999,14 +2003,36 @@ def sembrar_canal(api: Api) -> None:
     }
     creados = [por_clave[p["clave"]] for p in partners if p["clave"] in por_clave]
 
+    # Un partner nace en alta y no puede registrar oportunidades hasta que se
+    # activa: es la puerta que impide que alguien a medias de onboarding empiece
+    # a proteger clientes. Aquí se pasa por ella, no se rodea.
+    for partner_id in creados:
+        for paso in ("acuerdo_firmado", "formacion", "datos_fiscales"):
+            api._llamar("POST", f"/api/v1/partners/{partner_id}/pasos/{paso}", {})
+        api.crear(f"/api/v1/partners/{partner_id}/activar", {})
+
+    # Con dominio, no solo con nombre: el registro de oportunidad existe para
+    # decidir cuál de dos partners protegió antes al mismo cliente, y el nombre
+    # no identifica a nadie —la misma empresa se escribe de cinco maneras—.
     registros = [
-        ("Grupo Talleres Unidos", 120000, "Renovación de la gama de retrovisores"),
-        ("Carrocerías del Sur", 48000, "Primer pedido de sensores de aparcamiento"),
-        ("Autobuses Levante", 310000, "Equipamiento de flota completa"),
+        (
+            "Grupo Talleres Unidos",
+            "talleresunidos.example",
+            120000,
+            "Renovación de la gama de retrovisores",
+        ),
+        (
+            "Carrocerías del Sur",
+            "carroceriasdelsur.example",
+            48000,
+            "Primer pedido de sensores de aparcamiento",
+        ),
+        ("Autobuses Levante", "autobuseslevante.example", 310000, "Equipamiento de flota completa"),
     ]
-    for i, (cliente, importe, descripcion) in enumerate(registros):
+    for i, (cliente, dominio, importe, descripcion) in enumerate(registros):
         cuerpo: dict[str, Any] = {
             "cliente_nombre": cliente,
+            "dominio": dominio,
             "importe_estimado": importe,
             "moneda": "EUR",
             "cierre_estimado": _f(45 + i * 30),
@@ -2115,7 +2141,6 @@ def sembrar_campo(api: Api) -> None:
         ("Célula de visión artificial", "CV-900", "Ficosa", "Nave 2"),
         ("Estación de calibración", "EC-120", "Ficosa", "Nave 2 · Zona limpia"),
     ]
-    ids_activo: list[str] = []
     for i, (nombre, modelo, fabricante, ubicacion) in enumerate(activos):
         cuerpo: dict[str, Any] = {
             "nombre": nombre,
@@ -2129,9 +2154,13 @@ def sembrar_campo(api: Api) -> None:
         }
         if i < len(cuentas) and cuentas[i].get("id"):
             cuerpo["cuenta_id"] = str(cuentas[i]["id"])
-        hecho = api.crear("/api/v1/activos", cuerpo)
-        if hecho and hecho.get("id"):
-            ids_activo.append(str(hecho["id"]))
+        api.crear("/api/v1/activos", cuerpo)
+
+    # Se releen en vez de quedarse con lo que devolvió el alta: en el segundo
+    # paso el alta contesta «ya existe» y no devuelve identificador, y entonces
+    # todo lo que cuelga de un activo —planes preventivos, telemetría— se
+    # quedaba sin crear sin que nada fallara.
+    ids_activo = [str(a["id"]) for a in api.listar("/api/v1/activos", 50) if a.get("id")]
 
     ordenes = [
         ("Sustituir el sensor de la estación 3", "correctiva", "alta", 120),
@@ -2160,7 +2189,7 @@ def sembrar_campo(api: Api) -> None:
         api.crear(
             "/api/v1/planes-preventivos",
             {
-                "nombre": f"Mantenimiento programado · {activos[i][0]}",
+                "nombre": f"Mantenimiento programado · {activos[i % len(activos)][0]}",
                 "activo_id": activo_id,
                 "cada_dias": [90, 180, 365][i],
                 "duracion_min": 120,
@@ -2305,6 +2334,783 @@ def sembrar_proveedores(api: Api) -> None:
         )
 
 
+# ── Catálogo de producto y circuito de venta ──────────────────────────────
+
+
+def sembrar_catalogo(api: Api) -> None:
+    """Lo que se vende y a qué precio.
+
+    Sin catálogo no hay oferta, y sin oferta no hay pedido ni contrato: la
+    mitad del módulo de ventas enseñaba listas vacías porque faltaba la pieza
+    de la que cuelga todo lo demás.
+    """
+    productos = [
+        ("RS-220", "Sensor de aparcamiento RS-220", "sensores", 48.50, 22.10),
+        ("RV-940", "Retrovisor exterior con cámara", "vision", 186.00, 94.30),
+        ("CAM-ADAS-3", "Cámara frontal ADAS", "vision", 312.00, 158.00),
+        ("ARN-12", "Arnés de conexión 12 vías", "conectividad", 14.20, 6.40),
+        ("ECU-77", "Unidad de control ECU-77", "electronica", 420.00, 231.00),
+        ("SOP-24X7", "Soporte técnico 24x7 (anual)", "servicios", 12000.00, 4800.00),
+    ]
+    for sku, nombre, familia, precio, coste in productos:
+        api.crear(
+            "/api/v1/productos",
+            {
+                "sku": sku,
+                "nombre": nombre,
+                "familia": familia,
+                "descripcion": f"{nombre}. Homologado para el mercado europeo.",
+                # El de servicio es recurrente y el resto de una vez: mezclarlos
+                # en la misma periodicidad haría que el ingreso recurrente
+                # contara como venta puntual, y la previsión saldría al revés.
+                "tipo_ingreso": "recurrente" if sku.startswith("SOP") else "unico",
+                "periodicidad": "anual" if sku.startswith("SOP") else "",
+                "unidad": "ud",
+                "precio_base": precio,
+                "coste": coste,
+                "moneda": "EUR",
+                "margen_minimo_pct": 25,
+            },
+        )
+
+    listas = [
+        ("tarifa_oem", "Tarifa OEM", "oem", 10),
+        ("tarifa_recambio", "Tarifa de recambio", "recambio", 20),
+        ("tarifa_partner", "Tarifa de canal", "partner", 30),
+    ]
+    for clave, nombre, canal, prioridad in listas:
+        api.crear(
+            "/api/v1/listas-precio",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "canal": canal,
+                "moneda": "EUR",
+                "prioridad": prioridad,
+                "desde": _f(-180),
+                "hasta": _f(185),
+            },
+        )
+
+
+def sembrar_cotizacion(api: Api) -> None:
+    """Ofertas, pedidos, contratos y suscripciones: lo que sigue a ganar.
+
+    Se encadenan de verdad —la oferta genera el pedido, el pedido el contrato—
+    en vez de crearse sueltos: tres listas con registros que no se conocen
+    entre sí enseñan que las pantallas existen, no que el circuito funcione.
+    """
+    cuentas = api.listar("/api/v1/accounts", 20)
+    productos = {p.get("sku"): p for p in api.listar("/api/v1/productos", 50)}
+    oportunidades = api.listar("/api/v1/opportunities", 20)
+    if not cuentas or not productos:
+        return
+
+    def linea(sku: str, cantidad: int, descuento: float = 0.0) -> dict[str, Any]:
+        producto = productos.get(sku) or {}
+        return {
+            "producto_id": str(producto.get("id")) if producto.get("id") else None,
+            "descripcion": producto.get("nombre") or sku,
+            "cantidad": cantidad,
+            "descuento_pct": descuento,
+            "precio_unitario": float(producto.get("precio_base") or 0) or 100.0,
+            "coste_unitario": float(producto.get("coste") or 0) or 50.0,
+        }
+
+    ofertas = [
+        ("Equipamiento de sensores para la serie 2027", [linea("RS-220", 12000, 8)]),
+        (
+            "Retrovisores con cámara · programa OEM",
+            [linea("RV-940", 3500, 12), linea("ARN-12", 3500)],
+        ),
+        ("Renovación del soporte 24x7", [linea("SOP-24X7", 1)]),
+        ("Cámaras ADAS para preserie", [linea("CAM-ADAS-3", 400, 5), linea("ECU-77", 400)]),
+    ]
+    creadas: list[str] = []
+    for i, (titulo, lineas) in enumerate(ofertas):
+        cuerpo: dict[str, Any] = {
+            "titulo": titulo,
+            "lineas": [{k: v for k, v in fila.items() if v is not None} for fila in lineas],
+            "moneda": "EUR",
+            "dias_validez": 30,
+            "condiciones": "Precios EXW. Plazo de entrega a confirmar en el pedido en firme.",
+        }
+        if i < len(cuentas) and cuentas[i].get("id"):
+            cuerpo["cuenta_id"] = str(cuentas[i]["id"])
+        if i < len(oportunidades) and oportunidades[i].get("id"):
+            cuerpo["oportunidad_id"] = str(oportunidades[i]["id"])
+        hecha = api.crear("/api/v1/presupuestos", cuerpo)
+        if hecha and hecha.get("id"):
+            creadas.append(str(hecha["id"]))
+
+    # Contratos y suscripciones, colgando de sus cuentas.
+    for i, cuenta in enumerate(cuentas[:3]):
+        if not cuenta.get("id"):
+            continue
+        api.crear(
+            "/api/v1/contratos",
+            {
+                "cuenta_id": str(cuenta["id"]),
+                "titulo": f"Acuerdo marco de suministro {2026 + i}",
+                "inicio": _f(-120 + i * 30),
+                "fin": _f(600 + i * 30),
+                "importe": 450000 + i * 120000,
+                "moneda": "EUR",
+                # Renovación automática con preaviso: lo caro de un contrato no
+                # es firmarlo, es que se renueve solo sin que nadie lo mire.
+                "renovacion_automatica": True,
+                "preaviso_dias": 90,
+                "meses_renovacion": 12,
+            },
+        )
+        api.crear(
+            "/api/v1/suscripciones",
+            {
+                "cuenta_id": str(cuenta["id"]),
+                "plan": ["soporte_24x7", "soporte_estandar", "soporte_basico"][i],
+                "importe_periodo": [12000, 4800, 1200][i],
+                "inicio": _f(-90 + i * 20),
+                "periodicidad": "anual",
+                "moneda": "EUR",
+                "cantidad": 1,
+            },
+        )
+
+
+# ── Previsión: periodos, cuotas y territorio ──────────────────────────────
+
+
+def sembrar_prevision(api: Api) -> None:
+    """Con qué se hace una previsión.
+
+    El módulo enseñaba el resumen del pipeline y se llamaba «Previsión». Sin
+    periodos no hay con qué comparar, sin cuota no hay contra qué medir y sin
+    territorio no se sabe de quién es cada cosa: las tres pantallas existían y
+    las tres estaban vacías.
+    """
+    hoy = HOY
+    trimestre = 3 * ((hoy.month - 1) // 3) + 1
+    for i in range(-1, 3):
+        mes = trimestre + i * 3
+        anyo = hoy.year + (mes - 1) // 12
+        mes = (mes - 1) % 12 + 1
+        fin_mes = mes + 3
+        anyo_fin = anyo + (fin_mes - 1) // 12
+        fin_mes = (fin_mes - 1) % 12 + 1
+        api.crear(
+            "/api/v1/forecast/periodos",
+            {
+                "clave": f"{anyo}-T{(mes - 1) // 3 + 1}",
+                "nombre": f"{anyo} · trimestre {(mes - 1) // 3 + 1}",
+                "desde": f"{anyo}-{mes:02d}-01",
+                "hasta": (date(anyo_fin, fin_mes, 1) - timedelta(days=1)).isoformat(),
+            },
+        )
+
+    usuarios = [u for u in api.listar("/api/v1/usuarios", 20) if u.get("id")]
+    for i, usuario in enumerate(usuarios[:4]):
+        api.crear(
+            "/api/v1/cuotas",
+            {
+                "usuario_id": str(usuario["id"]),
+                "desde": _f(-90),
+                "hasta": _f(90),
+                "objetivo": 750000 + i * 250000,
+                "periodo": "trimestral",
+                "metrica": "importe",
+                "moneda": "EUR",
+            },
+        )
+
+    # Cada criterio declara de qué TIPO es —geografía, sector, tamaño…— y no
+    # solo su condición: es lo que permite explicar por qué una cuenta cayó en
+    # un territorio y no en otro, que es la pregunta que llega siempre.
+    def geo(paises: list[str]) -> list[dict[str, Any]]:
+        return [
+            {
+                "tipo": "geografia",
+                "condiciones": [{"atributo": "pais", "operador": "en", "valor": paises}],
+            }
+        ]
+
+    territorios = [
+        ("iberia", "Iberia", None, geo(["ES", "PT"])),
+        ("dach", "DACH", None, geo(["DE", "AT", "CH"])),
+        ("francia", "Francia y Benelux", None, geo(["FR", "BE", "NL", "LU"])),
+        (
+            "oem_global",
+            "Cuentas OEM globales",
+            None,
+            [
+                {
+                    "tipo": "tamano",
+                    "condiciones": [{"atributo": "empleados", "operador": ">=", "valor": 5000}],
+                }
+            ],
+        ),
+    ]
+    for i, (clave, nombre, _padre, criterios) in enumerate(territorios):
+        cuerpo: dict[str, Any] = {
+            "clave": clave,
+            "nombre": nombre,
+            "criterios": criterios,
+            # La prioridad decide quién se queda una cuenta que encaja en dos:
+            # sin ella, el reparto depende del orden de la tabla y cambia solo.
+            "prioridad": 10 * (i + 1),
+            "descripcion": f"Cuentas de {nombre}.",
+        }
+        if i < len(usuarios) and usuarios[i].get("id"):
+            cuerpo["responsable_id"] = str(usuarios[i]["id"])
+        api.crear("/api/v1/territorios", cuerpo)
+
+
+def sembrar_prospeccion(api: Api) -> None:
+    """Con qué se persigue un lead: cadencias, plantillas y metodología."""
+    api.crear(
+        "/api/v1/cadencias",
+        {
+            "clave": "rfq_entrante",
+            "nombre": "Petición de oferta entrante",
+            "descripcion": "Lo que se hace las dos semanas siguientes a una RFQ",
+            "solo_laborable": True,
+            "salida_por_cuenta": True,
+            "pasos": [
+                {
+                    "dia": 0,
+                    "canal": "correo",
+                    "plantilla": "acuse_rfq",
+                    "asunto": "Hemos recibido tu petición",
+                },
+                {"dia": 1, "canal": "llamada", "guion": "Confirmar alcance y plazo"},
+                {"dia": 4, "canal": "correo", "plantilla": "propuesta_tecnica"},
+                {"dia": 9, "canal": "llamada", "guion": "Seguimiento de la propuesta"},
+                {"dia": 14, "canal": "correo", "plantilla": "ultimo_aviso"},
+            ],
+        },
+    )
+    api.crear(
+        "/api/v1/cadencias",
+        {
+            "clave": "feria",
+            "nombre": "Seguimiento de feria",
+            "descripcion": "Los contactos de una feria se enfrían en una semana",
+            "solo_laborable": True,
+            "pasos": [
+                {"dia": 0, "canal": "correo", "plantilla": "gracias_visita"},
+                {"dia": 2, "canal": "social", "guion": "Conectar con nota personal"},
+                {"dia": 6, "canal": "llamada", "guion": "Proponer reunión técnica"},
+            ],
+        },
+    )
+
+    plantillas = [
+        (
+            "acuse_rfq",
+            "Acuse de petición de oferta",
+            "Hemos recibido tu petición, {{contacto.nombre}}",
+        ),
+        (
+            "propuesta_tecnica",
+            "Envío de propuesta técnica",
+            "Propuesta técnica · {{cuenta.nombre}}",
+        ),
+        ("ultimo_aviso", "Último contacto antes de cerrar", "¿Seguimos adelante con la propuesta?"),
+        ("gracias_visita", "Gracias por la visita", "Un placer verte en {{evento.nombre}}"),
+    ]
+    for clave, nombre, asunto in plantillas:
+        api.crear(
+            "/api/v1/plantillas-correo",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "asunto": asunto,
+                "cuerpo": (
+                    "Hola {{contacto.nombre}}:\n\n"
+                    "…\n\n"
+                    "Un saludo,\n{{usuario.nombre}} · Ficosa"
+                ),
+            },
+        )
+
+    api.crear(
+        "/api/v1/metodologias",
+        {
+            "clave": "meddic",
+            "nombre": "MEDDIC",
+            "familia": "meddic",
+            # Con criterios y no solo con el nombre: una metodología que no
+            # dice qué comprobar es un cartel, no un método.
+            "criterios": [
+                {"clave": "metricas", "nombre": "Métricas", "pregunta": "¿Qué mejora y cuánto?"},
+                {
+                    "clave": "comprador_economico",
+                    "nombre": "Comprador económico",
+                    "pregunta": "¿Quién firma el gasto?",
+                },
+                {
+                    "clave": "criterios_decision",
+                    "nombre": "Criterios de decisión",
+                    "pregunta": "¿Con qué van a comparar?",
+                },
+                {
+                    "clave": "proceso_decision",
+                    "nombre": "Proceso de decisión",
+                    "pregunta": "¿Qué pasos faltan hasta la firma?",
+                },
+                {
+                    "clave": "dolor",
+                    "nombre": "Dolor identificado",
+                    "pregunta": "¿Qué les cuesta hoy no resolverlo?",
+                },
+                {
+                    "clave": "campeon",
+                    "nombre": "Campeón",
+                    "pregunta": "¿Quién nos vende por dentro?",
+                },
+            ],
+        },
+    )
+
+
+# ── Integración: con qué habla el CRM y cómo traduce ──────────────────────
+
+
+def sembrar_integracion(api: Api) -> None:
+    """Conectores, canales de chat, modelo canónico y vistas federadas.
+
+    Es la parte que decide si el CRM es una isla. Vacía, sus seis pantallas
+    enseñan listas de nada y quien mira concluye que no se integra con nada.
+    """
+    api.crear(
+        "/api/v1/modelo-canonico/objetos",
+        {
+            "clave": "cliente",
+            "nombre": "Cliente",
+            "descripcion": "La forma común de un cliente entre el CRM y el ERP",
+            # Las claves de negocio y no el identificador interno: el ERP no
+            # conoce nuestros UUID, y casar por nombre casa mal.
+            "claves_negocio": ["nif", "codigo_erp"],
+            "campos": [
+                {"clave": "nif", "tipo": "texto", "obligatorio": True},
+                {"clave": "codigo_erp", "tipo": "texto"},
+                {"clave": "razon_social", "tipo": "texto", "obligatorio": True},
+                {"clave": "pais", "tipo": "texto"},
+                {"clave": "condiciones_pago", "tipo": "texto"},
+            ],
+        },
+    )
+    api.crear(
+        "/api/v1/modelo-canonico/objetos",
+        {
+            "clave": "pedido",
+            "nombre": "Pedido",
+            "claves_negocio": ["referencia"],
+            "campos": [
+                {"clave": "referencia", "tipo": "texto", "obligatorio": True},
+                {"clave": "cliente_nif", "tipo": "texto", "obligatorio": True},
+                {"clave": "importe", "tipo": "numero"},
+                {"clave": "fecha_entrega", "tipo": "fecha"},
+            ],
+        },
+    )
+
+    api.crear(
+        "/api/v1/conectores",
+        {
+            "clave": "erp_sap",
+            "nombre": "SAP S/4HANA",
+            "version": "1.2.0",
+            "categoria": "erp",
+            "protocolo": "rest",
+            "descripcion": "Maestro de clientes y pedidos",
+            "dominios": ["erp.ficosa.com"],
+            "operaciones": [
+                {"clave": "leer_cliente", "metodo": "GET", "ruta": "/clientes/{nif}"},
+                {"clave": "crear_pedido", "metodo": "POST", "ruta": "/pedidos"},
+            ],
+            "credenciales": [{"clave": "oauth2", "tipo": "oauth2", "obligatoria": True}],
+            # Qué cambia en esta versión. El servicio lo exige y tiene razón:
+            # quien actualiza una integración de producción no puede hacerlo
+            # a ciegas.
+            "notas_version": (
+                "Añadida la creación de pedidos y el filtro por NIF al leer clientes."
+            ),
+        },
+    )
+    api.crear(
+        "/api/v1/conectores",
+        {
+            "clave": "mdm",
+            "nombre": "Maestro de datos corporativo",
+            "version": "0.9.0",
+            "categoria": "otros",
+            "protocolo": "rest",
+            "dominios": ["mdm.ficosa.com"],
+            "operaciones": [
+                {"clave": "publicar_cuenta", "metodo": "POST", "ruta": "/clientes"},
+            ],
+            "notas_version": "Primera versión: publicación de cuentas al maestro.",
+        },
+    )
+
+    api.crear(
+        "/api/v1/canales-chat",
+        {
+            "clave": "whatsapp_soporte",
+            "url_entrante": "https://www.example.com/hooks/whatsapp",
+            "secreto": "CAMBIAR-EN-PRODUCCION",
+            "perfil": "whatsapp",
+            # Las órdenes son las que el canal sabe ejecutar, no las que a uno
+            # le gustaría: una orden inventada se acepta y luego no hace nada.
+            "ordenes": ["consultar", "registrar_nota", "cambiar_estado"],
+        },
+    )
+    api.crear(
+        "/api/v1/canales-chat",
+        {
+            "clave": "web_chat",
+            "url_entrante": "https://www.example.com/hooks/webchat",
+            "secreto": "CAMBIAR-EN-PRODUCCION",
+            "perfil": "web",
+            "ordenes": ["consultar", "registrar_nota"],
+        },
+    )
+
+    proveedores = [
+        ("transporte_seur", "SEUR", "logistica", 48),
+        ("laboratorio_ensayos", "Laboratorio de ensayos externo", "calidad", 120),
+        ("taller_reparacion", "Taller de reparación autorizado", "postventa", 72),
+    ]
+    for clave, nombre, modulo, plazo in proveedores:
+        api.crear(
+            "/api/v1/proveedores-servicio",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "modulo": modulo,
+                "plazo_horas": plazo,
+                # El silencio se vigila aparte del plazo: un proveedor que no
+                # contesta es un problema antes de incumplir, no después.
+                "silencio_horas": max(8, plazo // 4),
+                "coste_base": 0,
+            },
+        )
+
+    conexiones = {c.get("nombre"): c for c in api.listar("/api/v1/integraciones/conexiones", 30)}
+    erp = conexiones.get("ERP (SAP S/4HANA)") or {}
+    api.crear(
+        "/api/v1/federacion/vistas",
+        {
+            "clave": "facturas_erp",
+            **({"conexion_id": str(erp["id"])} if erp.get("id") else {}),
+            "nombre": "Facturas del ERP",
+            "objeto": "cuenta",
+            "operacion": "leer_facturas",
+            "clave_registro": "nif",
+            # Los datos no se copian: se leen en el ERP cuando alguien abre la
+            # ficha. Copiarlos obligaría a mantenerlos sincronizados y a
+            # explicar por qué el saldo del CRM no es el del ERP.
+            "cache_s": 300,
+            "timeout_ms": 4000,
+            "campos": [
+                {"clave": "numero", "etiqueta": "Factura"},
+                {"clave": "fecha", "etiqueta": "Fecha", "tipo": "fecha"},
+                {"clave": "importe", "etiqueta": "Importe", "tipo": "numero"},
+                {"clave": "estado", "etiqueta": "Estado"},
+            ],
+        },
+    )
+
+    activos = api.listar("/api/v1/activos", 10)
+    for i, activo in enumerate(activos[:4]):
+        cuerpo: dict[str, Any] = {
+            "identificador": f"IOT-{1000 + i}",
+            "nombre": f"Telemetría de {activo.get('nombre') or 'activo'}",
+            "modelo": "TLM-2",
+            "cadencia_min": 15,
+        }
+        if activo.get("id"):
+            cuerpo["activo_id"] = str(activo["id"])
+        api.crear("/api/v1/dispositivos", cuerpo)
+
+    # Las tablas del almacén primero: un destino apunta a tablas, y sin ellas
+    # se rechaza. Es el orden correcto y además el que explica para qué sirve
+    # cada cosa.
+    tablas = [
+        (
+            "oportunidades",
+            "sales",
+            "oportunidad",
+            ["id", "nombre", "importe", "etapa_id", "estado", "fecha_cierre", "owner_id"],
+        ),
+        ("cuentas", "party", "cuenta", ["id", "nombre", "estado", "sector_codigo", "owner_id"]),
+        ("casos", "service", "caso", ["id", "codigo", "prioridad", "estado", "cuenta_id"]),
+    ]
+    for clave, servicio, objeto, columnas in tablas:
+        api.crear(
+            "/api/v1/almacen/tablas",
+            {
+                "clave": clave,
+                "nombre": clave.capitalize(),
+                "servicio": servicio,
+                "objeto": objeto,
+                "columnas": [{"clave": c, "tipo": "texto"} for c in columnas],
+                "estrategia": "incremental",
+                "frecuencia_min": 60,
+            },
+        )
+
+    api.crear(
+        "/api/v1/almacen/destinos",
+        {
+            "clave": "bi_corporativo",
+            "nombre": "BI corporativo",
+            "tipo": "s3",
+            "tablas": ["oportunidades", "cuentas", "casos"],
+            "config": {"bucket": "ficosa-bi", "prefijo": "crm/", "formato": "parquet"},
+        },
+    )
+
+
+# ── Lo que faltaba en cada área ───────────────────────────────────────────
+
+
+def sembrar_resto(api: Api) -> None:
+    """Las pantallas que quedaban vacías, cada una con lo suyo.
+
+    Van juntas porque son pocas de cada área y no dan para una parte propia;
+    lo que no hacen es quedarse sin sembrar, que es lo que pasaba.
+    """
+    # ── Servicio: encuestas y repuestos ──────────────────────────────────
+    casos = api.listar("/api/v1/casos", 20)
+    for i, caso in enumerate(casos[:6]):
+        if caso.get("id"):
+            api.crear(
+                "/api/v1/encuestas",
+                {
+                    "caso_id": str(caso["id"]),
+                    "tipo": "csat" if i % 2 else "nps",
+                    "validez_dias": 14,
+                },
+            )
+
+    repuestos = [
+        ("RP-CONECTOR-12", "Conector de 12 vías", "ud", 3.40),
+        ("RP-LENTE-ADAS", "Lente para cámara ADAS", "ud", 28.90),
+        ("RP-JUNTA-RS", "Junta de estanqueidad RS", "ud", 1.20),
+        ("RP-CABLE-2M", "Latiguillo de 2 m", "ud", 6.75),
+    ]
+    for sku, nombre, unidad, coste in repuestos:
+        api.crear(
+            "/api/v1/repuestos",
+            {"sku": sku, "nombre": nombre, "unidad": unidad, "coste": coste, "activo": True},
+        )
+
+    # ── Clientes: lo que se repite y quién decide ────────────────────────
+    api.crear(
+        "/api/v1/plantillas-actividad",
+        {
+            "clave": "alta_cliente",
+            "nombre": "Alta de cliente nuevo",
+            "proceso": "alta_cliente",
+            "descripcion": "Lo que hay que hacer las dos primeras semanas",
+            "actividades": [
+                {"dia": 0, "tipo": "llamada", "asunto": "Llamada de bienvenida"},
+                {"dia": 2, "tipo": "tarea", "asunto": "Recoger datos fiscales y de cobro"},
+                {"dia": 5, "tipo": "reunion", "asunto": "Presentar al equipo técnico"},
+                {"dia": 12, "tipo": "tarea", "asunto": "Confirmar primera entrega"},
+            ],
+        },
+    )
+    api.crear(
+        "/api/v1/plantillas-actividad",
+        {
+            "clave": "revision_trimestral",
+            "nombre": "Revisión trimestral de cuenta",
+            "actividades": [
+                {"dia": 0, "tipo": "tarea", "asunto": "Preparar el informe de consumo"},
+                {"dia": 3, "tipo": "reunion", "asunto": "Revisión con el cliente"},
+                {"dia": 5, "tipo": "tarea", "asunto": "Registrar acuerdos y próximos pasos"},
+            ],
+        },
+    )
+
+    cuentas = api.listar("/api/v1/accounts", 20)
+    for i, cuenta in enumerate(cuentas[:3]):
+        cuerpo: dict[str, Any] = {
+            "asunto": [
+                "Revisión mensual de servicio",
+                "Comité de calidad",
+                "Seguimiento de programa",
+            ][i],
+            "desde": _f(7 + i),
+            "patron": ["mensual", "mensual", "semanal"][i],
+            "cada": 1,
+            "tipo": "reunion",
+            "repeticiones": 12,
+        }
+        if cuenta.get("id"):
+            cuerpo["cuenta_id"] = str(cuenta["id"])
+        api.crear("/api/v1/recurrencias", cuerpo)
+
+    # El mapa de personas: quién influye en quién dentro de una cuenta. Es lo
+    # que distingue una lista de contactos de saber a quién hay que convencer.
+    contactos = [c for c in api.listar("/api/v1/contacts", 30) if c.get("id")]
+    relaciones = [
+        ("reporta_a", "Jerarquía directa"),
+        ("influye_en", "Influye en la decisión"),
+        ("aliado", "Nos ha apoyado en compras anteriores"),
+        ("detractor", "Ha frenado la compra antes"),
+    ]
+    for i in range(min(6, len(contactos) - 1)):
+        tipo, motivo = relaciones[i % len(relaciones)]
+        api.crear(
+            "/api/v1/mapa-personas",
+            {
+                "origen_id": str(contactos[i]["id"]),
+                "destino_id": str(contactos[i + 1]["id"]),
+                "tipo": tipo,
+                "motivo": motivo,
+            },
+        )
+
+    # ── Marketing: consentimiento y reglas de contenido ──────────────────
+    api.crear(
+        "/api/v1/reglas-contenido",
+        {
+            "marca": "Ficosa",
+            "pais": "ES",
+            "idioma": "es",
+            "exige_textos": ["Ficosa International S.A.", "Darse de baja"],
+            "prohibe_textos": ["garantizado", "el mejor del mercado"],
+            "notas": "Legal revisa cualquier afirmación comparativa antes de enviar.",
+        },
+    )
+    api.crear(
+        "/api/v1/reglas-contenido",
+        {
+            "marca": "Ficosa",
+            "pais": "DE",
+            "idioma": "de",
+            "exige_textos": ["Impressum"],
+            "notas": "En Alemania el pie exige Impressum; sin él, el envío no cumple.",
+        },
+    )
+    for i in range(6):
+        api.crear(
+            "/api/v1/cookies",
+            {
+                "visitante": f"visitante-{1000 + i}",
+                "version_aviso": "2026-01",
+                "categorias": {
+                    "necesarias": True,
+                    "analitica": i % 2 == 0,
+                    "publicidad": i % 3 == 0,
+                },
+                "meses_validez": 12,
+            },
+        )
+
+    # ── Identidad: qué sigue cada quien ──────────────────────────────────
+    for cuenta in cuentas[:5]:
+        if cuenta.get("id"):
+            api.crear(
+                "/api/v1/seguimientos",
+                {
+                    "objeto_tipo": "cuenta",
+                    "objeto_id": str(cuenta["id"]),
+                    # El motivo es de una lista corta: es lo que decide cómo se
+                    # avisa y si se puede dejar de seguir.
+                    "motivo": "propietario",
+                },
+            )
+
+
+# ── Lo que existe porque alguien ha trabajado ─────────────────────────────
+
+
+def sembrar_trabajo(api: Api) -> None:
+    """Las pantallas que se llenan usando el sistema, no dándolo de alta.
+
+    Una visita existe porque alguien hizo check-in; una solicitud de fondos,
+    porque un partner la pidió; una liquidación, porque se cerró un periodo.
+    Escribir esas filas a mano las dejaría sin su historia —sin quién, sin
+    cuándo, sin el estado por el que pasaron— y la pantalla enseñaría algo que
+    no podría haber pasado.
+    """
+    # ── Visitas comerciales: check-in y check-out ────────────────────────
+    cuentas = [c for c in api.listar("/api/v1/accounts", 20) if c.get("id")]
+    for i, cuenta in enumerate(cuentas[:4]):
+        visita = api.crear(
+            "/api/v1/visitas/check-in",
+            {
+                "cuenta_id": str(cuenta["id"]),
+                "lat": 41.39 + i * 0.01,
+                "lon": 2.16 + i * 0.01,
+                "notas": [
+                    "Revisión de programa",
+                    "Presentación de gama",
+                    "Auditoría de calidad",
+                    "Cierre de oferta",
+                ][i],
+            },
+        )
+        # Dos se cierran y dos se quedan abiertas: una lista donde todas están
+        # cerradas no enseña el estado que de verdad se mira, que es «¿quién
+        # está ahora mismo en un cliente?».
+        if visita and visita.get("id") and i % 2 == 0:
+            api.crear(
+                f"/api/v1/visitas/{visita['id']}/check-out",
+                {"resumen": "Acuerdos recogidos y próximos pasos por correo."},
+            )
+
+    # ── Fondos de marketing: solicitudes y su decisión ───────────────────
+    fondos = [f for f in api.listar("/api/v1/fondos-mdf", 20) if f.get("id")]
+    peticiones = [
+        ("Stand en la feria IAA", 18000, "Presencia conjunta en el pabellón 4"),
+        ("Campaña de recambio en buscadores", 6500, "Tres meses, mercado ibérico"),
+        ("Jornada técnica para talleres", 4200, "Cincuenta asistentes previstos"),
+    ]
+    for i, fondo in enumerate(fondos[:3]):
+        titulo, importe, detalle = peticiones[i % len(peticiones)]
+        solicitud = api.crear(
+            f"/api/v1/fondos-mdf/{fondo['id']}/solicitudes",
+            {
+                "titulo": titulo,
+                "importe": importe,
+                "descripcion": detalle,
+                "actividad": "feria" if i == 0 else "campana",
+                "fecha_actividad": _f(45 + i * 20),
+            },
+        )
+        # Una aprobada, una denegada y una pendiente: las tres columnas que esa
+        # pantalla existe para separar.
+        if solicitud and solicitud.get("id"):
+            if i == 0:
+                api.crear(
+                    f"/api/v1/solicitudes-mdf/{solicitud['id']}/decidir",
+                    {"aprobar": True, "importe_aprobado": importe, "motivo": "Encaja con el plan"},
+                )
+            elif i == 1:
+                api.crear(
+                    f"/api/v1/solicitudes-mdf/{solicitud['id']}/decidir",
+                    {"aprobar": False, "motivo": "Fuera del trimestre presupuestado"},
+                )
+
+    # ── Liquidaciones de comisión del periodo cerrado ────────────────────
+    planes = [p for p in api.listar("/api/v1/planes-comision", 20) if p.get("id")]
+    usuarios = [u for u in api.listar("/api/v1/usuarios", 20) if u.get("id")]
+    for i, plan in enumerate(planes[:2]):
+        cuerpo: dict[str, Any] = {
+            "plan_id": str(plan["id"]),
+            "desde": _f(-120),
+            "hasta": _f(-30),
+        }
+        if i < len(usuarios):
+            cuerpo["usuario_id"] = str(usuarios[i]["id"])
+        api.crear("/api/v1/liquidaciones", cuerpo)
+
+
 def sembrar_rastro(api: Api) -> None:
     """Las pantallas que no se llenan creando, sino usando.
 
@@ -2391,6 +3197,13 @@ PARTES: dict[str, Any] = {
     "canal": sembrar_canal,
     "campo": sembrar_campo,
     "proveedores": sembrar_proveedores,
+    "catalogo": sembrar_catalogo,
+    "cotizacion": sembrar_cotizacion,
+    "prevision": sembrar_prevision,
+    "prospeccion": sembrar_prospeccion,
+    "integracion": sembrar_integracion,
+    "resto": sembrar_resto,
+    "trabajo": sembrar_trabajo,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
 }

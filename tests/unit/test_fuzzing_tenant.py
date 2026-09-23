@@ -102,6 +102,12 @@ ALIAS_MODELO = {
     "identificador_id": "identificadorfiscal",
     "miembro_id": "miembroequipocuenta",
     "canal_id": "canalcaptura",
+    # Los nombres que `montar_ficha` deriva del objeto y que no coinciden con
+    # la clase: se declaran aquí para que la ruta SÍ se pruebe, en vez de
+    # quedarse fuera en silencio, que es lo que este gate existe para impedir.
+    "canal_captura_id": "canalcaptura",
+    "aislamiento_id": "aislamientotenant",
+    "migracion_aislamiento_id": "migracionaislamiento",
     # SCIM llama «Group» al rol; el nombre viene del RFC 7644 y renombrarlo
     # rompería el contrato con los IdP.
     "grupo_id": "roltenant",

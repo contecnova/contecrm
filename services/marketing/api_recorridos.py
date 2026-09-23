@@ -541,7 +541,6 @@ montar_ficha(
     permiso_escribir="marketing:write",
     nombre="Plantillas de correo",
     ruta="/plantillas",
-    parametro="registro_id",
 )
 montar_ficha(
     router_correo,
@@ -551,7 +550,6 @@ montar_ficha(
     permiso_escribir="marketing:write",
     nombre="Bloques de correo",
     ruta="/bloques",
-    parametro="registro_id",
 )
 montar_ficha(
     router_preferencias,
@@ -561,5 +559,4 @@ montar_ficha(
     permiso_escribir="marketing:write",
     nombre="Categorías de preferencia",
     ruta="/categorias",
-    parametro="registro_id",
 )

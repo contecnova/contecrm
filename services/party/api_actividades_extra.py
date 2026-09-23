@@ -8,13 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.party import actividades_extra as ax
-from services.party.actividades_extra import Recurrencia, Visita
+from services.party.actividades_extra import PlantillaActividades, Recurrencia, Visita
 
 router = APIRouter(prefix="/plantillas-actividad", tags=["actividades"])
 router_visitas = APIRouter(prefix="/visitas", tags=["actividades"])
@@ -249,3 +249,17 @@ montar_listado(
 
 
 ROUTERS_ACTIVIDADES_EXTRA = [router, router_visitas, router_recurrencias]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=PlantillaActividades,
+    objeto="plantilla_actividades",
+    permiso_leer="activity:read",
+    permiso_escribir="activity:write",
+    nombre="Plantillas de actividad",
+    parametro="plantilla_id",
+)

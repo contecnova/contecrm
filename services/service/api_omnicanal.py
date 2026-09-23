@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.service import omnicanal as omni
-from services.service.omnicanal import CanalServicio, Conversacion
+from services.service.omnicanal import CanalServicio, Conversacion, Macro
 
 router_canales = APIRouter(prefix="/canales-servicio", tags=["omnicanal"])
 router_conversaciones = APIRouter(prefix="/conversaciones", tags=["omnicanal"])
@@ -397,4 +397,18 @@ montar_ficha(
     permiso_escribir="service:write",
     nombre="Canales de servicio",
     parametro="canal_id",
+)
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_macros,
+    modelo=Macro,
+    objeto="macro",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Macros",
+    parametro="macro_id",
 )

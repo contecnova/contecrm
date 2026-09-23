@@ -10,6 +10,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, CrmError, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -392,3 +393,18 @@ def ejecuciones(
 
 
 ROUTERS = [router]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=Conexion,
+    objeto="conexion",
+    permiso_leer="integracion:read",
+    permiso_escribir="integracion:write",
+    nombre="Conexiones",
+    ruta="/conexiones",
+    parametro="conexion_id",
+)

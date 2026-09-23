@@ -290,3 +290,17 @@ montar_ficha(
     nombre="Fondos de marketing",
     parametro="fondo_id",
 )
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_sol,
+    modelo=mdf.SolicitudMdf,
+    objeto="solicitud_mdf",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Solicitudes de fondos",
+    parametro="solicitud_id",
+)

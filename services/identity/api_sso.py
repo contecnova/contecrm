@@ -11,6 +11,7 @@ from uuid import UUID
 
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import Response
@@ -471,3 +472,17 @@ def _entrada(
         "expires_in": get_settings().access_token_minutos * 60,
         "volver_a": volver_a,
     }
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_idp,
+    modelo=ProveedorIdentidad,
+    objeto="proveedor_identidad",
+    permiso_leer="idp:configurar",
+    permiso_escribir="idp:configurar",
+    nombre="Proveedores de identidad",
+    parametro="proveedor_id",
+)

@@ -9,6 +9,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -636,3 +637,17 @@ def validar_tabla(cuerpo: TablaEditada) -> Any:
 
 
 ROUTERS = [router_def, router_inst, router_tareas, router_tablas]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_tareas,
+    modelo=TareaHumana,
+    objeto="tarea_humana",
+    permiso_leer="proceso:read",
+    permiso_escribir="proceso:write",
+    nombre="Tareas",
+    parametro="tarea_id",
+)

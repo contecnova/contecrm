@@ -8,6 +8,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -263,3 +264,17 @@ def por_registro(objeto: str, registro_id: str, db: DbDep, principal: Autenticad
 
 
 ROUTERS = [router]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=Automatizacion,
+    objeto="automatizacion",
+    permiso_leer="automation:read",
+    permiso_escribir="automation:write",
+    nombre="Automatizaciones",
+    parametro="regla_id",
+)

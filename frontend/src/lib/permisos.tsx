@@ -71,7 +71,9 @@ export function ProveedorPermisos({
     cargarSuperficie(control.signal)
       .then((s: Superficie) => {
         setSuperficie(s);
-        setPermitidas(rutasPermitidas(s, (p) => puede(sesion, p)));
+        setPermitidas(
+          rutasPermitidas(s, (p) => puede(sesion, p), Boolean(sesion?.es_admin_plataforma)),
+        );
       })
       .catch(() => {
         // Si la superficie no llega, no se esconde nada del menú: dejar a

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from services.service import conocimiento as kb
 from services.service import portal as prt
 from services.service.conocimiento import Articulo
-from services.service.portal import AccesoPortal
+from services.service.portal import AccesoPortal, HiloComunidad
 
 router_conocimiento = APIRouter(prefix="/conocimiento", tags=["conocimiento"])
 router_portal = APIRouter(prefix="/portal", tags=["portal de cliente"])
@@ -693,6 +693,9 @@ montar_listado(
     permiso="conocimiento:read",
     ruta="/articulos",
     nombre="Artículos de conocimiento",
+    # La ficha se monta abajo a mano: su permiso de escritura es
+    # `knowledge:write`, que no se deduce de `conocimiento:read`.
+    ficha=False,
 )
 montar_listado(
     router_portal,
@@ -719,5 +722,19 @@ montar_ficha(
     permiso_escribir="knowledge:write",
     nombre="Artículos de conocimiento",
     ruta="/articulos",
-    parametro="registro_id",
+)
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router_comunidad,
+    modelo=HiloComunidad,
+    objeto="hilo_comunidad",
+    permiso_leer="case:read",
+    permiso_escribir="case:write",
+    nombre="Hilos de la comunidad",
+    ruta="/hilos",
+    parametro="hilo_id",
 )

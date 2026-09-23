@@ -181,6 +181,77 @@ def vencen(db: DbDep, principal: AutenticadoDep, dias: int = Query(prv.DIAS_PREA
     return prv.documentos_que_vencen(db, principal.tenant_id, dias=dias)
 
 
+@router_proveedores.get(
+    "/{cuenta_id}/contactos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Los contactos declarados de este proveedor",
+    description=(
+        "Se podían dar de alta y no se podían leer: la pantalla enseñaba «a "
+        "quién llamo» —que devuelve solo el de escalado— y no había forma de "
+        "ver quién más consta ni de comprobar qué falta."
+    ),
+)
+def listar_contactos(cuenta_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    filas = (
+        db.execute(
+            select(prv.ContactoProveedor)
+            .where(prv.ContactoProveedor.cuenta_id == cuenta_id)
+            .order_by(prv.ContactoProveedor.funcion)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "funcion": f.funcion,
+            "nombre": f.nombre,
+            "email": f.email,
+            "telefono": f.telefono,
+            "fuera_de_horario": f.fuera_de_horario,
+        }
+        for f in filas
+    ]
+
+
+@router_proveedores.get(
+    "/{cuenta_id}/homologaciones",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="En qué categorías está homologado, y hasta cuándo",
+    description=(
+        "Se podía homologar por categoría y consultarla de una en una, sabiendo "
+        "ya el nombre de la categoría. Quien abre la ficha no lo sabe: lo que "
+        "necesita es la lista."
+    ),
+)
+def listar_homologaciones(cuenta_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    filas = (
+        db.execute(
+            select(prv.Homologacion)
+            .where(prv.Homologacion.cuenta_id == cuenta_id)
+            .order_by(prv.Homologacion.categoria)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "categoria": f.categoria,
+            "estado": f.estado,
+            "valida_hasta": f.valida_hasta.isoformat() if f.valida_hasta else None,
+            "requisitos": f.requisitos,
+        }
+        for f in filas
+    ]
+
+
 @router_proveedores.post(
     "/{cuenta_id}/contactos",
     status_code=status.HTTP_201_CREATED,

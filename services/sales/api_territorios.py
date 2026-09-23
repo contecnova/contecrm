@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -310,3 +310,17 @@ montar_listado(
 
 
 ROUTERS_TERRITORIOS = [router, router_cuotas]
+
+
+# ── La ficha del registro ─────────────────────────────────────────────────
+# Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
+# ninguna pantalla: existen, se prueban y nadie las usa.
+montar_ficha(
+    router,
+    modelo=ter.Territorio,
+    objeto="territorio",
+    permiso_leer="forecast:read",
+    permiso_escribir="forecast:write",
+    nombre="Territorios",
+    parametro="territorio_id",
+)

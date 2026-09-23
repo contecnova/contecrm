@@ -18,6 +18,7 @@ function op(ruta: string, extra: Partial<Operacion> = {}): Operacion {
     resumen: "",
     etiquetas: [],
     permiso: null,
+    solo_plataforma: false,
     administracion: false,
     servicio: "party",
     ...extra,
