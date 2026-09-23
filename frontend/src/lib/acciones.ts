@@ -83,3 +83,110 @@ export function accionesDe(
   }
   return salida.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 }
+
+export interface SubColeccion {
+  /** Último tramo: `lineas`, `equipo`, `direcciones`… */
+  clave: string;
+  /** Ruta real con el identificador del padre puesto. */
+  ruta: string;
+  /** Ruta con `{param}`, como la nombra el OpenAPI. */
+  plantilla: string;
+  /** Lo que es, dicho por el propio servidor. */
+  nombre: string;
+  /** Si se pueden añadir elementos. */
+  alta: { plantilla: string; nombre: string } | null;
+  /** Lo que se puede hacer con cada elemento. */
+  acciones: AccionHija[];
+  /** Si se puede quitar un elemento. */
+  borrable: boolean;
+}
+
+export interface AccionHija {
+  /** Ruta con los dos `{param}`, como la nombra el OpenAPI. */
+  plantilla: string;
+  metodo: string;
+  nombre: string;
+  clave: string;
+}
+
+/**
+ * Lo que cuelga de un registro: sus líneas, su equipo, sus direcciones.
+ *
+ * Son **196** en el sistema, y con ellas las 44 acciones que actúan sobre un
+ * hijo —quitar a alguien del equipo de cuenta, verificar un identificador,
+ * geocodificar una dirección—. Ninguna se alcanzaba: la ficha solo enseñaba los
+ * campos del propio registro, así que la mitad de lo que un CRM guarda sobre un
+ * cliente no se podía ni ver ni tocar.
+ *
+ * Igual que las acciones: salen del contrato. Un hijo nuevo en el servidor
+ * aparece solo.
+ */
+export function subColeccionesDe(
+  superficie: Superficie | null,
+  rutaBase: string,
+  id: string,
+  puede: (permiso: string | null) => boolean,
+): SubColeccion[] {
+  if (!superficie) return [];
+  const base = rutaBase.split("/");
+  const porClave = new Map<string, SubColeccion>();
+
+  for (const operacion of superficie.operaciones as Operacion[]) {
+    const tramos = operacion.ruta.split("/");
+    if (tramos.length !== base.length + 2) continue;
+    if (!tramos[base.length]?.startsWith("{")) continue;
+    const clave = tramos[base.length + 1] ?? "";
+    if (!clave || clave.startsWith("{")) continue;
+    if (tramos.slice(0, base.length).join("/") !== rutaBase) continue;
+
+    const metodo = operacion.metodo.toUpperCase();
+    if (metodo === "GET") {
+      if (!puede(operacion.permiso)) continue;
+      porClave.set(clave, {
+        clave,
+        ruta: operacion.ruta.replace(PARAMETRO, id),
+        plantilla: operacion.ruta,
+        nombre: operacion.resumen || clave,
+        alta: null,
+        acciones: [],
+        borrable: false,
+      });
+    }
+  }
+
+  // El alta y las acciones sobre cada hijo, en una segunda pasada: el panel solo
+  // existe si se puede listar, y sin panel no hay dónde ponerlas.
+  for (const operacion of superficie.operaciones as Operacion[]) {
+    const tramos = operacion.ruta.split("/");
+    if (tramos.slice(0, base.length).join("/") !== rutaBase) continue;
+    if (!tramos[base.length]?.startsWith("{")) continue;
+    const clave = tramos[base.length + 1] ?? "";
+    const panel = porClave.get(clave);
+    if (!panel) continue;
+    const metodo = operacion.metodo.toUpperCase();
+
+    if (tramos.length === base.length + 2 && metodo === "POST" && puede(operacion.permiso)) {
+      panel.alta = { plantilla: operacion.ruta, nombre: operacion.resumen || clave };
+      continue;
+    }
+    // Sobre un hijo: `/X/{id}/Y/{hijo}` y `/X/{id}/Y/{hijo}/accion`.
+    if (tramos.length < base.length + 3) continue;
+    if (!tramos[base.length + 2]?.startsWith("{")) continue;
+    if (!puede(operacion.permiso)) continue;
+
+    if (tramos.length === base.length + 3) {
+      if (metodo === "DELETE") panel.borrable = true;
+      continue;
+    }
+    if (tramos.length === base.length + 4 && metodo !== "GET") {
+      panel.acciones.push({
+        plantilla: operacion.ruta,
+        metodo,
+        nombre: operacion.resumen || (tramos[base.length + 3] ?? ""),
+        clave: tramos[base.length + 3] ?? "",
+      });
+    }
+  }
+
+  return [...porClave.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}

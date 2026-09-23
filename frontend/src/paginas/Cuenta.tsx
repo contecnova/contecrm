@@ -32,7 +32,9 @@ import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { Acciones } from "@/componentes/Acciones";
-import { accionesDe } from "@/lib/acciones";
+import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { SubColecciones } from "@/componentes/SubColecciones";
+import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { escalar, humanizar, importe } from "@/lib/formato";
 import { useSuperficie } from "@/lib/permisos";
 
@@ -149,6 +151,7 @@ export function Cuenta() {
   // en el equipo de cuenta… todo lo que el servidor admite hacer con un
   // cliente, sin escribir un botón por acción.
   const acciones = accionesDe(superficie, "/api/v1/accounts", id, tiene);
+  const paneles = subColeccionesDe(superficie, "/api/v1/accounts", id, tiene);
 
   const { cuenta, contactos, timeline, identificadores, metricas } = vista;
   const nif = identificadores.find((i) => i.tipo === "nif")?.valor;
@@ -171,9 +174,6 @@ export function Cuenta() {
         }
         acciones={
           <>
-            <Link to={`/m/actividades?r=Actividades&nuevo=1`} className="btn-secondary">
-              {t("cuenta.nuevaActividad")}
-            </Link>
             <Link to={`/m/oportunidades?r=Oportunidades&nuevo=1`} className="btn-primary">
               {t("cuenta.nuevaOportunidad")}
             </Link>
@@ -227,6 +227,10 @@ export function Cuenta() {
           <h2 id="cuenta-timeline" className="section-label mb-3">
             {t("cuenta.timeline")}
           </h2>
+
+          {/* Apuntar va ARRIBA de la línea de tiempo, no en otra pantalla: se
+              apunta justo después de hablar con el cliente, mirándolo. */}
+          <RegistrarActividad objeto="cuenta" objetoId={id} alRegistrar={() => cargar()} />
           {timeline.length === 0 ? (
             <Vacio
               compacto
@@ -326,6 +330,11 @@ export function Cuenta() {
           </Relacionados>
         </aside>
       </div>
+
+      {/* Direcciones, identificadores fiscales, equipo de cuenta, relaciones
+          entre empresas: todo lo que cuelga del cliente, con sus altas y sus
+          acciones. */}
+      <SubColecciones paneles={paneles} servicio="party" id={id} />
     </>
   );
 }

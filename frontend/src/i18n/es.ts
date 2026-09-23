@@ -130,6 +130,26 @@ export default {
       "Esto no se puede deshacer desde aquí. Sigue adelante solo si es lo que quieres.",
     entendido: "Lo entiendo, sigue",
   },
+  subcoleccion: {
+    vacia: "Nada todavía",
+    quitar: "Quitar",
+    confirmarQuitar: "¿Quitar este elemento? No se deshace desde aquí.",
+  },
+  actividad: {
+    llamada: "Llamada",
+    email: "Correo",
+    nota: "Nota",
+    reunion: "Reunión",
+    asunto: "Qué ha pasado",
+    notas: "Detalle",
+    guardar: "Apuntar",
+    ejemplo: {
+      llamada: "Llamada con compras: piden revisar plazos",
+      email: "Enviada la oferta revisada",
+      nota: "Cambian de responsable de compras en enero",
+      reunion: "Visita a planta: revisión del plan de calidad",
+    },
+  },
   inicio: {
     empezar: "Dar de alta",
     saludo: "Hola, {{nombre}}",

@@ -27,7 +27,9 @@ import {
   nombreDelRegistro,
 } from "@/lib/formato";
 import { Acciones } from "@/componentes/Acciones";
-import { accionesDe } from "@/lib/acciones";
+import { RegistrarActividad } from "@/componentes/RegistrarActividad";
+import { SubColecciones } from "@/componentes/SubColecciones";
+import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
@@ -82,7 +84,9 @@ export function Ficha() {
       </nav>
 
       <div className="mt-4">
-        {pestana === "datos" ? <Datos modulo={ruta} id={id} alSaberNombre={setNombre} /> : null}
+        {pestana === "datos" ? (
+          <Datos modulo={ruta} id={id} objeto={tipo} alSaberNombre={setNombre} />
+        ) : null}
         {pestana === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
         {pestana === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
         {pestana === "documentos" ? <Documentos tipo={tipo} id={id} /> : null}
@@ -94,10 +98,13 @@ export function Ficha() {
 function Datos({
   modulo,
   id,
+  objeto,
   alSaberNombre,
 }: {
   modulo: string;
   id: string;
+  /** Tipo del registro (`cuenta`, `oportunidad`…), para colgarle la actividad. */
+  objeto: string;
   /** Sube el nombre del registro para que lo use el título de la ficha. */
   alSaberNombre: (nombre: string) => void;
 }) {
@@ -120,6 +127,12 @@ function Datos({
   // Son 144 en el sistema y ninguna se escribe a mano aquí.
   const acciones = useMemo(
     () => (recurso ? accionesDe(superficie, recurso.listar, id, tiene) : []),
+    [superficie, recurso, id, tiene],
+  );
+  // Y lo que cuelga de él: líneas, equipo, direcciones, identificadores. Son
+  // 196 en el sistema y ninguna se alcanzaba.
+  const paneles = useMemo(
+    () => (recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : []),
     [superficie, recurso, id, tiene],
   );
   const puedeEditar = Boolean(ruta) && puedeOperar("PATCH", ruta);
@@ -194,7 +207,16 @@ function Datos({
   return (
     <>
       {!editando ? (
-        <Acciones acciones={acciones} servicio={recurso?.servicio ?? ""} alTerminar={cargar} />
+        <>
+          <Acciones acciones={acciones} servicio={recurso?.servicio ?? ""} alTerminar={cargar} />
+          {/* Apuntar una llamada o un correo sobre este registro sin salir de
+              aquí: antes obligaba a irse a Actividades y teclear a mano el
+              identificador para que quedara colgado, y eso no lo hace nadie dos
+              veces. */}
+          {objeto ? (
+            <RegistrarActividad objeto={objeto} objetoId={id} alRegistrar={cargar} />
+          ) : null}
+        </>
       ) : null}
 
       {(puedeEditar || puedeBorrar) && !editando ? (
@@ -291,6 +313,10 @@ function Datos({
         </>
       )}
       <Retenidos campos={retenidos} />
+
+      {!editando ? (
+        <SubColecciones paneles={paneles} servicio={recurso?.servicio ?? ""} id={id} />
+      ) : null}
     </>
   );
 }
