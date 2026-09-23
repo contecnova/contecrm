@@ -47,9 +47,11 @@ const cache = new Map<string, Promise<Documento>>();
 export function contratoDe(servicio: string): Promise<Documento> {
   const existente = cache.get(servicio);
   if (existente) return existente;
-  // El gateway no publica el OpenAPI de los servicios de detrás; se pide al
-  // servicio por su propia ruta a través del proxy.
-  const promesa = llamar<Documento>(`/api/v1/${servicio}/openapi.json`)
+  // Por `/contrato/{servicio}` y no por `/{servicio}/openapi.json`: el gateway
+  // enruta por una lista blanca de prefijos y el nombre del servicio no está en
+  // ella, así que aquello devolvía 404 siempre. El `catch` se lo tragaba y
+  // todos los formularios de alta salían vacíos sin que nada lo dijera.
+  const promesa = llamar<Documento>(`/api/v1/contrato/${servicio}`)
     .then((r) => r.datos)
     .catch(() => ({}) as Documento);
   cache.set(servicio, promesa);

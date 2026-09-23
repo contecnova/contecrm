@@ -9,11 +9,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
 from services.service import conocimiento as kb
 from services.service import portal as prt
+from services.service.conocimiento import Articulo
+from services.service.portal import AccesoPortal
 
 router_conocimiento = APIRouter(prefix="/conocimiento", tags=["conocimiento"])
 router_portal = APIRouter(prefix="/portal", tags=["portal de cliente"])
@@ -671,6 +674,30 @@ class AArticulo(BaseModel):
 def a_articulo(hilo_id: UUID, datos: AArticulo, uow: UowDep, principal: AutenticadoDep) -> Any:
     articulo = prt.convertir_en_articulo(uow, hilo_id, clave=datos.clave)
     return {"id": str(articulo.id), "clave": articulo.clave, "estado": articulo.estado}
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones que se podían crear y no se podían leer. La API contestaba 405
+# —o, en el caso de los artículos, un 422 confuso porque `/conocimiento/articulos`
+# encajaba en `/conocimiento/{articulo_id}` y «articulos» no es un UUID— y el
+# front enseñaba una pantalla vacía sin decir por qué.
+
+montar_listado(
+    router_conocimiento,
+    modelo=Articulo,
+    objeto="articulo",
+    permiso="conocimiento:read",
+    ruta="/articulos",
+    nombre="Artículos de conocimiento",
+)
+montar_listado(
+    router_portal,
+    modelo=AccesoPortal,
+    objeto="acceso_portal",
+    permiso="case:read",
+    ruta="/accesos",
+    nombre="Accesos al portal",
+)
 
 
 ROUTERS_CONOCIMIENTO = [router_conocimiento, router_portal, router_comunidad]

@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from sqlalchemy import select
 from services.marketing import ajustes as _ajustes  # noqa: F401  (registra las claves)
 from services.marketing import correo as cor
 from services.marketing import recorridos as rec
+from services.marketing.recorridos import Recorrido
 
 router = APIRouter(prefix="/recorridos", tags=["recorridos"])
 router_correo = APIRouter(prefix="/correo", tags=["correo"])
@@ -506,6 +508,21 @@ def fijar(datos: FijarPreferencias, request: Request, uow: UowDep) -> Any:
         origen=datos.origen,
         ip=request.client.host if request.client else "",
     )
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router,
+    modelo=Recorrido,
+    objeto="recorrido",
+    permiso="campana:read",
+    nombre="Recorridos",
+)
 
 
 ROUTERS_RECORRIDOS = [router, router_correo, router_preferencias]

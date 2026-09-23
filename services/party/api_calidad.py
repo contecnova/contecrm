@@ -14,12 +14,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.party import cuenta_360 as c360
 from services.party import mdm
 from services.party import stewardship as stw
+from services.party.cuenta_360 import PlanCuenta, RelacionPersona
 
 router_calidad = APIRouter(prefix="/calidad-dato", tags=["calidad del dato"])
 router_plan = APIRouter(prefix="/planes-cuenta", tags=["plan de cuenta"])
@@ -339,6 +341,28 @@ def anotar_relacion(cuerpo: RelacionIn, uow: UowDep, principal: AutenticadoDep) 
         por=principal.id,
     )
     return {"id": str(fila.id), "tipo": fila.tipo}
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_plan,
+    modelo=PlanCuenta,
+    objeto="plan_cuenta",
+    permiso="party:read",
+    nombre="Planes de cuenta",
+)
+montar_listado(
+    router_personas,
+    modelo=RelacionPersona,
+    objeto="relacion_persona",
+    permiso="party:read",
+    nombre="Mapa de personas",
+)
 
 
 ROUTERS_CALIDAD = [router_calidad, router_plan, router_personas]

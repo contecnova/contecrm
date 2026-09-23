@@ -12,6 +12,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -562,6 +563,28 @@ def dar_por_migrado(
     objeto: str, uow: UowDep, forzar: bool = Query(False), motivo: str = Query("")
 ) -> Any:
     return conv.dar_por_migrado(uow, objeto=objeto, forzar=forzar, motivo=motivo)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_canales,
+    modelo=canales.CanalEntrada,
+    objeto="canal_entrada",
+    permiso="integracion:read",
+    nombre="Canales de entrada",
+)
+montar_listado(
+    router_conv,
+    modelo=conv.ReglaConvivencia,
+    objeto="regla_convivencia",
+    permiso="integracion:read",
+    nombre="Reglas de convivencia",
+)
 
 
 ROUTERS_CONECTIVIDAD = [router, router_mcp, router_canales, router_fed, router_conv]

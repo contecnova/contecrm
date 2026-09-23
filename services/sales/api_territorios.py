@@ -8,11 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.sales import territorios as ter
+from services.sales.territorios import Cuota
 
 router = APIRouter(prefix="/territorios", tags=["territorios"])
 router_cuotas = APIRouter(prefix="/cuotas", tags=["territorios"])
@@ -271,6 +273,21 @@ def cobertura(datos: Cobertura, db: DbDep, principal: AutenticadoDep) -> Any:
         logrado_por_sujeto=datos.logrado_por_sujeto,
         minimo=datos.minimo,
     )
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_cuotas,
+    modelo=Cuota,
+    objeto="cuota",
+    permiso="forecast:read",
+    nombre="Cuotas",
+)
 
 
 ROUTERS_TERRITORIOS = [router, router_cuotas]

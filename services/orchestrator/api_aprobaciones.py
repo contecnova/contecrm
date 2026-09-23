@@ -7,11 +7,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.orchestrator import analitica as ana
 from services.orchestrator import aprobaciones as apr
+from services.orchestrator.aprobaciones import SolicitudAprobacion
 
 router = APIRouter(prefix="/aprobaciones", tags=["aprobaciones"])
 router_analitica = APIRouter(prefix="/analitica-procesos", tags=["procesos"])
@@ -327,6 +329,21 @@ def analitica(
     clave: str, db: DbDep, principal: AutenticadoDep, dias: int = Query(30, ge=1, le=365)
 ) -> Any:
     return ana.analitica_de_proceso(db, principal.tenant_id, clave, dias=dias)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router,
+    modelo=SolicitudAprobacion,
+    objeto="aprobacion",
+    permiso="aprobacion:read",
+    nombre="Solicitudes de aprobación",
+)
 
 
 ROUTERS_APROBACIONES = [router, router_analitica]

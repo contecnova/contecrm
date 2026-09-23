@@ -308,6 +308,20 @@ def get_db(principal: PrincipalDep) -> Iterator[Session]:
     """
     from crmcore.db.session import nueva_sesion
 
+    if principal.es_anonimo and principal.tenant_id is None:
+        # 401 y no 500. Sin esto, `nueva_sesion(None)` levantaba
+        # «db.sesion_sin_tenant», que es un error interno: la aplicación web
+        # pregunta quién eres al arrancar, antes de que haya sesión, y recibía
+        # un 500 en cada carga. Un 500 dice «esto está roto»; lo que pasa es
+        # que todavía no has entrado, y eso es un 401.
+        #
+        # El orden de los parámetros del endpoint decidía cuál de los dos
+        # salía: con `db` antes que `principal`, reventaba la sesión; con
+        # `principal` antes, contestaba 401. Que la respuesta dependa del orden
+        # en que alguien escribió la firma no es aceptable, así que se resuelve
+        # aquí, que es por donde pasan las dos.
+        raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
+
     db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
     try:
         yield db

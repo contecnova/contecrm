@@ -84,6 +84,54 @@ async def servicios(_: PrincipalDep) -> Any:
 
 
 @router.get(
+    "/contrato/{servicio}",
+    summary="El contrato OpenAPI de un servicio",
+    description=(
+        "Devuelve el OpenAPI del servicio indicado, tal cual lo publica él.\n\n"
+        "Existe porque el front **genera los formularios leyendo el contrato**: "
+        "los campos de un alta salen del esquema de la operación, no de una "
+        "lista escrita en el front. Sin esta ruta, la llamada fallaba con 404, "
+        "el front se lo tragaba —está dentro de un `catch`— y **todos** los "
+        "formularios de alta salían vacíos, sin que nada lo dijera.\n\n"
+        "No se enruta `/api/v1/<servicio>/...` de forma general a propósito: "
+        "eso expondría cada ruta interna de cada servicio por un camino "
+        "paralelo al de la tabla de enrutado, que es la única lista de "
+        "acoplamiento del sistema."
+    ),
+)
+async def contrato_de_servicio(servicio: str, _: PrincipalDep) -> Any:
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+    destino = _destinos.get(servicio)
+    if destino is None:
+        # 404 con la lista de los que sí hay: un 404 a secas deja a quien
+        # integra sin saber si se equivocó de nombre o si el servicio no está
+        # desplegado en esta instalación, que son dos problemas distintos.
+        raise NoEncontrado(
+            f"No hay ningún servicio enrutado con el nombre «{servicio}»",
+            error_code="gateway.servicio_desconocido",
+            detalle={"servicios": sorted(_destinos)},
+        )
+    # Por el prefijo configurado y no por `/openapi.json` a secas: el contrato
+    # se publica bajo el prefijo de versión de la API (`/api/v1/openapi.json`),
+    # que es el mismo ajuste con el que se sirve todo lo demás.
+    prefijo = get_settings().api_prefix.rstrip("/")
+    try:
+        respuesta = await _cliente.get(f"{destino.url_base}{prefijo}/openapi.json", timeout=10.0)
+    except httpx.HTTPError as exc:
+        raise NoDisponible(
+            f"El servicio «{servicio}» no ha contestado con su contrato",
+            error_code="gateway.contrato_no_disponible",
+        ) from exc
+    if respuesta.status_code != 200:
+        raise NoDisponible(
+            f"El servicio «{servicio}» ha contestado {respuesta.status_code} a su contrato",
+            error_code="gateway.contrato_no_disponible",
+        )
+    return respuesta.json()
+
+
+@router.get(
     "/estado",
     summary="Cómo va MI CRM ahora mismo",
     description=(

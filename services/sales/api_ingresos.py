@@ -13,11 +13,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.sales import ingresos as ing
 from services.sales import plan_conjunto as pc
+from services.sales.plan_conjunto import PlanConjuntoCliente
 
 router_ingresos = APIRouter(prefix="/ingresos", tags=["ingresos y recurrencia"])
 router_planes = APIRouter(prefix="/planes-conjuntos", tags=["plan conjunto y revisión"])
@@ -283,6 +285,21 @@ def sin_revisar(db: DbDep, principal: AutenticadoDep, dias: int = Query(30)) -> 
     return pc.sin_revisar(
         oportunidades=[{"id": f.id, "importe": f.importe} for f in filas], dias=dias
     )
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_planes,
+    modelo=PlanConjuntoCliente,
+    objeto="plan_conjunto",
+    permiso="sales:read",
+    nombre="Planes conjuntos",
+)
 
 
 ROUTERS_INGRESOS = [router_ingresos, router_planes]

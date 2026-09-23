@@ -8,11 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.service import omnicanal as omni
+from services.service.omnicanal import CanalServicio
 
 router_canales = APIRouter(prefix="/canales-servicio", tags=["omnicanal"])
 router_conversaciones = APIRouter(prefix="/conversaciones", tags=["omnicanal"])
@@ -342,6 +344,21 @@ def listar_macros(db: DbDep, principal: AutenticadoDep) -> Any:
 )
 def consola(db: DbDep, principal: AutenticadoDep) -> Any:
     return omni.consola(db, principal.tenant_id, principal.usuario_id)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_canales,
+    modelo=CanalServicio,
+    objeto="canal_servicio",
+    permiso="case:read",
+    nombre="Canales de servicio",
+)
 
 
 ROUTERS_OMNICANAL = [

@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from sqlalchemy import select
 from services.service import entitlements as ent
 from services.service import operacion as ope
 from services.service import servicio as svc
+from services.service.entitlements import Encuesta, Entitlement
 from services.service.operacion import AgenteServicio, ColaCasos, ReglaAsignacion, ReglaEscalada
 
 router_colas = APIRouter(prefix="/colas", tags=["casos"])
@@ -649,6 +651,43 @@ def decidir(credito_id: UUID, datos: DecidirCredito, uow: UowDep, principal: Aut
         por=principal.usuario_id,
     )
     return {"id": str(fila.id), "estado": fila.estado}
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas cuatro colecciones se podían crear y no se podían leer: el `POST` estaba
+# y el `GET` no, así que una cola, una regla de escalado o un entitlement se
+# daban de alta y desaparecían de la vista. La API contestaba 405 y el front
+# —que los declara listables— enseñaba una pantalla vacía.
+
+montar_listado(
+    router_colas,
+    modelo=ColaCasos,
+    objeto="cola",
+    permiso="case:read",
+    nombre="Colas de casos",
+)
+montar_listado(
+    router_escalado,
+    modelo=ReglaEscalada,
+    objeto="regla_escalado",
+    permiso="case:read",
+    ruta="/reglas",
+    nombre="Reglas de escalado",
+)
+montar_listado(
+    router_entitlements,
+    modelo=Entitlement,
+    objeto="entitlement",
+    permiso="case:read",
+    nombre="Entitlements",
+)
+montar_listado(
+    router_encuestas,
+    modelo=Encuesta,
+    objeto="encuesta",
+    permiso="case:read",
+    nombre="Encuestas de satisfacción",
+)
 
 
 ROUTERS_OPERACION = [

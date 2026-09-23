@@ -75,6 +75,14 @@ def _importar_modelos(servicio: str) -> None:
 
     comunes = [
         "crmcore.audit.modelos",
+        # Las políticas de campo son de TODOS los servicios, no de unos pocos.
+        # No estaban aquí, así que la tabla solo existía en los cinco esquemas
+        # cuyos modelos la importaban de rebote. Consecuencia: en los otros
+        # ocho, `proyectar_para` —lo que decide qué columnas ve cada rol—
+        # consultaba una tabla inexistente y **cualquier listado reventaba con
+        # un 500**. Y si no hubiera reventado sería peor: una política escrita
+        # por el cliente no se aplicaría ahí, en silencio.
+        "crmcore.authz.proyeccion",
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",

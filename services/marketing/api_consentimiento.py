@@ -12,10 +12,12 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.marketing import consentimiento as cons
+from services.marketing.consentimiento import ConsentimientoCookies, ReglaContenido
 
 router_optin = APIRouter(prefix="/optin", tags=["consentimiento"])
 router_cookies = APIRouter(prefix="/cookies", tags=["consentimiento"])
@@ -191,6 +193,28 @@ def declarar_regla(cuerpo: DeclararRegla, uow: UowDep) -> Any:
 )
 def comprobar_contenido(cuerpo: ComprobarContenido, db: DbDep, principal: AutenticadoDep) -> Any:
     return cons.comprobar_contenido(db, principal.tenant_id, **cuerpo.model_dump())
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_cookies,
+    modelo=ConsentimientoCookies,
+    objeto="consentimiento_cookies",
+    permiso="campana:read",
+    nombre="Decisiones de cookies",
+)
+montar_listado(
+    router_contenido,
+    modelo=ReglaContenido,
+    objeto="regla_contenido",
+    permiso="campana:read",
+    nombre="Reglas de contenido",
+)
 
 
 ROUTERS_CONSENTIMIENTO = [router_optin, router_cookies, router_contenido]

@@ -10,11 +10,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.marketing import campanas as cmp
+from services.marketing.campanas import Campana, Rebote
 
 router_campanas = APIRouter(prefix="/campanas", tags=["campañas"])
 router_atribucion = APIRouter(prefix="/atribucion", tags=["campañas"])
@@ -428,6 +430,28 @@ def rebote(datos: AnotarRebote, uow: UowDep, principal: AutenticadoDep) -> Any:
 )
 def salud(db: DbDep, principal: AutenticadoDep, dias: int = Query(30, ge=1, le=365)) -> Any:
     return cmp.salud_de_envio(db, principal.tenant_id, dias=dias)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_campanas,
+    modelo=Campana,
+    objeto="campana",
+    permiso="campaign:read",
+    nombre="Campañas",
+)
+montar_listado(
+    router_rebotes,
+    modelo=Rebote,
+    objeto="rebote",
+    permiso="campaign:read",
+    nombre="Rebotes y quejas",
+)
 
 
 ROUTERS_CAMPANAS = [router_campanas, router_atribucion, router_presion, router_rebotes]

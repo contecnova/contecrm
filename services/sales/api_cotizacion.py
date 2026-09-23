@@ -9,12 +9,15 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.sales import catalogo as cat
 from services.sales import presupuestos as pre
+from services.sales.catalogo import ListaPrecio
+from services.sales.presupuestos import Contrato, Presupuesto, SuscripcionCliente
 
 router_prod = APIRouter(prefix="/productos", tags=["catálogo"])
 router_precios = APIRouter(prefix="/listas-precio", tags=["catálogo"])
@@ -606,6 +609,42 @@ def conciliacion(
     uow: UowDep, principal: AutenticadoDep, horas: int = Query(24, ge=1, le=720)
 ) -> Any:
     return pre.conciliar_erp(uow, principal.tenant_id, horas_espera=horas)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_precios,
+    modelo=ListaPrecio,
+    objeto="lista_precio",
+    permiso="producto:read",
+    nombre="Listas de precios",
+)
+montar_listado(
+    router_pre,
+    modelo=Presupuesto,
+    objeto="presupuesto",
+    permiso="quote:read",
+    nombre="Presupuestos",
+)
+montar_listado(
+    router_ctr,
+    modelo=Contrato,
+    objeto="contrato",
+    permiso="contract:read",
+    nombre="Contratos",
+)
+montar_listado(
+    router_sus,
+    modelo=SuscripcionCliente,
+    objeto="suscripcion",
+    permiso="contract:read",
+    nombre="Suscripciones",
+)
 
 
 ROUTERS_COTIZACION = [

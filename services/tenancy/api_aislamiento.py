@@ -13,11 +13,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.tenancy import aislamiento as ais
 from services.tenancy import residencia as res
+from services.tenancy.aislamiento import AislamientoTenant
+from services.tenancy.residencia import ResidenciaDato
 
 router_aislamiento = APIRouter(prefix="/aislamiento", tags=["aislamiento y residencia"])
 router_residencia = APIRouter(prefix="/residencia", tags=["aislamiento y residencia"])
@@ -308,6 +311,28 @@ def informe_transferencias(
     tenant_id: UUID, db: DbDep, _: AutenticadoDep, dias: int = Query(90, ge=1, le=730)
 ) -> Any:
     return res.informe_de_transferencias(db, tenant_id, dias=dias)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_aislamiento,
+    modelo=AislamientoTenant,
+    objeto="aislamiento",
+    permiso="tenant:read",
+    nombre="Declaraciones de aislamiento",
+)
+montar_listado(
+    router_residencia,
+    modelo=ResidenciaDato,
+    objeto="residencia",
+    permiso="tenant:read",
+    nombre="Residencia del dato",
+)
 
 
 ROUTERS_AISLAMIENTO = [router_aislamiento, router_residencia]

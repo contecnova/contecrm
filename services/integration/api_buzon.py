@@ -12,7 +12,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.documental.plantillas import PlantillaDocumento
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -376,6 +378,35 @@ def probar_proveedor(clave: str, uow: UowDep, en_vacio: bool = Query(True)) -> A
 )
 def migrar_proveedor(cuerpo: MigrarProveedor, uow: UowDep) -> Any:
     return fir.migrar_proveedor(uow, desde=cuerpo.desde, hacia=cuerpo.hacia, motivo=cuerpo.motivo)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_buzon,
+    modelo=buz.Buzon,
+    objeto="buzon",
+    permiso="integracion:read",
+    nombre="Buzones conectados",
+)
+montar_listado(
+    router_chat,
+    modelo=colab.CanalChat,
+    objeto="canal_chat",
+    permiso="integracion:read",
+    nombre="Canales de chat",
+)
+montar_listado(
+    router_plantillas,
+    modelo=PlantillaDocumento,
+    objeto="plantilla_documento",
+    permiso="integracion:read",
+    nombre="Plantillas de documento",
+)
 
 
 ROUTERS_BUZON = [router_buzon, router_chat, router_plantillas, router_presencial]

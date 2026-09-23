@@ -14,12 +14,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.marketing import activos as act
 from services.marketing import audiencias_externas as aud
 from services.marketing import social as soc
+from services.marketing.activos import Activo
 
 router_audiencias = APIRouter(prefix="/audiencias-externas", tags=["publicidad y audiencias"])
 # `/activos-marketing` y no `/activos`: ese prefijo ya lo usa el servicio de
@@ -306,6 +308,21 @@ def respuesta_social(cuerpo: RespuestaSocialIn, principal: AutenticadoDep) -> An
         escrito_por_persona=cuerpo.escrito_por_persona,
         pide_datos_personales=cuerpo.pide_datos_personales,
     )
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_activos,
+    modelo=Activo,
+    objeto="activo_marketing",
+    permiso="marketing:read",
+    nombre="Activos de marketing",
+)
 
 
 ROUTERS_CANALES_EXTERNOS = [router_audiencias, router_activos, router_social]

@@ -12,6 +12,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -379,5 +380,21 @@ def historial(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep
 
 from services.intelligence.api_agentes import ROUTERS_AGENTES  # noqa: E402
 from services.intelligence.api_prediccion import ROUTERS_PREDICCION  # noqa: E402
+from services.intelligence.enrutador import ProveedorIA  # noqa: E402
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_modelos,
+    modelo=ProveedorIA,
+    objeto="proveedor_ia",
+    permiso="ia:administrar",
+    nombre="Proveedores de IA",
+)
+
 
 ROUTERS = [router, router_modelos, router_uso, *ROUTERS_PREDICCION, *ROUTERS_AGENTES]

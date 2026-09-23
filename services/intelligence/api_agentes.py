@@ -14,12 +14,14 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.intelligence import agentes as ag
 from services.intelligence import asistencia as asis
 from services.intelligence import herramientas as herr
+from services.intelligence.agentes import Agente
 
 router_agentes = APIRouter(prefix="/ia/agentes-autonomos", tags=["ia"])
 router_asistencia = APIRouter(prefix="/ia/asistencia", tags=["ia"])
@@ -295,6 +297,21 @@ def proximos_pasos(cuerpo: ProximosPasos, db: DbDep, principal: AutenticadoDep) 
         senales=cuerpo.senales,
         contenido_disponible=cuerpo.contenido_disponible,
     )
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_agentes,
+    modelo=Agente,
+    objeto="agente_autonomo",
+    permiso="ia:administrar",
+    nombre="Agentes autónomos",
+)
 
 
 ROUTERS_AGENTES = [router_agentes, router_asistencia]

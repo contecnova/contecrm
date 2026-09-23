@@ -8,11 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.party import actividades_extra as ax
+from services.party.actividades_extra import Recurrencia
 
 router = APIRouter(prefix="/plantillas-actividad", tags=["actividades"])
 router_visitas = APIRouter(prefix="/visitas", tags=["actividades"])
@@ -214,6 +216,21 @@ def crear_recurrencia(datos: CrearRecurrencia, uow: UowDep) -> Any:
 )
 def generar(uow: UowDep, principal: AutenticadoDep) -> Any:
     return ax.generar_pendientes(uow, principal.tenant_id)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_recurrencias,
+    modelo=Recurrencia,
+    objeto="recurrencia",
+    permiso="activity:read",
+    nombre="Actividades recurrentes",
+)
 
 
 ROUTERS_ACTIVIDADES_EXTRA = [router, router_visitas, router_recurrencias]

@@ -122,6 +122,30 @@ def listar_leads(
     return pagina.a_dict(lambda lead: LeadOut.model_validate(lead).model_dump(mode="json"))
 
 
+@router_leads.get(
+    "/{lead_id}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("lead:read"))],
+    summary="Ficha de un lead",
+    description=(
+        "Faltaba, y el efecto era que se podía descartar o convertir un lead "
+        "que no se podía abrir: todas las acciones sobre `/leads/{lead_id}` "
+        "existían y el `GET` que lo enseña, no."
+    ),
+)
+def obtener_lead(lead_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    lead = db.get(Lead, lead_id)
+    # 404 y no 403 cuando es de otro tenant o está borrado: un 403 confirmaría
+    # que ese identificador existe, y eso ya es información.
+    if lead is None or lead.deleted_at is not None:
+        raise NoEncontrado("El lead no existe", error_code="sales.lead_no_encontrado")
+    # El permiso dice si puedes leer leads; la decisión dice si puedes leer
+    # ESTE. Sin ella, dar `lead:read` sería dar la cartera entera.
+    exigir(db, objeto="lead", accion="leer", registro=lead)
+    proyecta = proyectar_para(principal, db, objeto="lead", modelo=Lead)
+    return proyecta(lead)
+
+
 @router_leads.post(
     "/{lead_id}/primera-respuesta",
     response_model=LeadOut,
@@ -932,6 +956,9 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/sales/buscar")
 # Operaciones masivas y sus trabajos diferidos. El import de `masivo` registra
 # los ejecutores; el worker hace ese mismo import por su cuenta, porque es otro
 # proceso.
+from crmcore.authz.decision import exigir  # noqa: E402
+from crmcore.http.deps import proyectar_para  # noqa: E402
+from crmcore.http.listados import montar_listado  # noqa: E402
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
@@ -1130,6 +1157,32 @@ router_documental = crear_router_documental({"lead", "oportunidad"})
 
 
 from services.sales.api_forecast import ROUTERS_FORECAST  # noqa: E402
+from services.sales.captura import CanalCaptura  # noqa: E402
+from services.sales.origen import Toque  # noqa: E402
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones que se podían crear y no se podían leer. La API contestaba 405
+# —o, en el caso de los artículos, un 422 confuso porque `/conocimiento/articulos`
+# encajaba en `/conocimiento/{articulo_id}` y «articulos» no es un UUID— y el
+# front enseñaba una pantalla vacía sin decir por qué.
+
+montar_listado(
+    router_origen,
+    modelo=Toque,
+    objeto="toque",
+    permiso="lead:read",
+    ruta="/toques",
+    nombre="Toques de origen",
+)
+montar_listado(
+    router_captura,
+    modelo=CanalCaptura,
+    objeto="canal_captura",
+    permiso="lead:read",
+    ruta="/canales",
+    nombre="Canales de captura",
+)
+
 
 ROUTERS = [
     router_leads,

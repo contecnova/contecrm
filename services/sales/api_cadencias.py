@@ -8,11 +8,13 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.sales import cadencias as cad
+from services.sales.cadencias import Metodologia, PlantillaCorreo
 
 router = APIRouter(prefix="/cadencias", tags=["prospección"])
 router_cola = APIRouter(prefix="/mi-cola", tags=["prospección"])
@@ -366,6 +368,28 @@ def playbook(
     segmento: str = Query(""),
 ) -> Any:
     return cad.playbook_para(db, principal.tenant_id, etapa=etapa, segmento=segmento)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Estas colecciones se podían crear y no se podían leer: tenían `POST` y no
+# tenían `GET`, así que lo que se daba de alta desaparecía de la vista. La API
+# contestaba 405 y el front —que las declara listables— enseñaba una pantalla
+# vacía sin decir por qué.
+
+montar_listado(
+    router_plantillas,
+    modelo=PlantillaCorreo,
+    objeto="plantilla_correo",
+    permiso="lead:read",
+    nombre="Plantillas de correo",
+)
+montar_listado(
+    router_metodologia,
+    modelo=Metodologia,
+    objeto="metodologia",
+    permiso="opportunity:read",
+    nombre="Metodologías de venta",
+)
 
 
 ROUTERS_CADENCIAS = [
