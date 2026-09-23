@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**749 capacidades**: ✅ 690 hecho · ⬜ 59 pendiente
+**749 capacidades**: ✅ 700 hecho · ⬜ 49 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1240,7 +1240,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 9 — Proveedores, coste y capacidad
 
-20 capacidades · ✅ 10 · ⬜ 10
+20 capacidades · ✅ 20
 
 ### 9.1 Maestro y gobierno del proveedor
 
@@ -1265,13 +1265,13 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-09.02.01.01` | Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo | C | 2 | sales | ⬜ | contecflow-PSA:app/services/rate_card_service.py |
-| `CRM-09.02.01.02` | Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado | C | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.03` | El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó | C | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.04` | Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio | A | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.05` | Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó | A | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.06` | Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible | A | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.07` | Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés | C | 2 | sales | ⬜ | — |
-| `CRM-09.02.01.08` | Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado | A | 4 | sales | ⬜ | — |
-| `CRM-09.02.01.09` | Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad | A | 4 | sales | ⬜ | — |
-| `CRM-09.02.01.10` | Coste real frente a coste ofertado, medido, y dónde se fue la diferencia | A | 4 | analytics | ⬜ | — |
+| `CRM-09.02.01.01` | Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo | C | 2 | sales | ✅ | contecflow-PSA:app/services/rate_card_service.py |
+| `CRM-09.02.01.02` | Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado | C | 2 | sales | ✅ | — |
+| `CRM-09.02.01.03` | El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó | C | 2 | sales | ✅ | — |
+| `CRM-09.02.01.04` | Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.05` | Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.06` | Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible | A | 2 | sales | ✅ | — |
+| `CRM-09.02.01.07` | Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés | C | 2 | sales | ✅ | — |
+| `CRM-09.02.01.08` | Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado | A | 4 | sales | ✅ | — |
+| `CRM-09.02.01.09` | Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad | A | 4 | sales | ✅ | — |
+| `CRM-09.02.01.10` | Coste real frente a coste ofertado, medido, y dónde se fue la diferencia | A | 4 | analytics | ✅ | — |

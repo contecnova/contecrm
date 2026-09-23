@@ -11176,3 +11176,91 @@ lo tenga bien, es que no lo ha dicho, y firmarlo así es firmar sin saber. Y se
 puede preguntar al revés —qué es lo máximo que se puede prometer con este proveedor
 detrás—, que es más barato que descubrirlo en la revisión legal y mucho más que
 descubrirlo en la primera incidencia.
+
+## Lo que nos cuesta: tarifas, margen y comparación (`CRM-09.02.01.01`, `CRM-09.02.01.02`, `CRM-09.02.01.03`, `CRM-09.02.01.04`, `CRM-09.02.01.05`)
+
+Un CRM sabe poner precio a lo que se vende y, si no sabe lo que cuesta, **no puede
+decir el margen** — que es lo único que un responsable aprueba o rechaza de
+verdad. Aprobar por porcentaje de descuento es aprobar a ciegas: un 5 % sobre algo
+que se compra caro pierde dinero y un 30 % sobre algo que se compra bien no.
+
+**La tarifa de coste va en el mismo motor de precios**, con el sentido cambiado.
+Un motor paralelo para costes acabaría con dos formas de escalar por volumen y dos
+maneras de resolver la vigencia, y una de las dos se quedaría atrás. Las listas de
+coste y las de venta no se mezclan nunca: si se mezclaran, una tarifa de proveedor
+podría entrar en el precio y el cliente vería lo que nos cuesta.
+
+**Sin coste no hay margen cero: hay margen desconocido.** Un margen en blanco se
+lee como «no hay margen» o como «no importa» según quien mire, y las dos lecturas
+son peores que la verdad. Y una oferta con costes incompletos no tiene «un margen
+aproximado»: enseñar la media de lo que sí se sabe es la forma elegante de mentir
+en una hoja de aprobación, así que se dice cuántas líneas no se pueden medir y
+cuáles.
+
+**El coste se congela al ofertar.** Si la oferta recalculara el coste cada vez que
+se abre, el margen que alguien aprobó en septiembre habría desaparecido en octubre
+sin que nadie tocara nada, y la aprobación pasaría a referirse a unos números que
+ya no existen. Cuando la tarifa cambia **se avisa y no se reescribe**: reescribir
+sería lo cómodo y es lo peor, porque el comercial la manda creyendo que lleva los
+números que aprobó su jefe.
+
+**Comparar proveedores no es comparar precios.** El más barato que llega dos
+semanas tarde no es la opción barata: es un incumplimiento con descuento. Y el que
+no está homologado no es una opción, por mucho que su número sea el mejor. Se
+devuelven **todas** con su motivo de descarte, porque quien decide necesita poder
+explicar por qué no eligió la más barata, normalmente a alguien que solo ha visto
+esa columna.
+
+**La petición de oferta va ligada a la oportunidad** que la motiva: una suelta no
+se cierra nunca —nadie sabe si aquello se ganó o se perdió— y acaba en una lista
+de cosas abiertas que nadie limpia. Con fecha límite real, porque sin ella la
+respuesta llega cuando el cliente ya ha decidido y el precio que se le dio se puso
+a ojo. Y al recogerlas se dice **quién no ha contestado**: si tres de cinco no
+responden, la comparación no es entre cinco opciones, y decidir sin saberlo es
+creer que se ha comparado el mercado.
+
+## Capacidad, plazo, reparto y coste real (`CRM-09.02.01.06`, `CRM-09.02.01.07`, `CRM-09.02.01.08`, `CRM-09.02.01.09`, `CRM-09.02.01.10`)
+
+**La capacidad descuenta lo ya comprometido.** Una cuota que solo mira lo
+contratado deja vender tres veces lo mismo, y eso se descubre en la semana de la
+entrega, cuando ya no hay margen para nada. Se enseña aparte lo que está **en
+ofertas abiertas**: todavía no es un compromiso, pero si se ganan todas tampoco
+cabe — y esa conversación es mejor tenerla antes de mandar la cuarta oferta que
+después. Reservar por encima de lo disponible se puede, y entonces **queda dicho
+que se forzó**: dejarlo pasar «porque ya se arreglará» convierte un problema de
+planificación en una llamada al cliente el día de la entrega.
+
+**El plazo del proveedor decide la fecha que se promete**, y no al revés. Prometer
+primero y buscar después quién lo cumpla es exactamente el orden que produce los
+retrasos, y deja al comercial en una posición imposible. Al plazo del proveedor se
+le suma el nuestro —coordinar, preparar, entregar—, porque prometer solo el suyo
+es prometer un plazo que existiría si nosotros no hiciéramos nada. Y si el
+proveedor no declara plazo **no se inventa una fecha**: se dice que todavía no se
+puede prometer, que es incómodo y es verdad.
+
+**El reparto entre proveedores sigue una regla declarada** —menor coste, más
+capacidad libre, menor plazo o el acuerdo que haya—. Sin regla reparte quien monta
+la oferta, y cada uno lo hace de una manera: normalmente con el de siempre, que es
+como se llega a depender de un proveedor sin que nadie lo haya decidido. Si no
+cabe entero se dice **cuánto falta**, en vez de repartir lo que hay y dejar el
+resto sin asignar sin avisar.
+
+**El rappel estimado no es dinero.** Depende de llegar al tramo, y si el año se
+tuerce no se llega: se marca como estimado hasta que el periodo se cierra. Y se
+imputa **al periodo, no a las ofertas que lo generaron** — repartirlo hacia atrás
+haría que una oferta pareciera rentable por algo que todavía no ha pasado.
+
+**Y el margen de verdad se sabe cuando llega la factura del proveedor.** Casi
+nadie vuelve a mirarlo, y por eso las empresas descubren que un tipo de trabajo
+pierde dinero después de haberlo vendido veinte veces. Se compara **pedido a
+pedido**, porque una media del 3 % esconde diez pedidos clavados y uno que se fue
+al 40 %, y ese es el único que enseña algo. Lo que todavía no se ha facturado **no
+cuenta como acertado**: contarlo por su coste previsto es lo que hace que estos
+informes mientan siempre en la misma dirección. Se pide además **dónde** se fue la
+diferencia —«el coste subió» no sirve de nada; «subió en el transporte de las
+entregas fuera de la península» cambia la próxima oferta—. Y de un proveedor con
+menos de tres pedidos medidos **no se concluye**: dos desviaciones seguidas pueden
+ser dos casualidades, y colgarle la etiqueta de impreciso por eso es injusto y
+hace que nadie se crea el informe. Con datos suficientes, en cambio, la
+conversación cambia: un proveedor que siempre acaba costando un 15 % más no es
+caro, es **impreciso**, y eso es peor — sus ofertas no sirven para decidir.

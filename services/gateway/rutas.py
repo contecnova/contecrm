@@ -192,6 +192,8 @@ PREFIJOS: dict[str, str] = {
     # le añade encima: homologación, papeles y contactos.
     "proveedores": "party",
     "oportunidades": "sales",
+    # Coste, tarifas de proveedor y capacidad (CRM-09.02.01).
+    "coste": "sales",
     "captura": "sales",
 }
 

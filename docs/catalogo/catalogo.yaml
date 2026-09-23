@@ -1328,16 +1328,16 @@ modulos:
           - id: CRM-09.02.01
             nombre: Lo que nos cuesta y lo que podemos comprometer
             capacidades:
-              - {id: CRM-09.02.01.01, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/rate_card_service.py", t: "Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo"}
-              - {id: CRM-09.02.01.02, c: C, fase: 2, svc: sales, estado: pendiente, t: "Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado"}
-              - {id: CRM-09.02.01.03, c: C, fase: 2, svc: sales, estado: pendiente, t: "El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó"}
-              - {id: CRM-09.02.01.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio"}
-              - {id: CRM-09.02.01.05, c: A, fase: 2, svc: sales, estado: pendiente, t: "Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó"}
-              - {id: CRM-09.02.01.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible"}
-              - {id: CRM-09.02.01.07, c: C, fase: 2, svc: sales, estado: pendiente, t: "Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés"}
-              - {id: CRM-09.02.01.08, c: A, fase: 4, svc: sales, estado: pendiente, t: "Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado"}
-              - {id: CRM-09.02.01.09, c: A, fase: 4, svc: sales, estado: pendiente, t: "Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad"}
-              - {id: CRM-09.02.01.10, c: A, fase: 4, svc: analytics, estado: pendiente, t: "Coste real frente a coste ofertado, medido, y dónde se fue la diferencia"}
+              - {id: CRM-09.02.01.01, c: C, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/rate_card_service.py", t: "Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo"}
+              - {id: CRM-09.02.01.02, c: C, fase: 2, svc: sales, estado: hecho, t: "Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado"}
+              - {id: CRM-09.02.01.03, c: C, fase: 2, svc: sales, estado: hecho, t: "El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó"}
+              - {id: CRM-09.02.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio"}
+              - {id: CRM-09.02.01.05, c: A, fase: 2, svc: sales, estado: hecho, t: "Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó"}
+              - {id: CRM-09.02.01.06, c: A, fase: 2, svc: sales, estado: hecho, t: "Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible"}
+              - {id: CRM-09.02.01.07, c: C, fase: 2, svc: sales, estado: hecho, t: "Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés"}
+              - {id: CRM-09.02.01.08, c: A, fase: 4, svc: sales, estado: hecho, t: "Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado"}
+              - {id: CRM-09.02.01.09, c: A, fase: 4, svc: sales, estado: hecho, t: "Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad"}
+              - {id: CRM-09.02.01.10, c: A, fase: 4, svc: analytics, estado: hecho, t: "Coste real frente a coste ofertado, medido, y dónde se fue la diferencia"}
 
 
 # ── ANEXO A — Catálogo mínimo de recursos de API ───────────────────────────

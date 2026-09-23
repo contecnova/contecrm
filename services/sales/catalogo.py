@@ -149,6 +149,17 @@ class ListaPrecio(Base, TimestampMixin):
     # A quién se le aplica. Vacío = a cualquiera, y entonces manda la condición.
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     canal: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # `venta` (lo que cobramos) o `coste` (lo que nos cobra un proveedor),
+    # CRM-09.02.01.01. Es el mismo motor a propósito: un motor paralelo para
+    # costes acabaría con dos formas de escalar por volumen y dos maneras de
+    # resolver la vigencia, y una de las dos se quedaría atrás.
+    sentido: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="venta", server_default=text("'venta'")
+    )
+    # De qué proveedor es esta tarifa de coste. Vacío en las de venta.
+    proveedor_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, index=True
+    )
     desde: Mapped[date | None] = mapped_column(Date, nullable=True)
     hasta: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Cuando dos listas encajan, gana la de prioridad más baja. Sin un orden
@@ -227,6 +238,8 @@ def listas_aplicables(
     canal: str = "",
     moneda: str = "",
     en_fecha: date | None = None,
+    sentido: str = "venta",
+    proveedor_id: UUID | None = None,
 ) -> list[ListaPrecio]:
     """Las listas que encajan, de más prioritaria a menos.
 
@@ -238,7 +251,14 @@ def listas_aplicables(
     filas = (
         db.execute(
             select(ListaPrecio)
-            .where(ListaPrecio.tenant_id == tenant_id, ListaPrecio.activa.is_(True))
+            .where(
+                ListaPrecio.tenant_id == tenant_id,
+                ListaPrecio.activa.is_(True),
+                # Solo las del sentido pedido. Sin este filtro, una tarifa de
+                # coste de un proveedor entraría en el precio de venta y el
+                # cliente vería lo que nos cuesta.
+                ListaPrecio.sentido == sentido,
+            )
             .order_by(ListaPrecio.prioridad, ListaPrecio.clave)
         )
         .scalars()
@@ -246,6 +266,8 @@ def listas_aplicables(
     )
     salida = []
     for lista in filas:
+        if sentido == "coste" and proveedor_id is not None and lista.proveedor_id != proveedor_id:
+            continue
         if lista.cuenta_id is not None and lista.cuenta_id != cuenta_id:
             continue
         if lista.canal and canal and lista.canal != canal:
@@ -273,6 +295,8 @@ def calcular_precio(
     moneda: str = "",
     en_fecha: date | None = None,
     contexto: dict[str, Any] | None = None,
+    sentido: str = "venta",
+    proveedor_id: UUID | None = None,
 ) -> dict[str, Any]:
     """Precio de un producto para un cliente concreto, con su explicación.
 
@@ -314,6 +338,8 @@ def calcular_precio(
         canal=canal,
         moneda=moneda or producto.moneda,
         en_fecha=en_fecha,
+        sentido=sentido,
+        proveedor_id=proveedor_id,
     )
     cortado = False
     for lista in listas:
