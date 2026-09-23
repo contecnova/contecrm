@@ -10151,3 +10151,135 @@ hacen aceptable y ninguna es opcional:
   viene, y nadie vuelve a mirar la invitación.
 - **Hace falta decir para qué.** Sin motivo, la revisión anual consiste en mirar
   una lista de correos ajenos sin poder decidir sobre ninguno.
+
+---
+
+## Superficie de API para integradores (`CRM-00.02`)
+
+Todo este capítulo existe por la misma queja, que es la que se oye en cada
+integración: **«para pintar una pantalla tengo que hacer siete llamadas»**. Y por
+su gemela, que se oye después: «llevo tres días peleando con las credenciales».
+
+### Lectura compuesta y perfiles por cliente (`CRM-00.02.01.02`, `CRM-00.02.03.03`)
+
+**La composición se declara, no se abre.** Un GraphQL abierto contra el modelo
+entero es una forma elegante de dejar que cualquiera monte una consulta que tumba
+la base. Aquí las composiciones se declaran y se les pone **coste máximo**, que no
+es el número de campos: es cuántas llamadas internas cuesta servirla. Sin tope,
+«dame la cuenta con sus contactos y las oportunidades de cada uno» es una consulta
+que hace mil peticiones — y se calcula **antes** de ejecutarla, porque calcularlo
+después es descubrir que costaba mil cuando ya se han hecho las mil.
+
+**Los permisos se comprueban parte a parte.** Una composición no puede enseñar lo
+que sus partes no enseñarían: quien puede leer cuentas y no oportunidades recibe
+la cuenta y **se le dice que falta la otra parte**. Devolverla entera sería
+convertir la comodidad en una vía de escalada; devolverla recortada en silencio
+haría que el integrador creyera que ese cliente no tiene oportunidades.
+
+El perfil —web, móvil, portal, quiosco— es lo que evita mandarle al móvil quince
+campos para pintar tres, que es la razón por la que las aplicaciones móviles de
+CRM van lentas.
+
+### Sandbox con datos sintéticos (`CRM-00.02.01.15`)
+
+**Generados, no copiados.** Copiar datos de producción a un entorno de pruebas es
+cómo se filtra una base de clientes entera por un sitio que no tiene las mismas
+protecciones, y es lo que casi todo el mundo hace porque es más cómodo y los datos
+«parecen más reales».
+
+Los sintéticos tienen otra ventaja que nadie cuenta: **se pueden romper**. Un
+integrador puede borrar, duplicar y estropear a gusto, que es exactamente lo que
+hay que poder hacer en un entorno de pruebas. Y caducan: uno eterno acumula
+credenciales que nadie recuerda y acaba siendo la puerta más vieja del sistema.
+
+### mTLS por integración (`CRM-00.02.04.03`)
+
+**Por integración y no globalmente.** Obligarlo a todos deja fuera a quien se
+integra con un script de cuatro líneas; no ofrecerlo deja sin nada a quien mueve
+dinero por esa API.
+
+Se compara **la huella y no la cadena**: un certificado firmado por la misma
+autoridad no es el mismo certificado, y aceptar cualquiera de la cadena convierte
+el mTLS en una comprobación de que existe una autoridad.
+
+### Portal de desarrollador (`CRM-00.02.04.06`)
+
+Enseña **lo que de verdad pasó**, no lo que el contrato promete: sus llamadas, su
+cuota y sus últimos errores con hora y código. Un portal que solo documenta es una
+web bonita que no resuelve la llamada de las tres de la mañana.
+
+Y los errores van **separados por culpa**: los suyos —4xx— y los nuestros —5xx—.
+Mezclarlos hace que un integrador pase una tarde revisando su código por una caída
+nuestra, o al revés.
+
+### Endpoints propios del tenant (`CRM-00.04.02.04`)
+
+Son una **composición con nombre suyo**, no una puerta aparte: heredan el mismo
+límite de tasa, la misma auditoría, la misma comprobación de permisos y el mismo
+presupuesto de error. Un camino que no pasa por donde pasan los demás es un camino
+donde los controles se ponen otra vez, peor y más tarde.
+
+Viven bajo `/api/v1/x/` y no pueden pisar una ruta del producto: dejar que un
+tenant declare `/api/v1/accounts` haría que el día que se publique la nuestra, una
+de las dos deje de funcionar.
+
+### SDK y componentes embebibles (`CRM-00.02.03.04`, `CRM-00.02.03.05`)
+
+**El SDK se genera del contrato.** Uno escrito a mano se queda viejo siempre:
+alguien lo escribe con cariño para tres lenguajes y a los cuatro meses la API
+tiene dos endpoints que el SDK no conoce — y el integrador no se entera de que
+existen.
+
+Lo que **no** se genera es lo que cuesta de verdad, y por eso se declara en el
+plan: el reintento con espera creciente —sin él, la mitad de los integradores
+reintenta sin esperar y convierte una caída de diez segundos en una avalancha—, la
+paginación resuelta como iterador —el error más repetido de toda integración es
+pedir la primera página y creer que son todos—, los errores del producto como
+excepciones con nombre, el idioma de los mensajes y la clave de idempotencia al
+reintentar, que es lo que evita el cobro duplicado.
+
+Un **componente embebible** no usa la sesión del CRM sino un token acotado al
+registro que enseña: uno con la sesión dentro de una web pública deja entrar a
+quien pase por ahí, basta con abrir las herramientas del navegador. Y su contrato
+es tan público como el de la API, porque se incrusta en páginas que no son
+nuestras.
+
+## Tokenización de datos de pago (`CRM-00.05.03.04`)
+
+Cifrar un número de tarjeta lo protege de quien lea la base. **Tokenizarlo lo saca
+de la base**, que es otra cosa: lo que queda en el CRM es una referencia sin valor.
+La diferencia importa el día de la auditoría — un sistema que cifra tarjetas sigue
+dentro del alcance de PCI; uno que no las tiene, no.
+
+- **Sin bóveda no se tokeniza en falso.** Guardar el número «hasta que haya
+  bóveda» mete el sistema en el alcance sin que nadie lo haya decidido.
+- **La pista es solo para reconocer.** De una tarjeta se guardan los cuatro
+  últimos y va marcada como lo que es; de un NIF no se guarda nada visible, porque
+  con la letra y dos dígitos se adivina el resto.
+- **Detokenizar cuesta a propósito**: exige motivo y deja rastro. Si el ORM lo
+  resolviera solo al leer, el dato volvería a estar en los registros, en las cachés
+  y en las respuestas de la API, y la tokenización no habría servido de nada.
+- **Y se busca lo que se cuela por texto libre.** El caso real no es que alguien
+  decida guardar tarjetas: es un integrador que manda el número en un campo de
+  notas. Se comprueba con Luhn para no dar la alarma con cualquier número largo —
+  un aviso que salta con todo se ignora a la semana.
+
+## Rastro completo de agregados críticos (`CRM-00.05.04.06`)
+
+La pregunta que resuelve llega siempre tarde: **«¿cómo estaba esto el 3 de
+marzo?»**. El historial de campos dice qué cambió; no dice cómo era el conjunto, y
+reconstruirlo encadenando cambios sale mal en cuanto hay una fusión o un borrado
+por medio.
+
+- **Opcional y por agregado, con motivo escrito.** Encenderlo en todo multiplica
+  la escritura por algo que nadie va a consultar de la mayoría; y dentro de dos
+  años alguien mirará por qué esa tabla ocupa lo que ocupa.
+- **El estado vivo sigue siendo la verdad para trabajar.** Reconstruir para pintar
+  una ficha haría lento lo que se usa mil veces al día para servir lo que se
+  pregunta una vez al año.
+- **Un hecho no se corrige: se compensa**, y los dos quedan. Si se pudiera editar,
+  la reconstrucción de marzo saldría como si nunca se hubiera equivocado nadie.
+- **Y una reconstrucción que no cuadra con la tabla viva se dice.** Es la única
+  forma de detectar lo que de verdad pasa: un script de corrección, una migración o
+  un arreglo a mano un viernes. A partir de ahí el rastro deja de ser una prueba, y
+  en silencio.

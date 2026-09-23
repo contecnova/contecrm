@@ -229,7 +229,7 @@ modulos:
             nombre: Contratos de API
             capacidades:
               - {id: CRM-00.02.01.01, c: C, fase: 0, svc: core, estado: hecho, t: "API REST completa: todo lo que hace la UI es posible por API, sin excepciones"}
-              - {id: CRM-00.02.01.02, c: A, fase: 1, svc: gateway, estado: pendiente, t: "API GraphQL para lectura compuesta y agregación en una llamada"}
+              - {id: CRM-00.02.01.02, c: A, fase: 1, svc: gateway, estado: hecho, t: "API GraphQL para lectura compuesta y agregación en una llamada"}
               - {id: CRM-00.02.01.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/contracts (buf + protobuf)", t: "gRPC / protobuf para comunicación interna y clientes de alto rendimiento"}
               - {id: CRM-00.02.01.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:scripts/dump_openapi.py", t: "Especificación OpenAPI 3.x generada desde el código, no mantenida a mano"}
               - {id: CRM-00.02.01.05, c: C, fase: 0, svc: core, estado: hecho, t: "Versionado explícito (URI o cabecera) con política de deprecación publicada"}
@@ -242,7 +242,7 @@ modulos:
               - {id: CRM-00.02.01.12, c: C, fase: 0, svc: core, estado: hecho, t: "API asíncrona para cargas largas: job ID, polling y callback"}
               - {id: CRM-00.02.01.13, c: A, fase: 0, svc: core, estado: hecho, t: "Batch/composite requests (varias operaciones en una llamada, transaccionales o no)"}
               - {id: CRM-00.02.01.14, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py", t: "Errores normalizados (RFC 9457 Problem Details) con código estable y correlación"}
-              - {id: CRM-00.02.01.15, c: A, fase: 0, svc: gateway, estado: pendiente, t: "Sandbox de API con datos sintéticos y consola interactiva"}
+              - {id: CRM-00.02.01.15, c: A, fase: 0, svc: gateway, estado: hecho, t: "Sandbox de API con datos sintéticos y consola interactiva"}
 
           - id: CRM-00.02.02
             nombre: Eventos y notificaciones salientes
@@ -263,9 +263,9 @@ modulos:
             capacidades:
               - {id: CRM-00.02.03.01, c: C, fase: 0, svc: core, estado: hecho, t: "Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad"}
               - {id: CRM-00.02.03.02, c: A, fase: 1, svc: core, estado: pendiente, t: "UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue)"}
-              - {id: CRM-00.02.03.03, c: A, fase: 1, svc: gateway, estado: pendiente, t: "Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco"}
-              - {id: CRM-00.02.03.04, c: A, fase: 1, svc: core, estado: pendiente, t: "SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go"}
-              - {id: CRM-00.02.03.05, c: A, fase: 3, svc: core, estado: pendiente, t: "Componentes embebibles opcionales (web components) para incrustar en portales propios"}
+              - {id: CRM-00.02.03.03, c: A, fase: 1, svc: gateway, estado: hecho, t: "Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco"}
+              - {id: CRM-00.02.03.04, c: A, fase: 1, svc: core, estado: hecho, t: "SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go"}
+              - {id: CRM-00.02.03.05, c: A, fase: 3, svc: core, estado: hecho, t: "Componentes embebibles opcionales (web components) para incrustar en portales propios"}
               - {id: CRM-00.02.03.06, c: A, fase: 0, svc: metadata, estado: hecho, t: "Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente"}
               - {id: CRM-00.02.03.07, c: A, fase: 0, svc: metadata, estado: hecho, t: "API de validación consultable antes de enviar (dry-run de reglas)"}
               - {id: CRM-00.02.03.08, c: D, fase: 1, svc: metadata, estado: pendiente, t: "Server-driven UI: definición de formularios y vistas servida como JSON"}
@@ -277,10 +277,10 @@ modulos:
             capacidades:
               - {id: CRM-00.02.04.01, c: C, fase: 0, svc: gateway, estado: hecho, t: "API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant"}
               - {id: CRM-00.02.04.02, c: C, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py)", t: "Resolución de tenant por subdominio, cabecera, claim del token o clave de API"}
-              - {id: CRM-00.02.04.03, c: A, fase: 0, svc: gateway, estado: pendiente, t: "mTLS para integraciones máquina-a-máquina críticas"}
+              - {id: CRM-00.02.04.03, c: A, fase: 0, svc: gateway, estado: hecho, t: "mTLS para integraciones máquina-a-máquina críticas"}
               - {id: CRM-00.02.04.04, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecweb:app/services/security_rules.py", t: "IP allowlisting por tenant y por credencial"}
               - {id: CRM-00.02.04.05, c: A, fase: 0, svc: gateway, estado: hecho, reutiliza: "contecmind:app/core/cache_registry.py", t: "Cacheo configurable con invalidación por evento y aislamiento por tenant"}
-              - {id: CRM-00.02.04.06, c: A, fase: 1, svc: gateway, estado: pendiente, reutiliza: "contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py", t: "Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas"}
+              - {id: CRM-00.02.04.06, c: A, fase: 1, svc: gateway, estado: hecho, reutiliza: "contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py", t: "Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas"}
               - {id: CRM-00.02.04.07, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/middleware.py (X-Request-Id) + tracing.py", t: "Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable"}
 
       - id: "0.3"
@@ -390,7 +390,7 @@ modulos:
               - {id: CRM-00.04.02.01, c: A, fase: 6, svc: automation, estado: pendiente, t: "Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota"}
               - {id: CRM-00.04.02.02, c: A, fase: 0, svc: core, estado: hecho, t: "Hooks pre/post sobre operaciones de dominio (before save, after commit)"}
               - {id: CRM-00.04.02.03, c: A, fase: 0, svc: core, estado: hecho, t: "Extensiones asíncronas suscritas a eventos, sin bloquear la transacción"}
-              - {id: CRM-00.04.02.04, c: D, fase: 6, svc: gateway, estado: pendiente, t: "Endpoints personalizados definidos por el tenant sobre el mismo gateway"}
+              - {id: CRM-00.04.02.04, c: D, fase: 6, svc: gateway, estado: hecho, t: "Endpoints personalizados definidos por el tenant sobre el mismo gateway"}
               - {id: CRM-00.04.02.05, c: A, fase: 6, svc: automation, estado: pendiente, t: "Gestión de dependencias, versiones y rollback del código de extensión"}
               - {id: CRM-00.04.02.06, c: A, fase: 6, svc: automation, estado: pendiente, t: "Observabilidad de extensiones: logs, métricas, errores y coste atribuido"}
               - {id: CRM-00.04.02.07, c: A, fase: 6, svc: automation, estado: pendiente, t: "Firma y revisión de extensiones de terceros antes de su instalación"}
@@ -533,7 +533,7 @@ modulos:
               - {id: CRM-00.05.03.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:deploy/nginx + docs/PENTEST_HARDENING.md", t: "Cifrado en tránsito (TLS 1.3) y en reposo"}
               - {id: CRM-00.05.03.02, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/db/encrypted_text.py + app/core/crypto.py", t: "Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional"}
               - {id: CRM-00.05.03.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/pii.py + sensitive_policy.py", t: "Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones"}
-              - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: pendiente, t: "Tokenización de datos de pago o identificadores fiscales"}
+              - {id: CRM-00.05.03.04, c: A, fase: 2, svc: core, estado: hecho, t: "Tokenización de datos de pago o identificadores fiscales"}
               - {id: CRM-00.05.03.05, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/services/pii.py", t: "Anonimización y pseudonimización para entornos no productivos"}
               - {id: CRM-00.05.03.06, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecweb:app/services/security_signals.py", t: "DLP: control de exportaciones masivas, alertas y bloqueo por política"}
               - {id: CRM-00.05.03.07, c: D, fase: 1, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/_pdf_marca.py (marca de agua)", t: "Marca de agua e identificación de origen en exportaciones"}
@@ -547,7 +547,7 @@ modulos:
               - {id: CRM-00.05.04.03, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecflow-PSA:app/services/settings_audit_service.py", t: "Auditoría de cambios de configuración y de permisos"}
               - {id: CRM-00.05.04.04, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:scripts/audit_purge.py", t: "Retención configurable del log y exportación a SIEM"}
               - {id: CRM-00.05.04.05, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/api/admin_audit.py", t: "Consulta y alertado sobre el audit trail desde la propia plataforma"}
-              - {id: CRM-00.05.04.06, c: D, fase: 2, svc: core, estado: pendiente, t: "Event sourcing opcional en agregados críticos para reconstrucción de estado"}
+              - {id: CRM-00.05.04.06, c: D, fase: 2, svc: core, estado: hecho, t: "Event sourcing opcional en agregados críticos para reconstrucción de estado"}
 
       - id: "0.6"
         nombre: Observabilidad y operación

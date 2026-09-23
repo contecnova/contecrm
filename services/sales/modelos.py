@@ -698,6 +698,11 @@ from crmcore.authz.jerarquia import (  # noqa: E402,F401
     TerritorioReplicado,
 )
 
+# El rastro completo de los agregados críticos de este servicio
+# (CRM-00.05.04.06). Vive aquí porque reconstruir un estado exige leer sus
+# propios hechos, y ningún servicio lee el esquema de otro.
+from crmcore.datos.event_sourcing import HechoAgregado  # noqa: E402,F401
+
 from services.sales import tratamientos  # noqa: E402,F401
 from services.sales.cadencias import (  # noqa: E402,F401
     Cadencia,

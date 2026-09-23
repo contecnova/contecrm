@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 620 hecho · ⬜ 87 pendiente
+**707 capacidades**: ✅ 630 hecho · ⬜ 77 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 252 · ⬜ 31
+283 capacidades · ✅ 262 · ⬜ 21
 
 ### 0.1 Multi-tenancy
 
@@ -120,7 +120,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.02.01.01` | API REST completa: todo lo que hace la UI es posible por API, sin excepciones | C | 0 | core | ✅ | — |
-| `CRM-00.02.01.02` | API GraphQL para lectura compuesta y agregación en una llamada | A | 1 | gateway | ⬜ | — |
+| `CRM-00.02.01.02` | API GraphQL para lectura compuesta y agregación en una llamada | A | 1 | gateway | ✅ | — |
 | `CRM-00.02.01.03` | gRPC / protobuf para comunicación interna y clientes de alto rendimiento | A | 0 | core | ⬜ | contecpos:packages/contracts (buf + protobuf) |
 | `CRM-00.02.01.04` | Especificación OpenAPI 3.x generada desde el código, no mantenida a mano | C | 0 | core | ✅ | contecmind:scripts/dump_openapi.py |
 | `CRM-00.02.01.05` | Versionado explícito (URI o cabecera) con política de deprecación publicada | C | 0 | core | ✅ | — |
@@ -133,7 +133,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.01.12` | API asíncrona para cargas largas: job ID, polling y callback | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.13` | Batch/composite requests (varias operaciones en una llamada, transaccionales o no) | A | 0 | core | ✅ | — |
 | `CRM-00.02.01.14` | Errores normalizados (RFC 9457 Problem Details) con código estable y correlación | C | 0 | core | ✅ | contecmind:app/core/errors.py + tests/unit/test_error_envelope_contract.py |
-| `CRM-00.02.01.15` | Sandbox de API con datos sintéticos y consola interactiva | A | 0 | gateway | ⬜ | — |
+| `CRM-00.02.01.15` | Sandbox de API con datos sintéticos y consola interactiva | A | 0 | gateway | ✅ | — |
 
 #### CRM-00.02.02 · Eventos y notificaciones salientes
 
@@ -156,9 +156,9 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.02.03.01` | Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad | C | 0 | core | ✅ | — |
 | `CRM-00.02.03.02` | UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue) | A | 1 | core | ⬜ | — |
-| `CRM-00.02.03.03` | Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco | A | 1 | gateway | ⬜ | — |
-| `CRM-00.02.03.04` | SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go | A | 1 | core | ⬜ | — |
-| `CRM-00.02.03.05` | Componentes embebibles opcionales (web components) para incrustar en portales propios | A | 3 | core | ⬜ | — |
+| `CRM-00.02.03.03` | Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco | A | 1 | gateway | ✅ | — |
+| `CRM-00.02.03.04` | SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go | A | 1 | core | ✅ | — |
+| `CRM-00.02.03.05` | Componentes embebibles opcionales (web components) para incrustar en portales propios | A | 3 | core | ✅ | — |
 | `CRM-00.02.03.06` | Metadata-driven UI: la API expone layouts, campos, permisos y validaciones para que cualquier frontend renderice coherentemente | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.07` | API de validación consultable antes de enviar (dry-run de reglas) | A | 0 | metadata | ✅ | — |
 | `CRM-00.02.03.08` | Server-driven UI: definición de formularios y vistas servida como JSON | D | 1 | metadata | ⬜ | — |
@@ -171,10 +171,10 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.02.04.01` | API Gateway con autenticación, autorización, rate limiting y enrutamiento por tenant | C | 0 | gateway | ✅ | — |
 | `CRM-00.02.04.02` | Resolución de tenant por subdominio, cabecera, claim del token o clave de API | C | 0 | gateway | ✅ | contecmind:tenant_root_domain + X-Tenant-Slug (config_parts/_app.py) |
-| `CRM-00.02.04.03` | mTLS para integraciones máquina-a-máquina críticas | A | 0 | gateway | ⬜ | — |
+| `CRM-00.02.04.03` | mTLS para integraciones máquina-a-máquina críticas | A | 0 | gateway | ✅ | — |
 | `CRM-00.02.04.04` | IP allowlisting por tenant y por credencial | A | 0 | gateway | ✅ | contecweb:app/services/security_rules.py |
 | `CRM-00.02.04.05` | Cacheo configurable con invalidación por evento y aislamiento por tenant | A | 0 | gateway | ✅ | contecmind:app/core/cache_registry.py |
-| `CRM-00.02.04.06` | Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas | A | 1 | gateway | ⬜ | contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py |
+| `CRM-00.02.04.06` | Portal de desarrollador por tenant: claves, scopes, logs de llamada, cuotas | A | 1 | gateway | ✅ | contecflow-PSA:app/services/developer_portal_service.py + app/models/oauth_apps.py |
 | `CRM-00.02.04.07` | Trazabilidad extremo a extremo: X-Request-Id / traceparent propagado y consultable | C | 0 | core | ✅ | contecmind:app/core/middleware.py (X-Request-Id) + tracing.py |
 
 ### 0.3 Orquestación de servicios y procesos
@@ -287,7 +287,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.02.01` | Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.02` | Hooks pre/post sobre operaciones de dominio (before save, after commit) | A | 0 | core | ✅ | — |
 | `CRM-00.04.02.03` | Extensiones asíncronas suscritas a eventos, sin bloquear la transacción | A | 0 | core | ✅ | — |
-| `CRM-00.04.02.04` | Endpoints personalizados definidos por el tenant sobre el mismo gateway | D | 6 | gateway | ⬜ | — |
+| `CRM-00.04.02.04` | Endpoints personalizados definidos por el tenant sobre el mismo gateway | D | 6 | gateway | ✅ | — |
 | `CRM-00.04.02.05` | Gestión de dependencias, versiones y rollback del código de extensión | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.06` | Observabilidad de extensiones: logs, métricas, errores y coste atribuido | A | 6 | automation | ⬜ | — |
 | `CRM-00.04.02.07` | Firma y revisión de extensiones de terceros antes de su instalación | A | 6 | automation | ⬜ | — |
@@ -401,7 +401,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.03.01` | Cifrado en tránsito (TLS 1.3) y en reposo | C | 0 | infra | ✅ | contecmind:deploy/nginx + docs/PENTEST_HARDENING.md |
 | `CRM-00.05.03.02` | Cifrado a nivel de campo para datos sensibles, con búsqueda determinista opcional | A | 0 | core | ✅ | contecmind:app/db/encrypted_text.py + app/core/crypto.py |
 | `CRM-00.05.03.03` | Enmascaramiento y ofuscación por rol en respuestas de API y en exportaciones | A | 0 | core | ✅ | contecmind:app/services/pii.py + sensitive_policy.py |
-| `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ⬜ | — |
+| `CRM-00.05.03.04` | Tokenización de datos de pago o identificadores fiscales | A | 2 | core | ✅ | — |
 | `CRM-00.05.03.05` | Anonimización y pseudonimización para entornos no productivos | A | 0 | core | ✅ | contecmind:app/services/pii.py |
 | `CRM-00.05.03.06` | DLP: control de exportaciones masivas, alertas y bloqueo por política | A | 0 | core | ✅ | contecweb:app/services/security_signals.py |
 | `CRM-00.05.03.07` | Marca de agua e identificación de origen en exportaciones | D | 1 | core | ✅ | contecflow-PSA:app/services/_pdf_marca.py (marca de agua) |
@@ -416,7 +416,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.04.03` | Auditoría de cambios de configuración y de permisos | C | 0 | core | ✅ | contecflow-PSA:app/services/settings_audit_service.py |
 | `CRM-00.05.04.04` | Retención configurable del log y exportación a SIEM | A | 0 | core | ✅ | contecmind:scripts/audit_purge.py |
 | `CRM-00.05.04.05` | Consulta y alertado sobre el audit trail desde la propia plataforma | A | 0 | core | ✅ | contecmind:app/api/admin_audit.py |
-| `CRM-00.05.04.06` | Event sourcing opcional en agregados críticos para reconstrucción de estado | D | 2 | core | ⬜ | — |
+| `CRM-00.05.04.06` | Event sourcing opcional en agregados críticos para reconstrucción de estado | D | 2 | core | ✅ | — |
 
 ### 0.6 Observabilidad y operación
 
