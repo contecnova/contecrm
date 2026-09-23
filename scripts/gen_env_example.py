@@ -213,7 +213,12 @@ def generar() -> str:
                 if nombre.startswith("_") or nombre == "model_config":
                     continue
                 for comentario in _comentarios_previos(lineas, nodo.lineno):
-                    partes.append(f"# {comentario}")
+                    # Una línea de comentario vacía se escribe `#` a secas. Con
+                    # el espacio, el gancho `trailing-whitespace` la recortaba
+                    # al commitear y acto seguido el gate `env-example` decía
+                    # que el fichero estaba desfasado: dos gates peleándose por
+                    # el mismo fichero y ningún commit posible.
+                    partes.append(f"# {comentario}" if comentario else "#")
                 valor = _valor_ejemplo(nodo, nombre)
                 if valor == "" and not _admite_vacio(nodo):
                     # Sin valor no es lo mismo que valor vacío. Comentada, el
