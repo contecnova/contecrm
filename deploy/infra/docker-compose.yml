@@ -1,0 +1,101 @@
+# Infraestructura compartida por las soluciones de la casa.
+#
+# Se levanta como proyecto **aparte** (`contec-infra`) y no dentro de contecrm,
+# y eso es lo importante: si la tuviera contecrm, un `docker compose down -v`
+# ahí dentro se llevaría por delante los datos de contecmind y de
+# contecintelligence. Nadie la posee, y por eso nadie la borra sin querer.
+#
+#     docker compose -f deploy/infra/docker-compose.yml up -d
+#
+# Cada solución se engancha con su fichero `docker-compose.compartida.yml`, que
+# apaga su infraestructura propia y apunta a estos contenedores por la red
+# `contec`. Sin ese fichero, cada una levanta la suya y no se entera de que esto
+# existe: **por separado, cada producto sigue siendo autónomo**.
+#
+# ── Por qué esta imagen de Postgres y no la de contecrm ─────────────────────
+#
+# contecintelligence necesita `pgvector`, y `postgres:16-alpine` no lo trae.
+# «Que todos usen el Postgres de contecrm» habría dejado a contecintelligence
+# sin poder crear sus índices vectoriales, y el fallo no habría salido al
+# arrancar sino al indexar el primer documento. `pgvector/pgvector:pg16` ES
+# Postgres 16 con la extensión dentro, así que cubre a los tres.
+#
+# Las tres soluciones fijaban además digests distintos de Postgres 16. Aquí hay
+# uno solo, y eso es parte de lo que se gana: dejan de probar contra versiones
+# ligeramente distintas de la misma base.
+#
+# ── Una instancia, tres bases ──────────────────────────────────────────────
+#
+# Se comparte el **servidor**, no la base. contecrm aísla sus servicios por
+# esquema —`identity`, `party`, `sales`…— y contecmind puede tener esquemas que
+# se llamen igual: en una sola base se pisarían, y el aislamiento por esquema
+# de contecrm dejaría de significar nada. `deploy/infra/crear-bases.sh` crea una
+# base por solución.
+
+name: contec-infra
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+    container_name: contec-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CONTEC_PG_USER:-contec}
+      POSTGRES_PASSWORD: ${CONTEC_PG_PASSWORD:-contec_dev_only}
+      # Base de arranque. Las de cada solución las crea el script de abajo.
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      # Al loopback: publicarlo en todas las interfaces expone la base a la red
+      # del sitio en el que estés trabajando.
+      - "127.0.0.1:${CONTEC_PG_PORT:-55432}:5432"
+    volumes:
+      - contec_postgres:/var/lib/postgresql/data
+      - ./crear-bases.sh:/docker-entrypoint-initdb.d/10-crear-bases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CONTEC_PG_USER:-contec}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [contec]
+
+  redis:
+    image: redis:7-alpine@sha256:520775a41a63e77e06c73e35d2fd9cc15921a609516818796b4ecbb813078bc7
+    container_name: contec-redis
+    restart: unless-stopped
+    # Bases distintas por solución (`/0`, `/1`, `/2`): Redis no tiene esquemas,
+    # y con una sola base un `FLUSHDB` de una vacía la caché de las tres.
+    command: ["redis-server", "--save", "60", "1", "--databases", "16"]
+    ports:
+      - "127.0.0.1:${CONTEC_REDIS_PORT:-56379}:6379"
+    volumes:
+      - contec_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [contec]
+
+  nats:
+    image: nats:2-alpine@sha256:ac8f88a6494bffc2c2a5289a0ca61cb28a9145c11ba5677cf24265d07f46d8d4
+    container_name: contec-nats
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data"]
+    ports:
+      - "127.0.0.1:${CONTEC_NATS_PORT:-54222}:4222"
+    volumes:
+      - contec_nats:/data
+    networks: [contec]
+
+volumes:
+  contec_postgres:
+  contec_redis:
+  contec_nats:
+
+networks:
+  contec:
+    # Nombre fijo: es lo que cada solución declara como red externa. Sin
+    # `name:`, compose le pondría el prefijo del proyecto y las demás no la
+    # encontrarían.
+    name: contec

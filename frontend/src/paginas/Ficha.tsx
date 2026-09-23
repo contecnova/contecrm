@@ -38,7 +38,7 @@ export function Ficha() {
         titulo={<span className="font-mono">{id}</span>}
         icono="description"
         entradilla={
-          <Link to={`/m/${ruta}`} className="text-accent-text hover:underline">
+          <Link to={`/m/${ruta}`} className="text-accent hover:underline">
             {modulo.titulo}
           </Link>
         }

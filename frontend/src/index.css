@@ -396,6 +396,22 @@
     @apply badge bg-accent/10 text-accent border border-accent/30;
   }
 
+  /* Etiqueta de DATO, distinta de la insignia de estado.
+     `.badge` va en mayúsculas y monoespaciada porque marca un estado —ACTIVA,
+     VENCIDO— y ahí grita a propósito. Un dato no: «Quota registros: 1.000.000»
+     en mayúsculas y con letra de máquina se lee peor que el JSON que vino a
+     sustituir. */
+  .chip-dato {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5
+      text-3xs bg-paper-light text-ink-muted border border-ink-dim/60;
+  }
+  .chip-dato--si {
+    @apply bg-accent/10 text-accent border-accent/30;
+  }
+  .chip-dato--no {
+    @apply text-ink-faint line-through opacity-70;
+  }
+
   /* ── Tab nav — Material 3 segmented chips ─────────────────────────── */
   .tab-button {
     @apply px-4 py-1.5 text-sm font-medium rounded-full transition-colors;

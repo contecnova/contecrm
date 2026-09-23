@@ -19,10 +19,12 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
+import { ALTAS } from "@/lib/altas";
 import { MODULOS } from "@/lib/modulos";
 import { todasLasEntradas } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
 import type { Sesion } from "@/lib/sesion";
+import { puede } from "@/lib/sesion";
 import { aplicarTema, temaActual, type Tema } from "@/lib/tema";
 import { cn, teclaAtajo } from "@/lib/utiles";
 
@@ -47,6 +49,8 @@ export function BarraSuperior({
 
   const [tema, setTema] = useState<Tema>(() => temaActual());
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [crearAbierto, setCrearAbierto] = useState(false);
+  const crearRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLButtonElement>(null);
 
@@ -75,6 +79,27 @@ export function BarraSuperior({
   }, [menuAbierto]);
 
   const inicial = (sesion?.nombre || sesion?.email || "?").charAt(0).toUpperCase();
+  // Solo las altas que esta persona puede hacer. Un menú de creación con
+  // opciones que responden «no tienes permiso» es peor que no tenerlo.
+  const altas = ALTAS.filter((a) => puede(sesion, a.permiso));
+
+  useEffect(() => {
+    if (!crearAbierto) return;
+    function fuera(evento: MouseEvent) {
+      if (crearRef.current && !crearRef.current.contains(evento.target as Node)) {
+        setCrearAbierto(false);
+      }
+    }
+    function tecla(evento: KeyboardEvent) {
+      if (evento.key === "Escape") setCrearAbierto(false);
+    }
+    window.addEventListener("mousedown", fuera);
+    window.addEventListener("keydown", tecla);
+    return () => {
+      window.removeEventListener("mousedown", fuera);
+      window.removeEventListener("keydown", tecla);
+    };
+  }, [crearAbierto]);
 
   function cambiarTema() {
     const siguiente: Tema = tema === "oscuro" ? "claro" : "oscuro";
@@ -150,6 +175,49 @@ export function BarraSuperior({
       </button>
 
       <div className="flex shrink-0 items-center gap-1">
+        {/* Dar de alta, siempre a la vista. Sin esto, la única forma de crear
+            algo es entrar en la pantalla correcta y localizar un botón dentro,
+            y eso no lo adivina nadie: es lo primero que echa en falta quien
+            abre el producto. Salesforce, HubSpot y Dynamics lo resuelven igual
+            y por el mismo motivo. */}
+        {altas.length > 0 ? (
+          <div className="relative mr-1" ref={crearRef}>
+            <button
+              type="button"
+              onClick={() => setCrearAbierto((v) => !v)}
+              className="btn-primary inline-flex items-center gap-1.5"
+              aria-haspopup="menu"
+              aria-expanded={crearAbierto}
+            >
+              <Icono nombre="add" tamano="sm" />
+              <span className="hidden sm:inline">{t("nav.crear")}</span>
+            </button>
+            {crearAbierto ? (
+              <div
+                role="menu"
+                aria-label={t("nav.crearQue")}
+                className="absolute right-0 z-popover mt-2 w-60 animate-fade-in rounded-xl border border-ink-dim/60 bg-paper p-1 shadow-elevation-3"
+              >
+                <p className="px-3 py-2 text-3xs uppercase tracking-wide text-ink-faint">
+                  {t("nav.crearQue")}
+                </p>
+                {altas.map((alta) => (
+                  <Link
+                    key={alta.a}
+                    role="menuitem"
+                    to={alta.a}
+                    onClick={() => setCrearAbierto(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink hover:bg-paper-light"
+                  >
+                    <Icono nombre={alta.icono} tamano="sm" className="text-ink-muted" />
+                    {t(alta.clave)}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={cambiarTema}
@@ -203,7 +271,7 @@ export function BarraSuperior({
                   setMenuAbierto(false);
                   alSalir();
                 }}
-                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger-text hover:bg-danger/10"
+                className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
               >
                 <Icono nombre="logout" tamano="sm" />
                 {t("app.cerrarSesion")}

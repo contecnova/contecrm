@@ -157,7 +157,7 @@ function Campo({
       {campo.tipo !== "booleano" ? (
         <label htmlFor={id} className="label-base">
           {campo.titulo}
-          {campo.obligatorio ? <span className="text-danger-text"> *</span> : null}
+          {campo.obligatorio ? <span className="text-danger"> *</span> : null}
         </label>
       ) : null}
 

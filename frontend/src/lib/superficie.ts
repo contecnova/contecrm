@@ -96,3 +96,46 @@ export function operacionDeListado(area: Area): Operacion | undefined {
 export function acciones(area: Area): Operacion[] {
   return area.operaciones.filter((o) => o.metodo !== "GET");
 }
+
+/**
+ * Qué rutas puede llamar esta sesión, según lo que declara el servidor.
+ *
+ * El menú necesita saber si alguien puede abrir un módulo **antes** de
+ * ofrecérselo. La alternativa era declarar el permiso de cada uno de los ciento
+ * doce recursos en `modulos.ts`, es decir, una segunda lista de permisos que
+ * tendría que coincidir con la del servidor — y que se separaría de ella en
+ * cuanto alguien cambiara un permiso en el backend, sin que nada lo avisara.
+ *
+ * Aquí no hay segunda lista: se pregunta al servidor qué exige cada operación
+ * y se compara con lo que esta sesión tiene. Si el servidor cambia de opinión,
+ * el menú cambia con él.
+ */
+export function rutasPermitidas(
+  superficie: Superficie | null,
+  puede: (permiso: string | null) => boolean,
+): Set<string> {
+  const permitidas = new Set<string>();
+  if (!superficie) return permitidas;
+  for (const operacion of superficie.operaciones) {
+    if (operacion.metodo.toUpperCase() !== "GET") continue;
+    if (puede(operacion.permiso)) permitidas.add(operacion.ruta);
+  }
+  return permitidas;
+}
+
+/**
+ * ¿Está permitida esta ruta concreta?
+ *
+ * La superficie publica las rutas con sus parámetros —`/api/v1/tenants/{id}`—
+ * y el front declara rutas literales. Se compara por prefijo de recurso, que es
+ * lo que de verdad determina el permiso: todas las operaciones de `/tenants`
+ * exigen lo mismo.
+ */
+export function rutaPermitida(permitidas: Set<string>, ruta: string): boolean {
+  const limpia = ruta.split("?")[0] ?? ruta;
+  if (permitidas.has(limpia)) return true;
+  for (const p of permitidas) {
+    if (p === limpia || p.startsWith(`${limpia}/`)) return true;
+  }
+  return false;
+}

@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Formulario } from "@/componentes/Formulario";
@@ -30,10 +30,19 @@ import { iconoDeGrupo } from "@/lib/navegacion";
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const { ruta = "" } = useParams();
+  const [parametros] = useSearchParams();
   const modulo = moduloDe(ruta);
-  const [activo, setActivo] = useState(0);
+  // `?r=Cuentas` elige la pestaña. Lo usa el botón «Crear» de la barra para
+  // llevar directamente al alta que se ha pedido: sin esto caería en la primera
+  // pestaña del módulo, que puede no ser la del recurso que se quiere crear.
+  const pedido = parametros.get("r");
+  const inicial = Math.max(
+    0,
+    modulo?.recursos.findIndex((r) => r.nombre === pedido) ?? 0,
+  );
+  const [activo, setActivo] = useState(inicial);
 
-  useEffect(() => setActivo(0), [ruta]);
+  useEffect(() => setActivo(inicial), [ruta, inicial]);
 
   if (!modulo) return <Vacio />;
   const recurso = modulo.recursos[activo] ?? modulo.recursos[0];
@@ -70,7 +79,16 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           ))}
         </nav>
       ) : null}
-      {recurso ? <RecursoVista recurso={recurso} sesion={sesion} ruta={ruta} /> : <Vacio />}
+      {recurso ? (
+        <RecursoVista
+          recurso={recurso}
+          sesion={sesion}
+          ruta={ruta}
+          abrirAlta={parametros.get("nuevo") === "1"}
+        />
+      ) : (
+        <Vacio />
+      )}
     </>
   );
 }
@@ -79,10 +97,13 @@ function RecursoVista({
   recurso,
   sesion,
   ruta,
+  abrirAlta = false,
 }: {
   recurso: Recurso;
   sesion: Sesion | null;
   ruta: string;
+  /** Se llega con el formulario ya abierto desde el botón «Crear». */
+  abrirAlta?: boolean;
 }) {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
@@ -90,7 +111,7 @@ function RecursoVista({
   const [siguiente, setSiguiente] = useState<string | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
-  const [creando, setCreando] = useState(false);
+  const [creando, setCreando] = useState(abrirAlta);
   const [enviando, setEnviando] = useState(false);
   const [termino, setTermino] = useState("");
 

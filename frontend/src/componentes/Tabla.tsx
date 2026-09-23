@@ -33,6 +33,8 @@
 
 import { Link } from "react-router-dom";
 
+import { escalar, humanizar, tieneDato, trozos, UUID } from "@/lib/formato";
+
 export interface Props {
   filas: Record<string, unknown>[];
   /** Columnas en orden. Si no se pasan, salen de las filas. */
@@ -61,7 +63,7 @@ export function Tabla({ filas, columnas, titulo, enlace }: Props) {
                   className="whitespace-nowrap px-3 py-2 font-medium text-ink-muted"
                   title={c}
                 >
-                  {rotular(c)}
+                  {humanizar(c)}
                 </th>
               ))}
             </tr>
@@ -74,26 +76,17 @@ export function Tabla({ filas, columnas, titulo, enlace }: Props) {
               >
                 {cabeceras.map((c, columna) => {
                   const destino = columna === 0 && enlace ? enlace(fila) : null;
-                  const { texto, largo, monoespaciado } = pintar(fila[c]);
                   return (
-                    <td
-                      key={c}
-                      className={`whitespace-nowrap px-3 py-2 align-top text-ink ${
-                        monoespaciado ? "font-mono text-3xs text-ink-muted" : ""
-                      }`}
-                      // El valor entero en el atributo: se recorta lo que se ve,
-                      // no lo que se tiene. Sin esto, recortar sería perderlo.
-                      title={largo}
-                    >
+                    <td key={c} className="whitespace-nowrap px-3 py-2 align-top text-ink">
                       {destino ? (
                         // Enlace de contenido, no de acción: `btn-link` es un
                         // micro-enlace monoespaciado en mayúsculas, y el nombre
                         // de una cuenta puesto ahí deja de parecer un nombre.
-                        <Link to={destino} className="text-accent-text hover:underline">
-                          {texto}
+                        <Link to={destino} className="text-accent hover:underline">
+                          <Celda valor={fila[c]} campo={c} />
                         </Link>
                       ) : (
-                        texto
+                        <Celda valor={fila[c]} campo={c} />
                       )}
                     </td>
                   );
@@ -120,54 +113,67 @@ export function columnasDe(filas: Record<string, unknown>[]): string[] {
   return [...vistas];
 }
 
-/** El nombre del campo, escrito como se lee. */
-export function rotular(campo: string): string {
-  const limpio = campo.replace(/_/g, " ").trim();
-  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
-}
-
-/** ¿Hay algo que enseñar aquí? Una lista vacía y un objeto vacío no lo son. */
-function tieneDato(valor: unknown): boolean {
-  if (valor === null || valor === undefined || valor === "") return false;
-  if (Array.isArray(valor)) return valor.length > 0;
-  if (typeof valor === "object") return Object.keys(valor as object).length > 0;
-  return true;
-}
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
- * Cómo se pinta un valor: lo que se ve, lo que se conserva y si va en monoespaciado.
+ * Lo que se pinta en una celda.
  *
- * Un identificador se recorta a sus primeros ocho caracteres. No es para que
- * quepa: es que treinta y seis caracteres de hexadecimal no se leen, no se
- * recuerdan y no se comparan de un vistazo, mientras que ocho sí bastan para
- * distinguir dos filas. El valor completo sigue estando en el atributo `title`.
+ * Devuelve nodos y no texto: un objeto de interruptores se lee como etiquetas
+ * —qué está encendido y qué no—, no como `{"procesos":true,"webhooks":true,…`
+ * recortado a la mitad. Eso último es información verdadera e inutilizable:
+ * nadie lee un JSON de un vistazo, y recortado ni siquiera entero.
  */
-function pintar(valor: unknown): { texto: string; largo: string; monoespaciado: boolean } {
+function Celda({ valor, campo }: { valor: unknown; campo: string }) {
   if (!tieneDato(valor)) {
     const vacio = Array.isArray(valor) || (typeof valor === "object" && valor !== null);
-    return {
-      texto: "—",
-      // Se distingue «no hay dato» de «la lista está vacía». Parece lo mismo y
-      // no lo es: lo primero puede ser un fallo de carga y lo segundo es un
-      // hecho sobre el registro.
-      largo: vacio ? "Lista vacía" : "Sin dato",
-      monoespaciado: false,
-    };
+    // Se distingue «no hay dato» de «la lista está vacía»: parece lo mismo y no
+    // lo es —lo primero puede ser un fallo de carga y lo segundo es un hecho—.
+    return (
+      <span className="text-ink-faint" title={vacio ? "Lista vacía" : "Sin dato"}>
+        —
+      </span>
+    );
   }
-  if (typeof valor === "boolean") return { texto: valor ? "sí" : "no", largo: String(valor), monoespaciado: false };
-  if (typeof valor === "object") {
-    const json = JSON.stringify(valor);
-    return { texto: json.length > 40 ? `${json.slice(0, 40)}…` : json, largo: json, monoespaciado: true };
+
+  const compuesto = Array.isArray(valor) || (valor !== null && typeof valor === "object");
+  if (compuesto) {
+    const piezas = trozos(valor, campo);
+    const visibles = piezas.slice(0, 3);
+    return (
+      <span className="inline-flex flex-wrap items-center gap-1">
+        {visibles.map((t, i) => (
+          <span
+            key={i}
+            className={`chip-dato ${t.apagado ? "chip-dato--no" : "chip-dato--si"}`}
+          >
+            {t.texto}
+          </span>
+        ))}
+        {piezas.length > visibles.length ? (
+          <span
+            className="text-3xs text-ink-faint"
+            title={piezas.map((t) => t.texto).join(" · ")}
+          >
+            +{piezas.length - visibles.length}
+          </span>
+        ) : null}
+      </span>
+    );
   }
-  const texto = String(valor);
-  if (UUID.test(texto)) return { texto: `${texto.slice(0, 8)}…`, largo: texto, monoespaciado: true };
-  return {
-    texto: texto.length > 60 ? `${texto.slice(0, 60)}…` : texto,
-    largo: texto,
-    monoespaciado: false,
-  };
+
+  const texto = escalar(valor, campo);
+  if (typeof valor === "string" && UUID.test(valor)) {
+    // Ocho caracteres bastan para distinguir dos filas; treinta y seis de
+    // hexadecimal no se leen, no se recuerdan y no se comparan de un vistazo.
+    return (
+      <span className="font-mono text-3xs text-ink-muted" title={valor}>
+        {valor.slice(0, 8)}…
+      </span>
+    );
+  }
+  return (
+    <span title={texto.length > 60 ? texto : undefined}>
+      {texto.length > 60 ? `${texto.slice(0, 60)}…` : texto}
+    </span>
+  );
 }
 
 function clave(fila: Record<string, unknown>, i: number): string {

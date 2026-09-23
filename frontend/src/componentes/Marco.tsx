@@ -24,6 +24,7 @@ import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { Paleta } from "@/componentes/Paleta";
 import { llamar } from "@/lib/api";
 import { ProveedorPanel } from "@/lib/panel";
+import { ProveedorPermisos } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 
 export interface Props {
@@ -57,6 +58,7 @@ export function Marco({ sesion, children }: Props) {
 
   return (
     <ProveedorPanel>
+      <ProveedorPermisos sesion={sesion}>
       <div className="flex h-screen overflow-hidden bg-paper-dark">
         {/* Un salto al contenido es lo primero que necesita quien navega con
             teclado: sin él, cada página empieza por recorrer el menú entero. */}
@@ -90,8 +92,9 @@ export function Marco({ sesion, children }: Props) {
           </main>
         </div>
 
-        <Paleta abierta={paleta} alCerrar={() => setPaleta(false)} />
+        <Paleta abierta={paleta} alCerrar={() => setPaleta(false)} sesion={sesion} />
       </div>
+      </ProveedorPermisos>
     </ProveedorPanel>
   );
 }

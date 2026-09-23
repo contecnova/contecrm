@@ -23,9 +23,10 @@ import { NavLink } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
-import { porGrupo } from "@/lib/modulos";
-import { ACCESOS, SECCIONES, iconoDeGrupo, type Entrada } from "@/lib/navegacion";
+import { porGrupoVisible } from "@/lib/modulos";
+import { ACCESOS, entradaVisible, menuDe, type Entrada } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
+import { usePermitidas } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
@@ -34,6 +35,7 @@ const CLAVE_PLEGADAS = "contecrm.panel_plegadas";
 export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSalir: () => void }) {
   const { t } = useTranslation();
   const { abierto, fijar } = usePanel();
+  const permitidas = usePermitidas();
   const cerrarRef = useRef<HTMLButtonElement | null>(null);
 
   // Qué secciones están plegadas. Se recuerda porque plegar es una decisión: a
@@ -77,7 +79,22 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
     return () => window.removeEventListener("keydown", alPulsar);
   }, [abierto, fijar]);
 
-  const grupos = useMemo(() => [...porGrupo()], []);
+  // El menú enseña **solo lo que esta persona puede abrir**. Ofrecer lo que no
+  // se puede hacer obliga a probarlo para descubrirlo, y lo que se descubre es
+  // un error: el usuario acaba creyendo que el sistema está roto. Es lo que
+  // hacen las herramientas del mercado —una pestaña sin acceso no se enseña— y
+  // es lo que aquí no se hacía.
+  // Una sola lista: los módulos del catálogo y las pantallas transversales
+  // repartidos por dominio de negocio. Antes eran dos taxonomías en paralelo y
+  // seis pantallas aparecían dos veces con el mismo nombre.
+  const areas = useMemo(
+    () => menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e)),
+    [sesion, permitidas],
+  );
+  const accesos = useMemo(
+    () => ACCESOS.filter((e) => entradaVisible(sesion, e)),
+    [sesion],
+  );
 
   return (
     <>
@@ -121,52 +138,30 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
         <div className="px-4 pb-3">
           <p className="section-label mb-2">{t("nav.accesos")}</p>
           <nav aria-label={t("nav.accesos")} className="flex flex-wrap gap-1.5">
-            {ACCESOS.map((entrada) => (
+            {accesos.map((entrada) => (
               <Pastilla key={entrada.a} entrada={entrada} />
             ))}
           </nav>
         </div>
 
-        {/* ── Secciones ────────────────────────────────────────────────── */}
+        {/* ── Áreas ─────────────────────────────────────────────────────── */}
         <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-          <Seccion
-            id="modulos"
-            rotulo={t("nav.grupoModulos")}
-            plegada={Boolean(plegadas.modulos)}
-            alAlternar={() => alternar("modulos")}
-          >
-            {grupos.map(([grupo, modulos]) => (
-              <div key={grupo} className="mb-2 last:mb-0">
-                <p className="flex items-center gap-1.5 px-3 py-1 text-3xs uppercase tracking-wide text-ink-faint">
-                  <Icono nombre={iconoDeGrupo(grupo)} tamano="sm" />
-                  {grupo}
-                </p>
-                {modulos.map((modulo) => (
-                  <Enlace
-                    key={modulo.ruta}
-                    a={`/m/${modulo.ruta}`}
-                    rotulo={modulo.titulo}
-                    sangrado
-                  />
-                ))}
-              </div>
-            ))}
-          </Seccion>
-
-          {SECCIONES.map((seccion) => (
+          {areas.map((area) => (
             <Seccion
-              key={seccion.id}
-              id={seccion.id}
-              rotulo={t(seccion.clave)}
-              plegada={Boolean(plegadas[seccion.id])}
-              alAlternar={() => alternar(seccion.id)}
+              key={area.id}
+              id={area.id}
+              icono={area.icono}
+              rotulo={t(area.clave)}
+              plegada={Boolean(plegadas[area.id])}
+              alAlternar={() => alternar(area.id)}
             >
-              {seccion.entradas.map((entrada) => (
+              {area.entradas.map((entrada) => (
                 <Enlace
                   key={entrada.a}
                   a={entrada.a}
-                  rotulo={t(entrada.clave)}
-                  icono={entrada.icono}
+                  // Los módulos traen su título ya escrito; las transversales,
+                  // una clave de traducción. Se distingue por el punto.
+                  rotulo={entrada.clave.includes(".") ? t(entrada.clave) : entrada.clave}
                 />
               ))}
             </Seccion>
@@ -200,12 +195,14 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
 function Seccion({
   id,
   rotulo,
+  icono,
   plegada,
   alAlternar,
   children,
 }: {
   id: string;
   rotulo: string;
+  icono?: string;
   plegada: boolean;
   alAlternar: () => void;
   children: React.ReactNode;
@@ -226,6 +223,7 @@ function Seccion({
             tamano="sm"
             className={cn("transition-transform", plegada && "-rotate-90")}
           />
+          {icono ? <Icono nombre={icono} tamano="sm" /> : null}
           <span className="truncate">{rotulo}</span>
         </button>
       </div>
@@ -256,17 +254,7 @@ function Pastilla({ entrada }: { entrada: Entrada }) {
   );
 }
 
-function Enlace({
-  a,
-  rotulo,
-  icono,
-  sangrado,
-}: {
-  a: string;
-  rotulo: string;
-  icono?: string;
-  sangrado?: boolean;
-}) {
+function Enlace({ a, rotulo, icono }: { a: string; rotulo: string; icono?: string }) {
   return (
     <NavLink
       to={a}
@@ -274,9 +262,8 @@ function Enlace({
       className={({ isActive }) =>
         cn(
           "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
-          sangrado && "pl-7",
           isActive
-            ? "bg-accent/10 font-medium text-accent-text"
+            ? "bg-accent/10 font-medium text-accent"
             : "text-ink-muted hover:bg-paper-light hover:text-ink",
         )
       }

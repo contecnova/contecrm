@@ -16,23 +16,31 @@ import { Link } from "react-router-dom";
 
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Icono } from "@/componentes/Icono";
-import { MODULOS, porGrupo } from "@/lib/modulos";
-import { SECCIONES, iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
-import type { Sesion } from "@/lib/sesion";
+import { ALTAS } from "@/lib/altas";
+import { porGrupoVisible } from "@/lib/modulos";
+import { usePermitidas } from "@/lib/permisos";
+import { TRANSVERSALES, entradaVisible, iconoDeGrupo } from "@/lib/navegacion";
+import { puede, type Sesion } from "@/lib/sesion";
 import { teclaAtajo } from "@/lib/utiles";
 
 export function Inicio({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
-  const grupos = [...porGrupo()];
-  const herramientas = SECCIONES.flatMap((s) => s.entradas);
+  // Lo mismo que el menú: solo lo que esta persona puede abrir. Enseñar en la
+  // portada veintitrés módulos a quien puede entrar en cuatro es prometer un
+  // producto que no va a poder usar.
+  const permitidas = usePermitidas();
+  const grupos = [...porGrupoVisible(sesion, permitidas)];
+  const herramientas = TRANSVERSALES.filter((e) => entradaVisible(sesion, e));
+  const cuantosModulos = grupos.reduce((total, [, m]) => total + m.length, 0);
+  const altas = ALTAS.filter((a) => puede(sesion, a.permiso));
 
   return (
     <>
       <CabeceraPagina
         titulo={t("inicio.saludo", { nombre: sesion?.nombre || sesion?.email || "" })}
         entradilla={t("inicio.entradilla", {
-          modulos: MODULOS.length,
-          pantallas: todasLasEntradas().length,
+          modulos: cuantosModulos,
+          pantallas: herramientas.length,
           atajo: teclaAtajo(),
         })}
         icono="home"
@@ -44,6 +52,29 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
           )
         }
       />
+
+      {/* Lo primero, empezar a trabajar. La portada enseñaba una rejilla de
+          veintitrés módulos y ninguna forma evidente de dar de alta un cliente:
+          quien entra no busca una pantalla, busca hacer algo. */}
+      {altas.length > 0 ? (
+        <section aria-labelledby="inicio-altas" className="mb-8">
+          <h2 id="inicio-altas" className="text-sm font-semibold text-ink">
+            {t("inicio.empezar")}
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {altas.map((alta) => (
+              <Link
+                key={alta.a}
+                to={alta.a}
+                className="card card-hover inline-flex items-center gap-2 px-3 py-2"
+              >
+                <Icono nombre={alta.icono} tamano="sm" className="text-accent" />
+                <span className="text-xs text-ink">{t(alta.clave)}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-labelledby="inicio-modulos">
         <h2 id="inicio-modulos" className="text-sm font-semibold text-ink">

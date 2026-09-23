@@ -17,8 +17,10 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
-import { MODULOS } from "@/lib/modulos";
-import { iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
+import { MODULOS, recursoVisible } from "@/lib/modulos";
+import { entradaVisible, iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
+import { usePermitidas } from "@/lib/permisos";
+import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
 interface Destino {
@@ -36,29 +38,45 @@ function normalizar(texto: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-export function Paleta({ abierta, alCerrar }: { abierta: boolean; alCerrar: () => void }) {
+export function Paleta({
+  abierta,
+  alCerrar,
+  sesion,
+}: {
+  abierta: boolean;
+  alCerrar: () => void;
+  sesion: Sesion | null;
+}) {
   const { t } = useTranslation();
   const navegar = useNavigate();
+  const permitidas = usePermitidas();
   const [consulta, setConsulta] = useState("");
   const [indice, setIndice] = useState(0);
   const campoRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLUListElement>(null);
 
   const destinos = useMemo<Destino[]>(() => {
-    const fijas: Destino[] = todasLasEntradas().map((e) => ({
-      a: e.a,
-      rotulo: t(e.clave),
-      grupo: t("nav.grupoPantallas"),
-      icono: e.icono,
-    }));
-    const modulos: Destino[] = MODULOS.map((m) => ({
+    // Se filtra con el mismo criterio que el menú. Encontrar por búsqueda una
+    // pantalla que el menú esconde es peor que no esconderla: parece que el
+    // sistema se contradice, y al abrirla sale un error.
+    const fijas: Destino[] = todasLasEntradas()
+      .filter((e) => entradaVisible(sesion, e))
+      .map((e) => ({
+        a: e.a,
+        rotulo: t(e.clave),
+        grupo: t("nav.grupoPantallas"),
+        icono: e.icono,
+      }));
+    const modulos: Destino[] = MODULOS.filter((m) =>
+      m.recursos.some((r) => recursoVisible(sesion, r, permitidas)),
+    ).map((m) => ({
       a: `/m/${m.ruta}`,
       rotulo: m.titulo,
       grupo: m.grupo,
       icono: iconoDeGrupo(m.grupo),
     }));
     return [...fijas, ...modulos];
-  }, [t]);
+  }, [t, sesion, permitidas]);
 
   const resultados = useMemo(() => {
     const aguja = normalizar(consulta.trim());

@@ -126,6 +126,50 @@ export default {
           soft:    "rgb(var(--danger-soft-text) / <alpha-value>)",
         },
       },
+      // ── El mismo color, distinto según sea RELLENO o TEXTO ──────────────
+      //
+      // `theme.textColor` es una escala propia de Tailwind: si no se define,
+      // cae a `colors`; si se define, manda para las utilidades `text-*` y solo
+      // para ellas. Eso permite que un nombre semántico resuelva a un color
+      // distinto según el papel que juegue, que es lo que pide WCAG 2:
+      //
+      //   text-warning  → `--warning-text` (#8b5f00) — 4.67:1 sobre superficie
+      //   bg-warning    → `--warning`      (#f9ab00) — relleno, lleva tinta encima
+      //
+      // Los tokens `*-text` YA estaban en `index.css`, copiados de contecmind
+      // con su razonamiento entero. Lo que faltaba era esto: cablearlos. Sin
+      // ello, `text-warning` pintaba el amarillo de relleno —1,93:1 sobre
+      // blanco, ilegible— y el aviso de campos retenidos no se leía.
+      //
+      // Cada familia se declara ENTERA, incluidas las claves que no cambian:
+      // `extend` fusiona por clave de primer nivel y no garantiza fusión
+      // profunda de los objetos de color, así que listar solo `ink.faint`
+      // podría borrar `ink.DEFAULT` y dejar el texto negro en tema oscuro.
+      textColor: {
+        ink: {
+          DEFAULT: "rgb(var(--ink) / <alpha-value>)",
+          muted: "rgb(var(--ink-muted) / <alpha-value>)",
+          faint: "rgb(var(--ink-faint-text) / <alpha-value>)",
+          dim: "rgb(var(--ink-dim) / <alpha-value>)",
+        },
+        accent: {
+          DEFAULT: "rgb(var(--accent-text) / <alpha-value>)",
+          soft: "rgb(var(--accent-soft-text) / <alpha-value>)",
+          glow: "rgb(var(--accent-glow-text) / <alpha-value>)",
+        },
+        success: {
+          DEFAULT: "rgb(var(--success-text) / <alpha-value>)",
+          soft: "rgb(var(--success-soft-text) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "rgb(var(--warning-text) / <alpha-value>)",
+          soft: "rgb(var(--warning-soft-text) / <alpha-value>)",
+        },
+        danger: {
+          DEFAULT: "rgb(var(--danger-text) / <alpha-value>)",
+          soft: "rgb(var(--danger-soft-text) / <alpha-value>)",
+        },
+      },
       fontFamily: {
         // NotebookLM uses Google Sans / Roboto. We stick with Geist as the
         // workhorse (closest visual match available without licensing

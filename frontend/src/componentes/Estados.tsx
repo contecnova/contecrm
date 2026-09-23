@@ -110,7 +110,7 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
 
   return (
     <div className="rounded-xl border border-danger/40 bg-danger/5 p-6" role="alert">
-      <p className="flex items-center gap-2 text-danger-text">
+      <p className="flex items-center gap-2 text-danger">
         <Icono nombre="error" tamano="sm" />
         {mensaje}
       </p>

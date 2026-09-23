@@ -11,6 +11,9 @@
  * que solo existe por API es una capacidad que nadie ve.
  */
 
+import { puede, type Sesion } from "@/lib/sesion";
+import { rutaPermitida } from "@/lib/superficie";
+
 export interface Modulo {
   /** Camino en la aplicación. */
   ruta: string;
@@ -675,6 +678,54 @@ export function moduloDe(ruta: string): Modulo | undefined {
 export function porGrupo(): Map<string, Modulo[]> {
   const grupos = new Map<string, Modulo[]>();
   for (const modulo of MODULOS) {
+    grupos.set(modulo.grupo, [...(grupos.get(modulo.grupo) ?? []), modulo]);
+  }
+  return grupos;
+}
+
+/**
+ * ¿Puede esta persona ver algo de este recurso?
+ *
+ * Dos condiciones distintas: el permiso y el ámbito. Un administrador de
+ * empresa **tiene** `tenant:read` y aun así no puede listar tenants, porque eso
+ * es de quien opera la plataforma. Si solo se mirara el permiso, seguiría
+ * viendo esa pestaña.
+ */
+export function recursoVisible(
+  sesion: Sesion | null,
+  recurso: Recurso,
+  permitidas?: Set<string>,
+): boolean {
+  if (recurso.solo_plataforma && !sesion?.es_admin_plataforma) return false;
+  if (!puede(sesion, recurso.permiso)) return false;
+  // Lo que de verdad manda es lo que el servidor dice que exige esa ruta. El
+  // campo `permiso` de aquí solo lo declaran unos pocos recursos, así que por
+  // sí solo no filtra nada: sin la superficie, a un agente de soporte se le
+  // seguían enseñando los veintitrés módulos.
+  if (permitidas && permitidas.size > 0) return rutaPermitida(permitidas, recurso.listar);
+  return true;
+}
+
+/**
+ * Los módulos que esta persona puede abrir, agrupados.
+ *
+ * Un módulo del que no se puede ver **ningún** recurso no sale en el menú. No
+ * es una cuestión estética: ofrecer lo que no se puede hacer obliga a probarlo
+ * para descubrirlo, y lo que se descubre es un error. Es lo que hacen las
+ * herramientas del mercado —una pestaña sin acceso no se enseña— y es lo que
+ * aquí no se hacía.
+ *
+ * La decisión se toma con lo que el servidor dice que puede esta sesión, no con
+ * una lista escrita en el front: si el servidor cambia de opinión, el menú
+ * cambia con él.
+ */
+export function porGrupoVisible(
+  sesion: Sesion | null,
+  permitidas?: Set<string>,
+): Map<string, Modulo[]> {
+  const grupos = new Map<string, Modulo[]>();
+  for (const modulo of MODULOS) {
+    if (!modulo.recursos.some((r) => recursoVisible(sesion, r, permitidas))) continue;
     grupos.set(modulo.grupo, [...(grupos.get(modulo.grupo) ?? []), modulo]);
   }
   return grupos;
