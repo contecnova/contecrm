@@ -349,6 +349,65 @@ async def ui_de_referencia_de_la_instalacion(principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/estado/presion",
+    summary="Qué se está aplazando en la instalación y por qué",
+    description=(
+        "La presión de un solo servicio no dice nada: lo que se aplaza depende "
+        "del que esté peor. Aquí se juntan las de todos (CRM-08.01.01.06).\n\n"
+        "Un servicio que no contesta **no cuenta como tranquilo**: se dice que no "
+        "se sabe, que es distinto."
+    ),
+)
+async def presion_de_la_instalacion(principal: AutenticadoDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/presion",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return dict(respuesta.json())
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            return {"servicio": nombre, "medible": False, "presion": None}
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    medibles = [p for p in partes if p.get("presion") is not None]
+    peor = max(medibles, key=lambda p: p["presion"], default=None)
+    mudos = [p["servicio"] for p in partes if p.get("presion") is None]
+
+    return {
+        "peor": peor,
+        "servicios": partes,
+        "sin_respuesta": mudos,
+        "que_significa": (
+            "No ha contestado ningún servicio: no se puede decir que todo esté "
+            "tranquilo, se puede decir que no se sabe."
+            if not medibles
+            else (peor or {}).get("que_significa", "")
+        ),
+        "aviso": (
+            ""
+            if not mudos
+            else f"{len(mudos)} servicios no contestan. Un servicio mudo no cuenta como "
+            "tranquilo: es justo el que suele estar peor."
+        ),
+    }
+
+
+@router.get(
     "/superficie",
     summary="Todo lo que sabe hacer el CRM, en una lista",
     description=(

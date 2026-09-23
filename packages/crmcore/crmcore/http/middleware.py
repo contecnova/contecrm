@@ -240,6 +240,8 @@ class TiemposMiddleware:
         # error es por servicio, y una cuenta agregada de todos no dice cuál
         # hay que arreglar.
         self._servicio = servicio
+        # Últimas duraciones, para el p95 con el que se calcula la presión.
+        self._ventana: list[float] = []
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope.get("path") in RUTAS_INFRAESTRUCTURA:
@@ -279,6 +281,42 @@ class TiemposMiddleware:
                     duracion_ms=round(duracion * 1000, 1),
                 )
             await self._anotar_slo(estado["status"], duracion)
+            self._medir_presion(duracion)
+
+    def _medir_presion(self, duracion_s: float) -> None:
+        """Alimenta la presión del sistema (CRM-08.01.01.06).
+
+        Va aquí por lo mismo que el SLO: la presión tiene que salir de **todas**
+        las peticiones. Mientras nadie la midiera, la degradación controlada era
+        un mecanismo que existía en el código y no se activaba nunca —la presión
+        valía cero para siempre—, que es el peor tipo de función: la que da
+        confianza sin hacer nada.
+
+        Medir no puede tirar una petición, así que todo va dentro del `try`.
+        """
+        try:
+            from crmcore import resiliencia
+            from crmcore.config import get_settings
+            from crmcore.obs.presion import aplicar, calcular
+
+            self._ventana.append(duracion_s * 1000)
+            if len(self._ventana) < 20:
+                return
+            # Ventana corta y deslizante: con una ventana larga, la presión tarda
+            # minutos en bajar después de un pico y el sistema se queda degradado
+            # cuando ya no hace falta.
+            self._ventana = self._ventana[-100:]
+            ordenadas = sorted(self._ventana)
+            p95 = ordenadas[int(len(ordenadas) * 0.95) - 1]
+            aplicar(
+                calcular(
+                    p95_ms=p95,
+                    objetivo_ms=float(get_settings().slo_latencia_objetivo_ms),
+                    presion_anterior=resiliencia.presion(),
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — medir no puede tirar la petición
+            logger.warning("presion.no_medida", motivo=str(exc)[:120])
 
     async def _anotar_slo(self, status: int, duracion_s: float) -> None:
         """Apunta la petición contra el presupuesto de error (CRM-00.06.01.04).

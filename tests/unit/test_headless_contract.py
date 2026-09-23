@@ -170,6 +170,9 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # cada servicio se mide a sí mismo y el gateway junta los hallazgos, porque
     # «la UI es opcional» solo es verdad si lo es en todos.
     "/api/v1/estado/ui-referencia",
+    # La presión de cada servicio se compone en el gateway: la de uno solo no
+    # dice nada, porque lo que se aplaza depende del que esté peor (CRM-08.01.01.06).
+    "/api/v1/estado/presion",
     "/api/v1/superficie",
 }
 

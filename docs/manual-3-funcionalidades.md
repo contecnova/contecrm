@@ -11787,3 +11787,176 @@ las dos formas de quedarse viejo que sí son detectables:
 Y una decisión sobre las cifras: en el texto de los manuales no hay números de
 progreso. Una cifra escrita a mano se queda vieja al día siguiente; el recuento
 vivo está en [el estado del catálogo](catalogo/estado.md), que se regenera.
+
+## Recuperación a un punto en el tiempo y pruebas de DR (`CRM-00.06.02.02`, `CRM-00.06.02.06`)
+
+Restaurar el clúster entero para arreglar lo que rompió un cliente es la opción que
+existe en todas partes y que **no se usa nunca**: implica tirar abajo a los demás
+por un error de uno. Lo que hace falta es volver atrás **un solo tenant** hasta un
+momento concreto.
+
+Y ahí hay una complicación que conviene mirar de frente: **el tiempo no es el mismo
+para todos los datos**. Restaurar las tablas del tenant a las 10:00 no deshace los
+eventos que salieron entre las 10:00 y ahora — el webhook ya llegó al ERP del
+cliente, el correo ya se mandó, la audiencia ya se subió a la plataforma de
+anuncios. Por eso la restauración **dice qué salió fuera en ese tramo**: nada de
+eso se puede deshacer y, si no se dice, nadie lo tiene en cuenta.
+
+- **Se restaura sobre una copia, no encima.** Se levanta el estado de ese momento
+  en paralelo, alguien lo mira y entonces se decide qué se trae. Restaurar
+  directamente sobre lo vivo convierte un error en dos.
+- **Hay cosas que no se restauran nunca**: la auditoría —restaurarla borraría el
+  rastro del propio incidente—, los eventos ya publicados y las claves de cifrado.
+- **Y el momento se comprueba al pedirlo.** Pedir volver a hace seis meses cuando
+  la retención son treinta días falla ahora, no a mitad del proceso.
+
+**Las pruebas de recuperación** no son un trámite: son lo único que distingue una
+copia de un fichero grande. Se cronometran y se guarda el resultado, porque el RTO
+que se promete en un contrato casi siempre es más bajo que el real — se calculó
+contando la restauración y no lo que tarda alguien en darse cuenta, en decidir y en
+encontrar la copia. Si hay **cualquier diferencia** entre lo restaurado y lo
+esperado, la prueba no pasa: una copia que restaura el 99 % es una copia que pierde
+datos. Y sin ninguna prueba no se dice que las copias estén bien: se dice que nadie
+ha comprobado que sirvan.
+
+El **RPO real** —cuánto se perdería ahora mismo— se puede mirar en cualquier
+momento, y sin ninguna copia no es cero: es todo.
+
+## Catálogo de servicios, malla, zonas y despliegue (`CRM-00.03.01.04`, `CRM-00.03.01.05`, `CRM-00.06.02.05`, `CRM-00.06.02.08`)
+
+Cuatro cosas que se documentan en una wiki, se quedan viejas y hacen daño justo
+cuando hacen falta: a las tres de la mañana, con un servicio caído y alguien
+buscando a quién llamar. Aquí se declaran en el código y se comprueban.
+
+**El catálogo de servicios** dice de cada uno quién es su dueño, qué promete, de
+qué depende y qué runbook abrir. Un servicio sin dueño declarado es uno que en una
+guardia nadie sabe de quién es. Y se detectan las **dependencias circulares**, que
+producen un arranque que nunca termina y una guardia en la que todos los servicios
+están «esperando al otro».
+
+**De la malla**, lo que importa no es la tecnología: es **qué se puede
+reintentar**. Un reintento automático sobre un `POST` que crea algo produce dos
+pedidos, y el cliente lo ve antes que nosotros. Con clave de idempotencia sí se
+reintenta, porque el servidor reconoce que es la misma petición — por eso el CRM la
+exige en las escrituras que importan.
+
+**Tener réplicas no es alta disponibilidad.** Lo que decide si el sistema aguanta
+es si la promoción está probada y si lo que queda en pie tiene capacidad para todo
+el tráfico: dos zonas al 60 % de uso cada una no sobreviven a perder una, y eso se
+sabe sumando, no esperando. Un plan sin simulacro es una suposición cara: nadie
+sabe cuánto tarda de verdad una promoción hasta que la ha hecho con el reloj
+delante.
+
+**Y un despliegue sin corte solo lo es si la vuelta atrás también lo es.** Un
+canario que no se revierte en un minuto no es un canario: es un despliegue con
+público, y cuando algo va mal lo que se hace es esperar a ver si se arregla. La
+migración tiene que ser compatible hacia atrás una versión, porque durante el
+despliegue hay dos versiones hablando con la misma base — no es un riesgo teórico,
+pasa en el minuto dos. Los umbrales para abortar se fijan **antes**: decidiéndolo
+en caliente siempre parece que «todavía no es para tanto», y media hora después ya
+hay clientes afectados.
+
+## Degradación controlada bajo presión (`CRM-08.01.01.06`)
+
+El mecanismo para aplazar lo que no es crítico cuando el sistema está saturado
+existía desde el principio: lo crítico pasa siempre, lo normal por debajo del 90 %
+de presión y lo diferible por debajo del 60 %.
+
+Lo que faltaba era **que alguien midiera la presión**. Sin nadie que la declarara,
+valía cero para siempre, todo pasaba siempre, y la degradación controlada era un
+mecanismo que existía en el código y no se activaba jamás — el peor tipo de
+función: la que da confianza sin hacer nada.
+
+Ahora se mide en cada petición, con tres señales y una regla:
+
+- **La latencia contra el objetivo**, que es la que nota el usuario.
+- **El pool de conexiones**, que es la que avisa antes: cuando se agota, las
+  peticiones no van lentas, fallan de golpe.
+- **La cola de trabajos**, que es el aviso más temprano y el que menos se mira.
+- **Y manda la peor, no la media.** Promediarlas suaviza justo la que está dando el
+  problema: con el pool al 95 % y lo demás bien, la media sale tranquila y el
+  sistema está a punto de caer.
+
+La presión **sube de golpe y baja despacio**. Si bajara igual de rápido el sistema
+oscilaría —admite, se satura, rechaza, se alivia, admite— y media petición fallando
+sin patrón es peor para el usuario que una degradación estable. Y lo que no se
+puede medir **no cuenta como cero**: un proceso que solo mide latencia y da presión
+baja mientras su cola crece está tranquilizando sobre algo que no ha mirado.
+
+Cada servicio publica qué se está aplazando y por qué, y el gateway junta las de
+todos — la presión de uno solo no dice nada, porque lo que se aplaza depende del
+que esté peor. Un servicio que no contesta **no cuenta como tranquilo**: suele ser
+justo el que está peor.
+
+## Particionado, archivado y escalado (`CRM-08.01.01.04`, `CRM-08.01.01.02`)
+
+Hay tres o cuatro tablas que crecen sin parar —actividades, eventos, auditoría— y
+el resto se queda en unos cientos de miles de filas para siempre. Con las primeras
+pasa siempre lo mismo y en el mismo orden: las consultas se ponen lentas, los
+índices dejan de caber en memoria, el mantenimiento tarda más que su ventana, y al
+final una consulta que iba bien durante dos años deja de ir en una semana sin que
+nadie haya cambiado nada.
+
+- **Se particiona por tiempo, no por tenant.** Por tenant parece natural y es un
+  error caro: con dos mil tenants salen dos mil particiones, el planificador tarda
+  más en decidir que en ejecutar, y el tenant grande sigue teniendo su partición
+  enorme. Por mes, las consultas normales tocan una o dos.
+- **Las particiones se crean por delante.** Crearlas cuando llega la primera fila
+  del mes significa crearlas a las 00:00 del día 1, dentro de la transacción de un
+  usuario y con un bloqueo de tabla: un incidente con fecha conocida.
+- **Lo viejo se archiva, no se borra.** Un CRM al que alguien pregunta por una
+  llamada de hace tres años y contesta que no existe deja de ser el registro de la
+  empresa. Se mueve a frío, se sigue consultando y se dice dónde está.
+- **Y lo retenido no se toca**: lo que está bajo obligación legal, en un litigio o
+  con una solicitud de acceso pendiente. Moverlo a frío sería cumplir el plazo de
+  retención por accidente y romper otra obligación a la vez — y la que se rompe
+  suele ser la cara.
+
+El aviso útil sobre el volumen no es «esta tabla es grande»: es **a qué ritmo
+crece**. Una de cien millones de filas estable no molesta a nadie; una de diez que
+dobla cada trimestre es un incidente dentro de nueve meses, y esos nueve meses son
+justo el tiempo que hace falta para arreglarlo con calma.
+
+**Del escalado horizontal**, dos cosas. La primera: cada servicio tiene un límite
+que **no es la CPU** —el gateway lo tiene en las conexiones salientes, los de datos
+en el pool de Postgres, el de inteligencia en la cuota del proveedor—, y añadir
+réplicas por encima de ese límite **empeora**: más réplicas son más conexiones
+peleando por el mismo pool. La segunda: un servicio solo se puede replicar si no
+guarda nada en su proceso. Un contador en memoria con tres réplicas cuenta un
+tercio — aquí pasó con el presupuesto de error—, una caché en memoria caduca
+distinto en cada una, y un planificador sin elección de líder manda el correo tres
+veces.
+
+Y al decidir qué escalar: **no el que se nota, sino el que tarda**. Si el gateway
+va lento porque `party` va lento, poner más gateways solo hace que esperen más
+peticiones a la vez. Cuando nadie está cerca de su límite, la respuesta honesta es
+que el problema no es de capacidad — más incómoda y ahorra una factura.
+
+## Entornos de pruebas con datos del cliente (`CRM-07.02.01.02`)
+
+Un entorno de pruebas sin datos parecidos a los de verdad no sirve: las pruebas
+pasan y luego en producción falla el cliente que tiene ocho direcciones o el nombre
+con una comilla. Por eso se pide copiar producción a pruebas.
+
+Y ahí está el problema: **copiar producción a pruebas es sacar los datos personales
+de tus clientes de donde están protegidos y ponerlos donde entra todo el mundo**. A
+pruebas acceden el consultor externo, el becario y el proveedor que está integrando
+algo; no hay ni el mismo cifrado ni el mismo control de acceso. La mayoría de las
+filtraciones de un CRM no salen de producción: salen de una copia.
+
+- **La anonimización no es opcional cuando el destino no es producción.** Se puede
+  desactivar pidiéndolo expresamente, con un motivo y con nombre — que sea una
+  casilla marcada por defecto es lo que hace que nadie la mire.
+- **Se anonimiza de forma consistente**: el mismo valor original da siempre el
+  mismo valor falso dentro del entorno, y distinto entre entornos. Sin lo primero,
+  el entorno no sirve para probar nada que cruce datos; sin lo segundo, cruzando
+  dos entornos se podría deshacer la anonimización.
+- **Una columna sin regla se vacía**, no se copia: el silencio por defecto tiene
+  que ser el seguro.
+- **Hay cosas que no se copian nunca**: tokens, claves de API y secretos de
+  webhook. Un token válido en pruebas es una puerta abierta a producción.
+- **Se recomienda copia parcial**, y no por espacio: con el 5 % de los clientes se
+  prueba igual de bien y hay veinte veces menos que proteger.
+- **Y un sandbox caduca.** El que se creó para una migración hace año y medio sigue
+  ahí con los datos de entonces, sin actualizaciones y sin que nadie recuerde quién
+  tiene acceso.

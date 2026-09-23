@@ -106,4 +106,25 @@ def crear_router_estado(servicio: str) -> APIRouter:
             "la_interfaz": estado_de_la_ui(settings=s),
         }
 
+    @router.get(
+        "/presion",
+        summary="Cuánta presión tiene este servicio y qué se está aplazando",
+        description=(
+            "El mecanismo de degradación controlada (CRM-08.01.01.06) decide qué "
+            "pasa cuando el sistema está saturado —lo crítico pasa siempre, lo "
+            "diferible espera—, y esto enseña **por qué** en un momento dado.\n\n"
+            "Sirve para contestar la pregunta de un incidente («¿por qué mi "
+            "informe no sale?») sin leer el código, y para ver si la presión que "
+            "se está midiendo se parece a lo que la gente está notando."
+        ),
+    )
+    def presion_del_servicio(principal: AutenticadoDep) -> Any:
+        from crmcore import resiliencia
+        from crmcore.obs.presion import que_se_esta_aplazando
+
+        return {
+            "servicio": servicio,
+            **que_se_esta_aplazando(resiliencia.presion()),
+        }
+
     return router

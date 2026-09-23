@@ -293,8 +293,8 @@ modulos:
               - {id: CRM-00.03.01.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecpos:services/* (14 servicios por capacidad)", t: "Servicios delimitados por capacidad de negocio (party, sales, service, marketing, billing-interface)"}
               - {id: CRM-00.03.01.02, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecpos:deploy/crear-bases.sh (una base y un rol por servicio)", t: "Propiedad exclusiva de datos por servicio; prohibida la lectura directa de la BD ajena"}
               - {id: CRM-00.03.01.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/contracts (buf)", t: "Contratos internos versionados y verificados por contract testing (consumer-driven)"}
-              - {id: CRM-00.03.01.04, c: A, fase: 0, svc: docs, estado: pendiente, t: "Service registry / catálogo interno con owner, SLO, dependencias y runbook"}
-              - {id: CRM-00.03.01.05, c: A, fase: 2, svc: infra, estado: pendiente, t: "Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red"}
+              - {id: CRM-00.03.01.04, c: A, fase: 0, svc: docs, estado: hecho, t: "Service registry / catálogo interno con owner, SLO, dependencias y runbook"}
+              - {id: CRM-00.03.01.05, c: A, fase: 2, svc: infra, estado: hecho, t: "Service mesh: mTLS, retries, timeouts, circuit breaking y canary a nivel de red"}
               - {id: CRM-00.03.01.06, c: A, fase: 0, svc: infra, estado: hecho, t: "Despliegue independiente por servicio, sin ventanas de release coordinadas"}
               - {id: CRM-00.03.01.07, c: A, fase: 2, svc: integration, estado: hecho, t: "Strangler pattern soportado para convivir con CRM heredado durante la migración"}
 
@@ -568,13 +568,13 @@ modulos:
             nombre: Continuidad y resiliencia
             capacidades:
               - {id: CRM-00.06.02.01, c: C, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/backup.sh + restore.sh + deploy/systemd/*backup*", t: "Backups automáticos con RPO y RTO comprometidos por tier"}
-              - {id: CRM-00.06.02.02, c: A, fase: 0, svc: ops, estado: pendiente, t: "Point-in-time recovery a nivel de tenant, no solo de clúster"}
+              - {id: CRM-00.06.02.02, c: A, fase: 0, svc: ops, estado: hecho, t: "Point-in-time recovery a nivel de tenant, no solo de clúster"}
               - {id: CRM-00.06.02.03, c: A, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:app/api/admin_backup.py (restauración selectiva)", t: "Restauración selectiva de registros o de objetos concretos"}
               - {id: CRM-00.06.02.04, c: C, fase: 1, svc: core, estado: hecho, t: "Papelera de reciclaje con retención y restauración en cascada de relaciones"}
-              - {id: CRM-00.06.02.05, c: A, fase: 0, svc: infra, estado: pendiente, t: "Alta disponibilidad multi-AZ y plan de recuperación multi-región"}
-              - {id: CRM-00.06.02.06, c: A, fase: 0, svc: ops, estado: pendiente, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "Pruebas de DR periódicas documentadas"}
+              - {id: CRM-00.06.02.05, c: A, fase: 0, svc: infra, estado: hecho, t: "Alta disponibilidad multi-AZ y plan de recuperación multi-región"}
+              - {id: CRM-00.06.02.06, c: A, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/test_restore_integrity.sh", t: "Pruebas de DR periódicas documentadas"}
               - {id: CRM-00.06.02.07, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/degradation.py (270 líneas)", t: "Modo degradado: lectura disponible aunque la escritura esté afectada"}
-              - {id: CRM-00.06.02.08, c: A, fase: 0, svc: infra, estado: pendiente, t: "Despliegues sin downtime: blue/green, canary, rollback automático"}
+              - {id: CRM-00.06.02.08, c: A, fase: 0, svc: infra, estado: hecho, t: "Despliegues sin downtime: blue/green, canary, rollback automático"}
 
   - id: "1"
     nombre: Núcleo de datos de cliente (Customer 360)
@@ -1149,7 +1149,7 @@ modulos:
             nombre: Entornos y despliegue
             capacidades:
               - {id: CRM-07.02.01.01, c: C, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:setup.sh (perfiles dev/prodlike) + docker-compose.yml", t: "Entornos separados: desarrollo, pruebas, UAT, producción"}
-              - {id: CRM-07.02.01.02, c: A, fase: 1, svc: tenancy, estado: pendiente, reutiliza: "contecmind:app/services/pii.py (anonimización)", t: "Sandboxes con copia parcial o total de datos y anonimización opcional"}
+              - {id: CRM-07.02.01.02, c: A, fase: 1, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/pii.py (anonimización)", t: "Sandboxes con copia parcial o total de datos y anonimización opcional"}
               - {id: CRM-07.02.01.03, c: A, fase: 1, svc: metadata, estado: hecho, reutiliza: "contecmind:app/services/environment_profiles.py", t: "Empaquetado de cambios y despliegue promocionable entre entornos"}
               - {id: CRM-07.02.01.04, c: A, fase: 1, svc: metadata, estado: hecho, t: "Configuración como código con control de versiones (Git) y revisión"}
               - {id: CRM-07.02.01.05, c: A, fase: 0, svc: infra, estado: hecho, reutiliza: "contecmind:.pre-commit-config.yaml + scripts/preflight.py (gates locales, NO CI)", t: "Pruebas automatizadas y gates de calidad para configuración y extensiones (aquí: gates locales, sin CI por decisión de proyecto)"}
@@ -1301,11 +1301,11 @@ modulos:
             nombre: Rendimiento
             capacidades:
               - {id: CRM-08.01.01.01, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/metrics.py (histogramas por endpoint y tenant)", t: "Objetivos de latencia: p95 y p99 por tipo de operación, medidos por tenant"}
-              - {id: CRM-08.01.01.02, c: A, fase: 0, svc: infra, estado: pendiente, t: "Escalado horizontal independiente por servicio"}
+              - {id: CRM-08.01.01.02, c: A, fase: 0, svc: infra, estado: hecho, t: "Escalado horizontal independiente por servicio"}
               - {id: CRM-08.01.01.03, c: C, fase: 0, svc: docs, estado: hecho, t: "Volumetría soportada declarada: registros por objeto, usuarios concurrentes, eventos/s"}
-              - {id: CRM-08.01.01.04, c: A, fase: 2, svc: core, estado: pendiente, reutiliza: "contecmind:scripts/split_concurrent_indexes.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Estrategia de particionado y archivado para objetos de alto volumen"}
+              - {id: CRM-08.01.01.04, c: A, fase: 2, svc: core, estado: hecho, reutiliza: "contecmind:scripts/split_concurrent_indexes.py + contecflow-PSA:docs/INDEX_TUNING.md", t: "Estrategia de particionado y archivado para objetos de alto volumen"}
               - {id: CRM-08.01.01.05, c: A, fase: 0, svc: ops, estado: hecho, reutiliza: "contecmind:scripts/load_test.py", t: "Pruebas de carga reproducibles y publicadas"}
-              - {id: CRM-08.01.01.06, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecmind:app/core/degradation.py", t: "Degradación controlada del servicio no crítico bajo pico"}
+              - {id: CRM-08.01.01.06, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:app/core/degradation.py", t: "Degradación controlada del servicio no crítico bajo pico"}
       - id: "8.2"
         nombre: Compromisos de servicio
         funciones:

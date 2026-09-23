@@ -55,6 +55,12 @@ class _ServicioSettings(BaseSettings):
     # Días del periodo sobre el que se cuenta el presupuesto de error. Mensual
     # por defecto porque es el periodo en el que se firman los compromisos.
     slo_dias_periodo: int = Field(30, ge=1, le=365)
+    # Latencia objetivo con la que se mide la presión del sistema
+    # (CRM-08.01.01.06). No es el SLO contratado —ese depende del tier y vive en
+    # `tenancy`—: es el punto a partir del cual este proceso se considera
+    # saturado y empieza a aplazar lo diferible. Por eso es un ajuste de
+    # despliegue y no de tenant.
+    slo_latencia_objetivo_ms: int = Field(500, ge=50, le=30_000)
 
     # Aviso cuando la última copia supera este porcentaje del RPO. Al 80 % queda
     # margen para reaccionar; al 100 % el aviso llega cuando ya se ha incumplido.
