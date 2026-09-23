@@ -18,6 +18,14 @@ import { Inicio } from "@/paginas/Inicio";
 import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
 import { Recorrido } from "@/paginas/Recorrido";
+import { Alm } from "@/paginas/Alm";
+import { Ayuda } from "@/paginas/Ayuda";
+import { Coste } from "@/paginas/Coste";
+import { Inteligencia } from "@/paginas/Inteligencia";
+import { Proveedores } from "@/paginas/Proveedores";
+import { Puesto } from "@/paginas/Puesto";
+import { Rendimiento } from "@/paginas/Rendimiento";
+import { SuiteGobierno } from "@/paginas/Suite";
 import { llamar } from "@/lib/api";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
 
@@ -84,6 +92,14 @@ export function App() {
         <Route path="/consola-agente" element={<ConsolaAgente />} />
         <Route path="/conocimiento" element={<Conocimiento />} />
         <Route path="/marketing" element={<Marketing />} />
+        <Route path="/proveedores" element={<Proveedores />} />
+        <Route path="/coste" element={<Coste />} />
+        <Route path="/inteligencia" element={<Inteligencia />} />
+        <Route path="/puesto" element={<Puesto />} />
+        <Route path="/alm" element={<Alm />} />
+        <Route path="/rendimiento" element={<Rendimiento />} />
+        <Route path="/suite" element={<SuiteGobierno />} />
+        <Route path="/ayuda" element={<Ayuda />} />
       </Routes>
     </Marco>
   );

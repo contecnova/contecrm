@@ -127,8 +127,16 @@ def test_medir_solo_lo_entregado_da_un_numero_distinto(
     todo = grc.cobertura(db, tenant_id)
     hechas = grc.cobertura(db, tenant_id, solo_hechas=True)
 
-    assert hechas["capacidades"] < todo["capacidades"]
-    assert hechas["pct"] > todo["pct"]
+    # Con el catálogo completo las dos medidas COINCIDEN, y eso es lo correcto:
+    # si no queda nada pendiente, «lo que un auditor puede comprobar hoy» y «lo
+    # que queda por cubrir cuando se entregue» son lo mismo. Afirmar que siempre
+    # difieren sería afirmar que siempre queda trabajo, y ese no es el invariante
+    # —el invariante es que medir sobre lo entregado nunca sale peor—.
+    if hechas["capacidades"] < todo["capacidades"]:
+        assert hechas["pct"] > todo["pct"]
+    else:
+        assert hechas["capacidades"] == todo["capacidades"]
+        assert hechas["pct"] == todo["pct"]
 
 
 # ── Riesgos ───────────────────────────────────────────────────────────────

@@ -84,6 +84,11 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
         </nav>
       </aside>
 
+      {/* Cambiar de área cambia la pantalla entera: sin anunciarlo, quien
+          navega con lector pulsa y no sabe si ha pasado algo. */}
+      <p className="sr-only" role="status">
+        {area ? area.nombre : ""}
+      </p>
       <section>{area ? <AreaVista area={area} sesion={sesion} /> : <Vacio />}</section>
     </div>
   );

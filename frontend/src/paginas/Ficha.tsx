@@ -141,6 +141,11 @@ function Adjuntos({ tipo, id }: { tipo: string; id: string }) {
           onChange={(e) => void elegir(e.target.files?.[0])}
         />
       </label>
+      {/* Subir un adjunto cambia la lista sin decir nada: quien no ve la
+          pantalla no se entera de que ha terminado (CRM-06.02.01.05). */}
+      <p className="sr-only" role="status">
+        {subiendo ? t("ficha.subiendo") : t("ficha.subido")}
+      </p>
       {fallo ? (
         <div className="mt-3">
           <Fallo error={fallo} />

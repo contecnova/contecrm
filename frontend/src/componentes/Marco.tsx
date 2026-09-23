@@ -81,6 +81,16 @@ export function Marco({ sesion, children }: Props) {
           <Enlace a="/marketing" texto={t("nav.marketing")} />
           <Enlace a="/explotacion" texto={t("nav.explotacion")} />
           <Enlace a="/recorrido" texto={t("nav.recorrido")} />
+          <Enlace a="/proveedores" texto={t("nav.proveedores")} />
+          <Enlace a="/coste" texto={t("nav.coste")} />
+          <Enlace a="/inteligencia" texto={t("nav.inteligencia")} />
+          <Enlace a="/puesto" texto={t("nav.puesto")} />
+          <Enlace a="/alm" texto={t("nav.alm")} />
+          <Enlace a="/rendimiento" texto={t("nav.rendimiento")} />
+          <Enlace a="/suite" texto={t("nav.suite")} />
+          {/* La ayuda va la última y siempre visible: se busca justo cuando uno
+              está atascado, y esconderla en un menú es esconderla. */}
+          <Enlace a="/ayuda" texto={t("nav.ayuda")} />
         </nav>
         <div className="flex items-center gap-3 sm:ml-auto">
           <button

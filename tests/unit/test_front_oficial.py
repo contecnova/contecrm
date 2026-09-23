@@ -82,7 +82,12 @@ def test_toda_llamada_del_front_existe_como_ruta_publicada() -> None:
     literal = re.compile(r'"(/api/v1/[^"$`]*)"')
     desconocidas: list[str] = []
     for fichero in _fuentes():
-        for ruta in literal.findall(_sin_comentarios(fichero.read_text(encoding="utf-8"))):
+        for encontrada in literal.findall(_sin_comentarios(fichero.read_text(encoding="utf-8"))):
+            # La cadena de consulta no es parte de la ruta: `/coste/capacidad` y
+            # `/coste/capacidad?contratada=10` son el mismo endpoint, y tratarlas
+            # como distintas haría que este gate acusara de inventarse una ruta a
+            # una llamada correcta.
+            ruta = encontrada.split("?", 1)[0]
             if ruta in RUTAS_EXENTAS:
                 continue
             if not any(p.match(ruta) for p in patrones):
@@ -189,15 +194,41 @@ def test_cada_seccion_declarada_hecha_tiene_pantalla_en_el_codigo() -> None:
         if c["id"].startswith("CRM-07.04.03.") and c.get("cubre") and c["estado"] == "hecho"
     }
 
-    # Pantallas a medida, que no salen de `modulos.ts` y por qué: la consola se
-    # construye de la superficie, el estado lo agrega el gateway, y la
-    # colaboración —adjuntos, comentarios y documentos— vive en la ficha de
-    # cualquier registro, a la que se llega desde todos los listados en vez de
-    # tener entrada propia en el menú.
-    A_MEDIDA = {"7.1", "0.6", "8.2", "6.2"}
+    # Pantallas a medida: las que no salen de `modulos.ts` porque no son un
+    # listado de un recurso. Se declaran **con su fichero** y se comprueba que
+    # existe — una exención sin comprobar es la forma más fácil de que este gate
+    # deje de servir: se añade una línea y la sección se da por cubierta sin que
+    # nadie haya escrito nada.
+    A_MEDIDA = {
+        # La consola se construye leyendo la superficie, no una lista.
+        "7.1": "Consola.tsx",
+        # El estado lo agrega el gateway juntando el de cada servicio.
+        "0.6": "Estado.tsx",
+        # Los compromisos se enseñan dentro del estado, al lado de lo medido.
+        "8.2": "Estado.tsx",
+        # La colaboración vive en la ficha de cualquier registro, a la que se
+        # llega desde todos los listados en vez de tener entrada propia.
+        "6.2": "Ficha.tsx",
+        "5.2": "Inteligencia.tsx",
+        "6.1": "Puesto.tsx",
+        "7.2": "Alm.tsx",
+        "7.5": "Ayuda.tsx",
+        "8.1": "Rendimiento.tsx",
+        "9.1": "Proveedores.tsx",
+        "9.2": "Coste.tsx",
+    }
+    faltan_ficheros = sorted(
+        seccion
+        for seccion, fichero in A_MEDIDA.items()
+        if not (FRONT / "paginas" / fichero).exists()
+    )
+    assert not faltan_ficheros, (
+        "Secciones declaradas «a medida» cuya pantalla no existe:\n  "
+        + "\n  ".join(faltan_ficheros)
+    )
 
     modulos = (FRONT / "lib" / "modulos.ts").read_text("utf-8")
-    con_pantalla = set(re.findall(r'seccion:\s*"([^"]+)"', modulos)) | A_MEDIDA
+    con_pantalla = set(re.findall(r'seccion:\s*"([^"]+)"', modulos)) | set(A_MEDIDA)
 
     sin_pantalla = sorted(declaradas - con_pantalla)
     assert not sin_pantalla, (

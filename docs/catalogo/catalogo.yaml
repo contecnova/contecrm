@@ -212,7 +212,7 @@ modulos:
               - {id: CRM-00.01.07.03, c: C, fase: 1, svc: identity, estado: hecho, t: "Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez"}
               - {id: CRM-00.01.07.04, c: C, fase: 1, svc: identity, estado: hecho, t: "Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa"}
               - {id: CRM-00.01.07.05, c: C, fase: 1, svc: tenancy, estado: hecho, t: "Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma"}
-              - {id: CRM-00.01.07.06, c: C, fase: 1, svc: front, estado: pendiente, t: "Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado"}
+              - {id: CRM-00.01.07.06, c: C, fase: 1, svc: front, estado: hecho, t: "Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado"}
               - {id: CRM-00.01.07.07, c: C, fase: 1, svc: tenancy, estado: hecho, t: "Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito"}
               - {id: CRM-00.01.07.08, c: A, fase: 1, svc: tenancy, estado: hecho, t: "Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence"}
               - {id: CRM-00.01.07.09, c: C, fase: 1, svc: identity, estado: hecho, t: "SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión"}
@@ -1120,7 +1120,7 @@ modulos:
               - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
               - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: hecho, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
               - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: hecho, t: "Modo offline con cola de cambios y resolución de conflictos"}
-              - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: pendiente, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}
+              - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: hecho, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}
               - {id: CRM-06.02.01.07, c: A, fase: 2, svc: core, estado: hecho, t: "Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio"}
               - {id: CRM-06.02.01.08, c: D, fase: 4, svc: core, estado: hecho, t: "Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor"}
               - {id: CRM-06.02.01.06, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecweb:app/services/share_links.py (acceso acotado y temporal)", t: "Usuarios invitados externos con acceso acotado y temporal"}
@@ -1235,18 +1235,18 @@ modulos:
               - {id: CRM-07.04.03.20, c: D, fase: 6, svc: front, estado: hecho, cubre: "4.4", t: "Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados"}
               - {id: CRM-07.04.03.21, c: D, fase: 6, svc: front, estado: hecho, cubre: "4.5", t: "Postventa: devoluciones, garantías y logística inversa"}
               - {id: CRM-07.04.03.22, c: C, fase: 2, svc: front, estado: hecho, cubre: "5.1", t: "Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4)"}
-              - {id: CRM-07.04.03.23, c: A, fase: 5, svc: front, estado: pendiente, cubre: "5.2", t: "Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista"}
-              - {id: CRM-07.04.03.24, c: A, fase: 1, svc: front, estado: pendiente, cubre: "6.1", t: "Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo"}
+              - {id: CRM-07.04.03.23, c: A, fase: 5, svc: front, estado: hecho, cubre: "5.2", t: "Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista"}
+              - {id: CRM-07.04.03.24, c: A, fase: 1, svc: front, estado: hecho, cubre: "6.1", t: "Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo"}
               - {id: CRM-07.04.03.25, c: C, fase: 1, svc: front, estado: hecho, cubre: "6.2", t: "Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5)"}
               - {id: CRM-07.04.03.26, c: C, fase: 1, svc: front, estado: hecho, cubre: "7.1", t: "Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada"}
-              - {id: CRM-07.04.03.27, c: A, fase: 2, svc: front, estado: pendiente, cubre: "7.2", t: "ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás"}
+              - {id: CRM-07.04.03.27, c: A, fase: 2, svc: front, estado: hecho, cubre: "7.2", t: "ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás"}
               - {id: CRM-07.04.03.28, c: A, fase: 1, svc: front, estado: hecho, cubre: "7.3", t: "Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD"}
-              - {id: CRM-07.04.03.29, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.1", t: "Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda"}
+              - {id: CRM-07.04.03.29, c: A, fase: 2, svc: front, estado: hecho, cubre: "8.1", t: "Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda"}
               - {id: CRM-07.04.03.30, c: A, fase: 2, svc: front, estado: hecho, cubre: "8.2", t: "Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido"}
-              - {id: CRM-07.04.03.31, c: A, fase: 2, svc: front, estado: pendiente, cubre: "9.1", t: "Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos"}
-              - {id: CRM-07.04.03.32, c: A, fase: 2, svc: front, estado: pendiente, cubre: "9.2", t: "Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer"}
+              - {id: CRM-07.04.03.31, c: A, fase: 2, svc: front, estado: hecho, cubre: "9.1", t: "Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos"}
+              - {id: CRM-07.04.03.32, c: A, fase: 2, svc: front, estado: hecho, cubre: "9.2", t: "Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer"}
 
-              - {id: CRM-07.04.03.33, c: A, fase: 1, svc: front, estado: pendiente, cubre: "7.5", t: "Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio"}
+              - {id: CRM-07.04.03.33, c: A, fase: 1, svc: front, estado: hecho, cubre: "7.5", t: "Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio"}
 
           - id: CRM-07.04.04
             nombre: Calidad del front
@@ -1317,7 +1317,7 @@ modulos:
               - {id: CRM-08.02.01.03, c: C, fase: 0, svc: infra, estado: hecho, t: "Ventanas de mantenimiento anunciadas y, preferentemente, sin corte"}
               - {id: CRM-08.02.01.04, c: C, fase: 0, svc: docs, estado: hecho, t: "Política de soporte: niveles, horarios, tiempos de respuesta y escalado"}
               - {id: CRM-08.02.01.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py + app/api/exports.py", t: "Portabilidad: exportación completa del tenant en formato abierto y documentado"}
-              - {id: CRM-08.02.01.06, c: A, fase: 0, svc: docs, estado: pendiente, t: "Reversibilidad y plan de salida contractual"}
+              - {id: CRM-08.02.01.06, c: A, fase: 0, svc: docs, estado: hecho, t: "Reversibilidad y plan de salida contractual"}
 
   - id: "9"
     nombre: Proveedores, coste y capacidad

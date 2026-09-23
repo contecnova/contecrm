@@ -189,6 +189,12 @@ function RecursoVista({
                 : undefined
             }
           />
+          {/* Al crear un registro o al cargar más, la lista cambia sin que
+              nada lo diga: quien no ve la pantalla no se entera de que ha
+              pasado algo (CRM-06.02.01.05). */}
+          <p className="sr-only" role="status">
+            {t("modulo.filasCargadas", { cuantas: filas.length })}
+          </p>
           <Retenidos campos={retenidos} />
           {siguiente ? (
             <button

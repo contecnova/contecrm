@@ -215,6 +215,9 @@ PREFIJOS: dict[str, str] = {
     "marcador": "service",
     # Entornos de pruebas con datos del cliente (CRM-07.02.01.02).
     "sandboxes": "tenancy",
+    # Configuración como código: paquetes, promoción, desvío y vuelta atrás
+    # (CRM-07.02.01).
+    "entornos": "metadata",
     # Hora y canal por destinatario (CRM-02.02.02.05).
     "momento": "marketing",
     # Publicidad, biblioteca de activos y redes sociales (CRM-02.03, CRM-02.04,

@@ -11960,3 +11960,97 @@ filtraciones de un CRM no salen de producción: salen de una copia.
 - **Y un sandbox caduca.** El que se creó para una migración hace año y medio sigue
   ahí con los datos de entonces, sin actualizaciones y sin que nadie recuerde quién
   tiene acceso.
+
+## Las pantallas que faltaban del front oficial (`CRM-07.04.03.23`, `CRM-07.04.03.24`, `CRM-07.04.03.27`, `CRM-07.04.03.29`, `CRM-07.04.03.31`, `CRM-07.04.03.32`, `CRM-07.04.03.33`, `CRM-00.01.07.06`)
+
+El front de referencia tiene que enseñar **todo** lo que el sistema hace: una
+capacidad que solo existe por API es una capacidad que nadie ve, y quien mira el
+producto concluye que no está. Estas son las que faltaban, y cada una está escrita
+alrededor de la decisión que la hace útil o inútil:
+
+- **Inteligencia artificial.** La puntuación va con sus factores, y con los que
+  **restan** también — un panel que solo cuenta lo que suma hace pensar que la
+  puntuación es baja por falta de datos. Sin contribuciones no se pinta un número:
+  se dice que no se puede explicar.
+- **Puesto de trabajo.** Lo que enseña no es «está conectado»: es **si está
+  entrando algo y desde cuándo no**. Lo que no se ha medido no cuenta como verde, y
+  lo que va por sondeo se dice — sus cambios entran con retraso.
+- **Entornos y cambios (ALM).** El desvío se mide contra el paquete desplegado, no
+  contra otro entorno, y **lo que desapareció también es desvío**: un panel que
+  solo enseña lo añadido deja fuera el caso más incómodo.
+- **Rendimiento.** Contesta la pregunta que llega de verdad —«¿por qué mi lista
+  tarda?»— juntando tres cosas que normalmente están en tres sitios: cuánto hay,
+  cuánto cabe y **qué se está aplazando ahora mismo**.
+- **Proveedores.** Lo vencido no se pinta igual que lo que va a vencer —uno está
+  pasando y lo otro es una tarea de esta semana— y «no consta» no se pinta como
+  «está bien».
+- **Coste y capacidad.** Un margen desconocido no se pinta como cero, lo que está
+  en pérdidas se ve a la primera, y la capacidad enseña lo que hay en ofertas
+  abiertas.
+- **Ayuda en producto.** Se abre por el capítulo de la pantalla en la que estás, no
+  por el índice: mandar al índice es mandar a buscar, y quien está atascado no
+  busca, se rinde y escribe a soporte. El mapa de pantalla a capítulo es explícito
+  y no una convención sobre la ruta — una convención se rompe en silencio el día
+  que alguien renombra algo, y entonces la ayuda lleva al sitio equivocado, que es
+  peor que no llevar a ninguno.
+- **Gobierno de la suite.** Enseña primero **las bajas sin aplicar**, que es lo
+  único que hay que mirar con prisa: una baja que no llegó a otra herramienta es un
+  acceso que sigue abierto, y eso no se ve hasta una auditoría. Con una advertencia
+  escrita en la propia pantalla: esto no es un panel de control remoto, cada
+  herramienta manda en lo suyo.
+
+Al construirlas apareció un hueco que no se veía desde ningún sitio: **el motor de
+configuración como código no tenía API**. Empaquetar, simular una promoción,
+desplegar, medir el desvío y volver atrás solo se podía hacer desde el código, así
+que la promesa de que todo se hace por API tenía un agujero justo en la parte que
+más falta hace automatizar. Ahora está publicado.
+
+## Accesibilidad comprobada (`CRM-06.02.01.05`)
+
+La interfaz que viene con el producto cumple WCAG 2.2 nivel AA, y eso **se
+comprueba en cada cambio** en vez de auditarse una vez: la accesibilidad se rompe
+al mes siguiente de arreglarla si nadie la vuelve a mirar.
+
+El linter de accesibilidad caza lo que se ve en una etiqueta suelta —una imagen sin
+texto alternativo, un `onClick` sobre un `div`— y está en modo **error**, porque un
+aviso que no rompe nada se acumula. Y cinco comprobaciones propias cazan lo que
+solo se ve mirando la pantalla entera: que toda pantalla tenga un encabezado de
+primer nivel, que todo campo tenga etiqueta, que **lo que cambia al pulsar se
+anuncie**, que las cabeceras de tabla digan a qué se refieren y que **el color
+nunca vaya solo**.
+
+Esas cinco no son hipotéticas: al escribirlas encontraron fallos reales en
+pantallas que ya estaban en producción — tres cambiaban su contenido al pulsar un
+botón sin anunciarlo, y la lista de un módulo se recargaba en silencio.
+
+Y hay una página, [Accesibilidad](ACCESIBILIDAD.md), que dice también **qué no
+cumple**: el reflujo a 320 píxeles en tablas anchas y el foco parcialmente tapado
+por la cabecera en pantallas cortas. Una página de accesibilidad que solo dice
+«cumplimos» no le sirve a nadie para decidir, y es lo primero que pide un pliego.
+
+## Reversibilidad y plan de salida (`CRM-08.02.01.06`)
+
+Hay un documento que dice **cómo se sale de contecrm**: qué se lleva el cliente, en
+qué formato, cuánto tarda y qué deja de funcionar — [Reversibilidad y plan de
+salida](SALIDA.md).
+
+Está escrito por una razón práctica: **un cliente que no sabe cómo salir no acaba
+de entrar**. En cualquier compra mediana alguien pregunta esto antes de firmar, y
+que la respuesta esté escrita y sea comprobable vale más que cualquier argumento.
+
+Lo que se lleva es todo lo suyo —datos, configuración, adjuntos, actividades,
+auditoría con su cadena de hashes e histórico— en formatos que no son nuestros:
+CSV, JSON, EML, vCard, iCalendar. Lo que no se puede llevar se dice y se explica:
+las contraseñas no existen en claro, la clave de cifrado gestionada por nosotros no
+se entrega —los datos salen descifrados— y los modelos no viajan, aunque sí las
+señales con las que se entrenan.
+
+Se dice también **qué deja de funcionar** al cortar: webhooks, CDC, audiencias
+publicitarias —donde hay que retirar las listas o seguirá viendo anuncios gente que
+se dio de baja—, enlaces compartidos y firmas a medias.
+
+Y dos prácticas del sector que aquí no existen: **no se cobra por exportar**
+—cobrar por salir es una barrera con otro nombre— y **no hay formatos propios**.
+La recomendación es pedir la exportación una vez durante la implantación, que es el
+único momento en el que comprobar el plan de salida no cuesta nada y en el que
+descubrir que falta algo tiene arreglo.

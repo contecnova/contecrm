@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**762 capacidades**: ✅ 752 hecho · ⬜ 10 pendiente
+**762 capacidades**: ✅ 762 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 282 · ⬜ 1
+283 capacidades · ✅ 283
 
 ### 0.1 Multi-tenancy
 
@@ -104,7 +104,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.01.07.03` | Un único alta de usuario para toda la suite, con desaprovisionamiento en cascada: quien se va deja de entrar en todas a la vez | C | 1 | identity | ✅ | — |
 | `CRM-00.01.07.04` | Mapeo de roles por herramienta, como dato: el mismo usuario tiene rol distinto en cada una y la correspondencia se configura, no se programa | C | 1 | identity | ✅ | — |
 | `CRM-00.01.07.05` | Áreas, departamentos y organigrama del tenant definidos una sola vez y replicados a cada herramienta con su propia forma | C | 1 | tenancy | ✅ | — |
-| `CRM-00.01.07.06` | Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado | C | 1 | front | ⬜ | — |
+| `CRM-00.01.07.06` | Consola única de gobierno de la suite: una pantalla para tenant, usuarios, roles por herramienta y organización, con el estado de cada herramienta al lado | C | 1 | front | ✅ | — |
 | `CRM-00.01.07.07` | Reconciliación y detección de divergencia: qué hay en cada herramienta que no coincide con el origen, con reparación en un clic y sin pisar lo que se cambió a propósito | C | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.08` | Conector de aprovisionamiento genérico y declarativo por herramienta (dirección, credencial, mapeo de campos y de roles), con conectores nativos encima para contecmind y contecintelligence | A | 1 | tenancy | ✅ | — |
 | `CRM-00.01.07.09` | SSO compartido: el proveedor de identidad se configura una vez y lo usan las tres herramientas, sin tres inicios de sesión | C | 1 | identity | ✅ | — |
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-49 capacidades · ✅ 48 · ⬜ 1
+49 capacidades · ✅ 49
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -1053,14 +1053,14 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | ✅ | contecmind:app/services/notifications.py + app/models/notification.py |
 | `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ✅ | contecmind:app/services/push.py (web push) |
 | `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ✅ | — |
-| `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
+| `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ✅ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
 | `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ✅ | — |
 | `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ✅ | — |
 | `CRM-06.02.01.06` | Usuarios invitados externos con acceso acotado y temporal | A | 1 | identity | ✅ | contecweb:app/services/share_links.py (acceso acotado y temporal) |
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-106 capacidades · ✅ 99 · ⬜ 7
+106 capacidades · ✅ 106
 
 ### 7.1 Administración funcional
 
@@ -1178,17 +1178,17 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.20` | Servicio de campo: planificación, mapa de técnicos, partes de trabajo y activos instalados | D | 6 | front | ✅ | — |
 | `CRM-07.04.03.21` | Postventa: devoluciones, garantías y logística inversa | D | 6 | front | ✅ | — |
 | `CRM-07.04.03.22` | Explotación embebida de contecintelligence: informes, cuadros de mando y exportaciones, con la identidad del usuario (RT-4) | C | 2 | front | ✅ | — |
-| `CRM-07.04.03.23` | Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista | A | 5 | front | ⬜ | — |
-| `CRM-07.04.03.24` | Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo | A | 1 | front | ⬜ | — |
+| `CRM-07.04.03.23` | Inteligencia artificial: asistente, resúmenes, sugerencias y puntuaciones, siempre con el porqué y con la fuente a la vista | A | 5 | front | ✅ | — |
+| `CRM-07.04.03.24` | Puesto de trabajo: correo y calendario sincronizados, y complemento para el cliente de correo | A | 1 | front | ✅ | — |
 | `CRM-07.04.03.25` | Colaboración: comentarios, menciones, notificaciones, adjuntos, carpetas del expediente y corpus documental de contecmind (RT-5) | C | 1 | front | ✅ | — |
 | `CRM-07.04.03.26` | Consola de administración dirigida por la superficie: menú, formularios y tablas generados del contrato, sin una sola acción que no sea una llamada publicada | C | 1 | front | ✅ | — |
-| `CRM-07.04.03.27` | ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.27` | ALM: entornos, paquetes de cambios, promoción entre entornos, detección de desvío y vuelta atrás | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.28` | Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD | A | 1 | front | ✅ | — |
-| `CRM-07.04.03.29` | Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.29` | Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda | A | 2 | front | ✅ | — |
 | `CRM-07.04.03.30` | Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido | A | 2 | front | ✅ | — |
-| `CRM-07.04.03.31` | Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos | A | 2 | front | ⬜ | — |
-| `CRM-07.04.03.32` | Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer | A | 2 | front | ⬜ | — |
-| `CRM-07.04.03.33` | Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio | A | 1 | front | ⬜ | — |
+| `CRM-07.04.03.31` | Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos | A | 2 | front | ✅ | — |
+| `CRM-07.04.03.32` | Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer | A | 2 | front | ✅ | — |
+| `CRM-07.04.03.33` | Ayuda en producto: el manual de usuario accesible desde la pantalla en la que estás, no en otro sitio | A | 1 | front | ✅ | — |
 
 #### CRM-07.04.04 · Calidad del front
 
@@ -1235,7 +1235,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 8 — Requisitos no funcionales
 
-12 capacidades · ✅ 11 · ⬜ 1
+12 capacidades · ✅ 12
 
 ### 8.1 Rendimiento y escala
 
@@ -1261,7 +1261,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-08.02.01.03` | Ventanas de mantenimiento anunciadas y, preferentemente, sin corte | C | 0 | infra | ✅ | — |
 | `CRM-08.02.01.04` | Política de soporte: niveles, horarios, tiempos de respuesta y escalado | C | 0 | docs | ✅ | — |
 | `CRM-08.02.01.05` | Portabilidad: exportación completa del tenant en formato abierto y documentado | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py + app/api/exports.py |
-| `CRM-08.02.01.06` | Reversibilidad y plan de salida contractual | A | 0 | docs | ⬜ | — |
+| `CRM-08.02.01.06` | Reversibilidad y plan de salida contractual | A | 0 | docs | ✅ | — |
 
 ## Módulo 9 — Proveedores, coste y capacidad
 

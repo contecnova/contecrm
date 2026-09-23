@@ -5,6 +5,7 @@ from __future__ import annotations
 from crmcore.service import crear_servicio
 
 from services.metadata.api import ROUTERS
+from services.metadata.api_entornos import ROUTERS_ENTORNOS
 
 app = crear_servicio(
     nombre="metadata",
@@ -13,5 +14,5 @@ app = crear_servicio(
         "consultables antes de enviar, layouts para frontends headless, listas "
         "maestras y clasificación de sensibilidad."
     ),
-    routers=ROUTERS,
+    routers=[*ROUTERS, *ROUTERS_ENTORNOS],
 )
