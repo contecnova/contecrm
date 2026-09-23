@@ -65,6 +65,15 @@ export interface Recurso {
    * documentos. Sin él no hay ficha, porque esas rutas lo llevan dentro.
    */
   objeto?: string;
+  /**
+   * Icono con el que se rotula la pestaña, **en vez del nombre**.
+   *
+   * Para lo que se repite en todos los módulos y cuyo contexto ya está claro:
+   * dentro de Campañas, «Papelera de marketing» no dice nada que «Papelera» no
+   * diga, y «Papelera» no dice nada que no diga el icono. El nombre sigue
+   * estando, como etiqueta accesible y como título de la pantalla.
+   */
+  icono?: string;
 }
 
 export const MODULOS: Modulo[] = [
@@ -78,11 +87,16 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Tenants",
+        // Con `objeto` para que cada fila se abra: suspender, reactivar,
+        // exportar y ver el consumo cuelgan del tenant, y a un registro que no
+        // se abre no se llega. Y `plan_codigo` no existe: el campo es `plan`,
+        // así que esa columna salía siempre vacía.
+        objeto: "tenant",
         listar: "/api/v1/tenants",
         crear: "/api/v1/tenants",
         servicio: "tenancy",
         solo_plataforma: true,
-        columnas: ["slug", "nombre", "estado", "plan_codigo"],
+        columnas: ["slug", "nombre", "estado", "plan", "region", "idioma"],
         permiso: "tenant:read",
       },
       { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
@@ -222,6 +236,7 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Papelera",
+        icono: "delete",
         // Con `objeto` para que cada fila se pueda abrir: «Restaurar» cuelga de
         // la entrada, y a una entrada que no se abre no se llega desde ninguna
         // pantalla. Estaba la acción y no había forma de usarla.
@@ -262,6 +277,14 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.13",
     grupo: "Ventas",
     recursos: [
+      {
+        nombre: "Papelera",
+        icono: "delete",
+        objeto: "entrada_papelera",
+        listar: "/api/v1/sales/papelera",
+        servicio: "sales",
+        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+      },
       {
         nombre: "Oportunidades",
         objeto: "oportunidad",
@@ -552,6 +575,14 @@ export const MODULOS: Modulo[] = [
     grupo: "Marketing",
     recursos: [
       {
+        nombre: "Papelera",
+        icono: "delete",
+        objeto: "entrada_papelera",
+        listar: "/api/v1/marketing/papelera",
+        servicio: "marketing",
+        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+      },
+      {
         nombre: "Campañas",
         objeto: "campana",
         listar: "/api/v1/campanas",
@@ -576,6 +607,14 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.17",
     grupo: "Servicio",
     recursos: [
+      {
+        nombre: "Papelera",
+        icono: "delete",
+        objeto: "entrada_papelera",
+        listar: "/api/v1/service/papelera",
+        servicio: "service",
+        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+      },
       {
         nombre: "Casos",
         objeto: "caso",

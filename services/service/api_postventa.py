@@ -8,6 +8,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -535,3 +536,18 @@ def comunicar(problema_id: UUID, datos: Comunicar, uow: UowDep, principal: Auten
 
 
 ROUTERS_POSTVENTA = [router, router_exp, router_prb]
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Se podían abrir —tienen su lectura escrita a mano— y no se podían ni
+# corregir ni borrar desde ninguna pantalla.
+montar_ficha(
+    router,
+    modelo=pv.Devolucion,
+    objeto="devolucion",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Devoluciones",
+    parametro="devolucion_id",
+    con_lectura=False,
+)

@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -70,7 +70,7 @@ ORDEN_AUDIENCIA = {a: i for i, a in enumerate(AUDIENCIAS)}
 ESTADOS = ("borrador", "en_revision", "publicado", "obsoleto")
 
 
-class Articulo(Base, TimestampMixin):
+class Articulo(Base, TimestampMixin, SoftDeleteMixin):
     """Un artículo de conocimiento (CRM-04.03.01.01).
 
     El texto vive en `VersionArticulo`; aquí está lo que identifica al artículo y

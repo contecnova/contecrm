@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -71,7 +71,7 @@ BAJAS_POR_CANAL: dict[str, str] = {
 PALABRAS_BAJA = ("baja", "stop", "cancelar", "unsubscribe", "no")
 
 
-class Canal(Base, TimestampMixin):
+class Canal(Base, TimestampMixin, SoftDeleteMixin):
     """Un canal configurado (CRM-02.03.02.01, .02, .03)."""
 
     __tablename__ = "canales_marketing"
@@ -170,7 +170,7 @@ class PlantillaCanal(Base, TimestampMixin):
     )
 
 
-class Landing(Base, TimestampMixin):
+class Landing(Base, TimestampMixin, SoftDeleteMixin):
     """Una página de aterrizaje con su formulario (CRM-02.03.02.06)."""
 
     __tablename__ = "landings"
@@ -196,7 +196,7 @@ class Landing(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_landing_clave"),)
 
 
-class DominioEnvio(Base, TimestampMixin):
+class DominioEnvio(Base, TimestampMixin, SoftDeleteMixin):
     """Un dominio de envío y su estado de autenticación (CRM-02.03.01.03)."""
 
     __tablename__ = "dominios_envio"

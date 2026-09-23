@@ -806,3 +806,27 @@ montar_ficha(
     nombre="Activos instalados",
     parametro="activo_id",
 )
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Se podían abrir —tienen su lectura escrita a mano— y no se podían ni
+# corregir ni borrar desde ninguna pantalla.
+montar_ficha(
+    router,
+    modelo=campo.OrdenTrabajo,
+    objeto="orden_trabajo",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Órdenes de trabajo",
+    parametro="orden_id",
+    con_lectura=False,
+)
+montar_ficha(
+    router_repuestos,
+    modelo=campo.Repuesto,
+    objeto="repuesto",
+    permiso_leer="case:read",
+    permiso_escribir="case:write",
+    nombre="Repuestos",
+    parametro="repuesto_id",
+)

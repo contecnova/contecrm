@@ -284,6 +284,9 @@ RECURSOS_TRANSVERSALES = {
     # CRM-07.03.01.04): la ruta lleva el nombre del servicio porque los doce
     # publican la misma, y sin él no habría a quién mandarla.
     "restauracion",
+    # La papelera también es de cada servicio: cada uno guarda la suya en su
+    # esquema, que es lo que impide que un servicio lea las tablas de otro.
+    "papelera",
     "cumplimiento",
 }
 

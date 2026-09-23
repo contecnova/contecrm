@@ -35,7 +35,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -84,7 +84,7 @@ ORDEN_MIEMBRO = {e: i for i, e in enumerate(ESTADOS_MIEMBRO)}
 MODELOS_ATRIBUCION = ("primer_toque", "ultimo_toque", "lineal", "en_u", "en_w", "decaimiento")
 
 
-class Campana(Base, TimestampMixin):
+class Campana(Base, TimestampMixin, SoftDeleteMixin):
     """Un programa, una campaña o una táctica (CRM-02.02.01.01)."""
 
     __tablename__ = "campanas"

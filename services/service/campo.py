@@ -40,7 +40,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -142,7 +142,7 @@ class Tecnico(Base, TimestampMixin):
     )
 
 
-class OrdenTrabajo(Base, TimestampMixin):
+class OrdenTrabajo(Base, TimestampMixin, SoftDeleteMixin):
     """Un trabajo que hay que hacer en casa del cliente (CRM-04.04.01.01)."""
 
     __tablename__ = "ordenes_trabajo"
@@ -269,7 +269,7 @@ class ParteTrabajo(Base, TimestampMixin):
     __table_args__ = (Index("ix_partes_orden", "tenant_id", "orden_id"),)
 
 
-class Repuesto(Base, TimestampMixin):
+class Repuesto(Base, TimestampMixin, SoftDeleteMixin):
     """Una pieza que se lleva en la furgoneta (CRM-04.04.01.04)."""
 
     __tablename__ = "repuestos"

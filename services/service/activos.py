@@ -35,7 +35,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -84,7 +84,7 @@ CONCEPTOS = ("piezas", "mano_obra", "desplazamiento")
 TIPOS_GARANTIA = ("fabricante", "extension", "contrato")
 
 
-class ActivoInstalado(Base, TimestampMixin):
+class ActivoInstalado(Base, TimestampMixin, SoftDeleteMixin):
     """Lo que el cliente tiene puesto (CRM-04.04.02.01).
 
     `producto_id` y `cuenta_id` son referencias a otros servicios y **no se

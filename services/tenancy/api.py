@@ -22,6 +22,7 @@ from crmcore.http.deps import (
 from crmcore.http.pagination import ParametrosPagina, construir_pagina
 from crmcore.runtime import settings as rt
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.tenancy import servicio as svc
@@ -62,6 +63,45 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 )
 def crear_tenant(datos: CrearTenant, uow: UowDep, _: PlataformaDep) -> Any:
     return svc.crear_tenant(uow, **datos.model_dump())
+
+
+class EditarTenant(BaseModel):
+    """Lo que se puede cambiar de un tenant ya provisionado.
+
+    El `slug` no está: va en subdominios, en URLs y en los identificadores que
+    ya tienen fuera, así que cambiarlo rompe enlaces que no controlamos. Para
+    cambiar de nombre comercial está `nombre`.
+
+    Faltaba entera: se podía dar de alta una empresa y después no había forma
+    de corregirle ni una errata en el nombre desde ninguna pantalla.
+    """
+
+    nombre: str | None = Field(None, min_length=1, max_length=200)
+    plan: str | None = None
+    tier: str | None = None
+    idioma: str | None = Field(None, max_length=10)
+    zona_horaria: str | None = Field(None, max_length=60)
+    moneda: str | None = Field(None, max_length=3)
+    marca: dict[str, Any] | None = None
+
+
+@router.patch(
+    "/{tenant_id}",
+    response_model=TenantOut,
+    summary="Editar un tenant",
+    description=(
+        "Es de plataforma: un tenant no se edita a sí mismo por aquí. El `slug` "
+        "no se toca porque está en URLs y en sistemas de fuera."
+    ),
+)
+def editar_tenant(tenant_id: UUID, datos: EditarTenant, uow: UowDep, _: PlataformaDep) -> Any:
+    tenant = uow.db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise NoEncontrado("Ese tenant no existe", error_code="tenancy.tenant_no_existe")
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        setattr(tenant, campo, valor)
+    uow.db.flush()
+    return tenant
 
 
 @router.get("", response_model=dict, summary="Listar tenants")

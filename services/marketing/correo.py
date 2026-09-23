@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -52,7 +52,7 @@ TIPOS_BLOQUE = ("texto", "imagen", "boton", "separador", "columnas", "pie", "cab
 CLASES = ("promocional", "transaccional")
 
 
-class BloqueCorreo(Base, TimestampMixin):
+class BloqueCorreo(Base, TimestampMixin, SoftDeleteMixin):
     """Un trozo reutilizable (CRM-02.03.01.01).
 
     Existe para que el pie legal, la cabecera y el bloque de baja estén **en un
@@ -79,7 +79,7 @@ class BloqueCorreo(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_bloque_correo"),)
 
 
-class PlantillaMarketing(Base, TimestampMixin):
+class PlantillaMarketing(Base, TimestampMixin, SoftDeleteMixin):
     """Una plantilla compuesta de bloques."""
 
     __tablename__ = "plantillas_marketing"
@@ -107,7 +107,7 @@ class PlantillaMarketing(Base, TimestampMixin):
     )
 
 
-class CategoriaPreferencia(Base, TimestampMixin):
+class CategoriaPreferencia(Base, TimestampMixin, SoftDeleteMixin):
     """De qué se puede dar de baja alguien (CRM-02.03.01.05)."""
 
     __tablename__ = "categorias_preferencia"

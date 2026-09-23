@@ -34,7 +34,7 @@ from uuid import UUID
 
 from crmcore.audit import registrar
 from crmcore.datos.calendario import CalendarioLaboral, es_laborable
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -115,7 +115,7 @@ MOTIVOS_SUSPENSION = (
 )
 
 
-class Devolucion(Base, TimestampMixin):
+class Devolucion(Base, TimestampMixin, SoftDeleteMixin):
     """Una devolución con su autorización: el RMA (CRM-04.05.01.01)."""
 
     __tablename__ = "devoluciones"

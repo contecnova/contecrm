@@ -1269,3 +1269,18 @@ montar_ficha(
     parametro="lead_id",
     con_lectura=False,
 )
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Se podían abrir —tienen su lectura escrita a mano— y no se podían ni
+# corregir ni borrar desde ninguna pantalla.
+montar_ficha(
+    router_oportunidades,
+    modelo=Oportunidad,
+    objeto="oportunidad",
+    permiso_leer="opportunity:read",
+    permiso_escribir="opportunity:write",
+    nombre="Oportunidades",
+    parametro="oportunidad_id",
+    con_lectura=False,
+)

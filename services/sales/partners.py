@@ -41,7 +41,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -133,7 +133,7 @@ class NivelPartner(Base, TimestampMixin):
     )
 
 
-class Partner(Base, TimestampMixin):
+class Partner(Base, TimestampMixin, SoftDeleteMixin):
     """Una empresa que vende lo nuestro (CRM-03.04.01.01).
 
     `cuenta_id` apunta a la cuenta de `party` y **no se resuelve desde aquí**: un

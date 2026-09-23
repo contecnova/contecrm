@@ -49,6 +49,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from crmcore.datos.guard_borrados import con_borrados
 from crmcore.db.base import Base
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -439,7 +440,11 @@ def purgar(
         # el informe con filas sobre las que no se hace nada.
         consulta = consulta.where(declarada.modelo.deleted_at.is_(None))
 
-    filas = db.execute(consulta.limit(tope)).scalars().all()
+    # `con_borrados`: media retención es precisamente sobre lo que está en la
+    # papelera —purgar lo borrado hace X días— y el guard lo esconde por
+    # defecto. Sin esto, la purga no encontraría nunca nada que purgar.
+    with con_borrados(db):
+        filas = db.execute(consulta.limit(tope)).scalars().all()
     informe.candidatos = len(filas)
     if simular or not filas:
         return informe

@@ -319,7 +319,11 @@ def listar_landings(db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 @router_dominios.get(
-    "/{dominio}",
+    # En `/estado/{dominio}` y no en `/{dominio}`: esto no es la ficha del
+    # registro, es un diagnóstico buscado **por nombre de dominio**. Ocupando
+    # el sitio de la ficha, el mismo camino significaba dos cosas —un
+    # identificador o un nombre— y la ficha del dominio no existía.
+    "/estado/{dominio}",
     dependencies=[Depends(exige_permiso("campana:read"))],
     summary="Si el dominio está listo para mandar, y qué le falta",
     description=(
@@ -425,4 +429,18 @@ montar_ficha(
     permiso_escribir="marketing:write",
     nombre="Landings",
     parametro="landing_id",
+)
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Se podían abrir —tienen su lectura escrita a mano— y no se podían ni
+# corregir ni borrar desde ninguna pantalla.
+montar_ficha(
+    router_dominios,
+    modelo=can.DominioEnvio,
+    objeto="dominio_envio",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Dominios de envío",
+    parametro="dominio_id",
 )

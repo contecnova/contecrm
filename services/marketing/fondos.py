@@ -37,7 +37,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -102,7 +102,7 @@ class PartnerConocido(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "partner_id", name="uq_partner_conocido"),)
 
 
-class FondoMdf(Base, TimestampMixin):
+class FondoMdf(Base, TimestampMixin, SoftDeleteMixin):
     """Dinero asignado a un partner para un periodo (CRM-03.04.01.04)."""
 
     __tablename__ = "fondos_mdf"

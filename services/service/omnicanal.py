@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, LimiteExcedido, NoAutenticado, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -82,7 +82,7 @@ CANALES = ("correo", "formulario", "chat", "social", "api", "telefono", "portal"
 ENTRANTE, SALIENTE = "entrante", "saliente"
 
 
-class CanalServicio(Base, TimestampMixin):
+class CanalServicio(Base, TimestampMixin, SoftDeleteMixin):
     """Una entrada declarada de servicio: de dónde llega y cómo se traduce."""
 
     __tablename__ = "canales_servicio"

@@ -284,6 +284,12 @@ def montar_ficha(
     )(_con_parametro(editar, parametro, Parche))
 
     if tiene_borrado:
+        # Se declara qué modelo hay detrás de este nombre de objeto: la entrada
+        # de papelera lo guarda por su nombre de negocio y restaurar tiene que
+        # poder volver al modelo.
+        from crmcore.datos.papelera import registrar_objeto
+
+        registrar_objeto(objeto, modelo)
 
         def borrar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> None:
             from crmcore.datos import papelera

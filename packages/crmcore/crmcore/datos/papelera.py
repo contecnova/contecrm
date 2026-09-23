@@ -33,6 +33,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from crmcore.datos.guard_borrados import con_borrados
 from crmcore.db.base import Base
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -95,6 +96,29 @@ class Cascada:
 
     modelo: type
     columna: str
+
+
+# Qué modelo hay detrás de cada nombre de objeto.
+#
+# La entrada de papelera guarda el objeto con el nombre del **negocio**
+# —`plantilla_correo_marketing`, `cuenta`—, que no es el de su tabla. Restaurar
+# necesita ir del uno al otro, y deducirlo por el nombre de la tabla falla en
+# cuanto no coinciden: «no se sabe restaurar objetos de tipo…» sobre algo que
+# está ahí mismo.
+#
+# Se llena solo: `montar_ficha` registra cada objeto al montar su borrado, y
+# quien borre a mano lo declara con `registrar_objeto`.
+_OBJETOS: dict[str, type] = {}
+
+
+def registrar_objeto(objeto: str, modelo: type) -> None:
+    """Declara qué modelo hay detrás de un nombre de objeto, para restaurarlo."""
+    _OBJETOS[objeto] = modelo
+
+
+def objetos_registrados() -> dict[str, type]:
+    """Copia del registro. La usa el router de papelera de cada servicio."""
+    return dict(_OBJETOS)
 
 
 def borrar(
@@ -193,7 +217,11 @@ def restaurar(
             f"No se sabe restaurar objetos de tipo «{entrada.objeto}»",
             error_code="papelera.objeto_desconocido",
         )
-    fila = db.get(principal, entrada.registro_id)
+    # Con `con_borrados`: el guard esconde lo borrado en toda consulta, y lo
+    # que se va a restaurar está borrado por definición. Sin esto, restaurar
+    # contestaba «el registro ya no existe en la base».
+    with con_borrados(db):
+        fila = db.get(principal, entrada.registro_id)
     if fila is None:
         raise NoEncontrado(
             "El registro ya no existe en la base", error_code="papelera.registro_ausente"
@@ -210,9 +238,13 @@ def restaurar(
             # mejor que no restaurar nada, pero hay que saberlo.
             logger.warning("papelera.cascada_desconocida", tabla=tabla, entrada=str(entrada_id))
             continue
-        for hijo in (
-            db.execute(select(modelo).where(modelo.id.in_([UUID(i) for i in ids]))).scalars().all()
-        ):
+        with con_borrados(db):
+            hijos = (
+                db.execute(select(modelo).where(modelo.id.in_([UUID(i) for i in ids])))
+                .scalars()
+                .all()
+            )
+        for hijo in hijos:
             hijo.deleted_at = None
             if hasattr(hijo, "deleted_by"):
                 hijo.deleted_by = None
@@ -275,7 +307,9 @@ def purgar(
         modelo = modelos.get(entrada.objeto)
         if modelo is None:
             continue
-        fila = db.get(modelo, entrada.registro_id)
+        # Lo que se purga está borrado, así que hay que poder verlo.
+        with con_borrados(db):
+            fila = db.get(modelo, entrada.registro_id)
         if fila is not None:
             db.delete(fila)
         entrada.purgado_at = ahora

@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
@@ -115,7 +115,7 @@ class PerfilMarketing(Base, TimestampMixin):
     )
 
 
-class Segmento(Base, TimestampMixin):
+class Segmento(Base, TimestampMixin, SoftDeleteMixin):
     """Una audiencia definida por condiciones (CRM-02.01.01.01, .03).
 
     `dinamico` decide lo único que importa de verdad aquí: un segmento dinámico

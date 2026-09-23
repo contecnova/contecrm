@@ -12,11 +12,12 @@
  * así que un campo nuevo en el servicio aparece aquí sin tocar nada.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import { Icono } from "@/componentes/Icono";
 import { Formulario } from "@/componentes/Formulario";
 import { Tabla } from "@/componentes/Tabla";
 import { llamar } from "@/lib/api";
@@ -76,11 +77,13 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
               type="button"
               onClick={() => setActivo(i)}
               aria-current={i === activo ? "page" : undefined}
+              title={r.icono ? r.nombre : undefined}
+              aria-label={r.icono ? r.nombre : undefined}
               className={`rounded-lg px-3 py-1.5 text-xs ${
                 i === activo ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light"
               }`}
             >
-              {r.nombre}
+              {r.icono ? <Icono nombre={r.icono} /> : r.nombre}
             </button>
           ))}
         </nav>
@@ -121,6 +124,16 @@ function RecursoVista({
   const [enviando, setEnviando] = useState(false);
   const [termino, setTermino] = useState("");
   const [proposito, setProposito] = useState<Proposito | null>(null);
+  /**
+   * Número de la última petición lanzada.
+   *
+   * Escribir en el buscador lanza una por pulsación, y llegan desordenadas.
+   * Sin esto, la respuesta de «T» pisaba a la de «Tr»: lo visible era el
+   * resultado de lo que ya no estaba escrito, y si la vieja fallaba se quedaba
+   * un «Algo ha ido mal» al lado del «Cargando…» de la nueva, que es lo que
+   * se veía en pantalla.
+   */
+  const peticion = useRef(0);
 
   // Se decide ANTES de pedir nada. Estaba después de los efectos, así que la
   // pantalla pedía igualmente la lista, recibía un 403 y lo pintaba como un
@@ -143,6 +156,7 @@ function RecursoVista({
         setFilas(null);
         return;
       }
+      const mia = (peticion.current += 1);
       setFallo(null);
       try {
         const partes: string[] = [];
@@ -151,6 +165,7 @@ function RecursoVista({
         const separador = recurso.listar.includes("?") ? "&" : "?";
         const ruta = partes.length ? `${recurso.listar}${separador}${partes.join("&")}` : recurso.listar;
         const respuesta = await llamar<unknown>(ruta);
+        if (mia !== peticion.current) return;
         const nuevas = comoFilas(respuesta.datos);
         // Se ACUMULA al paginar: sustituir haría que «cargar más» pareciera
         // saltar de página, y la lista perdería lo que el usuario ya miraba.
@@ -159,7 +174,9 @@ function RecursoVista({
         const cuerpo = respuesta.datos as { siguiente?: string | null } | null;
         setSiguiente(cuerpo && typeof cuerpo === "object" ? (cuerpo.siguiente ?? null) : null);
       } catch (error) {
-        setFallo(error);
+        // El fallo de una petición ya superada no se enseña: sería un error
+        // sobre algo que el usuario ya no está pidiendo.
+        if (mia === peticion.current) setFallo(error);
       }
     },
     [recurso.listar, puedeVer, busqueda, termino, terminoValido],

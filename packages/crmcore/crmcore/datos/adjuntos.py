@@ -147,7 +147,9 @@ class DescargaAdjunto(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     adjunto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     usuario_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    ip: Mapped[str] = mapped_column(String(45), nullable=False, default="", info={"sensibilidad": "personal"})
+    ip: Mapped[str] = mapped_column(
+        String(45), nullable=False, default="", info={"sensibilidad": "personal"}
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -379,6 +381,16 @@ def purgar_huerfanos(db: Session, tenant_id: UUID) -> int:
     solo mirando **todas** las filas se puede saber si un objeto quedó sin
     dueño. Hacerlo en el borrado exigiría contar referencias en caliente.
     """
+    from crmcore.datos.guard_borrados import con_borrados
+
+    # Aquí hay que ver las dos mitades: los adjuntos vivos y los borrados. El
+    # guard esconde los segundos, y sin ellos la lista de bytes huérfanos sale
+    # vacía y el almacén no se limpia nunca.
+    with con_borrados(db):
+        return _limpiar(db, tenant_id)
+
+
+def _limpiar(db: Session, tenant_id: UUID) -> int:
     from crmcore.almacen import get_almacen
 
     vivos = set(

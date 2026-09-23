@@ -120,12 +120,17 @@ def db(_esquema: str) -> Iterator[Any]:
     vez de cerrar la transacción de fuera, así que el código se comporta igual
     que en producción y la prueba sigue pudiendo deshacerlo todo.
     """
+    from crmcore.datos.guard_borrados import instalar_guard_borrados
     from crmcore.db import session as db_session
     from crmcore.db.session import get_engine
     from crmcore.tenancy.guard import instalar_guard
     from sqlalchemy.orm import sessionmaker
 
+    # Los dos guards, como en un servicio de verdad: si la suite corriera sin
+    # el de borrados, las pruebas verían registros que en producción están
+    # escondidos, que es la peor forma de tener una suite en verde.
     instalar_guard()
+    instalar_guard_borrados()
     conexion = get_engine().connect()
     transaccion = conexion.begin()
 

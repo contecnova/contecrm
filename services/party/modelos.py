@@ -614,7 +614,7 @@ class Fusion(Base, TimestampMixin):
     deshecha_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class SolicitudDerechos(Base, TimestampMixin):
+class SolicitudDerechos(Base, TimestampMixin, SoftDeleteMixin):
     """Solicitud de derechos del interesado (CRM-07.03.01.03).
 
     Acceso, rectificación, supresión, portabilidad, oposición y limitación. Lleva

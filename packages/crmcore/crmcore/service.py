@@ -109,10 +109,14 @@ def crear_servicio(
         trazas.configurar(nombre, version)
 
         if necesita_db:
+            from crmcore.datos.guard_borrados import instalar_guard_borrados
             from crmcore.db.session import get_engine, verificar_rol_sin_bypass
             from crmcore.tenancy.guard import instalar_guard
 
             instalar_guard()
+            # Y el de la papelera: lo borrado no sale en los listados sin que
+            # cuarenta consultas tengan que acordarse de filtrarlo.
+            instalar_guard_borrados()
             for aviso in verificar_rol_sin_bypass(get_engine()):
                 # Error y no excepción: en desarrollo se trabaja a menudo con el
                 # rol de administrador, y negarse a arrancar haría imposible el
@@ -287,9 +291,14 @@ def crear_servicio(
         # servicio restaura lo suyo y declara lo suyo, y montarlo aquí es lo que
         # impide que un servicio se quede sin ello sin que nadie lo note.
         from crmcore.http.cumplimiento_router import crear_router_cumplimiento
+        from crmcore.http.papelera_router import crear_router_papelera
         from crmcore.http.restauracion_router import crear_router_restauracion
 
         app.include_router(crear_router_restauracion(nombre), prefix=s.api_prefix)
+        # Y su papelera: cada servicio guarda la suya en su propio esquema, así
+        # que cada uno tiene que poder enseñarla. Sin esto, borrar una plantilla
+        # la mandaba a una papelera sin pantalla.
+        app.include_router(crear_router_papelera(nombre), prefix=s.api_prefix)
         app.include_router(crear_router_cumplimiento(nombre), prefix=s.api_prefix)
 
     for router in routers or []:
