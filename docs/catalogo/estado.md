@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**749 capacidades**: ✅ 680 hecho · ⬜ 69 pendiente
+**749 capacidades**: ✅ 690 hecho · ⬜ 59 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1240,7 +1240,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 9 — Proveedores, coste y capacidad
 
-20 capacidades · ⬜ 20
+20 capacidades · ✅ 10 · ⬜ 10
 
 ### 9.1 Maestro y gobierno del proveedor
 
@@ -1248,16 +1248,16 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-09.01.01.01` | El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes | C | 2 | party | ⬜ | — |
-| `CRM-09.01.01.02` | Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo | C | 2 | party | ⬜ | — |
-| `CRM-09.01.01.03` | Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después | C | 2 | party | ⬜ | — |
-| `CRM-09.01.01.04` | Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay | A | 4 | party | ⬜ | — |
-| `CRM-09.01.01.05` | Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas | A | 4 | party | ⬜ | — |
-| `CRM-09.01.01.06` | Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla | C | 2 | party | ⬜ | — |
-| `CRM-09.01.01.07` | Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido | C | 2 | sales | ⬜ | — |
-| `CRM-09.01.01.08` | Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie | A | 3 | service | ⬜ | — |
-| `CRM-09.01.01.09` | Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto | C | 2 | sales | ⬜ | — |
-| `CRM-09.01.01.10` | Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja | A | 2 | party | ⬜ | — |
+| `CRM-09.01.01.01` | El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes | C | 2 | party | ✅ | — |
+| `CRM-09.01.01.02` | Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo | C | 2 | party | ✅ | — |
+| `CRM-09.01.01.03` | Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después | C | 2 | party | ✅ | — |
+| `CRM-09.01.01.04` | Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay | A | 4 | party | ✅ | — |
+| `CRM-09.01.01.05` | Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas | A | 4 | party | ✅ | — |
+| `CRM-09.01.01.06` | Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla | C | 2 | party | ✅ | — |
+| `CRM-09.01.01.07` | Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido | C | 2 | sales | ✅ | — |
+| `CRM-09.01.01.08` | Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie | A | 3 | service | ✅ | — |
+| `CRM-09.01.01.09` | Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto | C | 2 | sales | ✅ | — |
+| `CRM-09.01.01.10` | Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja | A | 2 | party | ✅ | — |
 
 ### 9.2 Coste, tarifas y capacidad
 

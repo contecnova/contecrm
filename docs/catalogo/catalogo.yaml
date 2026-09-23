@@ -1311,16 +1311,16 @@ modulos:
           - id: CRM-09.01.01
             nombre: El proveedor como parte
             capacidades:
-              - {id: CRM-09.01.01.01, c: C, fase: 2, svc: party, estado: pendiente, t: "El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes"}
-              - {id: CRM-09.01.01.02, c: C, fase: 2, svc: party, estado: pendiente, t: "Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo"}
-              - {id: CRM-09.01.01.03, c: C, fase: 2, svc: party, estado: pendiente, t: "Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después"}
-              - {id: CRM-09.01.01.04, c: A, fase: 4, svc: party, estado: pendiente, t: "Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay"}
-              - {id: CRM-09.01.01.05, c: A, fase: 4, svc: party, estado: pendiente, t: "Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas"}
-              - {id: CRM-09.01.01.06, c: C, fase: 2, svc: party, estado: pendiente, t: "Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla"}
-              - {id: CRM-09.01.01.07, c: C, fase: 2, svc: sales, estado: pendiente, t: "Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido"}
-              - {id: CRM-09.01.01.08, c: A, fase: 3, svc: service, estado: pendiente, t: "Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie"}
-              - {id: CRM-09.01.01.09, c: C, fase: 2, svc: sales, estado: pendiente, t: "Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto"}
-              - {id: CRM-09.01.01.10, c: A, fase: 2, svc: party, estado: pendiente, t: "Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja"}
+              - {id: CRM-09.01.01.01, c: C, fase: 2, svc: party, estado: hecho, t: "El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes"}
+              - {id: CRM-09.01.01.02, c: C, fase: 2, svc: party, estado: hecho, t: "Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo"}
+              - {id: CRM-09.01.01.03, c: C, fase: 2, svc: party, estado: hecho, t: "Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después"}
+              - {id: CRM-09.01.01.04, c: A, fase: 4, svc: party, estado: hecho, t: "Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay"}
+              - {id: CRM-09.01.01.05, c: A, fase: 4, svc: party, estado: hecho, t: "Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas"}
+              - {id: CRM-09.01.01.06, c: C, fase: 2, svc: party, estado: hecho, t: "Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla"}
+              - {id: CRM-09.01.01.07, c: C, fase: 2, svc: sales, estado: hecho, t: "Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido"}
+              - {id: CRM-09.01.01.08, c: A, fase: 3, svc: service, estado: hecho, t: "Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie"}
+              - {id: CRM-09.01.01.09, c: C, fase: 2, svc: sales, estado: hecho, t: "Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto"}
+              - {id: CRM-09.01.01.10, c: A, fase: 2, svc: party, estado: hecho, t: "Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja"}
 
       - id: "9.2"
         nombre: Coste, tarifas y capacidad

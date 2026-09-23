@@ -11076,3 +11076,103 @@ hay, y dura pocas semanas.
 Descartar un indicio también exige motivo. Sin él, el mismo rebote vuelve a abrir
 la sospecha la semana que viene: dos veces es tolerable, y a la quinta se deja de
 mirar la cola.
+
+## El proveedor como parte: homologación, papeles y riesgo (`CRM-09.01.01.01`, `CRM-09.01.01.02`, `CRM-09.01.01.03`, `CRM-09.01.01.04`, `CRM-09.01.01.05`, `CRM-09.01.01.06`, `CRM-09.01.01.10`)
+
+Un CRM que solo mira al cliente cuenta media historia. En muchos negocios **quien
+da el servicio es un proveedor**, y lo que se le promete al cliente depende de lo
+que sostenga él: si no está homologado, si su seguro venció el mes pasado o si es
+el único que puede servir esa zona, eso decide lo que se puede vender — y no se
+puede decidir en el momento de firmar.
+
+**Un proveedor es una cuenta con rol, no un maestro aparte.** Ya existe el modelo
+de partes, con su deduplicación, su jerarquía, sus direcciones y sus permisos. Uno
+en paralelo duplicaría las cuatro cosas, y la misma empresa que es cliente de una
+división y proveedor de otra estaría dos veces, con el riesgo de que se le
+apliquen las condiciones de la ficha equivocada. El rol **se suma**, no sustituye.
+
+**La homologación es por categoría.** «Proveedor homologado» a secas no significa
+nada: homologado ¿para qué? Uno puede valer para material de oficina y no para
+trabajos en altura, y tratarlo igual es como se contrata a quien no debe. No se
+homologa **con salvedades** —nadie vuelve a mirar la salvedad, y el día que pasa
+algo la salvedad era justo eso— ni **sin fecha de fin**, porque una homologación
+eterna es una que nadie revisa y a los cinco años nadie sabe si esa empresa sigue
+teniendo los medios que tenía. Al preguntar se distingue **«no está homologado» de
+«se le caducó»**: la primera exige empezar el proceso y la segunda solo papel
+nuevo, y confundirlas hace que se descarte a un proveedor que valdría mañana.
+Y una categoría **rechazada** no se rehomologa sin mirar el motivo: rechazada no es
+caducada.
+
+**Los papeles caducan y bloquean solos.** Un certificado vencido que hay que mirar
+a mano no se mira: se descubre el día que el cliente pregunta quién hizo el
+trabajo y con qué seguro. Cada documento lleva su vigencia, su preaviso —renovar un
+seguro lleva semanas, así que avisar el mismo día que vence es no avisar— y si
+bloquea o no, porque no todo bloquea: el certificado de calidad es deseable y el
+seguro de responsabilidad civil no lo es. El fichero **no se guarda aquí**, se
+referencia en el gestor documental que ya existe y ya cifra: dos sitios donde
+viven documentos dejan uno sin cifrar, y será el que nadie recuerda. Y si de un
+proveedor no consta ningún documento se dice — eso no es que esté todo en regla, es
+que no se ha pedido nada.
+
+**El riesgo se mide por dependencia, no por opinión.** Lo que hace daño no es un
+proveedor malo: un proveedor malo se cambia. Lo que hace daño es un proveedor bueno
+del que sale el 60 % de lo que se sirve y que **no tiene alternativa homologada**,
+porque el día que tiene un incendio no hay nada que decidir, solo que contar. Por
+eso lo que se mide es la concentración y la alternativa; y sin volumen registrado
+se responde que no es medible, porque sin números se puede opinar y eso es otra
+cosa.
+
+**La evaluación va con hechos.** Una encuesta anual mide la relación con el
+comercial del proveedor, que es legítimo y no es el servicio. El plazo cumplido y
+las incidencias sí lo miden, y son números que ya están en el sistema: no hay que
+pedirle a nadie que rellene nada. Y si no hay entregas **no se puntúa** — un
+proveedor al que no se le ha encargado nada no es bueno ni malo, es uno del que no
+se sabe.
+
+**Los contactos van por función**, porque la pregunta real es «¿a quién llamo
+cuando esto falla a las once de la noche?». Si no hay nadie de escalado **se dice**,
+en vez de devolver el comercial: su teléfono a esa hora no es una respuesta, es
+media hora perdida antes de descubrir que no hay nadie. Y un contacto de escalado
+sin teléfono fuera de horario se marca, porque es justo el dato que falta cuando
+hace falta.
+
+**Y la baja no es borrar una fila.** No se da de baja a quien tiene trabajo
+comprometido con clientes: quitarlo del maestro no cancela lo vendido, hace que el
+día de la entrega nadie sepa quién tenía que ir. Si además es el único homologado
+para lo suyo, la baja **deja un hueco desde el primer día**, y eso hay que decirlo
+antes porque homologar a otro lleva semanas.
+
+## El contrato del proveedor y lo que sostiene (`CRM-09.01.01.07`, `CRM-09.01.01.08`, `CRM-09.01.01.09`)
+
+Estas tres viven en ventas y en servicio, no en el maestro, porque deciden **qué se
+puede vender**.
+
+**El contrato avisa por lo vendido, no por su fecha.** Un aviso a treinta días de
+la renovación es lo normal y llega tarde: lo que importa es si hay compromisos con
+clientes **más allá del fin del contrato**, porque esos son los que se quedan sin
+nadie detrás — y son los que hay que poner encima de la mesa al negociar. La fecha
+límite de preaviso es además una fecha real: pasada, un contrato con renovación
+automática se renueva solo aunque nadie lo quisiera, y eso se descubre con la
+factura. Un contrato sin vigencia declarada no es indefinido: es que nadie lo ha
+escrito, y el día que el proveedor diga que terminó no habrá con qué discutirlo.
+
+**El alcance se declara en positivo.** Qué categorías, qué geografías, qué clientes.
+Declarar lo que NO puede hacer y dar por hecho el resto es lo que hace que se le
+encargue algo que no hace: la lista de exclusiones nunca está completa, porque
+nadie piensa en lo que todavía no ha pasado. Y cuando no puede servir un caso se
+dice **por qué**: en un caso se busca otro proveedor y en el otro se cambia lo que
+se ofrece.
+
+**Y el acuerdo de servicio del proveedor se compara con el que se le promete al
+cliente.** Comercial promete cuatro horas de respuesta porque es lo que pide el
+pliego, y el proveedor que va a ir tiene contratadas ocho. Nadie miente: es que los
+dos documentos están en sitios distintos y los firma gente distinta, y **nadie los
+compara**. Aquí se comparan antes de firmar, y con una corrección que se olvida
+siempre: **los tiempos se suman**. Si el proveedor responde en cuatro horas y hacen
+falta dos para coordinar y desplazar, lo que se puede prometer son seis —prometer
+las cuatro suyas es prometer un tiempo que solo existiría si nosotros no
+hiciéramos nada—. Lo que el proveedor **no declara no se da por bueno**: no es que
+lo tenga bien, es que no lo ha dicho, y firmarlo así es firmar sin saber. Y se
+puede preguntar al revés —qué es lo máximo que se puede prometer con este proveedor
+detrás—, que es más barato que descubrirlo en la revisión legal y mucho más que
+descubrirlo en la primera incidencia.

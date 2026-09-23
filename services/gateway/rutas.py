@@ -188,6 +188,9 @@ PREFIJOS: dict[str, str] = {
     "calidad-dato": "party",
     "planes-cuenta": "party",
     "mapa-personas": "party",
+    # El proveedor es una cuenta con rol (CRM-09.01.01.01); esto es lo que se
+    # le añade encima: homologación, papeles y contactos.
+    "proveedores": "party",
     "oportunidades": "sales",
     "captura": "sales",
 }

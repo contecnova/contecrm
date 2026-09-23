@@ -14,6 +14,7 @@ from services.party import (
 from services.party.api import ROUTERS
 from services.party.api_actividades_extra import ROUTERS_ACTIVIDADES_EXTRA
 from services.party.api_calidad import ROUTERS_CALIDAD
+from services.party.api_proveedores import ROUTERS_PROVEEDORES
 from services.party.consumidores import consumir_comando, consumir_organigrama
 
 
@@ -35,7 +36,7 @@ app = crear_servicio(
         "consentimientos con prueba, deduplicación con fusión reversible y vista "
         "360 consultable por cualquier frontend."
     ),
-    routers=[*ROUTERS, *ROUTERS_ACTIVIDADES_EXTRA, *ROUTERS_CALIDAD],
+    routers=[*ROUTERS, *ROUTERS_ACTIVIDADES_EXTRA, *ROUTERS_CALIDAD, *ROUTERS_PROVEEDORES],
     al_arrancar=_al_arrancar,
     # Las automatizaciones piden por el bus lo que no pueden escribir ellas: sus
     # comandos los atiende el servicio dueño del objeto. El patrón es ancho

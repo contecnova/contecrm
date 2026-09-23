@@ -77,3 +77,23 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+# ── Proveedores (CRM-09.01.01.06, CRM-09.01.01.18 del RAT) ────────────────
+
+declarar(
+    Tratamiento(
+        objeto="contactos_proveedor",
+        # Son personas de otra empresa, no clientes ni empleados. La base es el
+        # interés legítimo de gestionar la relación mercantil, y el teléfono
+        # fuera de horario es lo más sensible que hay aquí: se guarda porque a
+        # las once de la noche hace falta, y por eso mismo se limita a quien
+        # tiene que llamar.
+        finalidad=(
+            "Contactar con el personal del proveedor para gestionar el servicio, la "
+            "facturación y el escalado de incidencias"
+        ),
+        base_legal="interes_legitimo",
+        plazo="Mientras dure la relación con el proveedor, y un año más para reclamaciones",
+        responsable=RESPONSABLE,
+    )
+)

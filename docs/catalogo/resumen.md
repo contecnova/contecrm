@@ -15,14 +15,14 @@
 | 6 — Productividad y colaboración | 49 | 48 | 0 | 1 |
 | 7 — Administración, ALM y gobierno | 93 | 86 | 0 | 7 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
-| 9 — Proveedores, coste y capacidad | 20 | 0 | 0 | 20 |
+| 9 — Proveedores, coste y capacidad | 20 | 10 | 0 | 10 |
 
 ## Por criticidad
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 301 | 290 |
-| A — Avanzado | 404 | 351 |
+| C — Core | 301 | 296 |
+| A — Avanzado | 404 | 355 |
 | D — Diferencial | 44 | 39 |
 
 ## Por fase
@@ -31,9 +31,9 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 171 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 155 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 181 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 48 |
-| 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 53 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 188 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 49 |
+| 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 55 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 39 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 33 |
 

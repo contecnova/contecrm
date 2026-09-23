@@ -745,5 +745,13 @@ from services.party.limitacion import LimitacionTratamiento  # noqa: E402,F401
 # Golden record y linaje del dato (CRM-01.01.04.06, .07).
 from services.party.mdm import LinajeValor  # noqa: E402,F401
 
+# El proveedor como parte: homologación, documentos y contactos por función
+# (CRM-09.01.01.02, .03, .06).
+from services.party.proveedores import (  # noqa: E402,F401
+    ContactoProveedor,
+    DocumentoProveedor,
+    Homologacion,
+)
+
 # Cola de excepciones de calidad (CRM-01.01.04.08).
 from services.party.stewardship import ExcepcionCalidad  # noqa: E402,F401
