@@ -328,6 +328,8 @@ export default {
       "Qué del sistema enseña el front oficial, medido contra el contrato. Se calcula en vivo: un informe guardado se queda viejo en cuanto alguien añade una ruta.",
     publicadas: "Operaciones publicadas",
     conPantalla: "Con pantalla",
+    deMaquina: "De máquina",
+    enRecursos: "Repartidas en {{cuantos}} recursos.",
     sinPantalla: "Sin pantalla",
     operaciones: "operaciones",
     escondido: "Lo que el CRM hace y ninguna pantalla enseña",

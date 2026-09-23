@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -15,6 +15,22 @@ from sqlalchemy import select
 
 from services.sales import territorios as ter
 from services.sales.territorios import Cuota
+
+
+def _trimestre_en_curso() -> tuple[date, date]:
+    """El trimestre natural de hoy.
+
+    Un informe de periodo que exige fechas contesta 422 a quien solo abre la
+    pantalla, y «faltan desde y hasta» no es una respuesta útil a «enséñame la
+    consecución». Sin fechas se entiende lo que entendería cualquiera: este
+    trimestre.
+    """
+    hoy = date.today()
+    primer_mes = 3 * ((hoy.month - 1) // 3) + 1
+    desde = date(hoy.year, primer_mes, 1)
+    siguiente = date(hoy.year + (primer_mes + 3 > 12), (primer_mes + 3 - 1) % 12 + 1, 1)
+    return desde, siguiente - timedelta(days=1)
+
 
 router = APIRouter(prefix="/territorios", tags=["territorios"])
 router_cuotas = APIRouter(prefix="/cuotas", tags=["territorios"])
@@ -232,10 +248,13 @@ def crear_cuota(datos: CrearCuota, uow: UowDep) -> Any:
 def consecucion(
     db: DbDep,
     principal: AutenticadoDep,
-    desde: date = Query(...),
-    hasta: date = Query(...),
+    desde: date | None = Query(None, description="Por defecto, el trimestre en curso"),
+    hasta: date | None = Query(None, description="Por defecto, el trimestre en curso"),
 ) -> Any:
-    return ter.consecucion(db, principal.tenant_id, desde=desde, hasta=hasta)
+    por_defecto = _trimestre_en_curso()
+    return ter.consecucion(
+        db, principal.tenant_id, desde=desde or por_defecto[0], hasta=hasta or por_defecto[1]
+    )
 
 
 class Cobertura(BaseModel):

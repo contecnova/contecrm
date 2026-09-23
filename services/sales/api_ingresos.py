@@ -7,7 +7,7 @@ recurrente, repartir el ingreso en el tiempo y saber con quién no se ha hablado
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -20,6 +20,22 @@ from pydantic import BaseModel, Field
 from services.sales import ingresos as ing
 from services.sales import plan_conjunto as pc
 from services.sales.plan_conjunto import PlanConjuntoCliente
+
+
+def _trimestre_en_curso() -> tuple[date, date]:
+    """El trimestre natural de hoy.
+
+    Un informe de periodo que exige fechas contesta 422 a quien solo abre la
+    pantalla, y «faltan desde y hasta» no es una respuesta útil a «enséñame la
+    consecución». Sin fechas se entiende lo que entendería cualquiera: este
+    trimestre.
+    """
+    hoy = date.today()
+    primer_mes = 3 * ((hoy.month - 1) // 3) + 1
+    desde = date(hoy.year, primer_mes, 1)
+    siguiente = date(hoy.year + (primer_mes + 3 > 12), (primer_mes + 3 - 1) % 12 + 1, 1)
+    return desde, siguiente - timedelta(days=1)
+
 
 router_ingresos = APIRouter(prefix="/ingresos", tags=["ingresos y recurrencia"])
 router_planes = APIRouter(prefix="/planes-conjuntos", tags=["plan conjunto y revisión"])
@@ -125,7 +141,14 @@ def calendario(cuerpo: CalendarioIn, uow: UowDep) -> Any:
         "siguiente."
     ),
 )
-def previsto(db: DbDep, principal: AutenticadoDep, desde: date, hasta: date) -> Any:
+def previsto(
+    db: DbDep,
+    principal: AutenticadoDep,
+    desde: date | None = Query(None, description="Por defecto, el trimestre en curso"),
+    hasta: date | None = Query(None, description="Por defecto, el trimestre en curso"),
+) -> Any:
+    por_defecto = _trimestre_en_curso()
+    desde, hasta = desde or por_defecto[0], hasta or por_defecto[1]
     return ing.previsto_por_periodo(db, principal.tenant_id, desde=desde, hasta=hasta)
 
 

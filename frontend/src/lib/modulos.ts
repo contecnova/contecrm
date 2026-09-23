@@ -85,6 +85,7 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.01",
     grupo: "Plataforma",
     recursos: [
+      { nombre: "Compromisos", listar: "/api/v1/compromisos", servicio: "tenancy" },
       {
         nombre: "Tenants",
         // Con `objeto` para que cada fila se abra: suspender, reactivar,
@@ -161,6 +162,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.05",
     grupo: "Plataforma",
     recursos: [
+      { nombre: "Seguimientos", listar: "/api/v1/seguimientos", servicio: "identity" },
+      {
+        nombre: "Dispositivos de confianza",
+        listar: "/api/v1/dispositivos-confianza",
+        servicio: "identity",
+      },
       { nombre: "Usuarios", listar: "/api/v1/usuarios", servicio: "identity", permiso: "user:read" },
       { nombre: "Roles", listar: "/api/v1/roles", servicio: "identity", permiso: "user:read" },
       {
@@ -182,6 +189,30 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.06",
     grupo: "Plataforma",
     recursos: [
+      {
+        nombre: "Modelo canónico",
+        listar: "/api/v1/modelo-canonico/objetos",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Conflictos de sincronización",
+        listar: "/api/v1/sincronizacion/conflictos",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Proveedores de servicio",
+        listar: "/api/v1/proveedores-servicio",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Canales de chat",
+        listar: "/api/v1/canales-chat",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       { nombre: "Catálogo de eventos", listar: "/api/v1/eventos/catalogo", servicio: "eventing" },
       // La cola de fallidos delante del archivo: lo que hay que mirar cuando
       // algo va mal es lo que no salió, no lo que salió bien hace un mes.
@@ -198,6 +229,24 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.07",
     grupo: "Clientes",
     recursos: [
+      {
+        nombre: "Calidad del dato",
+        listar: "/api/v1/calidad-dato/cola",
+        servicio: "party",
+        permiso: "account:read",
+      },
+      {
+        nombre: "Visitas",
+        listar: "/api/v1/visitas",
+        servicio: "party",
+        permiso: "account:read",
+      },
+      {
+        nombre: "Mapa de personas",
+        listar: "/api/v1/mapa-personas",
+        servicio: "party",
+        permiso: "contact:read",
+      },
       {
         nombre: "Cuentas",
         objeto: "cuenta",
@@ -258,6 +307,18 @@ export const MODULOS: Modulo[] = [
     grupo: "Clientes",
     recursos: [
       {
+        nombre: "Plantillas",
+        listar: "/api/v1/plantillas-actividad",
+        servicio: "party",
+        permiso: "activity:read",
+      },
+      {
+        nombre: "Recurrencias",
+        listar: "/api/v1/recurrencias",
+        servicio: "party",
+        permiso: "activity:read",
+      },
+      {
         nombre: "Actividades",
         objeto: "actividad",
         listar: "/api/v1/activities",
@@ -280,6 +341,45 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.13",
     grupo: "Ventas",
     recursos: [
+      {
+        nombre: "Ofertas",
+        listar: "/api/v1/presupuestos",
+        servicio: "sales",
+        permiso: "quote:read",
+        columnas: ["codigo", "estado", "total", "moneda", "valido_hasta"],
+      },
+      {
+        nombre: "Pedidos",
+        listar: "/api/v1/pedidos",
+        servicio: "sales",
+        permiso: "order:read",
+      },
+      {
+        nombre: "Contratos",
+        listar: "/api/v1/contratos",
+        servicio: "sales",
+        permiso: "contract:read",
+      },
+      {
+        nombre: "Suscripciones",
+        listar: "/api/v1/suscripciones",
+        servicio: "sales",
+        permiso: "contract:read",
+      },
+      {
+        nombre: "Productos",
+        listar: "/api/v1/productos",
+        servicio: "sales",
+        permiso: "producto:read",
+      },
+      {
+        nombre: "Listas de precio",
+        listar: "/api/v1/listas-precio",
+        servicio: "sales",
+        permiso: "producto:read",
+      },
+      { nombre: "Metodologías", listar: "/api/v1/metodologias", servicio: "sales" },
+      { nombre: "Mi cola", listar: "/api/v1/mi-cola", servicio: "sales" },
       {
         nombre: "Papelera",
         icono: "delete",
@@ -317,6 +417,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.15",
     grupo: "Ventas",
     recursos: [
+      { nombre: "Cadencias", listar: "/api/v1/cadencias", servicio: "sales" },
+      {
+        nombre: "Plantillas de correo",
+        listar: "/api/v1/plantillas-correo",
+        servicio: "sales",
+      },
       {
         nombre: "Leads",
         objeto: "lead",
@@ -342,6 +448,40 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.14",
     grupo: "Ventas",
     recursos: [
+      { nombre: "Territorios", listar: "/api/v1/territorios", servicio: "sales" },
+      // El módulo enseñaba el resumen del pipeline y llamaba a eso «Previsión».
+      // Las categorías, los periodos y las cuotas —que es con lo que se hace
+      // una previsión— no tenían pantalla ninguna.
+      {
+        nombre: "Categorías",
+        listar: "/api/v1/forecast/categorias",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
+      {
+        nombre: "Periodos",
+        listar: "/api/v1/forecast/periodos",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
+      {
+        nombre: "Cuotas",
+        listar: "/api/v1/cuotas",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
+      {
+        nombre: "Consecución",
+        listar: "/api/v1/cuotas/consecucion",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
+      {
+        nombre: "Ingreso previsto",
+        listar: "/api/v1/ingresos/previsto",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
       {
         nombre: "Resumen del pipeline",
         listar: "/api/v1/pipeline/resumen",
@@ -361,6 +501,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.16",
     grupo: "Ventas",
     recursos: [
+      {
+        nombre: "Portal del partner",
+        listar: "/api/v1/portal-partner/mis-registros",
+        servicio: "sales",
+        permiso: "partner:read",
+      },
       {
         nombre: "Partners",
         listar: "/api/v1/partners",
@@ -610,6 +756,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.17",
     grupo: "Servicio",
     recursos: [
+      { nombre: "Encuestas", listar: "/api/v1/encuestas", servicio: "service" },
+      {
+        nombre: "Agentes disponibles",
+        listar: "/api/v1/agentes/disponibles",
+        servicio: "service",
+      },
       {
         nombre: "Papelera",
         icono: "delete",
@@ -714,6 +866,13 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.12",
     grupo: "Marketing",
     recursos: [
+      { nombre: "Reglas de contenido", listar: "/api/v1/reglas-contenido", servicio: "marketing" },
+      { nombre: "Cookies", listar: "/api/v1/cookies", servicio: "marketing" },
+      {
+        nombre: "Renovación de consentimiento",
+        listar: "/api/v1/optin/renovaciones",
+        servicio: "marketing",
+      },
       {
         nombre: "Plantillas",
         listar: "/api/v1/correo/plantillas",

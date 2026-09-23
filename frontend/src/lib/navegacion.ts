@@ -36,6 +36,15 @@ export interface Entrada {
   permiso?: string;
   /** Solo para quien opera la plataforma, no para una empresa. */
   solo_plataforma?: boolean;
+  /**
+   * Recursos de la API que esta pantalla enseña.
+   *
+   * Solo lo declaran las pantallas escritas a mano: las de los módulos ya se
+   * saben por su `listar`. Sirve para el informe de cobertura, que sin esto
+   * contaba como «sin pantalla» todo lo que no fuera un módulo —proveedores,
+   * cuadros de mando, inteligencia— y daba una lista de carencias inventada.
+   */
+  recursos?: string[];
 }
 
 /**
@@ -103,7 +112,7 @@ export const AREA_DE_GRUPO: Record<string, IdArea> = {
  */
 export const ACCESOS: Entrada[] = [
   { a: "/", clave: "nav.inicio", icono: "home" },
-  { a: "/puesto", clave: "nav.puesto", icono: "desk" },
+  { a: "/puesto", clave: "nav.puesto", icono: "desk", recursos: ["agenda"] },
 ];
 
 /**
@@ -115,27 +124,27 @@ export const ACCESOS: Entrada[] = [
  * distintos del menú.
  */
 export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
-  { area: "clientes", a: "/proveedores", clave: "nav.proveedores", icono: "local_shipping", permiso: "party:read" },
+  { area: "clientes", a: "/proveedores", clave: "nav.proveedores", icono: "local_shipping", permiso: "party:read" , recursos: ["proveedores"] },
 
-  { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" },
-  { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" },
+  { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
+  { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
 
-  { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read" },
+  { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read" , recursos: ["activos-marketing", "atribucion", "audiencias-externas", "momento", "recorridos", "social"] },
 
-  { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read" },
-  { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" },
-  { area: "servicio", a: "/conocimiento", clave: "nav.conocimiento", icono: "menu_book", permiso: "conocimiento:read" },
+  { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read" , recursos: ["conversaciones", "creditos-servicio"] },
+  { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente", "macros", "marcador"] },
+  { area: "servicio", a: "/conocimiento", clave: "nav.conocimiento", icono: "menu_book", permiso: "conocimiento:read" , recursos: ["conocimiento"] },
 
-  { area: "analisis", a: "/cuadros", clave: "nav.cuadros", icono: "dashboard", permiso: "informe:read" },
-  { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" },
-  { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed" },
-  { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar" },
+  { area: "analisis", a: "/cuadros", clave: "nav.cuadros", icono: "dashboard", permiso: "informe:read" , recursos: ["cuadros-mando", "informes"] },
+  { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion", "almacen"] },
+  { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed" , recursos: ["metricas"] },
+  { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar" , recursos: ["agentes-ia", "ia", "modelos", "sugerencias-caso", "transcripciones", "variantes", "voz"] },
 
-  { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read" },
-  { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" },
+  { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read" , recursos: ["aprobaciones"] },
+  { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["compensacion", "encargos", "firma", "firma-presencial", "plantillas-documento", "suite", "suites"] },
 
-  { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" },
-  { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" },
+  { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" , recursos: ["aislamiento", "residencia", "entornos", "sso-gobierno", "factores", "notificaciones", "scim"] },
+  { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" , recursos: ["entornos", "sandboxes"] },
   // El recorrido guiado y la cobertura hablan **del producto**, no del trabajo
   // de nadie: estaban en Marketing, donde quien busca sus campañas se topa con
   // una visita guiada, y donde quien la busca no la encuentra. Y el recorrido
