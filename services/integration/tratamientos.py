@@ -52,3 +52,32 @@ declarar(
         responsable=RESPONSABLE,
     )
 )
+
+# ── Suites de productividad (CRM-06.01.03.18) ─────────────────────────────
+
+declarar(
+    Tratamiento(
+        objeto="consentimientos_suite",
+        # El propio consentimiento es un tratamiento, y conservarlo es lo que
+        # permite demostrar que se pidió. Borrarlo al revocar sería borrar la
+        # prueba de que se hizo bien.
+        finalidad=(
+            "Acreditar qué recurso de su correo, calendario o agenda autorizó cada "
+            "persona, cuándo y con qué alcance"
+        ),
+        base_legal="obligacion_legal",
+        plazo="3 años desde la revocación, para poder acreditar que hubo consentimiento",
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
+        objeto="suscripciones_suite",
+        finalidad="Recibir del proveedor los cambios del buzón conectado sin sondear",
+        base_legal="interes_legitimo",
+        plazo="Mientras el recurso siga conectado; se borra también en el proveedor al darse de baja",
+        destinatarios=("La suite de productividad que use el cliente",),
+        responsable=RESPONSABLE,
+    )
+)

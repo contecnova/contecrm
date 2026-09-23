@@ -125,7 +125,12 @@ class ConsentimientoSuite(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Marcado como personal a propósito, aunque solo sea un identificador: la
+    # fila entera ES un dato sobre esa persona —qué autorizó leer de su buzón y
+    # cuándo—, y si no constara aquí no aparecería en el registro de tratamiento.
+    usuario_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"sensibilidad": "personal"}
+    )
     perfil: Mapped[str] = mapped_column(String(80), nullable=False)
     recurso: Mapped[str] = mapped_column(String(30), nullable=False)
     sentido: Mapped[str] = mapped_column(String(10), nullable=False, default="leer")
@@ -154,7 +159,11 @@ class SuscripcionSuite(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Personal por lo mismo: esta fila dice que el buzón de esta persona está
+    # siendo escuchado por el CRM, y eso es un dato sobre ella.
+    usuario_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"sensibilidad": "personal"}
+    )
     perfil: Mapped[str] = mapped_column(String(80), nullable=False)
     recurso: Mapped[str] = mapped_column(String(30), nullable=False)
     # El identificador que devuelve el proveedor. Sin él no se puede renovar ni

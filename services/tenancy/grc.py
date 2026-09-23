@@ -492,11 +492,15 @@ def cobertura(db: Session, tenant_id: UUID, *, solo_hechas: bool = False) -> dic
         "capacidades": len(universo),
         "con_control": len(por_capacidad),
         "sin_control": len(sin_control),
-        "pct": round(len(por_capacidad) / len(universo) * 100, 1) if universo else 0.0,
+        # Dos decimales y no uno: con setecientas capacidades en el catálogo, un
+        # control cubre el 0,14 %, y redondeando a un decimal la cobertura sobre
+        # lo entregado y la cobertura sobre todo salen iguales — con lo que la
+        # distinción que este informe existe para enseñar no se ve.
+        "pct": round(len(por_capacidad) / len(universo) * 100, 2) if universo else 0.0,
         "por_seccion": {
             nombre: {
                 **datos,
-                "pct": round(datos["con_control"] / datos["total"] * 100, 1),
+                "pct": round(datos["con_control"] / datos["total"] * 100, 2),
             }
             for nombre, datos in sorted(por_seccion.items())
         },

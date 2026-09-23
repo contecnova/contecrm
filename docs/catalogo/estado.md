@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**727 capacidades**: ✅ 660 hecho · ⬜ 67 pendiente
+**727 capacidades**: ✅ 670 hecho · ⬜ 57 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-49 capacidades · ✅ 38 · ⬜ 11
+49 capacidades · ✅ 48 · ⬜ 1
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -1012,16 +1012,16 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.03.08` | Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM | A | 2 | integration | ✅ | — |
 | `CRM-06.01.03.09` | Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados | A | 2 | integration | ✅ | — |
 | `CRM-06.01.03.10` | Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad | C | 2 | integration | ✅ | — |
-| `CRM-06.01.03.11` | Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas | C | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.12` | Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.13` | Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite | C | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.14` | Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre | C | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.15` | Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.16` | Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón | C | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.17` | Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa | C | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.18` | Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.19` | Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos | A | 2 | integration | ⬜ | — |
-| `CRM-06.01.03.20` | Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación» | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.11` | Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas | C | 2 | integration | ✅ | — |
+| `CRM-06.01.03.12` | Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más | A | 2 | integration | ✅ | — |
+| `CRM-06.01.03.13` | Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite | C | 2 | integration | ✅ | — |
+| `CRM-06.01.03.14` | Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre | C | 2 | integration | ✅ | — |
+| `CRM-06.01.03.15` | Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas | A | 2 | integration | ✅ | — |
+| `CRM-06.01.03.16` | Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón | C | 2 | integration | ✅ | — |
+| `CRM-06.01.03.17` | Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa | C | 2 | integration | ✅ | — |
+| `CRM-06.01.03.18` | Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación | A | 2 | integration | ✅ | — |
+| `CRM-06.01.03.19` | Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos | A | 2 | integration | ✅ | — |
+| `CRM-06.01.03.20` | Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación» | C | 2 | integration | ✅ | — |
 
 #### CRM-06.01.02 · Firma electrónica
 

@@ -10827,3 +10827,109 @@ quiere.
 Y el enlace **es una credencial**: quien lo tiene entra, sin identificarse. Va en
 la cita y en la ficha; no va en una notificación push —llega a una pantalla
 bloqueada que ve cualquiera que coja el teléfono— ni en una página pública.
+
+## Operar las suites: lo que se degrada en silencio (`CRM-06.01.03.11`, `CRM-06.01.03.12`, `CRM-06.01.03.13`, `CRM-06.01.03.14`, `CRM-06.01.03.15`)
+
+Conectar es la parte fácil. Lo que decide si la integración sigue viva a los seis
+meses son cosas que **no fallan: se degradan**. Una suscripción que caduca, un
+proveedor que corta la cuota, un buzón que lleva una semana sin credencial. Nada
+de eso pinta un error rojo en ningún sitio: el CRM se queda quieto y la gente
+deja de fiarse sin saber muy bien por qué.
+
+**Disponibilidad real.** Antes de proponer una hora se lee el calendario, y si el
+calendario **no se puede leer no se propone nada**. Es el error clásico de las
+herramientas de agenda: no se sabe y se propone igualmente «porque no consta
+nada», y se cita a alguien encima de la reunión que ya tenía. La respuesta
+incómoda y cierta —«no puedo ver su agenda»— vale más que la cómoda y falsa. Del
+calendario ajeno se lee **que está ocupado, no de qué**: el asunto de una cita
+puede ser «revisión médica», y para proponer una hora no hace ninguna falta. Y
+cuando no hay ningún hueco se dice, en vez de enseñar una lista vacía que se lee
+como un fallo.
+
+**Chat.** Un hilo corporativo tiene la negociación, el precio y el comentario que
+alguien hizo sobre un compañero. Copiarlo al CRM mete todo eso donde lo ve gente
+que no estaba en la conversación, y donde se queda aunque en el chat se borre.
+Va por referencia, con un resumen escrito por una persona si hace falta. Y lo que
+el canal no deja exportar **no se reconstruye a trozos**: una conversación
+incompleta que parece completa es peor que un enlace.
+
+**Importar y exportar en formatos estándar.** EML, mbox, vCard, iCalendar y CSV,
+**sin pasar por ninguna suite**. Es la puerta de salida, y no es un detalle de
+cortesía: un CRM cuyos datos solo pueden salir por la API de un fabricante tiene
+al cliente atado, y eso se descubre el día que quiere irse, cuando ya no hay
+tiempo de construir nada. El paquete dice además **qué no lleva dentro** —las
+notas y los ficheros están enlazados, no copiados—, porque sin esa lista el
+cliente cree que se lo lleva todo y encuentra el hueco cuando ya ha apagado lo
+otro. Al importar se enseña primero y se ejecuta después: deshacer a mano una
+importación de diez mil filas no lo hace nadie, se queda.
+
+**Reglas de qué entra.** Las pone el tenant y las afina cada persona, con una
+regla por encima: **la del usuario solo puede estrechar, nunca ensanchar**. Si
+pudiera ensanchar, la política de la empresa sería una sugerencia: bastaría con
+que alguien marcara «traerlo todo» para que entrara su buzón entero. Y lo que
+nunca entra —marcado como privado, carpetas personales, borradores— no es una
+casilla, porque una casilla acaba desmarcada. De lo que se queda fuera se dice
+**por qué**: sin el motivo, el usuario ve que no se sincroniza nada y no sabe si
+es que no hay nada.
+
+**Límites del proveedor.** Cuando corta, se le hace caso: si manda `Retry-After`,
+se espera eso. Reintentar antes gasta cuota para que vuelva a decir que no y de
+paso parece un ataque — y lo que hace un proveedor entonces es bloquear la
+aplicación entera, a todos los clientes, no solo al que se pasó. Hay respuestas
+que **no se reintentan nunca**: un 403 no se arregla insistiendo, falta un
+permiso y lo que hay que hacer es decirlo. Cuando no dice cuánto esperar, la
+espera crece pero **con tope**: sin él, el sexto intento espera una hora y la
+integración parece muerta. Y la primera carga de un buzón con quince años de
+correo se reparte, porque se comería la cuota del tenant entero y entonces el
+proveedor corta a todos los demás: se usa la mitad y se deja la otra mitad para
+quien no acaba de conectar nada.
+
+## Salud, baja, identidad y diagnóstico de las suites (`CRM-06.01.03.16`, `CRM-06.01.03.17`, `CRM-06.01.03.18`, `CRM-06.01.03.19`, `CRM-06.01.03.20`)
+
+**El panel de salud** dice qué lleva sin sincronizar, desde cuándo y por qué, por
+conexión. Y la regla que lo hace útil: **lo que no se ha medido no está en
+verde**. Un panel que solo cuenta lo sincronizado enseña un número que sube
+mientras tres buzones llevan una semana parados — el número es verdad y la
+impresión es falsa. Sin ninguna conexión no se responde «todo bien», se responde
+que esto está sin usar. Una parada sin motivo anotado lo dice también, porque sin
+motivo nadie sabrá qué mirar. Y las conexiones que van por sondeo salen aparte:
+sus cambios entran con retraso y no al instante, y el usuario tiene derecho a
+saber por qué su cita tarda diez minutos en aparecer.
+
+**La baja.** Conviene tener escrito qué pasa antes de que haga falta. **Las
+actividades se quedan y la copia de su agenda se va**: las primeras son el
+registro de la empresa —quién habló con qué cliente y cuándo— y borrarlas dejaría
+a la compañía sin su propia historia comercial; la segunda era suya y ya no hay
+motivo para tenerla. Se destruyen el token y el refresco, porque un token vivo de
+alguien que se fue es un acceso que nadie vigila. Se conserva el rastro de que
+hubo consentimiento y de cuándo se revocó, porque borrarlo es borrar la prueba de
+que se hizo bien. Y la suscripción **se borra también en el proveedor**: quitarla
+solo de este lado deja al proveedor mandando avisos de un buzón que ya nadie
+atiende, y al CRM con permiso para leerlo. Si la persona tenía acceso a un buzón
+compartido, darla de baja **no** desconecta ese buzón: es del equipo.
+
+**El registro de tratamiento** del dato que entra de la suite está declarado como
+el del resto: finalidad, base legal, plazo y destinatarios, incluido el del propio
+consentimiento — que también es un tratamiento, y cuya conservación es lo que
+permite acreditar que se pidió.
+
+**La identidad.** Los alias son el fallo típico: la misma persona manda desde
+`j.perez@` y desde `juan.perez@`, y si cada uno se resuelve a un usuario distinto,
+la misma conversación aparece dos veces en la ficha atribuida a dos comerciales.
+Un buzón compartido, en cambio, **no tiene dueño**: `info@` o `ventas@` es del
+equipo, y atribuirlo a quien lo conectó le pone en su nombre correos que no
+escribió — cosa que acaba en la comisión de alguien. Y cuando una dirección está
+declarada en dos usuarios no se elige: se dice que es ambigua, porque elegir haría
+que la misma conversación se atribuyera a uno u otro según el día.
+
+**El diagnóstico.** «Error de autenticación» es el mensaje que atasca una
+implantación una semana: el consultor no sabe si es la contraseña, el permiso, el
+inquilino o el reloj, así que lo prueba todo y acaba pidiendo permisos de
+administrador global «para descartar» — que es exactamente como una integración
+termina con más permisos de los que nadie puede justificar. Aquí se dice qué
+alcance concreto falta; o que la credencial caducó y hace falta volver a
+autorizar, que es otra cosa; o que es una política del inquilino del cliente que
+no se arregla desde el CRM; o que el proveedor cortó por cuota, que no es un fallo
+de configuración. Y lo que dijo el proveedor se enseña tal cual. Los alcances se
+comprueban además **antes de llamar**: hacerlo esperando el 403 gasta una petición
+de la cuota del tenant para averiguar algo que ya se sabía.

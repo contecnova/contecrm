@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.integration import suites as su
+from services.integration import suites_operacion as sop
 from services.integration import suites_recursos as sur
 
 router_suites = APIRouter(prefix="/suites", tags=["suites de productividad"])
@@ -212,6 +213,155 @@ def reunion(cuerpo: ReunionIn, db: DbDep, principal: AutenticadoDep) -> Any:
         confirmada=cuerpo.confirmada,
         asistentes=cuerpo.asistentes,
     )
+
+
+class HuecosIn(BaseModel):
+    ocupado: list[dict[str, Any]] = Field(default_factory=list)
+    desde: datetime
+    hasta: datetime
+    minutos: int = 30
+    calendario_legible: bool = True
+
+
+class ExportacionIn(BaseModel):
+    formato: str
+    objetos: list[str] = Field(default_factory=list)
+    referencias: list[str] = Field(default_factory=list)
+
+
+class DiagnosticoIn(BaseModel):
+    codigo: int | None = None
+    alcances_concedidos: list[str] = Field(default_factory=list)
+    alcances_necesarios: list[str] = Field(default_factory=list)
+    mensaje_del_proveedor: str = ""
+
+
+@router_suites.post(
+    "/disponibilidad",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Huecos reales leídos del calendario",
+    description=(
+        "**Si el calendario no se puede leer, no se propone nada.** Es el error "
+        "clásico de las herramientas de agenda: no se sabe y se propone "
+        "igualmente «porque no consta nada», y se cita a alguien encima de la "
+        "reunión que ya tenía.\n\n"
+        "Del calendario ajeno se lee **que está ocupado, no de qué**: el asunto "
+        "de una cita puede ser «revisión médica», y para proponer una hora no "
+        "hace ninguna falta."
+    ),
+)
+def disponibilidad(cuerpo: HuecosIn, principal: AutenticadoDep) -> Any:
+    return sop.huecos_libres(
+        ocupado=cuerpo.ocupado,
+        desde=cuerpo.desde,
+        hasta=cuerpo.hasta,
+        minutos=cuerpo.minutos,
+        calendario_legible=cuerpo.calendario_legible,
+    )
+
+
+@router_suites.post(
+    "/exportacion",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Preparar una salida en formato estándar, sin pasar por ninguna suite",
+    description=(
+        "Es la puerta de salida. Un CRM cuyos datos solo pueden salir por la API "
+        "de un fabricante tiene al cliente atado, y eso se descubre el día que "
+        "quiere irse — cuando ya no hay tiempo de construir nada.\n\n"
+        "El paquete dice **qué NO lleva dentro**: las notas y los ficheros están "
+        "enlazados y no copiados. Sin esa lista, el cliente cree que se lo lleva "
+        "todo y descubre el hueco cuando ya ha apagado lo otro."
+    ),
+)
+def exportacion(cuerpo: ExportacionIn, principal: AutenticadoDep) -> Any:
+    return sop.preparar_exportacion(
+        formato=cuerpo.formato, objetos=cuerpo.objetos, incluye_referencias=cuerpo.referencias
+    )
+
+
+@router_suites.get(
+    "/salud",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué lleva sin sincronizar, desde cuándo y por qué",
+    description=(
+        "**Lo que no se ha medido no está en verde.** Un panel que solo cuenta "
+        "lo sincronizado enseña un número que sube mientras tres buzones llevan "
+        "una semana parados: el número es verdad y la impresión es falsa.\n\n"
+        "Se dicen aparte las conexiones que van por sondeo porque no se pudo "
+        "renovar la suscripción: sus cambios entran con retraso, no al instante."
+    ),
+)
+def salud(db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    from services.integration.buzon import Buzon
+
+    buzones = list(
+        db.execute(select(Buzon).where(Buzon.tenant_id == principal.tenant_id)).scalars().all()
+    )
+    suscripciones = list(
+        db.execute(
+            select(su.SuscripcionSuite).where(su.SuscripcionSuite.tenant_id == principal.tenant_id)
+        )
+        .scalars()
+        .all()
+    )
+    en_sondeo = {(s.usuario_id, s.recurso) for s in suscripciones if s.en_sondeo}
+    return sop.salud(
+        conexiones=[
+            {
+                "id": str(b.id),
+                "recurso": b.ambito,
+                "estado": b.estado,
+                "motivo": b.motivo,
+                "sincronizado_at": b.sincronizado_at,
+                "en_sondeo": (b.usuario_id, b.ambito) in en_sondeo,
+            }
+            for b in buzones
+        ]
+    )
+
+
+@router_suites.post(
+    "/diagnostico",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué falla exactamente, no «error de autenticación»",
+    description=(
+        "«Error de autenticación» es el mensaje que hace que una implantación se "
+        "atasque una semana: el consultor no sabe si es la contraseña, el "
+        "permiso, el inquilino o el reloj, así que lo prueba todo y acaba "
+        "pidiendo permisos de administrador global «para descartar» — que es "
+        "como una integración acaba con más permisos de los que necesita.\n\n"
+        "Aquí se dice qué alcance concreto falta, o que la credencial caducó, o "
+        "que es una política del inquilino del cliente que no se arregla desde "
+        "el CRM."
+    ),
+)
+def diagnostico(cuerpo: DiagnosticoIn, principal: AutenticadoDep) -> Any:
+    return sop.diagnosticar(
+        codigo=cuerpo.codigo,
+        alcances_concedidos=cuerpo.alcances_concedidos,
+        alcances_necesarios=cuerpo.alcances_necesarios,
+        mensaje_del_proveedor=cuerpo.mensaje_del_proveedor,
+    )
+
+
+@router_suites.get(
+    "/baja/{motivo}",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué se queda en el CRM y qué desaparece al darse de baja",
+    description=(
+        "**Las actividades se quedan y la copia de su agenda se va.** Las "
+        "primeras son el registro de la empresa —quién habló con qué cliente y "
+        "cuándo— y borrarlas dejaría a la compañía sin su historia comercial; la "
+        "segunda era suya.\n\n"
+        "Y la suscripción **se borra también en el proveedor**: quitarla solo de "
+        "este lado deja al proveedor mandando avisos de un buzón que ya nadie "
+        "atiende, y al CRM con permiso para leerlo."
+    ),
+)
+def baja(motivo: str, principal: AutenticadoDep) -> Any:
+    return sop.plan_de_baja(motivo=motivo)
 
 
 ROUTERS_SUITES = [router_suites]

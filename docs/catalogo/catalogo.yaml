@@ -1081,16 +1081,16 @@ modulos:
               - {id: CRM-06.01.03.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM"}
               - {id: CRM-06.01.03.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados"}
               - {id: CRM-06.01.03.10, c: C, fase: 2, svc: integration, estado: hecho, t: "Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad"}
-              - {id: CRM-06.01.03.11, c: C, fase: 2, svc: integration, estado: pendiente, t: "Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas"}
-              - {id: CRM-06.01.03.12, c: A, fase: 2, svc: integration, estado: pendiente, t: "Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más"}
-              - {id: CRM-06.01.03.13, c: C, fase: 2, svc: integration, estado: pendiente, t: "Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite"}
-              - {id: CRM-06.01.03.14, c: C, fase: 2, svc: integration, estado: pendiente, t: "Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre"}
-              - {id: CRM-06.01.03.15, c: A, fase: 2, svc: integration, estado: pendiente, t: "Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas"}
-              - {id: CRM-06.01.03.16, c: C, fase: 2, svc: integration, estado: pendiente, t: "Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón"}
-              - {id: CRM-06.01.03.17, c: C, fase: 2, svc: integration, estado: pendiente, t: "Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa"}
-              - {id: CRM-06.01.03.18, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación"}
-              - {id: CRM-06.01.03.19, c: A, fase: 2, svc: integration, estado: pendiente, t: "Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos"}
-              - {id: CRM-06.01.03.20, c: C, fase: 2, svc: integration, estado: pendiente, t: "Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación»"}
+              - {id: CRM-06.01.03.11, c: C, fase: 2, svc: integration, estado: hecho, t: "Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas"}
+              - {id: CRM-06.01.03.12, c: A, fase: 2, svc: integration, estado: hecho, t: "Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más"}
+              - {id: CRM-06.01.03.13, c: C, fase: 2, svc: integration, estado: hecho, t: "Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite"}
+              - {id: CRM-06.01.03.14, c: C, fase: 2, svc: integration, estado: hecho, t: "Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre"}
+              - {id: CRM-06.01.03.15, c: A, fase: 2, svc: integration, estado: hecho, t: "Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas"}
+              - {id: CRM-06.01.03.16, c: C, fase: 2, svc: integration, estado: hecho, t: "Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón"}
+              - {id: CRM-06.01.03.17, c: C, fase: 2, svc: integration, estado: hecho, t: "Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa"}
+              - {id: CRM-06.01.03.18, c: A, fase: 2, svc: integration, estado: hecho, t: "Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación"}
+              - {id: CRM-06.01.03.19, c: A, fase: 2, svc: integration, estado: hecho, t: "Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos"}
+              - {id: CRM-06.01.03.20, c: C, fase: 2, svc: integration, estado: hecho, t: "Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación»"}
 
           - id: CRM-06.01.02
             nombre: Firma electrónica
