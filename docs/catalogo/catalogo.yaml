@@ -1071,16 +1071,16 @@ modulos:
           - id: CRM-06.01.03
             nombre: Suites de productividad
             capacidades:
-              - {id: CRM-06.01.03.01, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecweb:app/connectors/api/generic_rest.py + oauth2.py", t: "Perfil de suite de productividad declarativo: endpoints, campos, incremento y límites como configuración, sin un módulo por proveedor"}
-              - {id: CRM-06.01.03.02, c: C, fase: 2, svc: integration, estado: pendiente, t: "Consentimiento por usuario y alcance mínimo: cada buzón se conecta con el permiso de su dueño y él lo revoca cuando quiera"}
-              - {id: CRM-06.01.03.03, c: A, fase: 2, svc: integration, estado: pendiente, t: "Credencial de la suite en la bóveda del tenant, con renovación del token sin intervención y aviso antes de caducar"}
-              - {id: CRM-06.01.03.04, c: C, fase: 2, svc: integration, estado: pendiente, t: "Sincronización incremental por token de cambios del proveedor, reanudable, con marca de agua que solo avanza sobre lo confirmado"}
-              - {id: CRM-06.01.03.05, c: A, fase: 2, svc: integration, estado: pendiente, t: "Suscripción a cambios del proveedor con renovación automática y vuelta al sondeo cuando caduca o no está disponible"}
-              - {id: CRM-06.01.03.06, c: C, fase: 2, svc: integration, estado: pendiente, t: "Contactos en los dos sentidos, con regla de origen por campo y sin volcar la agenda personal del usuario en el CRM"}
-              - {id: CRM-06.01.03.07, c: C, fase: 2, svc: integration, estado: pendiente, t: "Tareas y acciones en los dos sentidos: cerrarla en el gestor del usuario la cierra en el CRM, y al revés"}
-              - {id: CRM-06.01.03.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM"}
-              - {id: CRM-06.01.03.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados"}
-              - {id: CRM-06.01.03.10, c: C, fase: 2, svc: integration, estado: pendiente, t: "Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad"}
+              - {id: CRM-06.01.03.01, c: C, fase: 2, svc: integration, estado: hecho, reutiliza: "contecweb:app/connectors/api/generic_rest.py + oauth2.py", t: "Perfil de suite de productividad declarativo: endpoints, campos, incremento y límites como configuración, sin un módulo por proveedor"}
+              - {id: CRM-06.01.03.02, c: C, fase: 2, svc: integration, estado: hecho, t: "Consentimiento por usuario y alcance mínimo: cada buzón se conecta con el permiso de su dueño y él lo revoca cuando quiera"}
+              - {id: CRM-06.01.03.03, c: A, fase: 2, svc: integration, estado: hecho, t: "Credencial de la suite en la bóveda del tenant, con renovación del token sin intervención y aviso antes de caducar"}
+              - {id: CRM-06.01.03.04, c: C, fase: 2, svc: integration, estado: hecho, t: "Sincronización incremental por token de cambios del proveedor, reanudable, con marca de agua que solo avanza sobre lo confirmado"}
+              - {id: CRM-06.01.03.05, c: A, fase: 2, svc: integration, estado: hecho, t: "Suscripción a cambios del proveedor con renovación automática y vuelta al sondeo cuando caduca o no está disponible"}
+              - {id: CRM-06.01.03.06, c: C, fase: 2, svc: integration, estado: hecho, t: "Contactos en los dos sentidos, con regla de origen por campo y sin volcar la agenda personal del usuario en el CRM"}
+              - {id: CRM-06.01.03.07, c: C, fase: 2, svc: integration, estado: hecho, t: "Tareas y acciones en los dos sentidos: cerrarla en el gestor del usuario la cierra en el CRM, y al revés"}
+              - {id: CRM-06.01.03.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM"}
+              - {id: CRM-06.01.03.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados"}
+              - {id: CRM-06.01.03.10, c: C, fase: 2, svc: integration, estado: hecho, t: "Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad"}
               - {id: CRM-06.01.03.11, c: C, fase: 2, svc: integration, estado: pendiente, t: "Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas"}
               - {id: CRM-06.01.03.12, c: A, fase: 2, svc: integration, estado: pendiente, t: "Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más"}
               - {id: CRM-06.01.03.13, c: C, fase: 2, svc: integration, estado: pendiente, t: "Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite"}

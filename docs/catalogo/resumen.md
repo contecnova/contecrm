@@ -12,7 +12,7 @@
 | 3 — Ventas (SFA) | 65 | 56 | 0 | 9 |
 | 4 — Servicio y atención al cliente | 62 | 58 | 0 | 4 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
-| 6 — Productividad y colaboración | 49 | 28 | 0 | 21 |
+| 6 — Productividad y colaboración | 49 | 38 | 0 | 11 |
 | 7 — Administración, ALM y gobierno | 91 | 86 | 0 | 5 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
@@ -20,8 +20,8 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 291 | 278 |
-| A — Avanzado | 392 | 334 |
+| C — Core | 291 | 284 |
+| A — Avanzado | 392 | 338 |
 | D — Diferencial | 44 | 38 |
 
 ## Por fase
@@ -30,7 +30,7 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 171 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 154 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 195 | 155 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 195 | 165 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 48 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 50 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 39 |

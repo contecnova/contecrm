@@ -10688,3 +10688,142 @@ dependen de él; mandar el cambio sin decir qué cambió; y mandarlo todo.
   confirmado dejaría el hueco de los que fallaron en medio, y ese hueco no se
   detecta: el lago simplemente tiene un dato viejo, y se descubre cuando alguien
   cuadra cifras a fin de mes y no le salen.
+
+## Suites de productividad: el perfil y el permiso (`CRM-06.01.03.01`, `CRM-06.01.03.02`, `CRM-06.01.03.03`, `CRM-06.01.03.04`, `CRM-06.01.03.05`)
+
+Outlook, Gmail, Teams, OneNote, Drive. Que el CRM hable con lo que la gente ya
+usa es razonable y es donde más integraciones se pudren, siempre por el mismo
+sitio: alguien escribe un módulo para Microsoft, luego otro para Google, y a
+partir de ahí **cada implantación nueva es una versión del producto**. Cuando el
+tercer cliente pide algo raro hay tres módulos que mantener y ninguno se parece.
+
+Aquí un proveedor es un **perfil declarado** —qué recursos ofrece, en qué
+endpoint, con qué campos, cómo pide el incremento y qué límites tiene— y se
+guarda como una conexión más, con el mismo conector declarativo y la misma
+bóveda de credenciales que el resto de integraciones. Añadir uno es escribir
+configuración.
+
+El perfil incompleto **se rechaza**, con todos los problemas de una vez. Sin
+correspondencia de campos no sustituye a nada: el dato llegaría y no se sabría
+dónde ponerlo. Y si declara alcances de recursos que no va a usar, también se
+rechaza — pedir permiso para algo que el CRM no lee es justo por lo que a muchas
+integraciones no las dejan entrar en una empresa grande. Cuando un recurso no
+admite incremento se avisa: traerlo entero cada vuelta funciona con cien
+elementos y deja de funcionar con cien mil, y para entonces ya hay gente
+dependiendo de ello.
+
+Antes de conectar nada se puede preguntar **qué sabe hacer** un perfil, con el
+dato de terceros marcado. Quien va a autorizar tiene derecho a saber que
+sincronizar sus contactos sube al CRM el teléfono de su médico, y esa frase tiene
+que poder ponerse en la pantalla del permiso.
+
+**El consentimiento es del dueño del buzón, y solo suyo.** Un administrador puede
+declarar el perfil y pedirlo; autorizarlo por otra persona, no — un administrador
+que conecta el correo de su equipo entero desde una pantalla es exactamente lo
+que hace que una integración acabe discutiéndose en el comité de empresa, y con
+razón, porque a esa gente no le ha preguntado nadie. Se concede **recurso a
+recurso**, que es lo que permite contestar después qué se autorizó: «conectó su
+Microsoft 365» no es una respuesta cuando alguien pregunta si el CRM lee sus
+correos.
+
+Se comprueba **antes de cada sincronización**, no al conectar. Comprobarlo solo
+al conectar deja seguir leyendo el buzón de alguien que revocó ayer, y eso no es
+un fallo técnico: es leer el correo de una persona que dijo que no. Revocar, por
+cierto, **no borra lo ya sincronizado** y se dice explícitamente: lo que entró
+son actividades del CRM que otra gente ha usado; borrarlas es otra decisión y se
+pide aparte.
+
+De la **credencial** importa una cosa que nadie mira hasta que pasa: una
+credencial con caducidad y **sin token de refresco** es una bomba de relojería —
+funciona meses y un martes deja de entrar el correo de veinte personas a la vez.
+Se dice ahora. Y cuando no consta caducidad no se responde que no caduca: se
+responde que no se sabe.
+
+El **incremento** lo pide cada proveedor a su manera —un token de delta, un
+`historyId`, una fecha— y la marca se guarda tal cual: traducirla a un formato
+común sería inventar un estándar que se rompe con el primer proveedor que cambie
+de forma. Lo que sí es nuestro es la regla: **la marca solo avanza si no ha
+fallado nada**. Avanzar con un fallo dentro deja un hueco que no se recupera
+nunca y que nadie nota, porque no falta una pantalla: falta una reunión.
+
+Y las **suscripciones a cambios caducan todas**. La que no se renueva deja de
+llegar sin dar ningún error: el CRM se queda quieto y el usuario cree que no ha
+pasado nada en su buzón. Por eso se renuevan con margen —renovar justo al caducar
+deja que un reintento fallido la mate— y las que no declaran caducidad se avisan
+aparte, porque son las que se mueren sin que nadie lo vea venir. Si no se puede
+renovar, **se cae al sondeo** y se marca: seguir sondeando es degradarse, y
+quedarse esperando avisos que ya no llegan es pararse en silencio. El usuario
+tiene derecho a saber por qué su cita tarda diez minutos en aparecer.
+
+Una última: no se admiten **dos suscripciones al mismo recurso** desde perfiles
+distintos. Con dos, cada cambio entra dos veces y la ficha del cliente acaba con
+la misma reunión duplicada — y nadie sospecha del segundo perfil, que alguien
+configuró hace meses para probar.
+
+## Contactos, tareas, notas, ficheros y reuniones (`CRM-06.01.03.06`, `CRM-06.01.03.07`, `CRM-06.01.03.08`, `CRM-06.01.03.09`, `CRM-06.01.03.10`)
+
+Correo y calendario ya estaban. Esto es el resto de lo que la gente usa todos los
+días y que, si no está, obliga a trabajar en dos sitios — que es como un CRM se
+deja de usar sin que nadie lo decida. Cada recurso tiene su trampa, y ninguna es
+técnica.
+
+**Contactos.** No se le sube a nadie el CRM entero: se suben los que tienen
+relación con esa persona. Llenarle la agenda de cuarenta mil desconocidos hace
+que lo primero que haga sea desconectar la integración, y entonces se pierde
+también lo que sí servía. Y solo van los campos declarados: un contacto del móvil
+se sincroniza con el coche, con el reloj y con lo que tenga, así que las notas
+internas de la ficha no pintan nada ahí.
+
+En el otro sentido, **casi nada entra**. Entra lo que ya está en el CRM —para
+actualizarlo— y lo que la persona marca expresamente. Lo demás es su vida
+privada: su médico, su hermana, tres antiguos compañeros. Subirlo es tratar datos
+personales de gente que no es ni cliente ni usuaria, sin base legal y sin
+habérselo preguntado a nadie.
+
+La regla de quién gana se declara **por campo**, no por objeto: el teléfono lo
+sabe mejor el móvil de quien acaba de hablar con el cliente y el cargo lo sabe
+mejor el CRM, donde lo actualiza quien lleva la cuenta; una regla única obliga a
+elegir entre dos verdades. Y un **vacío del proveedor no borra**: casi siempre
+significa «no lo tengo», no «bórralo», y borrar un teléfono bueno porque el otro
+lado no lo trae es de lo que peor sienta.
+
+**Tareas.** Lo que la gente espera es que cerrarla en un sitio la cierre en el
+otro; es la única razón por la que alguien usa esto, y cerrar gana sobre abrir:
+reabrir la tarea de quien acaba de marcarla como hecha es la forma más rápida de
+que desconecte. Lo que no espera —y lo que hace desconfiar de la integración para
+siempre— es que borrarla en su móvil haga desaparecer del CRM una actividad que
+otras tres personas han comentado, así que **un borrado en el proveedor no borra
+aquí**: se desvincula y se avisa. Si se ha tocado en los dos lados desde la
+última vuelta es conflicto y decide una persona. Y la **asignación no viaja**: el
+gestor de tareas personal no tiene ni idea de quién lleva esa cuenta, y dejarle
+decidir eso reasignaría trabajo sin que nadie lo hubiera pedido.
+
+**Notas.** Van **por referencia**, nunca copiadas. Una copia queda vieja el mismo
+día —quien escribe sigue escribiendo en el cuaderno— y duplica el dato: si la
+nota lleva lo que contó el cliente en una reunión, ahora hay dos sitios que
+proteger y dos que borrar. Además, la copia se haría con las credenciales de
+quien la vinculó, así que la vería gente que en el cuaderno no tiene acceso. El
+permiso lo resuelve el proveedor con la identidad de quien mira, y se distingue
+**«no tienes acceso» de «ya no existe»**: es la diferencia entre pedirle el
+permiso a un compañero y buscar media hora algo que alguien borró hace un mes.
+
+**Ficheros.** Igual, y con un motivo más: copiar rompe la promesa de «bórralo y
+desaparece». Si el cliente borra el contrato en su Drive porque se lo han pedido
+y el CRM guarda una copia, el documento que tenía que desaparecer sigue ahí. Los
+permisos se resuelven en el origen — mantener aquí una segunda lista de quién
+puede ver qué garantiza que se quede desfasada. Y un enlace que no se puede abrir
+**lo dice en la ficha**, no al pulsarlo: quien prepara una reunión mirando la
+ficha necesita saber que ese contrato no está antes de sentarse delante del
+cliente.
+
+**Reuniones en línea.** La sala se crea con el proveedor que tenga el tenant y
+**no antes de que la reunión esté confirmada**: crearla al proponer la hora deja
+salas abiertas de todas las que no cuajaron, siguen en el calendario de quien
+aceptó, y alguien acaba entrando a una vacía convencido de que le han dado
+plantón. Si el perfil no declara proveedor de reuniones, no se inventa uno:
+mandar a la gente a la sala de otro producto es justo lo que el cliente no
+quiere.
+
+Y el enlace **es una credencial**: quien lo tiene entra, sin identificarse. Va en
+la cita y en la ficha; no va en una notificación push —llega a una pantalla
+bloqueada que ve cualquiera que coja el teléfono— ni en una página pública.

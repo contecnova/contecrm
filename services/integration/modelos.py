@@ -202,6 +202,13 @@ from services.integration.mcp import (  # noqa: E402,F401
     Herramienta,
     LlamadaAgente,
 )
+
+# Suites de productividad: consentimiento por persona y suscripción a cambios
+# (CRM-06.01.03.02, .05).
+from services.integration.suites import (  # noqa: E402,F401
+    ConsentimientoSuite,
+    SuscripcionSuite,
+)
 from services.integration.telemetria import (  # noqa: E402,F401
     Dispositivo,
     EstadoRegla,

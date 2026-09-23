@@ -106,6 +106,9 @@ PREFIJOS: dict[str, str] = {
     # (CRM-06.01.01, CRM-06.01.02.09).
     "buzones": "integration",
     "canales-chat": "integration",
+    # Suites de productividad (CRM-06.01.03): perfiles, consentimiento,
+    # suscripciones y reuniones en línea.
+    "suites": "integration",
     "plantillas-documento": "integration",
     "firma-presencial": "integration",
     # Consentimiento: el doble opt-in, las cookies y las reglas de contenido
