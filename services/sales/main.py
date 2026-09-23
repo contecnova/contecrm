@@ -13,6 +13,7 @@ from services.sales.api_cadencias import ROUTERS_CADENCIAS
 from services.sales.api_comisiones import ROUTERS_COMISIONES
 from services.sales.api_coste import ROUTERS_COSTE
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
+from services.sales.api_ingresos import ROUTERS_INGRESOS
 from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
 from services.sales.consumidores import (
@@ -47,6 +48,7 @@ app = crear_servicio(
     routers=[
         *ROUTERS,
         *ROUTERS_COSTE,
+        *ROUTERS_INGRESOS,
         *ROUTERS_COTIZACION,
         *ROUTERS_CADENCIAS,
         *ROUTERS_TERRITORIOS,

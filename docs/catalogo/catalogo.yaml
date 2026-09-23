@@ -604,7 +604,7 @@ modulos:
               - {id: CRM-01.01.02.01, c: C, fase: 1, svc: party, estado: hecho, t: "Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes)"}
               - {id: CRM-01.01.02.02, c: A, fase: 1, svc: party, estado: hecho, t: "Relación N:M contacto–cuenta con rol, vigencia y contacto principal"}
               - {id: CRM-01.01.02.03, c: A, fase: 2, svc: party, estado: hecho, t: "Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor)"}
-              - {id: CRM-01.01.02.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián"}
+              - {id: CRM-01.01.02.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián"}
               - {id: CRM-01.01.02.05, c: C, fase: 1, svc: party, estado: hecho, t: "Preferencias de contacto: canal, frecuencia, idioma, horario"}
               - {id: CRM-01.01.02.06, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py", t: "Consentimientos y bases legales por finalidad y canal"}
               - {id: CRM-01.01.02.07, c: D, fase: 4, svc: party, estado: hecho, t: "Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto"}
@@ -640,7 +640,7 @@ modulos:
               - {id: CRM-01.01.05.03, c: C, fase: 1, svc: party, estado: hecho, t: "Perfil unificado consultable por API para uso en cualquier frontend o canal"}
               - {id: CRM-01.01.05.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Composición de datos externos en la vista sin replicarlos (federación / virtualización)"}
               - {id: CRM-01.01.05.05, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecmind:app/services/synthesis.py + holistic.py (resumen con citación)", t: "Resumen de cuenta generado por IA con puntos clave y riesgos"}
-              - {id: CRM-01.01.05.06, c: A, fase: 2, svc: party, estado: pendiente, t: "Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad"}
+              - {id: CRM-01.01.05.06, c: A, fase: 2, svc: party, estado: hecho, t: "Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad"}
               - {id: CRM-01.01.05.07, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/customer_health_service.py", t: "Salud del cliente (health score) y señales de churn"}
       - id: "1.2"
         nombre: Actividades e interacciones
@@ -766,12 +766,12 @@ modulos:
               - {id: CRM-03.01.01.03, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/pipeline_stages_service.py", t: "Etapas configurables con criterios de salida obligatorios y checklist"}
               - {id: CRM-03.01.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Probabilidad por etapa, ajustable manualmente y por modelo predictivo"}
               - {id: CRM-03.01.01.05, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/catalog + contecpos:services/catalogo", t: "Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento"}
-              - {id: CRM-03.01.01.06, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py", t: "Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados"}
-              - {id: CRM-03.01.01.07, c: A, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/revenue_service.py", t: "Planificación de ingresos por periodos (revenue schedule)"}
-              - {id: CRM-03.01.01.08, c: A, fase: 2, svc: sales, estado: pendiente, t: "Split de oportunidad entre varios comerciales (overlay, crédito, equipo)"}
+              - {id: CRM-03.01.01.06, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py", t: "Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados"}
+              - {id: CRM-03.01.01.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/revenue_service.py", t: "Planificación de ingresos por periodos (revenue schedule)"}
+              - {id: CRM-03.01.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Split de oportunidad entre varios comerciales (overlay, crédito, equipo)"}
               - {id: CRM-03.01.01.09, c: A, fase: 1, svc: sales, estado: hecho, t: "Competidores presentes, posicionamiento y motivo de pérdida estructurado"}
-              - {id: CRM-03.01.01.10, c: A, fase: 2, svc: sales, estado: pendiente, t: "Buying group / mapa de decisión asociado a la oportunidad"}
-              - {id: CRM-03.01.01.11, c: A, fase: 2, svc: sales, estado: pendiente, t: "Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución"}
+              - {id: CRM-03.01.01.10, c: A, fase: 2, svc: sales, estado: hecho, t: "Buying group / mapa de decisión asociado a la oportunidad"}
+              - {id: CRM-03.01.01.11, c: A, fase: 2, svc: sales, estado: hecho, t: "Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución"}
               - {id: CRM-03.01.01.12, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa)", t: "Antigüedad por etapa, estancamiento y alertas de inactividad"}
               - {id: CRM-03.01.01.13, c: A, fase: 2, svc: sales, estado: hecho, t: "Historial de cambios de importe y fecha (slippage tracking)"}
               - {id: CRM-03.01.01.14, c: A, fase: 1, svc: sales, estado: hecho, t: "Bloqueo de edición tras cierre y proceso de reapertura auditado"}
@@ -782,8 +782,8 @@ modulos:
               - {id: CRM-03.01.02.02, c: A, fase: 2, svc: sales, estado: hecho, t: "Campos y scoring de metodología con indicador de calidad de la oportunidad"}
               - {id: CRM-03.01.02.03, c: A, fase: 2, svc: sales, estado: hecho, t: "Playbooks contextuales por etapa, segmento y tipo de deal"}
               - {id: CRM-03.01.02.04, c: A, fase: 5, svc: intelligence, estado: hecho, t: "Guía de próximos pasos recomendados con contenido asociado"}
-              - {id: CRM-03.01.02.05, c: D, fase: 3, svc: sales, estado: pendiente, t: "Mutual action plan / plan conjunto compartible con el cliente"}
-              - {id: CRM-03.01.02.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Revisión de deal (deal review) estructurada y trazable"}
+              - {id: CRM-03.01.02.05, c: D, fase: 3, svc: sales, estado: hecho, t: "Mutual action plan / plan conjunto compartible con el cliente"}
+              - {id: CRM-03.01.02.06, c: A, fase: 2, svc: sales, estado: hecho, t: "Revisión de deal (deal review) estructurada y trazable"}
       - id: "3.2"
         nombre: Previsión y planificación comercial
         funciones:
@@ -815,7 +815,7 @@ modulos:
               - {id: CRM-03.02.03.01, c: D, fase: 2, svc: sales, estado: hecho, t: "Planes de comisión por porcentaje, escalado, acelerador y SPIFF"}
               - {id: CRM-03.02.03.02, c: D, fase: 2, svc: sales, estado: hecho, t: "Cálculo por periodo con simulación y previsión de comisión"}
               - {id: CRM-03.02.03.03, c: D, fase: 2, svc: sales, estado: hecho, reutiliza: "contecmind:app/services/approval_engine/ (aprobación y disputa)", t: "Aprobación, disputa y trazabilidad del pago"}
-              - {id: CRM-03.02.03.04, c: A, fase: 2, svc: integration, estado: pendiente, t: "Integración con motor externo de compensación"}
+              - {id: CRM-03.02.03.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Integración con motor externo de compensación"}
       - id: "3.3"
         nombre: Prospección y ejecución comercial
         funciones:

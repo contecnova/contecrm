@@ -11447,3 +11447,135 @@ cuenta aparte: una lista donde la mitad son falsos positivos se abre dos veces y
 no se abre más, y entonces se pierden también los que sí lo estaban. Y desde esta
 copia **no se dispara nada automático**: llegaría con retraso y mandaría correos
 de retención a quien renovó ayer.
+
+## Ingresos recurrentes, calendario y reparto (`CRM-03.01.01.06`, `CRM-03.01.01.07`, `CRM-03.01.01.08`)
+
+Una oportunidad con un importe y una fecha vale para un negocio de venta puntual.
+En cuanto hay suscripciones, servicios recurrentes o entregas por fases, ese
+número **deja de significar nada**: 120.000 puede ser un pedido que se factura el
+mes que viene o un contrato de tres años, y sumarlos en el mismo forecast produce
+una previsión que nadie cumple y que nadie sabe por qué no cumple.
+
+**Lo recurrente y lo puntual se separan siempre.** Y el ARR no es el importe
+dividido por los años: un contrato de dos años con la implantación cobrada aparte
+tiene un ARR que no se parece a su valor total, y mezclarlos infla la métrica con
+la que se valora la empresa. Cada línea dice de qué tipo es, y lo que no es
+recurrente no entra en el ARR por mucho que se repita todos los años.
+
+**El calendario de ingreso es lo que usa la previsión de caja.** Una oportunidad
+grande que se cobra en doce meses no es un mes bueno: son doce meses decentes, y
+la diferencia decide si alguien contrata a un comercial más o si se para una
+inversión. Es distinto del forecast por fecha de cierre y hacen falta los dos —
+una cosa dice cuándo se firma y la otra cuándo entra el dinero, y confundirlos hace
+que un trimestre «excelente» no se note en caja hasta el siguiente. El redondeo se
+ajusta en el último periodo: si sobrara un céntimo, la suma del calendario no
+cuadraría con el importe y ese descuadre aparecería en un informe seis meses
+después sin que nadie supiera de dónde sale.
+
+**Y el crédito entre comerciales suma 100 o no se guarda.** Es la regla más tonta
+y la que más se salta: con repartos al 60/60 las comisiones cuadran hacia arriba y
+el descuadre lo encuentra finanzas tres meses después, cuando ya se ha pagado. El
+**overlay** es otra cosa —apoyo que se reconoce sin quitarle nada al titular— y
+por eso puede sumar lo que sea; mezclarlo con el crédito es justo lo que hace que
+la gente invente porcentajes para que cuadre.
+
+## Grupo de compra y oportunidades relacionadas (`CRM-03.01.01.10`, `CRM-03.01.01.11`, `CRM-01.01.02.04`)
+
+**El grupo de compra no es una lista de contactos.** Lo que hace falta saber es
+quién decide, quién aprueba el gasto, quién recomienda, quién lo va a usar y quién
+controla el acceso a los demás. Con texto libre, «interlocutor» acaba siendo el
+80 % de los contactos y no dice nada, así que los papeles son una lista cerrada.
+
+Lo que de verdad aporta el mapa **es lo que falta**: una oportunidad sin decisor
+identificado no está avanzada por mucho que el presupuesto esté mandado, y un
+económico con el que nadie ha hablado es la razón más habitual de que un cierre
+«seguro» se caiga en la última semana. Y decir que alguien está en contra **exige
+motivo**: es una etiqueta que otro comercial leerá dentro de seis meses y aplicará
+sin poder contrastarla, y además es una valoración sobre una persona identificada.
+
+**Una oportunidad relacionada dice de qué tipo es la relación** —renovación,
+upsell, cruzada, sustitución o ampliación—, y eso cambia el informe: una
+renovación que sustituye a un contrato **no es ingreso nuevo**, y contarla como tal
+duplica el crecimiento del trimestre. Es de los errores que más tarda en
+descubrirse, precisamente porque el número sale bien; la corrección llega cuando
+alguien cruza con facturación.
+
+## Plan conjunto y revisión de oportunidad (`CRM-03.01.02.05`, `CRM-03.01.02.06`)
+
+Dos prácticas que funcionan y que casi ningún CRM soporta, con lo cual acaban en
+una hoja de cálculo compartida por correo — y ahí mueren.
+
+**El plan conjunto** es una lista de pasos con fechas que acuerdan las dos partes.
+Su valor está casi entero en una cosa: **obliga al cliente a comprometerse con
+fechas**. Un cliente que no quiere poner fecha a su propia parte está diciendo algo
+importante, y lo dice antes de que se haya invertido un trimestre. Por eso se
+exige que haya pasos suyos: un plan donde todos los pasos son nuestros es una lista
+de seguimiento interna con otro nombre, y el cliente ni la mira. Cada paso lleva
+fecha y responsable, porque sin ellas es una lista de buenas intenciones que se
+enseña en la reunión y no se mira entre reuniones.
+
+Al mirar cómo va, lo importante es **de quién es lo que se retrasa**. Si es
+nuestro, se aprieta dentro; si es del cliente, la fecha de cierre que hay en el
+CRM es una ilusión — y eso es lo que hay que contar antes de que llegue el final
+del trimestre, no después. Y si el cliente no ha visto el plan, se dice: un plan
+«conjunto» que solo hemos leído nosotros es nuestro plan.
+
+**La revisión de oportunidad** es la conversación en la que un jefe pregunta por
+qué esto va a cerrar. Sin estructura se convierte en «¿cómo lo ves?» y en un
+número que sube porque el comercial es optimista — no porque mienta, sino porque
+está metido dentro. Se exigen las preguntas incómodas, que son las que la gente se
+salta: **qué puede salir mal** y **qué falta por saber**. Y los acuerdos llevan
+dueño y fecha: «hay que hablar con el director financiero» sin quién ni cuándo es
+la misma reunión repetida dentro de dos semanas.
+
+Lo que justifica guardarlas es poder **compararlas con lo que pasó**. Si todo lo
+que se revisa al 80 % se gana la mitad de las veces, el 80 % no significa 80 %:
+significa «me gusta este caso», y el forecast construido con eso no cuadra nunca.
+Con menos de diez revisiones cerradas no se concluye: llamar optimista a un equipo
+con seis casos es injusto y le quita credibilidad al ejercicio entero. Y se revisan
+las grandes y las avanzadas, no todas: revisar cien oportunidades pequeñas al mes
+es lo que convierte las revisiones en un trámite que nadie prepara.
+
+## Métricas del cliente y motor de compensación (`CRM-01.01.05.06`, `CRM-03.02.03.04`)
+
+**Las métricas del cliente** —facturación, margen, pedidos, incidencias, NPS y
+morosidad— no son del CRM: viven en el ERP, en el sistema de soporte y en la
+herramienta de encuestas. Y precisamente por eso hay que traerlas, porque un
+gestor que para preparar una reunión tiene que abrir tres sistemas acaba
+preparándola con lo que recuerda.
+
+Todas las decisiones van sobre lo mismo: **una copia con retraso puede hacer más
+daño que no tener el dato**. Cada métrica lleva de cuándo es y de dónde viene —un
+margen sin fecha se lee como el de hoy, y si es de hace un trimestre el gestor
+negocia con un número que ya no existe—. Lo que no ha llegado **no vale cero**:
+«cero incidencias» y «no tenemos el dato de incidencias» se pintan igual en un
+panel y significan lo contrario, uno es un cliente tranquilo y el otro una
+integración caída. Un dato más viejo no pisa al bueno. Y **no se calcula nada
+encima**: sumar el margen de dos fuentes o derivar un ratio produce un número que
+no existe en ningún sistema, y cuando finanzas pregunte de dónde sale la respuesta
+será «lo calcula el CRM», que es la peor posible. Hay además una vista de si las
+métricas siguen llegando, porque el fallo aquí es silencioso: la integración se
+cae, los paneles siguen enseñando los últimos números y nadie lo nota hasta que
+alguien comenta que un cliente «lleva mucho sin facturar».
+
+**Del motor de compensación**, lo que tiene que hacer bien el CRM no es calcular:
+es dar los hechos y aceptar el resultado. Calcular comisiones dentro funciona
+hasta el primer plan de verdad —aceleradores por tramo, topes, garantías,
+clawback, repartos entre equipos, reglas que cambian a mitad de año con efecto
+retroactivo—; eso no es un cálculo, es un producto, y hay empresas que lo fabrican.
+
+- **Se manda el hecho, no la comisión.** Si el CRM envía un importe ya calculado
+  «para ayudar», acaba habiendo dos cálculos y la nómina se hace con el que no es.
+  El reparto sí va, porque el CRM es quien sabe quién vendió qué, y también tiene
+  que sumar 100.
+- **El cálculo llega de vuelta y no se recalcula aquí.** Enseñar una comisión
+  distinta de la que se va a cobrar es la forma más rápida de que nadie se crea
+  ninguna de las dos, y de que el comercial se haga su propia hoja de cálculo —
+  que es donde empieza cualquier discusión de comisiones.
+- **Un cierre que cambia después obliga a decirlo, no a corregirlo en silencio.**
+  Se llama clawback y es una conversación: quitarle dinero a alguien de la próxima
+  nómina sin avisar es lo que hace que un equipo deje de confiar en el sistema, y
+  con razón.
+- **Y lo que se mandó y no ha vuelto se comprueba antes de cerrar el periodo.** Un
+  hecho perdido por el camino no da ningún error: esa venta simplemente no aparece
+  en la comisión de nadie, y lo descubre el comercial al mirar su nómina.

@@ -385,3 +385,43 @@ def cuentas_en_riesgo(db: DbDep, principal: AutenticadoDep) -> Any:
     from services.party import salud_replicada
 
     return salud_replicada.en_riesgo(db, principal.tenant_id)
+
+
+# ── Métricas embebidas del cliente (CRM-01.01.05.06) ──────────────────────
+
+
+@router_calidad.get(
+    "/metricas/{cuenta_id}",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Las métricas del cliente, con lo que falta dicho aparte",
+    description=(
+        "Facturación, margen, pedidos, incidencias, NPS y morosidad. Ninguna es "
+        "del CRM: vienen del ERP, del sistema de soporte y de la herramienta de "
+        "encuestas, y por eso cada una lleva **de cuándo es y de dónde viene** — "
+        "un margen sin fecha se lee como el de hoy.\n\n"
+        "«Cero incidencias» y «no tenemos el dato de incidencias» se pintan igual "
+        "en un panel y significan lo contrario: aquí se distinguen.\n\n"
+        "Y no se calcula nada encima: sumar o derivar produciría un número que no "
+        "existe en ningún sistema y que nadie puede cuadrar."
+    ),
+)
+def metricas_de_la_cuenta(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import metricas_embebidas
+
+    return metricas_embebidas.panel_de_la_cuenta(db, principal.tenant_id, cuenta_id=cuenta_id)
+
+
+@router_calidad.get(
+    "/metricas",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Si las métricas están llegando, o hace semanas que no",
+    description=(
+        "El fallo aquí es silencioso: la integración se cae, los paneles siguen "
+        "enseñando los últimos números y nadie lo nota hasta que alguien comenta "
+        "que un cliente «lleva mucho sin facturar»."
+    ),
+)
+def salud_de_las_metricas(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import metricas_embebidas
+
+    return metricas_embebidas.salud_de_la_integracion(db, principal.tenant_id)

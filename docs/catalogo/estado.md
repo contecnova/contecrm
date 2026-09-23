@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**749 capacidades**: ✅ 710 hecho · ⬜ 39 pendiente
+**749 capacidades**: ✅ 720 hecho · ⬜ 29 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 52 · ⬜ 2
+54 capacidades · ✅ 54
 
 ### 1.1 Modelo de parties
 
@@ -476,7 +476,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.02.01` | Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes) | C | 1 | party | ✅ | — |
 | `CRM-01.01.02.02` | Relación N:M contacto–cuenta con rol, vigencia y contacto principal | A | 1 | party | ✅ | — |
 | `CRM-01.01.02.03` | Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor) | A | 2 | party | ✅ | — |
-| `CRM-01.01.02.04` | Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián | A | 2 | sales | ⬜ | — |
+| `CRM-01.01.02.04` | Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián | A | 2 | sales | ✅ | — |
 | `CRM-01.01.02.05` | Preferencias de contacto: canal, frecuencia, idioma, horario | C | 1 | party | ✅ | — |
 | `CRM-01.01.02.06` | Consentimientos y bases legales por finalidad y canal | C | 1 | party | ✅ | contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py |
 | `CRM-01.01.02.07` | Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto | D | 4 | party | ✅ | — |
@@ -518,7 +518,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.05.03` | Perfil unificado consultable por API para uso en cualquier frontend o canal | C | 1 | party | ✅ | — |
 | `CRM-01.01.05.04` | Composición de datos externos en la vista sin replicarlos (federación / virtualización) | A | 2 | integration | ✅ | — |
 | `CRM-01.01.05.05` | Resumen de cuenta generado por IA con puntos clave y riesgos | A | 5 | intelligence | ✅ | contecmind:app/services/synthesis.py + holistic.py (resumen con citación) |
-| `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ⬜ | — |
+| `CRM-01.01.05.06` | Métricas embebidas: facturación, margen, pedidos, incidencias, NPS, morosidad | A | 2 | party | ✅ | — |
 | `CRM-01.01.05.07` | Salud del cliente (health score) y señales de churn | A | 5 | intelligence | ✅ | contecflow-PSA:app/services/customer_health_service.py |
 
 ### 1.2 Actividades e interacciones
@@ -645,7 +645,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 56 · ⬜ 9
+65 capacidades · ✅ 64 · ⬜ 1
 
 ### 3.1 Pipeline y oportunidades
 
@@ -658,12 +658,12 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.01.03` | Etapas configurables con criterios de salida obligatorios y checklist | A | 1 | sales | ✅ | contecflow-PSA:app/services/pipeline_stages_service.py |
 | `CRM-03.01.01.04` | Probabilidad por etapa, ajustable manualmente y por modelo predictivo | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.05` | Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento | C | 1 | sales | ✅ | contecweb:app/services/catalog + contecpos:services/catalogo |
-| `CRM-03.01.01.06` | Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py |
-| `CRM-03.01.01.07` | Planificación de ingresos por periodos (revenue schedule) | A | 2 | sales | ⬜ | contecflow-PSA:app/services/revenue_service.py |
-| `CRM-03.01.01.08` | Split de oportunidad entre varios comerciales (overlay, crédito, equipo) | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.06` | Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados | A | 2 | sales | ✅ | contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py |
+| `CRM-03.01.01.07` | Planificación de ingresos por periodos (revenue schedule) | A | 2 | sales | ✅ | contecflow-PSA:app/services/revenue_service.py |
+| `CRM-03.01.01.08` | Split de oportunidad entre varios comerciales (overlay, crédito, equipo) | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.09` | Competidores presentes, posicionamiento y motivo de pérdida estructurado | A | 1 | sales | ✅ | — |
-| `CRM-03.01.01.10` | Buying group / mapa de decisión asociado a la oportunidad | A | 2 | sales | ⬜ | — |
-| `CRM-03.01.01.11` | Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.01.10` | Buying group / mapa de decisión asociado a la oportunidad | A | 2 | sales | ✅ | — |
+| `CRM-03.01.01.11` | Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.12` | Antigüedad por etapa, estancamiento y alertas de inactividad | C | 1 | sales | ✅ | contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa) |
 | `CRM-03.01.01.13` | Historial de cambios de importe y fecha (slippage tracking) | A | 2 | sales | ✅ | — |
 | `CRM-03.01.01.14` | Bloqueo de edición tras cierre y proceso de reapertura auditado | A | 1 | sales | ✅ | — |
@@ -676,8 +676,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.01.02.02` | Campos y scoring de metodología con indicador de calidad de la oportunidad | A | 2 | sales | ✅ | — |
 | `CRM-03.01.02.03` | Playbooks contextuales por etapa, segmento y tipo de deal | A | 2 | sales | ✅ | — |
 | `CRM-03.01.02.04` | Guía de próximos pasos recomendados con contenido asociado | A | 5 | intelligence | ✅ | — |
-| `CRM-03.01.02.05` | Mutual action plan / plan conjunto compartible con el cliente | D | 3 | sales | ⬜ | — |
-| `CRM-03.01.02.06` | Revisión de deal (deal review) estructurada y trazable | A | 2 | sales | ⬜ | — |
+| `CRM-03.01.02.05` | Mutual action plan / plan conjunto compartible con el cliente | D | 3 | sales | ✅ | — |
+| `CRM-03.01.02.06` | Revisión de deal (deal review) estructurada y trazable | A | 2 | sales | ✅ | — |
 
 ### 3.2 Previsión y planificación comercial
 
@@ -714,7 +714,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.02.03.01` | Planes de comisión por porcentaje, escalado, acelerador y SPIFF | D | 2 | sales | ✅ | — |
 | `CRM-03.02.03.02` | Cálculo por periodo con simulación y previsión de comisión | D | 2 | sales | ✅ | — |
 | `CRM-03.02.03.03` | Aprobación, disputa y trazabilidad del pago | D | 2 | sales | ✅ | contecmind:app/services/approval_engine/ (aprobación y disputa) |
-| `CRM-03.02.03.04` | Integración con motor externo de compensación | A | 2 | integration | ⬜ | — |
+| `CRM-03.02.03.04` | Integración con motor externo de compensación | A | 2 | integration | ✅ | — |
 
 ### 3.3 Prospección y ejecución comercial
 

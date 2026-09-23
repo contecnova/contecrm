@@ -109,6 +109,8 @@ PREFIJOS: dict[str, str] = {
     # Suites de productividad (CRM-06.01.03): perfiles, consentimiento,
     # suscripciones y reuniones en línea.
     "suites": "integration",
+    # Motor externo de compensación (CRM-03.02.03.04).
+    "compensacion": "integration",
     "plantillas-documento": "integration",
     "firma-presencial": "integration",
     # Consentimiento: el doble opt-in, las cookies y las reglas de contenido
@@ -194,6 +196,10 @@ PREFIJOS: dict[str, str] = {
     "oportunidades": "sales",
     # Coste, tarifas de proveedor y capacidad (CRM-09.02.01).
     "coste": "sales",
+    # Ingresos recurrentes, reparto, grupo de compra y plan conjunto
+    # (CRM-03.01.01, CRM-03.01.02).
+    "ingresos": "sales",
+    "planes-conjuntos": "sales",
     # Modelos entrenados, transcripción, variantes y sugerencia en el caso
     # (CRM-02.01.02, CRM-01.02.01.05, CRM-02.04.01.04, CRM-04.03.01.04).
     "modelos": "intelligence",

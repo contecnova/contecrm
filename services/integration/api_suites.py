@@ -8,7 +8,8 @@ discutiéndose en el comité de empresa.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -364,4 +365,71 @@ def baja(motivo: str, principal: AutenticadoDep) -> Any:
     return sop.plan_de_baja(motivo=motivo)
 
 
-ROUTERS_SUITES = [router_suites]
+# ── Motor externo de compensación (CRM-03.02.03.04) ───────────────────────
+
+router_compensacion = APIRouter(prefix="/compensacion", tags=["compensación"])
+
+
+class HechoIn(BaseModel):
+    tipo: str
+    referencia: str
+    fecha: date
+    importe: Decimal
+    moneda: str = "EUR"
+    reparto: list[dict[str, Any]] = Field(default_factory=list)
+    datos: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConciliarIn(BaseModel):
+    hechos_enviados: list[dict[str, Any]] = Field(default_factory=list)
+    calculos_recibidos: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_compensacion.post(
+    "/hecho",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Componer el hecho que se manda al motor de comisiones",
+    description=(
+        "Se manda **el hecho, no la comisión**. Si el CRM enviara un importe ya "
+        "calculado «para ayudar», habría dos cálculos y la nómina se haría con el "
+        "que no es.\n\n"
+        "El reparto sí va —es información del CRM, que es quien sabe quién vendió "
+        "qué— y tiene que sumar 100: un descuadre aquí se convierte en una nómina "
+        "mal calculada."
+    ),
+)
+def hecho_de_compensacion(cuerpo: HechoIn, principal: AutenticadoDep) -> Any:
+    from services.integration import compensacion
+
+    return compensacion.componer_hecho(
+        tipo=cuerpo.tipo,
+        referencia=cuerpo.referencia,
+        fecha=cuerpo.fecha,
+        importe=cuerpo.importe,
+        moneda=cuerpo.moneda,
+        reparto=cuerpo.reparto,
+        datos=cuerpo.datos,
+    )
+
+
+@router_compensacion.post(
+    "/conciliar",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué se mandó y no ha vuelto calculado",
+    description=(
+        "Ahí está el problema de verdad: un hecho que se pierde por el camino no "
+        "da ningún error — simplemente esa venta no aparece en la comisión de "
+        "nadie, y lo descubre el comercial al mirar su nómina.\n\n"
+        "Se comprueba antes de cerrar el periodo, que es el único momento en el "
+        "que todavía se puede arreglar sin que duela."
+    ),
+)
+def conciliar(cuerpo: ConciliarIn, principal: AutenticadoDep) -> Any:
+    from services.integration import compensacion
+
+    return compensacion.conciliar(
+        hechos_enviados=cuerpo.hechos_enviados, calculos_recibidos=cuerpo.calculos_recibidos
+    )
+
+
+ROUTERS_SUITES = [router_suites, router_compensacion]

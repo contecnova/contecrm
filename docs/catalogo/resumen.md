@@ -7,9 +7,9 @@
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
 | 0 — Plataforma y arquitectura transversal | 283 | 276 | 0 | 7 |
-| 1 — Núcleo de datos de cliente (Customer 360) | 54 | 52 | 0 | 2 |
+| 1 — Núcleo de datos de cliente (Customer 360) | 54 | 54 | 0 | 0 |
 | 2 — Marketing | 54 | 48 | 0 | 6 |
-| 3 — Ventas (SFA) | 65 | 56 | 0 | 9 |
+| 3 — Ventas (SFA) | 65 | 64 | 0 | 1 |
 | 4 — Servicio y atención al cliente | 62 | 59 | 0 | 3 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
 | 6 — Productividad y colaboración | 49 | 48 | 0 | 1 |
@@ -22,8 +22,8 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 301 | 300 |
-| A — Avanzado | 404 | 370 |
-| D — Diferencial | 44 | 40 |
+| A — Avanzado | 404 | 379 |
+| D — Diferencial | 44 | 41 |
 
 ## Por fase
 
@@ -31,8 +31,8 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 179 | 171 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 155 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 196 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 49 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 211 | 205 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 50 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 58 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 48 |
 | 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 33 |

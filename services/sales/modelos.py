@@ -728,6 +728,15 @@ from services.sales.comisiones import (  # noqa: E402,F401
     PlanComision,
     ReglaComision,
 )
+
+# Ingresos recurrentes, calendario, reparto, grupo de compra y oportunidades
+# relacionadas (CRM-03.01.01.06, .07, .08, .10, .11 · CRM-01.01.02.04).
+from services.sales.ingresos import (  # noqa: E402,F401
+    LineaIngreso,
+    ParticipacionComercial,
+    RelacionOportunidad,
+    RolCompra,
+)
 from services.sales.partners import (  # noqa: E402,F401
     AccesoPartner,
     AcuerdoCanal,
@@ -737,6 +746,12 @@ from services.sales.partners import (  # noqa: E402,F401
     Partner,
     PlanConjunto,
     RegistroOportunidad,
+)
+
+# Plan conjunto y revisión de oportunidad (CRM-03.01.02.05, .06).
+from services.sales.plan_conjunto import (  # noqa: E402,F401
+    PlanConjuntoCliente,
+    RevisionOportunidad,
 )
 from services.sales.presupuestos import (  # noqa: E402,F401
     CambioSuscripcion,
