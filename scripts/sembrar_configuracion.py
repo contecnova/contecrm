@@ -104,9 +104,16 @@ class Api:
             return []
         if isinstance(cuerpo, list):
             return cuerpo
-        for clave in ("items", "datos", "resultados", "filas"):
-            if isinstance(cuerpo, dict) and isinstance(cuerpo.get(clave), list):
-                return cuerpo[clave]
+        if isinstance(cuerpo, dict):
+            if isinstance(cuerpo.get("items"), list):
+                return list(cuerpo["items"])
+            # Y la tercera forma: cuarenta extremos devuelven su lista bajo su
+            # propio nombre —`{partners: […]}`, `{ordenes: […]}`—. Se coge
+            # cuando hay una sola propiedad que sea un array; con dos no se
+            # adivina y elegir mal es peor que no elegir.
+            arrays = [v for v in cuerpo.values() if isinstance(v, list)]
+            if len(arrays) == 1:
+                return list(arrays[0])
         return []
 
     def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
@@ -1977,13 +1984,20 @@ def sembrar_canal(api: Api) -> None:
             "pais": "PT",
         },
     ]
-    creados: list[str] = []
     for i, partner in enumerate(partners):
         if i < len(cuentas) and cuentas[i].get("id"):
             partner["cuenta_id"] = str(cuentas[i]["id"])
-        hecho = api.crear("/api/v1/partners", partner)
-        if hecho and hecho.get("id"):
-            creados.append(str(hecho["id"]))
+        api.crear("/api/v1/partners", partner)
+
+    # Se releen en vez de quedarse con lo que devolvió el alta: al pasar el
+    # sembrado por segunda vez, las altas contestan «ya existe» y no devuelven
+    # identificador, y entonces todo lo que cuelga de un partner —registros de
+    # oportunidad, fondos— se quedaba sin él y fallaba. Un sembrado tiene que
+    # poder correrse dos veces.
+    por_clave = {
+        p.get("clave"): str(p["id"]) for p in api.listar("/api/v1/partners", 50) if p.get("id")
+    }
+    creados = [por_clave[p["clave"]] for p in partners if p["clave"] in por_clave]
 
     registros = [
         ("Grupo Talleres Unidos", 120000, "Renovación de la gama de retrovisores"),
@@ -2202,6 +2216,95 @@ def sembrar_campo(api: Api) -> None:
     )
 
 
+# ── Proveedores: quién nos suministra y con qué papeles ───────────────────
+
+
+def sembrar_proveedores(api: Api) -> None:
+    """Cuentas con papel de proveedor, sus homologaciones y sus documentos.
+
+    Un proveedor **es una cuenta con rol**, no un maestro aparte: la misma
+    empresa puede ser cliente de una división y proveedor de otra, y tenerla
+    dos veces acabaría aplicándole las condiciones de la ficha equivocada.
+
+    Los documentos llevan fecha de caducidad a propósito, y uno a posta **sin
+    fecha**: lo que nunca aparece en una lista de vencidos es lo que se queda
+    caducado para siempre, y esa pantalla existe para enseñarlo.
+    """
+    cuentas = api.listar("/api/v1/accounts", 30)
+    if not cuentas:
+        return
+
+    perfiles = [
+        (
+            "quimica",
+            [
+                ("iso9001", "ISO 9001", 400, True),
+                ("seguro_rc", "Seguro de responsabilidad civil", 120, True),
+                ("ficha_seguridad", "Ficha de seguridad del material", 0, False),
+            ],
+        ),
+        (
+            "mecanizado",
+            [
+                ("iatf16949", "IATF 16949", 250, True),
+                ("seguro_rc", "Seguro de responsabilidad civil", -20, True),
+            ],
+        ),
+        (
+            "logistica",
+            [
+                ("iso14001", "ISO 14001", 45, False),
+                ("seguro_rc", "Seguro de responsabilidad civil", 500, True),
+            ],
+        ),
+    ]
+
+    for i, (categoria, documentos) in enumerate(perfiles):
+        if i >= len(cuentas) or not cuentas[i].get("id"):
+            continue
+        cuenta_id = str(cuentas[i]["id"])
+        api.crear(f"/api/v1/proveedores/{cuenta_id}/rol", {})
+        api.crear(
+            f"/api/v1/proveedores/{cuenta_id}/homologacion",
+            {
+                "categoria": categoria,
+                "requisitos": [
+                    {"clave": "auditoria_inicial", "cubierto": True},
+                    {"clave": "muestra_aprobada", "cubierto": True},
+                ],
+                "valida_hasta": _f(300 + i * 60),
+            },
+        )
+        for clave, nombre, dias, bloquea in documentos:
+            api.crear(
+                f"/api/v1/proveedores/{cuenta_id}/documentos",
+                {
+                    "clave": clave,
+                    "nombre": nombre,
+                    "referencia": f"{clave.upper()}-{2024 + i}",
+                    "valido_desde": _f(-500),
+                    # `dias = 0` deja el documento sin caducidad, que es el caso
+                    # que esta pantalla tiene que saber enseñar.
+                    **({"valido_hasta": _f(dias)} if dias else {}),
+                    "dias_preaviso": 60,
+                    "bloquea_al_vencer": bloquea,
+                },
+            )
+        api.crear(
+            f"/api/v1/proveedores/{cuenta_id}/contactos",
+            {
+                "funcion": "escalado",
+                "nombre": "Guardia de incidencias",
+                "email": f"guardia{i}@example.com",
+                "telefono": "+34 900 000 00{i}".format(i=i),
+                # El teléfono de guardia, que es otro: media razón de ser de
+                # esta pantalla es «a quién llamo a las once de la noche», y el
+                # número de oficina parece servir y no sirve.
+                "fuera_de_horario": "+34 600 000 00{i}".format(i=i),
+            },
+        )
+
+
 def sembrar_rastro(api: Api) -> None:
     """Las pantallas que no se llenan creando, sino usando.
 
@@ -2211,8 +2314,9 @@ def sembrar_rastro(api: Api) -> None:
     se provoca la consecuencia de verdad, borrando algo que se acaba de crear
     para eso, en vez de escribir una fila a mano en su tabla.
     """
+    correos = {f"papelera{i}@example.com" for i in range(2)}
     for i, nombre in enumerate(("Contacto duplicado", "Contacto dado de baja")):
-        creado = api.crear(
+        api.crear(
             "/api/v1/contacts",
             {
                 "nombre": nombre,
@@ -2220,10 +2324,33 @@ def sembrar_rastro(api: Api) -> None:
                 "email": f"papelera{i}@example.com",
             },
         )
-        if creado and creado.get("id"):
-            estado, _ = api._llamar("DELETE", f"/api/v1/contacts/{creado['id']}")
-            if estado not in (200, 202, 204):
-                api.fallos.append(f"DELETE /api/v1/contacts/{creado['id']} → {estado}")
+    # Se buscan por correo en vez de quedarse con lo que devolvió el alta: al
+    # segundo paso ya existen, el alta contesta «ya existe» sin identificador, y
+    # entonces no se borraba nada y la papelera seguía vacía.
+    for contacto in api.listar("/api/v1/contacts", 200):
+        if contacto.get("email") in correos and contacto.get("id"):
+            estado, cuerpo = api._llamar("DELETE", f"/api/v1/contacts/{contacto['id']}")
+            if estado not in (200, 202, 204, 409):
+                api.fallos.append(
+                    f"DELETE /api/v1/contacts/{contacto['id']} → {estado} {_motivo(cuerpo)}"
+                )
+
+    # Duplicados de verdad, que es lo que esa pantalla tiene que enseñar. Con
+    # una sola cuenta por nombre, la búsqueda se encuentra a sí misma y el
+    # resultado —«similitud 1.0»— no explica para qué sirve la pantalla. Aquí
+    # se crean parejas como las que aparecen solas en cualquier CRM: la misma
+    # empresa dada de alta dos veces con el nombre escrito de otra manera.
+    parejas = [
+        ("Metalúrgica del Norte S.L.U.", "Metalurgica del Norte SLU"),
+        ("Talleres Ibéricos, S.A.", "TALLERES IBERICOS SA"),
+        ("Componentes Delta", "Componentes Delta S.L."),
+    ]
+    for original, variante in parejas:
+        for nombre in (original, variante):
+            api.crear(
+                "/api/v1/accounts",
+                {"nombre": nombre, "roles": ["cliente"], "estado": "activa"},
+            )
 
 
 def sembrar_analitica(api: Api) -> None:
@@ -2263,6 +2390,7 @@ PARTES: dict[str, Any] = {
     "gobierno": sembrar_gobierno,
     "canal": sembrar_canal,
     "campo": sembrar_campo,
+    "proveedores": sembrar_proveedores,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
 }

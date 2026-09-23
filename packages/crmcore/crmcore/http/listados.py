@@ -128,6 +128,42 @@ NO_EDITABLES = frozenset(
 )
 
 
+def _con_parametro(funcion: Any, parametro: str, cuerpo: type | None = None) -> Any:
+    """Deja el parámetro de ruta con el nombre que usa la ruta.
+
+    FastAPI empareja los parámetros de ruta **por nombre**: con la ruta
+    declarando `{contacto_id}` y la función recibiendo `registro_id`, no los
+    relaciona y pide el identificador por query. El síntoma era un `DELETE` que
+    contestaba «falta el campo query.registro_id» sobre una URL que lo llevaba
+    dentro.
+
+    El nombre lo decide quien monta la ficha —porque cada recurso ya tiene el
+    suyo en las rutas que escribió a mano— así que se ajusta la firma aquí en
+    vez de obligar a que todos se llamen igual.
+    """
+    import inspect
+    from uuid import UUID
+
+    original = inspect.signature(funcion)
+    parametros = []
+    for nombre_par, par in original.parameters.items():
+        if nombre_par == "registro_id":
+            parametros.append(par.replace(name=parametro, annotation=UUID))
+        elif nombre_par == "datos" and cuerpo is not None:
+            parametros.append(par.replace(annotation=cuerpo))
+        else:
+            parametros.append(par)
+
+    def envoltorio(*args: Any, **kwargs: Any) -> Any:
+        kwargs["registro_id"] = kwargs.pop(parametro)
+        return funcion(*args, **kwargs)
+
+    envoltorio.__signature__ = original.replace(parameters=parametros)  # type: ignore[attr-defined]
+    envoltorio.__name__ = funcion.__name__
+    envoltorio.__doc__ = funcion.__doc__
+    return envoltorio
+
+
 def montar_ficha(
     router: Any,
     *,
@@ -207,19 +243,19 @@ def montar_ficha(
             )
         return fila
 
-    if con_lectura:
+    def ver(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> Any:
+        fila = _buscar(db, registro_id)
+        return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
 
-        @router.get(
+    ver.__name__ = f"ver_{objeto.replace('-', '_').replace('.', '_')}"
+
+    if con_lectura:
+        router.get(
             ruta_registro,
             response_model=dict,
             dependencies=[Depends(exige_permiso(permiso_leer))],
             summary=f"Ver un registro de {nombre.lower()}",
-        )
-        def ver(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> Any:
-            fila = _buscar(db, registro_id)
-            return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
-
-        ver.__name__ = f"ver_{objeto.replace('-', '_').replace('.', '_')}"
+        )(_con_parametro(ver, parametro))
 
     def editar(registro_id: Any, datos: Any, db: DbDep, principal: AutenticadoDep) -> Any:
         fila = _buscar(db, registro_id)
@@ -235,7 +271,6 @@ def montar_ficha(
     # aplazadas, así que una anotación escrita arriba le llegaría a FastAPI
     # como el texto «Parche» —un nombre local que no puede resolver— y el
     # servicio no arrancaba.
-    editar.__annotations__["datos"] = Parche
     editar.__name__ = f"editar_{objeto.replace('-', '_').replace('.', '_')}"
     router.patch(
         ruta_registro,
@@ -246,29 +281,39 @@ def montar_ficha(
             "Se cambia **solo lo que se envía**. Lo que no aparece en el cuerpo "
             "se queda como está, que es distinto de mandarlo vacío."
         ),
-    )(editar)
+    )(_con_parametro(editar, parametro, Parche))
 
     if tiene_borrado:
 
-        @router.delete(
+        def borrar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> None:
+            from crmcore.datos import papelera
+
+            fila = _buscar(db, registro_id)
+            # Por la papelera y no marcando `deleted_at` a mano: marcarlo
+            # esconde el registro y no crea la entrada, así que no se puede ni
+            # restaurar ni purgar. Un borrado sin vuelta atrás disfrazado de
+            # borrado lógico es peor que uno definitivo, porque nadie lo sabe.
+            papelera.borrar(
+                db,
+                fila,
+                objeto=objeto,
+                etiqueta=str(getattr(fila, "nombre", "") or getattr(fila, "clave", "")),
+                por=principal.id,
+            )
+            db.flush()
+
+        borrar.__name__ = f"borrar_{objeto.replace('-', '_').replace('.', '_')}"
+        router.delete(
             ruta_registro,
             status_code=204,
             dependencies=[Depends(exige_permiso(permiso_borrar or permiso_escribir))],
             summary=f"Borrar {nombre.lower()}",
             description=(
-                "Borrado **lógico**: el registro deja de listarse y se puede "
-                "recuperar desde la papelera. Lo que se borra por error se "
-                "descubre siempre más tarde que el borrado."
+                "Borrado **lógico**: el registro va a la papelera, deja de "
+                "listarse y se puede restaurar desde ahí. Lo que se borra por "
+                "error se descubre siempre más tarde que el borrado."
             ),
-        )
-        def borrar(registro_id: Any, db: DbDep, _: AutenticadoDep) -> None:
-            from datetime import datetime, timezone
-
-            fila = _buscar(db, registro_id)
-            fila.deleted_at = datetime.now(timezone.utc)
-            db.flush()
-
-        borrar.__name__ = f"borrar_{objeto.replace('-', '_').replace('.', '_')}"
+        )(_con_parametro(borrar, parametro))
 
 
 def _tipo_de(columna: Any) -> Any:

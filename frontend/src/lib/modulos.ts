@@ -204,16 +204,32 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Duplicados",
+        // Cada fila es una cuenta, así que se abre como tal: desde su ficha se
+        // fusiona, que es lo único para lo que sirve encontrar duplicados.
+        objeto: "cuenta",
         listar: "/api/v1/data-quality/accounts/duplicates",
         servicio: "party",
         busqueda: { parametro: "nombre", etiqueta: "Nombre de la cuenta", minimo: 2 },
+        columnas: ["nombre", "similitud", "senales", "concluyente"],
       },
       {
         nombre: "Derechos del interesado",
+        objeto: "solicitud_derechos",
         listar: "/api/v1/data-subject-requests",
+        crear: "/api/v1/data-subject-requests",
         servicio: "party",
+        columnas: ["tipo", "email_solicitante", "estado", "vence_at", "dias_restantes"],
       },
-      { nombre: "Papelera", listar: "/api/v1/party-admin/papelera", servicio: "party" },
+      {
+        nombre: "Papelera",
+        // Con `objeto` para que cada fila se pueda abrir: «Restaurar» cuelga de
+        // la entrada, y a una entrada que no se abre no se llega desde ninguna
+        // pantalla. Estaba la acción y no había forma de usarla.
+        objeto: "entrada_papelera",
+        listar: "/api/v1/party-admin/papelera",
+        servicio: "party",
+        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+      },
     ],
   },
   {

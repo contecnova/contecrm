@@ -336,6 +336,29 @@ def duplicados_cuenta(
     return [c.a_dict() for c in candidatos]
 
 
+# La misma operación, colgando de la cuenta. No es un capricho de rutas: las
+# acciones de un registro se ofrecen desde su ficha, y la ficha busca lo que
+# cuelga de **su** colección. Con la fusión viviendo solo bajo
+# `/data-quality/accounts/{id}/merge`, no aparecía en ninguna pantalla: la de
+# duplicados encontraba las parejas y no había forma de fusionarlas, que es
+# para lo único que sirve encontrarlas.
+@router_cuentas.post(
+    "/{cuenta_id}/fusionar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:merge"))],
+    summary="Fusionar esta cuenta con otra",
+    description=(
+        "La absorbida **no se borra**: se marca y conserva su identificador, "
+        "porque hay documentos y sistemas externos que apuntan a él. Todo lo que "
+        "colgaba de ella se reparenta, y la fusión se puede deshacer."
+    ),
+)
+def fusionar_desde_la_cuenta(
+    cuenta_id: UUID, datos: Fusionar, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return fusionar_cuentas(cuenta_id, datos, uow, principal)
+
+
 @router_calidad.post(
     "/accounts/{cuenta_id}/merge",
     response_model=dict,
@@ -1377,6 +1400,7 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/party/buscar")
 # registra los ejecutores, así que tiene que pasar también en el worker: por eso
 # `trabajos_worker.py` importa esto mismo y no se fía de que la API lo haya
 # hecho, que en el worker no ha pasado.
+from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
 from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
@@ -1446,4 +1470,31 @@ montar_ficha(
     # La lectura ya la tiene escrita, con su propia proyección y su control de
     # visibilidad. Aquí solo se añade lo que faltaba: corregir y borrar.
     con_lectura=False,
+)
+
+
+# Las solicitudes de derechos: se abren para poder ejecutarlas. Las seis
+# acciones —acceso, rectificación, supresión, portabilidad, oposición,
+# limitación— cuelgan del registro, y a un registro que no se puede abrir no se
+# llega desde ninguna pantalla: existían y no las alcanzaba nadie.
+montar_ficha(
+    router_derechos,
+    modelo=SolicitudDerechos,
+    objeto="solicitud_derechos",
+    permiso_leer="party:read",
+    permiso_escribir="party:write",
+    nombre="Solicitudes de derechos",
+    parametro="solicitud_id",
+)
+
+# Y las entradas de la papelera, por lo mismo: «Restaurar» cuelga de la entrada.
+montar_ficha(
+    router_admin,
+    modelo=EntradaPapelera,
+    objeto="entrada_papelera",
+    permiso_leer="account:read",
+    permiso_escribir="account:admin",
+    nombre="Entradas de la papelera",
+    ruta="/papelera",
+    parametro="entrada_id",
 )

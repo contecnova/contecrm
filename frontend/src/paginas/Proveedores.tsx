@@ -40,12 +40,15 @@ interface Documento {
   bloquea: boolean;
 }
 
+/**
+ * Un proveedor es una cuenta con el papel de proveedor, así que el listado
+ * devuelve cuentas: el identificador viene en `id`, no en `cuenta_id`.
+ */
 interface Proveedor {
-  cuenta_id: string;
+  id: string;
   nombre?: string;
-  categorias?: string[];
-  homologado?: boolean;
-  bloqueado?: boolean;
+  nombre_comercial?: string | null;
+  roles?: string[];
 }
 
 interface EstadoDocumental {
@@ -106,18 +109,17 @@ export function Proveedores() {
         <nav className="mt-4 flex flex-wrap gap-2" aria-label={t("proveedores.cuenta")}>
           {proveedores.map((p) => (
             <button
-              key={p.cuenta_id}
+              key={p.id}
               type="button"
-              onClick={() => setCuenta(p.cuenta_id)}
+              onClick={() => setCuenta(p.id)}
               className={cn(
                 "rounded-xl border px-3 py-1.5 text-xs",
-                p.cuenta_id === cuenta
+                p.id === cuenta
                   ? "border-accent bg-accent/10 text-accent-text"
                   : "border-line text-ink hover:bg-paper-sunk",
               )}
             >
-              {p.nombre || p.cuenta_id}
-              {p.bloqueado ? <span className="ml-2 text-danger">·</span> : null}
+              {p.nombre_comercial || p.nombre || p.id}
             </button>
           ))}
         </nav>
