@@ -110,8 +110,18 @@ def test_medir_solo_lo_entregado_da_un_numero_distinto(
     db: Any, tenant_id: UUID, contexto_tenant: UUID
 ) -> None:
     """Sobre lo hecho es lo que un auditor puede comprobar hoy; sobre el
-    catálogo entero es lo que queda por cubrir."""
-    _control(db, tenant_id)
+    catálogo entero es lo que queda por cubrir.
+
+    El control cubre **varias decenas** de capacidades y no una, que es lo que
+    hace un control de verdad —«revisión de accesos» toca todo el área de
+    identidad— y además es lo único que permite ver la diferencia: con una sola
+    capacidad sobre un catálogo de setecientas, los dos porcentajes se
+    redondean al mismo número y la prueba no comprobaría nada.
+    """
+    from crmcore.catalogo import capacidades as catalogo_vivo
+
+    hechas_reales = [cid for cid, cap in catalogo_vivo().items() if cap["estado"] == "hecho"][:40]
+    _control(db, tenant_id, capacidades=hechas_reales)
     db.flush()
 
     todo = grc.cobertura(db, tenant_id)

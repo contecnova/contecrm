@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**762 capacidades**: ✅ 730 hecho · ⬜ 32 pendiente
+**762 capacidades**: ✅ 742 hecho · ⬜ 20 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1060,7 +1060,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-106 capacidades · ✅ 86 · ⬜ 20
+106 capacidades · ✅ 98 · ⬜ 8
 
 ### 7.1 Administración funcional
 
@@ -1215,23 +1215,23 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.05.01.01` | Manual de usuario completo e independiente: una funcionalidad por capítulo, escrito para quien usa el CRM y no para quien lo construyó | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.01.02` | Casos de uso de punta a punta: del primer contacto al cobro, del alta de una incidencia a su cierre, con las decisiones que hay que tomar por el camino | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.01.03` | Ejemplos con datos reales de la demo, reproducibles paso a paso, para que el lector pueda hacerlo mientras lee | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.01.04` | Qué hacer cuando algo no sale: los errores que ve un usuario, qué significan y qué hacer, sin mandarle a soporte | A | 1 | docs | ⬜ | — |
-| `CRM-07.05.01.05` | Recorridos por perfil: comercial, agente de servicio, marketing y administrador, cada uno con lo suyo y sin lo demás | A | 1 | docs | ⬜ | — |
-| `CRM-07.05.01.06` | Gate: cada capacidad `hecho` de cara al usuario aparece en el manual de usuario, no solo en el técnico | A | 1 | docs | ⬜ | — |
+| `CRM-07.05.01.01` | Manual de usuario completo e independiente: una funcionalidad por capítulo, escrito para quien usa el CRM y no para quien lo construyó | C | 1 | docs | ✅ | — |
+| `CRM-07.05.01.02` | Casos de uso de punta a punta: del primer contacto al cobro, del alta de una incidencia a su cierre, con las decisiones que hay que tomar por el camino | C | 1 | docs | ✅ | — |
+| `CRM-07.05.01.03` | Ejemplos con datos reales de la demo, reproducibles paso a paso, para que el lector pueda hacerlo mientras lee | C | 1 | docs | ✅ | — |
+| `CRM-07.05.01.04` | Qué hacer cuando algo no sale: los errores que ve un usuario, qué significan y qué hacer, sin mandarle a soporte | A | 1 | docs | ✅ | — |
+| `CRM-07.05.01.05` | Recorridos por perfil: comercial, agente de servicio, marketing y administrador, cada uno con lo suyo y sin lo demás | A | 1 | docs | ✅ | — |
+| `CRM-07.05.01.06` | Gate: toda sección del catálogo con capacidades de cara al usuario tiene su capítulo en el manual de usuario | A | 1 | docs | ✅ | — |
 
 #### CRM-07.05.02 · Manual técnico
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-07.05.02.01` | Manual técnico completo e independiente: arquitectura, servicios, datos y por qué cada decisión es como es | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.02.02` | Instalación y despliegue de punta a punta: desarrollo, un solo servidor y despliegue distribuido, con lo que hace falta de verdad | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.02.03` | Configuración: cada ajuste, qué hace, qué pasa si se toca y cuál es el valor sensato, generado desde los Settings reales | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.02.04` | Integración: API, eventos, conectores declarativos y contratos, con ejemplos que se pueden ejecutar | C | 1 | docs | ⬜ | — |
-| `CRM-07.05.02.05` | Operación: copias, restauración, migraciones, observabilidad y qué mirar cuando algo va lento | A | 1 | docs | ⬜ | — |
-| `CRM-07.05.02.06` | Gate: el manual técnico no describe ningún ajuste ni ninguna ruta que ya no exista | A | 1 | docs | ⬜ | — |
+| `CRM-07.05.02.01` | Manual técnico completo e independiente: arquitectura, servicios, datos y por qué cada decisión es como es | C | 1 | docs | ✅ | — |
+| `CRM-07.05.02.02` | Instalación y despliegue de punta a punta: desarrollo, un solo servidor y despliegue distribuido, con lo que hace falta de verdad | C | 1 | docs | ✅ | — |
+| `CRM-07.05.02.03` | Configuración: cada ajuste, qué hace, qué pasa si se toca y cuál es el valor sensato, generado desde los Settings reales | C | 1 | docs | ✅ | — |
+| `CRM-07.05.02.04` | Integración: API, eventos, conectores declarativos y contratos, con ejemplos que se pueden ejecutar | C | 1 | docs | ✅ | — |
+| `CRM-07.05.02.05` | Operación: copias, restauración, migraciones, observabilidad y qué mirar cuando algo va lento | A | 1 | docs | ✅ | — |
+| `CRM-07.05.02.06` | Gate: el manual técnico no describe ningún ajuste ni ninguna ruta que ya no exista | A | 1 | docs | ✅ | — |
 
 ## Módulo 8 — Requisitos no funcionales
 

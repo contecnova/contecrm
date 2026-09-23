@@ -6,10 +6,11 @@ es la clave de trazabilidad: desde él se llega al código que lo implementa y a
 prueba que lo sostiene.
 
 > **Qué significa que algo esté aquí.** Solo se documenta lo que está
-> **implementado y probado**. Lo que está a medias se dice explícitamente en
-> [«Lo que está a medias»](#lo-que-esta-a-medias), y lo que no está no aparece:
-> el estado completo de las 631 capacidades está en
-> [el estado del catálogo](catalogo/estado.md), que es el recuento vivo.
+> **implementado y probado**; lo que no está, no aparece. El recuento vivo —cuánto
+> hay hecho, cuánto queda y en qué estado está cada capacidad— es
+> [el estado del catálogo](catalogo/estado.md), que se regenera desde el propio
+> catálogo y no se escribe a mano. Aquí no hay cifras de progreso a propósito:
+> una cifra escrita en un texto se queda vieja el día siguiente.
 
 ---
 
@@ -11753,3 +11754,36 @@ que hizo fue perder tres minutos del cliente. Y se mide por lo que importa:
 **resueltas sin persona y sin que el cliente vuelva a llamar en 48 horas** — una
 llamada que el asistente «resolvió» y que el cliente repite al día siguiente no se
 resolvió, se aplazó, y encima con el cliente ya molesto.
+
+## Los dos manuales completos (`CRM-07.05.01.01`, `CRM-07.05.01.02`, `CRM-07.05.01.03`, `CRM-07.05.01.04`, `CRM-07.05.01.05`, `CRM-07.05.01.06`, `CRM-07.05.02.01`, `CRM-07.05.02.02`, `CRM-07.05.02.03`, `CRM-07.05.02.04`, `CRM-07.05.02.05`, `CRM-07.05.02.06`)
+
+Además de este manual por audiencias, hay **dos documentos independientes y
+completos**, cada uno pensado para leerse entero de principio a fin:
+
+- El **[manual de usuario](manual-usuario.md)**, escrito para quien usa el CRM: un
+  capítulo por área funcional, casos de uso de punta a punta —del primer contacto
+  al cobro, del alta de una incidencia a su cierre—, ejemplos reproducibles con los
+  datos de la demo, una guía de qué hacer cuando algo no sale, y un recorrido por
+  perfil.
+- El **[manual técnico](manual-tecnico.md)**, para quien lo instala, lo configura,
+  lo integra y lo mantiene: arquitectura y las decisiones detrás, despliegue en
+  tres escenarios, configuración ajuste a ajuste con qué pasa si se toca,
+  integración —API, eventos, conectores y contratos— y operación.
+
+Lo que los hace distintos de la documentación habitual de producto es que **se
+comprueban solos**. Un manual que nadie verifica se queda viejo en tres meses y
+entonces miente, que es peor que no tenerlo: el lector se fía. Los gates no
+comprueban que estén bien escritos —eso no lo puede comprobar una máquina— sino
+las dos formas de quedarse viejo que sí son detectables:
+
+- **El manual de usuario deja de cubrir un área.** El día que se añade una sección
+  funcional nueva al catálogo, el gate falla hasta que alguien escriba su capítulo,
+  en vez de que el área entre sin documentar y nadie se entere hasta que un cliente
+  pregunte.
+- **El manual técnico describe algo que ya no existe**: un ajuste renombrado, un
+  script borrado, un servicio que se quitó. Eso es peor que una omisión — alguien
+  lo intenta, no funciona, y deja de fiarse del resto del documento.
+
+Y una decisión sobre las cifras: en el texto de los manuales no hay números de
+progreso. Una cifra escrita a mano se queda vieja al día siguiente; el recuento
+vivo está en [el estado del catálogo](catalogo/estado.md), que se regenera.

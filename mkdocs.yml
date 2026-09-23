@@ -21,9 +21,16 @@ nav:
       - IV — Configuración y operación: manual-4-configuracion.md
       - V — Arquitectura y referencia técnica: manual-5-arquitectura.md
       - VI — Referencia de ajustes: manual-6-referencia-ajustes.md
+  # Dos manuales independientes y completos, pedidos como tales: uno para quien
+  # usa el CRM y otro para quien lo instala, lo configura y lo mantiene. No
+  # sustituyen al manual por audiencias: lo completan para quien llega de nuevo
+  # y quiere una sola lectura de principio a fin.
+  - Manuales completos:
+      - Manual de usuario: manual-usuario.md
+      - Manual técnico: manual-tecnico.md
   - Alcance:
       - Resumen del catálogo: catalogo/resumen.md
-      - Estado de las 560 capacidades: catalogo/estado.md
+      - Estado de las capacidades: catalogo/estado.md
       - Qué se reutiliza de la casa: REUTILIZACION.md
   # Este repositorio renuncia a CI y lo sustituye por gates locales. Un sistema
   # que sustituye a la CI y no está documentado depende de que alguien se

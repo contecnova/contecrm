@@ -95,6 +95,12 @@ GATES: list[Gate] = [
         "nada se declara hecho sin cita en el código y en el manual",
     ),
     Gate(
+        "manuales",
+        [PY, "-m", "pytest", "tests/unit/test_manuales.py", "-q", "--no-header"],
+        "fast",
+        "los dos manuales cubren todo y no describen lo que ya no existe",
+    ),
+    Gate(
         "contrato-headless",
         [PY, "-m", "pytest", "tests/unit/test_headless_contract.py", "-q", "--no-header"],
         "fast",

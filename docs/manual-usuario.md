@@ -1,0 +1,824 @@
+# Manual de usuario
+
+Este manual está escrito para quien **usa** contecrm: el comercial que abre una
+oportunidad, el agente que contesta un caso, quien prepara una campaña y quien
+administra el sistema para los demás. No hay que saber nada de la arquitectura
+para leerlo; para eso está el [manual técnico](manual-tecnico.md), que es
+independiente de este.
+
+Está organizado en tres partes:
+
+1. **Qué hace el CRM**, área por área. Un capítulo por cada área funcional, con
+   lo que hay que saber para usarla y —esto es lo que suele faltar en los
+   manuales— **por qué el sistema se comporta así** cuando te dice que no.
+2. **Casos de uso de punta a punta**: del primer contacto al cobro, y del alta de
+   una incidencia a su cierre, con las decisiones que hay que tomar por el camino.
+3. **Cómo empezar de verdad**: ejemplos reproducibles con los datos de la demo,
+   qué hacer cuando algo no sale, y un recorrido para cada perfil.
+
+Una advertencia que vale para todo el manual: **el CRM dice que no bastante a
+menudo**, y casi siempre por el mismo motivo. Cuando un sistema acepta cualquier
+cosa, lo que acaba teniendo dentro no sirve para decidir nada: un pipeline lleno
+de oportunidades sin fecha, clientes duplicados y previsiones que nadie cumple.
+Cada vez que aquí veas «no deja», está explicado qué se evita con eso.
+
+---
+
+## Cómo se entra y cómo se busca (sección 0.5)
+
+**Entrar.** Si tu empresa tiene inicio de sesión corporativo (SSO), entras con el
+usuario de siempre y el CRM no te pide otra contraseña. Si no, entras con tu
+correo y una contraseña propia, y muy probablemente con un **segundo factor**: un
+código de una aplicación, una llave física o un mensaje. El segundo factor por SMS
+o por correo se marca como el más débil, y el administrador puede desactivarlo —
+si tu empresa lo ha hecho, es a propósito.
+
+Cuando cambias de dispositivo o alguien cierra tu sesión desde administración, la
+sesión se corta en todas partes. Es lo esperado: una sesión que sigue viva en un
+portátil perdido es el problema que esa función existe para evitar.
+
+**Qué puedes ver.** Lo que ves no es «todo el CRM»: es lo tuyo y lo que se
+comparte contigo. Hay cuatro formas de que algo llegue a tu pantalla —que seas el
+propietario, que esté compartido con tu equipo, que te llegue por la jerarquía
+(tus subordinados) o que una regla lo abra a más gente— y cuando algo no te
+aparece, **el CRM puede decirte por qué**. No es un error: es que no te toca, y
+saberlo ahorra la llamada a soporte.
+
+**Buscar.** La búsqueda mira a la vez en cuentas, contactos, oportunidades, casos
+y documentos, y respeta lo anterior: no encuentra lo que no puedes ver. Busca por
+nombre, por identificador fiscal, por teléfono y por correo — y por teléfono
+funciona aunque esté escrito de otra forma (`+34 600…`, `0034600…`, `600…`),
+porque los que están mal escritos suelen ser los clientes de toda la vida.
+
+---
+
+## Tu espacio y el de tu empresa (sección 0.1)
+
+Cada empresa tiene su propio espacio, con sus datos, su configuración y su marca.
+Nada se comparte entre espacios, y eso no es una promesa comercial: está impuesto
+por la base de datos, no por una comprobación del programa.
+
+Lo que te afecta como usuario:
+
+- **El idioma, el formato de fecha, la moneda y el huso horario** son los de tu
+  espacio, y pueden ajustarse por persona. Si ves las fechas al revés de como las
+  escribes, eso se cambia sin tocar nada más.
+- **La marca**: logo, colores y dominio propio. Si tu empresa lo ha configurado,
+  los correos que salen del CRM van con su imagen y desde su dominio.
+- **Los límites**: hay topes de almacenamiento, de registros y de llamadas a la
+  API. Cuando te acercas a uno **se avisa antes**, no cuando ya no cabe nada. Si
+  algo se bloquea por cuota, el mensaje dice cuál y cuánto queda.
+
+---
+
+## Lo que el CRM puede hacer sin ti (sección 0.3)
+
+Detrás de casi todo lo que usas hay procesos que corren solos: reglas que asignan
+un caso, avisos que se mandan cuando algo lleva demasiado parado, aprobaciones que
+van a quien toca.
+
+Lo que hay que saber:
+
+- **Una automatización nunca actúa en secreto.** Todo lo que hace queda registrado
+  con su nombre, y en el historial del registro se ve qué cambió una persona y qué
+  cambió una regla.
+- **Cuando una automatización falla, se para y se dice.** No lo intenta veinte
+  veces en silencio. Si algo que esperabas no ha pasado, en la ficha se ve qué
+  regla falló y por qué.
+- **Las aprobaciones tienen dueño y plazo.** Una aprobación sin responsable no
+  avanza sola y sin plazo se queda para siempre; por eso el sistema pide las dos
+  cosas, y avisa a quien tenga que decidir.
+- **Y un proceso largo se puede parar a la mitad.** Si un proceso toca varias
+  cosas y una falla, lo hecho se deshace donde se puede y, donde no —un correo ya
+  mandado no se desmanda—, queda marcado como **atascado** y no como
+  «compensado». Es incómodo y es la verdad.
+
+---
+
+## Campos, listas y pantallas a tu medida (sección 0.4)
+
+Casi todo lo que ves se puede adaptar sin programar: añadir un campo, cambiar el
+orden de una ficha, ocultar lo que no usáis, crear un objeto nuevo para algo que
+solo existe en tu negocio.
+
+Lo importante para el día a día:
+
+- **Un campo nuevo funciona en todas partes desde el primer momento**: se puede
+  buscar, filtrar, exportar, usar en una plantilla y en una automatización. No hay
+  «campos de segunda».
+- **El diseñador de formularios no deja guardar un diseño roto.** Si pones un
+  campo obligatorio en una pestaña secundaria, el formulario no se podrá guardar y
+  el usuario no verá por qué; si el mismo campo está en dos sitios, al guardar gana
+  el que no tocaste. Esas dos cosas se avisan antes.
+- **Esconder un campo con una condición no es protegerlo.** Si un dato no lo puede
+  ver alguien, eso es un permiso, no una condición de visibilidad. El sistema lo
+  dice cuando te acercas a esa confusión.
+- **Y un cambio de tipo de campo con datos dentro no se aplica solo**: primero
+  enseña a cuántos registros afecta y qué se perdería.
+
+---
+
+## Usar el CRM desde fuera del CRM (sección 0.2)
+
+Casi nada de lo que hace contecrm exige abrir su pantalla. Esto importa aunque no
+seas quien programa:
+
+- **Todo lo que ves se puede hacer también por API**, así que tu empresa puede
+  meter el CRM dentro de su intranet, de su tienda o de su aplicación de campo sin
+  pedir permiso a nadie ni esperar a una versión.
+- **Y lo que hace la consola de administración también.** No hay acciones que solo
+  existan pulsando un botón, y eso es comprobable: hay una comprobación automática
+  que lo verifica en cada cambio.
+
+Lo que te afecta en el día a día: si tu empresa ha construido su propia pantalla
+para una parte —el portal del cliente, el alta desde la web, la aplicación del
+técnico—, lo que pasa ahí dentro **es el mismo CRM**, con los mismos permisos y las
+mismas validaciones. No hay una puerta de atrás donde las reglas no se cumplan.
+
+---
+
+## Saber si el sistema va bien (sección 0.6)
+
+No hace falta ser administrador para ver si algo está pasando:
+
+- **La página de estado** dice cómo está tu espacio ahora mismo, componente a
+  componente. Un servicio que no contesta **no aparece en verde**: aparece como
+  que no se sabe, que es distinto.
+- **Lo que se prometió y lo que se cumplió** están uno al lado del otro. Si un mes
+  no se cumplió el tiempo de respuesta, sale.
+- **Y cuando algo está degradado se dice antes de que lo notes.** Lo primero que se
+  pospone bajo carga son los recálculos y los informes pesados, no lo que estás
+  escribiendo.
+
+Si algo que esperabas no ha llegado —un correo, una sincronización, un informe
+programado—, esa página es el primer sitio donde mirar antes de escribir a
+soporte.
+
+---
+
+## Clientes, contactos y calidad del dato (sección 1.1)
+
+La ficha de cuenta y la de contacto son el centro del CRM. Lo que conviene saber:
+
+**Duplicados.** Al crear una cuenta o un contacto, el sistema avisa si se parece a
+algo que ya existe, y con qué se parece: el identificador fiscal, el dominio de
+correo, el nombre normalizado. Fusionar es una decisión tuya, se puede deshacer, y
+**la ficha fusionada no se borra** — hay correos, documentos y sistemas externos
+que apuntan a ella.
+
+**Calidad.** Cada ficha tiene una puntuación de completitud y una lista de qué le
+falta. No es decorativo: de ahí sale la cola de trabajo de calidad, donde las
+excepciones tienen **responsable**, porque una lista sin dueño no la mira nadie.
+Al cerrar una excepción hay que decir qué hiciste —corregido, no era un error, no
+se puede arreglar— y si muchas se cierran como «no era un error», el sistema
+señala que la regla está mal, no el dato.
+
+**De dónde sale cada dato.** Si te preguntas por qué la dirección dice lo que
+dice, la ficha te lo contesta: de qué sistema vino, cuándo cambió de verdad y
+cuándo se confirmó por última vez. Y cuando dos sistemas dicen cosas distintas,
+eso no se tira: aparece como discrepancia, porque normalmente significa que el
+cliente se mudó y solo uno se enteró.
+
+**Cuentas de particulares.** Un cliente que es una persona física se lleva en la
+misma ficha con una marca. Los campos de empresa dejan de tener sentido y no se
+exigen, y toda la ficha pasa a tratarse como dato personal.
+
+**Estado financiero y métricas.** Si tu empresa ha conectado el ERP, en la ficha
+verás crédito disponible, deuda vencida, facturación y margen — cada cosa **con la
+fecha del dato**. Si ves un aviso de que la cifra es de hace tres semanas, hazle
+caso: negociar con ella es negociar con un número que ya no existe.
+
+**Cambio de empresa.** Cuando alguien cambia de trabajo, el CRM lo sospecha (un
+correo que rebota, una firma nueva) y te lo propone; al confirmarlo **no se mueve
+la ficha**, se crea una nueva enlazada. La historia de las reuniones y los correos
+es de la cuenta antigua, y moverla dejaría a esa cuenta sin nada.
+
+---
+
+## Lo que pasa con cada cliente (sección 1.2)
+
+Toda interacción —un correo, una llamada, una reunión, una nota— queda en la ficha
+en un solo hilo. Lo relevante:
+
+- **No hace falta teclearlo.** Si tienes el correo o el calendario conectados, las
+  interacciones entran solas; si usas el marcador, la llamada se registra al
+  colgar con su duración y su resultado.
+- **Lo que sí escribes tú es qué se habló.** El sistema no inventa la nota:
+  «contestada, 3 minutos» no es información comercial, y una frase automática
+  parecería contenido sin serlo.
+- **Lo privado no entra.** Un correo o una cita marcados como privados se saltan, y
+  se cuentan aparte para que nadie crea que se sincronizó todo.
+
+---
+
+## Segmentos y audiencias (sección 2.1)
+
+Un segmento es una lista de gente que cumple unas condiciones. Dos cosas que
+cambian cómo se usan:
+
+- **Un segmento se recalcula solo.** La lista de hoy no es la de la semana que
+  viene, y comparar los resultados de dos envíos hechos en fechas distintas es
+  comparar dos audiencias distintas. El sistema lo avisa.
+- **Antes de mandar nada, el segmento te dice a cuánta gente afecta.** Ese número
+  es el que hay que mirar: es lo que separa una campaña de un incidente.
+
+Si tu empresa sincroniza audiencias con plataformas de anuncios, hay un límite
+importante: **haber aceptado el boletín no es haber aceptado los anuncios**. Solo
+sale quien tiene base legal para publicidad, y las listas pequeñas no salen —
+porque una audiencia de veinte personas no anonimiza nada.
+
+---
+
+## Campañas y recorridos (sección 2.2)
+
+Un recorrido es una secuencia: si pasa esto, espera tanto, manda aquello. Lo que
+hay que tener en cuenta:
+
+- **Se prueba en seco antes de lanzar**, y la prueba se hace **contra datos
+  reales**: dice a cuánta gente afectaría hoy. Contra datos inventados, cualquier
+  regla funciona.
+- **Nadie entra dos veces sin querer.** El sistema controla la reentrada, que es el
+  fallo clásico de los recorridos: un cliente recibiendo la misma bienvenida cada
+  vez que actualiza su ficha.
+- **Un cambio en el recorrido no afecta a quien ya está dentro.** Termina con la
+  versión con la que entró, porque cambiarle el guion a la mitad lo deja en un
+  paso que ya no existe.
+
+---
+
+## Cómo se manda cada cosa (sección 2.3)
+
+Correo, SMS, WhatsApp, RCS, push, web, correo postal y telemarketing. Lo que
+cambia entre ellos no es el botón:
+
+- **El permiso es por canal.** Quien aceptó el correo no ha aceptado el SMS.
+- **Cada canal tiene su forma de decir que no**: una palabra en SMS, la ventana de
+  24 horas y las plantillas aprobadas en WhatsApp, el permiso del navegador en
+  push. El CRM respeta la de cada uno.
+- **El correo postal y el telemarketing no se pueden cancelar.** Una carta impresa
+  ya está impresa: por eso la confirmación va antes, con el coste delante.
+- **Y la hora de envío puede personalizarse**, pero solo cuando hay datos
+  suficientes. Con dos interacciones, lo que se optimiza es el azar, y el sistema
+  prefiere decírtelo a fingir que sabe.
+
+---
+
+## Contenido: biblioteca y aprobaciones (sección 2.4)
+
+Todo lo que se manda al cliente sale de una pieza guardada: un texto, un folleto,
+una imagen.
+
+- **Cada activo dice para qué se puede usar y hasta cuándo.** Una foto con
+  licencia para web no vale para una valla, y el folleto con los precios del año
+  pasado deja de poder mandarse el día que caduca.
+- **La versión nueva no borra la anterior**: lo que se mandó el martes se puede
+  recuperar.
+- **Y nada se publica sin que una persona lo apruebe**, con un aprobador concreto
+  por paso. Rechazar exige decir qué hay que cambiar; y al aprobar se registra si
+  miraste **qué cambió** respecto de la versión anterior, porque revisarlo todo
+  entero cada vez es como se acaba aprobando sin leer.
+
+---
+
+## Oportunidades y pipeline (sección 3.1)
+
+Una oportunidad es una venta en marcha. Lo que el CRM te va a pedir y por qué:
+
+- **Fecha e importe, siempre.** Una oportunidad sin fecha no entra en ninguna
+  previsión y no la mira nadie; sin importe, no se puede priorizar. No es
+  burocracia: es lo que hace que el pipeline signifique algo.
+- **Las etapas van hacia adelante**, y retroceder deja constancia. Un pipeline en
+  el que todo el mundo mueve etapas libremente no predice nada.
+- **Lo recurrente se separa de lo puntual.** Si vendes suscripciones, el sistema
+  distingue lo que se repite de lo que se cobra una vez, y calcula ARR y MRR solo
+  con lo primero. Meter la implantación dentro infla el número con el que tu
+  empresa se valora.
+- **El calendario de ingreso.** Una venta que se cobra en doce meses no es un mes
+  bueno: son doce meses decentes. Eso se reparte y aparece en la previsión de caja,
+  que es distinta de la previsión de cierre.
+- **El reparto entre comerciales suma 100.** Si sois dos al 60 %, no se guarda: las
+  comisiones cuadrarían hacia arriba y el descuadre aparece tres meses después. El
+  apoyo que no resta al titular se anota aparte, como *overlay*.
+- **Quién decide.** En la oportunidad se anota el papel de cada persona del
+  cliente: quién firma, quién paga, quién recomienda, quién puede bloquear. Lo que
+  más te va a servir es la lista de **con quién no has hablado todavía**: un
+  económico sin contactar es la razón más habitual de que un cierre seguro se caiga
+  la última semana.
+- **Y las oportunidades se relacionan entre sí** diciendo qué son: renovación,
+  ampliación, venta cruzada o sustitución. Una renovación **no cuenta como ingreso
+  nuevo**, y contarla así duplicaría el crecimiento del trimestre.
+
+---
+
+## Previsión y objetivos (sección 3.2)
+
+La previsión no es la suma del pipeline. Lo que verás:
+
+- **Categorías de previsión** —comprometido, mejor caso, pipeline— que las pone
+  una persona y no la etapa. Deducirlas de la etapa hace que la previsión suba
+  sola cuando alguien mueve una tarjeta.
+- **Cuotas por persona, equipo y periodo**, y el avance frente a ellas.
+- **El histórico de la previsión no se reescribe.** Lo que dijiste en marzo sigue
+  diciendo lo que dijiste en marzo; si no, no se puede aprender nada de lo que
+  falló.
+- **Y las comisiones**: si tu empresa usa un motor externo, el CRM manda los hechos
+  y **enseña el número que calcula ese motor**, no otro. Una cifra distinta de la
+  que vas a cobrar haría que no te creyeras ninguna de las dos.
+
+---
+
+## Prospección y trabajo diario (sección 3.3)
+
+- **Cadencias**: secuencias de correo, llamada y tarea con un ritmo definido. Se
+  paran solas cuando el cliente responde — seguir la secuencia después de una
+  respuesta es lo que hace que la gente bloquee al remitente.
+- **Presupuestos y precios**: el precio sale del motor de tarifas y **se explica**.
+  Un precio que no se puede explicar se acaba negociando a la baja delante del
+  cliente.
+- **El margen, si tu empresa ha cargado los costes.** Aprobar por porcentaje de
+  descuento es aprobar a ciegas: un 5 % sobre algo que se compra caro pierde
+  dinero. Y el coste **se congela al ofertar**: si la tarifa del proveedor sube
+  después, se te avisa y la oferta no se reescribe sola.
+- **El marcador**: llamar desde la ficha, y al colgar la llamada se registra sola.
+  Lo que tienes que escribir tú es qué se habló.
+- **El plan conjunto con el cliente**: los pasos acordados con fechas, con una
+  condición — **tiene que haber pasos suyos**. Un plan donde todo es nuestro es una
+  lista de seguimiento interna, y lo valioso es justo lo incómodo: que el cliente
+  ponga fecha a su parte.
+- **Y la revisión de oportunidad**, que pregunta lo que nadie pregunta: qué puede
+  salir mal y qué falta por saber. Queda registrada para poder compararla con lo
+  que pasó — si lo que se revisa al 80 % se gana la mitad de las veces, ese 80 % no
+  significa 80 %.
+
+---
+
+## Partners y canal indirecto (sección 3.4)
+
+Si vendes a través de terceros: registro de oportunidad para evitar que dos
+partners peleen por el mismo cliente, niveles y certificaciones, precios propios de
+canal, y un portal donde ellos ven **lo suyo y solo lo suyo**. El registro de
+oportunidad tiene caducidad: una reserva eterna bloquea una cuenta para siempre.
+
+---
+
+## Casos y atención al cliente (sección 4.1)
+
+Un caso es una petición de un cliente con un compromiso de tiempo detrás.
+
+- **El reloj del SLA se para cuando la pelota está en el tejado del cliente**, y se
+  reanuda cuando contesta. Sin eso, el indicador castiga al agente por lo que tarda
+  el cliente.
+- **Los calendarios laborales y los festivos cuentan.** Un caso abierto el viernes
+  a las siete no lleva 60 horas de retraso el lunes a las nueve.
+- **Reabrir un caso cerrado tiene plazo.** Pasado, se abre uno nuevo enlazado:
+  reabrir el de hace ocho meses falsearía los indicadores del periodo en que se
+  cerró, que ya están en un informe que alguien miró.
+- **La cola no es una lista por orden de llegada**: se ordena por lo que está más
+  cerca de incumplir, y se dice por qué está donde está.
+
+---
+
+## Por dónde entran los clientes (sección 4.2)
+
+Correo, formulario, portal, chat, redes sociales, teléfono y API. Todo cae en el
+mismo hilo del mismo caso.
+
+- **El correo no hace bucles**: una respuesta automática que contesta a otra
+  respuesta automática es un clásico, y está controlado.
+- **En redes sociales, lo público es distinto.** Una queja con testigos se contesta
+  en el hilo diciendo que se está atendiendo, y el detalle se sigue por privado —
+  pedir un número de pedido delante de todo el mundo es mala respuesta y un
+  problema de privacidad a la vez. Y lo que se publica en nombre de la marca **lo
+  escribe una persona**.
+- **Al teléfono**, si suena y el número está en el CRM, la ficha se abre sola; si
+  hay tres fichas con ese número, se enseñan las tres en vez de adivinar. Lo que el
+  cliente tecleó en el IVR llega contigo: no se lo vuelvas a preguntar.
+- **Y el asistente de voz** te pasa la llamada cuando no entiende, con todo lo que
+  ya se habló. Hay cosas que no hace nunca: cancelar un contrato o cambiar unos
+  datos bancarios por voz, que es el fraude telefónico más común que existe.
+
+---
+
+## Conocimiento y autoservicio (sección 4.3)
+
+- **Artículos con vigencia y aprobación**: lo que caduca deja de proponerse.
+- **Sugerencias en el caso**: mientras escribes, el CRM te pone delante casos
+  parecidos ya resueltos y el artículo que los explica, **cada uno con su cita**.
+  Si no se puede abrir la fuente, no se enseña: responder con un párrafo que no se
+  puede comprobar es como se propagan las respuestas equivocadas.
+- **Y lo parecido no siempre es lo aplicable**: se te dice en qué coincide y en qué
+  no (producto, versión, contrato). Lo decides tú.
+
+---
+
+## Servicio de campo y activos (sección 4.4)
+
+Órdenes de trabajo, técnicos, rutas y equipos instalados en casa del cliente.
+Cuatro cosas que notarás:
+
+- La planificación tiene en cuenta **el tiempo de desplazamiento**, no solo la
+  duración del trabajo.
+- Un técnico sin zonas asignadas cubre todas: es deliberado, para que nadie se
+  quede sin asignar por un dato que falta.
+- **La garantía dice qué cubre y qué no** — casi ninguna cubre el desplazamiento, y
+  esa es la conversación incómoda que conviene tener antes de ir.
+- Y el histórico del equipo instalado viaja con él aunque cambie de cliente.
+
+---
+
+## Devoluciones y postventa (sección 4.5)
+
+Devoluciones y sustituciones con su propio flujo, enlazadas al pedido y al activo.
+Lo que se registra es qué volvió, por qué y en qué estado: sin el motivo, el mismo
+producto vuelve a fallar y nadie puede demostrar que es un patrón.
+
+---
+
+## Informes y cuadros de mando (sección 5.1)
+
+- **Cualquiera puede construir un informe** sin pedirlo a nadie, y solo verá dentro
+  lo que puede ver.
+- **Un informe programado se manda con lo que ve quien lo recibe**, no con lo que
+  veía quien lo creó.
+- **Y los números dicen de cuándo son.** Un panel sin fecha de actualización se lee
+  como si fuera de ahora mismo, y así es como se toman decisiones con datos de
+  antes de ayer.
+- Si algo no se puede calcular, el informe lo dice — **una celda vacía y un cero
+  significan cosas distintas** y aquí no se confunden.
+
+---
+
+## Lo que hace la inteligencia artificial (sección 5.2)
+
+Todo lo que propone la IA en contecrm cumple tres reglas:
+
+1. **Se explica.** Una puntuación viene con los factores que la empujan hacia
+   arriba y hacia abajo. Un número sin porqué se mira una vez.
+2. **No actúa sola en lo que importa.** Redacta borradores, propone tareas, resume
+   reuniones y sugiere respuestas — y todo eso lo confirma una persona.
+3. **Dice cuándo no sabe.** Sin datos suficientes no inventa una puntuación: te
+   dice que no se puede medir, que es distinto de que vaya mal.
+
+Además: lo que se transcribe de una llamada **no es un acta** —el reconocimiento
+confunde nombres y cifras—, y grabar exige haber avisado. Si algo se propone a
+partir de una transcripción poco fiable, no se propone.
+
+---
+
+## Correo, calendario y el resto de tus herramientas (sección 6.1)
+
+El CRM se conecta con la suite que ya usas —Microsoft 365, Google o la que sea— y
+lo hace igual con todas: lo que cambia es configuración, no un módulo por casa.
+
+- **Lo autorizas tú, recurso a recurso.** Ni tu jefe ni el administrador pueden
+  conectar tu buzón por ti. Y cuando lo revocas, deja de entrar nada más — lo que
+  ya entró se queda, porque son actividades de la empresa.
+- **No se sincroniza todo**, sino lo que tiene que ver con el CRM: por defecto,
+  correos con alguien que está en el CRM y reuniones con asistentes externos. Lo
+  privado nunca, y se cuenta aparte para que sepas que hubo algo que no entró.
+- **Los conflictos se avisan, no se resuelven a la brava.** Si mueves una reunión
+  en el móvil y otra persona la mueve en el CRM, gana lo más reciente y, si los dos
+  cambiaron, lo decide una persona. Pisar el calendario de alguien es la forma más
+  rápida de que desconecte esto.
+- **Contactos, tareas y notas.** Los contactos suben solo los que tienen que ver
+  contigo; tu agenda personal no entra. Las tareas van en los dos sentidos —cerrar
+  en un sitio cierra en el otro— pero borrarlas en tu móvil **no borra** la
+  actividad del CRM que otros han comentado. Y las notas y los ficheros se
+  **enlazan**, no se copian: así siguen siendo tuyos y se borran donde están.
+- **Reuniones en línea**: el enlace se crea cuando la reunión está confirmada, no
+  al proponer la hora — si no, quedan salas abiertas de reuniones que no cuajaron.
+- **Y si algo deja de llegar, se ve.** El panel de conexiones dice qué lleva sin
+  sincronizar, desde cuándo y por qué; lo que no se ha medido no cuenta como bueno.
+
+También hay complemento para el cliente de correo (ver y registrar sin salir de
+él), chat corporativo conectado, documentos generados desde plantillas y firma
+electrónica desde cualquier registro.
+
+---
+
+## Trabajar en equipo y desde el móvil (sección 6.2)
+
+- **Comentarios y menciones** en los registros, con aviso a quien mencionas.
+- **Invitados externos** con acceso acotado y temporal: un cliente o un partner
+  puede ver una cosa concreta durante un tiempo concreto.
+- **Móvil y sin cobertura.** Puedes anotar visitas sin red; se suben al recuperarla.
+  Lo que hay que saber: **nada se descarta**. Si algo no se puede subir, se queda en
+  la cola y se avisa —una cola que tira lo que falla convierte un problema de red en
+  una pérdida de datos que descubres semanas después—. Y las notificaciones no
+  llevan el dato dentro: llegan a una pantalla bloqueada que puede ver cualquiera.
+
+---
+
+## Administrar el CRM (sección 7.1)
+
+Para quien administra: usuarios, roles, permisos, listas maestras, plantillas,
+calendarios laborales y ajustes.
+
+- **Todo lo que hace la consola se puede hacer por API.** No hay acciones
+  exclusivas de la pantalla, y eso es comprobable, no una promesa.
+- **Los cambios de configuración se registran** con quién y cuándo.
+- **Y los ajustes tienen valores sensatos por defecto**: no hace falta tocar
+  ochenta cosas para empezar. Lo que se toca, se documenta solo en la referencia de
+  ajustes.
+
+---
+
+## Cambios, entornos y vuelta atrás (sección 7.2)
+
+Si tu empresa trabaja con entorno de pruebas y producción:
+
+- **Un cambio se empaqueta y se promociona**, no se repite a mano en cada sitio.
+- **Se detecta lo que alguien tocó a mano en producción** (el *drift*), comparando
+  contra lo que se desplegó — no contra otro entorno.
+- **Volver atrás es reaplicar el paquete anterior**, no deshacer cambios uno a uno:
+  deshacer falla en cuanto hay dependencias.
+- Y las automatizaciones **llegan apagadas** al entorno nuevo: encender por error
+  una campaña en producción al promocionar es de los errores caros.
+
+---
+
+## Tus derechos y los de tus clientes (sección 7.3)
+
+- **Acceso, rectificación, supresión y portabilidad**: el CRM tiene un flujo para
+  cada uno, con plazo y con prueba de lo que se hizo.
+- **Consentimientos por canal y por finalidad**, con su fecha y su origen. Un
+  consentimiento sin origen no vale para demostrar nada.
+- **Datos personales marcados en el modelo**, para saber en todo momento dónde
+  están — incluidos los campos que creó tu empresa.
+- **Auditoría encadenada**: el registro de quién hizo qué no se puede alterar sin
+  que se note.
+- Y **lo que se borra, se borra también donde se copió**: en el lago de datos del
+  cliente, en las audiencias de las plataformas y en las proyecciones internas.
+
+---
+
+## La interfaz oficial (sección 7.4)
+
+El front que viene con el producto enseña **todo** lo que el CRM hace: no hay
+funcionalidad que solo exista por API. Es sustituible —se puede no desplegar y
+poner el vuestro— y eso también es comprobable: ningún servicio sirve pantallas ni
+depende de ellas.
+
+Lo que encontrarás en él: listas configurables, ficha con pestañas, buscador
+global, panel de inicio por perfil, diseñador visual, consola de administración,
+paneles de estado y ayuda en contexto.
+
+---
+
+## Documentación (sección 7.5)
+
+Este manual y el [manual técnico](manual-tecnico.md) son independientes y
+completos. Los dos se comprueban automáticamente: no pueden describir algo que no
+existe ni dejar fuera un área que sí.
+
+---
+
+## Cuando hay mucho volumen (sección 8.1)
+
+Lo que notarás si tu empresa maneja millones de registros: las listas siguen
+abriéndose, los procesos largos van por detrás con progreso visible, y si algo se
+va a pasar de un límite se avisa **antes**. Cuando el sistema está bajo presión,
+lo que se degrada primero es lo que no es crítico —un recálculo de fondo, un
+informe pesado— y no lo que estás haciendo tú.
+
+---
+
+## Lo que se promete y lo que se cumple (sección 8.2)
+
+Disponibilidad, tiempos de respuesta y ventanas de mantenimiento están publicados
+**con lo medido al lado de lo prometido**. Si un mes no se cumplió, aparece: un
+panel de compromisos que siempre está en verde no lo mira nadie.
+
+---
+
+## Tus proveedores (sección 9.1)
+
+Si tu empresa usa proveedores para dar servicio:
+
+- **Un proveedor es una cuenta con rol**, en la misma ficha de siempre.
+- **La homologación es por categoría**: uno puede valer para material de oficina y
+  no para trabajos en altura, y el CRM no deja encargarle lo segundo.
+- **Los papeles caducan y bloquean solos.** Si el seguro venció, no hace falta que
+  nadie se acuerde.
+- **Y a quién llamar cuando algo falla** está en la ficha, por función. Si no hay
+  nadie de escalado, se dice — en vez de darte el teléfono del comercial a las once
+  de la noche.
+
+---
+
+## Lo que cuesta y lo que se puede comprometer (sección 9.2)
+
+- **La tarifa del proveedor alimenta el coste de la oferta**, y de ahí sale el
+  margen.
+- **La capacidad descuenta lo ya comprometido**, y avisa si con las ofertas
+  abiertas no cabría todo.
+- **El plazo del proveedor decide la fecha que prometes**, no al revés — y si no
+  declara plazo, el CRM prefiere decir que no se puede prometer fecha a inventar
+  una.
+- **Y al final se compara el coste real con el ofertado**, pedido a pedido: una
+  media esconde el que se fue al 40 %, que es el único que enseña algo.
+
+---
+
+# Parte 2 — Casos de uso de punta a punta
+
+## Caso 1: del primer contacto al cobro
+
+1. **Entra un lead** por el formulario de la web. El CRM lo normaliza (teléfono a
+   formato internacional, razón social sin la forma jurídica) y avisa de que se
+   parece a una cuenta que ya existe. Decides fusionar o seguir aparte.
+2. **Se asigna solo** por territorio y carga de trabajo. En la ficha ves por qué te
+   tocó a ti.
+3. **Lo cualificas.** Al convertirlo se crean cuenta, contacto y oportunidad
+   enlazados, y el historial del lead viaja con ellos.
+4. **Trabajas la oportunidad.** Anotas quién decide y quién paga; el CRM te avisa
+   de que al económico no le has llamado todavía.
+5. **Preparas la oferta.** El precio sale del motor de tarifas y se explica línea a
+   línea; si hay costes cargados, ves el margen. Si el descuento pasa de la
+   política, se pide aprobación **antes**, no después.
+6. **Plan conjunto con el cliente**: los tres pasos que faltan, con fechas, y dos
+   de ellos suyos.
+7. **La revisión con tu jefe** queda registrada con lo que dijisteis: probabilidad,
+   fecha y qué puede salir mal.
+8. **Se firma** electrónicamente desde la propia oferta, con la cadena de custodia
+   guardada aquí y no solo en el proveedor.
+9. **Se convierte en pedido y contrato**, con el calendario de ingreso repartido.
+10. **El ERP devuelve la facturación y el cobro**, que aparecen en la ficha con su
+    fecha. Si el cliente entra en deuda vencida, la siguiente oferta avisa antes de
+    comprometer nada.
+
+## Caso 2: una incidencia, de la queja al cierre
+
+1. **Llega por WhatsApp.** Se abre un caso con el hilo completo; el cliente ya
+   estaba identificado por su teléfono.
+2. **Se clasifica y se prioriza** por categoría y por contrato: el SLA que aplica
+   es el suyo, no uno genérico.
+3. **El agente ve tres casos parecidos ya resueltos**, con la cita de dónde sale
+   cada solución, y uno de ellos es de otra versión del producto — el CRM se lo
+   dice.
+4. **Hace falta un técnico.** Se genera la orden de trabajo, se planifica teniendo
+   en cuenta el desplazamiento, y el cliente recibe la franja.
+5. **El reloj se para** mientras se espera la confirmación del cliente.
+6. **Se resuelve**, se pide valoración, y la solución se propone como artículo de
+   conocimiento — para que el siguiente no empiece de cero.
+7. **Si reabre** dentro del plazo, vuelve al mismo caso; si ya pasó, se abre uno
+   nuevo enlazado y los indicadores del periodo cerrado no se tocan.
+
+## Caso 3: una campaña que no se lleva a nadie por delante
+
+1. **Se define el segmento** y se ve a cuánta gente afecta.
+2. **Se comprueban los permisos por canal**: los que no han aceptado ese canal se
+   quedan fuera y se cuentan.
+3. **Se prueba en seco** contra datos reales.
+4. **Se aprueba el contenido**, con legal al final para no revisar dos veces lo
+   mismo.
+5. **Se manda**, personalizando la hora solo para quien tiene historial suficiente.
+6. **Se mide** con lo que respondió, no solo con lo que se abrió. Y las bajas se
+   propagan el mismo día a las audiencias de fuera.
+
+---
+
+# Parte 3 — Para empezar
+
+## Ejemplos que puedes reproducir
+
+Los ejemplos van con los datos que carga `scripts/sembrar_demo.py`, así que se
+pueden hacer mientras se leen. Si tu instalación no tiene la demo cargada, pídela
+a quien la administre: es un comando.
+
+### Ejemplo 1 — Buscar un cliente escrito de otra forma
+
+En la demo hay una cuenta con el teléfono guardado como `+34 600 11 22 33`.
+Búscala escribiendo `600112233`, sin prefijo ni espacios. Aparece.
+
+Esto no es un detalle: el mismo número está escrito de tres maneras distintas en
+cualquier CRM con cinco años de vida, y son justo los clientes antiguos los que
+están mal escritos.
+
+### Ejemplo 2 — Crear una oportunidad sin fecha
+
+Intenta crear una oportunidad dejando la fecha de cierre vacía. No deja, y el
+mensaje dice por qué: sin fecha no entra en ninguna previsión, y una oportunidad
+que no entra en la previsión es una que nadie mira.
+
+Ponle fecha y guarda. Ahora mírala en la previsión: aparece en la categoría
+*pipeline*, no en *comprometido* — la categoría la pones tú, no la etapa.
+
+### Ejemplo 3 — Un duplicado a propósito
+
+Crea una cuenta llamada «Acme Soluciones S.L.» sabiendo que la demo ya tiene
+«ACME SOLUCIONES SL». El CRM avisa antes de guardar y dice **por qué** cree que
+son la misma: el nombre normalizado coincide.
+
+Fusiónalas. Después, mira el historial: la ficha antigua no ha desaparecido, y la
+fusión se puede deshacer.
+
+### Ejemplo 4 — Pedir un descuento que no te toca
+
+En una oferta de la demo, pon un descuento del 40 %. Al enviarla, el CRM pide
+aprobación y dice **qué política** lo exige y a quién va. Si tu empresa ha cargado
+los costes, verás además el margen que queda — y si es negativo, lo dice sin
+rodeos.
+
+### Ejemplo 5 — Un caso con el reloj parado
+
+Abre un caso de la demo y márcalo como «esperando al cliente». Mira el SLA: el
+reloj está parado. Vuelve a ponerlo en curso y sigue contando desde donde estaba.
+
+Es la diferencia entre medir tu trabajo y medir la agenda del cliente.
+
+### Ejemplo 6 — Preguntar de dónde sale un dato
+
+Abre una cuenta de la demo que venga del ERP y mira el linaje de su dirección:
+qué sistema la trajo, cuándo cambió de verdad y cuándo se confirmó por última vez.
+Si hay dos sistemas que dicen cosas distintas, los dos aparecen.
+
+---
+
+## Qué hacer cuando algo no sale
+
+Estos son los mensajes que más se ven, qué significan de verdad y qué hacer. Casi
+ninguno es un error del sistema.
+
+| Lo que ves | Qué pasa de verdad | Qué hacer |
+| --- | --- | --- |
+| **«No tienes permiso»** con una explicación debajo | El CRM te dice qué regla te lo impide, no solo que no puedes | Si te hace falta, pídeselo a quien administra citando esa regla: con eso lo resuelve en un minuto |
+| **«Esta oportunidad no tiene fecha de cierre»** | No entraría en ninguna previsión | Ponle una, aunque sea aproximada; se puede cambiar |
+| **«Parece un duplicado de…»** | Hay otra ficha que coincide en algo fuerte | Míralo. Fusionar se deshace; tener dos fichas del mismo cliente, no |
+| **«El descuento supera la política»** | Hace falta que alguien lo apruebe | Mándalo a aprobar desde ahí mismo: va a quien corresponde con el motivo |
+| **«La cuenta está bloqueada»** con un motivo | El ERP dice que hay deuda vencida | El motivo es lo que le puedes contar al cliente; si crees que está mal, se comprueba en el ERP |
+| **«El dato financiero es de hace N días»** | La cifra que ves no es de hoy | Con más de dos días, confírmalo antes de comprometer algo grande |
+| **«No se ha podido leer el calendario»** | No se sabe si esa persona está libre | Propón horas a mano. El CRM prefiere no proponer a proponer encima de una reunión |
+| **«No se puede medir»** en un panel | No hay datos suficientes, que no es lo mismo que «cero» | Mira qué falta por conectar; el propio panel lo dice |
+| **«Este canal no tiene consentimiento»** | Esa persona no aceptó ese canal concreto | Usa otro por el que sí lo tengas, o pídeselo |
+| **«Hay cambios sin sincronizar»** en el móvil | Algo no ha podido subir | No se pierde: está en la cola. Si lleva días, avisa — suele ser la credencial |
+| **«La sesión ha caducado»** | Es lo normal tras un tiempo sin actividad | Vuelve a entrar. Si pasa cada poco, díselo a quien administra: hay un ajuste |
+
+Y una regla general: cuando el CRM te dice que **no sabe** algo, no lo trates como
+un cero. «No se pudo medir», «no hay dato» y «no es fiable» son avisos de que la
+información no está, no de que el resultado sea malo.
+
+---
+
+## Recorridos por perfil
+
+### Si eres comercial
+
+Tu día empieza en **tu panel**: lo que vence hoy, lo que lleva parado y las
+oportunidades que necesitan algo. Lo que más te va a ahorrar tiempo:
+
+1. **Conecta tu correo y tu calendario.** Las reuniones y los correos con clientes
+   entran solos y dejan de ser diez minutos de tecleo al día.
+2. **Usa el marcador.** La llamada se registra al colgar; tú solo escribes qué se
+   habló.
+3. **Rellena quién decide** en las oportunidades grandes. La lista de «con quién no
+   he hablado» es lo que más cierres salva.
+4. **Mira el margen antes de dar un descuento**, si tu empresa tiene los costes
+   cargados.
+5. Y si trabajas fuera de la oficina, **el móvil funciona sin cobertura**: lo que
+   anotes se sube después.
+
+### Si atiendes clientes
+
+1. **Trabaja desde la cola**, no desde el correo: la cola está ordenada por lo que
+   está más cerca de incumplir.
+2. **Para el reloj** cuando la pelota esté en el tejado del cliente. Es lo que hace
+   que tus indicadores digan la verdad.
+3. **Mira las sugerencias** del caso: casos parecidos ya resueltos y el artículo
+   que los explica, con su cita. Comprueba que hablan de tu misma versión.
+4. **Propón como artículo** lo que resuelvas y no estuviera escrito. El siguiente
+   agente empieza donde tú acabaste.
+
+### Si haces marketing
+
+1. **Define el segmento y mira a cuánta gente afecta** antes de nada.
+2. **Prueba en seco** contra datos reales.
+3. **Respeta el permiso por canal**: es por canal y por finalidad, no por persona.
+4. **Aprueba el contenido** antes de publicar, y mira qué cambió respecto de la
+   versión anterior.
+5. **Mide por respuesta**, no por apertura. Y propaga las bajas el mismo día.
+
+### Si administras el CRM
+
+1. **Empieza por los perfiles y los permisos.** Casi todos los problemas de «no veo
+   nada» y «veo demasiado» se resuelven aquí.
+2. **Configura los calendarios laborales y los festivos** antes de activar SLAs.
+3. **Declara los campos personalizados con su significado** si vais a usar la IA:
+   con el 30 % descrito, entiende el 30 %.
+4. **Usa entornos y paquetes** para llevar cambios a producción, y mira el drift de
+   vez en cuando: lo que alguien tocó a mano un viernes aparece ahí.
+5. **Revisa el panel de conexiones**: lo que lleva días sin sincronizar no da error,
+   simplemente deja de traer cosas.
+
+### Si diriges
+
+Lo que te va a servir y lo que conviene mirar con cuidado:
+
+- **La previsión** por categorías puestas por personas, con el histórico sin
+  reescribir: se puede ver qué se dijo en marzo.
+- **El crecimiento real**, que descuenta renovaciones y sustituciones. Es más bajo
+  que el total y es el que significa algo.
+- **La calibración de las revisiones**: si lo que se revisa al 80 % se gana la
+  mitad de las veces, ese 80 % no es una probabilidad, es una impresión.
+- **Y lo que el sistema dice que no sabe.** Los paneles distinguen entre «cero» y
+  «no medido», y esa distinción es la que evita decisiones tomadas sobre huecos.
