@@ -78,9 +78,7 @@ export default {
   inicio: {
     empezar: "Dar de alta",
     saludo: "Hola, {{nombre}}",
-    entradilla:
-      "Tienes {{modulos}} módulos del catálogo y {{pantallas}} pantallas " +
-      "transversales. Busca cualquiera con {{atajo}}.",
+    entradilla: "{{pantallas}} pantallas a tu alcance. Busca cualquiera con {{atajo}}.",
     sinRoles: "Sin roles asignados todavía",
     modulos: "Módulos del catálogo",
     modulosDetalle: "Cada uno enseña una sección del catálogo funcional.",

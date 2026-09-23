@@ -209,8 +209,10 @@ function Seccion({
 }) {
   const idContenido = `seccion-${id}`;
   return (
-    <section className="border-t border-ink-dim/60 pt-1">
-      <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-2">
+    // Sin línea entre áreas: con siete, el menú era una rejilla de rayas y cada
+    // área parecía una tabla. La separación la da el espacio, que basta.
+    <section className="pt-1">
+      <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
         <button
           type="button"
           onClick={alAlternar}

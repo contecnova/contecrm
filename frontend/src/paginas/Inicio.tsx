@@ -1,48 +1,46 @@
 /**
- * La portada: a dónde ir, con lo que hay de verdad.
+ * La portada: por dónde se empieza.
  *
- * Antes eran dos tarjetas —administración y estado— en una aplicación con
- * veinticinco módulos: una portada que no lleva a casi nada obliga a buscar por
- * el menú desde el primer día. Ahora enseña los módulos del catálogo agrupados
- * como en el menú, y las herramientas transversales debajo.
+ * Empieza por **lo que se hace** —dar de alta un cliente, una oportunidad, un
+ * caso— y sigue por las áreas del producto en el mismo orden que el menú.
  *
- * Lo que se pinta sale de la declaración de módulos y del árbol de navegación,
- * no de una lista escrita aquí: una portada con su propia lista se queda
- * desfasada a la primera pantalla nueva, y nadie lo nota porque sigue pintando.
+ * Antes empezaba por «Módulos del catálogo», agrupados por su grupo del
+ * catálogo, así que lo primero que veía cualquiera al entrar era PLATAFORMA:
+ * tenants, contrato de la API, modelo de datos. Es lo último que necesita quien
+ * abre un CRM, y estaba lo primero porque ese es el orden interno del
+ * catálogo funcional, no el de nadie que trabaje aquí.
+ *
+ * Tampoco se le habla al usuario de «módulos del catálogo» ni de «pantallas
+ * transversales»: eso es de dónde sale el código y no significa nada para quien
+ * usa el producto.
  */
 
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { CabeceraPagina } from "@/componentes/Pagina";
 import { Icono } from "@/componentes/Icono";
+import { CabeceraPagina } from "@/componentes/Pagina";
 import { ALTAS } from "@/lib/altas";
 import { porGrupoVisible } from "@/lib/modulos";
+import { entradaVisible, menuDe } from "@/lib/navegacion";
 import { usePermitidas } from "@/lib/permisos";
-import { TRANSVERSALES, entradaVisible, iconoDeGrupo } from "@/lib/navegacion";
 import { puede, type Sesion } from "@/lib/sesion";
 import { teclaAtajo } from "@/lib/utiles";
 
 export function Inicio({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
-  // Lo mismo que el menú: solo lo que esta persona puede abrir. Enseñar en la
-  // portada veintitrés módulos a quien puede entrar en cuatro es prometer un
-  // producto que no va a poder usar.
+  // Lo mismo que el menú, y con la misma función: si la portada ordenara por su
+  // cuenta, las dos listas se separarían a la primera pantalla nueva.
   const permitidas = usePermitidas();
-  const grupos = [...porGrupoVisible(sesion, permitidas)];
-  const herramientas = TRANSVERSALES.filter((e) => entradaVisible(sesion, e));
-  const cuantosModulos = grupos.reduce((total, [, m]) => total + m.length, 0);
+  const areas = menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e));
   const altas = ALTAS.filter((a) => puede(sesion, a.permiso));
+  const cuantas = areas.reduce((total, a) => total + a.entradas.length, 0);
 
   return (
     <>
       <CabeceraPagina
         titulo={t("inicio.saludo", { nombre: sesion?.nombre || sesion?.email || "" })}
-        entradilla={t("inicio.entradilla", {
-          modulos: cuantosModulos,
-          pantallas: herramientas.length,
-          atajo: teclaAtajo(),
-        })}
+        entradilla={t("inicio.entradilla", { pantallas: cuantas, atajo: teclaAtajo() })}
         icono="home"
         acciones={
           sesion && sesion.roles.length > 0 ? (
@@ -53,9 +51,8 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
         }
       />
 
-      {/* Lo primero, empezar a trabajar. La portada enseñaba una rejilla de
-          veintitrés módulos y ninguna forma evidente de dar de alta un cliente:
-          quien entra no busca una pantalla, busca hacer algo. */}
+      {/* Lo primero, empezar a trabajar. Quien entra no busca una pantalla:
+          busca hacer algo. */}
       {altas.length > 0 ? (
         <section aria-labelledby="inicio-altas" className="mb-8">
           <h2 id="inicio-altas" className="text-sm font-semibold text-ink">
@@ -76,59 +73,31 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
         </section>
       ) : null}
 
-      <section aria-labelledby="inicio-modulos">
-        <h2 id="inicio-modulos" className="text-sm font-semibold text-ink">
-          {t("inicio.modulos")}
-        </h2>
-        <p className="mt-1 text-2xs text-ink-faint">{t("inicio.modulosDetalle")}</p>
-
-        <div className="mt-4 space-y-5">
-          {grupos.map(([grupo, modulos]) => (
-            <div key={grupo}>
-              <p className="section-label mb-2 flex items-center gap-1.5">
-                <Icono nombre={iconoDeGrupo(grupo)} tamano="sm" />
-                {grupo}
-              </p>
-              <div className="grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {modulos.map((modulo) => (
-                  <Link
-                    key={modulo.ruta}
-                    to={`/m/${modulo.ruta}`}
-                    className="card card-hover flex h-full flex-col p-3"
-                  >
-                    <p className="truncate text-xs font-medium text-ink">{modulo.titulo}</p>
-                    {/* Dos líneas y corta. Un módulo con quince recursos
-                        desbordaba la tarjeta a seis líneas y estiraba toda la
-                        fila de la rejilla: la lista completa está dentro, aquí
-                        solo hace falta reconocerlo. */}
-                    <p className="mt-1 line-clamp-2 text-3xs text-ink-faint">
-                      {modulo.recursos.map((r) => r.nombre).join(" · ")}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="inicio-herramientas" className="mt-8">
-        <h2 id="inicio-herramientas" className="text-sm font-semibold text-ink">
-          {t("inicio.herramientas")}
-        </h2>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {herramientas.map((entrada) => (
-            <Link
-              key={entrada.a}
-              to={entrada.a}
-              className="card card-hover flex items-center gap-2.5 p-3"
+      <div className="space-y-7">
+        {areas.map((area) => (
+          <section key={area.id} aria-labelledby={`area-${area.id}`}>
+            <h2
+              id={`area-${area.id}`}
+              className="flex items-center gap-2 text-sm font-semibold text-ink"
             >
-              <Icono nombre={entrada.icono} className="text-ink-muted" />
-              <span className="truncate text-xs text-ink">{t(entrada.clave)}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+              <Icono nombre={area.icono} tamano="sm" className="text-ink-muted" />
+              {t(area.clave)}
+            </h2>
+            <div className="mt-3 grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {area.entradas.map((entrada) => (
+                // Sin icono por tarjeta: unas lo tendrían y otras no —los
+                // módulos del catálogo no traen— y esa desigualdad se lee como
+                // descuido. El icono va en la cabecera del área.
+                <Link key={entrada.a} to={entrada.a} className="card card-hover p-3">
+                  <span className="truncate text-xs text-ink">
+                    {entrada.clave.includes(".") ? t(entrada.clave) : entrada.clave}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </>
   );
 }
