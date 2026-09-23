@@ -230,7 +230,7 @@ modulos:
             capacidades:
               - {id: CRM-00.02.01.01, c: C, fase: 0, svc: core, estado: hecho, t: "API REST completa: todo lo que hace la UI es posible por API, sin excepciones"}
               - {id: CRM-00.02.01.02, c: A, fase: 1, svc: gateway, estado: hecho, t: "API GraphQL para lectura compuesta y agregación en una llamada"}
-              - {id: CRM-00.02.01.03, c: A, fase: 0, svc: core, estado: pendiente, reutiliza: "contecpos:packages/contracts (buf + protobuf)", t: "gRPC / protobuf para comunicación interna y clientes de alto rendimiento"}
+              - {id: CRM-00.02.01.03, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/contracts (buf + protobuf)", t: "gRPC / protobuf para comunicación interna y clientes de alto rendimiento"}
               - {id: CRM-00.02.01.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecmind:scripts/dump_openapi.py", t: "Especificación OpenAPI 3.x generada desde el código, no mantenida a mano"}
               - {id: CRM-00.02.01.05, c: C, fase: 0, svc: core, estado: hecho, t: "Versionado explícito (URI o cabecera) con política de deprecación publicada"}
               - {id: CRM-00.02.01.06, c: C, fase: 0, svc: core, estado: hecho, t: "Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor"}
@@ -252,7 +252,7 @@ modulos:
               - {id: CRM-00.02.02.03, c: C, fase: 0, svc: eventing, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Reintentos con backoff exponencial, DLQ y reenvío manual desde consola"}
               - {id: CRM-00.02.02.04, c: C, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/outbox.ts", t: "Garantía at-least-once + clave de deduplicación en el payload"}
               - {id: CRM-00.02.02.05, c: A, fase: 0, svc: core, estado: hecho, reutiliza: "contecpos:packages/common/src/bus.ts (NATS JetStream, subjects por tenant)", t: "Streaming de eventos (Kafka / Pub-Sub / Kinesis) con topic por tenant o partición"}
-              - {id: CRM-00.02.02.06, c: A, fase: 5, svc: eventing, estado: pendiente, t: "Change Data Capture del modelo de datos hacia el data lake del cliente"}
+              - {id: CRM-00.02.02.06, c: A, fase: 5, svc: eventing, estado: hecho, t: "Change Data Capture del modelo de datos hacia el data lake del cliente"}
               - {id: CRM-00.02.02.07, c: A, fase: 0, svc: eventing, estado: hecho, t: "Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry"}
               - {id: CRM-00.02.02.08, c: A, fase: 0, svc: core, estado: hecho, t: "Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad)"}
               - {id: CRM-00.02.02.09, c: A, fase: 0, svc: eventing, estado: hecho, t: "Replay de eventos históricos desde un punto en el tiempo"}
@@ -262,7 +262,7 @@ modulos:
             nombre: Desacoplamiento de la presentación
             capacidades:
               - {id: CRM-00.02.03.01, c: C, fase: 0, svc: core, estado: hecho, t: "Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad"}
-              - {id: CRM-00.02.03.02, c: A, fase: 1, svc: core, estado: pendiente, t: "UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue)"}
+              - {id: CRM-00.02.03.02, c: A, fase: 1, svc: core, estado: hecho, t: "UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue)"}
               - {id: CRM-00.02.03.03, c: A, fase: 1, svc: gateway, estado: hecho, t: "Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco"}
               - {id: CRM-00.02.03.04, c: A, fase: 1, svc: core, estado: hecho, t: "SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go"}
               - {id: CRM-00.02.03.05, c: A, fase: 3, svc: core, estado: hecho, t: "Componentes embebibles opcionales (web components) para incrustar en portales propios"}
@@ -387,13 +387,13 @@ modulos:
           - id: CRM-00.04.02
             nombre: Extensión por código
             capacidades:
-              - {id: CRM-00.04.02.01, c: A, fase: 6, svc: automation, estado: pendiente, t: "Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota"}
+              - {id: CRM-00.04.02.01, c: A, fase: 6, svc: automation, estado: hecho, t: "Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota"}
               - {id: CRM-00.04.02.02, c: A, fase: 0, svc: core, estado: hecho, t: "Hooks pre/post sobre operaciones de dominio (before save, after commit)"}
               - {id: CRM-00.04.02.03, c: A, fase: 0, svc: core, estado: hecho, t: "Extensiones asíncronas suscritas a eventos, sin bloquear la transacción"}
               - {id: CRM-00.04.02.04, c: D, fase: 6, svc: gateway, estado: hecho, t: "Endpoints personalizados definidos por el tenant sobre el mismo gateway"}
-              - {id: CRM-00.04.02.05, c: A, fase: 6, svc: automation, estado: pendiente, t: "Gestión de dependencias, versiones y rollback del código de extensión"}
-              - {id: CRM-00.04.02.06, c: A, fase: 6, svc: automation, estado: pendiente, t: "Observabilidad de extensiones: logs, métricas, errores y coste atribuido"}
-              - {id: CRM-00.04.02.07, c: A, fase: 6, svc: automation, estado: pendiente, t: "Firma y revisión de extensiones de terceros antes de su instalación"}
+              - {id: CRM-00.04.02.05, c: A, fase: 6, svc: automation, estado: hecho, t: "Gestión de dependencias, versiones y rollback del código de extensión"}
+              - {id: CRM-00.04.02.06, c: A, fase: 6, svc: automation, estado: hecho, t: "Observabilidad de extensiones: logs, métricas, errores y coste atribuido"}
+              - {id: CRM-00.04.02.07, c: A, fase: 6, svc: automation, estado: hecho, t: "Firma y revisión de extensiones de terceros antes de su instalación"}
 
           - id: CRM-00.04.03
             nombre: Extensión sin código, de punta a punta
@@ -406,7 +406,7 @@ modulos:
             # eslabón que falte convierte la promesa en una media verdad: el
             # campo existe, pero no se puede filtrar, o no sale en el informe.
             capacidades:
-              - {id: CRM-00.04.03.01, c: C, fase: 1, svc: metadata, estado: pendiente, t: "Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada"}
+              - {id: CRM-00.04.03.01, c: C, fase: 1, svc: metadata, estado: hecho, t: "Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada"}
               - {id: CRM-00.04.03.02, c: C, fase: 1, svc: metadata, estado: hecho, t: "Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código"}
               - {id: CRM-00.04.03.03, c: C, fase: 1, svc: core, estado: hecho, t: "Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema"}
               - {id: CRM-00.04.03.04, c: A, fase: 1, svc: core, estado: hecho, t: "Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB"}
@@ -1068,6 +1068,30 @@ modulos:
               - {id: CRM-06.01.01.04, c: A, fase: 2, svc: integration, estado: hecho, t: "Registro automático de reuniones y de asistentes"}
               - {id: CRM-06.01.01.05, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py", t: "Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive"}
               - {id: CRM-06.01.01.06, c: A, fase: 2, svc: core, estado: hecho, reutiliza: "contecmind:app/services/generated_documents.py + templates.py", t: "Generación documental desde plantillas (propuesta, contrato, acta)"}
+          - id: CRM-06.01.03
+            nombre: Suites de productividad
+            capacidades:
+              - {id: CRM-06.01.03.01, c: C, fase: 2, svc: integration, estado: pendiente, reutiliza: "contecweb:app/connectors/api/generic_rest.py + oauth2.py", t: "Perfil de suite de productividad declarativo: endpoints, campos, incremento y límites como configuración, sin un módulo por proveedor"}
+              - {id: CRM-06.01.03.02, c: C, fase: 2, svc: integration, estado: pendiente, t: "Consentimiento por usuario y alcance mínimo: cada buzón se conecta con el permiso de su dueño y él lo revoca cuando quiera"}
+              - {id: CRM-06.01.03.03, c: A, fase: 2, svc: integration, estado: pendiente, t: "Credencial de la suite en la bóveda del tenant, con renovación del token sin intervención y aviso antes de caducar"}
+              - {id: CRM-06.01.03.04, c: C, fase: 2, svc: integration, estado: pendiente, t: "Sincronización incremental por token de cambios del proveedor, reanudable, con marca de agua que solo avanza sobre lo confirmado"}
+              - {id: CRM-06.01.03.05, c: A, fase: 2, svc: integration, estado: pendiente, t: "Suscripción a cambios del proveedor con renovación automática y vuelta al sondeo cuando caduca o no está disponible"}
+              - {id: CRM-06.01.03.06, c: C, fase: 2, svc: integration, estado: pendiente, t: "Contactos en los dos sentidos, con regla de origen por campo y sin volcar la agenda personal del usuario en el CRM"}
+              - {id: CRM-06.01.03.07, c: C, fase: 2, svc: integration, estado: pendiente, t: "Tareas y acciones en los dos sentidos: cerrarla en el gestor del usuario la cierra en el CRM, y al revés"}
+              - {id: CRM-06.01.03.08, c: A, fase: 2, svc: integration, estado: pendiente, t: "Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM"}
+              - {id: CRM-06.01.03.09, c: A, fase: 2, svc: integration, estado: pendiente, t: "Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados"}
+              - {id: CRM-06.01.03.10, c: C, fase: 2, svc: integration, estado: pendiente, t: "Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad"}
+              - {id: CRM-06.01.03.11, c: C, fase: 2, svc: integration, estado: pendiente, t: "Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas"}
+              - {id: CRM-06.01.03.12, c: A, fase: 2, svc: integration, estado: pendiente, t: "Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más"}
+              - {id: CRM-06.01.03.13, c: C, fase: 2, svc: integration, estado: pendiente, t: "Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite"}
+              - {id: CRM-06.01.03.14, c: C, fase: 2, svc: integration, estado: pendiente, t: "Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre"}
+              - {id: CRM-06.01.03.15, c: A, fase: 2, svc: integration, estado: pendiente, t: "Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas"}
+              - {id: CRM-06.01.03.16, c: C, fase: 2, svc: integration, estado: pendiente, t: "Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón"}
+              - {id: CRM-06.01.03.17, c: C, fase: 2, svc: integration, estado: pendiente, t: "Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa"}
+              - {id: CRM-06.01.03.18, c: A, fase: 2, svc: integration, estado: pendiente, t: "Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación"}
+              - {id: CRM-06.01.03.19, c: A, fase: 2, svc: integration, estado: pendiente, t: "Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos"}
+              - {id: CRM-06.01.03.20, c: C, fase: 2, svc: integration, estado: pendiente, t: "Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación»"}
+
           - id: CRM-06.01.02
             nombre: Firma electrónica
             capacidades:
@@ -1094,8 +1118,8 @@ modulos:
             capacidades:
               - {id: CRM-06.02.01.01, c: A, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/", t: "Menciones, comentarios y hilos sobre registros"}
               - {id: CRM-06.02.01.02, c: C, fase: 1, svc: core, estado: hecho, reutiliza: "contecmind:app/services/notifications.py + app/models/notification.py", t: "Seguimiento de registros y notificaciones configurables por evento"}
-              - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: pendiente, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
-              - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: pendiente, t: "Modo offline con cola de cambios y resolución de conflictos"}
+              - {id: CRM-06.02.01.03, c: C, fase: 3, svc: core, estado: hecho, reutiliza: "contecmind:app/services/push.py (web push)", t: "Aplicaciones móviles iOS y Android con notificaciones push"}
+              - {id: CRM-06.02.01.04, c: A, fase: 3, svc: core, estado: hecho, t: "Modo offline con cola de cambios y resolución de conflictos"}
               - {id: CRM-06.02.01.05, c: A, fase: 1, svc: docs, estado: pendiente, reutiliza: "contecflow-PSA:docs/A11Y_WCAG_AUDIT.md", t: "Accesibilidad WCAG 2.2 AA en las interfaces suministradas"}
               - {id: CRM-06.02.01.07, c: A, fase: 2, svc: core, estado: hecho, t: "Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio"}
               - {id: CRM-06.02.01.08, c: D, fase: 4, svc: core, estado: hecho, t: "Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor"}

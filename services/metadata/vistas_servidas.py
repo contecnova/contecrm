@@ -42,7 +42,7 @@ logger = get_logger(__name__)
 # Versión del contrato de vistas. Sube cuando se añade un tipo de componente o
 # cambia el significado de uno: es lo que permite a un front viejo saber que hay
 # algo que no sabe pintar, en vez de pintarlo mal.
-VERSION_CONTRATO = 1
+VERSION_CONTRATO = 2
 
 # Los componentes que un front tiene que saber pintar. Lista cerrada a propósito:
 # con texto libre, uno que recibe «selector_bonito» solo puede no pintar nada o
@@ -52,33 +52,62 @@ COMPONENTES = (
     "texto_largo",
     "numero",
     "moneda",
+    # Aparte del número: un porcentaje pintado como número corriente es donde
+    # pasa lo de guardar 15 queriendo decir 0,15, y al revés.
+    "porcentaje",
     "fecha",
+    # Aparte de la fecha: pintar una fecha con hora como fecha pierde la hora y
+    # el huso, y la reunión se queda a las 00:00 de un día que no es.
+    "fecha_hora",
     "booleano",
     "seleccion",
     "seleccion_multiple",
     "referencia",
     "adjunto",
+    # Solo lectura. Pintar una fórmula como campo editable deja escribir encima
+    # de un valor calculado: se guarda, se recalcula, y el usuario cree que
+    # cambió algo.
+    "calculado",
+    "mapa",
+    # Un JSON en una caja de texto se guarda mal formado y revienta al leerlo,
+    # no al escribirlo.
+    "json",
+    # Un campo cifrado pintado como texto enseña el secreto en pantalla y lo
+    # mete en el autocompletado del navegador.
+    "secreto",
+    "correo",
+    "telefono",
+    "enlace",
     "seccion",
     "pestana",
     "tabla_relacionada",
 )
 
-# Qué componente pinta cada tipo del metamodelo. Está aquí y no en el front
-# porque es una decisión del producto: si cada front eligiera, el mismo campo se
-# vería de tres formas según el cliente.
+# Qué componente pinta cada tipo del metamodelo. Las claves son EXACTAMENTE los
+# tipos que admite `services/metadata/esquemas.TIPOS_CAMPO`: si aquí hubiera un
+# tipo que allí no existe, sería un componente que no pinta nada, y si faltara
+# uno, sería un campo que el metamodelo deja crear y ningún front sabe mostrar.
+# Hay un gate que compara las dos listas.
 POR_TIPO = {
     "texto": "texto",
     "texto_largo": "texto_largo",
-    "entero": "numero",
-    "decimal": "numero",
+    "numero": "numero",
     "moneda": "moneda",
+    "porcentaje": "porcentaje",
     "fecha": "fecha",
-    "fecha_hora": "fecha",
+    "fecha_hora": "fecha_hora",
     "booleano": "booleano",
     "lista": "seleccion",
-    "multilista": "seleccion_multiple",
-    "referencia": "referencia",
-    "adjunto": "adjunto",
+    "lista_multiple": "seleccion_multiple",
+    "formula": "calculado",
+    "lookup": "referencia",
+    "geolocalizacion": "mapa",
+    "json": "json",
+    "fichero": "adjunto",
+    "cifrado": "secreto",
+    "email": "correo",
+    "telefono": "telefono",
+    "url": "enlace",
 }
 
 

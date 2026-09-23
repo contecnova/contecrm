@@ -186,3 +186,19 @@ class _LimitsSettings(BaseSettings):
     # la que se vende la extensión, y sobre todo la que evita la llamada en la
     # que se descubre que venció hace un mes.
     garantia_preaviso_dias: int = Field(90, ge=1, le=730)
+
+    # ── Transporte gRPC (CRM-00.02.01.03) ─────────────────────────────────
+    # Si se levanta el puerto gRPC. Apagado por defecto: una superficie abierta
+    # que nadie usa es una superficie que nadie mira.
+    grpc_activo: bool = False
+    grpc_direccion: str = "0.0.0.0:50051"
+    # Tamaño máximo de mensaje. El de gRPC por defecto son 4 MiB, y subirlo sin
+    # pensarlo convierte un `List` mal filtrado en una respuesta que no cabe en
+    # la memoria de nadie.
+    grpc_mensaje_max_bytes: int = Field(4 * 1024 * 1024, ge=64 * 1024, le=256 * 1024 * 1024)
+    # Elementos y segundos que aguanta un flujo abierto. Un `Watch` retiene una
+    # conexión mientras dura: sin tope, el cliente que lo abre y se va de
+    # vacaciones deja esa conexión ocupada hasta que alguien mira por qué el
+    # pool está lleno.
+    grpc_elementos_por_flujo: int = Field(10_000, ge=1, le=10_000_000)
+    grpc_segundos_por_flujo: int = Field(300, ge=5, le=86_400)

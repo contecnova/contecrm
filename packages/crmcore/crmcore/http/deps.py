@@ -215,6 +215,16 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
         )
 
 
+def principal_de_token(token: str, secreto: str) -> Principal:
+    """Valida un token y devuelve quién es, **con el mismo código que HTTP**.
+
+    Existe para que otras superficies —gRPC, una cola, lo que venga— no monten su
+    propia validación. Dos implementaciones de «¿este token vale?» divergen
+    siempre, y la que se queda atrás es la puerta por la que se entra.
+    """
+    return _principal_de_token(token, secreto)
+
+
 PrincipalDep = Annotated[Principal, Depends(contexto_autenticado)]
 
 

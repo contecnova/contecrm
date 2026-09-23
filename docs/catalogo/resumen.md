@@ -6,13 +6,13 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 283 | 267 | 0 | 16 |
+| 0 — Plataforma y arquitectura transversal | 283 | 275 | 0 | 8 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 39 | 0 | 15 |
 | 2 — Marketing | 54 | 43 | 0 | 11 |
 | 3 — Ventas (SFA) | 65 | 56 | 0 | 9 |
 | 4 — Servicio y atención al cliente | 62 | 58 | 0 | 4 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
-| 6 — Productividad y colaboración | 29 | 26 | 0 | 3 |
+| 6 — Productividad y colaboración | 49 | 28 | 0 | 21 |
 | 7 — Administración, ALM y gobierno | 91 | 86 | 0 | 5 |
 | 8 — Requisitos no funcionales | 12 | 8 | 0 | 4 |
 
@@ -20,31 +20,31 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 279 | 276 |
-| A — Avanzado | 384 | 326 |
+| C — Core | 291 | 278 |
+| A — Avanzado | 392 | 334 |
 | D — Diferencial | 44 | 38 |
 
 ## Por fase
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 179 | 170 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 152 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 175 | 155 |
-| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 46 |
+| 0 · Cimientos | Módulo 0 completo | 179 | 171 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 159 | 154 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 195 | 155 |
+| 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 51 | 48 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 60 | 50 |
-| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 38 |
-| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 29 |
+| 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 39 |
+| 6 · Ecosistema | PRM, field service, marketplace de extensiones, MCP | 33 | 33 |
 
 ## Reutilización
 
-**325 de 707** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**326 de 727** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|
 | contecmind | 145 |
 | contecflow-PSA | 96 |
-| contecweb | 42 |
+| contecweb | 43 |
 | contecpos | 20 |
 | contecintelligence (RT-4 | 15 |
 | contecintelligence | 2 |

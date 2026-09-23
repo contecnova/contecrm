@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**197 ajustes** en total, de los cuales **75** son editables en caliente por tenant.
+**202 ajustes** en total, de los cuales **75** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -178,6 +178,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CASO_REAPERTURA_DIAS` | 🔥 `caso_reapertura_dias` | `30` | 0–3650 | Días durante los que un caso cerrado se puede reabrir. Pasado el plazo se abre uno nuevo enlazado: reabrir un caso de hace ocho meses falsea todos los indicadores del periodo en que se cerró, y esos números ya están en un informe que alguien miró. 0 = sin límite, que se desaconseja. |
 | `CAMPO_VELOCIDAD_MEDIA_KMH` | 🔥 `campo_velocidad_media_kmh` | `35` | 5–130 | Velocidad media con la que se estima el tiempo de viaje entre visitas. Es un ajuste porque en ciudad son 20 y en carretera comarcal 70, y una constante haría que la jornada de un equipo cupiera y la del otro no. |
 | `GARANTIA_PREAVISO_DIAS` | 🔥 `garantia_preaviso_dias` | `90` | 1–730 | Con cuánta antelación se avisa de una garantía que vence. Es la lista con la que se vende la extensión, y sobre todo la que evita la llamada en la que se descubre que venció hace un mes. |
+| `GRPC_ACTIVO` | — | `False` |  | Si se levanta el puerto gRPC. Apagado por defecto: una superficie abierta que nadie usa es una superficie que nadie mira. |
+| `GRPC_DIRECCION` | — | `0.0.0.0:50051` |  |  |
+| `GRPC_MENSAJE_MAX_BYTES` | — |  |  | Tamaño máximo de mensaje. El de gRPC por defecto son 4 MiB, y subirlo sin pensarlo convierte un `List` mal filtrado en una respuesta que no cabe en la memoria de nadie. |
+| `GRPC_ELEMENTOS_POR_FLUJO` | — | `10000` | 1–10000000 | Elementos y segundos que aguanta un flujo abierto. Un `Watch` retiene una conexión mientras dura: sin tope, el cliente que lo abre y se va de vacaciones deja esa conexión ocupada hasta que alguien mira por qué el pool está lleno. |
+| `GRPC_SEGUNDOS_POR_FLUJO` | — | `300` | 5–86400 |  |
 
 ## Observabilidad y auditoría
 

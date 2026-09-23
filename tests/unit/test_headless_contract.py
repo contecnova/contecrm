@@ -166,6 +166,10 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # servicio publica su consumo y solo el gateway sabe el tier contratado,
     # porque lo pregunta a `tenancy`.
     "/api/v1/estado/slo",
+    # Si la instalación necesita la interfaz de referencia (CRM-00.02.03.02):
+    # cada servicio se mide a sí mismo y el gateway junta los hallazgos, porque
+    # «la UI es opcional» solo es verdad si lo es en todos.
+    "/api/v1/estado/ui-referencia",
     "/api/v1/superficie",
 }
 

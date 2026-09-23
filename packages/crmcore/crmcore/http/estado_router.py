@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from crmcore.http.deps import AutenticadoDep, DbDep
 
@@ -81,5 +81,29 @@ def crear_router_estado(servicio: str) -> APIRouter:
         objetivo = slo.objetivo_de(servicio, tier)
         consumo = await slo.consumo_de(servicio, principal.tenant_id, tier=objetivo.tier)
         return slo.presupuesto(objetivo, consumo, dias_del_periodo=get_settings().slo_dias_periodo)
+
+    @router.get(
+        "/ui-referencia",
+        summary="Si este servicio necesita la interfaz de referencia",
+        description=(
+            "«La UI es opcional» (CRM-00.02.03.02) es de esas frases que se "
+            "erosionan solas: alguien monta un estático, otro deja una "
+            "redirección a `/app`, y al año la API headless necesita su front.\n\n"
+            "Esto lo **mide** sobre la aplicación montada de verdad y dice qué "
+            "ata el servicio a una interfaz concreta, si es que hay algo. "
+            "Corre también como gate del preflight, que es donde se para antes "
+            "de que llegue a un despliegue."
+        ),
+    )
+    def ui_de_referencia(request: Request, principal: AutenticadoDep) -> Any:
+        from crmcore.config import get_settings
+        from crmcore.http.ui_opcional import comprobar_independencia, estado_de_la_ui
+
+        s = get_settings()
+        return {
+            "servicio": servicio,
+            **comprobar_independencia(request.app, origenes_cors=list(s.origenes_cors or [])),
+            "la_interfaz": estado_de_la_ui(settings=s),
+        }
 
     return router

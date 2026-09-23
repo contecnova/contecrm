@@ -376,7 +376,7 @@ def test_los_campos_sin_permiso_no_viajan_al_navegador() -> None:
         objeto="cuenta",
         campos=[
             {"clave": "nombre", "tipo": "texto"},
-            {"clave": "margen", "tipo": "decimal", "permiso": "finanzas:read"},
+            {"clave": "margen", "tipo": "moneda", "permiso": "finanzas:read"},
         ],
         permisos_del_usuario={"account:read"},
     )

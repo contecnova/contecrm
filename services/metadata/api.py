@@ -8,7 +8,9 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.rpc.esquema import CAMPOS_QUE_NO_SALEN
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -967,3 +969,179 @@ def superficie_modulos(db: DbDep, principal: AutenticadoDep) -> Any:
     from services.metadata import modulos
 
     return modulos.superficie_de_modulos(db, principal.tenant_id)
+
+
+# ── Contrato gRPC del objeto (CRM-00.02.01.03) ────────────────────────────
+
+
+@router.get(
+    "/objetos/{objeto}/contrato.proto",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="El `.proto` de este objeto, generado desde el esquema publicado",
+    response_class=PlainTextResponse,
+    description=(
+        "Se **genera**, no se mantiene a mano: un `.proto` escrito al lado de la "
+        "API dice algo distinto en cuanto alguien añade un campo, y el que se "
+        "queda viejo es siempre el que menos gente mira.\n\n"
+        "Los números de campo salen de los guardados al publicar el esquema, no "
+        "de recalcularlos aquí: recalcular daría un fichero distinto según el "
+        "orden en que vinieran los campos, y el integrador vería un contrato que "
+        "«cambia solo».\n\n"
+        "Lo que existió y se borró aparece como `reserved`. Es feo de leer y es "
+        "la única forma de que su número no se reutilice — reutilizarlo mete el "
+        "valor en el campo equivocado sin error, sin log y sin que nadie se "
+        "entere."
+    ),
+)
+def contrato_proto(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.metamodelo import campos_de
+
+    from services.metadata import contrato_rpc
+
+    salida = contrato_rpc.proto(
+        db, principal.tenant_id, objeto=objeto, campos=campos_de(db, principal.tenant_id, objeto)
+    )
+    cabecera = ""
+    if salida.get("aviso"):
+        cabecera = f"// AVISO: {salida['aviso']}\n"
+    return PlainTextResponse(cabecera + salida["contenido"], media_type="text/plain")
+
+
+@router.get(
+    "/objetos/{objeto}/contrato-rpc",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué números tiene cada campo y qué se ha reservado",
+    description=(
+        "Para poder responder a «¿por qué este campo no llega?» sin abrir el "
+        "`.proto`: dice qué número tiene cada uno, cuáles están reservados "
+        "porque existieron, y qué campos **no salen** por el contrato y por qué."
+    ),
+)
+def contrato_rpc_estado(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.metamodelo import campos_de
+
+    from services.metadata import contrato_rpc
+
+    campos = campos_de(db, principal.tenant_id, objeto)
+    salida = contrato_rpc.proto(db, principal.tenant_id, objeto=objeto, campos=campos)
+    return {
+        "objeto": objeto,
+        "numeros": salida["numeros"],
+        "reservados": salida["reservados"],
+        "guardado": salida["numeros_guardados"],
+        "campos_que_no_salen": [
+            {"clave": c.get("clave"), "porque": porque}
+            for c in campos
+            for tipo, porque in CAMPOS_QUE_NO_SALEN.items()
+            if str(c.get("tipo") or "") == tipo
+        ],
+    }
+
+
+# ── Diseñador visual de formularios y listas (CRM-00.04.03.01) ────────────
+
+
+class DisenoIn(BaseModel):
+    """Un diseño completo: secciones, con sus campos y sus condiciones."""
+
+    nombre: str = Field(..., min_length=1, max_length=120)
+    secciones: list[dict[str, Any]] = Field(default_factory=list)
+    rol: str | None = None
+    es_defecto: bool = False
+
+
+class ColumnasIn(BaseModel):
+    columnas: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router.post(
+    "/objetos/{objeto}/diseno",
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Guardar un diseño de formulario",
+    description=(
+        "Arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin "
+        "escribir nada.\n\n"
+        "**Se rechaza el diseño que está mal**, que es lo que separa esto de un "
+        "editor de JSON con ratón: un campo que no existe, el mismo campo en dos "
+        "secciones o un obligatorio sin sitio no dan error al guardar y se "
+        "descubren semanas después, cuando un usuario dice «es que ese campo no "
+        "está».\n\n"
+        "Se devuelven **todos** los problemas de una vez: descubrirlos de uno en "
+        "uno, con un intento de guardar entre cada dos, es lo que hace que la "
+        "gente deje de usar el diseñador."
+    ),
+)
+def guardar_diseno(objeto: str, cuerpo: DisenoIn, uow: UowDep) -> Any:
+    from services.metadata import disenador
+    from services.metadata.publicacion import esquema_actual
+
+    return disenador.guardar(
+        uow,
+        objeto=objeto,
+        nombre=cuerpo.nombre,
+        secciones=cuerpo.secciones,
+        campos_del_esquema=esquema_actual(uow.db, uow.tenant_id, objeto),
+        rol=cuerpo.rol,
+        es_defecto=cuerpo.es_defecto,
+    )
+
+
+@router.post(
+    "/objetos/{objeto}/diseno/comprobar",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué le pasa a este diseño, sin guardarlo",
+    description=(
+        "Para que el diseñador pueda avisar **mientras** se arrastra, en vez de "
+        "al pulsar guardar. Devuelve los problemas y los avisos por separado: un "
+        "problema impide guardar y un aviso solo dice que eso se rellena mal."
+    ),
+)
+def comprobar_diseno(objeto: str, cuerpo: DisenoIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import disenador
+    from services.metadata.publicacion import esquema_actual
+
+    return disenador.validar_layout(
+        secciones=cuerpo.secciones,
+        campos_del_esquema=esquema_actual(db, principal.tenant_id, objeto),
+    )
+
+
+@router.get(
+    "/objetos/{objeto}/diseno",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué diseño le toca a este usuario, y por qué ese",
+    description=(
+        "El «por qué» no es adorno: con varios diseños por rol, la pregunta que "
+        "llega a soporte es siempre «¿por qué yo veo otra pantalla?», y sin esto "
+        "hay que mirarlo en la base de datos."
+    ),
+)
+def diseno_efectivo(
+    objeto: str, db: DbDep, principal: AutenticadoDep, rol: str | None = Query(None)
+) -> Any:
+    from services.metadata import disenador
+
+    return disenador.layout_efectivo(db, principal.tenant_id, objeto=objeto, rol=rol)
+
+
+@router.post(
+    "/objetos/{objeto}/lista/comprobar",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Comprobar las columnas de una vista de lista",
+    description=(
+        "Dos cosas que no dan error y estropean la lista: una columna sobre un "
+        "campo que no existe sale vacía en todas las filas —y se lee como «ningún "
+        "cliente tiene ese dato»—, y ordenar por un texto largo o un JSON obliga "
+        "a recorrer la tabla entera en cada carga. Con mil filas no se nota; con "
+        "un millón, la lista deja de abrirse y nadie relaciona una cosa con la "
+        "otra."
+    ),
+)
+def comprobar_lista(objeto: str, cuerpo: ColumnasIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata import disenador
+    from services.metadata.publicacion import esquema_actual
+
+    return disenador.columnas_de_lista(
+        columnas=cuerpo.columnas,
+        campos_del_esquema=esquema_actual(db, principal.tenant_id, objeto),
+    )

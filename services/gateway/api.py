@@ -288,6 +288,67 @@ async def contratos_de_la_instalacion(principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/estado/ui-referencia",
+    summary="Si la instalación necesita la interfaz de referencia",
+    description=(
+        "«Somos headless y la interfaz es opcional» (CRM-00.02.03.02) no se "
+        "erosiona de golpe: se erosiona con una redirección cada vez. Esto lo "
+        "mide en **todos** los servicios y junta los hallazgos.\n\n"
+        "Un servicio que no contesta NO cuenta como independiente: contarlo así "
+        "daría por comprobado lo que nadie ha mirado, que es justo lo que esto "
+        "existe para impedir."
+    ),
+)
+async def ui_de_referencia_de_la_instalacion(principal: AutenticadoDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+    from crmcore.http.ui_opcional import estado_de_la_ui
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    s = get_settings()
+    cabeceras = proxy.cabeceras_de_identidad(principal, s.secret_key.get_secret_value())
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/ui-referencia",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return dict(respuesta.json())
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            return {
+                "servicio": nombre,
+                "independiente": False,
+                "hallazgos": [
+                    {
+                        "donde": nombre,
+                        "que": "el servicio no contesta",
+                        "consecuencia": (
+                            "no se puede afirmar que sea independiente de la interfaz, "
+                            "y darlo por bueno sería declarar comprobado lo que nadie "
+                            "ha mirado"
+                        ),
+                    }
+                ],
+            }
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    hallazgos = [h for p in partes for h in p.get("hallazgos", [])]
+    return {
+        "independiente": not hallazgos,
+        "hallazgos": hallazgos,
+        "servicios": partes,
+        "la_interfaz": estado_de_la_ui(settings=s),
+    }
+
+
+@router.get(
     "/superficie",
     summary="Todo lo que sabe hacer el CRM, en una lista",
     description=(

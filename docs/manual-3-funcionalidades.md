@@ -10427,3 +10427,264 @@ porque el error sale abajo y el campo está en otra pantalla—, un campo en una
 sección que no existe —desaparece y nadie lo echa de menos— y un formulario sin
 ningún campo obligatorio, que es la forma más silenciosa de llenar el CRM de
 fichas vacías.
+
+## El diseñador visual, completo (`CRM-00.04.03.01`)
+
+Servir el formulario como datos es la mitad. La otra mitad es que alguien pueda
+**componerlo sin escribir nada**: arrastrar campos, hacer secciones y pestañas y
+poner condiciones de visibilidad. Y lo que separa un diseñador de un editor de
+JSON con ratón es que **diga que no** cuando el diseño está mal.
+
+Los tres fallos que se cometen siempre no dan error al guardar, y se descubren
+semanas después, cuando un usuario dice «es que ese campo no está»:
+
+- **Un campo que no existe en el esquema.** Se guarda, no se pinta, y nadie
+  relaciona la pantalla vacía con el diseño que se tocó hace un mes.
+- **El mismo campo en dos secciones.** Se pinta dos veces: el usuario escribe en
+  uno y al guardar gana el otro, el que no tocó. Por eso arrastrar **quita de
+  donde estaba** — un «añadir» sin «quitar» es exactamente este fallo.
+- **Un obligatorio que no está en ninguna sección.** No se puede rellenar, y el
+  alta falla sin que el usuario vea dónde está el problema.
+
+Se devuelven **todos** los problemas de una vez. Descubrirlos de uno en uno, con
+un intento de guardar entre cada dos, es lo que hace que la gente deje de usar el
+diseñador y pida los cambios por correo.
+
+Y lo que más se confunde: **una condición de visibilidad no es un permiso**.
+Esconder el margen a los comerciales con una condición no se lo esconde — el dato
+sigue viajando en la API y basta con abrir las herramientas del navegador. Lo que
+no se puede ver es un permiso; la condición solo quita ruido de la pantalla. Se
+avisa explícitamente cuando un campo tiene las dos cosas, para que nadie se quede
+con la impresión equivocada.
+
+Las condiciones **se evalúan en el servidor**, con el registro delante, y el
+formulario servido ya viene sin lo que no toca pintar. Si las evaluara el front,
+el dato del campo escondido habría viajado igualmente. Se dice además **cuántos**
+campos se han escondido y por qué: sin eso, el usuario cree que su ficha tiene
+ocho campos cuando tiene catorce y llama preguntando dónde se mete un dato que sí
+existe.
+
+En las **listas** hay otras dos que no dan error: una columna sobre un campo que
+no existe sale vacía en todas las filas —y se lee como «ningún cliente tiene ese
+dato»— y ordenar por un texto largo o un JSON obliga a recorrer la tabla entera
+en cada carga: con mil filas no se nota y con un millón la lista deja de abrirse,
+sin que nadie relacione una cosa con la otra.
+
+Un detalle de operación: **solo puede haber un diseño por defecto**. Con dos,
+cuál sale depende del orden en que la base devuelva las filas, y eso cambia sin
+que nadie toque nada. Y al preguntar qué diseño le toca a alguien se contesta
+también **por qué ese**, porque la pregunta que llega a soporte es siempre «¿por
+qué yo veo otra pantalla?».
+
+## gRPC y protobuf: el contrato binario (`CRM-00.02.01.03`)
+
+Para el cliente que mueve millones de filas, HTTP y JSON son caros: el JSON ocupa
+el triple y no hay forma decente de mantener un flujo abierto sin sondear. gRPC
+resuelve las dos cosas, y trae una trampa que hay que mirar de frente.
+
+**El `.proto` se genera, no se escribe.** Es la misma regla que ya se aplica al
+OpenAPI: un contrato mantenido a mano al lado de la API dice algo distinto en
+cuanto alguien añade un campo, y el que se queda viejo es siempre el que menos
+gente mira. Además, aquí no podría estar en el repositorio aunque se quisiera:
+los campos los define **cada tenant** en su metamodelo, y el `contacto` de un
+cliente tiene ocho campos que el de otro no tiene. Un fichero fijo sería un
+contrato equivocado para todos.
+
+**Y el número de campo es el contrato; el nombre es cosmético.** Esta es la
+trampa, y es silenciosa: si el campo 7 era `descuento` (un entero) y mañana pasa
+a ser `id_zona` (otro entero), un cliente que aún mande un descuento **escribe
+una zona**. El mensaje se decodifica sin quejarse, no hay error, no hay log, y se
+descubre cuando alguien pregunta por qué ese cliente está en una zona que no
+existe. Por eso:
+
+- Los números **se asignan una vez y se guardan** por tenant y objeto. Reordenar
+  los campos no cambia ninguno.
+- Lo que se borra **queda reservado para siempre**. Es feo de leer en el `.proto`
+  y es la única forma de que ese número no se reutilice.
+- Y publicar un esquema que rompe el contrato **se rechaza al publicar**, no en
+  la integración del cliente seis meses después. Se dice qué rompe, con qué campo
+  y qué pasaría: un tipo cambiado, un número movido, un campo quitado sin
+  reservar o uno que pasa de singular a repetido.
+
+Dos decisiones de tipos que importan. Los **importes viajan como cadena**, igual
+que en el JSON de la API: `double` no representa 0,1 y en dinero eso se convierte
+en céntimos que no cuadran. Y un tipo sin correspondencia **no cae a `string`**,
+por lo mismo que un tipo sin componente no cae a caja de texto.
+
+Los campos **cifrados no salen por gRPC**. No es un olvido: lo que se guarda
+cifrado se descifra para quien tiene permiso y por el camino que ya se auditó, no
+por una superficie nueva. Quien publica el esquema ve en la respuesta qué campos
+no salen y por qué — no el integrador tres semanas después.
+
+Los mensajes llevan **presencia explícita** en los campos opcionales. Sin ella,
+en proto3 un cero y un «no lo mando» son el mismo byte: ninguno. En un `Update`
+eso significa que mandar tres campos borra los otros veinte, y el cliente nunca
+pretendió eso. Por el mismo motivo, un campo que **no está en el contrato es un
+error** y no se ignora: protobuf descarta lo desconocido por diseño, que está
+bien al leer y es malísimo al escribir — quien manda `descuneto` cree que puso un
+descuento y recibiría un «todo bien» con la ficha sin él.
+
+**El transporte es opcional; el contrato no.** `grpcio` trae una extensión en C
+que tarda en instalarse y que la inmensa mayoría de las instalaciones no van a
+usar nunca, así que va en `requirements-grpc.txt` —igual que SAML— y el puerto
+solo se levanta con `GRPC_ACTIVO=true`. Sin la librería no hay un hueco callado:
+se dice qué instalar. El `.proto` y la comprobación de compatibilidad funcionan
+siempre.
+
+Y la decisión que más importa: **la misma identidad, los mismos permisos y el
+mismo tenant que HTTP**. Una segunda puerta que valide el token con su propio
+código es la puerta por la que se entra — las dos implementaciones divergen, la
+que menos gente mira se queda atrás, y el día que se endurece algo se endurece en
+una sola. Aquí el token lo valida literalmente la misma función que usa REST. Los
+topes del flujo (elementos, segundos, tamaño de mensaje) son configuración,
+porque un `Watch` retiene una conexión mientras dura y un cliente que lo abre y
+se va de vacaciones la deja ocupada hasta que alguien mira por qué el pool está
+lleno.
+
+## La interfaz de referencia es opcional, y se mide (`CRM-00.02.03.02`)
+
+«Somos headless y la interfaz es opcional» lo dice todo el mundo y casi nunca es
+verdad. No porque se mienta, sino porque **se erosiona**: alguien monta un
+estático, otro pone una redirección a `/app`, un tercero deja el CORS abierto
+solo al origen de la consola, y al año la API oficialmente headless necesita su
+front para funcionar del todo.
+
+Aquí eso no es una declaración: es una **comprobación** que corre en el preflight
+y mira la aplicación montada de verdad, buscando cuatro cosas concretas:
+
+- **Ficheros estáticos servidos desde el servicio.** Hacen que el front viaje
+  dentro del backend: desplegar la API pasa a desplegar la interfaz, y
+  sustituirla deja de ser una opción de despliegue.
+- **Redirecciones a rutas del front.** Un 307 hacia `/app/...` es el backend
+  dando por hecho que existe una pantalla que en otra instalación no está.
+- **Respuestas en HTML donde debería ir JSON.** Un integrador que recibe una
+  página de error no puede leerla, y lo que le enseña a su usuario es el código
+  de estado a secas.
+- **Un CORS con un único origen.** Si solo se admite el de la consola, cualquier
+  otra interfaz —la del cliente, un portal, un quiosco— queda fuera por
+  configuración, por muy headless que sea la API.
+
+La consola oficial se despliega en su propio contenedor, en el perfil `consola`
+de `docker-compose.yml`, que **no está en el arranque por defecto**. No apagarla
+no quita ninguna operación: todo lo que hace es una llamada de la superficie
+publicada (`/superficie`), que es de donde ella misma las saca. No hay ningún
+camino privado, no es requisito de licencia, y lo que se pierde sin ella son las
+pantallas que trae hechas. Nada más.
+
+## Código del tenant: sandbox, versiones y firma (`CRM-00.04.02.01`, `CRM-00.04.02.05`, `CRM-00.04.02.06`, `CRM-00.04.02.07`)
+
+Dejar que un cliente ejecute su código dentro del CRM es la diferencia entre un
+producto configurable y uno programable, y también la forma más rápida de que una
+implantación tumbe a las demás: **el bucle infinito de un cliente no es un
+problema suyo**, es un problema de todos los que comparten ese worker.
+
+- **Los límites son del sandbox, no del código.** Pedirle al cliente que su
+  función no tarde más de dos segundos es pedirle que se porte bien; cortarla a
+  los dos segundos es que no pueda. Se comprueba durante y después: lo que hay
+  que cortar es la ejecución que ya se está pasando, y lo que hay que contar es
+  lo que consumió la que terminó.
+- **Lo prohibido no se ofrece.** Leer otro tenant, ejecutar SQL, leer
+  credenciales o salir a la red sin declararlo no son permisos que se
+  comprueban: son cosas que no se le ofrecen a ninguna extensión. Y se rechaza
+  **al declararla**, no al ejecutarla — aceptarla y bloquearla después deja la
+  comprobación en tiempo de ejecución como única barrera, y esa se salta el día
+  que alguien añade un camino nuevo.
+- **Una versión nueva no reemplaza a la anterior: convive.** Desplegar pisando
+  deja sin sitio a lo que está ejecutándose en ese momento, y volver atrás exige
+  tener la anterior entera y viva, no un diff que alguien aplique con prisa.
+- **Las dependencias van fijadas.** Una extensión que declara «la última
+  versión» de una librería funciona hasta que esa librería publique un cambio, y
+  entonces falla en producción sin que nadie haya tocado nada: el peor tipo de
+  fallo, porque no hay ningún cambio que revisar.
+- **El coste se atribuye a quien lo gasta.** Sin eso, el tiempo de cómputo de un
+  cliente lo paga el despliegue entero y nadie sabe de quién es la factura — que
+  es justo la conversación que hay que poder tener con el cliente que se pasa, y
+  que sin números no se puede tener. Las ejecuciones cortadas por límite se
+  cuentan **aparte** de las fallidas: una que falla tiene un error que arreglar y
+  una que se corta tiene un diseño que revisar.
+- **Los errores de una extensión son del tenant, y sus logs también.**
+  Mezclarlos con los del producto hace que un fallo suyo parezca nuestro y al
+  revés, y en la guardia de las tres de la mañana esa diferencia es todo.
+- **Y una extensión de terceros se firma y se revisa.** Sin firma, «instalar una
+  extensión» es «ejecutar código de un desconocido dentro de la base de tus
+  clientes». Con firma pero sin revisión es lo mismo con un sello: la firma dice
+  **quién** lo escribió, no que sea seguro. Se exigen las dos cosas y la revisión
+  la hace una persona, porque automatizar «¿este código es seguro?» es el
+  problema que nadie ha resuelto.
+
+De cada ejecución queda la **entrada** y no la salida: una extensión que falla
+con un registro concreto y no guarda cuál obliga a reproducirlo a ciegas, y eso
+son horas; la salida, en cambio, puede llevar el registro entero y guardarla
+duplicaría en una tabla de logs el dato que hay que proteger.
+
+Y cuando no consta ninguna ejecución se dice **«no medible»**, no «va bien»: que
+no haya datos significa que no se ha ejecutado o que no se está midiendo, y las
+dos cosas son distintas de que funcione.
+
+## Móvil y modo sin conexión (`CRM-06.02.01.03`, `CRM-06.02.01.04`)
+
+Las aplicaciones móviles de CRM fallan casi siempre por lo mismo, y no es la
+interfaz: es que **el servidor no está pensado para un cliente que se
+desconecta**. Un comercial en una nave sin cobertura anota tres visitas, y cuando
+vuelve la señal el CRM tiene que decidir qué hacer con lo que él escribió hace
+dos horas y con lo que otra persona cambió mientras tanto.
+
+- **Nada se sincroniza sin identificador del cliente.** El móvil lo genera antes
+  de mandar, y por eso un reintento después de un corte no crea una visita
+  duplicada. Dejar que lo genere el servidor obliga a adivinar si la petición que
+  no contestó llegó o no, y esa duda no tiene respuesta correcta.
+- **Una actualización dice sobre qué versión se hizo.** Sin eso no se puede
+  detectar un conflicto: se aplicaría encima de lo que haya y el cambio de la
+  otra persona desaparecería sin rastro.
+- **El conflicto se detecta, no se evita** — y se distingue el choque de verdad
+  (los dos tocaron **el mismo campo**) del que no lo es. Tratar como conflicto
+  que uno cambiara el teléfono y otro la dirección enseña a la gente a pulsar
+  «quedarme con lo mío», que es como se pierde el trabajo del otro igualmente.
+- **Cuando lo hay, se guardan las dos versiones.** Descartar una para «no
+  molestar al usuario» es descartar trabajo de alguien: que lo decida una persona
+  cuesta un minuto y reconstruir lo perdido cuesta una mañana, si es que se
+  puede. Y lo que se descarta **se devuelve**, porque descartarlo en silencio es
+  lo que hace que nadie pueda recuperarlo después.
+- **No se llama fusión a elegir uno.** Si los dos tocaron el mismo campo, la
+  estrategia de fusión falla en vez de quedarse con uno y decir que fusionó.
+- **La cola no descarta nada.** Una cola que tira lo que falla convierte un
+  problema de red en una pérdida silenciosa de datos: el comercial cree que anotó
+  la visita y no está, y lo descubre el día que alguien pregunta por ese cliente.
+  Lo que lleva demasiado tiempo **se avisa**, que es distinto de tirarlo.
+- **Y la notificación push no lleva el dato dentro.** Llega a una pantalla
+  bloqueada que puede ver cualquiera que coja el teléfono y pasa por servidores
+  de terceros: lleva qué ha pasado y dónde mirarlo, no el nombre del cliente ni
+  el importe. El dato lo enseña la aplicación después de identificar a quien la
+  abre.
+
+## Change Data Capture hacia el lago del cliente (`CRM-00.02.02.06`)
+
+Un cliente grande quiere sus datos del CRM en su propio lago para cruzarlos con
+los del ERP y con los de producción. Lo que pide suena simple —«mándanos los
+cambios»— y tiene tres formas de salir mal: el volcado completo cada noche, que
+funciona con cien mil filas y deja de funcionar con diez millones justo cuando ya
+dependen de él; mandar el cambio sin decir qué cambió; y mandarlo todo.
+
+- **Se manda el hecho, no la foto.** Qué se creó, qué cambió y de qué a qué. Un
+  flujo que solo dice «esta fila es ahora así» obliga al otro lado a comparar
+  contra lo que tenía, y si se perdió un mensaje ya no puede: se queda con una
+  foto que no sabe de cuándo es. La **secuencia** es lo que le permite saber que
+  le falta algo; sin ella, un mensaje perdido no se nota, simplemente hay un dato
+  viejo.
+- **Se declara qué sale, campo a campo, y lo personal no sale por defecto.** Es
+  lo contrario de lo cómodo —mandarlo todo y que el cliente filtre— y es lo
+  correcto: lo que sale ya no vuelve, y una vez está en su lago está bajo sus
+  reglas, sus permisos y sus copias. Lo que sí sale marcado como personal **viaja
+  marcado**, porque el equipo de datos del cliente no va a adivinar cuál de esas
+  cuarenta columnas es un correo. Y si sale sin seudonimizar, se avisa de que eso
+  hay que declararlo en el registro de tratamiento como transferencia.
+- **Se dice también lo que NO sale, con el motivo.** Sin esa lista, el cliente
+  pide un campo y nadie sabe si es que no existe o que se decidió no mandarlo.
+- **El borrado viaja como borrado**, con su identificador y sin datos, y diciendo
+  qué hacer en el destino. Un CDC que omite las bajas deja un lago que crece para
+  siempre con clientes que ya ejercieron su derecho de supresión, y el
+  incumplimiento pasa a estar en casa del cliente sin que él lo sepa.
+- **Y la marca de progreso se para en el primer fallo.** Avanzar hasta el último
+  confirmado dejaría el hueco de los que fallaron en medio, y ese hueco no se
+  detecta: el lago simplemente tiene un dato viejo, y se descubre cuando alguien
+  cuadra cifras a fin de mes y no le salen.

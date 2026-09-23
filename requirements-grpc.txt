@@ -1,0 +1,16 @@
+# Extra OPCIONAL: transporte gRPC (CRM-00.02.01.03).
+#
+# No está en `requirements.txt` a propósito. `grpcio` trae una extensión en C
+# que tarda en instalarse y ocupa, y la inmensa mayoría de las instalaciones
+# hablan HTTP y JSON y no van a abrir nunca el puerto 50051. Ponerlo ahí sería
+# cobrarle ese peso a todo el mundo para el cliente que mueve millones de filas.
+#
+# Lo que NO es opcional es el contrato: `crmcore.rpc.esquema` genera el `.proto`
+# y comprueba la compatibilidad en el preflight esté o no instalada esta
+# librería. Sin ella, `crmcore.rpc.servidor.disponible()` devuelve False y
+# levantar el puerto falla diciendo exactamente esto.
+#
+#     pip install -r requirements-grpc.txt
+#
+# Y después, en el `.env`:  GRPC_ACTIVO=true
+grpcio==1.68.1

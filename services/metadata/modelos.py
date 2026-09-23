@@ -219,6 +219,8 @@ __all__ = [
 ]
 
 # Empaquetado, promoción entre entornos y drift (CRM-07.02.01.03, .04, .06, .07).
+# Números de campo del contrato protobuf (CRM-00.02.01.03).
+from services.metadata.contrato_rpc import ContratoRpc  # noqa: E402,F401
 from services.metadata.entornos import (  # noqa: E402,F401
     DespliegueConfiguracion,
     PaqueteConfiguracion,

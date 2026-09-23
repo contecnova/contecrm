@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**707 capacidades**: ✅ 640 hecho · ⬜ 67 pendiente
+**727 capacidades**: ✅ 650 hecho · ⬜ 77 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 267 · ⬜ 16
+283 capacidades · ✅ 275 · ⬜ 8
 
 ### 0.1 Multi-tenancy
 
@@ -121,7 +121,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.02.01.01` | API REST completa: todo lo que hace la UI es posible por API, sin excepciones | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.02` | API GraphQL para lectura compuesta y agregación en una llamada | A | 1 | gateway | ✅ | — |
-| `CRM-00.02.01.03` | gRPC / protobuf para comunicación interna y clientes de alto rendimiento | A | 0 | core | ⬜ | contecpos:packages/contracts (buf + protobuf) |
+| `CRM-00.02.01.03` | gRPC / protobuf para comunicación interna y clientes de alto rendimiento | A | 0 | core | ✅ | contecpos:packages/contracts (buf + protobuf) |
 | `CRM-00.02.01.04` | Especificación OpenAPI 3.x generada desde el código, no mantenida a mano | C | 0 | core | ✅ | contecmind:scripts/dump_openapi.py |
 | `CRM-00.02.01.05` | Versionado explícito (URI o cabecera) con política de deprecación publicada | C | 0 | core | ✅ | — |
 | `CRM-00.02.01.06` | Compatibilidad hacia atrás garantizada; cambios rompedores solo en nueva versión mayor | C | 0 | core | ✅ | — |
@@ -144,7 +144,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.02.02.03` | Reintentos con backoff exponencial, DLQ y reenvío manual desde consola | C | 0 | eventing | ✅ | contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py |
 | `CRM-00.02.02.04` | Garantía at-least-once + clave de deduplicación en el payload | C | 0 | core | ✅ | contecpos:packages/common/src/outbox.ts |
 | `CRM-00.02.02.05` | Streaming de eventos (Kafka / Pub-Sub / Kinesis) con topic por tenant o partición | A | 0 | core | ✅ | contecpos:packages/common/src/bus.ts (NATS JetStream, subjects por tenant) |
-| `CRM-00.02.02.06` | Change Data Capture del modelo de datos hacia el data lake del cliente | A | 5 | eventing | ⬜ | — |
+| `CRM-00.02.02.06` | Change Data Capture del modelo de datos hacia el data lake del cliente | A | 5 | eventing | ✅ | — |
 | `CRM-00.02.02.07` | Catálogo de eventos documentado (AsyncAPI) con esquema versionado y registry | A | 0 | eventing | ✅ | — |
 | `CRM-00.02.02.08` | Ordenación garantizada por clave de agregado (p. ej. por cuenta u oportunidad) | A | 0 | core | ✅ | — |
 | `CRM-00.02.02.09` | Replay de eventos históricos desde un punto en el tiempo | A | 0 | eventing | ✅ | — |
@@ -155,7 +155,7 @@ puede decir que algo está hecho si no lo está.
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-00.02.03.01` | Cero lógica de negocio en la capa de UI; el backend es la única fuente de verdad | C | 0 | core | ✅ | — |
-| `CRM-00.02.03.02` | UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue) | A | 1 | core | ⬜ | — |
+| `CRM-00.02.03.02` | UI de referencia sustituible y opcional (no requisito de licencia ni de despliegue) | A | 1 | core | ✅ | — |
 | `CRM-00.02.03.03` | Patrón BFF (Backend For Frontend) para web, móvil, portal y quiosco | A | 1 | gateway | ✅ | — |
 | `CRM-00.02.03.04` | SDKs mantenidos: JavaScript/TypeScript, Java, .NET, Python, PHP, Go | A | 1 | core | ✅ | — |
 | `CRM-00.02.03.05` | Componentes embebibles opcionales (web components) para incrustar en portales propios | A | 3 | core | ✅ | — |
@@ -284,19 +284,19 @@ puede decir que algo está hecho si no lo está.
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.04.02.01` | Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota | A | 6 | automation | ⬜ | — |
+| `CRM-00.04.02.01` | Funciones serverless del tenant ejecutadas en sandbox aislado y con cuota | A | 6 | automation | ✅ | — |
 | `CRM-00.04.02.02` | Hooks pre/post sobre operaciones de dominio (before save, after commit) | A | 0 | core | ✅ | — |
 | `CRM-00.04.02.03` | Extensiones asíncronas suscritas a eventos, sin bloquear la transacción | A | 0 | core | ✅ | — |
 | `CRM-00.04.02.04` | Endpoints personalizados definidos por el tenant sobre el mismo gateway | D | 6 | gateway | ✅ | — |
-| `CRM-00.04.02.05` | Gestión de dependencias, versiones y rollback del código de extensión | A | 6 | automation | ⬜ | — |
-| `CRM-00.04.02.06` | Observabilidad de extensiones: logs, métricas, errores y coste atribuido | A | 6 | automation | ⬜ | — |
-| `CRM-00.04.02.07` | Firma y revisión de extensiones de terceros antes de su instalación | A | 6 | automation | ⬜ | — |
+| `CRM-00.04.02.05` | Gestión de dependencias, versiones y rollback del código de extensión | A | 6 | automation | ✅ | — |
+| `CRM-00.04.02.06` | Observabilidad de extensiones: logs, métricas, errores y coste atribuido | A | 6 | automation | ✅ | — |
+| `CRM-00.04.02.07` | Firma y revisión de extensiones de terceros antes de su instalación | A | 6 | automation | ✅ | — |
 
 #### CRM-00.04.03 · Extensión sin código, de punta a punta
 
 | ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
 |---|---|:-:|:-:|---|:-:|---|
-| `CRM-00.04.03.01` | Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada | C | 1 | metadata | ⬜ | — |
+| `CRM-00.04.03.01` | Diseñador visual de formularios y listas: arrastrar campos, secciones, pestañas y condiciones de visibilidad, sin escribir nada | C | 1 | metadata | ✅ | — |
 | `CRM-00.04.03.02` | Un campo nuevo pasa solo a la API de CRUD: se lee, se escribe, se valida y sale en el describe sin tocar código | C | 1 | metadata | ✅ | — |
 | `CRM-00.04.03.03` | Filtro, orden y búsqueda por campo personalizado, con índice de expresión creado y retirado por el propio sistema | C | 1 | core | ✅ | — |
 | `CRM-00.04.03.04` | Vista SQL por tenant que proyecta cada campo personalizado como columna tipada, para que BI y SQL externos lo lean sin saber que es JSONB | A | 1 | core | ✅ | — |
@@ -983,7 +983,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 6 — Productividad y colaboración
 
-29 capacidades · ✅ 26 · ⬜ 3
+49 capacidades · ✅ 28 · ⬜ 21
 
 ### 6.1 Integración con el puesto de trabajo
 
@@ -997,6 +997,31 @@ puede decir que algo está hecho si no lo está.
 | `CRM-06.01.01.04` | Registro automático de reuniones y de asistentes | A | 2 | integration | ✅ | — |
 | `CRM-06.01.01.05` | Gestión documental: adjuntos, versiones, carpetas y enlace a SharePoint/Drive | C | 1 | core | ✅ | contecmind:app/core/storage.py + app/services/documents.py; contecflow-PSA:app/services/s3_service.py |
 | `CRM-06.01.01.06` | Generación documental desde plantillas (propuesta, contrato, acta) | A | 2 | core | ✅ | contecmind:app/services/generated_documents.py + templates.py |
+
+#### CRM-06.01.03 · Suites de productividad
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-06.01.03.01` | Perfil de suite de productividad declarativo: endpoints, campos, incremento y límites como configuración, sin un módulo por proveedor | C | 2 | integration | ⬜ | contecweb:app/connectors/api/generic_rest.py + oauth2.py |
+| `CRM-06.01.03.02` | Consentimiento por usuario y alcance mínimo: cada buzón se conecta con el permiso de su dueño y él lo revoca cuando quiera | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.03` | Credencial de la suite en la bóveda del tenant, con renovación del token sin intervención y aviso antes de caducar | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.04` | Sincronización incremental por token de cambios del proveedor, reanudable, con marca de agua que solo avanza sobre lo confirmado | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.05` | Suscripción a cambios del proveedor con renovación automática y vuelta al sondeo cuando caduca o no está disponible | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.06` | Contactos en los dos sentidos, con regla de origen por campo y sin volcar la agenda personal del usuario en el CRM | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.07` | Tareas y acciones en los dos sentidos: cerrarla en el gestor del usuario la cierra en el CRM, y al revés | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.08` | Notas vinculadas a cuadernos externos por referencia, sin copiar el contenido al CRM | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.09` | Adjuntos por enlace al almacenamiento del cliente, con los permisos resueltos en el origen y no copiados | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.10` | Reunión en línea creada desde el CRM con el proveedor que tenga el tenant, y su enlace en la actividad | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.11` | Disponibilidad real (libre/ocupado) leída del calendario del usuario antes de proponer horas | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.12` | Conversación de chat vinculada a la ficha por referencia, con lo que el canal permita exportar y no más | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.13` | Importación y exportación en formatos estándar (MIME/EML, vCard, iCalendar, CSV) sin pasar por ninguna suite | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.14` | Reglas de qué entra y qué no, por tenant y por usuario, con lo marcado como privado excluido siempre | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.15` | Límites del proveedor respetados: reintento con la ventana que él indique y aviso cuando corta, en vez de reintentar a ciegas | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.16` | Panel de salud de las conexiones: qué lleva sin sincronizar, desde cuándo y por qué, por buzón | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.17` | Desconexión y baja: qué se queda en el CRM y qué desaparece cuando el usuario revoca o deja la empresa | C | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.18` | Registro de tratamiento del dato que entra de la suite, con base legal, finalidad y plazo de conservación | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.19` | Correspondencia entre la cuenta de la suite y el usuario del CRM, con alias y buzones compartidos | A | 2 | integration | ⬜ | — |
+| `CRM-06.01.03.20` | Prueba de conexión y diagnóstico: qué permiso concreto falta, en vez de «error de autenticación» | C | 2 | integration | ⬜ | — |
 
 #### CRM-06.01.02 · Firma electrónica
 
@@ -1026,8 +1051,8 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-06.02.01.01` | Menciones, comentarios y hilos sobre registros | A | 1 | core | ✅ | contecmind:app/services/annotations.py + collaborative_corrections.py; contecflow-PSA:app/services/collaboration/ |
 | `CRM-06.02.01.02` | Seguimiento de registros y notificaciones configurables por evento | C | 1 | core | ✅ | contecmind:app/services/notifications.py + app/models/notification.py |
-| `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ⬜ | contecmind:app/services/push.py (web push) |
-| `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ⬜ | — |
+| `CRM-06.02.01.03` | Aplicaciones móviles iOS y Android con notificaciones push | C | 3 | core | ✅ | contecmind:app/services/push.py (web push) |
+| `CRM-06.02.01.04` | Modo offline con cola de cambios y resolución de conflictos | A | 3 | core | ✅ | — |
 | `CRM-06.02.01.05` | Accesibilidad WCAG 2.2 AA en las interfaces suministradas | A | 1 | docs | ⬜ | contecflow-PSA:docs/A11Y_WCAG_AUDIT.md |
 | `CRM-06.02.01.07` | Plantilla de notificación por canal: replicar las plantillas al esquema de cada servicio | A | 2 | core | ✅ | — |
 | `CRM-06.02.01.08` | Estadísticas de entrega del correo (apertura y rebote) con transporte por API del proveedor | D | 4 | core | ✅ | — |

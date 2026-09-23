@@ -148,6 +148,17 @@ def publicar(
         )
 
     version = (anterior.version + 1) if anterior else 1
+
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    # Antes de congelar nada: si este esquema rompe el contrato protobuf que ya
+    # tiene alguien integrado, se para aquí. Publicar y descubrirlo después
+    # obligaría a despublicar, y mientras tanto el contrato malo ya salió.
+    from services.metadata import contrato_rpc
+
+    contrato = contrato_rpc.sincronizar(uow, objeto=objeto, campos=campos)
+
     fila = PublicacionEsquema(
         tenant_id=tenant_id,
         objeto=objeto,
@@ -159,9 +170,6 @@ def publicar(
     db.add(fila)
     db.flush()
 
-    from crmcore.db.uow import UnidadDeTrabajo
-
-    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
     uow.emitir(
         ESQUEMA_CAMBIADO,
         subject=("objeto", objeto),
@@ -183,7 +191,20 @@ def publicar(
         datos={"objeto": objeto, "version": version, "campos": len(campos), "nota": nota},
         tenant_id=tenant_id,
     )
-    return {"objeto": objeto, "version": version, "campos": len(campos)}
+    return {
+        "objeto": objeto,
+        "version": version,
+        "campos": len(campos),
+        # Qué números tienen los campos en el contrato binario y qué se queda
+        # fuera. Va en la respuesta porque quien publica es quien tiene que
+        # enterarse de que su campo cifrado no sale por gRPC — no el integrador
+        # tres semanas después.
+        "contrato_rpc": {
+            "numeros": contrato["numeros"],
+            "campos_nuevos": contrato["campos_nuevos"],
+            "campos_que_no_salen": contrato["campos_que_no_salen"],
+        },
+    }
 
 
 # ── Previsualizar el cambio (CRM-00.04.03.09) ─────────────────────────────
