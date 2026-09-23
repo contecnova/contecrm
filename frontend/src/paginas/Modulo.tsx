@@ -20,7 +20,13 @@ import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estado
 import { Formulario } from "@/componentes/Formulario";
 import { Tabla } from "@/componentes/Tabla";
 import { llamar } from "@/lib/api";
-import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  camposDe,
+  contratoDe,
+  propositoDe,
+  type CampoEsquema,
+  type Proposito,
+} from "@/lib/contrato";
 import { moduloDe, type Recurso } from "@/lib/modulos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
@@ -114,6 +120,7 @@ function RecursoVista({
   const [creando, setCreando] = useState(abrirAlta);
   const [enviando, setEnviando] = useState(false);
   const [termino, setTermino] = useState("");
+  const [proposito, setProposito] = useState<Proposito | null>(null);
 
   // Se decide ANTES de pedir nada. Estaba después de los efectos, así que la
   // pantalla pedía igualmente la lista, recibía un 403 y lo pintaba como un
@@ -163,6 +170,20 @@ function RecursoVista({
     setSiguiente(null);
     void cargar();
   }, [cargar]);
+
+  // Para qué sirve esta pestaña, dicho por el servicio dueño. Una que se llama
+  // «Duplicados» y enseña una caja de búsqueda no dice qué hace, y probarla
+  // para averiguarlo da miedo cuando la pestaña de al lado es «Papelera».
+  useEffect(() => {
+    let vivo = true;
+    setProposito(null);
+    void contratoDe(recurso.servicio).then((documento) => {
+      if (vivo) setProposito(propositoDe(documento, recurso.listar, "get"));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [recurso.servicio, recurso.listar]);
 
   useEffect(() => {
     if (!recurso.crear) return;
@@ -231,6 +252,15 @@ function RecursoVista({
         </div>
       ) : null}
 
+      {proposito?.resumen ? (
+        <div className="mb-4 max-w-3xl">
+          <p className="text-xs text-ink">{proposito.resumen}</p>
+          {proposito.detalle ? (
+            <p className="mt-0.5 text-2xs text-ink-faint">{proposito.detalle}</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {busqueda ? (
         <div className="mb-4 max-w-md">
           <label htmlFor="modulo-busqueda" className="label-base">
@@ -266,7 +296,7 @@ function RecursoVista({
         // el mismo sitio en el que estaba.
         <Vacio
           icono="inbox"
-          titulo={t("modulo.sinRegistros", { recurso: recurso.nombre.toLowerCase() })}
+          titulo={t("modulo.sinRegistros")}
           detalle={recurso.crear ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
           accion={
             recurso.crear && campos

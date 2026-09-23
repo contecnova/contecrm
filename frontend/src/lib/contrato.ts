@@ -171,3 +171,33 @@ export function humanizar(nombre: string): string {
   const limpio = nombre.replace(/_/g, " ").trim();
   return limpio.charAt(0).toUpperCase() + limpio.slice(1);
 }
+
+export interface Proposito {
+  /** Una línea: para qué sirve esto. */
+  resumen: string;
+  /** El porqué, si el servicio lo explica. */
+  detalle: string;
+}
+
+/**
+ * Para qué sirve una pantalla, dicho por el servicio dueño.
+ *
+ * Una pestaña que se llama «Duplicados» y enseña una caja de búsqueda no dice
+ * qué hace: hay que probarla para averiguarlo, y probar una pantalla de
+ * duplicados o de papelera da miedo. El servicio ya lo explica en su contrato
+ * —«Lo mismo que hace el alta, pero sin crear nada»— y aquí solo se enseña.
+ *
+ * Se recorta el primer párrafo: las descripciones del contrato razonan la
+ * decisión entera y eso es para quien integra, no para quien abre la pantalla.
+ */
+export function propositoDe(documento: Documento, ruta: string, metodo = "get"): Proposito {
+  const operacion = documento.paths?.[ruta]?.[metodo] as
+    | { summary?: string; description?: string }
+    | undefined;
+  const detalle = (operacion?.description ?? "").split("\n\n")[0] ?? "";
+  return {
+    resumen: operacion?.summary ?? "",
+    // Sin el marcado de negrita del contrato: aquí no se pinta como markdown.
+    detalle: detalle.replace(/\*\*/g, "").trim(),
+  };
+}

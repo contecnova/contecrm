@@ -285,7 +285,7 @@ export default {
       "Estos documentos viven en el gestor documental. Aquí está el enlace y para qué está enlazado; el estado real —versión, aprobación, obsolescencia— es de allí.",
   },
   modulo: {
-    sinRegistros: "Todavía no hay {{recurso}}",
+    sinRegistros: "Aquí no hay nada todavía",
     sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",
     escribeParaBuscar: "Escribe al menos {{minimo}} caracteres para buscar.",
     nuevo: "Nuevo",
