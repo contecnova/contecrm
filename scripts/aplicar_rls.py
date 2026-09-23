@@ -21,17 +21,28 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "packages" / "crmcore"))
 
-SERVICIOS = [
-    "tenancy",
-    "identity",
-    "metadata",
-    "orchestrator",
-    "automation",
-    "integration",
-    "eventing",
-    "party",
-    "sales",
-]
+
+def _servicios() -> list[str]:
+    """Los servicios que tienen esquema propio, sacados de dónde viven sus migraciones.
+
+    Era una lista escrita a mano, y pasó lo que pasa con las listas escritas a
+    mano: se añadieron `analytics`, `service`, `marketing` e `intelligence`, y
+    esta lista no. El resultado no fue un error visible sino dos cosas peores.
+    Una: `--todos --comprobar` —el gate que vigila que ninguna tabla con
+    `tenant_id` se quede sin política— daba el visto bueno habiendo mirado nueve
+    esquemas de trece, y los cuatro que no miraba podían tener tablas
+    desprotegidas sin que nadie se enterara. Dos: al arrancar, esos servicios
+    morían con «invalid choice: 'analytics'» después de migrar.
+
+    Sale del sistema de ficheros —`alembic/versions/<servicio>/`— porque es el
+    mismo sitio del que salen las migraciones: un servicio con esquema tiene
+    migraciones por definición, y así la lista no puede quedarse corta.
+    """
+    raiz = RAIZ / "alembic" / "versions"
+    return sorted(d.name for d in raiz.iterdir() if d.is_dir() and not d.name.startswith("_"))
+
+
+SERVICIOS = _servicios()
 
 
 def _procesar(servicio: str, comprobar: bool) -> int:

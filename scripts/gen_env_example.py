@@ -17,6 +17,7 @@ no regeneras, el commit te lo dice.
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
@@ -93,6 +94,55 @@ def _tipo_de(nodo: ast.AnnAssign) -> str:
     return ""
 
 
+# Tipos para los que una línea `CLAVE=` es un valor legítimo: la cadena vacía.
+# Para todo lo demás —un entero, un booleano, un diccionario— la cadena vacía NO
+# es un valor, es un error de arranque: pydantic intenta parsearla y falla, y el
+# servicio no levanta.
+#
+# Esto pasó de verdad: un `.env` recién copiado del ejemplo no arrancaba, y el
+# mensaje —«error parsing value for field ...»— no dejaba claro que el problema
+# era el fichero de ejemplo y no la configuración de quien lo copió.
+TIPOS_QUE_ADMITEN_VACIO = {"str", "SecretStr"}
+
+# Tipos que pydantic-settings considera **complejos**: no los lee como texto,
+# les aplica `json.loads`. Por eso un `DMS_SCOPES=documents:read` —que parece lo
+# natural— revienta el arranque con «error parsing value for field», y por eso
+# aquí se escriben en JSON: `DMS_SCOPES=["documents:read"]`.
+TIPOS_COMPLEJOS = {"list", "tuple", "set", "frozenset", "dict", "List", "Tuple", "Dict"}
+
+
+def _es_complejo(nodo: ast.AnnAssign) -> bool:
+    """¿Lo va a leer pydantic-settings como JSON en vez de como texto?"""
+    nombres = {n.id for n in ast.walk(nodo.annotation) if isinstance(n, ast.Name)}
+    return bool(nombres & TIPOS_COMPLEJOS)
+
+
+def _admite_vacio(nodo: ast.AnnAssign) -> bool:
+    if _es_complejo(nodo):
+        # Ni siquiera un `Optional[list[str]]`: la cadena vacía no es JSON.
+        return False
+    # Solo el texto admite la cadena vacía. Un `int | None` tampoco: pydantic
+    # recibe `""`, no `None`, e intenta convertirlo a entero.
+    nombres = {n.id for n in ast.walk(nodo.annotation) if isinstance(n, ast.Name)}
+    return bool(nombres & TIPOS_QUE_ADMITEN_VACIO)
+
+
+def _formatear(valor: object) -> str:
+    """Cómo se escribe un valor en el fichero, según cómo lo vaya a leer pydantic."""
+    if isinstance(valor, bool):
+        return "true" if valor else "false"
+    # Una lista, una tupla o un diccionario se escriben en JSON, que es como
+    # los lee pydantic-settings. Ni el `repr` de Python —`('documents:read',)`—
+    # ni la lista separada por comas son valores válidos: las dos formas
+    # rompen el arranque con «error parsing value for field».
+    if isinstance(valor, (list, tuple, set, frozenset, dict)):
+        return json.dumps(
+            sorted(valor) if isinstance(valor, (set, frozenset)) else valor,
+            ensure_ascii=False,
+        )
+    return "" if valor is None else str(valor)
+
+
 def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
     """Valor de ejemplo. Nunca un secreto real, ni siquiera de desarrollo."""
     es_secreto = any(p in nombre for p in ("secret", "password", "key", "token"))
@@ -104,21 +154,17 @@ def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
         return ""
     try:
         if isinstance(nodo.value, ast.Call):  # Field(default, ...)
+            interno = None
             if nodo.value.args:
-                return str(ast.literal_eval(nodo.value.args[0]))
-            for kw in nodo.value.keywords:
-                if kw.arg == "default":
-                    return str(ast.literal_eval(kw.value))
-            return ""
-        valor = ast.literal_eval(nodo.value)
-        if isinstance(valor, bool):
-            return "true" if valor else "false"
-        # Una lista o una tupla se escribe separada por comas, que es como la
-        # lee pydantic. El `repr` de Python —`('documents:read',)`— no es un
-        # valor de entorno válido, y pegarlo tal cual rompe el arranque.
-        if isinstance(valor, (list, tuple)):
-            return ",".join(str(v) for v in valor)
-        return "" if valor is None else str(valor)
+                interno = nodo.value.args[0]
+            else:
+                for kw in nodo.value.keywords:
+                    if kw.arg == "default":
+                        interno = kw.value
+            if interno is None:
+                return ""
+            return _formatear(ast.literal_eval(interno))
+        return _formatear(ast.literal_eval(nodo.value))
     except (ValueError, TypeError, SyntaxError):
         return ""
 
@@ -168,7 +214,15 @@ def generar() -> str:
                     continue
                 for comentario in _comentarios_previos(lineas, nodo.lineno):
                     partes.append(f"# {comentario}")
-                partes.append(f"{nombre.upper()}={_valor_ejemplo(nodo, nombre)}")
+                valor = _valor_ejemplo(nodo, nombre)
+                if valor == "" and not _admite_vacio(nodo):
+                    # Sin valor no es lo mismo que valor vacío. Comentada, el
+                    # servicio usa su valor por defecto —que es el bueno— y
+                    # quien quiera cambiarla solo tiene que quitar la almohadilla.
+                    partes.append("# (sin valor: usa el de por defecto)")
+                    partes.append(f"# {nombre.upper()}=")
+                else:
+                    partes.append(f"{nombre.upper()}={valor}")
                 partes.append("")
 
     return "\n".join(partes).rstrip() + "\n"

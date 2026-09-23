@@ -16,5 +16,11 @@ data/
 var/
 logs/
 docs/
+# …salvo el catálogo funcional, que el runtime SÍ necesita: los controles de GRC
+# se anclan a capacidades por su identificador (CRM-07.03.02.04) y sin el fichero
+# no se puede comprobar que existan. Excluir `docs/` entero dejaba la imagen sin
+# construir —el `COPY` del Dockerfile fallaba— y eso no se veía desde el
+# preflight, que no construye imágenes.
+!docs/catalogo/catalogo.yaml
 tests/
 *.md

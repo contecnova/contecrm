@@ -16,6 +16,7 @@ from crmcore.http.deps import (
     DbDep,
     PlataformaDep,
     UowDep,
+    exige_firma_interna,
     exige_permiso,
 )
 from crmcore.http.pagination import ParametrosPagina, construir_pagina
@@ -276,10 +277,62 @@ def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
     return salida
 
 
+# ── Resolución interna ────────────────────────────────────────────────────
+
+router_interno = APIRouter(prefix="/interno/tenants", tags=["interno"])
+
+
+@router_interno.get(
+    "/por-slug/{slug}",
+    response_model=dict,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Traducir el slug de una organización a su identificador",
+)
+def resolver_slug(slug: str) -> Any:
+    """Slug → identificador, solo entre servicios.
+
+    Existe porque quien inicia sesión escribe «demo», no un UUID, y el servicio
+    de identidad no puede leer la tabla de tenants: los permisos de Postgres se
+    lo impiden, que es el aislamiento funcionando. Sin este extremo la pantalla
+    de entrada pedía algo que nadie tiene a mano y la respuesta era «indica el
+    identificador del tenant», es decir, la aplicación no se podía usar.
+
+    **No está en el esquema público ni la enruta el gateway**: la lista de
+    prefijos del gateway es una lista blanca y `interno` no está en ella. Si
+    estuviera, cualquiera podría ir probando nombres para averiguar qué
+    organizaciones existen aquí.
+    """
+    # Sesión de sistema porque la pregunta cruza tenants por definición: quien
+    # la hace todavía no está en ninguno. `sistema=True` hay que escribirlo, y
+    # por eso se ve aquí en vez de colarse por descuido.
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        tenant = db.execute(select(Tenant).where(Tenant.slug == slug)).scalar_one_or_none()
+        datos = (
+            None
+            if tenant is None
+            else {
+                "tenant_id": str(tenant.id),
+                "slug": tenant.slug,
+                "nombre": tenant.nombre,
+                "estado": tenant.estado,
+            }
+        )
+    if datos is None or datos["estado"] != "activo":
+        # Un tenant suspendido se responde como inexistente: distinguirlos
+        # diría desde fuera que la organización existe pero está de baja, y eso
+        # ya es información sobre un cliente.
+        raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
+    return {k: v for k, v in datos.items() if k != "estado"}
+
+
 from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402
 
 ROUTERS = [
     router,
+    router_interno,
     router_planes,
     router_flags,
     router_ajustes,

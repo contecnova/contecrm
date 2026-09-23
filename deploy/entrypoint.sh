@@ -27,22 +27,28 @@ esperar_a_postgres() {
   # un servicio que se cae al arrancar porque la base tarda dos segundos genera
   # reinicios en bucle que parecen un fallo grave y no lo son.
   local intentos="${ESPERA_DB_INTENTOS:-30}"
+  local ultimo_error=""
   for ((i = 1; i <= intentos; i++)); do
-    if python -c "
-import sys
+    # El error se guarda en vez de tirarse a /dev/null. Se tiraba, y el día que
+    # la base estaba levantada pero al rol del servicio le faltaba la
+    # contraseña, el log decía «esperando a Postgres» sesenta segundos y luego
+    # «no responde» — cuando Postgres respondía perfectamente y lo que pasaba
+    # era «password authentication failed for user crm_party_app». Un minuto de
+    # log que describe un problema que no existe y esconde el que sí.
+    if ultimo_error="$(python -c "
 from sqlalchemy import create_engine, text
 from crmcore.config import get_settings
-try:
-    create_engine(get_settings().database_url, pool_pre_ping=True).connect().execute(text('SELECT 1'))
-except Exception:
-    sys.exit(1)
-" 2>/dev/null; then
+create_engine(get_settings().database_url, pool_pre_ping=True).connect().execute(text('SELECT 1'))
+" 2>&1)"; then
       return 0
     fi
     echo "  esperando a Postgres ($i/$intentos)…"
     sleep 2
   done
-  echo "Postgres no responde tras $intentos intentos" >&2
+  echo "Postgres no responde tras $intentos intentos. Último error:" >&2
+  # Solo la última línea: el traceback de SQLAlchemy son treinta líneas y el
+  # motivo está siempre en la última.
+  echo "  ${ultimo_error##*$'\n'}" >&2
   return 1
 }
 

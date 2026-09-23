@@ -122,8 +122,8 @@ services:
     # pierden, y eso convierte el outbox en inútil justo cuando hace falta.
     command: ["-js", "-sd", "/data", "-m", "8222"]
     ports:
-      - "127.0.0.1:4222:4222"
-      - "127.0.0.1:8222:8222"
+      - "127.0.0.1:${NATS_PORT:-4222}:4222"
+      - "127.0.0.1:${NATS_MONITOR_PORT:-8222}:8222"
     volumes:
       - datos_nats:/data
 
@@ -135,7 +135,7 @@ services:
     # ventana entera de peticiones.
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - datos_redis:/data
     healthcheck:
@@ -147,6 +147,12 @@ services:
   # ── Servicios ────────────────────────────────────────────────────────────
   # El puerto de cada uno se publica en el loopback para poder llamarlos
   # directamente al depurar. En producción solo el gateway está expuesto.
+  #
+  # TODOS los puertos del anfitrión son variables con el valor de siempre como
+  # defecto. No es un adorno: en una máquina de la casa conviven varias
+  # soluciones, y con los puertos fijos la segunda que arranca no arranca —
+  # `Bind for 127.0.0.1:6379 failed: port is already allocated`— sin que quede
+  # claro que el problema es de convivencia y no del producto.
   tenancy:
     <<: *servicio
     command: ["servicio", "tenancy"]
@@ -155,7 +161,7 @@ services:
       SERVICE_NAME: tenancy
       DATABASE_URL: postgresql+psycopg://crm_tenancy_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_tenancy_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8001:8000"]
+    ports: ["127.0.0.1:${TENANCY_PORT:-8001}:8000"]
 
   identity:
     <<: *servicio
@@ -165,7 +171,7 @@ services:
       SERVICE_NAME: identity
       DATABASE_URL: postgresql+psycopg://crm_identity_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_identity_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8002:8000"]
+    ports: ["127.0.0.1:${IDENTITY_PORT:-8002}:8000"]
 
   metadata:
     <<: *servicio
@@ -175,7 +181,7 @@ services:
       SERVICE_NAME: metadata
       DATABASE_URL: postgresql+psycopg://crm_metadata_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_metadata_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8003:8000"]
+    ports: ["127.0.0.1:${METADATA_PORT:-8003}:8000"]
 
   orchestrator:
     <<: *servicio
@@ -185,7 +191,7 @@ services:
       SERVICE_NAME: orchestrator
       DATABASE_URL: postgresql+psycopg://crm_orchestrator_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_orchestrator_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8004:8000"]
+    ports: ["127.0.0.1:${ORCHESTRATOR_PORT:-8004}:8000"]
 
   automation:
     <<: *servicio
@@ -195,7 +201,7 @@ services:
       SERVICE_NAME: automation
       DATABASE_URL: postgresql+psycopg://crm_automation_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_automation_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8005:8000"]
+    ports: ["127.0.0.1:${AUTOMATION_PORT:-8005}:8000"]
 
   integration:
     <<: *servicio
@@ -205,7 +211,7 @@ services:
       SERVICE_NAME: integration
       DATABASE_URL: postgresql+psycopg://crm_integration_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_integration_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8006:8000"]
+    ports: ["127.0.0.1:${INTEGRATION_PORT:-8006}:8000"]
 
   eventing:
     <<: *servicio
@@ -215,7 +221,7 @@ services:
       SERVICE_NAME: eventing
       DATABASE_URL: postgresql+psycopg://crm_eventing_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_eventing_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8007:8000"]
+    ports: ["127.0.0.1:${EVENTING_PORT:-8007}:8000"]
 
   service:
     <<: *servicio
@@ -225,7 +231,7 @@ services:
       SERVICE_NAME: service
       DATABASE_URL: postgresql+psycopg://crm_service_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_service_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8010:8000"]
+    ports: ["127.0.0.1:${SERVICE_PORT_HOST:-8010}:8000"]
 
   marketing:
     <<: *servicio
@@ -235,7 +241,7 @@ services:
       SERVICE_NAME: marketing
       DATABASE_URL: postgresql+psycopg://crm_marketing_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_marketing_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8011:8000"]
+    ports: ["127.0.0.1:${MARKETING_PORT:-8011}:8000"]
 
   party:
     <<: *servicio
@@ -252,7 +258,7 @@ services:
       DMS_BASE_URL: ${DMS_BASE_URL:-http://contecmind:8000}
       DMS_CLIENT_ID: ${DMS_CLIENT_ID:-}
       DMS_CLIENT_SECRET: ${DMS_CLIENT_SECRET:-}
-    ports: ["127.0.0.1:8008:8000"]
+    ports: ["127.0.0.1:${PARTY_PORT:-8008}:8000"]
 
   sales:
     <<: *servicio
@@ -269,7 +275,7 @@ services:
       DMS_BASE_URL: ${DMS_BASE_URL:-http://contecmind:8000}
       DMS_CLIENT_ID: ${DMS_CLIENT_ID:-}
       DMS_CLIENT_SECRET: ${DMS_CLIENT_SECRET:-}
-    ports: ["127.0.0.1:8009:8000"]
+    ports: ["127.0.0.1:${SALES_PORT:-8009}:8000"]
 
   # ── Workers ───────────────────────────────────────────────────────────────
   # Procesos de fondo, sin HTTP. Heredan `x-servicio` pero **anulan el
@@ -354,7 +360,7 @@ services:
       CI_CLIENT_ID: ${CI_CLIENT_ID:-}
       CI_CLIENT_SECRET: ${CI_CLIENT_SECRET:-}
       CI_ENABLED: ${CI_ENABLED:-true}
-    ports: ["127.0.0.1:8010:8000"]
+    ports: ["127.0.0.1:${ANALYTICS_PORT:-8012}:8000"]
 
   # IA generativa sobre los datos del CRM. Servicio propio porque su esquema
   # guarda cosas que no son de nadie más —qué modelo atiende a quién, qué se
@@ -368,7 +374,7 @@ services:
       SERVICE_NAME: intelligence
       DATABASE_URL: postgresql+psycopg://crm_intelligence_app:contecrm_dev_only@postgres:5432/contecrm
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_intelligence_mig:contecrm_dev_only@postgres:5432/contecrm
-    ports: ["127.0.0.1:8015:8000"]
+    ports: ["127.0.0.1:${INTELLIGENCE_PORT:-8015}:8000"]
 
   # ── Explotación del dato ─────────────────────────────────────────────────
   #
@@ -474,7 +480,7 @@ services:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./ops/prometheus/alertas.yml:/etc/prometheus/alertas.yml:ro
       - datos_prometheus:/prometheus
-    ports: ["127.0.0.1:9090:9090"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
 
   # Colector y almacén de trazas (CRM-00.06.01.03). Perfil `ops`, como
   # Prometheus: una instalación que ya tiene colector apunta `OTEL_ENDPOINT` al
@@ -491,12 +497,12 @@ services:
       - ./ops/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - datos_tempo:/var/tempo
     ports:
-      - "127.0.0.1:3200:3200"
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
       # Se publican en localhost para poder trazar un servicio que se ejecute
       # fuera de compose, que es como se depura de verdad: el servicio en el
       # IDE y el resto de la pila en contenedores.
-      - "127.0.0.1:4318:4318"
-      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
 
   grafana:
     image: grafana/grafana:11.3.1@sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c

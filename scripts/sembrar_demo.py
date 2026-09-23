@@ -224,6 +224,18 @@ def _sembrar_party(tenant_id: UUID) -> None:
         print("3 actividades creadas (una ya vencida, para que se vea el aviso)")
 
 
+# Las etapas del embudo de la demostración: clave, nombre, probabilidad, si es
+# terminal y si es ganada. «Terminal» y «ganada» van por separado a propósito —
+# perdida también es terminal, y confundirlas falsea cualquier ratio.
+ETAPAS_DEMO = [
+    ("cualificacion", "Cualificación", 10, False, False),
+    ("propuesta", "Propuesta enviada", 40, False, False),
+    ("negociacion", "Negociación", 70, False, False),
+    ("ganada", "Ganada", 100, True, True),
+    ("perdida", "Perdida", 0, True, False),
+]
+
+
 def _sembrar_sales(tenant_id: UUID) -> None:
     """Leads y oportunidades. Corre donde `sales` tiene permisos.
 
@@ -247,22 +259,65 @@ def _sembrar_sales(tenant_id: UUID) -> None:
     from sqlalchemy import select
 
     from services.sales import servicio as svc_sales
-    from services.sales.modelos import Lead
+    from services.sales.modelos import Etapa, Lead, Oportunidad, Pipeline
 
     with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
-        if uow.db.execute(select(Lead).limit(1)).scalar_one_or_none():
-            print("Ya hay leads en este tenant. No se toca nada.")
-            return
-
-        for empresa, nombre, apellidos, email in LEADS_DEMO:
-            svc_sales.crear_lead(
-                uow, nombre=nombre, apellidos=apellidos, empresa=empresa, email=email
+        # El pipeline va PRIMERO. Una oportunidad no se puede crear sin él
+        # —`crear_oportunidad_nueva` busca el pipeline por defecto y, si no lo
+        # hay, se niega—, y este sembrador no lo creaba: los leads entraban, la
+        # primera oportunidad reventaba con «No hay ningún pipeline
+        # configurado», y el tenant de demostración se quedaba con la mitad de
+        # los datos. Peor todavía: el corte de idempotencia miraba solo si había
+        # leads, así que al volver a ejecutarlo decía «ya hay leads, no se toca
+        # nada» y la demo se quedaba coja para siempre.
+        pipeline = uow.db.execute(
+            select(Pipeline).where(Pipeline.tenant_id == tenant_id).limit(1)
+        ).scalar_one_or_none()
+        if pipeline is None:
+            pipeline = Pipeline(
+                tenant_id=tenant_id,
+                clave="estandar",
+                nombre="Venta estándar",
+                descripcion="El embudo de la demostración, de cualificación a cierre.",
+                activo=True,
+                por_defecto=True,
             )
-        print(f"{len(LEADS_DEMO)} leads creados")
+            uow.db.add(pipeline)
+            uow.db.flush()
+            for orden, (clave, nombre_etapa, prob, terminal, ganada) in enumerate(ETAPAS_DEMO):
+                uow.db.add(
+                    Etapa(
+                        tenant_id=tenant_id,
+                        pipeline_id=pipeline.id,
+                        clave=clave,
+                        nombre=nombre_etapa,
+                        orden=orden,
+                        probabilidad=prob,
+                        terminal=terminal,
+                        ganada=ganada,
+                    )
+                )
+            uow.db.flush()
+            print(f"Pipeline «{pipeline.nombre}» con {len(ETAPAS_DEMO)} etapas creado")
 
-        for _empresa, nombre, importe in OPORTUNIDADES_DEMO:
-            svc_sales.crear_oportunidad_nueva(uow, nombre=nombre, importe=Decimal(importe))
-        print(f"{len(OPORTUNIDADES_DEMO)} oportunidades creadas")
+        # Cada bloque mira lo suyo. Un único corte al principio daba por hecho
+        # que si existía lo primero existía todo lo demás, y eso es justo lo que
+        # no se cumple cuando una ejecución anterior se quedó a medias.
+        if uow.db.execute(select(Lead).limit(1)).scalar_one_or_none():
+            print("Ya hay leads en este tenant. No se tocan.")
+        else:
+            for empresa, nombre, apellidos, email in LEADS_DEMO:
+                svc_sales.crear_lead(
+                    uow, nombre=nombre, apellidos=apellidos, empresa=empresa, email=email
+                )
+            print(f"{len(LEADS_DEMO)} leads creados")
+
+        if uow.db.execute(select(Oportunidad).limit(1)).scalar_one_or_none():
+            print("Ya hay oportunidades en este tenant. No se tocan.")
+        else:
+            for _empresa, nombre, importe in OPORTUNIDADES_DEMO:
+                svc_sales.crear_oportunidad_nueva(uow, nombre=nombre, importe=Decimal(importe))
+            print(f"{len(OPORTUNIDADES_DEMO)} oportunidades creadas")
 
 
 def main() -> int:

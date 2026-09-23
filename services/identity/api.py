@@ -484,14 +484,24 @@ def _resolver_tenant(valor: str) -> UUID:
 
     if es_id_valido(valor):
         return sin_prefijo(valor)
-    from crmcore.errors import ErrorValidacion
 
-    # Resolver un slug exige preguntar a tenancy. Hasta que el gateway lo
-    # resuelva y lo propague (que es el camino normal), se pide el identificador.
-    raise ErrorValidacion(
-        "Indica el identificador del tenant. El slug lo resuelve el gateway.",
-        error_code="auth.tenant_no_resoluble",
-    )
+    # Se pregunta a tenancy. Antes esto era un error —«indica el identificador
+    # del tenant»— y el efecto es que no se podía entrar: la pantalla de acceso
+    # pide el nombre de la organización, que es lo único que un usuario tiene,
+    # y el sistema exigía un UUID que nadie se sabe. Un agujero en la puerta.
+    from crmcore.errors import ErrorValidacion
+    from crmcore.http.interno import pedir
+
+    datos = pedir("tenancy", f"/api/v1/interno/tenants/por-slug/{valor}")
+    if datos is None:
+        # Mismo error que una contraseña mal puesta y por el mismo motivo: decir
+        # «esa organización no existe» convierte la pantalla de acceso en un
+        # buscador de clientes.
+        raise ErrorValidacion(
+            "Credenciales no válidas",
+            error_code="auth.credenciales_invalidas",
+        )
+    return sin_prefijo(str(datos["tenant_id"]))
 
 
 def _sesion_del_token(request: Request) -> UUID | None:

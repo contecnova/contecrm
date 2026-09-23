@@ -95,6 +95,30 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
     return hmac.compare_digest(firma, esperada)
 
 
+async def exige_firma_interna(request: Request) -> None:
+    """Deja pasar solo a otro servicio de la casa, sin exigir un usuario.
+
+    Hay llamadas entre servicios que ocurren **antes** de que haya nadie
+    autenticado: la más clara es traducir el slug de la organización a su
+    identificador cuando alguien está escribiendo su contraseña. Ahí no hay
+    principal que propagar, y exigir uno obligaría a inventar un usuario de
+    sistema con permisos de plataforma para una consulta que solo devuelve un
+    identificador.
+
+    Lo que se comprueba es la firma HMAC, con la misma clave y la misma ventana
+    de treinta segundos que el resto del tráfico interno. Sin el secreto no se
+    entra, y con él ya se podría entrar como cualquiera: esto no abre nada que
+    no estuviera abierto.
+    """
+    from crmcore.config import get_settings
+
+    if not _verificar_firma(request, get_settings().secret_key.get_secret_value()):
+        raise NoAutenticado(
+            "Esta ruta es interna entre servicios",
+            error_code="auth.firma_interna_invalida",
+        )
+
+
 async def contexto_autenticado(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,

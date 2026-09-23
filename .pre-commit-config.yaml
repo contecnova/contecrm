@@ -17,7 +17,12 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
-      - id: ruff-check
+      # `ruff`, no `ruff-check`: ese alias no existe en la v0.8.4, que es la
+      # versión que fija `requirements-dev.txt`. Con el nombre nuevo,
+      # pre-commit abortaba TODO commit con «`ruff-check` is not present in
+      # repository» — el gate no es que fallara, es que no llegaba a correr, y
+      # con él se caían los demás ganchos del mismo commit.
+      - id: ruff
         args: [--fix]
       - id: ruff-format
 
@@ -39,25 +44,29 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=512]
 
+  # Todo lo local pasa por `scripts/con-entorno.sh`: los ganchos heredan el PATH
+  # de git, no el de la terminal, así que `python` a secas es el del sistema y
+  # no encuentra `crmcore`. El síntoma era un muro de «No module named crmcore»
+  # que parecía un fallo del código y era el entorno sin activar.
   - repo: local
     hooks:
       - id: env-example
         name: .env.example al día con los Settings
-        entry: python scripts/gen_env_example.py --check
+        entry: scripts/con-entorno.sh python scripts/gen_env_example.py --check
         language: system
         pass_filenames: false
         files: '^packages/crmcore/crmcore/config'
 
       - id: catalogo
         name: matriz de trazabilidad regenerada
-        entry: python scripts/gen_catalogo_md.py --check
+        entry: scripts/con-entorno.sh python scripts/gen_catalogo_md.py --check
         language: system
         pass_filenames: false
         files: '^docs/catalogo/catalogo\.yaml$'
 
       - id: arquitectura
         name: contratos de arquitectura (acoplamiento, tenant, permisos)
-        entry: python -m pytest tests/unit/test_contratos_arquitectura.py -q --no-header
+        entry: scripts/con-entorno.sh python -m pytest tests/unit/test_contratos_arquitectura.py -q --no-header
         language: system
         pass_filenames: false
         files: '^(services|packages)/.*\.py$'
@@ -65,7 +74,7 @@ repos:
       # ── Por push: la suite entera ───────────────────────────────────────
       - id: preflight
         name: preflight --tests (gates + suite completa)
-        entry: python scripts/preflight.py --tests
+        entry: scripts/con-entorno.sh python scripts/preflight.py --tests
         language: system
         pass_filenames: false
         always_run: true
