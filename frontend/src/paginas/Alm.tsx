@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Diferencia {
   tipo: string;
@@ -55,8 +56,11 @@ export function Alm() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("alm.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("alm.intro")}</p>
+      <CabeceraPagina
+        titulo={t("alm.titulo")}
+        entradilla={t("alm.intro")}
+        icono="layers"
+      />
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <div>

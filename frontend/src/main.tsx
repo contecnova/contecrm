@@ -8,7 +8,9 @@
 
 import "@fontsource/geist/400.css";
 import "@fontsource/geist/500.css";
+import "@fontsource/geist/600.css";
 import "@fontsource/roboto-mono/400.css";
+import "@material-symbols/font-400/outlined.css";
 import "@/index.css";
 
 import { StrictMode } from "react";

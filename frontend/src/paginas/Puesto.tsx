@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Parada {
   conexion: string;
@@ -60,8 +61,11 @@ export function Puesto() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("puesto.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("puesto.intro")}</p>
+      <CabeceraPagina
+        titulo={t("puesto.titulo")}
+        entradilla={t("puesto.intro")}
+        icono="desk"
+      />
 
       {!datos.medible ? (
         <Vacio titulo={t("puesto.sinConexiones")} detalle={datos.que_significa} />

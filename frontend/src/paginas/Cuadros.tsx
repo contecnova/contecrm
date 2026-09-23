@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Componente {
   informe?: string;
@@ -73,22 +74,30 @@ export function Cuadros() {
   if (!actual) return <Cargando />;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <header className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-lg font-medium text-ink">{t("cuadros.titulo")}</h1>
-        <select
-          value={actual.id}
-          onChange={(e) => setAbierto(e.target.value)}
-          aria-label={t("cuadros.elegir")}
-          className="rounded-lg border border-ink-dim/60 bg-paper px-2 py-1 text-2xs text-ink"
-        >
-          {cuadros.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
-      </header>
+    <div className="flex flex-col gap-4">
+      <CabeceraPagina
+        titulo={t("cuadros.titulo")}
+        icono="dashboard"
+        acciones={
+          <>
+            <label htmlFor="cuadros-elegir" className="sr-only">
+              {t("cuadros.elegir")}
+            </label>
+            <select
+              id="cuadros-elegir"
+              value={actual.id}
+              onChange={(e) => setAbierto(e.target.value)}
+              className="input-sm"
+            >
+              {cuadros.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </>
+        }
+      />
 
       {actual.descripcion ? (
         <p className="max-w-prose text-2xs text-ink-muted">{actual.descripcion}</p>

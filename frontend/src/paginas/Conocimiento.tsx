@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Articulo {
   id: string;
@@ -53,13 +54,12 @@ export function Conocimiento() {
     : articulos;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <header>
-        <h1 className="text-lg font-medium text-ink">{t("conocimiento.titulo")}</h1>
-        <p className="mt-1 max-w-prose text-2xs text-ink-muted">
-          {t("conocimiento.entradilla")}
-        </p>
-      </header>
+    <div className="flex flex-col gap-4">
+      <CabeceraPagina
+        titulo={t("conocimiento.titulo")}
+        entradilla={t("conocimiento.entradilla")}
+        icono="menu_book"
+      />
 
       <input
         type="search"

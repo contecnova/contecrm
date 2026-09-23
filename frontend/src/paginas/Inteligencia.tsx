@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Factor {
   factor: string;
@@ -58,8 +59,11 @@ export function Inteligencia() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("ia.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("ia.intro")}</p>
+      <CabeceraPagina
+        titulo={t("ia.titulo")}
+        entradilla={t("ia.intro")}
+        icono="neurology"
+      />
 
       <label className="mt-4 block text-2xs text-ink-muted" htmlFor="ia-contrib">
         {t("ia.contribuciones")}

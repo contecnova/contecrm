@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Herramienta {
   herramienta: string;
@@ -60,8 +61,11 @@ export function SuiteGobierno() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("suite.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("suite.intro")}</p>
+      <CabeceraPagina
+        titulo={t("suite.titulo")}
+        entradilla={t("suite.intro")}
+        icono="sync_alt"
+      />
 
       {datos.sin_herramientas ? (
         /* Un verde silencioso haría creer que el cliente está en la suite

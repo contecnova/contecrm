@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { MODULOS } from "@/lib/modulos";
 import { cargarSuperficie, recursoDe, type Superficie } from "@/lib/superficie";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 export function Cobertura() {
   const { t } = useTranslation();
@@ -38,8 +39,11 @@ export function Cobertura() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("cobertura.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("cobertura.intro")}</p>
+      <CabeceraPagina
+        titulo={t("cobertura.titulo")}
+        entradilla={t("cobertura.intro")}
+        icono="fact_check"
+      />
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <Dato titulo={t("cobertura.publicadas")} valor={informe.publicadas} />

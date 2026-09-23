@@ -18,6 +18,7 @@
 
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 /**
  * Qué capítulo del manual corresponde a cada pantalla.
@@ -53,8 +54,11 @@ export function Ayuda() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("ayuda.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("ayuda.intro")}</p>
+      <CabeceraPagina
+        titulo={t("ayuda.titulo")}
+        entradilla={t("ayuda.intro")}
+        icono="help"
+      />
 
       {capitulo ? (
         <a

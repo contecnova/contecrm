@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { MODULOS, porGrupo } from "@/lib/modulos";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 export function Recorrido() {
   const { t } = useTranslation();
@@ -22,8 +23,11 @@ export function Recorrido() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("recorrido.titulo")}</h1>
-      <p className="mt-1 max-w-2xl text-2xs text-ink-faint">{t("recorrido.intro")}</p>
+      <CabeceraPagina
+        titulo={t("recorrido.titulo")}
+        entradilla={t("recorrido.intro")}
+        icono="route"
+      />
       <p className="mt-3 text-3xs text-ink-faint">
         {t("recorrido.cuantos", { modulos: MODULOS.length, grupos: grupos.length })}
       </p>

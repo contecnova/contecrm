@@ -1,0 +1,292 @@
+/**
+ * El panel de navegación (CRM-07.04.01.03).
+ *
+ * Mismo armazón que contecmind: marca arriba, pastillas de acceso rápido,
+ * secciones plegables y pie con quién eres y por dónde salir.
+ *
+ * **Por qué a la izquierda y no arriba.** Antes esto era una barra horizontal
+ * con veintidós enlaces que envolvían en tres líneas. Una lista horizontal deja
+ * de funcionar pasados unos pocos elementos: no se puede agrupar, no se puede
+ * plegar, no admite iconos sin duplicar la altura, y en cuanto envuelve, el
+ * orden visual deja de significar nada. A la izquierda cabe la jerarquía real
+ * del producto —módulos del catálogo, análisis, plataforma— y el contenido
+ * recupera el ancho de la pantalla.
+ *
+ * **Los módulos salen del catálogo**, no de una lista escrita aquí. Dos listas
+ * que tienen que coincidir acaban no coincidiendo, y la que se queda corta es
+ * siempre el menú.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { NavLink } from "react-router-dom";
+
+import { Icono } from "@/componentes/Icono";
+import { config } from "@/lib/config";
+import { porGrupo } from "@/lib/modulos";
+import { ACCESOS, SECCIONES, iconoDeGrupo, type Entrada } from "@/lib/navegacion";
+import { usePanel } from "@/lib/panel";
+import type { Sesion } from "@/lib/sesion";
+import { cn } from "@/lib/utiles";
+
+const CLAVE_PLEGADAS = "contecrm.panel_plegadas";
+
+export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSalir: () => void }) {
+  const { t } = useTranslation();
+  const { abierto, fijar } = usePanel();
+  const cerrarRef = useRef<HTMLButtonElement | null>(null);
+
+  // Qué secciones están plegadas. Se recuerda porque plegar es una decisión: a
+  // quien no usa los módulos del catálogo no hay que devolvérselos desplegados
+  // en cada recarga.
+  const [plegadas, setPlegadas] = useState<Record<string, boolean>>(() => {
+    try {
+      const guardado = localStorage.getItem(CLAVE_PLEGADAS);
+      return guardado ? (JSON.parse(guardado) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const alternar = useCallback((id: string) => {
+    setPlegadas((previo) => {
+      const siguiente = { ...previo, [id]: !previo[id] };
+      try {
+        localStorage.setItem(CLAVE_PLEGADAS, JSON.stringify(siguiente));
+      } catch {
+        /* sin almacenamiento: no se recuerda, pero se pliega igual */
+      }
+      return siguiente;
+    });
+  }, []);
+
+  // En móvil el panel tapa la pantalla, así que Escape tiene que cerrarlo y el
+  // foco tiene que entrar dentro. En escritorio es una columna del diseño, no
+  // una capa encima: ahí Escape no lo toca, o se cerraría solo al pulsarlo por
+  // cualquier otro motivo.
+  useEffect(() => {
+    if (!abierto) return;
+    const movil =
+      typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+    if (!movil) return;
+    cerrarRef.current?.focus();
+    function alPulsar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") fijar(false);
+    }
+    window.addEventListener("keydown", alPulsar);
+    return () => window.removeEventListener("keydown", alPulsar);
+  }, [abierto, fijar]);
+
+  const grupos = useMemo(() => [...porGrupo()], []);
+
+  return (
+    <>
+      {/* El fondo oscuro de móvil es un botón y no un `div`: así se cierra
+          también con teclado y el lector lo anuncia como lo que es. */}
+      {abierto ? (
+        <button
+          type="button"
+          onClick={() => fijar(false)}
+          aria-label={t("nav.cerrarPanel")}
+          className="fixed inset-0 z-modal-bg cursor-default bg-ink/50 md:hidden"
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          "flex h-screen w-72 flex-col overflow-x-hidden border-r border-ink-dim/60 bg-paper-dark",
+          "fixed inset-y-0 left-0 z-modal transition-transform duration-200 md:relative md:z-auto",
+          abierto ? "translate-x-0" : "hidden -translate-x-full",
+        )}
+      >
+        {/* ── Marca ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
+          {config().logotipo ? (
+            <img src={config().logotipo} alt={config().nombre} className="h-6" />
+          ) : (
+            <span className="truncate text-sm font-semibold text-ink">{config().nombre}</span>
+          )}
+          <button
+            ref={cerrarRef}
+            type="button"
+            onClick={() => fijar(false)}
+            className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink md:hidden"
+            aria-label={t("nav.cerrarPanel")}
+          >
+            <Icono nombre="close" tamano="sm" />
+          </button>
+        </div>
+
+        {/* ── Accesos rápidos ──────────────────────────────────────────── */}
+        <div className="px-4 pb-3">
+          <p className="section-label mb-2">{t("nav.accesos")}</p>
+          <nav aria-label={t("nav.accesos")} className="flex flex-wrap gap-1.5">
+            {ACCESOS.map((entrada) => (
+              <Pastilla key={entrada.a} entrada={entrada} />
+            ))}
+          </nav>
+        </div>
+
+        {/* ── Secciones ────────────────────────────────────────────────── */}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+          <Seccion
+            id="modulos"
+            rotulo={t("nav.grupoModulos")}
+            plegada={Boolean(plegadas.modulos)}
+            alAlternar={() => alternar("modulos")}
+          >
+            {grupos.map(([grupo, modulos]) => (
+              <div key={grupo} className="mb-2 last:mb-0">
+                <p className="flex items-center gap-1.5 px-3 py-1 text-3xs uppercase tracking-wide text-ink-faint">
+                  <Icono nombre={iconoDeGrupo(grupo)} tamano="sm" />
+                  {grupo}
+                </p>
+                {modulos.map((modulo) => (
+                  <Enlace
+                    key={modulo.ruta}
+                    a={`/m/${modulo.ruta}`}
+                    rotulo={modulo.titulo}
+                    sangrado
+                  />
+                ))}
+              </div>
+            ))}
+          </Seccion>
+
+          {SECCIONES.map((seccion) => (
+            <Seccion
+              key={seccion.id}
+              id={seccion.id}
+              rotulo={t(seccion.clave)}
+              plegada={Boolean(plegadas[seccion.id])}
+              alAlternar={() => alternar(seccion.id)}
+            >
+              {seccion.entradas.map((entrada) => (
+                <Enlace
+                  key={entrada.a}
+                  a={entrada.a}
+                  rotulo={t(entrada.clave)}
+                  icono={entrada.icono}
+                />
+              ))}
+            </Seccion>
+          ))}
+        </div>
+
+        {/* ── Pie: quién eres y por dónde se sale ──────────────────────── */}
+        <div className="border-t border-ink-dim/60 px-4 py-3">
+          {sesion ? (
+            <p className="truncate text-2xs text-ink-muted" title={sesion.email}>
+              {sesion.nombre || sesion.email}
+            </p>
+          ) : null}
+          {sesion && sesion.roles.length > 0 ? (
+            <p className="mt-0.5 truncate text-3xs text-ink-faint">{sesion.roles.join(", ")}</p>
+          ) : null}
+          <button
+            type="button"
+            onClick={alSalir}
+            className="btn-link mt-2 inline-flex items-center gap-1.5 text-2xs"
+          >
+            <Icono nombre="logout" tamano="sm" />
+            {t("app.cerrarSesion")}
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function Seccion({
+  id,
+  rotulo,
+  plegada,
+  alAlternar,
+  children,
+}: {
+  id: string;
+  rotulo: string;
+  plegada: boolean;
+  alAlternar: () => void;
+  children: React.ReactNode;
+}) {
+  const idContenido = `seccion-${id}`;
+  return (
+    <section className="border-t border-ink-dim/60 pt-1">
+      <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-2">
+        <button
+          type="button"
+          onClick={alAlternar}
+          aria-expanded={!plegada}
+          aria-controls={idContenido}
+          className="section-label flex min-w-0 flex-1 items-center gap-1 text-left transition-colors hover:text-ink"
+        >
+          <Icono
+            nombre="keyboard_arrow_down"
+            tamano="sm"
+            className={cn("transition-transform", plegada && "-rotate-90")}
+          />
+          <span className="truncate">{rotulo}</span>
+        </button>
+      </div>
+      {/* Se desmonta al plegar en vez de esconderse con CSS: escondido con CSS
+          sigue estando en el orden de tabulación, y quien navega con teclado
+          recorre a ciegas una sección que no ve. */}
+      {plegada ? null : (
+        <nav id={idContenido} aria-label={rotulo} className="px-2 pb-2">
+          {children}
+        </nav>
+      )}
+    </section>
+  );
+}
+
+function Pastilla({ entrada }: { entrada: Entrada }) {
+  const { t } = useTranslation();
+  return (
+    <NavLink
+      to={entrada.a}
+      end={entrada.a === "/"}
+      className={({ isActive }) => cn("pill inline-flex items-center gap-1.5", isActive && "pill-active")}
+      aria-current={undefined}
+    >
+      <Icono nombre={entrada.icono} tamano="sm" />
+      {t(entrada.clave)}
+    </NavLink>
+  );
+}
+
+function Enlace({
+  a,
+  rotulo,
+  icono,
+  sangrado,
+}: {
+  a: string;
+  rotulo: string;
+  icono?: string;
+  sangrado?: boolean;
+}) {
+  return (
+    <NavLink
+      to={a}
+      end={a === "/"}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
+          sangrado && "pl-7",
+          isActive
+            ? "bg-accent/10 font-medium text-accent-text"
+            : "text-ink-muted hover:bg-paper-light hover:text-ink",
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {icono ? <Icono nombre={icono} tamano="sm" relleno={isActive} /> : null}
+          <span className="truncate">{rotulo}</span>
+        </>
+      )}
+    </NavLink>
+  );
+}

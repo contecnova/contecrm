@@ -44,6 +44,26 @@ propietario, que esté compartido con tu equipo, que te llegue por la jerarquía
 aparece, **el CRM puede decirte por qué**. No es un error: es que no te toca, y
 saberlo ahorra la llamada a soporte.
 
+**Moverse.** A la izquierda está el menú, y lo que hay dentro está agrupado:
+arriba los accesos que se usan a diario —inicio, tu puesto, la consola de agente
+y los casos—, debajo los **módulos**, que son las pantallas de cada área del
+catálogo, y después análisis y plataforma. Cada grupo se pliega, y se queda
+plegado la próxima vez que entres: si no usas los módulos del catálogo, no
+tienes que verlos.
+
+Arriba, la línea que empieza en «Inicio» dice dónde estás y permite volver: en
+una ficha, el paso anterior es el listado del que salió.
+
+**Ir a una pantalla escribiendo su nombre.** `⌘K` en Mac, `Ctrl+K` en el resto,
+o el buscador de la barra de arriba. Escribes «cuentas», «previsión» o «ventas»
+—vale el nombre del grupo— y las flechas y `Intro` te llevan. Con veinticinco
+módulos y veinte pantallas transversales, esto es más rápido que el menú, y no
+lo sustituye: el menú es para ver qué hay, el atajo para volver a algo que ya
+sabes que existe.
+
+**Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
+se recuerda en ese navegador.
+
 **Buscar.** La búsqueda mira a la vez en cuentas, contactos, oportunidades, casos
 y documentos, y respeta lo anterior: no encuentra lo que no puedes ver. Busca por
 nombre, por identificador fiscal, por teléfono y por correo — y por teléfono

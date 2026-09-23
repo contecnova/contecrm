@@ -20,6 +20,7 @@ import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estado
 import { Tabla } from "@/componentes/Tabla";
 import { llamar } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
+import { CabeceraPagina } from "@/componentes/Pagina";
 import {
   acciones,
   areasDeAdministracion,
@@ -49,8 +50,11 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
   return (
     <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
       <aside>
-        <h1 className="text-sm font-medium text-ink">{t("consola.titulo")}</h1>
-        <p className="mt-1 text-2xs text-ink-faint">{t("consola.intro")}</p>
+        <CabeceraPagina
+          titulo={t("consola.titulo")}
+          entradilla={t("consola.intro")}
+          icono="settings"
+        />
         <p className="mt-2 text-3xs text-ink-faint">
           {t("consola.total", { total: superficie.total, administracion: superficie.administracion })}
         </p>

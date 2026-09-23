@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Segmento {
   id: string;
@@ -65,11 +66,12 @@ export function Marketing() {
   if (!segmentos || !campanas) return <Cargando />;
 
   return (
-    <div className="flex flex-col gap-6 p-4">
-      <header>
-        <h1 className="text-lg font-medium text-ink">{t("marketing.titulo")}</h1>
-        <p className="mt-1 max-w-prose text-2xs text-ink-muted">{t("marketing.entradilla")}</p>
-      </header>
+    <div className="flex flex-col gap-6">
+      <CabeceraPagina
+        titulo={t("marketing.titulo")}
+        entradilla={t("marketing.entradilla")}
+        icono="campaign"
+      />
 
       <section>
         <h2 className="text-sm font-medium text-ink">{t("marketing.segmentos")}</h2>

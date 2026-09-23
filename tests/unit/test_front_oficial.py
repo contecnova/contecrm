@@ -150,7 +150,15 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
     sesión robada; con cookie `HttpOnly`, no. Por eso el cliente de API no lee ni
     escribe ningún almacén y la sesión viaja en cookie.
     """
-    permitidos = {"lib/tema.ts"}
+    # La lista es explícita a propósito: añadir un fichero aquí es una decisión
+    # que se ve en la revisión. El criterio para entrar es el mismo para los
+    # tres — se guarda una preferencia de quien mira, que si se pierde no pasa
+    # nada y que no le dice a nadie nada sobre el negocio ni sobre la sesión.
+    permitidos = {
+        "lib/tema.ts",  # claro u oscuro
+        "lib/panel.tsx",  # el menú lateral, abierto o cerrado
+        "componentes/BarraLateral.tsx",  # qué secciones del menú se dejaron plegadas
+    }
     usos: list[str] = []
     for fichero in _fuentes():
         relativo = str(fichero.relative_to(FRONT))

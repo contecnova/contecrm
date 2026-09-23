@@ -98,6 +98,31 @@ medias no viaja.
 
 ---
 
+### El front oficial
+
+React, Vite, TypeScript y Tailwind, **el mismo sistema de diseño que contecmind**
+y las demás soluciones de la casa: los mismos tokens de color (`paper`, `ink`,
+`accent`), las mismas clases de componente (`card`, `pill`, `badge`, `btn-*`) y
+los mismos iconos (Material Symbols, servidos desde el paquete npm, sin llamar a
+Google). Los tokens viven en `frontend/src/index.css` y se redefinen enteros bajo
+`.dark`, así que el tema oscuro no es un puñado de excepciones sino la misma
+interfaz con otros valores.
+
+El armazón son tres piezas y están en `frontend/src/componentes/`:
+
+| Pieza | Qué resuelve |
+|---|---|
+| `BarraLateral` | Navegación agrupada y plegable. Los módulos salen de `lib/modulos.ts`, que es la declaración de cobertura del catálogo, no una lista aparte. |
+| `BarraSuperior` | Dónde estás (miga de pan), buscar, tema y menú de usuario. |
+| `Paleta` | Ir a cualquier pantalla escribiendo su nombre (`⌘K` / `Ctrl+K`). |
+
+El árbol de navegación está en `lib/navegacion.ts` y lo leen las tres: una sola
+lista, porque tres que tienen que coincidir acaban no coincidiendo y la que se
+queda corta es siempre la del buscador.
+
+Toda pantalla pone su título con `CabeceraPagina`, que es la que pinta el `<h1>`.
+Hay gate que lo comprueba —y que comprueba que ninguna pantalla ponga dos.
+
 ## 2. Cómo se despliega
 
 ### 2.1 Requisitos

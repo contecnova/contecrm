@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Margen {
   completo: boolean;
@@ -84,8 +85,11 @@ export function Coste() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("coste.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("coste.intro")}</p>
+      <CabeceraPagina
+        titulo={t("coste.titulo")}
+        entradilla={t("coste.intro")}
+        icono="payments"
+      />
 
       <label className="mt-4 block text-2xs text-ink-muted" htmlFor="coste-lineas">
         {t("coste.lineas")}

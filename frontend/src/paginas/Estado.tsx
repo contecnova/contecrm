@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Componente {
   servicio: string;
@@ -34,6 +35,16 @@ const COLOR: Record<string, string> = {
   ok: "text-success",
   degradado: "text-warning",
   caido: "text-danger",
+};
+
+// El estado global va como insignia y no como texto de color: un párrafo en
+// rojo bajo el título se lee como un aviso cualquiera, y una insignia con
+// relleno se ve antes que el propio título — que es lo que hace falta cuando
+// algo está caído. El color solo, además, no basta: la palabra va dentro.
+const INSIGNIA: Record<string, string> = {
+  ok: "badge-success",
+  degradado: "badge-warning",
+  caido: "badge-danger",
 };
 
 interface Compromiso {
@@ -75,8 +86,13 @@ export function Estado() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("estado.titulo")}</h1>
-      <p className={`mt-1 text-2xs ${COLOR[datos.estado] ?? "text-ink-muted"}`}>{datos.estado}</p>
+      <CabeceraPagina
+        titulo={t("estado.titulo")}
+        icono="monitor_heart"
+        acciones={
+          <span className={`badge ${INSIGNIA[datos.estado] ?? "badge-muted"}`}>{datos.estado}</span>
+        }
+      />
       <div className="mt-4 overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-ink-dim/30 bg-paper-light">

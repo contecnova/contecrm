@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Conversacion {
   conversacion_id: string;
@@ -91,13 +92,12 @@ export function ConsolaAgente() {
   ].sort((a, b) => a.urgencia - b.urgencia);
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <header>
-        <h1 className="text-lg font-medium text-ink">{t("consolaAgente.titulo")}</h1>
-        <p className="mt-1 max-w-prose text-2xs text-ink-muted">
-          {t("consolaAgente.entradilla")}
-        </p>
-      </header>
+    <div className="flex flex-col gap-4">
+      <CabeceraPagina
+        titulo={t("consolaAgente.titulo")}
+        entradilla={t("consolaAgente.entradilla")}
+        icono="headset_mic"
+      />
 
       {cola.length === 0 ? (
         <Vacio titulo={t("consolaAgente.vacia")} detalle={t("consolaAgente.vaciaDetalle")} />

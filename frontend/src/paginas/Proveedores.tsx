@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Documento {
   clave: string;
@@ -64,8 +65,11 @@ export function Proveedores() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("proveedores.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("proveedores.intro")}</p>
+      <CabeceraPagina
+        titulo={t("proveedores.titulo")}
+        entradilla={t("proveedores.intro")}
+        icono="local_shipping"
+      />
 
       <label className="mt-4 block text-2xs text-ink-muted" htmlFor="prov-cuenta">
         {t("proveedores.cuenta")}

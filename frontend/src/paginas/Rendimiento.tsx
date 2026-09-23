@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
 import { cargarSesion } from "@/lib/sesion";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Presion {
   peor?: { servicio?: string; presion?: number; que_significa?: string };
@@ -71,8 +72,11 @@ export function Rendimiento() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("rendimiento.titulo")}</h1>
-      <p className="mt-1 text-2xs text-ink-faint">{t("rendimiento.intro")}</p>
+      <CabeceraPagina
+        titulo={t("rendimiento.titulo")}
+        entradilla={t("rendimiento.intro")}
+        icono="speed"
+      />
 
       <section className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
         <h2 className="text-xs font-medium text-ink">{t("rendimiento.queSeAplaza")}</h2>

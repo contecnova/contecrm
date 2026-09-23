@@ -50,11 +50,42 @@ function sinFlechas(texto: string): string {
 }
 
 describe("accesibilidad de las pantallas (WCAG 2.2 AA)", () => {
+  it("la cabecera canónica pone un encabezado de primer nivel", () => {
+    // De esto depende la comprobación siguiente: si `CabeceraPagina` dejara de
+    // pintar un `<h1>`, todas las pantallas que la usan se quedarían sin
+    // encabezado de primer nivel y el gate seguiría en verde. Se comprueba
+    // aquí, una vez, en vez de confiar en que nadie la toque.
+    const cabecera = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "componentes", "Pagina.tsx"),
+      "utf8",
+    );
+    expect(cabecera).toContain("<h1");
+  });
+
   it("toda pantalla tiene un encabezado de primer nivel", () => {
     // Quien navega con lector salta por encabezados. Sin `h1`, la única forma
     // de saber dónde está es leerlo todo.
-    const sin = paginas().filter((f) => !fuente(f).includes("<h1"));
-    expect(sin, `Pantallas sin <h1>: ${sin.join(", ")}`).toEqual([]);
+    //
+    // Vale el `<h1>` escrito a mano o la cabecera canónica, que pone uno —y que
+    // es lo que usan casi todas, para que el título tenga la misma presencia en
+    // toda la aplicación.
+    const sin = paginas().filter((f) => {
+      const texto = fuente(f);
+      return !texto.includes("<h1") && !texto.includes("<CabeceraPagina");
+    });
+    expect(sin, `Pantallas sin encabezado de primer nivel: ${sin.join(", ")}`).toEqual([]);
+  });
+
+  it("ninguna pantalla pone dos encabezados de primer nivel", () => {
+    // Dos `<h1>` en la misma pantalla dejan de indicar dónde está uno: el
+    // encabezado de primer nivel sirve precisamente porque es único. Pasó al
+    // introducir la cabecera canónica —quedaban pantallas con su `<h1>` viejo
+    // encima— y a simple vista no se nota.
+    const dobles = paginas().filter((f) => {
+      const texto = fuente(f);
+      return texto.includes("<CabeceraPagina") && texto.includes("<h1");
+    });
+    expect(dobles, `Pantallas con dos encabezados: ${dobles.join(", ")}`).toEqual([]);
   });
 
   it("todo campo de entrada tiene etiqueta asociada o nombre accesible", () => {

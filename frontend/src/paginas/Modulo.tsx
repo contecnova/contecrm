@@ -24,6 +24,8 @@ import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
 import { moduloDe, type Recurso } from "@/lib/modulos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
+import { CabeceraPagina } from "@/componentes/Pagina";
+import { iconoDeGrupo } from "@/lib/navegacion";
 
 export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
@@ -38,14 +40,19 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{modulo.titulo}</h1>
       {/* Cada pantalla dice qué capacidad del catálogo implementa
           (CRM-07.04.05.05). Desde aquí se llega al enunciado, al código y a la
           prueba: es la trazabilidad puesta delante de quien la mira, en vez de
           enterrada en un fichero que solo abre quien ya sabe que existe. */}
-      <p className="mt-0.5 font-mono text-3xs text-ink-faint">
-        {modulo.capacidad} · {t("modulo.seccion")} {modulo.seccion}
-      </p>
+      <CabeceraPagina
+        titulo={modulo.titulo}
+        icono={iconoDeGrupo(modulo.grupo)}
+        entradilla={
+          <span className="font-mono text-3xs">
+            {modulo.capacidad} · {t("modulo.seccion")} {modulo.seccion}
+          </span>
+        }
+      />
       {modulo.recursos.length > 1 ? (
         <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap gap-1">
           {modulo.recursos.map((r, i) => (

@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 import {
   ALTO,
   ANCHO,
@@ -89,8 +90,11 @@ export function Procesos() {
 
   return (
     <>
-      <h1 className="text-sm font-medium text-ink">{t("procesos.titulo")}</h1>
-      <p className="mt-1 max-w-2xl text-2xs text-ink-faint">{t("procesos.intro")}</p>
+      <CabeceraPagina
+        titulo={t("procesos.titulo")}
+        entradilla={t("procesos.intro")}
+        icono="account_tree"
+      />
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Campo etiqueta={t("procesos.clave")} valor={clave} alCambiar={setClave} />

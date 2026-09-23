@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Diagnostico {
   puede_preguntar: boolean;
@@ -73,13 +74,12 @@ export function Explotacion() {
   const publicadas = preguntas.filter((p) => p.publicada);
 
   return (
-    <div className="flex flex-col gap-6 p-4">
-      <header>
-        <h1 className="text-lg font-medium text-ink">{t("explotacion.titulo")}</h1>
-        <p className="mt-1 max-w-prose text-2xs text-ink-muted">
-          {t("explotacion.entradilla")}
-        </p>
-      </header>
+    <div className="flex flex-col gap-6">
+      <CabeceraPagina
+        titulo={t("explotacion.titulo")}
+        entradilla={t("explotacion.entradilla")}
+        icono="query_stats"
+      />
 
       {!diagnostico.puede_preguntar ? (
         <section

@@ -20,6 +20,7 @@ import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estado
 import { Tabla } from "@/componentes/Tabla";
 import { llamar, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
+import { CabeceraPagina } from "@/componentes/Pagina";
 
 type Pestana = "datos" | "adjuntos" | "comentarios" | "documentos";
 
@@ -33,12 +34,15 @@ export function Ficha() {
 
   return (
     <>
-      <p className="text-2xs text-ink-faint">
-        <Link to={`/m/${ruta}`} className="hover:underline">
-          {modulo.titulo}
-        </Link>
-      </p>
-      <h1 className="mt-1 font-mono text-sm text-ink">{id}</h1>
+      <CabeceraPagina
+        titulo={<span className="font-mono">{id}</span>}
+        icono="description"
+        entradilla={
+          <Link to={`/m/${ruta}`} className="text-accent-text hover:underline">
+            {modulo.titulo}
+          </Link>
+        }
+      />
 
       <nav aria-label={t("ficha.secciones")} className="mt-3 flex flex-wrap gap-1">
         {(["datos", "adjuntos", "comentarios", "documentos"] as const).map((p) => (
