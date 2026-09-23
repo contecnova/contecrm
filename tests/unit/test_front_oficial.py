@@ -159,6 +159,10 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
         "lib/panel.tsx",  # el menú lateral, abierto o cerrado
         "componentes/BarraLateral.tsx",  # qué secciones del menú se dejaron plegadas
         "componentes/Tabla.tsx",  # qué columnas quiere ver cada quien en cada listado
+        # Si cada listado se mira como tabla, como tarjetas o por columnas.
+        # Entra por el mismo criterio: es una preferencia de quien mira, no
+        # dice nada del negocio, y perderla solo cuesta volver a elegirla.
+        "componentes/Vistas.tsx",
     }
     usos: list[str] = []
     for fichero in _fuentes():

@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
-import { Tabla } from "@/componentes/Tabla";
+import { Tabla, normalizar } from "@/componentes/Tabla";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -191,12 +191,17 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
  * recursos están vacíos.
  */
 export function comoFilas(datos: unknown): Record<string, unknown>[] {
-  if (Array.isArray(datos)) return datos as Record<string, unknown>[];
+  if (Array.isArray(datos)) return normalizar(datos);
   if (datos && typeof datos === "object") {
     const objeto = datos as Record<string, unknown>;
     for (const clave of ["items", "resultados", "datos"]) {
-      if (Array.isArray(objeto[clave])) return objeto[clave] as Record<string, unknown>[];
+      if (Array.isArray(objeto[clave])) return normalizar(objeto[clave]);
     }
+    // Y la tercera forma: la lista bajo su propio nombre —`{partners: […]}`,
+    // `{ordenes: […]}`—. Se coge cuando hay una sola propiedad que sea un
+    // array; con dos no se adivina cuál es la lista.
+    const arrays = Object.values(objeto).filter(Array.isArray) as unknown[][];
+    if (arrays.length === 1 && arrays[0]) return normalizar(arrays[0]);
     return [objeto];
   }
   return [];

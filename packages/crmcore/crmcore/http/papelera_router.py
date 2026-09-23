@@ -113,6 +113,38 @@ def crear_router_papelera(servicio: str) -> APIRouter:
             for f in filas
         ]
 
+    @router.get(
+        "/{entrada_id}",
+        response_model=dict,
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Ver una entrada de la papelera",
+        description=(
+            "Hace falta para poder abrirla: «Restaurar» cuelga de la entrada, y "
+            "a una entrada que no se abre no se llega desde ninguna pantalla."
+        ),
+    )
+    def ver(entrada_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.errors import NoEncontrado
+
+        entrada = db.get(EntradaPapelera, entrada_id)
+        if entrada is None or entrada.tenant_id != principal.tenant_id:
+            raise NoEncontrado(
+                "Esa entrada de papelera no existe", error_code="papelera.no_encontrada"
+            )
+        return {
+            "id": str(entrada.id),
+            "servicio": servicio,
+            "objeto": entrada.objeto,
+            "registro_id": str(entrada.registro_id),
+            "etiqueta": entrada.etiqueta,
+            "borrado_at": entrada.borrado_at.isoformat(),
+            "purgable_at": entrada.purgable_at.isoformat(),
+            "dias_para_purga": (entrada.purgable_at - datetime.now(timezone.utc)).days,
+            "restaurado_at": entrada.restaurado_at.isoformat() if entrada.restaurado_at else None,
+            "purgado_at": entrada.purgado_at.isoformat() if entrada.purgado_at else None,
+            "en_cascada": sum(len(v) for v in (entrada.cascada or {}).values()),
+        }
+
     @router.post(
         "/{entrada_id}/restaurar",
         response_model=dict,

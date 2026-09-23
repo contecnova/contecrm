@@ -121,7 +121,6 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" },
 
   { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read" },
-  { area: "marketing", a: "/recorrido", clave: "nav.recorrido", icono: "route", permiso: "campaign:read" },
 
   { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read" },
   { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" },
@@ -137,6 +136,11 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
 
   { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" },
   { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" },
+  // El recorrido guiado y la cobertura hablan **del producto**, no del trabajo
+  // de nadie: estaban en Marketing, donde quien busca sus campañas se topa con
+  // una visita guiada, y donde quien la busca no la encuentra. Y el recorrido
+  // enseña más o menos lo mismo que Inicio, así que tampoco competía bien.
+  { area: "configuracion", a: "/recorrido", clave: "nav.recorrido", icono: "route" },
   { area: "configuracion", a: "/cobertura", clave: "nav.cobertura", icono: "fact_check" },
   { area: "configuracion", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
   { area: "configuracion", a: "/ayuda", clave: "nav.ayuda", icono: "help" },

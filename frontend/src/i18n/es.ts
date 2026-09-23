@@ -46,7 +46,7 @@ export default {
     consola: "Consola de administración",
     estado: "Estado",
     cobertura: "Cobertura",
-    recorrido: "Recorrido",
+    recorrido: "Recorrido guiado",
     procesos: "Procesos en curso",
     explotacion: "Preguntas publicadas",
     cuadros: "Cuadros de mando",

@@ -241,7 +241,10 @@ export const MODULOS: Modulo[] = [
         // la entrada, y a una entrada que no se abre no se llega desde ninguna
         // pantalla. Estaba la acción y no había forma de usarla.
         objeto: "entrada_papelera",
-        listar: "/api/v1/party-admin/papelera",
+        // La del router compartido, la misma forma que las demás: `party-admin`
+        // tiene la suya de antes y dos caminos para lo mismo obligan a saber
+        // cuál mira cada pantalla.
+        listar: "/api/v1/party/papelera",
         servicio: "party",
         columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
       },

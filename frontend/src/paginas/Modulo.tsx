@@ -12,12 +12,23 @@
  * así que un campo nuevo en el servicio aparece aquí sin tocar nada.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
+import {
+  Agrupado,
+  Etiquetas,
+  SelectorVista,
+  Tarjetas,
+  campoDeAgrupacion,
+  esVocabulario,
+  leerVista,
+  type Vista,
+} from "@/componentes/Vistas";
+import { cn } from "@/lib/utiles";
 import { Formulario } from "@/componentes/Formulario";
 import { Tabla } from "@/componentes/Tabla";
 import { llamar } from "@/lib/api";
@@ -48,6 +59,16 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     modulo?.recursos.findIndex((r) => r.nombre === pedido) ?? 0,
   );
   const [activo, setActivo] = useState(inicial);
+  // Las pestañas rotuladas con icono —hoy, la papelera— se llevan al final.
+  // Se calcula una vez y no en cada pintado, y se conserva el índice original
+  // porque es lo que identifica al recurso activo.
+  const pestañas = useMemo(
+    () =>
+      (modulo?.recursos ?? [])
+        .map((r, i) => ({ r, i }))
+        .sort((a, b) => Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono))),
+    [modulo?.recursos],
+  );
 
   useEffect(() => setActivo(inicial), [ruta, inicial]);
 
@@ -70,8 +91,12 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         }
       />
       {modulo.recursos.length > 1 ? (
-        <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap gap-1">
-          {modulo.recursos.map((r, i) => (
+        <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap items-center gap-1">
+          {/* Las pestañas rotuladas con icono —hoy, la papelera— van siempre al
+              final y separadas del resto: no son un sitio donde se trabaja, son
+              el sitio donde se mira cuando algo falta. Mezcladas entre las demás
+              obligan a leerlas todas para encontrar la que se usa. */}
+          {pestañas.map(({ r, i }, posicion) => (
             <button
               key={r.nombre}
               type="button"
@@ -79,9 +104,11 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
               aria-current={i === activo ? "page" : undefined}
               title={r.icono ? r.nombre : undefined}
               aria-label={r.icono ? r.nombre : undefined}
-              className={`rounded-lg px-3 py-1.5 text-xs ${
-                i === activo ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light"
-              }`}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-xs",
+                i === activo ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light",
+                r.icono && !pestañas[posicion - 1]?.r.icono ? "ml-auto" : "",
+              )}
             >
               {r.icono ? <Icono nombre={r.icono} /> : r.nombre}
             </button>
@@ -124,6 +151,12 @@ function RecursoVista({
   const [enviando, setEnviando] = useState(false);
   const [termino, setTermino] = useState("");
   const [proposito, setProposito] = useState<Proposito | null>(null);
+  const recuerdaComo = `${ruta}.${recurso.nombre}`;
+  const [vista, setVista] = useState<Vista>(() => leerVista(recuerdaComo));
+  // Por qué campo agrupar sale de los datos que hay: con un solo valor no hay
+  // nada que separar, y con uno distinto por fila serían columnas de una.
+  const campoAgrupacion = useMemo(() => campoDeAgrupacion(filas ?? []), [filas]);
+  const vocabulario = useMemo(() => esVocabulario(filas ?? []), [filas]);
   /**
    * Número de la última petición lanzada.
    *
@@ -143,6 +176,13 @@ function RecursoVista({
   const puedeVer =
     puede(sesion, recurso.permiso) &&
     (!recurso.solo_plataforma || Boolean(sesion?.es_admin_plataforma));
+
+  // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
+  // vacía es peor que no tener enlace, porque parece que algo se ha roto.
+  const aLaFicha = recurso.objeto
+    ? (fila: Record<string, unknown>) =>
+        typeof fila.id === "string" ? `/m/${ruta}/${recurso.objeto}/${fila.id}` : null
+    : undefined;
 
   const busqueda = recurso.busqueda;
   const terminoValido = !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);
@@ -323,33 +363,50 @@ function RecursoVista({
         />
       ) : (
         <>
-          <Tabla
-            filas={filas}
-            columnas={ordenar(filas, recurso.columnas)}
-            titulo={recurso.nombre}
-            // Las preferidas del recurso mandan de entrada; si no declara
-            // ninguna, las seis primeras. Y la elección se recuerda por
-            // recurso: las columnas útiles de cuentas no son las de casos.
-            porDefecto={recurso.columnas?.length || 6}
-            recuerdaComo={`${ruta}.${recurso.nombre}`}
-            // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una
-            // pantalla vacía es peor que no tener enlace, porque el usuario
-            // cree que se ha roto algo.
-            enlace={
-              recurso.objeto
-                ? (fila) =>
-                    typeof fila.id === "string"
-                      ? `/m/${ruta}/${recurso.objeto}/${fila.id}`
-                      : null
-                : undefined
-            }
-          />
-          {/* Al crear un registro o al cargar más, la lista cambia sin que
-              nada lo diga: quien no ve la pantalla no se entera de que ha
-              pasado algo (CRM-06.02.01.05). */}
-          <p className="sr-only" role="status">
-            {t("modulo.filasCargadas", { cuantas: filas.length })}
-          </p>
+          {/* El selector va encima de la lista, alineado a la derecha, que es
+              donde lo pone todo el mercado y por tanto donde se busca. */}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-3xs text-ink-faint" role="status">
+              {t("modulo.filasCargadas", { cuantas: filas.length })}
+            </p>
+            {/* Sin selector para un vocabulario: no hay tres formas de mirar
+                nueve palabras. */}
+            {vocabulario ? null : (
+              <SelectorVista
+                vista={vista}
+                alCambiar={setVista}
+                recuerdaComo={recuerdaComo}
+                puedeAgrupar={Boolean(campoAgrupacion)}
+              />
+            )}
+          </div>
+          {vocabulario ? (
+            <Etiquetas filas={filas} />
+          ) : vista === "agrupado" && campoAgrupacion ? (
+            <Agrupado
+              filas={filas}
+              campo={campoAgrupacion}
+              columnas={recurso.columnas}
+              enlace={aLaFicha}
+            />
+          ) : vista === "tarjetas" ? (
+            <Tarjetas filas={filas} columnas={recurso.columnas} enlace={aLaFicha} />
+          ) : (
+            <Tabla
+              filas={filas}
+              columnas={ordenar(filas, recurso.columnas)}
+              titulo={recurso.nombre}
+              // Las preferidas del recurso mandan de entrada; si no declara
+              // ninguna, las seis primeras. Y la elección se recuerda por
+              // recurso: las columnas útiles de cuentas no son las de casos.
+              porDefecto={recurso.columnas?.length || 6}
+              recuerdaComo={recuerdaComo}
+              // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una
+              // pantalla vacía es peor que no tener enlace, porque el usuario
+              // cree que se ha roto algo.
+              enlace={aLaFicha}
+            />
+          )}
           <Retenidos campos={retenidos} />
           {siguiente ? (
             <button

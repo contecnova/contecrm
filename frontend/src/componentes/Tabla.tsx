@@ -257,7 +257,7 @@ export function columnasDe(filas: Record<string, unknown>[]): string[] {
  * recortado a la mitad. Eso último es información verdadera e inutilizable:
  * nadie lee un JSON de un vistazo, y recortado ni siquiera entero.
  */
-function Celda({ valor, campo }: { valor: unknown; campo: string }) {
+export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
   if (!tieneDato(valor)) {
     const vacio = Array.isArray(valor) || (typeof valor === "object" && valor !== null);
     // Se distingue «no hay dato» de «la lista está vacía»: parece lo mismo y no
