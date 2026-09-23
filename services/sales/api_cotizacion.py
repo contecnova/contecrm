@@ -17,7 +17,7 @@ from sqlalchemy import select
 from services.sales import catalogo as cat
 from services.sales import presupuestos as pre
 from services.sales.catalogo import ListaPrecio
-from services.sales.presupuestos import Contrato, Presupuesto, SuscripcionCliente
+from services.sales.presupuestos import Contrato, Pedido, Presupuesto, SuscripcionCliente
 
 router_prod = APIRouter(prefix="/productos", tags=["catálogo"])
 router_precios = APIRouter(prefix="/listas-precio", tags=["catálogo"])
@@ -644,6 +644,21 @@ montar_listado(
     objeto="suscripcion",
     permiso="contract:read",
     nombre="Suscripciones",
+)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones con acciones sobre sus registros y sin forma de listarlos: se
+# podía desplegar un entorno, invocar un agente o cerrar una visita, y no ver
+# ninguno. A una acción sobre un registro se llega por su ficha, y a la ficha
+# por el listado: sin listado, la acción no la alcanza nadie.
+
+montar_listado(
+    router_ped,
+    modelo=Pedido,
+    objeto="pedido",
+    permiso="quote:read",
+    nombre="Pedidos",
 )
 
 

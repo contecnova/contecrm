@@ -611,4 +611,19 @@ montar_listado(
 )
 
 
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones con acciones sobre sus registros y sin forma de listarlos: se
+# podía desplegar un entorno, invocar un agente o cerrar una visita, y no ver
+# ninguno. A una acción sobre un registro se llega por su ficha, y a la ficha
+# por el listado: sin listado, la acción no la alcanza nadie.
+
+montar_listado(
+    router_mcp,
+    modelo=Exposicion,
+    objeto="exposicion_mcp_raiz",
+    permiso="integracion:read",
+    nombre="Agentes de IA expuestos",
+)
+
+
 ROUTERS_CONECTIVIDAD = [router, router_mcp, router_canales, router_fed, router_conv]

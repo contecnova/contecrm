@@ -18,7 +18,7 @@ from sqlalchemy import select
 from services.service import entitlements as ent
 from services.service import operacion as ope
 from services.service import servicio as svc
-from services.service.entitlements import Encuesta, Entitlement
+from services.service.entitlements import CreditoServicio, Encuesta, Entitlement
 from services.service.operacion import AgenteServicio, ColaCasos, ReglaAsignacion, ReglaEscalada
 
 router_colas = APIRouter(prefix="/colas", tags=["casos"])
@@ -687,6 +687,21 @@ montar_listado(
     objeto="encuesta",
     permiso="case:read",
     nombre="Encuestas de satisfacción",
+)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones con acciones sobre sus registros y sin forma de listarlos: se
+# podía desplegar un entorno, invocar un agente o cerrar una visita, y no ver
+# ninguno. A una acción sobre un registro se llega por su ficha, y a la ficha
+# por el listado: sin listado, la acción no la alcanza nadie.
+
+montar_listado(
+    router_creditos,
+    modelo=CreditoServicio,
+    objeto="credito_servicio",
+    permiso="case:read",
+    nombre="Créditos de servicio",
 )
 
 

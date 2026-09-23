@@ -19,17 +19,27 @@
  *   * lo obligatorio va delante y lo opcional se despliega: un alta generada de
  *     un contrato con cuarenta campos, toda a la vista, no la rellena nadie.
  *
+ * **Y un campo que apunta a otro registro se busca, no se teclea.** `cuenta_id`
+ * no es un texto: es un cliente. Pedir que se escriba
+ * `01a0cd8c-880c-7f85-96bc-0f01dce176a2` no es un formulario, es un volcado de
+ * la base con una etiqueta encima — y era lo que pedía «convertir un lead»,
+ * que es de las acciones más frecuentes que hay.
+ *
  * **No valida reglas de negocio.** Marca lo obligatorio y respeta el tipo y la
  * longitud que declara el esquema, porque eso es contrato; cualquier otra regla
  * —«el descuento no puede pasar del 30 %»— la comprueba el servicio, y
  * duplicarla aquí sería tener dos versiones de la misma regla.
  */
 
-import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icono } from "@/componentes/Icono";
+import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
+import { nombreDelRegistro } from "@/lib/formato";
+import type { Recurso } from "@/lib/modulos";
+import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
 
 export interface Props {
@@ -143,6 +153,7 @@ function Campo({
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
+  const referencia = recursoDeReferencia(campo.nombre);
   const comun = {
     id,
     "aria-describedby": ayuda,
@@ -186,6 +197,8 @@ function Campo({
         <Opciones campo={campo} valor={valor} alCambiar={alCambiar} ayuda={ayuda} />
       ) : campo.tipo === "etiquetas" ? (
         <Etiquetas campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
+      ) : referencia ? (
+        <Referencia campo={campo} recurso={referencia} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
       ) : campo.tipo === "objeto" ? (
         <Pares campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
       ) : campo.tipo === "texto_largo" ? (
@@ -430,6 +443,119 @@ function Pares({
       <button type="button" onClick={() => setCrudo(true)} className="btn-link mt-1">
         {t("formulario.editarComoJson")}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Elegir un registro de otro recurso, buscándolo por su nombre.
+ *
+ * Trae las primeras doscientas filas y filtra en el navegador. No es una
+ * búsqueda en el servidor y conviene decirlo: en una tabla de cien mil clientes
+ * esto encuentra solo entre los doscientos primeros. Se hace así porque los
+ * listados no publican todos un parámetro de búsqueda, y un buscador que
+ * funciona en casi todos los recursos es mejor que uno que solo funciona en
+ * tres — pero hay que cambiarlo en cuanto los listados lo admitan.
+ */
+function Referencia({
+  campo,
+  recurso,
+  valor,
+  alCambiar,
+  id,
+  ayuda,
+}: {
+  campo: CampoEsquema;
+  recurso: Recurso;
+  valor: unknown;
+  alCambiar: (v: unknown) => void;
+  id: string;
+  ayuda?: string;
+}) {
+  const { t } = useTranslation();
+  const [opciones, setOpciones] = useState<Record<string, unknown>[] | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [fallo, setFallo] = useState(false);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<unknown>(`${recurso.listar}?limite=200`, { signal: control.signal })
+      .then((r) => setOpciones(filas<Record<string, unknown>>(r.datos)))
+      .catch(salvoCancelacion(() => setFallo(true)));
+    return () => control.abort();
+  }, [recurso.listar]);
+
+  const elegido = opciones?.find((o) => String(o.id) === String(valor ?? ""));
+  const filtradas = (opciones ?? []).filter((o) =>
+    nombreDelRegistro(o).toLowerCase().includes(busqueda.trim().toLowerCase()),
+  );
+
+  if (fallo) {
+    // Si el listado no se puede leer, se deja escribir el identificador en vez
+    // de bloquear el formulario: quien tenga el identificador podrá seguir.
+    return (
+      <input
+        id={id}
+        aria-describedby={ayuda}
+        required={campo.obligatorio}
+        value={String(valor ?? "")}
+        onChange={(e) => alCambiar(e.target.value)}
+        placeholder={t("formulario.identificadorAMano")}
+        className="input-base font-mono text-3xs"
+      />
+    );
+  }
+
+  return (
+    <div>
+      {elegido ? (
+        <p className="mt-1 flex items-center gap-2">
+          <span className="chip-dato chip-dato--si">{nombreDelRegistro(elegido)}</span>
+          <button type="button" onClick={() => alCambiar("")} className="btn-link">
+            {t("formulario.cambiar")}
+          </button>
+        </p>
+      ) : (
+        <>
+          <input
+            id={id}
+            aria-describedby={ayuda}
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder={t("formulario.buscarRegistro", { recurso: recurso.nombre.toLowerCase() })}
+            className="input-base"
+            autoComplete="off"
+          />
+          {/* El valor real, para que el formulario lo siga exigiendo cuando es
+              obligatorio: el buscador de arriba no es el campo. */}
+          <input type="hidden" value={String(valor ?? "")} required={campo.obligatorio} readOnly />
+          {opciones === null ? (
+            <p className="mt-1 text-3xs text-ink-faint">{t("app.cargando")}</p>
+          ) : (
+            <ul className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-ink-dim/60">
+              {filtradas.slice(0, 40).map((o) => (
+                <li key={String(o.id)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alCambiar(String(o.id));
+                      setBusqueda("");
+                    }}
+                    className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-2xs text-ink hover:bg-paper-light"
+                  >
+                    <span className="truncate">{nombreDelRegistro(o) || String(o.id)}</span>
+                  </button>
+                </li>
+              ))}
+              {filtradas.length === 0 ? (
+                <li className="px-2.5 py-2 text-3xs text-ink-faint">
+                  {t("formulario.sinCoincidencias")}
+                </li>
+              ) : null}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -11,7 +11,13 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.deps import (
+    AutenticadoDep,
+    DbDep,
+    UowDep,
+    exige_permiso,
+    proyectar_para,  # noqa: F401
+)
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -246,6 +252,58 @@ def evaluacion(cuerpo: EvaluarIn, principal: AutenticadoDep) -> Any:
     return prv.evaluar(
         entregas=cuerpo.entregas, incidencias=cuerpo.incidencias, encuesta=cuerpo.encuesta
     )
+
+
+# ── Listado ───────────────────────────────────────────────────────────────
+# Se podían homologar proveedores y no se podía ver ninguno: las acciones
+# cuelgan de `/proveedores/{cuenta_id}/...` y a un registro se llega por su
+# listado.
+#
+# No es una tabla propia: **un proveedor es una cuenta con ese rol**. Duplicarlo
+# en otra tabla habría creado dos maestros del mismo dato, que es justo lo que
+# el modelo evita con `roles`.
+
+
+@router_proveedores.get(
+    "",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Listar proveedores",
+    description=(
+        "Las cuentas que llevan el rol `proveedor`. La misma empresa puede ser "
+        "cliente de una división y proveedor de otra, y por eso los roles son "
+        "una lista y no un tipo."
+    ),
+)
+def listar_proveedores(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+    from sqlalchemy import select
+
+    from services.party.modelos import Cuenta
+
+    params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
+    consulta = select(Cuenta).where(
+        Cuenta.deleted_at.is_(None),
+        Cuenta.roles.contains(["proveedor"]),
+    )
+    consulta = aplicar_orden_y_cursor(
+        consulta,
+        Cuenta,
+        params,
+        columnas_permitidas={"created_at", "nombre"},
+        objeto="cuenta",
+        principal=principal,
+        db=db,
+    )
+    filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    proyecta = proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)
+    return pagina.a_dict(proyecta)
 
 
 ROUTERS_PROVEEDORES = [router_proveedores]

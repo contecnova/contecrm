@@ -8,6 +8,10 @@ export default {
     saltarAlContenido: "Saltar al contenido",
   },
   formulario: {
+    buscarRegistro: "Busca un {{recurso}} por su nombre",
+    sinCoincidencias: "Nada coincide",
+    cambiar: "Cambiar",
+    identificadorAMano: "Pega aquí el identificador",
     sinContrato: "El contrato de esta operación no declara cuerpo, o no se ha podido leer.",
     masCampos: "Más campos ({{total}})",
     anadirValor: "Escribe y pulsa Intro",
@@ -117,6 +121,14 @@ export default {
     elegirColumnas: "Qué columnas se ven",
     masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
     masColumnas_other: "Hay {{count}} columnas más, sin ningún dato en estas filas.",
+  },
+  acciones: {
+    abrir: "Abrir",
+    titulo: "Qué se puede hacer con esto",
+    hecho: "Hecho",
+    noSeDeshace:
+      "Esto no se puede deshacer desde aquí. Sigue adelante solo si es lo que quieres.",
+    entendido: "Lo entiendo, sigue",
   },
   inicio: {
     empezar: "Dar de alta",

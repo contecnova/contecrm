@@ -31,7 +31,10 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { Acciones } from "@/componentes/Acciones";
+import { accionesDe } from "@/lib/acciones";
 import { escalar, humanizar, importe } from "@/lib/formato";
+import { useSuperficie } from "@/lib/permisos";
 
 interface Contacto360 {
   id: string;
@@ -110,6 +113,7 @@ export function Cuenta() {
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([]);
   const [casos, setCasos] = useState<Caso[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
+  const { superficie, tiene } = useSuperficie();
 
   const cargar = useCallback(
     (signal?: AbortSignal) => {
@@ -141,6 +145,11 @@ export function Cuenta() {
   if (fallo) return <Fallo error={fallo} reintentar={() => cargar()} />;
   if (!vista) return <Cargando />;
 
+  // Fusionar duplicados, verificar un identificador, geocodificar, dar de alta
+  // en el equipo de cuenta… todo lo que el servidor admite hacer con un
+  // cliente, sin escribir un botón por acción.
+  const acciones = accionesDe(superficie, "/api/v1/accounts", id, tiene);
+
   const { cuenta, contactos, timeline, identificadores, metricas } = vista;
   const nif = identificadores.find((i) => i.tipo === "nif")?.valor;
 
@@ -171,6 +180,8 @@ export function Cuenta() {
           </>
         }
       />
+
+      <Acciones acciones={acciones} servicio="party" alTerminar={() => cargar()} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]">
         {/* ── Datos ──────────────────────────────────────────────────── */}

@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.party import actividades_extra as ax
-from services.party.actividades_extra import Recurrencia
+from services.party.actividades_extra import Recurrencia, Visita
 
 router = APIRouter(prefix="/plantillas-actividad", tags=["actividades"])
 router_visitas = APIRouter(prefix="/visitas", tags=["actividades"])
@@ -230,6 +230,21 @@ montar_listado(
     objeto="recurrencia",
     permiso="activity:read",
     nombre="Actividades recurrentes",
+)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones con acciones sobre sus registros y sin forma de listarlos: se
+# podía desplegar un entorno, invocar un agente o cerrar una visita, y no ver
+# ninguno. A una acción sobre un registro se llega por su ficha, y a la ficha
+# por el listado: sin listado, la acción no la alcanza nadie.
+
+montar_listado(
+    router_visitas,
+    modelo=Visita,
+    objeto="visita",
+    permiso="activity:read",
+    nombre="Visitas",
 )
 
 

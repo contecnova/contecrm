@@ -39,9 +39,18 @@ interface Permisos {
   rutas: Set<string>;
   /** ¿Admite el servidor esta operación, y se la admite a esta sesión? */
   puedeOperar: (metodo: string, ruta: string) => boolean;
+  /** Lo que publica el servidor, para calcular las acciones de un registro. */
+  superficie: Superficie | null;
+  /** Si esta sesión tiene un permiso concreto. */
+  tiene: (permiso: string | null) => boolean;
 }
 
-const Ctx = createContext<Permisos>({ rutas: new Set(), puedeOperar: () => false });
+const Ctx = createContext<Permisos>({
+  rutas: new Set(),
+  puedeOperar: () => false,
+  superficie: null,
+  tiene: () => false,
+});
 
 export function ProveedorPermisos({
   sesion,
@@ -82,6 +91,8 @@ export function ProveedorPermisos({
       // tocaba es un botón que alguien ya ha pulsado.
       puedeOperar: (metodo, ruta) =>
         operacionPermitida(superficie, metodo, ruta, (p) => puede(sesion, p)),
+      superficie,
+      tiene: (permiso) => puede(sesion, permiso),
     }),
     [permitidas, superficie, sesion],
   );
@@ -97,4 +108,10 @@ export function usePermitidas(): Set<string> {
 /** Si el servidor admite esa operación y se la admite a esta sesión. */
 export function usePuedeOperar(): (metodo: string, ruta: string) => boolean {
   return useContext(Ctx).puedeOperar;
+}
+
+/** Lo que publica el servidor y qué permisos tiene esta sesión. */
+export function useSuperficie(): { superficie: Superficie | null; tiene: (p: string | null) => boolean } {
+  const { superficie, tiene } = useContext(Ctx);
+  return { superficie, tiene };
 }

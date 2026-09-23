@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.service import omnicanal as omni
-from services.service.omnicanal import CanalServicio
+from services.service.omnicanal import CanalServicio, Conversacion
 
 router_canales = APIRouter(prefix="/canales-servicio", tags=["omnicanal"])
 router_conversaciones = APIRouter(prefix="/conversaciones", tags=["omnicanal"])
@@ -358,6 +358,21 @@ montar_listado(
     objeto="canal_servicio",
     permiso="case:read",
     nombre="Canales de servicio",
+)
+
+
+# ── Listados ──────────────────────────────────────────────────────────────
+# Colecciones con acciones sobre sus registros y sin forma de listarlos: se
+# podía desplegar un entorno, invocar un agente o cerrar una visita, y no ver
+# ninguno. A una acción sobre un registro se llega por su ficha, y a la ficha
+# por el listado: sin listado, la acción no la alcanza nadie.
+
+montar_listado(
+    router_conversaciones,
+    modelo=Conversacion,
+    objeto="conversacion",
+    permiso="case:read",
+    nombre="Conversaciones",
 )
 
 

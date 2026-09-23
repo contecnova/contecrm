@@ -12,7 +12,7 @@
  * adjuntos de una cuenta y `sales` los de una oportunidad. Aquí solo se pasa.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -26,7 +26,9 @@ import {
   humanizar,
   nombreDelRegistro,
 } from "@/lib/formato";
-import { usePuedeOperar } from "@/lib/permisos";
+import { Acciones } from "@/componentes/Acciones";
+import { accionesDe } from "@/lib/acciones";
+import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -102,6 +104,7 @@ function Datos({
   const { t } = useTranslation();
   const navegar = useNavigate();
   const puedeOperar = usePuedeOperar();
+  const { superficie, tiene } = useSuperficie();
   const m = moduloDe(modulo);
   const recurso = m?.recursos[0];
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
@@ -113,6 +116,12 @@ function Datos({
   const [confirmando, setConfirmando] = useState(false);
 
   const ruta = recurso ? `${recurso.listar}/${id}` : "";
+  // Todo lo que el servidor admite hacer con este registro, leído del contrato.
+  // Son 144 en el sistema y ninguna se escribe a mano aquí.
+  const acciones = useMemo(
+    () => (recurso ? accionesDe(superficie, recurso.listar, id, tiene) : []),
+    [superficie, recurso, id, tiene],
+  );
   const puedeEditar = Boolean(ruta) && puedeOperar("PATCH", ruta);
   const puedeBorrar = Boolean(ruta) && puedeOperar("DELETE", ruta);
 
@@ -184,6 +193,10 @@ function Datos({
 
   return (
     <>
+      {!editando ? (
+        <Acciones acciones={acciones} servicio={recurso?.servicio ?? ""} alTerminar={cargar} />
+      ) : null}
+
       {(puedeEditar || puedeBorrar) && !editando ? (
         <div className="mb-3 flex gap-2">
           {puedeEditar ? (

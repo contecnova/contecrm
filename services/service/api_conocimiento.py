@@ -468,7 +468,7 @@ def _acceso(db: Any, tenant_id: UUID, acceso_id: UUID) -> prt.AccesoPortal:
 
 
 @router_portal.get(
-    "/{acceso_id}/resumen",
+    "/accesos/{acceso_id}/resumen",
     dependencies=[Depends(exige_permiso("case:read"))],
     summary="La portada del portal, en una llamada",
     description=(
@@ -485,7 +485,7 @@ def resumen(acceso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 @router_portal.get(
-    "/{acceso_id}/casos",
+    "/accesos/{acceso_id}/casos",
     dependencies=[Depends(exige_permiso("case:read"))],
     summary="Los casos que este contacto puede ver",
     description=(
@@ -507,7 +507,7 @@ class AbrirDesdePortal(BaseModel):
 
 
 @router_portal.post(
-    "/{acceso_id}/casos",
+    "/accesos/{acceso_id}/casos",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("case:write"))],
     summary="El cliente abre un caso desde el portal",

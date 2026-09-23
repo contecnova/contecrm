@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.metadata import entornos as ent
+from services.metadata.entornos import ENTORNOS
 
 router_entornos = APIRouter(prefix="/entornos", tags=["ALM y entornos"])
 
@@ -44,6 +45,38 @@ class DriftIn(BaseModel):
 
 class VolverIn(BaseModel):
     motivo: str
+
+
+# ── Listado ───────────────────────────────────────────────────────────────
+# Se podía desplegar, simular y volver atrás sobre un entorno, y no se podía
+# saber cuáles hay. Las acciones cuelgan de `/entornos/{entorno}/...` y a un
+# registro se llega por su listado.
+#
+# No es una tabla: los entornos son una lista cerrada del sistema. Se devuelven
+# igual, porque quien integra necesita saber qué nombres admite esa ruta sin
+# tener que adivinarlos ni leerse el código.
+
+
+@router_entornos.get(
+    "",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Entornos por los que pasa la configuración",
+    description=(
+        "Lista cerrada y en orden de promoción. No se pueden crear otros: un "
+        "entorno no es un dato, es una etapa del camino de la configuración "
+        "hasta producción."
+    ),
+)
+def listar_entornos() -> Any:
+    return {
+        "items": [
+            {"nombre": nombre, "orden": i, "es_produccion": nombre == "produccion"}
+            for i, nombre in enumerate(ENTORNOS)
+        ],
+        "siguiente": None,
+        "hay_mas": False,
+    }
 
 
 @router_entornos.post(

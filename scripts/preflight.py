@@ -95,6 +95,12 @@ GATES: list[Gate] = [
         "nadie lee un campo que no existe (lo que en ejecución es un 500)",
     ),
     Gate(
+        "acciones",
+        [PY, "-m", "pytest", "tests/unit/test_acciones_alcanzables.py", "-q", "--no-header"],
+        "tests",
+        "todo lo que la API deja hacer con un registro se alcanza desde el front",
+    ),
+    Gate(
         "trazabilidad",
         [PY, "-m", "pytest", "tests/unit/test_catalogo_trazabilidad.py", "-q", "--no-header"],
         "fast",
