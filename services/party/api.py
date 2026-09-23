@@ -66,6 +66,29 @@ from services.party.modelos import (
 
 # ── Cuentas ───────────────────────────────────────────────────────────────
 
+
+class ConMotivo(BaseModel):
+    """El motivo, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    motivo: str = Field(..., min_length=1, max_length=1000)
+
+
+class TransferirPropiedad(BaseModel):
+    """El traspaso de todo lo de una persona a otra, cuando alguien se va."""
+
+    de_usuario: UUID
+    a_usuario: UUID
+    motivo: str = Field("", max_length=1000)
+    simular: bool = Field(True, description="Cuenta sin mover nada")
+
+
 router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 
 
@@ -371,8 +394,8 @@ def fusionar_cuentas(
         "venía cada una, y repartirlas a ojo sería peor que dejarlas juntas."
     ),
 )
-def deshacer_fusion(fusion_id: UUID, motivo: str, db: DbDep) -> Any:
-    duplicados.deshacer_fusion(db, fusion_id, motivo=motivo)
+def deshacer_fusion(fusion_id: UUID, datos: ConMotivo, db: DbDep) -> Any:
+    duplicados.deshacer_fusion(db, fusion_id, motivo=datos.motivo)
     return {"deshecha": True, "aviso": "las relaciones reparentadas no se han devuelto"}
 
 
@@ -975,7 +998,8 @@ def restaurar_papelera(entrada_id: UUID, db: DbDep, principal: AutenticadoDep) -
         "cliente y tiene que poder demostrarse cuándo y por qué se hizo."
     ),
 )
-def purgar_papelera(motivo: str, db: DbDep, principal: AutenticadoDep) -> Any:
+def purgar_papelera(datos: ConMotivo, db: DbDep, principal: AutenticadoDep) -> Any:
+    motivo = datos.motivo
     if len(motivo.strip()) < 10:
         raise ErrorValidacion(
             "La purga exige un motivo escrito de al menos 10 caracteres",
@@ -996,13 +1020,12 @@ def purgar_papelera(motivo: str, db: DbDep, principal: AutenticadoDep) -> Any:
     ),
 )
 def transferir_propiedad(
-    de_usuario: UUID,
-    a_usuario: UUID,
-    motivo: str,
+    datos: TransferirPropiedad,
     db: DbDep,
     principal: AutenticadoDep,
-    simular: bool = Query(True),
 ) -> Any:
+    de_usuario, a_usuario = datos.de_usuario, datos.a_usuario
+    motivo, simular = datos.motivo, datos.simular
     if not simular and len(motivo.strip()) < 5:
         raise ErrorValidacion(
             "La transferencia exige un motivo escrito",
@@ -1354,6 +1377,7 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/party/buscar")
 # registra los ejecutores, así que tiene que pasar también en el worker: por eso
 # `trabajos_worker.py` importa esto mismo y no se fía de que la API lo haya
 # hecho, que en el worker no ha pasado.
+from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
@@ -1389,3 +1413,37 @@ ROUTERS = [
     router_trabajos,
     *routers_masivos,
 ]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_actividades,
+    modelo=Actividad,
+    objeto="actividad",
+    permiso_leer="activity:read",
+    permiso_escribir="activity:write",
+    nombre="Actividades",
+    parametro="actividad_id",
+)
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Estos tres ya se podían abrir —tienen su lectura escrita a mano, con sus
+# reglas de visibilidad— y no se podían ni corregir ni borrar desde ninguna
+# pantalla. Un contacto con el correo mal escrito se quedaba así para siempre.
+montar_ficha(
+    router_contactos,
+    modelo=Contacto,
+    objeto="contacto",
+    permiso_leer="contact:read",
+    permiso_escribir="contact:write",
+    permiso_borrar="contact:delete",
+    nombre="Contactos",
+    parametro="contacto_id",
+    # La lectura ya la tiene escrita, con su propia proyección y su control de
+    # visibilidad. Aquí solo se añade lo que faltaba: corregir y borrar.
+    con_lectura=False,
+)

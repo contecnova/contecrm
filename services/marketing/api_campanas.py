@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -463,3 +463,18 @@ montar_listado(
 
 
 ROUTERS_CAMPANAS = [router_campanas, router_atribucion, router_presion, router_rebotes]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_campanas,
+    modelo=Campana,
+    objeto="campana",
+    permiso_leer="campaign:read",
+    permiso_escribir="campaign:write",
+    nombre="Campañas",
+    parametro="campana_id",
+)

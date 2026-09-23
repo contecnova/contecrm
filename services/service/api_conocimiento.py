@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -40,7 +40,11 @@ class CrearArticulo(BaseModel):
 
 
 @router_conocimiento.post(
-    "",
+    # En `/articulos`, la misma ruta que los lista. Estaba en `""`, de modo que
+    # la colección se leía en un sitio y se creaba en otro: el front pedía el
+    # alta donde estaba el listado, no había POST ahí y el botón «Nuevo» de la
+    # base de conocimiento no creaba nada.
+    "/articulos",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("knowledge:write"))],
     summary="Crear un artículo",
@@ -701,3 +705,19 @@ montar_listado(
 
 
 ROUTERS_CONOCIMIENTO = [router_conocimiento, router_portal, router_comunidad]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_conocimiento,
+    modelo=Articulo,
+    objeto="articulo",
+    permiso_leer="conocimiento:read",
+    permiso_escribir="knowledge:write",
+    nombre="Artículos de conocimiento",
+    ruta="/articulos",
+    parametro="registro_id",
+)

@@ -186,6 +186,18 @@ export function filas<T>(datos: unknown): T[] {
   if (datos && typeof datos === "object") {
     const items = (datos as { items?: unknown }).items;
     if (Array.isArray(items)) return items as T[];
+    // Y una tercera forma, que había que medir para verla: cuarenta extremos
+    // devuelven su lista bajo **su propio nombre** —`{partners: […]}`,
+    // `{ordenes: […]}`, `{fondos: […]}`—. El front solo entendía `items`, así
+    // que esas cuarenta pantallas salían vacías tuvieran datos o no, y sin
+    // decir por qué: no es un error, es una lista que nadie encuentra.
+    //
+    // Se coge cuando hay **una sola** propiedad que sea un array. Con dos no se
+    // adivina —`{metricas: […], sin_dueno: […]}` podría ser cualquiera de las
+    // dos— y elegir mal enseñaría una lista equivocada, que es peor que no
+    // enseñar ninguna.
+    const arrays = Object.values(datos as Record<string, unknown>).filter(Array.isArray);
+    if (arrays.length === 1) return arrays[0] as T[];
   }
   return [];
 }

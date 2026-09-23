@@ -25,6 +25,20 @@ from services.integration import mcp as mcp_mod
 from services.integration import transportes_legado as transportes
 from services.integration.mcp import Exposicion
 
+
+class ConMotivo(BaseModel):
+    """El motivo, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    motivo: str = Field(..., min_length=1, max_length=1000)
+
+
 router = APIRouter(prefix="/conectores", tags=["conectores"])
 # `/agentes` ya es del servicio de atención —los agentes de soporte y su
 # presencia—, así que aquí va `/agentes-ia`. Dos servicios compartiendo prefijo
@@ -346,9 +360,9 @@ def invocar(exposicion: str, datos: Invocar, uow: UowDep, principal: Autenticado
     summary="Interruptor de emergencia",
     description="Corta ahora y se decide después, sin tocar permisos ni borrar nada.",
 )
-def detener(exposicion: str, uow: UowDep, motivo: str = Query(..., min_length=1)) -> Any:
-    fila = mcp_mod.detener(uow, exposicion=exposicion, motivo=motivo)
-    return {"clave": fila.clave, "detenida": fila.detenida, "motivo": fila.motivo_detencion}
+def detener(exposicion: str, datos: ConMotivo, uow: UowDep) -> Any:
+    fila = mcp_mod.detener(uow, exposicion=exposicion, motivo=datos.motivo)
+    return {"clave": fila.clave, "detenida": fila.detenida, "datos.motivo": fila.motivo_detencion}
 
 
 @router_mcp.get(

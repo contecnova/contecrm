@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -401,3 +402,27 @@ def prerelleno(clave: str, db: DbDep, principal: AutenticadoDep, destino: str = 
 
 
 ROUTERS_CANALES = [router, router_landings, router_dominios]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router,
+    modelo=can.Canal,
+    objeto="canal_marketing",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Canales de marketing",
+    parametro="canal_id",
+)
+montar_ficha(
+    router_landings,
+    modelo=can.Landing,
+    objeto="landing",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Landings",
+    parametro="landing_id",
+)

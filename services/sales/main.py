@@ -5,7 +5,6 @@ from __future__ import annotations
 from crmcore.service import crear_servicio
 
 from services.sales import (
-    eventos,  # noqa: F401  — registra los tipos de evento
     visibilidad,  # noqa: F401 — registra los resolutores
 )
 from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO

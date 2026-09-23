@@ -238,7 +238,10 @@ export const MODULOS: Modulo[] = [
   // ── Módulo 3 · Ventas ───────────────────────────────────────────────────
   {
     ruta: "oportunidades",
-    titulo: "Pipeline",
+    // «Oportunidades» y no «Pipeline»: el tablero donde se arrastran de etapa
+    // tiene su propia entrada en el menú, y dos sitios distintos con el mismo
+    // nombre obligan a entrar en los dos para saber cuál es cuál.
+    titulo: "Oportunidades",
     seccion: "3.1",
     capacidad: "CRM-07.04.03.13",
     grupo: "Ventas",
@@ -249,10 +252,19 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/opportunities",
         crear: "/api/v1/opportunities",
         servicio: "sales",
-        columnas: ["nombre", "etapa", "importe", "cierre_previsto"],
+        columnas: ["nombre", "etapa", "importe", "fecha_cierre", "estado"],
         permiso: "opportunity:read",
       },
-      { nombre: "Pipelines", listar: "/api/v1/pipelines", servicio: "sales" },
+      // «Procesos de venta» y no «Pipelines»: esto es la CONFIGURACIÓN de las
+      // etapas, no el tablero donde se mueven las oportunidades. Llamar a las
+      // dos cosas «pipeline» hace que quien busca el tablero acabe en una tabla
+      // de definiciones y concluya que el tablero ya no está.
+      {
+        nombre: "Procesos de venta",
+        listar: "/api/v1/pipelines",
+        servicio: "sales",
+        columnas: ["nombre", "descripcion", "activo", "por_defecto"],
+      },
       { nombre: "Motivos de pérdida", listar: "/api/v1/pipeline/motivos-perdida", servicio: "sales" },
     ],
   },
@@ -509,7 +521,7 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/segmentos",
         crear: "/api/v1/segmentos",
         servicio: "marketing",
-        columnas: ["nombre", "tipo", "miembros", "calculado_at"],
+        columnas: ["clave", "nombre", "objeto", "tamano", "tamano_at"],
         permiso: "segmento:read",
       },
       { nombre: "Supresiones", listar: "/api/v1/supresiones", servicio: "marketing" },
@@ -599,7 +611,7 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/conocimiento/articulos",
         crear: "/api/v1/conocimiento/articulos",
         servicio: "service",
-        columnas: ["titulo", "estado", "categoria"],
+        columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
         permiso: "knowledge:read",
       },
       { nombre: "Portal", listar: "/api/v1/portal/accesos", servicio: "service" },

@@ -71,11 +71,21 @@ def listar_tenants(
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
     estado: str = Query("", description="Filtra por estado"),
+    slug: str = Query("", description="Busca por identificador corto, entero o por partes"),
+    q: str = Query("", description="Busca en el nombre"),
 ) -> Any:
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
     consulta = select(Tenant)
     if estado:
         consulta = consulta.where(Tenant.estado == estado)
+    # Buscar por slug o por nombre. Sin esto, dar con una empresa concreta en
+    # una instalación con cientos exigía paginar hasta encontrarla, y quien
+    # llama por dentro —el arranque, que solo sabe el slug— no tenía forma de
+    # preguntarlo.
+    if slug:
+        consulta = consulta.where(Tenant.slug.ilike(f"%{slug}%"))
+    if q:
+        consulta = consulta.where(Tenant.nombre.ilike(f"%{q}%"))
     from crmcore.http.pagination import aplicar_orden_y_cursor
 
     consulta = aplicar_orden_y_cursor(

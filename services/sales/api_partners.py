@@ -18,6 +18,7 @@ from uuid import UUID
 
 from crmcore.authz.estanco import aplicar_estanco, exigir_propio
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -615,3 +616,18 @@ def un_registro(registro_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 ROUTERS_PARTNERS = [router, router_niveles, router_registros, router_portal]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router,
+    modelo=prt.Partner,
+    objeto="partner",
+    permiso_leer="partner:read",
+    permiso_escribir="partner:write",
+    nombre="Partners",
+    parametro="partner_id",
+)

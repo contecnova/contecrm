@@ -13,12 +13,28 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.service import activos as act
 from services.service import campo
+from services.service.activos import ActivoInstalado
+
+
+class ConMotivo(BaseModel):
+    """El motivo, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    motivo: str = Field(..., min_length=1, max_length=1000)
+
 
 router = APIRouter(prefix="/ordenes-trabajo", tags=["campo"])
 router_tecnicos = APIRouter(prefix="/tecnicos-campo", tags=["campo"])
@@ -375,9 +391,9 @@ def iniciar(orden_id: UUID, uow: UowDep) -> Any:
     dependencies=[Depends(exige_permiso("case:write"))],
     summary="Pausar con motivo",
 )
-def pausar(orden_id: UUID, uow: UowDep, motivo: str = Query(..., min_length=1)) -> Any:
-    fila = campo.pausar(uow, orden_id, motivo=motivo)
-    return {"id": str(fila.id), "estado": fila.estado, "motivo": fila.motivo_estado}
+def pausar(orden_id: UUID, datos: ConMotivo, uow: UowDep) -> Any:
+    fila = campo.pausar(uow, orden_id, motivo=datos.motivo)
+    return {"id": str(fila.id), "estado": fila.estado, "datos.motivo": fila.motivo_estado}
 
 
 @router.post(
@@ -427,24 +443,6 @@ def cerrar(orden_id: UUID, uow: UowDep, forzar: bool = Query(False)) -> Any:
 # ── Repuestos y almacén móvil ─────────────────────────────────────────────
 
 
-@router_repuestos.post(
-    "",
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exige_permiso("case:write"))],
-    summary="Dar de alta un repuesto",
-)
-def crear_repuesto(
-    uow: UowDep,
-    sku: str = Query(..., min_length=1),
-    nombre: str = Query(..., min_length=1),
-    unidad: str = Query("ud"),
-) -> Any:
-    fila = campo.Repuesto(tenant_id=uow.tenant_id, sku=sku, nombre=nombre, unidad=unidad)
-    uow.db.add(fila)
-    uow.db.flush()
-    return {"id": str(fila.id), "sku": fila.sku}
-
-
 @router_repuestos.get(
     "",
     dependencies=[Depends(exige_permiso("case:read"))],
@@ -468,6 +466,47 @@ def listar_repuestos(db: DbDep, principal: AutenticadoDep) -> Any:
             for f in filas
         ]
     }
+
+
+class CrearRepuesto(BaseModel):
+    """Una pieza del catálogo de repuestos.
+
+    El alta faltaba: se podía listar el catálogo, mover stock y pedir
+    reposición, pero no dar de alta una pieza. El catálogo nacía vacío y no
+    había forma de llenarlo, así que todo lo demás —el stock de la furgoneta,
+    la lista de lo que hay que cargar— tampoco servía para nada.
+    """
+
+    sku: str = Field(..., min_length=1, max_length=80)
+    nombre: str = Field(..., min_length=1, max_length=200)
+    unidad: str = Field("ud", max_length=20)
+    producto_id: UUID | None = None
+    coste: Decimal | None = None
+    activo: bool = True
+
+
+@router_repuestos.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Dar de alta una pieza en el catálogo de repuestos",
+)
+def crear_repuesto(datos: CrearRepuesto, uow: UowDep) -> Any:
+    from crmcore.errors import Conflicto
+    from sqlalchemy import select
+
+    existente = uow.db.execute(
+        select(campo.Repuesto).where(campo.Repuesto.sku == datos.sku)
+    ).scalar_one_or_none()
+    if existente is not None:
+        raise Conflicto(
+            f"Ya hay una pieza con la referencia «{datos.sku}»",
+            error_code="repuesto.sku_repetido",
+        )
+    fila = campo.Repuesto(tenant_id=uow.tenant_id, **datos.model_dump())
+    uow.db.add(fila)
+    uow.db.flush()
+    return {"id": str(fila.id), "sku": fila.sku, "nombre": fila.nombre}
 
 
 @router_repuestos.post(
@@ -752,3 +791,18 @@ ROUTERS_CAMPO = [
     router_sync,
     router_activos,
 ]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_activos,
+    modelo=ActivoInstalado,
+    objeto="activo",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Activos instalados",
+    parametro="activo_id",
+)

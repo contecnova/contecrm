@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -14,6 +14,28 @@ from sqlalchemy import select
 
 from services.service import postventa as pv
 from services.service import problemas as prb
+
+
+class Disposicion(BaseModel):
+    """Qué se hace con lo devuelto."""
+
+    disposicion: Literal["reacondicionar", "reparar", "chatarra", "proveedor"] = Field(
+        ..., description="Destino de la pieza devuelta"
+    )
+
+
+class ConMotivo(BaseModel):
+    """El motivo, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    motivo: str = Field(..., min_length=1, max_length=1000)
+
 
 router = APIRouter(prefix="/devoluciones", tags=["postventa"])
 router_exp = APIRouter(prefix="/expedientes", tags=["postventa"])
@@ -195,8 +217,8 @@ def autorizar(devolucion_id: UUID, datos: Autorizar, uow: UowDep, principal: Aut
     dependencies=[Depends(exige_permiso("case:write"))],
     summary="Rechazar con motivo",
 )
-def rechazar(devolucion_id: UUID, uow: UowDep, motivo: str = Query(..., min_length=1)) -> Any:
-    fila = pv.rechazar(uow, devolucion_id, motivo=motivo)
+def rechazar(devolucion_id: UUID, datos: ConMotivo, uow: UowDep) -> Any:
+    fila = pv.rechazar(uow, devolucion_id, motivo=datos.motivo)
     return {"id": str(fila.id), "estado": fila.estado}
 
 
@@ -266,9 +288,9 @@ def confirmar_abono(resolucion_id: UUID, datos: ConfirmarAbono, uow: UowDep) -> 
 def cerrar(
     devolucion_id: UUID,
     uow: UowDep,
-    disposicion: str = Query(..., description="reacondicionar · reparar · chatarra · proveedor"),
+    datos: Disposicion,
 ) -> Any:
-    fila = pv.cerrar(uow, devolucion_id, disposicion=disposicion)
+    fila = pv.cerrar(uow, devolucion_id, disposicion=datos.disposicion)
     return {"id": str(fila.id), "estado": fila.estado, "disposicion": fila.disposicion}
 
 
@@ -360,9 +382,9 @@ def acusar(expediente_id: UUID, uow: UowDep, documento_id: UUID | None = Query(N
         "«mucho trabajo» y dejaría de ser un plazo."
     ),
 )
-def suspender(expediente_id: UUID, uow: UowDep, motivo: str = Query(...)) -> Any:
-    fila = pv.suspender(uow, expediente_id, motivo=motivo)
-    return {"id": str(fila.id), "estado": fila.estado, "motivo": fila.motivo_suspension}
+def suspender(expediente_id: UUID, datos: ConMotivo, uow: UowDep) -> Any:
+    fila = pv.suspender(uow, expediente_id, motivo=datos.motivo)
+    return {"id": str(fila.id), "estado": fila.estado, "datos.motivo": fila.motivo_suspension}
 
 
 @router_exp.post(

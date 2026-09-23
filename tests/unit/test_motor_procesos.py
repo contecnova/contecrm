@@ -58,6 +58,48 @@ def test_validacion_detecta_paso_inalcanzable() -> None:
     assert any("huerfano" in p and "alcanzable" in p for p in problemas)
 
 
+def test_una_tarea_humana_sin_dueno_no_se_publica() -> None:
+    """Una tarea que nadie ve detiene el proceso para siempre, en silencio.
+
+    La bandeja enseña lo asignado a la persona o a alguno de sus roles. Un paso
+    humano sin `asignada_a`, `asignada_rol` ni `cola` crea una tarea que existe
+    en la base, para el proceso y no sale en ninguna pantalla: ni quien tendría
+    que resolverla se entera, ni quien mira el proceso entiende por qué lleva
+    tres semanas en el mismo paso. Se rechaza al publicar, que es cuando aún
+    hay alguien mirando la definición.
+    """
+    problemas = validar_definicion(
+        {
+            "inicio": "revisar",
+            "pasos": {
+                "revisar": {
+                    "tipo": "humano",
+                    "titulo": "Revisar",
+                    "rutas": {"si": "fin"},
+                },
+                "fin": {"tipo": "fin", "resultado": "ok"},
+            },
+        }
+    )
+    assert any("a quién le toca" in p for p in problemas)
+
+    # Con dueño, la misma definición vale.
+    assert not validar_definicion(
+        {
+            "inicio": "revisar",
+            "pasos": {
+                "revisar": {
+                    "tipo": "humano",
+                    "titulo": "Revisar",
+                    "asignada_rol": "responsable_ventas",
+                    "rutas": {"si": "fin"},
+                },
+                "fin": {"tipo": "fin", "resultado": "ok"},
+            },
+        }
+    )
+
+
 def test_validacion_acepta_definicion_correcta() -> None:
     assert (
         validar_definicion(

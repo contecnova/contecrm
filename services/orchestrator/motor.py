@@ -226,6 +226,19 @@ def validar_definicion(definicion: dict[str, Any]) -> list[str]:
                 problemas.append(
                     f"«{nombre}» declara rutas y no dice por qué salida enrutar (`segun`)"
                 )
+        if tipo == "humano" and not (
+            paso.get("asignada_a") or paso.get("asignada_rol") or paso.get("cola")
+        ):
+            # Una tarea humana sin dueño no la ve nadie: la bandeja enseña lo
+            # asignado a la persona o a alguno de sus roles, así que una tarea
+            # sin ninguna de las dos cosas existe en la base, detiene el
+            # proceso y no aparece en ninguna pantalla. El proceso se queda
+            # parado para siempre y nadie puede saber por qué.
+            problemas.append(
+                f"«{nombre}» es una tarea humana y no dice a quién le toca "
+                "(`asignada_a`, `asignada_rol` o `cola`): nadie la vería y el "
+                "proceso se quedaría parado"
+            )
         if tipo == "humano" and not paso.get("rutas"):
             problemas.append(f"«{nombre}» es una tarea humana y no declara rutas de respuesta")
         if tipo == "fin" and paso.get("siguiente"):

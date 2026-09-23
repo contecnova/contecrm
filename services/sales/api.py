@@ -315,6 +315,45 @@ def crear_oportunidad(datos: CrearOportunidad, uow: UowDep) -> Any:
     return svc.crear_oportunidad_nueva(uow, **datos.model_dump())
 
 
+def _una_oportunidad(db: Any, oportunidad: Any) -> Any:
+    """Una oportunidad con el nombre de su etapa y su pipeline resueltos."""
+    nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, [oportunidad])
+    return OportunidadOut.model_validate(
+        {
+            **oportunidad.__dict__,
+            "importe_ponderado": oportunidad.importe_ponderado,
+            "pipeline": nombres_pipeline.get(oportunidad.pipeline_id),
+            "etapa": nombres_etapa.get(oportunidad.etapa_id),
+        }
+    )
+
+
+def _nombres_de_etapa(db: Any, filas: list[Any]) -> tuple[dict, dict]:
+    """Nombre de cada pipeline y de cada etapa que aparecen en estas filas.
+
+    Dos consultas para la página entera, no una por oportunidad: con cincuenta
+    filas, resolverlo fila a fila son cien consultas para pintar dos columnas.
+    """
+    from services.sales.modelos import Etapa, Pipeline
+
+    etapas = {o.etapa_id for o in filas if o.etapa_id}
+    pipelines = {o.pipeline_id for o in filas if o.pipeline_id}
+    nombres_etapa = (
+        {e.id: e.nombre for e in db.execute(select(Etapa).where(Etapa.id.in_(etapas))).scalars()}
+        if etapas
+        else {}
+    )
+    nombres_pipeline = (
+        {
+            p.id: p.nombre
+            for p in db.execute(select(Pipeline).where(Pipeline.id.in_(pipelines))).scalars()
+        }
+        if pipelines
+        else {}
+    )
+    return nombres_pipeline, nombres_etapa
+
+
 @router_oportunidades.get(
     "",
     response_model=dict,
@@ -356,12 +395,16 @@ def listar_oportunidades(
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, filas)
     return pagina.a_dict(
-        lambda o: {
-            **OportunidadOut.model_validate(
-                {**o.__dict__, "importe_ponderado": o.importe_ponderado}
-            ).model_dump(mode="json")
-        }
+        lambda o: OportunidadOut.model_validate(
+            {
+                **o.__dict__,
+                "importe_ponderado": o.importe_ponderado,
+                "pipeline": nombres_pipeline.get(o.pipeline_id),
+                "etapa": nombres_etapa.get(o.etapa_id),
+            }
+        ).model_dump(mode="json")
     )
 
 
@@ -373,9 +416,7 @@ def listar_oportunidades(
 )
 def obtener_oportunidad(oportunidad_id: UUID, db: DbDep) -> Any:
     oportunidad = svc._oportunidad(db, oportunidad_id)
-    return OportunidadOut.model_validate(
-        {**oportunidad.__dict__, "importe_ponderado": oportunidad.importe_ponderado}
-    )
+    return _una_oportunidad(db, oportunidad)
 
 
 @router_oportunidades.patch(
@@ -392,9 +433,7 @@ def actualizar_oportunidad(oportunidad_id: UUID, datos: ActualizarOportunidad, u
     oportunidad = svc.actualizar_oportunidad(
         uow, oportunidad_id, datos.model_dump(exclude_unset=True, exclude_none=True)
     )
-    return OportunidadOut.model_validate(
-        {**oportunidad.__dict__, "importe_ponderado": oportunidad.importe_ponderado}
-    )
+    return _una_oportunidad(uow.db, oportunidad)
 
 
 @router_oportunidades.post(
@@ -416,9 +455,7 @@ def cambiar_etapa(oportunidad_id: UUID, datos: CambiarEtapa, uow: UowDep) -> Any
         motivo=datos.motivo,
         forzar=datos.forzar,
     )
-    return OportunidadOut.model_validate(
-        {**oportunidad.__dict__, "importe_ponderado": oportunidad.importe_ponderado}
-    )
+    return _una_oportunidad(uow.db, oportunidad)
 
 
 @router_oportunidades.post(
@@ -434,9 +471,7 @@ def cambiar_etapa(oportunidad_id: UUID, datos: CambiarEtapa, uow: UowDep) -> Any
 )
 def reabrir(oportunidad_id: UUID, datos: Reabrir, uow: UowDep) -> Any:
     oportunidad = svc.reabrir(uow, oportunidad_id, etapa_id=datos.etapa_id, motivo=datos.motivo)
-    return OportunidadOut.model_validate(
-        {**oportunidad.__dict__, "importe_ponderado": oportunidad.importe_ponderado}
-    )
+    return _una_oportunidad(uow.db, oportunidad)
 
 
 @router_oportunidades.get(
@@ -656,6 +691,26 @@ class CrearRegla(BaseModel):
     activa: bool = True
 
 
+class EditarRegla(BaseModel):
+    """Los campos de la regla que se pueden cambiar, todos opcionales.
+
+    Con esquema y no como `dict`: el formulario de edición se genera del
+    contrato, y un cuerpo sin esquema lo dejaba en blanco. Se podía crear una
+    regla de enrutado con su formulario y luego no había forma de cambiarla
+    desde ninguna pantalla.
+    """
+
+    nombre: str | None = Field(None, max_length=150)
+    descripcion: str | None = None
+    prioridad: int | None = Field(None, ge=0, le=10_000)
+    condiciones: list[CondicionEntrada] | None = None
+    combinacion: str | None = Field(None, pattern="^(todas|alguna)$")
+    estrategia: str | None = None
+    candidatos: list[UUID] | None = None
+    cola: str | None = Field(None, max_length=80)
+    activa: bool | None = None
+
+
 class ReglaOut(BaseModel):
     id: UUID
     nombre: str
@@ -720,22 +775,13 @@ def crear_regla(datos: CrearRegla, uow: UowDep) -> Any:
     summary="Editar una regla",
     dependencies=[Depends(exige_permiso("lead:configurar"))],
 )
-def editar_regla(regla_id: UUID, datos: dict, uow: UowDep) -> Any:
+def editar_regla(regla_id: UUID, datos: EditarRegla, uow: UowDep) -> Any:
     fila = uow.db.get(enr.ReglaEnrutamiento, regla_id)
     if fila is None:
         raise NoEncontrado("Regla no encontrada", error_code="sales.regla_no_existe")
-    permitidos = {
-        "nombre",
-        "descripcion",
-        "prioridad",
-        "condiciones",
-        "combinacion",
-        "estrategia",
-        "candidatos",
-        "cola",
-        "activa",
-    }
-    cambios = {k: v for k, v in datos.items() if k in permitidos}
+    # `exclude_unset` y no `exclude_none`: así se distingue «no lo toco» de
+    # «déjalo vacío», que en `cola` son cosas distintas.
+    cambios = datos.model_dump(exclude_unset=True, mode="json")
     # Se valida la regla RESULTANTE, no el parche: cambiar solo la estrategia
     # puede dejarla sin destino, y validar el parche aislado no lo vería.
     resultante = {
@@ -958,7 +1004,7 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/sales/buscar")
 # proceso.
 from crmcore.authz.decision import exigir  # noqa: E402
 from crmcore.http.deps import proyectar_para  # noqa: E402
-from crmcore.http.listados import montar_listado  # noqa: E402
+from crmcore.http.listados import montar_ficha, montar_listado  # noqa: E402
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
@@ -1207,3 +1253,19 @@ ROUTERS = [
 # que alguien la cambie a `/api/v2/` el día que exista y se le rompa el
 # formulario sin avisar.
 ROUTERS_SIN_PREFIJO = [router_publico]
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Estos tres ya se podían abrir —tienen su lectura escrita a mano, con sus
+# reglas de visibilidad— y no se podían ni corregir ni borrar desde ninguna
+# pantalla. Un contacto con el correo mal escrito se quedaba así para siempre.
+montar_ficha(
+    router_leads,
+    modelo=Lead,
+    objeto="lead",
+    permiso_leer="lead:read",
+    permiso_escribir="lead:write",
+    nombre="Leads",
+    parametro="lead_id",
+    con_lectura=False,
+)

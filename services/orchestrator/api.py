@@ -10,11 +10,13 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.orchestrator import motor as mtr
 from services.orchestrator.esquemas import (
     ArrancarProceso,
+    CambioDeEstado,
     DefinicionOut,
     EditarVariables,
     InstanciaOut,
@@ -22,6 +24,7 @@ from services.orchestrator.esquemas import (
     PublicarDefinicion,
     ResponderTarea,
     SimularProceso,
+    TablaEditada,
     TareaOut,
 )
 from services.orchestrator.modelos import (
@@ -30,6 +33,20 @@ from services.orchestrator.modelos import (
     PasoEjecutado,
     TareaHumana,
 )
+
+
+class DelegarTarea(BaseModel):
+    """En quién se delega, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    usuario_id: UUID = Field(..., description="Quién se queda la tarea")
+
 
 router_def = APIRouter(prefix="/procesos", tags=["procesos"])
 
@@ -118,9 +135,9 @@ def publicar(datos: PublicarDefinicion, db: DbDep, principal: AutenticadoDep) ->
     ),
 )
 def cambiar_estado_definicion(
-    clave: str, version: int, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+    clave: str, version: int, cuerpo: CambioDeEstado, db: DbDep, principal: AutenticadoDep
 ) -> Any:
-    nuevo = str(cuerpo.get("estado", ""))
+    nuevo = cuerpo.estado
     definicion = db.execute(
         select(DefinicionProceso).where(
             DefinicionProceso.tenant_id == principal.tenant_id,
@@ -486,20 +503,20 @@ def responder(tarea_id: UUID, datos: ResponderTarea, db: DbDep, principal: Auten
     response_model=TareaOut,
     summary="Delegar una tarea en otra persona",
 )
-def delegar(tarea_id: UUID, usuario_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+def delegar(tarea_id: UUID, datos: DelegarTarea, db: DbDep, principal: AutenticadoDep) -> Any:
     tarea = db.get(TareaHumana, tarea_id)
     if tarea is None or tarea.tenant_id != principal.tenant_id:
         raise NoEncontrado("La tarea no existe", error_code="tarea.no_encontrada")
     if tarea.estado != "pendiente":
         raise Conflicto("Esa tarea ya está resuelta", error_code="tarea.ya_resuelta")
     tarea.delegada_por = principal.id
-    tarea.asignada_a = usuario_id
+    tarea.asignada_a = datos.usuario_id
     registrar(
         db,
         accion="tarea.delegada",
         objeto="tarea_humana",
         objeto_id=tarea.id,
-        datos={"de": str(principal.id), "a": str(usuario_id)},
+        datos={"de": str(principal.id), "a": str(datos.usuario_id)},
     )
     return tarea
 
@@ -562,10 +579,10 @@ def ver_tabla(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
         "hueco es un caso que no existe— pero queda registrada."
     ),
 )
-def guardar_tabla(clave: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep) -> Any:
+def guardar_tabla(clave: str, cuerpo: TablaEditada, db: DbDep, principal: AutenticadoDep) -> Any:
     from services.orchestrator import decision as dec
 
-    datos = {**cuerpo, "clave": clave}
+    datos = {**cuerpo.model_dump(exclude_none=True), "clave": clave}
     tabla = dec.guardar(db, principal.tenant_id, datos)
     registrar(
         db,
@@ -603,17 +620,18 @@ def evaluar_tabla(
         "de cobertura, solapes y reglas que nunca podrán casar."
     ),
 )
-def validar_tabla(cuerpo: dict[str, Any]) -> Any:
+def validar_tabla(cuerpo: TablaEditada) -> Any:
     from services.orchestrator import decision as dec
 
-    problemas = dec.validar(cuerpo)
+    tabla = cuerpo.model_dump(exclude_none=True)
+    problemas = dec.validar(tabla)
     return {
         "valida": not problemas,
         "problemas": problemas,
         # El análisis solo tiene sentido sobre una tabla bien formada: sobre una
         # con reglas que apuntan a entradas inexistentes diría cosas que no
         # significan nada.
-        "analisis": dec.analizar(cuerpo) if not problemas else None,
+        "analisis": dec.analizar(tabla) if not problemas else None,
     }
 
 

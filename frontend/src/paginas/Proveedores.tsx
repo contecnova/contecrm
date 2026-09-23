@@ -15,14 +15,22 @@
  * **Y «no consta» no se pinta como «está bien».** Un proveedor sin documentos no
  * es uno en regla: es uno al que no se le ha pedido nada, y esa diferencia es la
  * que decide si alguien hace algo.
+ *
+ * **Se elige de una lista, no se teclea un identificador.** La pantalla pedía
+ * «Identificador de la cuenta» en una caja vacía: para usarla había que salir a
+ * buscar un UUID a otra pantalla, copiarlo y volver. Nadie hace eso con prisa —y
+ * esta pantalla se abre siempre con prisa—, así que en la práctica no se podía
+ * usar. La lista sale de `GET /api/v1/proveedores`, que ya existía y no la
+ * llamaba nadie.
  */
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { cn } from "@/lib/utiles";
 
 interface Documento {
   clave: string;
@@ -30,6 +38,14 @@ interface Documento {
   vence: string;
   dias: number;
   bloquea: boolean;
+}
+
+interface Proveedor {
+  cuenta_id: string;
+  nombre?: string;
+  categorias?: string[];
+  homologado?: boolean;
+  bloqueado?: boolean;
 }
 
 interface EstadoDocumental {
@@ -46,9 +62,18 @@ interface EstadoDocumental {
 export function Proveedores() {
   const { t } = useTranslation();
   const [cuenta, setCuenta] = useState("");
+  const [proveedores, setProveedores] = useState<Proveedor[] | null>(null);
   const [datos, setDatos] = useState<EstadoDocumental | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<unknown>("/api/v1/proveedores?limite=200", { signal: control.signal })
+      .then((r) => setProveedores(filas<Proveedor>(r.datos)))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, []);
 
   useEffect(() => {
     if (!cuenta) return;
@@ -71,16 +96,32 @@ export function Proveedores() {
         icono="local_shipping"
       />
 
-      <label className="mt-4 block text-2xs text-ink-muted" htmlFor="prov-cuenta">
-        {t("proveedores.cuenta")}
-      </label>
-      <input
-        id="prov-cuenta"
-        className="mt-1 w-full max-w-md rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-xs text-ink"
-        value={cuenta}
-        onChange={(e) => setCuenta(e.target.value.trim())}
-        placeholder={t("proveedores.cuentaAyuda")}
-      />
+      {proveedores === null ? (
+        <Cargando />
+      ) : proveedores.length === 0 ? (
+        /* Vacío de verdad: no hay ninguna cuenta marcada como proveedor. Se
+           dice así, y no con una caja de texto que no lleva a ninguna parte. */
+        <Vacio titulo={t("proveedores.sinProveedores")} detalle={t("proveedores.comoSeCrea")} />
+      ) : (
+        <nav className="mt-4 flex flex-wrap gap-2" aria-label={t("proveedores.cuenta")}>
+          {proveedores.map((p) => (
+            <button
+              key={p.cuenta_id}
+              type="button"
+              onClick={() => setCuenta(p.cuenta_id)}
+              className={cn(
+                "rounded-xl border px-3 py-1.5 text-xs",
+                p.cuenta_id === cuenta
+                  ? "border-accent bg-accent/10 text-accent-text"
+                  : "border-line text-ink hover:bg-paper-sunk",
+              )}
+            >
+              {p.nombre || p.cuenta_id}
+              {p.bloqueado ? <span className="ml-2 text-danger">·</span> : null}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {fallo ? <Fallo error={fallo} /> : null}
       {cargando ? <Cargando /> : null}

@@ -75,6 +75,18 @@ case "$MODO" in
       # Y las políticas de aislamiento, que una tabla nueva no trae puestas.
       python scripts/aplicar_rls.py "$SERVICIO"
     fi
+    # La cuenta que opera la plataforma, tal y como la dice el `.env`. Se
+    # aplica en cada arranque y no solo la primera vez, porque si el fichero
+    # cambia es porque se quiere que cambie. Va en dos partes porque cada
+    # servicio tiene su propio rol de base de datos: `tenancy` crea su tenant e
+    # `identity` la cuenta, resolviendo el tenant por su slug.
+    if [[ -n "${SUPERADMIN_EMAIL:-}" && ("$SERVICIO" == "tenancy" || "$SERVICIO" == "identity") ]]; then
+      # No aborta el arranque si falla: una cuenta de administración que no se
+      # puede crear es un problema serio, pero dejar el servicio caído por ello
+      # deja la instalación entera fuera, que es peor.
+      python scripts/cuenta_de_arranque.py --parte "$([[ "$SERVICIO" == "tenancy" ]] && echo tenant || echo cuenta)" \
+        || echo "AVISO: no se ha podido dejar puesta la cuenta de arranque" >&2
+    fi
     PUERTO="${SERVICE_PORT:-8000}"
     WORKERS="${UVICORN_WORKERS:-1}"
     echo "Arrancando ${SERVICIO} en :${PUERTO} (${WORKERS} worker/s)"

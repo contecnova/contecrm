@@ -479,6 +479,8 @@ def duplicado(caso_id: UUID, datos: Duplicado, uow: UowDep, principal: Autentica
     return {"id": str(caso.id), "duplicado_de": str(caso.duplicado_de_id)}
 
 
+from crmcore.http.listados import montar_ficha  # noqa: E402
+
 from services.service.api_conocimiento import ROUTERS_CONOCIMIENTO  # noqa: E402
 from services.service.api_omnicanal import (  # noqa: E402
     ROUTERS_OMNICANAL,
@@ -571,3 +573,19 @@ ROUTERS = [
 ]
 
 __all__ = ["ROUTERS", "ROUTERS_SIN_PREFIJO"]
+
+
+# ── Lo que a la ficha le faltaba: corregir y borrar ───────────────────────
+# Estos tres ya se podían abrir —tienen su lectura escrita a mano, con sus
+# reglas de visibilidad— y no se podían ni corregir ni borrar desde ninguna
+# pantalla. Un contacto con el correo mal escrito se quedaba así para siempre.
+montar_ficha(
+    router_casos,
+    modelo=Caso,
+    objeto="caso",
+    permiso_leer="case:read",
+    permiso_escribir="case:write",
+    nombre="Casos",
+    parametro="caso_id",
+    con_lectura=False,
+)

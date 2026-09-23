@@ -37,7 +37,7 @@ import { useTranslation } from "react-i18next";
 import { Icono } from "@/componentes/Icono";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import type { CampoEsquema } from "@/lib/contrato";
-import { nombreDelRegistro } from "@/lib/formato";
+import { humanizar, importe, nombreDelRegistro } from "@/lib/formato";
 import type { Recurso } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
@@ -199,6 +199,8 @@ function Campo({
         <Etiquetas campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
       ) : referencia ? (
         <Referencia campo={campo} recurso={referencia} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
+      ) : campo.tipo === "lineas" ? (
+        <Lineas campo={campo} valor={valor} alCambiar={alCambiar} ayuda={ayuda} />
       ) : campo.tipo === "objeto" ? (
         <Pares campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
       ) : campo.tipo === "texto_largo" ? (
@@ -357,6 +359,146 @@ function Etiquetas({
 }
 
 /** Objeto: pares clave/valor, con el JSON detrás de un interruptor. */
+/**
+ * Una lista de cosas con estructura, editada como una tabla.
+ *
+ * Es el último sitio donde quedaba JSON en la cara: las líneas de una oferta
+ * se pedían como `[{"referencia":"L1","precio_venta":1000,"coste":700,
+ * "cantidad":1}]` en un textarea. Quien hace un presupuesto no escribe eso, y
+ * el que lo intente se equivocará en una coma y no sabrá por qué no se guarda.
+ *
+ * Las columnas salen del esquema de la línea, como todo lo demás aquí: una
+ * lista escrita a mano se queda corta el día que el servicio añada el
+ * descuento, y ese campo ya no se podría rellenar desde ninguna pantalla.
+ *
+ * Al pie va la **suma de cada columna numérica**. No es un total calculado —el
+ * precio final lo decide el servicio, con sus impuestos y sus descuentos— y
+ * por eso se llama suma: dar un total aquí sería inventarse una cifra que
+ * luego no cuadra con la del documento.
+ */
+function Lineas({
+  campo,
+  valor,
+  alCambiar,
+  ayuda,
+}: {
+  campo: CampoEsquema;
+  valor: unknown;
+  alCambiar: (v: unknown) => void;
+  ayuda?: string;
+}) {
+  const filas = Array.isArray(valor) ? (valor as Record<string, unknown>[]) : [];
+  const columnas = campo.subcampos;
+
+  const cambiar = (indice: number, nombre: string, nuevo: unknown) =>
+    alCambiar(filas.map((f, i) => (i === indice ? { ...f, [nombre]: nuevo } : f)));
+
+  const sumas = columnas.map((c) =>
+    c.tipo === "numero"
+      ? filas.reduce((total, f) => total + (Number(f[c.nombre]) || 0), 0)
+      : null,
+  );
+  const haySumas = sumas.some((s) => s !== null) && filas.length > 0;
+
+  return (
+    <div className="space-y-2" aria-describedby={ayuda}>
+      {filas.length > 0 ? (
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full text-sm">
+            <thead className="bg-paper-sunk text-ink-muted">
+              <tr>
+                {columnas.map((c) => (
+                  <th key={c.nombre} className="px-3 py-2 text-left font-medium">
+                    {c.titulo}
+                    {c.obligatorio ? <span className="text-danger"> *</span> : null}
+                  </th>
+                ))}
+                <th className="w-10 px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila, indice) => (
+                <tr key={indice} className="border-t border-line">
+                  {columnas.map((c) => (
+                    <td key={c.nombre} className="px-2 py-1">
+                      {c.opciones.length > 0 ? (
+                        <select
+                          aria-label={`${c.titulo}, línea ${indice + 1}`}
+                          className="w-full rounded-lg border border-line bg-paper px-2 py-1"
+                          value={String(fila[c.nombre] ?? "")}
+                          onChange={(e) => cambiar(indice, c.nombre, e.target.value)}
+                        >
+                          <option value="">—</option>
+                          {c.opciones.map((o) => (
+                            <option key={o} value={o}>
+                              {humanizar(o)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          aria-label={`${c.titulo}, línea ${indice + 1}`}
+                          className="w-full rounded-lg border border-line bg-paper px-2 py-1"
+                          type={c.tipo === "numero" ? "number" : c.tipo === "fecha" ? "date" : "text"}
+                          value={String(fila[c.nombre] ?? "")}
+                          onChange={(e) =>
+                            cambiar(
+                              indice,
+                              c.nombre,
+                              c.tipo === "numero"
+                                ? e.target.value === ""
+                                  ? ""
+                                  : Number(e.target.value)
+                                : e.target.value,
+                            )
+                          }
+                        />
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1 text-right">
+                    <button
+                      type="button"
+                      className="rounded-lg px-2 py-1 text-ink-muted hover:bg-paper-sunk hover:text-danger"
+                      aria-label={`Quitar la línea ${indice + 1}`}
+                      onClick={() => alCambiar(filas.filter((_, i) => i !== indice))}
+                    >
+                      <Icono nombre="close" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {haySumas ? (
+              <tfoot className="border-t border-line bg-paper-sunk">
+                <tr>
+                  {columnas.map((c, i) => (
+                    <td key={c.nombre} className="px-3 py-2 text-ink-muted">
+                      {sumas[i] === null ? (i === 0 ? "Suma" : "") : importe(sumas[i] as number)}
+                    </td>
+                  ))}
+                  <td />
+                </tr>
+              </tfoot>
+            ) : null}
+          </table>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-muted">Todavía no hay ninguna línea.</p>
+      )}
+      <button
+        type="button"
+        className="rounded-xl border border-line px-3 py-1.5 text-sm hover:bg-paper-sunk"
+        onClick={() =>
+          alCambiar([...filas, Object.fromEntries(columnas.map((c) => [c.nombre, ""]))])
+        }
+      >
+        <Icono nombre="add" /> Añadir línea
+      </button>
+    </div>
+  );
+}
+
 function Pares({
   campo,
   valor,

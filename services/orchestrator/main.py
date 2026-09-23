@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
-from services.orchestrator import eventos  # noqa: F401  (registra los tipos de evento)
 from services.orchestrator.api import ROUTERS
 from services.orchestrator.api_aprobaciones import ROUTERS_APROBACIONES
 from services.orchestrator.organizacion import consumir as consumir_organigrama

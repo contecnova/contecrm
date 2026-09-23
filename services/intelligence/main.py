@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
-from services.intelligence import eventos  # noqa: F401  (registra los tipos de evento)
 from services.intelligence.api import ROUTERS
 from services.intelligence.api_modelos import ROUTERS_MODELOS
 

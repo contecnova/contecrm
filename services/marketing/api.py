@@ -401,6 +401,23 @@ def listar_modelos(db: DbDep, principal: AutenticadoDep) -> Any:
     ]
 
 
+from crmcore.http.listados import montar_ficha  # noqa: E402
+
 from services.marketing.api_campanas import ROUTERS_CAMPANAS  # noqa: E402
 
 ROUTERS = [router_segmentos, router_supresiones, router_puntuacion, *ROUTERS_CAMPANAS]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_segmentos,
+    modelo=Segmento,
+    objeto="segmento",
+    permiso_leer="segment:read",
+    permiso_escribir="segment:write",
+    nombre="Segmentos",
+    parametro="segmento_id",
+)

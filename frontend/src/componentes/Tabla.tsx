@@ -53,7 +53,12 @@ import {
 } from "@/lib/formato";
 
 export interface Props {
-  filas: Record<string, unknown>[];
+  /**
+   * Las filas tal y como llegan de la API. Pueden no ser objetos: hay extremos
+   * que devuelven una lista de textos —los motivos de pérdida admitidos, por
+   * ejemplo— y eso también es un listado legítimo.
+   */
+  filas: unknown[];
   /** Columnas en orden. Si no se pasan, salen de las filas. */
   columnas?: string[];
   titulo?: string;
@@ -87,7 +92,7 @@ function leerElegidas(recuerdaComo?: string): string[] | null {
 }
 
 export function Tabla({
-  filas,
+  filas: filasCrudas,
   columnas,
   titulo,
   enlace,
@@ -95,6 +100,7 @@ export function Tabla({
   recuerdaComo,
 }: Props) {
   const { t } = useTranslation();
+  const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
   const pedidas = columnas ?? columnasDe(filas);
   // Con dato en alguna fila. Una columna vacía en todas es ruido.
   const disponibles = pedidas.filter((c) => filas.some((fila) => tieneDato(fila[c])));
@@ -216,6 +222,24 @@ export function Tabla({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Deja cada fila como un objeto, venga como venga.
+ *
+ * Una lista de textos —`["competencia", "sin_presupuesto", …]`— es una
+ * respuesta perfectamente normal, y aquí llegaba a `Object.keys("competencia")`,
+ * que devuelve `["0","1","2",…]`. El resultado era una tabla con una columna
+ * **por cada letra** y una letra en cada celda: la pantalla de motivos de
+ * pérdida se leía en vertical, carácter a carácter. Información verdadera y
+ * completamente inutilizable, que es la peor forma de estar mal.
+ */
+export function normalizar(filas: unknown[]): Record<string, unknown>[] {
+  return filas.map((fila) =>
+    fila !== null && typeof fila === "object" && !Array.isArray(fila)
+      ? (fila as Record<string, unknown>)
+      : { valor: fila },
   );
 }
 

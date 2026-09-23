@@ -51,6 +51,37 @@ FORCE**. Un fallo de aislamiento entre tenants solo se reproduce fielmente aquí
 
 Para programar, el modo local basta y es mucho más rápido.
 
+## Quién administra la plataforma
+
+Hay dos cosas distintas y conviene no confundirlas:
+
+* **Administrar una empresa** — usuarios, roles, campos, procesos de esa
+  empresa. Lo hace un usuario con rol `admin` dentro de su tenant.
+* **Administrar contecrm** — dar de alta empresas, mirar su consumo, suspender
+  una, entrar como un usuario con motivo y traza. Eso es *plataforma*, y ningún
+  administrador de empresa lo ve, por muchos permisos que tenga.
+
+La cuenta de plataforma **la dice el `.env`** y se aplica en cada arranque:
+
+```bash
+SUPERADMIN_EMAIL=plataforma@tu-dominio.com
+SUPERADMIN_PASSWORD=...           # de verdad: es la cuenta con más poder
+SUPERADMIN_TENANT=plataforma      # su propia empresa, para no entrar en la de un cliente
+```
+
+Al levantar, `tenancy` crea ese tenant e `identity` crea o reajusta la cuenta.
+Se entra con esos tres datos —correo, contraseña y `plataforma`— en la pantalla
+de acceso. Si cambias la contraseña en el fichero, cambia en el siguiente
+arranque: una cuenta así no puede depender de que alguien recuerde haberla
+creado.
+
+Para ponerla a mano sin reiniciar:
+
+```bash
+docker compose exec tenancy python scripts/cuenta_de_arranque.py --parte tenant
+docker compose exec identity python scripts/cuenta_de_arranque.py --parte cuenta
+```
+
 ## Datos de demostración
 
 ```bash
@@ -59,6 +90,31 @@ Para programar, el modo local basta y es mucho más rápido.
 
 Crea un tenant `demo` con un plan, un administrador y la configuración inicial.
 Imprime las credenciales al terminar.
+
+### Una empresa con datos de verdad
+
+`setup.sh demo` deja lo mínimo para entrar. Para ver la aplicación con volumen
+—cartera, embudo, casos— y con su **configuración puesta** hay dos pasos:
+
+```bash
+# Lo que se mueve: cuentas, contactos, oportunidades, casos
+python scripts/sembrar_empresa.py --slug ficosa --escala mediana \
+    --email direccion@ficosa.example --contrasena '...'
+
+# Lo que las sostiene: canales, plantillas, procesos, reglas, riesgos, roles
+python scripts/sembrar_configuracion.py --tenant ficosa \
+    --email direccion@ficosa.example --contrasena '...' \
+    --aprobador soporte.jefe@ficosa.example
+```
+
+El segundo va **por la API y no por la base de datos**, a propósito: lo que deja
+sembrado es exactamente lo que una persona podría haber creado desde el front
+—pasa por las mismas validaciones, los mismos permisos y los mismos eventos— y
+si un alta está rota, el sembrado se para y lo dice.
+
+`--aprobador` es el correo de una segunda persona. Hace falta porque hay cosas
+que el sistema no deja aprobar a quien las crea: publicar un artículo de
+conocimiento hacia el cliente, por ejemplo.
 
 ## Primer recorrido
 

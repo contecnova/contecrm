@@ -114,7 +114,9 @@ def test_emitir_un_evento_que_no_esta_en_el_catalogo_se_rechaza(db: Any, tenant_
 
 
 def test_emitir_un_evento_del_catalogo_pasa(db: Any, tenant_id: UUID) -> None:
-    import services.party.eventos  # noqa: F401 — registra los tipos
+    # El catálogo de negocio vive en el núcleo desde que se comprobó que
+    # ningún proceso importaba los ocho módulos de servicio a la vez.
+    import crmcore.events.dominio  # noqa: F401 — registra los tipos
 
     uow = _Uow(db, tenant_id)
     construir(uow)["emitir_evento"](tipo="account.created", cuenta_id="x", _tenant_id=tenant_id)

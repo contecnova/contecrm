@@ -6,7 +6,6 @@ from crmcore.service import crear_servicio
 
 from services.marketing import (
     ajustes,  # noqa: F401  (registra las claves de ajuste)
-    eventos,  # noqa: F401  (registra los tipos de evento)
 )
 from services.marketing.api import ROUTERS
 from services.marketing.api_canales import ROUTERS_CANALES

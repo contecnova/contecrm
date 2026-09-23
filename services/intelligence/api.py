@@ -23,6 +23,30 @@ from services.intelligence import guardias as gua
 from services.intelligence import rag as rag_mod
 from services.intelligence import uso as med
 
+
+class Veredicto(BaseModel):
+    """Si se acepta o se descarta lo que la IA propuso.
+
+    Por cuerpo: la acción se ofrece desde la ficha con un formulario sacado del
+    contrato, y un parámetro de query no está en él.
+    """
+
+    aceptar: bool = Field(..., description="true acepta el valor propuesto; false lo descarta")
+
+
+class ConMotivo(BaseModel):
+    """El motivo, por cuerpo y no por query.
+
+    Por cuerpo por dos razones: el formulario de la acción se genera del
+    contrato y un parámetro de query no aparece en él —la pantalla salía sin
+    ningún campo y al enviar contestaba que faltaba el motivo—, y porque un
+    texto libre escrito por una persona puede llevar nombres dentro, y la URL
+    queda en el log de acceso y en el historial del navegador.
+    """
+
+    motivo: str = Field(..., min_length=1, max_length=1000)
+
+
 router = APIRouter(prefix="/ia", tags=["ia"])
 router_modelos = APIRouter(prefix="/ia/proveedores", tags=["ia"])
 router_uso = APIRouter(prefix="/ia/uso", tags=["ia"])
@@ -162,9 +186,9 @@ def eleccion(db: DbDep, principal: AutenticadoDep, uso: str = Query("redaccion")
     summary="Interruptor de IA del tenant",
     description="Corta ahora y se decide después, sin borrar configuración.",
 )
-def apagar(uow: UowDep, motivo: str = Query(..., min_length=1)) -> Any:
-    fila = rut.apagar(uow, motivo=motivo)
-    return {"ia_activa": fila.ia_activa, "motivo": fila.motivo_apagado}
+def apagar(datos: ConMotivo, uow: UowDep) -> Any:
+    fila = rut.apagar(uow, motivo=datos.motivo)
+    return {"ia_activa": fila.ia_activa, "datos.motivo": fila.motivo_apagado}
 
 
 @router.get(
@@ -337,10 +361,8 @@ def extraidos(
         "escribir desde aquí saltaría el metamodelo para la IA y para nadie más."
     ),
 )
-def decidir_campo(
-    campo_id: UUID, uow: UowDep, principal: AutenticadoDep, aceptar: bool = Query(...)
-) -> Any:
-    return ext.decidir(uow, campo_id, aceptar=aceptar, por=principal.id)
+def decidir_campo(campo_id: UUID, datos: Veredicto, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return ext.decidir(uow, campo_id, aceptar=datos.aceptar, por=principal.id)
 
 
 # ── Uso y trazabilidad ────────────────────────────────────────────────────

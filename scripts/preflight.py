@@ -96,9 +96,18 @@ GATES: list[Gate] = [
     ),
     Gate(
         "acciones",
-        [PY, "-m", "pytest", "tests/unit/test_acciones_alcanzables.py", "-q", "--no-header"],
+        [
+            PY,
+            "-m",
+            "pytest",
+            "tests/unit/test_acciones_alcanzables.py",
+            "tests/unit/test_rutas_del_front.py",
+            "tests/unit/test_catalogo_eventos.py",
+            "-q",
+            "--no-header",
+        ],
         "tests",
-        "todo lo que la API deja hacer con un registro se alcanza desde el front",
+        "lo que la API deja hacer se alcanza desde el front, y lo que emite se puede recibir",
     ),
     Gate(
         "trazabilidad",

@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -383,3 +383,18 @@ ROUTERS_OMNICANAL = [
     router_consola,
 ]
 ROUTERS_SIN_PREFIJO = [router_entrada]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_canales,
+    modelo=CanalServicio,
+    objeto="canal_servicio",
+    permiso_leer="case:read",
+    permiso_escribir="service:write",
+    nombre="Canales de servicio",
+    parametro="canal_id",
+)

@@ -55,7 +55,7 @@ export default {
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",
     proveedores: "Proveedores",
-    embudo: "Embudo de ventas",
+    embudo: "Tablero de ventas",
     coste: "Coste",
     inteligencia: "Inteligencia",
     puesto: "Puesto",
@@ -81,18 +81,18 @@ export default {
     sesionDe: "Sesión iniciada como",
   },
   pipeline: {
-    titulo: "Embudo de ventas",
+    titulo: "Tablero de ventas",
     entradilla:
       "Arrastra una oportunidad para cambiarla de etapa. Cada columna dice " +
       "cuántas hay y cuánto suman.",
-    elegir: "Elegir embudo",
+    elegir: "Elegir pipeline",
     columnaVacia: "Nada en esta etapa",
     moverA: "Mover «{{oportunidad}}» a otra etapa",
-    sinPipeline: "Todavía no hay ningún embudo",
+    sinPipeline: "Todavía no hay ningún pipeline",
     sinPipelineDetalle:
-      "Un embudo son las etapas por las que pasa una venta. Sin él no se pueden " +
+      "Un pipeline son las etapas por las que pasa una venta. Sin él no se pueden " +
       "dar de alta oportunidades.",
-    irAConfigurar: "Crear un embudo",
+    irAConfigurar: "Crear un pipeline",
   },
   cuenta: {
     datos: "Datos",
@@ -375,6 +375,10 @@ export default {
       "Si puedes encargarle esto hoy, si tiene los papeles y a quién llamar cuando falla.",
     cuenta: "Cuenta del proveedor",
     cuentaAyuda: "Identificador de la cuenta",
+    sinProveedores: "Todavía no hay ningún proveedor",
+    comoSeCrea:
+      "Un proveedor es una cuenta a la que se le ha dado ese papel. " +
+      "Se marca desde la ficha de la cuenta, en «Dar papel de proveedor».",
     sinDatos: "No consta ningún documento",
     vencidos: "Vencidos",
     porVencer: "Vencen pronto",

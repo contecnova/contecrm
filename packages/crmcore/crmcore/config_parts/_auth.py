@@ -144,3 +144,21 @@ class _AuthSettings(BaseSettings):
     # completa nunca. `lax` sigue bloqueando el envío en peticiones cruzadas de
     # escritura, que es de lo que protege.
     sesion_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    # ── Cuenta de arranque (la de quien opera la plataforma) ──────────────
+    # Sin esto, una instalación recién levantada no tiene a nadie que pueda
+    # abrir la consola de plataforma —dar de alta empresas, ver su consumo,
+    # suspender una—: `es_plataforma` existía en el modelo, lo exigían ciento
+    # sesenta y una operaciones, y no había ninguna forma de ponerlo. El
+    # producto arrancaba sin dueño.
+    #
+    # Manda el fichero y se aplica **en cada arranque**, contraseña incluida:
+    # una cuenta de esta potencia no puede depender de que alguien recuerde
+    # haberla creado, y si se cambia en el `.env` es porque se quiere cambiar.
+    superadmin_email: str = ""
+    superadmin_password: SecretStr = SecretStr("")
+    # El tenant al que pertenece. Entrar exige uno —no hay sesión sin empresa—,
+    # así que el operador tiene el suyo propio y no se cuela en el de un
+    # cliente, donde vería sus datos sin querer.
+    superadmin_tenant: str = "plataforma"
+    superadmin_nombre: str = "Operación de la plataforma"

@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -16,6 +16,7 @@ from sqlalchemy import select
 from services.marketing import ajustes as _ajustes  # noqa: F401  (registra las claves)
 from services.marketing import correo as cor
 from services.marketing import recorridos as rec
+from services.marketing.correo import BloqueCorreo, CategoriaPreferencia, PlantillaMarketing
 from services.marketing.recorridos import Recorrido
 
 router = APIRouter(prefix="/recorridos", tags=["recorridos"])
@@ -526,3 +527,39 @@ montar_listado(
 
 
 ROUTERS_RECORRIDOS = [router, router_correo, router_preferencias]
+
+
+# ── Fichas: ver, editar y borrar ──────────────────────────────────────────
+# De los veintidós recursos que el front deja crear, uno solo se podía abrir,
+# editar y borrar. Estos no tenían ni ficha: se creaban y no había forma de
+# volver a verlos —ni de corregir una errata— desde ninguna pantalla.
+montar_ficha(
+    router_correo,
+    modelo=PlantillaMarketing,
+    objeto="plantilla_correo_marketing",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Plantillas de correo",
+    ruta="/plantillas",
+    parametro="registro_id",
+)
+montar_ficha(
+    router_correo,
+    modelo=BloqueCorreo,
+    objeto="bloque_correo",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Bloques de correo",
+    ruta="/bloques",
+    parametro="registro_id",
+)
+montar_ficha(
+    router_preferencias,
+    modelo=CategoriaPreferencia,
+    objeto="categoria_preferencia",
+    permiso_leer="marketing:read",
+    permiso_escribir="marketing:write",
+    nombre="Categorías de preferencia",
+    ruta="/categorias",
+    parametro="registro_id",
+)

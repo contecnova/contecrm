@@ -549,6 +549,42 @@ def tipos_registro(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
     ]
 
 
+class TipoDeRegistroIn(BaseModel):
+    """Un tipo de registro del objeto: qué ve y qué elige quien lo usa.
+
+    Tipado y no `dict` libre: el formulario de la acción se genera del
+    contrato, así que un cuerpo sin esquema se pinta como un formulario vacío
+    y la pantalla no deja hacer lo que anuncia.
+    """
+
+    nombre: str = Field("", max_length=200, description="Cómo se llama este tipo para quien lo usa")
+    layout: dict[str, Any] | None = Field(
+        None, description="Distribución de la ficha para este tipo"
+    )
+    valores_lista: dict[str, list[str]] | None = Field(
+        None,
+        description="Valores admitidos por campo de lista en este tipo, si se recortan",
+    )
+    campos_ocultos: list[str] | None = Field(None, description="Campos que este tipo no enseña")
+    por_defecto: bool = False
+
+
+class RenombrarCampoIn(BaseModel):
+    """Los dos nombres del campo durante el renombrado compatible."""
+
+    desde: str = Field(..., min_length=1, max_length=120, description="Nombre actual")
+    hasta: str = Field(..., min_length=1, max_length=120, description="Nombre nuevo")
+
+
+class RetirarCampoIn(BaseModel):
+    """El nombre viejo que se retira, y cuánto silencio se exige antes."""
+
+    desde: str = Field(..., min_length=1, max_length=120, description="Nombre viejo a retirar")
+    dias_sin_uso: int = Field(
+        30, ge=0, description="Días que tiene que llevar sin usarse para poder retirarlo"
+    )
+
+
 @router_gobierno.put(
     "/objetos/{nombre}/tipos/{clave}",
     response_model=dict,
@@ -556,7 +592,7 @@ def tipos_registro(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
     summary="Crear o cambiar un tipo de registro",
 )
 def guardar_tipo_registro(
-    nombre: str, clave: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+    nombre: str, clave: str, cuerpo: TipoDeRegistroIn, db: DbDep, principal: AutenticadoDep
 ) -> Any:
     from services.metadata.gobierno import guardar_tipo
 
@@ -566,11 +602,11 @@ def guardar_tipo_registro(
         tenant_id=principal.tenant_id,
         objeto_id=objeto.id,
         clave=clave,
-        nombre=str(cuerpo.get("nombre") or clave),
-        layout=cuerpo.get("layout"),
-        valores_lista=cuerpo.get("valores_lista"),
-        campos_ocultos=cuerpo.get("campos_ocultos"),
-        por_defecto=bool(cuerpo.get("por_defecto")),
+        nombre=cuerpo.nombre or clave,
+        layout=cuerpo.layout,
+        valores_lista=cuerpo.valores_lista,
+        campos_ocultos=cuerpo.campos_ocultos,
+        por_defecto=cuerpo.por_defecto,
     )
     return {"clave": fila.clave, "nombre": fila.nombre, "por_defecto": fila.por_defecto}
 
@@ -587,7 +623,7 @@ def guardar_tipo_registro(
     ),
 )
 def renombrar_campo(
-    nombre: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+    nombre: str, cuerpo: RenombrarCampoIn, db: DbDep, principal: AutenticadoDep
 ) -> Any:
     from services.metadata.gobierno import anunciar_renombrado
 
@@ -595,8 +631,8 @@ def renombrar_campo(
         db,
         tenant_id=principal.tenant_id,
         objeto=nombre,
-        desde=str(cuerpo.get("desde", "")),
-        hasta=str(cuerpo.get("hasta", "")),
+        desde=cuerpo.desde,
+        hasta=cuerpo.hasta,
     )
     return {"desde": cambio.campo_origen, "hasta": cambio.campo_destino, "estado": cambio.estado}
 
@@ -613,7 +649,7 @@ def renombrar_campo(
     ),
 )
 def retirar_campo_viejo(
-    nombre: str, cuerpo: dict[str, Any], db: DbDep, principal: AutenticadoDep
+    nombre: str, cuerpo: RetirarCampoIn, db: DbDep, principal: AutenticadoDep
 ) -> Any:
     from services.metadata.gobierno import completar_renombrado
 
@@ -621,8 +657,8 @@ def retirar_campo_viejo(
         db,
         tenant_id=principal.tenant_id,
         objeto=nombre,
-        desde=str(cuerpo.get("desde", "")),
-        dias_sin_uso=int(cuerpo.get("dias_sin_uso", 30)),
+        desde=cuerpo.desde,
+        dias_sin_uso=cuerpo.dias_sin_uso,
     )
     return {"desde": cambio.campo_origen, "estado": cambio.estado, "usos": cambio.usos_del_viejo}
 

@@ -85,6 +85,13 @@ class EjecucionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class Interruptor(BaseModel):
+    """Si la regla queda encendida o apagada. Por cuerpo, para que la acción
+    tenga formulario: por query no aparece en el contrato y salía vacía."""
+
+    activa: bool = Field(..., description="true la enciende, false la apaga")
+
+
 router = APIRouter(prefix="/automatizaciones", tags=["automatizaciones"])
 
 
@@ -182,14 +189,14 @@ def probar(
     dependencies=[Depends(exige_permiso("automation:write"))],
     summary="Activar o desactivar una regla",
 )
-def activar(regla_id: UUID, activa: bool, db: DbDep, principal: AutenticadoDep) -> Any:
+def activar(regla_id: UUID, datos: Interruptor, db: DbDep, principal: AutenticadoDep) -> Any:
     regla = db.get(Automatizacion, regla_id)
     if regla is None or regla.tenant_id != principal.tenant_id:
         raise NoEncontrado("La automatización no existe", error_code="automatizacion.no_encontrada")
-    regla.activa = activa
+    regla.activa = datos.activa
     registrar(
         db,
-        accion="automatizacion.activada" if activa else "automatizacion.desactivada",
+        accion="automatizacion.activada" if datos.activa else "automatizacion.desactivada",
         objeto="automatizacion",
         objeto_id=regla.id,
         datos={"nombre": regla.nombre},

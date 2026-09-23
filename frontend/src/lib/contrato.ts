@@ -33,6 +33,13 @@ export interface CampoEsquema {
     | "lista"
     | "lista_multiple"
     | "etiquetas"
+    /**
+     * Una lista de cosas con estructura: las líneas de una oferta, los campos
+     * de una landing. Antes caían en `objeto` y se pintaban como un textarea
+     * de JSON, es decir, se le pedía a quien hace un presupuesto que escribiera
+     * `[{"referencia":"L1","precio_venta":1000,…}]` a mano y sin equivocarse.
+     */
+    | "lineas"
     | "objeto";
   obligatorio: boolean;
   titulo: string;
@@ -40,6 +47,8 @@ export interface CampoEsquema {
   opciones: string[];
   maximo: number | null;
   formato: string;
+  /** Columnas de cada línea, cuando el campo es una lista de cosas con estructura. */
+  subcampos: CampoEsquema[];
 }
 
 interface Esquema {
@@ -108,6 +117,30 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
       opciones: ((p.enum ?? elemento?.enum ?? []) as unknown[]).map(String),
       maximo: p.maxLength ?? null,
       formato: p.format ?? "",
+      subcampos: subcamposDe(documento, elemento),
+    };
+  });
+}
+
+/** Las columnas de una línea, sacadas del esquema de sus elementos. */
+function subcamposDe(documento: Documento, elemento?: Esquema): CampoEsquema[] {
+  if (!elemento || elemento.type !== "object" || !elemento.properties) return [];
+  const obligatorios = new Set(elemento.required ?? []);
+  return Object.entries(elemento.properties).map(([nombre, prop]) => {
+    const p = resolver(documento, prop);
+    const interno = p.items ? resolver(documento, p.items) : undefined;
+    return {
+      nombre,
+      tipo: tipoDe(p, interno),
+      obligatorio: obligatorios.has(nombre),
+      titulo: humanizar(p.title ?? nombre),
+      descripcion: p.description ?? "",
+      opciones: ((p.enum ?? interno?.enum ?? []) as unknown[]).map(String),
+      maximo: p.maxLength ?? null,
+      formato: p.format ?? "",
+      // Una sola vuelta: una línea dentro de una línea no se edita en una
+      // tabla, se edita en su propia pantalla.
+      subcampos: [],
     };
   });
 }
@@ -147,7 +180,9 @@ function tipoDe(esquema: Esquema, elemento?: Esquema): CampoEsquema["tipo"] {
       // uno a uno. Las dos son listas y ninguna es JSON.
       if (elemento?.enum) return "lista_multiple";
       if (!elemento || elemento.type === "string" || elemento.type === "number") return "etiquetas";
-      return "objeto";
+      // Con estructura conocida se edita como una tabla de líneas; sin ella no
+      // hay columnas que pintar y se queda en el editor genérico.
+      return elemento.type === "object" && elemento.properties ? "lineas" : "objeto";
     case "object":
       return "objeto";
     default:

@@ -178,6 +178,14 @@ class OportunidadOut(BaseModel):
     contacto_id: UUID | None = None
     pipeline_id: UUID
     etapa_id: UUID
+    # Los nombres, no solo los identificadores. Un listado de oportunidades con
+    # la columna «etapa» vacía y un UUID al lado no dice en qué punto está
+    # ninguna venta, que es lo único que se mira en esa pantalla. Se resuelven
+    # aquí, en el servicio dueño de las etapas: pedirle al front que cruce dos
+    # listados para pintar una columna es cargarle un `join` y garantizar que
+    # cada pantalla lo haga distinto.
+    pipeline: str | None = None
+    etapa: str | None = None
     importe: Decimal
     moneda: str
     probabilidad: int

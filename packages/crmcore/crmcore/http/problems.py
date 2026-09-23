@@ -154,6 +154,53 @@ async def manejar_repetida(_peticion: Request, exc: Exception) -> JSONResponse:
     )
 
 
+async def manejar_integridad(request: Request, exc: Exception) -> JSONResponse:
+    """Violaciones de las reglas que la base de datos ya conoce.
+
+    Un `UNIQUE` incumplido no es un fallo del sistema: es que alguien ha
+    intentado crear algo que ya está. Salía como «Error interno. Si el problema
+    persiste, facilita el identificador de la petición al soporte», que le dice
+    a quien lo lee exactamente lo contrario de lo que pasa —que reintente, que
+    llame a soporte— cuando lo que tiene que hacer es cambiar el nombre.
+
+    Se traduce aquí y no endpoint por endpoint porque la mitad ya lo
+    comprobaban antes de insertar y la otra mitad no, y esa mitad daba un 500
+    por cada alta repetida. Comprobar antes sigue siendo mejor —permite un
+    mensaje que nombra el campo— pero esto es la red que impide que la ausencia
+    de la comprobación se note como una caída.
+
+    Una clave ajena o un `NOT NULL` incumplidos sí son un fallo de programación:
+    esos siguen siendo 500, porque el usuario no puede hacer nada al respecto y
+    fingir que sí lo oculta.
+    """
+    from psycopg import errors as pg
+    from sqlalchemy.exc import IntegrityError
+
+    from crmcore.errors import Conflicto
+
+    original = getattr(exc, "orig", None)
+    if not isinstance(exc, IntegrityError) or not isinstance(original, pg.UniqueViolation):
+        return await manejar_no_previsto(request, exc)
+
+    rid = _request_id(request)
+    # El nombre de la restricción es lo único de esto que se puede enseñar: el
+    # detalle de Postgres lleva los valores, y esos pueden ser datos personales.
+    restriccion = getattr(getattr(original, "diag", None), "constraint_name", "") or ""
+    logger.warning(
+        "http.duplicado",
+        ruta=str(request.url.path),
+        restriccion=restriccion,
+        request_id=rid,
+    )
+    err = Conflicto(
+        "Ya existe un registro con esos datos: alguno de los campos que lo "
+        "identifican tiene que ser distinto.",
+        error_code="conflicto.duplicado",
+        detalle={"restriccion": restriccion} if restriccion else None,
+    )
+    return _respuesta(err.a_problema(instancia=str(request.url.path), request_id=rid), 409)
+
+
 def registrar_manejadores(app: FastAPI) -> None:
     """Engancha los manejadores. Lo llama la factoría de servicio."""
     from crmcore.http.idempotency import RespuestaRepetida
@@ -162,4 +209,9 @@ def registrar_manejadores(app: FastAPI) -> None:
     app.add_exception_handler(CrmError, manejar_error_dominio)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, manejar_validacion)  # type: ignore[arg-type]
     app.add_exception_handler(StarletteHTTPException, manejar_http)  # type: ignore[arg-type]
+    # Antes del manejador general: el de `Exception` se queda con todo lo que
+    # no tenga uno más concreto.
+    from sqlalchemy.exc import IntegrityError
+
+    app.add_exception_handler(IntegrityError, manejar_integridad)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, manejar_no_previsto)

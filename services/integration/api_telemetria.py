@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -15,6 +15,13 @@ from sqlalchemy import select
 
 from services.integration import canonico as can
 from services.integration import telemetria as tel
+
+
+class LadoQueGana(BaseModel):
+    """Qué versión se queda cuando las dos han cambiado."""
+
+    gana: Literal["nuestro", "externo"] = Field(..., description="Qué lado prevalece")
+
 
 router = APIRouter(prefix="/dispositivos", tags=["telemetria"])
 router_canonico = APIRouter(prefix="/modelo-canonico", tags=["canonico"])
@@ -302,10 +309,10 @@ def conflictos(db: DbDep, principal: AutenticadoDep, sistema: str = Query("")) -
 def resolver(
     conflicto_id: UUID,
     uow: UowDep,
+    datos: LadoQueGana,
     principal: AutenticadoDep,
-    gana: str = Query(..., description="nuestro · externo"),
 ) -> Any:
-    return can.resolver_conflicto(uow, conflicto_id, gana=gana, por=principal.id)
+    return can.resolver_conflicto(uow, conflicto_id, gana=datos.gana, por=principal.id)
 
 
 ROUTERS_TELEMETRIA = [router, router_canonico, router_sync]
