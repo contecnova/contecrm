@@ -186,6 +186,8 @@ export default {
       "Estos documentos viven en el gestor documental. Aquí está el enlace y para qué está enlazado; el estado real —versión, aprobación, obsolescencia— es de allí.",
   },
   modulo: {
+    sinRegistros: "Todavía no hay {{recurso}}",
+    sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",
     escribeParaBuscar: "Escribe al menos {{minimo}} caracteres para buscar.",
     nuevo: "Nuevo",
     cancelar: "Cancelar",
@@ -195,6 +197,9 @@ export default {
     seccion: "sección",
   },
   consola: {
+    eligeArea: "Elige un área de la lista",
+    eligeAreaDetalle:
+      "Cada área agrupa las operaciones de administración que publica un servicio.",
     titulo: "Administración",
     intro:
       "Todo lo que hay aquí sale del contrato de la API. No existe ninguna acción de esta consola que no sea una llamada publicada.",
@@ -245,6 +250,10 @@ export default {
     noSeMide: "no se mide desde aquí",
   },
   errores: {
+    soloPlataformaDetalle:
+      "Da de alta empresas y ve su consumo quien opera contecrm, no cada empresa " +
+      "sobre las demás.",
+    sinPermisoDetalle: "Si necesitas verlo, pídeselo a quien administra tu organización.",
     soloPlataforma:
       "Esto es de quien administra la plataforma, no de una empresa concreta.",
     generico: "Algo ha ido mal",

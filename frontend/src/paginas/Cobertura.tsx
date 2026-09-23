@@ -20,6 +20,7 @@ import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { MODULOS } from "@/lib/modulos";
 import { cargarSuperficie, recursoDe, type Superficie } from "@/lib/superficie";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { salvoCancelacion } from "@/lib/api";
 
 export function Cobertura() {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ export function Cobertura() {
 
   useEffect(() => {
     const control = new AbortController();
-    cargarSuperficie(control.signal).then(setSuperficie).catch(setFallo);
+    cargarSuperficie(control.signal).then(setSuperficie).catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 

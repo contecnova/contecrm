@@ -155,10 +155,19 @@ function RecursoVista({
   }, [recurso.crear, recurso.servicio]);
 
   if (!puedeVer) {
+    // Con el mismo lenguaje que el resto de estados. Una línea de texto suelta
+    // en medio de la pantalla se lee como un fallo a medias; un recuadro con su
+    // icono se lee como lo que es: aquí no te toca entrar.
     return (
-      <p className="mt-4 text-2xs text-ink-faint" role="status">
-        {recurso.solo_plataforma ? t("errores.soloPlataforma") : t("errores.sinPermiso")}
-      </p>
+      <Vacio
+        icono="lock"
+        titulo={recurso.solo_plataforma ? t("errores.soloPlataforma") : t("errores.sinPermiso")}
+        detalle={
+          recurso.solo_plataforma
+            ? t("errores.soloPlataformaDetalle")
+            : t("errores.sinPermisoDetalle")
+        }
+      />
     );
   }
 
@@ -177,11 +186,14 @@ function RecursoVista({
 
   return (
     <div className="mt-4">
-      {recurso.crear ? (
+      {/* Cuando la lista está vacía el botón no va aquí: lo ofrece el propio
+          estado vacío, y dos botones iguales a diez centímetros uno de otro
+          hacen dudar de si son lo mismo. */}
+      {recurso.crear && (creando || (filas !== null && filas.length > 0)) ? (
         <button
           type="button"
           onClick={() => setCreando((v) => !v)}
-          className="mb-3 rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper hover:bg-accent-soft"
+          className={creando ? "btn-secondary mb-3" : "btn-primary mb-3"}
         >
           {creando ? t("modulo.cancelar") : t("modulo.nuevo")}
         </button>
@@ -228,7 +240,19 @@ function RecursoVista({
       ) : filas === null ? (
         <Cargando />
       ) : filas.length === 0 ? (
-        <Vacio />
+        // El vacío ofrece lo único que se puede hacer aquí: dar de alta el
+        // primero. Un recuadro que solo dice «no hay nada» deja a quien mira en
+        // el mismo sitio en el que estaba.
+        <Vacio
+          icono="inbox"
+          titulo={t("modulo.sinRegistros", { recurso: recurso.nombre.toLowerCase() })}
+          detalle={recurso.crear ? t("modulo.sinRegistrosDetalle") : t("vacio.detalle")}
+          accion={
+            recurso.crear && campos
+              ? { texto: t("modulo.nuevo"), alPulsar: () => setCreando(true) }
+              : undefined
+          }
+        />
       ) : (
         <>
           <Tabla

@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Herramienta {
@@ -52,7 +52,7 @@ export function SuiteGobierno() {
     const control = new AbortController();
     llamar<Panel>("/api/v1/suite/panel", { signal: control.signal })
       .then((r) => setDatos(r.datos))
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 

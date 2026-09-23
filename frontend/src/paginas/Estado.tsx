@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Componente {
@@ -71,7 +71,7 @@ export function Estado() {
     const control = new AbortController();
     llamar<Respuesta>("/api/v1/estado", { signal: control.signal })
       .then((r) => setDatos(r.datos))
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     // Los compromisos se piden aparte y su fallo NO tumba la página: el estado
     // de los componentes es lo urgente cuando algo va mal, y perderlo porque no
     // se pudo leer un número de contrato sería el peor momento para perderlo.

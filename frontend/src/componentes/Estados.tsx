@@ -8,6 +8,9 @@
  */
 
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+
+import { Icono } from "@/componentes/Icono";
 
 import { ErrorApi } from "@/lib/api";
 
@@ -25,12 +28,63 @@ export function Cargando({ texto }: { texto?: string }) {
   );
 }
 
-export function Vacio({ titulo, detalle }: { titulo?: string; detalle?: string }) {
+/**
+ * Nada que enseñar, dicho con un icono y —cuando la hay— con la acción que lo
+ * llena.
+ *
+ * Un recuadro que solo dice «no hay nada» deja a quien mira en el mismo sitio
+ * en el que estaba: sabe que está vacío y no sabe qué hacer. Y una pantalla
+ * vacía sin explicación se confunde con una averiada, que es peor: lleva a
+ * llamar a soporte por algo que funciona.
+ */
+export function Vacio({
+  titulo,
+  detalle,
+  icono = "inbox",
+  accion,
+  compacto = false,
+}: {
+  titulo?: string;
+  detalle?: string;
+  icono?: string;
+  /** Lo que se puede hacer para que deje de estar vacío. */
+  accion?: { texto: string; a?: string; alPulsar?: () => void };
+  compacto?: boolean;
+}) {
   const { t } = useTranslation();
+  const boton = accion ? (
+    accion.a ? (
+      <Link to={accion.a} className="btn-primary mt-4 inline-flex items-center gap-1.5">
+        <Icono nombre="add" tamano="sm" />
+        {accion.texto}
+      </Link>
+    ) : (
+      <button
+        type="button"
+        onClick={accion.alPulsar}
+        className="btn-primary mt-4 inline-flex items-center gap-1.5"
+      >
+        <Icono nombre="add" tamano="sm" />
+        {accion.texto}
+      </button>
+    )
+  ) : null;
+
+  if (compacto) {
+    return (
+      <p className="flex items-center gap-2 py-4 text-2xs text-ink-faint">
+        <Icono nombre={icono} tamano="sm" />
+        {titulo ?? t("vacio.titulo")}
+      </p>
+    );
+  }
+
   return (
-    <div className="rounded-xl border border-ink-dim/60 bg-paper p-10 text-center">
-      <p className="text-ink">{titulo ?? t("vacio.titulo")}</p>
-      <p className="mt-1 text-2xs text-ink-faint">{detalle ?? t("vacio.detalle")}</p>
+    <div className="card flex flex-col items-center px-6 py-12 text-center">
+      <Icono nombre={icono} tamano="xl" className="text-ink-dim" />
+      <p className="mt-3 text-sm font-medium text-ink">{titulo ?? t("vacio.titulo")}</p>
+      <p className="mt-1 max-w-md text-2xs text-ink-faint">{detalle ?? t("vacio.detalle")}</p>
+      {boton}
     </div>
   );
 }
@@ -56,7 +110,10 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
 
   return (
     <div className="rounded-xl border border-danger/40 bg-danger/5 p-6" role="alert">
-      <p className="text-danger">{mensaje}</p>
+      <p className="flex items-center gap-2 text-danger-text">
+        <Icono nombre="error" tamano="sm" />
+        {mensaje}
+      </p>
       {api?.detalle ? (
         <details className="mt-3">
           <summary className="cursor-pointer text-2xs text-ink-faint">Detalle técnico</summary>
@@ -69,7 +126,7 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
         <button
           type="button"
           onClick={reintentar}
-          className="mt-4 rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper hover:bg-accent-soft"
+          className="btn-secondary mt-4"
         >
           {t("app.reintentar")}
         </button>

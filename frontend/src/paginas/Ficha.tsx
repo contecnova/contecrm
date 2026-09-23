@@ -18,7 +18,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Tabla } from "@/componentes/Tabla";
-import { llamar, subir } from "@/lib/api";
+import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
@@ -85,7 +85,7 @@ function Datos({ modulo, id }: { modulo: string; id: string }) {
         setFila(r.datos);
         setRetenidos(r.retenidos);
       })
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, [recurso, id]);
 
@@ -255,7 +255,7 @@ function Documentos({ tipo, id }: { tipo: string; id: string }) {
       signal: control.signal,
     })
       .then((r) => setFilas(r.datos))
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, [tipo, id]);
 

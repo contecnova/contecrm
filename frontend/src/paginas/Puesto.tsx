@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Parada {
@@ -52,7 +52,7 @@ export function Puesto() {
     const control = new AbortController();
     llamar<Salud>("/api/v1/suites/salud", { signal: control.signal })
       .then((r) => setDatos(r.datos))
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 

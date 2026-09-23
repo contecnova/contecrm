@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Tabla } from "@/componentes/Tabla";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import {
@@ -38,7 +38,7 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
 
   useEffect(() => {
     const control = new AbortController();
-    cargarSuperficie(control.signal).then(setSuperficie).catch(setFallo);
+    cargarSuperficie(control.signal).then(setSuperficie).catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, []);
 
@@ -93,7 +93,19 @@ export function Consola({ sesion }: { sesion: Sesion | null }) {
       <p className="sr-only" role="status">
         {area ? area.nombre : ""}
       </p>
-      <section>{area ? <AreaVista area={area} sesion={sesion} /> : <Vacio />}</section>
+      <section>
+        {area ? (
+          <AreaVista area={area} sesion={sesion} />
+        ) : (
+          // Sin área elegida no se enseña «no hay nada» —que suena a que la
+          // consola está vacía cuando tiene mil operaciones— sino qué hacer.
+          <Vacio
+            icono="left_click"
+            titulo={t("consola.eligeArea")}
+            detalle={t("consola.eligeAreaDetalle")}
+          />
+        )}
+      </section>
     </div>
   );
 }
@@ -115,7 +127,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
         setFilas(comoFilas(r.datos));
         setRetenidos(r.retenidos);
       })
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     return () => control.abort();
   }, [listado]);
 

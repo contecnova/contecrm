@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
 import { cargarSesion } from "@/lib/sesion";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
@@ -51,7 +51,7 @@ export function Rendimiento() {
     const control = new AbortController();
     llamar<Presion>("/api/v1/estado/presion", { signal: control.signal })
       .then((r) => setPresion(r.datos))
-      .catch(setFallo);
+      .catch(salvoCancelacion(setFallo));
     // Las cuotas se piden aparte y su fallo no tumba la página: saber qué se
     // está aplazando es lo urgente cuando algo va lento.
     cargarSesion(control.signal)

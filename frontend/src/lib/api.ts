@@ -198,3 +198,25 @@ export function siguientePagina(datos: unknown): string {
   }
   return "";
 }
+
+/**
+ * Un `catch` que no confunde «me han cancelado» con «el servidor no contesta».
+ *
+ * Cuando una pantalla se desmonta —o React vuelve a ejecutar el efecto, que en
+ * desarrollo lo hace **siempre** dos veces— el `AbortController` cancela la
+ * petición en vuelo. Eso llega al `catch` como un error, y las pantallas lo
+ * pintaban como «No se ha podido contactar con el servidor»: un aviso rojo, en
+ * grande, para algo que no ha fallado. La consola de administración lo enseñaba
+ * en cada carga.
+ *
+ *     .catch(salvoCancelacion(setFallo))
+ */
+export function salvoCancelacion(manejar: (error: unknown) => void) {
+  return (error: unknown) => {
+    const cancelada =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    if (cancelada) return;
+    manejar(error);
+  };
+}
