@@ -1,0 +1,307 @@
+/**
+ * El embudo como tablero: la pantalla que define un CRM.
+ *
+ * Esto faltaba, y es lo primero que echa en falta cualquiera que venga de una
+ * herramienta del mercado. Pipedrive, Salesforce, HubSpot y Dynamics enseñan
+ * las oportunidades como **columnas por etapa con tarjetas que se arrastran**,
+ * y no por gusto estético: en una tabla, «¿cómo va el trimestre?» exige leer
+ * cien filas y sumar de cabeza; en el tablero se ve de un vistazo dónde está
+ * atascado el dinero. Y mover una oportunidad de etapa —el gesto más repetido
+ * de un comercial— pasa de abrir la ficha, buscar el desplegable y guardar, a
+ * arrastrar la tarjeta.
+ *
+ * **Se arrastra, y también se mueve sin arrastrar.** Cada tarjeta lleva un
+ * selector de etapa: arrastrar no funciona con teclado ni con lector de
+ * pantalla, y dejar el gesto como única forma de mover deja fuera a quien no
+ * usa ratón.
+ *
+ * **La columna dice su total y su cuenta.** Un tablero que solo enseña tarjetas
+ * obliga a contar a ojo, y contar a ojo es cómo se llega a una previsión que no
+ * cuadra con el sistema.
+ *
+ * **El cambio se manda al servidor y, si lo rechaza, la tarjeta vuelve.** Las
+ * etapas tienen criterios de salida: el servidor puede decir que no. Dejar la
+ * tarjeta donde el usuario la soltó enseñaría un embudo que no existe.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+
+import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
+import { Icono } from "@/componentes/Icono";
+import { CabeceraPagina } from "@/componentes/Pagina";
+import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { escalar, importe } from "@/lib/formato";
+import { puede, type Sesion } from "@/lib/sesion";
+
+interface Etapa {
+  id: string;
+  clave: string;
+  nombre: string;
+  orden: number;
+  probabilidad: number;
+  terminal: boolean;
+  ganada: boolean;
+}
+
+interface PipelineApi {
+  id: string;
+  nombre: string;
+  por_defecto: boolean;
+  etapas: Etapa[];
+}
+
+interface Oportunidad {
+  id: string;
+  nombre: string;
+  codigo: string | null;
+  importe: string | number;
+  moneda: string;
+  probabilidad: number;
+  etapa_id: string;
+  estado: string;
+  fecha_cierre: string | null;
+  cuenta_id: string | null;
+}
+
+export function Pipeline({ sesion }: { sesion: Sesion | null }) {
+  const { t } = useTranslation();
+  const [pipelines, setPipelines] = useState<PipelineApi[] | null>(null);
+  const [abierto, setAbierto] = useState("");
+  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+  const [moviendo, setMoviendo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<unknown>("/api/v1/pipelines", { signal: control.signal })
+      .then((r) => {
+        const lista = filas<PipelineApi>(r.datos);
+        setPipelines(lista);
+        setAbierto(lista.find((p) => p.por_defecto)?.id ?? lista[0]?.id ?? "");
+      })
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, []);
+
+  const cargar = useCallback((signal?: AbortSignal) => {
+    // Se piden muchas porque el tablero es una vista de conjunto: paginarlo
+    // haría que una columna enseñara media verdad y el total, otra.
+    llamar<unknown>("/api/v1/opportunities?limite=200", { signal })
+      .then((r) => setOportunidades(filas<Oportunidad>(r.datos)))
+      .catch(salvoCancelacion(setFallo));
+  }, []);
+
+  useEffect(() => {
+    const control = new AbortController();
+    cargar(control.signal);
+    return () => control.abort();
+  }, [cargar]);
+
+  const pipeline = pipelines?.find((p) => p.id === abierto) ?? pipelines?.[0];
+  const etapas = useMemo(
+    () => [...(pipeline?.etapas ?? [])].sort((a, b) => a.orden - b.orden),
+    [pipeline],
+  );
+
+  const porEtapa = useMemo(() => {
+    const mapa = new Map<string, Oportunidad[]>();
+    for (const o of oportunidades ?? []) {
+      if (pipeline && !etapas.some((e) => e.id === o.etapa_id)) continue;
+      mapa.set(o.etapa_id, [...(mapa.get(o.etapa_id) ?? []), o]);
+    }
+    return mapa;
+  }, [oportunidades, etapas, pipeline]);
+
+  const puedeMover = puede(sesion, "opportunity:write");
+
+  async function mover(oportunidadId: string, etapaId: string) {
+    const previas = oportunidades;
+    setMoviendo(oportunidadId);
+    // Se mueve en pantalla al instante y se deshace si el servidor dice que no:
+    // esperar a la respuesta para pintar hace que arrastrar se sienta roto.
+    setOportunidades((o) =>
+      (o ?? []).map((x) => (x.id === oportunidadId ? { ...x, etapa_id: etapaId } : x)),
+    );
+    try {
+      await llamar(`/api/v1/opportunities/${oportunidadId}/etapa`, {
+        metodo: "POST",
+        cuerpo: { etapa_id: etapaId },
+      });
+      setFallo(null);
+    } catch (error) {
+      // Las etapas tienen criterios de salida y el servidor puede rechazar el
+      // movimiento. La tarjeta vuelve a su sitio: dejarla donde se soltó
+      // enseñaría un embudo que no existe.
+      setOportunidades(previas);
+      setFallo(error);
+    } finally {
+      setMoviendo(null);
+      setArrastrando(null);
+      setSobre(null);
+    }
+  }
+
+  if (fallo && !oportunidades) return <Fallo error={fallo} reintentar={() => cargar()} />;
+  if (!pipelines || !oportunidades) return <Cargando />;
+  if (etapas.length === 0) {
+    return (
+      <>
+        <CabeceraPagina titulo={t("pipeline.titulo")} icono="view_kanban" />
+        <Vacio
+          icono="view_kanban"
+          titulo={t("pipeline.sinPipeline")}
+          detalle={t("pipeline.sinPipelineDetalle")}
+          accion={{ texto: t("pipeline.irAConfigurar"), a: "/m/oportunidades?r=Pipelines&nuevo=1" }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <CabeceraPagina
+        titulo={t("pipeline.titulo")}
+        entradilla={t("pipeline.entradilla")}
+        icono="view_kanban"
+        acciones={
+          pipelines.length > 1 ? (
+            <>
+              <label htmlFor="pipeline-elegir" className="sr-only">
+                {t("pipeline.elegir")}
+              </label>
+              <select
+                id="pipeline-elegir"
+                className="input-sm"
+                value={abierto}
+                onChange={(e) => setAbierto(e.target.value)}
+              >
+                {pipelines.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null
+        }
+      />
+
+      {fallo ? (
+        <div className="mb-4">
+          <Fallo error={fallo} />
+        </div>
+      ) : null}
+
+      <div className="-mx-1 flex gap-3 overflow-x-auto pb-4">
+        {etapas.map((etapa) => {
+          const dentro = porEtapa.get(etapa.id) ?? [];
+          const total = dentro.reduce((suma, o) => suma + Number(o.importe || 0), 0);
+          return (
+            <section
+              key={etapa.id}
+              aria-label={etapa.nombre}
+              onDragOver={(e) => {
+                if (!arrastrando || !puedeMover) return;
+                e.preventDefault();
+                setSobre(etapa.id);
+              }}
+              onDragLeave={() => setSobre((s) => (s === etapa.id ? null : s))}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (arrastrando && puedeMover) void mover(arrastrando, etapa.id);
+              }}
+              className={`flex w-72 shrink-0 flex-col rounded-xl border p-2 transition-colors ${
+                sobre === etapa.id
+                  ? "border-accent bg-accent/5"
+                  : "border-ink-dim/60 bg-paper-dark"
+              }`}
+            >
+              <header className="px-1.5 pb-2 pt-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="truncate text-xs font-semibold text-ink">{etapa.nombre}</h2>
+                  <span className="shrink-0 text-3xs text-ink-faint">{dentro.length}</span>
+                </div>
+                {/* El total de la columna: sin él hay que contar a ojo, y contar
+                    a ojo es cómo se llega a una previsión que no cuadra. */}
+                <p className="mt-0.5 text-2xs text-ink-muted">
+                  {importe(total)}
+                  {etapa.terminal ? null : ` · ${etapa.probabilidad} %`}
+                </p>
+              </header>
+
+              <div className="flex min-h-24 flex-col gap-2">
+                {dentro.length === 0 ? (
+                  <p className="px-1.5 py-6 text-center text-3xs text-ink-faint">
+                    {t("pipeline.columnaVacia")}
+                  </p>
+                ) : (
+                  dentro.map((o) => (
+                    <article
+                      key={o.id}
+                      draggable={puedeMover}
+                      onDragStart={() => setArrastrando(o.id)}
+                      onDragEnd={() => {
+                        setArrastrando(null);
+                        setSobre(null);
+                      }}
+                      className={`card p-2.5 ${puedeMover ? "cursor-grab active:cursor-grabbing" : ""} ${
+                        moviendo === o.id ? "opacity-50" : ""
+                      }`}
+                    >
+                      <Link
+                        to={`/m/oportunidades/oportunidad/${o.id}`}
+                        className="block truncate text-xs font-medium text-ink hover:underline"
+                        title={o.nombre}
+                      >
+                        {o.nombre}
+                      </Link>
+                      <p className="mt-1 text-2xs text-ink-muted">{importe(o.importe, o.moneda)}</p>
+                      {o.fecha_cierre ? (
+                        <p className="mt-0.5 inline-flex items-center gap-1 text-3xs text-ink-faint">
+                          <Icono nombre="event" tamano="sm" />
+                          {escalar(o.fecha_cierre)}
+                        </p>
+                      ) : null}
+
+                      {/* Mover sin arrastrar. Arrastrar no funciona con teclado
+                          ni con lector de pantalla, y dejarlo como única forma
+                          deja fuera a quien no usa ratón. */}
+                      {puedeMover ? (
+                        <>
+                          <label htmlFor={`etapa-${o.id}`} className="sr-only">
+                            {t("pipeline.moverA", { oportunidad: o.nombre })}
+                          </label>
+                          {/* Escondido hasta que recibe el foco. Con el
+                              selector siempre visible, cada tarjeta repetía el
+                              nombre de su propia columna y el tablero se leía
+                              como un formulario. Con el ratón se arrastra; con
+                              teclado se tabula hasta aquí y aparece. */}
+                          <select
+                            id={`etapa-${o.id}`}
+                            value={o.etapa_id}
+                            onChange={(e) => void mover(o.id, e.target.value)}
+                            className="input-sm mt-2 text-3xs sr-only focus:not-sr-only focus:relative"
+                          >
+                            {etapas.map((e) => (
+                              <option key={e.id} value={e.id}>
+                                {e.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : null}
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </>
+  );
+}

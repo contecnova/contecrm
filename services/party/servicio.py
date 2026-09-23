@@ -14,7 +14,7 @@ from crmcore.logging import get_logger
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from services.party import duplicados
+from services.party import duplicados, metricas_embebidas
 from services.party import normalizacion as norm
 from services.party.modelos import (
     Actividad,
@@ -825,7 +825,11 @@ def timeline(
 
 def vista_360(db: Session, cuenta_id: UUID) -> dict[str, Any]:
     """Perfil unificado de una cuenta, consultable por cualquier frontend."""
+    from crmcore.tenancy.context import contexto_actual
+
     cuenta = _cuenta(db, cuenta_id)
+    tenant_id = contexto_actual().tenant_id
+    assert tenant_id is not None  # la sesión no se abre sin tenant
 
     contactos = db.execute(
         select(Contacto, RelacionContactoCuenta.rol, RelacionContactoCuenta.principal)
@@ -882,14 +886,16 @@ def vista_360(db: Session, cuenta_id: UUID) -> dict[str, Any]:
             for c, rol, principal in contactos
         ],
         "timeline": timeline(db, cuenta_id=cuenta_id, limite=20),
-        # Las métricas de otros dominios (facturación, incidencias, NPS) llegan
-        # cuando existan sus servicios. Se declara el hueco en vez de omitirlo:
-        # un consumidor tiene que poder distinguir «no hay datos» de «este CRM
-        # no lo tiene todavía».
-        "metricas": {
-            "disponibles": False,
-            "motivo": "los servicios de ventas y soporte llegan en las fases 2 y 3",
-        },
+        # Las métricas de otros dominios —facturación, incidencias, NPS— salen
+        # de la proyección local que alimentan los eventos de esos servicios
+        # (`metricas_embebidas`), no de leer su base: ningún servicio lee el
+        # esquema de otro.
+        #
+        # Esto decía «los servicios de ventas y soporte llegan en las fases 2 y
+        # 3» y las devolvía siempre vacías. Esas fases ya están, y la proyección
+        # también: la ficha de cualquier cuenta declaraba un hueco que no
+        # existe, que es justo lo contrario de lo que esta respuesta pretende.
+        "metricas": metricas_embebidas.panel_de_la_cuenta(db, tenant_id, cuenta_id=cuenta_id),
     }
 
 

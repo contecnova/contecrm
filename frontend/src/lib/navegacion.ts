@@ -117,6 +117,7 @@ export const ACCESOS: Entrada[] = [
 export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "clientes", a: "/proveedores", clave: "nav.proveedores", icono: "local_shipping", permiso: "party:read" },
 
+  { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" },
 
   { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read" },

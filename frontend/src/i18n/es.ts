@@ -51,6 +51,7 @@ export default {
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",
     proveedores: "Proveedores",
+    embudo: "Embudo de ventas",
     coste: "Coste",
     inteligencia: "Inteligencia",
     puesto: "Puesto",
@@ -74,6 +75,48 @@ export default {
     sinResultados: "Nada coincide con «{{consulta}}»",
     menuUsuario: "Tu cuenta",
     sesionDe: "Sesión iniciada como",
+  },
+  pipeline: {
+    titulo: "Embudo de ventas",
+    entradilla:
+      "Arrastra una oportunidad para cambiarla de etapa. Cada columna dice " +
+      "cuántas hay y cuánto suman.",
+    elegir: "Elegir embudo",
+    columnaVacia: "Nada en esta etapa",
+    moverA: "Mover «{{oportunidad}}» a otra etapa",
+    sinPipeline: "Todavía no hay ningún embudo",
+    sinPipelineDetalle:
+      "Un embudo son las etapas por las que pasa una venta. Sin él no se pueden " +
+      "dar de alta oportunidades.",
+    irAConfigurar: "Crear un embudo",
+  },
+  cuenta: {
+    datos: "Datos",
+    calidad: "Calidad del dato",
+    faltan: "Falta por rellenar",
+    metricas: "Métricas",
+    timeline: "Lo que ha pasado",
+    sinTimeline: "Todavía no hay actividad registrada con este cliente",
+    contactos: "Contactos",
+    sinContactos: "Ningún contacto asociado",
+    oportunidades: "Oportunidades",
+    sinOportunidades: "Ninguna oportunidad, ni abierta ni cerrada",
+    casos: "Casos",
+    sinCasos: "Ningún caso de soporte",
+    noContactar: "No contactar",
+    nuevaActividad: "Registrar actividad",
+    nuevaOportunidad: "Nueva oportunidad",
+    sinDato: "sin dato",
+    sinMetricas: "Ninguna métrica ha llegado todavía desde los demás servicios.",
+    sinDatoDe: "Sin dato de: {{metricas}}.",
+    deHace: "de hace {{dias}} d",
+    caducada: "El dato está caducado: se enseña con su antigüedad en vez de como si acabara de llegar.",
+  },
+  tabla: {
+    columnas: "Columnas ({{visibles}} de {{total}})",
+    elegirColumnas: "Qué columnas se ven",
+    masColumnas_one: "Hay 1 columna más, sin ningún dato en estas filas.",
+    masColumnas_other: "Hay {{count}} columnas más, sin ningún dato en estas filas.",
   },
   inicio: {
     empezar: "Dar de alta",
@@ -188,6 +231,14 @@ export default {
     mover: "Mover",
   },
   ficha: {
+    identificadores: "Identificadores técnicos",
+    editar: "Editar",
+    guardar: "Guardar cambios",
+    eliminar: "Eliminar",
+    eliminarDeVerdad: "Sí, eliminar",
+    confirmarBorrado:
+      "Se va a eliminar este registro. Lo que cuelga de él —adjuntos, comentarios, " +
+      "documentos— deja de estar accesible desde aquí.",
     secciones: "Secciones de la ficha",
     datos: "Datos",
     adjuntos: "Adjuntos",

@@ -15,6 +15,12 @@
  * así se queda corta en cuanto se añade un campo, y entonces conviven columnas
  * bonitas con columnas en crudo, que es peor que tenerlas todas en crudo.
  *
+ * **Se eligen las columnas.** Un listado de clientes con las veinte columnas
+ * del modelo no se lee: hay que desplazarse en horizontal para llegar al
+ * teléfono. Quien mira elige cuáles quiere y se le recuerdan — es lo que hacen
+ * las vistas de lista de Salesforce y el «editar columnas» de HubSpot, y por el
+ * mismo motivo: las columnas útiles dependen de para qué se mire la lista.
+ *
  * **Una columna vacía en TODAS las filas no se pinta, y se dice cuántas se han
  * escondido.** Esconderlas en silencio sería ocultar que el campo existe; no
  * esconderlas deja una tabla de veinte columnas con guiones donde hay tres con
@@ -31,9 +37,20 @@
  * qué mira.
  */
 
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { escalar, humanizar, tieneDato, trozos, UUID } from "@/lib/formato";
+import { Icono } from "@/componentes/Icono";
+
+import {
+  escalar,
+  esIdentificadorTecnico,
+  humanizar,
+  tieneDato,
+  trozos,
+  UUID,
+} from "@/lib/formato";
 
 export interface Props {
   filas: Record<string, unknown>[];
@@ -42,15 +59,112 @@ export interface Props {
   titulo?: string;
   /** Si se pasa, la primera celda de cada fila enlaza a su ficha. */
   enlace?: (fila: Record<string, unknown>) => string | null;
+  /**
+   * Cuántas columnas se enseñan de entrada cuando el recurso no declara cuáles.
+   *
+   * Seis, no todas: un listado que nace con veinte columnas obliga a desplazarse
+   * en horizontal antes de leer nada, y quien llega no sabe que puede quitarlas.
+   */
+  porDefecto?: number;
+  /**
+   * Con qué nombre se recuerda la elección de columnas. Sin él no se recuerda:
+   * dos tablas distintas no pueden compartir preferencia.
+   */
+  recuerdaComo?: string;
 }
 
-export function Tabla({ filas, columnas, titulo, enlace }: Props) {
+const CLAVE_COLUMNAS = "contecrm.columnas";
+
+function leerElegidas(recuerdaComo?: string): string[] | null {
+  if (!recuerdaComo) return null;
+  try {
+    const crudo = localStorage.getItem(`${CLAVE_COLUMNAS}.${recuerdaComo}`);
+    const lista = crudo ? (JSON.parse(crudo) as unknown) : null;
+    return Array.isArray(lista) ? lista.map(String) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function Tabla({
+  filas,
+  columnas,
+  titulo,
+  enlace,
+  porDefecto = 6,
+  recuerdaComo,
+}: Props) {
+  const { t } = useTranslation();
   const pedidas = columnas ?? columnasDe(filas);
-  const cabeceras = pedidas.filter((c) => filas.some((fila) => tieneDato(fila[c])));
-  const escondidas = pedidas.length - cabeceras.length;
+  // Con dato en alguna fila. Una columna vacía en todas es ruido.
+  const disponibles = pedidas.filter((c) => filas.some((fila) => tieneDato(fila[c])));
+
+  const [elegidas, setElegidas] = useState<string[] | null>(() => leerElegidas(recuerdaComo));
+  const [eligiendo, setEligiendo] = useState(false);
+
+  // De entrada, las que el recurso declara como preferidas —o las primeras—,
+  // no todas: `columnas` llega con las preferidas delante.
+  const visibles = useMemo(() => {
+    const guardadas = elegidas?.filter((c) => disponibles.includes(c));
+    if (guardadas && guardadas.length > 0) return guardadas;
+    // Los identificadores técnicos no entran de entrada: una columna de UUID
+    // ocupa el ancho de tres columnas útiles y no dice nada. Siguen estando en
+    // el selector para quien los necesite.
+    const utiles = disponibles.filter((c) => !esIdentificadorTecnico(c));
+    return (utiles.length > 0 ? utiles : disponibles).slice(0, Math.max(1, porDefecto));
+  }, [elegidas, disponibles, porDefecto]);
+
+  function alternarColumna(columna: string) {
+    const siguientes = visibles.includes(columna)
+      ? visibles.filter((c) => c !== columna)
+      : [...disponibles.filter((c) => visibles.includes(c) || c === columna)];
+    setElegidas(siguientes);
+    if (!recuerdaComo) return;
+    try {
+      localStorage.setItem(`${CLAVE_COLUMNAS}.${recuerdaComo}`, JSON.stringify(siguientes));
+    } catch {
+      /* sin almacenamiento: la elección vale para esta sesión */
+    }
+  }
+
+  const cabeceras = visibles;
+  const escondidas = disponibles.length - cabeceras.length;
 
   return (
     <div>
+      {disponibles.length > cabeceras.length || elegidas ? (
+        <div className="mb-2 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setEligiendo((v) => !v)}
+            aria-expanded={eligiendo}
+            className="btn-secondary inline-flex items-center gap-1.5"
+          >
+            <Icono nombre="view_column" tamano="sm" />
+            {t("tabla.columnas", { visibles: cabeceras.length, total: disponibles.length })}
+          </button>
+        </div>
+      ) : null}
+
+      {eligiendo ? (
+        <fieldset className="card mb-2 p-3">
+          <legend className="sr-only">{t("tabla.elegirColumnas")}</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {disponibles.map((c) => (
+              <label key={c} className="inline-flex items-center gap-1.5 text-2xs text-ink">
+                <input
+                  type="checkbox"
+                  checked={cabeceras.includes(c)}
+                  onChange={() => alternarColumna(c)}
+                  className="h-3.5 w-3.5 rounded border-ink-dim accent-accent"
+                />
+                {humanizar(c)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <div className="overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
         <table className="w-full text-left text-xs">
           {titulo ? <caption className="sr-only">{titulo}</caption> : null}
@@ -98,9 +212,7 @@ export function Tabla({ filas, columnas, titulo, enlace }: Props) {
       </div>
       {escondidas > 0 ? (
         <p className="mt-1.5 text-3xs text-ink-faint">
-          {escondidas === 1
-            ? "Hay 1 columna más, sin ningún dato en estas filas."
-            : `Hay ${escondidas} columnas más, sin ningún dato en estas filas.`}
+          {t("tabla.masColumnas", { count: escondidas })}
         </p>
       ) : null}
     </div>

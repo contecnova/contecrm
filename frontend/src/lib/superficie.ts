@@ -139,3 +139,32 @@ export function rutaPermitida(permitidas: Set<string>, ruta: string): boolean {
   }
   return false;
 }
+
+/**
+ * ¿Puede esta sesión hacer esta operación sobre esta ruta concreta?
+ *
+ * La superficie publica las rutas con sus parámetros —`/api/v1/accounts/{id}`—
+ * y el front tiene rutas con valores dentro. Se comparan tramo a tramo: los
+ * literales tienen que coincidir y los parámetros aceptan cualquier cosa.
+ *
+ * Esto es lo que permite que la ficha ofrezca «editar» y «eliminar» **solo
+ * donde el servidor los admite y a quien se los admite**, sin una segunda lista
+ * de permisos en el front que se separaría de la del servidor en silencio.
+ */
+export function operacionPermitida(
+  superficie: Superficie | null,
+  metodo: string,
+  ruta: string,
+  puede: (permiso: string | null) => boolean,
+): boolean {
+  if (!superficie) return false;
+  const tramos = (ruta.split("?")[0] ?? ruta).split("/");
+  for (const operacion of superficie.operaciones) {
+    if (operacion.metodo.toUpperCase() !== metodo.toUpperCase()) continue;
+    const patron = operacion.ruta.split("/");
+    if (patron.length !== tramos.length) continue;
+    const encaja = patron.every((p, i) => p.startsWith("{") || p === tramos[i]);
+    if (encaja) return puede(operacion.permiso);
+  }
+  return false;
+}

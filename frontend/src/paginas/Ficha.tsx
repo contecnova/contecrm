@@ -14,10 +14,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Tabla } from "@/componentes/Tabla";
+import { Formulario } from "@/componentes/Formulario";
+import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  escalar,
+  esIdentificadorTecnico,
+  humanizar,
+  nombreDelRegistro,
+} from "@/lib/formato";
+import { usePuedeOperar } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -29,18 +38,28 @@ export function Ficha() {
   const { ruta = "", tipo = "", id = "" } = useParams();
   const modulo = moduloDe(ruta);
   const [pestana, setPestana] = useState<Pestana>("datos");
+  // El nombre lo pone la pestaña de datos en cuanto carga el registro: el
+  // título era el UUID, así que la ficha de una oportunidad no decía cuál era.
+  const [nombre, setNombre] = useState("");
 
   if (!modulo) return <Vacio />;
 
   return (
     <>
       <CabeceraPagina
-        titulo={<span className="font-mono">{id}</span>}
+        titulo={nombre || <span className="font-mono text-base">{id}</span>}
         icono="description"
         entradilla={
-          <Link to={`/m/${ruta}`} className="text-accent hover:underline">
-            {modulo.titulo}
-          </Link>
+          <span className="flex flex-wrap items-center gap-2">
+            <Link to={`/m/${ruta}`} className="text-accent hover:underline">
+              {modulo.titulo}
+            </Link>
+            {nombre ? (
+              <span className="font-mono text-3xs text-ink-faint" title={id}>
+                {id.slice(0, 8)}…
+              </span>
+            ) : null}
+          </span>
         }
       />
 
@@ -61,7 +80,7 @@ export function Ficha() {
       </nav>
 
       <div className="mt-4">
-        {pestana === "datos" ? <Datos modulo={ruta} id={id} /> : null}
+        {pestana === "datos" ? <Datos modulo={ruta} id={id} alSaberNombre={setNombre} /> : null}
         {pestana === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
         {pestana === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
         {pestana === "documentos" ? <Documentos tipo={tipo} id={id} /> : null}
@@ -70,33 +89,230 @@ export function Ficha() {
   );
 }
 
-function Datos({ modulo, id }: { modulo: string; id: string }) {
+function Datos({
+  modulo,
+  id,
+  alSaberNombre,
+}: {
+  modulo: string;
+  id: string;
+  /** Sube el nombre del registro para que lo use el título de la ficha. */
+  alSaberNombre: (nombre: string) => void;
+}) {
+  const { t } = useTranslation();
+  const navegar = useNavigate();
+  const puedeOperar = usePuedeOperar();
   const m = moduloDe(modulo);
   const recurso = m?.recursos[0];
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
+  const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  const ruta = recurso ? `${recurso.listar}/${id}` : "";
+  const puedeEditar = Boolean(ruta) && puedeOperar("PATCH", ruta);
+  const puedeBorrar = Boolean(ruta) && puedeOperar("DELETE", ruta);
+
+  const cargar = useCallback(
+    (signal?: AbortSignal) => {
+      if (!ruta) return;
+      llamar<Record<string, unknown>>(ruta, { signal })
+        .then((r) => {
+          setFila(r.datos);
+          setRetenidos(r.retenidos);
+          alSaberNombre(nombreDelRegistro(r.datos));
+        })
+        .catch(salvoCancelacion(setFallo));
+    },
+    [ruta, alSaberNombre],
+  );
 
   useEffect(() => {
-    if (!recurso) return;
     const control = new AbortController();
-    llamar<Record<string, unknown>>(`${recurso.listar}/${id}`, { signal: control.signal })
-      .then((r) => {
-        setFila(r.datos);
-        setRetenidos(r.retenidos);
-      })
-      .catch(salvoCancelacion(setFallo));
+    cargar(control.signal);
     return () => control.abort();
-  }, [recurso, id]);
+  }, [cargar]);
 
-  if (fallo) return <Fallo error={fallo} />;
+  // Los campos que admite la MODIFICACIÓN, que no son los del alta: hay cosas
+  // que se fijan al crear y no se cambian después, y ofrecerlas aquí sería
+  // prometer una edición que el servidor rechaza.
+  useEffect(() => {
+    if (!recurso || !editando) return;
+    let vivo = true;
+    void contratoDe(recurso.servicio).then((documento) => {
+      if (vivo) setCampos(camposDe(documento, plantillaFicha(ruta), "patch"));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [recurso, editando, ruta]);
+
+  async function guardar(valores: Record<string, unknown>) {
+    setEnviando(true);
+    try {
+      await llamar(ruta, { metodo: "PATCH", cuerpo: valores });
+      setEditando(false);
+      cargar();
+      setFallo(null);
+    } catch (error) {
+      setFallo(error);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function borrar() {
+    setEnviando(true);
+    try {
+      await llamar(ruta, { metodo: "DELETE" });
+      // Se vuelve al listado: quedarse en la ficha de algo que ya no existe
+      // enseñaría un registro fantasma hasta que alguien recargara.
+      navegar(`/m/${modulo}`);
+    } catch (error) {
+      setFallo(error);
+      setConfirmando(false);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (fallo && !fila) return <Fallo error={fallo} reintentar={() => cargar()} />;
   if (!fila) return <Cargando />;
+
   return (
     <>
-      <Tabla filas={[fila]} titulo="datos" />
+      {(puedeEditar || puedeBorrar) && !editando ? (
+        <div className="mb-3 flex gap-2">
+          {puedeEditar ? (
+            <button type="button" onClick={() => setEditando(true)} className="btn-secondary">
+              {t("ficha.editar")}
+            </button>
+          ) : null}
+          {puedeBorrar ? (
+            <button type="button" onClick={() => setConfirmando(true)} className="btn-danger">
+              {t("ficha.eliminar")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {confirmando ? (
+        // Se pregunta antes de borrar, y se dice qué se borra. Un borrado sin
+        // confirmación es un borrado que alguien hará sin querer.
+        <div className="card mb-3 border-danger/40 p-4" role="alertdialog" aria-label={t("ficha.eliminar")}>
+          <p className="text-xs text-ink">{t("ficha.confirmarBorrado")}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void borrar()}
+              disabled={enviando}
+              className="btn-danger"
+            >
+              {t("ficha.eliminarDeVerdad")}
+            </button>
+            <button type="button" onClick={() => setConfirmando(false)} className="btn-secondary">
+              {t("modulo.cancelar")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {fallo ? (
+        <div className="mb-3">
+          <Fallo error={fallo} />
+        </div>
+      ) : null}
+
+      {editando ? (
+        <div className="card mb-3 p-4">
+          {campos ? (
+            <Formulario
+              campos={campos}
+              valores={fila}
+              enviando={enviando}
+              textoEnviar={t("ficha.guardar")}
+              alEnviar={(v) => void guardar(v)}
+            />
+          ) : (
+            <Cargando />
+          )}
+          <button
+            type="button"
+            onClick={() => setEditando(false)}
+            className="btn-link mt-3"
+          >
+            {t("modulo.cancelar")}
+          </button>
+        </div>
+      ) : (
+        // Los datos como ficha, no como una tabla de una sola fila: una tabla
+        // horizontal de veinte columnas para UN registro obliga a desplazarse
+        // para leer sus propios campos.
+        <>
+          <dl className="card grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
+            {Object.entries(fila)
+              .filter(([clave]) => clave !== "campos" && !esIdentificadorTecnico(clave))
+              .map(([clave, valor]) => (
+                <Campo key={clave} clave={clave} valor={valor} />
+              ))}
+          </dl>
+
+          {/* Los identificadores, detrás de un desplegable. Ocupaban la mitad
+              de la ficha y no dicen nada a quien la mira, pero quien abre una
+              incidencia de soporte los necesita enteros. */}
+          <details className="mt-2">
+            <summary className="cursor-pointer text-3xs text-ink-faint">
+              {t("ficha.identificadores")}
+            </summary>
+            <dl className="card mt-2 grid gap-x-8 gap-y-2 p-4 sm:grid-cols-2">
+              {Object.entries(fila)
+                .filter(([clave]) => esIdentificadorTecnico(clave))
+                .map(([clave, valor]) => (
+                  <Campo key={clave} clave={clave} valor={valor} monoespaciado />
+                ))}
+            </dl>
+          </details>
+        </>
+      )}
       <Retenidos campos={retenidos} />
     </>
   );
+}
+
+function Campo({
+  clave,
+  valor,
+  monoespaciado = false,
+}: {
+  clave: string;
+  valor: unknown;
+  monoespaciado?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="shrink-0 text-3xs text-ink-faint">{humanizar(clave)}</dt>
+      <dd
+        className={`truncate text-2xs text-ink ${monoespaciado ? "font-mono text-3xs text-ink-muted" : ""}`}
+        title={String(valor ?? "")}
+      >
+        {valor === null || valor === undefined || valor === "" ? (
+          <span className="text-ink-faint">—</span>
+        ) : typeof valor === "object" ? (
+          JSON.stringify(valor)
+        ) : (
+          escalar(valor, clave)
+        )}
+      </dd>
+    </div>
+  );
+}
+
+/** `/api/v1/accounts/{id}` es la plantilla con la que el OpenAPI declara la ficha. */
+function plantillaFicha(ruta: string): string {
+  return ruta.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "/{id}");
 }
 
 function Adjuntos({ tipo, id }: { tipo: string; id: string }) {

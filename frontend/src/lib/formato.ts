@@ -13,6 +13,7 @@
 /** Separadores de miles y coma decimal, en español. */
 const NUMERO = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
 const DINERO = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 });
+const MONEDAS = new Map<string, Intl.NumberFormat>();
 const FECHA = new Intl.DateTimeFormat("es-ES", { dateStyle: "short" });
 const FECHA_HORA = new Intl.DateTimeFormat("es-ES", { dateStyle: "short", timeStyle: "short" });
 
@@ -104,4 +105,68 @@ export function trozos(valor: unknown, campo = ""): Trozo[] {
     });
   }
   return [{ texto: escalar(valor, campo) }];
+}
+
+/**
+ * Un importe con su moneda, como se escribe en español: «217.788 €».
+ *
+ * `217788.00 EUR` no es un importe: es el dato en crudo. El símbolo va detrás
+ * y separado, que es la convención de aquí, y lo pone `Intl` para que una
+ * instalación en otra moneda no tenga que tocar nada.
+ */
+export function importe(valor: unknown, moneda = "EUR"): string {
+  const numero = Number(valor ?? 0);
+  if (Number.isNaN(numero)) return String(valor ?? "");
+  let formato = MONEDAS.get(moneda);
+  if (!formato) {
+    try {
+      formato = new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: moneda,
+        maximumFractionDigits: 0,
+      });
+    } catch {
+      // Una moneda que `Intl` no conoce no puede dejar la cifra sin pintar.
+      formato = DINERO;
+    }
+    MONEDAS.set(moneda, formato);
+  }
+  return formato.format(numero);
+}
+
+/**
+ * Campos que identifican al registro para la máquina, no para quien mira.
+ *
+ * `cuenta_id = 01a0cd8c-880c-7f85-96bc-0f01dce176a2` no es información: es el
+ * dato en crudo. Ocupan la mitad de una ficha y no dicen nada, así que no se
+ * enseñan de entrada — pero siguen estando a un clic, porque quien abre una
+ * incidencia de soporte los necesita enteros.
+ */
+export function esIdentificadorTecnico(campo: string): boolean {
+  return campo === "id" || campo === "version" || /(^|_)id$/.test(campo);
+}
+
+/**
+ * Cómo se llama este registro para una persona.
+ *
+ * Se busca el primer campo con el que alguien lo reconocería. Sin esto, la
+ * ficha de una oportunidad se titulaba con su UUID: el propio registro no decía
+ * cuál era.
+ */
+export function nombreDelRegistro(fila: Record<string, unknown>): string {
+  for (const clave of [
+    "nombre",
+    "nombre_completo",
+    "asunto",
+    "titulo",
+    "razon_social",
+    "clave",
+    "codigo",
+    "email",
+    "slug",
+  ]) {
+    const valor = fila[clave];
+    if (typeof valor === "string" && valor.trim()) return valor;
+  }
+  return "";
 }

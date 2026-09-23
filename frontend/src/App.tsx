@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Cobertura } from "@/paginas/Cobertura";
+import { Cuenta } from "@/paginas/Cuenta";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Estado } from "@/paginas/Estado";
@@ -15,6 +16,7 @@ import { Explotacion } from "@/paginas/Explotacion";
 import { Marketing } from "@/paginas/Marketing";
 import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
+import { Pipeline } from "@/paginas/Pipeline";
 import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
 import { Recorrido } from "@/paginas/Recorrido";
@@ -81,6 +83,10 @@ export function App() {
         <Route path="/" element={<Inicio sesion={sesion} />} />
         <Route path="/administracion" element={<Consola sesion={sesion} />} />
         <Route path="/m/:ruta" element={<Modulo sesion={sesion} />} />
+        {/* La cuenta tiene ficha propia: la genérica es un inspector de
+            registros y con ella delante no se puede contestar «¿cómo vamos
+            con este cliente?», que es para lo que se abre un CRM. */}
+        <Route path="/m/cuentas/cuenta/:id" element={<Cuenta />} />
         <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
         <Route path="/estado" element={<Estado />} />
         <Route path="/cobertura" element={<Cobertura />} />
@@ -88,6 +94,7 @@ export function App() {
         <Route path="/procesos" element={<Procesos />} />
         <Route path="/explotacion" element={<Explotacion />} />
         <Route path="/cuadros" element={<Cuadros />} />
+        <Route path="/embudo" element={<Pipeline sesion={sesion} />} />
         <Route path="/casos" element={<Casos />} />
         <Route path="/consola-agente" element={<ConsolaAgente />} />
         <Route path="/conocimiento" element={<Conocimiento />} />

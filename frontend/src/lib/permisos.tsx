@@ -17,12 +17,31 @@
  * segundo.
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { puede, type Sesion } from "@/lib/sesion";
-import { cargarSuperficie, rutasPermitidas, type Superficie } from "@/lib/superficie";
+import {
+  cargarSuperficie,
+  operacionPermitida,
+  rutasPermitidas,
+  type Superficie,
+} from "@/lib/superficie";
 
-const Ctx = createContext<Set<string>>(new Set());
+interface Permisos {
+  /** Rutas de lectura que esta sesión puede llamar. Vacío = todavía no se sabe. */
+  rutas: Set<string>;
+  /** ¿Admite el servidor esta operación, y se la admite a esta sesión? */
+  puedeOperar: (metodo: string, ruta: string) => boolean;
+}
+
+const Ctx = createContext<Permisos>({ rutas: new Set(), puedeOperar: () => false });
 
 export function ProveedorPermisos({
   sesion,
@@ -32,6 +51,7 @@ export function ProveedorPermisos({
   children: ReactNode;
 }) {
   const [permitidas, setPermitidas] = useState<Set<string>>(new Set());
+  const [superficie, setSuperficie] = useState<Superficie | null>(null);
 
   useEffect(() => {
     if (!sesion) {
@@ -40,22 +60,41 @@ export function ProveedorPermisos({
     }
     const control = new AbortController();
     cargarSuperficie(control.signal)
-      .then((superficie: Superficie) =>
-        setPermitidas(rutasPermitidas(superficie, (p) => puede(sesion, p))),
-      )
+      .then((s: Superficie) => {
+        setSuperficie(s);
+        setPermitidas(rutasPermitidas(s, (p) => puede(sesion, p)));
+      })
       .catch(() => {
-        // Si la superficie no llega, no se esconde nada: dejar a alguien sin
-        // menú porque una llamada auxiliar ha fallado es peor que enseñarle una
-        // entrada que luego le dirá que no le toca.
+        // Si la superficie no llega, no se esconde nada del menú: dejar a
+        // alguien sin navegación porque una llamada auxiliar ha fallado es peor
+        // que enseñarle una entrada que luego le dirá que no le toca.
         setPermitidas(new Set());
+        setSuperficie(null);
       });
     return () => control.abort();
   }, [sesion]);
 
-  return <Ctx.Provider value={permitidas}>{children}</Ctx.Provider>;
+  const valor = useMemo<Permisos>(
+    () => ({
+      rutas: permitidas,
+      // Al revés que el menú: aquí, mientras no se sabe, **no se ofrece**. Un
+      // botón de eliminar que aparece por defecto y luego resulta que no te
+      // tocaba es un botón que alguien ya ha pulsado.
+      puedeOperar: (metodo, ruta) =>
+        operacionPermitida(superficie, metodo, ruta, (p) => puede(sesion, p)),
+    }),
+    [permitidas, superficie, sesion],
+  );
+
+  return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 
-/** Las rutas que esta sesión puede llamar. Vacío = todavía no se sabe. */
+/** Las rutas de lectura que esta sesión puede llamar. Vacío = todavía no se sabe. */
 export function usePermitidas(): Set<string> {
-  return useContext(Ctx);
+  return useContext(Ctx).rutas;
+}
+
+/** Si el servidor admite esa operación y se la admite a esta sesión. */
+export function usePuedeOperar(): (metodo: string, ruta: string) => boolean {
+  return useContext(Ctx).puedeOperar;
 }

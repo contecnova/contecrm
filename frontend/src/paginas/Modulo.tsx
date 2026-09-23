@@ -280,6 +280,11 @@ function RecursoVista({
             filas={filas}
             columnas={ordenar(filas, recurso.columnas)}
             titulo={recurso.nombre}
+            // Las preferidas del recurso mandan de entrada; si no declara
+            // ninguna, las seis primeras. Y la elección se recuerda por
+            // recurso: las columnas útiles de cuentas no son las de casos.
+            porDefecto={recurso.columnas?.length || 6}
+            recuerdaComo={`${ruta}.${recurso.nombre}`}
             // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una
             // pantalla vacía es peor que no tener enlace, porque el usuario
             // cree que se ha roto algo.

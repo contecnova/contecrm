@@ -20,6 +20,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { ALTAS } from "@/lib/altas";
+import { humanizar } from "@/lib/formato";
 import { MODULOS } from "@/lib/modulos";
 import { todasLasEntradas } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
@@ -301,8 +302,9 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
     const rotulo = modulo?.titulo ?? partes[1];
     const migas: Miga[] = [raiz, { rotulo, a: `/m/${partes[1]}` }];
     // Ficha: `/m/:ruta/:tipo/:id`. Se enseña el tipo y no el identificador —un
-    // UUID en la miga de pan no le dice nada a nadie.
-    if (partes[2]) migas.push({ rotulo: partes[2] });
+    // UUID en la miga de pan no le dice nada a nadie— y escrito como se lee,
+    // no en minúscula como viene en la ruta.
+    if (partes[2]) migas.push({ rotulo: humanizar(partes[2]) });
     return migas;
   }
 
