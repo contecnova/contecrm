@@ -592,22 +592,22 @@ modulos:
               - {id: CRM-01.01.01.05, c: C, fase: 1, svc: party, estado: hecho, t: "Múltiples direcciones tipificadas con validación y geocodificación"}
               - {id: CRM-01.01.01.06, c: A, fase: 1, svc: party, estado: hecho, reutiliza: "contecweb:app/services/prueba_de_identidad.py (validación contra registros)", t: "Múltiples identificadores fiscales y validación contra registros oficiales (VIES)"}
               - {id: CRM-01.01.01.07, c: C, fase: 1, svc: party, estado: hecho, t: "Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida"}
-              - {id: CRM-01.01.01.08, c: A, fase: 4, svc: party, estado: pendiente, t: "Datos firmográficos enriquecidos desde proveedores externos"}
-              - {id: CRM-01.01.01.09, c: A, fase: 1, svc: party, estado: pendiente, reutiliza: "contecpos:services/clientas (modelo B2C)", t: "Cuentas personales (B2C) coexistiendo con el modelo B2B"}
+              - {id: CRM-01.01.01.08, c: A, fase: 4, svc: party, estado: hecho, t: "Datos firmográficos enriquecidos desde proveedores externos"}
+              - {id: CRM-01.01.01.09, c: A, fase: 1, svc: party, estado: hecho, reutiliza: "contecpos:services/clientas (modelo B2C)", t: "Cuentas personales (B2C) coexistiendo con el modelo B2B"}
               - {id: CRM-01.01.01.10, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/raci_service.py (roles sobre entidad)", t: "Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero)"}
               - {id: CRM-01.01.01.13, c: A, fase: 2, svc: party, estado: hecho, t: "Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota"}
-              - {id: CRM-01.01.01.11, c: A, fase: 2, svc: party, estado: pendiente, t: "Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos"}
-              - {id: CRM-01.01.01.12, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecflow-PSA:app/services/{risk_scoring,profitability_service}.py", t: "Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo"}
+              - {id: CRM-01.01.01.11, c: A, fase: 2, svc: party, estado: hecho, t: "Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos"}
+              - {id: CRM-01.01.01.12, c: A, fase: 2, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/{risk_scoring,profitability_service}.py", t: "Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo"}
           - id: CRM-01.01.02
             nombre: Contactos / Personas
             capacidades:
               - {id: CRM-01.01.02.01, c: C, fase: 1, svc: party, estado: hecho, t: "Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes)"}
               - {id: CRM-01.01.02.02, c: A, fase: 1, svc: party, estado: hecho, t: "Relación N:M contacto–cuenta con rol, vigencia y contacto principal"}
-              - {id: CRM-01.01.02.03, c: A, fase: 2, svc: party, estado: pendiente, t: "Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor)"}
+              - {id: CRM-01.01.02.03, c: A, fase: 2, svc: party, estado: hecho, t: "Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor)"}
               - {id: CRM-01.01.02.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián"}
               - {id: CRM-01.01.02.05, c: C, fase: 1, svc: party, estado: hecho, t: "Preferencias de contacto: canal, frecuencia, idioma, horario"}
               - {id: CRM-01.01.02.06, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py", t: "Consentimientos y bases legales por finalidad y canal"}
-              - {id: CRM-01.01.02.07, c: D, fase: 4, svc: party, estado: pendiente, t: "Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto"}
+              - {id: CRM-01.01.02.07, c: D, fase: 4, svc: party, estado: hecho, t: "Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto"}
               - {id: CRM-01.01.02.08, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecmind:app/services/timeline.py", t: "Historial completo de interacciones unificado"}
           - id: CRM-01.01.03
             nombre: Leads y captación
@@ -627,10 +627,10 @@ modulos:
               - {id: CRM-01.01.04.03, c: C, fase: 1, svc: party, estado: hecho, t: "Asistente de fusión con selección de campo superviviente y reparentado de relaciones"}
               - {id: CRM-01.01.04.04, c: A, fase: 1, svc: party, estado: hecho, reutiliza: "contecweb:app/services/normalization/", t: "Normalización automática (direcciones, teléfonos E.164, razón social, correo)"}
               - {id: CRM-01.01.04.05, c: A, fase: 1, svc: party, estado: hecho, reutiliza: "contecmind:app/services/quality_baseline.py + quality_sampler.py", t: "Reglas de completitud y puntuación de calidad por registro"}
-              - {id: CRM-01.01.04.06, c: A, fase: 2, svc: party, estado: pendiente, t: "Golden record / survivorship rules en escenarios multi-fuente"}
-              - {id: CRM-01.01.04.07, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecweb (linaje del dato por fuente)", t: "Linaje del dato: de qué sistema y en qué momento llegó cada valor"}
-              - {id: CRM-01.01.04.08, c: A, fase: 2, svc: party, estado: pendiente, reutiliza: "contecmind:app/services/gap_tasks.py (cola de excepciones asignable)", t: "Stewardship: cola de excepciones de calidad asignable a responsables"}
-              - {id: CRM-01.01.04.09, c: A, fase: 4, svc: party, estado: pendiente, reutiliza: "contecmind:app/services/freshness.py", t: "Enriquecimiento programado y detección de datos obsoletos"}
+              - {id: CRM-01.01.04.06, c: A, fase: 2, svc: party, estado: hecho, t: "Golden record / survivorship rules en escenarios multi-fuente"}
+              - {id: CRM-01.01.04.07, c: A, fase: 2, svc: party, estado: hecho, reutiliza: "contecweb (linaje del dato por fuente)", t: "Linaje del dato: de qué sistema y en qué momento llegó cada valor"}
+              - {id: CRM-01.01.04.08, c: A, fase: 2, svc: party, estado: hecho, reutiliza: "contecmind:app/services/gap_tasks.py (cola de excepciones asignable)", t: "Stewardship: cola de excepciones de calidad asignable a responsables"}
+              - {id: CRM-01.01.04.09, c: A, fase: 4, svc: party, estado: hecho, reutiliza: "contecmind:app/services/freshness.py", t: "Enriquecimiento programado y detección de datos obsoletos"}
               - {id: CRM-01.01.04.10, c: A, fase: 1, svc: party, estado: hecho, t: "Validación de correo, teléfono y dirección con estado de verificación"}
           - id: CRM-01.01.05
             nombre: Vista 360 e identidad
@@ -1243,6 +1243,9 @@ modulos:
               - {id: CRM-07.04.03.28, c: A, fase: 1, svc: front, estado: hecho, cubre: "7.3", t: "Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD"}
               - {id: CRM-07.04.03.29, c: A, fase: 2, svc: front, estado: pendiente, cubre: "8.1", t: "Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda"}
               - {id: CRM-07.04.03.30, c: A, fase: 2, svc: front, estado: hecho, cubre: "8.2", t: "Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido"}
+              - {id: CRM-07.04.03.31, c: A, fase: 2, svc: front, estado: pendiente, cubre: "9.1", t: "Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos"}
+              - {id: CRM-07.04.03.32, c: A, fase: 2, svc: front, estado: pendiente, cubre: "9.2", t: "Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer"}
+
           - id: CRM-07.04.04
             nombre: Calidad del front
             capacidades:
@@ -1287,6 +1290,55 @@ modulos:
               - {id: CRM-08.02.01.04, c: C, fase: 0, svc: docs, estado: hecho, t: "Política de soporte: niveles, horarios, tiempos de respuesta y escalado"}
               - {id: CRM-08.02.01.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py + app/api/exports.py", t: "Portabilidad: exportación completa del tenant en formato abierto y documentado"}
               - {id: CRM-08.02.01.06, c: A, fase: 0, svc: docs, estado: pendiente, t: "Reversibilidad y plan de salida contractual"}
+
+  - id: "9"
+    nombre: Proveedores, coste y capacidad
+    # La mitad que le falta a una oferta. El CRM sabe poner precio a lo que
+    # vendemos y, sin esto, no sabe lo que nos cuesta — así que no puede decir el
+    # margen, que es lo que un responsable aprueba o rechaza.
+    #
+    # Con una frontera explícita: el pedido de compra, la recepción y la casación
+    # de factura son del ERP. Duplicarlos aquí crea dos sistemas de registro del
+    # mismo pedido, y eso acaba en cuadres a mano. Aquí vive lo que toca a la
+    # venta: la tarifa que alimenta el coste, la capacidad que permite
+    # comprometer una fecha, la homologación que dice si ese proveedor puede
+    # servir a ese cliente y el acuerdo que sostiene lo que prometemos. Donde
+    # mande el ERP se lee por API con el conector genérico y no se copia.
+    secciones:
+      - id: "9.1"
+        nombre: Maestro y gobierno del proveedor
+        funciones:
+          - id: CRM-09.01.01
+            nombre: El proveedor como parte
+            capacidades:
+              - {id: CRM-09.01.01.01, c: C, fase: 2, svc: party, estado: pendiente, t: "El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes"}
+              - {id: CRM-09.01.01.02, c: C, fase: 2, svc: party, estado: pendiente, t: "Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo"}
+              - {id: CRM-09.01.01.03, c: C, fase: 2, svc: party, estado: pendiente, t: "Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después"}
+              - {id: CRM-09.01.01.04, c: A, fase: 4, svc: party, estado: pendiente, t: "Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay"}
+              - {id: CRM-09.01.01.05, c: A, fase: 4, svc: party, estado: pendiente, t: "Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas"}
+              - {id: CRM-09.01.01.06, c: C, fase: 2, svc: party, estado: pendiente, t: "Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla"}
+              - {id: CRM-09.01.01.07, c: C, fase: 2, svc: sales, estado: pendiente, t: "Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido"}
+              - {id: CRM-09.01.01.08, c: A, fase: 3, svc: service, estado: pendiente, t: "Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie"}
+              - {id: CRM-09.01.01.09, c: C, fase: 2, svc: sales, estado: pendiente, t: "Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto"}
+              - {id: CRM-09.01.01.10, c: A, fase: 2, svc: party, estado: pendiente, t: "Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja"}
+
+      - id: "9.2"
+        nombre: Coste, tarifas y capacidad
+        funciones:
+          - id: CRM-09.02.01
+            nombre: Lo que nos cuesta y lo que podemos comprometer
+            capacidades:
+              - {id: CRM-09.02.01.01, c: C, fase: 2, svc: sales, estado: pendiente, reutiliza: "contecflow-PSA:app/services/rate_card_service.py", t: "Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo"}
+              - {id: CRM-09.02.01.02, c: C, fase: 2, svc: sales, estado: pendiente, t: "Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado"}
+              - {id: CRM-09.02.01.03, c: C, fase: 2, svc: sales, estado: pendiente, t: "El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó"}
+              - {id: CRM-09.02.01.04, c: A, fase: 2, svc: sales, estado: pendiente, t: "Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio"}
+              - {id: CRM-09.02.01.05, c: A, fase: 2, svc: sales, estado: pendiente, t: "Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó"}
+              - {id: CRM-09.02.01.06, c: A, fase: 2, svc: sales, estado: pendiente, t: "Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible"}
+              - {id: CRM-09.02.01.07, c: C, fase: 2, svc: sales, estado: pendiente, t: "Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés"}
+              - {id: CRM-09.02.01.08, c: A, fase: 4, svc: sales, estado: pendiente, t: "Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado"}
+              - {id: CRM-09.02.01.09, c: A, fase: 4, svc: sales, estado: pendiente, t: "Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad"}
+              - {id: CRM-09.02.01.10, c: A, fase: 4, svc: analytics, estado: pendiente, t: "Coste real frente a coste ofertado, medido, y dónde se fue la diferencia"}
+
 
 # ── ANEXO A — Catálogo mínimo de recursos de API ───────────────────────────
 # Base para verificar que el sistema es realmente headless. Cada recurso debe

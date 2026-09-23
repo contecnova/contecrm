@@ -63,6 +63,15 @@ class Cuenta(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     # activa | inactiva | bloqueada. Distinto de la papelera: una cuenta inactiva
     # existe y se consulta; una borrada está en la papelera.
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="activa")
+    # Persona física (B2C), CRM-01.01.01.09. Una marca y no un modelo aparte: con
+    # dos modelos cada informe se escribe dos veces, la deduplicación va por un
+    # lado y los permisos por otro, y a los seis meses uno está peor mantenido.
+    # Cuando está puesta, TODA la ficha es dato personal —el nombre de la cuenta
+    # es el nombre de alguien y su dirección es su domicilio—, y por eso se
+    # declara aquí y no en una tabla satélite que el RAT no miraría.
+    es_personal: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     # Etapa del ciclo de vida, configurable por el tenant (lista maestra).
     ciclo_vida: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
@@ -721,5 +730,20 @@ from services.party.actividades_extra import (  # noqa: E402,F401
     Recurrencia,
     Visita,
 )
+
+# Plan de cuenta, financiero replicado, mapa de influencia y cambio de empresa
+# (CRM-01.01.01.11, .12 · CRM-01.01.02.03, .07).
+from services.party.cuenta_360 import (  # noqa: E402,F401
+    CambioDeEmpresa,
+    EstadoFinanciero,
+    PlanCuenta,
+    RelacionPersona,
+)
 from services.party.identidad import Senal, Union  # noqa: E402,F401
 from services.party.limitacion import LimitacionTratamiento  # noqa: E402,F401
+
+# Golden record y linaje del dato (CRM-01.01.04.06, .07).
+from services.party.mdm import LinajeValor  # noqa: E402,F401
+
+# Cola de excepciones de calidad (CRM-01.01.04.08).
+from services.party.stewardship import ExcepcionCalidad  # noqa: E402,F401

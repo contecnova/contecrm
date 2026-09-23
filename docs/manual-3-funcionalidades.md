@@ -10933,3 +10933,146 @@ no se arregla desde el CRM; o que el proveedor cortó por cuota, que no es un fa
 de configuración. Y lo que dijo el proveedor se enseña tal cual. Los alcances se
 comprueban además **antes de llamar**: hacerlo esperando el 403 gasta una petición
 de la cuota del tenant para averiguar algo que ya se sabía.
+
+## Golden record y linaje del dato (`CRM-01.01.04.06`, `CRM-01.01.04.07`)
+
+Cuando el mismo cliente llega del ERP, del formulario web y de un fichero de
+marketing, alguien tiene que decidir qué dirección es la buena. Lo que casi todos
+los CRM hacen es lo cómodo: **gana el último que escribió**. Y eso produce fichas
+que cambian solas los martes por la noche, cuando pasa el proceso del ERP, sin
+que nadie entienda por qué.
+
+**La regla es por campo y está declarada.** El NIF lo sabe mejor el ERP; el móvil
+lo sabe mejor quien acaba de hablar con el cliente. Una regla única para toda la
+ficha obliga a elegir entre dos verdades y se equivoca en la mitad. Hay cinco
+formas de resolver —la fuente más fiable, la que cambió después, la más completa,
+rellenar solo huecos, o que lo decida una persona— y cada una se equivoca de una
+manera distinta, por eso están declaradas y no se improvisan.
+
+**Lo que escribe una persona no lo pisa ningún proceso.** Quien corrige un
+teléfono a mano está diciendo que el otro estaba mal.
+
+**Y «más reciente» no es cuándo llegó el mensaje, sino cuándo cambió el valor.**
+Esta es la trampa que estropea casi todas las integraciones: un ERP que reenvía
+el maestro entero cada noche trae mil valores «nuevos» que son idénticos a los de
+ayer, y con la fecha de llegada como criterio pisan lo que un comercial corrigió
+esta mañana. Cuando una fuente no dice cuándo cambió el valor, se avisa: no es lo
+mismo y tratarlo igual es lo que provoca el problema.
+
+**Lo que pierde no se tira: se anota como discrepancia.** Si el ERP dice una
+dirección y el formulario dice otra, probablemente el cliente se mudó y solo uno
+se enteró — eso es información, y quedarse con una y olvidar la otra la convierte
+en un misterio.
+
+**Y un golden record sin linaje no se puede auditar.** La pregunta que llega
+siempre es «¿por qué pone esto aquí?»; sin saber de qué sistema vino y cuándo, la
+única respuesta honesta es «no lo sé», y esa es la que hace que alguien se abra
+una hoja de cálculo al lado del CRM. Por eso se guarda de cada valor la fuente,
+**cuándo cambió** y **cuándo llegó el último mensaje que lo confirmaba**, que son
+dos fechas distintas: confirmar no es cambiar, y moverlas juntas haría que un dato
+recién comprobado pareciera recién actualizado y falsearía todos los informes de
+antigüedad.
+
+Con eso se puede decir qué valores llevan demasiado sin confirmarse, con el plazo
+**por campo** —un NIF no caduca y un cargo caduca en cuanto ascienden a esa
+persona—. Y un campo del que no hay linaje **no cuenta como fresco**: no se ha
+verificado nunca, que es distinto de estar al día.
+
+## La cola de calidad y el enriquecimiento (`CRM-01.01.04.08`, `CRM-01.01.04.09`, `CRM-01.01.01.08`)
+
+Medir la calidad del dato es fácil y por sí solo no sirve de nada: el informe que
+dice «el 38 % de las cuentas no tiene sector» lo mira todo el mundo la primera
+semana y nadie la segunda. Lo que arregla el dato es que **alguien concreto tenga
+una cola con su nombre**.
+
+- **Una excepción sin responsable es una estadística.** Se asigna, y las que no
+  tienen a nadie se cuentan aparte: son las que no se van a hacer. Sin ese número,
+  el panel enseña una cola pequeña y sana que en realidad es una vigilada y otra
+  abandonada.
+- **La misma regla sobre la misma ficha es una excepción, no diez.** Sin eso, el
+  proceso nocturno abre otra cada noche y a la semana hay tres mil que son siete.
+- **Cerrar exige decir qué se hizo**: corregido, no era un error, no se puede
+  arreglar o ya no aplica. Un botón de «cerrar» a secas convierte la cola en un
+  vertedero: se vacía y el dato sigue mal. Las dos respuestas que no arreglan nada
+  exigen motivo, porque son las que hay que poder revisar dentro de seis meses.
+- **Y «no era un error» se aprende.** Si la misma regla genera cien excepciones
+  que cien personas descartan, la rota es la regla — y hay una vista que lo dice,
+  porque en cuanto la mitad de la cola no es un problema se deja de abrir la cola
+  entera.
+
+Del **enriquecimiento** con fuentes externas importan dos cosas. Una, que
+**cuesta dinero por llamada**: un botón de «enriquecer todo» sobre cuarenta mil
+cuentas es una factura que nadie aprobó, así que se dice el coste antes y se
+prioriza lo que importa — enriquecer cuentas inactivas de hace cinco años gasta el
+presupuesto en fichas que nadie va a abrir. Y dos, que **no pisa lo que escribió
+una persona**: un proveedor de datos sabe de muchas empresas y no conoce a
+ninguna; quien acaba de hablar con el cliente sí. Rellena huecos, y lo que dice
+distinto de lo que hay sale como discrepancia para la cola — puede que el dato del
+CRM esté viejo, y esa es justo la conversación que interesa tener.
+
+## Cuentas personales, plan de cuenta y estado financiero (`CRM-01.01.01.09`, `CRM-01.01.01.11`, `CRM-01.01.01.12`)
+
+**Cuentas personales (B2C).** La tentación es crear un modelo aparte para el
+particular. Con dos modelos, cada informe se escribe dos veces, la deduplicación
+va por un lado y los permisos por otro, y a los seis meses uno de los dos está
+peor mantenido. Es la misma cuenta con una marca — y con tres consecuencias
+serias: **la ficha entera pasa a ser dato personal** (el nombre de la cuenta es el
+nombre de alguien y su dirección es su domicilio, así que los derechos de acceso y
+supresión aplican a la cuenta y no solo al contacto), los campos de empresa dejan
+de significar nada y **no se pueden exigir** —pedirle el CNAE a un particular es
+lo que hace que el comercial escriba cualquier cosa para poder guardar—, y el
+identificador fiscal es el suyo, que también es dato personal.
+
+**Plan de cuenta.** Objetivos, hueco por cubrir, mapa de poder y riesgos. Lo que
+lo hace útil o inútil es una sola cosa: si el hueco se **calcula** contra lo que
+ya se le factura o si lo teclea el comercial. Tecleado sale lo que él tiene en la
+cabeza; calculado aparece lo que nadie había mirado. Y cada objetivo necesita
+**fecha y responsable**: uno sin las dos cosas es una frase, y un plan de frases
+se revisa una vez, en la reunión en la que se escribió. Por eso también se avisa
+cuando un plan lleva demasiado sin revisarse — en la reunión de seguimiento se
+enseña igual y nadie mira la fecha.
+
+**Estado financiero.** Riesgo, crédito disponible, deuda vencida y bloqueo. No es
+del CRM: es del ERP, y aquí vive una **proyección con la fecha del origen**, no la
+de llegada. La diferencia importa el día que se bloquea una oferta: con un dato de
+hace tres semanas el bloqueo es una suposición, y hay que decirlo — un comercial
+deja de creerse un bloqueo que se basa en algo tan viejo. Las tres respuestas a
+«¿se le puede vender más?» son **sí**, **no** y **no se sabe**, y la tercera no se
+redondea a la primera: dejar pasar la oferta y descubrir el impago después es
+exactamente lo que este dato existe para evitar. Un límite de crédito que no
+consta no es un límite infinito, es un dato que falta. Y un bloqueo **sin motivo
+no se guarda**: el comercial que se encuentra la oferta parada tiene que poder
+decirle al cliente algo que no sea «el sistema no me deja».
+
+## Mapa de influencia y cambio de empresa (`CRM-01.01.02.03`, `CRM-01.01.02.07`)
+
+**El mapa de poder** dice quién reporta a quién, quién es aliado y quién
+detractor. Dos cosas lo hacen honesto. Una: «aliado» y «detractor» son
+**valoraciones sobre una persona identificada** y exigen motivo — sin el porqué es
+un rumor guardado en una base de datos, y si algún día esa persona ejerce su
+derecho de acceso, lo que sale es eso. «Reporta a», en cambio, es un hecho y no
+necesita justificación.
+
+Y dos: lo que de verdad aporta un mapa antes de una reunión es **con quién no se
+ha hablado nunca**. Un mapa que solo enseña a los conocidos confirma lo que el
+comercial ya sabía; el valor está en el decisor con el que nadie ha hablado, y eso
+sale en una lista aparte.
+
+**El cambio de empresa** empieza siempre por un indicio: un correo que rebota, una
+respuesta automática de baja, la persona que aparece firmando desde otro dominio.
+Ninguno es concluyente —un rebote puede ser un buzón lleno y una respuesta
+automática puede ser una baja de tres meses—, así que **se abre una sospecha, no
+se cambia la ficha**: cambiarla dejaría a un cliente activo marcado como que se
+fue, y a nadie llamándole.
+
+Y al confirmarlo, **no se mueve el contacto a la cuenta nueva**. Es lo cómodo y
+reescribe la historia: los correos, las reuniones y lo que se habló son de la
+cuenta antigua, y al moverlos esa cuenta pasa a no haber hablado nunca con nadie
+— justo cuando alguien intenta entender por qué se perdió. Se crea la ficha nueva,
+se enlazan las dos, y lo que queda es una razón para llamar: alguien que acaba de
+llegar a otra empresa y ya conocía el producto es la oportunidad más barata que
+hay, y dura pocas semanas.
+
+Descartar un indicio también exige motivo. Sin él, el mismo rebote vuelve a abrir
+la sospecha la semana que viene: dos veces es tolerable, y a la quinta se deja de
+mirar la cola.

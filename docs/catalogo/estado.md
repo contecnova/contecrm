@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**727 capacidades**: ✅ 670 hecho · ⬜ 57 pendiente
+**749 capacidades**: ✅ 680 hecho · ⬜ 69 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -447,7 +447,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 1 — Núcleo de datos de cliente (Customer 360)
 
-54 capacidades · ✅ 39 · ⬜ 15
+54 capacidades · ✅ 49 · ⬜ 5
 
 ### 1.1 Modelo de parties
 
@@ -462,12 +462,12 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.01.05` | Múltiples direcciones tipificadas con validación y geocodificación | C | 1 | party | ✅ | — |
 | `CRM-01.01.01.06` | Múltiples identificadores fiscales y validación contra registros oficiales (VIES) | A | 1 | party | ✅ | contecweb:app/services/prueba_de_identidad.py (validación contra registros) |
 | `CRM-01.01.01.07` | Segmentación: sector (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC, ciclo de vida | C | 1 | party | ✅ | — |
-| `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ⬜ | — |
-| `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ⬜ | contecpos:services/clientas (modelo B2C) |
+| `CRM-01.01.01.08` | Datos firmográficos enriquecidos desde proveedores externos | A | 4 | party | ✅ | — |
+| `CRM-01.01.01.09` | Cuentas personales (B2C) coexistiendo con el modelo B2B | A | 1 | party | ✅ | contecpos:services/clientas (modelo B2C) |
 | `CRM-01.01.01.10` | Equipo de cuenta con roles (owner, KAM, técnico, soporte, financiero) | C | 1 | party | ✅ | contecflow-PSA:app/services/raci_service.py (roles sobre entidad) |
 | `CRM-01.01.01.13` | Reverificación periódica automática de identificadores fiscales y direcciones, con cola y cuota | A | 2 | party | ✅ | — |
-| `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ⬜ | — |
-| `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ⬜ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
+| `CRM-01.01.01.11` | Plan de cuenta: objetivos, whitespace, mapa de poder, riesgos | A | 2 | party | ✅ | — |
+| `CRM-01.01.01.12` | Estado financiero embebido: riesgo, crédito disponible, deuda vencida, bloqueo | A | 2 | party | ✅ | contecflow-PSA:app/services/{risk_scoring,profitability_service}.py |
 
 #### CRM-01.01.02 · Contactos / Personas
 
@@ -475,11 +475,11 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-01.01.02.01` | Ficha de contacto con múltiples canales (correo, teléfono, mensajería, redes) | C | 1 | party | ✅ | — |
 | `CRM-01.01.02.02` | Relación N:M contacto–cuenta con rol, vigencia y contacto principal | A | 1 | party | ✅ | — |
-| `CRM-01.01.02.03` | Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor) | A | 2 | party | ⬜ | — |
+| `CRM-01.01.02.03` | Mapa de relaciones e influencia entre contactos (reporting line, aliado, detractor) | A | 2 | party | ✅ | — |
 | `CRM-01.01.02.04` | Rol en el proceso de compra: decisor, prescriptor, usuario, económico, guardián | A | 2 | sales | ⬜ | — |
 | `CRM-01.01.02.05` | Preferencias de contacto: canal, frecuencia, idioma, horario | C | 1 | party | ✅ | — |
 | `CRM-01.01.02.06` | Consentimientos y bases legales por finalidad y canal | C | 1 | party | ✅ | contecweb:app/services/grc.py (bases legales) + contecmind:app/services/compliance.py |
-| `CRM-01.01.02.07` | Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto | D | 4 | party | ⬜ | — |
+| `CRM-01.01.02.07` | Detección de cambio de empresa y seguimiento del contacto a su nuevo puesto | D | 4 | party | ✅ | — |
 | `CRM-01.01.02.08` | Historial completo de interacciones unificado | C | 1 | party | ✅ | contecmind:app/services/timeline.py |
 
 #### CRM-01.01.03 · Leads y captación
@@ -503,10 +503,10 @@ puede decir que algo está hecho si no lo está.
 | `CRM-01.01.04.03` | Asistente de fusión con selección de campo superviviente y reparentado de relaciones | C | 1 | party | ✅ | — |
 | `CRM-01.01.04.04` | Normalización automática (direcciones, teléfonos E.164, razón social, correo) | A | 1 | party | ✅ | contecweb:app/services/normalization/ |
 | `CRM-01.01.04.05` | Reglas de completitud y puntuación de calidad por registro | A | 1 | party | ✅ | contecmind:app/services/quality_baseline.py + quality_sampler.py |
-| `CRM-01.01.04.06` | Golden record / survivorship rules en escenarios multi-fuente | A | 2 | party | ⬜ | — |
-| `CRM-01.01.04.07` | Linaje del dato: de qué sistema y en qué momento llegó cada valor | A | 2 | party | ⬜ | contecweb (linaje del dato por fuente) |
-| `CRM-01.01.04.08` | Stewardship: cola de excepciones de calidad asignable a responsables | A | 2 | party | ⬜ | contecmind:app/services/gap_tasks.py (cola de excepciones asignable) |
-| `CRM-01.01.04.09` | Enriquecimiento programado y detección de datos obsoletos | A | 4 | party | ⬜ | contecmind:app/services/freshness.py |
+| `CRM-01.01.04.06` | Golden record / survivorship rules en escenarios multi-fuente | A | 2 | party | ✅ | — |
+| `CRM-01.01.04.07` | Linaje del dato: de qué sistema y en qué momento llegó cada valor | A | 2 | party | ✅ | contecweb (linaje del dato por fuente) |
+| `CRM-01.01.04.08` | Stewardship: cola de excepciones de calidad asignable a responsables | A | 2 | party | ✅ | contecmind:app/services/gap_tasks.py (cola de excepciones asignable) |
+| `CRM-01.01.04.09` | Enriquecimiento programado y detección de datos obsoletos | A | 4 | party | ✅ | contecmind:app/services/freshness.py |
 | `CRM-01.01.04.10` | Validación de correo, teléfono y dirección con estado de verificación | A | 1 | party | ✅ | — |
 
 #### CRM-01.01.05 · Vista 360 e identidad
@@ -1060,7 +1060,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-91 capacidades · ✅ 86 · ⬜ 5
+93 capacidades · ✅ 86 · ⬜ 7
 
 ### 7.1 Administración funcional
 
@@ -1186,6 +1186,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.03.28` | Gobierno y cumplimiento: retención, bloqueos legales, derechos del interesado, GRC con riesgos, controles, cobertura del catálogo y SoD | A | 1 | front | ✅ | — |
 | `CRM-07.04.03.29` | Rendimiento a la vista: volumetría, límites del plan y por qué una lista tarda lo que tarda | A | 2 | front | ⬜ | — |
 | `CRM-07.04.03.30` | Compromisos de servicio: RPO, RTO, disponibilidad y ventanas de mantenimiento, con lo medido al lado de lo prometido | A | 2 | front | ✅ | — |
+| `CRM-07.04.03.31` | Proveedores: homologación, documentos con vigencia, riesgo de dependencia y evaluación con hechos medidos | A | 2 | front | ⬜ | — |
+| `CRM-07.04.03.32` | Coste y capacidad: tarifa del proveedor, margen de la oferta, comparación entre proveedores y qué se puede comprometer | A | 2 | front | ⬜ | — |
 
 #### CRM-07.04.04 · Calidad del front
 
@@ -1235,3 +1237,41 @@ puede decir que algo está hecho si no lo está.
 | `CRM-08.02.01.04` | Política de soporte: niveles, horarios, tiempos de respuesta y escalado | C | 0 | docs | ✅ | — |
 | `CRM-08.02.01.05` | Portabilidad: exportación completa del tenant en formato abierto y documentado | C | 0 | tenancy | ✅ | contecmind:app/services/exports.py + app/api/exports.py |
 | `CRM-08.02.01.06` | Reversibilidad y plan de salida contractual | A | 0 | docs | ⬜ | — |
+
+## Módulo 9 — Proveedores, coste y capacidad
+
+20 capacidades · ⬜ 20
+
+### 9.1 Maestro y gobierno del proveedor
+
+#### CRM-09.01.01 · El proveedor como parte
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-09.01.01.01` | El proveedor es una cuenta con rol, no un maestro aparte: misma ficha, misma deduplicación, mismos permisos y los mismos informes | C | 2 | party | ⬜ | — |
+| `CRM-09.01.01.02` | Homologación por categoría: requisitos, estado y caducidad, con lo que caduca bloqueando por sí solo | C | 2 | party | ⬜ | — |
+| `CRM-09.01.01.03` | Documentación obligatoria con vigencia (seguro, certificados, solvencia) y aviso antes de que venza, no después | C | 2 | party | ⬜ | — |
+| `CRM-09.01.01.04` | Riesgo del proveedor: dependencia, concentración y si hay alternativa declarada o no la hay | A | 4 | party | ⬜ | — |
+| `CRM-09.01.01.05` | Evaluación con hechos medidos —plazo cumplido, incidencias, desvío de coste— y no solo con encuestas | A | 4 | party | ⬜ | — |
+| `CRM-09.01.01.06` | Contactos del proveedor por función: comercial, técnico, facturación y escalado, con a quién se llama cuando algo falla | C | 2 | party | ⬜ | — |
+| `CRM-09.01.01.07` | Contrato con el proveedor: vigencia, renovación, preaviso y qué condiciones afectan a lo que ya hemos vendido | C | 2 | sales | ⬜ | — |
+| `CRM-09.01.01.08` | Acuerdo de servicio del proveedor y su relación con el que prometemos al cliente: no se puede prometer lo que no sostiene nadie | A | 3 | service | ⬜ | — |
+| `CRM-09.01.01.09` | Alcance por categoría, geografía y cliente: qué proveedor puede servir a qué, y por qué no puede al resto | C | 2 | sales | ⬜ | — |
+| `CRM-09.01.01.10` | Baja del proveedor: qué pasa con lo que ya está comprometido con clientes antes de poder darlo de baja | A | 2 | party | ⬜ | — |
+
+### 9.2 Coste, tarifas y capacidad
+
+#### CRM-09.02.01 · Lo que nos cuesta y lo que podemos comprometer
+
+| ID | Capacidad | Crit. | Fase | Servicio | Estado | Se reutiliza de |
+|---|---|:-:|:-:|---|:-:|---|
+| `CRM-09.02.01.01` | Tarifa de coste del proveedor sobre el mismo motor de precios: vigencia, volumen, moneda y escalados, sin un motor paralelo | C | 2 | sales | ⬜ | contecflow-PSA:app/services/rate_card_service.py |
+| `CRM-09.02.01.02` | Coste en la oportunidad y en la oferta, con el margen calculado y no tecleado | C | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.03` | El coste se congela al ofertar: un cambio de tarifa posterior avisa y no reescribe la oferta que alguien ya aprobó | C | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.04` | Comparación entre proveedores para lo mismo: coste, plazo y riesgo, no solo el precio | A | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.05` | Petición de oferta al proveedor y su respuesta, ligada a la oportunidad que la motivó | A | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.06` | Capacidad comprometida por proveedor y periodo, con lo ya comprometido descontado de lo disponible | A | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.07` | Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés | C | 2 | sales | ⬜ | — |
+| `CRM-09.02.01.08` | Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado | A | 4 | sales | ⬜ | — |
+| `CRM-09.02.01.09` | Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad | A | 4 | sales | ⬜ | — |
+| `CRM-09.02.01.10` | Coste real frente a coste ofertado, medido, y dónde se fue la diferencia | A | 4 | analytics | ⬜ | — |

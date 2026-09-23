@@ -183,6 +183,11 @@ PREFIJOS: dict[str, str] = {
     # porque enrutar solo una deja la mitad inalcanzable.
     "cuentas": "party",
     "contactos": "party",
+    # Calidad y gobierno del dato de cliente (CRM-01.01.04): golden record,
+    # linaje, cola de excepciones y enriquecimiento.
+    "calidad-dato": "party",
+    "planes-cuenta": "party",
+    "mapa-personas": "party",
     "oportunidades": "sales",
     "captura": "sales",
 }
