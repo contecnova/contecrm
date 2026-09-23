@@ -42,6 +42,18 @@ from uuid import UUID
 
 from crmcore.ids import nuevo_id
 
+# Lo que admite la columna `dedup_key` en la tabla de salida, en la de entrada y
+# en la de fallidos (`crmcore.bus.modelos`, que lo importa de aquí para que no
+# puedan separarse).
+#
+# Importa que esté aquí y no solo en la tabla: un productor compone su clave con
+# lo que identifica el hecho —«org:{tenant}:{usuario}», por ejemplo— y dos UUID
+# se pasan de 64 caracteres sin que nadie lo note al escribirlo. El resultado no
+# es un evento sin deduplicar: es un `StringDataRightTruncation` que tumba la
+# transacción entera del cambio que lo emitió. Pasó al dar de alta usuarios, y
+# el alta fallaba por culpa del evento, no por el usuario.
+TOPE_DEDUP = 64
+
 # Versión del propio formato del sobre, distinta de la versión de cada evento.
 # Solo cambiaría si se añadiera o quitara un campo del sobre.
 VERSION_SOBRE = 1
@@ -80,6 +92,24 @@ class Subject:
         return {"tipo": self.tipo, "id": self.id}
 
 
+def _acotar(clave: str) -> str:
+    """Mete una clave larga en el ancho de la columna sin perder su identidad.
+
+    Se hace aquí, en el sobre, y no en cada sitio que compone una clave. Hay una
+    docena de ellos —`org:`, `lead.assigned:`, `case.assigned:`, `salud:`…— y
+    varios ya se pasaban del límite. Pedir a cada uno que se acuerde es pedir
+    que el próximo se olvide, y el síntoma no es un evento sin deduplicar: es
+    la transacción del cambio reventada por un error de la base.
+
+    Se conserva el principio legible y se le pega un resumen del original. Dos
+    claves distintas nunca coinciden —las separa el resumen— y la misma clave da
+    siempre lo mismo, que es lo único que la deduplicación necesita. Y quien
+    mire la tabla sigue viendo de qué es.
+    """
+    resumen = hashlib.sha256(clave.encode()).hexdigest()[:32]
+    return f"{clave[: TOPE_DEDUP - len(resumen) - 1]}-{resumen}"
+
+
 @dataclass(frozen=True, slots=True)
 class Evento:
     """Sobre completo."""
@@ -99,10 +129,12 @@ class Evento:
     envelope_version: int = VERSION_SOBRE
 
     def __post_init__(self) -> None:
+        # `object.__setattr__` porque la clase es frozen: el valor se calcula
+        # una vez, al construir, y después ya es inmutable.
         if not self.dedup_key:
-            # `object.__setattr__` porque la clase es frozen: el valor se
-            # calcula una vez, al construir, y después ya es inmutable.
             object.__setattr__(self, "dedup_key", self._clave_derivada())
+        elif len(self.dedup_key) > TOPE_DEDUP:
+            object.__setattr__(self, "dedup_key", _acotar(self.dedup_key))
 
     def _clave_derivada(self) -> str:
         """Clave estable a partir de lo que identifica el HECHO.

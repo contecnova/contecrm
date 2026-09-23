@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from crmcore.db.base import Base
+from crmcore.events.envelope import TOPE_DEDUP
 from crmcore.ids import nuevo_id
 
 
@@ -42,7 +43,7 @@ class EventoSaliente(Base):
     version: Mapped[int] = mapped_column(nullable=False, default=1)
     subject_tipo: Mapped[str] = mapped_column(String(60), nullable=False)
     subject_id: Mapped[str] = mapped_column(String(80), nullable=False)
-    dedup_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    dedup_key: Mapped[str] = mapped_column(String(TOPE_DEDUP), nullable=False)
     # El sobre completo, ya serializado. Se guarda entero y no por campos para
     # que publicar sea copiar: si el relevo tuviera que reconstruir el sobre,
     # un cambio en el formato rompería los eventos que quedaron pendientes
@@ -87,7 +88,7 @@ class EventoEntrante(Base):
 
     __tablename__ = "eventos_entrantes"
 
-    dedup_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dedup_key: Mapped[str] = mapped_column(String(TOPE_DEDUP), primary_key=True)
     consumidor: Mapped[str] = mapped_column(String(120), primary_key=True)
     tenant_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     tipo: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -120,7 +121,7 @@ class EventoFallido(Base):
     tenant_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     origen: Mapped[str] = mapped_column(String(40), nullable=False)  # outbox | consumo | webhook
     tipo: Mapped[str] = mapped_column(String(120), nullable=False)
-    dedup_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    dedup_key: Mapped[str] = mapped_column(String(TOPE_DEDUP), nullable=False)
     sobre: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     intentos: Mapped[int] = mapped_column(nullable=False, default=0)
     ultimo_error: Mapped[str | None] = mapped_column(Text, nullable=True)

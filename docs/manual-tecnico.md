@@ -146,6 +146,48 @@ El `.env` manda. Se genera desde `.env.example`, que a su vez **se genera desde
 los Settings reales**: no hay ajustes documentados que no existan ni ajustes que
 existan sin documentar, y hay un gate que lo comprueba.
 
+#### Sembrar una empresa con volumen
+
+`sembrar_demo.py` crea cuatro cuentas: sirve para comprobar que el sistema
+funciona, no para enseñarlo. Sin volumen no se ve nada de lo que hace un CRM —ni
+un embudo, ni una previsión, ni una cola de casos, ni un aviso de vencimiento—,
+y para eso está `sembrar_empresa.py`:
+
+```bash
+python scripts/sembrar_empresa.py --slug acme --nombre "Acme, S.A." \
+    --email direccion@acme.example --contrasena "…" --escala 60
+```
+
+`--escala` es el número de cuentas; el resto de volúmenes se derivan de él, con
+un reparto que imita el de una empresa real: tres contactos por cuenta, cuatro
+actividades, dos oportunidades y dos casos y medio. Los datos se componen de
+piezas y se combinan con un generador **sembrado a partir del slug**, así que la
+misma empresa da siempre los mismos datos y dos empresas dan datos distintos.
+
+Con la pila en Docker hay que ejecutarlo **por partes, una por servicio**, porque
+el rol de `sales` no tiene permisos sobre el esquema de `party` —el aislamiento
+funcionando— y porque las partes se pasan los identificadores de cuenta por un
+fichero:
+
+```bash
+docker compose exec tenancy python scripts/sembrar_empresa.py --parte tenant --slug acme …
+# imprime TENANT=<uuid>; se pasa con --tenant al resto
+docker compose exec identity python scripts/sembrar_empresa.py --parte usuarios --tenant <uuid> …
+docker compose exec party    python scripts/sembrar_empresa.py --parte party    --tenant <uuid> --enlaces /tmp/acme.json …
+docker compose cp contecrm-dev-party-1:/tmp/acme.json .   # y copiarlo a sales y service
+docker compose exec sales    python scripts/sembrar_empresa.py --parte sales    --tenant <uuid> --enlaces /tmp/acme.json …
+docker compose exec service  python scripts/sembrar_empresa.py --parte service  --tenant <uuid> --enlaces /tmp/acme.json …
+```
+
+Además de la plantilla de usuarios con roles distintos, siembra unidades de
+negocio, un pipeline de siete etapas con una de cada cuatro oportunidades ya
+cerrada —sin histórico no hay tasa de conversión ni ciclo medio de venta—, una
+taxonomía de casos de dos niveles, un SLA por tier de cliente y una cola de casos
+donde **uno de cada siete incumple el plazo**: una cola sin incumplimientos no
+enseña para qué sirve el SLA.
+
+Se niega a ejecutarse con `ENV` de producción.
+
 ### 2.3 Un solo servidor
 
 Para instalaciones pequeñas, todos los servicios en la misma máquina con
