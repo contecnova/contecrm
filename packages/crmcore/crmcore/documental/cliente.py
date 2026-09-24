@@ -153,6 +153,77 @@ class TokenUsuario:
         self.alcances = alcances
 
 
+# Las dos rutas del canje. Son las mismas que las de contecintelligence salvo el
+# prefijo `/api/v1`, que es el que usa contecmind para todo su contrato.
+RUTA_APLICACION = "/api/v1/oauth/token"
+RUTA_CANJE = "/api/v1/tokens/exchange"
+
+# El token de aplicación del paso 1, guardado mientras dure. Ver el homólogo en
+# `services/analytics/cliente.py`: los dos clientes de la casa hacen lo mismo y
+# de la misma forma, a propósito.
+_aplicacion: dict[str, Any] = {"token": "", "expira_at": 0.0}
+_MARGEN_S = 30.0
+
+
+def _token_de_aplicacion(s: Any) -> str:
+    """Paso 1: la credencial se cambia por un token de aplicación.
+
+    Esto faltaba. El cliente iba **directo al canje** mandando la credencial como
+    autenticación básica, y eso no es lo que hace el otro cliente de la casa ni
+    lo que espera el otro lado.
+
+    Se alinea AHORA, antes de que contecmind implemente su parte, y no aceptando
+    también Basic allí. Dos motivos, y el primero no es de gusto: Basic mandaría
+    el secreto **largo** en cada canje, y el canje está en el camino de abrir una
+    pantalla —o sea, la credencial cruzando proxies y registros decenas de veces
+    al día en vez de un token de quince minutos—. El segundo es que el viaje que
+    ahorraría no existe: este token se guarda, así que es una llamada cada cuarto
+    de hora, no una por canje.
+    """
+    from crmcore.errors import ErrorDependencia
+    from crmcore.red import cliente_seguro
+
+    ahora = time.monotonic()
+    if _aplicacion["token"] and float(_aplicacion["expira_at"]) - _MARGEN_S > ahora:
+        return str(_aplicacion["token"])
+
+    try:
+        with cliente_seguro(timeout=s.dms_timeout_s) as cli:
+            respuesta = cli.post(
+                s.dms_base_url.rstrip("/") + RUTA_APLICACION,
+                json={
+                    "client_id": s.dms_client_id,
+                    "client_secret": s.dms_client_secret.get_secret_value(),
+                    "grant_type": "client_credentials",
+                },
+            )
+    except Exception as exc:  # noqa: BLE001
+        raise ErrorDependencia(
+            "No se ha podido contactar con el gestor documental",
+            error_code="documental.inalcanzable",
+            detalle={"error": str(exc)[:200]},
+        ) from exc
+
+    if respuesta.status_code >= 400:
+        logger.warning("documental.credencial_rechazada", codigo_http=respuesta.status_code)
+        raise ErrorDependencia(
+            "El gestor documental ha rechazado la credencial de aplicación",
+            error_code="documental.credencial_rechazada",
+            detalle={"codigo_http": respuesta.status_code},
+        )
+
+    datos = respuesta.json()
+    token = str(datos.get("access_token") or "")
+    if not token:
+        raise ErrorDependencia(
+            "El gestor documental no ha devuelto token de aplicación",
+            error_code="documental.respuesta_invalida",
+        )
+    _aplicacion["token"] = token
+    _aplicacion["expira_at"] = ahora + float(datos.get("expires_in") or 300)
+    return token
+
+
 def canjear_token(
     *, organizacion: str, sujeto: str, rol: str, alcances: list[str] | None = None
 ) -> TokenUsuario:
@@ -188,15 +259,21 @@ def canjear_token(
         "subject": sujeto,
         "role": rol,
         "scopes": alcances or list(s.dms_scopes),
-        "ttl": int(s.dms_token_ttl_s),
+        # `ttl_s`, el nombre que ya usa el otro cliente de la casa. Aquí decía
+        # `ttl`: con el nombre mal, pydantic lo ignora y el token sale con la
+        # duración por defecto del otro lado, sin error y sin aviso.
+        "ttl_s": int(s.dms_token_ttl_s),
     }
     try:
+        aplicacion = _token_de_aplicacion(s)
         with cliente_seguro(timeout=s.dms_timeout_s) as cli:
             respuesta = cli.post(
-                s.dms_base_url.rstrip("/") + "/api/v1/tokens/exchange",
+                s.dms_base_url.rstrip("/") + RUTA_CANJE,
                 json=cuerpo,
-                auth=(s.dms_client_id, s.dms_client_secret.get_secret_value()),
+                headers={"Authorization": f"Bearer {aplicacion}"},
             )
+    except ErrorDependencia:
+        raise
     except Exception as exc:  # noqa: BLE001
         raise ErrorDependencia(
             "No se ha podido contactar con el gestor documental",

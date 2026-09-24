@@ -1,0 +1,17 @@
+{
+  "/api/v1/oauth/token": null,
+  "/api/v1/tokens/exchange": null,
+  "/api/v1/documents/search": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/documents/{document_id}": {
+    "get": {
+      "campos": []
+    },
+    "delete": {
+      "campos": []
+    }
+  }
+}

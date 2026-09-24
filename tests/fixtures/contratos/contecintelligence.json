@@ -1,0 +1,24 @@
+{
+  "/api/oauth/token": {
+    "post": {
+      "campos": [
+        "client_id",
+        "client_secret",
+        "grant_type"
+      ]
+    }
+  },
+  "/api/tokens/exchange": {
+    "post": {
+      "campos": [
+        "atributos",
+        "role",
+        "scopes",
+        "source_id",
+        "subject",
+        "tenant",
+        "ttl_s"
+      ]
+    }
+  }
+}
