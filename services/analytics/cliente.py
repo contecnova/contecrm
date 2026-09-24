@@ -224,6 +224,82 @@ def comprobar_al_arrancar() -> None:
         logger.error("analytics.degradada", aviso=mensaje, error=resultado["error"])
 
 
+# Las dos rutas del canje, tal y como las publica contecintelligence. Van como
+# constante y no incrustadas en la llamada porque son la mitad del contrato: la
+# otra mitad son los nombres de los campos, y las dos se comprueban en
+# `tests/unit/test_cliente_intelligence.py`.
+#
+# OJO con el prefijo: son `/api/…`, NO `/api/v1/…`. Aquí decía `/api/v1` y
+# contecintelligence no tiene ninguna ruta bajo ese prefijo.
+RUTA_APLICACION = "/api/oauth/token"
+RUTA_CANJE = "/api/tokens/exchange"
+
+# El token de aplicación del paso 1, guardado mientras dure. Pedir uno nuevo por
+# cada pantalla que se abre añade una ida y vuelta a cada navegación, y ese
+# token no da acceso a ningún dato: solo sirve para pedir el del paso 2.
+_aplicacion: dict[str, Any] = {"token": "", "expira_at": 0.0}
+
+# Margen con el que se considera caducado. Un token que vence en dos segundos es
+# un token que va a llegar caducado.
+_MARGEN_S = 30.0
+
+
+def _token_de_aplicacion(s: Any) -> str:
+    """Paso 1: cambia la credencial de aplicación por un token de aplicación.
+
+    Esto faltaba. El cliente mandaba la credencial directamente al canje como
+    autenticación básica, y contecintelligence contesta 401 porque ahí espera el
+    token de aplicación que emite `/api/oauth/token`. El módulo lo tenía escrito
+    en su propia cabecera —«los dos pasos, credencial → token corto»— y el
+    código hacía uno. No lo cazó nadie porque no había ninguna prueba que
+    llegara a un contecintelligence de verdad.
+    """
+    from crmcore.errors import ErrorDependencia
+    from crmcore.red import cliente_seguro
+
+    ahora = time.monotonic()
+    if _aplicacion["token"] and float(_aplicacion["expira_at"]) - _MARGEN_S > ahora:
+        return str(_aplicacion["token"])
+
+    try:
+        with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+            respuesta = cli.post(
+                s.ci_base_url.rstrip("/") + RUTA_APLICACION,
+                json={
+                    "client_id": s.ci_client_id,
+                    "client_secret": s.ci_client_secret.get_secret_value(),
+                    "grant_type": "client_credentials",
+                },
+            )
+    except Exception as exc:  # noqa: BLE001
+        raise ErrorDependencia(
+            "No se ha podido contactar con contecintelligence",
+            error_code="analytics.inalcanzable",
+            detalle={"error": str(exc)[:200]},
+        ) from exc
+
+    if respuesta.status_code >= 400:
+        # Sin el cuerpo, por lo mismo que en el canje: puede hablar de nuestra
+        # credencial.
+        logger.warning("analytics.credencial_rechazada", codigo_http=respuesta.status_code)
+        raise ErrorDependencia(
+            "contecintelligence ha rechazado la credencial de aplicación",
+            error_code="analytics.credencial_rechazada",
+            detalle={"codigo_http": respuesta.status_code},
+        )
+
+    datos = respuesta.json()
+    token = str(datos.get("access_token") or "")
+    if not token:
+        raise ErrorDependencia(
+            "contecintelligence no ha devuelto token de aplicación",
+            error_code="analytics.respuesta_invalida",
+        )
+    _aplicacion["token"] = token
+    _aplicacion["expira_at"] = ahora + float(datos.get("expires_in") or 300)
+    return token
+
+
 def canjear_token(
     *, organizacion: str, sujeto: str, rol: str, alcances: list[str] | None = None
 ) -> TokenUsuario:
@@ -257,16 +333,22 @@ def canjear_token(
         "subject": sujeto,
         "role": rol,
         "scopes": alcances or list(s.ci_scopes),
-        "ttl": int(s.ci_token_ttl_s),
+        # `ttl_s`, no `ttl`: es como lo declara su `CanjeIn`. Con el nombre mal,
+        # pydantic lo ignoraba y el token salía con la duración por defecto de
+        # allí en vez de con la de aquí — sin error y sin aviso.
+        "ttl_s": int(s.ci_token_ttl_s),
     }
-    url = s.ci_base_url.rstrip("/") + "/api/v1/tokens/exchange"
+    url = s.ci_base_url.rstrip("/") + RUTA_CANJE
     try:
+        aplicacion = _token_de_aplicacion(s)
         with cliente_seguro(timeout=s.ci_timeout_s) as cli:
             respuesta = cli.post(
                 url,
                 json=cuerpo,
-                auth=(s.ci_client_id, s.ci_client_secret.get_secret_value()),
+                headers={"Authorization": f"Bearer {aplicacion}"},
             )
+    except ErrorDependencia:
+        raise
     except Exception as exc:  # noqa: BLE001
         raise ErrorDependencia(
             "No se ha podido contactar con contecintelligence",

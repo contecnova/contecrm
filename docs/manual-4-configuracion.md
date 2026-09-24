@@ -117,6 +117,42 @@ docker compose --profile app --profile intelligence --profile dms up -d
 | `DMS_TIMEOUT_S` / `DMS_TOKEN_TTL_S` | Paciencia de cada llamada y vida del token de usuario |
 | `DMS_SCOPES` | Alcances que se piden al canjear el token |
 
+#### El canje de token con contecintelligence: DOS pasos
+
+Levantados los dos productos de verdad por primera vez (24-09-2026), el canje
+daba **401**. El cliente se había escrito contra un contrato imaginado:
+
+| | Lo que hacía contecrm | Lo que publica contecintelligence |
+|---|---|---|
+| Pasos | uno | **dos**: credencial → token de aplicación → token de usuario |
+| Credencial | autenticación básica en el canje | en el cuerpo de `POST /api/oauth/token` |
+| Ruta | `/api/v1/tokens/exchange` | `/api/tokens/exchange` — **no hay nada bajo `/api/v1`** |
+| Duración | campo `ttl` | campo `ttl_s` |
+
+El del campo era el más silencioso de los cuatro: pydantic ignora un nombre que
+no declara, así que el token habría salido con la duración por defecto del otro
+lado y sin un solo aviso.
+
+Sobrevivió porque no había ninguna prueba que recorriera el camino completo: la
+única que tocaba `canjear_token` comprobaba que sin organización se niega, que
+es antes de hablar con nadie. Ahora lo fija
+`tests/unit/test_cliente_intelligence.py`: las dos rutas, el orden, cómo viaja
+cada credencial y los nombres de los campos.
+
+#### Cuando los vecinos no están en la misma pila
+
+El guardia anti-SSRF (`url_guard`) rechaza cualquier URL que resuelva a IP
+privada, incluida la red de Docker. Si contecintelligence o contecmind corren en
+otro compose —lo normal si ya los tenías levantados—, hay que:
+
+1. Meterlos en la red de contecrm con el nombre que espera:
+   `docker network connect --alias contecintelligence contecrm-dev_default <contenedor>`
+2. Declararlos en `URL_GUARD_HOSTS_PERMITIDOS=contecintelligence,contecmind`
+
+El guard **no se apaga**: se le nombran los hosts, que es para lo que existe ese
+ajuste. Y `host.docker.internal` no vale: resuelve a una IP privada y el guard
+lo bloquea con razón.
+
 Dos cosas que conviene tener claras antes de activarlo:
 
 **Los adjuntos no dependen de esto.** Con `DMS_ENABLED=false` se sigue
