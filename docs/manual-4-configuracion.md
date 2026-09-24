@@ -115,7 +115,22 @@ docker compose --profile app --profile intelligence --profile dms up -d
 | `DMS_COMPROBAR_AL_ARRANCAR` | Comprueba el enlace al arrancar en vez de la primera vez que alguien abre la pestaña |
 | `DMS_EXIGIR_AL_ARRANCAR` | El servicio se **niega a arrancar** si no lo alcanza. Para producción |
 | `DMS_TIMEOUT_S` / `DMS_TOKEN_TTL_S` | Paciencia de cada llamada y vida del token de usuario |
-| `DMS_SCOPES` | Alcances que se piden al canjear el token |
+| `DMS_SCOPES` | Alcances que se piden al canjear el token. **Los dos por defecto** — ver abajo |
+
+##### `DMS_SCOPES`: por qué son dos y no uno
+
+contecmind comprueba los alcances **en cada petición**, y separa abrir un
+documento (`documents:read`) de buscar en el corpus (`documents:search`). El
+valor por defecto pide los dos.
+
+Con sólo `documents:read` el producto no falla del todo: la ficha de un
+documento se abre bien y el buscador devuelve 403. Media pantalla funcionando es
+el peor fallo posible de diagnosticar, así que conviene saberlo antes: si
+alguien acota este ajuste, está apagando el buscador del corpus a propósito.
+
+Y hay un techo por encima: los alcances que el administrador de contecmind
+concedió a esta aplicación al darla de alta. Pedir aquí más de lo concedido no
+es un error —se concede la intersección— pero tampoco sirve de nada.
 
 #### El canje de token con contecintelligence: DOS pasos
 

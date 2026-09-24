@@ -53,4 +53,11 @@ class _DocumentalSettings(BaseSettings):
     dms_token_ttl_s: int = Field(300, ge=30, le=3_600)
     # Ámbitos que se piden al canjear. Lista y no literal en el código para que
     # una instalación pueda acotarlos más sin tocar nada.
-    dms_scopes: tuple[str, ...] = ("documents:read",)
+    #
+    # **Los DOS, y no por comodidad.** contecmind comprueba los alcances en cada
+    # petición, y separa abrir un documento (`documents:read`) de buscar en el
+    # corpus (`documents:search`). Con sólo el primero, la ficha de un documento
+    # funciona y el buscador devuelve 403 — que es justo el fallo que peor se
+    # diagnostica, porque la mitad de la pantalla va bien. Quien quiera acotar,
+    # que quite `documents:search` a sabiendas de que apaga el buscador.
+    dms_scopes: tuple[str, ...] = ("documents:read", "documents:search")
