@@ -30,13 +30,30 @@ export function CabeceraPagina({
   icono?: string;
 }) {
   return (
-    <header className="mb-6 flex items-start justify-between gap-4">
+    // Las medidas son las del `PageHeader` de contecflow, una a una: 28px por
+    // debajo, 20px hasta la línea, y línea. La línea es la que faltaba aquí —
+    // sin ella el título y la primera tabla se tocan y la cabecera no termina
+    // en ningún sitio.
+    <header className="mb-7 flex items-start justify-between gap-4 border-b border-ink-dim/60 pb-5">
       <div className="min-w-0">
-        <h1 className="inline-flex items-center gap-2 text-xl font-semibold text-ink">
-          {icono ? <Icono nombre={icono} className="text-ink-muted" /> : null}
-          <span className="truncate">{titulo}</span>
-        </h1>
-        {entradilla ? <p className="mt-1 max-w-3xl text-sm text-ink-muted">{entradilla}</p> : null}
+        <div className="flex items-center gap-2.5">
+          {/* El icono va en su propia caja, no suelto al lado del texto: suelto
+              se lee como parte del título y hereda su tamaño, y el título de
+              cada pantalla acaba midiendo distinto según lleve icono o no. */}
+          {icono ? (
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-accent/25 bg-accent/10 text-accent">
+              <Icono nombre={icono} />
+            </span>
+          ) : null}
+          <h1 className="min-w-0 truncate text-xl-em font-bold tracking-[-0.01em] text-ink">
+            {titulo}
+          </h1>
+        </div>
+        {entradilla ? (
+          <p className={`mt-2 max-w-3xl text-xs text-ink-muted${icono ? " pl-[2.875rem]" : ""}`}>
+            {entradilla}
+          </p>
+        ) : null}
       </div>
       {acciones ? <div className="flex shrink-0 items-center gap-2">{acciones}</div> : null}
     </header>

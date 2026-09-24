@@ -110,7 +110,7 @@ export function BarraSuperior({
   }
 
   return (
-    <header className="sticky top-0 z-popover flex h-14 items-center gap-3 border-b border-ink-dim/60 bg-paper px-4">
+    <header className="sticky top-0 z-popover flex h-[var(--barra-h)] items-center gap-3 border-b border-ink-dim/60 bg-paper pl-5 pr-6">
       <button
         type="button"
         onClick={panel.alternar}

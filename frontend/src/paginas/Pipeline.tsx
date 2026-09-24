@@ -291,7 +291,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                             {escalar(o.fecha_cierre)}
                           </span>
                         ) : null}
-                        <span className="rounded-lg border border-line px-1.5 py-0.5 text-3xs text-ink-muted">
+                        <span className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-3xs text-ink-muted">
                           {o.probabilidad} %
                         </span>
                         {o.owner_id ? (

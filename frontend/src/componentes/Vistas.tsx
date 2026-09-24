@@ -113,7 +113,7 @@ export function SelectorVista({
       : []),
   ];
   return (
-    <div className="flex items-center gap-0.5 rounded-xl border border-line p-0.5" role="group">
+    <div className="flex items-center gap-0.5 rounded-xl border border-ink-dim/60 p-0.5" role="group">
       {opciones.map((o) => (
         <button
           key={o.clave}
@@ -181,7 +181,7 @@ export function Etiquetas({ filas }: { filas: Record<string, unknown>[] }) {
       {filas.map((fila, i) => (
         <li
           key={i}
-          className="rounded-lg border border-line bg-paper-sunk px-2.5 py-1 text-xs text-ink"
+          className="rounded-lg border border-ink-dim/60 bg-paper-sunk px-2.5 py-1 text-xs text-ink"
         >
           {tituloDe(fila)}
         </li>
@@ -319,12 +319,12 @@ export function Tarjetas({
             {a ? (
               <Link
                 to={a}
-                className="block rounded-xl border border-line bg-paper p-3 hover:border-accent"
+                className="block rounded-xl border border-ink-dim/60 bg-paper p-3 hover:border-accent"
               >
                 {cuerpo}
               </Link>
             ) : (
-              <div className="rounded-xl border border-line bg-paper p-3">{cuerpo}</div>
+              <div className="rounded-xl border border-ink-dim/60 bg-paper p-3">{cuerpo}</div>
             )}
           </li>
         );
@@ -406,12 +406,12 @@ export function Agrupado({
                     {a ? (
                       <Link
                         to={a}
-                        className="block rounded-xl border border-line bg-paper p-2.5 hover:border-accent"
+                        className="block rounded-xl border border-ink-dim/60 bg-paper p-2.5 hover:border-accent"
                       >
                         {cuerpo}
                       </Link>
                     ) : (
-                      <div className="rounded-xl border border-line bg-paper p-2.5">{cuerpo}</div>
+                      <div className="rounded-xl border border-ink-dim/60 bg-paper p-2.5">{cuerpo}</div>
                     )}
                   </li>
                 );

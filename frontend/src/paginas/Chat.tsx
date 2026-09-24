@@ -242,7 +242,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     const autor = usuarios[mensaje.autor_id];
     const hijas = respuestas.get(mensaje.id) ?? [];
     return (
-      <li className={cn("group", dentro && "ml-6 border-l border-line pl-3")}>
+      <li className={cn("group", dentro && "ml-6 border-l border-ink-dim/60 pl-3")}>
         <div className={cn("rounded-xl px-3 py-2", mio ? "bg-accent/10" : "bg-paper-sunk")}>
           <p className="flex items-baseline gap-2 text-3xs text-ink-faint">
             <span className="font-medium text-ink-muted">
@@ -270,7 +270,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 key={emoji}
                 type="button"
                 onClick={() => void reaccionar(mensaje.id, emoji)}
-                className="rounded-lg border border-line px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper"
+                className="rounded-lg border border-ink-dim/60 px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper"
               >
                 {emoji} {quienes.length}
               </button>
@@ -320,7 +320,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       {fallo ? <Fallo error={fallo} /> : null}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[16rem_1fr]">
-        <aside className="rounded-xl border border-line bg-paper p-2">
+        <aside className="rounded-xl border border-ink-dim/60 bg-paper p-2">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
               {t("chat.conversaciones")}
@@ -373,7 +373,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
           )}
         </aside>
 
-        <section className="flex min-h-[28rem] flex-col rounded-xl border border-line bg-paper">
+        <section className="flex min-h-[28rem] flex-col rounded-xl border border-ink-dim/60 bg-paper">
           {!abierta ? (
             <Vacio
               icono="forum"
@@ -382,7 +382,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             />
           ) : (
             <>
-              <header className="border-b border-line px-3 py-2">
+              <header className="border-b border-ink-dim/60 px-3 py-2">
                 <h2 className="text-xs font-medium text-ink">{titulo(abierta)}</h2>
                 {abierta.proposito ? (
                   <p className="text-3xs text-ink-faint">{abierta.proposito}</p>
@@ -390,7 +390,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 {abierta.objeto_tipo ? (
                   /* Lo que hace que esto no sea un chat cualquiera: se ve de qué
                      registro se está hablando sin salir de aquí. */
-                  <p className="mt-0.5 text-3xs text-accent-text">
+                  <p className="mt-0.5 text-3xs text-accent">
                     <Icono nombre="link" /> {t("chat.sobreEl", { objeto: abierta.objeto_tipo })}
                   </p>
                 ) : null}
@@ -417,7 +417,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 <div ref={abajo} />
               </ul>
 
-              <div className="border-t border-line p-2">
+              <div className="border-t border-ink-dim/60 p-2">
                 {hilo ? (
                   <p className="mb-1 flex items-center gap-2 text-3xs text-ink-faint">
                     {t("chat.respondiendo")}
@@ -494,7 +494,7 @@ function NuevaConversacion({
     .slice(0, 12);
 
   return (
-    <div className="mb-2 rounded-lg border border-line bg-paper-sunk p-2">
+    <div className="mb-2 rounded-lg border border-ink-dim/60 bg-paper-sunk p-2">
       <div className="mb-2 flex gap-1" role="tablist">
         {(["directo", "canal"] as const).map((x) => (
           <button

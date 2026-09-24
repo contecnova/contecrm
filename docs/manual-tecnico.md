@@ -98,6 +98,47 @@ medias no viaja.
 
 #### El sistema de diseño en oscuro es el de contecflow
 
+No solo la piel. Además de la paleta, la tipografía, los radios y las sombras,
+son suyas las medidas del armazón, y viven como token en `index.css` para que
+ninguna pantalla pueda ponerse la suya:
+
+| Token | Valor | Antes aquí |
+|---|---|---|
+| `--page-pad-x/y` | 32px | 24px, escrito a mano en `Marco.tsx` |
+| `--page-max-w` | 1400px | 1152px (`max-w-6xl`) |
+| `--panel-w` | 222px | 288px (`w-72`) |
+| `--panel-w-plegado` | 46px | no existía: el panel no se plegaba |
+| `--panel-plegar` | 1280px | — |
+| `--barra-h` | 48px | 56px (`h-14`) |
+
+Y el cuerpo va a **14px**, que es lo que faltaba de verdad: sin esa línea
+heredaba los 16px del navegador, y todo lo que no lleva una clase `text-*` salía
+un 14 % más grande que la misma frase en contecflow. Los tamaños de Tailwind
+—10/11/12/14/16/18/20/24/36/48— ya coincidían uno a uno con su escala; solo
+faltaban dos escalones suyos que Tailwind no tiene, 12.5px para los enlaces del
+menú y 22px para los títulos de pantalla.
+
+El panel se pliega a raíl de iconos por debajo de 1280px, y ahí se aparta a
+propósito de contecflow en una cosa: allí el raíl enseña el icono de cada
+pantalla, y aquí enseña el del **área**. Los veinticinco módulos del catálogo no
+traen icono, y ponerles uno sería inventarse veinticinco símbolos que nadie ha
+escogido por lo que la pantalla hace; siete iconos de área, que sí están
+escogidos, orientan más. El rótulo llega al pasar por encima, en el mismo panel
+flotante que usan ellos.
+
+##### Lo que NO se ha copiado, y por qué
+
+- **La paleta entera.** contecflow declara 165 tokens de color y el `.dark` de
+  aquí tiene 35. La diferencia no es una carencia: 21 son alias `--color-*`, 30
+  apuntan a otra variable y 67 son variantes con alfa del mismo tono, que aquí
+  se expresan con el modificador de opacidad de Tailwind (`bg-success/10`). De
+  las familias semánticas que faltan —morado para IA, naranja para severidad P2,
+  coral, `info`— este producto **no usa ninguna**: el front no escribe un solo
+  color crudo de Tailwind, todo pasa por los cuatro tokens. Añadirlas sería
+  dejar 130 variables que nadie referencia.
+- **El tema claro.** contecflow no lo tiene. Se queda el de contecmind.
+
+
 Paleta, tipografía (**DM Sans** y Geist Mono), radios y sombras: adoptados
 enteros desde `contecflow-PSA/frontend/src/index.css`, no «inspirados en». Quien
 usa dos productos de la casa no debe notar que cambia de uno a otro, y dos

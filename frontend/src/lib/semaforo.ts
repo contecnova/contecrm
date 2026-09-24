@@ -100,7 +100,7 @@ export function clasesDeTono(tono: Tono): string {
     case "acento":
       return "border-accent/40 bg-accent/10 text-accent";
     default:
-      return "border-line bg-paper-sunk text-ink-muted";
+      return "border-ink-dim/60 bg-paper-sunk text-ink-muted";
   }
 }
 

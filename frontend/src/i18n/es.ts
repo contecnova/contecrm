@@ -72,6 +72,8 @@ export default {
     grupoPantallas: "Pantallas",
     alternarPanel: "Mostrar u ocultar el menú",
     cerrarPanel: "Cerrar el menú",
+    plegarPanel: "Plegar el menú",
+    desplegarPanel: "Desplegar el menú",
     migas: "Dónde estás",
     abrirPaleta: "Buscar pantallas y módulos",
     cerrarPaleta: "Cerrar el buscador",

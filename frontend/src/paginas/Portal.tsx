@@ -162,7 +162,7 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
           </form>
         )}
         {fallo ? (
-          <p role="alert" className="mt-3 text-2xs text-danger-text">
+          <p role="alert" className="mt-3 text-2xs text-danger">
             {fallo}
           </p>
         ) : null}
@@ -203,7 +203,7 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
       </header>
 
       {fallo ? (
-        <p role="alert" className="mb-4 text-2xs text-danger-text">
+        <p role="alert" className="mb-4 text-2xs text-danger">
           {fallo}
         </p>
       ) : null}
@@ -254,7 +254,7 @@ function NuevaPeticion({ sesion, alCrear }: { sesion: Sesion; alCrear: () => voi
       {/* `role="status"` y no un párrafo a secas: quien no ve la pantalla
           necesita enterarse de que la petición ha entrado y con qué código, que
           es justo lo que hay que decir por teléfono después. */}
-      <p role="status" className="mb-3 text-xs text-success-text">
+      <p role="status" className="mb-3 text-xs text-success">
         {hecho ? `Recibido. Tu petición es la ${hecho}.` : ""}
       </p>
       <form onSubmit={enviar}>
@@ -472,7 +472,7 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
         </ul>
       )}
 
-      <p role="status" className="mb-2 text-2xs text-success-text">
+      <p role="status" className="mb-2 text-2xs text-success">
         {hecho}
       </p>
       <form onSubmit={subir} className="grid gap-2 sm:grid-cols-3">

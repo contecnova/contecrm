@@ -37,6 +37,12 @@
   --paper-dark:    248 249 250;  /* #f8f9fa — base canvas */
   --paper-light:   241 243 244;  /* #f1f3f4 — hover targets, chip bg */
   --paper-lighter: 232 234 237;  /* #e8eaed — borders-as-fill, sunken */
+  /* Una superficie HUNDIDA respecto al panel: la cabecera de una tabla, el
+     carril de una barra de progreso, la burbuja de lo que dice el otro. No es
+     `paper-light` al revés: los papeles suben desde el panel y este baja.
+
+     Sobre blanco, bajar es el mismo gris que ya hace de relleno de borde. */
+  --paper-sunk:    232 234 237;  /* #e8eaed */
 
   --ink:           32 33 36;     /* #202124 — primary text */
   --ink-muted:    95 99 104;     /* #5f6368 — secondary text */
@@ -125,6 +131,25 @@
   --shadow-5: 0 8px 12px 6px rgba(60,64,67,0.14), 0 4px 4px 0 rgba(60,64,67,0.16);
   --shadow-accent: 0 0 0 1px rgba(26,115,232,0.55), 0 0 0 4px rgba(26,115,232,0.12);
 
+  /* ── Armazón: las medidas de contecflow ───────────────────────────────────
+     No son colores, así que no cambian con el tema y van una sola vez. Salen de
+     su `index.css` (`--page-*`) y de su `Layout.tsx`, medidas una a una.
+
+     `--page-max-w` era aquí 1152px (`max-w-6xl`). Con 1400px caben doce
+     columnas de tabla sin scroll horizontal en un portátil de 1440, que es
+     media razón por la que ellos lo pusieron ahí.
+
+     `--panel-w` / `--panel-w-plegado`: el panel medía 288px, un 30 % más que el
+     suyo, y no se plegaba. Por debajo de `--panel-plegar` se queda en raíl de
+     iconos, porque en 1280px un panel de 288 se come el 22 % de la pantalla. */
+  --page-pad-x:  32px;
+  --page-pad-y:  32px;
+  --page-max-w:  1400px;
+  --panel-w:         222px;
+  --panel-w-plegado: 46px;
+  --panel-plegar:    1280px;
+  --barra-h:     48px;
+
   --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
   --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
 }
@@ -142,6 +167,10 @@
   --paper-dark:     8 12 20;     /* #080c14 — surface-0: fondo base */
   --paper-light:   23 33 51;     /* #172133 — surface-3: hover, elevado */
   --paper-lighter: 30 45 69;     /* #1e2d45 — surface-4: lo de más arriba */
+  /* Hundido es el `surface-0` de contecflow: el fondo de la aplicación, que
+     está por debajo del panel. En oscuro bajar es oscurecer, al revés que en
+     claro, y por eso esto es un token y no una clase escrita a mano. */
+  --paper-sunk:    8 12 20;      /* #080c14 — surface-0 */
 
   --ink:          240 244 255;   /* #f0f4ff — text-1 */
   --ink-muted:    168 184 212;   /* #a8b8d4 — text-2 */
@@ -214,6 +243,16 @@
   body {
     @apply bg-paper-dark text-ink font-sans antialiased;
     font-feature-settings: "ss01", "cv11";
+    /* 14px, como contecflow. Sin esta línea el cuerpo hereda los 16px del
+       navegador, y todo lo que no lleva una clase `text-*` —un `<p>` suelto, el
+       texto de una celda, un mensaje de error— sale un 14 % más grande que la
+       misma frase en la otra solución.
+
+       No toca las clases de Tailwind, que van en `rem` sobre el `<html>`: esos
+       tamaños ya coinciden uno a uno con la escala de contecflow (10/11/12/14/
+       16/18/20/24…). Lo que faltaba era exactamente esto, la base. */
+    font-size: 14px;
+    line-height: 1.5;
   }
   /* ── Accessibility overrides ─────────────────────────────────────
      Push ink-faint to ink-muted when the OS asks for more contrast,
@@ -261,6 +300,26 @@
 }
 
 @layer components {
+  /* El contenido de una página: el padding y el ancho máximo de contecflow
+     (`--page-pad-*`, `--page-max-w`), en un sitio y no repetidos pantalla a
+     pantalla. Antes estaba escrito a mano en `Marco.tsx` —`max-w-6xl px-6
+     py-6`— y ninguna pantalla podía salirse sin copiar el literal.
+
+     Por debajo de 600px —el corte de contecflow— el padding baja a 16px: 32 a
+     cada lado en un móvil de 360 deja 296px de contenido, que no es una
+     columna, es una tira. */
+  .contenido-pagina {
+    padding: var(--page-pad-y) var(--page-pad-x);
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    width: 100%;
+  }
+  @media (max-width: 600px) {
+    .contenido-pagina {
+      padding: 1rem;
+    }
+  }
+
   /* ── Buttons ────────────────────────────────────────────────────────────
      Material 3 flat / filled buttons. Primary is solid Google blue with a
      subtle elevation-1 shadow; no more blue→violet gradient. */
@@ -474,8 +533,12 @@
   }
 
   /* ── Section labels ─────────────────────────────────────────────────── */
+  /* El rótulo de un grupo del menú y de cualquier bloque. Las medidas son las
+     de contecflow —10px, 700, 0.08em— y no las que tenía esto (11px, 600,
+     0.10em): un rótulo de grupo tiene que pesar MENOS que sus enlaces en tamaño
+     y MÁS en peso, o compite con ellos por la atención en vez de ordenarlos. */
   .section-label {
-    @apply text-2xs font-semibold uppercase tracking-[0.10em] text-ink-faint;
+    @apply text-3xs font-bold uppercase tracking-[0.08em] text-ink-faint;
   }
 
   /* ── Canonical vertical spacing scale ─────────────────────────────── */

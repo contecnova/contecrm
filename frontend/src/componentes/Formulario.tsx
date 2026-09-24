@@ -423,7 +423,7 @@ function Lineas({
   return (
     <div className="space-y-2" aria-describedby={ayuda}>
       {filas.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-xl border border-ink-dim/60">
           <table className="w-full text-sm">
             <thead className="bg-paper-sunk text-ink-muted">
               <tr>
@@ -438,13 +438,13 @@ function Lineas({
             </thead>
             <tbody>
               {filas.map((fila, indice) => (
-                <tr key={indice} className="border-t border-line">
+                <tr key={indice} className="border-t border-ink-dim/30">
                   {columnas.map((c) => (
                     <td key={c.nombre} className="px-2 py-1">
                       {c.opciones.length > 0 ? (
                         <select
                           aria-label={`${c.titulo}, línea ${indice + 1}`}
-                          className="w-full rounded-lg border border-line bg-paper px-2 py-1"
+                          className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
                           value={String(fila[c.nombre] ?? "")}
                           onChange={(e) => cambiar(indice, c.nombre, e.target.value)}
                         >
@@ -458,7 +458,7 @@ function Lineas({
                       ) : (
                         <input
                           aria-label={`${c.titulo}, línea ${indice + 1}`}
-                          className="w-full rounded-lg border border-line bg-paper px-2 py-1"
+                          className="w-full rounded-lg border border-ink-dim/60 bg-paper px-2 py-1"
                           type={c.tipo === "numero" ? "number" : c.tipo === "fecha" ? "date" : "text"}
                           value={String(fila[c.nombre] ?? "")}
                           onChange={(e) =>
@@ -490,7 +490,7 @@ function Lineas({
               ))}
             </tbody>
             {haySumas ? (
-              <tfoot className="border-t border-line bg-paper-sunk">
+              <tfoot className="border-t border-ink-dim/30 bg-paper-sunk">
                 <tr>
                   {columnas.map((c, i) => (
                     <td key={c.nombre} className="px-3 py-2 text-ink-muted">
@@ -508,7 +508,7 @@ function Lineas({
       )}
       <button
         type="button"
-        className="rounded-xl border border-line px-3 py-1.5 text-sm hover:bg-paper-sunk"
+        className="rounded-xl border border-ink-dim/60 px-3 py-1.5 text-sm hover:bg-paper-sunk"
         onClick={() =>
           alCambiar([...filas, Object.fromEntries(columnas.map((c) => [c.nombre, ""]))])
         }

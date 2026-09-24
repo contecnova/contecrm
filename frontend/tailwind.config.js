@@ -18,6 +18,12 @@ export default {
           dark:    "rgb(var(--paper-dark) / <alpha-value>)", // base — body, deepest layer
           light:   "rgb(var(--paper-light) / <alpha-value>)",// elevated — cards, hover targets
           lighter: "rgb(var(--paper-lighter) / <alpha-value>)",// top — modals, popovers
+          // Hundido, por debajo del panel. Se usaba en 15 sitios —cabeceras de
+          // tabla, burbujas de chat, carriles de progreso— SIN estar declarado
+          // aquí, así que Tailwind no emitía ninguna regla y esos quince
+          // elementos se quedaban sin fondo. No fallaba nada: simplemente no se
+          // veían.
+          sunk:    "rgb(var(--paper-sunk) / <alpha-value>)",
         },
         ink: {
           // Tokens semánticos para texto + borders. La intención es:
@@ -255,6 +261,14 @@ export default {
       fontSize: {
         "3xs": ["0.625rem", { lineHeight: "0.875rem" }],
         "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+        // Los dos escalones de contecflow que la escala de Tailwind no tiene.
+        // El resto de su escala ya coincide uno a uno con la de Tailwind
+        // —10/11/12/14/16/18/20/24/36/48—, así que no hay nada que redefinir:
+        // solo faltaban estos dos huecos, y sin ellos un título quedaba en 20
+        // o en 24 y ninguno es el suyo.
+        "sm-h": ["0.78125rem", { lineHeight: "1.125rem" }],   // 12.5px — enlaces del menú
+        "md-em": ["0.9375rem", { lineHeight: "1.375rem" }],  // 15px
+        "xl-em": ["1.375rem", { lineHeight: "1.2" }],        // 22px — títulos de pantalla
       },
       // Auditoría M31 (2026-05-26): antes había `z-[50]`, `z-[70]`,
       // `z-[72]`, `z-[75]`, `z-[80]`, `z-[90]`, `z-[110]`, `z-[200]`
