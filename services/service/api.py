@@ -562,11 +562,29 @@ def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
     )
 
 
+# Adjuntos, comentarios y documentos de lo de servicio.
+#
+# No los tenía, y es donde más falta hacen: un caso de soporte sin poder colgar
+# la foto de la pieza rota o el registro del equipo obliga a mandarlo por correo
+# aparte, y entonces la mitad de lo que explica el caso no está en el caso. Los
+# comentarios internos son lo mismo: se acababan escribiendo en la descripción,
+# donde los lee el cliente si se le enseña.
+from crmcore.http.adjuntos_router import crear_router_adjuntos  # noqa: E402
+from crmcore.http.comentarios_router import crear_router_comentarios  # noqa: E402
+from crmcore.http.documental_router import crear_router_documental  # noqa: E402
+
+router_adjuntos = crear_router_adjuntos({"caso", "orden_trabajo"})
+router_comentarios = crear_router_comentarios({"caso", "orden_trabajo"})
+router_documental = crear_router_documental({"caso"})
+
 ROUTERS = [
     router_casos,
     router_taxonomia,
     router_sla,
     router_marcador,
+    router_adjuntos,
+    router_comentarios,
+    router_documental,
     *ROUTERS_OPERACION,
     *ROUTERS_OMNICANAL,
     *ROUTERS_CONOCIMIENTO,

@@ -514,6 +514,20 @@ async def superficie_completa(_: AutenticadoDep) -> Any:
         "total": len(operaciones),
         "administracion": sum(1 for o in operaciones if o.get("administracion")),
         "operaciones": operaciones,
+        # Qué objetos admiten adjuntos, comentarios y documentos.
+        #
+        # Estas tres rutas son `/adjuntos/{objeto}`, así que en la lista de
+        # operaciones aparecen una sola vez y con el objeto sin resolver: quien
+        # la lee no puede saber a cuáles se aplican. El front pedía las tres
+        # para **cualquier** ficha y recibía 404 en 81 de 85 — tres peticiones
+        # fallidas por ficha abierta, y tres pestañas que no podían funcionar.
+        #
+        # Es el gateway quien lo sabe, porque es quien enruta por objeto.
+        "objetos": {
+            "adjuntos": sorted(rutas.OBJETOS_ADJUNTO),
+            "comentarios": sorted(rutas.OBJETOS_COMENTARIO),
+            "documentos": sorted(rutas.OBJETOS_DOCUMENTO),
+        },
     }
 
 

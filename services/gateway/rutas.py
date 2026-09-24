@@ -244,6 +244,13 @@ OBJETOS_COMENTARIO: dict[str, str] = {
     "actividad": "party",
     "lead": "sales",
     "oportunidad": "sales",
+    "presupuesto": "sales",
+    "pedido": "sales",
+    "contrato": "sales",
+    # En un caso el comentario interno es medio trabajo: sin él se acaba
+    # escribiendo en la descripción, que es lo que se le enseña al cliente.
+    "caso": "service",
+    "orden_trabajo": "service",
 }
 
 OBJETOS_ADJUNTO: dict[str, str] = {
@@ -253,6 +260,13 @@ OBJETOS_ADJUNTO: dict[str, str] = {
     "lead": "sales",
     "oportunidad": "sales",
     "linea_oportunidad": "sales",
+    "presupuesto": "sales",
+    "pedido": "sales",
+    "contrato": "sales",
+    # Un caso sin poder colgar la foto de la pieza rota obliga a mandarla por
+    # correo aparte, y entonces la mitad de lo que lo explica no está en él.
+    "caso": "service",
+    "orden_trabajo": "service",
 }
 
 # Y lo mismo con los documentos del corpus (RT-5): el enlace lo guarda el
@@ -260,8 +274,13 @@ OBJETOS_ADJUNTO: dict[str, str] = {
 OBJETOS_DOCUMENTO: dict[str, str] = {
     "cuenta": "party",
     "contacto": "party",
+    "actividad": "party",
     "lead": "sales",
     "oportunidad": "sales",
+    "presupuesto": "sales",
+    "pedido": "sales",
+    "contrato": "sales",
+    "caso": "service",
 }
 
 # Segmentos literales que van DONDE iría el tipo de objeto. Sin esta lista,

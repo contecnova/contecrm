@@ -49,6 +49,16 @@ export interface Superficie {
   servicios: string[];
   servicios_sin_contestar: string[];
   completa: boolean;
+  /**
+   * Qué objetos admiten adjuntos, comentarios y documentos.
+   *
+   * No se puede deducir de las operaciones: esas rutas son `/adjuntos/{objeto}`
+   * y aparecen una sola vez, con el objeto sin resolver. Sin esto la ficha
+   * pedía las tres para **cualquier** registro y recibía 404 en 81 de 85, tres
+   * peticiones fallidas por ficha abierta y tres pestañas que no podían
+   * funcionar.
+   */
+  objetos?: { adjuntos: string[]; comentarios: string[]; documentos: string[] };
   total: number;
   administracion: number;
   operaciones: Operacion[];

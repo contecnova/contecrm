@@ -153,8 +153,12 @@ export function plantillaDe(documento: Documento, ruta: string): string | null {
 export function fichaDe(documento: Documento, listar: string): string | null {
   const base = plantillaDe(documento, listar) ?? listar;
   const patron = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/\\{[a-z_]+\\}$`);
-  for (const ruta of Object.keys(documento.paths ?? {})) {
-    if (patron.test(ruta)) return ruta;
+  for (const [ruta, operaciones] of Object.entries(documento.paths ?? {})) {
+    // Con `get`: una ficha es algo que se **lee**. Sin comprobarlo, cualquier
+    // ruta de un registro valía —`POST /duplicados/cola/{id}` es decidir una
+    // pareja, no abrirla—, la fila se enlazaba y al pulsarla el servidor
+    // contestaba 405 «método no permitido», que no le dice nada a nadie.
+    if (patron.test(ruta) && operaciones.get) return ruta;
   }
   return null;
 }

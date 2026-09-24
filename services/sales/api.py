@@ -897,7 +897,12 @@ def probar_reglas(ejemplo: dict, db: DbDep, principal: AutenticadoDep) -> Any:
     return salida
 
 
-router_adjuntos = crear_router_adjuntos({"lead", "oportunidad", "linea_oportunidad"})
+# Con presupuestos, pedidos y contratos: son justo los registros a los que se
+# les cuelga un PDF firmado, y no poder hacerlo obliga a guardarlo fuera —donde
+# nadie lo encuentra el día que hay que demostrar qué se firmó.
+router_adjuntos = crear_router_adjuntos(
+    {"lead", "oportunidad", "linea_oportunidad", "presupuesto", "pedido", "contrato"}
+)
 
 
 # ── Trazabilidad de origen (CRM-01.01.03.06) ──────────────────────────────
@@ -1013,7 +1018,9 @@ def leads_por_campana(
     return org.por_campana(db, tenant_id=principal.tenant_id, desde=desde)
 
 
-router_comentarios = crear_router_comentarios({"lead", "oportunidad"})
+router_comentarios = crear_router_comentarios(
+    {"lead", "oportunidad", "presupuesto", "pedido", "contrato"}
+)
 
 
 # Las clases de dato de este servicio se declaran al importar su módulo.
@@ -1233,7 +1240,9 @@ async def recibir_lead(
 
 # Corpus documental delegado en contecmind (RT-5). La lista blanca impide que
 # este servicio enlace documentos a objetos que no son suyos.
-router_documental = crear_router_documental({"lead", "oportunidad"})
+router_documental = crear_router_documental(
+    {"lead", "oportunidad", "presupuesto", "pedido", "contrato"}
+)
 
 
 from services.sales.api_forecast import ROUTERS_FORECAST  # noqa: E402

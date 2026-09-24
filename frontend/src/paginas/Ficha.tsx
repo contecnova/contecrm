@@ -45,6 +45,26 @@ export function Ficha() {
   // El nombre lo pone la pestaña de datos en cuanto carga el registro: el
   // título era el UUID, así que la ficha de una oportunidad no decía cuál era.
   const [nombre, setNombre] = useState("");
+  const { superficie } = useSuperficie();
+
+  // Solo las pestañas que este objeto puede tener. Pedir adjuntos de algo que
+  // no los admite no sale como «aquí no hay»: sale como un 404 en la consola y
+  // una pestaña que nunca carga, y pasaba en 81 de 85 fichas.
+  const pestanas = useMemo<Pestana[]>(() => {
+    const puede = (cual: "adjuntos" | "comentarios" | "documentos") =>
+      // Mientras la superficie no ha llegado se ofrecen todas: esconderlas y
+      // hacerlas aparecer un segundo después mueve los botones bajo el cursor.
+      !superficie?.objetos || superficie.objetos[cual].includes(tipo);
+    return [
+      "datos",
+      ...(["adjuntos", "comentarios", "documentos"] as const).filter(puede),
+    ];
+  }, [superficie, tipo]);
+
+  // Si la pestaña abierta deja de estar —la superficie llega y dice que este
+  // objeto no admite adjuntos— se vuelve a datos, en vez de dejar el contenido
+  // en blanco debajo de una barra donde ese botón ya no aparece.
+  const activa: Pestana = pestanas.includes(pestana) ? pestana : "datos";
 
   if (!modulo) return <Vacio />;
 
@@ -68,14 +88,14 @@ export function Ficha() {
       />
 
       <nav aria-label={t("ficha.secciones")} className="mt-3 flex flex-wrap gap-1">
-        {(["datos", "adjuntos", "comentarios", "documentos"] as const).map((p) => (
+        {pestanas.map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setPestana(p)}
-            aria-current={p === pestana ? "page" : undefined}
+            aria-current={p === activa ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-xs ${
-              p === pestana ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light"
+              p === activa ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light"
             }`}
           >
             {t(`ficha.${p}`)}
@@ -84,12 +104,12 @@ export function Ficha() {
       </nav>
 
       <div className="mt-4">
-        {pestana === "datos" ? (
+        {activa === "datos" ? (
           <Datos modulo={ruta} id={id} objeto={tipo} alSaberNombre={setNombre} />
         ) : null}
-        {pestana === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
-        {pestana === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
-        {pestana === "documentos" ? <Documentos tipo={tipo} id={id} /> : null}
+        {activa === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
+        {activa === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
+        {activa === "documentos" ? <Documentos tipo={tipo} id={id} /> : null}
       </div>
     </>
   );

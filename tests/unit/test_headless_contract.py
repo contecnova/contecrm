@@ -149,7 +149,11 @@ def test_el_anexo_a_esta_cubierto_para_lo_que_dice_estar_hecho() -> None:
 
 
 # Un tipo de objeto real de cada servicio, para las rutas que lo llevan dentro.
-_OBJETOS_DE = {"party": "cuenta", "sales": "oportunidad"}
+# Un objeto real de cada servicio que monta adjuntos, comentarios o documentos.
+# Tiene que ser real: `{objeto_tipo}` es lo que decide el destino en esas rutas,
+# y con un valor inventado el gateway no encuentra a nadie y el gate daría por
+# rota una ruta que funciona.
+_OBJETOS_DE = {"party": "cuenta", "sales": "oportunidad", "service": "caso"}
 _OBJETO_POR_DEFECTO = "x"
 
 # Rutas que el gateway NO reenvía: las sirve él juntando la de todos los

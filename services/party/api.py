@@ -1505,7 +1505,7 @@ router_trabajos = crear_router_trabajos(
 
 # Corpus documental delegado en contecmind (RT-5). La lista blanca impide que
 # este servicio enlace documentos a objetos que no son suyos.
-router_documental = crear_router_documental({"cuenta", "contacto"})
+router_documental = crear_router_documental({"cuenta", "contacto", "actividad"})
 
 
 ROUTERS = [

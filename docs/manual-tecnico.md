@@ -96,6 +96,24 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### Qué objetos admiten adjuntos, comentarios y documentos
+
+Lo declara cada servicio al montar su router (`crear_router_adjuntos({...})`) y
+el gateway lo enruta por el tipo de objeto. **Y ahora lo publica la superficie**,
+en `objetos`, porque no se puede deducir de la lista de operaciones: esas rutas
+son `/adjuntos/{objeto}` y aparecen una sola vez, con el objeto sin resolver.
+
+Sin publicarlo, la ficha pedía las tres para **cualquier** registro y recibía
+404 en 81 de 85: tres peticiones fallidas por ficha abierta y tres pestañas que
+no podían funcionar. Ahora la ficha solo ofrece las que ese objeto tiene.
+
+Al medirlo salió el otro lado del problema: solo seis objetos admitían adjuntos,
+y **un caso no era uno de ellos** — un caso de soporte sin poder colgar la foto
+de la pieza rota obliga a mandarla por correo aparte, y entonces la mitad de lo
+que lo explica no está en el caso. Se han abierto donde hacen falta: casos y
+órdenes de trabajo, presupuestos, pedidos y contratos. De 6, 5 y 4 objetos a 11,
+10 y 9.
+
 #### La sesión del navegador
 
 El navegador no guarda el token: lo lleva en una cookie `HttpOnly` que pone y
