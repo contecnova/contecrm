@@ -113,7 +113,10 @@ class Interaccion(Base):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    canal_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # El canal por el que entró la interacción.
+    canal_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "canal_entrada"}
+    )
     canal: Mapped[str] = mapped_column(String(20), nullable=False)
     # Identificador del mensaje **en el canal**: Message-ID, id de la llamada,
     # id del evento de calendario. Es lo que hace idempotente la ingesta.

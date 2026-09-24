@@ -98,7 +98,9 @@ class Herramienta(Base, TimestampMixin):
     # el agente llame a la herramienta equivocada, y eso se parece mucho a un
     # fallo del modelo cuando en realidad es un fallo de documentación.
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="lectura")
+    tipo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="lectura", info={"opciones": TIPOS}
+    )
     # Qué permiso hace falta. Se comprueba contra el principal del agente, no
     # contra el de quien lo invocó.
     permiso: Mapped[str] = mapped_column(String(80), nullable=False)

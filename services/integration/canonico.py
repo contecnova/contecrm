@@ -140,7 +140,9 @@ class Adaptador(Base, TimestampMixin):
     politica_por_campo: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
-    direccion: Mapped[str] = mapped_column(String(20), nullable=False, default="ambas")
+    direccion: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="ambas", info={"opciones": DIRECCIONES}
+    )
     direccion_por_campo: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )

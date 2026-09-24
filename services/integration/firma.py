@@ -271,7 +271,9 @@ class Firmante(Base, TimestampMixin):
     )
     # firmante | aprobador | copia. La copia no firma: recibe el resultado.
     papel: Mapped[str] = mapped_column(String(20), nullable=False, default="firmante")
-    identificacion: Mapped[str] = mapped_column(String(30), nullable=False, default="correo")
+    identificacion: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="correo", info={"opciones": IDENTIFICACIONES}
+    )
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     firmado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     motivo_rechazo: Mapped[str | None] = mapped_column(Text, nullable=True)

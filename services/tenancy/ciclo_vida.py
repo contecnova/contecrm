@@ -99,7 +99,9 @@ class OperacionTenant(Base, TimestampMixin):
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     origen_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     destino_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    uso: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    uso: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="", info={"opciones": USOS_CLON}
+    )
     bloques: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )

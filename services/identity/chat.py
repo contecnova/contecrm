@@ -75,7 +75,9 @@ class ConversacionChat(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    tipo: Mapped[str] = mapped_column(String(10), nullable=False, default="canal")
+    tipo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="canal", info={"opciones": TIPOS}
+    )
     # La clave solo la tienen los canales: es lo que permite escribir `#ventas`
     # y que sea siempre el mismo sitio.
     clave: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -177,7 +179,7 @@ class ReaccionMensaje(Base, TimestampMixin):
         PgUUID(as_uuid=True), ForeignKey("chat_mensajes.id", ondelete="CASCADE"), nullable=False
     )
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    emoji: Mapped[str] = mapped_column(String(8), nullable=False)
+    emoji: Mapped[str] = mapped_column(String(8), nullable=False, info={"opciones": REACCIONES})
 
     __table_args__ = (
         UniqueConstraint("mensaje_id", "usuario_id", "emoji", name="uq_chat_reaccion"),
@@ -192,7 +194,9 @@ class Presencia(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="disponible")
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="disponible", info={"opciones": PRESENCIAS}
+    )
     # El estado escrito: «en un cliente hasta las 5». Vale más que el color,
     # porque responde a la pregunta de verdad —¿espero o llamo?—.
     mensaje: Mapped[str] = mapped_column(String(140), nullable=False, default="")

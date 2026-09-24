@@ -105,7 +105,9 @@ class ProveedorIA(Base, TimestampMixin, SoftDeleteMixin):
     # entre dos proveedores es esto.
     base_url: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     formato: Mapped[str] = mapped_column(String(40), nullable=False, default="openai_chat")
-    region: Mapped[str] = mapped_column(String(20), nullable=False, default="otra")
+    region: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="otra", info={"opciones": REGIONES}
+    )
     # Si el proveedor admite pedir que no se entrene con lo enviado. Cuando no,
     # un tenant con opt-out **no puede usarlo**, y eso se comprueba antes de
     # llamar, no después.

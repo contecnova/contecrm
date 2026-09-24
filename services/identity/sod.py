@@ -54,7 +54,9 @@ class ReglaSoD(Base):
     # Dos conjuntos: tener algo de A y algo de B a la vez es el conflicto.
     permisos_a: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     permisos_b: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
-    nivel: Mapped[str] = mapped_column(String(10), nullable=False, default="alto")
+    nivel: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="alto", info={"opciones": NIVELES}
+    )
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

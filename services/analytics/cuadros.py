@@ -100,7 +100,10 @@ class SuscripcionCuadro(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    cuadro_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # El cuadro de mando que se está embebiendo.
+    cuadro_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"referencia": "cuadro_mando"}
+    )
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # diaria | semanal | mensual
     periodicidad: Mapped[str] = mapped_column(String(20), nullable=False, default="semanal")
@@ -126,7 +129,9 @@ class AlertaUmbral(Base, TimestampMixin):
     informe_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     # Qué se mira del resultado: una métrica del informe, o el número de filas.
     metrica: Mapped[str] = mapped_column(String(80), nullable=False, default="filas")
-    comparacion: Mapped[str] = mapped_column(String(20), nullable=False, default="mayor")
+    comparacion: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="mayor", info={"opciones": COMPARACIONES}
+    )
     umbral: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=0)
     # Margen para volver al verde. Sin él, un indicador que baila alrededor del
     # umbral manda cuarenta avisos en una tarde y al día siguiente la regla está
@@ -162,7 +167,9 @@ class EnlaceEmbebido(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    cuadro_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    cuadro_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"referencia": "cuadro_mando"}
+    )
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     hash_secreto: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     # Dominios desde los que se puede incrustar. Vacío **no** significa

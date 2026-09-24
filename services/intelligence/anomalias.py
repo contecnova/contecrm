@@ -68,7 +68,7 @@ class SerieVigilada(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    ambito: Mapped[str] = mapped_column(String(20), nullable=False)
+    ambito: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": AMBITOS})
     clave: Mapped[str] = mapped_column(String(120), nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Cuántas observaciones hacen falta antes de avisar de nada. Configurable:

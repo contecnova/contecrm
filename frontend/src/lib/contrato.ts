@@ -49,10 +49,21 @@ export interface CampoEsquema {
   formato: string;
   /** Columnas de cada línea, cuando el campo es una lista de cosas con estructura. */
   subcampos: CampoEsquema[];
+  /**
+   * A qué objeto apunta este campo, dicho por el servidor.
+   *
+   * Lo declara la columna y viaja en el contrato porque **no siempre se puede
+   * adivinar del nombre**: `origen_id` y `destino_id` del mapa de personas
+   * apuntan a contactos, y `anotada_por_id` a un usuario. Sin esto salían como
+   * tres identificadores que nadie puede leer ni escribir.
+   */
+  referencia: string;
 }
 
 interface Esquema {
   type?: string;
+  /** A qué objeto apunta, si el servidor lo dice. */
+  referencia?: string;
   properties?: Record<string, Esquema>;
   required?: string[];
   title?: string;
@@ -195,6 +206,7 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
       maximo: p.maxLength ?? null,
       formato: p.format ?? "",
       subcampos: subcamposDe(documento, elemento),
+      referencia: p.referencia ?? "",
     };
   });
 }
@@ -215,6 +227,7 @@ function subcamposDe(documento: Documento, elemento?: Esquema): CampoEsquema[] {
       opciones: ((p.enum ?? interno?.enum ?? []) as unknown[]).map(String),
       maximo: p.maxLength ?? null,
       formato: p.format ?? "",
+      referencia: p.referencia ?? "",
       // Una sola vuelta: una línea dentro de una línea no se edita en una
       // tabla, se edita en su propia pantalla.
       subcampos: [],

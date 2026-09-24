@@ -132,7 +132,9 @@ class Devolucion(Base, TimestampMixin, SoftDeleteMixin):
     pedido_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     activo_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
-    motivo: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    motivo: Mapped[str] = mapped_column(
+        String(80), nullable=False, default="", info={"opciones": MOTIVOS_SUSPENSION}
+    )
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Sin `index=True`: el índice compuesto de abajo ya cubre la consulta real
     # —los abiertos por orden de llegada— y los dos se llamarían igual.

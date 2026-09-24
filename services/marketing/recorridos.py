@@ -87,7 +87,9 @@ class Recorrido(Base, TimestampMixin, SoftDeleteMixin):
     inicio: Mapped[str] = mapped_column(String(80), nullable=False, default="")
 
     # Cómo se entra (CRM-02.02.02.02).
-    entrada: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    entrada: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="manual", info={"opciones": ENTRADAS}
+    )
     evento_entrada: Mapped[str | None] = mapped_column(String(80), nullable=True)
     segmento_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
@@ -180,7 +182,7 @@ class PasoRecorrido(Base):
         PgUUID(as_uuid=True), ForeignKey("en_recorrido.id", ondelete="CASCADE"), nullable=False
     )
     nodo: Mapped[str] = mapped_column(String(80), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": TIPOS_NODO})
     # Por dónde salió del nodo. En una decisión es la rama; en una acción, vacío.
     rama: Mapped[str | None] = mapped_column(String(80), nullable=True)
     variante: Mapped[str | None] = mapped_column(String(40), nullable=True)

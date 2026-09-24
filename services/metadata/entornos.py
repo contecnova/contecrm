@@ -93,7 +93,9 @@ class PaqueteConfiguracion(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # De dónde sale. Un artefacto sin origen es uno que nadie se atreve a
     # promocionar, y el que no se atreve lo aplica a mano.
-    origen_entorno: Mapped[str] = mapped_column(String(20), nullable=False, default="desarrollo")
+    origen_entorno: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="desarrollo", info={"opciones": ENTORNOS}
+    )
     # La referencia de control de versiones, cuando la configuración vive en Git
     # (CRM-07.02.01.04). Vacío es legítimo —hay tenants que configuran desde la
     # consola— y por eso no se exige; lo que no se admite es inventársela.
@@ -120,7 +122,7 @@ class DespliegueConfiguracion(Base):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    entorno: Mapped[str] = mapped_column(String(20), nullable=False)
+    entorno: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": ENTORNOS})
     paquete_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     huella: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     vigente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

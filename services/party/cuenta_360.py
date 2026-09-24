@@ -149,9 +149,16 @@ class RelacionPersona(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    origen_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    destino_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Con `referencia`: sin ella, el formulario no puede saber que estos dos
+    # apuntan a contactos —no se llaman `contacto_id`— y salían como dos cajas
+    # donde había que teclear un identificador a mano.
+    origen_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"referencia": "contacto"}
+    )
+    destino_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), nullable=False, info={"referencia": "contacto"}
+    )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": RELACIONES})
     # Una valoración sobre una persona sin el porqué es un rumor guardado en una
     # base de datos. Con el porqué, es información que otro puede contrastar.
     motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -159,7 +166,9 @@ class RelacionPersona(Base, TimestampMixin, SoftDeleteMixin):
     # front esconde los identificadores. Sin el sufijo, esta columna se colaba
     # en la pantalla como un UUID suelto, que no dice quién lo anotó ni sirve
     # para averiguarlo.
-    anotada_por_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    anotada_por_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "usuario"}
+    )
 
     __table_args__ = (
         UniqueConstraint(

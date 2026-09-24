@@ -126,7 +126,9 @@ class Informe(Base, TimestampMixin):
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     objeto: Mapped[str] = mapped_column(String(40), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="tabular")
+    tipo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="tabular", info={"opciones": TIPOS}
+    )
 
     # Columnas que se enseñan tal cual.
     columnas: Mapped[list[Any]] = mapped_column(

@@ -91,7 +91,9 @@ class CanalServicio(Base, TimestampMixin, SoftDeleteMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     clave: Mapped[str] = mapped_column(String(80), nullable=False)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="formulario")
+    tipo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="formulario", info={"opciones": CANALES}
+    )
 
     # Hasheado, igual que en la captura de leads: si la base se filtra, las
     # claves de los canales de todos los tenants no vienen en ella.
@@ -153,7 +155,10 @@ class Conversacion(Base, TimestampMixin, SoftDeleteMixin):
     asunto: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     # abierta | esperando | cerrada
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta")
-    agente_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Quién está atendiendo la conversación.
+    agente_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "usuario"}
+    )
     # Si la lleva un bot. Se marca para poder medir la deflexión y, sobre todo,
     # para que el escalado a humano sepa que hay que traspasar contexto.
     atendida_por_bot: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -182,7 +187,7 @@ class Mensaje(Base):
     conversacion_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("conversaciones.id", ondelete="CASCADE"), nullable=False
     )
-    canal: Mapped[str] = mapped_column(String(20), nullable=False)
+    canal: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": CANALES})
     direccion: Mapped[str] = mapped_column(String(10), nullable=False, default=ENTRANTE)
     remitente: Mapped[str] = mapped_column(String(320), nullable=False, default="")
     asunto: Mapped[str | None] = mapped_column(String(300), nullable=True)

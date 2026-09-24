@@ -86,7 +86,7 @@ class ExcepcionCalidad(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     objeto: Mapped[str] = mapped_column(String(40), nullable=False)
     objeto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(30), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(30), nullable=False, info={"opciones": TIPOS})
     campo: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     # Qué regla la abrió. Sin esto no se puede saber que una regla está generando
     # ruido, y una regla que genera ruido vacía la cola de credibilidad.
@@ -99,7 +99,9 @@ class ExcepcionCalidad(Base, TimestampMixin):
     asignada_a: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     # abierta | asignada | cerrada
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="abierta")
-    cierre: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    cierre: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="", info={"opciones": CIERRES}
+    )
     nota_de_cierre: Mapped[str] = mapped_column(Text, nullable=False, default="")
     cerrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cerrada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)

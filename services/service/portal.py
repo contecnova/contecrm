@@ -88,7 +88,9 @@ class AccesoPortal(Base, TimestampMixin, SoftDeleteMixin):
         String(320), nullable=False, info={"sensibilidad": "personal"}
     )
 
-    nivel: Mapped[str] = mapped_column(String(20), nullable=False, default="propio")
+    nivel: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="propio", info={"opciones": NIVELES}
+    )
     # Qué secciones ve. Vacío = las de su nivel; con valores, se acota más.
     secciones: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
@@ -148,7 +150,10 @@ class HiloComunidad(Base, TimestampMixin, SoftDeleteMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     titulo: Mapped[str] = mapped_column(String(300), nullable=False)
     cuerpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    autor_contacto_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Quién abrió el hilo desde el portal.
+    autor_contacto_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "contacto"}
+    )
     categoria: Mapped[str] = mapped_column(String(80), nullable=False, default="general")
     # abierto | respondido | cerrado | moderacion
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="moderacion")

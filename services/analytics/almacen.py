@@ -91,7 +91,9 @@ class TablaAnalitica(Base, TimestampMixin, SoftDeleteMixin):
     # Qué servicio entrega estas filas. No se leen de su esquema: las manda él.
     servicio: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     objeto: Mapped[str] = mapped_column(String(60), nullable=False, default="")
-    estrategia: Mapped[str] = mapped_column(String(20), nullable=False, default="incremental")
+    estrategia: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="incremental", info={"opciones": ESTRATEGIAS}
+    )
     # Columnas declaradas: [{nombre, tipo}]. Sirven para validar lo que llega y
     # para publicar el esquema a quien consulte.
     columnas: Mapped[list[Any]] = mapped_column(

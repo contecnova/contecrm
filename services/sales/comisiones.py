@@ -133,7 +133,9 @@ class ReglaComision(Base, TimestampMixin):
         PgUUID(as_uuid=True), ForeignKey("planes_comision.id", ondelete="CASCADE"), nullable=False
     )
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="porcentaje")
+    tipo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="porcentaje", info={"opciones": TIPOS}
+    )
     orden: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     # Tramo del escalado o umbral del acelerador, en la unidad de la base.
     desde_valor: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
@@ -141,7 +143,9 @@ class ReglaComision(Base, TimestampMixin):
     porcentaje: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False, default=0)
     importe_fijo: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
     multiplicador: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False, default=1)
-    modo_tramo: Mapped[str] = mapped_column(String(20), nullable=False, default="marginal")
+    modo_tramo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="marginal", info={"opciones": MODOS_TRAMO}
+    )
     # Condición ABAC sobre la operación: familia de producto, canal, tipo de
     # cliente… Se reutiliza la gramática de siempre en vez de inventar otra, que
     # es lo que convierte un SPIFF en código a medida.

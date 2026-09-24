@@ -94,7 +94,9 @@ class RelacionDefinida(Base, TimestampMixin):
     )
 
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="referencia")
-    cardinalidad: Mapped[str] = mapped_column(String(5), nullable=False, default="1:N")
+    cardinalidad: Mapped[str] = mapped_column(
+        String(5), nullable=False, default="1:N", info={"opciones": CARDINALIDADES}
+    )
     al_borrar: Mapped[str] = mapped_column(String(20), nullable=False, default="restringir")
     obligatoria: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Objeto intermedio de una N:M. Ahí viven los datos de la propia relación.

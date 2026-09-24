@@ -44,13 +44,28 @@ import { cn } from "@/lib/utiles";
 
 export interface Props {
   campos: CampoEsquema[];
+  /**
+   * El recurso que se está editando, si se sabe.
+   *
+   * Hace falta para los campos que apuntan a otro registro **del mismo tipo**
+   * —el `padre_id` de una campaña es otra campaña—: sin saber desde dónde se
+   * edita, no hay contra qué resolverlos y salían como un identificador suelto.
+   */
+  recurso?: Recurso | null;
   valores?: Record<string, unknown>;
   enviando?: boolean;
   textoEnviar: string;
   alEnviar: (valores: Record<string, unknown>) => void;
 }
 
-export function Formulario({ campos, valores = {}, enviando, textoEnviar, alEnviar }: Props) {
+export function Formulario({
+  campos,
+  valores = {},
+  enviando,
+  textoEnviar,
+  alEnviar,
+  recurso,
+}: Props) {
   const { t } = useTranslation();
   const [estado, setEstado] = useState<Record<string, unknown>>(valores);
   const [verOpcionales, setVerOpcionales] = useState(false);
@@ -102,6 +117,7 @@ export function Formulario({ campos, valores = {}, enviando, textoEnviar, alEnvi
           campo={campo}
           valor={estado[campo.nombre]}
           alCambiar={cambiar(campo.nombre)}
+          propio={recurso}
         />
       ))}
 
@@ -128,6 +144,7 @@ export function Formulario({ campos, valores = {}, enviando, textoEnviar, alEnvi
                   campo={campo}
                   valor={estado[campo.nombre]}
                   alCambiar={cambiar(campo.nombre)}
+                  propio={recurso}
                 />
               ))}
             </div>
@@ -146,14 +163,17 @@ function Campo({
   campo,
   valor,
   alCambiar,
+  propio,
 }: {
   campo: CampoEsquema;
   valor: unknown;
   alCambiar: (valor: unknown) => void;
+  /** El recurso desde el que se edita, para resolver las auto-referencias. */
+  propio?: Recurso | null;
 }) {
   const id = `campo-${campo.nombre}`;
   const ayuda = campo.descripcion ? `${id}-ayuda` : undefined;
-  const referencia = recursoDeReferencia(campo.nombre);
+  const referencia = recursoDeReferencia(campo.nombre, campo.referencia, propio);
   const comun = {
     id,
     "aria-describedby": ayuda,

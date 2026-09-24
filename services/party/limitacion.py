@@ -102,7 +102,9 @@ class LimitacionTratamiento(Base, TimestampMixin):
     tratamientos: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
-    motivo: Mapped[str] = mapped_column(String(40), nullable=False, default="otro")
+    motivo: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="otro", info={"opciones": MOTIVOS}
+    )
     detalle: Mapped[str] = mapped_column(Text, nullable=False, default="")
     solicitud_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 

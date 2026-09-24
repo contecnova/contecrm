@@ -188,10 +188,14 @@ class Cuota(Base, TimestampMixin, SoftDeleteMixin):
     # tenido que sumar dos números calculados de dos maneras.
     partner_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
 
-    periodo: Mapped[str] = mapped_column(String(20), nullable=False, default="trimestral")
+    periodo: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="trimestral", info={"opciones": PERIODOS}
+    )
     desde: Mapped[date] = mapped_column(Date, nullable=False)
     hasta: Mapped[date] = mapped_column(Date, nullable=False)
-    metrica: Mapped[str] = mapped_column(String(30), nullable=False, default="importe")
+    metrica: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="importe", info={"opciones": METRICAS}
+    )
     objetivo: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=0)
     moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
     # Acotada a una familia de producto, si hace falta.

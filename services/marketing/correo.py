@@ -90,7 +90,9 @@ class PlantillaMarketing(Base, TimestampMixin, SoftDeleteMixin):
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     asunto: Mapped[str] = mapped_column(String(300), nullable=False)
     preencabezado: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    clase: Mapped[str] = mapped_column(String(20), nullable=False, default="promocional")
+    clase: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="promocional", info={"opciones": CLASES}
+    )
     # Referencias a bloques, en orden, con lo que cambia en cada uso.
     bloques: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")

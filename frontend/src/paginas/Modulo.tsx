@@ -363,6 +363,7 @@ function RecursoVista({
       {creando && campos ? (
         <div className="mb-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
           <Formulario
+            recurso={recurso}
             campos={campos}
             enviando={enviando}
             textoEnviar={t("modulo.guardar")}

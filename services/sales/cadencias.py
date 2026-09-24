@@ -161,7 +161,7 @@ class ToqueCadencia(Base):
         nullable=False,
     )
     paso: Mapped[int] = mapped_column(Integer, nullable=False)
-    canal: Mapped[str] = mapped_column(String(20), nullable=False)
+    canal: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": CANALES})
     plantilla: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # La actividad que se creó, si el paso era manual. Enlaza las dos mitades: lo
     # que la cadencia pidió y lo que la persona hizo.

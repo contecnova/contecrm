@@ -104,7 +104,9 @@ class AislamientoTenant(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    modalidad: Mapped[str] = mapped_column(String(20), nullable=False, default="compartido")
+    modalidad: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="compartido", info={"opciones": MODALIDADES}
+    )
     # Dónde vive de verdad. Sin credenciales: solo lo justo para poder comprobar
     # que la conexión abierta es la que tenía que ser.
     instancia: Mapped[str] = mapped_column(String(200), nullable=False, default="")
@@ -140,7 +142,7 @@ class MigracionAislamiento(Base):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     desde: Mapped[str] = mapped_column(String(20), nullable=False)
-    hacia: Mapped[str] = mapped_column(String(20), nullable=False)
+    hacia: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": MODALIDADES})
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="planificada")
     # Lo que se le promete al cliente antes de empezar. Prometer «sin corte» es
     # prometer lo que no se puede; lo que se puede es que sea corto y anunciado.

@@ -263,7 +263,9 @@ class IncidenciaEncargo(Base, TimestampMixin):
     # vive en `service` y ningún servicio lee el esquema de otro.
     tipo: Mapped[str] = mapped_column(String(120), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
-    responsable: Mapped[str] = mapped_column(String(20), nullable=False, default="sin_determinar")
+    responsable: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="sin_determinar", info={"opciones": RESPONSABLES}
+    )
     # Caso de soporte que la atiende. Enlazarla y no duplicarla: el cliente
     # escribe al soporte, no a la integración, y tener dos hilos sobre el mismo
     # problema es cómo se le contesta dos cosas distintas.

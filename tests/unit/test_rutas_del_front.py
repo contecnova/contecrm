@@ -274,3 +274,64 @@ def test_toda_llamada_del_front_existe_en_algun_contrato() -> None:
         + "\n  ".join(dict.fromkeys(rotas))
         + "\n\nEn pantalla esto sale como «algo ha ido mal», sin decir qué falta."
     )
+
+
+# ── Nadie teclea un identificador a mano ──────────────────────────────────
+
+_PERSONAS = re.compile(r"const SON_PERSONAS = new Set\(\[(.*?)\]\)", re.S)
+_MISMO_TIPO = re.compile(r"const SON_DEL_MISMO_TIPO = new Set\(\[(.*?)\]\)", re.S)
+
+
+def _campos_resolubles() -> tuple[set[str], set[str], set[str]]:
+    """Qué sabe resolver el front: objetos declarados, personas y autorreferencias."""
+    referencias = (FRONT_SRC / "lib" / "referencias.ts").read_text(encoding="utf-8")
+    objetos = set(re.findall(r'objeto:\s*"([^"]+)"', MODULOS.read_text(encoding="utf-8")))
+    personas = set(re.findall(r'"([^"]+)"', (_PERSONAS.search(referencias) or [""])[1] or ""))
+    mismo = set(re.findall(r'"([^"]+)"', (_MISMO_TIPO.search(referencias) or [""])[1] or ""))
+    return objetos, personas, mismo
+
+
+def test_ningun_formulario_pide_un_identificador_a_mano() -> None:
+    """Un campo que apunta a otro registro se **elige**, no se teclea.
+
+    `01a0cfbd-62b6-7a9b-8c98-f2bb8230cfd5` en una caja de texto no es un
+    formulario: es un volcado de la base de datos con una etiqueta encima. Nadie
+    se sabe un UUID, así que el campo o se deja vacío o se rellena copiando de
+    otra pantalla —y una copia mal hecha apunta a otro registro sin avisar.
+
+    El front resuelve tres casos: el objeto declarado en `modulos.ts`
+    (`cuenta_id` → cuentas), los campos que son personas (`owner_id`) y los que
+    apuntan al mismo tipo (`padre_id`). Lo que no encaje en ninguno **tiene que
+    declararlo la columna** con `info={"referencia": "..."}`; si no, sale como
+    un identificador a la vista.
+    """
+    objetos, personas, mismo_tipo = _campos_resolubles()
+    sueltos: list[str] = []
+    for servicio in SERVICIOS:
+        import importlib
+
+        from crmcore.config import limpiar_cache_settings
+
+        os.environ["SERVICE_NAME"] = servicio
+        limpiar_cache_settings()
+        documento = importlib.import_module(f"services.{servicio}.main").app.openapi()
+        esquemas = documento.get("components", {}).get("schemas") or {}
+        for nombre, esquema in esquemas.items():
+            if not nombre.startswith("Editar"):
+                continue
+            for campo, propiedad in (esquema.get("properties") or {}).items():
+                if not campo.endswith("_id"):
+                    continue
+                if propiedad.get("referencia") or campo in personas or campo in mismo_tipo:
+                    continue
+                if campo[: -len("_id")] in objetos:
+                    continue
+                sueltos.append(f"{servicio}.{nombre[len('Editar') :]}.{campo}")
+
+    assert not sueltos, (
+        "Formularios que piden un identificador a mano:\n  "
+        + "\n  ".join(sorted(sueltos))
+        + '\n\nDeclara a qué apunta la columna —`info={"referencia": "contacto"}`— '
+        "o el `objeto` del recurso en `modulos.ts`. Si lo pone el sistema y no una "
+        "persona, sácalo del formulario con `NO_EDITABLES`."
+    )

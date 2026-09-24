@@ -96,6 +96,46 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### Nadie teclea un identificador a mano
+
+Un campo que apunta a otro registro **se elige, no se teclea**: nadie se sabe un
+UUID de memoria, así que una caja con `01a0cfbd-62b6-7a9b-…` dentro se queda
+vacía o se rellena copiando de otra pantalla — y una copia mal hecha apunta a
+otro registro sin avisar a nadie.
+
+El formulario resuelve tres casos y el cuarto lo declara el modelo:
+
+1. **El objeto declarado**: `cuenta_id` busca el recurso cuyo `objeto` es
+   `cuenta` y ofrece su listado. Por eso importa declarar `objeto` en
+   `modulos.ts`, aunque el recurso no tenga ficha.
+2. **Las personas**: `owner_id`, `responsable_id`, `dueno_id`… no se llaman
+   `usuario_id`, así que van en una lista corta de presentación.
+3. **Las autorreferencias**: el `padre_id` de una campaña es otra campaña.
+4. **Lo que no se adivina**, que lo dice la columna:
+   `info={"referencia": "contacto"}` viaja al contrato y el front lo obedece.
+   `origen_id` y `destino_id` del mapa de personas apuntan a contactos y
+   `anotada_por_id` a un usuario: sin declararlo eran tres UUID a la vista.
+
+Y lo que **pone el sistema y no una persona** no va en el formulario:
+`fusionado_en_id`, `duplicado_de_id`, los identificadores del gestor documental
+y de la firma, la etapa —que se mueve con su acción, que valida los criterios de
+salida—, la aprobación y el modelo de una predicción. Van en la lista de
+campos no editables de `crmcore.http.listados`.
+
+Hay un gate (`test_ningun_formulario_pide_un_identificador_a_mano`) y empezó
+señalando 84 campos.
+
+#### Los campos con una lista cerrada salen como desplegable
+
+Si el servicio valida un campo contra cinco valores, el formulario tiene que
+ofrecer esos cinco. Se declara en la propia columna —`info={"opciones":
+RELACIONES}`— y `montar_ficha` lo convierte en una lista cerrada en el contrato,
+que el front pinta como desplegable.
+
+Sin esto se editaba escribiéndolo a mano, y quien lo rellenaba tenía que saberse
+los valores de memoria y escribirlos sin erratas: 118 campos del sistema estaban
+así, validados contra una lista cerrada y ofrecidos como texto libre.
+
 #### Qué se pinta como panel de una ficha
 
 La ficha deriva sus paneles de la superficie, y para eso la superficie dice

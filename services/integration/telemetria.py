@@ -127,8 +127,12 @@ class ReglaTelemetria(Base, TimestampMixin):
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     modelo: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    accion: Mapped[str] = mapped_column(String(20), nullable=False, default="aviso")
-    severidad: Mapped[str] = mapped_column(String(20), nullable=False, default="media")
+    accion: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="aviso", info={"opciones": ACCIONES}
+    )
+    severidad: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="media", info={"opciones": SEVERIDADES}
+    )
     asunto: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     # Cuánto tiempo no se vuelve a abrir nada por lo mismo en el mismo aparato.
     # Es lo que impide que una máquina que se vuelve loca tumbe la cola de

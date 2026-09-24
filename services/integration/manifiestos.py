@@ -97,7 +97,9 @@ class Manifiesto(Base, TimestampMixin):
     clave: Mapped[str] = mapped_column(String(80), nullable=False)
     version: Mapped[str] = mapped_column(String(20), nullable=False, default="1")
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
-    categoria: Mapped[str] = mapped_column(String(30), nullable=False, default="otros")
+    categoria: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="otros", info={"opciones": CATEGORIAS}
+    )
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     protocolo: Mapped[str] = mapped_column(String(20), nullable=False, default="rest")
 

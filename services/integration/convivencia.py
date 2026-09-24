@@ -74,7 +74,9 @@ class ReglaConvivencia(Base, TimestampMixin, SoftDeleteMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     objeto: Mapped[str] = mapped_column(String(60), nullable=False)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    dueno: Mapped[str] = mapped_column(String(20), nullable=False, default="heredado")
+    dueno: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="heredado", info={"opciones": DUENOS}
+    )
     # Con `ambos`, quién gana si los dos han cambiado lo mismo. Obligatorio: sin
     # él se decidiría por orden de llegada, que es perder datos en silencio.
     manda_en_empate: Mapped[str | None] = mapped_column(String(20), nullable=True)

@@ -115,11 +115,14 @@ class Agente(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     clave: Mapped[str] = mapped_column(String(80), nullable=False)
-    tipo: Mapped[str] = mapped_column(String(40), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(40), nullable=False, info={"opciones": TIPOS})
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Su propio principal. No hereda el de quien lo lanza: un agente que actúa
     # con los permisos del jefe convierte su error en el error del jefe.
-    principal_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Quién queda como responsable de lo que haga el agente.
+    principal_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "usuario"}
+    )
     permisos: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )

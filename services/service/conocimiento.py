@@ -96,7 +96,9 @@ class Articulo(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Audiencia máxima a la que puede llegar (CRM-04.03.01.02).
-    audiencia: Mapped[str] = mapped_column(String(20), nullable=False, default="interno")
+    audiencia: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="interno", info={"opciones": AUDIENCIAS}
+    )
     # Canales donde puede aparecer: portal, chatbot, buscador público…
     canales: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")

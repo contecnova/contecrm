@@ -121,7 +121,9 @@ class AgenteServicio(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    presencia: Mapped[str] = mapped_column(String(20), nullable=False, default="fuera")
+    presencia: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="fuera", info={"opciones": PRESENCIAS}
+    )
     presencia_desde: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

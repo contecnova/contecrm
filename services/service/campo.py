@@ -157,7 +157,10 @@ class OrdenTrabajo(Base, TimestampMixin, SoftDeleteMixin):
     caso_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     activo_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
-    plan_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # El plan de mantenimiento del que sale esta orden.
+    plan_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "plan_preventivo"}
+    )
 
     direccion: Mapped[str] = mapped_column(
         String(300), nullable=False, default="", info={"sensibilidad": "personal"}

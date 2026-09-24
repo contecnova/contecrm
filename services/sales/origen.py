@@ -81,7 +81,10 @@ class Toque(Base, SoftDeleteMixin):
     # Identificador de primera parte del visitante (una cookie propia, no de un
     # tercero). Es el hilo que une lo que pasó antes de identificarse con lo que
     # pasó después. Sin él, el primer toque se pierde siempre.
-    visitante_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Quién hizo el toque, cuando se sabe quién es.
+    visitante_id: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, info={"referencia": "contacto"}
+    )
 
     # web | correo | evento | telefono | referido | social | anuncio | otro
     canal: Mapped[str] = mapped_column(String(40), nullable=False, default="web")

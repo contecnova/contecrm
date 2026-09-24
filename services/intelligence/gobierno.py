@@ -112,7 +112,7 @@ class ModeloML(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
-    tipo: Mapped[str] = mapped_column(String(30), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(30), nullable=False, info={"opciones": TIPOS})
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="entrenando")
 

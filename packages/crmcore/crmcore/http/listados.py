@@ -160,7 +160,52 @@ def montar_listado(
 # Columnas que nunca se editan desde la ficha: las pone el sistema y dejarlas
 # escribibles es cómo un registro acaba cambiando de tenant o de fecha de alta.
 NO_EDITABLES = frozenset(
-    {"id", "tenant_id", "created_at", "updated_at", "deleted_at", "deleted_by", "version"}
+    {
+        "id",
+        "tenant_id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "deleted_by",
+        "version",
+        # Enlaces que pone el sistema, no una persona. Ofrecerlos en el
+        # formulario es pedir que alguien teclee un identificador de treinta y
+        # seis caracteres para «arreglar» algo que se arregla desde la acción
+        # que lo creó: se fusiona desde la fusión, se deshace un duplicado
+        # desde la cola de duplicados, y la papelera apunta al registro que
+        # guardó. Escribirlos a mano solo sirve para romperlos.
+        "fusionado_en_id",
+        "fusionada_en_id",
+        "duplicado_de_id",
+        "registro_id",
+        "vinculo_id",
+        "instancia_id",
+        "caso_origen_id",
+        "respuesta_aceptada_id",
+        "ultima_creada_id",
+        # Identificadores del gestor documental y de la firma: los pone el
+        # propio flujo al generar o al firmar. Escribirlos a mano solo sirve
+        # para apuntar a un documento que no es.
+        "documento_id",
+        "documento_firmado_id",
+        "certificado_id",
+        "acuse_documento_id",
+        "respuesta_documento_id",
+        "firma_documento_id",
+        "objeto_origen_id",
+        # Y estos otros: la etapa se mueve con su propia acción —que valida los
+        # criterios de salida—, la aprobación la crea el flujo de aprobación, y
+        # el modelo de una predicción lo pone quien la calcula.
+        "etapa_id",
+        "aprobacion_id",
+        "modelo_id",
+        # La unidad de negocio y el encargo no tienen dónde elegirse: las
+        # unidades cuelgan de su tenant y el encargo lo fija quien crea la
+        # devolución. Una caja para teclear su identificador es peor que no
+        # ofrecerlo — se cambia desde donde se asigna.
+        "business_unit_id",
+        "encargo_id",
+    }
 )
 
 
@@ -263,7 +308,7 @@ def montar_ficha(
         f"Editar{objeto.title().replace('_', '').replace('-', '')}",
         __doc__=f"Campos editables de {nombre.lower()}. Se cambia solo lo que se envía.",
         **{
-            nombre_campo: (_tipo_de(columna) | None, None)  # type: ignore[misc]
+            nombre_campo: (_tipo_de(columna) | None, _anotacion(columna))  # type: ignore[misc]
             for nombre_campo, columna in campos.items()
         },
     )
@@ -415,13 +460,67 @@ def montar_ficha(
         )(_con_parametro(archivar, parametro))
 
 
+def _anotacion(columna: Any) -> Any:
+    """Qué más sabe la columna de sí misma, para que llegue al contrato.
+
+    De momento, **a qué objeto apunta** cuando es una referencia. El front lo
+    usa para enseñar un buscador con nombres en vez de una caja donde teclear un
+    identificador, y no siempre puede adivinarlo del nombre: `origen_id` y
+    `destino_id` del mapa de personas apuntan a contactos, y `anotada_por_id` a
+    un usuario. Sin decirlo, esos tres campos salían como tres UUID que nadie
+    puede leer ni escribir.
+    """
+    from pydantic.fields import FieldInfo
+
+    try:
+        info = dict(columna.expression.info or {})
+    except AttributeError:
+        info = {}
+    apunta = info.get("referencia")
+    if not apunta:
+        return None
+    return FieldInfo(default=None, json_schema_extra={"referencia": str(apunta)})
+
+
+def _opciones_de(columna: Any) -> tuple[str, ...]:
+    """Los valores que admite una columna, si los declara.
+
+    Se busca en `info` de la columna y también en el `Enum` de su tipo, por si
+    alguien lo modeló así: las dos formas dicen lo mismo y quien lee el modelo
+    no tiene por qué saber cuál se usó.
+    """
+    try:
+        info = dict(columna.expression.info or {})
+    except AttributeError:
+        info = {}
+    declaradas = info.get("opciones")
+    if declaradas:
+        return tuple(str(v) for v in declaradas)
+    valores = getattr(getattr(columna.expression, "type", None), "enums", None)
+    return tuple(str(v) for v in valores) if valores else ()
+
+
 def _tipo_de(columna: Any) -> Any:
     """El tipo Python de una columna, para construir el esquema del PATCH.
+
+    **Si la columna declara sus valores, se devuelven como lista cerrada.** Es
+    lo que convierte el campo en un desplegable en vez de una caja de texto: sin
+    esto, un campo que el servicio valida contra cinco valores se editaba
+    escribiéndolo a mano, y quien lo rellenaba tenía que saberse los cinco de
+    memoria y escribirlos sin erratas. La lista se declara en la propia columna
+    —`info={"opciones": RELACIONES}`— porque es donde vive la verdad y donde se
+    ve al leer el modelo.
 
     Se cae del lado de `str` cuando no lo sabe: un campo con tipo desconocido
     editado como texto es corregible; un campo que no aparece en el formulario
     no hay forma de arreglarlo desde ninguna pantalla.
     """
+    opciones = _opciones_de(columna)
+    if opciones:
+        from typing import Literal
+
+        return Literal[tuple(opciones)]  # type: ignore[valid-type]
+
     try:
         tipo = columna.expression.type.python_type
     except (NotImplementedError, AttributeError):

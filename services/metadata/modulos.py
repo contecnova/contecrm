@@ -143,7 +143,9 @@ class ElementoModulo(Base):
     seccion: Mapped[str] = mapped_column(String(30), nullable=False)
     # Identificador dentro del módulo, ya prefijado.
     clave: Mapped[str] = mapped_column(String(160), nullable=False)
-    gobierno: Mapped[str] = mapped_column(String(20), nullable=False, default="fijo")
+    gobierno: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="fijo", info={"opciones": GOBIERNOS}
+    )
     # Lo que el módulo puso la última vez. Comparando esto con lo que hay ahora se
     # sabe si el cliente lo tocó — que es la única forma de no pisarlo.
     definicion: Mapped[dict[str, Any]] = mapped_column(

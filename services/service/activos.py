@@ -111,7 +111,9 @@ class ActivoInstalado(Base, TimestampMixin, SoftDeleteMixin):
     latitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     longitud: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
 
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="instalado")
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="instalado", info={"opciones": ESTADOS}
+    )
     instalado_el: Mapped[date | None] = mapped_column(Date, nullable=True)
     retirado_el: Mapped[date | None] = mapped_column(Date, nullable=True)
     motivo_retirada: Mapped[str] = mapped_column(Text, nullable=False, default="")

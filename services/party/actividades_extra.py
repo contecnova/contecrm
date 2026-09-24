@@ -121,7 +121,9 @@ class Recurrencia(Base, TimestampMixin, SoftDeleteMixin):
     cuenta_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     asignada_a: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True, index=True)
 
-    patron: Mapped[str] = mapped_column(String(20), nullable=False, default="mensual")
+    patron: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="mensual", info={"opciones": RECURRENCIAS}
+    )
     cada: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     desde: Mapped[date] = mapped_column(DateTime(timezone=True), nullable=False)
     hasta: Mapped[date | None] = mapped_column(DateTime(timezone=True), nullable=True)

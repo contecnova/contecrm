@@ -93,12 +93,14 @@ class Buzon(Base, TimestampMixin, SoftDeleteMixin):
     # La clave del perfil declarado, no el nombre de una casa: quien añade un
     # proveedor nuevo escribe configuración, no un módulo.
     perfil: Mapped[str] = mapped_column(String(60), nullable=False)
-    ambito: Mapped[str] = mapped_column(String(20), nullable=False, default="correo")
+    ambito: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="correo", info={"opciones": AMBITOS}
+    )
     direccion: Mapped[str] = mapped_column(
         String(320), nullable=False, info={"sensibilidad": "personal"}
     )
     criterio: Mapped[str] = mapped_column(
-        String(40), nullable=False, default="con_contacto_del_crm"
+        String(40), nullable=False, default="con_contacto_del_crm", info={"opciones": CRITERIOS}
     )
     # Hacia dónde va: leer del proveedor, escribir en él, o las dos.
     entrante: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

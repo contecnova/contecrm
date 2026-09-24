@@ -128,7 +128,9 @@ class EtapaAprobacion(Base):
     )
     orden: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False, default="")
-    quorum: Mapped[str] = mapped_column(String(20), nullable=False, default="todos")
+    quorum: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="todos", info={"opciones": QUORUMS}
+    )
     # Para `n_de_m`: cuántos hacen falta.
     minimo: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # Los aprobadores ya RESUELTOS, congelados al abrir la etapa. Se congelan a
@@ -177,7 +179,7 @@ class DecisionAprobacion(Base):
     # Quién firmó de verdad. Con delegación, no es el mismo — y la diferencia es
     # justo lo que no se puede perder (CRM-00.03.05.08).
     decidio_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    decision: Mapped[str] = mapped_column(String(20), nullable=False)
+    decision: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": DECISIONES})
     comentario: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # ui | correo | movil | api | automatica
     via: Mapped[str] = mapped_column(String(20), nullable=False, default="ui")

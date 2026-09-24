@@ -94,7 +94,9 @@ class Campana(Base, TimestampMixin, SoftDeleteMixin):
     padre_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("campanas.id", ondelete="RESTRICT"), nullable=True
     )
-    nivel: Mapped[str] = mapped_column(String(20), nullable=False, default="campana")
+    nivel: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="campana", info={"opciones": NIVELES}
+    )
     clave: Mapped[str] = mapped_column(String(80), nullable=False)
     nombre: Mapped[str] = mapped_column(String(300), nullable=False)
     descripcion: Mapped[str] = mapped_column(Text, nullable=False, default="")

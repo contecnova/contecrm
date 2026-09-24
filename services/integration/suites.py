@@ -133,7 +133,9 @@ class ConsentimientoSuite(Base, TimestampMixin, SoftDeleteMixin):
     )
     perfil: Mapped[str] = mapped_column(String(80), nullable=False)
     recurso: Mapped[str] = mapped_column(String(30), nullable=False)
-    sentido: Mapped[str] = mapped_column(String(10), nullable=False, default="leer")
+    sentido: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="leer", info={"opciones": SENTIDOS}
+    )
     # Los alcances que se pidieron de verdad. Se guardan para poder contestar
     # «¿qué permisos le disteis al CRM?» con la lista, no con una impresión.
     alcances: Mapped[list[Any]] = mapped_column(

@@ -89,7 +89,9 @@ class Metrica(Base, TimestampMixin, SoftDeleteMixin):
     # cobrados» para quien no va a mirar el plan.
     definicion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     objeto: Mapped[str] = mapped_column(String(60), nullable=False)
-    agregacion: Mapped[str] = mapped_column(String(20), nullable=False, default="suma")
+    agregacion: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="suma", info={"opciones": AGREGACIONES}
+    )
     campo: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Con `ratio`: numerador y denominador, los dos como claves de métrica.
     numerador: Mapped[str | None] = mapped_column(String(80), nullable=True)

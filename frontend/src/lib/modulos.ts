@@ -94,7 +94,11 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.01",
     grupo: "Plataforma",
     recursos: [
-      { nombre: "Compromisos", listar: "/api/v1/compromisos", servicio: "tenancy" },
+      {
+        nombre: "Compromisos",
+        listar: "/api/v1/compromisos",
+        servicio: "tenancy",
+      },
       {
         nombre: "Tenants",
         // Con `objeto` para que cada fila se abra: suspender, reactivar,
@@ -111,7 +115,11 @@ export const MODULOS: Modulo[] = [
       },
       { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
       { nombre: "Ajustes", listar: "/api/v1/ajustes", servicio: "tenancy" },
-      { nombre: "Localización", listar: "/api/v1/localizacion", servicio: "tenancy" },
+      {
+        nombre: "Localización",
+        listar: "/api/v1/localizacion",
+        servicio: "tenancy",
+      },
     ],
   },
   {
@@ -120,7 +128,9 @@ export const MODULOS: Modulo[] = [
     seccion: "0.2",
     capacidad: "CRM-07.04.03.02",
     grupo: "Plataforma",
-    recursos: [{ nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" }],
+    recursos: [
+      { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },
+    ],
   },
   {
     ruta: "procesos",
@@ -129,27 +139,89 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.03",
     grupo: "Plataforma",
     recursos: [
-      { nombre: "Definiciones", listar: "/api/v1/procesos/definiciones", servicio: "orchestrator" },
-      { nombre: "Instancias", listar: "/api/v1/instancias", servicio: "orchestrator" },
+      {
+        nombre: "Definiciones",
+        listar: "/api/v1/procesos/definiciones",
+        servicio: "orchestrator",
+      },
+      {
+        nombre: "Instancias",
+        objeto: "instancia",
+        listar: "/api/v1/instancias",
+        servicio: "orchestrator",
+      },
       { nombre: "Tareas", listar: "/api/v1/tareas", servicio: "orchestrator" },
-      { nombre: "Tablas de decisión", listar: "/api/v1/tablas-decision", servicio: "orchestrator" },
-      { nombre: "Automatizaciones", listar: "/api/v1/automatizaciones", servicio: "automation" },
-      { nombre: "Integraciones", listar: "/api/v1/integraciones/conexiones", servicio: "integration" },
-      { nombre: "Ejecuciones", listar: "/api/v1/integraciones/ejecuciones", servicio: "integration" },
+      {
+        nombre: "Tablas de decisión",
+        listar: "/api/v1/tablas-decision",
+        servicio: "orchestrator",
+      },
+      {
+        nombre: "Automatizaciones",
+        listar: "/api/v1/automatizaciones",
+        servicio: "automation",
+      },
+      {
+        nombre: "Integraciones",
+        objeto: "conexion",
+        listar: "/api/v1/integraciones/conexiones",
+        servicio: "integration",
+      },
+      {
+        nombre: "Ejecuciones",
+        listar: "/api/v1/integraciones/ejecuciones",
+        servicio: "integration",
+      },
       { nombre: "Webhooks", listar: "/api/v1/webhooks", servicio: "eventing" },
-      { nombre: "Trabajos de clientes", listar: "/api/v1/party/trabajos", servicio: "party" },
-      { nombre: "Trabajos de ventas", listar: "/api/v1/sales/trabajos", servicio: "sales" },
+      {
+        nombre: "Trabajos de clientes",
+        listar: "/api/v1/party/trabajos",
+        servicio: "party",
+      },
+      {
+        nombre: "Trabajos de ventas",
+        listar: "/api/v1/sales/trabajos",
+        servicio: "sales",
+      },
       // El catálogo de conectores y lo instalado aquí, juntos: la pregunta real
       // es «¿qué tengo puesto y qué versión?», no «¿qué existe?».
-      { nombre: "Catálogo de conectores", listar: "/api/v1/conectores", servicio: "integration" },
-      { nombre: "Conectores instalados", listar: "/api/v1/conectores/instalados", servicio: "integration" },
-      { nombre: "Canales de entrada", listar: "/api/v1/canales-entrada/sin-atribuir", servicio: "integration" },
-      { nombre: "Agentes: uso", listar: "/api/v1/agentes-ia/uso", servicio: "integration" },
-      { nombre: "Vistas federadas", listar: "/api/v1/federacion/vistas", servicio: "integration" },
+      {
+        nombre: "Catálogo de conectores",
+        listar: "/api/v1/conectores",
+        servicio: "integration",
+      },
+      {
+        nombre: "Conectores instalados",
+        listar: "/api/v1/conectores/instalados",
+        servicio: "integration",
+      },
+      {
+        nombre: "Canales de entrada",
+        listar: "/api/v1/canales-entrada/sin-atribuir",
+        servicio: "integration",
+      },
+      {
+        nombre: "Agentes: uso",
+        listar: "/api/v1/agentes-ia/uso",
+        servicio: "integration",
+      },
+      {
+        nombre: "Vistas federadas",
+        listar: "/api/v1/federacion/vistas",
+        servicio: "integration",
+      },
       // El progreso de la migración, por delante de la lista de reglas: lo que
       // se pregunta cada semana es cuánto falta.
-      { nombre: "Migración: progreso", listar: "/api/v1/convivencia/progreso", servicio: "integration" },
-      { nombre: "Transportes", listar: "/api/v1/conectores/transportes", servicio: "integration" },
+      {
+        nombre: "Migración: progreso",
+        listar: "/api/v1/convivencia/progreso",
+        servicio: "integration",
+      },
+      {
+        nombre: "Transportes",
+        listar: "/api/v1/conectores/transportes",
+        servicio: "integration",
+      },
     ],
   },
   {
@@ -159,9 +231,21 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.04",
     grupo: "Plataforma",
     recursos: [
-      { nombre: "Objetos", listar: "/api/v1/metadata/objetos", servicio: "metadata" },
-      { nombre: "Relaciones", listar: "/api/v1/metadata/relaciones", servicio: "metadata" },
-      { nombre: "Tipos de relación", listar: "/api/v1/metadata/relaciones/tipos", servicio: "metadata" },
+      {
+        nombre: "Objetos",
+        listar: "/api/v1/metadata/objetos",
+        servicio: "metadata",
+      },
+      {
+        nombre: "Relaciones",
+        listar: "/api/v1/metadata/relaciones",
+        servicio: "metadata",
+      },
+      {
+        nombre: "Tipos de relación",
+        listar: "/api/v1/metadata/relaciones/tipos",
+        servicio: "metadata",
+      },
     ],
   },
   {
@@ -171,14 +255,32 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.05",
     grupo: "Plataforma",
     recursos: [
-      { nombre: "Seguimientos", listar: "/api/v1/seguimientos", servicio: "identity" },
+      {
+        nombre: "Seguimientos",
+        listar: "/api/v1/seguimientos",
+        servicio: "identity",
+      },
       {
         nombre: "Dispositivos de confianza",
         listar: "/api/v1/dispositivos-confianza",
         servicio: "identity",
       },
-      { nombre: "Usuarios", listar: "/api/v1/usuarios", servicio: "identity", permiso: "user:read" },
-      { nombre: "Roles", listar: "/api/v1/roles", servicio: "identity", permiso: "user:read" },
+      {
+        // Con `objeto` para que las referencias a personas —quién anotó esto,
+        // de quién es esta cuota— se resuelvan a un buscador con nombres en vez
+        // de dejar un identificador a la vista.
+        nombre: "Usuarios",
+        objeto: "usuario",
+        listar: "/api/v1/usuarios",
+        servicio: "identity",
+        permiso: "user:read",
+      },
+      {
+        nombre: "Roles",
+        listar: "/api/v1/roles",
+        servicio: "identity",
+        permiso: "user:read",
+      },
       {
         nombre: "Políticas de acceso",
         listar: "/api/v1/politicas-acceso",
@@ -186,9 +288,17 @@ export const MODULOS: Modulo[] = [
         servicio: "identity",
         permiso: "user:read",
       },
-      { nombre: "Claves de API", listar: "/api/v1/claves-api", servicio: "identity" },
+      {
+        nombre: "Claves de API",
+        listar: "/api/v1/claves-api",
+        servicio: "identity",
+      },
       { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
-      { nombre: "Proveedores de identidad", listar: "/api/v1/proveedores-identidad", servicio: "identity" },
+      {
+        nombre: "Proveedores de identidad",
+        listar: "/api/v1/proveedores-identidad",
+        servicio: "identity",
+      },
     ],
   },
   {
@@ -222,11 +332,23 @@ export const MODULOS: Modulo[] = [
         servicio: "integration",
         permiso: "integracion:read",
       },
-      { nombre: "Catálogo de eventos", listar: "/api/v1/eventos/catalogo", servicio: "eventing" },
+      {
+        nombre: "Catálogo de eventos",
+        listar: "/api/v1/eventos/catalogo",
+        servicio: "eventing",
+      },
       // La cola de fallidos delante del archivo: lo que hay que mirar cuando
       // algo va mal es lo que no salió, no lo que salió bien hace un mes.
-      { nombre: "Cola de fallidos", listar: "/api/v1/eventos/fallidos", servicio: "eventing" },
-      { nombre: "Archivo de eventos", listar: "/api/v1/eventos/archivo", servicio: "eventing" },
+      {
+        nombre: "Cola de fallidos",
+        listar: "/api/v1/eventos/fallidos",
+        servicio: "eventing",
+      },
+      {
+        nombre: "Archivo de eventos",
+        listar: "/api/v1/eventos/archivo",
+        servicio: "eventing",
+      },
     ],
   },
 
@@ -287,7 +409,13 @@ export const MODULOS: Modulo[] = [
         nombre: "Duplicados",
         listar: "/api/v1/data-quality/accounts/duplicates/cola",
         servicio: "party",
-        columnas: ["probabilidad", "a_nombre", "b_nombre", "senales", "concluyente"],
+        columnas: [
+          "probabilidad",
+          "a_nombre",
+          "b_nombre",
+          "senales",
+          "concluyente",
+        ],
         permiso: "account:read",
       },
       {
@@ -296,7 +424,13 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/data-subject-requests",
         crear: "/api/v1/data-subject-requests",
         servicio: "party",
-        columnas: ["tipo", "email_solicitante", "estado", "vence_at", "dias_restantes"],
+        columnas: [
+          "tipo",
+          "email_solicitante",
+          "estado",
+          "vence_at",
+          "dias_restantes",
+        ],
       },
       {
         nombre: "Papelera",
@@ -310,7 +444,13 @@ export const MODULOS: Modulo[] = [
         // cuál mira cada pantalla.
         listar: "/api/v1/party/papelera",
         servicio: "party",
-        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+        columnas: [
+          "etiqueta",
+          "objeto",
+          "borrado_at",
+          "dias_para_purga",
+          "en_cascada",
+        ],
       },
     ],
   },
@@ -333,7 +473,14 @@ export const MODULOS: Modulo[] = [
         objeto: "proveedor",
         listar: "/api/v1/proveedores",
         servicio: "party",
-        columnas: ["nombre", "estado", "sector_codigo", "telefono", "email", "owner_id"],
+        columnas: [
+          "nombre",
+          "estado",
+          "sector_codigo",
+          "telefono",
+          "email",
+          "owner_id",
+        ],
         permiso: "party:read",
       },
       {
@@ -343,7 +490,11 @@ export const MODULOS: Modulo[] = [
         // Cada fila es un documento de un proveedor, así que abre **al
         // proveedor**: es donde se sube el renovado. Sin esto la pantalla
         // enseñaba el problema y no había por dónde ir a arreglarlo.
-        abre: { modulo: "proveedores", objeto: "proveedor", campo: "cuenta_id" },
+        abre: {
+          modulo: "proveedores",
+          objeto: "proveedor",
+          campo: "cuenta_id",
+        },
         columnas: ["estado", "proveedor", "documento", "valido_hasta", "dias"],
         permiso: "party:read",
       },
@@ -393,6 +544,7 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Ofertas",
+        objeto: "presupuesto",
         listar: "/api/v1/presupuestos",
         servicio: "sales",
         permiso: "quote:read",
@@ -400,12 +552,14 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Pedidos",
+        objeto: "pedido",
         listar: "/api/v1/pedidos",
         servicio: "sales",
         permiso: "order:read",
       },
       {
         nombre: "Contratos",
+        objeto: "contrato",
         listar: "/api/v1/contratos",
         servicio: "sales",
         permiso: "contract:read",
@@ -418,6 +572,7 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Productos",
+        objeto: "producto",
         listar: "/api/v1/productos",
         servicio: "sales",
         permiso: "producto:read",
@@ -428,7 +583,11 @@ export const MODULOS: Modulo[] = [
         servicio: "sales",
         permiso: "producto:read",
       },
-      { nombre: "Metodologías", listar: "/api/v1/metodologias", servicio: "sales" },
+      {
+        nombre: "Metodologías",
+        listar: "/api/v1/metodologias",
+        servicio: "sales",
+      },
       { nombre: "Mi cola", listar: "/api/v1/mi-cola", servicio: "sales" },
       {
         nombre: "Papelera",
@@ -436,7 +595,13 @@ export const MODULOS: Modulo[] = [
         objeto: "entrada_papelera",
         listar: "/api/v1/sales/papelera",
         servicio: "sales",
-        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+        columnas: [
+          "etiqueta",
+          "objeto",
+          "borrado_at",
+          "dias_para_purga",
+          "en_cascada",
+        ],
       },
       {
         nombre: "Oportunidades",
@@ -453,6 +618,7 @@ export const MODULOS: Modulo[] = [
       // de definiciones y concluya que el tablero ya no está.
       {
         nombre: "Procesos de venta",
+        objeto: "pipeline",
         listar: "/api/v1/pipelines",
         servicio: "sales",
         columnas: ["nombre", "descripcion", "activo", "por_defecto"],
@@ -489,16 +655,32 @@ export const MODULOS: Modulo[] = [
         columnas: ["nombre", "empresa", "estado", "puntuacion"],
         permiso: "lead:read",
       },
-      { nombre: "Enrutamiento", listar: "/api/v1/lead-routing/reglas", servicio: "sales" },
-      { nombre: "Canales de captura", listar: "/api/v1/captura/canales", servicio: "sales" },
-      { nombre: "Recepciones", listar: "/api/v1/captura/recepciones", servicio: "sales" },
+      {
+        nombre: "Enrutamiento",
+        listar: "/api/v1/lead-routing/reglas",
+        servicio: "sales",
+      },
+      {
+        nombre: "Canales de captura",
+        listar: "/api/v1/captura/canales",
+        servicio: "sales",
+      },
+      {
+        nombre: "Recepciones",
+        listar: "/api/v1/captura/recepciones",
+        servicio: "sales",
+      },
       {
         nombre: "Motivos de descarte",
         listar: "/api/v1/sales/vocabularios/motivos_descarte",
         servicio: "sales",
         columnas: ["etiqueta", "valor", "orden", "activo", "de_fabrica"],
       },
-      { nombre: "Campañas de origen", listar: "/api/v1/origen/campanas", servicio: "sales" },
+      {
+        nombre: "Campañas de origen",
+        listar: "/api/v1/origen/campanas",
+        servicio: "sales",
+      },
       { nombre: "Toques", listar: "/api/v1/origen/toques", servicio: "sales" },
     ],
   },
@@ -510,7 +692,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.14",
     grupo: "Ventas",
     recursos: [
-      { nombre: "Territorios", listar: "/api/v1/territorios", servicio: "sales" },
+      {
+        nombre: "Territorios",
+        objeto: "territorio",
+        listar: "/api/v1/territorios",
+        servicio: "sales",
+      },
       // El módulo enseñaba el resumen del pipeline y llamaba a eso «Previsión».
       // Las categorías, los periodos y las cuotas —que es con lo que se hace
       // una previsión— no tenían pantalla ninguna.
@@ -552,7 +739,11 @@ export const MODULOS: Modulo[] = [
       },
       // Las estancadas delante del resumen no: el resumen es lo que se mira
       // cada día y esto es lo que se mira cuando el resumen no cuadra.
-      { nombre: "Estancadas", listar: "/api/v1/pipeline/estancadas", servicio: "sales" },
+      {
+        nombre: "Estancadas",
+        listar: "/api/v1/pipeline/estancadas",
+        servicio: "sales",
+      },
     ],
   },
 
@@ -571,6 +762,7 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Partners",
+        objeto: "partner",
         listar: "/api/v1/partners",
         crear: "/api/v1/partners",
         servicio: "sales",
@@ -584,10 +776,21 @@ export const MODULOS: Modulo[] = [
         nombre: "Registros de oportunidad",
         listar: "/api/v1/registros-oportunidad",
         servicio: "sales",
-        columnas: ["cliente", "estado", "importe_estimado", "protegido_hasta", "en_conflicto"],
+        columnas: [
+          "cliente",
+          "estado",
+          "importe_estimado",
+          "protegido_hasta",
+          "en_conflicto",
+        ],
         permiso: "partner:read",
       },
-      { nombre: "Niveles", listar: "/api/v1/niveles-partner", servicio: "sales" },
+      {
+        nombre: "Niveles",
+        objeto: "nivel",
+        listar: "/api/v1/niveles-partner",
+        servicio: "sales",
+      },
       {
         nombre: "Certificaciones por caducar",
         listar: "/api/v1/partners/certificaciones/por-caducar",
@@ -595,6 +798,7 @@ export const MODULOS: Modulo[] = [
       },
       {
         nombre: "Fondos de marketing",
+        objeto: "fondo",
         listar: "/api/v1/fondos-mdf",
         crear: "/api/v1/fondos-mdf",
         servicio: "marketing",
@@ -605,7 +809,14 @@ export const MODULOS: Modulo[] = [
         nombre: "Solicitudes de fondos",
         listar: "/api/v1/solicitudes-mdf",
         servicio: "marketing",
-        columnas: ["titulo", "estado", "solicitado", "aprobado", "justificado", "justificar_antes_de"],
+        columnas: [
+          "titulo",
+          "estado",
+          "solicitado",
+          "aprobado",
+          "justificado",
+          "justificar_antes_de",
+        ],
       },
       // Las liquidaciones cuelgan del canal *y* de la retribución interna: es
       // el mismo motor, y enseñarlas dos veces daría dos listas del mismo dinero.
@@ -613,10 +824,21 @@ export const MODULOS: Modulo[] = [
         nombre: "Liquidaciones",
         listar: "/api/v1/liquidaciones",
         servicio: "sales",
-        columnas: ["estado", "desde", "hasta", "total", "moneda", "pago_referencia"],
+        columnas: [
+          "estado",
+          "desde",
+          "hasta",
+          "total",
+          "moneda",
+          "pago_referencia",
+        ],
         permiso: "commission:read",
       },
-      { nombre: "Planes de comisión", listar: "/api/v1/planes-comision", servicio: "sales" },
+      {
+        nombre: "Planes de comisión",
+        listar: "/api/v1/planes-comision",
+        servicio: "sales",
+      },
     ],
   },
 
@@ -632,34 +854,67 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/ordenes-trabajo",
         crear: "/api/v1/ordenes-trabajo",
         servicio: "service",
-        columnas: ["codigo", "titulo", "tipo", "estado", "prioridad", "cita_desde"],
+        columnas: [
+          "codigo",
+          "titulo",
+          "tipo",
+          "estado",
+          "prioridad",
+          "cita_desde",
+        ],
         permiso: "case:read",
       },
       {
         nombre: "Activos instalados",
+        objeto: "activo",
         listar: "/api/v1/activos",
         crear: "/api/v1/activos",
         servicio: "service",
-        columnas: ["codigo", "nombre", "modelo", "numero_serie", "estado", "ubicacion"],
+        columnas: [
+          "codigo",
+          "nombre",
+          "modelo",
+          "numero_serie",
+          "estado",
+          "ubicacion",
+        ],
         permiso: "case:read",
       },
-      { nombre: "Técnicos", listar: "/api/v1/tecnicos-campo", servicio: "service" },
+      {
+        nombre: "Técnicos",
+        objeto: "tecnico",
+        listar: "/api/v1/tecnicos-campo",
+        servicio: "service",
+      },
       // El preventivo por delante de los repuestos: es lo que hay que mirar cada
       // semana, y los repuestos solo cuando falta uno.
-      { nombre: "Planes preventivos", listar: "/api/v1/planes-preventivos", servicio: "service" },
+      {
+        nombre: "Planes preventivos",
+        objeto: "plan_preventivo",
+        listar: "/api/v1/planes-preventivos",
+        servicio: "service",
+      },
       {
         nombre: "Vencimientos",
         listar: "/api/v1/planes-preventivos/vencimientos",
         servicio: "service",
       },
       { nombre: "Repuestos", listar: "/api/v1/repuestos", servicio: "service" },
-      { nombre: "Reposición", listar: "/api/v1/repuestos/reposicion", servicio: "service" },
+      {
+        nombre: "Reposición",
+        listar: "/api/v1/repuestos/reposicion",
+        servicio: "service",
+      },
       {
         nombre: "Garantías por vencer",
         listar: "/api/v1/activos/garantias/por-vencer",
         servicio: "service",
       },
-      { nombre: "Dispositivos", listar: "/api/v1/dispositivos", servicio: "integration" },
+      {
+        nombre: "Dispositivos",
+        listar: "/api/v1/dispositivos",
+        servicio: "integration",
+      },
       {
         nombre: "Aparatos callados",
         listar: "/api/v1/dispositivos/silenciosos",
@@ -676,10 +931,17 @@ export const MODULOS: Modulo[] = [
     recursos: [
       {
         nombre: "Devoluciones",
+        objeto: "devolucion",
         listar: "/api/v1/devoluciones",
         crear: "/api/v1/devoluciones",
         servicio: "service",
-        columnas: ["codigo", "estado", "motivo", "fuera_de_plazo", "disposicion"],
+        columnas: [
+          "codigo",
+          "estado",
+          "motivo",
+          "fuera_de_plazo",
+          "disposicion",
+        ],
         permiso: "case:read",
       },
       // Los expedientes ordenados por vencimiento, y los vencidos aparte: el
@@ -688,16 +950,38 @@ export const MODULOS: Modulo[] = [
         nombre: "Expedientes",
         listar: "/api/v1/expedientes",
         servicio: "service",
-        columnas: ["codigo", "asunto", "estado", "via", "vence_at", "sin_acuse"],
+        columnas: [
+          "codigo",
+          "asunto",
+          "estado",
+          "via",
+          "vence_at",
+          "sin_acuse",
+        ],
       },
-      { nombre: "Vencen pronto", listar: "/api/v1/expedientes/vencen", servicio: "service" },
+      {
+        nombre: "Vencen pronto",
+        listar: "/api/v1/expedientes/vencen",
+        servicio: "service",
+      },
       {
         nombre: "Problemas",
         listar: "/api/v1/problemas",
         servicio: "service",
-        columnas: ["codigo", "titulo", "estado", "severidad", "error_conocido", "solo_apano"],
+        columnas: [
+          "codigo",
+          "titulo",
+          "estado",
+          "severidad",
+          "error_conocido",
+          "solo_apano",
+        ],
       },
-      { nombre: "Correlación", listar: "/api/v1/problemas/correlacion", servicio: "service" },
+      {
+        nombre: "Correlación",
+        listar: "/api/v1/problemas/correlacion",
+        servicio: "service",
+      },
     ],
   },
 
@@ -712,8 +996,16 @@ export const MODULOS: Modulo[] = [
       // La explotación la resuelve contecintelligence de forma frontless
       // (RT-4). Aquí se enseña el estado del enlace y lo que se ha consultado:
       // los informes se abren allí, con la identidad del usuario.
-      { nombre: "Estado del enlace", listar: "/api/v1/analitica/estado", servicio: "analytics" },
-      { nombre: "Consultas", listar: "/api/v1/analitica/consultas", servicio: "analytics" },
+      {
+        nombre: "Estado del enlace",
+        listar: "/api/v1/analitica/estado",
+        servicio: "analytics",
+      },
+      {
+        nombre: "Consultas",
+        listar: "/api/v1/analitica/consultas",
+        servicio: "analytics",
+      },
       {
         nombre: "Organizaciones",
         listar: "/api/v1/analitica/organizaciones",
@@ -723,9 +1015,21 @@ export const MODULOS: Modulo[] = [
       // El diccionario de métricas delante de las tablas: la pregunta que abre
       // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».
       { nombre: "Métricas", listar: "/api/v1/metricas", servicio: "analytics" },
-      { nombre: "Frescura del almacén", listar: "/api/v1/almacen/frescura", servicio: "analytics" },
-      { nombre: "Exportaciones", listar: "/api/v1/almacen/destinos", servicio: "analytics" },
-      { nombre: "Despliegue de BI", listar: "/api/v1/analisis/despliegue", servicio: "analytics" },
+      {
+        nombre: "Frescura del almacén",
+        listar: "/api/v1/almacen/frescura",
+        servicio: "analytics",
+      },
+      {
+        nombre: "Exportaciones",
+        listar: "/api/v1/almacen/destinos",
+        servicio: "analytics",
+      },
+      {
+        nombre: "Despliegue de BI",
+        listar: "/api/v1/analisis/despliegue",
+        servicio: "analytics",
+      },
     ],
   },
 
@@ -741,7 +1045,14 @@ export const MODULOS: Modulo[] = [
         nombre: "Riesgos",
         listar: "/api/v1/grc/riesgos",
         servicio: "tenancy",
-        columnas: ["codigo", "titulo", "inherente", "residual", "tratamiento", "estado"],
+        columnas: [
+          "codigo",
+          "titulo",
+          "inherente",
+          "residual",
+          "tratamiento",
+          "estado",
+        ],
         permiso: "tenant:read",
       },
       {
@@ -751,10 +1062,26 @@ export const MODULOS: Modulo[] = [
         columnas: ["codigo", "nombre", "tipo", "frecuencia", "activo"],
         permiso: "tenant:read",
       },
-      { nombre: "Segregación", listar: "/api/v1/segregacion/reglas", servicio: "identity" },
-      { nombre: "Retención", listar: "/api/v1/party/retencion/politicas", servicio: "party" },
-      { nombre: "Bloqueos legales", listar: "/api/v1/party/retencion/bloqueos", servicio: "party" },
-      { nombre: "Clases de dato", listar: "/api/v1/party/retencion/clases", servicio: "party" },
+      {
+        nombre: "Segregación",
+        listar: "/api/v1/segregacion/reglas",
+        servicio: "identity",
+      },
+      {
+        nombre: "Retención",
+        listar: "/api/v1/party/retencion/politicas",
+        servicio: "party",
+      },
+      {
+        nombre: "Bloqueos legales",
+        listar: "/api/v1/party/retencion/bloqueos",
+        servicio: "party",
+      },
+      {
+        nombre: "Clases de dato",
+        listar: "/api/v1/party/retencion/clases",
+        servicio: "party",
+      },
     ],
   },
   // ── Módulo 2 · Marketing ────────────────────────────────────────────────
@@ -774,8 +1101,16 @@ export const MODULOS: Modulo[] = [
         columnas: ["clave", "nombre", "objeto", "tamano", "tamano_at"],
         permiso: "segmento:read",
       },
-      { nombre: "Supresiones", listar: "/api/v1/supresiones", servicio: "marketing" },
-      { nombre: "Puntuación", listar: "/api/v1/puntuacion/modelos", servicio: "marketing" },
+      {
+        nombre: "Supresiones",
+        listar: "/api/v1/supresiones",
+        servicio: "marketing",
+      },
+      {
+        nombre: "Puntuación",
+        listar: "/api/v1/puntuacion/modelos",
+        servicio: "marketing",
+      },
     ],
   },
   {
@@ -791,7 +1126,13 @@ export const MODULOS: Modulo[] = [
         objeto: "entrada_papelera",
         listar: "/api/v1/marketing/papelera",
         servicio: "marketing",
-        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+        columnas: [
+          "etiqueta",
+          "objeto",
+          "borrado_at",
+          "dias_para_purga",
+          "en_cascada",
+        ],
       },
       {
         nombre: "Campañas",
@@ -805,7 +1146,11 @@ export const MODULOS: Modulo[] = [
       // La atribución NO se lista: se consulta por lead (`/atribucion/leads/{id}`).
       // Ponerla aquí como lista sería inventar un endpoint que no existe, y el
       // gate del front lo caza — que es para lo que está.
-      { nombre: "Presión de contacto", listar: "/api/v1/presion/reglas", servicio: "marketing" },
+      {
+        nombre: "Presión de contacto",
+        listar: "/api/v1/presion/reglas",
+        servicio: "marketing",
+      },
       { nombre: "Rebotes", listar: "/api/v1/rebotes", servicio: "marketing" },
     ],
   },
@@ -818,7 +1163,12 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.17",
     grupo: "Servicio",
     recursos: [
-      { nombre: "Encuestas", listar: "/api/v1/encuestas", servicio: "service" },
+      {
+        nombre: "Encuestas",
+        objeto: "encuesta",
+        listar: "/api/v1/encuestas",
+        servicio: "service",
+      },
       {
         nombre: "Agentes disponibles",
         listar: "/api/v1/agentes/disponibles",
@@ -830,7 +1180,13 @@ export const MODULOS: Modulo[] = [
         objeto: "entrada_papelera",
         listar: "/api/v1/service/papelera",
         servicio: "service",
-        columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+        columnas: [
+          "etiqueta",
+          "objeto",
+          "borrado_at",
+          "dias_para_purga",
+          "en_cascada",
+        ],
       },
       {
         nombre: "Casos",
@@ -841,11 +1197,24 @@ export const MODULOS: Modulo[] = [
         columnas: ["codigo", "asunto", "estado", "prioridad"],
         permiso: "case:read",
       },
-      { nombre: "Categorías", listar: "/api/v1/categorias-caso", servicio: "service" },
+      {
+        nombre: "Categorías",
+        objeto: "categoria",
+        listar: "/api/v1/categorias-caso",
+        servicio: "service",
+      },
       { nombre: "SLA", listar: "/api/v1/sla", servicio: "service" },
       { nombre: "Colas", listar: "/api/v1/colas", servicio: "service" },
-      { nombre: "Escalado", listar: "/api/v1/escalado/reglas", servicio: "service" },
-      { nombre: "Entitlements", listar: "/api/v1/entitlements", servicio: "service" },
+      {
+        nombre: "Escalado",
+        listar: "/api/v1/escalado/reglas",
+        servicio: "service",
+      },
+      {
+        nombre: "Entitlements",
+        listar: "/api/v1/entitlements",
+        servicio: "service",
+      },
     ],
   },
   {
@@ -867,7 +1236,12 @@ export const MODULOS: Modulo[] = [
         columnas: ["nombre", "tipo", "activo"],
         permiso: "case:read",
       },
-      { nombre: "Macros", listar: "/api/v1/macros", servicio: "service" },
+      {
+        nombre: "Macros",
+        objeto: "macro",
+        listar: "/api/v1/macros",
+        servicio: "service",
+      },
     ],
   },
   {
@@ -886,8 +1260,16 @@ export const MODULOS: Modulo[] = [
         columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
         permiso: "knowledge:read",
       },
-      { nombre: "Portal", listar: "/api/v1/portal/accesos", servicio: "service" },
-      { nombre: "Comunidad", listar: "/api/v1/comunidad/hilos", servicio: "service" },
+      {
+        nombre: "Portal",
+        listar: "/api/v1/portal/accesos",
+        servicio: "service",
+      },
+      {
+        nombre: "Comunidad",
+        listar: "/api/v1/comunidad/hilos",
+        servicio: "service",
+      },
     ],
   },
   {
@@ -928,7 +1310,11 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.12",
     grupo: "Marketing",
     recursos: [
-      { nombre: "Reglas de contenido", listar: "/api/v1/reglas-contenido", servicio: "marketing" },
+      {
+        nombre: "Reglas de contenido",
+        listar: "/api/v1/reglas-contenido",
+        servicio: "marketing",
+      },
       { nombre: "Cookies", listar: "/api/v1/cookies", servicio: "marketing" },
       {
         nombre: "Renovación de consentimiento",
@@ -957,7 +1343,11 @@ export const MODULOS: Modulo[] = [
         servicio: "marketing",
         columnas: ["clave", "nombre", "obligatoria"],
       },
-      { nombre: "Supresiones", listar: "/api/v1/supresiones", servicio: "marketing" },
+      {
+        nombre: "Supresiones",
+        listar: "/api/v1/supresiones",
+        servicio: "marketing",
+      },
     ],
   },
 ];
@@ -979,7 +1369,10 @@ export function moduloDe(ruta: string): Modulo | undefined {
  */
 export function objetoDe(recurso: Recurso): string {
   if (recurso.objeto) return recurso.objeto;
-  return recurso.listar.replace(/^\/api\/v1\//, "").replace(/\?.*$/, "").replace(/\//g, "-");
+  return recurso.listar
+    .replace(/^\/api\/v1\//, "")
+    .replace(/\?.*$/, "")
+    .replace(/\//g, "-");
 }
 
 /**
@@ -991,7 +1384,9 @@ export function objetoDe(recurso: Recurso): string {
  * tenían ficha los módulos que declaraban `objeto` en su primer recurso.
  */
 export function recursoDe(modulo: Modulo, objeto: string): Recurso | undefined {
-  return modulo.recursos.find((r) => objetoDe(r) === objeto) ?? modulo.recursos[0];
+  return (
+    modulo.recursos.find((r) => objetoDe(r) === objeto) ?? modulo.recursos[0]
+  );
 }
 
 export function porGrupo(): Map<string, Modulo[]> {
@@ -1021,7 +1416,8 @@ export function recursoVisible(
   // campo `permiso` de aquí solo lo declaran unos pocos recursos, así que por
   // sí solo no filtra nada: sin la superficie, a un agente de soporte se le
   // seguían enseñando los veintitrés módulos.
-  if (permitidas && permitidas.size > 0) return rutaPermitida(permitidas, recurso.listar);
+  if (permitidas && permitidas.size > 0)
+    return rutaPermitida(permitidas, recurso.listar);
   return true;
 }
 
@@ -1044,7 +1440,8 @@ export function porGrupoVisible(
 ): Map<string, Modulo[]> {
   const grupos = new Map<string, Modulo[]>();
   for (const modulo of MODULOS) {
-    if (!modulo.recursos.some((r) => recursoVisible(sesion, r, permitidas))) continue;
+    if (!modulo.recursos.some((r) => recursoVisible(sesion, r, permitidas)))
+      continue;
     grupos.set(modulo.grupo, [...(grupos.get(modulo.grupo) ?? []), modulo]);
   }
   return grupos;

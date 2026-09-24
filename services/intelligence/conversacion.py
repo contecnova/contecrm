@@ -101,7 +101,9 @@ class ResumenConversacion(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     conversacion_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     caso_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    momento: Mapped[str] = mapped_column(String(20), nullable=False, default="cierre")
+    momento: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="cierre", info={"opciones": MOMENTOS}
+    )
     texto: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Lo que el modelo dice que quedó pendiente. Va aparte del resumen porque es
     # lo que el siguiente agente lee primero, y porque es lo que más se inventa:
@@ -131,8 +133,12 @@ class SenalConversacion(Base):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     conversacion_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    sentimiento: Mapped[str] = mapped_column(String(20), nullable=False, default="neutro")
-    intencion: Mapped[str] = mapped_column(String(20), nullable=False, default="otro")
+    sentimiento: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="neutro", info={"opciones": SENTIMIENTOS}
+    )
+    intencion: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="otro", info={"opciones": INTENCIONES}
+    )
     confianza: Mapped[float] = mapped_column(Numeric(4, 3), nullable=False, default=0)
     # Por debajo del umbral configurado, esto vale False y la señal no se usa
     # para nada automático: es la diferencia entre «neutro» y «no lo sé».

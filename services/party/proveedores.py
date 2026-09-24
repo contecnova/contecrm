@@ -155,7 +155,9 @@ class ContactoProveedor(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     cuenta_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    funcion: Mapped[str] = mapped_column(String(20), nullable=False)
+    funcion: Mapped[str] = mapped_column(
+        String(20), nullable=False, info={"opciones": FUNCIONES_CONTACTO}
+    )
     nombre: Mapped[str] = mapped_column(
         String(200), nullable=False, default="", info={"sensibilidad": "personal"}
     )

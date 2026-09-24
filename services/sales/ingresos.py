@@ -134,7 +134,7 @@ class RolCompra(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     oportunidad_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     contacto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    rol: Mapped[str] = mapped_column(String(20), nullable=False)
+    rol: Mapped[str] = mapped_column(String(20), nullable=False, info={"opciones": ROLES_COMPRA})
     # Cómo de a favor está, de -2 a 2. Es una valoración y por eso lleva motivo.
     postura: Mapped[int] = mapped_column(Numeric(2, 0), nullable=False, default=0)
     motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")

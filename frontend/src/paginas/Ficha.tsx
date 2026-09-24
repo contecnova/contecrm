@@ -65,24 +65,27 @@ export function Ficha() {
   // objeto no admite adjuntos— se vuelve a datos, en vez de dejar el contenido
   // en blanco debajo de una barra donde ese botón ya no aparece.
   const activa: Pestana = pestanas.includes(pestana) ? pestana : "datos";
+  const recursoAbierto = modulo ? recursoDe(modulo, tipo) : undefined;
 
   if (!modulo) return <Vacio />;
 
   return (
     <>
+      {/* Si el registro no tiene con qué llamarse, el título es **el nombre de
+          lo que es**, no su identificador: un UUID de treinta y seis caracteres
+          como encabezado no dice qué se está mirando y no hay forma de leerlo.
+          El identificador se queda debajo, corto, para poder citarlo. */}
       <CabeceraPagina
-        titulo={nombre || <span className="font-mono text-base">{id}</span>}
+        titulo={nombre || recursoAbierto?.nombre || modulo.titulo}
         icono="description"
         entradilla={
           <span className="flex flex-wrap items-center gap-2">
             <Link to={`/m/${ruta}`} className="text-accent hover:underline">
               {modulo.titulo}
             </Link>
-            {nombre ? (
-              <span className="font-mono text-3xs text-ink-faint" title={id}>
-                {id.slice(0, 8)}…
-              </span>
-            ) : null}
+            <span className="font-mono text-3xs text-ink-faint" title={id}>
+              {id.slice(0, 8)}…
+            </span>
           </span>
         }
       />
@@ -293,6 +296,7 @@ function Datos({
         <div className="card mb-3 p-4">
           {campos ? (
             <Formulario
+              recurso={recurso}
               campos={campos}
               valores={fila}
               enviando={enviando}

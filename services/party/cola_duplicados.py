@@ -71,7 +71,9 @@ class CandidatoDuplicado(Base, TimestampMixin):
     senales: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     concluyente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Vacío mientras está pendiente.
-    decision: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    decision: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="", info={"opciones": DECISIONES}
+    )
     decidido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     decidido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     nota: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
