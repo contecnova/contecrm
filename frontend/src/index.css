@@ -1,8 +1,22 @@
 /* Sistema de diseño de la casa (CRM-07.04.01.02).
  *
- * Los tokens son los MISMOS que los de contecmind, copiados tal cual: quien usa
- * las dos soluciones no debe notar que cambia de producto, y dos paletas
- * «parecidas» se separan a la tercera pantalla que alguien añade.
+ * Los tokens son los de otra solución de la casa, copiados tal cual y no
+ * «inspirados en»: quien usa dos productos no debe notar que cambia de uno a
+ * otro, y dos paletas parecidas se separan a la tercera pantalla que alguien
+ * añade.
+ *
+ * **En oscuro son los de contecflow**: su paleta, su tipografía (DM Sans y
+ * Geist Mono), sus radios y sus sombras. Se adoptaron enteros porque es el tema
+ * con el que se trabaja aquí y porque su letra se lee con menos esfuerzo en las
+ * pantallas densas de este producto — tablas de doce columnas y listas largas.
+ *
+ * En claro siguen siendo los de contecmind. contecflow no tiene tema claro, así
+ * que no hay nada que copiar, y quitar el claro dejaría sin producto a quien
+ * trabaja con luz.
+ *
+ * Los `-text` de oscuro están medidos contra `paper-lighter` (#1e2d45), que es
+ * la superficie más clara y por tanto el peor caso: las superficies se anidan y
+ * nada en el código impide ninguna combinación.
  */
 @tailwind base;
 @tailwind components;
@@ -103,46 +117,53 @@
 }
 
 .dark {
-  /* Dark theme — legacy Contecmind cool neutrals, now with Google blue */
-  --paper:         28 29 38;     /* #1c1d26 — surface */
-  --paper-dark:    19 20 26;     /* #13141a — base */
-  --paper-light:   38 40 51;     /* #262833 — elevated */
-  --paper-lighter: 50 52 66;     /* #323242 — top */
+  /* La paleta de contecflow, tal cual (su `index.css`). Se adoptó entera y no
+     «inspirada en»: quien usa las dos soluciones no debe notar que cambia de
+     producto, y dos paletas parecidas se separan a la tercera pantalla que
+     alguien añade.
 
-  --ink:           228 230 235;  /* #e4e6eb */
-  --ink-muted:    164 168 180;   /* #a4a8b4 */
-  --ink-faint:    138 142 156;   /* #8a8e9c */
-  --ink-dim:       64 68 86;     /* #404456 */
+     Los papeles van por ROL, no por nombre: `paper` es la superficie de
+     paneles y tarjetas, `paper-dark` el lienzo de debajo, `paper-light` el
+     hover y `paper-lighter` lo que va encima de todo —modales—. */
+  --paper:         13 18 32;     /* #0d1220 — surface-1: paneles, tarjetas */
+  --paper-dark:     8 12 20;     /* #080c14 — surface-0: fondo base */
+  --paper-light:   23 33 51;     /* #172133 — surface-3: hover, elevado */
+  --paper-lighter: 30 45 69;     /* #1e2d45 — surface-4: lo de más arriba */
 
-  /* Rellenos. Los `-soft` son el hover, y aquí iban AL REVÉS: `--accent-soft`
-     era #1a73e8, más OSCURO que el relleno #4285f4. Sobre una interfaz oscura
-     el hover tiene que aclarar —oscurecer acerca el botón al fondo, o sea que
-     al pasar por encima el botón se apagaba— y además rompía el contraste del
-     texto de encima. Ahora los dos son el relleno +8% L. */
-  --accent:        66 133 244;   /* #4285f4 — text-paper encima 4.70:1 */
-  --accent-soft:  105 158 246;   /* #699ef6 — hover: relleno +8% L */
+  --ink:          240 244 255;   /* #f0f4ff — text-1 */
+  --ink-muted:    168 184 212;   /* #a8b8d4 — text-2 */
+  --ink-faint:    118 137 168;   /* #7689a8 — text-3 */
+  --ink-dim:       30 45 69;     /* #1e2d45 — surface-4: bordes y separadores */
+
+  /* Rellenos. Los `-soft` son el hover y sobre oscuro tienen que ACLARAR:
+     oscurecer acerca el botón al fondo, así que al pasar por encima se
+     apagaría. */
+  --accent:        79 142 247;   /* #4f8ef7 */
+  --accent-soft:  109 163 249;   /* #6da3f9 — relleno +8% L */
   --accent-glow:  138 180 248;   /* #8ab4f8 */
 
-  --success:       52 168 83;
-  --success-soft:  46 148 73;
-  --warning:      251 188 4;
-  --warning-soft: 234 154 0;
-  --danger:       242 139 130;
-  --danger-soft:  246 173 167;   /* #f6ada7 — hover: relleno +8% L */
+  --success:       52 211 153;   /* #34d399 */
+  --success-soft:  82 219 170;
+  --warning:      245 158 11;    /* #f59e0b */
+  --warning-soft: 247 174 50;
+  --danger:       248 113 113;   /* #f87171 */
+  --danger-soft:  250 145 145;
 
-  /* Los mismos colores, como TEXTO: aquí hay que ACLARAR, porque la superficie
-     es oscura. Es el movimiento contrario al del tema claro, y por eso los dos
-     bloques no pueden compartir estos valores. */
-  --ink-faint-text:    155 158 170;  /* #9b9eaa — 4.61:1 (el base daba 3.77) */
-  --accent-text:       106 159 246;  /* #6a9ff6 — 4.63:1 */
-  --accent-soft-text:  101 161 240;  /* #65a1f0 — 4.64:1 */
-  --accent-glow-text:  138 180 248;  /* #8ab4f8 — 5.84:1; = base */
-  --success-text:       56 181 90;   /* #38b55a — 4.65:1 */
-  --success-soft-text:  56 181 89;   /* #38b559 — 4.64:1 */
-  --warning-text:      251 188 4;    /* #fbbc04 — 7.21:1; = base */
-  --warning-soft-text: 234 154 0;    /* #ea9a00 — 5.35:1; = base */
-  --danger-text:       242 139 130;  /* #f28b82 — 5.15:1; = base */
-  --danger-soft-text:  240 125 115;  /* #f07d73 — 4.62:1 */
+  /* Los mismos colores como TEXTO, medidos contra `paper-lighter` (#1e2d45),
+     que es la superficie MÁS CLARA y por tanto el peor caso: las superficies
+     se anidan —un modal sobre una tarjeta sobre la página— y nada impide
+     ninguna combinación. Los que ya llegaban se dejan iguales, y los dos que
+     no —el texto tenue y el acento— suben lo justo. */
+  --ink-faint-text:    134 150 178;  /* #8696b2 — 4.63:1 (el base daba 3.90) */
+  --accent-text:        89 148 247;  /* #5994f7 — 4.62:1 (el base daba 4.32) */
+  --accent-soft-text:  109 163 249;  /* #6da3f9 — 5.29:1 */
+  --accent-glow-text:  138 180 248;  /* #8ab4f8 — 6.62:1 */
+  --success-text:       52 211 153;  /* #34d399 — 7.20:1 */
+  --success-soft-text:  82 219 170;  /* #52dbaa — 7.83:1 */
+  --warning-text:      245 158 11;   /* #f59e0b — 6.45:1 */
+  --warning-soft-text: 247 174 50;   /* #f7ae32 — 7.29:1 */
+  --danger-text:       248 113 113;  /* #f87171 — 5.01:1 */
+  --danger-soft-text:  250 145 145;  /* #fa9191 — 6.13:1 */
 
   /* Categóricos de visualización (#36) — más luminosos para el lienzo oscuro. */
   --viz-violet:   167 139 250;   /* #a78bfa */

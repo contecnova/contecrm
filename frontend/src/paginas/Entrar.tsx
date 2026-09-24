@@ -3,14 +3,13 @@
  *
  * **El diseño es el de contecflow, carácter por carácter**: la misma tipografía
  * (DM Sans), los mismos colores, la misma tarjeta de 400 px con radio 20, los
- * mismos campos de 44 px de alto y la misma separación con «o». Se pidió que
- * fuera exacto y aquí exacto significa los mismos valores, no unos parecidos:
- * por eso van escritos, y no traducidos a los tokens de este producto —que son
- * otros y darían otra pantalla—.
+ * mismos campos de 44 px de alto y la misma separación con «o».
  *
- * Es la única pantalla del CRM que se sale del sistema de diseño, y se sale a
- * propósito: se ve antes de entrar, no tiene marco alrededor y es la que
- * comparten las dos soluciones de la casa.
+ * Los valores van escritos y no leídos de los tokens, aunque desde que el
+ * sistema de diseño entero es el de contecflow **coincidan**: esta pantalla se
+ * ve ANTES de entrar, cuando todavía no hay tema elegido, así que tiene que ser
+ * oscura siempre. Leyendo los tokens saldría clara para quien tenga el tema
+ * claro guardado, y contecflow no tiene pantalla de entrada clara.
  *
  * Cuatro caminos, y el orden no es casual: el proveedor de la organización va
  * primero porque en una instalación con SSO la contraseña local es la

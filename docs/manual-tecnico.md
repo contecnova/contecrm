@@ -96,6 +96,27 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### El sistema de diseño en oscuro es el de contecflow
+
+Paleta, tipografía (**DM Sans** y Geist Mono), radios y sombras: adoptados
+enteros desde `contecflow-PSA/frontend/src/index.css`, no «inspirados en». Quien
+usa dos productos de la casa no debe notar que cambia de uno a otro, y dos
+paletas parecidas se separan a la tercera pantalla que alguien añade.
+
+En claro siguen los de contecmind: contecflow no tiene tema claro, así que no
+hay nada que copiar, y quitarlo dejaría sin producto a quien trabaja con luz.
+
+Dos cosas que no se copiaron a ciegas:
+
+- **Los `-text`.** El token base es el relleno; la variante de texto es el mismo
+  color subido en luminosidad hasta 4.6:1 contra `paper-lighter` (#1e2d45), que
+  es la superficie más clara y por tanto el peor caso. Con los valores de
+  contecflow tal cual, el texto tenue daba 3.90:1 y el acento 4.32:1 — los dos
+  por debajo. Suben a #8696b2 y #5994f7.
+- **Las sombras.** Las de Material eran gris translúcido sobre blanco y en
+  oscuro no se veían: una tarjeta elevada quedaba igual de plana que el fondo.
+  Las de contecflow son negro con opacidad, que es lo que separa capas ahí.
+
 #### La pantalla de entrada es la de contecflow, exacta
 
 Es la **única** pantalla del CRM que se sale del sistema de diseño, y se sale a

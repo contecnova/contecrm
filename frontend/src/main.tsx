@@ -16,7 +16,8 @@ import "@fontsource/dm-sans/800.css";
 import "@fontsource/geist/400.css";
 import "@fontsource/geist/500.css";
 import "@fontsource/geist/600.css";
-import "@fontsource/roboto-mono/400.css";
+// Geist Mono, la monoespaciada de contecflow.
+import "@fontsource/geist-mono/400.css";
 import "@material-symbols/font-400/outlined.css";
 import "@/index.css";
 

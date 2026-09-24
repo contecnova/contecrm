@@ -171,23 +171,24 @@ export default {
         },
       },
       fontFamily: {
-        // NotebookLM uses Google Sans / Roboto. We stick with Geist as the
-        // workhorse (closest visual match available without licensing
-        // Google Sans) and Roboto Mono for code labels.
-        sans: ['"Google Sans Text"', '"Google Sans"', '"Geist"', "Roboto", "Inter", "system-ui", "-apple-system", "sans-serif"],
-        mono: ['"Roboto Mono"', '"JetBrains Mono"', "ui-monospace", "monospace"],
+        // La de contecflow, y en su mismo orden. Se cambió desde Geist porque
+        // se lee con menos esfuerzo en las pantallas densas de este producto
+        // —tablas de doce columnas, listas largas— y porque quien usa las dos
+        // soluciones no debería notar que cambia de producto.
+        sans: ['"DM Sans"', '"Geist"', "system-ui", "-apple-system", "sans-serif"],
+        mono: ['"Geist Mono"', '"Space Mono"', "ui-monospace", "monospace"],
       },
       borderRadius: {
-        // Material 3 / NotebookLM use larger pill-y radii. Tokens shifted
-        // up so existing `rounded-lg` cards still look right but feel
-        // softer at large sizes.
+        // Los de contecflow: 6 / 10 / 14 / 18. Algo menos redondos que los de
+        // Material, que es lo que hace que una tabla con muchas cajas pequeñas
+        // no parezca un montón de pastillas.
         DEFAULT: "0.5rem",         // 8px
-        sm: "0.375rem",            // 6px
-        md: "0.5rem",              // 8px
-        lg: "0.75rem",             // 12px
-        xl: "1rem",                // 16px
-        "2xl": "1.5rem",           // 24px — Material extra-large
-        "3xl": "1.75rem",          // 28px — NotebookLM source cards
+        sm: "0.375rem",            // 6px  — --radius-sm
+        md: "0.625rem",            // 10px — --radius-md
+        lg: "0.875rem",            // 14px — --radius-lg
+        xl: "1.125rem",            // 18px — --radius-xl
+        "2xl": "1.25rem",          // 20px — tarjetas grandes
+        "3xl": "1.5rem",           // 24px
       },
       animation: {
         "pulse-slow": "pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
@@ -257,11 +258,17 @@ export default {
         // Material 3 elevation system (1dp → 5dp). We keep the legacy
         // `elevated`/`popover`/`cta` names as aliases of the matching
         // elevation level so older classNames keep rendering correctly.
-        "elevation-1": "0 1px 2px 0 rgba(60,64,67,0.08), 0 1px 3px 1px rgba(60,64,67,0.06)",
-        "elevation-2": "0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08)",
-        "elevation-3": "0 4px 8px 3px rgba(60,64,67,0.10), 0 1px 3px 0 rgba(60,64,67,0.12)",
-        "elevation-4": "0 6px 10px 4px rgba(60,64,67,0.12), 0 2px 3px 0 rgba(60,64,67,0.14)",
-        "elevation-5": "0 8px 12px 6px rgba(60,64,67,0.14), 0 4px 4px 0 rgba(60,64,67,0.16)",
+        // Las de contecflow. Las de Material estaban pensadas para fondo
+        // claro —gris translúcido sobre blanco— y sobre el lienzo oscuro no se
+        // veían: una tarjeta elevada quedaba igual de plana que el fondo. Estas
+        // son negro con opacidad, que es lo que separa capas en oscuro.
+        "elevation-1": "0 1px 3px rgba(0,0,0,0.4)",
+        "elevation-2": "0 4px 16px rgba(0,0,0,0.5)",
+        "elevation-3": "0 8px 32px rgba(0,0,0,0.6)",
+        "elevation-4": "0 12px 40px rgba(0,0,0,0.65)",
+        "elevation-5": "0 16px 48px rgba(0,0,0,0.7)",
+        // El halo del acento, para lo que está en foco.
+        "accent-glow": "0 0 20px rgba(79, 142, 247, 0.12)",
         "elevated":    "0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08)",
         "popover":     "0 4px 8px 3px rgba(60,64,67,0.10), 0 1px 3px 0 rgba(60,64,67,0.12)",
         "accent-glow": "0 0 0 1px rgba(26,115,232,0.55), 0 0 0 4px rgba(26,115,232,0.12)",
