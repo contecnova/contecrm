@@ -166,3 +166,111 @@ def test_lo_que_se_lista_se_puede_abrir() -> None:
         "Colecciones con acciones sobre un registro y sin ficha desde la que "
         "llegar a ellas:\n  " + "\n  ".join(huerfanas)
     )
+
+
+# ── Las pantallas escritas a mano ─────────────────────────────────────────
+#
+# Lo de arriba comprueba lo que se declara en `modulos.ts`. Pero hay veinte
+# pantallas escritas a mano —el tablero, la consola de agente, el puesto, la
+# suite— que llaman a la API directamente, y esas no las miraba nadie: una ruta
+# mal escrita ahí solo se descubre abriendo la pantalla, y algunas se abren poco.
+
+LLAMADA = re.compile(r'llamar[^(]*\(\s*[`"](/api/v1/[^`"]*)[`"](?P<resto>[^)]*)', re.S)
+FRONT_SRC = MODULOS.parents[1]
+
+# Los trece servicios que publican contrato. Se listan aquí porque el gate de
+# abajo tiene que mirarlos todos: una pantalla no sabe —ni debe— de qué servicio
+# sale cada ruta, y el gateway la enruta por ella.
+SERVICIOS = (
+    "tenancy",
+    "identity",
+    "metadata",
+    "orchestrator",
+    "automation",
+    "integration",
+    "eventing",
+    "party",
+    "sales",
+    "analytics",
+    "intelligence",
+    "service",
+    "marketing",
+)
+
+# Rutas que el front pide **a propósito** sabiendo que pueden no existir, o que
+# sirve el propio gateway y no un servicio.
+_DEL_GATEWAY = {
+    "/api/v1/sesion/entrar",
+    "/api/v1/sesion/renovar",
+    "/api/v1/sesion/salir",
+    "/api/v1/superficie",
+    "/api/v1/servicios",
+    "/api/v1/estado",
+    "/api/v1/salud",
+}
+
+# Y las que el gateway sirve con un tramo variable dentro.
+_DEL_GATEWAY_CON_PARAMETRO = ("/api/v1/contrato/",)
+
+
+def _llamadas_escritas_a_mano() -> list[tuple[str, str, str]]:
+    """`(fichero, ruta, método)` de cada `llamar()` del front."""
+    salida: list[tuple[str, str, str]] = []
+    for fichero in sorted(FRONT_SRC.rglob("*.tsx")) + sorted(FRONT_SRC.rglob("*.ts")):
+        if fichero.name.endswith(".test.ts"):
+            continue
+        for encontrada in LLAMADA.finditer(fichero.read_text(encoding="utf-8")):
+            ruta = encontrada.group(1)
+            if ruta.split("?")[0] in _DEL_GATEWAY:
+                continue
+            if ruta.startswith(_DEL_GATEWAY_CON_PARAMETRO):
+                continue
+            metodo = re.search(r'metodo:\s*"(\w+)"', encontrada.group("resto"))
+            salida.append((fichero.name, ruta, (metodo.group(1) if metodo else "GET").lower()))
+    return salida
+
+
+def _encaja(plantilla: str, concreta: str) -> bool:
+    """¿La ruta que pide el front es esta plantilla del contrato?
+
+    Los tramos `${...}` del front y los `{...}` del contrato valen por
+    cualquiera; el resto tiene que coincidir. Sin esto no se podría comprobar
+    ninguna ruta que lleve un identificador dentro, que son la mitad.
+    """
+    a, b = plantilla.split("/"), concreta.split("?")[0].split("/")
+    if len(a) != len(b):
+        return False
+    for tp, tf in zip(a, b, strict=True):
+        if tp.startswith("{") or tf.startswith("${") or "${" in tf:
+            continue
+        if tp != tf:
+            return False
+    return True
+
+
+def test_toda_llamada_del_front_existe_en_algun_contrato() -> None:
+    """Ninguna pantalla pide algo que la API no tenga.
+
+    Se comprueba **con el método que usa**: una ruta que existe para `GET` y se
+    pide con `POST` responde 405, y en pantalla eso sale como «algo ha ido mal»
+    sin decir qué.
+    """
+    contratos = {servicio: _contrato(servicio) for servicio in SERVICIOS}
+    rotas: list[str] = []
+    for fichero, ruta, metodo in _llamadas_escritas_a_mano():
+        alcanzada = False
+        for paths in contratos.values():
+            for plantilla, operaciones in paths.items():
+                if _encaja(plantilla, ruta) and metodo in operaciones:
+                    alcanzada = True
+                    break
+            if alcanzada:
+                break
+        if not alcanzada:
+            rotas.append(f"{fichero}: {metodo.upper()} {ruta}")
+
+    assert not rotas, (
+        "Pantallas que piden algo que la API no tiene:\n  "
+        + "\n  ".join(dict.fromkeys(rotas))
+        + "\n\nEn pantalla esto sale como «algo ha ido mal», sin decir qué falta."
+    )

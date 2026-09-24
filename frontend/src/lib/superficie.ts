@@ -41,6 +41,15 @@ export interface Operacion {
    * algo que nunca fue una lista.
    */
   devuelve_lista?: boolean;
+  /**
+   * Hace falta darle algo por la URL además de los tramos de la ruta.
+   *
+   * «A quién puedo contactar» exige la finalidad y el canal; «la ruta del
+   * técnico», el día. Pedidas sin eso responden 422, y la ficha las pintaba
+   * como un panel que **siempre** da error — no como una pregunta a la que
+   * falta contestar.
+   */
+  exige_datos?: boolean;
   servicio: string;
 }
 

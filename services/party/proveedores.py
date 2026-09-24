@@ -455,6 +455,29 @@ def estado_documental(
 
     bloqueantes = [v for v in vencidos if v["bloquea"]]
     return {
+        # La lista, documento a documento. Va primero y se llama `items` porque
+        # es lo que la ficha sabe pintar: sin ella, el panel de papeles de un
+        # proveedor recibía un resumen —tres montones y cuatro números— que no
+        # se puede enseñar como una tabla, así que no se enseñaba nada.
+        "items": [
+            {
+                "id": str(f.id),
+                "documento": f.clave,
+                "nombre": f.nombre,
+                "referencia": f.referencia,
+                "estado": (
+                    "sin_caducidad"
+                    if f.valido_hasta is None
+                    else "vencido"
+                    if f.valido_hasta < momento
+                    else "vigente"
+                ),
+                "valido_hasta": f.valido_hasta.isoformat() if f.valido_hasta else None,
+                "dias": (f.valido_hasta - momento).days if f.valido_hasta else None,
+                "bloquea": f.bloquea_al_vencer,
+            }
+            for f in sorted(filas, key=lambda x: x.valido_hasta or momento)
+        ],
         "documentos": len(filas),
         "vencidos": vencidos,
         "por_vencer": sorted(por_vencer, key=lambda d: d["dias"]),

@@ -109,6 +109,28 @@ def _devuelve_lista(ruta: Any) -> bool:
     return bool(campos and "items" in campos)
 
 
+def _exige_datos(ruta: Any) -> bool:
+    """¿Hace falta darle algo por la URL además de los tramos de la ruta?
+
+    Lo necesita el front para no pintar como panel lo que no puede funcionar sin
+    más información: «a quién puedo contactar» exige la finalidad y el canal, y
+    «la ruta del técnico» exige el día. Pedidos sin eso responden 422, y en la
+    ficha eso salía como un panel que **siempre** da error — no como una
+    pregunta a la que falta contestar.
+    """
+    from pydantic_core import PydanticUndefined
+
+    dependant = getattr(ruta, "dependant", None)
+    for parametro in getattr(dependant, "query_params", []) or []:
+        campo = getattr(parametro, "field_info", None)
+        # Obligatorio es «sin valor por defecto». Pydantic lo marca con su
+        # propio centinela, no con `...`: comprobando `...` no salía ninguno, y
+        # el gate pasaba diciendo que no hay ninguna operación que exija datos.
+        if getattr(campo, "default", None) in (PydanticUndefined, Ellipsis):
+            return True
+    return False
+
+
 def _es_de_plataforma(ruta: Any) -> bool:
     """Si esta operación solo la puede hacer quien opera la plataforma.
 
@@ -197,6 +219,7 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
                         "administracion": es_administracion(etiquetas),
                         "solo_plataforma": _es_de_plataforma(ruta),
                         "devuelve_lista": _devuelve_lista(ruta),
+                        "exige_datos": _exige_datos(ruta),
                     }
                 )
         operaciones.sort(key=lambda o: (o["ruta"], o["metodo"]))

@@ -96,6 +96,29 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### Qué se pinta como panel de una ficha
+
+La ficha deriva sus paneles de la superficie, y para eso la superficie dice
+ahora dos cosas más de cada operación:
+
+- **`devuelve_lista`**: solo lo que devuelve muchos es una sub-colección. Lo que
+  devuelve un objeto es una vista, y como panel salía con «Nada todavía» para
+  siempre.
+- **`exige_datos`**: si hace falta contestar algo por la URL, no es un panel.
+  «A quién puedo contactar» exige la finalidad y el canal; «la ruta del
+  técnico», el día. Pedidas sin eso responden 422, y eso en la ficha salía como
+  un panel que **siempre** da error, no como una pregunta sin contestar.
+
+Obligatorio es «sin valor por defecto», y Pydantic lo marca con su propio
+centinela, no con `...`: comprobándolo mal, la primera versión de esto decía que
+no había ninguna operación que exigiera datos.
+
+Cuidado al declarar una ruta de este tipo: si devuelve un resumen en vez de una
+lista, la ficha deja de enseñarla. Los papeles de un proveedor devolvían tres
+montones y cuatro números, así que el panel desaparecía; ahora llevan también la
+lista documento a documento, con un modelo de salida declarado —el tipo de
+salida es lo que mira la superficie para saber si son muchos—.
+
 #### El armazón de las tablas
 
 `componentes/Rejilla.tsx`. El recuadro, la cabecera y el cuerpo de una tabla,

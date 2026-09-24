@@ -35,6 +35,27 @@ class HomologarIn(BaseModel):
     valida_hasta: date | None = None
 
 
+class EstadoDocumental(BaseModel):
+    """Los papeles de un proveedor: la lista y lo que hay que mirar.
+
+    Se declara como modelo y no como `dict` sueltos porque la superficie mira el
+    tipo de salida para saber si una operación devuelve **muchos**: la ficha
+    solo pinta como panel lo que es una lista, y con un `dict` anónimo este
+    panel se quedaba fuera — un proveedor sin sus papeles a la vista es
+    precisamente lo que había que arreglar.
+    """
+
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    documentos: int = 0
+    vencidos: list[dict[str, Any]] = Field(default_factory=list)
+    por_vencer: list[dict[str, Any]] = Field(default_factory=list)
+    sin_fecha_de_caducidad: list[str] = Field(default_factory=list)
+    bloqueado: bool = False
+    porque: str = ""
+    medible: bool = False
+    aviso: str = ""
+
+
 class DocumentoIn(BaseModel):
     clave: str
     nombre: str = ""
@@ -101,7 +122,7 @@ def mi_resumen_proveedor(db: DbDep, sesion: PortalDep) -> Any:
 
 @router_proveedores.get(
     "/mi/documentos",
-    response_model=dict,
+    response_model=EstadoDocumental,
     summary="Mis papeles y cuándo caducan",
 )
 def mis_documentos(db: DbDep, sesion: PortalDep) -> Any:
@@ -256,6 +277,7 @@ def documento(cuenta_id: UUID, cuerpo: DocumentoIn, uow: UowDep) -> Any:
 
 @router_proveedores.get(
     "/{cuenta_id}/documentos",
+    response_model=EstadoDocumental,
     dependencies=[Depends(exige_permiso("party:read"))],
     summary="Qué papeles le faltan, cuáles vencen y cuáles ya vencieron",
     description=(

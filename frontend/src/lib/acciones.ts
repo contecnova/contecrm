@@ -147,6 +147,9 @@ export function subColeccionesDe(
       // una vista, y pintada como panel salía siempre con «Nada todavía»:
       // un panel que nunca puede tener contenido parece un dato que falta.
       if (operacion.devuelve_lista === false) continue;
+      // Ni lo que necesita que alguien conteste algo antes: pedido sin eso
+      // responde 422, y como panel salía siempre en error.
+      if (operacion.exige_datos) continue;
       porClave.set(clave, {
         clave,
         ruta: operacion.ruta.replace(PARAMETRO, id),
