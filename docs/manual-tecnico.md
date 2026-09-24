@@ -380,7 +380,54 @@ quedan **ocho** sin borrado, cada uno por un motivo:
 | Bloqueo legal | Se levanta, con quién y cuándo. Un bloqueo que se puede borrar no bloquea |
 | Interacción, predicción, salud de cuenta | Son lo ocurrido o un cálculo derivado, no algo que alguien mantenga |
 
-### 3.6 La cola de duplicados
+### 3.6 El portal, y la sesión de quien entra desde fuera
+
+El portal se diseñó **headless**: la API sirve datos para que cada cliente monte
+el suyo con su marca. Eso sigue valiendo, y las rutas de administración —dar
+acceso, revocarlo, emitir el enlace— las llama un empleado con su sesión.
+
+Lo que faltaba era que **el cliente pudiera entrar él**. Todas las rutas del
+portal exigían un principal del CRM y recibían el `acceso_id` por la URL, así
+que quien quisiera un portal de verdad tenía que montar un intermediario que
+guardase credenciales de empleado para servir a sus clientes. Eso no es un
+portal: es una credencial de empleado compartida por internet.
+
+`crmcore.http.portal_deps` añade la sesión del portal:
+
+- **El token no lleva permisos ni roles.** Es lo que impide que sirva para el
+  CRM, porque todas sus rutas exigen uno: la puerta se cierra sola en vez de
+  depender de que nadie monte una ruta sin `exige_permiso`.
+- **Lleva el acceso, no el contacto.** Qué se ve lo decide el nivel del acceso,
+  resuelto en el servidor.
+- **Un token de empleado no vale** como sesión de portal. Parece inofensivo
+  —tiene más permisos, no menos— pero saltaría el filtro por nivel, que es lo
+  único que decide qué ve cada contacto.
+- **La cookie es otra**: en el mismo navegador puede haber las dos, un comercial
+  mirando el portal de su cliente, y compartir nombre haría que una pisara a la
+  otra.
+- **Dura una hora** y se renueva pidiendo otro enlace. Un portal se usa a ratos,
+  y un token largo en el navegador de un cliente acaba en un correo reenviado.
+
+El canje del enlace corre con `sesion(sistema=True)` y busca por el hash **entre
+todos los tenants**: quien entra todavía no tiene tenant, y pedirle además de
+qué empresa es convierte el portal en un formulario con dos campos, uno de los
+cuales el cliente no tiene por qué saber. Lo que acota no es el tenant, es el
+secreto — el mismo patrón que el refresco de sesión del CRM.
+
+**El chat del portal no es un chat aparte.** Lo que el cliente escribe entra por
+la misma conversación omnicanal que su correo, así que aparece en la consola de
+agente sin que nadie vigile una bandeja nueva, y si la conversación estaba
+cerrada se reabre. Un chat de portal que solo se ve en el portal es un chat que
+nadie contesta. El historial se sirve con `incluir_internos=False`, explícito y
+no deducido del permiso, para que una nota interna no acabe delante del cliente
+el día que alguien reutilice la función desde un sitio nuevo.
+
+Y un acceso de nivel `cuenta` o `admin` **sin cuenta se rechaza al crearlo**: el
+filtro es por cuenta y sin ella el portal entra bien y sale vacío, que se lee
+como «no tengo casos» y no como «el acceso está mal dado». La cuenta la pone
+quien crea el acceso porque el contacto vive en otro servicio.
+
+### 3.7 La cola de duplicados
 
 `party/cola_duplicados.py`. El que puntúa es
 `duplicados.buscar_cuentas_duplicadas`, **el mismo que protege el alta**: dos
@@ -407,7 +454,7 @@ está a propósito: la señal es explicable («ha coincidido el dominio»), que 
 que permite decidir. Si algún día se quiere un clasificador, el sitio donde
 entra es la puntuación, dejando intactos el barrido, la cola y la decisión.
 
-### 3.7 La cola de calidad del dato
+### 3.8 La cola de calidad del dato
 
 `stewardship.barrido()` recorre cuentas y contactos y abre una excepción por
 cada cosa que esté mal. Existía la cola, la asignación y el cierre, y **ninguna

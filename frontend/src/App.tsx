@@ -31,6 +31,7 @@ import { cargarSesion, type Sesion } from "@/lib/sesion";
  * una pieza: diferirlas cambiaría una espera de nada por un parpadeo en lo
  * que se abre veinte veces al día.
  */
+const Portal = lazy(() => import("@/paginas/Portal").then((m) => ({ default: m.Portal })));
 const Cobertura = lazy(() =>
   import("@/paginas/Cobertura").then((m) => ({ default: m.Cobertura })),
 );
@@ -113,6 +114,21 @@ export function App() {
   // Mientras no se sabe si hay sesión no se pinta ninguna de las dos cosas: ni
   // la pantalla de entrada —que haría parpadear un formulario a quien ya estaba
   // dentro— ni la aplicación, que pediría datos sin credencial.
+  // El portal va **antes** de todo, incluida la comprobación de sesión: quien
+  // entra ahí es un cliente, no un empleado sin sesión, y mandarle a la
+  // pantalla de entrada del CRM sería pedirle una credencial que no tiene ni
+  // debe tener. Tampoco pasa por el marco: sin menú lateral ni paleta, porque
+  // una interfaz que parece el CRM recortado invita a buscar lo que no está.
+  if (window.location.pathname.startsWith("/portal")) {
+    // Con su propio `Suspense`: el de las rutas vive dentro del marco, y aquí
+    // no hay marco. Sin esto, React revienta al cargar la pantalla diferida.
+    return (
+      <Suspense fallback={<Cargando />}>
+        <Portal />
+      </Suspense>
+    );
+  }
+
   if (!resuelta) return <Cargando />;
   if (!sesion) return <Entrar alEntrar={refrescar} />;
 

@@ -541,6 +541,25 @@ calendarios laborales y ajustes.
   ochenta cosas para empezar. Lo que se toca, se documenta solo en la referencia de
   ajustes.
 
+### El área de cliente
+
+Tus clientes pueden entrar a **su propia pantalla**, sin ser usuarios del CRM y
+sin contraseña: piden un enlace con su correo, entran con él y desde ahí pueden
+
+- ver sus peticiones y en qué estado están,
+- **abrir una nueva**, que entra como un caso normal con su compromiso de
+  respuesta y su cola —no a una bandeja aparte que alguien tenga que recordar
+  mirar—, y
+- **escribirle a quien les atiende**. Lo que escriben llega al mismo hilo que su
+  correo, así que el agente lo ve donde ya mira y no hay que contarlo dos veces.
+
+Sin contraseña a propósito: un cliente que entra tres veces al año no la
+recuerda, y lo que acaba haciendo es reutilizar la del correo. El enlace vale
+una sola vez y caduca pronto.
+
+Lo que ve cada uno lo decide su nivel de acceso: el técnico ve lo suyo y el
+responsable, lo de su empresa. Eso se decide al darle el acceso, desde el CRM.
+
 ### Duplicados: el sistema los busca, tú decides
 
 La pestaña de **Duplicados** ya no es un buscador: es una **cola**. El sistema

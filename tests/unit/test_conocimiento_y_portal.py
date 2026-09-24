@@ -430,11 +430,36 @@ def test_nivel_cuenta_sin_cuenta_no_ve_nada(
     db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
 ) -> None:
     """Enseñar todo «porque tiene nivel de cuenta» sería el peor fallo posible
-    aquí."""
-    acceso = prt.dar_acceso(uow, contacto_id=uuid4(), email="huerfano@empresa.com", nivel="cuenta")
+    aquí.
+
+    El acceso se construye a mano y no con `dar_acceso`, que ya no deja crear
+    uno así: crearlo se rechaza porque un portal que entra bien y sale vacío se
+    lee como «no tengo casos» y no como «el acceso está mal dado». Lo que se
+    defiende aquí es lo otro — que si una fila así existe igualmente, por datos
+    viejos o por una importación, **no se enseña nada**.
+    """
+    acceso = prt.AccesoPortal(
+        tenant_id=tenant_id,
+        contacto_id=uuid4(),
+        email="huerfano@empresa.com",
+        nivel="cuenta",
+    )
+    db.add(acceso)
     svc.abrir_caso(uow, asunto="De alguien", cuenta_id=uuid4())
     db.flush()
     assert prt.mis_casos(db, acceso) == []
+
+
+@pytest.mark.db
+def test_no_se_puede_crear_un_acceso_de_cuenta_sin_cuenta(uow: Any) -> None:
+    """Se rechaza al crearlo, no se deja pasar: el síntoma sería un portal que
+    entra y sale vacío, y eso no se lee como un acceso mal dado."""
+    from crmcore.errors import ErrorValidacion
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        prt.dar_acceso(uow, contacto_id=uuid4(), email="huerfano@empresa.com", nivel="cuenta")
+
+    assert fallo.value.error_code == "service.acceso_portal_sin_cuenta"
 
 
 @pytest.mark.db

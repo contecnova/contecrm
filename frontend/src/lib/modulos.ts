@@ -66,6 +66,15 @@ export interface Recurso {
    */
   objeto?: string;
   /**
+   * Esta fila habla de un registro que vive en otro sitio.
+   *
+   * Un listado derivado —«documentos que vencen», «certificaciones por
+   * caducar»— no tiene ficha propia, y sin esto sus filas no llevan a ninguna
+   * parte: se ve el problema y no hay forma de ir a arreglarlo. Con esto, la
+   * fila abre el registro del que habla, que es donde están sus acciones.
+   */
+  abre?: { modulo: string; objeto: string; campo: string };
+  /**
    * Icono con el que se rotula la pestaña, **en vez del nombre**.
    *
    * Para lo que se repite en todos los módulos y cuyo contexto ya está claro:
@@ -331,6 +340,11 @@ export const MODULOS: Modulo[] = [
         nombre: "Documentos que vencen",
         listar: "/api/v1/proveedores/documentos/vencen",
         servicio: "party",
+        // Cada fila es un documento de un proveedor, así que abre **al
+        // proveedor**: es donde se sube el renovado. Sin esto la pantalla
+        // enseñaba el problema y no había por dónde ir a arreglarlo.
+        abre: { modulo: "proveedores", objeto: "proveedor", campo: "cuenta_id" },
+        columnas: ["estado", "proveedor", "documento", "valido_hasta", "dias"],
         permiso: "party:read",
       },
     ],

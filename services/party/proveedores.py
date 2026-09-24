@@ -496,22 +496,41 @@ def documentos_que_vencen(
         .scalars()
         .all()
     )
+    # Los nombres de los proveedores, de una sola consulta. Sin ellos la lista
+    # enseñaba el identificador de la cuenta —«Cuenta id: 01a0cfbd-…»— que no le
+    # dice nada a nadie: para saber de quién es el seguro caducado había que
+    # copiar el identificador e irse a buscarlo.
+    from services.party.modelos import Cuenta
+
+    nombres = {
+        c.id: c.nombre
+        for c in db.execute(
+            select(Cuenta).where(Cuenta.id.in_({f.cuenta_id for f in filas} or {None}))
+        )
+        .scalars()
+        .all()
+    }
+
+    # Una sola lista y no dos. Dos listas obligan a quien la pinta a saber que
+    # esto no es un listado normal, y la pantalla genérica las enseñaba como dos
+    # montones de pastillas ilegibles. Con una lista ordenada —lo vencido
+    # primero— y una columna que dice el estado, se lee como una tabla.
     return {
-        "ya_vencidos": [
-            {"cuenta_id": str(f.cuenta_id), "clave": f.clave, "vencio": f.valido_hasta.isoformat()}
-            for f in filas
-            if f.valido_hasta and f.valido_hasta < momento
-        ],
-        "por_vencer": [
+        "items": [
             {
+                "id": str(f.id),
+                "proveedor": nombres.get(f.cuenta_id, ""),
                 "cuenta_id": str(f.cuenta_id),
-                "clave": f.clave,
-                "vence": f.valido_hasta.isoformat(),
+                "documento": f.clave,
+                "estado": "vencido" if f.valido_hasta < momento else "por_vencer",
+                "valido_hasta": f.valido_hasta.isoformat(),
+                # Negativo cuando ya venció: «hace 12 días» y «faltan 12» no son
+                # lo mismo y el signo lo dice sin una columna más.
                 "dias": (f.valido_hasta - momento).days,
             }
             for f in sorted(filas, key=lambda x: x.valido_hasta or momento)
-            if f.valido_hasta and f.valido_hasta >= momento
-        ],
+            if f.valido_hasta
+        ]
     }
 
 

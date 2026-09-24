@@ -212,10 +212,22 @@ function RecursoVista({
 
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
   // vacía es peor que no tener enlace, porque parece que algo se ha roto.
-  const aLaFicha = hayFicha
-    ? (fila: Record<string, unknown>) =>
-        typeof fila.id === "string" ? `/m/${ruta}/${objetoDe(recurso)}/${fila.id}` : null
-    : undefined;
+  // Un listado derivado puede hablar de un registro que vive en otro módulo:
+  // «documentos que vencen» son documentos de un proveedor, y lo que hay que
+  // hacer con ellos se hace en la ficha del proveedor. Sin esto la fila no
+  // llevaba a ninguna parte — se veía el problema y no había por dónde ir.
+  const aOtroModulo = recurso.abre;
+  const aLaFicha = aOtroModulo
+    ? (fila: Record<string, unknown>) => {
+        const destino = fila[aOtroModulo.campo];
+        return typeof destino === "string"
+          ? `/m/${aOtroModulo.modulo}/${aOtroModulo.objeto}/${destino}`
+          : null;
+      }
+    : hayFicha
+      ? (fila: Record<string, unknown>) =>
+          typeof fila.id === "string" ? `/m/${ruta}/${objetoDe(recurso)}/${fila.id}` : null
+      : undefined;
 
   const busqueda = recurso.busqueda;
   const terminoValido = !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);

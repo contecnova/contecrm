@@ -1674,12 +1674,18 @@ def sembrar_servicio(api: Api, aprobador: Api | None = None) -> None:
     for contacto in contactos[:6]:
         if not contacto.get("id") or not contacto.get("email"):
             continue
+        # La cuenta del contacto va **explícita**: el acceso de nivel «cuenta»
+        # filtra por ella, y sin ella el portal entra bien y sale vacío — que se
+        # lee como «no tengo casos» y no como «el acceso está mal dado». Quien
+        # no la tenga se queda en nivel «propio», que sí funciona sin cuenta.
+        cuenta_id = contacto.get("cuenta_id")
         creado = api.crear(
             "/api/v1/portal/accesos",
             {
                 "contacto_id": str(contacto["id"]),
                 "email": str(contacto["email"]),
-                "nivel": "cuenta",
+                "cuenta_id": str(cuenta_id) if cuenta_id else None,
+                "nivel": "cuenta" if cuenta_id else "propio",
                 "secciones": ["casos", "conocimiento", "pedidos", "documentos"],
             },
         )

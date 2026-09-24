@@ -10,6 +10,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha, montar_listado
+from crmcore.http.portal_deps import PortalDep
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -453,10 +454,158 @@ def entrar(datos: Canjear, request: Request, uow: UowDep, principal: Autenticado
     }
 
 
+# ── El portal visto por el cliente, con su propia sesión ──────────────────
+#
+# Todo lo de abajo lo llama un empleado: dar acceso, revocarlo, emitir el enlace
+# y consultar un acceso concreto. Eso es la administración del portal y está
+# bien así.
+#
+# Lo que sigue es lo otro: que **el cliente entre él**. Sin esto, todas las
+# rutas del portal exigían una sesión de empleado, así que quien quisiera un
+# portal de verdad tenía que montar un intermediario que guardara credenciales
+# de empleado para servir a sus clientes — que no es un portal, es una
+# credencial de empleado compartida por internet.
+
+
+@router_portal.post(
+    "/sesion",
+    summary="Entrar en el portal con el enlace recibido",
+    description=(
+        "Canjea el enlace de un solo uso y devuelve la sesión **del portal**: un "
+        "token sin permisos del CRM, que por eso no sirve para nada más que "
+        "para esto.\n\n"
+        "Dura poco y se renueva pidiendo otro enlace: un portal se usa a ratos, "
+        "y un token largo en el navegador de un cliente acaba en un correo "
+        "reenviado."
+    ),
+)
+def sesion_portal(datos: Canjear, request: Request) -> Any:
+    # Sesión de **sistema** y unidad de trabajo propia: quien entra todavía no
+    # tiene tenant, y es el enlace el que dice cuál es. Es el mismo patrón que
+    # el refresco de sesión del CRM — lo que acota es el secreto, no el tenant.
+    from crmcore.db.session import sesion
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.http.portal_deps import emitir_token_portal
+
+    with sesion(sistema=True) as db:
+        uow = UnidadDeTrabajo(db=db, tenant_id=None)
+        acceso = prt.canjear_enlace(
+            uow, datos.token, ip=request.client.host if request.client else ""
+        )
+        token, dura_s = emitir_token_portal(
+            acceso_id=acceso.id, tenant_id=acceso.tenant_id, nivel=acceso.nivel
+        )
+        salida = {
+            "token": token,
+            "caduca_en_s": dura_s,
+            "nivel": acceso.nivel,
+            "secciones": prt.secciones_de(acceso),
+        }
+    return salida
+
+
+def _mi_acceso(db: Any, sesion: Any) -> prt.AccesoPortal:
+    return _acceso_de(db, sesion.tenant_id, sesion.acceso_id)
+
+
+@router_portal.get(
+    "/mi/resumen",
+    summary="La portada del portal",
+    description="Lo mismo que ve el empleado de este acceso, pero pedido por el cliente.",
+)
+def mi_resumen(db: DbDep, sesion: PortalDep) -> Any:
+    return prt.resumen(db, _mi_acceso(db, sesion))
+
+
+@router_portal.get(
+    "/mi/casos",
+    summary="Mis casos",
+    description=(
+        "El filtro va **por el nivel del acceso y en el servidor**: el técnico "
+        "ve los suyos y el responsable los de su empresa. Filtrar en el cliente "
+        "funciona hasta que alguien mira la respuesta de la API."
+    ),
+)
+def mis_casos(db: DbDep, sesion: PortalDep, limite: int = Query(50, ge=1, le=200)) -> Any:
+    return prt.mis_casos(db, _mi_acceso(db, sesion), limite=limite)
+
+
+class AbrirPeticion(BaseModel):
+    """Lo que el cliente cuenta al abrir una petición.
+
+    Ni contacto ni cuenta: los pone el acceso. Aceptarlos de quien llama
+    permitiría abrir casos en nombre de otra empresa, que es la fuga más fácil
+    de un portal.
+    """
+
+    asunto: str = Field(..., min_length=1, max_length=300)
+    descripcion: str = Field("", max_length=20_000)
+
+
+@router_portal.post(
+    "/mi/casos",
+    status_code=status.HTTP_201_CREATED,
+    summary="Abrir una petición",
+    description=(
+        "Lo que el cliente abre entra como un caso normal, con su SLA y su "
+        "cola. Una petición de portal que fuera a otro sitio sería una bandeja "
+        "más que alguien tiene que acordarse de mirar."
+    ),
+)
+def abrir_mi_caso(datos: AbrirPeticion, uow: UowDep, sesion: PortalDep) -> Any:
+    acceso = _mi_acceso(uow.db, sesion)
+    caso = prt.abrir_caso_desde_portal(
+        uow, acceso, asunto=datos.asunto, descripcion=datos.descripcion
+    )
+    # Solo el identificador y el código: al cliente le sirve para referirse a su
+    # petición, y devolver el caso entero le enseñaría los campos internos —cola,
+    # prioridad calculada, quién lo lleva— que no son suyos.
+    return {"id": str(caso.id), "codigo": caso.codigo, "asunto": caso.asunto}
+
+
+@router_portal.get(
+    "/mi/conversacion",
+    summary="Lo que he hablado con vosotros",
+    description=(
+        "El mismo hilo que ve el agente, **sin las notas internas**. El correo "
+        "del lunes y esto de hoy son la misma conversación: es lo que evita "
+        "tener que contarlo todo otra vez."
+    ),
+)
+def mi_conversacion(db: DbDep, sesion: PortalDep, limite: int = Query(200, ge=1, le=500)) -> Any:
+    return prt.conversacion_del_portal(db, _mi_acceso(db, sesion), limite=limite)
+
+
+class MensajePortal(BaseModel):
+    """Lo que el cliente escribe desde el portal."""
+
+    texto: str = Field(..., min_length=1, max_length=10_000)
+    asunto: str = Field("", max_length=300)
+
+
+@router_portal.post(
+    "/mi/conversacion",
+    status_code=status.HTTP_201_CREATED,
+    summary="Escribir a quien me atiende",
+    description=(
+        "Entra por la misma conversación omnicanal que el correo, así que "
+        "aparece en la consola de agente sin que nadie vigile una bandeja "
+        "nueva. Un chat de portal que solo se ve en el portal es un chat que "
+        "nadie contesta.\n\n"
+        "Si la conversación estaba cerrada, **se reabre**: dejarla cerrada "
+        "esconde la respuesta hasta que alguien repase los cerrados, y eso no "
+        "lo hace nadie."
+    ),
+)
+def escribir_desde_portal(datos: MensajePortal, uow: UowDep, sesion: PortalDep) -> Any:
+    acceso = _mi_acceso(uow.db, sesion)
+    return prt.escribir_desde_portal(uow, acceso, texto=datos.texto, asunto=datos.asunto)
+
+
 # ── Portal: lo que ve el cliente (CRM-04.03.02.01) ────────────────────────
 
 
-def _acceso(db: Any, tenant_id: UUID, acceso_id: UUID) -> prt.AccesoPortal:
+def _acceso_de(db: Any, tenant_id: UUID, acceso_id: UUID) -> prt.AccesoPortal:
     from sqlalchemy import select as _select
 
     fila = db.execute(
@@ -485,7 +634,7 @@ def _acceso(db: Any, tenant_id: UUID, acceso_id: UUID) -> prt.AccesoPortal:
     ),
 )
 def resumen(acceso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    return prt.resumen(db, _acceso(db, principal.tenant_id, acceso_id))
+    return prt.resumen(db, _acceso_de(db, principal.tenant_id, acceso_id))
 
 
 @router_portal.get(
@@ -502,7 +651,7 @@ def resumen(acceso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
 def casos(
     acceso_id: UUID, db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, le=200)
 ) -> Any:
-    return prt.mis_casos(db, _acceso(db, principal.tenant_id, acceso_id), limite=limite)
+    return prt.mis_casos(db, _acceso_de(db, principal.tenant_id, acceso_id), limite=limite)
 
 
 class AbrirDesdePortal(BaseModel):
@@ -526,7 +675,7 @@ def abrir_caso(
 ) -> Any:
     caso = prt.abrir_caso_desde_portal(
         uow,
-        _acceso(uow.db, principal.tenant_id, acceso_id),
+        _acceso_de(uow.db, principal.tenant_id, acceso_id),
         asunto=datos.asunto,
         descripcion=datos.descripcion,
     )
@@ -558,7 +707,7 @@ class AbrirHilo(BaseModel):
 def abrir_hilo(datos: AbrirHilo, uow: UowDep, principal: AutenticadoDep) -> Any:
     hilo = prt.abrir_hilo(
         uow,
-        _acceso(uow.db, principal.tenant_id, datos.acceso_id),
+        _acceso_de(uow.db, principal.tenant_id, datos.acceso_id),
         titulo=datos.titulo,
         cuerpo=datos.cuerpo,
         categoria=datos.categoria,
@@ -588,7 +737,7 @@ def responder_hilo(
 ) -> Any:
     contacto_id = None
     if datos.acceso_id is not None:
-        contacto_id = _acceso(uow.db, principal.tenant_id, datos.acceso_id).contacto_id
+        contacto_id = _acceso_de(uow.db, principal.tenant_id, datos.acceso_id).contacto_id
     fila = prt.responder_hilo(
         uow,
         hilo_id,

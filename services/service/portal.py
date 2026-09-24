@@ -220,6 +220,19 @@ def dar_acceso(
             error_code="service.nivel_portal_no_valido",
             detalle={"validos": list(NIVELES)},
         )
+    # Un acceso de nivel «cuenta» o «admin» sin cuenta no ve **nada**: el filtro
+    # es por cuenta y sin ella no hay por dónde filtrar. Se rechaza aquí en vez
+    # de dejarlo pasar, porque el síntoma sería un portal que entra bien y sale
+    # vacío — y eso se lee como «no tengo casos», no como «el acceso está mal
+    # dado». La cuenta la pone quien crea el acceso porque el contacto vive en
+    # otro servicio y este no puede consultarla.
+    if nivel in ("cuenta", "admin") and cuenta_id is None:
+        raise ErrorValidacion(
+            f"Un acceso de nivel «{nivel}» necesita la cuenta del contacto: sin "
+            "ella el portal entra y no enseña nada.",
+            error_code="service.acceso_portal_sin_cuenta",
+        )
+
     tenant_id = uow.tenant_id
     existente = uow.db.execute(
         select(AccesoPortal).where(
@@ -323,13 +336,23 @@ def emitir_enlace(
 
 
 def canjear_enlace(uow: UnidadDeTrabajo, token: str, *, ip: str = "") -> AccesoPortal:
-    """Canjea el enlace y devuelve el acceso. De un solo uso."""
-    enlace = uow.db.execute(
-        select(EnlaceAcceso).where(
-            EnlaceAcceso.tenant_id == uow.tenant_id,
-            EnlaceAcceso.hash_token == _hash(token or ""),
-        )
-    ).scalar_one_or_none()
+    """Canjea el enlace y devuelve el acceso. De un solo uso.
+
+    Cuando lo canjea un empleado, el tenant lo pone su sesión. Cuando lo canjea
+    **el cliente** —que es el caso normal— no hay sesión ninguna: el enlace *es*
+    la credencial, y pedirle además que diga de qué empresa es convierte el
+    portal en un formulario con dos campos, uno de los cuales el cliente no
+    tiene por qué saber.
+
+    Por eso, sin tenant en contexto, se busca por el hash **entre todos**: el
+    token son treinta y dos bytes aleatorios y su hash solo puede encontrar la
+    fila de quien lo recibió. Es el mismo patrón que el refresco de sesión del
+    CRM, y por lo mismo: lo que acota no es el tenant, es el secreto.
+    """
+    consulta = select(EnlaceAcceso).where(EnlaceAcceso.hash_token == _hash(token or ""))
+    if uow.tenant_id is not None:
+        consulta = consulta.where(EnlaceAcceso.tenant_id == uow.tenant_id)
+    enlace = uow.db.execute(consulta).scalar_one_or_none()
     # Mismo error para todo: token inexistente, usado o caducado. Distinguirlos
     # le diría a quien prueba si ese enlace existió alguna vez.
     if enlace is None or enlace.usado_at is not None:
@@ -451,6 +474,122 @@ SECCIONES_POR_NIVEL = {
         "contactos",
     ),
 }
+
+
+def conversacion_del_portal(
+    db: Session, acceso: AccesoPortal, *, limite: int = 200
+) -> list[dict[str, Any]]:
+    """Lo que este contacto ha hablado con nosotros, **sin las notas internas**.
+
+    Reusa el historial omnicanal, que es el mismo hilo que ve el agente: el
+    correo del lunes y el chat del miércoles son una sola conversación. Un chat
+    aparte para el portal habría creado un segundo sitio donde mirar, y el
+    agente tendría que acordarse de mirar los dos.
+
+    `incluir_internos=False` va explícito porque la propia función avisa de que
+    no se deduzca del permiso: deducirlo pondría una nota interna delante del
+    cliente el día que alguien la reutilizara desde un sitio nuevo.
+    """
+    from services.service import omnicanal as omni
+
+    return omni.historial(
+        db,
+        acceso.tenant_id,
+        contacto_id=acceso.contacto_id,
+        limite=limite,
+        incluir_internos=False,
+    )
+
+
+def escribir_desde_portal(
+    uow: UnidadDeTrabajo,
+    acceso: AccesoPortal,
+    *,
+    texto: str,
+    asunto: str = "",
+) -> dict[str, Any]:
+    """El cliente escribe desde el portal, y le llega al agente donde ya mira.
+
+    No abre un canal de chat propio: entra por la misma conversación omnicanal
+    que el correo o el formulario, así que aparece en la consola de agente sin
+    que nadie tenga que vigilar una bandeja nueva. Un chat de portal que solo se
+    ve en el portal es un chat que nadie contesta.
+    """
+    from services.service import omnicanal as omni
+
+    texto = (texto or "").strip()
+    if not texto:
+        raise ErrorValidacion(
+            "No se puede mandar un mensaje vacío", error_code="portal.mensaje_vacio"
+        )
+
+    conversacion, nueva = omni._conversacion_para(
+        uow.db,
+        acceso.tenant_id,
+        identidad=acceso.email,
+        contacto_id=acceso.contacto_id,
+        cuenta_id=acceso.cuenta_id,
+        canal="portal",
+        asunto=asunto or texto[:120],
+        ventana_horas=72,
+    )
+    mensaje = omni.Mensaje(
+        tenant_id=acceso.tenant_id,
+        conversacion_id=conversacion.id,
+        canal="portal",
+        direccion=omni.ENTRANTE,
+        remitente=acceso.email,
+        asunto=asunto[:300] or None,
+        cuerpo=texto,
+        interno=False,
+    )
+    uow.db.add(mensaje)
+    conversacion.ultimo_mensaje_at = _ahora()
+
+    # Un mensaje suelto no es nada que nadie tenga asignado: sin caso no hay
+    # cola, ni compromiso de respuesta, ni a quién reclamarle. Es lo mismo que
+    # hace el canal de correo, y por lo mismo — **una** por conversación, no una
+    # por mensaje: si no, una conversación de seis mensajes son seis casos y el
+    # cliente recibe seis respuestas de seis personas.
+    if conversacion.caso_id is None:
+        from services.service import servicio as svc
+
+        caso = svc.abrir_caso(
+            uow,
+            asunto=asunto or texto[:120],
+            descripcion=texto,
+            origen="portal",
+            contacto_id=acceso.contacto_id,
+            cuenta_id=acceso.cuenta_id,
+        )
+        conversacion.caso_id = caso.id
+    # Vuelve a la cola: si el agente la había dado por resuelta y el cliente
+    # escribe otra vez, dejarla cerrada esconde la respuesta hasta que alguien
+    # repase los cerrados — que no lo hace nadie.
+    if conversacion.estado == "cerrada":
+        conversacion.estado = "abierta"
+    uow.db.flush()
+
+    # El mismo evento que un mensaje por cualquier otro canal, no uno propio del
+    # portal: quien se haya suscrito para avisar al agente ya está escuchando
+    # este, y con un tipo nuevo habría que acordarse de suscribirse otra vez —y
+    # hasta entonces los mensajes del portal no avisarían a nadie.
+    uow.emitir(
+        "case.message.received",
+        subject=("conversacion", conversacion.id),
+        data={
+            "conversacion_id": str(conversacion.id),
+            "caso_id": str(conversacion.caso_id) if conversacion.caso_id else None,
+            "canal": "portal",
+            "nueva": nueva,
+        },
+    )
+    return {
+        "conversacion_id": str(conversacion.id),
+        "mensaje_id": str(mensaje.id),
+        "caso_id": str(conversacion.caso_id) if conversacion.caso_id else None,
+        "nueva": nueva,
+    }
 
 
 def secciones_de(acceso: AccesoPortal) -> list[str]:
