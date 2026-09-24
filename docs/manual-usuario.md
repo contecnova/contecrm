@@ -529,6 +529,27 @@ electrónica desde cualquier registro.
 
 ---
 
+## Entrar: tres formas
+
+- **Con el proveedor de tu organización**, si la tuya lo usa. Es el botón de
+  arriba porque, cuando existe, es el camino normal.
+- **Con tu correo y tu contraseña.** El ojo del campo te la enseña: es lo que
+  evita el tercer intento a ciegas con una contraseña larga.
+- **Con una passkey**, si has registrado una. Es la huella, la cara o el PIN de
+  tu propio dispositivo, y es la única de las tres que **no se puede robar con
+  un correo falso**: tu navegador solo la entrega a la dirección de verdad.
+
+**Si no recuerdas la contraseña**, el enlace está al lado del campo. Te mandamos
+uno para poner una nueva: vale una sola vez y caduca en media hora. Al cambiarla
+se cierran todas las sesiones abiertas, a propósito — si pides recuperarla es
+porque no puedes entrar o porque sospechas.
+
+Por seguridad te decimos lo mismo exista o no ese correo. No es un despiste:
+contestar distinto convertiría esa pantalla en una forma de averiguar quién
+tiene cuenta aquí.
+
+---
+
 ## Administrar el CRM (sección 7.1)
 
 Para quien administra: usuarios, roles, permisos, listas maestras, plantillas,

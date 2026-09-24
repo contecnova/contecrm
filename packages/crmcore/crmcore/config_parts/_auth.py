@@ -170,3 +170,21 @@ class _AuthSettings(BaseSettings):
     # cliente, donde vería sus datos sin querer.
     superadmin_tenant: str = "plataforma"
     superadmin_nombre: str = "Operación de la plataforma"
+
+    # ── Passkeys (WebAuthn, CRM-00.05.01.23) ─────────────────────────────
+    #
+    # Una passkey se ata a un **dominio** y el navegador no la entrega a otro:
+    # eso es lo que la hace resistente al phishing, y también lo que obliga a
+    # declararlo bien. Los dos van vacíos a propósito: se derivan de
+    # `public_base_url` y de `cors_origins`, que ya describen dónde vive esto.
+    # Declararlos otra vez sería una tercera verdad que se separa de las dos.
+    #
+    # Se rellenan solo cuando el CRM se sirve desde un dominio distinto del de
+    # su API —una instalación con el front en `crm.cliente.com` y la API en
+    # `api.cliente.com`— porque ahí la regla del navegador es el dominio padre
+    # y hay que decirlo.
+    passkey_rp_id: str = ""
+    passkey_rp_nombre: str = ""
+    # Orígenes exactos desde los que se acepta una passkey, separados por comas.
+    # Vacío = los de CORS, que es de donde llega el navegador.
+    passkey_origenes: str = ""

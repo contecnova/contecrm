@@ -79,6 +79,15 @@ EXENTAS: dict[str, str] = {}
 # Parámetros cuyo modelo no se llama como ellos. Se escriben porque la
 # alternativa —renombrar el parámetro de la ruta— cambiaría el contrato público
 # de la API para comodidad de una prueba.
+# Cuando el mismo nombre de parámetro significa cosas distintas según el
+# servicio. Sin esto, uno de los dos modelos se quedaba sin probar **en
+# silencio**: el chat entero —siete rutas— no se estaba comprobando contra
+# fugas entre tenants.
+ALIAS_POR_SERVICIO = {
+    ("identity", "conversacion_id"): "conversacionchat",
+    ("identity", "mensaje_id"): "mensajechat",
+}
+
 ALIAS_MODELO = {
     "instancia_id": "instanciaproceso",
     "tarea_id": "tareahumana",
@@ -223,6 +232,12 @@ def _crear_fila(db: Any, modelo: Any, tenant_id: UUID, _profundidad: int = 0) ->
             valores[columna.name] = {}
         elif "TIMESTAMP" in tipo or "DATE" in tipo:
             valores[columna.name] = dt.datetime.now(dt.timezone.utc)
+        elif "BYTEA" in tipo or "BINARY" in tipo or "BLOB" in tipo:
+            # Una columna binaria —la clave pública de una passkey— no admite
+            # texto: sin esta rama, la primera tabla con bytes dejaba **todo el
+            # servicio** sin probar contra fugas entre tenants, y con un error
+            # de psycopg que no dice qué tabla es.
+            valores[columna.name] = b"\x01\x02\x03"
         else:
             valores[columna.name] = uuid4().hex[:8]
     fila = modelo(**valores)
@@ -309,7 +324,12 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
             if not parametro.endswith("_id"):
                 continue
 
-            nombre_objeto = ALIAS_MODELO.get(parametro, parametro[: -len("_id")])
+            # El alias puede ser **del servicio**: `conversacion_id` es una
+            # `Conversacion` en servicio y una `ConversacionChat` en identidad,
+            # y con un solo alias global una de las dos se quedaba sin probar.
+            nombre_objeto = ALIAS_POR_SERVICIO.get((servicio, parametro)) or ALIAS_MODELO.get(
+                parametro, parametro[: -len("_id")]
+            )
             modelo = modelos.get(nombre_objeto)
             if modelo is None:
                 sin_resolver.append(f"{etiqueta} (parámetro «{parametro}»)")

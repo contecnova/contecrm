@@ -115,6 +115,36 @@ class Settings(
         return self.env != "dev"
 
     @property
+    def passkey_dominio(self) -> str:
+        """El dominio al que se atan las passkeys.
+
+        Del `public_base_url` si no se declara: es donde vive esto, y tenerlo en
+        dos sitios es tener dos verdades que se separan el día que una cambia.
+        """
+        if self.passkey_rp_id:
+            return self.passkey_rp_id
+        from urllib.parse import urlparse
+
+        return urlparse(self.public_base_url).hostname or "localhost"
+
+    @property
+    def passkey_nombre(self) -> str:
+        """Cómo se llama esto en el diálogo del navegador."""
+        return self.passkey_rp_nombre or self.app_name
+
+    @property
+    def passkey_origenes_validos(self) -> tuple[str, ...]:
+        """Desde qué direcciones se acepta una passkey.
+
+        Los de CORS, que es exactamente de donde puede llegar un navegador. Si
+        la lista está vacía —un servicio interno—, se cae al `public_base_url`,
+        que al menos es una respuesta y no ninguna.
+        """
+        declarados = self.passkey_origenes or self.cors_origins
+        origenes = tuple(o.strip() for o in declarados.split(",") if o.strip())
+        return origenes or (self.public_base_url,)
+
+    @property
     def sesion_cookie_secure(self) -> bool:
         """`Secure` en la cookie de sesión: sí, salvo que se trabaje en local.
 

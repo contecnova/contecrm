@@ -6,7 +6,7 @@
 
 | Módulo | Capacidades | Hecho | En curso | Pendiente |
 |---|--:|--:|--:|--:|
-| 0 — Plataforma y arquitectura transversal | 283 | 283 | 0 | 0 |
+| 0 — Plataforma y arquitectura transversal | 284 | 284 | 0 | 0 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 54 | 0 | 0 |
 | 2 — Marketing | 54 | 54 | 0 | 0 |
 | 3 — Ventas (SFA) | 65 | 65 | 0 | 0 |
@@ -21,7 +21,7 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 308 | 308 |
+| C — Core | 309 | 309 |
 | A — Avanzado | 419 | 419 |
 | D — Diferencial | 44 | 44 |
 
@@ -29,7 +29,7 @@
 
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
-| 0 · Cimientos | Módulo 0 completo | 179 | 179 |
+| 0 · Cimientos | Módulo 0 completo | 180 | 180 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 177 | 177 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 215 | 215 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
@@ -39,7 +39,7 @@
 
 ## Reutilización
 
-**329 de 771** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
+**329 de 772** capacidades tienen una implementación de referencia en otra solución de la casa. El inventario medido está en [REUTILIZACION.md](../REUTILIZACION.md).
 
 | Origen | Capacidades |
 |---|--:|

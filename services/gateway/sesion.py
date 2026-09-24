@@ -128,10 +128,20 @@ def crear_router_sesion(obtener: Callable[[], tuple[Any, dict[str, Any], float]]
     async def entrar(datos: dict[str, Any], respuesta: Response) -> Any:
         s = get_settings()
         cliente, destinos, timeout_s = obtener()
+        # Con passkey se entra por otra puerta, y la cookie la pone la misma:
+        # el navegador no puede quedarse el token por su cuenta, y tener dos
+        # sitios que abren sesión acabaría con uno de los dos haciéndolo mal.
+        con_llave = bool(datos.get("passkey"))
+        destino = "/api/v1/auth/passkeys/entrar/confirmar" if con_llave else "/api/v1/auth/login"
+        cuerpo = (
+            {"tenant": datos.get("tenant", ""), "respuesta": datos.get("passkey")}
+            if con_llave
+            else datos
+        )
         try:
             salida = await cliente.post(
-                f"{_identidad(destinos)}/api/v1/auth/login",
-                json=datos,
+                f"{_identidad(destinos)}{destino}",
+                json=cuerpo,
                 timeout=timeout_s,
             )
         except httpx.HTTPError as exc:

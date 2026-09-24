@@ -118,7 +118,14 @@ stateDiagram-v2
 | `POST /api/v1/auth/logout` | Cerrar la sesión en curso | — | 204, 422 | — |
 | `POST /api/v1/auth/mfa/activar` | Confirmar y activar el MFA | codigo* | 200, 422 | — |
 | `POST /api/v1/auth/mfa/iniciar` | Empezar la configuración del doble factor | — | 200, 422 | — |
+| `POST /api/v1/auth/passkeys` | Empezar a registrar una passkey | — | 200, 422 | — |
+| `POST /api/v1/auth/passkeys/confirmar` | Guardar la passkey recién creada | respuesta*, nombre | 201, 422 | `user.passkey.registered` |
+| `POST /api/v1/auth/passkeys/entrar` | Empezar a entrar con una passkey | tenant*, email | 200, 422 | — |
+| `POST /api/v1/auth/passkeys/entrar/confirmar` | Entrar con la firma de la passkey | tenant*, respuesta* | 200, 422 | — |
+| `DELETE /api/v1/auth/passkeys/{passkey_id}` | Quitar una passkey | passkey_id* | 204, 422 | `user.passkey.revoked` |
 | `POST /api/v1/auth/refresh` | Renovar el token de acceso | refresh_token* | 200, 422 | — |
+| `POST /api/v1/auth/restablecer` | Pedir un enlace para cambiar la contraseña | email*, tenant* | 200, 422 | `user.password.reset_requested` |
+| `POST /api/v1/auth/restablecer/confirmar` | Cambiar la contraseña con el enlace recibido | token*, contrasena* | 200, 422 | — |
 | `POST /api/v1/chat/conversaciones` | Abrir una conversación | tipo, clave, nombre, proposito, privada, objeto_tipo, objeto_id, miembros | 201, 422 | — |
 | `POST /api/v1/chat/conversaciones/{conversacion_id}/leido` | Marcar hasta aquí como leído | conversacion_id* | 200, 422 | — |
 | `POST /api/v1/chat/conversaciones/{conversacion_id}/mensajes` | Escribir en una conversación | conversacion_id*, cuerpo, responde_a_id, menciones, adjuntos | 201, 422 | — |
@@ -1230,6 +1237,9 @@ llamada de nadie.
 | `territory.published` | sales | territorio, version | `POST /api/v1/territorios/{territorio_id}/publicar` | — |
 | `user.deprovisioned` | identity | user_id, via | `DELETE /api/v1/scim/v2/Users/{usuario_id}`, `DELETE /api/v1/usuarios/{usuario_id}`, `POST /api/v1/usuarios/{usuario_id}/desactivar` | — |
 | `user.org.changed` | identity | user_id, roles, superior_id, unidad_id, activa | `DELETE /api/v1/usuarios/{usuario_id}`, `PATCH /api/v1/scim/v2/Users/{usuario_id}`, `POST /api/v1/sso/oidc/callback` (+4) | — |
+| `user.passkey.registered` | identity | usuario_id, passkey_id, nombre | `POST /api/v1/auth/passkeys/confirmar` | — |
+| `user.passkey.revoked` | identity | usuario_id, passkey_id | `DELETE /api/v1/auth/passkeys/{passkey_id}` | — |
+| `user.password.reset_requested` | identity | usuario_id, email | `POST /api/v1/auth/restablecer` | — |
 | `user.provisioned` | identity | user_id, email, via | `POST /api/v1/scim/v2/Users`, `POST /api/v1/usuarios` | — |
 | `workorder.assigned` | service | orden_id, tecnico_id | `POST /api/v1/ordenes-trabajo/{orden_id}/asignar` | — |
 | `workorder.completed` | service | orden_id, tipo | `POST /api/v1/ordenes-trabajo/{orden_id}/completar`, `POST /api/v1/sincronizacion-campo` | — |

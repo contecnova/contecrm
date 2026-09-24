@@ -6,6 +6,13 @@
  * cosa que mantener, actualizar y auditar.
  */
 
+// DM Sans es la tipografía de la pantalla de entrada, que es la de
+// contecflow: se pidió que fuera exacta, y una fuente parecida no lo es.
+import "@fontsource/dm-sans/400.css";
+import "@fontsource/dm-sans/500.css";
+import "@fontsource/dm-sans/600.css";
+import "@fontsource/dm-sans/700.css";
+import "@fontsource/dm-sans/800.css";
 import "@fontsource/geist/400.css";
 import "@fontsource/geist/500.css";
 import "@fontsource/geist/600.css";

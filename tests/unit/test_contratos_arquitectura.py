@@ -248,6 +248,21 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "delegar": "ídem: solo puede delegar quien la tiene asignada",
         "suplantar": "la comprobación es «ser personal de plataforma», dentro del servicio",
         "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
+        # Recuperar el acceso: quien las llama **no ha entrado**, que es todo el
+        # problema. Lo que autoriza es el enlace de un solo uso, hasheado y con
+        # caducidad, y lo que impide abusar de ellas es que la respuesta sea la
+        # misma exista o no el correo. Probado en `test_restablecer_contrasena.py`.
+        "pedir_restablecer": "la pide quien no puede entrar; autoriza el enlace, no un permiso",
+        "confirmar_restablecer": "ídem: la credencial es el token del enlace",
+        # Entrar con passkey es entrar: exigir permiso sería tan circular como
+        # exigirlo en `login`. Lo que autoriza es la firma del dispositivo.
+        "empezar_passkey": "es parte de la entrada; exigir permiso sería circular",
+        "entrar_con_passkey": "ídem: lo que autoriza es la firma de la llave",
+        # Y registrar o quitar una llave propia solo exige tener sesión: son
+        # `AutenticadoDep` y la comprobación de que la llave es suya va dentro.
+        "empezar_registro_passkey": "el usuario registra su propia llave",
+        "confirmar_registro_passkey": "ídem",
+        "quitar_passkey": "quita una llave propia; que sea suya se comprueba dentro",
         # El permiso depende de la OPERACIÓN que trae el cuerpo (crear,
         # actualizar, borrar), y una dependencia de ruta se resuelve antes de
         # leerlo. Declarar uno solo obligaría a exigir el más fuerte para todas,

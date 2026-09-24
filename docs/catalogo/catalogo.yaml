@@ -505,6 +505,7 @@ modulos:
               - {id: CRM-00.05.01.23, c: A, fase: 1, svc: identity, estado: hecho, reutiliza: "contecmind:app/services/webauthn.py", t: "Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor"}
               - {id: CRM-00.05.01.24, c: A, fase: 1, svc: identity, estado: hecho, t: "Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces"}
               - {id: CRM-00.05.01.25, c: C, fase: 1, svc: identity, estado: hecho, t: "Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer"}
+              - {id: CRM-00.05.01.26, c: C, fase: 0, svc: identity, estado: hecho, t: "Recuperar el acceso: enlace de un solo uso, hasheado y con caducidad, que cierra todas las sesiones al usarse y no revela si el correo existe"}
 
           - id: CRM-00.05.02
             nombre: Autorización

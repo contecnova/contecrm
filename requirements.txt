@@ -62,3 +62,11 @@ orjson==3.10.12
 # que ya hay —son HTTP con XML y texto con separadores— y no añaden dependencia.
 paramiko==5.0.0
 aio-pika==10.0.1
+
+# Passkeys (WebAuthn, CRM-00.05.01.23). Va aquí y no en un extra opcional
+# —como SAML— porque es Python puro sobre `cryptography`, que ya está: no
+# obliga a compilar nada ni a instalar librerías del sistema. Y una passkey es
+# la única credencial de esta lista que **no se puede robar por phishing**,
+# así que ponerla detrás de un paso de instalación extra sería dejar la mejor
+# fuera por comodidad.
+webauthn==2.5.0

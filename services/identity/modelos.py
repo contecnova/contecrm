@@ -462,10 +462,15 @@ from crmcore.notificaciones.entrega import EntregaNotificacion  # noqa: E402
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+from services.identity.passkeys import Passkey, RetoPasskey  # noqa: E402
+from services.identity.restablecer import EnlaceRestablecer  # noqa: E402
 from services.identity.sod import ExcepcionSoD, ReglaSoD  # noqa: E402
 from services.identity.sso import EstadoSSO  # noqa: E402
 
 __all__ = [
+    "Passkey",
+    "RetoPasskey",
+    "EnlaceRestablecer",
     "VersionAjuste",
     "AsercionConsumida",
     "DesafioFactor",

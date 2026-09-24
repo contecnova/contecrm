@@ -96,6 +96,19 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### La pantalla de entrada es la de contecflow, exacta
+
+Es la **única** pantalla del CRM que se sale del sistema de diseño, y se sale a
+propósito: se ve antes de entrar, no tiene marco alrededor y es la que comparten
+las dos soluciones de la casa. Por eso sus valores van escritos —la tipografía
+DM Sans, `#080c14` de fondo, la tarjeta de 400 px con radio 20, los campos de 44
+de alto— y no traducidos a los tokens de este producto, que son otros y darían
+otra pantalla.
+
+Un detalle donde se separa a propósito: el nombre del producto es un `h1` y no
+un `span`. Se ve igual, y quien navega con lector de pantalla necesita que la
+página tenga un encabezado; hay un gate que lo comprueba.
+
 #### Nadie teclea un identificador a mano
 
 Un campo que apunta a otro registro **se elige, no se teclea**: nadie se sabe un

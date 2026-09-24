@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**771 capacidades**: ✅ 771 hecho
+**772 capacidades**: ✅ 772 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-283 capacidades · ✅ 283
+284 capacidades · ✅ 284
 
 ### 0.1 Multi-tenancy
 
@@ -371,6 +371,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.05.01.23` | Entrada sin contraseña (passwordless) con llave FIDO2/WebAuthn como factor único, y la misma llave como segundo factor | A | 1 | identity | ✅ | contecmind:app/services/webauthn.py |
 | `CRM-00.05.01.24` | Delegar el segundo factor al IdP del tenant cuando ya lo exige (amr/acr), para no pedirlo dos veces | A | 1 | identity | ✅ | — |
 | `CRM-00.05.01.25` | Panel de estado de MFA por tenant: quién la tiene, quién no y desde cuándo, con plazo de adopción y bloqueo al vencer | C | 1 | identity | ✅ | — |
+| `CRM-00.05.01.26` | Recuperar el acceso: enlace de un solo uso, hasheado y con caducidad, que cierra todas las sesiones al usarse y no revela si el correo existe | C | 0 | identity | ✅ | — |
 
 #### CRM-00.05.02 · Autorización
 

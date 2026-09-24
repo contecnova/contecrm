@@ -10,7 +10,7 @@ from crmcore.config import get_settings
 from crmcore.errors import NoAutenticado, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from services.identity import servicio as svc
@@ -107,6 +107,242 @@ def login(datos: Credenciales, request: Request) -> Any:
         refresh_token=refresco,
         expires_in=get_settings().access_token_minutos * 60,
     )
+
+
+# ── Olvidé la contraseña (CRM-00.05.01.26) ────────────────────────────────
+
+
+class PedirRestablecer(BaseModel):
+    email: EmailStr
+    tenant: str = Field(..., min_length=1, max_length=120)
+
+
+@router_auth.post(
+    "/restablecer",
+    summary="Pedir un enlace para cambiar la contraseña",
+    description=(
+        "La respuesta es **la misma exista o no** ese correo. Distinguirlas "
+        "convertiría esta pantalla en un comprobador de qué correos tienen "
+        "cuenta aquí, que es exactamente la lista que quiere quien va a "
+        "intentar entrar.\n\n"
+        "El token se devuelve para que lo mande quien integre el correo; nunca "
+        "se le enseña a quien lo pide."
+    ),
+)
+def pedir_restablecer(datos: PedirRestablecer, request: Request) -> Any:
+    from crmcore.db.session import sesion
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.identity import restablecer as rst
+
+    tenant_id = _resolver_tenant(datos.tenant)
+    with sesion(tenant_id) as db:
+        uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+        token = rst.solicitar(
+            uow, email=datos.email, ip=request.client.host if request.client else ""
+        )
+    return {"enviado": True, "token": token}
+
+
+class ConfirmarRestablecer(BaseModel):
+    token: str = Field(..., min_length=1, max_length=200)
+    contrasena: str = Field(..., min_length=1, max_length=200)
+
+
+@router_auth.post(
+    "/restablecer/confirmar",
+    summary="Cambiar la contraseña con el enlace recibido",
+    description=(
+        "De un solo uso. Un token inexistente, usado o caducado dan **el mismo "
+        "error**.\n\n"
+        "Al cambiarla se **cierran todas las sesiones**: quien pide restablecer "
+        "no puede entrar, o sospecha, y dejar abiertas las que había es dejar "
+        "dentro justo a quien lo motivó."
+    ),
+)
+def confirmar_restablecer(datos: ConfirmarRestablecer, request: Request) -> Any:
+    # Sesión de sistema: quien llega aquí no ha entrado, así que no hay tenant
+    # en el contexto. Lo que acota es el token, como en el refresco.
+    from crmcore.db.session import sesion
+
+    from services.identity import restablecer as rst
+
+    with sesion(sistema=True) as db:
+        usuario_id = rst.confirmar(
+            db,
+            datos.token,
+            contrasena=datos.contrasena,
+            ip=request.client.host if request.client else "",
+        )
+    return {"cambiada": True, "usuario_id": str(usuario_id)}
+
+
+# ── Passkeys (CRM-00.05.01.23) ────────────────────────────────────────────
+
+
+class PedirPasskey(BaseModel):
+    """Para empezar a entrar con una llave.
+
+    El correo es **opcional**: con llaves residentes el dispositivo ya sabe
+    cuál es la suya, y no pedirlo evita además que esta pantalla diga si un
+    correo tiene cuenta.
+    """
+
+    tenant: str = Field(..., min_length=1, max_length=120)
+    email: str = Field("", max_length=320)
+
+
+@router_auth.post(
+    "/passkeys/entrar",
+    summary="Empezar a entrar con una passkey",
+    description=(
+        "Devuelve el reto que firma el dispositivo. Vale **una sola vez** y "
+        "caduca en minutos: si no, una firma capturada se podría reproducir, "
+        "que es justo el ataque del que protege esto."
+    ),
+)
+def empezar_passkey(datos: PedirPasskey) -> Any:
+    from crmcore.db.session import sesion
+
+    from services.identity import passkeys as pk
+    from services.identity.modelos import Usuario
+
+    tenant_id = _resolver_tenant(datos.tenant)
+    with sesion(tenant_id) as db:
+        usuario = None
+        if datos.email.strip():
+            from sqlalchemy import select as _select
+
+            usuario = db.execute(
+                _select(Usuario).where(
+                    Usuario.email == datos.email.strip().lower(), Usuario.activo.is_(True)
+                )
+            ).scalar_one_or_none()
+        # Si el correo no existe se devuelve un reto igualmente, sin llaves
+        # permitidas: el navegador dirá que no hay ninguna y quien prueba no se
+        # entera de si esa cuenta existe.
+        return pk.opciones_entrada(db, tenant_id=tenant_id, usuario=usuario)
+
+
+class FirmaPasskey(BaseModel):
+    tenant: str = Field(..., min_length=1, max_length=120)
+    respuesta: dict[str, Any]
+
+
+@router_auth.post(
+    "/passkeys/entrar/confirmar",
+    response_model=Tokens,
+    summary="Entrar con la firma de la passkey",
+)
+def entrar_con_passkey(datos: FirmaPasskey, request: Request) -> Any:
+    from crmcore.db.session import sesion
+
+    from services.identity import passkeys as pk
+
+    tenant_id = _resolver_tenant(datos.tenant)
+    with sesion(tenant_id) as db:
+        llave = pk.verificar_entrada(
+            db, respuesta=datos.respuesta, ip=request.client.host if request.client else ""
+        )
+        from services.identity.modelos import Usuario
+
+        usuario = db.get(Usuario, llave.usuario_id)
+        if usuario is None or not usuario.activo:
+            from crmcore.errors import NoAutenticado
+
+            raise NoAutenticado("Esa llave no vale aquí", error_code="passkey.usuario_inactivo")
+        # Una passkey con verificación del usuario es más fuerte que una
+        # contraseña: se anota como tal para la reautenticación reforzada, que
+        # pregunta cuándo fue el último factor fuerte.
+        _sesion, acceso, refresco = svc.crear_sesion(
+            db,
+            usuario=usuario,
+            tenant_id=tenant_id,
+            ip=request.client.host if request.client else "",
+            user_agent=request.headers.get("user-agent", ""),
+            factores_superados=("webauthn",),
+        )
+    return Tokens(
+        access_token=acceso,
+        refresh_token=refresco,
+        expires_in=get_settings().access_token_minutos * 60,
+    )
+
+
+class NombrePasskey(BaseModel):
+    nombre: str = Field("", max_length=120)
+
+
+@router_auth.post(
+    "/passkeys",
+    summary="Empezar a registrar una passkey",
+    description=(
+        "Se le pasan al navegador las llaves que ya tiene esta cuenta para que "
+        "**no registre dos veces el mismo dispositivo**: quien pulsa el botón "
+        "dos veces acabaría con dos llaves idénticas y una lista que no dice "
+        "nada."
+    ),
+)
+def empezar_registro_passkey(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.identity import passkeys as pk
+    from services.identity.modelos import Usuario
+
+    usuario = db.get(Usuario, principal.id)
+    if usuario is None:
+        raise NoEncontrado("Ese usuario no existe", error_code="identity.usuario_no_encontrado")
+    return pk.opciones_registro(db, tenant_id=principal.tenant_id, usuario=usuario)
+
+
+class RegistroPasskey(BaseModel):
+    respuesta: dict[str, Any]
+    nombre: str = Field("", max_length=120)
+
+
+@router_auth.post(
+    "/passkeys/confirmar",
+    status_code=status.HTTP_201_CREATED,
+    summary="Guardar la passkey recién creada",
+)
+def confirmar_registro_passkey(
+    datos: RegistroPasskey, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.identity import passkeys as pk
+
+    fila = pk.guardar_registro(
+        uow, usuario_id=principal.id, respuesta=datos.respuesta, nombre=datos.nombre
+    )
+    return {"id": str(fila.id), "nombre": fila.nombre}
+
+
+@router_auth.get(
+    "/passkeys",
+    response_model=list[dict],
+    summary="Mis passkeys",
+    description=(
+        "Con su nombre y cuándo se usó por última vez: sin eso, revocar una de "
+        "tres es elegir a ciegas."
+    ),
+)
+def mis_passkeys(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.identity import passkeys as pk
+
+    return pk.listar(db, principal.id)
+
+
+@router_auth.delete(
+    "/passkeys/{passkey_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Quitar una passkey",
+    description=(
+        "Se borra de verdad, no va a la papelera: una credencial revocada que "
+        "sigue guardada invita a restaurarla, y restaurar una credencial es "
+        "justo lo que no puede pasar."
+    ),
+)
+def quitar_passkey(passkey_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
+    from services.identity import passkeys as pk
+
+    pk.revocar(uow, usuario_id=principal.id, passkey_id=passkey_id)
 
 
 @router_auth.post(

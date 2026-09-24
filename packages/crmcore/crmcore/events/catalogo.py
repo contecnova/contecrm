@@ -224,6 +224,44 @@ USER_ORG_CHANGED = registrar(
         campos=("user_id", "roles", "superior_id", "unidad_id", "activa"),
     )
 )
+USER_PASSWORD_RESET_REQUESTED = registrar(
+    TipoEvento(
+        tipo="user.password.reset_requested",
+        version=1,
+        productor="identity",
+        descripcion=(
+            "Alguien ha pedido restablecer su contraseña. Lo consume quien manda "
+            "el correo: el enlace se emite aquí y se entrega fuera, porque el "
+            "canal de correo lo pone cada instalación"
+        ),
+        campos=("usuario_id", "email"),
+        # Interno: lleva el correo de una persona y el aviso de que su cuenta
+        # está en juego. Eso no sale del sistema por el bus público.
+        publico=False,
+    )
+)
+USER_PASSKEY_REGISTERED = registrar(
+    TipoEvento(
+        tipo="user.passkey.registered",
+        version=1,
+        productor="identity",
+        descripcion=(
+            "Alguien ha registrado una passkey. Interesa a quien vigila la "
+            "seguridad de las cuentas: una llave nueva que no reconoce su dueño "
+            "es una cuenta comprometida"
+        ),
+        campos=("usuario_id", "passkey_id", "nombre"),
+    )
+)
+USER_PASSKEY_REVOKED = registrar(
+    TipoEvento(
+        tipo="user.passkey.revoked",
+        version=1,
+        productor="identity",
+        descripcion="Se ha quitado una passkey de una cuenta",
+        campos=("usuario_id", "passkey_id"),
+    )
+)
 RECORD_DELETED = registrar(
     TipoEvento(
         tipo="record.deleted",

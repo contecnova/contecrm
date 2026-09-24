@@ -10118,7 +10118,7 @@ aprobadores. No es burocracia: sin el factor viejo, lo único que demuestra qui�
 es esa persona es que otras respondan por ella, y una sola firma convierte una
 llamada convincente en un acceso.
 
-### Entrada sin contraseña (`CRM-00.05.01.23`)
+### Entrada sin contraseña, con passkeys (`CRM-00.05.01.23`)
 
 Solo con un factor **resistente a phishing** —una llave FIDO2 o el biométrico del
 dispositivo, atados al dominio—. Con un código por SMS como método único se quita
@@ -10127,6 +10127,57 @@ por teléfono, y ya no hay nada detrás.
 
 Y exige respaldo, porque sin contraseña no hay red debajo: perder la llave deja a
 la persona fuera del todo.
+
+**Cómo funciona una passkey aquí.** El dispositivo guarda una pareja de claves y
+el navegador solo entrega la suya al dominio que la creó: por eso no se puede
+teclear en una página falsa, que es la diferencia de fondo con una contraseña.
+El servidor guarda la **pública** y un contador; con eso comprueba una firma, y
+con eso no puede suplantar a nadie — una base de datos filtrada no da acceso a
+ninguna cuenta.
+
+Tres reglas sostienen eso, y las tres están probadas:
+
+- **El reto lo elige el servidor y vale una sola vez.** Si valiera dos, una
+  firma capturada se podría reproducir, que es justo el ataque del que protege.
+- **El contador solo sube.** Es la única señal que delata un autenticador
+  clonado: dos copias de la misma llave acaban firmando con un contador que
+  retrocede.
+- **El reto de registrar no sirve para entrar**, y al revés.
+
+La llave se registra desde la propia cuenta, con un nombre —«el iPhone», «la del
+cajón»—, porque sin nombre revocar una de tres es elegir a ciegas. Y al revocarla
+se borra: una credencial revocada que sigue guardada invita a restaurarla, y
+restaurar una credencial es lo que no puede pasar.
+
+El dominio y los orígenes válidos **no se escriben en el código**: salen de
+`public_base_url` y de `cors_origins`, que ya dicen dónde vive esto. Solo hay que
+declararlos cuando el front y la API están en dominios distintos.
+
+### Recuperar el acceso (`CRM-00.05.01.26`)
+
+Olvidar la contraseña era un billete de ida: la única salida era que alguien de
+dentro la cambiara a mano, y eso produce contraseñas dictadas por teléfono y
+administradores que acaban poniendo la misma para todos.
+
+Ahora se pide un enlace desde la propia pantalla de entrada. Las reglas:
+
+- **La respuesta es la misma exista o no el correo.** Distinguirlas convertiría
+  esa pantalla en un comprobador de qué correos tienen cuenta aquí, que es
+  exactamente la lista que quiere quien va a intentar entrar.
+- **El token se guarda hasheado**, por la misma razón que no se guarda la
+  contraseña: quien lea la base no puede usar los enlaces pendientes.
+- **Vale una vez y caduca en media hora.** Un enlace de recuperación viaja por
+  correo, y el correo se reenvía, se archiva y se queda en el portátil que
+  alguien vende dos años después.
+- **Al usarlo se cierran todas las sesiones.** Quien pide restablecer no puede
+  entrar, o sospecha: dejar abiertas las que había es dejar dentro justo a quien
+  lo motivó.
+- Y la longitud mínima **se comprueba en el servidor**, no solo en el
+  formulario: una comprobación que solo vive en el navegador no comprueba nada.
+
+El enlace se **emite** aquí y se **entrega** fuera: el correo lo manda cada
+instalación con su propio canal, y por eso el token sale en la respuesta de la
+API para quien la integre, nunca para quien lo pide.
 
 ### Conectores de SSO y de MFA sin un módulo por casa (`CRM-00.05.01.16`, `CRM-00.05.01.22`)
 

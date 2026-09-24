@@ -13,6 +13,7 @@
     "verificar": "tsc --noEmit && eslint src && vitest run && vite build"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/geist": "^5.2.9",
     "@fontsource/roboto-mono": "^5.2.9",
     "@material-symbols/font-400": "^0.44.12",

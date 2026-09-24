@@ -32,6 +32,21 @@ declarar(
 
 declarar(
     Tratamiento(
+        objeto="enlaces_restablecer",
+        # Se guarda desde dónde se pidió y desde dónde se usó el enlace, y no
+        # por curiosidad: una cuenta que alguien intenta recuperar desde otro
+        # país es exactamente lo que hay que poder mirar después. El enlace en
+        # sí no se guarda —solo su hash—, así que lo personal aquí son las dos
+        # direcciones.
+        finalidad="Permitir recuperar el acceso y poder investigar un intento de robo de cuenta",
+        base_legal="interes_legitimo",
+        plazo="90 días desde que se pidió el enlace",
+        responsable=RESPONSABLE,
+    )
+)
+
+declarar(
+    Tratamiento(
         objeto="dispositivos_confianza",
         finalidad="Reconocer un dispositivo ya verificado y no pedir el segundo factor en cada entrada",
         base_legal="interes_legitimo",
