@@ -30,7 +30,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -62,7 +62,7 @@ logger = get_logger(__name__)
 ESTADOS = ("investigando", "conocido", "resuelto", "cerrado", "descartado")
 
 
-class Problema(Base, TimestampMixin):
+class Problema(Base, TimestampMixin, SoftDeleteMixin):
     """Una causa que produce casos (CRM-04.01.01.11)."""
 
     __tablename__ = "problemas"

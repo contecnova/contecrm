@@ -35,7 +35,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -150,7 +150,7 @@ class AlertaUmbral(Base, TimestampMixin):
     )
 
 
-class EnlaceEmbebido(Base, TimestampMixin):
+class EnlaceEmbebido(Base, TimestampMixin, SoftDeleteMixin):
     """Un cuadro embebido fuera del CRM (CRM-05.01.02.06).
 
     Se guarda el **hash** del secreto y no el secreto: quien lea esta tabla —una

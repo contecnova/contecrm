@@ -42,7 +42,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -113,7 +113,7 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class ConsentimientoSuite(Base, TimestampMixin):
+class ConsentimientoSuite(Base, TimestampMixin, SoftDeleteMixin):
     """Lo que una persona ha autorizado, recurso a recurso.
 
     Una fila por persona y recurso a propósito: «conectó su Microsoft 365» no es

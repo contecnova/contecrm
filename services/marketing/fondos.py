@@ -124,7 +124,7 @@ class FondoMdf(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (Index("ix_fondos_mdf", "tenant_id", "partner_id", "desde"),)
 
 
-class SolicitudMdf(Base, TimestampMixin):
+class SolicitudMdf(Base, TimestampMixin, SoftDeleteMixin):
     """Una petición de gasto contra el fondo (CRM-03.04.01.04)."""
 
     __tablename__ = "solicitudes_mdf"

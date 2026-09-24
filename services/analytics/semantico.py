@@ -35,7 +35,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -74,7 +74,7 @@ AGREGACIONES = ("suma", "cuenta", "cuenta_distinta", "media", "minimo", "maximo"
 ESTADOS = ("borrador", "certificada", "obsoleta")
 
 
-class Metrica(Base, TimestampMixin):
+class Metrica(Base, TimestampMixin, SoftDeleteMixin):
     """Una definición de negocio, versionada (CRM-05.01.03.03)."""
 
     __tablename__ = "metricas_semanticas"

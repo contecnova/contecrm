@@ -34,7 +34,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -70,7 +70,7 @@ METRICAS = ("importe", "unidades", "oportunidades", "nuevos_clientes", "margen")
 PERIODOS = ("mensual", "trimestral", "anual")
 
 
-class Territorio(Base, TimestampMixin):
+class Territorio(Base, TimestampMixin, SoftDeleteMixin):
     """Un trozo de mercado con dueño (CRM-03.02.02.01, .02)."""
 
     __tablename__ = "territorios"
@@ -171,7 +171,7 @@ class AsignacionTerritorio(Base):
     )
 
 
-class Cuota(Base, TimestampMixin):
+class Cuota(Base, TimestampMixin, SoftDeleteMixin):
     """Lo que alguien tiene que vender en un periodo (CRM-03.02.02.04)."""
 
     __tablename__ = "cuotas"

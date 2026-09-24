@@ -39,7 +39,7 @@ from typing import Any, Callable
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorDependencia, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -186,7 +186,7 @@ class PlantillaFirma(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_plantilla_firma"),)
 
 
-class Sobre(Base, TimestampMixin):
+class Sobre(Base, TimestampMixin, SoftDeleteMixin):
     """Lo que se manda a firmar (CRM-06.01.02.01)."""
 
     __tablename__ = "sobres_firma"

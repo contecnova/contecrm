@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -66,7 +66,7 @@ COMPORTAMIENTOS = ("abrio", "clico", "visito", "compro", "respondio", "no_respon
 MOTIVOS = ("conversion", "exclusion", "otro_recorrido", "fin", "manual", "suprimido", "caducado")
 
 
-class Recorrido(Base, TimestampMixin):
+class Recorrido(Base, TimestampMixin, SoftDeleteMixin):
     """La definición del recorrido (CRM-02.02.02.01)."""
 
     __tablename__ = "recorridos"

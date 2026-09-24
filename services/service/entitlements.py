@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -50,7 +50,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from services.service.modelos import Caso
 
 
-class Entitlement(Base, TimestampMixin):
+class Entitlement(Base, TimestampMixin, SoftDeleteMixin):
     """A qué tiene derecho un cliente (CRM-04.01.02.01).
 
     Cuelga de un contrato, de un producto, de una cuenta o de un plan, y gana el
@@ -129,7 +129,7 @@ class ConsumoEntitlement(Base):
     )
 
 
-class Encuesta(Base, TimestampMixin):
+class Encuesta(Base, TimestampMixin, SoftDeleteMixin):
     """Encuesta enviada tras cerrar un caso (CRM-04.01.01.12).
 
     Se guarda la **invitación** y no solo la respuesta. Guardar solo las
@@ -161,7 +161,7 @@ class Encuesta(Base, TimestampMixin):
     )
 
 
-class CreditoServicio(Base, TimestampMixin):
+class CreditoServicio(Base, TimestampMixin, SoftDeleteMixin):
     """Penalización calculada por incumplimiento (CRM-04.01.02.08).
 
     Se **calcula y se propone**, no se aplica sola. Descontar dinero de una

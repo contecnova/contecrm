@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, EntidadBase, TimestampMixin
+from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -70,7 +70,7 @@ PRESENCIAS_ASIGNABLES = ("disponible", "ocupado")
 CANALES = ("caso", "chat", "telefono", "correo")
 
 
-class ColaCasos(Base, TimestampMixin):
+class ColaCasos(Base, TimestampMixin, SoftDeleteMixin):
     """Una cola de trabajo (CRM-04.01.01.05).
 
     Existe aunque haya asignación automática, y no es redundante: la cola es
@@ -179,7 +179,7 @@ class ReglaAsignacion(EntidadBase):
     )
 
 
-class ReglaEscalada(Base, TimestampMixin):
+class ReglaEscalada(Base, TimestampMixin, SoftDeleteMixin):
     """Cuándo y a quién se escala un caso (CRM-04.01.01.07)."""
 
     __tablename__ = "reglas_escalada"

@@ -23,7 +23,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.abac import Condicion
-from crmcore.db.base import Base, EntidadBase
+from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin
 from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -54,7 +54,7 @@ ESTRATEGIAS = {
 }
 
 
-class ReglaEnrutamiento(EntidadBase):
+class ReglaEnrutamiento(EntidadBase, SoftDeleteMixin):
     """Una regla de reparto: si se cumplen las condiciones, asigna así.
 
     Se evalúan por `prioridad` ascendente y gana **la primera** que encaja, no

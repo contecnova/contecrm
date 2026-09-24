@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
@@ -249,7 +249,7 @@ class ClaveApi(Base, TimestampMixin):
     creada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
 
-class ProveedorIdentidad(Base, TimestampMixin):
+class ProveedorIdentidad(Base, TimestampMixin, SoftDeleteMixin):
     """Proveedor de identidad externo del tenant (CRM-00.05.01.03).
 
     Varios simultáneos por tenant a propósito: una empresa con dos direcciones

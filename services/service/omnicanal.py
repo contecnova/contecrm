@@ -125,7 +125,7 @@ class CanalServicio(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_canal_servicio"),)
 
 
-class Conversacion(Base, TimestampMixin):
+class Conversacion(Base, TimestampMixin, SoftDeleteMixin):
     """El hilo con un cliente, por encima del canal (CRM-04.02.02.01).
 
     Cuelga del **contacto o de la cuenta**, no del canal. Quien escribe por
@@ -209,7 +209,7 @@ class Mensaje(Base):
     )
 
 
-class Macro(Base, TimestampMixin):
+class Macro(Base, TimestampMixin, SoftDeleteMixin):
     """Respuesta rápida o acción compuesta (CRM-04.02.02.04).
 
     Una macro puede escribir **y hacer**: contestar, cambiar el estado, poner una

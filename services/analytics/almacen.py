@@ -40,7 +40,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -74,7 +74,7 @@ ESTRATEGIAS = ("completa", "incremental")
 ESTADOS_CARGA = ("en_curso", "ok", "fallida", "parcial")
 
 
-class TablaAnalitica(Base, TimestampMixin):
+class TablaAnalitica(Base, TimestampMixin, SoftDeleteMixin):
     """Una tabla del almacén analítico (CRM-05.01.03.01).
 
     Es **una copia declarada y fechada**, no una vista del operacional. Eso es lo
@@ -171,7 +171,7 @@ class CargaAnalitica(Base):
     __table_args__ = (Index("ix_cargas_analiticas", "tenant_id", "tabla_id", "created_at"),)
 
 
-class DestinoExportacion(Base, TimestampMixin):
+class DestinoExportacion(Base, TimestampMixin, SoftDeleteMixin):
     """A dónde se exporta de forma continua (CRM-05.01.03.02).
 
     El tipo es informativo —`snowflake`, `bigquery`, `databricks`, `s3`— y **no
@@ -206,7 +206,7 @@ class DestinoExportacion(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_destino_exportacion"),)
 
 
-class FuenteFederada(Base, TimestampMixin):
+class FuenteFederada(Base, TimestampMixin, SoftDeleteMixin):
     """Un lake del cliente contra el que se pregunta sin copiar
     (CRM-05.01.03.07)."""
 

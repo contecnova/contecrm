@@ -50,7 +50,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from crmcore.db.base import Base
+from crmcore.db.base import Base, SoftDeleteMixin
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -64,7 +64,7 @@ MINIMO_PUNTOS = 12
 MINIMA_DURACION_MS = 300
 
 
-class FirmaPresencial(Base):
+class FirmaPresencial(Base, SoftDeleteMixin):
     """Una firma hecha delante, con su trazo y su testigo."""
 
     __tablename__ = "firmas_presenciales"

@@ -18,7 +18,7 @@ menos se mira.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, get_origin
 
 from fastapi import APIRouter, FastAPI
 
@@ -85,6 +85,28 @@ def _permiso_de(ruta: Any) -> str | None:
             if isinstance(valor, str) and ":" in valor and " " not in valor:
                 return valor
     return None
+
+
+def _devuelve_lista(ruta: Any) -> bool:
+    """¿Esta operación devuelve **muchos** registros o uno solo?
+
+    Lo necesita el front para distinguir una sub-colección de una vista. Sin
+    esto, cualquier `GET /cosa/{id}/loquesea` se pintaba como un panel plegable
+    con su lista dentro, y los que devuelven un objeto —la vista 360 de la
+    cuenta, a quién llamar de un proveedor— salían como un panel que dice
+    «Nada todavía» para siempre. Un panel que nunca puede tener contenido es
+    peor que no tenerlo: parece que falta el dato.
+    """
+    modelo = getattr(ruta, "response_model", None)
+    if modelo is None:
+        return False
+    origen = get_origin(modelo)
+    if origen in (list, tuple, set, frozenset):
+        return True
+    # Una página con cursor también es una colección, y es la otra forma en que
+    # este sistema devuelve muchos.
+    campos = getattr(modelo, "model_fields", None)
+    return bool(campos and "items" in campos)
 
 
 def _es_de_plataforma(ruta: Any) -> bool:
@@ -156,7 +178,7 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
             "ninguna acción que solo se pueda hacer desde la interfaz."
         ),
     )
-    def superficie() -> dict[str, Any]:
+    def superficie() -> dict[str, Any]:  # noqa: C901 — un solo recorrido, sin ramas ocultas
         operaciones: list[dict[str, Any]] = []
         for prefijo, ruta in _rutas_planas(app):
             metodos = getattr(ruta, "methods", None)
@@ -174,6 +196,7 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
                         "permiso": _permiso_de(ruta),
                         "administracion": es_administracion(etiquetas),
                         "solo_plataforma": _es_de_plataforma(ruta),
+                        "devuelve_lista": _devuelve_lista(ruta),
                     }
                 )
         operaciones.sort(key=lambda o: (o["ruta"], o["metodo"]))

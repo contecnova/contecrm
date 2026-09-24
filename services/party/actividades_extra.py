@@ -22,7 +22,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -50,7 +50,7 @@ logger = get_logger(__name__)
 RECURRENCIAS = ("diaria", "semanal", "mensual", "anual", "dias_laborables")
 
 
-class PlantillaActividades(Base, TimestampMixin):
+class PlantillaActividades(Base, TimestampMixin, SoftDeleteMixin):
     """Una secuencia de actividades que se crea de golpe (CRM-01.02.01.07)."""
 
     __tablename__ = "plantillas_actividades"
@@ -74,7 +74,7 @@ class PlantillaActividades(Base, TimestampMixin):
     )
 
 
-class Visita(Base, TimestampMixin):
+class Visita(Base, TimestampMixin, SoftDeleteMixin):
     """Una visita comercial con su check-in (CRM-01.02.01.08)."""
 
     __tablename__ = "visitas"
@@ -105,7 +105,7 @@ class Visita(Base, TimestampMixin):
     __table_args__ = (Index("ix_visitas_usuario", "tenant_id", "usuario_id", "entrada_at"),)
 
 
-class Recurrencia(Base, TimestampMixin):
+class Recurrencia(Base, TimestampMixin, SoftDeleteMixin):
     """Una actividad que vuelve (CRM-01.02.01.09)."""
 
     __tablename__ = "recurrencias_actividad"

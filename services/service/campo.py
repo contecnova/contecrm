@@ -104,7 +104,7 @@ TIPOS_LINEA = ("material", "tiempo", "desplazamiento", "otro")
 TIPOS_MOVIMIENTO = ("carga", "consumo", "devolucion", "ajuste", "merma")
 
 
-class Tecnico(Base, TimestampMixin):
+class Tecnico(Base, TimestampMixin, SoftDeleteMixin):
     """Quién puede ir, con qué sabe hacer y por dónde se mueve
     (CRM-04.04.01.02).
 

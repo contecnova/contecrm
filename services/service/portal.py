@@ -29,7 +29,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -66,7 +66,7 @@ NIVELES = ("propio", "cuenta", "admin")
 ORDEN_NIVEL = {n: i for i, n in enumerate(NIVELES)}
 
 
-class AccesoPortal(Base, TimestampMixin):
+class AccesoPortal(Base, TimestampMixin, SoftDeleteMixin):
     """La identidad de un contacto en el portal (CRM-04.03.02.05,
     CRM-00.05.01.10).
 
@@ -139,7 +139,7 @@ class EnlaceAcceso(Base):
     )
 
 
-class HiloComunidad(Base, TimestampMixin):
+class HiloComunidad(Base, TimestampMixin, SoftDeleteMixin):
     """Pregunta de la comunidad (CRM-04.03.02.04)."""
 
     __tablename__ = "hilos_comunidad"

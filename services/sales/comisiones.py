@@ -37,7 +37,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -91,7 +91,7 @@ MODOS_TRAMO = ("marginal", "retroactivo")
 ESTADOS_LIQUIDACION = ("calculada", "en_revision", "disputada", "aprobada", "pagada", "anulada")
 
 
-class PlanComision(Base, TimestampMixin):
+class PlanComision(Base, TimestampMixin, SoftDeleteMixin):
     """Un plan de retribución variable con vigencia (CRM-03.02.03.01)."""
 
     __tablename__ = "planes_comision"

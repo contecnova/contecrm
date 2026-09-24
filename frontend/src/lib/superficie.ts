@@ -30,6 +30,17 @@ export interface Operacion {
    * único que decía era que no es para él.
    */
   solo_plataforma: boolean;
+  /**
+   * Devuelve muchos registros, no uno.
+   *
+   * Es lo que distingue una **sub-colección** —las direcciones de una cuenta,
+   * que se listan y se dan de alta— de una **vista**, como la 360 de la cuenta
+   * o a quién llamar de un proveedor. Sin distinguirlas, la ficha pintaba las
+   * dos como un panel plegable con una lista dentro, y el de la vista decía
+   * «Nada todavía» para siempre — que se lee como un dato que falta y no como
+   * algo que nunca fue una lista.
+   */
+  devuelve_lista?: boolean;
   servicio: string;
 }
 

@@ -780,6 +780,29 @@ def crear_regla(datos: CrearRegla, uow: UowDep) -> Any:
     return fila
 
 
+@router_enrutamiento.delete(
+    "/reglas/{regla_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Borrar una regla de enrutamiento",
+    description=(
+        "A la papelera, como todo: una regla de reparto quitada sin querer deja "
+        "los leads cayendo en otra parte, y eso se nota tarde.\n\n"
+        "Si hay algo que la use no se borra: responde 409 diciendo qué."
+    ),
+    dependencies=[Depends(exige_permiso("lead:configurar"))],
+)
+def borrar_regla(regla_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
+    from crmcore.datos import integridad, papelera
+
+    fila = uow.db.get(enr.ReglaEnrutamiento, regla_id)
+    if fila is None or fila.deleted_at is not None:
+        raise NoEncontrado("Regla no encontrada", error_code="sales.regla_no_existe")
+    integridad.exigir_sin_dependencias(uow.db, fila, objeto="regla_enrutamiento")
+    papelera.borrar(
+        uow.db, fila, objeto="regla_enrutamiento", etiqueta=fila.nombre, por=principal.id
+    )
+
+
 @router_enrutamiento.patch(
     "/reglas/{regla_id}",
     response_model=ReglaOut,

@@ -40,7 +40,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -97,7 +97,7 @@ ESTADOS_MIGRACION = (
 )
 
 
-class AislamientoTenant(Base, TimestampMixin):
+class AislamientoTenant(Base, TimestampMixin, SoftDeleteMixin):
     """Qué aislamiento tiene un tenant, declarado y comprobado."""
 
     __tablename__ = "aislamiento_tenants"

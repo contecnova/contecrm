@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -60,7 +60,7 @@ logger = get_logger(__name__)
 ORDENES = ("consultar", "registrar_nota", "cambiar_estado", "asignar")
 
 
-class CanalChat(Base, TimestampMixin):
+class CanalChat(Base, TimestampMixin, SoftDeleteMixin):
     """Un espacio de chat conectado, con su firma y sus permisos."""
 
     __tablename__ = "canales_chat"

@@ -364,6 +364,22 @@ La salida es **archivar**: `POST {ficha}/archivar`, que monta `montar_ficha`
 cuando el modelo tiene `activo`, `activa` o `estado`. Deja de ofrecerse de aquí
 en adelante y no toca lo que ya pasó.
 
+**Dónde aparece el borrado.** `montar_ficha` registra el borrado cuando el
+modelo tiene borrado lógico, así que la regla «donde se puede editar se puede
+borrar» se cumple dando papelera al modelo, no escribiendo rutas. Se hizo de
+golpe: 67 modelos que la ficha dejaba editar y no borrar pasaron a tenerla, y
+quedan **ocho** sin borrado, cada uno por un motivo:
+
+| Qué | Por qué no se borra |
+| --- | --- |
+| Tenant | Se suspende. Borrar una empresa entera no es una operación de pantalla |
+| Tarea humana, solicitud de aprobación | Se completan o se rechazan; borrarlas pierde la decisión y por qué se pidió |
+| Conflicto de sincronización | Se resuelve eligiendo un lado |
+| Evento fallido, archivo de eventos | Son el registro de lo que pasó; se reintentan o se descartan |
+| Excepción de calidad | Se cierra diciendo qué se hizo. Borrarla vacía la cola sin arreglar el dato |
+| Bloqueo legal | Se levanta, con quién y cuándo. Un bloqueo que se puede borrar no bloquea |
+| Interacción, predicción, salud de cuenta | Son lo ocurrido o un cálculo derivado, no algo que alguien mantenga |
+
 ### 3.6 La cola de calidad del dato
 
 `stewardship.barrido()` recorre cuentas y contactos y abre una excepción por

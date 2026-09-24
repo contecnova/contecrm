@@ -35,7 +35,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -104,7 +104,7 @@ class ConfirmacionOptin(Base, TimestampMixin):
     )
 
 
-class ConsentimientoCookies(Base, TimestampMixin):
+class ConsentimientoCookies(Base, TimestampMixin, SoftDeleteMixin):
     """Lo que un visitante aceptó, por categoría (CRM-07.03.01.08)."""
 
     __tablename__ = "consentimientos_cookies"
@@ -138,7 +138,7 @@ class ConsentimientoCookies(Base, TimestampMixin):
     __table_args__ = (Index("ix_cookies_visitante", "tenant_id", "visitante", "decidido_at"),)
 
 
-class ReglaContenido(Base, TimestampMixin):
+class ReglaContenido(Base, TimestampMixin, SoftDeleteMixin):
     """Qué se puede mandar por marca, país e idioma (CRM-02.04.01.03)."""
 
     __tablename__ = "reglas_contenido"

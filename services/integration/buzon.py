@@ -44,7 +44,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -82,7 +82,7 @@ CRITERIOS = (
 ESTADOS = ("conectado", "sin_credencial", "error", "pausado")
 
 
-class Buzon(Base, TimestampMixin):
+class Buzon(Base, TimestampMixin, SoftDeleteMixin):
     """El correo o el calendario de una persona, conectado al CRM."""
 
     __tablename__ = "buzones"

@@ -373,14 +373,19 @@ export default {
   retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
 
   chat: {
+    nueva: "Abrir una conversación",
+    conAlguien: "Con alguien",
+    unCanal: "Un canal",
+    buscarPersona: "Buscar a alguien",
+    nadieAsi: "Nadie con ese nombre",
+    comoSeLlama: "Cómo se llama el canal",
     sinLeerAviso_one: "Chat: {{count}} mensaje sin leer",
     sinLeerAviso_other: "Chat: {{count}} mensajes sin leer",
     titulo: "Chat interno",
     intro:
       "Lo que se habla del trabajo, dentro del CRM. Una conversación puede colgar de un registro: la de esta oportunidad se abre desde su ficha, con el importe al lado.",
     conversaciones: "Conversaciones",
-    nuevoCanal: "Crear un canal",
-    claveDelCanal: "Nombre del canal, sin almohadilla (por ejemplo: ventas)",
+    crearCanal: "Crear el canal",
     sinConversaciones: "Todavía no estás en ninguna conversación.",
     eligeUna: "Elige una conversación",
     eligeUnaDetalle: "O crea un canal para lo que aún no tiene sitio.",

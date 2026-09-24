@@ -142,6 +142,11 @@ export function subColeccionesDe(
     const metodo = operacion.metodo.toUpperCase();
     if (metodo === "GET") {
       if (!puede(operacion.permiso)) continue;
+      // Solo lo que devuelve MUCHOS es una sub-colección. Lo que devuelve un
+      // objeto —la vista 360 de la cuenta, a quién llamar de un proveedor— es
+      // una vista, y pintada como panel salía siempre con «Nada todavía»:
+      // un panel que nunca puede tener contenido parece un dato que falta.
+      if (operacion.devuelve_lista === false) continue;
       porClave.set(clave, {
         clave,
         ruta: operacion.ruta.replace(PARAMETRO, id),

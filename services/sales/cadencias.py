@@ -40,7 +40,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -83,7 +83,7 @@ MOTIVOS_SALIDA = (
 METODOLOGIAS = ("meddic", "bant", "spin", "challenger", "custom")
 
 
-class Cadencia(Base, TimestampMixin):
+class Cadencia(Base, TimestampMixin, SoftDeleteMixin):
     """Una secuencia de toques (CRM-03.03.01.01)."""
 
     __tablename__ = "cadencias"
@@ -176,7 +176,7 @@ class ToqueCadencia(Base):
     __table_args__ = (Index("ix_toques_inscripcion", "tenant_id", "inscripcion_id", "paso"),)
 
 
-class PlantillaCorreo(Base, TimestampMixin):
+class PlantillaCorreo(Base, TimestampMixin, SoftDeleteMixin):
     """Una plantilla con su rendimiento (CRM-03.03.01.03, CRM-03.03.01.06)."""
 
     __tablename__ = "plantillas_correo"
@@ -229,7 +229,7 @@ class DisponibilidadAgenda(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "usuario_id", name="uq_disponibilidad"),)
 
 
-class Metodologia(Base, TimestampMixin):
+class Metodologia(Base, TimestampMixin, SoftDeleteMixin):
     """Qué hay que saber para poder cerrar (CRM-03.01.02.01)."""
 
     __tablename__ = "metodologias"

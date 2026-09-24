@@ -125,7 +125,7 @@ class Lead(EntidadBase, SoftDeleteMixin, MetadatosMixin):
     )
 
 
-class Pipeline(Base, TimestampMixin):
+class Pipeline(Base, TimestampMixin, SoftDeleteMixin):
     """Un embudo de ventas (CRM-03.01.01.02).
 
     Varios por tenant: la venta de proyecto no tiene las mismas etapas que la de
@@ -430,7 +430,7 @@ class CategoriaForecast(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_categoria_forecast"),)
 
 
-class PeriodoForecast(Base, TimestampMixin):
+class PeriodoForecast(Base, TimestampMixin, SoftDeleteMixin):
     """Un periodo de previsión y su estado de cierre (CRM-03.02.01.09).
 
     Cerrar el periodo es lo que hace que un número signifique algo: mientras

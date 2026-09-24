@@ -43,7 +43,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from crmcore.db.base import Base
+from crmcore.db.base import Base, SoftDeleteMixin
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 
@@ -65,7 +65,7 @@ MOTIVOS = {
 }
 
 
-class Seguimiento(Base):
+class Seguimiento(Base, SoftDeleteMixin):
     """Una persona sigue un registro."""
 
     __tablename__ = "seguimientos"

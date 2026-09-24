@@ -267,7 +267,7 @@ class EnlaceAccesoPartner(Base):
     __table_args__ = (Index("ix_enlaces_partner_token", "tenant_id", "hash_token"),)
 
 
-class RegistroOportunidad(Base, TimestampMixin):
+class RegistroOportunidad(Base, TimestampMixin, SoftDeleteMixin):
     """Un partner declara que está trabajando un cliente (CRM-03.04.01.02).
 
     El cliente final se identifica por **nif, dominio o cuenta**, y no por el

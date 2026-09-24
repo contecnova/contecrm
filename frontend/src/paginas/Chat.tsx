@@ -82,6 +82,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [hilo, setHilo] = useState<string | null>(null);
+  const [abriendo, setAbriendo] = useState(false);
   const abajo = useRef<HTMLDivElement | null>(null);
 
   const activa = parametros.get("c") ?? "";
@@ -209,14 +210,26 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     }
   }
 
-  async function nuevoCanal() {
-    const clave = window.prompt(t("chat.claveDelCanal"));
-    if (!clave) return;
+  /**
+   * Abre una conversación nueva: un canal o un directo con alguien.
+   *
+   * Antes esto era un `window.prompt` pidiendo una clave, y solo sabía hacer
+   * canales. Así que **no había forma de escribirle a una persona**, que es
+   * para lo que se abre un chat la mayoría de las veces, y el diálogo del
+   * navegador no decía ni qué era una clave ni que hubiera otra opción.
+   *
+   * Un directo con alguien con quien ya se habló devuelve el que hay: el
+   * servidor lo resuelve, porque abrir uno nuevo al lado del que tiene el
+   * histórico es como se acaban teniendo tres conversaciones con la misma
+   * persona.
+   */
+  async function abrirConversacion(cuerpo: Record<string, unknown>) {
     try {
       const r = await llamar<Conversacion>("/api/v1/chat/conversaciones", {
         metodo: "POST",
-        cuerpo: { tipo: "canal", clave, nombre: clave },
+        cuerpo,
       });
+      setAbriendo(false);
       await cargarConversaciones();
       setParametros({ c: r.datos.id });
     } catch (error) {
@@ -314,13 +327,21 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
             </h2>
             <button
               type="button"
-              onClick={() => void nuevoCanal()}
-              title={t("chat.nuevoCanal")}
+              onClick={() => setAbriendo((v) => !v)}
+              aria-expanded={abriendo}
+              title={t("chat.nueva")}
               className="rounded-lg px-1.5 py-0.5 text-ink-muted hover:bg-paper-sunk hover:text-ink"
             >
-              <Icono nombre="add" />
+              <Icono nombre={abriendo ? "close" : "add"} />
             </button>
           </div>
+          {abriendo ? (
+            <NuevaConversacion
+              usuarios={usuarios}
+              yo={sesion?.usuario_id ?? ""}
+              alAbrir={abrirConversacion}
+            />
+          ) : null}
           {conversaciones === null ? (
             <Cargando />
           ) : conversaciones.length === 0 ? (
@@ -437,5 +458,109 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
         </section>
       </div>
     </>
+  );
+}
+
+/**
+ * Abrir una conversación: un canal, o un directo con alguien.
+ *
+ * Las dos cosas en el mismo sitio y con las personas a la vista, porque
+ * escribirle a alguien es lo que más se hace y era justo lo que no se podía:
+ * el botón solo sabía crear canales, y pedía «la clave» en un diálogo del
+ * navegador sin decir qué era eso.
+ */
+function NuevaConversacion({
+  usuarios,
+  yo,
+  alAbrir,
+}: {
+  usuarios: Record<string, Usuario>;
+  yo: string;
+  alAbrir: (cuerpo: Record<string, unknown>) => void | Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [modo, setModo] = useState<"directo" | "canal">("directo");
+  const [nombre, setNombre] = useState("");
+  const [busca, setBusca] = useState("");
+
+  // Uno mismo fuera: un directo con uno mismo no es una conversación, y
+  // ofrecerlo es ofrecer algo que al pulsarlo no hace nada útil.
+  const gente = Object.values(usuarios)
+    .filter((u) => u.id !== yo)
+    .filter((u) => {
+      const q = busca.trim().toLowerCase();
+      return !q || `${u.nombre} ${u.email}`.toLowerCase().includes(q);
+    })
+    .slice(0, 12);
+
+  return (
+    <div className="mb-2 rounded-lg border border-line bg-paper-sunk p-2">
+      <div className="mb-2 flex gap-1" role="tablist">
+        {(["directo", "canal"] as const).map((x) => (
+          <button
+            key={x}
+            type="button"
+            role="tab"
+            aria-selected={modo === x}
+            onClick={() => setModo(x)}
+            className={cn(
+              "rounded-lg px-2 py-1 text-3xs",
+              modo === x ? "bg-accent/15 text-accent" : "text-ink-muted hover:bg-paper",
+            )}
+          >
+            {t(x === "directo" ? "chat.conAlguien" : "chat.unCanal")}
+          </button>
+        ))}
+      </div>
+
+      {modo === "directo" ? (
+        <>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={t("chat.buscarPersona")}
+            aria-label={t("chat.buscarPersona")}
+            className="input-base mb-1"
+          />
+          {gente.length === 0 ? (
+            <p className="px-1 py-2 text-3xs text-ink-faint">{t("chat.nadieAsi")}</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {gente.map((u) => (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    onClick={() => void alAbrir({ tipo: "directo", miembros: [u.id] })}
+                    className="w-full truncate rounded-lg px-2 py-1 text-left text-2xs text-ink hover:bg-paper"
+                  >
+                    {u.nombre || u.email}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const clave = nombre.trim();
+            if (!clave) return;
+            void alAbrir({ tipo: "canal", clave, nombre: clave });
+          }}
+        >
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder={t("chat.comoSeLlama")}
+            aria-label={t("chat.comoSeLlama")}
+            className="input-base mb-1"
+          />
+          <button type="submit" disabled={!nombre.trim()} className="btn-primary w-full">
+            {t("chat.crearCanal")}
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

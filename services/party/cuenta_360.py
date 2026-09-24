@@ -36,7 +36,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -80,7 +80,7 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class PlanCuenta(Base, TimestampMixin):
+class PlanCuenta(Base, TimestampMixin, SoftDeleteMixin):
     """El plan de una cuenta: a dónde se quiere llegar y qué falta."""
 
     __tablename__ = "planes_cuenta"
@@ -142,7 +142,7 @@ class EstadoFinanciero(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "cuenta_id", name="uq_financiero_cuenta"),)
 
 
-class RelacionPersona(Base, TimestampMixin):
+class RelacionPersona(Base, TimestampMixin, SoftDeleteMixin):
     """Quién es quién dentro de una cuenta: jerarquía, aliados y detractores."""
 
     __tablename__ = "relaciones_persona"

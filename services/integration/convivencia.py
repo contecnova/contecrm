@@ -35,7 +35,7 @@ from uuid import UUID
 
 from crmcore.audit import registrar
 from crmcore.authz.abac import Condicion
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
@@ -65,7 +65,7 @@ logger = get_logger(__name__)
 DUENOS = ("heredado", "nuevo", "ambos")
 
 
-class ReglaConvivencia(Base, TimestampMixin):
+class ReglaConvivencia(Base, TimestampMixin, SoftDeleteMixin):
     """Quién manda sobre qué objeto, y con qué condición (CRM-00.03.01.07)."""
 
     __tablename__ = "reglas_convivencia"

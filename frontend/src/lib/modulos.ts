@@ -222,36 +222,6 @@ export const MODULOS: Modulo[] = [
   },
 
   // ── Módulo 1 · Customer 360 ─────────────────────────────────────────────
-  // ── Proveedores ─────────────────────────────────────────────────────────
-  //
-  // Un módulo y no una pantalla escrita a mano. Lo era, y por eso no se podía
-  // hacer nada: enseñaba la lista, y dar de alta, abrir uno o cambiarle algo
-  // exigía saber que **un proveedor es una cuenta con rol** —irse a cuentas,
-  // crearla allí y volver—. Como módulo hereda lo mismo que clientes: alta,
-  // ficha, edición, borrado, adjuntos, comentarios, documentos y actividad.
-  {
-    ruta: "proveedores",
-    titulo: "Proveedores",
-    seccion: "9.1",
-    capacidad: "CRM-07.04.03.31",
-    grupo: "Clientes",
-    recursos: [
-      {
-        nombre: "Proveedores",
-        objeto: "proveedor",
-        listar: "/api/v1/proveedores",
-        servicio: "party",
-        columnas: ["nombre", "estado", "sector_codigo", "telefono", "email", "owner_id"],
-        permiso: "party:read",
-      },
-      {
-        nombre: "Documentos que vencen",
-        listar: "/api/v1/proveedores/documentos/vencen",
-        servicio: "party",
-        permiso: "party:read",
-      },
-    ],
-  },
   {
     ruta: "cuentas",
     titulo: "Cuentas y contactos",
@@ -329,6 +299,36 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/party/papelera",
         servicio: "party",
         columnas: ["etiqueta", "objeto", "borrado_at", "dias_para_purga", "en_cascada"],
+      },
+    ],
+  },
+  // ── Proveedores ─────────────────────────────────────────────────────────
+  //
+  // Un módulo y no una pantalla escrita a mano. Lo era, y por eso no se podía
+  // hacer nada: enseñaba la lista, y dar de alta, abrir uno o cambiarle algo
+  // exigía saber que **un proveedor es una cuenta con rol** —irse a cuentas,
+  // crearla allí y volver—. Como módulo hereda lo mismo que clientes: alta,
+  // ficha, edición, borrado, adjuntos, comentarios, documentos y actividad.
+  {
+    ruta: "proveedores",
+    titulo: "Proveedores",
+    seccion: "9.1",
+    capacidad: "CRM-07.04.03.31",
+    grupo: "Clientes",
+    recursos: [
+      {
+        nombre: "Proveedores",
+        objeto: "proveedor",
+        listar: "/api/v1/proveedores",
+        servicio: "party",
+        columnas: ["nombre", "estado", "sector_codigo", "telefono", "email", "owner_id"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Documentos que vencen",
+        listar: "/api/v1/proveedores/documentos/vencen",
+        servicio: "party",
+        permiso: "party:read",
       },
     ],
   },

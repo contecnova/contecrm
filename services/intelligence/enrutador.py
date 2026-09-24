@@ -38,7 +38,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -83,7 +83,7 @@ USOS = (
 REGIONES = ("ue", "ee_uu", "reino_unido", "suiza", "local", "otra")
 
 
-class ProveedorIA(Base, TimestampMixin):
+class ProveedorIA(Base, TimestampMixin, SoftDeleteMixin):
     """Un sitio al que se le pueden mandar peticiones de IA (CRM-05.02.02.10).
 
     **Cada tenant declara los suyos**, y `tenant_id` no admite nulos: un catálogo

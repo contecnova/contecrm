@@ -43,7 +43,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -70,7 +70,7 @@ CAMPOS_DESTINO = (
 )
 
 
-class CanalCaptura(Base, TimestampMixin):
+class CanalCaptura(Base, TimestampMixin, SoftDeleteMixin):
     """Una entrada declarada: de dónde llega y cómo se traduce."""
 
     __tablename__ = "canales_captura"

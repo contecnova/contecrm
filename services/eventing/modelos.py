@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.ids import nuevo_id
 from sqlalchemy import (
     Boolean,
@@ -24,7 +24,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Suscripcion(Base, TimestampMixin):
+class Suscripcion(Base, TimestampMixin, SoftDeleteMixin):
     """Un endpoint del tenant suscrito a ciertos eventos."""
 
     __tablename__ = "suscripciones_webhook"

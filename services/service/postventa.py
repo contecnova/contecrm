@@ -225,7 +225,7 @@ class Resolucion(Base, TimestampMixin):
     __table_args__ = (Index("ix_resoluciones_postventa", "tenant_id", "devolucion_id"),)
 
 
-class Expediente(Base, TimestampMixin):
+class Expediente(Base, TimestampMixin, SoftDeleteMixin):
     """Reclamación formal con plazo de ley (CRM-04.05.01.03).
 
     El plazo se guarda **calculado**, no derivado de una política que puede

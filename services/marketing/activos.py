@@ -34,7 +34,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -75,7 +75,7 @@ def _hoy() -> date:
     return datetime.now(timezone.utc).date()
 
 
-class Activo(Base, TimestampMixin):
+class Activo(Base, TimestampMixin, SoftDeleteMixin):
     """Una pieza de contenido con sus derechos, su vigencia y su versión."""
 
     __tablename__ = "activos_marketing"

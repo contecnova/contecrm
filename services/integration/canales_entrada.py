@@ -36,7 +36,7 @@ from uuid import UUID
 
 from crmcore.bus.comandos import Comando
 from crmcore.bus.comandos import emitir as emitir_comando
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -78,7 +78,7 @@ IDENTIFICADOR = {
 }
 
 
-class CanalEntrada(Base, TimestampMixin):
+class CanalEntrada(Base, TimestampMixin, SoftDeleteMixin):
     """Una vía por la que entra actividad sin interfaz (CRM-00.02.03.09)."""
 
     __tablename__ = "canales_entrada"

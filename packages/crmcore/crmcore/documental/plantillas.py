@@ -46,7 +46,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -61,7 +61,7 @@ RE_MARCADOR = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
 TIPOS = ("propuesta", "contrato", "acta", "carta", "informe")
 
 
-class PlantillaDocumento(Base, TimestampMixin):
+class PlantillaDocumento(Base, TimestampMixin, SoftDeleteMixin):
     """Una plantilla con sus marcadores y sus cláusulas bloqueadas."""
 
     __tablename__ = "plantillas_documento"

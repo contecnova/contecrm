@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base
+from crmcore.db.base import Base, SoftDeleteMixin
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -61,7 +61,7 @@ CAMPOS_UTM = {
 }
 
 
-class Toque(Base):
+class Toque(Base, SoftDeleteMixin):
     """Una interacción atribuible: una visita, un clic, una apertura, una feria.
 
     Append-only. Un toque es un hecho que ocurrió en un instante; editarlo sería

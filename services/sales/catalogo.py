@@ -38,7 +38,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, EntidadBase, TimestampMixin
+from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -136,7 +136,7 @@ class RelacionProducto(Base, TimestampMixin):
     )
 
 
-class ListaPrecio(Base, TimestampMixin):
+class ListaPrecio(Base, TimestampMixin, SoftDeleteMixin):
     """Un acuerdo de precios con vigencia (CRM-03.03.02.03)."""
 
     __tablename__ = "listas_precio"

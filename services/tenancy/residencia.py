@@ -37,7 +37,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -86,7 +86,7 @@ GARANTIAS = (
 )
 
 
-class ResidenciaDato(Base, TimestampMixin):
+class ResidenciaDato(Base, TimestampMixin, SoftDeleteMixin):
     """Dónde vive cada tipo de dato de un tenant."""
 
     __tablename__ = "residencia_datos"
@@ -106,7 +106,7 @@ class ResidenciaDato(Base, TimestampMixin):
     )
 
 
-class Subprocesador(Base, TimestampMixin):
+class Subprocesador(Base, TimestampMixin, SoftDeleteMixin):
     """Un tercero que trata datos del tenant (CRM-00.01.05.03)."""
 
     __tablename__ = "subprocesadores"
@@ -136,7 +136,7 @@ class Subprocesador(Base, TimestampMixin):
     )
 
 
-class TransferenciaInternacional(Base):
+class TransferenciaInternacional(Base, SoftDeleteMixin):
     """Una salida de datos fuera de la región del tenant, anotada."""
 
     __tablename__ = "transferencias_internacionales"

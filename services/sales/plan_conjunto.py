@@ -29,7 +29,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
@@ -67,7 +67,7 @@ def _hoy() -> date:
     return datetime.now(timezone.utc).date()
 
 
-class PlanConjuntoCliente(Base, TimestampMixin):
+class PlanConjuntoCliente(Base, TimestampMixin, SoftDeleteMixin):
     """El plan acordado con el cliente para llegar a la firma.
 
     Se llama `...Cliente` porque ya existe un `PlanConjuntoCliente` con un partner

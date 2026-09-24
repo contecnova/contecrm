@@ -32,7 +32,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore.db.base import Base, TimestampMixin
+from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -61,7 +61,7 @@ logger = get_logger(__name__)
 TIPOS = ("lectura", "escritura")
 
 
-class Exposicion(Base, TimestampMixin):
+class Exposicion(Base, TimestampMixin, SoftDeleteMixin):
     """Un conjunto de herramientas publicado a agentes (CRM-00.03.04.11)."""
 
     __tablename__ = "exposiciones_mcp"

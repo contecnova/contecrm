@@ -476,4 +476,23 @@ def actualizar_proveedor(cuenta_id: UUID, datos: ActualizarCuenta, uow: UowDep) 
     )
 
 
+@router_proveedores.delete(
+    "/{cuenta_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Enviar un proveedor a la papelera",
+    description=(
+        "Es la cuenta, así que es el mismo borrado lógico y la misma papelera. "
+        "Está aquí porque donde se abre una ficha tiene que poder borrarse: si "
+        "no, hay que saber que un proveedor es una cuenta e irse a cuentas."
+    ),
+)
+def borrar_proveedor(cuenta_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
+    from crmcore.datos import integridad, papelera
+
+    cuenta = _proveedor(uow.db, cuenta_id, accion="escribir")
+    integridad.exigir_sin_dependencias(uow.db, cuenta, objeto="cuenta")
+    papelera.borrar(uow.db, cuenta, objeto="cuenta", etiqueta=cuenta.nombre, por=principal.id)
+
+
 ROUTERS_PROVEEDORES = [router_proveedores]

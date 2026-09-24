@@ -231,7 +231,7 @@ class ContactoEnviado(Base):
     )
 
 
-class ReglaFatiga(Base, TimestampMixin):
+class ReglaFatiga(Base, TimestampMixin, SoftDeleteMixin):
     """Cuánto es demasiado (CRM-02.02.02.06)."""
 
     __tablename__ = "reglas_fatiga"
@@ -250,7 +250,7 @@ class ReglaFatiga(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "canal", name="uq_regla_fatiga"),)
 
 
-class Rebote(Base):
+class Rebote(Base, SoftDeleteMixin):
     """Un rebote o una queja del proveedor de correo (CRM-02.03.01.04).
 
     Se guardan **los blandos también**. Un blando aislado es normal —el buzón

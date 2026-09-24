@@ -30,7 +30,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
-from crmcore.db.base import Base, EntidadBase, TimestampMixin
+from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
@@ -74,7 +74,7 @@ ESTADOS_CONTRATO = ("borrador", "vigente", "suspendido", "terminado", "renovado"
 ESTADOS_PEDIDO = ("pendiente", "enviado_erp", "confirmado", "rechazado_erp", "conciliado")
 
 
-class Presupuesto(EntidadBase):
+class Presupuesto(EntidadBase, SoftDeleteMixin):
     """Una oferta con fecha, versión y estado (CRM-03.03.02.01)."""
 
     __tablename__ = "presupuestos"
@@ -169,7 +169,7 @@ class LineaPresupuesto(Base, TimestampMixin):
     __table_args__ = (Index("ix_lineas_presupuesto", "tenant_id", "presupuesto_id", "orden"),)
 
 
-class Contrato(EntidadBase):
+class Contrato(EntidadBase, SoftDeleteMixin):
     """Lo que se firma y obliga (CRM-03.03.02.08)."""
 
     __tablename__ = "contratos"
@@ -204,7 +204,7 @@ class Contrato(EntidadBase):
     )
 
 
-class SuscripcionCliente(EntidadBase):
+class SuscripcionCliente(EntidadBase, SoftDeleteMixin):
     """Ingreso recurrente con su ciclo (CRM-03.03.02.09).
 
     Se llama `SuscripcionCliente` y no `Suscripcion` porque `eventing` ya tiene
@@ -263,7 +263,7 @@ class CambioSuscripcion(Base):
     )
 
 
-class Pedido(EntidadBase):
+class Pedido(EntidadBase, SoftDeleteMixin):
     """Lo aceptado, camino del ERP (CRM-03.03.02.11)."""
 
     __tablename__ = "pedidos"
