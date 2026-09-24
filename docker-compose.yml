@@ -432,7 +432,9 @@ services:
   # La consola de referencia (CRM-07.04.*). contecrm es y sigue siendo
   # frontless: quien quiera se hace la suya y no pierde nada, porque toda
   # capacidad existe primero como servicio con contrato. Esta es la que da la
-  # solución estándar, con el sistema de diseño de contecmind.
+  # solución estándar, con el sistema de diseño de la casa: contecflow en oscuro
+  # —paleta, DM Sans, radios y sombras— y contecmind en claro, que es el único
+  # que lo tiene.
   #
   # Va en su propio perfil porque una instalación que solo consuma la API no la
   # necesita, y levantarla sería un contenedor más que mantener para nada.
