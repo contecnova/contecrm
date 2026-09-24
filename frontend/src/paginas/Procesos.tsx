@@ -315,7 +315,7 @@ function Campo({
         id={id}
         value={valor}
         onChange={(e) => alCambiar(e.target.value)}
-        className="ml-2 rounded-lg border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+        className="input-sm ml-2 inline-block w-auto"
       />
     </label>
   );

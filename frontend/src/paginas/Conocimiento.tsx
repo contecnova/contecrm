@@ -61,14 +61,19 @@ export function Conocimiento() {
         icono="menu_book"
       />
 
-      <input
-        type="search"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder={t("conocimiento.buscar")}
-        aria-label={t("conocimiento.buscar")}
-        className="rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 text-sm text-ink"
-      />
+      {/* `input-base` y no un estilo propio: este buscador tenía otro borde,
+          otro espaciado y **ningún foco**, así que quien navega con el teclado
+          no veía dónde estaba. */}
+      <div className="max-w-md">
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder={t("conocimiento.buscar")}
+          aria-label={t("conocimiento.buscar")}
+          className="input-base"
+        />
+      </div>
 
       {filtrados.length === 0 ? (
         <Vacio titulo={t("conocimiento.sinResultados")} detalle="" />

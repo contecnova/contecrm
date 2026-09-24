@@ -183,7 +183,15 @@ function RecursoVista({
    * ruta distinta de la que lista—, y lo que no se declara se descubre.
    */
   const [rutaDeAlta, setRutaDeAlta] = useState<string | null>(recurso.crear ?? null);
-  const [hayFicha, setHayFicha] = useState(Boolean(recurso.objeto));
+  /**
+   * Con qué campo se abre un registro.
+   *
+   * Vacío cuando no hay ficha. `id` en el caso normal, pero no siempre: hay
+   * recursos que se abren por su **clave** —`/forecast/periodos/{clave}`— y
+   * mandarles el identificador daba un 404 al pulsar la fila. Lo dice el
+   * contrato en el nombre de su parámetro, así que no hay que declararlo.
+   */
+  const [campoFicha, setCampoFicha] = useState(recurso.objeto ? "id" : "");
   const recuerdaComo = `${ruta}.${recurso.nombre}`;
   const [vista, setVista] = useState<Vista>(() => leerVista(recuerdaComo));
   // Por qué campo agrupar sale de los datos que hay: con un solo valor no hay
@@ -224,9 +232,13 @@ function RecursoVista({
           ? `/m/${aOtroModulo.modulo}/${aOtroModulo.objeto}/${destino}`
           : null;
       }
-    : hayFicha
-      ? (fila: Record<string, unknown>) =>
-          typeof fila.id === "string" ? `/m/${ruta}/${objetoDe(recurso)}/${fila.id}` : null
+    : campoFicha
+      ? (fila: Record<string, unknown>) => {
+          const clave = fila[campoFicha] ?? fila.id;
+          return typeof clave === "string"
+            ? `/m/${ruta}/${objetoDe(recurso)}/${encodeURIComponent(clave)}`
+            : null;
+        }
       : undefined;
 
   const busqueda = recurso.busqueda;
@@ -291,7 +303,12 @@ function RecursoVista({
       // Se enlaza aunque solo se pueda leer, porque casi todo lo que se hace
       // con un registro —acciones, líneas, adjuntos, la conversación— cuelga de
       // la ficha y sin abrirla no se alcanza nada de eso.
-      setHayFicha(Boolean(recurso.objeto) || fichaDe(documento, recurso.listar) !== null);
+      const plantillaFicha = fichaDe(documento, recurso.listar);
+      const parametro = plantillaFicha?.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
+      // `{cuenta_id}` es el identificador de siempre; `{clave}` es otro campo
+      // de la fila, y hay que mandar ese.
+      const campo = !parametro ? "" : /(^|_)id$/.test(parametro) ? "id" : parametro;
+      setCampoFicha(campo || (recurso.objeto ? "id" : ""));
     });
     return () => {
       vivo = false;

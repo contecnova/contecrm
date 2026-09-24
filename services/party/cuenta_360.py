@@ -155,7 +155,11 @@ class RelacionPersona(Base, TimestampMixin, SoftDeleteMixin):
     # Una valoración sobre una persona sin el porqué es un rumor guardado en una
     # base de datos. Con el porqué, es información que otro puede contrastar.
     motivo: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    anotada_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # Con `_id` al final, como todos: es la convención por la que la tabla del
+    # front esconde los identificadores. Sin el sufijo, esta columna se colaba
+    # en la pantalla como un UUID suelto, que no dice quién lo anotó ni sirve
+    # para averiguarlo.
+    anotada_por_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint(
@@ -545,7 +549,7 @@ def anotar_relacion(
         )
         uow.db.add(fila)
     fila.motivo = motivo.strip()
-    fila.anotada_por = por
+    fila.anotada_por_id = por
     uow.db.flush()
     return fila
 

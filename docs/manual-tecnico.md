@@ -96,6 +96,20 @@ medias no viaja.
 - **Auditoría encadenada**: cada entrada lleva el hash de la anterior, así que
   alterar el registro se nota.
 
+#### El armazón de las tablas
+
+`componentes/Rejilla.tsx`. El recuadro, la cabecera y el cuerpo de una tabla,
+en un sitio. Estaba copiado **cinco veces** —la tabla genérica y cuatro
+pantallas con tabla propia— y ya había empezado a separarse: dos usaban
+`text-2xs` y dos `text-xs`, y las celdas tenían tonos distintos sin que nadie lo
+hubiera decidido.
+
+No sustituye a `Tabla`: `Tabla` sirve para lo que llega de la API sin estructura
+conocida —elige columnas, las esconde, las recuerda— y `Rejilla` es para las
+tablas de forma fija, donde eso no aporta nada y lo único que hay que compartir
+es el aspecto. `Tabla` se apoya en `Rejilla`, así que una mejora del aspecto
+llega a las cinco a la vez.
+
 #### Qué objetos admiten adjuntos, comentarios y documentos
 
 Lo declara cada servicio al montar su router (`crear_router_adjuntos({...})`) y

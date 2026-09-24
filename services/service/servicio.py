@@ -87,10 +87,15 @@ def arbol_de_categorias(db: Session, tenant_id: UUID, linea: str = "") -> list[d
     if linea:
         consulta = consulta.where(CategoriaCaso.linea == linea)
     filas = db.execute(consulta.order_by(CategoriaCaso.orden, CategoriaCaso.nombre)).scalars().all()
+    # El nombre de la categoría padre, no solo su identificador: en la pantalla,
+    # «padre: 01a0cfbd-…» no dice de qué cuelga esta categoría, y saberlo es lo
+    # único para lo que sirve la columna.
+    nombres = {f.id: f.nombre for f in filas}
     return [
         {
             "id": str(f.id),
-            "padre": str(f.padre_id) if f.padre_id else None,
+            "padre_id": str(f.padre_id) if f.padre_id else None,
+            "padre": nombres.get(f.padre_id, "") if f.padre_id else "",
             "linea": f.linea,
             "clave": f.clave,
             "nombre": f.nombre,

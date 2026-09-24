@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 interface Diferencia {
   tipo: string;
@@ -64,7 +65,10 @@ export function Alm() {
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <div>
-          <label className="block text-2xs text-ink-muted" htmlFor="alm-entorno">
+          <label
+            className="block text-2xs text-ink-muted"
+            htmlFor="alm-entorno"
+          >
             {t("alm.entorno")}
           </label>
           <select
@@ -103,37 +107,24 @@ export function Alm() {
             {datos.que_significa}
           </p>
           {datos.diferencias.length > 0 ? (
-            <div className="mt-3 overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
-              <table className="w-full text-left text-2xs">
-                <thead className="border-b border-ink-dim/30 bg-paper-light">
-                  <tr>
-                    <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                      {t("alm.tipo")}
-                    </th>
-                    <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                      {t("alm.clave")}
-                    </th>
-                    <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                      {t("alm.quePaso")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datos.diferencias.map((d) => (
-                    <tr
-                      key={`${d.tipo}:${d.clave}`}
-                      className="border-b border-ink-dim/30 last:border-0"
-                    >
-                      <td className="px-3 py-2 text-ink-muted">{d.tipo}</td>
-                      <td className="px-3 py-2 text-ink">{d.clave}</td>
-                      {/* Lo que desapareció se pinta igual que lo que se añadió:
+            <Rejilla
+              compacta
+              className="mt-3"
+              cabeceras={[t("alm.tipo"), t("alm.clave"), t("alm.quePaso")]}
+            >
+              {datos.diferencias.map((d) => (
+                <tr
+                  key={`${d.tipo}:${d.clave}`}
+                  className="border-b border-ink-dim/30 last:border-0"
+                >
+                  <Casilla className="text-ink-muted">{d.tipo}</Casilla>
+                  <Casilla className="text-ink">{d.clave}</Casilla>
+                  {/* Lo que desapareció se pinta igual que lo que se añadió:
                           es el caso que más se esconde. */}
-                      <td className="px-3 py-2 text-ink-muted">{d.que_paso}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  <Casilla className="text-ink-muted">{d.que_paso}</Casilla>
+                </tr>
+              ))}
+            </Rejilla>
           ) : null}
         </>
       ) : null}

@@ -3244,6 +3244,111 @@ def sembrar_duenos(api: Api) -> None:
                 break
 
 
+def sembrar_pantallas_vacias(api: Api) -> None:
+    """Las cuatro que quedaban sin una sola fila.
+
+    Una pantalla vacía no se lee como «aún no hay nada»: se lee como que la
+    función no está hecha. Estas cuatro son catálogos que se dan de alta —no
+    vistas derivadas, que sí pueden estar vacías con razón— y no las llenaba
+    nadie.
+    """
+    # Mapa de influencia: quién manda sobre quién dentro del cliente. Se hace
+    # entre contactos REALES y en pares, porque una relación necesita dos.
+    contactos = [c["id"] for c in api.listar("/api/v1/contacts", 12) if c.get("id")]
+    for i in range(0, min(len(contactos) - 1, 6), 2):
+        api.crear(
+            "/api/v1/mapa-personas",
+            {
+                "origen_id": contactos[i],
+                "destino_id": contactos[i + 1],
+                "tipo": "influye_en",
+                "motivo": "Lo dijo en la última visita: firma él pero decide el otro.",
+            },
+        )
+
+    # Diccionario de métricas: lo que significa cada número antes de enseñarlo
+    # en un cuadro de mando.
+    for clave, nombre, objeto, agregacion, campo, unidad in (
+        ("ingresos_ganados", "Ingresos ganados", "oportunidad", "suma", "importe", "EUR"),
+        ("oportunidades_abiertas", "Oportunidades abiertas", "oportunidad", "cuenta", "id", ""),
+        ("casos_abiertos", "Casos abiertos", "caso", "cuenta", "id", ""),
+        ("ticket_medio", "Ticket medio", "oportunidad", "media", "importe", "EUR"),
+    ):
+        api.crear(
+            "/api/v1/metricas",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "objeto": objeto,
+                "agregacion": agregacion,
+                "campo": campo,
+                "unidad": unidad,
+                "definicion": f"{nombre}, calculado sobre {objeto}.",
+            },
+        )
+
+    # Liquidaciones de comisión. El plan hay que **activarlo** antes: uno en
+    # borrador no liquida —se simula—, y esa negativa llega como un 409 que el
+    # sembrado contaba como «ya existía», así que la pantalla se quedaba vacía
+    # sin que nada lo dijera.
+    planes = [p for p in api.listar("/api/v1/planes-comision", 5) if p.get("id")]
+    activo = next((p for p in planes if p.get("estado") == "activo"), None)
+    if activo is None and planes:
+        # Y antes de activarlo, una regla: el servicio se niega a activar un
+        # plan sin ninguna —«liquidaría cero a todo el mundo»— y tiene razón,
+        # pero el sembrado creaba los planes vacíos, así que ninguno llegaba a
+        # activo y la pantalla de liquidaciones no podía tener nada nunca.
+        api.crear(
+            f"/api/v1/planes-comision/{planes[0]['id']}/reglas",
+            {
+                "tipo": "porcentaje",
+                "nombre": "Comisión base sobre margen",
+                "porcentaje": 3,
+                "orden": 10,
+            },
+        )
+        api.crear(f"/api/v1/planes-comision/{planes[0]['id']}/activar", {})
+        activo = planes[0]
+    if activo:
+        api.crear(
+            "/api/v1/liquidaciones",
+            {"plan_id": activo["id"], "desde": _f(-60), "hasta": _f(-30)},
+        )
+
+    # Comunidad: cuelga de un acceso al portal, así que se busca uno.
+    accesos = [a for a in api.listar("/api/v1/portal/accesos", 5) if a.get("id")]
+    if accesos:
+        for titulo, cuerpo in (
+            (
+                "¿Cada cuánto hay que calibrar el equipo?",
+                "En el manual pone una vez al año, pero el técnico nos dijo que "
+                "con este uso conviene cada seis meses. ¿Cuál vale?",
+            ),
+            (
+                "Recambios equivalentes al filtro F-220",
+                "El F-220 tarda tres semanas. ¿Hay alguno homologado que sirva " "mientras llega?",
+            ),
+        ):
+            hilo = api.crear(
+                "/api/v1/comunidad/hilos",
+                {
+                    "acceso_id": accesos[0]["id"],
+                    "titulo": titulo,
+                    "cuerpo": cuerpo,
+                    "categoria": "producto",
+                },
+            )
+            # Y se aprueba: un hilo nace **en moderación** y el listado sirve
+            # solo lo publicado —con razón: un hilo en moderación que se cuela
+            # en la vista pública es justo lo que la moderación viene a
+            # impedir—, así que sin este paso la comunidad se ve vacía.
+            if hilo and hilo.get("id"):
+                api.crear(
+                    f"/api/v1/comunidad/hilos/{hilo['id']}/moderar",
+                    {"aprobar": True, "motivo": "Pregunta legítima de producto"},
+                )
+
+
 def sembrar_calidad(api: Api) -> None:
     """Llena la cola de excepciones de calidad pasando el barrido.
 
@@ -3355,6 +3460,7 @@ PARTES: dict[str, Any] = {
     "trabajo": sembrar_trabajo,
     "chat": sembrar_chat,
     "duenos": sembrar_duenos,
+    "pantallas_vacias": sembrar_pantallas_vacias,
     "calidad": sembrar_calidad,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,

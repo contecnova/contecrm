@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 interface Herramienta {
   herramienta: string;
@@ -70,7 +71,10 @@ export function SuiteGobierno() {
       {datos.sin_herramientas ? (
         /* Un verde silencioso haría creer que el cliente está en la suite
            cuando solo está en el CRM. */
-        <Vacio titulo={t("suite.sinHerramientas")} detalle={t("suite.sinHerramientasPorque")} />
+        <Vacio
+          titulo={t("suite.sinHerramientas")}
+          detalle={t("suite.sinHerramientasPorque")}
+        />
       ) : (
         <>
           {/* Lo primero y aparte: una baja sin aplicar es un acceso abierto. */}
@@ -85,48 +89,39 @@ export function SuiteGobierno() {
               : t("suite.sinBajasPendientes")}
           </p>
 
-          <div className="mt-4 overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-ink-dim/30 bg-paper-light">
-                <tr>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("suite.herramienta")}
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("suite.estado")}
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("suite.bajas")}
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("suite.ultimoError")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.herramientas.map((h) => (
-                  <tr key={h.herramienta} className="border-b border-ink-dim/30 last:border-0">
-                    <td className="px-3 py-2 text-ink">{h.herramienta}</td>
-                    <td
-                      className={`px-3 py-2 ${h.activa ? "text-success" : "text-ink-faint"}`}
-                    >
-                      {h.estado}
-                    </td>
-                    <td
-                      className={`px-3 py-2 ${
-                        h.bajas_sin_aplicar > 0 ? "text-danger" : "text-ink-muted"
-                      }`}
-                    >
-                      {h.bajas_sin_aplicar}
-                    </td>
-                    <td className="px-3 py-2 text-3xs text-ink-faint">
-                      {h.ultimo_error ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Rejilla
+            className="mt-4"
+            cabeceras={[
+              t("suite.herramienta"),
+              t("suite.estado"),
+              t("suite.bajas"),
+              t("suite.ultimoError"),
+            ]}
+          >
+            {datos.herramientas.map((h) => (
+              <tr
+                key={h.herramienta}
+                className="border-b border-ink-dim/30 last:border-0"
+              >
+                <Casilla className="text-ink">{h.herramienta}</Casilla>
+                <Casilla
+                  className={`${h.activa ? "text-success" : "text-ink-faint"}`}
+                >
+                  {h.estado}
+                </Casilla>
+                <Casilla
+                  className={`${
+                    h.bajas_sin_aplicar > 0 ? "text-danger" : "text-ink-muted"
+                  }`}
+                >
+                  {h.bajas_sin_aplicar}
+                </Casilla>
+                <Casilla className="text-3xs text-ink-faint">
+                  {h.ultimo_error ?? "—"}
+                </Casilla>
+              </tr>
+            ))}
+          </Rejilla>
 
           {datos.cuarentena > 0 ? (
             <p className="mt-3 text-2xs text-warning">
@@ -136,7 +131,9 @@ export function SuiteGobierno() {
         </>
       )}
 
-      <p className="mt-6 text-3xs text-ink-faint">{t("suite.noEsControlRemoto")}</p>
+      <p className="mt-6 text-3xs text-ink-faint">
+        {t("suite.noEsControlRemoto")}
+      </p>
     </>
   );
 }

@@ -24,6 +24,7 @@ import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { cargarSesion } from "@/lib/sesion";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 interface Presion {
   peor?: { servicio?: string; presion?: number; que_significa?: string };
@@ -79,55 +80,55 @@ export function Rendimiento() {
       />
 
       <section className="mt-4 rounded-xl border border-ink-dim/60 bg-paper p-4">
-        <h2 className="text-xs font-medium text-ink">{t("rendimiento.queSeAplaza")}</h2>
+        <h2 className="text-xs font-medium text-ink">
+          {t("rendimiento.queSeAplaza")}
+        </h2>
         <p className="mt-2 text-2xs text-ink-muted" role="status">
           {presion.que_significa}
         </p>
         {/* Un servicio que no contesta no cuenta como tranquilo: suele ser el
             que está peor. */}
-        {presion.aviso ? <p className="mt-2 text-2xs text-warning">{presion.aviso}</p> : null}
+        {presion.aviso ? (
+          <p className="mt-2 text-2xs text-warning">{presion.aviso}</p>
+        ) : null}
       </section>
 
       {cuotas ? (
         <section className="mt-4">
           <h2 className="text-xs font-medium text-ink">
             {t("rendimiento.limites")}
-            {tenant ? <span className="ml-2 text-3xs text-ink-faint">{tenant}</span> : null}
+            {tenant ? (
+              <span className="ml-2 text-3xs text-ink-faint">{tenant}</span>
+            ) : null}
           </h2>
-          <div className="mt-2 overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
-            <table className="w-full text-left text-2xs">
-              <thead className="border-b border-ink-dim/30 bg-paper-light">
-                <tr>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("rendimiento.recurso")}
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("rendimiento.usado")}
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium text-ink-muted">
-                    {t("rendimiento.limite")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {cuotas.map((u) => (
-                  <tr key={u.metrica} className="border-b border-ink-dim/30 last:border-0">
-                    <td className="px-3 py-2 text-ink">{u.metrica}</td>
-                    <td
-                      className={`px-3 py-2 ${u.en_aviso ? "text-warning" : "text-ink-muted"}`}
-                    >
-                      {u.consumido} ({u.pct} %)
-                    </td>
-                    {/* Sin límite no se pinta «ilimitado»: se pinta que no
+          <Rejilla
+            compacta
+            className="mt-2"
+            cabeceras={[
+              t("rendimiento.recurso"),
+              t("rendimiento.usado"),
+              t("rendimiento.limite"),
+            ]}
+          >
+            {cuotas.map((u) => (
+              <tr
+                key={u.metrica}
+                className="border-b border-ink-dim/30 last:border-0"
+              >
+                <Casilla className="text-ink">{u.metrica}</Casilla>
+                <Casilla
+                  className={`${u.en_aviso ? "text-warning" : "text-ink-muted"}`}
+                >
+                  {u.consumido} ({u.pct} %)
+                </Casilla>
+                {/* Sin límite no se pinta «ilimitado»: se pinta que no
                         consta, que es lo que es. */}
-                    <td className="px-3 py-2 text-ink-faint">
-                      {u.limite > 0 ? u.limite : t("rendimiento.noConsta")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                <Casilla className="text-ink-faint">
+                  {u.limite > 0 ? u.limite : t("rendimiento.noConsta")}
+                </Casilla>
+              </tr>
+            ))}
+          </Rejilla>
         </section>
       ) : null}
     </>

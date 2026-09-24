@@ -42,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
+import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
 import {
   escalar,
@@ -120,9 +121,13 @@ export function Tabla({
   const filas = useMemo(() => normalizar(filasCrudas), [filasCrudas]);
   const pedidas = columnas ?? columnasDe(filas);
   // Con dato en alguna fila. Una columna vacía en todas es ruido.
-  const disponibles = pedidas.filter((c) => filas.some((fila) => tieneDato(fila[c])));
+  const disponibles = pedidas.filter((c) =>
+    filas.some((fila) => tieneDato(fila[c])),
+  );
 
-  const [elegidas, setElegidas] = useState<string[] | null>(() => leerElegidas(recuerdaComo));
+  const [elegidas, setElegidas] = useState<string[] | null>(() =>
+    leerElegidas(recuerdaComo),
+  );
   const [eligiendo, setEligiendo] = useState(false);
 
   // De entrada, las que el recurso declara como preferidas —o las primeras—,
@@ -134,7 +139,10 @@ export function Tabla({
     // ocupa el ancho de tres columnas útiles y no dice nada. Siguen estando en
     // el selector para quien los necesite.
     const utiles = disponibles.filter((c) => !esIdentificadorTecnico(c));
-    return (utiles.length > 0 ? utiles : disponibles).slice(0, Math.max(1, porDefecto));
+    return (utiles.length > 0 ? utiles : disponibles).slice(
+      0,
+      Math.max(1, porDefecto),
+    );
   }, [elegidas, disponibles, porDefecto]);
 
   function alternarColumna(columna: string) {
@@ -144,7 +152,10 @@ export function Tabla({
     setElegidas(siguientes);
     if (!recuerdaComo) return;
     try {
-      localStorage.setItem(`${CLAVE_COLUMNAS}.${recuerdaComo}`, JSON.stringify(siguientes));
+      localStorage.setItem(
+        `${CLAVE_COLUMNAS}.${recuerdaComo}`,
+        JSON.stringify(siguientes),
+      );
     } catch {
       /* sin almacenamiento: la elección vale para esta sesión */
     }
@@ -169,7 +180,10 @@ export function Tabla({
                 className="btn-secondary inline-flex items-center gap-1.5"
               >
                 <Icono nombre="view_column" tamano="sm" />
-                {t("tabla.columnas", { visibles: cabeceras.length, total: disponibles.length })}
+                {t("tabla.columnas", {
+                  visibles: cabeceras.length,
+                  total: disponibles.length,
+                })}
               </button>
             ) : null}
             {acciones}
@@ -182,7 +196,10 @@ export function Tabla({
           <legend className="sr-only">{t("tabla.elegirColumnas")}</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {disponibles.map((c) => (
-              <label key={c} className="inline-flex items-center gap-1.5 text-2xs text-ink">
+              <label
+                key={c}
+                className="inline-flex items-center gap-1.5 text-2xs text-ink"
+              >
                 <input
                   type="checkbox"
                   checked={cabeceras.includes(c)}
@@ -196,51 +213,48 @@ export function Tabla({
         </fieldset>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper">
-        <table className="w-full text-left text-xs">
-          {titulo ? <caption className="sr-only">{titulo}</caption> : null}
-          <thead className="border-b border-ink-dim/30 bg-paper-light">
-            <tr>
-              {cabeceras.map((c) => (
-                <th
-                  key={c}
-                  scope="col"
-                  className="whitespace-nowrap px-3 py-2 font-medium text-ink-muted"
-                  title={c}
-                >
-                  {humanizar(c)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((fila, i) => (
-              <tr
-                key={clave(fila, i)}
-                className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"
-              >
-                {cabeceras.map((c, columna) => {
-                  const destino = columna === 0 && enlace ? enlace(fila) : null;
-                  return (
-                    <td key={c} className="whitespace-nowrap px-3 py-2 align-top text-ink">
-                      {destino ? (
-                        // Enlace de contenido, no de acción: `btn-link` es un
-                        // micro-enlace monoespaciado en mayúsculas, y el nombre
-                        // de una cuenta puesto ahí deja de parecer un nombre.
-                        <Link to={destino} className="text-accent hover:underline">
-                          <Celda valor={fila[c]} campo={c} />
-                        </Link>
-                      ) : (
+      {/* El armazón es el mismo que el de las tablas de forma fija —estado,
+          rendimiento, despliegue—: estaba copiado cinco veces y ya había
+          empezado a separarse en el tamaño de letra y en el tono de las
+          celdas. */}
+      <Rejilla
+        titulo={titulo}
+        cabeceras={cabeceras.map((c) => (
+          <span key={c} title={c}>
+            {humanizar(c)}
+          </span>
+        ))}
+      >
+        <>
+          {filas.map((fila, i) => (
+            <tr
+              key={clave(fila, i)}
+              className="border-b border-ink-dim/30 last:border-0 hover:bg-paper-light"
+            >
+              {cabeceras.map((c, columna) => {
+                const destino = columna === 0 && enlace ? enlace(fila) : null;
+                return (
+                  <Casilla key={c} enUnaLinea>
+                    {destino ? (
+                      // Enlace de contenido, no de acción: `btn-link` es un
+                      // micro-enlace monoespaciado en mayúsculas, y el nombre
+                      // de una cuenta puesto ahí deja de parecer un nombre.
+                      <Link
+                        to={destino}
+                        className="text-accent hover:underline"
+                      >
                         <Celda valor={fila[c]} campo={c} />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                      </Link>
+                    ) : (
+                      <Celda valor={fila[c]} campo={c} />
+                    )}
+                  </Casilla>
+                );
+              })}
+            </tr>
+          ))}
+        </>
+      </Rejilla>
       {escondidas > 0 ? (
         <p className="mt-1.5 text-3xs text-ink-faint">
           {t("tabla.masColumnas", { count: escondidas })}
@@ -270,7 +284,8 @@ export function normalizar(filas: unknown[]): Record<string, unknown>[] {
 
 export function columnasDe(filas: Record<string, unknown>[]): string[] {
   const vistas = new Set<string>();
-  for (const fila of filas) for (const clave of Object.keys(fila)) vistas.add(clave);
+  for (const fila of filas)
+    for (const clave of Object.keys(fila)) vistas.add(clave);
   return [...vistas];
 }
 
@@ -284,17 +299,22 @@ export function columnasDe(filas: Record<string, unknown>[]): string[] {
  */
 export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
   if (!tieneDato(valor)) {
-    const vacio = Array.isArray(valor) || (typeof valor === "object" && valor !== null);
+    const vacio =
+      Array.isArray(valor) || (typeof valor === "object" && valor !== null);
     // Se distingue «no hay dato» de «la lista está vacía»: parece lo mismo y no
     // lo es —lo primero puede ser un fallo de carga y lo segundo es un hecho—.
     return (
-      <span className="text-ink-faint" title={vacio ? "Lista vacía" : "Sin dato"}>
+      <span
+        className="text-ink-faint"
+        title={vacio ? "Lista vacía" : "Sin dato"}
+      >
         —
       </span>
     );
   }
 
-  const compuesto = Array.isArray(valor) || (valor !== null && typeof valor === "object");
+  const compuesto =
+    Array.isArray(valor) || (valor !== null && typeof valor === "object");
   if (compuesto) {
     const piezas = trozos(valor, campo);
     const visibles = piezas.slice(0, 3);
@@ -339,5 +359,7 @@ export function Celda({ valor, campo }: { valor: unknown; campo: string }) {
 
 function clave(fila: Record<string, unknown>, i: number): string {
   const id = fila.id ?? fila.codigo ?? fila.clave ?? fila.nombre;
-  return typeof id === "string" || typeof id === "number" ? String(id) : String(i);
+  return typeof id === "string" || typeof id === "number"
+    ? String(id)
+    : String(i);
 }
