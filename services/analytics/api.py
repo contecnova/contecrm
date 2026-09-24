@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.db.session import sesion
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, PlataformaDep, UowDep, exige_permiso
 from crmcore.logging import get_logger
@@ -119,12 +120,20 @@ def _organizacion_de(db: Any, tenant_id: UUID) -> OrganizacionExterna:
     response_model=list[OrganizacionOut],
     summary="Correspondencia entre tenants y organizaciones",
 )
-def listar_organizaciones(db: DbDep, _: PlataformaDep) -> Any:
-    return list(
-        db.execute(select(OrganizacionExterna).order_by(OrganizacionExterna.created_at))
-        .scalars()
-        .all()
-    )
+def listar_organizaciones(_: PlataformaDep) -> Any:
+    # Sesión de SISTEMA, no la del tenant que pregunta. La correspondencia es
+    # una tabla de plataforma: cada fila es de OTRO tenant, y con la sesión
+    # normal la RLS solo dejaba ver la del propio —una tabla de tres tenants
+    # devolvía una fila, sin error y sin decir que faltaban dos.
+    with sesion(sistema=True) as db:
+        return [
+            OrganizacionOut.model_validate(fila)
+            for fila in db.execute(
+                select(OrganizacionExterna).order_by(OrganizacionExterna.created_at)
+            )
+            .scalars()
+            .all()
+        ]
 
 
 @router.put(
@@ -138,15 +147,26 @@ def listar_organizaciones(db: DbDep, _: PlataformaDep) -> Any:
         "otro."
     ),
 )
-def asignar_organizacion(datos: AsignarOrganizacion, uow: UowDep, _: PlataformaDep) -> Any:
-    fila = uow.db.execute(
+def asignar_organizacion(datos: AsignarOrganizacion, _: PlataformaDep) -> Any:
+    # Por lo mismo que el listado, y aquí no era «incompleto» sino IMPOSIBLE:
+    # escribir la fila de otro tenant desde la sesión del propio viola la
+    # política de RLS, y Postgres contesta `new row violates row-level security
+    # policy`. Salía como 500 genérico, así que desde fuera parecía una avería
+    # del servicio en vez de lo que era: esta ruta nunca había funcionado para
+    # ningún tenant que no fuera el de quien llamaba.
+    with sesion(sistema=True) as db:
+        return _asignar(db, datos)
+
+
+def _asignar(db: Any, datos: AsignarOrganizacion) -> Any:
+    fila = db.execute(
         select(OrganizacionExterna).where(OrganizacionExterna.tenant_id == datos.tenant_id)
     ).scalar_one_or_none()
     if fila is None:
         fila = OrganizacionExterna(
             tenant_id=datos.tenant_id, organizacion=datos.organizacion, estado="pendiente"
         )
-        uow.db.add(fila)
+        db.add(fila)
     elif fila.organizacion != datos.organizacion:
         # Cambiar la organización de un tenant que ya consultaba deja sus
         # preguntas guardadas apuntando a datos de otra parte. Se permite —hace
@@ -159,8 +179,10 @@ def asignar_organizacion(datos: AsignarOrganizacion, uow: UowDep, _: PlataformaD
         )
         fila.organizacion = datos.organizacion
         fila.estado = "pendiente"
-    uow.db.flush()
-    return fila
+    db.flush()
+    # Se serializa DENTRO de la sesión: fuera, el `commit` ya ha expirado los
+    # atributos y leerlos dispararía un refresco sobre una sesión cerrada.
+    return OrganizacionOut.model_validate(fila)
 
 
 class RegistrarConsulta(BaseModel):
