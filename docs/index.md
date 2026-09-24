@@ -14,6 +14,9 @@ desde la primera línea.
 - **Configurarlo y operarlo** → *[Manual IV](manual-4-configuracion.md)*
 - **Cómo está construido y por qué** → *[Manual V](manual-5-arquitectura.md)*
 - **Los 122 ajustes, uno a uno** → *[Manual VI](manual-6-referencia-ajustes.md)*
+- **Los procesos, de extremo a extremo** → *[Procesos](procesos.md)*. Qué se
+  pide, qué contesta, qué dispara y a quién despierta cada operación, más las
+  máquinas de estado y el mapa de eventos. **Generado del código.**
 - **Contribuir** → *[Gates locales](QUALITY_GATES.md)*. **Empieza por ahí**: este
   proyecto no tiene CI por decisión, y los gates solo protegen si los instalas.
 

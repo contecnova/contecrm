@@ -83,6 +83,12 @@ GATES: list[Gate] = [
         "la hoja web de estado refleja el catálogo y el manual",
     ),
     Gate(
+        "procesos",
+        [PY, "scripts/gen_procesos.py", "--check"],
+        "todo",
+        "el documento de procesos dice lo que el código hace de verdad",
+    ),
+    Gate(
         "arquitectura",
         [PY, "-m", "pytest", "tests/unit/test_contratos_arquitectura.py", "-q", "--no-header"],
         "fast",

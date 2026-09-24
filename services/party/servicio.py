@@ -467,6 +467,22 @@ def crear_contacto(
         datos={"nombre": completo, "cuenta_id": str(cuenta_id) if cuenta_id else None},
     )
     _indexar(uow.db, "contacto", contacto)
+    # El hecho, para quien esté esperándolo. Estaba declarado en el catálogo y
+    # **no lo emitía nadie**: las automatizaciones que arrancan al dar de alta
+    # un contacto no arrancaban nunca, y la proyección de marketing no se
+    # enteraba de los contactos nuevos. Dar de alta una cuenta sí lo emitía, así
+    # que la diferencia no se veía leyendo el código de al lado.
+    uow.emitir(
+        "contact.created",
+        subject=("contacto", contacto.id),
+        data={
+            "contacto_id": str(contacto.id),
+            "nombre": completo,
+            "cuenta_id": str(cuenta_id) if cuenta_id else None,
+            "email": contacto.email,
+            "campos": dict(contacto.campos or {}),
+        },
+    )
     return contacto
 
 

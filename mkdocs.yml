@@ -29,6 +29,9 @@ nav:
       - Manual de usuario: manual-usuario.md
       - Manual técnico: manual-tecnico.md
   - Alcance:
+      # Generado del código, no escrito a mano: un documento de procesos hecho a
+      # mano dice lo que alguien creyó que pasaba el día que lo escribió.
+      - Procesos de extremo a extremo: procesos.md
       - Resumen del catálogo: catalogo/resumen.md
       - Estado de las capacidades: catalogo/estado.md
       - Qué se reutiliza de la casa: REUTILIZACION.md

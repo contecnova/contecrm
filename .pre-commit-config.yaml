@@ -37,7 +37,11 @@ repos:
       - id: end-of-file-fixer
         exclude: '\.(patch|diff)$'
       - id: check-yaml
-        exclude: '^docs/catalogo/catalogo\.yaml$'
+        # `mkdocs.yml` fuera: usa etiquetas propias de Python —`!!python/...`—
+        # para configurar las extensiones de Markdown, y este comprobador no las
+        # entiende. Quien de verdad lo valida es el gate de documentación, que
+        # construye el sitio entero.
+        exclude: '^(docs/catalogo/catalogo\.yaml|mkdocs\.yml)$'
       - id: check-toml
       - id: check-merge-conflict
       - id: detect-private-key

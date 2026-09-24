@@ -32,7 +32,7 @@ from typing import Any
 
 from fastapi import Depends, Query
 
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso, proyectar_para
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
 from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
 
 
@@ -332,9 +332,10 @@ def montar_ficha(
 
         registrar_objeto(objeto, modelo)
 
-        def borrar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> None:
+        def borrar(registro_id: Any, uow: UowDep, principal: AutenticadoDep) -> None:
             from crmcore.datos import integridad, papelera
 
+            db = uow.db
             fila = _buscar(db, registro_id)
             # Antes de nada, quién lo está usando. Borrar algo que otros
             # registros apuntan no da error: los deja señalando a un
@@ -353,6 +354,20 @@ def montar_ficha(
                 por=principal.id,
             )
             db.flush()
+            # Y se cuenta. El hecho estaba declarado en el catálogo y con
+            # consumidores esperándolo —la proyección de marketing lo usa para
+            # retirar lo borrado— y **no lo emitía nadie**: el borrado usaba una
+            # sesión de base y no la unidad de trabajo, que es quien publica.
+            # Así que lo borrado seguía contando en los segmentos.
+            uow.emitir(
+                "record.deleted",
+                subject=(objeto, getattr(fila, "id", registro_id)),
+                data={
+                    "objeto": objeto,
+                    "registro_id": str(getattr(fila, "id", registro_id)),
+                    "definitivo": False,
+                },
+            )
 
         borrar.__name__ = f"borrar_{objeto.replace('-', '_').replace('.', '_')}"
         router.delete(
