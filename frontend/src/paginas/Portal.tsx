@@ -210,6 +210,11 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
 
       <NuevaPeticion sesion={sesion} alCrear={cargar} />
       <MisCasos casos={casos} />
+      {/* Y si además es proveedora, sus papeles: es la parte que más se usa de
+          un portal de proveedor, porque perseguir certificados caducados es
+          trabajo de alguien todos los meses y el único que puede resolverlo es
+          el propio proveedor. */}
+      <MisPapeles sesion={sesion} />
       <Conversacion sesion={sesion} hilo={hilo} alEscribir={cargar} />
     </main>
   );
@@ -367,6 +372,137 @@ function Conversacion({
         />
         <button type="submit" disabled={enviando || !texto.trim()} className="btn-primary shrink-0">
           Enviar
+        </button>
+      </form>
+    </section>
+  );
+}
+
+
+interface Documento {
+  clave?: string;
+  nombre?: string;
+  /** Cuándo caduca, tal como lo llama el estado documental. */
+  vence?: string | null;
+  dias?: number;
+}
+
+function MisPapeles({ sesion }: { sesion: Sesion }) {
+  const [esProveedor, setEsProveedor] = useState(false);
+  const [documentos, setDocumentos] = useState<Documento[] | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [hecho, setHecho] = useState("");
+  const [clave, setClave] = useState("");
+  const [referencia, setReferencia] = useState("");
+  const [hasta, setHasta] = useState("");
+
+  const cargar = useCallback(async () => {
+    try {
+      const quien = await pedir<{ es_proveedor: boolean }>(
+        "/api/v1/proveedores/mi/resumen",
+        sesion.token,
+      );
+      setEsProveedor(quien.es_proveedor);
+      if (!quien.es_proveedor) return;
+      const estado = await pedir<{ vencidos?: Documento[]; por_vencer?: Documento[] }>(
+        "/api/v1/proveedores/mi/documentos",
+        sesion.token,
+      );
+      setDocumentos([...(estado.vencidos ?? []), ...(estado.por_vencer ?? [])]);
+    } catch {
+      // Quien no es proveedor recibe un error aquí, y eso no es un fallo que
+      // haya que enseñarle: sencillamente esta sección no es para él.
+      setEsProveedor(false);
+    }
+  }, [sesion.token]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  if (!esProveedor) return null;
+
+  async function subir(evento: FormEvent) {
+    evento.preventDefault();
+    if (!clave.trim() || !referencia.trim()) return;
+    setSubiendo(true);
+    try {
+      await pedir("/api/v1/proveedores/mi/documentos", sesion.token, {
+        metodo: "POST",
+        cuerpo: {
+          clave: clave.trim(),
+          nombre: clave.trim(),
+          referencia: referencia.trim(),
+          valido_hasta: hasta || null,
+        },
+      });
+      setHecho("Recibido. Lo tenemos actualizado.");
+      setClave("");
+      setReferencia("");
+      setHasta("");
+      await cargar();
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  return (
+    <section className="card mb-4 p-4">
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+        Tus papeles con nosotros
+      </h2>
+      {documentos === null ? (
+        <p className="mb-3 text-2xs text-ink-faint">Cargando…</p>
+      ) : documentos.length === 0 ? (
+        <p className="mb-3 text-2xs text-ink-faint">No hay nada pendiente de renovar.</p>
+      ) : (
+        <ul className="mb-3 space-y-1.5">
+          {documentos.map((d, i) => (
+            <li key={d.clave ?? i} className="rounded-lg bg-paper-sunk px-3 py-2 text-xs text-ink">
+              {d.nombre || d.clave}
+              <span className="ml-2 text-3xs text-ink-faint">
+                {d.vence
+                  ? (d.dias ?? 0) < 0
+                    ? `venció el ${d.vence}`
+                    : `vence el ${d.vence}`
+                  : "sin fecha"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p role="status" className="mb-2 text-2xs text-success-text">
+        {hecho}
+      </p>
+      <form onSubmit={subir} className="grid gap-2 sm:grid-cols-3">
+        <input
+          value={clave}
+          onChange={(e) => setClave(e.target.value)}
+          placeholder="Qué papel es"
+          aria-label="Qué papel es"
+          className="input-base"
+        />
+        <input
+          value={referencia}
+          onChange={(e) => setReferencia(e.target.value)}
+          placeholder="Referencia o enlace"
+          aria-label="Referencia o enlace"
+          className="input-base"
+        />
+        <input
+          type="date"
+          value={hasta}
+          onChange={(e) => setHasta(e.target.value)}
+          aria-label="Válido hasta"
+          className="input-base"
+        />
+        <button
+          type="submit"
+          disabled={subiendo || !clave.trim() || !referencia.trim()}
+          className="btn-primary sm:col-span-3"
+        >
+          {subiendo ? "Enviando…" : "Mandar el papel renovado"}
         </button>
       </form>
     </section>

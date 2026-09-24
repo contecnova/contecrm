@@ -493,7 +493,10 @@ def sesion_portal(datos: Canjear, request: Request) -> Any:
             uow, datos.token, ip=request.client.host if request.client else ""
         )
         token, dura_s = emitir_token_portal(
-            acceso_id=acceso.id, tenant_id=acceso.tenant_id, nivel=acceso.nivel
+            acceso_id=acceso.id,
+            tenant_id=acceso.tenant_id,
+            nivel=acceso.nivel,
+            cuenta_id=acceso.cuenta_id,
         )
         salida = {
             "token": token,

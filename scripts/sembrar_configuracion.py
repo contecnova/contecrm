@@ -1678,7 +1678,12 @@ def sembrar_servicio(api: Api, aprobador: Api | None = None) -> None:
         # filtra por ella, y sin ella el portal entra bien y sale vacío — que se
         # lee como «no tengo casos» y no como «el acceso está mal dado». Quien
         # no la tenga se queda en nivel «propio», que sí funciona sin cuenta.
-        cuenta_id = contacto.get("cuenta_id")
+        # La cuenta sale de la RELACIÓN, no del contacto: un contacto no cuelga
+        # de una empresa —la relación es N:M a propósito, porque la misma
+        # persona puede serlo de dos—. Sin mirarla aquí, todos los accesos
+        # nacían sin cuenta y el portal entraba y salía vacío.
+        vinculos = api.listar(f"/api/v1/contacts/{contacto['id']}/cuentas", 5)
+        cuenta_id = _uno(vinculos, "cuenta_id", "id")
         creado = api.crear(
             "/api/v1/portal/accesos",
             {

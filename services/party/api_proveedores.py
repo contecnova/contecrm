@@ -19,6 +19,7 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
+from crmcore.http.portal_deps import PortalDep
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -61,6 +62,105 @@ class EvaluarIn(BaseModel):
     entregas: list[dict[str, Any]] = Field(default_factory=list)
     incidencias: list[dict[str, Any]] = Field(default_factory=list)
     encuesta: int | None = None
+
+
+# ── Lo que un proveedor ve de sí mismo, desde el portal ───────────────────
+#
+# Quien llama aquí no es un empleado: es el proveedor, con la sesión del portal.
+# Por eso no hay `exige_permiso` —su token no lleva permisos, a propósito— y la
+# cuenta no viene en la ruta sino **firmada en el token**: aceptarla de quien
+# llama dejaría a un proveedor mirar los papeles de otro, que es la fuga más
+# fácil de un portal.
+#
+# Existe porque perseguir los certificados caducados de los proveedores es
+# trabajo de alguien todos los meses, y el único que puede resolverlo es el
+# proveedor. Enseñárselo a él convierte una lista de reclamaciones en algo que
+# se arregla solo.
+
+
+@router_proveedores.get(
+    "/mi/resumen",
+    response_model=dict,
+    summary="Mi ficha de proveedor",
+    description=(
+        "Dice también si esta empresa **es** proveedora: el portal lo pregunta "
+        "para saber si enseñar esta parte, y así no tiene que adivinarlo ni se "
+        "le enseña una sección vacía a quien solo es cliente."
+    ),
+)
+def mi_resumen_proveedor(db: DbDep, sesion: PortalDep) -> Any:
+    from services.party.modelos import Cuenta
+
+    cuenta = db.get(Cuenta, sesion.exigir_cuenta())
+    es_proveedor = cuenta is not None and "proveedor" in (cuenta.roles or [])
+    return {
+        "es_proveedor": es_proveedor,
+        "nombre": cuenta.nombre if cuenta else "",
+    }
+
+
+@router_proveedores.get(
+    "/mi/documentos",
+    response_model=dict,
+    summary="Mis papeles y cuándo caducan",
+)
+def mis_documentos(db: DbDep, sesion: PortalDep) -> Any:
+    return prv.estado_documental(db, sesion.tenant_id, cuenta_id=sesion.exigir_cuenta())
+
+
+@router_proveedores.post(
+    "/mi/documentos",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Subir el papel renovado",
+    description=(
+        "El proveedor renueva lo suyo sin que nadie se lo pida dos veces. Es lo "
+        "que convierte la lista de certificados caducados en algo que se "
+        "resuelve solo: hoy la única forma de actualizarlo es que alguien de "
+        "dentro llame, reciba el papel por correo y lo registre a mano."
+    ),
+)
+def subir_mi_documento(cuerpo: DocumentoIn, uow: UowDep, sesion: PortalDep) -> Any:
+    fila = prv.registrar_documento(
+        uow,
+        cuenta_id=sesion.exigir_cuenta(),
+        clave=cuerpo.clave,
+        nombre=cuerpo.nombre,
+        referencia=cuerpo.referencia,
+        valido_hasta=cuerpo.valido_hasta,
+        valido_desde=cuerpo.valido_desde,
+    )
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "valido_hasta": fila.valido_hasta.isoformat() if fila.valido_hasta else None,
+    }
+
+
+@router_proveedores.get(
+    "/mi/homologaciones",
+    response_model=list[dict],
+    summary="Para qué estoy homologado y hasta cuándo",
+)
+def mis_homologaciones(db: DbDep, sesion: PortalDep) -> Any:
+    from sqlalchemy import select
+
+    filas = (
+        db.execute(
+            select(prv.Homologacion).where(prv.Homologacion.cuenta_id == sesion.exigir_cuenta())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "categoria": f.categoria,
+            "estado": f.estado,
+            "valida_hasta": f.valida_hasta.isoformat() if f.valida_hasta else None,
+        }
+        for f in filas
+    ]
 
 
 @router_proveedores.post(

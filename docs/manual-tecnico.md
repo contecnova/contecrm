@@ -422,6 +422,22 @@ nadie contesta. El historial se sirve con `incluir_internos=False`, explícito y
 no deducido del permiso, para que una nota interna no acabe delante del cliente
 el día que alguien reutilice la función desde un sitio nuevo.
 
+**El proveedor también entra.** La empresa del contacto va firmada en el token
+(`cuenta`), y eso es lo que permite que `party` sirva lo suyo —sus papeles, sus
+homologaciones, el renovado que sube él— sin preguntarle a `service` de qué
+cuenta es este acceso: los servicios no se llaman entre sí. Aceptar la cuenta de
+quien llama dejaría a un proveedor mirar los papeles de otro, que es la fuga más
+fácil de un portal; comprobado, responde 403.
+
+Existe porque perseguir certificados caducados es trabajo de alguien todos los
+meses y el único que puede resolverlo es el proveedor: enseñárselo a él convierte
+una lista de reclamaciones en algo que se arregla solo.
+
+Ojo con el orden: las rutas `/mi/...` se declaran **antes** que las de
+`/{cuenta_id}/...`, o la de parámetro se las traga y responde 403 por falta de
+permiso — que despista, porque el problema no es el permiso. Hay un gate que lo
+comprueba (`test_orden_de_rutas`).
+
 Y un acceso de nivel `cuenta` o `admin` **sin cuenta se rechaza al crearlo**: el
 filtro es por cuenta y sin ella el portal entra bien y sale vacío, que se lee
 como «no tengo casos» y no como «el acceso está mal dado». La cuenta la pone

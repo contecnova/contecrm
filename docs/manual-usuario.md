@@ -560,6 +560,15 @@ una sola vez y caduca pronto.
 Lo que ve cada uno lo decide su nivel de acceso: el técnico ve lo suyo y el
 responsable, lo de su empresa. Eso se decide al darle el acceso, desde el CRM.
 
+**Y tus proveedores, lo suyo.** Si la empresa que entra es proveedora, ve además
+sus papeles con nosotros —el seguro, los certificados— con la fecha en la que
+caducan, y puede **mandar el renovado ella misma**. Eso es lo que convierte
+perseguir certificados caducados, que es trabajo de alguien todos los meses, en
+algo que se resuelve solo: el único que puede arreglarlo es el proveedor.
+
+Un proveedor solo ve lo suyo. Los papeles de otro le responden que no le
+corresponde.
+
 ### Duplicados: el sistema los busca, tú decides
 
 La pestaña de **Duplicados** ya no es un buscador: es una **cola**. El sistema

@@ -46,7 +46,9 @@ MINUTOS = 60
 TIPO = "portal"
 
 
-def emitir_token_portal(*, acceso_id: UUID, tenant_id: UUID, nivel: str) -> tuple[str, int]:
+def emitir_token_portal(
+    *, acceso_id: UUID, tenant_id: UUID, nivel: str, cuenta_id: UUID | None = None
+) -> tuple[str, int]:
     """El token con el que el cliente llama al portal. Devuelve también cuánto dura."""
     import jwt
 
@@ -59,6 +61,12 @@ def emitir_token_portal(*, acceso_id: UUID, tenant_id: UUID, nivel: str) -> tupl
         "tenant": str(tenant_id),
         "tipo": TIPO,
         "nivel": nivel,
+        # La empresa del contacto va en el token, y no es un capricho: lo que un
+        # proveedor ve de sí mismo lo sirve `party`, que no puede preguntarle a
+        # `service` de qué cuenta es este acceso —los servicios no se llaman
+        # entre sí—. Yendo firmada aquí, cada servicio sirve lo suyo sin
+        # consultar a nadie y sin fiarse de lo que diga el cliente.
+        "cuenta": str(cuenta_id) if cuenta_id else "",
         # Sin `permisos` y sin `roles` **a propósito**: es lo que impide que este
         # token sirva para nada del CRM.
         "iat": int(ahora.timestamp()),
@@ -133,18 +141,41 @@ def contexto_portal(
 
     ctx = contexto_actual()
     fijar_contexto(replace(ctx, tenant_id=tenant_id, user_id=None))
-    return SesionPortal(acceso_id=acceso_id, tenant_id=tenant_id, nivel=str(carga.get("nivel", "")))
+    cuenta = str(carga.get("cuenta") or "")
+    return SesionPortal(
+        acceso_id=acceso_id,
+        tenant_id=tenant_id,
+        nivel=str(carga.get("nivel", "")),
+        cuenta_id=UUID(cuenta) if cuenta else None,
+    )
 
 
 class SesionPortal:
     """Quién llama al portal: su acceso, su empresa y su nivel."""
 
-    __slots__ = ("acceso_id", "tenant_id", "nivel")
+    __slots__ = ("acceso_id", "tenant_id", "nivel", "cuenta_id")
 
-    def __init__(self, *, acceso_id: UUID, tenant_id: UUID, nivel: str) -> None:
+    def __init__(
+        self, *, acceso_id: UUID, tenant_id: UUID, nivel: str, cuenta_id: UUID | None = None
+    ) -> None:
         self.acceso_id = acceso_id
         self.tenant_id = tenant_id
         self.nivel = nivel
+        self.cuenta_id = cuenta_id
+
+    def exigir_cuenta(self) -> UUID:
+        """La empresa de quien llama, o un error claro.
+
+        Lo que se sirve por cuenta —sus documentos, sus homologaciones— no tiene
+        sentido sin ella, y devolver una lista vacía haría creer que no hay nada
+        cuando lo que pasa es que el acceso está mal dado.
+        """
+        if self.cuenta_id is None:
+            raise NoAutenticado(
+                "Este acceso no está asociado a ninguna empresa",
+                error_code="portal.sin_empresa",
+            )
+        return self.cuenta_id
 
 
 PortalDep = Annotated[SesionPortal, Depends(contexto_portal)]
