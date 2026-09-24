@@ -164,6 +164,24 @@ def cola(
 
 
 @router_calidad.post(
+    "/cola/barrido",
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Buscar excepciones de calidad y llenar la cola",
+    description=(
+        "Recorre cuentas y contactos y abre una excepción por cada cosa que "
+        "esté mal. Se puede lanzar cuando se quiera y se puede repetir: la "
+        "misma regla sobre el mismo campo de la misma ficha es **una** "
+        "excepción, no una por pasada.\n\n"
+        "Sin esto la cola no tenía por dónde llenarse —estaban la pantalla, la "
+        "asignación y el cierre, y ninguna forma de que entrara nada—, así que "
+        "se veía siempre vacía."
+    ),
+)
+def barrer(uow: UowDep, limite: int = Query(500, ge=1, le=5000)) -> Any:
+    return stw.barrido(uow, limite=limite)
+
+
+@router_calidad.post(
     "/cola/{excepcion_id}/asignar/{usuario_id}",
     dependencies=[Depends(exige_permiso("party:write"))],
     summary="Ponerle nombre a una excepción",

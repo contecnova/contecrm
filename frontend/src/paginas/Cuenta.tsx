@@ -152,6 +152,10 @@ export function Cuenta() {
   // cliente, sin escribir un botón por acción.
   const acciones = accionesDe(superficie, "/api/v1/accounts", id, tiene);
   const paneles = subColeccionesDe(superficie, "/api/v1/accounts", id, tiene);
+  // Lo que cuelga de la cuenta **por ser proveedora**: homologaciones por
+  // categoría, documentos con vigencia, sus contactos. Sale de la superficie
+  // igual que el resto, así que no hay que enumerarlo aquí ni mantenerlo.
+  const panelesProveedor = subColeccionesDe(superficie, "/api/v1/proveedores", id, tiene);
 
   const { cuenta, contactos, timeline, identificadores, metricas } = vista;
   const nif = identificadores.find((i) => i.tipo === "nif")?.valor;
@@ -335,6 +339,13 @@ export function Cuenta() {
           entre empresas: todo lo que cuelga del cliente, con sus altas y sus
           acciones. */}
       <SubColecciones paneles={paneles} servicio="party" id={id} />
+
+      {/* Y si además es proveedora, lo suyo — en esta misma ficha y no en otra
+          parecida: es la misma empresa, y tenerla en dos sitios obliga a saber
+          en cuál mirar. */}
+      {cuenta.roles.includes("proveedor") ? (
+        <SubColecciones paneles={panelesProveedor} servicio="party" id={id} />
+      ) : null}
     </>
   );
 }

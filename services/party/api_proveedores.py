@@ -11,17 +11,19 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import NoEncontrado
 from crmcore.http.deps import (
     AutenticadoDep,
     DbDep,
     UowDep,
     exige_permiso,
-    proyectar_para,  # noqa: F401
+    proyectar_para,
 )
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.party import proveedores as prv
+from services.party.esquemas import ActualizarCuenta, CrearCuenta, CuentaOut
 
 router_proveedores = APIRouter(prefix="/proveedores", tags=["proveedores"])
 
@@ -375,6 +377,103 @@ def listar_proveedores(
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
     proyecta = proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)
     return pagina.a_dict(proyecta)
+
+
+@router_proveedores.post(
+    "",
+    response_model=CuentaOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Dar de alta un proveedor",
+    description=(
+        "Crea la cuenta **ya con el rol de proveedor**, con la misma "
+        "comprobación de duplicados que un cliente: es el mismo maestro.\n\n"
+        "Existía la forma larga —crear la cuenta por un lado y marcarle el rol "
+        "por otro— y no la corta, así que desde la pantalla de proveedores no se "
+        "podía dar de alta ninguno: había que saber que un proveedor es una "
+        "cuenta, irse a cuentas, crearla y volver. Quien no lo sabía veía una "
+        "lista que no dejaba hacer nada."
+    ),
+)
+def crear_proveedor(datos: CrearCuenta, uow: UowDep) -> Any:
+    from services.party import servicio as svc
+
+    payload = datos.model_dump(exclude={"identificadores", "forzar", "roles"})
+    # El rol se **suma** a los que pida quien crea: la misma empresa puede ser
+    # cliente de una división y proveedor de otra. Si no pide ninguno no se le
+    # cuela `cliente` —que es el valor por defecto del esquema de cuentas—,
+    # porque dar de alta un proveedor no es dar de alta un cliente.
+    pedidos = set(datos.roles) if "roles" in datos.model_fields_set else set()
+    roles = sorted(pedidos | {"proveedor"})
+    return svc.crear_cuenta(
+        uow,
+        identificadores=[i.model_dump() for i in datos.identificadores],
+        forzar=datos.forzar,
+        roles=roles,
+        **payload,
+    )
+
+
+def _proveedor(db: Any, cuenta_id: UUID, *, accion: str) -> Any:
+    """La cuenta con rol de proveedor, o 404 — **pasando por las políticas**.
+
+    Por el punto de decisión y no con un `db.get` a secas: es el único sitio en
+    el que se resuelve quién puede ver qué, y un cargador que se lo salta abre
+    una puerta lateral a un registro que la ficha de cuentas sí protege. Hay un
+    gate que lo comprueba, y tenía razón.
+    """
+    from crmcore.authz.decision import exigir
+
+    from services.party.modelos import Cuenta
+
+    cuenta = db.get(Cuenta, cuenta_id)
+    if cuenta is None or cuenta.deleted_at is not None or "proveedor" not in (cuenta.roles or []):
+        raise NoEncontrado(
+            "No hay ningún proveedor con ese identificador",
+            error_code="party.proveedor_no_encontrado",
+        )
+    exigir(db, objeto="cuenta", accion=accion, registro=cuenta)
+    return cuenta
+
+
+@router_proveedores.get(
+    "/{cuenta_id}",
+    response_model=CuentaOut,
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Ficha de un proveedor",
+    description=(
+        "La misma cuenta, vista desde su rol de proveedor. Hace falta para "
+        "poder **abrir** una fila del listado: sin ella, homologar, subir un "
+        "certificado o ver a quién llamar no se alcanzaban desde ninguna "
+        "pantalla, porque todo eso cuelga del proveedor y al proveedor no se "
+        "entraba."
+    ),
+)
+def ver_proveedor(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party.modelos import Cuenta
+
+    cuenta = _proveedor(db, cuenta_id, accion="leer")
+    return proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)(cuenta)
+
+
+@router_proveedores.patch(
+    "/{cuenta_id}",
+    response_model=CuentaOut,
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Actualizar un proveedor",
+    description=(
+        "Es la cuenta, así que cambia lo mismo y deja el mismo historial campo "
+        "a campo. Está aquí para que la ficha del proveedor se edite donde se "
+        "abre, y no obligue a irse a cuentas sabiendo que un proveedor es una."
+    ),
+)
+def actualizar_proveedor(cuenta_id: UUID, datos: ActualizarCuenta, uow: UowDep) -> Any:
+    from services.party import servicio as svc
+
+    _proveedor(uow.db, cuenta_id, accion="escribir")
+    return svc.actualizar_cuenta(
+        uow, cuenta_id, datos.model_dump(exclude_unset=True, exclude_none=True)
+    )
 
 
 ROUTERS_PROVEEDORES = [router_proveedores]

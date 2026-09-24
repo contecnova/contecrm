@@ -227,7 +227,6 @@ def test_cada_seccion_declarada_hecha_tiene_pantalla_en_el_codigo() -> None:
         "7.2": "Alm.tsx",
         "7.5": "Ayuda.tsx",
         "8.1": "Rendimiento.tsx",
-        "9.1": "Proveedores.tsx",
         "9.2": "Coste.tsx",
     }
     faltan_ficheros = sorted(

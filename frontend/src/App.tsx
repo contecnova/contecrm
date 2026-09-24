@@ -14,7 +14,6 @@ import { Inicio } from "@/paginas/Inicio";
 import { Pipeline } from "@/paginas/Pipeline";
 import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
-import { Proveedores } from "@/paginas/Proveedores";
 import { Puesto } from "@/paginas/Puesto";
 import { llamar } from "@/lib/api";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
@@ -128,6 +127,11 @@ export function App() {
               registros y con ella delante no se puede contestar «¿cómo vamos
               con este cliente?», que es para lo que se abre un CRM. */}
           <Route path="/m/cuentas/cuenta/:id" element={<Cuenta />} />
+          {/* Y la del proveedor es **la misma pantalla**, porque un proveedor
+              es una cuenta con ese rol. Una ficha propia y parecida sería un
+              segundo sitio donde mirar lo mismo, con el «lo que ha pasado» en
+              otro lugar y las mismas cosas contadas de otra forma. */}
+          <Route path="/m/proveedores/proveedor/:id" element={<Cuenta />} />
           <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
           <Route path="/estado" element={<Estado />} />
           <Route path="/cobertura" element={<Cobertura />} />
@@ -141,7 +145,6 @@ export function App() {
           <Route path="/consola-agente" element={<ConsolaAgente />} />
           <Route path="/conocimiento" element={<Conocimiento />} />
           <Route path="/marketing" element={<Marketing />} />
-          <Route path="/proveedores" element={<Proveedores />} />
           <Route path="/coste" element={<Coste />} />
           <Route path="/inteligencia" element={<Inteligencia />} />
           <Route path="/puesto" element={<Puesto />} />

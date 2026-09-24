@@ -3233,6 +3233,18 @@ def sembrar_duenos(api: Api) -> None:
                 break
 
 
+def sembrar_calidad(api: Api) -> None:
+    """Llena la cola de excepciones de calidad pasando el barrido.
+
+    Va **después** de los dueños a propósito: media cola son «sin propietario»,
+    y pasándolo antes se abrirían cientos de excepciones que el propio sembrado
+    resuelve un paso después. Quedarían abiertas —nadie las cierra— y la
+    primera impresión de la pantalla sería una cola de ruido, que es
+    exactamente como se consigue que nadie vuelva a mirarla.
+    """
+    api.crear("/api/v1/calidad-dato/cola/barrido?limite=2000", {})
+
+
 def sembrar_rastro(api: Api) -> None:
     """Las pantallas que no se llenan creando, sino usando.
 
@@ -3328,6 +3340,7 @@ PARTES: dict[str, Any] = {
     "trabajo": sembrar_trabajo,
     "chat": sembrar_chat,
     "duenos": sembrar_duenos,
+    "calidad": sembrar_calidad,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
 }

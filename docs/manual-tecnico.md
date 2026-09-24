@@ -331,6 +331,57 @@ módulo que lo usa —no en el arranque, para que el que valida sea el mismo que
 registra— y validar con `vocabulario.valores()`. No hace falta migración: la
 tabla ya está en todos los esquemas.
 
+### 3.5 Integridad al borrar
+
+`crmcore.datos.integridad` se niega a borrar lo que otros registros usan, y el
+borrado genérico de `montar_ficha` lo consulta antes de mandar nada a la
+papelera.
+
+Cómo sabe qué depende de qué, y por qué de dos formas:
+
+- **La clave ajena declarada**, cuando las dos tablas viven en el mismo esquema.
+- **La columna `<objeto>_id`**, que es el caso normal. Los servicios tienen
+  esquemas separados, así que una oportunidad apunta a su cuenta con un
+  `cuenta_id` suelto y no puede haber `FOREIGN KEY` entre ellas. Mirando solo
+  las claves ajenas, la protección habría cubierto cinco relaciones de todo el
+  producto. El nombre del objeto sale del registro de la papelera, donde cada
+  ficha declara el suyo al montarse.
+
+Y qué **no** cuenta como dependencia:
+
+- Lo que tiene `ON DELETE CASCADE`, porque eso es composición y no referencia:
+  las líneas de una oferta son parte de la oferta, y bloquear por ellas sería no
+  dejar borrar ninguna oferta.
+- Lo que está en la papelera. Si bloqueara, un registro quedaría preso para
+  siempre de algo que ya nadie ve y que nadie va a ir a purgar.
+
+Cuando bloquea responde **409 `integridad.referenciado`** diciendo qué tabla,
+por qué campo y cuántos. «No se puede borrar» a secas obliga a adivinar, y quien
+adivina va borrando las dependencias una a una hasta que le deja — que es el
+borrado en cascada, hecho a mano y sin enterarse.
+
+La salida es **archivar**: `POST {ficha}/archivar`, que monta `montar_ficha`
+cuando el modelo tiene `activo`, `activa` o `estado`. Deja de ofrecerse de aquí
+en adelante y no toca lo que ya pasó.
+
+### 3.6 La cola de calidad del dato
+
+`stewardship.barrido()` recorre cuentas y contactos y abre una excepción por
+cada cosa que esté mal. Existía la cola, la asignación y el cierre, y **ninguna
+forma de que entrara nada**: la pantalla salía siempre vacía.
+
+Las reglas no son nuevas: `calidad_faltan` lo escribe el alta y la edición de
+cada ficha con los pesos de `normalizacion`, y el formato lo juzgan los mismos
+validadores que normalizan al guardar. Un segundo criterio de «esto está bien»
+acabaría contradiciendo al primero, con la cola diciendo que falta algo que la
+ficha da por bueno.
+
+Es idempotente porque `abrir` no duplica la misma regla sobre el mismo campo de
+la misma ficha, así que se puede pasar cada noche. Se lanza con
+`POST /calidad-dato/cola/barrido` y el sembrado lo pasa al final, después de
+repartir los dueños — antes abriría cientos de «sin propietario» que el propio
+sembrado resuelve un paso después.
+
 ---
 
 ## 4. Integración

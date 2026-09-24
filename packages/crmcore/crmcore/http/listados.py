@@ -333,9 +333,14 @@ def montar_ficha(
         registrar_objeto(objeto, modelo)
 
         def borrar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> None:
-            from crmcore.datos import papelera
+            from crmcore.datos import integridad, papelera
 
             fila = _buscar(db, registro_id)
+            # Antes de nada, quién lo está usando. Borrar algo que otros
+            # registros apuntan no da error: los deja señalando a un
+            # identificador que ya no resuelve, y eso no se nota al borrar sino
+            # semanas después, al abrir el que dependía.
+            integridad.exigir_sin_dependencias(db, fila, objeto=objeto)
             # Por la papelera y no marcando `deleted_at` a mano: marcarlo
             # esconde el registro y no crea la entrada, así que no se puede ni
             # restaurar ni purgar. Un borrado sin vuelta atrás disfrazado de
@@ -358,9 +363,41 @@ def montar_ficha(
             description=(
                 "Borrado **lógico**: el registro va a la papelera, deja de "
                 "listarse y se puede restaurar desde ahí. Lo que se borra por "
-                "error se descubre siempre más tarde que el borrado."
+                "error se descubre siempre más tarde que el borrado.\n\n"
+                "Si hay registros que lo usan **no se borra**: responde 409 "
+                "diciendo qué depende y cuántos. Para eso está archivar."
             ),
         )(_con_parametro(borrar, parametro))
+
+    # Archivar: retirar sin borrar. Se monta cuando el modelo tiene con qué
+    # marcarse como retirado, y es la salida de lo que no se puede borrar
+    # porque otros lo usan — que es la mayoría de lo que se quiere quitar de
+    # enmedio: una lista de precios vieja no se borra, se deja de ofrecer.
+    from crmcore.datos.integridad import se_puede_archivar
+
+    if se_puede_archivar(modelo):
+
+        def archivar(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> Any:
+            from crmcore.datos import integridad
+
+            fila = _buscar(db, registro_id)
+            integridad.archivar(fila)
+            db.flush()
+            return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
+
+        archivar.__name__ = f"archivar_{objeto.replace('-', '_').replace('.', '_')}"
+        router.post(
+            f"{ruta_registro}/archivar",
+            response_model=dict,
+            dependencies=[Depends(exige_permiso(permiso_escribir))],
+            summary=f"Archivar {nombre.lower()}",
+            description=(
+                "Lo retira sin borrarlo: deja de ofrecerse de aquí en adelante "
+                "y no toca nada de lo que ya pasó. Es lo que hay que hacer con "
+                "lo que no se puede borrar porque hay registros que lo usan, y "
+                "casi siempre es también lo que se quería hacer."
+            ),
+        )(_con_parametro(archivar, parametro))
 
 
 def _tipo_de(columna: Any) -> Any:

@@ -129,8 +129,6 @@ export const ACCESOS: Entrada[] = [
  * distintos del menú.
  */
 export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
-  { area: "clientes", a: "/proveedores", clave: "nav.proveedores", icono: "local_shipping", permiso: "party:read" , recursos: ["proveedores"] },
-
   { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
 

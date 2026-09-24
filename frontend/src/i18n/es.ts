@@ -394,8 +394,6 @@ export default {
     alguien: "Alguien",
     sobreEl: "Sobre un registro de tipo {{objeto}}",
     ultimoDe: "Último mensaje, de {{quien}}: {{texto}}",
-    hablarDeEsto: "Hablar de esto",
-    noSePudoAbrir: "No se ha podido abrir la conversación.",
   },
 
   proveedores: {

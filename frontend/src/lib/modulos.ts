@@ -222,6 +222,36 @@ export const MODULOS: Modulo[] = [
   },
 
   // ── Módulo 1 · Customer 360 ─────────────────────────────────────────────
+  // ── Proveedores ─────────────────────────────────────────────────────────
+  //
+  // Un módulo y no una pantalla escrita a mano. Lo era, y por eso no se podía
+  // hacer nada: enseñaba la lista, y dar de alta, abrir uno o cambiarle algo
+  // exigía saber que **un proveedor es una cuenta con rol** —irse a cuentas,
+  // crearla allí y volver—. Como módulo hereda lo mismo que clientes: alta,
+  // ficha, edición, borrado, adjuntos, comentarios, documentos y actividad.
+  {
+    ruta: "proveedores",
+    titulo: "Proveedores",
+    seccion: "9.1",
+    capacidad: "CRM-07.04.03.31",
+    grupo: "Clientes",
+    recursos: [
+      {
+        nombre: "Proveedores",
+        objeto: "proveedor",
+        listar: "/api/v1/proveedores",
+        servicio: "party",
+        columnas: ["nombre", "estado", "sector_codigo", "telefono", "email", "owner_id"],
+        permiso: "party:read",
+      },
+      {
+        nombre: "Documentos que vencen",
+        listar: "/api/v1/proveedores/documentos/vencen",
+        servicio: "party",
+        permiso: "party:read",
+      },
+    ],
+  },
   {
     ruta: "cuentas",
     titulo: "Cuentas y contactos",
@@ -229,24 +259,9 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.07",
     grupo: "Clientes",
     recursos: [
-      {
-        nombre: "Calidad del dato",
-        listar: "/api/v1/calidad-dato/cola",
-        servicio: "party",
-        permiso: "account:read",
-      },
-      {
-        nombre: "Visitas",
-        listar: "/api/v1/visitas",
-        servicio: "party",
-        permiso: "account:read",
-      },
-      {
-        nombre: "Mapa de personas",
-        listar: "/api/v1/mapa-personas",
-        servicio: "party",
-        permiso: "contact:read",
-      },
+      // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
+      // de excepciones de calidad, así que lo primero al entrar en clientes era
+      // una lista de problemas.
       {
         nombre: "Cuentas",
         objeto: "cuenta",
@@ -263,6 +278,24 @@ export const MODULOS: Modulo[] = [
         crear: "/api/v1/contacts",
         servicio: "party",
         columnas: ["nombre_completo", "email", "telefono"],
+        permiso: "contact:read",
+      },
+      {
+        nombre: "Calidad del dato",
+        listar: "/api/v1/calidad-dato/cola",
+        servicio: "party",
+        permiso: "account:read",
+      },
+      {
+        nombre: "Visitas",
+        listar: "/api/v1/visitas",
+        servicio: "party",
+        permiso: "account:read",
+      },
+      {
+        nombre: "Mapa de personas",
+        listar: "/api/v1/mapa-personas",
+        servicio: "party",
         permiso: "contact:read",
       },
       {

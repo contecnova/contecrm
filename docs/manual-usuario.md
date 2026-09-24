@@ -572,6 +572,22 @@ Las que solo se miran son las que **no tienen nada que dar de alta**: un resumen
 del pipeline, una lista de contratos que vencen pronto, una cola de trabajo. Ahí
 lo que se ve se calcula a partir de otra cosa, y se cambia yendo a esa otra cosa.
 
+### Borrar: lo que se puede y lo que no
+
+Borrar envía el registro **a la papelera**, no lo destruye: deja de listarse y
+se puede recuperar desde ahí. Lo que se borra por error se descubre siempre más
+tarde que el borrado.
+
+Y **no se deja borrar lo que otros registros están usando**. Si intentas quitar
+una tarifa que tienen veinte acuerdos, el sistema te dice qué depende y cuántos
+son, y no lo borra: borrarlo dejaría esos veinte apuntando a una tarifa que ya
+no existe, y eso no falla al borrar — falla semanas después, al abrir uno de
+ellos.
+
+Para eso está **archivar**: retira el registro de aquí en adelante, deja de
+ofrecerse en los formularios, y no toca nada de lo que ya pasó. Casi siempre es
+lo que se quería hacer.
+
 ---
 
 ## Cambios, entornos y vuelta atrás (sección 7.2)
@@ -643,6 +659,17 @@ panel de compromisos que siempre está en verde no lo mira nadie.
 ---
 
 ## Tus proveedores (sección 9.1)
+
+Un proveedor **es una cuenta con el rol de proveedor**, no una ficha aparte. La
+misma empresa puede ser cliente de una división y proveedora de otra, y con dos
+maestros distintos acabaría dos veces, con el riesgo de aplicarle las
+condiciones de la ficha equivocada.
+
+Por eso la pantalla de proveedores funciona igual que la de clientes: se da de
+alta desde ahí, se abre cada uno, se edita, y cuelgan de él sus homologaciones,
+sus documentos con vigencia y sus contactos. Antes solo se podía **mirar** la
+lista: dar de alta uno exigía saber que era una cuenta, irse a cuentas, crearla
+allí y volver.
 
 Si tu empresa usa proveedores para dar servicio:
 

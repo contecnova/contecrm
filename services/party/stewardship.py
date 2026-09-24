@@ -306,6 +306,127 @@ def cola(
     }
 
 
+def barrido(uow: UnidadDeTrabajo, *, limite: int = 500) -> dict[str, Any]:
+    """Recorre cuentas y contactos y abre lo que esté mal (CRM-01.01.04.05).
+
+    Sin esto la cola **no tenía por dónde llenarse**: estaban la pantalla, la
+    asignación y el cierre, y ni una sola forma de que entrara una excepción.
+    Una cola de trabajo que no se puede llenar es una pantalla vacía que parece
+    rota, y lo era.
+
+    Las reglas no se inventan aquí: salen de lo que el servicio ya calcula.
+    `calidad_faltan` lo escribe el alta y la edición de cada ficha con los pesos
+    de `normalizacion`, y el formato lo juzgan los mismos validadores que
+    normalizan al guardar. Escribir reglas nuevas aquí habría creado un segundo
+    criterio de «esto está bien», y dos criterios acaban contradiciéndose — con
+    la cola diciendo que falta algo que la ficha da por bueno.
+
+    Es **idempotente** por construcción: `abrir` no duplica la misma regla sobre
+    el mismo campo de la misma ficha, así que pasarlo cada noche no multiplica
+    la cola. Lo que se corrige deja de reabrirse porque deja de cumplirse la
+    regla; lo que se cerró como «no era un error» vuelve a abrirse, y eso es
+    correcto: si vuelve cien veces, la rota es la regla, y para eso está
+    `reglas_sospechosas`.
+    """
+    from services.party import normalizacion as norm
+    from services.party.modelos import Contacto, Cuenta
+
+    abiertas = 0
+    revisados = 0
+
+    def _abrir(**kwargs: Any) -> None:
+        nonlocal abiertas
+        abrir(uow, **kwargs)
+        abiertas += 1
+
+    cuentas = (
+        uow.db.execute(
+            select(Cuenta)
+            .where(Cuenta.deleted_at.is_(None))
+            .order_by(Cuenta.created_at)
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    for cuenta in cuentas:
+        revisados += 1
+        if cuenta.owner_id is None:
+            _abrir(
+                objeto="cuenta",
+                objeto_id=cuenta.id,
+                tipo="sin_propietario",
+                regla="cuenta.sin_propietario",
+                campo="owner_id",
+                detalle=f"«{cuenta.nombre}» no tiene a nadie responsable.",
+                prioridad=2,
+            )
+        # Lo que falta ya está calculado en la ficha: se abre una excepción por
+        # campo y no una por cuenta, porque cada una la arregla alguien distinto
+        # y cerrarlas juntas obligaría a tenerlo todo antes de cerrar nada.
+        for campo in cuenta.calidad_faltan or []:
+            if campo == "owner_id":
+                continue
+            _abrir(
+                objeto="cuenta",
+                objeto_id=cuenta.id,
+                tipo="falta_obligatorio",
+                regla=f"cuenta.falta.{campo}",
+                campo=campo,
+                detalle=f"«{cuenta.nombre}» no tiene {campo.replace('_', ' ')}.",
+                prioridad=3 if cuenta.calidad and cuenta.calidad >= 60 else 2,
+            )
+        if cuenta.email and norm.normalizar_email(cuenta.email) != (cuenta.email or "").lower():
+            _abrir(
+                objeto="cuenta",
+                objeto_id=cuenta.id,
+                tipo="formato_invalido",
+                regla="cuenta.email.formato",
+                campo="email",
+                detalle=f"El correo «{cuenta.email}» no tiene forma de correo.",
+                prioridad=2,
+            )
+
+    contactos = (
+        uow.db.execute(
+            select(Contacto)
+            .where(Contacto.deleted_at.is_(None))
+            .order_by(Contacto.created_at)
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    for contacto in contactos:
+        revisados += 1
+        etiqueta = f"{contacto.nombre} {contacto.apellidos or ''}".strip()
+        if contacto.owner_id is None:
+            _abrir(
+                objeto="contacto",
+                objeto_id=contacto.id,
+                tipo="sin_propietario",
+                regla="contacto.sin_propietario",
+                campo="owner_id",
+                detalle=f"«{etiqueta}» no tiene a nadie responsable.",
+                prioridad=2,
+            )
+        for campo in contacto.calidad_faltan or []:
+            if campo == "owner_id":
+                continue
+            _abrir(
+                objeto="contacto",
+                objeto_id=contacto.id,
+                tipo="falta_obligatorio",
+                regla=f"contacto.falta.{campo}",
+                campo=campo,
+                detalle=f"«{etiqueta}» no tiene {campo.replace('_', ' ')}.",
+                prioridad=3 if contacto.calidad and contacto.calidad >= 60 else 2,
+            )
+
+    uow.db.flush()
+    return {"revisados": revisados, "excepciones": abiertas}
+
+
 def reglas_sospechosas(db: Session, tenant_id: UUID) -> dict[str, Any]:
     """Qué reglas están generando ruido en vez de trabajo.
 

@@ -27,7 +27,6 @@ import {
   nombreDelRegistro,
 } from "@/lib/formato";
 import { Acciones } from "@/componentes/Acciones";
-import { HablarDeEsto } from "@/componentes/HablarDeEsto";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
@@ -223,12 +222,7 @@ function Datos({
               identificador para que quedara colgado, y eso no lo hace nadie dos
               veces. */}
           {objeto ? (
-            <>
-              <RegistrarActividad objeto={objeto} objetoId={id} alRegistrar={cargar} />
-              {/* Hablar de ESTE registro, con su contexto al lado: es lo que
-                  distingue este chat de pegar un enlace en otra herramienta. */}
-              <HablarDeEsto objeto={objeto} objetoId={id} />
-            </>
+            <RegistrarActividad objeto={objeto} objetoId={id} alRegistrar={cargar} />
           ) : null}
         </>
       ) : null}
