@@ -113,9 +113,15 @@ Dos cosas que no se copiaron a ciegas:
   es la superficie más clara y por tanto el peor caso. Con los valores de
   contecflow tal cual, el texto tenue daba 3.90:1 y el acento 4.32:1 — los dos
   por debajo. Suben a #8696b2 y #5994f7.
-- **Las sombras.** Las de Material eran gris translúcido sobre blanco y en
-  oscuro no se veían: una tarjeta elevada quedaba igual de plana que el fondo.
-  Las de contecflow son negro con opacidad, que es lo que separa capas ahí.
+- **Las sombras.** Una sombra es la ausencia de luz sobre una superficie, así
+  que no puede ser un valor único para toda la app: las de Material son gris
+  translúcido pensado para blanco y en oscuro no se ven —una tarjeta elevada
+  queda tan plana como el fondo—, y las de contecflow son negro a opacidad
+  0.4-0.7 y sobre blanco son un manchón. Así que `--shadow-1..5` y
+  `--shadow-accent` se declaran **dos veces**, Material en `:root` y contecflow
+  en `.dark`, y `tailwind.config.js` solo los referencia. contecflow tiene tres
+  niveles y aquí hacen falta cinco —hay modales sobre paneles sobre tarjetas—,
+  así que se continúa su progresión.
 
 #### La pantalla de entrada es la de contecflow, exacta
 

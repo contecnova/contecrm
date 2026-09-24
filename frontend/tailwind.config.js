@@ -126,50 +126,6 @@ export default {
           soft:    "rgb(var(--danger-soft-text) / <alpha-value>)",
         },
       },
-      // ── El mismo color, distinto según sea RELLENO o TEXTO ──────────────
-      //
-      // `theme.textColor` es una escala propia de Tailwind: si no se define,
-      // cae a `colors`; si se define, manda para las utilidades `text-*` y solo
-      // para ellas. Eso permite que un nombre semántico resuelva a un color
-      // distinto según el papel que juegue, que es lo que pide WCAG 2:
-      //
-      //   text-warning  → `--warning-text` (#8b5f00) — 4.67:1 sobre superficie
-      //   bg-warning    → `--warning`      (#f9ab00) — relleno, lleva tinta encima
-      //
-      // Los tokens `*-text` YA estaban en `index.css`, copiados de contecmind
-      // con su razonamiento entero. Lo que faltaba era esto: cablearlos. Sin
-      // ello, `text-warning` pintaba el amarillo de relleno —1,93:1 sobre
-      // blanco, ilegible— y el aviso de campos retenidos no se leía.
-      //
-      // Cada familia se declara ENTERA, incluidas las claves que no cambian:
-      // `extend` fusiona por clave de primer nivel y no garantiza fusión
-      // profunda de los objetos de color, así que listar solo `ink.faint`
-      // podría borrar `ink.DEFAULT` y dejar el texto negro en tema oscuro.
-      textColor: {
-        ink: {
-          DEFAULT: "rgb(var(--ink) / <alpha-value>)",
-          muted: "rgb(var(--ink-muted) / <alpha-value>)",
-          faint: "rgb(var(--ink-faint-text) / <alpha-value>)",
-          dim: "rgb(var(--ink-dim) / <alpha-value>)",
-        },
-        accent: {
-          DEFAULT: "rgb(var(--accent-text) / <alpha-value>)",
-          soft: "rgb(var(--accent-soft-text) / <alpha-value>)",
-          glow: "rgb(var(--accent-glow-text) / <alpha-value>)",
-        },
-        success: {
-          DEFAULT: "rgb(var(--success-text) / <alpha-value>)",
-          soft: "rgb(var(--success-soft-text) / <alpha-value>)",
-        },
-        warning: {
-          DEFAULT: "rgb(var(--warning-text) / <alpha-value>)",
-          soft: "rgb(var(--warning-soft-text) / <alpha-value>)",
-        },
-        danger: {
-          DEFAULT: "rgb(var(--danger-text) / <alpha-value>)",
-          soft: "rgb(var(--danger-soft-text) / <alpha-value>)",
-        },
-      },
       fontFamily: {
         // La de contecflow, y en su mismo orden. Se cambió desde Geist porque
         // se lee con menos esfuerzo en las pantallas densas de este producto
@@ -255,24 +211,29 @@ export default {
         },
       },
       boxShadow: {
-        // Material 3 elevation system (1dp → 5dp). We keep the legacy
-        // `elevated`/`popover`/`cta` names as aliases of the matching
-        // elevation level so older classNames keep rendering correctly.
-        // Las de contecflow. Las de Material estaban pensadas para fondo
-        // claro —gris translúcido sobre blanco— y sobre el lienzo oscuro no se
-        // veían: una tarjeta elevada quedaba igual de plana que el fondo. Estas
-        // son negro con opacidad, que es lo que separa capas en oscuro.
-        "elevation-1": "0 1px 3px rgba(0,0,0,0.4)",
-        "elevation-2": "0 4px 16px rgba(0,0,0,0.5)",
-        "elevation-3": "0 8px 32px rgba(0,0,0,0.6)",
-        "elevation-4": "0 12px 40px rgba(0,0,0,0.65)",
-        "elevation-5": "0 16px 48px rgba(0,0,0,0.7)",
-        // El halo del acento, para lo que está en foco.
-        "accent-glow": "0 0 20px rgba(79, 142, 247, 0.12)",
-        "elevated":    "0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08)",
-        "popover":     "0 4px 8px 3px rgba(60,64,67,0.10), 0 1px 3px 0 rgba(60,64,67,0.12)",
-        "accent-glow": "0 0 0 1px rgba(26,115,232,0.55), 0 0 0 4px rgba(26,115,232,0.12)",
-        "cta":         "0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08)",
+        // Una sombra es la ausencia de luz sobre una superficie, así que no
+        // puede ser un valor fijo: cambia con el tema. Las de Material son gris
+        // translúcido pensado para blanco y sobre el lienzo oscuro no se ven
+        // —una tarjeta elevada queda tan plana como el fondo—; las de
+        // contecflow son negro a opacidad 0.4-0.7 y sobre blanco son un
+        // manchón. Poner unas u otras aquí, que es un valor único para toda la
+        // app, rompe siempre el otro tema.
+        //
+        // Por eso el valor vive en `index.css`, con `--shadow-N` declarado dos
+        // veces: Material en `:root` y contecflow en `.dark`. Aquí solo se
+        // referencia.
+        "elevation-1": "var(--shadow-1)",
+        "elevation-2": "var(--shadow-2)",
+        "elevation-3": "var(--shadow-3)",
+        "elevation-4": "var(--shadow-4)",
+        "elevation-5": "var(--shadow-5)",
+        // Nombres antiguos, alias del nivel que les toca.
+        "elevated": "var(--shadow-1)",
+        "popover":  "var(--shadow-3)",
+        "cta":      "var(--shadow-1)",
+        // El foco de un campo NO es una elevación: es el anillo que dice dónde
+        // se escribe, y tiene que verse en los dos temas. También por token.
+        "accent-glow": "var(--shadow-accent)",
       },
       backgroundImage: {
         // Single-tone Google blue. Kept as a gradient utility name so

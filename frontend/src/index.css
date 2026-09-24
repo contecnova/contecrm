@@ -112,6 +112,19 @@
      es peor que un literal. Así que se EXTIENDE el sistema de tokens en vez de
      esquivarlo: estos dos cubren los tonos que faltaban y, como cualquier otro
      token, tienen valor propio en claro y en oscuro. */
+  /* ── Sombras: Material, para fondo claro ──────────────────────────────────
+     Gris translúcido (#3c4043) porque sobre blanco el negro puro es un manchón
+     y delata el truco. Los mismos valores que tenía el sistema antes de que la
+     paleta oscura pasara a ser la de contecflow; lo que cambia es que ahora son
+     un token y no un literal en `tailwind.config.js`, para que cada tema pueda
+     dar el suyo. */
+  --shadow-1: 0 1px 2px 0 rgba(60,64,67,0.08), 0 1px 3px 1px rgba(60,64,67,0.06);
+  --shadow-2: 0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08);
+  --shadow-3: 0 4px 8px 3px rgba(60,64,67,0.10), 0 1px 3px 0 rgba(60,64,67,0.12);
+  --shadow-4: 0 6px 10px 4px rgba(60,64,67,0.12), 0 2px 3px 0 rgba(60,64,67,0.14);
+  --shadow-5: 0 8px 12px 6px rgba(60,64,67,0.14), 0 4px 4px 0 rgba(60,64,67,0.16);
+  --shadow-accent: 0 0 0 1px rgba(26,115,232,0.55), 0 0 0 4px rgba(26,115,232,0.12);
+
   --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
   --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
 }
@@ -164,6 +177,22 @@
   --warning-soft-text: 247 174 50;   /* #f7ae32 — 7.29:1 */
   --danger-text:       248 113 113;  /* #f87171 — 5.01:1 */
   --danger-soft-text:  250 145 145;  /* #fa9191 — 6.13:1 */
+
+  /* ── Sombras: las de contecflow ───────────────────────────────────────────
+     Negro con opacidad, que es lo que separa capas sobre un lienzo oscuro. Sus
+     tres niveles (`--shadow-sm/md/lg`) se estiran a los cinco de aquí
+     continuando la progresión, porque este producto tiene modales sobre
+     paneles sobre tarjetas y con tres no hay con qué distinguirlos.
+
+     El anillo de foco se sube al acento de contecflow (#4f8ef7) y se le deja el
+     halo de 20px que usan ellos, además del contorno de 1px: el halo solo no
+     marca el borde del campo, y el contorno solo no se ve contra `paper-light`. */
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-2: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-3: 0 8px 32px rgba(0,0,0,0.6);
+  --shadow-4: 0 12px 40px rgba(0,0,0,0.65);
+  --shadow-5: 0 16px 48px rgba(0,0,0,0.7);
+  --shadow-accent: 0 0 0 1px rgba(79,142,247,0.55), 0 0 20px rgba(79,142,247,0.12);
 
   /* Categóricos de visualización (#36) — más luminosos para el lienzo oscuro. */
   --viz-violet:   167 139 250;   /* #a78bfa */
