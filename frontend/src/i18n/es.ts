@@ -221,6 +221,17 @@ export default {
     cifras: "{{miembros}} miembros · {{enviados}} enviados · {{respuestas}} respuestas",
   },
   explotacion: {
+    // La caja de preguntar y el alta de la fuente.
+    placeholder: "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
+    preguntar: "Preguntar",
+    pensando: "Pensando…",
+    sinRespuesta: "No se ha podido responder a eso.",
+    comoSeCalculo: "Cómo se ha calculado",
+    registrar: "Registrar el CRM como fuente consultable",
+    registrando: "Registrando…",
+    registrarDetalle:
+      "Da de alta los objetos del CRM en contecintelligence con una credencial de solo lectura. No hay nada que rellenar.",
+    registroFallido: "No se ha podido registrar la fuente.",
     titulo: "Explotación",
     entradilla:
       "Preguntar sobre los datos del CRM sin salir de aquí. Las respuestas las " +

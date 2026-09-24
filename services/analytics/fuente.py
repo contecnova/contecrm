@@ -76,6 +76,15 @@ class FuenteRegistrada(Base, TimestampMixin):
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     registrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # El identificador de la fuente ALLÍ. Sin él, la pantalla no puede preguntar:
+    # `/api/ask` exige decir a qué fuente, y el navegador no tiene forma de
+    # averiguarlo —ni debe, porque implicaría listarle las fuentes del tenant—.
+    # `server_default` además del `default` de Python: la columna se añadió a una
+    # tabla que ya tenía filas, y sin valor por defecto en la BASE la migración
+    # muere con «contains null values» al arrancar el servicio.
+    externa_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="", server_default=""
+    )
 
     __table_args__ = (UniqueConstraint("tenant_id", name="uq_fuente_tenant"),)
 
@@ -184,7 +193,7 @@ def registrar_fuente(
     fila.objetos = descripcion["objetos"]
     fila.campos = descripcion["campos"]
     try:
-        _publicar(modelo, organizacion, tenant_id=tenant_id)
+        externa = _publicar(modelo, organizacion, tenant_id=tenant_id)
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
         fila.error = str(exc)[:1000]
@@ -195,6 +204,7 @@ def registrar_fuente(
         return {"registrada": False, "sin_cambios": False, "error": fila.error}
 
     fila.huella = huella
+    fila.externa_id = externa or fila.externa_id
     fila.estado = "registrada"
     fila.error = None
     fila.registrada_at = _ahora()
@@ -231,7 +241,7 @@ RUTA_FUENTES = "/api/sources"
 ALCANCES_REGISTRO = ["sources:read", "sources:write"]
 
 
-def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> None:
+def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> str:
     """Da de alta el CRM como fuente consultable en contecintelligence.
 
     **Se registra una fuente de API, no una descripción suelta.** Mandar solo el
@@ -263,7 +273,7 @@ def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> 
         alcances=ALCANCES_REGISTRO,
     )
 
-    entidades = _entidades_de(modelo)
+    entidades = _entidades_de(s.ci_url_del_crm, clave_api)
     if not entidades:
         raise ErrorValidacion(
             "Este tenant no tiene ningún objeto consultable que registrar",
@@ -292,6 +302,7 @@ def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> 
             error_code="analytics.registro_rechazado",
             detalle={"codigo_http": respuesta.status_code, "cuerpo": respuesta.text[:300]},
         )
+    return str((respuesta.json() or {}).get("id") or "")
 
 
 def _clave_de_lectura(tenant_id: UUID) -> str:
@@ -335,35 +346,68 @@ def _url_de_identity(s: Any) -> str:
     )
 
 
-def _entidades_de(modelo: dict[str, Any]) -> list[dict[str, Any]]:
-    """Cada objeto del modelo semántico, como entidad leíble por su API.
+def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
+    """Qué se puede consultar, preguntándoselo al propio CRM.
 
-    La forma de la página es la de contecrm y va explícita: los registros bajo
-    `items`, el cursor bajo `siguiente` y `limite` como tamaño. Suponerla —dar por
-    hecho que todos los listados paginan igual— es lo que hacía fallar el alta
-    entera por el primero que no lo hacía.
+    Sale de `/superficie`, que es donde este sistema declara lo que publica: todo
+    listado RAÍZ que él mismo marca como colección y que no es de administración
+    ni de plataforma. No hay lista escrita a mano, así que un módulo nuevo entra
+    solo y uno retirado desaparece.
+
+    No vale el modelo semántico: describe los campos PERSONALIZADOS de cinco
+    objetos, no los objetos del CRM. Usarlo daba «este tenant no tiene ningún
+    objeto consultable» en cuanto el tenant no había añadido campos propios, que
+    es el caso normal.
+
+    **Y la forma de cada listado se mide.** Unos devuelven una página con cursor
+    y otros una lista pelada; suponer que todos paginan igual hace que el alta
+    entera falle por el primero que no.
     """
-    entidades = []
-    for objeto in modelo.get("objetos") or []:
-        ruta = objeto.get("ruta") or objeto.get("coleccion") or ""
-        if not ruta:
-            continue
-        entidades.append(
-            {
-                "name": str(objeto.get("nombre") or objeto.get("clave") or "").replace("-", "_"),
-                "path": ruta if ruta.startswith("/") else f"/{ruta}",
-                "record_path": "items",
+    from crmcore.red import cliente_seguro
+
+    cabeceras = {"Authorization": f"Bearer {clave_api}"}
+    raiz = base_url.rstrip("/")
+    with cliente_seguro(timeout=30.0) as cli:
+        respuesta = cli.get(f"{raiz}/superficie", headers=cabeceras)
+        if respuesta.status_code != 200:
+            raise ErrorDependencia(
+                "No se ha podido leer la superficie del CRM para registrar la fuente",
+                error_code="analytics.sin_superficie",
+                detalle={"codigo_http": respuesta.status_code},
+            )
+        operaciones = respuesta.json().get("operaciones") or []
+
+        entidades: list[dict[str, Any]] = []
+        for op in operaciones:
+            ruta = str(op.get("ruta") or "")
+            if op.get("metodo") != "GET" or not op.get("devuelve_lista"):
+                continue
+            if "{" in ruta or ruta.count("/") != 3 or not ruta.startswith("/api/v1/"):
+                continue
+            if op.get("administracion") or op.get("solo_plataforma") or op.get("exige_datos"):
+                continue
+            muestra = cli.get(f"{raiz}{ruta[len('/api/v1'):]}?limite=1", headers=cabeceras)
+            if muestra.status_code != 200:
+                continue
+            cuerpo = muestra.json()
+            entidad: dict[str, Any] = {
+                "name": ruta.rsplit("/", 1)[-1].replace("-", "_"),
+                "path": ruta[len("/api/v1") :],
                 "primary_key": "id",
-                "pagination": {
+            }
+            if isinstance(cuerpo, dict) and "items" in cuerpo:
+                entidad["record_path"] = "items"
+                entidad["pagination"] = {
                     "type": "cursor",
                     "cursor_path": "siguiente",
                     "cursor_param": "cursor",
                     "size_param": "limite",
                     "size": 200,
-                },
-            }
-        )
-    return entidades
+                }
+            elif not isinstance(cuerpo, list):
+                continue
+            entidades.append(entidad)
+    return sorted(entidades, key=lambda e: e["name"])
 
 
 async def consumir_esquema_cambiado(mensaje: Any) -> None:
@@ -435,9 +479,18 @@ def diagnostico(db: Session, tenant_id: UUID) -> dict[str, Any]:
             "preguntas no encontrarían de dónde sacar los datos."
         )
 
+    from crmcore.config import get_settings
+
+    s_cfg = get_settings()
     return {
         "puede_preguntar": not problemas,
         "problemas": problemas,
+        # Lo que la pantalla necesita para poder preguntar de verdad: a quién y
+        # sobre qué. Va en el diagnóstico y no en un ajuste del front porque la
+        # dirección pública y el identificador de la fuente son configuración del
+        # despliegue, y el navegador no puede adivinar ninguno de los dos.
+        "url_publica": s_cfg.ci_url_publica or "",
+        "fuente_id": (fuente.externa_id if fuente else "") or "",
         # Lo que sigue funcionando, dicho por su nombre. Es la mitad de la
         # respuesta y la que evita que alguien crea que el CRM se ha caído.
         "sigue_funcionando": [

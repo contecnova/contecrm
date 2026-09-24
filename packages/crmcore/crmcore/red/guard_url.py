@@ -87,10 +87,40 @@ def _permitidos() -> set[str]:
     Existe porque hay instalaciones con un IdP o un ERP en la red interna, y
     negarlo obligaría a apagar el guard entero. Va por configuración y en caliente.
     """
+    from urllib.parse import urlparse
+
+    from crmcore.config import get_settings
     from crmcore.runtime import settings as rt
 
     crudo = rt.efectivo("url_guard_hosts_permitidos") or ""
-    return {h.strip().lower() for h in str(crudo).split(",") if h.strip()}
+    permitidos = {h.strip().lower() for h in str(crudo).split(",") if h.strip()}
+
+    # Y los servicios de ESTE despliegue, que salen de `RUTAS_SERVICIOS`. No son
+    # una URL de usuario: son las direcciones que el operador ha declarado, y son
+    # exactamente lo que este guardia NO tiene que vigilar —vigila lo que alguien
+    # escribe en un formulario de webhook—.
+    #
+    # Antes había que ponerlos a mano en `URL_GUARD_HOSTS_PERMITIDOS`, y olvidarlo
+    # no fallaba al arrancar: fallaba la primera vez que un servicio llamaba a
+    # otro, con «Esa URL no se puede consultar desde el servidor», que no dice
+    # nada de lo que pasa. Se descubrió al registrar el CRM como fuente, porque
+    # `analytics` tiene que pedirle a `identity` la clave de lectura.
+    s = get_settings()
+    for trozo in (s.rutas_servicios or "").replace("\n", " ").split(","):
+        _, _, url = trozo.strip().partition("=")
+        host = urlparse(url.strip()).hostname if url.strip() else None
+        if host:
+            permitidos.add(host.lower())
+    # Y las direcciones de los servicios de la casa con los que este despliegue
+    # habla, por lo mismo: las pone el operador en el `.env`, no un usuario en un
+    # formulario. Tenerlas que repetir en `URL_GUARD_HOSTS_PERMITIDOS` era pedir
+    # que alguien se acordara de escribir dos veces lo mismo.
+    for atributo in ("ci_base_url", "ci_url_del_crm", "dms_base_url"):
+        valor = str(getattr(s, atributo, "") or "")
+        host = urlparse(valor).hostname if valor else None
+        if host:
+            permitidos.add(host.lower())
+    return permitidos
 
 
 def evaluar(url: str) -> Veredicto:

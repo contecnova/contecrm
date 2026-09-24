@@ -22,15 +22,35 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { ErrorApi, llamar } from "@/lib/api";
+import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { RespuestaAnalitica, type Payload } from "@/componentes/RespuestaAnalitica";
+import { ErrorApi, llamar } from "@/lib/api";
 
 interface Diagnostico {
   puede_preguntar: boolean;
   problemas: string[];
   sigue_funcionando: string[];
   no_funciona: string[];
+  /** Dirección de contecintelligence **para el navegador**, no la interna. */
+  url_publica: string;
+  /** Identificador de la fuente allí: `/api/ask` exige decir sobre qué se pregunta. */
+  fuente_id: string;
 }
+
+/** Ejemplos que se ponen delante de la caja vacía.
+ *
+ * Una caja de texto sin nada alrededor tiene una barrera que no se ve: «¿y qué
+ * le pregunto?». Con seis ejemplos delante, la primera pregunta es un clic, y a
+ * la segunda ya se escribe solo. */
+const EJEMPLOS = [
+  "¿Cuántas oportunidades hay abiertas por etapa?",
+  "Importe total de los presupuestos",
+  "Ingreso previsto para el próximo trimestre por comercial",
+  "Casos abiertos por cliente y prioridad",
+  "Cuentas sin actividad en los últimos 90 días",
+  "Descuento medio concedido por familia de producto",
+];
 
 interface Pregunta {
   id: string;
@@ -106,8 +126,11 @@ export function Explotacion() {
               <li key={s}>{s}</li>
             ))}
           </ul>
+          <BotonRegistrar alTerminar={cargar} />
         </section>
-      ) : null}
+      ) : (
+        <Preguntar diagnostico={diagnostico} />
+      )}
 
       <section>
         <h2 className="text-sm font-medium text-ink">{t("explotacion.publicadas")}</h2>
@@ -135,6 +158,151 @@ export function Explotacion() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Dar de alta el CRM como fuente consultable. Un botón, no un formulario.
+ *
+ * Todo lo que hace falta —una credencial de solo lectura, la lista de objetos
+ * consultables y su forma de paginar— lo averigua el servidor. Pedirle a una
+ * persona que pegue eso en un formulario es pedirle que escriba JSON, y eso no
+ * es una pantalla: es un fichero de configuración con bordes redondeados.
+ */
+function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
+  const { t } = useTranslation();
+  const [enCurso, setEnCurso] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  async function registrar() {
+    setEnCurso(true);
+    setFallo(null);
+    try {
+      const r = await llamar<{ registrada: boolean; error?: string }>(
+        "/api/v1/explotacion/registrar-fuente",
+        { metodo: "POST" },
+      );
+      if (r.datos.registrada) alTerminar();
+      else setFallo(r.datos.error || t("explotacion.registroFallido"));
+    } catch (e: unknown) {
+      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.registroFallido"));
+    } finally {
+      setEnCurso(false);
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <button type="button" className="btn-primary" onClick={() => void registrar()} disabled={enCurso}>
+        {enCurso ? t("explotacion.registrando") : t("explotacion.registrar")}
+      </button>
+      <p className="mt-1.5 text-3xs text-ink-faint">{t("explotacion.registrarDetalle")}</p>
+      {fallo ? (
+        <p role="alert" className="mt-2 text-2xs text-danger">
+          {fallo}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * La caja de preguntar.
+ *
+ * El token se pide **por pregunta** y va al navegador; la credencial de
+ * aplicación no baja nunca. Dura minutos y nombra a esta persona y a esta
+ * organización, así que la respuesta llega con SUS permisos: quien no ve una
+ * cuenta en su ficha tampoco la ve aquí.
+ */
+function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
+  const { t } = useTranslation();
+  const [texto, setTexto] = useState("");
+  const [pensando, setPensando] = useState(false);
+  const [respuesta, setRespuesta] = useState<{ payload: Payload; texto: string } | null>(null);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  async function preguntar(pregunta: string) {
+    if (!pregunta.trim() || pensando) return;
+    setPensando(true);
+    setFallo(null);
+    setRespuesta(null);
+    try {
+      const token = await llamar<{ token: string }>("/api/v1/analitica/token", { metodo: "POST" });
+      const r = await fetch(`${diagnostico.url_publica.replace(/\/$/, "")}/api/ask`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.datos.token}`,
+        },
+        body: JSON.stringify({ source_id: diagnostico.fuente_id, question: pregunta }),
+      });
+      const cuerpo = (await r.json()) as { payload?: Payload; text?: string; detail?: string };
+      if (!r.ok || !cuerpo.payload) {
+        // El motivo de contecintelligence tal cual: dice cosas útiles como «los
+        // datos no contienen información de cuentas, solo nombres», y traducirlo
+        // a «no se pudo responder» quitaría justo lo que ayuda.
+        setFallo(cuerpo.detail || t("explotacion.sinRespuesta"));
+        return;
+      }
+      setRespuesta({ payload: cuerpo.payload, texto: cuerpo.text || pregunta });
+      // Queda anotado en el historial de consultas, que es lo que hace que la
+      // pestaña de al lado tenga sentido.
+      void llamar("/api/v1/analitica/consultas", {
+        metodo: "POST",
+        cuerpo: { pregunta, fuente: "contecintelligence", filas_devueltas: (cuerpo.payload.data || []).length },
+      }).catch(() => undefined);
+    } catch (e: unknown) {
+      setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.sinRespuesta"));
+    } finally {
+      setPensando(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void preguntar(texto);
+        }}
+      >
+        <input
+          className="input-base flex-1"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder={t("explotacion.placeholder")}
+          aria-label={t("explotacion.placeholder")}
+        />
+        <button type="submit" className="btn-primary" disabled={pensando || !texto.trim()}>
+          {pensando ? t("explotacion.pensando") : t("explotacion.preguntar")}
+        </button>
+      </form>
+
+      <div className="flex flex-wrap gap-1.5">
+        {EJEMPLOS.map((e) => (
+          <button
+            key={e}
+            type="button"
+            className="pill"
+            onClick={() => {
+              setTexto(e);
+              void preguntar(e);
+            }}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+
+      {fallo ? (
+        <p role="alert" className="flex items-start gap-1.5 text-2xs text-danger">
+          <Icono nombre="error" tamano="sm" />
+          <span>{fallo}</span>
+        </p>
+      ) : null}
+      {respuesta ? <RespuestaAnalitica payload={respuesta.payload} texto={respuesta.texto} /> : null}
+    </section>
   );
 }
 

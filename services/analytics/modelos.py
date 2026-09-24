@@ -85,6 +85,15 @@ class ConsultaAnalitica(Base):
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
+
+# El esquema que el tenant se define, replicado aquí como en los demás servicios
+# (CRM-00.04.03.02). Faltaba, y no fallaba de forma visible: `analytics` YA se
+# suscribe al evento de cambio de esquema —lo hace `crear_servicio` para todos—,
+# así que el consumidor escribía contra una tabla que no existía y se perdía
+# calladamente. Lo que sí se veía era el final de la cadena: registrar el CRM
+# como fuente consultable daba 500 con `relation "esquemas_tenant" does not
+# exist`, porque el modelo semántico se construye leyendo de ahí.
+from crmcore.metamodelo import EsquemaTenant, UsoCampo  # noqa: E402,F401
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 

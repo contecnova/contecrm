@@ -30,6 +30,12 @@ class _IntelligenceSettings(BaseSettings):
     # consulta a sí misma. Sin esto no se puede registrar la fuente, que es el
     # paso sin el cual preguntar no devuelve nada.
     ci_url_del_crm: str = ""
+    # La dirección de contecintelligence **desde el navegador**. Es distinta de
+    # `ci_base_url`, que es la de servidor a servidor: en un despliegue con
+    # contenedores, `http://contecintelligence:8000` no existe para el navegador
+    # de nadie. Sin esto, la pantalla de explotación no puede preguntar aunque
+    # todo lo demás esté bien.
+    ci_url_publica: str = ""
     ci_client_id: str = ""
     ci_client_secret: SecretStr | None = None
 
