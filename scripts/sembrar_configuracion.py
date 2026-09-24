@@ -3414,7 +3414,22 @@ def sembrar_rastro(api: Api) -> None:
 
 
 def sembrar_analitica(api: Api) -> None:
-    """Preguntas ya hechas, para que el historial de consultas no salga vacío."""
+    """Preguntas ya hechas, para que el historial de consultas no salga vacío.
+
+    **Se mira antes de escribir**, que es la excepción en este script. El resto
+    de partes se apoyan en que la API conteste 409 al duplicado, y por eso pasar
+    el sembrador dos veces es inofensivo. Aquí no puede haber 409: el registro de
+    consultas es un DIARIO, y la misma pregunta hecha dos veces son dos filas de
+    verdad. Negarle el duplicado sería romper lo que la tabla significa.
+
+    Así que la idempotencia la pone el sembrador. Sin esto, cada pase añadía seis
+    filas: en esta instalación había 84 para 7 preguntas distintas —un tenant con
+    cada una doce veces— y la pantalla de consultas parecía rota.
+    """
+    if api.listar("/api/v1/analitica/consultas", limite=1):
+        api.cuenta["saltados"] += 1
+        return
+
     preguntas = [
         "¿Cuántas oportunidades hay abiertas por etapa?",
         "Ingreso previsto para el próximo trimestre por comercial",
