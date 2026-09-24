@@ -41,6 +41,10 @@ class AjustesParty(Settings):
     # corporativo. Fuerte, pero no prueba: una multinacional tiene varias
     # sociedades con el mismo dominio.
     dedupe_usar_dominio: bool = True
+    # Por debajo de esta probabilidad, la pareja no se propone en la cola de
+    # revisión. Más bajo que el umbral de bloqueo al crear a propósito: bloquear
+    # un alta y **proponer que alguien mire** no piden la misma certeza.
+    duplicados_umbral_propuesta: float = Field(0.72, ge=0.0, le=1.0)
 
     # ── Calidad del dato (CRM-01.01.04.05) ────────────────────────────────
     # Puntuación por debajo de la cual la ficha entra en la cola de excepciones.
@@ -88,6 +92,14 @@ registrar_claves(
             descripcion="Impedir dos cuentas con el mismo identificador fiscal",
             campo_settings="dedupe_bloquear_por_nif",
             sensible=True,
+        ),
+        ClaveAjuste(
+            clave="duplicados_umbral_propuesta",
+            tipo="float",
+            descripcion="Probabilidad mínima para proponer una pareja en la cola de duplicados",
+            minimo=0.0,
+            maximo=1.0,
+            campo_settings="duplicados_umbral_propuesta",
         ),
         ClaveAjuste(
             clave="calidad_umbral_revision",

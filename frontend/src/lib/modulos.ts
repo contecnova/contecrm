@@ -269,14 +269,17 @@ export const MODULOS: Modulo[] = [
         permiso: "contact:read",
       },
       {
+        // La COLA, no el buscador. El buscador sigue existiendo y hace falta
+        // —avisa mientras se escribe un alta—, pero como pantalla solo protege
+        // lo que entra desde hoy: obliga a sospechar de una ficha concreta y a
+        // teclear su nombre. Los duplicados no llegan de uno en uno, llegan de
+        // golpe con una importación, y de los que ya están dentro esa pantalla
+        // no decía nada.
         nombre: "Duplicados",
-        // Cada fila es una cuenta, así que se abre como tal: desde su ficha se
-        // fusiona, que es lo único para lo que sirve encontrar duplicados.
-        objeto: "cuenta",
-        listar: "/api/v1/data-quality/accounts/duplicates",
+        listar: "/api/v1/data-quality/accounts/duplicates/cola",
         servicio: "party",
-        busqueda: { parametro: "nombre", etiqueta: "Nombre de la cuenta", minimo: 2 },
-        columnas: ["nombre", "similitud", "senales", "concluyente"],
+        columnas: ["probabilidad", "a_nombre", "b_nombre", "senales", "concluyente"],
+        permiso: "account:read",
       },
       {
         nombre: "Derechos del interesado",

@@ -3243,6 +3243,10 @@ def sembrar_calidad(api: Api) -> None:
     exactamente como se consigue que nadie vuelva a mirarla.
     """
     api.crear("/api/v1/calidad-dato/cola/barrido?limite=2000", {})
+    # Y las parejas que podrían ser la misma ficha. Se deja **sin decidir** a
+    # propósito: la cola llena es la pantalla, y decidirla desde el sembrado
+    # dejaría la pantalla vacía enseñando algo que ya está resuelto.
+    api.crear("/api/v1/data-quality/accounts/duplicates/barrido?limite=2000", {})
 
 
 def sembrar_rastro(api: Api) -> None:

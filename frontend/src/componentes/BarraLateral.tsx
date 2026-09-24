@@ -24,7 +24,7 @@ import { NavLink } from "react-router-dom";
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
 import { porGrupoVisible } from "@/lib/modulos";
-import { ACCESOS, entradaVisible, menuDe, type Entrada } from "@/lib/navegacion";
+import { ACCESOS, AREAS, entradaVisible, menuDe, type Entrada } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
 import { usePermitidas } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
@@ -50,9 +50,24 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
     }
   });
 
+  /**
+   * Abre un área y **cierra las demás**.
+   *
+   * En acordeón y no libre: con siete áreas y todas desplegadas el panel es
+   * una lista de cuarenta enlaces en la que hay que buscar, que es justo lo que
+   * las áreas venían a evitar. Abriendo una se cierra lo anterior, así que lo
+   * que se ve es siempre el sitio donde se está trabajando.
+   *
+   * Cerrar la que está abierta las deja todas cerradas, que es una vista
+   * legítima: el panel se queda en siete rótulos y la pantalla entera para el
+   * trabajo.
+   */
   const alternar = useCallback((id: string) => {
     setPlegadas((previo) => {
-      const siguiente = { ...previo, [id]: !previo[id] };
+      const abriendo = Boolean(previo[id]);
+      const siguiente: Record<string, boolean> = {};
+      for (const area of AREAS) siguiente[area.id] = true;
+      if (abriendo) siguiente[id] = false;
       try {
         localStorage.setItem(CLAVE_PLEGADAS, JSON.stringify(siguiente));
       } catch {

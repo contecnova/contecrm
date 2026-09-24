@@ -336,6 +336,92 @@ def duplicados_cuenta(
     return [c.a_dict() for c in candidatos]
 
 
+# ── La cola de duplicados: encontrarlos sin que nadie los busque ──────────
+
+
+class DecidirDuplicado(BaseModel):
+    """Qué se hace con una pareja propuesta."""
+
+    decision: str = Field(..., examples=["fusionar", "no_es_duplicado", "descartar"])
+    # Solo al fusionar: cuál de las dos se queda. No se elige solo porque la que
+    # sobrevive es la que conserva el identificador que usan los sistemas de
+    # fuera, y eso no lo sabe un algoritmo.
+    superviviente_id: UUID | None = None
+    nota: str = Field("", max_length=1000)
+
+
+@router_calidad.get(
+    "/accounts/duplicates/cola",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("account:read"))],
+    summary="Parejas que podrían ser la misma ficha",
+    description=(
+        "Lo que ha encontrado el barrido, lo más probable primero, con la "
+        "probabilidad y **qué ha coincidido**. Sin el porqué no hay decisión "
+        "posible: una lista que solo dice «87 %» obliga a abrir las dos fichas "
+        "para saber qué se está comparando."
+    ),
+)
+def cola_duplicados(
+    db: DbDep,
+    _: AutenticadoDep,
+    pendientes: bool = Query(True),
+    limite: int = Query(100, ge=1, le=500),
+) -> Any:
+    from services.party import cola_duplicados as cd
+
+    return cd.cola(db, pendientes=pendientes, limite=limite)
+
+
+@router_calidad.post(
+    "/accounts/duplicates/barrido",
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Buscar duplicados en todo el maestro",
+    description=(
+        "Buscar duplicados solo se hacía **al crear**, así que protegía lo que "
+        "entra desde hoy y no decía nada de lo que ya está dentro — que es "
+        "donde está el problema, porque los duplicados llegan de golpe con una "
+        "importación o con la integración del ERP.\n\n"
+        "Se puede repetir: la pareja ya propuesta se actualiza, y la que "
+        "alguien marcó como «no es un duplicado» no vuelve a proponerse."
+    ),
+)
+def barrido_duplicados(uow: UowDep, limite: int = Query(500, ge=1, le=5000)) -> Any:
+    from services.party import cola_duplicados as cd
+
+    return cd.barrido(uow, limite=limite)
+
+
+@router_calidad.post(
+    "/accounts/duplicates/cola/{candidato_id}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:write"))],
+    summary="Decidir una pareja",
+    description=(
+        "Fusionarla, decir que **no** es un duplicado o dejarla para luego. "
+        "Fusionar no se hace solo aunque la señal sea concluyente: mezclar el "
+        "histórico de dos clientes es difícil de deshacer, y el coste de "
+        "equivocarse no es simétrico.\n\n"
+        "«No es un duplicado» se recuerda, para que el siguiente barrido no "
+        "vuelva a proponer lo mismo. Una cola que reaparece entera se deja de "
+        "mirar."
+    ),
+)
+def decidir_duplicado(
+    candidato_id: UUID, datos: DecidirDuplicado, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import cola_duplicados as cd
+
+    return cd.decidir(
+        uow,
+        candidato_id=candidato_id,
+        decision=datos.decision,
+        por=principal.id,
+        superviviente_id=datos.superviviente_id,
+        nota=datos.nota,
+    )
+
+
 # La misma operación, colgando de la cuenta. No es un capricho de rutas: las
 # acciones de un registro se ofrecen desde su ficha, y la ficha busca lo que
 # cuelga de **su** colección. Con la fusión viviendo solo bajo

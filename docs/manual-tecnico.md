@@ -380,7 +380,34 @@ quedan **ocho** sin borrado, cada uno por un motivo:
 | Bloqueo legal | Se levanta, con quién y cuándo. Un bloqueo que se puede borrar no bloquea |
 | Interacción, predicción, salud de cuenta | Son lo ocurrido o un cálculo derivado, no algo que alguien mantenga |
 
-### 3.6 La cola de calidad del dato
+### 3.6 La cola de duplicados
+
+`party/cola_duplicados.py`. El que puntúa es
+`duplicados.buscar_cuentas_duplicadas`, **el mismo que protege el alta**: dos
+formas de decidir si algo es un duplicado acaban discrepando, y entonces el alta
+deja pasar lo que la cola marca, o al revés.
+
+Lo que añade es el barrido sobre el maestro y la decisión. El umbral de
+propuesta es un ajuste (`duplicados_umbral_propuesta`, 0,72 de fábrica) y es más
+bajo que el de bloqueo al crear, a propósito: bloquear un alta y **proponer que
+alguien mire** no piden la misma certeza.
+
+Detalles que importan:
+
+- Las parejas se guardan con los identificadores **ordenados** y con
+  restricción única, porque si no la misma pareja entra dos veces —una por cada
+  lado— y la cola dobla de tamaño con el mismo trabajo dentro.
+- Lo decidido no se vuelve a proponer, y lo pendiente se **actualiza** en cada
+  barrido, porque la probabilidad cambia cuando cambian las fichas.
+- Fusionar exige `superviviente_id`. No se elige solo: la que sobrevive conserva
+  el identificador que usan los sistemas de fuera.
+
+Hoy el que puntúa es determinista —similitud de nombre, dominio, NIF—, y ahí
+está a propósito: la señal es explicable («ha coincidido el dominio»), que es lo
+que permite decidir. Si algún día se quiere un clasificador, el sitio donde
+entra es la puntuación, dejando intactos el barrido, la cola y la decisión.
+
+### 3.7 La cola de calidad del dato
 
 `stewardship.barrido()` recorre cuentas y contactos y abre una excepción por
 cada cosa que esté mal. Existía la cola, la asignación y el cierre, y **ninguna

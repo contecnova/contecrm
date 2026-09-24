@@ -731,6 +731,9 @@ from services.party.actividades_extra import (  # noqa: E402,F401
     Visita,
 )
 
+# Cola de excepciones de calidad (CRM-01.01.04.08).
+from services.party.cola_duplicados import CandidatoDuplicado  # noqa: E402,F401
+
 # Plan de cuenta, financiero replicado, mapa de influencia y cambio de empresa
 # (CRM-01.01.01.11, .12 · CRM-01.01.02.03, .07).
 from services.party.cuenta_360 import (  # noqa: E402,F401
@@ -758,6 +761,4 @@ from services.party.proveedores import (  # noqa: E402,F401
 
 # Salud de la cuenta replicada desde `intelligence` (CRM-01.01.05.07).
 from services.party.salud_replicada import SaludCuentaReplicada  # noqa: E402,F401
-
-# Cola de excepciones de calidad (CRM-01.01.04.08).
 from services.party.stewardship import ExcepcionCalidad  # noqa: E402,F401

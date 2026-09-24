@@ -89,6 +89,11 @@ ALIAS_MODELO = {
     "membresia_id": "membresia",
     "proveedor_id": "proveedoridentidad",
     "entrada_id": "entradapapelera",
+    # La pareja propuesta en la cola de duplicados. Se llama «candidato» en la
+    # ruta porque es como se lee —«decidir este candidato»— y el modelo lleva el
+    # objeto dentro para no chocar con el candidato que devuelve la búsqueda al
+    # crear, que no es una fila sino un resultado calculado.
+    "candidato_id": "candidatoduplicado",
     "bloqueo_id": "bloqueolegal",
     "calendario_id": "calendariolaboral",
     "clave_id": "claveapi",

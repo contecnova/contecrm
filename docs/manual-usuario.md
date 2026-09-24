@@ -541,6 +541,27 @@ calendarios laborales y ajustes.
   ochenta cosas para empezar. Lo que se toca, se documenta solo en la referencia de
   ajustes.
 
+### Duplicados: el sistema los busca, tú decides
+
+La pestaña de **Duplicados** ya no es un buscador: es una **cola**. El sistema
+recorre tu cartera y propone parejas que podrían ser la misma empresa, cada una
+con su **probabilidad** y con **qué ha coincidido** —el NIF, el dominio de
+correo, el nombre—. Esa última parte es la que permite decidir sin abrir las dos
+fichas: «mismo NIF» y «el nombre se parece» son dos cosas muy distintas.
+
+De cada pareja se hace una de tres cosas:
+
+- **Fusionar**, diciendo cuál de las dos se queda. Esa es la que conserva el
+  identificador que usan tus otros sistemas, así que la eliges tú.
+- **No es un duplicado**, y se recuerda: no te la vuelve a proponer.
+- **Dejarla**, si ahora no toca.
+
+Nada se fusiona solo, ni siquiera cuando la señal es concluyente: mezclar el
+histórico de dos clientes cuesta mucho de deshacer.
+
+El buscador de antes sigue estando donde sirve: al dar de alta una ficha, para
+avisarte mientras escribes.
+
 ### Los vocabularios: las listas que decides tú
 
 Los motivos de pérdida, los motivos de descarte y las listas parecidas **no
