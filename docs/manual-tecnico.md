@@ -126,17 +126,50 @@ escogido por lo que la pantalla hace; siete iconos de área, que sí están
 escogidos, orientan más. El rótulo llega al pasar por encima, en el mismo panel
 flotante que usan ellos.
 
-##### Lo que NO se ha copiado, y por qué
+##### La paleta, entera
 
-- **La paleta entera.** contecflow declara 165 tokens de color y el `.dark` de
-  aquí tiene 35. La diferencia no es una carencia: 21 son alias `--color-*`, 30
-  apuntan a otra variable y 67 son variantes con alfa del mismo tono, que aquí
-  se expresan con el modificador de opacidad de Tailwind (`bg-success/10`). De
-  las familias semánticas que faltan —morado para IA, naranja para severidad P2,
-  coral, `info`— este producto **no usa ninguna**: el front no escribe un solo
-  color crudo de Tailwind, todo pasa por los cuatro tokens. Añadirlas sería
-  dejar 130 variables que nadie referencia.
-- **El tema claro.** contecflow no lo tiene. Se queda el de contecmind.
+A los cuatro tonos de siempre se suman las familias que contecflow distingue y
+que aquí se metían en ellos. Meter dos significados en un color es lo que hace
+que dos avisos distintos se vean iguales:
+
+| Familia | Para qué |
+|---|---|
+| `info` | lo que informa y no pide nada — un aviso neutro no es un error |
+| `purple` | lo que hace una máquina — sugerencia, detección, clasificación |
+| `orange` | una severidad intermedia, entre el aviso y el peligro |
+| `coral` | destructivo del que no se vuelve, distinto de un error |
+| `sky`, `chart-teal`, `chart-lime`, `chart-pink` | distinguir **categorías** entre sí: con cuatro tonos semánticos la quinta serie de un gráfico repite color y dos líneas dejan de poder seguirse |
+| `portal`, `portal-surface`, `portal-deep` | el lienzo del portal de cliente y proveedor, propio a propósito: quien entra ahí no es de la casa y debe notarlo |
+
+Cada una respeta la regla del sistema: el token es el **relleno** y `*-text` es
+el mismo tono movido en luminosidad hasta 4.5:1 contra `paper-lighter`. Cuatro
+lo necesitaron —`coral` y `chart-pink` en oscuro, y en claro casi todas, porque
+un naranja o un lima legibles sobre blanco son forzosamente marrones.
+
+##### El tema claro también es el suyo
+
+Me equivoqué al decir que contecflow no tenía tema claro: lo tiene, en
+`[data-theme="light"]`, junto a otros cuatro (freight, alto contraste, midnight,
+slate). Lo que había aquí era el claro de contecmind —los grises de
+Google/NotebookLM—, así que entre los dos temas de esta aplicación había dos
+casas distintas y bastaba con darle al interruptor para verlo.
+
+Una sola desviación: su `--text-3` es `#94a3b8`, que da **2.08:1** contra
+`paper-lighter`. En contecflow es explícitamente decorativo, pero aquí
+`ink-faint` es el token de los pies de foto y los marcadores de posición, que
+son texto y siempre en 10-12px. Sube al mismo tono hasta 4.61:1.
+
+##### Dos gates nuevos, porque esto no se sostenía a mano
+
+- **`frontend/scripts/contraste.mjs`.** Mide cada `*-text` contra la peor
+  superficie de su tema y exige que todo relleno tenga su variante. `index.css`
+  llevaba meses diciendo que de esto respondía `e2e/a11y-contraste.spec.ts`, y
+  ese fichero **no existía**: un comentario que promete una comprobación que no
+  está es peor que no decir nada, porque quien lo lee deja de mirar.
+- **`frontend/scripts/clases-sin-regla.mjs`.** Compara las clases de color
+  escritas contra el CSS construido. Tailwind solo emite lo que existe en su
+  configuración, así que una clase mal escrita no da error en ningún sitio —
+  pasa el `tsc`, pasa el `eslint`, construye— y el elemento sale sin color.
 
 
 Paleta, tipografía (**DM Sans** y Geist Mono), radios y sombras: adoptados

@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && node scripts/clases-sin-regla.mjs"
+    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",

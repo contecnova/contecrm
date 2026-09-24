@@ -82,6 +82,35 @@ export default {
           violet:  "rgb(var(--viz-violet) / <alpha-value>)",
           neutral: "rgb(var(--viz-neutral) / <alpha-value>)",
         },
+        // ── Las familias que contecflow distingue y aquí se metían en cuatro ──
+        //
+        //   info    lo que informa y no pide nada — un aviso neutro no es un error
+        //   purple  lo que hace una máquina — sugerencia, detección, clasificación
+        //   orange  una severidad intermedia, entre el aviso y el peligro
+        //   coral   destructivo del que no se vuelve, distinto de un error
+        //
+        // Meter dos significados en un color es lo que hace que dos avisos
+        // distintos se vean iguales.
+        info:   { DEFAULT: "rgb(var(--info) / <alpha-value>)" },
+        purple: { DEFAULT: "rgb(var(--purple) / <alpha-value>)" },
+        orange: { DEFAULT: "rgb(var(--orange) / <alpha-value>)" },
+        coral:  { DEFAULT: "rgb(var(--coral) / <alpha-value>)" },
+        // Los de gráfico resuelven otro problema: distinguir CATEGORÍAS entre
+        // sí. Con cuatro tonos semánticos, la quinta serie repite color y dos
+        // líneas dejan de poder seguirse.
+        sky: { DEFAULT: "rgb(var(--sky) / <alpha-value>)" },
+        chart: {
+          teal: "rgb(var(--chart-teal) / <alpha-value>)",
+          lime: "rgb(var(--chart-lime) / <alpha-value>)",
+          pink: "rgb(var(--chart-pink) / <alpha-value>)",
+        },
+        // El lienzo del portal de cliente y proveedor, que es propio a
+        // propósito: quien entra ahí no es de la casa y debe notarlo.
+        portal: {
+          DEFAULT: "rgb(var(--portal-bg) / <alpha-value>)",
+          surface: "rgb(var(--portal-surface) / <alpha-value>)",
+          deep:    "rgb(var(--portal-deep) / <alpha-value>)",
+        },
       },
       // ── `text-*` NO usa los mismos valores que `bg-*` ──────────────────────
       //
@@ -130,6 +159,18 @@ export default {
         danger: {
           DEFAULT: "rgb(var(--danger-text) / <alpha-value>)",
           soft:    "rgb(var(--danger-soft-text) / <alpha-value>)",
+        },
+        // Las familias nuevas, con la misma regla: el token base es el RELLENO
+        // y como texto va la variante medida contra la peor superficie.
+        info:   { DEFAULT: "rgb(var(--info-text) / <alpha-value>)" },
+        purple: { DEFAULT: "rgb(var(--purple-text) / <alpha-value>)" },
+        orange: { DEFAULT: "rgb(var(--orange-text) / <alpha-value>)" },
+        coral:  { DEFAULT: "rgb(var(--coral-text) / <alpha-value>)" },
+        sky:    { DEFAULT: "rgb(var(--sky-text) / <alpha-value>)" },
+        chart: {
+          teal: "rgb(var(--chart-teal-text) / <alpha-value>)",
+          lime: "rgb(var(--chart-lime-text) / <alpha-value>)",
+          pink: "rgb(var(--chart-pink-text) / <alpha-value>)",
         },
       },
       fontFamily: {

@@ -32,26 +32,36 @@
    plumbing keeps working with the `/30`, `/15`, etc. opacity modifiers.
  */
 :root {
-  /* Light theme — NotebookLM / Material 3 inspired */
-  --paper:         255 255 255;  /* #ffffff — surface (panels, page bg) */
-  --paper-dark:    248 249 250;  /* #f8f9fa — base canvas */
-  --paper-light:   241 243 244;  /* #f1f3f4 — hover targets, chip bg */
-  --paper-lighter: 232 234 237;  /* #e8eaed — borders-as-fill, sunken */
+  /* ── El tema CLARO de contecflow ──────────────────────────────────────────
+     `[data-theme="light"]` de su `index.css`. Lo que había aquí era el claro de
+     contecmind —los grises de Google/NotebookLM—, que es otro producto: entre
+     los dos temas de esta aplicación había dos casas distintas, y bastaba con
+     darle al interruptor para verlo.
+
+     Los papeles van por ROL, no por nombre: `paper` es la superficie de paneles
+     y tarjetas, `paper-dark` el lienzo de debajo, `paper-light` el hover y
+     `paper-lighter` lo que va encima de todo. En claro el lienzo es MÁS CLARO
+     que los paneles, al revés que en oscuro, y por eso el nombre `-dark` es de
+     rol: nombra el sitio, no el color. */
+  --paper:         255 255 255;  /* #ffffff — surface-2: paneles, tarjetas */
+  --paper-dark:    248 250 252;  /* #f8fafc — surface-0: lienzo */
+  --paper-light:   241 245 249;  /* #f1f5f9 — surface-1: hover, elevado */
+  --paper-lighter: 226 232 240;  /* #e2e8f0 — surface-4: lo de más arriba */
   /* Una superficie HUNDIDA respecto al panel: la cabecera de una tabla, el
      carril de una barra de progreso, la burbuja de lo que dice el otro. No es
      `paper-light` al revés: los papeles suben desde el panel y este baja.
 
-     Sobre blanco, bajar es el mismo gris que ya hace de relleno de borde. */
-  --paper-sunk:    232 234 237;  /* #e8eaed */
+     Sobre blanco, bajar es el gris de los paneles. */
+  --paper-sunk:    241 245 249;  /* #f1f5f9 — surface-1 */
 
-  --ink:           32 33 36;     /* #202124 — primary text */
-  --ink-muted:    95 99 104;     /* #5f6368 — secondary text */
-  /* Bumped from #80868b (~3.6:1, below WCAG AA for small text on
-   * paper-light) to #62686f (~5.3:1). Captions and placeholders are
-   * the worst offenders for accessibility complaints because they're
-   * always set in text-xs / text-3xs. */
-  --ink-faint:    98 104 111;    /* #62686f — captions, placeholders */
-  --ink-dim:      218 220 224;   /* #dadce0 — borders, dividers */
+  --ink:           15 23 42;     /* #0f172a — text-1; 17.85:1 sobre blanco */
+  --ink-muted:     71 85 105;    /* #475569 — text-2; 7.58:1 */
+  /* Su `text-3` es #94a3b8 y da 2.08:1 contra `paper-lighter`: en contecflow es
+     explícitamente decorativo, pero aquí `ink-faint` es el token de los pies de
+     foto y los marcadores de posición, que SON texto y siempre en 10-12px. Se
+     sube al mismo tono hasta 4.61:1. Es la única desviación del tema claro. */
+  --ink-faint:     86 104 130;   /* #566882 — 4.61:1 */
+  --ink-dim:      203 213 225;   /* #cbd5e1 — surface-5: bordes y separadores */
 
   /* ── Semánticos: RELLENO y TEXTO son tokens distintos ─────────────────────
      Auditoría 2026-09-02 (#26). Un color no puede servir para las dos cosas,
@@ -76,37 +86,77 @@
      `tailwind.config.js` conecta `text-*` con estos, así que los ~430 sitios
      de llamada no cambian. El margen es 4.6 y no 4.5 para que el redondeo del
      navegador no haga fallar el gate por centésimas. Los ratios de los
-     comentarios son el peor caso de las cuatro superficies, y
-     `e2e/a11y-contraste.spec.ts` los vuelve a medir con el motor del navegador
-     en vez de creérselos. */
+     comentarios son el peor caso de las cinco superficies, y no hay que
+     creérselos: `frontend/scripts/contraste.mjs` los vuelve a medir en cada
+     `npm run verificar`, y exige además que todo relleno tenga su `-text`.
 
-  /* Rellenos. `--accent` bajó de #1a73e8 porque con `text-paper` encima daba
-     4.51:1 — cumplía, pero sin margen para el redondeo. */
-  --accent:        23 113 232;   /* #1771e8 — Google Blue; text-paper encima 4.60:1 */
-  --accent-soft:   19 95 195;    /* #135fc3 — hover: relleno −8% L */
-  --accent-glow:   66 133 244;   /* #4285f4 — solo resaltados; nunca lleva texto */
+     Ese fichero antes decía ser `e2e/a11y-contraste.spec.ts`, que NO EXISTÍA.
+     Un comentario que promete una comprobación que no está es peor que no decir
+     nada, porque quien lo lee deja de mirar. */
 
-  --success:       30 142 62;    /* #1e8e3e — Google Green */
-  --success-soft:  24 128 56;
-  --warning:      249 171 0;     /* #f9ab00 — Google Yellow */
-  --warning-soft: 234 154 0;
-  --danger:       217 48 37;     /* #d93025 — Google Red */
-  --danger-soft:  182 40 31;     /* #b6281f — hover: relleno −8% L */
+  /* Rellenos, los suyos. Los `-soft` son el hover y sobre claro OSCURECEN. */
+  --accent:        37 99 235;    /* #2563eb */
+  --accent-soft:   29 78 216;    /* #1d4ed8 — su `accent-dim` */
+  --accent-glow:   59 130 246;   /* #3b82f6 — solo resaltados */
+
+  --success:       22 163 74;    /* #16a34a */
+  --success-soft:  21 128 61;    /* #15803d */
+  --warning:      217 119 6;     /* #d97706 */
+  --warning-soft: 180 83 9;      /* #b45309 */
+  --danger:       220 38 38;     /* #dc2626 */
+  --danger-soft:  185 28 28;     /* #b91c1c */
+
+  /* ── Las familias que faltaban ────────────────────────────────────────────
+     contecflow distingue cuatro cosas más que aquí se metían en los cuatro
+     tonos de siempre, y meter dos significados en un color es lo que hace que
+     dos avisos distintos se vean iguales:
+
+       `info`    lo que informa y no pide nada — un aviso neutro no es un error
+       `purple`  lo que hace una máquina — sugerencias, detección, clasificación
+       `orange`  una severidad intermedia, entre el aviso y el peligro
+       `coral`   destructivo del que no se vuelve, distinto de un error
+
+     Y los de gráfico, que resuelven otro problema: distinguir CATEGORÍAS entre
+     sí. Con cuatro tonos semánticos, la quinta serie de un gráfico repite color
+     y dos líneas dejan de poder seguirse. */
+  --info:          37 99 235;    /* #2563eb */
+  --purple:       124 58 237;    /* #7c3aed */
+  --orange:       251 146 60;    /* #fb923c */
+  --coral:        244 63 94;     /* #f43f5e */
+  --sky:           56 189 248;   /* #38bdf8 */
+  --chart-teal:    45 212 191;   /* #2dd4bf */
+  --chart-lime:   132 204 22;    /* #84cc16 */
+  --chart-pink:   236 72 153;    /* #ec4899 */
+
+  /* El portal del cliente y del proveedor tiene lienzo propio: quien entra ahí
+     no es de la casa, y que no se parezca al escritorio interno es
+     intencionado. En claro son sus mismos papeles con un punto menos de luz. */
+  --portal-bg:     241 245 249;  /* #f1f5f9 */
+  --portal-surface: 255 255 255; /* #ffffff */
+  --portal-deep:   226 232 240;  /* #e2e8f0 */
 
   /* Los mismos colores, como TEXTO. `ink-faint` ya llegaba en claro; existe
      aquí porque `.dark` tiene que poder redefinirlo, y una variable declarada
      solo en `:root` conservaría el valor CLARO en tema oscuro. */
-  --ink-faint-text:     98 104 111;  /* #62686f — 4.67:1 */
-  --accent-text:        21 101 206;  /* #1565ce — 4.60:1 */
-  --accent-soft-text:   24 101 205;  /* #1865cd — 4.61:1 */
-  --accent-glow-text:   13 95 229;   /* #0d5fe5 — 4.60:1 */
-  --success-text:       25 120 52;   /* #197834 — 4.61:1 */
-  --success-soft-text:  23 120 53;   /* #177835 — 4.62:1 */
-  --warning-text:      139 95 0;     /* #8b5f00 — 4.67:1; un amarillo legible
+  --ink-faint-text:     86 104 130;  /* #566882 — 4.61:1 */
+  --accent-text:        24 90 234;   /* #185aea — 4.62:1 */
+  --accent-soft-text:   29 78 216;   /* #1d4ed8 — 5.44:1, ya llegaba */
+  --accent-glow-text:   10 93 227;   /* #0a5de3 — 4.62:1 */
+  --success-text:       16 118 54;   /* #107636 — 4.65:1 */
+  --success-soft-text:  19 117 56;   /* #137538 — 4.69:1 */
+  --warning-text:      155 85 4;     /* #9b5504 — 4.61:1; un naranja legible
                                         sobre blanco es forzosamente un marrón */
-  --warning-soft-text: 143 94 0;     /* #8f5e00 — 4.62:1 */
-  --danger-text:       198 44 34;    /* #c62c22 — 4.60:1 */
-  --danger-soft-text:  197 34 31;    /* #c5221f — 4.81:1 */
+  --warning-soft-text: 166 77 8;     /* #a64d08 — 4.62:1 */
+  --danger-text:       199 32 32;    /* #c72020 — 4.66:1 */
+  --danger-soft-text:  185 28 28;    /* #b91c1c — 5.25:1, ya llegaba */
+  --info-text:          24 90 234;   /* #185aea — 4.62:1 */
+  --purple-text:       124 58 237;   /* #7c3aed — 4.62:1, ya llegaba */
+  --orange-text:       165 76 3;     /* #a54c03 — 4.69:1 */
+  --coral-text:        205 12 45;    /* #cd0c2d — 4.62:1 */
+  --sky-text:            5 108 154;  /* #056c9a — 4.71:1 */
+  --chart-teal-text:    24 115 104;  /* #187368 — 4.62:1 */
+  --chart-lime-text:    72 112 12;   /* #48700c — 4.73:1 */
+  --chart-pink-text:   196 20 107;   /* #c4146b — 4.65:1 */
 
   /* ── Categóricos de visualización (auditoría 2026-09-02 #36) ──────────────
      Los grafos y el scatter necesitan distinguir CATEGORÍAS entre sí, que es un
@@ -191,6 +241,24 @@
   --danger:       248 113 113;   /* #f87171 */
   --danger-soft:  250 145 145;
 
+  /* Las familias que faltaban, con sus valores de contecflow. Qué resuelve cada
+     una está en `:root`, junto a las del tema claro. */
+  --info:          96 165 250;   /* #60a5fa */
+  --purple:       167 139 250;   /* #a78bfa */
+  --orange:       251 146 60;    /* #fb923c */
+  --coral:        244 63 94;     /* #f43f5e */
+  --sky:           56 189 248;   /* #38bdf8 */
+  --chart-teal:    45 212 191;   /* #2dd4bf */
+  --chart-lime:   132 204 22;    /* #84cc16 */
+  --chart-pink:   236 72 153;    /* #ec4899 */
+
+  /* El lienzo del portal, el suyo tal cual: es un azul más frío y más profundo
+     que el del escritorio, para que se note al primer vistazo que se está
+     fuera de casa. */
+  --portal-bg:      10 21 37;    /* #0a1525 */
+  --portal-surface: 20 31 50;    /* #141f32 */
+  --portal-deep:    10 17 32;    /* #0a1120 */
+
   /* Los mismos colores como TEXTO, medidos contra `paper-lighter` (#1e2d45),
      que es la superficie MÁS CLARA y por tanto el peor caso: las superficies
      se anidan —un modal sobre una tarjeta sobre la página— y nada impide
@@ -206,6 +274,14 @@
   --warning-soft-text: 247 174 50;   /* #f7ae32 — 7.29:1 */
   --danger-text:       248 113 113;  /* #f87171 — 5.01:1 */
   --danger-soft-text:  250 145 145;  /* #fa9191 — 6.13:1 */
+  --info-text:          96 165 250;  /* #60a5fa — 5.45:1 */
+  --purple-text:       167 139 250;  /* #a78bfa — 5.09:1 */
+  --orange-text:       251 146 60;   /* #fb923c — 6.12:1 */
+  --coral-text:        246 100 125;  /* #f6647d — 4.64:1 (el base daba 3.77) */
+  --sky-text:           56 189 248;  /* #38bdf8 — 6.46:1 */
+  --chart-teal-text:    45 212 191;  /* #2dd4bf — 7.44:1 */
+  --chart-lime-text:   132 204 22;   /* #84cc16 — 7.01:1 */
+  --chart-pink-text:   239 100 168;  /* #ef64a8 — 4.65:1 (el base daba 3.93) */
 
   /* ── Sombras: las de contecflow ───────────────────────────────────────────
      Negro con opacidad, que es lo que separa capas sobre un lienzo oscuro. Sus
