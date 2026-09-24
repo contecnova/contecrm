@@ -233,7 +233,9 @@ class EnlaceDecision(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     etapa_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     titular_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    hash_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hash_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, info={"secreto": True}
+    )
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

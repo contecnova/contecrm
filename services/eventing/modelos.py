@@ -44,7 +44,7 @@ class Suscripcion(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Secreto de firma HMAC. Se guarda cifrado; se enseña una vez al crear.
-    secreto: Mapped[str] = mapped_column(String(128), nullable=False)
+    secreto: Mapped[str] = mapped_column(String(128), nullable=False, info={"secreto": True})
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Cabeceras extra que pide el receptor (autenticación propia, enrutado).
     cabeceras: Mapped[dict[str, Any]] = mapped_column(

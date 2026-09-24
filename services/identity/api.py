@@ -8,7 +8,13 @@ from uuid import UUID
 
 from crmcore.config import get_settings
 from crmcore.errors import NoAutenticado, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.deps import (
+    AutenticadoDep,
+    DbDep,
+    UowDep,
+    exige_firma_interna,
+    exige_permiso,
+)
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -705,6 +711,140 @@ def revocar_clave(clave_id: UUID, db: DbDep, principal: AutenticadoDep) -> None:
     if clave is None or clave.tenant_id != principal.tenant_id:
         raise NoEncontrado("La clave no existe", error_code="clave_api.no_encontrada")
     clave.revocada_at = datetime.now(timezone.utc)
+
+
+class ClaveInterna(BaseModel):
+    """Lo que otro servicio de la casa pide para poder leer el CRM por su API."""
+
+    tenant_id: UUID
+    nombre: str = "contecintelligence"
+    # Días de vida. Una credencial de integración de larga vida es una decisión,
+    # así que se escribe y no se hereda de un valor por defecto escondido.
+    dias: int = 365
+
+
+@router_claves.post(
+    "/interna",
+    response_model=ClaveApiCreada,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Clave de solo lectura para otro servicio de la casa (interno)",
+)
+def crear_clave_interna(datos: ClaveInterna) -> Any:
+    """Emite una clave `solo_lectura` para un tenant, sin pasar por una persona.
+
+    Existe para que registrar el CRM como fuente consultable pueda ser un BOTÓN.
+    contecintelligence necesita una credencial con la que leer, y las únicas
+    formas de dársela eran pegarla a mano en su formulario —que es justo lo que
+    no puede pedírsele a nadie— o que un operador ejecutara un script.
+
+    `solo_lectura` es `*:read`: lo que ve esa clave es exactamente lo que ve un
+    lector del CRM. No hay forma de pedir una con más.
+
+    Si ya hay una con ese nombre y sin revocar, se **rota**: el secreto anterior
+    deja de valer y se devuelve el nuevo. Acumular una credencial por cada vez
+    que alguien pulsa el botón es una forma silenciosa de repartir llaves.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        previas = (
+            db.execute(
+                select(ClaveApi).where(
+                    ClaveApi.tenant_id == datos.tenant_id,
+                    ClaveApi.nombre == datos.nombre,
+                    ClaveApi.revocada_at.is_(None),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for vieja in previas:
+            vieja.revocada_at = datetime.now(timezone.utc)
+        clave, secreto = svc.crear_clave_api(
+            db,
+            tenant_id=datos.tenant_id,
+            nombre=datos.nombre,
+            scopes=[],
+            rol="solo_lectura",
+            dias=datos.dias,
+            ips_permitidas=[],
+            creada_por=None,
+        )
+        db.flush()
+        return ClaveApiCreada(
+            id=clave.id,
+            nombre=clave.nombre,
+            prefijo=clave.prefijo,
+            secreto=secreto,
+            expira_at=clave.expira_at,
+        )
+
+
+class ValidarClaveApi(BaseModel):
+    """Lo que el gateway pregunta para poder dejar pasar una clave de API."""
+
+    secreto: str
+    # La dirección de quien llama, para la lista de redes admitidas de la clave.
+    # La resuelve el gateway, que es quien ve la conexión de verdad.
+    ip: str = ""
+
+
+class ClaveApiValidada(BaseModel):
+    """La identidad que representa esa clave, ya resuelta.
+
+    Se devuelven los PERMISOS y no solo el rol: quien pregunta es el gateway, y
+    el gateway no conoce el catálogo de roles de cada tenant —ni debe—. Resolver
+    ahí obligaría a leer el esquema de identity desde otro servicio, que es
+    justo lo que el contrato de arquitectura prohíbe.
+    """
+
+    clave_id: UUID
+    tenant_id: UUID
+    nombre: str
+    rol: str
+    scopes: list[str]
+    permisos: list[str]
+
+
+@router_claves.post(
+    "/validar",
+    response_model=ClaveApiValidada,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Validar una clave de API (interno, solo el gateway)",
+)
+def validar_clave(datos: ValidarClaveApi) -> Any:
+    """Convierte el secreto de una clave en la identidad que representa.
+
+    **Esto es lo que faltaba para que las claves de API sirvieran de algo.**
+    `svc.validar_clave_api` estaba escrita, probada y completa —incluida la
+    comprobación de redes admitidas— y no la llamaba NADIE: se podían crear
+    credenciales de máquina y ninguna autenticaba nada. Una clave recién creada
+    contestaba 401 en cualquier ruta.
+
+    Va detrás de la firma interna y fuera del contrato público: es una ruta entre
+    el gateway e identity, no algo que nadie de fuera deba poder llamar. Sin el
+    secreto compartido no se entra, y con él ya se podría entrar como cualquiera.
+
+    Y la sesión es de SISTEMA: la clave se busca por su hash sin saber todavía de
+    qué tenant es —averiguarlo es precisamente lo que se está pidiendo—, así que
+    con una sesión de tenant la RLS no la encontraría nunca.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        clave = svc.validar_clave_api(db, datos.secreto, ip=datos.ip)
+        permisos = svc.permisos_de_rol(db, clave.rol, clave.tenant_id)
+        return ClaveApiValidada(
+            clave_id=clave.id,
+            tenant_id=clave.tenant_id,
+            nombre=clave.nombre,
+            rol=clave.rol,
+            scopes=list(clave.scopes or []),
+            permisos=sorted(permisos),
+        )
 
 
 # ── Utilidades internas ───────────────────────────────────────────────────

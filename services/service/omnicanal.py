@@ -97,7 +97,7 @@ class CanalServicio(Base, TimestampMixin, SoftDeleteMixin):
 
     # Hasheado, igual que en la captura de leads: si la base se filtra, las
     # claves de los canales de todos los tenants no vienen en ella.
-    secreto_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    secreto_hash: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
 
     # De qué campo de entrada sale cada campo del caso.
     mapeo: Mapped[dict[str, Any]] = mapped_column(

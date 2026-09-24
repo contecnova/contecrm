@@ -73,7 +73,7 @@ class CanalChat(Base, TimestampMixin, SoftDeleteMixin):
     url_entrante: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # El secreto con el que el proveedor firma lo que manda. Sin él no se acepta
     # nada: «actuar desde el chat» sin firma es «actuar desde internet».
-    secreto: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    secreto: Mapped[str] = mapped_column(Text, nullable=False, default="", info={"secreto": True})
     cabecera_firma: Mapped[str] = mapped_column(String(80), nullable=False, default="x-signature")
     # Qué órdenes admite ESTE canal. El canal de dirección no tiene por qué poder
     # cambiar estados, y el de un equipo no tiene por qué poder consultar todo.

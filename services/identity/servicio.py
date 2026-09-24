@@ -251,6 +251,35 @@ def _membresia(db: Session, usuario_id: UUID, tenant_id: UUID) -> Membresia | No
 # ── Permisos efectivos ────────────────────────────────────────────────────
 
 
+def permisos_de_rol(db: Session, rol: str, tenant_id: UUID) -> frozenset[str]:
+    """Permisos de UN rol en ese tenant, sin pasar por una persona.
+
+    Una clave de API no tiene usuario ni membresía: lleva su rol escrito. Hasta
+    ahora la única forma de resolver permisos era `permisos_efectivos`, que parte
+    de una membresía, así que una credencial de máquina no podía obtener los
+    suyos — y por eso no había forma de autenticarla.
+    """
+    # La misma construcción que `permisos_efectivos`, y por el mismo motivo: un
+    # tenant puede redefinir un rol y lo suyo manda sobre el de serie. `RolTenant`
+    # NO tiene `conjuntos` —los conjuntos de permisos son de los roles base—, así
+    # que pedírselo revienta con `AttributeError` en cuanto el tenant tiene algún
+    # rol propio. Es exactamente lo que pasó: con `plataforma`, que no tiene
+    # ninguno, funcionaba; con `demo`, que sí, daba 500 y el gateway lo traducía
+    # a «clave no válida».
+    propios = {
+        r.nombre: Rol(
+            nombre=r.nombre,
+            permisos=frozenset(r.permisos or []),
+            hereda_de=r.hereda_de,
+            descripcion=r.descripcion,
+        )
+        for r in db.execute(select(RolTenant).where(RolTenant.tenant_id == tenant_id))
+        .scalars()
+        .all()
+    }
+    return resolver_permisos(rol, roles={**ROLES_BASE, **propios}, conjuntos={})
+
+
 def permisos_efectivos(db: Session, usuario_id: UUID, tenant_id: UUID) -> frozenset[str]:
     """Permisos del usuario en ese tenant: roles base + roles del tenant."""
     membresia = _membresia(db, usuario_id, tenant_id)

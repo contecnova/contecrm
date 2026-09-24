@@ -151,7 +151,16 @@ async def contexto_autenticado(
     # en el contexto y no en la firma de las dependencias: cambiarla obligaría a
     # que todo lo que llama a `exige_autenticacion` pasara la petición.
     cookie_rechazada: NoAutenticado | None = None
-    if request.headers.get(H_FIRMA):
+    # Identidad ya resuelta por quien atiende la petición ANTES de llegar aquí.
+    # Hoy solo la pone el gateway, para las claves de API: validarlas exige
+    # preguntar a `identity`, que es una llamada de red, y esta dependencia es
+    # síncrona y la usan los trece servicios. Dejar el hueco aquí mantiene toda
+    # la lógica de la clave en el gateway —que es quien tiene esa conversación—
+    # sin que ningún servicio de detrás sepa que existen las claves.
+    precalculado = getattr(request.state, "principal_precalculado", None)
+    if precalculado is not None:
+        principal = precalculado
+    elif request.headers.get(H_FIRMA):
         if not _verificar_firma(request, secreto):
             raise NoAutenticado(
                 "La identidad propagada no es válida",

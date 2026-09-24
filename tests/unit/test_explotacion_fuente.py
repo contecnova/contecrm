@@ -91,7 +91,7 @@ def test_no_se_reenvia_lo_que_no_ha_cambiado(
     """Un registro que se reenvía por reloj gasta en cada tenant sin que nadie
     haya tocado un campo."""
     enviados: list[dict[str, Any]] = []
-    monkeypatch.setattr(fte, "_publicar", lambda modelo, org: enviados.append({"org": org}))
+    monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append({"org": org}))
     primera = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     segunda = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     assert primera["registrada"] is True
@@ -107,7 +107,7 @@ def test_un_campo_nuevo_obliga_a_registrar_otra_vez(
     from crmcore import metamodelo
 
     enviados: list[Any] = []
-    monkeypatch.setattr(fte, "_publicar", lambda modelo, org: enviados.append(org))
+    monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append(org))
     fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     metamodelo.aplicar_esquema(
         db,
@@ -127,7 +127,7 @@ def test_un_fallo_al_registrar_queda_escrito(
     """Sin el motivo escrito, «no se puede preguntar» no dice qué arreglar."""
     from sqlalchemy import select
 
-    def revienta(modelo: Any, org: str) -> None:
+    def revienta(modelo: Any, org: str, **_: Any) -> None:
         raise RuntimeError("credencial rechazada")
 
     monkeypatch.setattr(fte, "_publicar", revienta)

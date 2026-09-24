@@ -19,7 +19,7 @@ from crmcore.http.deps import (
     exige_firma_interna,
     exige_permiso,
 )
-from crmcore.http.pagination import ParametrosPagina, construir_pagina
+from crmcore.http.pagination import PaginaDeListado, ParametrosPagina, construir_pagina
 from crmcore.runtime import settings as rt
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -104,7 +104,7 @@ def editar_tenant(tenant_id: UUID, datos: EditarTenant, uow: UowDep, _: Platafor
     return tenant
 
 
-@router.get("", response_model=dict, summary="Listar tenants")
+@router.get("", response_model=PaginaDeListado, summary="Listar tenants")
 def listar_tenants(
     db: DbDep,
     _: PlataformaDep,
@@ -261,7 +261,7 @@ router_ajustes = APIRouter(prefix="/ajustes", tags=["ajustes"])
 
 @router_ajustes.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     summary="Ajustes efectivos",
     description=(
         "Cada ajuste con su valor efectivo y **de qué ámbito sale**. Sin la "

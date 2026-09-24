@@ -152,7 +152,7 @@ class Encuesta(Base, TimestampMixin, SoftDeleteMixin):
     comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Token de un solo uso con el que se responde sin iniciar sesión. Hasheado:
     # quien lea la tabla no puede contestar por el cliente.
-    hash_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_token: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (

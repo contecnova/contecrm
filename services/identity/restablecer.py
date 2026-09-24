@@ -61,7 +61,9 @@ class EnlaceRestablecer(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # Hasheado, nunca el token. Quien lea la base no puede usar lo pendiente.
-    hash_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    hash_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True, info={"secreto": True}
+    )
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Las dos son dato personal: una IP identifica a una persona lo bastante

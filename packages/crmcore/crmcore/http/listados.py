@@ -33,7 +33,12 @@ from typing import Any
 from fastapi import Depends, Query
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
-from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+from crmcore.http.pagination import (
+    PaginaDeListado,
+    ParametrosPagina,
+    aplicar_orden_y_cursor,
+    construir_pagina,
+)
 
 
 def montar_listado(
@@ -80,7 +85,7 @@ def montar_listado(
 
     @router.get(
         ruta,
-        response_model=dict,
+        response_model=PaginaDeListado,
         dependencies=[Depends(exige_permiso(permiso))],
         summary=f"Listar {nombre.lower()}",
         description=descripcion

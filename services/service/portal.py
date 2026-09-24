@@ -99,7 +99,9 @@ class AccesoPortal(Base, TimestampMixin, SoftDeleteMixin):
     # Contraseña opcional: lo normal es entrar por enlace de un solo uso, que
     # evita gestionar contraseñas de gente que entra tres veces al año y las
     # olvida siempre.
-    hash_contrasena: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    hash_contrasena: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, info={"secreto": True}
+    )
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     ultimo_acceso_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -130,7 +132,9 @@ class EnlaceAcceso(Base):
     acceso_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("accesos_portal.id", ondelete="CASCADE"), nullable=False
     )
-    hash_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    hash_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, index=True, info={"secreto": True}
+    )
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_uso: Mapped[str | None] = mapped_column(

@@ -219,8 +219,12 @@ class Sobre(Base, TimestampMixin, SoftDeleteMixin):
     # Huella de lo que se mandó y de lo que volvió (CRM-06.01.02.04). Son la
     # prueba de que el documento firmado es el que se envió: sin ellas, «esto no
     # es lo que yo firmé» no se puede contestar.
-    hash_enviado: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    hash_firmado: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    hash_enviado: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"secreto": True}
+    )
+    hash_firmado: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, info={"secreto": True}
+    )
     # El certificado de finalización del proveedor, archivado también en el
     # corpus. Es el documento que se lleva a un juzgado.
     certificado_id: Mapped[str | None] = mapped_column(String(200), nullable=True)

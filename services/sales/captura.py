@@ -86,7 +86,7 @@ class CanalCaptura(Base, TimestampMixin, SoftDeleteMixin):
     # El secreto que tiene que traer la petición. Se guarda **hasheado**: si la
     # base se filtra, las claves de los formularios de todos los tenants no
     # vienen en ella. Se enseña una sola vez al crear el canal.
-    secreto_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    secreto_hash: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
 
     # De qué campo de entrada sale cada campo del lead: {"email": "correo"}.
     mapeo: Mapped[dict[str, Any]] = mapped_column(

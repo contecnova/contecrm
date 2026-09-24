@@ -186,6 +186,21 @@ def sensibilidad_de(modelo: type, campo: str) -> str:
     return str(valor)
 
 
+def es_secreto(modelo: type, campo: str) -> bool:
+    """Si la columna se declara secreto: nunca sale por la API, para nadie.
+
+    Va en el `info` de la columna, al lado de `sensibilidad`, por lo mismo: quien
+    añade una columna con un secreto ve en la línea de al lado que sus vecinas lo
+    declaran. Y hay un gate que lo exige para toda columna cuyo nombre lo delate
+    (`test_secretos_no_salen_por_la_api.py`), porque «se me olvidó» no puede ser
+    la diferencia entre publicar un secreto y no publicarlo.
+    """
+    tabla = getattr(modelo, "__table__", None)
+    if tabla is None or campo not in tabla.columns:
+        return False
+    return bool(tabla.columns[campo].info.get("secreto"))
+
+
 def _politica_por_rol(db: Session | None) -> dict[str, dict[str, str]]:
     """Qué nivel de sensibilidad ve cada rol, de la configuración.
 
@@ -317,6 +332,18 @@ def _nivel_del_campo(
     """Nivel efectivo: la excepción si la hay, y si no, el que toca por sensibilidad."""
     if campo in CAMPOS_ESTRUCTURALES:
         return "claro"
+    # Un SECRETO no lo ve nadie, y no hay rol ni excepción que lo abra. Es
+    # distinto de «especial», que es el dato más sensible de una persona pero que
+    # alguien tiene que poder leer: esto es material de verificación —el secreto
+    # de un webhook, el hash de un token de encuesta—, y quien lo necesita es el
+    # código, no una pantalla.
+    #
+    # Hacía falta porque la API los estaba devolviendo EN CLARO: cualquiera con
+    # permiso de lectura veía el secreto con el que se firman los mensajes
+    # entrantes de un canal de chat. Se descubrió al dar de alta el CRM como
+    # fuente en contecintelligence, que se los llevaba a su almacén.
+    if es_secreto(modelo, campo):
+        return "oculto"
     for rol in [*sorted(roles), "*"]:
         nivel = excepciones.get((campo, rol))
         if nivel in NIVELES:

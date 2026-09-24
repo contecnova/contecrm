@@ -24,6 +24,12 @@ class _IntelligenceSettings(BaseSettings):
     # canjea, en el servidor, un token corto por usuario. La credencial puede
     # representar a todos los tenants; si llegara al navegador sería la llave
     # de todos.
+    # La dirección con la que **contecintelligence** ve a este CRM. No es la
+    # misma que `ci_base_url` al revés ni `public_base_url`: desde su contenedor,
+    # `localhost` es él mismo, y una fuente dada de alta con esa dirección se
+    # consulta a sí misma. Sin esto no se puede registrar la fuente, que es el
+    # paso sin el cual preguntar no devuelve nada.
+    ci_url_del_crm: str = ""
     ci_client_id: str = ""
     ci_client_secret: SecretStr | None = None
 

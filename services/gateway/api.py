@@ -43,6 +43,17 @@ async def arrancar() -> None:
     logger.info("gateway.destinos", servicios=sorted(_destinos))
 
 
+def cliente_y_destino(servicio: str) -> tuple[Any, str]:
+    """El cliente HTTP del gateway y la URL de un servicio. Para el middleware.
+
+    Se expone en vez de importar `_cliente` desde fuera porque el middleware
+    corre por petición y el cliente se crea al arrancar: leer la variable
+    directamente daría `None` en la primera petición si algo cambiara el orden.
+    """
+    destino = _destinos.get(servicio)
+    return _cliente, (destino.url_base if destino else "")
+
+
 async def parar() -> None:
     if _cliente is not None:
         await _cliente.aclose()

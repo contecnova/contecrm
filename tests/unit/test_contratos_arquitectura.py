@@ -307,6 +307,14 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
                 texto = ast.unparse(deco)
                 if "exige_permiso" in texto or nodo.name in exentas:
                     continue
+                # `exige_firma_interna` también es una guarda DECLARADA en la
+                # ruta, y más cerrada que cualquier permiso: no la pasa un
+                # usuario, la pasa otro servicio de la casa con el secreto
+                # compartido. Se reconoce aquí en vez de ir apuntando cada ruta
+                # interna en `exentas`, porque una lista de nombres se queda
+                # vieja y esto no: la guarda está en el código o no está.
+                if "exige_firma_interna" in texto:
+                    continue
                 # `PlataformaDep` en los argumentos también es una comprobación
                 # declarada, y más restrictiva que cualquier permiso.
                 if "PlataformaDep" in ast.unparse(nodo.args):

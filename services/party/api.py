@@ -19,7 +19,12 @@ from crmcore.http.deps import (
     proyectar_para,
 )
 from crmcore.http.documental_router import crear_router_documental
-from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+from crmcore.http.pagination import (
+    PaginaDeListado,
+    ParametrosPagina,
+    aplicar_orden_y_cursor,
+    construir_pagina,
+)
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Body, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -117,7 +122,7 @@ def crear_cuenta(datos: CrearCuenta, uow: UowDep) -> Any:
 
 @router_cuentas.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("account:read"))],
     summary="Listar cuentas",
     description="Paginación por cursor: estable aunque se creen o borren filas entre páginas.",
@@ -529,7 +534,7 @@ def crear_contacto(datos: CrearContacto, uow: UowDep) -> Any:
 
 @router_contactos.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("contact:read"))],
     summary="Listar contactos",
 )

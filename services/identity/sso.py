@@ -55,7 +55,9 @@ class EstadoSSO(Base):
     # El `state` se guarda **hasheado**. Va en la URL, así que acaba en el log
     # del proxy y en el historial del navegador; guardarlo en claro haría que
     # quien lea un log pueda cerrar un inicio de sesión ajeno.
-    estado_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    estado_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, info={"secreto": True}
+    )
     nonce: Mapped[str] = mapped_column(String(64), nullable=False)
     verificador: Mapped[str] = mapped_column(String(128), nullable=False)
     volver_a: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -15,7 +15,12 @@ from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.documental_router import crear_router_documental
-from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+from crmcore.http.pagination import (
+    PaginaDeListado,
+    ParametrosPagina,
+    aplicar_orden_y_cursor,
+    construir_pagina,
+)
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from pydantic import BaseModel, Field
@@ -75,7 +80,7 @@ def crear_lead(datos: CrearLead, uow: UowDep) -> Any:
 
 @router_leads.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("lead:read"))],
     summary="Listar leads",
 )
@@ -362,7 +367,7 @@ def _nombres_de_etapa(db: Any, filas: list[Any]) -> tuple[dict, dict]:
 
 @router_oportunidades.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("opportunity:read"))],
     summary="Listar oportunidades",
 )

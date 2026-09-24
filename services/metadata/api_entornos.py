@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.pagination import PaginaDeListado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
@@ -59,7 +60,7 @@ class VolverIn(BaseModel):
 
 @router_entornos.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("metadata:read"))],
     summary="Entornos por los que pasa la configuración",
     description=(

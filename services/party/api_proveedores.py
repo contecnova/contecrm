@@ -19,6 +19,7 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
+from crmcore.http.pagination import PaginaDeListado
 from crmcore.http.portal_deps import PortalDep
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -461,7 +462,7 @@ def evaluacion(cuerpo: EvaluarIn, principal: AutenticadoDep) -> Any:
 
 @router_proveedores.get(
     "",
-    response_model=dict,
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("party:read"))],
     summary="Listar proveedores",
     description=(
@@ -476,7 +477,11 @@ def listar_proveedores(
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
-    from crmcore.http.pagination import ParametrosPagina, aplicar_orden_y_cursor, construir_pagina
+    from crmcore.http.pagination import (
+        ParametrosPagina,
+        aplicar_orden_y_cursor,
+        construir_pagina,
+    )
     from sqlalchemy import select
 
     from services.party.modelos import Cuenta

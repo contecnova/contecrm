@@ -20,6 +20,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
+from pydantic import BaseModel
 from sqlalchemy import Select, and_, or_
 
 from crmcore.errors import ErrorValidacion
@@ -84,6 +85,31 @@ class Pagina(Generic[T]):
         if self.total_aprox is not None:
             d["total_aprox"] = self.total_aprox
         return d
+
+
+class PaginaDeListado(BaseModel):
+    """El contrato de una página, para declararlo en la API.
+
+    Existe porque los listados genéricos declaraban `response_model=dict`, y eso
+    tenía dos consecuencias que no se veían juntas:
+
+      * En el contrato publicado, `dict` no dice nada. Un cliente generado desde
+        el OpenAPI no sabía que la respuesta trae `items` ni que hay cursor.
+      * `/api/v1/superficie` decide si una operación devuelve una COLECCIÓN
+        mirando el modelo de respuesta. Con `dict` decía que no, así que de las
+        casi doscientas listas del CRM la superficie reconocía 39 —las que
+        declaran su modelo a mano— y el front no podía distinguir una
+        sub-colección de una vista en todas las demás.
+
+    `items` va como lista de diccionarios y no de un modelo concreto porque cada
+    listado proyecta campos distintos según quién pregunta (enmascarado por rol),
+    y fijar un modelo aquí recortaría esa proyección.
+    """
+
+    items: list[dict[str, Any]]
+    siguiente: str | None = None
+    hay_mas: bool = False
+    total_aprox: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

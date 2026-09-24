@@ -52,7 +52,9 @@ class Usuario(Base, TimestampMixin):
     # Nulo cuando el usuario solo entra por un proveedor de identidad externo.
     # Que sea nulable es lo que permite forzar SSO: sin contraseña local no hay
     # forma de saltarse el IdP corporativo.
-    hash_contrasena: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    hash_contrasena: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, info={"secreto": True}
+    )
 
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Personal de la plataforma (soporte, operación). Ve y opera entre tenants,
@@ -64,7 +66,7 @@ class Usuario(Base, TimestampMixin):
     mfa_activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Secreto TOTP, cifrado en reposo. En claro sería equivalente a guardar la
     # contraseña: quien lea la tabla puede generar códigos válidos.
-    mfa_secreto: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mfa_secreto: Mapped[str | None] = mapped_column(Text, nullable=True, info={"secreto": True})
     # Códigos de recuperación, hasheados. Se guardan hasheados y no en claro
     # porque son credenciales de pleno derecho: con uno se entra sin el móvil.
     mfa_recuperacion: Mapped[list[Any]] = mapped_column(
@@ -158,7 +160,9 @@ class Sesion(Base):
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # Hash del token de refresco, nunca el token. Si la tabla se filtra, lo que
     # se lleva el atacante no sirve para renovar nada.
-    hash_refresco: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hash_refresco: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, info={"secreto": True}
+    )
 
     ip: Mapped[str | None] = mapped_column(
         String(64), nullable=True, info={"sensibilidad": "personal"}
@@ -228,7 +232,9 @@ class ClaveApi(Base, TimestampMixin):
     # Prefijo visible de la clave, para poder identificarla en una lista sin
     # revelar nada: `crm_a1b2…`. Sin él, ocho claves son ocho filas iguales.
     prefijo: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
-    hash_secreto: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hash_secreto: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, info={"secreto": True}
+    )
 
     # Ámbitos concedidos. Acotan por encima de los permisos del rol asociado:
     # una integración con scope de lectura no escribe aunque su rol pueda.
@@ -325,7 +331,7 @@ class DesafioFactor(Base):
     # se enseña al usuario («te hemos enviado un código al ***34») y guardarla
     # entera la convertiría en una filtración de teléfonos.
     destino_visible: Mapped[str] = mapped_column(String(60), nullable=False, default="")
-    hash_codigo: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_codigo: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
     # Para qué se pidió: entrar, o autorizar una operación concreta (step-up).
     proposito: Mapped[str] = mapped_column(String(40), nullable=False, default="entrar")
     intentos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -360,7 +366,7 @@ class DispositivoConfianza(Base, TimestampMixin):
     usuario_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # Hash de la huella del dispositivo. Hasheada porque la huella en claro
     # identifica al equipo, y la tabla se consulta desde la pantalla de sesiones.
-    hash_huella: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_huella: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
     nombre: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     ip_alta: Mapped[str | None] = mapped_column(
         String(64), nullable=True, info={"sensibilidad": "personal"}
@@ -427,7 +433,7 @@ class AsercionConsumida(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     # El `ID` de la aserción, hasheado: no aporta nada guardarlo en claro y sí
     # deja un rastro menos si la tabla se filtra.
-    hash_asercion: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_asercion: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
     proveedor_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
     consumida_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

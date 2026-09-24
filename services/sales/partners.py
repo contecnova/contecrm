@@ -254,7 +254,7 @@ class EnlaceAccesoPartner(Base):
     )
     # Se guarda el hash: con el token en claro, quien lea la tabla entra como
     # cualquiera de ellos.
-    hash_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_token: Mapped[str] = mapped_column(String(64), nullable=False, info={"secreto": True})
     caduca_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_uso: Mapped[str | None] = mapped_column(

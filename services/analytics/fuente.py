@@ -184,7 +184,7 @@ def registrar_fuente(
     fila.objetos = descripcion["objetos"]
     fila.campos = descripcion["campos"]
     try:
-        _publicar(modelo, organizacion)
+        _publicar(modelo, organizacion, tenant_id=tenant_id)
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
         fila.error = str(exc)[:1000]
@@ -217,26 +217,153 @@ def registrar_fuente(
     }
 
 
-def _publicar(modelo: dict[str, Any], organizacion: str) -> None:
-    """Manda la descripción. Aislado para poder sustituirlo en las pruebas."""
+# La ruta de alta de fuentes de contecintelligence. Aquí decía
+# `/api/v1/sources/register`, que NO EXISTE: su contrato no tiene nada bajo
+# `/api/v1` y la ruta es `/api/sources`. Es el mismo desajuste que tenían el
+# canje de token y el cliente documental, por tercera vez, y se descubrió igual
+# que los otros: levantando el vecino de verdad. Lo fija
+# `tests/unit/test_contratos_vecinos.py`.
+RUTA_FUENTES = "/api/sources"
+
+# Lo que hace falta para poder dar de alta una fuente allí. `sources:write` no
+# existía: sus alcances delegados llegaban a `sources:read`, así que esta
+# operación era imposible desde aquí por mucho que la ruta fuera correcta.
+ALCANCES_REGISTRO = ["sources:read", "sources:write"]
+
+
+def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> None:
+    """Da de alta el CRM como fuente consultable en contecintelligence.
+
+    **Se registra una fuente de API, no una descripción suelta.** Mandar solo el
+    esquema —que es lo que hacía— deja a contecintelligence sabiendo qué campos
+    existen y sin poder leer ni una fila, así que cualquier pregunta se queda sin
+    respuesta. Lo que se registra es cómo LEER el CRM: su dirección, una clave de
+    solo lectura y la lista de entidades con su paginación.
+
+    Las entidades salen de `describir()`, o sea del modelo semántico del propio
+    tenant: no hay lista escrita a mano, y un objeto nuevo entra solo.
+
+    La credencial de aplicación no vale aquí: hay que canjearla por un token de
+    usuario con `sources:write`, que es el mismo camino de dos pasos que usa todo
+    lo demás.
+    """
     from crmcore.red import cliente_seguro
 
-    from services.analytics.cliente import _config
+    from services.analytics.cliente import _config, canjear_token
 
     s = _config()
-    url = s.ci_base_url.rstrip("/") + "/api/v1/sources/register"
+    # La clave se pide AQUÍ y no antes: `registrar_fuente` la sustituye entera en
+    # las pruebas, y sacar la petición fuera obligaba a montar media
+    # infraestructura para probar la huella, que no tiene nada que ver.
+    clave_api = _clave_de_lectura(tenant_id)
+    token = canjear_token(
+        organizacion=organizacion,
+        sujeto="contecrm",
+        rol="admin",
+        alcances=ALCANCES_REGISTRO,
+    )
+
+    entidades = _entidades_de(modelo)
+    if not entidades:
+        raise ErrorValidacion(
+            "Este tenant no tiene ningún objeto consultable que registrar",
+            error_code="analytics.sin_objetos",
+        )
+
+    cuerpo = {
+        "name": f"contecrm-{organizacion}",
+        "source_type": "api",
+        "plantilla_id": "api-paginacion-por-cursor",
+        "config": {
+            "base_url": s.ci_url_del_crm or "",
+            "auth": {"type": "bearer", "value": clave_api},
+            "entities": entidades,
+        },
+    }
     with cliente_seguro(timeout=s.ci_timeout_s) as cli:
         respuesta = cli.post(
-            url,
-            json=modelo,
-            auth=(s.ci_client_id, s.ci_client_secret.get_secret_value()),
+            s.ci_base_url.rstrip("/") + RUTA_FUENTES,
+            json=cuerpo,
+            headers={"Authorization": f"Bearer {token.token}"},
         )
     if respuesta.status_code >= 400:
         raise ErrorDependencia(
             "contecintelligence ha rechazado el registro de la fuente",
             error_code="analytics.registro_rechazado",
+            detalle={"codigo_http": respuesta.status_code, "cuerpo": respuesta.text[:300]},
+        )
+
+
+def _clave_de_lectura(tenant_id: UUID) -> str:
+    """Pide a `identity` una clave de solo lectura para que el otro lado lea.
+
+    Se pide aquí y no se guarda en configuración porque una clave en el `.env`
+    hay que ponerla a mano, y esto tiene que poder ser un botón. Cada registro
+    rota la anterior, así que no se acumulan credenciales.
+    """
+    from crmcore.config import get_settings
+    from crmcore.http.deps import firmar_cabeceras_internas
+    from crmcore.red import cliente_seguro
+
+    s = get_settings()
+    destino = _url_de_identity(s)
+    cabeceras = firmar_cabeceras_internas({}, s.secret_key.get_secret_value())
+    with cliente_seguro(timeout=10.0) as cli:
+        respuesta = cli.post(
+            f"{destino}/api/v1/claves-api/interna",
+            json={"tenant_id": str(tenant_id), "nombre": "contecintelligence"},
+            headers=cabeceras,
+        )
+    if respuesta.status_code != 201:
+        raise ErrorDependencia(
+            "No se ha podido emitir la clave de lectura para contecintelligence",
+            error_code="analytics.sin_clave",
             detalle={"codigo_http": respuesta.status_code},
         )
+    return str(respuesta.json()["secreto"])
+
+
+def _url_de_identity(s: Any) -> str:
+    """La dirección de `identity` en este despliegue, de `RUTAS_SERVICIOS`."""
+    for trozo in (s.rutas_servicios or "").replace("\n", " ").split(","):
+        nombre, _, url = trozo.strip().partition("=")
+        if nombre.strip() == "identity" and url.strip():
+            return url.strip().rstrip("/")
+    raise ErrorDependencia(
+        "No hay dirección de `identity` en RUTAS_SERVICIOS",
+        error_code="analytics.sin_identity",
+    )
+
+
+def _entidades_de(modelo: dict[str, Any]) -> list[dict[str, Any]]:
+    """Cada objeto del modelo semántico, como entidad leíble por su API.
+
+    La forma de la página es la de contecrm y va explícita: los registros bajo
+    `items`, el cursor bajo `siguiente` y `limite` como tamaño. Suponerla —dar por
+    hecho que todos los listados paginan igual— es lo que hacía fallar el alta
+    entera por el primero que no lo hacía.
+    """
+    entidades = []
+    for objeto in modelo.get("objetos") or []:
+        ruta = objeto.get("ruta") or objeto.get("coleccion") or ""
+        if not ruta:
+            continue
+        entidades.append(
+            {
+                "name": str(objeto.get("nombre") or objeto.get("clave") or "").replace("-", "_"),
+                "path": ruta if ruta.startswith("/") else f"/{ruta}",
+                "record_path": "items",
+                "primary_key": "id",
+                "pagination": {
+                    "type": "cursor",
+                    "cursor_path": "siguiente",
+                    "cursor_param": "cursor",
+                    "size_param": "limite",
+                    "size": 200,
+                },
+            }
+        )
+    return entidades
 
 
 async def consumir_esquema_cambiado(mensaje: Any) -> None:

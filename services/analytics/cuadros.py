@@ -171,7 +171,9 @@ class EnlaceEmbebido(Base, TimestampMixin, SoftDeleteMixin):
         PgUUID(as_uuid=True), nullable=False, info={"referencia": "cuadro_mando"}
     )
     nombre: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    hash_secreto: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hash_secreto: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, info={"secreto": True}
+    )
     # Dominios desde los que se puede incrustar. Vacío **no** significa
     # «cualquiera»: significa que no se sirve, porque un cuadro embebible desde
     # cualquier sitio es un cuadro público.
