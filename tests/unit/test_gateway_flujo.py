@@ -6,6 +6,11 @@ segundos, que en un flujo abierto es un 504 garantizado. Y cuando se arregló,
 el arreglo salía 500 en producción por un `TypeError` —`AsyncClient.send()` no
 admite `timeout`— que ninguna prueba veía porque ninguna llamaba a la función.
 
+Lo que se fija aquí es **quién decide que algo es un flujo**: el servicio, por lo
+que responde, y no el cliente por lo que pide. Mirar el `Accept` de quien llama
+daba las dos equivocaciones a la vez —500 al pedir un flujo donde no lo hay, y
+504 al llamar sin la cabecera a una ruta que sí transmite—.
+
 Se prueba contra un `httpx.AsyncClient` de verdad con transporte simulado: el
 fallo era precisamente de la firma del cliente HTTP, así que un doble de
 `cliente` lo habría dejado pasar otra vez.
@@ -98,6 +103,22 @@ async def test_el_flujo_no_lleva_plazo_de_lectura() -> None:
     plazo = recibidas[-1].extensions.get("timeout") or {}
     assert plazo.get("read") is None
     assert plazo.get("connect") == 10.0
+
+
+@pytest.mark.asyncio
+async def test_una_ruta_que_transmite_transmite_aunque_no_se_pida() -> None:
+    """Sin la cabecera, esa ruta daba 504 en diez segundos estando sana.
+
+    Le pasaba a cualquier cliente que no sea un `EventSource` — incluido el
+    barrido que abre todas las rutas para ver cuál falla.
+    """
+    recibidas: list[httpx.Request] = []
+    async with _cliente(recibidas) as cliente:
+        respuesta = await _reenviar(cliente, "application/json")
+        assert respuesta.headers["content-type"] == "text/event-stream"
+        with pytest.raises(httpx.ResponseNotRead):
+            _ = respuesta.content
+        await respuesta.aclose()
 
 
 @pytest.mark.asyncio

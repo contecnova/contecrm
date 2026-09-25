@@ -18,6 +18,7 @@ Está en el manual de operación y no es opcional.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -63,31 +64,41 @@ async def reenviar(
     identidad: dict[str, str],
     timeout_s: float,
 ) -> httpx.Response:
-    """Reenvía la petición al servicio y devuelve su respuesta tal cual."""
+    """Reenvía la petición al servicio y devuelve su respuesta tal cual.
+
+    **Quien decide si algo es un flujo es el SERVICIO, por lo que responde, no el
+    cliente por lo que pide.** Parece un matiz y no lo es: la primera versión
+    miraba el `Accept` de quien llamaba, y eso da las dos equivocaciones. Quien
+    pedía un flujo en una ruta normal recibía una respuesta que nadie había
+    leído, que salía como 500. Y quien llamaba a una ruta que transmite sin la
+    cabecera —cualquier cliente que no sea un `EventSource`— se comía un 504 a
+    los diez segundos en una ruta perfectamente sana.
+
+    Así que se abre SIEMPRE en flujo y se decide al ver las cabeceras de la
+    respuesta, que es cuando ya se sabe. Para lo que no transmite, abrir en flujo
+    y leerlo entero a continuación es exactamente lo mismo que pedirlo entero.
+
+    El plazo de lectura se pone con `wait_for` sobre esa lectura y no en el
+    cliente HTTP: el plazo del cliente se fija al mandar la petición y ya no se
+    puede quitar, y un flujo lo necesita quitado —el silencio entre dos eventos
+    es lo normal y no una avería— mientras que una respuesta normal lo necesita
+    puesto. Conectar sí lo lleva siempre, así que un servicio caído se sigue
+    detectando igual de rápido.
+    """
     destino = f"{url_base}{ruta}" + (f"?{query}" if query else "")
     limpias = {k: v for k, v in cabeceras.items() if k.lower() not in NO_REENVIAR}
 
-    # Un FLUJO no se puede acumular ni cronometrar como una respuesta normal.
-    #
-    # `chat/eventos` es `text/event-stream`: se queda abierto mandando lo que va
-    # pasando, por definición. Reenviarlo como todo lo demás —leer la respuesta
-    # entera con un plazo de diez segundos— da **504 siempre**, y el
-    # `EventSource` del chat nunca ha recibido un solo mensaje por esta vía.
-    #
-    # Se reconoce por lo que PIDE el cliente y no por la ruta: una lista de
-    # rutas que transmiten se queda corta con la siguiente que se añada, y el
-    # `Accept` lo manda el navegador precisamente para esto.
-    if "text/event-stream" in (limpias.get("accept") or limpias.get("Accept") or ""):
-        return await _reenviar_flujo(cliente, destino, metodo, limpias, identidad, cuerpo)
-
+    peticion = cliente.build_request(
+        metodo,
+        destino,
+        content=cuerpo or None,
+        headers={**limpias, **identidad},
+        # `read=None` en la petición; el plazo de la lectura lo pone `wait_for`
+        # más abajo, y solo cuando la respuesta no transmite.
+        timeout=httpx.Timeout(timeout_s, read=None),
+    )
     try:
-        return await cliente.request(
-            metodo,
-            destino,
-            content=cuerpo or None,
-            headers={**limpias, **identidad},
-            timeout=timeout_s,
-        )
+        respuesta = await cliente.send(peticion, stream=True)
     except httpx.TimeoutException:
         logger.warning("gateway.timeout", destino=destino)
         raise TiempoAgotado("El servicio no ha respondido a tiempo", error_code="gateway.timeout")
@@ -98,47 +109,22 @@ async def reenviar(
             error_code="gateway.servicio_caido",
         )
 
+    if respuesta.headers.get("content-type", "").startswith("text/event-stream"):
+        return respuesta
 
-async def _reenviar_flujo(
-    cliente: httpx.AsyncClient,
-    destino: str,
-    metodo: str,
-    cabeceras: dict[str, str],
-    identidad: dict[str, str],
-    cuerpo: bytes,
-) -> Any:
-    """Abre el flujo y lo deja abierto, sin plazo de lectura.
-
-    `timeout=None` solo para la LECTURA: conectar sigue teniendo su plazo, así
-    que un servicio caído se detecta igual de rápido. Lo que no se cronometra es
-    el silencio entre dos eventos, que en un flujo es lo normal y no una avería.
-    """
-    # El plazo va en la PETICIÓN, no en `send()`: `AsyncClient.send()` no admite
-    # `timeout` y lo rechaza con un `TypeError` que sale como 500. Es
-    # `build_request` quien lo guarda en la petición.
-    peticion = cliente.build_request(
-        metodo,
-        destino,
-        content=cuerpo or None,
-        headers={**cabeceras, **identidad},
-        timeout=httpx.Timeout(10.0, read=None),
-    )
     try:
-        respuesta = await cliente.send(peticion, stream=True)
+        await asyncio.wait_for(respuesta.aread(), timeout=timeout_s)
+    except TimeoutError:
+        await respuesta.aclose()
+        logger.warning("gateway.timeout", destino=destino)
+        raise TiempoAgotado("El servicio no ha respondido a tiempo", error_code="gateway.timeout")
     except httpx.HTTPError as exc:
-        logger.error("gateway.flujo_inalcanzable", destino=destino, error=str(exc)[:200])
+        await respuesta.aclose()
+        logger.error("gateway.servicio_inalcanzable", destino=destino, error=str(exc)[:200])
         raise NoDisponible(
-            "El servicio no está disponible ahora mismo", error_code="gateway.servicio_caido"
-        ) from exc
-
-    # Pedir un flujo no obliga al servicio a darlo. Un `Accept:
-    # text/event-stream` en una ruta normal —o en un error, que sale en JSON
-    # aunque la ruta transmita— devuelve una respuesta corriente, y esa hay que
-    # LEERLA: dejarla abierta hacía que quien la usara luego se encontrara un
-    # `ResponseNotRead`, que salía como 500. Pasaba en cualquier ruta llamada con
-    # ese `Accept`, no solo en las que transmiten.
-    if not respuesta.headers.get("content-type", "").startswith("text/event-stream"):
-        await respuesta.aread()
+            "El servicio no está disponible ahora mismo",
+            error_code="gateway.servicio_caido",
+        )
     return respuesta
 
 
