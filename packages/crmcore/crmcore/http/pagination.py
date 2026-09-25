@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
-from sqlalchemy import Select, and_, or_
+from sqlalchemy import Select, and_, literal, or_
 
 from crmcore.errors import ErrorValidacion
 
@@ -236,9 +236,25 @@ def aplicar_orden_y_cursor(
     condiciones = []
     iguales: list[Any] = []
     for (_orden_sql, col, desc, _nombre), valor in zip(columnas, cursor.valores, strict=False):
-        comparacion = col < valor if desc else col > valor
+        # El valor se compara CON EL TIPO DE SU COLUMNA, no como venga del JSON.
+        #
+        # El cursor viaja en base64 de un JSON, y JSON no tiene fechas: una marca
+        # de tiempo sale de ahí como cadena. Comparar `timestamptz < varchar` es
+        # un error de Postgres —«operator does not exist»— que sale como 500.
+        #
+        # Con el orden por defecto (`-created_at`, que es una marca de tiempo)
+        # eso significa que **la segunda página de cualquier listado devolvía
+        # 500**, y llevaba así desde siempre. No se veía porque el front pide
+        # cincuenta filas y casi nadie llega a la segunda página; salió al
+        # recorrer los listados enteros para llenar el almacén analítico.
+        #
+        # `literal(valor, col.type)` deja que sea el tipo de la columna quien
+        # decida cómo se adapta el valor, así que vale igual para fechas,
+        # números, identificadores y texto.
+        atado = literal(valor, col.type)
+        comparacion = col < atado if desc else col > atado
         condiciones.append(and_(*iguales, comparacion) if iguales else comparacion)
-        iguales.append(col == valor)
+        iguales.append(col == atado)
     condiciones.append(and_(*iguales, col_id > cursor.id) if iguales else col_id > cursor.id)
     return consulta.where(or_(*condiciones))
 

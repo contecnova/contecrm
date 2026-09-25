@@ -193,7 +193,7 @@ def registrar_fuente(
     fila.objetos = descripcion["objetos"]
     fila.campos = descripcion["campos"]
     try:
-        externa = _publicar(modelo, organizacion, tenant_id=tenant_id)
+        externa = _publicar(modelo, organizacion, tenant_id=tenant_id, externa_id=fila.externa_id)
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
         fila.error = str(exc)[:1000]
@@ -241,7 +241,9 @@ RUTA_FUENTES = "/api/sources"
 ALCANCES_REGISTRO = ["sources:read", "sources:write"]
 
 
-def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> str:
+def _publicar(
+    modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID, externa_id: str = ""
+) -> str:
     """Da de alta el CRM como fuente consultable en contecintelligence.
 
     **Se registra una fuente de API, no una descripción suelta.** Mandar solo el
@@ -291,6 +293,24 @@ def _publicar(modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID) -> 
         },
     }
     with cliente_seguro(timeout=s.ci_timeout_s) as cli:
+        # Se borra la anterior ANTES de crear la nueva. Sin esto, cada registro
+        # dejaba una fuente más y solo la última funcionaba:
+        #
+        #   * El secreto de una clave de API no se puede volver a leer —se guarda
+        #     hasheado—, así que cada registro tiene que emitir una nueva.
+        #   * Emitirla revoca la anterior, que es lo correcto: acumular
+        #     credenciales vivas es repartir llaves.
+        #   * Y la fuente registrada antes se quedaba con la llave muerta.
+        #
+        # El resultado medido eran seis claves (cuatro revocadas) y dos fuentes,
+        # de las cuales una contestaba 401. contecintelligence no tiene ruta de
+        # actualización —solo alta y baja—, así que una sola fuente por tenant
+        # se consigue rehaciéndola.
+        if externa_id:
+            cli.delete(
+                s.ci_base_url.rstrip("/") + f"{RUTA_FUENTES}/{externa_id}",
+                headers={"Authorization": f"Bearer {token.token}"},
+            )
         respuesta = cli.post(
             s.ci_base_url.rstrip("/") + RUTA_FUENTES,
             json=cuerpo,
