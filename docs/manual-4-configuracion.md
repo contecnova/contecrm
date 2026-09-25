@@ -104,7 +104,8 @@ forma frontless y los dos se activan o no.
 
 ```bash
 # Con explotación y corpus documental incluidos en la pila
-docker compose --profile app --profile intelligence --profile dms up -d
+docker compose --profile app --profile consola up -d
+python scripts/vecinos.py levantar   # contecintelligence y contecmind, con SU compose
 ```
 
 | Ajuste | Para qué |

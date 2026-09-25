@@ -12,6 +12,19 @@
 #    ./setup.sh migrar                aplica las migraciones de los 8 servicios
 #    ./setup.sh gates                 corre los gates locales (sustituyen a la CI)
 #    ./setup.sh demo                  siembra un tenant de demostración
+#    ./setup.sh vecinos [orden]       contecintelligence y contecmind
+#                                     (estado | levantar | parar)
+#
+#  ── contecrm no es autosuficiente, y no se le pide que lo sea ────────────
+#
+#  La explotación del dato la resuelve contecintelligence (RT-4) y el corpus
+#  documental contecmind (RT-5). Son dependencias de despliegue, no extras:
+#  arrancar solo contecrm deja pantallas que no pueden funcionar. Por eso
+#  `arrancar --docker` los levanta también, con SU propio compose y no con una
+#  copia de su topología aquí.
+#
+#  Si ya tienes uno en marcha en otro sitio, dale su dirección en CI_BASE_URL /
+#  DMS_BASE_URL y arranca con SIN_VECINOS=1.
 #
 #  ── Dos formas de levantarlo, y las dos son legítimas ────────────────────
 #
@@ -148,11 +161,28 @@ arrancar_docker() {
     malo "Docker Compose no está disponible."
     exit 1
   fi
-  docker compose --profile app up -d --build
-  ok "Infraestructura y servicios levantados"
+  docker compose --profile app --profile consola up -d --build
+  ok "Infraestructura, servicios y consola levantados"
+
+  # Y los servicios de la casa de los que esto DEPENDE. No son un extra: sin
+  # contecintelligence no hay informes ni cuadros de mando (RT-4) y sin
+  # contecmind no hay corpus documental (RT-5). Arrancar solo contecrm deja
+  # pantallas que no pueden funcionar y nadie sabe por qué.
+  #
+  # Se hace después de contecrm porque los vecinos se enganchan a SU red, que no
+  # existe hasta que contecrm está arriba.
+  if [[ "${SIN_VECINOS:-}" == "1" ]]; then
+    aviso "Vecinos omitidos (SIN_VECINOS=1): sin explotación del dato ni corpus"
+  else
+    titulo "Servicios de la casa de los que depende"
+    $PY scripts/vecinos.py levantar || aviso "Algún vecino no ha subido; mira arriba qué falta"
+  fi
+
   echo
-  info "Gateway:    http://localhost:8080/api/v1/docs"
+  info "Consola:    http://localhost:${CONSOLA_PORT:-3000}"
+  info "Gateway:    http://localhost:${GATEWAY_PORT:-8080}/api/v1/docs"
   info "Logs:       docker compose logs -f gateway"
+  info "Vecinos:    ./setup.sh vecinos"
   info "Parar:      ./setup.sh parar --docker"
 }
 
@@ -208,7 +238,13 @@ arrancar_local() {
 parar() {
   if [[ "${1:-}" == "--docker" ]]; then
     titulo "Parando Docker"
-    docker compose --profile app down
+    # Los vecinos NO se paran con contecrm salvo que se pida: lo normal es que
+    # los use algo más en la misma máquina, y pararlos de rebote apagaría el
+    # corpus documental de otro producto de la casa sin avisar.
+    if [[ "${2:-}" == "--con-vecinos" || "${3:-}" == "--con-vecinos" ]]; then
+      $PY scripts/vecinos.py parar
+    fi
+    docker compose --profile app --profile consola down
     ok "Parado (los datos se conservan; usa 'docker compose down -v' para borrarlos)"
     return
   fi
@@ -272,6 +308,7 @@ case "${1:-ayuda}" in
   migrar)   migrar ;;
   gates)    shift; gates "$@" ;;
   demo)     demo ;;
+  vecinos)  shift; $PY scripts/vecinos.py "${1:-estado}" "${@:2}" ;;
   *)
     sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
     ;;

@@ -90,7 +90,7 @@ def estado() -> dict[str, Any]:
 def modo_despliegue() -> dict[str, Any]:
     """Cómo está resuelta la dependencia de contecintelligence (CRM-05.01.04.10).
 
-    La pila lo levanta —`docker compose --profile bi`— o se apunta a uno ya en
+    La pila lo levanta —`python scripts/vecinos.py levantar`— o se apunta a uno ya en
     marcha con `CI_BASE_URL`. Las dos son válidas y una instalación con varias
     soluciones de la casa normalmente usa la segunda; lo que no vale es no saber
     cuál está en uso, porque entonces nadie sabe a quién reiniciar cuando los

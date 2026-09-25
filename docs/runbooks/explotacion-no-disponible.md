@@ -30,7 +30,7 @@ fue el último error. Con eso se distingue lo que hay que distinguir:
 
 1. Si no es alcanzable, comprueba que `contecintelligence` está en marcha y que
    la dirección configurada llega hasta él. Con la pila propia:
-   `docker compose --profile bi ps`.
+   `python scripts/vecinos.py estado`.
 2. Si es la credencial, renuévala en `contecintelligence` y actualiza el `.env`.
    La credencial **no** se pone en la base: es del despliegue.
 3. Si el tenant no tiene organización, asígnala:

@@ -406,56 +406,33 @@ services:
       DATABASE_ADMIN_URL: postgresql+psycopg://crm_intelligence_mig:contecrm_dev_only@postgres:5432/contecrm
     ports: ["127.0.0.1:${INTELLIGENCE_PORT:-8015}:8000"]
 
-  # ── Explotación del dato ─────────────────────────────────────────────────
+  # ── Los servicios de la casa de los que esto depende ─────────────────────
   #
-  # contecintelligence es una DEPENDENCIA DE DESPLIEGUE (RT-4), no un extra:
-  # sin él no hay informes ni cuadros de mando. Va en su propio perfil para que
-  # quien ya tenga uno en marcha —lo normal en una instalación con varias
-  # soluciones de la casa— no levante un segundo, y le dé la dirección del suyo
-  # en CI_BASE_URL.
+  # NO están aquí, y es deliberado. Estaban: un contenedor `contecintelligence`
+  # y otro `contecmind`, cada uno de un solo servicio contra este mismo
+  # Postgres. **Nunca ha funcionado.** contecmind necesita además Qdrant, Redis
+  # y MinIO, y contecintelligence su propia base con su rol de aplicación. Una
+  # descripción de la topología ajena escrita aquí se queda vieja el día que el
+  # vecino añada una pieza, y lo peor es que arranca: levanta algo que parece el
+  # vecino, falla a medias y nadie sabe por qué.
   #
-  #     docker compose --profile app --profile bi up     # levanta también el suyo
-  #     CI_BASE_URL=http://10.0.0.20:8000 docker compose --profile app up
-  contecintelligence:
-    image: ${CI_IMAGEN:-contecintelligence:latest}
-    profiles: [bi]
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: ${CI_DATABASE_URL:-postgresql+psycopg://contecintelligence:contecrm_dev_only@postgres:5432/contecintelligence}
-    ports: ["127.0.0.1:${CI_PORT:-8100}:8000"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/livez || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
-
-  # ── Gestión documental ───────────────────────────────────────────────────
+  # Se levantan con SU propio compose, que es el que sus autores mantienen:
   #
-  # contecmind resuelve el CORPUS documental (RT-5), usado de forma frontless:
-  # versionado con aprobación, obsolescencia, diff y búsqueda. Va en su propio
-  # perfil, igual que contecintelligence, para que quien ya tenga uno en marcha
-  # —lo normal en una instalación con varias soluciones de la casa— no levante
-  # un segundo y le dé la dirección del suyo en DMS_BASE_URL.
+  #     python scripts/vecinos.py levantar     # o ./setup.sh arrancar --docker
   #
-  #     docker compose --profile app --profile dms up      # levanta también el suyo
-  #     DMS_BASE_URL=http://10.0.0.30:8000 docker compose --profile app up
+  # Ese script además comprueba los puertos antes de tocar nada —en esta máquina
+  # conviven varios productos de la casa y chocan—, los engancha a la red de
+  # contecrm con el alias por el que se les llama, y hace lo que cada uno
+  # necesite después de arrancar. Enganchar a mano no vale: se pierde al recrear
+  # el contenedor y el enlace se cae con «Name or service not known» sin que
+  # nadie haya tocado nada. Pasó dos veces.
   #
-  # Sin él NO se pierde el CRM ni los adjuntos: son otra capa. Lo que no hay es
-  # corpus documental, y el `/documentos/estado` lo dice con esas palabras.
-  contecmind:
-    image: ${DMS_IMAGEN:-contecmind:latest}
-    profiles: [dms]
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: ${DMS_DATABASE_URL:-postgresql+psycopg://contecmind:contecrm_dev_only@postgres:5432/contecmind}
-    ports: ["127.0.0.1:${DMS_PORT:-8200}:8000"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/livez || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
+  # Si ya tienes uno en marcha en otro sitio, no levantes ninguno: dale su
+  # dirección en `CI_BASE_URL` / `DMS_BASE_URL` y listo.
+  #
+  # Sin ellos hay CRM y hay adjuntos. Lo que no hay es explotación del dato
+  # (RT-4) ni corpus documental (RT-5), y las dos pantallas lo dicen con esas
+  # palabras en vez de salir vacías.
 
   # ── Front oficial ────────────────────────────────────────────────────────
   #

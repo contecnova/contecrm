@@ -1181,7 +1181,7 @@ En la práctica:
 
 ```bash
 # Levantarlo con la pila
-docker compose --profile app --profile bi up
+docker compose --profile app up -d && python scripts/vecinos.py levantar
 
 # O usar uno que ya está en marcha, que es lo normal en una instalación
 # con varias soluciones de la casa
@@ -2995,7 +2995,8 @@ recogido en el catálogo como restricción transversal **RT-5**, con
 ### Se activa o no, y desactivado no se pierde nada del CRM
 
 `DMS_ENABLED` manda. Activado, contecmind es una **dependencia de despliegue**:
-`docker compose --profile dms up` lo levanta con la pila, o se le da en
+`python scripts/vecinos.py levantar` lo levanta con SU propio compose —el que
+mantienen sus autores, con Qdrant, Redis y MinIO incluidos— o se le da en
 `DMS_BASE_URL` la dirección de uno ya en marcha. Se comprueba **al arrancar**,
 no la primera vez que alguien abre la pestaña de documentos, y con
 `DMS_EXIGIR_AL_ARRANCAR=true` el servicio se niega a arrancar si no lo alcanza.

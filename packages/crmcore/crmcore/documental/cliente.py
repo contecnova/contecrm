@@ -80,17 +80,36 @@ def comprobar() -> dict[str, Any]:
     Se consulta su contrato publicado, que no exige autenticación: así una
     credencial mal puesta se distingue de un sistema caído, que son dos
     problemas con dos soluciones distintas.
+
+    **Bajo el prefijo de versión y no en la raíz.** Se pedía `/openapi.json` a
+    secas y contecmind lo publica en `/api/v1/openapi.json`, así que el estado
+    decía «no alcanzable» con un 404 sobre un gestor perfectamente vivo — y la
+    pestaña del corpus aparecía apagada sin que nada estuviera mal. Se prueban
+    las dos por orden: el prefijo primero, porque es donde está el contrato de
+    la API que de verdad se consume, y la raíz después para un gestor que lo
+    publique allí.
     """
     from crmcore.red import cliente_seguro
 
     s = _config()
-    url = s.dms_base_url.rstrip("/") + "/openapi.json"
+    base = s.dms_base_url.rstrip("/")
+    candidatas = [f"{base}{RUTA_APLICACION.rsplit('/', 2)[0]}/openapi.json", f"{base}/openapi.json"]
     inicio = time.monotonic()
+    exc: Exception | None = None
+    contrato: dict[str, Any] = {}
     try:
         with cliente_seguro(timeout=s.dms_timeout_s) as cli:
-            respuesta = cli.get(url)
-            respuesta.raise_for_status()
-            contrato = respuesta.json()
+            for url in candidatas:
+                try:
+                    respuesta = cli.get(url)
+                    respuesta.raise_for_status()
+                    contrato = respuesta.json()
+                    exc = None
+                    break
+                except Exception as fallo:  # noqa: BLE001 — se prueba la siguiente
+                    exc = fallo
+        if exc is not None:
+            raise exc
     except Exception as exc:  # noqa: BLE001 — cualquier fallo aquí es «no alcanzable»
         _estado.update(
             alcanzable=False,

@@ -51,13 +51,37 @@ def dms_activo() -> Any:
 # ── Se puede apagar, y apagado no rompe nada ──────────────────────────────
 
 
-def test_apagado_el_corpus_lo_dice_sin_reventar() -> None:
+@pytest.fixture
+def dms(monkeypatch: Any) -> Any:
+    """Pone la configuración del corpus que pide cada prueba, y solo esa.
+
+    Las tres de abajo no la ponían: daban por hecho que el `.env` de la máquina
+    tenía el corpus apagado, así que probaban la configuración de quien las
+    ejecutaba y no el código. El día que esta instalación lo encendió —que es lo
+    que tiene que pasar— se pusieron en rojo tres pruebas sin que nadie hubiera
+    tocado lo que prueban.
+    """
+    from crmcore.config import limpiar_cache_settings
+
+    def _poner(**valores: str) -> None:
+        # Se pone a VACÍO lo que no pide la prueba, no se borra: los `Settings`
+        # leen también el `.env` del despliegue, así que quitar la variable del
+        # entorno deja que el fichero la vuelva a poner. Borrarla parecía aislar
+        # y no aislaba.
+        for clave in ("DMS_ENABLED", "DMS_BASE_URL", "DMS_CLIENT_ID", "DMS_CLIENT_SECRET"):
+            monkeypatch.setenv(clave, valores.get(clave, ""))
+        limpiar_cache_settings()
+
+    yield _poner
+    limpiar_cache_settings()
+
+
+def test_apagado_el_corpus_lo_dice_sin_reventar(dms: Any) -> None:
     """Es la condición de toda la integración: se activa o no, y sin él el CRM
     funciona igual."""
-    from crmcore.config import limpiar_cache_settings
     from crmcore.documental import cliente
 
-    limpiar_cache_settings()
+    dms(DMS_ENABLED="false")
     estado = cliente.estado()
     assert estado["activo"] is False
     # Y dice qué sigue funcionando: sin esa línea, un estado que pone «no
@@ -65,29 +89,22 @@ def test_apagado_el_corpus_lo_dice_sin_reventar() -> None:
     assert "adjuntos" in estado["sin_el"]
 
 
-def test_usarlo_apagado_da_un_error_que_se_entiende() -> None:
-    from crmcore.config import limpiar_cache_settings
+def test_usarlo_apagado_da_un_error_que_se_entiende(dms: Any) -> None:
     from crmcore.documental import cliente
 
-    limpiar_cache_settings()
+    dms(DMS_ENABLED="false")
     with pytest.raises(NoDisponible, match="desactivado"):
         cliente.comprobar()
 
 
-def test_encendido_y_sin_direccion_lo_dice_al_arrancar() -> None:
+def test_encendido_y_sin_direccion_lo_dice_al_arrancar(dms: Any) -> None:
     """Descubrirlo cuando alguien abre el primer documento significa que el
     fallo aparece delante de un usuario, días después de desplegar."""
-    from crmcore.config import limpiar_cache_settings
     from crmcore.documental import cliente
 
-    os.environ["DMS_ENABLED"] = "true"
-    limpiar_cache_settings()
-    try:
-        with pytest.raises(NoDisponible, match="DMS_BASE_URL"):
-            cliente.comprobar()
-    finally:
-        os.environ.pop("DMS_ENABLED", None)
-        limpiar_cache_settings()
+    dms(DMS_ENABLED="true")
+    with pytest.raises(NoDisponible, match="DMS_BASE_URL"):
+        cliente.comprobar()
 
 
 # ── Multitenant: sin mapeo no se llama al gestor ──────────────────────────
