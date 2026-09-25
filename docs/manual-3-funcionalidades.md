@@ -3010,6 +3010,76 @@ Nada de esto está escrito en el código. `DMS_BASE_URL`, `DMS_CLIENT_ID`,
 `DMS_CLIENT_SECRET`, `DMS_TIMEOUT_S`, `DMS_TOKEN_TTL_S`, `DMS_SCOPES` y los dos
 interruptores de arranque salen del `.env` y de la configuración de la solución.
 
+`DMS_SCOPES` lleva **los dos** alcances (`documents:read` y `documents:search`) y
+no es comodidad: contecmind los comprueba en cada petición y separa abrir un
+documento de buscar en el corpus. Con solo el primero, la ficha de un documento
+funciona y el buscador contesta 403 — que es el fallo que peor se diagnostica,
+porque media pantalla va bien.
+
+### El árbol de carpetas del corpus
+
+El corpus de contecmind se organiza en **áreas** y, dentro de cada una, en un
+árbol de carpetas. contecrm lo recorre con la identidad del usuario, así que el
+árbol que ve alguien es el que vería entrando al gestor: **una carpeta denegada
+no aparece, ni ella ni lo que cuelga de ella**. Un árbol con huecos no es una
+lista incompleta ni un fallo de paginación — es el permiso. Y una rama sin
+documentos visibles devuelve cero resultados y no un error: distinguir «vacía»
+de «todo denegado» con un código propio ya sería decirle a quien pregunta que
+ahí hay algo que no puede ver.
+
+**El área se elige por su NOMBRE, no por su identificador** (`DMS_AREA_NOMBRE`),
+y se resuelve al vuelo contra la lista de áreas que ese usuario puede leer. El
+identificador de un área es de un tenant, y el fichero de configuración es el
+mismo para los tres del despliegue: fijarlo habría apuntado al área de uno y
+dejado a los otros dos mirando a un área que no existe o, peor, a una ajena. Un
+nombre además sobrevive a copiar la configuración a otra instalación.
+
+Con una sola área visible no hay nada que configurar; con varias y ninguna
+elegida, se dice que hay que elegir y se enseñan los nombres. Repartir los
+documentos del CRM en el área que tocara ese día sería peor que no guardarlos.
+
+**Cada registro tiene su carpeta**, según la plantilla configurada
+(`DMS_CARPETA_PLANTILLA`, `{objeto}/{registro}` de partida). Es configuración
+porque la organización del corpus es de cada casa: unos quieren `Clientes/ACME`
+y otros `2026/Clientes/ACME`. Se resuelve **una vez** y el identificador se
+guarda en el enlace, así que si alguien mueve o renombra esa carpeta en el
+gestor el CRM sigue apuntando a la misma y no crea otra al lado con el nombre
+nuevo. El nombre que se enseña se pregunta, nunca se copia: una ruta guardada
+enseñaría «Clientes / ACME» un mes después de que la renombraran y nadie lo
+notaría.
+
+Al traer un documento del corpus desde la ficha de un registro, el servidor
+resuelve esa carpeta y coloca allí el documento. Se hace en el servidor y no en
+el navegador porque son dos llamadas al gestor —resolver y mover— y partirlas
+dejaría el enlace creado y el documento sin colocar en cuanto una fallara a
+medias. **Y si colocar falla, se enlaza igual**: el enlace es del CRM y vale por
+sí solo. Que no se pueda registrar un contrato en una cuenta porque el corpus
+está en mantenimiento sería exactamente la dependencia que este diseño evita.
+
+**Los permisos efectivos de una carpeta son para su ficha, no para un listado.**
+El listado de documentos ya viene filtrado, así que preguntarlos por fila sería
+pedir dos veces lo mismo y convertir una pantalla de cincuenta filas en
+cincuenta llamadas de red. El motivo que da el gestor es un **código** —`area`,
+`no_area`, `grant_here`, `grant_above`, `doc_allow`, `doc_deny`— y no una frase:
+el gestor no traduce, y una frase suya llegaría en castellano a los otros cinco
+idiomas. La traduce el front.
+
+**Resumir una rama o sacar sus conceptos pasa por el modelo de lenguaje**, y eso
+tiene su propio plazo (`DMS_TIMEOUT_ANALISIS_S`, minutos) y **solo se pide desde
+un trabajo de fondo**. En contecmind el modelo de embeddings puede tardar varios
+minutos en cargar en frío, así que una llamada síncrona funcionaría en caliente
+y daría 504 el lunes por la mañana: un plazo que depende de si el modelo está
+cargado no es un plazo.
+
+Las citas que devuelve son de **fragmento**, no de documento, así que varias
+pueden salir del mismo fichero. Se agrupan por documento antes de enseñarlas
+—pintarlas tal cual da el mismo documento repetido cuatro veces, que parece un
+fallo— ordenando por `relevance` y no por `score`: `score` cambia de significado
+a lo largo del recorrido de la búsqueda y el único comparable entre resultados
+es `relevance`. Las citas huérfanas —cuyo documento ya no está— se **marcan y no
+se esconden**: esconderlas haría que el resumen pareciera tener menos fundamento
+del que tenía cuando se generó.
+
 ### Cada usuario ve lo que vería entrando al gestor
 
 La integración usa la credencial de aplicación **solo para canjear un token de

@@ -377,3 +377,326 @@ def ficha(documento_id: str, *, token_usuario: str) -> dict[str, Any]:
         )
     respuesta.raise_for_status()
     return dict(respuesta.json())
+
+
+# ── El árbol de carpetas (RT-5) ───────────────────────────────────────────
+#
+# Todo lo de aquí va **con la identidad del usuario**, igual que la búsqueda y
+# por lo mismo: contecmind aplica sus permisos sobre ese token, así que el árbol
+# que ve alguien desde el CRM es exactamente el que vería entrando al gestor.
+# Con la credencial de aplicación vería el corpus entero del tenant.
+#
+# Y una consecuencia que hay que tener presente al pintar: **una carpeta
+# denegada no aparece**, ni ella ni lo que cuelga. Un árbol con huecos no es un
+# fallo de paginación ni una lista incompleta: es el filtro haciendo su trabajo.
+# Contarlo como error llevaría a «reintentar» eternamente algo que está bien.
+
+
+def _llamar(
+    metodo: str,
+    ruta: str,
+    *,
+    token_usuario: str,
+    params: dict[str, Any] | None = None,
+    cuerpo: dict[str, Any] | None = None,
+    timeout: float | None = None,
+) -> Any:
+    """Una llamada al gestor con la identidad del usuario, con sus errores."""
+    from crmcore.errors import NoEncontrado, Prohibido
+    from crmcore.red import cliente_seguro
+
+    s = _config()
+    with cliente_seguro(timeout=timeout or s.dms_timeout_s) as cli:
+        respuesta = cli.request(
+            metodo,
+            s.dms_base_url.rstrip("/") + ruta,
+            params=params,
+            json=cuerpo,
+            headers={"Authorization": f"Bearer {token_usuario}"},
+        )
+    if respuesta.status_code == 401:
+        raise NoDisponible(
+            "El gestor documental ha rechazado la identidad del usuario",
+            error_code="documental.identidad_rechazada",
+        )
+    if respuesta.status_code == 403:
+        raise Prohibido(
+            "El gestor documental no deja hacer eso con esta identidad",
+            error_code="documental.sin_permiso",
+        )
+    if respuesta.status_code == 404:
+        raise NoEncontrado(
+            "Eso ya no existe en el gestor documental",
+            error_code="documental.no_existe",
+        )
+    respuesta.raise_for_status()
+    if respuesta.status_code == 204 or not respuesta.content:
+        return None
+    return respuesta.json()
+
+
+def areas(*, token_usuario: str) -> list[dict[str, Any]]:
+    """Las áreas del corpus que ESTE usuario puede leer."""
+    cuerpo = _llamar("GET", "/api/v1/areas", token_usuario=token_usuario)
+    return list((cuerpo or {}).get("items") or [])
+
+
+def _area(token_usuario: str) -> str:
+    """El área donde vive el corpus del CRM, resuelta por su nombre.
+
+    Se resuelve cada vez y no se guarda en la configuración: el identificador de
+    un área es de un tenant, y el fichero de configuración es el mismo para
+    todos los del despliegue.
+    """
+    from crmcore.config import get_settings
+
+    nombre = (get_settings().dms_area_nombre or "").strip()
+    disponibles = areas(token_usuario=token_usuario)
+    if nombre:
+        elegida = next(
+            (a for a in disponibles if str(a.get("name", "")).strip().lower() == nombre.lower()),
+            None,
+        )
+        if elegida is None:
+            raise NoDisponible(
+                f"El área «{nombre}» (DMS_AREA_NOMBRE) no está entre las que este "
+                "usuario puede leer en el gestor documental",
+                error_code="documental.area_no_encontrada",
+                detalle={"visibles": [str(a.get("name", "")) for a in disponibles]},
+            )
+        return str(elegida.get("id") or "")
+    if len(disponibles) == 1:
+        return str(disponibles[0].get("id") or "")
+    if not disponibles:
+        raise NoDisponible(
+            "Este usuario no ve ninguna área del corpus en el gestor documental",
+            error_code="documental.sin_area",
+        )
+    raise NoDisponible(
+        "El gestor documental tiene varias áreas y no hay ninguna elegida: pon "
+        "DMS_AREA_NOMBRE con la que guarda el corpus de este CRM. Repartir los "
+        "documentos en la que tocara sería peor que no guardarlos",
+        error_code="documental.area_ambigua",
+        detalle={"visibles": [str(a.get("name", "")) for a in disponibles]},
+    )
+
+
+def carpetas(*, token_usuario: str, padre_id: str | None = None) -> list[dict[str, Any]]:
+    """Las carpetas que cuelgan de una, o las de la raíz del área."""
+    _config()
+    params: dict[str, Any] = {"area_id": _area(token_usuario)}
+    if padre_id:
+        params["parent_id"] = padre_id
+    cuerpo = _llamar("GET", "/api/v1/folders", token_usuario=token_usuario, params=params)
+    return list((cuerpo or {}).get("items") or [])
+
+
+def crear_carpeta(
+    nombre: str, *, token_usuario: str, padre_id: str | None = None
+) -> dict[str, Any]:
+    """Crea una carpeta. `padre_id` nulo la cuelga de la raíz del área."""
+    _config()
+    cuerpo = {"area_id": _area(token_usuario), "name": nombre, "parent_id": padre_id}
+    return dict(_llamar("POST", "/api/v1/folders", token_usuario=token_usuario, cuerpo=cuerpo))
+
+
+def documentos_de_carpeta(
+    carpeta_id: str, *, token_usuario: str, con_subcarpetas: bool = False
+) -> list[dict[str, Any]]:
+    """Los documentos de una carpeta. Vacío NO es un error.
+
+    Una rama sin documentos visibles devuelve cero, no un 404: distinguir
+    «vacía» de «todo denegado» con un código distinto ya sería decirle a quien
+    pregunta que ahí hay algo que no puede ver.
+    """
+    cuerpo = _llamar(
+        "GET",
+        f"/api/v1/folders/{carpeta_id}/documents",
+        token_usuario=token_usuario,
+        params={"con_subcarpetas": con_subcarpetas},
+    )
+    return list((cuerpo or {}).get("items") or [])
+
+
+def mover_documento(documento_id: str, *, carpeta_id: str | None, token_usuario: str) -> None:
+    """Mueve un documento a otra carpeta. `carpeta_id` nulo lo deja en la raíz."""
+    _llamar(
+        "POST",
+        f"/api/v1/documents/{documento_id}/move",
+        token_usuario=token_usuario,
+        cuerpo={"folder_id": carpeta_id},
+    )
+
+
+# Los motivos que da contecmind al explicar un permiso. Son CÓDIGOS, no frases:
+# el gestor no traduce, y una frase suya llegaría en castellano a los otros cinco
+# idiomas del CRM. Se listan aquí para que el front tenga qué traducir y para que
+# uno nuevo se note —si aparece un motivo que no está, se enseña el código tal
+# cual en vez de una cadena vacía, que es lo que haría un diccionario mudo.
+MOTIVOS_DE_PERMISO = (
+    "area",
+    "no_area",
+    "grant_here",
+    "grant_above",
+    "doc_allow",
+    "doc_deny",
+)
+
+
+def permisos_de_carpeta(carpeta_id: str, *, token_usuario: str) -> dict[str, Any]:
+    """Por qué alguien puede o no puede hacer algo con una carpeta.
+
+    **Para la ficha de una carpeta, nunca por fila de un listado.** El listado de
+    documentos ya devuelve solo lo que el usuario puede leer, así que preguntar
+    permisos por fila es pedir dos veces lo mismo y además convierte una pantalla
+    de cincuenta filas en cincuenta llamadas de red.
+    """
+    cuerpo = _llamar(
+        "GET",
+        f"/api/v1/folders/{carpeta_id}/effective-permissions",
+        token_usuario=token_usuario,
+    )
+    return dict((cuerpo or {}).get("permissions") or {})
+
+
+def buscar_en_rama(
+    texto: str,
+    *,
+    token_usuario: str,
+    carpeta_id: str | None = None,
+    con_subcarpetas: bool = True,
+    limite: int = 20,
+) -> list[dict[str, Any]]:
+    """Busca acotado a una rama del árbol, o en todo el corpus si no se acota.
+
+    Es la misma búsqueda de `buscar()` con el ámbito puesto. Existe aparte para
+    que quien lee una pantalla vea qué está acotando: «buscar en los documentos
+    de esta cuenta» y «buscar en el corpus» son dos preguntas distintas aunque
+    compartan ruta.
+    """
+    params: dict[str, Any] = {"q": texto, "limit": limite}
+    if carpeta_id:
+        params["folder_id"] = carpeta_id
+        params["con_subcarpetas"] = con_subcarpetas
+    cuerpo = _llamar("GET", "/api/v1/documents/search", token_usuario=token_usuario, params=params)
+    return list((cuerpo or {}).get("items") or [])
+
+
+def analizar_rama(
+    carpeta_id: str,
+    *,
+    token_usuario: str,
+    que: str = "resumen",
+    pregunta: str = "",
+    con_subcarpetas: bool = True,
+) -> dict[str, Any]:
+    """Resume una rama o saca sus conceptos. **Solo desde un trabajo de fondo.**
+
+    Pasa por el modelo de lenguaje, y en contecmind el de embeddings puede tardar
+    minutos en cargar en frío. O sea que esto funciona en caliente y falla en
+    frío, y un plazo que depende de si el modelo está cargado no es un plazo: en
+    pruebas iría bien y el lunes por la mañana daría 504.
+
+    Por eso lleva su propio plazo (`DMS_TIMEOUT_ANALISIS_S`, minutos, no
+    segundos) y por eso no se llama desde una petición de usuario. Quien lo
+    quiera en pantalla, que encole un trabajo y consulte su estado.
+    """
+    if que not in ("resumen", "conceptos"):
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            "De una rama se puede pedir «resumen» o «conceptos»",
+            error_code="documental.analisis_desconocido",
+        )
+    s = _config()
+    sufijo = "summary" if que == "resumen" else "concepts"
+    cuerpo = _llamar(
+        "POST",
+        f"/api/v1/folders/{carpeta_id}/{sufijo}",
+        token_usuario=token_usuario,
+        cuerpo={"pregunta": pregunta or None, "con_subcarpetas": con_subcarpetas},
+        timeout=s.dms_timeout_analisis_s,
+    )
+    return dict(cuerpo or {})
+
+
+def documentos_citados(citas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Agrupa las citas por documento, que es como se enseñan.
+
+    Las citas de contecmind son de FRAGMENTO, no de documento: varias pueden
+    salir del mismo fichero. Pintarlas tal cual da una lista con el mismo
+    documento repetido cuatro veces, que parece un fallo y no lo es.
+
+    Se ordena por `relevance` y no por `score` a propósito: `score` cambia de
+    significado a lo largo del recorrido de la búsqueda —coseno, después RRF,
+    después una mezcla normalizada— y el propio contecmind avisa de que el único
+    comparable entre resultados es `relevance`.
+
+    Las huérfanas (`is_orphan`) se marcan y no se esconden: una cita cuyo
+    documento ya no está es información —el resumen se apoyó en algo que ha
+    desaparecido— y quitarla en silencio dejaría un resumen sin justificar.
+    """
+    por_documento: dict[str, dict[str, Any]] = {}
+    for cita in citas:
+        doc = str(cita.get("document_id") or "")
+        if not doc:
+            continue
+        relevancia = float(cita.get("relevance") or 0.0)
+        actual = por_documento.get(doc)
+        if actual is None:
+            por_documento[doc] = {
+                "documento_id": doc,
+                "titulo": cita.get("document_title") or "",
+                "relevancia": relevancia,
+                "fragmentos": 1,
+                "huerfano": bool(cita.get("is_orphan")),
+            }
+            continue
+        actual["fragmentos"] += 1
+        actual["relevancia"] = max(actual["relevancia"], relevancia)
+        actual["huerfano"] = actual["huerfano"] or bool(cita.get("is_orphan"))
+    return sorted(por_documento.values(), key=lambda d: -d["relevancia"])
+
+
+def carpeta_de_registro(
+    *,
+    objeto: str,
+    etiqueta: str,
+    token_usuario: str,
+    crear: bool = True,
+) -> str | None:
+    """La carpeta del corpus donde van los documentos de ESTE registro.
+
+    Se resuelve recorriendo la plantilla configurada (`DMS_CARPETA_PLANTILLA`)
+    tramo a tramo, creando lo que falte. Y se resuelve **una vez**: el
+    identificador se guarda en el enlace, así que si luego alguien mueve o
+    renombra la carpeta en contecmind el CRM sigue apuntando a la misma y no
+    crea otra al lado con el nombre nuevo.
+
+    Devuelve `None` si algún tramo no existe y no se pide crearlo: un despliegue
+    que solo enlaza documentos sueltos es válido y no tiene por qué fallar aquí.
+    """
+    s = _config()
+    tramos = [
+        t.strip()
+        for t in s.dms_carpeta_plantilla.format(objeto=objeto, registro=etiqueta).split("/")
+        if t.strip()
+    ]
+    padre: str | None = None
+    for tramo in tramos:
+        hijas = carpetas(token_usuario=token_usuario, padre_id=padre)
+        # Se compara sin distinguir mayúsculas: dos carpetas que solo se
+        # diferencian en eso son la misma para quien las mira, y crear la
+        # segunda deja los documentos repartidos entre las dos.
+        encontrada = next(
+            (c for c in hijas if str(c.get("name", "")).strip().lower() == tramo.lower()),
+            None,
+        )
+        if encontrada is None:
+            if not crear:
+                return None
+            encontrada = crear_carpeta(tramo, token_usuario=token_usuario, padre_id=padre)
+        padre = str(encontrada.get("id") or "")
+        if not padre:
+            return None
+    return padre

@@ -59,6 +59,19 @@ class DocumentoEnlazado(Base):
     # anexo de otra.
     rol: Mapped[str] = mapped_column(String(80), nullable=False, default="")
 
+    # La carpeta del gestor donde acabó. Se guarda el IDENTIFICADOR y nunca la
+    # ruta: el id sobrevive a que muevan o renombren la carpeta allí, y la ruta
+    # no. Por eso el nombre que se enseña se pide al gestor y no se copia aquí —
+    # una ruta cacheada enseñaría «Clientes / ACME» cuando hace un mes que se
+    # llama de otra forma, y nadie lo notaría.
+    #
+    # Vacío es válido: un documento se puede enlazar sin haber pasado por la
+    # carpeta de su registro, y una instalación sin árbol configurado enlaza
+    # documentos sueltos.
+    carpeta_id: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="", server_default=""
+    )
+
     enlazado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -88,6 +101,7 @@ def enlazar(
     titulo: str = "",
     tipo: str = "",
     rol: str = "",
+    carpeta_id: str = "",
     sistema: str = "contecmind",
     por: UUID | None = None,
 ) -> DocumentoEnlazado:
@@ -115,6 +129,9 @@ def enlazar(
         # Enlazar dos veces lo mismo con el mismo rol no es un error, pero
         # tampoco crea una fila nueva: la ficha enseñaría el documento repetido.
         existente.titulo = titulo or existente.titulo
+        # La carpeta sí se actualiza: si el documento se movió allí, el enlace
+        # tiene que apuntar a donde está ahora.
+        existente.carpeta_id = carpeta_id or existente.carpeta_id
         db.flush()
         return existente
 
@@ -127,6 +144,7 @@ def enlazar(
         titulo=titulo[:300],
         tipo=tipo[:60],
         rol=rol[:80],
+        carpeta_id=carpeta_id[:120],
         enlazado_por=por,
     )
     db.add(enlace)
@@ -162,6 +180,7 @@ def documentos_de(db: Session, *, objeto_tipo: str, objeto_id: UUID) -> list[dic
             "titulo": f.titulo,
             "tipo": f.tipo,
             "rol": f.rol,
+            "carpeta_id": f.carpeta_id,
             "created_at": f.created_at.isoformat() if f.created_at else None,
             # Se dice explícitamente que esto es una copia para listar y que el
             # estado vive fuera. Sin esta marca, alguien acabará construyendo un

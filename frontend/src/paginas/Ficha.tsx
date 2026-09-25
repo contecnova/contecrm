@@ -112,7 +112,9 @@ export function Ficha() {
         ) : null}
         {activa === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
         {activa === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
-        {activa === "documentos" ? <Documentos tipo={tipo} id={id} /> : null}
+        {activa === "documentos" ? (
+          <Documentos tipo={tipo} id={id} nombre={nombre} />
+        ) : null}
       </div>
     </>
   );
@@ -526,10 +528,11 @@ function Comentarios({ tipo, id }: { tipo: string; id: string }) {
   );
 }
 
-function Documentos({ tipo, id }: { tipo: string; id: string }) {
+function Documentos({ tipo, id, nombre }: { tipo: string; id: string; nombre: string }) {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const [recargar, setRecargar] = useState(0);
 
   useEffect(() => {
     const control = new AbortController();
@@ -539,7 +542,7 @@ function Documentos({ tipo, id }: { tipo: string; id: string }) {
       .then((r) => setFilas(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, [tipo, id]);
+  }, [tipo, id, recargar]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (filas === null) return <Cargando />;
@@ -550,6 +553,136 @@ function Documentos({ tipo, id }: { tipo: string; id: string }) {
           documento vive en el gestor, aquí está el enlace y el contexto. */}
       <p className="mb-2 text-2xs text-ink-faint">{t("ficha.documentosIntro")}</p>
       {filas.length === 0 ? <Vacio /> : <Tabla filas={filas} titulo={t("ficha.documentos")} />}
+      <BuscarEnElCorpus
+        tipo={tipo}
+        id={id}
+        nombre={nombre}
+        alEnlazar={() => setRecargar((n) => n + 1)}
+      />
     </>
+  );
+}
+
+/**
+ * Buscar en el corpus y traerse un documento a este registro.
+ *
+ * La búsqueda va **con la identidad de quien la hace**, así que enseña lo que
+ * esa persona vería entrando al gestor: ni más ni menos. Un resultado que no
+ * aparece no es un fallo de la búsqueda.
+ *
+ * Al enlazar se manda el NOMBRE del registro, y con él el servidor coloca el
+ * documento en la carpeta de este registro y guarda cuál. Se hace allí y no
+ * aquí porque son dos llamadas al gestor —resolver la carpeta y mover el
+ * documento— y partirlas entre navegador y servidor dejaría el enlace creado y
+ * el documento sin colocar en cuanto una fallara a medias.
+ */
+function BuscarEnElCorpus({
+  tipo,
+  id,
+  nombre,
+  alEnlazar,
+}: {
+  tipo: string;
+  id: string;
+  nombre: string;
+  alEnlazar: () => void;
+}) {
+  const { t } = useTranslation();
+  const [texto, setTexto] = useState("");
+  const [resultados, setResultados] = useState<Record<string, unknown>[] | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const buscar = useCallback(async () => {
+    if (texto.trim().length < 2) return;
+    setBuscando(true);
+    setFallo(null);
+    try {
+      const r = await llamar<{ resultados: Record<string, unknown>[] }>(
+        `/api/v1/documentos/buscar?q=${encodeURIComponent(texto.trim())}`,
+      );
+      setResultados(r.datos.resultados ?? []);
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setBuscando(false);
+    }
+  }, [texto]);
+
+  const enlazar = useCallback(
+    async (doc: Record<string, unknown>) => {
+      try {
+        await llamar(`/api/v1/documentos/${tipo}/${id}`, {
+          metodo: "POST",
+          cuerpo: {
+            documento_id: String(doc.id ?? doc.document_id ?? ""),
+            titulo: String(doc.title ?? doc.titulo ?? ""),
+            // El nombre del registro es lo que da nombre a su carpeta. Si el
+            // registro aún no tiene nombre cargado se manda vacío y el
+            // documento se enlaza sin colocar, que es mejor que colocarlo en
+            // una carpeta llamada como un identificador.
+            etiqueta: nombre,
+          },
+        });
+        alEnlazar();
+        setResultados(null);
+        setTexto("");
+      } catch (e) {
+        setFallo(e);
+      }
+    },
+    [tipo, id, nombre, alEnlazar],
+  );
+
+  return (
+    <section className="mt-6 border-t border-ink-dim/30 pt-4">
+      <h3 className="mb-2 text-xs font-medium text-ink">{t("ficha.buscarCorpus")}</h3>
+      <div className="flex gap-2">
+        <input
+          type="search"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void buscar();
+          }}
+          placeholder={t("ficha.buscarCorpusPista")}
+          aria-label={t("ficha.buscarCorpus")}
+          className="flex-1 rounded border border-ink-dim/60 bg-paper px-2 py-1 text-xs text-ink"
+        />
+        <button
+          type="button"
+          onClick={() => void buscar()}
+          disabled={buscando || texto.trim().length < 2}
+          className="rounded border border-ink-dim/60 px-3 py-1 text-xs text-ink disabled:opacity-50"
+        >
+          {buscando ? t("ficha.buscando") : t("ficha.buscar")}
+        </button>
+      </div>
+      {fallo ? <Fallo error={fallo} /> : null}
+      {resultados !== null && resultados.length === 0 ? (
+        <p className="mt-2 text-2xs text-ink-faint">{t("ficha.corpusSinResultados")}</p>
+      ) : null}
+      {resultados !== null && resultados.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {resultados.map((doc, i) => (
+            <li
+              key={String(doc.id ?? doc.document_id ?? i)}
+              className="flex items-center justify-between gap-2 rounded border border-ink-dim/30 px-2 py-1"
+            >
+              <span className="truncate text-xs text-ink">
+                {String(doc.title ?? doc.titulo ?? doc.id ?? "")}
+              </span>
+              <button
+                type="button"
+                onClick={() => void enlazar(doc)}
+                className="shrink-0 rounded border border-ink-dim/60 px-2 py-0.5 text-2xs text-ink"
+              >
+                {t("ficha.enlazar")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

@@ -319,6 +319,13 @@ export default {
     enviar: "Enviar",
     documentosIntro:
       "Estos documentos viven en el gestor documental. Aquí está el enlace y para qué está enlazado; el estado real —versión, aprobación, obsolescencia— es de allí.",
+    buscarCorpus: "Traer un documento del corpus",
+    buscarCorpusPista: "Busca por su contenido o por su título",
+    buscar: "Buscar",
+    buscando: "Buscando…",
+    enlazar: "Enlazar aquí",
+    corpusSinResultados:
+      "No hay ningún documento que puedas ver con eso. La búsqueda va con tu identidad, así que enseña lo que verías entrando al gestor.",
   },
   modulo: {
     sinRegistros: "Aquí no hay nada todavía",

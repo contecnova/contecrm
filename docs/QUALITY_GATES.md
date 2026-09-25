@@ -71,6 +71,20 @@ en paralelo entre sí y con el exclusivo de turno. Por eso el informe sigue
 enseñando el tiempo de cada gate —que es donde se mira cuál engorda— junto al
 tiempo de reloj, que es el que se compara con los 180 segundos.
 
+**Cuántos a la vez lo decide la memoria libre, no los núcleos.** Con seis en
+paralelo cada gate pasó de 14 a 112 segundos, y no era la CPU: son diez núcleos y
+cada gate usa uno. Era la RAM. Los gates que recorren los trece servicios
+construyen las trece aplicaciones y se quedan en medio giga cada uno; con la pila
+de Docker levantada —que en esta máquina se lleva la mitad de los 16 GB— seis de
+ellos metían el sistema a paginar. Un preflight que pagina tarda más en paralelo
+que en serie, que es justo lo contrario de lo que se buscaba.
+
+Así que se mide la memoria disponible al arrancar y se divide por lo que cuesta
+un gate. Se mide en vez de fijarse porque la misma cifra no vale para una máquina
+con la pila levantada y otra sin ella: un número escrito en el script sería el de
+la máquina de quien lo escribió. Con la pila entera en marcha salen cinco a la
+vez y 126 segundos.
+
 ## Los gates, uno a uno
 
 | Gate | Tier | Qué garantiza |

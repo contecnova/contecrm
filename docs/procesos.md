@@ -468,7 +468,7 @@ stateDiagram-v2
 | `POST /api/v1/data-subject-requests/{solicitud_id}/ejecutar-rectificacion` | Corregir los datos que el interesado dice que están mal | solicitud_id*, cambios | 200, 422 | — |
 | `POST /api/v1/data-subject-requests/{solicitud_id}/ejecutar-supresion` | Suprimir los datos de la persona, respetando los bloqueos legales | solicitud_id*, confirmo_que_es_irreversible | 200, 422 | — |
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
-| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema | 201, 422 | — |
+| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
 | `POST /api/v1/mapa-personas` | Anotar cómo se relacionan dos personas de la cuenta | origen_id*, destino_id*, tipo*, motivo | 201, 422 | — |
 | `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, origen_id, destino_id, tipo, motivo, anotada_por_id | 200, 422 | — |
@@ -566,7 +566,7 @@ stateDiagram-v2
 | `PATCH /api/v1/cuotas/{cuota_id}` | Editar cuotas | cuota_id*, usuario_id, equipo, territorio_id, partner_id, periodo, desde, hasta, metrica, objetivo, moneda, familia, activa_desde, activa_hasta | 200, 422 | — |
 | `DELETE /api/v1/cuotas/{cuota_id}` | Borrar cuotas | cuota_id* | 204, 422 | — |
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
-| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema | 201, 422 | — |
+| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
 | `PUT /api/v1/forecast/oportunidades/{oportunidad_id}/categoria` | Poner una oportunidad en una categoría de previsión | oportunidad_id*, categoria* | 200, 422 | — |
 | `POST /api/v1/forecast/periodos` | Abrir un periodo de previsión | clave*, desde*, hasta*, nombre | 201, 422 | — |
@@ -927,7 +927,7 @@ stateDiagram-v2
 | `POST /api/v1/devoluciones/{devolucion_id}/recibir` | Anotar lo que ha llegado | devolucion_id*, recibido | 200, 422 | — |
 | `POST /api/v1/devoluciones/{devolucion_id}/resolver` | Reparar, sustituir o abonar | devolucion_id*, tipo*, a_cargo_de, importe, linea_id, orden_trabajo_id, activo_sustituto_id, nota | 201, 422 | `refund.requested` |
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
-| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema | 201, 422 | — |
+| `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
 | `POST /api/v1/encuestas` | Enviar la encuesta tras cerrar | caso_id*, tipo, validez_dias | 201, 422 | `case.survey.sent` |
 | `PATCH /api/v1/encuestas/{encuesta_id}` | Editar encuestas de satisfacción | encuesta_id*, caso_id, tipo, contacto_id, enviada_at, respondida_at, puntuacion, comentario, hash_token, caduca_at | 200, 422 | — |

@@ -61,3 +61,46 @@ class _DocumentalSettings(BaseSettings):
     # diagnostica, porque la mitad de la pantalla va bien. Quien quiera acotar,
     # que quite `documents:search` a sabiendas de que apaga el buscador.
     dms_scopes: tuple[str, ...] = ("documents:read", "documents:search")
+
+    # ── El árbol de carpetas del corpus ───────────────────────────────────
+    # El área de contecmind donde vive el corpus de este CRM, POR SU NOMBRE.
+    #
+    # Por su nombre y no por su identificador, que es lo primero que uno
+    # escribiría: el identificador de un área es **de un tenant**, y este fichero
+    # es el mismo para todos los del despliegue. Un id fijo sería el del primero
+    # y los demás apuntarían a un área que no existe o, peor, a una ajena. Un
+    # nombre además sobrevive a copiar la configuración a otra instalación; un
+    # identificador obliga a acordarse de cambiarlo, y nadie se acuerda.
+    #
+    # Se resuelve contra `GET /api/v1/areas` con el token del usuario, así que
+    # la lista ya viene acotada a lo que esa persona puede leer.
+    #
+    # Vacío y con UNA sola área visible, se usa esa: en el caso normal no hay
+    # nada que configurar. Vacío y con varias, se dice que hay que elegir y se
+    # enseñan los nombres — adivinar ahí sería repartir los documentos del CRM
+    # en el área que tocara ese día.
+    dms_area_nombre: str = ""
+
+    # Dónde cuelga la carpeta de cada registro, como plantilla. `{objeto}` es el
+    # nombre de negocio del objeto —el mismo vocabulario que la papelera— y
+    # `{registro}` su etiqueta legible.
+    #
+    # Es configuración y no código porque la organización del corpus es de cada
+    # casa: unos quieren `Clientes / ACME`, otros `2026 / Clientes / ACME` y
+    # otros una sola carpeta por departamento. Una jerarquía escrita a fuego
+    # haría que la de uno sirviera y la del otro tuviera que pelearse con ella.
+    #
+    # Se resuelve UNA vez por registro y el identificador resultante se guarda
+    # en el enlace: así, si alguien mueve o renombra la carpeta en contecmind,
+    # el CRM sigue apuntando a la misma carpeta y no crea una nueva al lado.
+    dms_carpeta_plantilla: str = "{objeto}/{registro}"
+
+    # Plazo para las operaciones que piensan: el resumen y los conceptos de una
+    # rama pasan por el modelo de lenguaje, y ese plazo no tiene nada que ver
+    # con el de listar una carpeta.
+    #
+    # Generoso a propósito y **solo usable desde un trabajo de fondo**: en
+    # contecmind el modelo de embeddings puede tardar minutos en cargar en frío,
+    # así que un plazo que funciona en caliente y falla en frío no es un plazo.
+    # Por eso el resumen no se pide desde una petición de usuario.
+    dms_timeout_analisis_s: float = Field(600.0, ge=30.0, le=3_600.0)

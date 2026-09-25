@@ -283,12 +283,6 @@ OBJETOS_DOCUMENTO: dict[str, str] = {
     "caso": "service",
 }
 
-# Segmentos literales que van DONDE iría el tipo de objeto. Sin esta lista,
-# `/api/v1/adjuntos/carpetas/cuenta` se resolvía buscando un objeto llamado
-# «carpetas», no lo encontraba y el gateway respondía 404: las carpetas
-# existían, estaban probadas y no se podían llamar desde fuera.
-SEGMENTOS_LITERALES = {"carpetas", "estado", "buscar", "organizacion", "enlace"}
-
 # Recursos TRANSVERSALES: los monta la misma fábrica en varios servicios, así
 # que el prefijo solo no dice a cuál va. `/api/v1/trabajos/{id}` es ambiguo
 # —party y sales tienen trabajos, y el identificador no delata al dueño—, y por
@@ -395,20 +389,32 @@ def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | Non
 def _por_objeto(partes: list[str], tabla: dict[str, str]) -> str | None:
     """Resuelve el servicio por el tipo de objeto que lleva la ruta.
 
-    El tipo va justo detrás del recurso, salvo cuando ahí hay un segmento
-    literal (`/adjuntos/carpetas/<tipo>`), y entonces va uno más allá. Sin
-    contemplarlo, esas rutas se resolvían buscando un objeto llamado «carpetas»
-    y devolvían 404 con la funcionalidad entera detrás.
+    El tipo va justo detrás del recurso —`/documentos/cuenta/{id}`— salvo cuando
+    ahí hay un segmento que no es un tipo, y entonces puede ir uno más allá
+    (`/adjuntos/carpetas/cuenta`) o no ir en absoluto
+    (`/documentos/carpetas/{id}/permisos`, que no es de ningún registro).
 
-    Un segmento literal sin tipo detrás —como `/documentos/buscar`, que no es de
-    ningún registro concreto— lo atiende cualquiera de los dueños; se manda al
-    primero en orden estable para que dos peticiones iguales no acaben en
-    servicios distintos.
+    **Se mira si el segmento ES un tipo conocido, no si está en una lista de
+    palabras.** Había una lista —`carpetas`, `estado`, `buscar`…— y hacía dos
+    cosas mal a la vez: cada ruta nueva con un segmento literal quedaba
+    inalcanzable hasta que alguien se acordaba de añadir la palabra, y la misma
+    palabra significaba cosas distintas en dos recursos —en `/adjuntos` a
+    `carpetas` le sigue un tipo de objeto y en `/documentos` le sigue un
+    identificador de carpeta—, así que la lista no podía acertar en los dos.
+    Preguntar por el tipo no tiene ninguno de los dos problemas.
+
+    Cuando la ruta no habla de un registro concreto la atiende cualquiera de los
+    dueños, y se manda al primero en orden estable para que dos peticiones
+    iguales no acaben en servicios distintos.
+
+    Un tipo mal escrito llega así a un servicio que sí publica el recurso, y este
+    contesta qué tipos admite. Es mejor error que el 404 del gateway: «no existe
+    ese camino» no dice si te equivocaste de tipo o si el recurso no existe.
     """
     if len(partes) < 4:
         return None
-    if partes[3] in SEGMENTOS_LITERALES:
-        if len(partes) >= 5:
-            return tabla.get(partes[4])
-        return sorted(set(tabla.values()))[0] if tabla else None
-    return tabla.get(partes[3])
+    if partes[3] in tabla:
+        return tabla[partes[3]]
+    if len(partes) >= 5 and partes[4] in tabla:
+        return tabla[partes[4]]
+    return sorted(set(tabla.values()))[0] if tabla else None

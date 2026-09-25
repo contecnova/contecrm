@@ -200,10 +200,60 @@ GATES: list[Gate] = [
 # tarda en volver al teclado.
 PRESUPUESTO_S = 180.0
 
-# Cuántos gates a la vez. La mayoría son análisis estático que solo gasta CPU;
-# uno por núcleo satura la máquina y los ralentiza todos, así que se deja margen.
-# Los que levantan Postgres embebido van aparte y de uno en uno (`exclusivo`).
-PARALELOS = max(2, min(6, (os.cpu_count() or 4) - 1))
+# Lo que cuesta de memoria el gate más gordo, medido: los que recorren los trece
+# servicios construyen las trece aplicaciones FastAPI y se quedan en medio giga.
+COSTE_POR_GATE_MB = 500
+
+
+def _memoria_disponible_mb() -> int | None:
+    """Memoria que se puede usar sin empezar a paginar, o `None` si no se sabe."""
+    try:
+        if sys.platform == "linux":
+            for linea in Path("/proc/meminfo").read_text().splitlines():
+                if linea.startswith("MemAvailable:"):
+                    return int(linea.split()[1]) // 1024
+            return None
+        if sys.platform == "darwin":
+            salida = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=10).stdout
+            pagina = 4096
+            paginas: dict[str, int] = {}
+            for linea in salida.splitlines():
+                if "page size of" in linea:
+                    pagina = int(linea.split("page size of")[1].split()[0])
+                elif ":" in linea:
+                    clave, _, valor = linea.partition(":")
+                    paginas[clave.strip()] = int(valor.strip().rstrip("."))
+            # Libre más inactiva: la inactiva se puede reclamar sin paginar.
+            libres = paginas.get("Pages free", 0) + paginas.get("Pages inactive", 0)
+            return libres * pagina // (1024 * 1024)
+    except Exception:  # noqa: BLE001 — no saberlo no puede impedir el preflight
+        return None
+    return None
+
+
+def _paralelos() -> int:
+    """Cuántos gates a la vez, limitado por lo que de verdad escasea.
+
+    **La memoria, no los núcleos.** Con seis a la vez cada gate pasó de 14 s a
+    112 s: no era la CPU —diez núcleos y el trabajo es de uno cada uno— era que
+    Docker se lleva la mitad de la RAM de esta máquina y seis procesos de medio
+    giga la metían a paginar. Un preflight que pagina tarda más en paralelo que
+    en serie, que es lo contrario de lo que se buscaba.
+
+    Se mide en vez de fijarse: la misma cifra no vale para una máquina con la
+    pila levantada y otra sin ella, y un número escrito aquí sería el de la
+    máquina de quien lo escribió.
+    """
+    por_cpu = max(2, min(6, (os.cpu_count() or 4) - 1))
+    disponible = _memoria_disponible_mb()
+    if disponible is None:
+        return por_cpu
+    # Se deja un gate de margen para el resto del sistema.
+    por_memoria = max(1, disponible // COSTE_POR_GATE_MB - 1)
+    return max(1, min(por_cpu, por_memoria))
+
+
+PARALELOS = _paralelos()
 
 
 def _correr(gate: Gate) -> tuple[bool, float, str]:

@@ -100,6 +100,14 @@ def _importar_modelos(servicio: str) -> None:
         # Estaba en el módulo de modelos de cada servicio, que es pedir que el
         # siguiente se acuerde. Aquí no hay nada que recordar.
         "crmcore.datos.papelera",
+        # El enlace a un documento del corpus, por lo mismo: el enlace es del
+        # REGISTRO y los registros están en los trece servicios, así que la
+        # tabla va en los trece esquemas. Estaba solo en cinco, y no por una
+        # decisión: en cuatro porque su `modelos.py` la importaba y en el quinto
+        # —`integration`— de rebote, por importar otra cosa del mismo paquete.
+        # O sea que dónde existía la tabla dependía de qué módulo importara cada
+        # servicio por casualidad.
+        "crmcore.documental.enlaces",
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",

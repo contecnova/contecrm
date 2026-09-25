@@ -180,17 +180,6 @@ _AGREGADAS_EN_EL_GATEWAY = {
     "/api/v1/superficie",
 }
 
-# Operaciones del corpus documental que NO son de ningún registro concreto
-# —el estado del gestor, la búsqueda, el mapeo del tenant— y que publican los
-# dos servicios que enlazan documentos. El gateway manda a un dueño fijo, y da
-# igual cuál: el estado y la búsqueda preguntan al gestor, no a la base del
-# servicio, y el mapeo se replica por evento a todos (RT-5).
-_CORPUS_SIN_REGISTRO = {
-    "/api/v1/documentos/buscar",
-    "/api/v1/documentos/estado",
-    "/api/v1/documentos/organizacion",
-}
-
 
 def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
     """Una ruta que el gateway no sabe enrutar no existe para nadie de fuera.
@@ -208,6 +197,24 @@ def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
     from services.gateway.rutas import servicio_de
 
     inalcanzables: list[str] = []
+
+    # Quién publica cada ruta. Hace falta porque las fábricas transversales
+    # —adjuntos, comentarios, documentos— montan la MISMA ruta en varios
+    # servicios, y una que no lleva `{objeto_tipo}` no habla de ningún registro:
+    # el estado del gestor, una búsqueda en el corpus, el árbol de carpetas. El
+    # gateway manda a un dueño fijo y da igual cuál, porque esas preguntan al
+    # gestor y no a la base del servicio.
+    #
+    # Se DEDUCE de las rutas y no se mantiene una lista. La había, y cada ruta
+    # nueva sin registro quedaba en rojo hasta que alguien se acordaba de
+    # apuntarla ahí — o sea que el gate pedía mantenimiento para no dar falsos
+    # positivos, que es como los gates acaban desactivados.
+    publicantes: dict[str, set[str]] = {}
+    for servicio in SERVICIOS:
+        if servicio == "gateway":
+            continue
+        for ruta in _app(servicio).openapi()["paths"]:
+            publicantes.setdefault(ruta, set()).add(servicio)
 
     for servicio in SERVICIOS:
         if servicio == "gateway":
@@ -231,10 +238,11 @@ def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
                 for p in ruta.split("/")
             )
             destino = servicio_de(concreta)
-            if ruta in _CORPUS_SIN_REGISTRO:
-                # Basta con que llegue a alguno de los dueños.
-                if destino in ("party", "sales"):
-                    continue
+            duenos = publicantes.get(ruta, set())
+            if "{objeto_tipo}" not in ruta and len(duenos) > 1 and destino in duenos:
+                # No es de ningún registro y la publican varios: basta con que
+                # llegue a alguno de ellos.
+                continue
             if destino != servicio:
                 inalcanzables.append(f"{servicio}: {ruta} → {destino or 'ningún servicio'}")
 

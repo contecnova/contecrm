@@ -58,6 +58,10 @@ VECINOS: dict[str, dict[str, Any]] = {
             # Árbol documental (contecmind bbc9757f). Se fijan porque son las que
             # consume el corpus del CRM: si cambia un nombre de campo al otro lado,
             # esto se pone rojo aquí y no en la pantalla de un cliente.
+            # El área se resuelve por su NOMBRE contra esta lista, y no se fija
+            # su identificador en la configuración: un id de área es de un
+            # tenant y el fichero de configuración es el mismo para todos.
+            "/api/v1/areas",
             "/api/v1/folders",
             "/api/v1/folders/{folder_id}/documents",
             "/api/v1/folders/{folder_id}/effective-permissions",

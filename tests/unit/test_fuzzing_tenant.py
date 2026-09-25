@@ -66,6 +66,9 @@ PARAMETROS_NO_FILA = {
     "codigo": "código de catálogo, no identificador",
     "slug": "identificador legible del tenant",
     "usuario_id": "la pertenencia de un usuario a un tenant la prueba `test_sso`",
+    "carpeta_id": (
+        "es una carpeta del gestor documental, no una fila de este CRM. El\n        aislamiento lo aplica contecmind sobre el token del usuario, y ese token se\n        canjea para la organización mapeada a ESTE tenant (RT-5): sin mapeo no se\n        llama al gestor"
+    ),
     "capacidad_id": (
         "es un identificador del catálogo funcional (CRM-07.03.02), que es el mismo\n        para todos los tenants y no contiene dato de ninguno: la respuesta que sí\n        es de cada uno —qué controles la cubren— sale filtrada por tenant"
     ),
