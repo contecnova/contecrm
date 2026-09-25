@@ -261,7 +261,11 @@ router_ajustes = APIRouter(prefix="/ajustes", tags=["ajustes"])
 
 @router_ajustes.get(
     "",
-    response_model=PaginaDeListado,
+    # `dict` y no `PaginaDeListado`: esto NO es un listado paginado, es el mapa
+    # de ajustes con su valor efectivo y su procedencia. Se lo puse al convertir
+    # los listados en bloque —el nombre `listar_ajustes` engañaba— y devolvía
+    # 500 por validación de la respuesta: «Field required: items».
+    response_model=dict,
     summary="Ajustes efectivos",
     description=(
         "Cada ajuste con su valor efectivo y **de qué ámbito sale**. Sin la "

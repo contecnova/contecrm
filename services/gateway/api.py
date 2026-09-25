@@ -10,6 +10,8 @@ from crmcore.errors import NoDisponible, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, PrincipalDep, cookie_rechazada
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, Request, Response
+from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
 
 from services.gateway import proxy, rutas
 from services.gateway.sesion import crear_router_sesion
@@ -598,6 +600,21 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         identidad=proxy.cabeceras_de_identidad(principal, s.secret_key.get_secret_value()),
         timeout_s=s.http_interno_timeout_s,
     )
+    # Un flujo se devuelve COMO FLUJO. Leer `respuesta.content` de una respuesta
+    # abierta en streaming la esperaría entera —que en un `text/event-stream` es
+    # para siempre— y además rompería lo único que hace útil un flujo: que lo
+    # que pasa ahora se vea ahora.
+    if respuesta.headers.get("content-type", "").startswith("text/event-stream"):
+        return StreamingResponse(
+            respuesta.aiter_raw(),
+            status_code=respuesta.status_code,
+            media_type="text/event-stream",
+            # Sin buffering intermedio: nginx acumula por defecto y un evento se
+            # quedaría esperando a que se llene el buffer.
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            background=BackgroundTask(respuesta.aclose),
+        )
+
     # La respuesta del servicio se devuelve tal cual, incluidos su código y sus
     # cabeceras de contrato: el gateway no reinterpreta lo que dice el servicio.
     return Response(

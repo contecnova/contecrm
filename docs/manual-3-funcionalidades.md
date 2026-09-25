@@ -12224,7 +12224,31 @@ chat abierto eso agota el pool sin que nadie esté haciendo nada.
 
 Lleva latido: un flujo sin datos durante minutos lo cierra cualquier
 intermediario por inactividad, y el cliente cree que el servidor se ha caído
-cuando lo que pasa es que no pasa nada.
+cuando lo que pasa es que no pasa nada. El latido va cada
+`CHAT_SSE_LATIDO_S` segundos de reloj, no cada N vueltas: lo que hace falta
+—que ningún intermediario dé el flujo por muerto— se mide en tiempo, y contar
+vueltas lo ataba a la espera entre consultas.
+
+**El flujo saluda al abrirse**, antes de la primera consulta, con una línea
+`retry:` y un comentario SSE. No es un adorno: para el cliente un flujo no
+existe hasta su primer byte —el servidor no manda las cabeceras de la respuesta
+hasta el primer trozo del cuerpo— así que un flujo que se abre en silencio es,
+visto desde fuera, un servidor que no contesta. El saludo es un comentario y
+ningún cliente lo procesa como mensaje, pero abre la respuesta. La línea
+`retry:` (`CHAT_SSE_REINTENTO_MS`) es además la única forma de decirle a un
+`EventSource` cuánto esperar antes de reconectar.
+
+Dicho sin adornos: **esto no funcionó nunca hasta que se ejecutó**. Dos cosas
+distintas lo impedían, ninguna visible leyendo el código. La primera, el
+middleware que añade el `ETag` retenía la respuesta entera —el inicio incluido—
+hasta conocer el último trozo, y el cuerpo de un flujo no termina; afectaba a
+**toda** respuesta en flujo de **todos** los servicios, no solo al chat.
+La segunda, el gateway reenviaba acumulando la respuesta con un plazo de diez
+segundos, que en un flujo abierto es un 504 garantizado. Las dos están cerradas
+con su prueba (`tests/unit/test_respuesta_en_flujo.py` y
+`tests/unit/test_gateway_flujo.py`), y las dos comprueban el **momento** en que
+sale el primer byte, no solo qué acaba llegando: el contenido llegaba entero al
+final, así que una prueba de contenido las habría dado por buenas.
 
 ### Borrado y retención
 

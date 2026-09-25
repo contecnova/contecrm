@@ -121,6 +121,37 @@ Además, la fuente **autoritativa** para la base de datos no es el contextvar si
 para logs, métricas y auditoría, y para el código sin petición (trabajos de fondo
 y consumidores del bus).
 
+### 4. Ningún middleware retiene una respuesta hasta el final
+
+Regla de mantenimiento, y está aquí porque se pagó cara: un middleware que
+necesite el cuerpo de la respuesta **no puede esperar a tenerlo entero** sin
+decidir antes qué hace si no termina nunca.
+
+Un `text/event-stream` no termina: se queda abierto mandando lo que va pasando.
+El middleware del `ETag` retenía el `http.response.start` hasta conocer el cuerpo
+completo, para poder añadirle la cabecera —lo cual es correcto para una respuesta
+normal y **imposible** para un flujo—, así que ninguna respuesta en flujo de
+ningún servicio salió jamás: la petición se quedaba colgada, sin error, sin log y
+sin un solo byte. El chat en vivo llevaba así desde el primer día.
+
+Lo que se hace ahora, y lo que hay que hacer en cualquier middleware nuevo:
+
+- **Soltar el inicio en cuanto se sepa que no se va a poder añadir nada.** Si el
+  `content-type` no es JSON, el `ETag` no se puede calcular —la versión sale del
+  cuerpo JSON— así que retener no aporta y puede costarlo todo.
+- **Poner un tope a lo que se acumula** (`ETAG_RETENCION_MAX_BYTES`). Pasado el
+  tope se suelta lo que haya y el resto va directo, sin cabecera. Una exportación
+  de cien megas no vale una cabecera de treinta bytes, y multiplicada por las
+  peticiones a la vez es la memoria del servicio.
+- **No acumular donde no hace falta.** El middleware de idempotencia guardaba el
+  cuerpo de *toda* respuesta, también de las lecturas, que nunca reservan clave.
+  Ahora solo mira las escrituras.
+
+Hay una prueba que lo vigila (`tests/unit/test_respuesta_en_flujo.py`) y comprueba
+el **momento** en que sale el primer byte, no qué acaba llegando: el contenido sí
+llegaba, entero y al final, así que una prueba de contenido lo habría dado por
+bueno.
+
 ## El camino de una escritura
 
 1. El **gateway** resuelve el tenant, autentica, aplica los límites y reenvía con

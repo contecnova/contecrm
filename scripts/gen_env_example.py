@@ -51,6 +51,8 @@ TITULOS = {
     "_servicio": "Servicios de la casa y arranque",
     "_intelligence": "Explotación delegada en contecintelligence (RT-4)",
     "_documental": "Corpus documental delegado en contecmind (RT-5)",
+    "_chat": "Chat interno: el flujo en vivo",
+    "_salud": "Salud de cuenta: pesos, umbrales y bandas",
 }
 
 

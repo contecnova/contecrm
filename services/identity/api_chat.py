@@ -495,14 +495,35 @@ async def eventos(
     db: DbDep,
     principal: AutenticadoDep,
     desde: datetime | None = Query(None),
-    espera_s: float = Query(3.0, ge=1.0, le=30.0),
+    espera_s: float | None = Query(
+        None,
+        ge=0.5,
+        le=30.0,
+        description="Cada cuánto se mira si hay algo nuevo. Por defecto, lo configurado",
+    ),
 ) -> StreamingResponse:
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    espera = espera_s if espera_s is not None else s.chat_sse_espera_s
+    latido_cada = s.chat_sse_latido_s
     usuario_id = principal.id
     corte = desde or datetime.now(timezone.utc)
 
     async def flujo() -> AsyncIterator[str]:
         nonlocal corte
-        latidos = 0
+        # SALUDO INMEDIATO, antes de la primera consulta.
+        #
+        # Para el cliente, un flujo no existe hasta su primer byte: uvicorn no
+        # manda las cabeceras hasta el primer trozo del cuerpo. Este flujo
+        # callaba hasta dieciocho segundos si no había mensajes —que es el caso
+        # normal al abrir el chat—, así que el navegador veía una petición que
+        # no contestaba, el `EventSource` no llegaba a abrirse nunca y el
+        # gateway daba la conexión por muerta. Un comentario SSE (`:`) no es un
+        # evento para ningún cliente, pero abre la respuesta.
+        yield f"retry: {s.chat_sse_reintento_ms}\n\n"
+        yield ": abierto\n\n"
+        ultimo_latido = asyncio.get_running_loop().time()
         while True:
             mias = (
                 db.execute(
@@ -517,7 +538,15 @@ async def eventos(
                 db.execute(
                     select(chat.MensajeChat)
                     .where(
-                        chat.MensajeChat.conversacion_id.in_(mias or [chat.MensajeChat.id]),
+                        # Sin conversaciones no hay mensajes que traer, y se
+                        # dice con `IN ()` vacío y no con un apaño. Aquí ponía
+                        # `mias or [chat.MensajeChat.id]` —una COLUMNA dentro de
+                        # la lista— que SQLAlchemy rechaza: «IN expression list,
+                        # SELECT construct, or bound parameter object expected».
+                        # O sea que el flujo del chat daba 500 a cualquiera que
+                        # todavía no estuviera en ninguna conversación, que es
+                        # justo el estado de quien acaba de entrar.
+                        chat.MensajeChat.conversacion_id.in_(mias),
                         chat.MensajeChat.created_at > corte,
                         chat.MensajeChat.autor_id != usuario_id,
                     )
@@ -533,15 +562,18 @@ async def eventos(
                     "event: mensaje\n"
                     f"data: {json.dumps(_mensaje_out(db, mensaje), ensure_ascii=False)}\n\n"
                 )
-            latidos += 1
-            if not nuevos and latidos % 6 == 0:
+            ahora = asyncio.get_running_loop().time()
+            if nuevos:
+                ultimo_latido = ahora
+            elif ahora - ultimo_latido >= latido_cada:
                 yield ": latido\n\n"
+                ultimo_latido = ahora
             # La sesión se cierra entre vueltas: mantenerla abierta reservaría
             # una conexión de Postgres por persona conectada, y con cincuenta
             # personas con el chat abierto eso agota el pool sin que nadie esté
             # haciendo nada.
             db.rollback()
-            await asyncio.sleep(espera_s)
+            await asyncio.sleep(espera)
 
     return StreamingResponse(
         flujo(),

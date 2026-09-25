@@ -18,6 +18,7 @@ from crmcore.config_parts._almacen import _AlmacenSettings
 from crmcore.config_parts._app import _AppSettings
 from crmcore.config_parts._auth import _AuthSettings
 from crmcore.config_parts._bus import _BusSettings
+from crmcore.config_parts._chat import _ChatSettings
 from crmcore.config_parts._db import _DbSettings
 from crmcore.config_parts._documental import _DocumentalSettings
 from crmcore.config_parts._intelligence import _IntelligenceSettings
@@ -37,6 +38,7 @@ __all__ = [
     "_AppSettings",
     "_AuthSettings",
     "_BusSettings",
+    "_ChatSettings",
     "_DbSettings",
     "_DocumentalSettings",
     "_IntelligenceSettings",

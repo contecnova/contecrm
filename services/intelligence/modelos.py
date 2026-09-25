@@ -10,6 +10,12 @@ from __future__ import annotations
 
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402,F401
+
+# La papelera de este servicio. Su router se monta —`/<servicio>/papelera`— y sin
+# la tabla la pantalla devolvía 500: `relation "papelera" does not exist`. El
+# borrado es lógico y cada servicio guarda la suya en su esquema, que es lo que
+# impide que uno lea las tablas de otro.
+from crmcore.datos.papelera import EntradaPapelera  # noqa: E402,F401
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402,F401
 
 # La tabla de trabajos asíncronos. La necesita la medición de salud de todas las

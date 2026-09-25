@@ -202,3 +202,14 @@ class _LimitsSettings(BaseSettings):
     # pool está lleno.
     grpc_elementos_por_flujo: int = Field(10_000, ge=1, le=10_000_000)
     grpc_segundos_por_flujo: int = Field(300, ge=5, le=86_400)
+
+    # ── Retención para el ETag (CRM-00.02.01.09) ──────────────────────────
+    # Cuánto cuerpo se guarda en memoria antes de mandarlo, para poder sacarle
+    # la versión y añadir el `ETag`. Pasado el tope se suelta lo que haya y el
+    # resto va directo, sin cabecera: una exportación de cien megas no vale una
+    # cabecera de treinta bytes, y multiplicada por las peticiones a la vez es
+    # la memoria del servicio.
+    #
+    # 2 MiB cubre de sobra cualquier respuesta de objeto o listado paginado,
+    # que es donde el ETag sirve para algo.
+    etag_retencion_max_bytes: int = Field(2 * 1024 * 1024, ge=64 * 1024, le=64 * 1024 * 1024)

@@ -432,8 +432,14 @@ class IdempotenciaMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
+    # Solo las ESCRITURAS. Una lectura no reserva clave de idempotencia nunca,
+    # así que acumular su cuerpo es memoria gastada para nada — y en una
+    # respuesta que no termina, como el flujo del chat, es memoria que crece sin
+    # tope mientras alguien tenga el chat abierto.
+    METODOS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] != "http" or scope.get("method", "") not in self.METODOS:
             await self.app(scope, receive, send)
             return
 

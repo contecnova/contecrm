@@ -121,9 +121,30 @@ class ETagMiddleware:
             await self.app(scope, receive, send)
             return
 
-        estado: dict[str, Any] = {"inicio": None, "cuerpo": b"", "json": False}
+        estado: dict[str, Any] = {"inicio": None, "cuerpo": b"", "json": False, "suelto": False}
+
+        async def _soltar() -> None:
+            """Manda lo retenido y deja de retener: a partir de aquí, va directo."""
+            inicio = estado["inicio"]
+            if inicio is not None:
+                await send(inicio)
+                estado["inicio"] = None
+            estado["suelto"] = True
+            if estado["cuerpo"]:
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": estado["cuerpo"],
+                        "more_body": True,
+                    }
+                )
+                estado["cuerpo"] = b""
 
         async def _interceptar(mensaje: dict[str, Any]) -> None:
+            if estado["suelto"]:
+                await send(mensaje)
+                return
+
             if mensaje["type"] == "http.response.start":
                 # Se retiene el inicio para poder añadirle la cabecera cuando se
                 # conozca el cuerpo. Mandarlo antes haría imposible añadir nada.
@@ -131,11 +152,29 @@ class ETagMiddleware:
                 cabeceras = dict(mensaje.get("headers") or [])
                 tipo = cabeceras.get(b"content-type", b"")
                 estado["json"] = b"application/json" in tipo
+                # Lo que NO es JSON no lleva ETag —la versión se saca del cuerpo
+                # JSON— así que retenerlo no aporta nada y puede costarlo todo.
+                #
+                # Un `text/event-stream` no termina nunca: se queda mandando lo
+                # que va pasando. Esperar a su último trozo para soltar el inicio
+                # es esperar para siempre, y eso es exactamente lo que hacía —el
+                # chat en vivo **nunca** entregó un solo mensaje, en ningún
+                # servicio, y sin error: la petición se quedaba colgada—. Lo
+                # mismo vale para una descarga o una exportación grandes, que
+                # además se acumulaban enteras en memoria.
+                if not estado["json"]:
+                    await _soltar()
                 return
 
             if mensaje["type"] == "http.response.body":
                 estado["cuerpo"] += mensaje.get("body", b"")
                 if mensaje.get("more_body", False):
+                    # Un JSON que llega a trozos y se pasa del tope tampoco se
+                    # retiene más: la cabecera no vale una respuesta entera en
+                    # memoria. Se suelta lo que hay y el resto va directo, sin
+                    # ETag — que es lo correcto: no se conoce el cuerpo completo.
+                    if len(estado["cuerpo"]) > _tope_retencion():
+                        await _soltar()
                     return
                 inicio = estado["inicio"]
                 if inicio is not None:
@@ -161,7 +200,22 @@ class ETagMiddleware:
 
             await send(mensaje)
 
-        await self.app(scope, receive, _interceptar)
+        try:
+            await self.app(scope, receive, _interceptar)
+        finally:
+            # También cuando la respuesta se soltó pronto o se cortó a medias:
+            # el contextvar vive en el hilo del servidor y sin limpiarlo la
+            # siguiente respuesta anunciaría campos que no ha retenido.
+            from crmcore.authz.proyeccion import limpiar_retenidos
+
+            limpiar_retenidos()
+
+
+def _tope_retencion() -> int:
+    """Cuánto cuerpo se retiene como mucho para poder calcular el ETag."""
+    from crmcore.config import get_settings
+
+    return get_settings().etag_retencion_max_bytes
 
 
 def _version_del_cuerpo(cuerpo: bytes) -> int | None:
@@ -173,10 +227,11 @@ def _version_del_cuerpo(cuerpo: bytes) -> int | None:
     """
     import json
 
-    if not cuerpo or len(cuerpo) > 2_000_000:
+    if not cuerpo or len(cuerpo) > _tope_retencion():
         # Un cuerpo enorme no se parsea para sacar un entero: el coste de
         # deserializar varios megas en cada respuesta supera con mucho lo que
-        # aporta la cabecera.
+        # aporta la cabecera. Es el mismo tope con el que se deja de retener,
+        # porque es la misma decisión: hasta dónde compensa esta cabecera.
         return None
     try:
         datos = json.loads(cuerpo)
