@@ -98,6 +98,12 @@ class FuenteRegistrada(Base, TimestampMixin):
     campos_por_objeto: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    # Objetos cuyo listado NO pagina, así que la explotación solo ve su primera
+    # página. Se guarda para poder avisarlo junto a cada cifra: un número que
+    # cuenta 50 de 153 y se presenta como el total es peor que un error.
+    objetos_truncados: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     # pendiente | registrada | error
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     registrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -246,6 +252,9 @@ def registrar_fuente(
     fila.campos_por_objeto = {
         str(e["objeto"]): list(e.get("campos") or []) for e in entidades if e.get("objeto")
     }
+    fila.objetos_truncados = sorted(
+        {str(e["objeto"]) for e in entidades if e.get("objeto") and e.get("truncada")}
+    )
     try:
         externa = _publicar(
             modelo,
@@ -297,6 +306,11 @@ RUTA_FUENTES = "/api/sources"
 
 # Y la de ejecutar un plan de informe. Mismo prefijo, por lo mismo.
 RUTA_PLAN = "/api/query/plan"
+
+# Lo que se espera a una muestra al medir la forma de un listado. Corto a
+# propósito: son decenas de peticiones y lo único que se busca es la forma de la
+# primera fila. Una ruta que tarde más que esto tampoco serviría como fuente.
+PLAZO_MUESTRA_S = 15.0
 
 # Lo que hace falta para poder dar de alta una fuente allí. `sources:write` no
 # existía: sus alcances delegados llegaban a `sources:read`, así que esta
@@ -380,10 +394,33 @@ def _publicar(
         # de las cuales una contestaba 401. contecintelligence no tiene ruta de
         # actualización —solo alta y baja—, así que una sola fuente por tenant
         # se consigue rehaciéndola.
-        if externa_id:
+        # Se borran TODAS las que se llamen como la nuestra, no solo la del
+        # identificador guardado. Ese identificador puede estar obsoleto —un
+        # registro que falló a medias, una base restaurada— y entonces el borrado
+        # no encuentra nada, la nueva se crea igual y quedan DOS fuentes con el
+        # mismo nombre, de las cuales solo una tiene la llave viva. Pasó: dos
+        # `contecrm-ficosa` en la lista, y el CRM apuntando a un tercer id que ya
+        # no existía, así que todo informe contestaba «Fuente no encontrada».
+        #
+        # Por nombre es idempotente: se quede como se quede una ejecución a
+        # medias, la siguiente deja exactamente una.
+        nombre = str(cuerpo["name"])
+        cabeceras_ci = {"Authorization": f"Bearer {token.token}"}
+        por_borrar = {externa_id} if externa_id else set()
+        try:
+            listado = cli.get(s.ci_base_url.rstrip("/") + RUTA_FUENTES, headers=cabeceras_ci)
+            if listado.status_code == 200:
+                datos = listado.json()
+                fuentes = datos if isinstance(datos, list) else (datos.get("items") or [])
+                por_borrar |= {
+                    str(f.get("id")) for f in fuentes if str(f.get("name") or "") == nombre
+                }
+        except Exception as exc:  # noqa: BLE001 — no poder listarlas no impide crear
+            logger.warning("analytics.fuentes_no_listadas", error=str(exc)[:200])
+        for identificador in sorted(x for x in por_borrar if x):
             cli.delete(
-                s.ci_base_url.rstrip("/") + f"{RUTA_FUENTES}/{externa_id}",
-                headers={"Authorization": f"Bearer {token.token}"},
+                s.ci_base_url.rstrip("/") + f"{RUTA_FUENTES}/{identificador}",
+                headers=cabeceras_ci,
             )
         respuesta = cli.post(
             s.ci_base_url.rstrip("/") + RUTA_FUENTES,
@@ -460,16 +497,43 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
         entidades: list[dict[str, Any]] = []
         for op in operaciones:
             ruta = str(op.get("ruta") or "")
-            if op.get("metodo") != "GET" or not op.get("devuelve_lista"):
+            if op.get("metodo") != "GET":
                 continue
             if "{" in ruta or ruta.count("/") != 3 or not ruta.startswith("/api/v1/"):
                 continue
+            # `devuelve_lista` NO decide. Lo decide la muestra, unas líneas más
+            # abajo: es una marca que sale del `response_model` declarado, y hay
+            # listados que devuelven `Any` porque componen el diccionario a mano
+            # —`/api/v1/casos` es uno— así que la marca dice «no» sobre una ruta
+            # que devuelve una lista perfectamente. Consecuencia: esos objetos no
+            # se publicaban como entidad, y una métrica sobre «caso» no encontraba
+            # su tabla. Se filtraba por una suposición teniendo la medida al lado.
             if op.get("administracion") or op.get("solo_plataforma") or op.get("exige_datos"):
                 continue
-            muestra = cli.get(f"{raiz}{ruta[len('/api/v1'):]}?limite=1", headers=cabeceras)
+            # Con SU PROPIO plazo, corto. El del cliente es el del registro
+            # entero —minutos— y aquí hay rutas que no terminan: `/chat/eventos`
+            # es un `text/event-stream` que se queda abierto mandando lo que
+            # pasa, así que pedirle una muestra con el plazo largo cuelga el alta
+            # de la fuente hasta agotarlo.
+            try:
+                muestra = cli.get(
+                    f"{raiz}{ruta[len('/api/v1') :]}?limite=1",
+                    headers=cabeceras,
+                    timeout=PLAZO_MUESTRA_S,
+                )
+            except Exception:  # noqa: BLE001 — una ruta que no contesta no es una entidad
+                continue
             if muestra.status_code != 200:
                 continue
-            cuerpo = muestra.json()
+            # Y solo JSON. Al dejar de filtrar por `devuelve_lista` entran también
+            # exportaciones en CSV y descargas, y `respuesta.json()` sobre un CSV
+            # revienta el alta entera por una ruta que no era una entidad.
+            if not muestra.headers.get("content-type", "").startswith("application/json"):
+                continue
+            try:
+                cuerpo = muestra.json()
+            except ValueError:
+                continue
             entidad: dict[str, Any] = {
                 "name": ruta.rsplit("/", 1)[-1].replace("-", "_"),
                 "path": ruta[len("/api/v1") :],
@@ -504,7 +568,22 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                     "size_param": "limite",
                     "size": 200,
                 }
-            elif not isinstance(cuerpo, list):
+            elif isinstance(cuerpo, list):
+                # UNA LISTA PELADA NO TRAE TODO, y hay que decirlo.
+                #
+                # Estos listados cortan por su `limite` y no ofrecen cursor, así
+                # que quien los lea se queda con la primera página creyendo que
+                # es la tabla. Medido: 26 de 65. La métrica `casos_abiertos`
+                # contestaba **50 habiendo 153**, con su unidad y su cara de
+                # cifra buena — que es peor que un error, porque nadie la
+                # comprueba.
+                #
+                # Se registran igual —quitarlas dejaría media explotación sin
+                # objetos— pero marcadas, y quien calcule sobre ellas avisa. Lo
+                # que se arregla de verdad es darles cursor, y hay un gate que
+                # cuenta cuántas faltan para que ese número solo pueda bajar.
+                entidad["truncada"] = True
+            else:
                 continue
             entidades.append(entidad)
     return sorted(entidades, key=lambda e: e["name"])
@@ -849,6 +928,14 @@ def campos_publicados(db: Session, tenant_id: UUID, objeto: str) -> list[str]:
         select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
     ).scalar_one_or_none()
     return list((getattr(fila, "campos_por_objeto", None) or {}).get(objeto) or [])
+
+
+def objeto_truncado(db: Session, tenant_id: UUID, objeto: str) -> bool:
+    """¿Este objeto se lee incompleto porque su listado no pagina?"""
+    fila = db.execute(
+        select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    return objeto in list(getattr(fila, "objetos_truncados", None) or [])
 
 
 def _identidad_de_ejecucion(

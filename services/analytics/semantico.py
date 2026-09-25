@@ -66,6 +66,12 @@ IDENTIFICADOR = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 # falla al usarse, no al definirse.
 AGREGACIONES = ("suma", "cuenta", "cuenta_distinta", "media", "minimo", "maximo", "ratio")
 
+# Cuántas filas como mucho trae una métrica agrupada. Es un tope de cordura, no
+# una preferencia: una métrica agrupada por una dimensión de alta cardinalidad
+# —el identificador de cliente, por ejemplo— devolvería una fila por cliente y
+# eso no es una métrica, es una exportación.
+TOPE_FILAS_METRICA = 5_000
+
 # Estados de una métrica.
 #
 #   borrador     se está afinando; se sirve marcada
@@ -381,6 +387,144 @@ def plan_de(
         plan["numerador"] = plan_de(db, tenant_id, clave=str(fila.numerador))
         plan["denominador"] = plan_de(db, tenant_id, clave=str(fila.denominador))
     return plan
+
+
+def ejecutar(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    clave: str,
+    dimensiones: list[str] | None = None,
+    filtros: list[dict[str, Any]] | None = None,
+    version: int | None = None,
+    usuario_id: UUID | None = None,
+    roles: frozenset[str] = frozenset(),
+    es_admin: bool = False,
+) -> dict[str, Any]:
+    """Calcula la métrica y devuelve el número, con lo que hay que leer al lado.
+
+    Existía `plan` y no existía ESTO. O sea que una métrica se podía definir,
+    versionar y certificar, y no se podía ver cuánto vale: la pantalla enseñaba
+    su definición y nada más. Una métrica que no se puede mirar no es una
+    métrica, es una ficha.
+
+    El número **nunca va solo**: lleva su unidad, si está certificada y el aviso
+    cuando no lo está. Un número sin eso se copia a una presentación y allí ya
+    parece oficial.
+
+    Las de tipo `ratio` se calculan de sus dos mitades, y **se dice el
+    denominador**: un porcentaje sobre cero es infinito, no cien.
+    """
+    plan = plan_de(
+        db, tenant_id, clave=clave, dimensiones=dimensiones, filtros=filtros, version=version
+    )
+    if plan["agregacion"] == "ratio":
+        arriba = _valor_de(db, tenant_id, plan["numerador"], usuario_id, roles, es_admin)
+        abajo = _valor_de(db, tenant_id, plan["denominador"], usuario_id, roles, es_admin)
+        total = None if not abajo.get("valor") else arriba["valor"] / abajo["valor"]
+        return {
+            **_cabecera(plan),
+            "valor": total,
+            "numerador": arriba.get("valor"),
+            "denominador": abajo.get("valor"),
+            # Se dice por qué no hay número, en vez de devolver cero: un ratio
+            # sobre cero no es cero, es que no se puede calcular.
+            "sin_valor": None if total is not None else "el denominador es cero",
+            "filas": [],
+        }
+
+    salida = _valor_de(db, tenant_id, plan, usuario_id, roles, es_admin)
+    return {**_cabecera(plan), **salida, **_aviso_de_truncado(db, tenant_id, plan)}
+
+
+def _aviso_de_truncado(db: Session, tenant_id: UUID, plan: dict[str, Any]) -> dict[str, Any]:
+    """Si el objeto se lee incompleto, se dice JUNTO AL NÚMERO.
+
+    No en un rincón ni en un registro: pegado a la cifra. `casos_abiertos`
+    contestaba 50 habiendo 153 —porque su listado no pagina y la explotación solo
+    ve la primera página— con su unidad y su cara de cifra buena. Un número así
+    es peor que un error: nadie lo comprueba.
+    """
+    from services.analytics.fuente import objeto_truncado
+
+    if not objeto_truncado(db, tenant_id, str(plan.get("objeto") or "")):
+        return {}
+    return {
+        "incompleta": True,
+        "aviso_datos": (
+            "Este objeto se lee por páginas y su listado no las ofrece, así que "
+            "la cifra cuenta solo las primeras filas. No es el total."
+        ),
+    }
+
+
+def _cabecera(plan: dict[str, Any]) -> dict[str, Any]:
+    """Lo que acompaña al número y no se puede separar de él."""
+    return {
+        "metrica": plan["metrica"],
+        "version": plan["version"],
+        "unidad": plan.get("unidad") or "",
+        "certificada": plan.get("certificada", False),
+        "aviso": plan.get("aviso") or "",
+        "definicion": plan.get("definicion") or "",
+        "agrupado_por": list(plan.get("agrupar_por") or []),
+    }
+
+
+def _valor_de(
+    db: Session,
+    tenant_id: UUID,
+    plan: dict[str, Any],
+    usuario_id: UUID | None,
+    roles: frozenset[str],
+    es_admin: bool,
+) -> dict[str, Any]:
+    """Manda el plan al mismo ejecutor que usan los informes.
+
+    Al mismo, y no a uno propio: dos motores dando la misma cifra es cómo se
+    acaba con dos números distintos para «cuántas oportunidades hay», y entonces
+    la discusión es cuál de los dos está bien.
+    """
+    from services.analytics import informes as inf
+
+    if not inf.hay_ejecutor():
+        raise Conflicto(
+            "No hay ningún motor analítico conectado, así que esta métrica no se "
+            "puede calcular. No es que valga cero.",
+            error_code="semantico.sin_ejecutor",
+        )
+
+    agrupar = list(plan.get("agrupar_por") or [])
+    portable = {
+        "vista": inf.entidad_de(db, str(plan["objeto"]), tenant_id),
+        "objeto": plan["objeto"],
+        "tipo": "agrupado" if agrupar else "tabular",
+        "columnas": [],
+        "agrupaciones": [{"campo": c} for c in agrupar],
+        "metricas": [
+            {
+                "agregado": str(plan["agregacion"]),
+                "campo": str(plan.get("campo") or ""),
+                "como": "valor",
+            }
+        ],
+        "filtros": list(plan.get("filtros") or []),
+        "orden": [],
+        "limite": TOPE_FILAS_METRICA,
+        "_usuario_id": str(usuario_id) if usuario_id else "",
+        "_roles": sorted(roles),
+        "_es_admin": bool(es_admin),
+    }
+    filas = list(inf.ejecutar_plan_portable(portable, tenant_id=tenant_id))
+    if agrupar:
+        return {"valor": None, "filas": filas}
+    # Sin agrupar, el resultado es una fila con un número. Vacío significa que no
+    # hay datos que cumplan el filtro, que no es lo mismo que cero: se dice.
+    if not filas:
+        return {"valor": None, "filas": [], "sin_valor": "no hay datos que cumplan el filtro"}
+    primera = filas[0]
+    valor = primera[-1] if isinstance(primera, (list, tuple)) else primera
+    return {"valor": valor, "filas": []}
 
 
 def una(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any]:

@@ -445,6 +445,32 @@ def _campos_usados(informe: Informe, filtros_extra: list[dict[str, Any]]) -> lis
     return list(dict.fromkeys(u for u in usados if u))
 
 
+def entidad_de(db: Session, objeto: str, tenant_id: UUID) -> str:
+    """Cómo se llama un objeto allí donde se ejecutan los planes.
+
+    Público a propósito: las métricas semánticas componen su propio plan y
+    necesitan el mismo nombre de entidad. Si lo resolvieran por su cuenta,
+    acabarían apuntando a otra tabla el día que cambie el recurso.
+    """
+    return _entidad_de(db, objeto, tenant_id)
+
+
+def ejecutar_plan_portable(plan: dict[str, Any], *, tenant_id: UUID) -> list[Any]:
+    """Manda un plan ya compuesto al ejecutor registrado y devuelve sus filas.
+
+    Existe para que las métricas semánticas usen **el mismo** motor que los
+    informes. Dos motores dando la misma cifra es cómo se acaba con dos números
+    distintos para «cuántas oportunidades hay», y entonces la discusión deja de
+    ser sobre el negocio y pasa a ser sobre cuál de los dos está bien.
+    """
+    if _EJECUTOR is None:
+        raise Conflicto(
+            "No hay ningún motor analítico conectado.",
+            error_code="informe.sin_ejecutor",
+        )
+    return list((_EJECUTOR(plan=plan, tenant_id=tenant_id) or {}).get("filas") or [])
+
+
 def _entidad_de(db: Session, objeto: str, tenant_id: UUID) -> str:
     """Cómo se llama este objeto allí donde se ejecuta el plan.
 
@@ -667,6 +693,21 @@ def _calculado(calculado: dict[str, Any], permitidos: set[str]) -> dict[str, Any
 # ── Ejecutar (CRM-05.01.01.09) ────────────────────────────────────────────
 
 
+def _aviso_de_objeto_incompleto(db: Session, tenant_id: UUID, objeto: str) -> dict[str, Any]:
+    """Si el objeto se lee incompleto, va pegado al resultado."""
+    from services.analytics.fuente import objeto_truncado
+
+    if not objeto_truncado(db, tenant_id, objeto):
+        return {}
+    return {
+        "incompleto": True,
+        "aviso_datos": (
+            "El listado de este objeto no pagina, así que la explotación solo ve "
+            "sus primeras filas. Las cifras no son el total."
+        ),
+    }
+
+
 def _nombres_de_columna(plan: dict[str, Any]) -> list[str]:
     """Los nombres de las columnas del resultado, en su orden.
 
@@ -820,6 +861,10 @@ def ejecutar(
         # informe truncado en silencio se lee como el total, y con eso se toman
         # decisiones.
         "truncado": truncado,
+        # Distinto de `truncado`: aquel es «se cortó por el tope de filas de este
+        # informe», y esto es «el objeto se lee incompleto porque su listado no
+        # pagina». El primero se arregla subiendo el tope; el segundo no.
+        **_aviso_de_objeto_incompleto(uow.db, tenant_id, informe.objeto),
         "limite": plan["limite"],
         "campos_retirados": plan["campos_retirados"],
         "acotado_al_usuario": plan["acotado_al_usuario"],

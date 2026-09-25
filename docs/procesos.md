@@ -767,6 +767,7 @@ stateDiagram-v2
 | `POST /api/v1/informes/{informe_id}/programar` | Programar el envío | informe_id*, periodicidad, hora, dia_semana, dia_mes, formato, destinatarios, destino_externo, omitir_si_vacio, nombre | 201, 422 | — |
 | `POST /api/v1/metricas` | Definir una métrica | clave*, nombre*, objeto*, definicion, agregacion, campo, numerador, denominador, filtros, dimensiones, unidad, dueno_id | 201, 422 | — |
 | `POST /api/v1/metricas/{clave}/certificar` | Certificar una métrica | clave*, dueno_id | 200, 422 | — |
+| `POST /api/v1/metricas/{clave}/ejecutar` | Cuánto vale ahora mismo | clave*, version, dimensiones | 200, 422 | — |
 | `POST /api/v1/metricas/{clave}/versiones` | Crear una versión nueva | clave*, motivo*, cambios | 201, 422 | — |
 | `PATCH /api/v1/metricas/{metrica_id}` | Editar métricas | metrica_id*, clave, nombre, definicion, objeto, agregacion, campo, numerador, denominador, filtros, dimensiones, unidad, estado, dueno_id, certificada_por, certificada_at, motivo_version, vigente | 200, 422 | — |
 | `DELETE /api/v1/metricas/{metrica_id}` | Borrar métricas | metrica_id* | 204, 422 | — |

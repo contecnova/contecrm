@@ -383,6 +383,43 @@ def plan_metrica(
     )
 
 
+@router_metricas.post(
+    "/{clave}/ejecutar",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Cuánto vale ahora mismo",
+    description=(
+        "Existía el PLAN de cálculo y no existía el cálculo. O sea que una "
+        "métrica se podía definir, versionar y certificar, y no se podía ver "
+        "cuánto vale: la pantalla enseñaba su definición y nada más. Una métrica "
+        "que no se puede mirar no es una métrica, es una ficha.\n\n"
+        "El número **nunca va solo**: lleva su unidad, si está certificada y el "
+        "aviso cuando no lo está. Un número sin eso se copia a una presentación "
+        "y allí ya parece oficial.\n\n"
+        "Lo calcula el mismo motor que los informes. Dos motores dando la misma "
+        "cifra es cómo se acaba con dos números distintos para «cuántas "
+        "oportunidades hay», y entonces la discusión deja de ser sobre el "
+        "negocio."
+    ),
+)
+def ejecutar_metrica(
+    clave: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    version: int | None = Query(None),
+    dimensiones: list[str] | None = Query(None),
+) -> Any:
+    return sem.ejecutar(
+        db,
+        principal.tenant_id,
+        clave=clave,
+        version=version,
+        dimensiones=dimensiones,
+        usuario_id=principal.id,
+        roles=frozenset(principal.roles or []),
+        es_admin=principal.es_admin_plataforma,
+    )
+
+
 # ── Análisis ──────────────────────────────────────────────────────────────
 
 
