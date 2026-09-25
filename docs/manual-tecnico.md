@@ -816,8 +816,9 @@ Tres cosas que conviene saber antes de que pasen:
 
 ### 5.5 El preflight
 
-No hay CI, y eso es deliberado. En su lugar hay **catorce gates locales** que
-corren en menos de tres minutos:
+No hay CI, y eso es deliberado. En su lugar hay **dieciocho gates locales** que
+corren en menos de tres minutos, en paralelo —hasta seis a la vez— salvo los dos
+que levantan un Postgres embebido, que se turnan:
 
 ```bash
 python scripts/preflight.py          # rápido
@@ -832,7 +833,8 @@ migraciones están al día.
 
 **Si el preflight tarda más de tres minutos, lo que se arregla es el gate lento —
 nunca se quita la comprobación.** Un preflight que no se corre no garantiza nada,
-y el coste se paga igual.
+y el coste se paga igual. Lo que se compara con los tres minutos es el **reloj de
+pared**: sumar los gates mide trabajo hecho y no tiempo esperado.
 
 ### 5.6 Rendimiento
 

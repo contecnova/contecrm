@@ -23,9 +23,12 @@ Instalación, **obligatoria**:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,6 +46,10 @@ class Gate:
     # permite que la suite corra en una máquina sin Docker sin volverse
     # impasable —y por tanto sin que nadie acabe empujando con `--no-verify`.
     opcional: bool = False
+    # Un gate EXCLUSIVO no puede correr a la vez que otro exclusivo: levanta un
+    # Postgres embebido, y dos a la vez se cuelgan esperándose. Los demás sí
+    # corren en paralelo entre ellos y con el exclusivo de turno.
+    exclusivo: bool = False
 
 
 GATES: list[Gate] = [
@@ -144,12 +151,14 @@ GATES: list[Gate] = [
         [PY, "-m", "pytest", "-m", "db", "-q", "--no-header"],
         "tests",
         "aislamiento entre tenants, motor de procesos y persistencia",
+        exclusivo=True,
     ),
     Gate(
         "migraciones",
         [PY, "scripts/migraciones_locales.py", "comprobar"],
         "tests",
         "ningún modelo cambiado se ha quedado sin su migración",
+        exclusivo=True,
     ),
     Gate(
         "front",
@@ -183,7 +192,18 @@ GATES: list[Gate] = [
 # primera vez que se midió, 195 de los 200 segundos de las pruebas con base de
 # datos se iban en crear y tirar un esquema de 98 tablas **por prueba**; pasar a
 # aislar por transacción lo dejó en 11 segundos sin quitar ni una prueba.
+#
+# Se mide el RELOJ DE PARED, no la suma de los gates. Antes se sumaba, y eso
+# medía trabajo hecho en vez de tiempo esperado: con los gates corriendo en
+# paralelo, sumar decía tres minutos y medio donde quien lo lanzaba esperaba
+# minuto y medio. Lo que hace que un preflight deje de correrse es lo que se
+# tarda en volver al teclado.
 PRESUPUESTO_S = 180.0
+
+# Cuántos gates a la vez. La mayoría son análisis estático que solo gasta CPU;
+# uno por núcleo satura la máquina y los ralentiza todos, así que se deja margen.
+# Los que levantan Postgres embebido van aparte y de uno en uno (`exclusivo`).
+PARALELOS = max(2, min(6, (os.cpu_count() or 4) - 1))
 
 
 def _correr(gate: Gate) -> tuple[bool, float, str]:
@@ -224,12 +244,27 @@ def main() -> int:
 
     fallos: list[tuple[Gate, str]] = []
     omitidos: list[str] = []
-    total = 0.0
     print(f"preflight — {len(seleccionados)} gates\n")
 
-    for gate in seleccionados:
-        ok, duracion, salida = _correr(gate)
-        total += duracion
+    # Los exclusivos se turnan entre ellos; el resto va en paralelo. El cerrojo
+    # es lo único que los separa: sin él, dos Postgres embebidos a la vez se
+    # quedan esperándose y el preflight no termina nunca.
+    turno = threading.Lock()
+
+    def _ejecutar(gate: Gate) -> tuple[bool, float, str]:
+        if not gate.exclusivo:
+            return _correr(gate)
+        with turno:
+            return _correr(gate)
+
+    reloj = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=PARALELOS) as pool:
+        resultados = list(pool.map(_ejecutar, seleccionados))
+    total = time.perf_counter() - reloj
+
+    # Se imprime en el orden en que están declarados, no en el que terminaron:
+    # el informe tiene que ser el mismo dos veces seguidas para poder compararlo.
+    for gate, (ok, duracion, salida) in zip(seleccionados, resultados, strict=True):
         if ok and "no instalada" in salida:
             omitidos.append(gate.nombre)
             print(f"  ~ {gate.nombre:22} omitido ({salida})")
@@ -259,11 +294,16 @@ def main() -> int:
             "Un preflight que pasa de tres minutos deja de correrse, y un gate "
             "que no se corre no garantiza nada — con lo que el coste se paga\n"
             "entero y el beneficio no llega. Los tiempos de arriba dicen dónde "
-            "se va: se arregla el gate lento, no se quita la comprobación."
+            "se va: se arregla el gate lento, no se quita la comprobación.\n"
+            "(Es tiempo de reloj, con los gates en paralelo: el número de arriba "
+            "de cada uno es lo que tardó él, y suman más.)"
         )
         return 1
 
-    print(f"\nTodo en verde. {total:.0f}s de {PRESUPUESTO_S:.0f}s de presupuesto.")
+    print(
+        f"\nTodo en verde. {total:.0f}s de reloj de {PRESUPUESTO_S:.0f}s de "
+        f"presupuesto, con hasta {PARALELOS} gates a la vez."
+    )
     return 0
 
 

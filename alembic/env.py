@@ -89,6 +89,17 @@ def _importar_modelos(servicio: str) -> None:
         # —«relation "politicas_abac" does not exist»— sobre una pantalla que
         # no tiene nada que ver con la seguridad.
         "crmcore.authz.politicas",
+        # La papelera, por lo mismo y con el mismo síntoma: TODO servicio con
+        # base publica `/{servicio}/papelera` —lo monta `crear_servicio`, no el
+        # servicio— así que la tabla tiene que estar en los trece esquemas. Solo
+        # estaba en seis, los que además la usaban para borrar; en los otros
+        # siete la pantalla de papelera daba 500 al abrirla, «relation
+        # "papelera" does not exist», sobre una ruta que el contrato anunciaba
+        # y la superficie enseñaba.
+        #
+        # Estaba en el módulo de modelos de cada servicio, que es pedir que el
+        # siguiente se acuerde. Aquí no hay nada que recordar.
+        "crmcore.datos.papelera",
         "crmcore.bus.modelos",
         "crmcore.http.idempotency",
         "crmcore.runtime.settings",

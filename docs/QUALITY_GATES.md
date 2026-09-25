@@ -58,6 +58,19 @@ Lo peor de aquello no era el número, era la pendiente: cada tabla nueva del
 producto encarecía todas las pruebas a la vez. Con el esquema montado una sola
 vez por sesión, una tabla nueva cuesta unos milisegundos una vez.
 
+**Lo que se mide es el reloj de pared, no la suma de los gates.** Los gates
+corren en paralelo —hasta seis a la vez—, así que sumar sus tiempos mide trabajo
+hecho y no tiempo esperado: decía tres minutos y medio donde quien lo lanzaba
+esperaba minuto y medio. Lo que hace que un preflight deje de correrse es lo que
+se tarda en volver al teclado, y eso es el reloj.
+
+Dos gates van marcados como **exclusivos** y se turnan entre ellos: las pruebas
+con base y la comprobación de migraciones levantan cada una un Postgres
+embebido, y dos a la vez se quedan esperándose sin terminar nunca. El resto corre
+en paralelo entre sí y con el exclusivo de turno. Por eso el informe sigue
+enseñando el tiempo de cada gate —que es donde se mira cuál engorda— junto al
+tiempo de reloj, que es el que se compara con los 180 segundos.
+
 ## Los gates, uno a uno
 
 | Gate | Tier | Qué garantiza |

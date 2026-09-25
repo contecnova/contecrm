@@ -147,7 +147,6 @@ class Ejecucion(Base):
 # la tabla la pantalla devolvía 500: `relation "papelera" does not exist`. El
 # borrado es lógico y cada servicio guarda la suya en su esquema, que es lo que
 # impide que uno lea las tablas de otro.
-from crmcore.datos.papelera import EntradaPapelera  # noqa: E402,F401
 from crmcore.documental.firma_presencial import FirmaPresencial  # noqa: E402,F401
 from crmcore.documental.plantillas import (  # noqa: E402,F401
     DocumentoGenerado,

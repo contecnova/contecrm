@@ -282,6 +282,16 @@ tests/integration/            aislamiento real contra Postgres
   el cliente solo tiene el texto en castellano para distinguir un error de otro.
 - **Nada se declara hecho sin prueba y sin manual.** Lo comprueba el gate de
   trazabilidad del catálogo.
+- **Una tabla que publican todos los servicios se declara en un solo sitio.** En
+  `alembic/env.py`, en la lista de modelos comunes — nunca en el módulo de
+  modelos de cada servicio, que es pedir que el siguiente se acuerde. Ha fallado
+  cuatro veces, siempre igual y siempre con el mismo síntoma: la tabla existía en
+  unos esquemas y no en otros, y en los que no, una pantalla cualquiera daba 500
+  con «relation … does not exist». Pasó con las políticas de campo (cinco
+  esquemas de trece), con las políticas ABAC (nueve de trece) y con la papelera
+  (seis de trece, siete pantallas rotas). El gate de migraciones lo caza en
+  cuanto el modelo está en la lista, y no lo caza si no está: por eso la regla es
+  dónde se declara, no acordarse de migrar.
 
 ## Lo que sabemos que falta
 

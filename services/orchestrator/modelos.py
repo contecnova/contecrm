@@ -242,7 +242,6 @@ class TablaDecision(Base, TimestampMixin):
 # la tabla la pantalla devolvía 500: `relation "papelera" does not exist`. El
 # borrado es lógico y cada servicio guarda la suya en su esquema, que es lo que
 # impide que uno lea las tablas de otro.
-from crmcore.datos.papelera import EntradaPapelera  # noqa: E402,F401
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 
 # Las aprobaciones y el organigrama replicado viven en sus propios módulos —cada

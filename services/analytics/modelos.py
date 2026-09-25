@@ -89,7 +89,6 @@ from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E
 # la tabla la pantalla devolvía 500: `relation "papelera" does not exist`. El
 # borrado es lógico y cada servicio guarda la suya en su esquema, que es lo que
 # impide que uno lea las tablas de otro.
-from crmcore.datos.papelera import EntradaPapelera  # noqa: E402,F401
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 
 # La tabla de trabajos asíncronos, igual que en `party` y `sales`. La necesita el
