@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Formulario } from "@/componentes/Formulario";
 import { Icono } from "@/componentes/Icono";
+import { Celda } from "@/componentes/Tabla";
 import { Link } from "react-router-dom";
 
 import { llamar } from "@/lib/api";
@@ -76,7 +77,10 @@ function Resultado({ datos }: { datos: unknown }) {
                   {t("acciones.abrir")}
                 </Link>
               ) : typeof valor === "object" ? (
-                JSON.stringify(valor)
+                // Con el mismo renderizador que la tabla y que la ficha: la
+                // misma información no puede salir de tres formas distintas
+                // según qué panel la enseñe.
+                <Celda valor={valor} campo={clave} />
               ) : (
                 escalar(valor, clave)
               )}

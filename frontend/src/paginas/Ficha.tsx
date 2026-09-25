@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
-import { Tabla } from "@/componentes/Tabla";
+import { Celda, Tabla } from "@/componentes/Tabla";
 import { Formulario } from "@/componentes/Formulario";
 import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
 import {
@@ -371,10 +371,16 @@ function Campo({
         className={`truncate text-2xs text-ink ${monoespaciado ? "font-mono text-3xs text-ink-muted" : ""}`}
         title={String(valor ?? "")}
       >
+        {/* Un valor compuesto se pinta con el MISMO renderizador que la tabla.
+            Aquí iba `JSON.stringify(valor)`, así que la ficha de un registro
+            enseñaba `{"esquema":"CNAE","codigo":"2932"}` donde la tabla del
+            listado enseña dos etiquetas legibles. La misma información, en dos
+            pantallas del mismo producto, con dos formatos — y el de la ficha
+            nadie lo lee de un vistazo. */}
         {valor === null || valor === undefined || valor === "" ? (
           <span className="text-ink-faint">—</span>
         ) : typeof valor === "object" ? (
-          JSON.stringify(valor)
+          <Celda valor={valor} campo={clave} />
         ) : (
           escalar(valor, clave)
         )}
