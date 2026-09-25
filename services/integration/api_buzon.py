@@ -421,6 +421,12 @@ montar_listado(
     objeto="firma_presencial",
     permiso="firma:read",
     nombre="Firmas presenciales",
+    # Por `firmado_at` y no por la marca genérica: este modelo no la tiene, y el
+    # listado devolvía 500 con `AttributeError` en cuanto alguien lo abría.
+    # Además es la fecha que importa de una firma — cuándo se firmó, no cuándo
+    # se guardó la fila.
+    orden="-firmado_at",
+    columnas_orden=frozenset({"firmado_at"}),
 )
 
 

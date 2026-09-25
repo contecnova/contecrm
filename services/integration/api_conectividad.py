@@ -622,6 +622,12 @@ montar_listado(
     permiso="integracion:read",
     ruta="/interacciones",
     nombre="Interacciones de canal",
+    # Por `recibido_at`: este modelo tampoco tiene la marca genérica, y el
+    # listado devolvía 500. Se ordena por cuándo LLEGÓ y no por cuándo ocurrió
+    # —`ocurrido_at` lo dice el sistema de origen y puede venir desordenado o
+    # mal—, porque un cursor necesita un orden que no se reescriba por detrás.
+    orden="-recibido_at",
+    columnas_orden=frozenset({"recibido_at", "ocurrido_at"}),
 )
 
 

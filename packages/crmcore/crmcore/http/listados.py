@@ -81,6 +81,23 @@ def montar_listado(
     """
     from sqlalchemy import select
 
+    # El modelo tiene que tener la columna por la que se le va a ordenar, y se
+    # comprueba AL MONTAR, no en la primera petición.
+    #
+    # `orden` vale `-created_at` por defecto y hay modelos que no lo tienen:
+    # `FirmaPresencial` guarda `firmado_at` y ninguna marca genérica. El listado
+    # se montaba igual y reventaba con `AttributeError` dentro de la consulta, o
+    # sea un 500 sin nada que lo explicara — y solo cuando alguien abría esa
+    # pantalla. Montarlo aquí convierte el fallo en algo que se ve al arrancar,
+    # que es cuando lo ve quien lo puede arreglar.
+    for _campo in [c.strip().lstrip("-+") for c in orden.split(",") if c.strip()]:
+        if not hasattr(modelo, _campo):
+            raise RuntimeError(
+                f"«{nombre}» se monta ordenando por «{_campo}» y {modelo.__name__} no "
+                f"tiene esa columna. Pasa `orden=` y `columnas_orden=` con una que sí "
+                f"tenga, o dale al modelo la marca de tiempo que le falta."
+            )
+
     tiene_borrado = hasattr(modelo, "deleted_at")
 
     @router.get(
