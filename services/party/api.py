@@ -720,11 +720,22 @@ def listar_actividades(
     principal: AutenticadoDep,
     estado: str = Query(""),
     tipo: str = Query(""),
+    # La actividad cuelga de una cuenta o de un contacto, y filtrar por ellos es
+    # lo primero que pide cualquiera. No estaba: `?cuenta_id=X` se ignoraba en
+    # silencio —FastAPI se come lo que no declara— y devolvía TODAS las del
+    # tenant como si el filtro existiera. Quien lo leía se llevaba la actividad
+    # de otro cliente creyendo que era la suya.
+    cuenta_id: UUID | None = Query(None),
+    contacto_id: UUID | None = Query(None),
     mias: bool = Query(False, description="Solo las asignadas a quien pregunta"),
     vencidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
 ) -> Any:
     consulta = select(Actividad).where(Actividad.deleted_at.is_(None))
+    if cuenta_id is not None:
+        consulta = consulta.where(Actividad.cuenta_id == cuenta_id)
+    if contacto_id is not None:
+        consulta = consulta.where(Actividad.contacto_id == contacto_id)
     if estado:
         consulta = consulta.where(Actividad.estado == estado)
     if tipo:

@@ -30,7 +30,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
 from crmcore.http.pagination import (
@@ -39,6 +39,73 @@ from crmcore.http.pagination import (
     aplicar_orden_y_cursor,
     construir_pagina,
 )
+
+# Lo que NO es un filtro: el resto de la query se interpreta como columna.
+_NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "total"})
+
+
+def _filtros_de_la_url(
+    request: Any, modelo: type, consulta: Any, *, principal: Any, db: Any, objeto: str
+) -> Any:
+    """Aplica los filtros de la query, y **rechaza los que no existen**.
+
+    Antes no se aplicaba ninguno: el listado declaraba `limite` y `cursor`, y
+    FastAPI se come en silencio cualquier otro parámetro. O sea que
+    `?cuenta_id=X` devolvía TODAS las filas del tenant como si el filtro no
+    estuviera, y quien lo leía se llevaba datos de otras cuentas creyendo que
+    eran de la suya. Medido: `/activities`, `/contratos` y `/presupuestos`
+    devolvían veinte, nueve y doce filas ajenas para una cuenta que no tenía
+    ninguna.
+
+    Un filtro que no filtra es peor que no tener filtros, porque el resultado
+    parece correcto. Así que ahora:
+
+      * un parámetro que no es columna del modelo → **422**, diciendo cuáles
+        valen. Callarse es lo que produjo el problema;
+      * y el que sí lo es se aplica como igualdad exacta.
+
+    **Solo se filtra por lo que este principal ve EN CLARO.** Es la misma regla
+    que para ordenar y por el mismo motivo: filtrar por un campo enmascarado lo
+    reconstruye a base de preguntar —`?telefono=6...` una y otra vez— sin llegar
+    a verlo nunca.
+
+    El valor se ata con el tipo de su columna, así que un UUID llega como UUID y
+    una fecha como fecha, sin que quien llama tenga que saberlo.
+    """
+    from sqlalchemy import literal
+
+    from crmcore.authz.proyeccion import columnas_usables
+    from crmcore.errors import ErrorValidacion
+
+    crudos = {k: v for k, v in request.query_params.items() if k not in _NO_SON_FILTROS}
+    if not crudos:
+        return consulta
+
+    tabla = getattr(modelo, "__table__", None)
+    columnas = set(tabla.columns.keys()) if tabla is not None else set()
+    usables = columnas_usables(
+        columnas,
+        modelo=modelo,
+        objeto=objeto,
+        roles=frozenset(getattr(principal, "roles", frozenset())),
+        es_admin=bool(getattr(principal, "es_admin_plataforma", False)),
+        tenant_id=getattr(principal, "tenant_id", None),
+        db=db,
+    )
+    # `tenant_id` nunca: lo pone la RLS, y aceptarlo daría a entender que se
+    # puede pedir el de otro.
+    usables = {c for c in usables if c != "tenant_id"}
+
+    for nombre, valor in crudos.items():
+        if nombre not in usables:
+            raise ErrorValidacion(
+                f"No se puede filtrar por «{nombre}»",
+                error_code="listado.filtro_no_permitido",
+                detalle={"permitidos": sorted(usables)},
+            )
+        col = getattr(modelo, nombre)
+        consulta = consulta.where(col == literal(valor, col.type))
+    return consulta
 
 
 def montar_listado(
@@ -112,6 +179,7 @@ def montar_listado(
         ),
     )
     def listar(
+        request: Request,
         db: DbDep,
         principal: AutenticadoDep,
         limite: int = Query(50, ge=1, le=200),
@@ -121,6 +189,9 @@ def montar_listado(
         consulta = select(modelo)
         if filtro is not None:
             consulta = filtro(consulta)
+        consulta = _filtros_de_la_url(
+            request, modelo, consulta, principal=principal, db=db, objeto=objeto
+        )
         if tiene_borrado:
             # Lo borrado no se lista. Sigue estando —el borrado es lógico— pero
             # devolverlo haría que una papelera se pareciera a un listado.
