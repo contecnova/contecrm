@@ -410,6 +410,11 @@ export default {
     noEncontrado: "No existe",
     sinRed: "No se ha podido contactar con el servidor",
   },
+  noExiste: {
+    titulo: "Esa dirección no existe",
+    detalle: "No hay ninguna pantalla en",
+    volver: "Volver al inicio",
+  },
   vacio: {
     titulo: "Aquí no hay nada todavía",
     detalle: "Cuando lo haya, aparecerá en esta lista.",

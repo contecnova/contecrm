@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
@@ -168,8 +169,43 @@ export function App() {
           <Route path="/rendimiento" element={<Rendimiento />} />
           <Route path="/suite" element={<SuiteGobierno />} />
           <Route path="/ayuda" element={<Ayuda />} />
+          {/* Atajos que la gente escribe. `/admin` es el que más: se teclea sin
+              pensar y aquí la pantalla se llama `/administracion`. */}
+          <Route path="/admin" element={<Navigate to="/administracion" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/cuadros" replace />} />
+          <Route path="/informes" element={<Navigate to="/cuadros" replace />} />
+          {/* Y CUALQUIER otra dirección dice que no existe.
+              Sin esto, una dirección desconocida no daba error: dejaba la
+              pantalla EN BLANCO, con un aviso en la consola del navegador que
+              nadie mira. Es la peor forma de fallar — parece que la aplicación
+              se ha roto, y no hay nada que leer ni a dónde ir. */}
+          <Route path="*" element={<NoExiste />} />
         </Routes>
       </Suspense>
     </Marco>
+  );
+}
+
+
+/**
+ * Una dirección que no existe, dicha con todas las letras.
+ *
+ * Con el camino que se pidió delante: casi siempre es una errata o un enlace
+ * viejo, y verlo escrito es lo que permite darse cuenta. Y con la salida a mano,
+ * que es lo que evita que alguien cierre la pestaña.
+ */
+function NoExiste() {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  return (
+    <div className="p-4" role="alert">
+      <h1 className="text-lg text-ink">{t("noExiste.titulo")}</h1>
+      <p className="mt-2 max-w-prose text-2xs text-ink-muted">
+        {t("noExiste.detalle")} <code className="font-mono text-ink">{pathname}</code>
+      </p>
+      <Link to="/" className="mt-4 inline-block text-2xs text-accent underline">
+        {t("noExiste.volver")}
+      </Link>
+    </div>
   );
 }

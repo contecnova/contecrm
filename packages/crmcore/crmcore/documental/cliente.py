@@ -421,7 +421,7 @@ def _llamar(
     timeout: float | None = None,
 ) -> Any:
     """Una llamada al gestor con la identidad del usuario, con sus errores."""
-    from crmcore.errors import NoEncontrado, Prohibido
+    from crmcore.errors import ErrorDependencia, NoEncontrado, Prohibido
     from crmcore.red import cliente_seguro
 
     s = _config()
@@ -448,7 +448,25 @@ def _llamar(
             "Eso ya no existe en el gestor documental",
             error_code="documental.no_existe",
         )
-    respuesta.raise_for_status()
+    if respuesta.status_code >= 500:
+        # CON EL MOTIVO DEL GESTOR. Antes se dejaba subir el `raise_for_status`
+        # y salía como un 500 del CRM —«Error interno, facilita el identificador
+        # al soporte»— que es exactamente lo contrario de lo que pasa: el CRM
+        # está bien y quien ha fallado es el gestor. Mandaba a mirar los registros
+        # de contecrm, donde no hay nada.
+        raise NoDisponible(
+            f"El gestor documental ha fallado ({respuesta.status_code})"
+            + (f": {_motivo(respuesta)}" if _motivo(respuesta) else ""),
+            error_code="documental.gestor_fallo",
+            detalle={"codigo_http": respuesta.status_code, "motivo": _motivo(respuesta)},
+        )
+    if respuesta.status_code >= 400:
+        raise ErrorDependencia(
+            f"El gestor documental ha rechazado la petición ({respuesta.status_code})"
+            + (f": {_motivo(respuesta)}" if _motivo(respuesta) else ""),
+            error_code="documental.peticion_rechazada",
+            detalle={"codigo_http": respuesta.status_code, "motivo": _motivo(respuesta)},
+        )
     if respuesta.status_code == 204 or not respuesta.content:
         return None
     return respuesta.json()
@@ -458,6 +476,15 @@ def areas(*, token_usuario: str) -> list[dict[str, Any]]:
     """Las áreas del corpus que ESTE usuario puede leer."""
     cuerpo = _llamar("GET", "/api/v1/areas", token_usuario=token_usuario)
     return list((cuerpo or {}).get("items") or [])
+
+
+def _motivo(respuesta: Any) -> str:
+    """Lo que el gestor dice que ha pasado, si lo dice."""
+    try:
+        cuerpo = respuesta.json()
+        return str(cuerpo.get("detail") or cuerpo.get("message") or "")[:300]
+    except Exception:  # noqa: BLE001 — si no es JSON, el texto vale igual
+        return str(getattr(respuesta, "text", ""))[:300]
 
 
 def _area(token_usuario: str) -> str:
