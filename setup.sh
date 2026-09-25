@@ -178,8 +178,11 @@ arrancar_docker() {
     $PY scripts/vecinos.py levantar || aviso "Algún vecino no ha subido; mira arriba qué falta"
   fi
 
+  arrancar_front
+
   echo
-  info "Consola:    http://localhost:${CONSOLA_PORT:-3000}"
+  info "Front:      http://localhost:${FRONT_PORT:-15173}   (desarrollo, recarga al guardar)"
+  info "Consola:    http://localhost:${CONSOLA_PORT:-3000}   (la del contenedor)"
   info "Gateway:    http://localhost:${GATEWAY_PORT:-8080}/api/v1/docs"
   info "Logs:       docker compose logs -f gateway"
   info "Vecinos:    ./setup.sh vecinos"
@@ -234,6 +237,42 @@ arrancar_local() {
   info "Parar:      ./setup.sh parar"
 }
 
+# ── front de desarrollo ──────────────────────────────────────────────────────
+#
+# El de Vite, no el del contenedor. Se levanta con el arranque porque es el que
+# se usa para trabajar, y porque arrancarlo a mano significa arrancarlo con las
+# variables de la terminal de quien lo lanza: al reiniciar la máquina eso se
+# pierde y `npm run dev` a secas abre otro puerto contra un gateway que no está.
+arrancar_front() {
+  [[ "${SIN_FRONT:-}" == "1" ]] && { aviso "Front de desarrollo omitido (SIN_FRONT=1)"; return 0; }
+  command -v npm >/dev/null 2>&1 || { aviso "npm no está: sin front de desarrollo"; return 0; }
+  [[ -d frontend/node_modules ]] || { aviso "Faltan dependencias del front: npm --prefix frontend install"; return 0; }
+
+  local puerto
+  puerto=$(grep -E "^FRONT_PORT=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"')
+  puerto="${puerto:-15173}"
+  if lsof -nP -iTCP:"$puerto" -sTCP:LISTEN >/dev/null 2>&1; then
+    ok "El front ya está en :$puerto"
+    return 0
+  fi
+
+  mkdir -p "$VAR"/log
+  # Las dos variables que el front necesita, leídas del `.env` SIN interpretarlo
+  # como shell. `source .env` parece lo natural y no sirve aquí: hay valores que
+  # son listas JSON —`DMS_SCOPES=["documents:read", "documents:search"]`— y el
+  # shell los parte por el espacio e intenta ejecutar el segundo trozo. Da un
+  # «command not found» en mitad del arranque y, peor, deja de exportar lo que
+  # venía detrás.
+  local valor
+  for clave in FRONT_PORT GATEWAY_PORT GATEWAY_URL; do
+    valor=$(grep -E "^${clave}=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"')
+    [[ -n "$valor" ]] && export "$clave=$valor"
+  done
+  nohup npm --prefix frontend run dev > "$VAR/log/front.log" 2>&1 &
+  echo $! > "$VAR/pid/front.pid"
+  ok "Front de desarrollo en :$puerto"
+}
+
 # ── parar ────────────────────────────────────────────────────────────────────
 parar() {
   if [[ "${1:-}" == "--docker" ]]; then
@@ -243,6 +282,12 @@ parar() {
     # corpus documental de otro producto de la casa sin avisar.
     if [[ "${2:-}" == "--con-vecinos" || "${3:-}" == "--con-vecinos" ]]; then
       $PY scripts/vecinos.py parar
+    fi
+    # El front de desarrollo es un proceso del equipo, no un contenedor.
+    if [[ -f "$VAR/pid/front.pid" ]] && kill -0 "$(cat "$VAR/pid/front.pid")" 2>/dev/null; then
+      kill "$(cat "$VAR/pid/front.pid")" 2>/dev/null || true
+      rm -f "$VAR/pid/front.pid"
+      ok "Front de desarrollo parado"
     fi
     docker compose --profile app --profile consola down
     ok "Parado (los datos se conservan; usa 'docker compose down -v' para borrarlos)"

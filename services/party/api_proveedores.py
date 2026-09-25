@@ -19,6 +19,7 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
+from crmcore.http.listados import declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
 from crmcore.http.portal_deps import PortalDep
 from fastapi import APIRouter, Depends, Query, status
@@ -28,6 +29,7 @@ from services.party import proveedores as prv
 from services.party.esquemas import ActualizarCuenta, CrearCuenta, CuentaOut
 
 router_proveedores = APIRouter(prefix="/proveedores", tags=["proveedores"])
+declarar_recurso(router_proveedores, "proveedor")
 
 
 class HomologarIn(BaseModel):

@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import declarar_recurso
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -15,7 +16,9 @@ from sqlalchemy import select
 from services.integration import encargos as enc
 
 router = APIRouter(prefix="/encargos", tags=["encargos seguidos"])
+declarar_recurso(router, "encargo")
 router_proveedores = APIRouter(prefix="/proveedores-servicio", tags=["encargos seguidos"])
+declarar_recurso(router_proveedores, "proveedor_servicio")
 
 
 # ── Proveedores y reglas ──────────────────────────────────────────────────

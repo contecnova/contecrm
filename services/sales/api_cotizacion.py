@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
+from crmcore.http.listados import declarar_recurso, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -20,6 +20,7 @@ from services.sales.catalogo import ListaPrecio
 from services.sales.presupuestos import Contrato, Pedido, Presupuesto, SuscripcionCliente
 
 router_prod = APIRouter(prefix="/productos", tags=["catálogo"])
+declarar_recurso(router_prod, "producto")
 router_precios = APIRouter(prefix="/listas-precio", tags=["catálogo"])
 router_pre = APIRouter(prefix="/presupuestos", tags=["cotización"])
 router_ctr = APIRouter(prefix="/contratos", tags=["contratación"])

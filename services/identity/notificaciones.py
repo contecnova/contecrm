@@ -33,7 +33,7 @@ from crmcore.datos.seguimiento import (
 )
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep
-from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.listados import declarar_recurso, montar_ficha  # noqa: E402
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, status
 from pydantic import BaseModel, Field
@@ -360,6 +360,7 @@ async def consumir_evento(mensaje: Any) -> None:
 
 router_seguimiento = APIRouter(prefix="/seguimientos", tags=["seguimiento"])
 router_notificaciones = APIRouter(prefix="/notificaciones", tags=["notificaciones"])
+declarar_recurso(router_notificaciones, "notificacion")
 
 
 class Seguir(BaseModel):

@@ -95,6 +95,12 @@ class TransferirPropiedad(BaseModel):
 
 
 router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
+# El listado de cuentas está escrito a mano, así que el montador no puede
+# apuntarlo: se declara aquí, junto al router. El import va en esta línea y no
+# arriba porque este módulo importa `listados` más abajo a propósito.
+from crmcore.http.listados import declarar_recurso  # noqa: E402
+
+declarar_recurso(router_cuentas, "cuenta")
 
 
 @router_cuentas.post(

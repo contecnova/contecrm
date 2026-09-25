@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
@@ -21,6 +22,7 @@ from services.metadata import entornos as ent
 from services.metadata.entornos import ENTORNOS
 
 router_entornos = APIRouter(prefix="/entornos", tags=["ALM y entornos"])
+declarar_recurso(router_entornos, "entorno")
 
 
 class EmpaquetarIn(BaseModel):

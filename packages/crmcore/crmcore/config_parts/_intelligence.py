@@ -61,4 +61,18 @@ class _IntelligenceSettings(BaseSettings):
     ci_token_ttl_s: int = Field(600, ge=60, le=3_600)
     # Alcances que se piden por defecto. Los mínimos para preguntar y ver las
     # fuentes; ampliarlos es una decisión consciente y va por configuración.
+    # Los alcances que se piden al canjear un token de USUARIO para la pantalla
+    # de explotación: preguntar y ver de qué fuentes. El registro de la fuente y
+    # la ejecución de informes piden los suyos aparte, porque son otra cosa.
     ci_scopes: list[str] = Field(default_factory=lambda: ["chat:ask", "sources:read"])
+
+    # Cuánto se le da al REGISTRO de la fuente, que no es una llamada: recorre la
+    # superficie del CRM entero, pide una muestra de cada listado para medir su
+    # forma y lee el contrato de cada servicio para sacar el vocabulario. Son del
+    # orden de sesenta peticiones.
+    #
+    # Iba con el plazo de una llamada normal —treinta segundos, escrito a fuego
+    # en el código— y se agotaba a medias: la fuente anterior ya estaba borrada y
+    # la nueva sin crear, así que el CRM se quedaba apuntando a una fuente que ya
+    # no existía y todo informe contestaba «Fuente no encontrada».
+    ci_timeout_registro_s: float = Field(300.0, ge=30.0, le=1800.0)

@@ -108,6 +108,51 @@ def _filtros_de_la_url(
     return consulta
 
 
+# Qué objeto de negocio publica cada recurso de la API: `opportunities` →
+# `oportunidad`. Se apunta al MONTAR, que es el único sitio donde los dos nombres
+# están juntos y declarados por quien los eligió.
+#
+# Hace falta porque hay dos vocabularios y los dos son correctos: la ruta está en
+# inglés —es contrato con quien integra— y el objeto en castellano, que es el
+# idioma del negocio y el de las políticas de acceso. Deducir uno del otro
+# acierta con `accounts`→`cuenta` y falla con `presupuestos`→`presupuesto` o con
+# cualquier plural irregular, y una deducción que falla a veces es peor que no
+# tenerla: el informe sale, con los datos de otra tabla.
+_OBJETO_DEL_RECURSO: dict[str, str] = {}
+
+
+def objeto_del_recurso(recurso: str) -> str:
+    """El objeto de negocio de un recurso de la API, o vacío si no se sabe."""
+    return _OBJETO_DEL_RECURSO.get(recurso.strip("/"), "")
+
+
+def recursos_por_objeto() -> dict[str, str]:
+    """El camino inverso: de qué recurso se leen los registros de cada objeto."""
+    salida: dict[str, str] = {}
+    for recurso, objeto in _OBJETO_DEL_RECURSO.items():
+        salida.setdefault(objeto, recurso)
+    return salida
+
+
+def declarar_recurso(router: Any, objeto: str) -> None:
+    """Declara de qué objeto es un recurso cuyo listado está escrito a mano.
+
+    `montar_listado` y `montar_ficha` lo apuntan solos, pero hay recursos con su
+    listado escrito entero —cuentas, productos, proveedores— y esos hay que
+    decirlo. Se declara al lado del router, que es donde está el nombre de la
+    ruta, y hay un gate que falla si un recurso publica un listado y no lo
+    declara: sin él, un informe sobre ese objeto no encuentra su tabla y lo que
+    se ve es un informe vacío, no un error.
+    """
+    _apuntar_recurso(router, objeto)
+
+
+def _apuntar_recurso(router: Any, objeto: str) -> None:
+    prefijo = str(getattr(router, "prefix", "") or "").strip("/")
+    if prefijo and objeto:
+        _OBJETO_DEL_RECURSO.setdefault(prefijo, objeto)
+
+
 def montar_listado(
     router: Any,
     *,
@@ -147,6 +192,8 @@ def montar_listado(
     cincuenta y nueve llamadas solo garantiza que alguna se quede sin él.
     """
     from sqlalchemy import select
+
+    _apuntar_recurso(router, objeto)
 
     # El modelo tiene que tener la columna por la que se le va a ordenar, y se
     # comprueba AL MONTAR, no en la primera petición.
@@ -378,6 +425,12 @@ def montar_ficha(
     """
     from pydantic import create_model
     from sqlalchemy import inspect as sa_inspect
+
+    # También aquí, y no solo en `montar_listado`: hay recursos cuyo listado está
+    # escrito a mano y solo pasan por la ficha —oportunidades y leads, entre
+    # otros—. Apuntándolo solo en el listado, esos dos se quedaban fuera del
+    # registro y sus informes no encontraban su tabla.
+    _apuntar_recurso(router, objeto)
 
     from crmcore.errors import NoEncontrado
 

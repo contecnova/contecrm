@@ -164,6 +164,9 @@ export default {
     verTodos: "Ver todos",
   },
   cuadros: {
+    informeNoExiste: "El informe «{{clave}}» ya no existe.",
+    truncado: "Cortado por el tope de filas: no es el total.",
+    camposRetirados: "No ves estos campos: {{campos}}.",
     titulo: "Cuadros de mando",
     elegir: "Elegir cuadro",
     ninguno: "Todavía no hay cuadros de mando",

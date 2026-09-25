@@ -87,6 +87,15 @@ def _permiso_de(ruta: Any) -> str | None:
     return None
 
 
+def _objeto_de(camino: str) -> str:
+    """El objeto de negocio del recurso que lleva esta ruta, si se sabe."""
+    from crmcore.http.listados import objeto_del_recurso
+
+    partes = [p for p in camino.split("/") if p]
+    # `/api/v1/<recurso>/...`: el recurso es el tercer segmento.
+    return objeto_del_recurso(partes[2]) if len(partes) >= 3 else ""
+
+
 def _devuelve_lista(ruta: Any) -> bool:
     """¿Esta operación devuelve **muchos** registros o uno solo?
 
@@ -220,6 +229,20 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
                         "solo_plataforma": _es_de_plataforma(ruta),
                         "devuelve_lista": _devuelve_lista(ruta),
                         "exige_datos": _exige_datos(ruta),
+                        # De qué objeto de negocio es este recurso.
+                        #
+                        # Va aquí porque el registro que lo sabe se llena al
+                        # montar los routers, y eso pasa DENTRO de cada servicio:
+                        # otro proceso que lo pregunte se encuentra el registro
+                        # vacío. La superficie es justo lo que cada servicio
+                        # publica de sí mismo, así que es donde tiene que salir.
+                        #
+                        # Sin esto, quien monta informes no sabe que los de
+                        # «oportunidad» se leen de `opportunities`, y no se puede
+                        # adivinar: la ruta está en inglés porque es contrato con
+                        # quien integra, y el objeto en castellano porque es el
+                        # idioma del negocio.
+                        "objeto": _objeto_de(camino),
                     }
                 )
         operaciones.sort(key=lambda o: (o["ruta"], o["metodo"]))

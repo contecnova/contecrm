@@ -72,6 +72,22 @@ class FuenteRegistrada(Base, TimestampMixin):
     huella: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     objetos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     campos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # De qué entidad de la fuente se leen los registros de cada objeto:
+    # `{"oportunidad": "opportunities"}`.
+    #
+    # Se GUARDA aquí y no se calcula al compilar un informe, porque el registro
+    # que lo sabe se llena al montar los routers de cada servicio y eso pasa
+    # dentro de ese proceso: `analytics` no monta los de `sales`, así que
+    # preguntándoselo a sí mismo se encontraba el registro vacío y caía a la
+    # vista SQL interna del CRM —`v_oportunidad_…`— que al otro lado no existe.
+    # Todo informe moría ahí.
+    #
+    # Se escribe al registrar la fuente, que es cuando se lee la superficie de
+    # todos los servicios y es exactamente el mismo momento en que se decide qué
+    # entidades hay. Dos caminos distintos se habrían desincronizado.
+    mapa_objetos: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     # pendiente | registrada | error
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     registrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -214,6 +230,9 @@ def registrar_fuente(
     fila.organizacion = organizacion
     fila.objetos = descripcion["objetos"]
     fila.campos = descripcion["campos"]
+    fila.mapa_objetos = {
+        str(e["objeto"]): str(e["name"]) for e in entidades if e.get("objeto") and e.get("name")
+    }
     try:
         externa = _publicar(
             modelo,
@@ -263,10 +282,18 @@ def registrar_fuente(
 # `tests/unit/test_contratos_vecinos.py`.
 RUTA_FUENTES = "/api/sources"
 
+# Y la de ejecutar un plan de informe. Mismo prefijo, por lo mismo.
+RUTA_PLAN = "/api/query/plan"
+
 # Lo que hace falta para poder dar de alta una fuente allí. `sources:write` no
 # existía: sus alcances delegados llegaban a `sources:read`, así que esta
 # operación era imposible desde aquí por mucho que la ruta fuera correcta.
 ALCANCES_REGISTRO = ["sources:read", "sources:write"]
+
+# Y lo que hace falta para EJECUTAR un informe: mandar su plan y que el otro lado
+# lo resuelva. Es un alcance propio allí, distinto de leer fuentes y distinto de
+# ejecutar una métrica certificada, así que hay que pedirlo por su nombre.
+ALCANCES_EJECUCION = ["sources:read", "query:run"]
 
 
 def _publicar(
@@ -402,9 +429,11 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
     """
     from crmcore.red import cliente_seguro
 
+    from services.analytics.cliente import _config as _config_plazo
+
     cabeceras = {"Authorization": f"Bearer {clave_api}"}
     raiz = base_url.rstrip("/")
-    with cliente_seguro(timeout=30.0) as cli:
+    with cliente_seguro(timeout=_config_plazo().ci_timeout_registro_s) as cli:
         respuesta = cli.get(f"{raiz}/superficie", headers=cabeceras)
         if respuesta.status_code != 200:
             raise ErrorDependencia(
@@ -435,6 +464,9 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                 # «Listar cuentas» es lo que permite que una pregunta sobre
                 # «cuentas» encuentre la tabla `accounts`.
                 "description": str(op.get("resumen") or ""),
+                # De qué objeto del CRM es esta entidad. Es lo que permite que un
+                # informe sobre «oportunidad» sepa que se lee de `opportunities`.
+                "objeto": str(op.get("objeto") or ""),
                 "column_descriptions": _descripciones_de_campo(
                     contratos.get(str(op.get("servicio") or "")), ruta
                 ),
@@ -781,6 +813,55 @@ def anotar_uso(db: Session, tenant_id: UUID, pregunta_id: UUID) -> None:
 # ── El ejecutor de planes (CRM-05.01.04.05) ───────────────────────────────
 
 
+def _identidad_de_ejecucion(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    usuario_id: str,
+    roles: frozenset[str],
+    es_admin: bool,
+) -> tuple[str, str]:
+    """El token de quien pregunta y la fuente de este tenant.
+
+    **El token es de la PERSONA, no de la aplicación.** Un informe ejecutado con
+    la credencial de aplicación enseñaría a cualquiera lo que solo ve dirección,
+    y no habría forma de notarlo: las cifras saldrían, más altas.
+
+    Si falta la organización o el registro de la fuente se dice cuál de las dos y
+    qué hacer. Son condiciones del despliegue, no del informe, y decir «no se ha
+    podido ejecutar» a secas manda a revisar la definición del informe.
+    """
+    from services.analytics import cliente
+    from services.analytics.modelos import OrganizacionExterna
+
+    organizacion = db.execute(
+        select(OrganizacionExterna).where(OrganizacionExterna.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if organizacion is None:
+        raise NoDisponible(
+            "Este tenant no tiene organización asignada en contecintelligence, "
+            "así que no se puede consultar en su nombre. Se asigna al "
+            "provisionarlo; en un tenant antiguo, a mano.",
+            error_code="analytics.sin_organizacion",
+        )
+    fila = db.execute(
+        select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if fila is None or not fila.externa_id:
+        raise NoDisponible(
+            "El CRM todavía no está registrado como fuente en contecintelligence. "
+            "Se publica desde Explotación → «Publicar la descripción del CRM».",
+            error_code="analytics.sin_fuente_registrada",
+        )
+    emitido = cliente.canjear_token(
+        organizacion=organizacion.organizacion,
+        sujeto=usuario_id or "contecrm-informes",
+        rol=cliente.rol_para(roles, es_admin),
+        alcances=ALCANCES_EJECUCION,
+    )
+    return emitido.token, str(fila.externa_id)
+
+
 def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     """Manda el plan de un informe a contecintelligence y devuelve sus filas.
 
@@ -792,33 +873,64 @@ def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     que corresponde a lo que esa persona ve en el CRM: una explotación que ve más
     que la aplicación es una fuga con otro nombre.
     """
+    from crmcore.db.session import sesion
     from crmcore.red import cliente_seguro
 
     from services.analytics.cliente import _config
 
-    # El token se comprueba ANTES que la configuración: que falte es un error
-    # nuestro, no del despliegue, y decir «falta configurar contecintelligence»
-    # mandaría a arreglar lo que no está roto.
-    token = plan.get("_token")
-    if not token:
-        raise NoDisponible(
-            "El plan no trae token de usuario, y sin él la consulta se haría con "
-            "la credencial de aplicación, que puede verlo todo.",
-            error_code="analytics.plan_sin_token",
+    # La identidad se RESUELVE aquí, que es donde se sabe cómo se habla con
+    # contecintelligence. El motor de informes manda quién pregunta —usuario y
+    # roles— y no un token: si tuviera que traer el token, el motor tendría que
+    # saber del canje en dos pasos, de la organización del tenant y del ttl, y
+    # entonces habría dos sitios que saben hablar con el vecino.
+    #
+    # Antes esperaba un `_token` en el plan **que nadie ponía nunca**, así que
+    # todo informe y todo componente de cuadro de mando moría aquí con «el plan
+    # no trae token de usuario» — un mensaje que suena a fallo del otro lado.
+    with sesion(tenant_id) as db:
+        token, fuente_id = _identidad_de_ejecucion(
+            db,
+            tenant_id,
+            usuario_id=str(plan.get("_usuario_id") or ""),
+            roles=frozenset(plan.get("_roles") or ()),
+            es_admin=bool(plan.get("_es_admin")),
         )
     s = _config()
-    url = s.ci_base_url.rstrip("/") + "/api/v1/query/plan"
+    # `/api/query/plan`, no `/api/v1/query/plan`. Aquí ponía lo segundo y NO
+    # EXISTE: contecintelligence no publica nada bajo `/api/v1`. Es el cuarto
+    # desajuste de ruta con este vecino, y como los tres anteriores no lo cazaba
+    # ninguna prueba —un doble contesta lo que se le diga— sino levantarlo y
+    # mirar su contrato. Consecuencia: **todo informe y todo componente de cuadro
+    # de mando fallaba al ejecutarse**, con un «no ha podido resolver el plan»
+    # que parecía del otro lado.
+    url = s.ci_base_url.rstrip("/") + RUTA_PLAN
+    cuerpo = {k: v for k, v in plan.items() if not k.startswith("_")}
+    # La fuente registrada de este tenant: el plan dice de qué se lee, pero no
+    # contra qué fuente, y allí puede haber varias.
+    cuerpo["source_id"] = fuente_id
     with cliente_seguro(timeout=s.ci_timeout_s) as cli:
         respuesta = cli.post(
             url,
-            json={k: v for k, v in plan.items() if not k.startswith("_")},
+            json=cuerpo,
             headers={"Authorization": f"Bearer {token}"},
         )
     if respuesta.status_code >= 400:
+        # CON EL MOTIVO DEL OTRO LADO. Decía solo «no ha podido resolver el plan»
+        # y el código HTTP iba en un detalle que la pantalla no enseña: un 403
+        # por alcance, un 404 por fuente que no existe y un 400 por un campo que
+        # no está se veían exactamente igual, y los tres mandan a sitios
+        # distintos. Se persiguió el primero a ciegas más de lo necesario.
+        motivo = ""
+        try:
+            cuerpo_error = respuesta.json()
+            motivo = str(cuerpo_error.get("detail") or cuerpo_error.get("message") or "")
+        except Exception:  # noqa: BLE001 — si no es JSON, el texto vale igual
+            motivo = respuesta.text[:300]
         raise ErrorDependencia(
-            "contecintelligence no ha podido resolver el plan",
+            f"contecintelligence no ha podido resolver el plan ({respuesta.status_code})"
+            + (f": {motivo}" if motivo else ""),
             error_code="analytics.plan_rechazado",
-            detalle={"codigo_http": respuesta.status_code},
+            detalle={"codigo_http": respuesta.status_code, "motivo": motivo},
         )
     datos = respuesta.json()
     return {"filas": list(datos.get("rows") or datos.get("filas") or [])}

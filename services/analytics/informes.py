@@ -445,6 +445,34 @@ def _campos_usados(informe: Informe, filtros_extra: list[dict[str, Any]]) -> lis
     return list(dict.fromkeys(u for u in usados if u))
 
 
+def _entidad_de(db: Session, objeto: str, tenant_id: UUID) -> str:
+    """Cómo se llama este objeto allí donde se ejecuta el plan.
+
+    Sale del mapa que se guardó al registrar la fuente, que es el único momento
+    en que se sabe: el registro objeto→recurso se llena al montar los routers de
+    cada servicio, dentro de ese proceso, y quien compila el informe es otro.
+
+    Nunca se adivina un plural. Un nombre adivinado no da una tabla que no
+    existe: puede dar OTRA que sí, y entonces el informe sale con datos que no
+    son los suyos y nadie lo nota.
+    """
+    from crmcore import metamodelo
+
+    from services.analytics.fuente import FuenteRegistrada
+
+    fila = db.execute(
+        select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    entidad = str((getattr(fila, "mapa_objetos", None) or {}).get(objeto) or "")
+    if entidad:
+        return entidad
+    # Sin fuente registrada, el plan se queda con la vista tipada del propio CRM.
+    # Es lo correcto para un despliegue que explota contra su propio almacén, y
+    # quien ejecute dirá si la tiene: callarlo dejaría el informe vacío sin
+    # motivo, que es peor que un error con nombre.
+    return metamodelo.nombre_de_vista(objeto, tenant_id)
+
+
 def compilar(
     db: Session,
     tenant_id: UUID,
@@ -479,10 +507,22 @@ def compilar(
     informes de la empresa; quitarlo en silencio hace que dos personas vean
     cifras distintas del mismo informe y ninguna sepa por qué.
     """
-    from crmcore import metamodelo
 
     filtros_extra = list(filtros_extra or [])
-    vista = metamodelo.nombre_de_vista(informe.objeto, tenant_id)
+    # De dónde se leen los registros de este objeto, con el nombre que tienen
+    # DONDE SE VAN A LEER.
+    #
+    # Aquí iba `nombre_de_vista(...)`, que es una vista SQL del propio contecrm:
+    # `v_oportunidad_01a0cd88…`. Quien ejecuta el plan es contecintelligence y no
+    # tiene esa vista ni puede tenerla —lee el CRM por su API, no por su base—,
+    # así que el plan nombraba algo que no existe al otro lado y TODO informe
+    # moría con «Table with name v_oportunidad_… does not exist».
+    #
+    # La entidad allí se llama como el recurso de la API (`opportunities`), y ese
+    # nombre no se adivina del objeto: son dos vocabularios, el de la ruta en
+    # inglés —contrato con quien integra— y el del negocio en castellano. Se
+    # apunta al montar el recurso, que es donde los dos están declarados juntos.
+    vista = _entidad_de(db, informe.objeto, tenant_id)
 
     retirados: list[str] = []
     permitidos: set[str] = set()
@@ -627,6 +667,36 @@ def _calculado(calculado: dict[str, Any], permitidos: set[str]) -> dict[str, Any
 # ── Ejecutar (CRM-05.01.01.09) ────────────────────────────────────────────
 
 
+def _nombres_de_columna(plan: dict[str, Any]) -> list[str]:
+    """Los nombres de las columnas del resultado, en su orden.
+
+    Es el mismo orden en que las compone `compilar`: primero las agrupaciones,
+    después las métricas y, si no hay agrupación, las columnas sueltas. Si los
+    dos se separaran, las cabeceras dirían una cosa y los datos serían otra, que
+    es peor que no tener cabeceras.
+    """
+    nombres: list[str] = []
+    for agrupacion in plan.get("agrupaciones") or []:
+        if isinstance(agrupacion, str):
+            nombres.append(agrupacion)
+            continue
+        campo = str((agrupacion or {}).get("campo") or "")
+        periodo = str((agrupacion or {}).get("periodo") or "")
+        nombres.append(f"{campo}_{periodo}" if periodo else campo)
+    for metrica in plan.get("metricas") or []:
+        agregado = str((metrica or {}).get("agregado") or "suma")
+        campo = str((metrica or {}).get("campo") or "")
+        nombres.append(
+            str((metrica or {}).get("como") or (f"{agregado}_{campo}" if campo else agregado))
+        )
+    if not nombres:
+        for columna in plan.get("columnas") or []:
+            nombres.append(
+                columna if isinstance(columna, str) else str((columna or {}).get("campo") or "")
+            )
+    return nombres
+
+
 def ejecutar(
     uow: UnidadDeTrabajo,
     informe_id: UUID,
@@ -662,6 +732,18 @@ def ejecutar(
         usuario_id=usuario_id,
         filtros_extra=filtros,
     )
+
+    # QUIÉN pregunta va en el plan, con el guion delante para que no viaje al
+    # otro lado como parte de la consulta. Es un DATO, no una credencial: el
+    # motor de informes no tiene por qué saber de tokens, y quien habla con el
+    # sistema de explotación ya sabe cómo autenticarse ante él.
+    #
+    # Lo que no puede pasar es que no vaya. Sin esto, la explotación se haría con
+    # la credencial de aplicación, que puede verlo todo: las cifras saldrían —más
+    # altas— y nadie lo notaría.
+    plan["_usuario_id"] = str(usuario_id) if usuario_id else ""
+    plan["_roles"] = sorted(roles)
+    plan["_es_admin"] = bool(es_admin)
 
     empezado = _ahora()
     if _EJECUTOR is None:
@@ -722,6 +804,16 @@ def ejecutar(
     return {
         "informe": informe.clave,
         "nombre": informe.nombre,
+        # CÓMO SE LLAMA CADA COLUMNA, en el orden en que vienen las filas.
+        #
+        # Las filas son listas, no diccionarios —pesan la mitad y un informe de
+        # cincuenta mil filas se nota—, así que sin esto no hay forma de saber
+        # qué es cada valor. La pantalla no podía pintar ni un eje ni una
+        # cabecera: enseñaba el título del componente y un hueco.
+        #
+        # Sale del plan y no de la definición del informe: es el plan el que
+        # decide el orden y el que puede haber retirado un campo por permisos.
+        "columnas": _nombres_de_columna(plan),
         "filas": filas,
         "cuantas": len(filas),
         # Se dice si se cortó, en vez de devolver las primeras y callar: un

@@ -302,11 +302,23 @@ def test_el_uso_se_cuenta(uow: UnidadDeTrabajo) -> None:
 # ── El ejecutor (CRM-05.01.04.05) ─────────────────────────────────────────
 
 
-def test_un_plan_sin_token_no_sale(uow: UnidadDeTrabajo) -> None:
-    """Sin token de usuario, la consulta se haría con la credencial de
-    aplicación, que puede verlo todo: eso es una fuga con otro nombre."""
+@pytest.mark.db
+def test_un_plan_no_sale_sin_saber_en_nombre_de_quien(uow: UnidadDeTrabajo) -> None:
+    """La consulta se hace con el token de la PERSONA, nunca con el de la aplicación.
+
+    Con el de la aplicación las cifras saldrían igual —más altas— y nadie lo
+    notaría, que es lo que hace de esto una fuga y no un fallo.
+
+    Lo que se comprueba aquí es que sin poder resolver esa identidad **no se
+    llama al vecino**, y que se dice cuál de las dos piezas del despliegue falta:
+    la organización del tenant o el registro de la fuente. Decir «no se ha podido
+    ejecutar» a secas manda a revisar la definición del informe, que está bien.
+    """
     from crmcore.errors import NoDisponible
 
     with pytest.raises(NoDisponible) as e:
-        fte.ejecutar_plan(plan={"vista": "v_x", "columnas": []}, tenant_id=uow.tenant_id)
-    assert e.value.error_code == "analytics.plan_sin_token"
+        fte.ejecutar_plan(
+            plan={"vista": "v_x", "columnas": [], "_usuario_id": "u1"},
+            tenant_id=uow.tenant_id,
+        )
+    assert e.value.error_code in ("analytics.sin_organizacion", "analytics.sin_fuente_registrada")
