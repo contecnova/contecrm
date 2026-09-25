@@ -474,6 +474,13 @@ export default {
     siSeGananTodas: "Libre si se ganan todas",
   },
   ia: {
+    cuenta: "Cuenta",
+    eligeCuenta: "Elige una cuenta…",
+    cargando: "Cargando cuentas…",
+    sinMedir: "Esta cuenta no tiene salud medida",
+    queHacer: "Qué haría falta:",
+    pocoFiable: "medida poco fiable",
+    nadaSuma: "Nada empuja hacia arriba.",
     titulo: "Inteligencia artificial",
     intro: "Lo que propone, siempre con el porqué.",
     contribuciones: "Contribuciones del modelo",

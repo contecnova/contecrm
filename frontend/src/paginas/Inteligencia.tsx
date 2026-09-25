@@ -1,130 +1,184 @@
 /**
- * Lo que propone la IA, siempre con el porqué (CRM-07.04.03.23).
+ * Lo que la IA sabe de una cuenta, y por qué (CRM-07.04.03.23).
  *
- * Esta pantalla enseña puntuaciones, resúmenes y sugerencias con una regla que no
- * se salta nunca: **el número va con sus factores**. Una puntuación sin
- * explicación se mira una vez, no coincide con lo que el comercial sabe de su
- * cliente, y a partir de ahí no se mira más — y hace bien, porque él estuvo en la
- * reunión y el modelo no.
+ * **Antes esta pantalla pedía un JSON a mano.** Un área de texto con
+ * `{"presupuestos_abiertos":0.42,…}` dentro y un botón para explicarlo. Eso no
+ * es una pantalla: es una calculadora en la que el usuario tiene que ser el
+ * modelo. Quien la abría no sabía qué escribir ni qué iba a sacar, y con razón.
  *
- * Y dos cosas que se pintan a propósito y que casi ningún producto enseña:
+ * Ahora se elige una CUENTA de verdad y se enseña su salud con los factores que
+ * la suben y los que la bajan. La regla que no se salta: **el número va con sus
+ * factores**. Una puntuación sin explicación se mira una vez, no coincide con lo
+ * que el comercial sabe de su cliente, y a partir de ahí no se mira más — y hace
+ * bien, porque él estuvo en la reunión y el modelo no.
  *
- * **Los factores que restan.** Un panel que solo cuenta lo que suma hace pensar
- * que la puntuación es baja por falta de datos, cuando puede ser por algo
- * concreto que se puede arreglar.
- *
- * **Y «no se puede medir» en vez de un cero.** Sin datos suficientes no se pinta
- * un número: se dice que no se sabe, que es distinto de que vaya mal.
+ * Y cuando no hay medida **se dice, con el motivo y con qué hacer**. Es lo que
+ * contesta el servidor y es la respuesta correcta: «no se ha medido» no es «va
+ * bien», y un cero ahí sería mentira. Hoy es lo que sale casi siempre, porque el
+ * cálculo existe y las señales con las que se alimenta no las produce nada
+ * todavía: eso está dicho en la propia pantalla en vez de escondido.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar } from "@/lib/api";
+import { Error as Fallo } from "@/componentes/Estados";
+import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { ErrorApi, llamar } from "@/lib/api";
 
-interface Factor {
-  factor: string;
-  empuja: number;
+interface Cuenta {
+  id: string;
+  nombre: string;
 }
 
-interface Factores {
-  suman: Factor[];
-  restan: Factor[];
-  medible: boolean;
-  porque: string;
+interface Factor {
+  senal?: string;
+  factor?: string;
+  aporta?: number;
+  empuja?: number;
+}
+
+interface Salud {
+  hay: boolean;
+  porque?: string;
+  que_hacer?: string;
+  puntuacion?: number;
+  nivel?: string;
+  fiable?: boolean;
+  detalle?: Factor[];
+  medida_at?: string | null;
+}
+
+function nombreDe(f: Factor): string {
+  return String(f.senal ?? f.factor ?? "");
+}
+
+function pesoDe(f: Factor): number {
+  return Number(f.aporta ?? f.empuja ?? 0);
 }
 
 export function Inteligencia() {
   const { t } = useTranslation();
-  const [contribuciones, setContribuciones] = useState(
-    '{"presupuestos_abiertos":0.42,"dias_sin_contestar":-0.31,"visitas_web":0.12}',
-  );
-  const [datos, setDatos] = useState<Factores | null>(null);
+  const [cuentas, setCuentas] = useState<Cuenta[] | null>(null);
+  const [elegida, setElegida] = useState("");
+  const [salud, setSalud] = useState<Salud | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
-  const explicar = async () => {
-    setFallo(null);
-    try {
-      const r = await llamar<Factores>("/api/v1/modelos/factores", {
-        metodo: "POST",
-        cuerpo: { contribuciones: JSON.parse(contribuciones) },
-      });
-      setDatos(r.datos);
-    } catch (e) {
-      setFallo(e);
+  useEffect(() => {
+    llamar<Cuenta[]>("/api/v1/accounts?limite=200")
+      .then((r) => setCuentas(r.datos))
+      .catch((e: unknown) => setFallo(e));
+  }, []);
+
+  useEffect(() => {
+    if (!elegida) {
+      setSalud(null);
+      return;
     }
-  };
+    setFallo(null);
+    llamar<Salud>(`/api/v1/calidad-dato/salud/${elegida}`)
+      .then((r) => setSalud(r.datos))
+      .catch((e: unknown) => {
+        setSalud(null);
+        if (e instanceof ErrorApi) setFallo(e);
+      });
+  }, [elegida]);
+
+  const suman = (salud?.detalle ?? []).filter((f) => pesoDe(f) > 0);
+  const restan = (salud?.detalle ?? []).filter((f) => pesoDe(f) < 0);
 
   return (
     <>
-      <CabeceraPagina
-        titulo={t("ia.titulo")}
-        entradilla={t("ia.intro")}
-        icono="neurology"
-      />
+      <CabeceraPagina titulo={t("ia.titulo")} entradilla={t("ia.intro")} icono="neurology" />
 
-      <label className="mt-4 block text-2xs text-ink-muted" htmlFor="ia-contrib">
-        {t("ia.contribuciones")}
-      </label>
-      <textarea
-        id="ia-contrib"
-        rows={3}
-        className="mt-1 w-full rounded-lg border border-ink-dim/60 bg-paper px-3 py-2 font-mono text-2xs text-ink"
-        value={contribuciones}
-        onChange={(e) => setContribuciones(e.target.value)}
-      />
-      <button
-        type="button"
-        onClick={explicar}
-        className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-2xs text-paper"
-      >
-        {t("ia.explicar")}
-      </button>
+      <div className="mt-4 max-w-md">
+        <label className="label-base" htmlFor="ia-cuenta">
+          {t("ia.cuenta")}
+        </label>
+        <select
+          id="ia-cuenta"
+          className="input-base"
+          value={elegida}
+          onChange={(e) => setElegida(e.target.value)}
+        >
+          <option value="">{cuentas === null ? t("ia.cargando") : t("ia.eligeCuenta")}</option>
+          {(cuentas ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {fallo ? <Fallo error={fallo} /> : null}
 
-      {datos && !datos.medible ? (
-        /* Sin contribuciones no se pinta un número: una puntuación que no se
-           puede explicar no se usa. */
-        <Vacio titulo={t("ia.noMedible")} detalle={datos.porque} />
+      {salud && !salud.hay ? (
+        /* No se pinta un cero: «no medido» y «va mal» son cosas distintas, y
+           confundirlas hace que alguien llame a un cliente que está bien. El
+           servidor dice el motivo y qué haría falta; se enseñan los dos. */
+        <section className="mt-6 max-w-2xl rounded-xl border border-warning/40 bg-warning/5 p-4">
+          <h2 className="flex items-center gap-1.5 text-sm font-medium text-warning">
+            <Icono nombre="info" tamano="sm" />
+            {t("ia.sinMedir")}
+          </h2>
+          {salud.porque ? <p className="mt-2 text-2xs text-ink-muted">{salud.porque}</p> : null}
+          {salud.que_hacer ? (
+            <p className="mt-2 text-2xs text-ink">
+              <span className="font-medium">{t("ia.queHacer")}</span> {salud.que_hacer}
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
-      {datos && datos.medible ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2" role="status">
+      {salud?.hay ? (
+        <div className="mt-6 flex max-w-3xl flex-col gap-4">
           <section className="rounded-xl border border-ink-dim/60 bg-paper p-4">
-            <h2 className="text-xs font-medium text-success">{t("ia.suman")}</h2>
-            <ul className="mt-2 space-y-1">
-              {datos.suman.map((f) => (
-                <li key={f.factor} className="flex justify-between text-2xs">
-                  <span className="text-ink">{f.factor}</span>
-                  <span className="text-success">+{f.empuja}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-3xl font-bold tracking-tight text-ink">
+              {salud.puntuacion ?? "—"}
+            </p>
+            <p className="mt-1 text-2xs text-ink-muted">
+              {salud.nivel}
+              {salud.fiable === false ? ` · ${t("ia.pocoFiable")}` : ""}
+            </p>
           </section>
-          {/* Los que restan se enseñan igual de grandes: sin ellos, la
-              puntuación baja parece falta de datos. */}
-          <section className="rounded-xl border border-ink-dim/60 bg-paper p-4">
-            <h2 className="text-xs font-medium text-warning">{t("ia.restan")}</h2>
-            {datos.restan.length === 0 ? (
-              <p className="mt-2 text-2xs text-ink-faint">{t("ia.nadaResta")}</p>
-            ) : (
-              <ul className="mt-2 space-y-1">
-                {datos.restan.map((f) => (
-                  <li key={f.factor} className="flex justify-between text-2xs">
-                    <span className="text-ink">{f.factor}</span>
-                    <span className="text-warning">{f.empuja}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <section className="rounded-xl border border-ink-dim/60 bg-paper p-4">
+              <h2 className="text-xs font-medium text-success">{t("ia.suman")}</h2>
+              {suman.length === 0 ? (
+                <p className="mt-2 text-2xs text-ink-faint">{t("ia.nadaSuma")}</p>
+              ) : (
+                <ul className="mt-2 space-y-1">
+                  {suman.map((f) => (
+                    <li key={nombreDe(f)} className="flex justify-between text-2xs">
+                      <span className="text-ink">{nombreDe(f)}</span>
+                      <span className="text-success">+{pesoDe(f)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+            {/* Los que restan, igual de grandes: sin ellos, una puntuación baja
+                parece falta de datos cuando puede ser algo que se arregla. */}
+            <section className="rounded-xl border border-ink-dim/60 bg-paper p-4">
+              <h2 className="text-xs font-medium text-warning">{t("ia.restan")}</h2>
+              {restan.length === 0 ? (
+                <p className="mt-2 text-2xs text-ink-faint">{t("ia.nadaResta")}</p>
+              ) : (
+                <ul className="mt-2 space-y-1">
+                  {restan.map((f) => (
+                    <li key={nombreDe(f)} className="flex justify-between text-2xs">
+                      <span className="text-ink">{nombreDe(f)}</span>
+                      <span className="text-warning">{pesoDe(f)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </div>
       ) : null}
-
-      {datos?.porque ? <p className="mt-4 text-3xs text-ink-faint">{datos.porque}</p> : null}
     </>
   );
 }
