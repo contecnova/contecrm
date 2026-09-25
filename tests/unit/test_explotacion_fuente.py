@@ -92,6 +92,10 @@ def test_no_se_reenvia_lo_que_no_ha_cambiado(
     haya tocado un campo."""
     enviados: list[dict[str, Any]] = []
     monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append({"org": org}))
+    # Las entidades salen de preguntarle a la API del propio CRM, que aquí no
+    # está levantada. Se sustituye la lectura, no el envío: es lo que permite
+    # además comprobar que la huella las mira.
+    monkeypatch.setattr(fte, "_entidades_publicables", lambda _t: [{"name": "cuentas"}])
     primera = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     segunda = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     assert primera["registrada"] is True
@@ -108,6 +112,7 @@ def test_un_campo_nuevo_obliga_a_registrar_otra_vez(
 
     enviados: list[Any] = []
     monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append(org))
+    monkeypatch.setattr(fte, "_entidades_publicables", lambda _t: [{"name": "cuentas"}])
     fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     metamodelo.aplicar_esquema(
         db,
@@ -131,11 +136,57 @@ def test_un_fallo_al_registrar_queda_escrito(
         raise RuntimeError("credencial rechazada")
 
     monkeypatch.setattr(fte, "_publicar", revienta)
+    monkeypatch.setattr(fte, "_entidades_publicables", lambda _t: [{"name": "cuentas"}])
     salida = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
     assert salida["registrada"] is False
     fila = db.execute(select(fte.FuenteRegistrada)).scalars().one()
     assert fila.estado == "error"
     assert "credencial rechazada" in fila.error
+
+
+def test_una_entidad_nueva_obliga_a_registrar_otra_vez(
+    uow: UnidadDeTrabajo, organizacion: Any, monkeypatch: Any
+) -> None:
+    """La huella tiene que mirar lo que SE REGISTRA, no solo el modelo semántico.
+
+    Miraba solo los campos personalizados de cinco objetos, y lo que se registra
+    son los listados del CRM con su ruta y su vocabulario. Consecuencia: publicar
+    un módulo nuevo —o cambiar el resumen de un listado, que es lo que permite
+    encontrarlo al preguntar— no movía la huella, y el registro se quedaba viejo
+    diciendo «sin cambios». En un tenant sin campos propios, que es el caso
+    normal, la huella no cambiaba nunca.
+    """
+    enviados: list[Any] = []
+    monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append(org))
+
+    entidades = [{"name": "cuentas", "description": "Listar cuentas"}]
+    monkeypatch.setattr(fte, "_entidades_publicables", lambda _t: list(entidades))
+    fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
+
+    entidades.append({"name": "visitas", "description": "Listar visitas"})
+    segunda = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
+    assert segunda["registrada"] is True, "una entidad nueva no movió la huella"
+    assert len(enviados) == 2
+
+
+def test_cambiar_solo_el_vocabulario_ya_obliga_a_registrar(
+    uow: UnidadDeTrabajo, organizacion: Any, monkeypatch: Any
+) -> None:
+    """Es lo que decide si una pregunta encuentra la tabla o contesta otra cosa."""
+    enviados: list[Any] = []
+    monkeypatch.setattr(fte, "_publicar", lambda modelo, org, **_: enviados.append(org))
+
+    estado = {"desc": "Listar cuentas"}
+    monkeypatch.setattr(
+        fte,
+        "_entidades_publicables",
+        lambda _t: [{"name": "accounts", **{"description": estado["desc"]}}],
+    )
+    fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
+    estado["desc"] = "Listar cuentas de cliente y proveedores"
+    segunda = fte.registrar_fuente(uow, uow.tenant_id, organizacion="acme")
+    assert segunda["registrada"] is True
+    assert len(enviados) == 2
 
 
 # ── Degradación explicada (CRM-05.01.04.08) ───────────────────────────────

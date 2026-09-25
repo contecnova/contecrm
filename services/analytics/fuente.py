@@ -153,6 +153,18 @@ def describir(db: Session, tenant_id: UUID) -> dict[str, Any]:
     return {"modelo": descrito, "objetos": len(objetos), "campos": campos}
 
 
+def _entidades_publicables(tenant_id: UUID) -> list[dict[str, Any]]:
+    """Lo que de verdad se va a registrar: los listados del CRM con su vocabulario.
+
+    Existe como función propia para que sea UN solo sitio: la huella y el alta
+    tienen que mirar exactamente lo mismo, y cuando eran dos caminos distintos la
+    huella no veía las entidades y el registro se quedaba viejo sin decirlo.
+    """
+    from services.analytics.cliente import _config as _config_ci
+
+    return _entidades_de(_config_ci().ci_url_del_crm, _clave_de_lectura(tenant_id))
+
+
 def _huella(modelo: dict[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(modelo, sort_keys=True, default=str).encode("utf-8")
@@ -171,7 +183,17 @@ def registrar_fuente(
     """
     descripcion = describir(uow.db, tenant_id)
     modelo = {**descripcion["modelo"], "organizacion": organizacion}
-    huella = _huella(modelo)
+
+    # Las entidades se calculan AQUÍ y entran en la huella.
+    #
+    # Antes la huella era solo del modelo semántico —los campos personalizados de
+    # cinco objetos— y lo que se registra son las ENTIDADES: cuarenta y siete
+    # listados con su ruta, su paginación y su vocabulario. O sea que publicar un
+    # módulo nuevo, o cambiar el resumen de un listado, no movía la huella y el
+    # registro se quedaba viejo diciendo «sin cambios». En un tenant sin campos
+    # propios la huella no cambiaba NUNCA.
+    entidades = _entidades_publicables(tenant_id)
+    huella = _huella({"modelo": modelo, "entidades": entidades})
 
     fila = uow.db.execute(
         select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
@@ -193,7 +215,13 @@ def registrar_fuente(
     fila.objetos = descripcion["objetos"]
     fila.campos = descripcion["campos"]
     try:
-        externa = _publicar(modelo, organizacion, tenant_id=tenant_id, externa_id=fila.externa_id)
+        externa = _publicar(
+            modelo,
+            organizacion,
+            tenant_id=tenant_id,
+            externa_id=fila.externa_id,
+            entidades=entidades,
+        )
     except Exception as exc:  # noqa: BLE001 — el otro sistema es externo
         fila.estado = "error"
         fila.error = str(exc)[:1000]
@@ -242,7 +270,12 @@ ALCANCES_REGISTRO = ["sources:read", "sources:write"]
 
 
 def _publicar(
-    modelo: dict[str, Any], organizacion: str, *, tenant_id: UUID, externa_id: str = ""
+    modelo: dict[str, Any],
+    organizacion: str,
+    *,
+    tenant_id: UUID,
+    externa_id: str = "",
+    entidades: list[dict[str, Any]] | None = None,
 ) -> str:
     """Da de alta el CRM como fuente consultable en contecintelligence.
 
@@ -275,7 +308,8 @@ def _publicar(
         alcances=ALCANCES_REGISTRO,
     )
 
-    entidades = _entidades_de(s.ci_url_del_crm, clave_api)
+    if entidades is None:
+        entidades = _entidades_de(s.ci_url_del_crm, clave_api)
     if not entidades:
         raise ErrorValidacion(
             "Este tenant no tiene ningún objeto consultable que registrar",
@@ -354,6 +388,17 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
     **Y la forma de cada listado se mide.** Unos devuelven una página con cursor
     y otros una lista pelada; suponer que todos paginan igual hace que el alta
     entera falle por el primero que no.
+
+    **Y va el VOCABULARIO, no solo el nombre de la ruta.** Sin él, las tablas se
+    llamaban `accounts`, `contacts`, `proveedores`… —el nombre del recurso en la
+    URL, mitad en inglés y mitad en castellano— con cero descripciones en 47
+    tablas y 538 columnas. Preguntando «¿cuántas cuentas hay?» contestaba **7
+    contando `proveedores`**, con su tarjeta y su SQL, cuando hay 96 cuentas.
+    Una respuesta segura y falsa es peor que un error: nadie va a comprobarla.
+
+    El vocabulario no se escribe a mano: el resumen de cada listado y la
+    descripción de cada campo ya están en el contrato que publica cada servicio,
+    puestos por quien escribió la ruta. Se leen de ahí.
     """
     from crmcore.red import cliente_seguro
 
@@ -368,6 +413,7 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                 detalle={"codigo_http": respuesta.status_code},
             )
         operaciones = respuesta.json().get("operaciones") or []
+        contratos = _contratos_por_servicio(cli, raiz, cabeceras, operaciones)
 
         entidades: list[dict[str, Any]] = []
         for op in operaciones:
@@ -386,6 +432,12 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                 "name": ruta.rsplit("/", 1)[-1].replace("-", "_"),
                 "path": ruta[len("/api/v1") :],
                 "primary_key": "id",
+                # «Listar cuentas» es lo que permite que una pregunta sobre
+                # «cuentas» encuentre la tabla `accounts`.
+                "description": str(op.get("resumen") or ""),
+                "column_descriptions": _descripciones_de_campo(
+                    contratos.get(str(op.get("servicio") or "")), ruta
+                ),
             }
             if isinstance(cuerpo, dict) and "items" in cuerpo:
                 entidad["record_path"] = "items"
@@ -400,6 +452,94 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                 continue
             entidades.append(entidad)
     return sorted(entidades, key=lambda e: e["name"])
+
+
+def _contratos_por_servicio(
+    cli: Any, raiz: str, cabeceras: dict[str, str], operaciones: list[dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    """El contrato publicado de cada servicio que aporta algún listado.
+
+    Uno por servicio y no uno por ruta: son trece contratos contra cientos de
+    rutas, y lo que se busca —la descripción de cada campo— está en el mismo
+    documento para todas las suyas.
+
+    Un servicio que no conteste su contrato no rompe el registro: se queda sin
+    descripciones de campo, que es peor que tenerlas y mucho mejor que no poder
+    registrar la fuente.
+    """
+    servicios = sorted(
+        {
+            str(op.get("servicio") or "")
+            for op in operaciones
+            if op.get("metodo") == "GET" and op.get("devuelve_lista")
+        }
+        - {""}
+    )
+    contratos: dict[str, dict[str, Any]] = {}
+    for servicio in servicios:
+        try:
+            respuesta = cli.get(f"{raiz}/contrato/{servicio}", headers=cabeceras)
+            if respuesta.status_code == 200:
+                contratos[servicio] = respuesta.json()
+        except Exception as exc:  # noqa: BLE001 — sin contrato se sigue, con menos
+            logger.warning("analytics.contrato_no_leido", servicio=servicio, error=str(exc)[:200])
+    return contratos
+
+
+def _descripciones_de_campo(contrato: dict[str, Any] | None, ruta: str) -> dict[str, str]:
+    """Qué es cada campo de ese listado, según quien escribió la ruta.
+
+    Sale del esquema de la respuesta del propio contrato: `description` si la
+    tiene y `title` si no. Nada inventado aquí — una descripción escrita en este
+    módulo sería la opinión de quien monta la integración sobre un campo que no
+    es suyo, y envejecería sin que nadie lo notara.
+    """
+    if not contrato:
+        return {}
+    operacion = ((contrato.get("paths") or {}).get(ruta) or {}).get("get") or {}
+    contenido = (((operacion.get("responses") or {}).get("200") or {}).get("content") or {}).get(
+        "application/json"
+    ) or {}
+    esquema = _resolver(contrato, contenido.get("schema") or {})
+    # Una página con cursor lleva los registros en `items`; una lista pelada, en
+    # `items` del propio array. Las dos acaban en el esquema del REGISTRO.
+    registro = esquema
+    for _ in range(4):
+        if "$ref" in registro:
+            registro = _resolver(contrato, registro)
+            continue
+        propiedades = registro.get("properties") or {}
+        if "items" in propiedades:
+            registro = _resolver(contrato, propiedades["items"])
+            continue
+        if registro.get("type") == "array" and registro.get("items"):
+            registro = _resolver(contrato, registro["items"])
+            continue
+        break
+    salida: dict[str, str] = {}
+    for nombre, definicion in (registro.get("properties") or {}).items():
+        definicion = _resolver(contrato, definicion)
+        texto = str(definicion.get("description") or definicion.get("title") or "").strip()
+        if texto:
+            # Una frase, no el párrafo entero: lo que se busca es el vocabulario
+            # —«valor estimado del negocio»— y un texto largo desplaza a los
+            # demás campos en el contexto de quien resuelve la pregunta.
+            salida[nombre] = texto.split("\n")[0][:200]
+    return salida
+
+
+def _resolver(contrato: dict[str, Any], nodo: dict[str, Any]) -> dict[str, Any]:
+    """Sigue un `$ref` dentro del propio contrato. Uno solo, sin recursión ciega."""
+    ref = nodo.get("$ref")
+    if not ref or not ref.startswith("#/components/schemas/"):
+        # `anyOf` es como FastAPI escribe un campo opcional: el esquema de verdad
+        # es la rama que no es `null`.
+        for rama in nodo.get("anyOf") or nodo.get("allOf") or []:
+            if isinstance(rama, dict) and rama.get("type") != "null":
+                return _resolver(contrato, rama)
+        return nodo
+    nombre = ref.rsplit("/", 1)[-1]
+    return dict(((contrato.get("components") or {}).get("schemas") or {}).get(nombre) or {})
 
 
 async def consumir_esquema_cambiado(mensaje: Any) -> None:

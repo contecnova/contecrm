@@ -3017,6 +3017,37 @@ documento de buscar en el corpus. Con solo el primero, la ficha de un documento
 funciona y el buscador contesta 403 — que es el fallo que peor se diagnostica,
 porque media pantalla va bien.
 
+### Lo que se le manda a contecintelligence: el vocabulario, no solo las rutas
+
+Al registrar el CRM como fuente se manda, por cada listado, **qué es** y **qué es
+cada campo**, en las palabras del negocio. No es documentación: es lo único que
+permite que una pregunta escrita como se habla encuentre la tabla que toca.
+
+Sin eso —que es como estuvo— las tablas se llamaban como el recurso en la URL:
+`accounts`, `contacts`, `proveedores`, `presupuestos`. Mitad en inglés y mitad en
+castellano, porque una API real se ha ido escribiendo por partes. Cuarenta y
+siete tablas y quinientas treinta y ocho columnas, **ninguna con descripción**.
+Preguntando «¿cuántas cuentas hay?» contestaba **7, contando `proveedores`**, con
+su tarjeta de indicador y su SQL debajo. La respuesta llegaba con la cara de ser
+correcta, así que nadie la iba a comprobar. Hay 64.
+
+El vocabulario no se escribe a mano en la integración: el resumen de cada listado
+y la descripción de cada campo ya están en el contrato que publica cada servicio,
+puestos por quien escribió la ruta. Se leen de ahí, así que un módulo nuevo llega
+con su vocabulario el día que se publica y nadie tiene que acordarse.
+
+Con eso, la misma pregunta contesta 64 con `SELECT count(*) FROM accounts`, que
+es **exactamente** lo que la API devuelve a esa persona. En la base hay 65: la
+que falta no la ve ese usuario, y la respuesta respeta sus permisos porque los
+datos se leen por la API del CRM y no por debajo.
+
+**Y la huella del registro mira lo que se registra.** Miraba solo el modelo
+semántico —los campos personalizados de cinco objetos— y lo que se publica son
+los listados con su ruta y su vocabulario. O sea que un módulo nuevo, o un
+resumen mejorado, no movían la huella: el registro se quedaba viejo diciendo «sin
+cambios», y en un tenant sin campos propios —el caso normal— la huella no
+cambiaba nunca.
+
 ### El árbol de carpetas del corpus
 
 El corpus de contecmind se organiza en **áreas** y, dentro de cada una, en un
