@@ -76,6 +76,9 @@ class Vecino:
     # El ajuste del `.env` de contecrm que tiene que apuntar aquí.
     ajuste_url: str
     ajuste_activo: str
+    # Una ruta suya a la que el NAVEGADOR llama directamente desde una pantalla
+    # del CRM, si la hay. Vacío = el CRM solo habla con él desde el servidor.
+    sonda_navegador: str = ""
     perfiles: tuple[str, ...] = ()
     entorno: dict[str, str] = field(default_factory=dict)
     # Su fichero de entorno, relativo al repositorio, cuando NO está junto al
@@ -124,6 +127,10 @@ VECINOS: tuple[Vecino, ...] = (
         sonda="/livez",
         ajuste_url="CI_BASE_URL",
         ajuste_activo="CI_ENABLED",
+        # La pantalla de explotación del CRM llama a `/api/ask` desde el
+        # navegador, con un token corto por usuario. O sea que el origen del
+        # front tiene que estar permitido ALLÍ, y eso no se ve desde el servidor.
+        sonda_navegador="/api/ask",
         # Su compose se engancha a la red de contecrm y necesita saber cuál es.
         entorno={"CONTECRM_NETWORK": ""},
     ),
@@ -447,6 +454,69 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
     return 1 if fallos else 0
 
 
+def _origenes_del_front() -> list[str]:
+    """Desde dónde llama el navegador a esta instalación."""
+    from crmcore.config import get_settings
+
+    crudos = get_settings().cors_origins or []
+    if isinstance(crudos, str):
+        crudos = [o.strip() for o in crudos.split(",")]
+    return [o for o in crudos if o]
+
+
+def _cors_permitido(vecino: Vecino, origen: str) -> bool | None:
+    """¿Deja ese vecino que el navegador le llame desde el front del CRM?
+
+    Se pregunta con un preflight de verdad contra el puerto PUBLICADO, no por la
+    red interna: lo que se comprueba es lo que hace el navegador, y por la red
+    interna el CORS no aparece por ninguna parte.
+
+    Existe porque no se veía. La aplicación anfitriona de contecrm tenía
+    registrado `localhost:5173` —el puerto estándar de Vite— y el front de esta
+    instalación escucha en el 15173. Un dígito. El navegador cortaba la petición
+    en el preflight y la pantalla decía «no se pudo responder», que manda a
+    buscar el fallo al modelo, a la fuente o a los permisos: a cualquier sitio
+    menos al que era.
+
+    Devuelve `None` si no se ha podido comprobar, que no es lo mismo que «no».
+    """
+    from crmcore.config import get_settings
+
+    url = str(getattr(get_settings(), vecino.ajuste_url.lower(), "") or "")
+    publica = _url_publicada(vecino) or url
+    if not publica or not vecino.sonda_navegador:
+        return None
+    try:
+        import httpx
+
+        respuesta = httpx.request(
+            "OPTIONS",
+            publica.rstrip("/") + vecino.sonda_navegador,
+            headers={
+                "Origin": origen,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+            timeout=10.0,
+        )
+    except Exception:  # noqa: BLE001 — no poder comprobarlo no es un fallo del CORS
+        return None
+    return respuesta.status_code < 400 and bool(
+        respuesta.headers.get("access-control-allow-origin")
+    )
+
+
+def _url_publicada(vecino: Vecino) -> str:
+    """Su dirección vista desde el EQUIPO, que es por donde llama el navegador."""
+    salida = _correr(["docker", "port", vecino.contenedor, str(vecino.puerto_interno)])
+    primera = (salida.stdout or "").strip().splitlines()
+    if not primera:
+        return ""
+    destino = primera[0].strip()
+    puerto = destino.rsplit(":", 1)[-1]
+    return f"http://127.0.0.1:{puerto}" if puerto.isdigit() else ""
+
+
 def estado(vecinos: tuple[Vecino, ...]) -> int:
     red = red_de_contecrm()
     if red is None:
@@ -472,6 +542,21 @@ def estado(vecinos: tuple[Vecino, ...]) -> int:
         else:
             malo(f"{vecino.nombre}: NO responde en {url}")
             peor = 1
+            continue
+
+        # Y, si alguna pantalla le llama desde el navegador, que el origen del
+        # front esté permitido allí. Responder bien al servidor y cortar al
+        # navegador se ve igual desde fuera: la pantalla no funciona.
+        for origen in _origenes_del_front():
+            permitido = _cors_permitido(vecino, origen)
+            if permitido is False:
+                malo(
+                    f"{vecino.nombre}: rechaza al navegador desde «{origen}». "
+                    "La pantalla que le llama desde el front no puede funcionar"
+                )
+                peor = 1
+            elif permitido:
+                ok(f"{vecino.nombre}: acepta al navegador desde «{origen}»")
     return peor
 
 
