@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,22 +29,41 @@ from typing import Any
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "tests" / "fixtures" / "contratos"
 
+
 # Qué vecino, dónde preguntarle y qué rutas le pedimos. Las rutas se declaran
 # aquí y NO se leen del cliente: si se leyeran del cliente, renombrar una ruta
 # mal en el cliente renombraría también lo que se comprueba, y el gate diría que
 # todo está bien.
+# La DIRECCIÓN del vecino depende de la instalación, igual que `DMS_BASE_URL` o
+# `CI_BASE_URL` en el `.env`: puede ser el de la pila local, uno en otra máquina
+# o uno recién levantado a mano para comprobar un cambio antes de desplegarlo.
+# Escrita a fuego obligaba a tocar este fichero para refrescar contra otro sitio,
+# que es exactamente la clase de edición que nadie recuerda deshacer.
+def _openapi_de(nombre: str, defecto: str) -> str:
+    return os.environ.get(f"{nombre.upper()}_OPENAPI", defecto)
+
+
 VECINOS: dict[str, dict[str, Any]] = {
     "contecintelligence": {
-        "openapi": "http://localhost:8100/openapi.json",
+        "openapi": _openapi_de("contecintelligence", "http://localhost:8100/openapi.json"),
         "rutas": ["/api/oauth/token", "/api/tokens/exchange"],
     },
     "contecmind": {
-        "openapi": "http://localhost:8200/api/v1/openapi.json",
+        "openapi": _openapi_de("contecmind", "http://localhost:8200/api/v1/openapi.json"),
         "rutas": [
             "/api/v1/oauth/token",
             "/api/v1/tokens/exchange",
             "/api/v1/documents/search",
             "/api/v1/documents/{document_id}",
+            # Árbol documental (contecmind bbc9757f). Se fijan porque son las que
+            # consume el corpus del CRM: si cambia un nombre de campo al otro lado,
+            # esto se pone rojo aquí y no en la pantalla de un cliente.
+            "/api/v1/folders",
+            "/api/v1/folders/{folder_id}/documents",
+            "/api/v1/folders/{folder_id}/effective-permissions",
+            "/api/v1/folders/{folder_id}/summary",
+            "/api/v1/folders/{folder_id}/concepts",
+            "/api/v1/documents/{document_id}/move",
         ],
     },
 }
@@ -80,6 +100,9 @@ def reducir(doc: dict[str, Any], rutas: list[str]) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--refrescar", action="store_true")
+    # Sin esto, un vecino caído impedía refrescar el otro aunque estuviera
+    # levantado — y entonces la tentación es comentar una entrada del diccionario.
+    parser.add_argument("--solo", choices=sorted(VECINOS), help="refresca solo ese vecino")
     args = parser.parse_args()
 
     if not args.refrescar:
@@ -94,6 +117,8 @@ def main() -> int:
 
     DESTINO.mkdir(parents=True, exist_ok=True)
     for nombre, cfg in VECINOS.items():
+        if args.solo and nombre != args.solo:
+            continue
         try:
             doc = httpx.get(cfg["openapi"], timeout=10).json()
         except Exception as exc:  # noqa: BLE001
