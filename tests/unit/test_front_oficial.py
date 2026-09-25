@@ -329,6 +329,38 @@ PRESUPUESTO_KB = 128
 PRESUPUESTO_TOTAL_KB = 180
 
 
+def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:
+    """El nginx de la consola tiene que pasar `/api` al gateway.
+
+    `config.json` trae `apiBase` vacío por defecto, y vacío significa «mismo
+    origen». Sin un proxy que lo atienda, la llamada cae en el bloque que sirve
+    ficheros: el `POST /api/v1/sesion/entrar` de la pantalla de entrada
+    contestaba **405 Not Allowed** de nginx, y el `GET` era peor todavía —
+    devolvía el `index.html` con un 200, así que parecía que la API respondía.
+
+    El propio fichero decía en un comentario que «la API va detrás del mismo
+    proxy». No había proxy. Un comentario que promete algo que no está es peor
+    que no decir nada, y esta comprobación es la que hace que deje de poder
+    pasar.
+
+    Se comprueba aquí y no con una prueba que levante nginx porque lo que falla
+    es la CONFIGURACIÓN, no el servidor: el fichero o tiene el bloque o no lo
+    tiene.
+    """
+    conf = (FRONT.parent / "nginx.conf").read_text("utf-8")
+    assert "location /api/" in conf, (
+        "El nginx de la consola no pasa `/api` a ninguna parte. Con `apiBase` "
+        "vacío —que es el valor por defecto—, entrar devuelve 405."
+    )
+    bloque = conf.split("location /api/", 1)[1].split("}", 1)[0]
+    assert "proxy_pass" in bloque, "`location /api/` sin `proxy_pass` no lleva a ningún sitio"
+    # Las cabeceras que el gateway necesita para saber quién llama de verdad:
+    # sin ellas, la lista de redes admitidas de una clave de API y los límites
+    # por IP ven a todo el mundo como el proxy.
+    for cabecera in ("X-Forwarded-For", "X-Forwarded-Proto"):
+        assert cabecera in bloque, f"el proxy no propaga `{cabecera}`"
+
+
 def test_el_paquete_del_front_cabe_en_el_presupuesto() -> None:
     """Presupuesto de rendimiento, comprobado en local (CRM-07.04.04.03).
 
