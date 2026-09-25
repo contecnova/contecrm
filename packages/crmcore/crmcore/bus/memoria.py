@@ -24,7 +24,7 @@ from collections import defaultdict
 from typing import Any
 
 from crmcore.bus.base import Bus, Manejador, Suscripcion
-from crmcore.events.envelope import Evento
+from crmcore.events.envelope import Evento, subject_patron
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -68,10 +68,17 @@ class BusEnMemoria(Bus):
         grupo: str,
         durable: bool = True,
     ) -> Suscripcion:
-        _suscriptores[patron].append((grupo, manejador))
+        # Se guarda el patrón EXPANDIDO, con el segmento del tenant, igual que
+        # hace el bus de NATS. Guardarlo crudo era lo que hacía que este backend
+        # tampoco entregara nada, y encima con la apariencia contraria: como
+        # ninguna prueba cruzaba publicar con recibir, parecía que funcionaba.
+        expandido = subject_patron("mem", patron)
+        _suscriptores[expandido].append((grupo, manejador))
 
         async def _cancelar() -> None:
-            _suscriptores[patron] = [(g, m) for g, m in _suscriptores[patron] if m is not manejador]
+            _suscriptores[expandido] = [
+                (g, m) for g, m in _suscriptores[expandido] if m is not manejador
+            ]
 
         return Suscripcion(patron=patron, grupo=grupo, cancelar=_cancelar)
 

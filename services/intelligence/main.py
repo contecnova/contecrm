@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
+# Importarlo registra el ejecutor de la medición de salud. Lo necesita la API
+# para poder encolarla; el worker lo importa por su cuenta, que es otro proceso.
+import services.intelligence.trabajos_salud  # noqa: F401,E402
 from services.intelligence.api import ROUTERS
 from services.intelligence.api_modelos import ROUTERS_MODELOS
 

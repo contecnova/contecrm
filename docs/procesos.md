@@ -815,10 +815,12 @@ stateDiagram-v2
 | `DELETE /api/v1/ia/proveedores/{proveedor_ia_id}` | Borrar proveedores de ia | proveedor_ia_id* | 204, 422 | — |
 | `POST /api/v1/ia/proveedores/{proveedor_ia_id}/archivar` | Archivar proveedores de ia | proveedor_ia_id* | 200, 422 | — |
 | `POST /api/v1/ia/salud` | Medir la salud de una cuenta (CRM-05.02.01.04) | cuenta_id*, senales, pesos, umbrales | 201, 422 | `account.health.scored` |
+| `POST /api/v1/ia/salud/medir-todas` | Medir la salud de todas las cuentas | — | 202, 422 | — |
 | `POST /api/v1/intelligence/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/intelligence/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/intelligence/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/intelligence/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |

@@ -349,6 +349,20 @@ services:
   # superficie y prueba los cuarenta y siete listados para medir la forma de
   # cada uno. Doce segundos, y el gateway corta a diez. Va por trabajo, y los
   # trabajos necesitan quien los ejecute.
+  # Medir la salud de cada cuenta son cuatro llamadas a la API por cuenta: una
+  # cartera de mil son cuatro mil. Por trabajo, con cursor, y reanudable.
+  intelligence-trabajos:
+    <<: *servicio
+    command: ["worker", "intelligence", "trabajos_worker"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: intelligence
+      DATABASE_URL: postgresql+psycopg://crm_intelligence_app:contecrm_dev_only@postgres:5432/contecrm
+      APLICAR_MIGRACIONES: "false"
+    ports: []
+    healthcheck:
+      disable: true
+
   analytics-trabajos:
     <<: *servicio
     command: ["worker", "analytics", "trabajos_worker"]

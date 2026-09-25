@@ -11,6 +11,11 @@ from __future__ import annotations
 # ── Tablas compartidas que viven en ESTE esquema ──────────────────────────
 from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402,F401
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402,F401
+
+# La tabla de trabajos asíncronos. La necesita la medición de salud de todas las
+# cuentas: son cuatro llamadas a la API por cuenta, y una cartera de mil son
+# cuatro mil — eso no cabe en una petición.
+from crmcore.datos.trabajos import Trabajo  # noqa: E402,F401
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402,F401
 from crmcore.security.byok import ClaveTenant  # noqa: E402,F401
 

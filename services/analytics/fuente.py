@@ -326,44 +326,16 @@ def _publicar(
 
 
 def _clave_de_lectura(tenant_id: UUID) -> str:
-    """Pide a `identity` una clave de solo lectura para que el otro lado lea.
+    """La credencial con la que contecintelligence leerá este CRM.
 
-    Se pide aquí y no se guarda en configuración porque una clave en el `.env`
-    hay que ponerla a mano, y esto tiene que poder ser un botón. Cada registro
-    rota la anterior, así que no se acumulan credenciales.
+    El nombre importa: emitir una ROTA la anterior que se llame igual. Por eso la
+    del registro de la fuente se llama distinto que la del cargador del almacén —
+    compartían nombre, y cada carga dejaba la fuente registrada con una
+    credencial revocada.
     """
-    from crmcore.config import get_settings
-    from crmcore.http.deps import firmar_cabeceras_internas
-    from crmcore.red import cliente_seguro
+    from crmcore.integracion.clave_lectura import clave_de_lectura
 
-    s = get_settings()
-    destino = _url_de_identity(s)
-    cabeceras = firmar_cabeceras_internas({}, s.secret_key.get_secret_value())
-    with cliente_seguro(timeout=10.0) as cli:
-        respuesta = cli.post(
-            f"{destino}/api/v1/claves-api/interna",
-            json={"tenant_id": str(tenant_id), "nombre": "contecintelligence"},
-            headers=cabeceras,
-        )
-    if respuesta.status_code != 201:
-        raise ErrorDependencia(
-            "No se ha podido emitir la clave de lectura para contecintelligence",
-            error_code="analytics.sin_clave",
-            detalle={"codigo_http": respuesta.status_code},
-        )
-    return str(respuesta.json()["secreto"])
-
-
-def _url_de_identity(s: Any) -> str:
-    """La dirección de `identity` en este despliegue, de `RUTAS_SERVICIOS`."""
-    for trozo in (s.rutas_servicios or "").replace("\n", " ").split(","):
-        nombre, _, url = trozo.strip().partition("=")
-        if nombre.strip() == "identity" and url.strip():
-            return url.strip().rstrip("/")
-    raise ErrorDependencia(
-        "No hay dirección de `identity` en RUTAS_SERVICIOS",
-        error_code="analytics.sin_identity",
-    )
+    return clave_de_lectura(tenant_id, nombre="contecintelligence")
 
 
 def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:

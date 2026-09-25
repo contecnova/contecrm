@@ -26,6 +26,40 @@ ellos se hablan **por el bus**, no por HTTP: una llamada síncrona entre servici
 crea acoplamiento temporal, y entonces la caída de identidad es la caída de
 ventas. La única excepción es el gateway, que por definición llama a todos.
 
+## El bus de eventos no entregó nada durante toda la vida del proyecto
+
+Se descubrió el 25-09-2026 y conviene que quede escrito, porque son **tres
+fallos encadenados y ninguno grita**.
+
+**1. El subject de publicar y el de suscribirse no eran hermanos.** Se publicaba
+en `contecrm.<tenant>.<tipo>` —el tenant va en el subject para poder repartir por
+cliente— y se suscribía a `contecrm.<tipo>`, sin ese segmento. Ningún subject
+casaba con ningún patrón. Resultado medido: **757 eventos publicados y la tabla
+de entrantes a CERO en los trece esquemas**.
+
+**2. Los consumidores durables conservan el filtro con el que nacieron.**
+Arreglado lo anterior, seguía sin llegar nada: JetStream no cambia el
+`filter_subject` de un consumidor existente al volver a suscribirse, así que
+seguían escuchando lo que ya no se publicaba. Ahora el bus lo comprueba al
+suscribirse y rehace el consumidor si no coincide, dejándolo dicho en el registro.
+
+**3. Todos los consumidores leían un campo que no existe.** Los dieciséis hacían
+`getattr(mensaje, "tipo", None)` y el sobre lleva `type`. Como `getattr` con
+defecto no se queja, cada manejador decidía en su primera línea que el evento no
+era para él. Hoy `Evento.tipo` es un alias de `type`: el nombre de fuera es
+contrato con quien nos escuche y el de dentro es el idioma de la casa.
+
+**Por qué sobrevivió tanto.** Publicar SÍ funcionaba: la tabla de salida se
+llenaba y se marcaba como publicada, así que desde dentro parecía que el evento
+había salido. Y lo que dependía de recibir no fallaba — simplemente no ocurría:
+la salud no aparecía en la ficha de la cuenta, los ajustes replicados se
+quedaban con los de ayer, la clave del tenant no se propagaba. Ninguna de esas
+cosas se lee como una avería; todas se leen como «esto todavía no está hecho».
+
+Y **ninguna prueba cruzaba las dos mitades**: las que había comprueban que el
+evento se escribe en la tabla de salida, que es la mitad fácil.
+`tests/unit/test_bus_entrega.py` comprueba la otra.
+
 ## Las tres decisiones que lo ordenan todo
 
 ### 1. Lo transversal se impone, no se pide

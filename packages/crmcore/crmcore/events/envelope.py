@@ -204,6 +204,23 @@ class Evento:
 
     # ── Enrutado ─────────────────────────────────────────────────────────
 
+    @property
+    def tipo(self) -> str:
+        """El tipo del evento, con el nombre que usa el código de dentro.
+
+        El campo del SOBRE se llama `type` porque eso es lo que viaja por el bus
+        y lo que lee cualquiera que se conecte desde fuera. El código de este
+        CRM está en castellano y todos sus consumidores preguntan por `tipo`:
+        los dieciséis lo hacían, y como `getattr(mensaje, "tipo", None)` devuelve
+        `None` sin quejarse, **todos se salían en la primera línea sin procesar
+        nada**. Ni un error, ni un aviso: el evento llegaba, el manejador decidía
+        que no era para él y lo descartaba.
+
+        Se resuelve con un alias y no renombrando el campo: el nombre de fuera es
+        contrato con quien nos escuche, y el de dentro es el idioma de la casa.
+        """
+        return self.type
+
     def subject_bus(self, prefijo: str) -> str:
         """Subject del bus: `contecrm.<tenant>.<tipo.de.evento>`.
 
@@ -252,3 +269,24 @@ def crear_evento(
         trace_id=ctx.trace_id or ctx.request_id,
         dedup_key=dedup_key or "",
     )
+
+
+def subject_patron(prefijo: str, patron: str) -> str:
+    """El subject al que hay que SUSCRIBIRSE para recibir `patron`.
+
+    Tiene que ser la hermana de `Evento.subject_bus`, y no lo era: se publicaba
+    en `contecrm.<tenant>.<tipo>` y se suscribía a `contecrm.<tipo>`, sin el
+    segmento del tenant. Ningún subject casaba nunca con ningún patrón, así que
+    **el bus no entregó un solo evento entre servicios en toda la vida del
+    proyecto**: trece esquemas con la tabla de entrantes a cero y setecientos
+    cincuenta y siete eventos publicados.
+
+    No fallaba nada visible porque publicar sí funcionaba —la tabla de salida se
+    llenaba y se marcaba como publicada— y porque ninguna prueba cruzaba las dos
+    mitades: las que hay comprueban que el evento se ESCRIBE, no que llegue.
+
+    El comodín es `*` —un solo segmento— y no `>`: `>` se tragaría también lo que
+    viniera detrás del tipo, y un evento `account.created.v2` acabaría en el
+    consumidor de `account.created`.
+    """
+    return f"{prefijo}.*.{patron}"

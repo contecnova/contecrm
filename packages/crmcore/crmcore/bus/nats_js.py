@@ -23,7 +23,7 @@ from __future__ import annotations
 from typing import Any
 
 from crmcore.bus.base import Bus, Manejador, Suscripcion
-from crmcore.events.envelope import Evento
+from crmcore.events.envelope import Evento, subject_patron
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -108,7 +108,9 @@ class BusNats(Bus):
         grupo: str,
         durable: bool = True,
     ) -> Suscripcion:
-        subject = f"{self._prefijo}.{patron}"
+        # Con el segmento del tenant. Ver `subject_patron`: sin él no casaba
+        # ningún subject y el bus no entregaba nada.
+        subject = subject_patron(self._prefijo, patron)
 
         async def _al_mensaje(msg: Any) -> None:
             try:
@@ -130,6 +132,19 @@ class BusNats(Bus):
                     error=str(exc)[:200],
                 )
 
+        # Un consumidor DURABLE conserva el filtro con el que nació, y JetStream
+        # no lo cambia al volver a suscribirse: se queda escuchando lo que ya no
+        # se publica, sin error y sin un solo mensaje. Es lo que pasó al añadir
+        # el segmento del tenant al subject — el código quedó correcto y los
+        # consumidores siguieron con el filtro viejo, así que el arreglo no se
+        # notó hasta borrarlos a mano.
+        #
+        # Así que se comprueba y, si no coincide, se rehace. Perder la posición
+        # de un consumidor cuyo filtro ha cambiado no es una pérdida: lo que
+        # tenía pendiente era de otro subject.
+        if durable:
+            await self._rehacer_si_cambio_el_filtro(grupo, subject)
+
         sub = await self._js.subscribe(
             subject,
             # El durable lleva el nombre del grupo, no el de la réplica: así N
@@ -146,6 +161,26 @@ class BusNats(Bus):
 
         logger.info("bus_nats.suscrito", subject=subject, grupo=grupo)
         return Suscripcion(patron=patron, grupo=grupo, cancelar=_cancelar)
+
+    async def _rehacer_si_cambio_el_filtro(self, durable: str, subject: str) -> None:
+        """Borra el consumidor durable si escucha algo distinto de lo que toca."""
+        try:
+            info = await self._js.consumer_info(self._prefijo.upper(), durable)
+        except Exception:  # noqa: BLE001 — no existe todavía: se creará al suscribir
+            return
+        actual = getattr(info.config, "filter_subject", "") or ""
+        if actual == subject:
+            return
+        logger.warning(
+            "bus_nats.consumidor_rehecho",
+            durable=durable,
+            filtro_viejo=actual,
+            filtro_nuevo=subject,
+        )
+        try:
+            await self._js.delete_consumer(self._prefijo.upper(), durable)
+        except Exception as exc:  # noqa: BLE001 — si no se puede, se dice y se sigue
+            logger.error("bus_nats.consumidor_no_rehecho", durable=durable, error=str(exc)[:200])
 
     async def ping(self) -> bool:
         try:

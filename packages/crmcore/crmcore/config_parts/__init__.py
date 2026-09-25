@@ -23,6 +23,7 @@ from crmcore.config_parts._documental import _DocumentalSettings
 from crmcore.config_parts._intelligence import _IntelligenceSettings
 from crmcore.config_parts._limits import _LimitsSettings
 from crmcore.config_parts._obs import _ObsSettings
+from crmcore.config_parts._salud import _SaludSettings
 from crmcore.config_parts._security import (
     _AbacSettings,
     _DlpSettings,
@@ -41,6 +42,7 @@ __all__ = [
     "_IntelligenceSettings",
     "_LimitsSettings",
     "_ObsSettings",
+    "_SaludSettings",
     "_AbacSettings",
     "_DlpSettings",
     "_SecuritySettings",

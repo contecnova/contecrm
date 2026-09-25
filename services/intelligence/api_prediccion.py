@@ -16,7 +16,8 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
-from fastapi import APIRouter, Depends, Query, status
+from crmcore.http.trabajos_router import crear_router_trabajos
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
 
 from services.intelligence import anomalias as ano
@@ -238,6 +239,35 @@ def medir_salud(cuerpo: MedirSalud, uow: UowDep) -> Any:
     }
 
 
+@router_salud.post(
+    "/medir-todas",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Medir la salud de todas las cuentas",
+    description=(
+        "Calcula las señales que el CRM ya conoce —relación, soporte, "
+        "patrocinador y valor— leyéndolas por su propia API con una credencial de "
+        "solo lectura, y las pondera con los pesos configurados.\n\n"
+        "Las que no se pueden medir aquí (`uso` necesita telemetría del producto y "
+        "`pago` el ERP) **se dejan ausentes**: su peso se reparte entre las que sí "
+        "llegan y la respuesta dice cuánto quedó sin medir. Un 50 por defecto se "
+        "leería como «regular» y significa «no lo sabemos».\n\n"
+        "Va en diferido: son cuatro llamadas por cuenta, y una cartera de mil son "
+        "cuatro mil."
+    ),
+)
+def medir_todas(respuesta: Response, uow: UowDep, principal: AutenticadoDep) -> Any:
+    from services.intelligence.trabajos_salud import encolar_medicion
+
+    trabajo = encolar_medicion(uow.db, tenant_id=principal.tenant_id, pedido_por=principal.id)
+    respuesta.status_code = status.HTTP_202_ACCEPTED
+    return {
+        "trabajo_id": str(trabajo.id),
+        "estado": trabajo.estado,
+        "consultar_en": f"/api/v1/intelligence/trabajos/{trabajo.id}",
+    }
+
+
 @router_salud.get(
     "/riesgo",
     dependencies=[Depends(exige_permiso("ia:usar"))],
@@ -419,7 +449,14 @@ montar_listado(
 )
 
 
+# Los trabajos de este servicio. Sin este router, la medición devolvería un
+# identificador que no se puede consultar en ninguna parte.
+router_trabajos_ia = crear_router_trabajos(
+    permiso_ver="ia:usar", permiso_cancelar="ia:administrar", prefijo="/intelligence/trabajos"
+)
+
 ROUTERS_PREDICCION = [
+    router_trabajos_ia,
     router_modelos_ml,
     router_prediccion,
     router_salud,

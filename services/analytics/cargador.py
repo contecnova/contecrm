@@ -146,12 +146,11 @@ def cargar_todas(uow: UnidadDeTrabajo, *, clave_api: str, base_url: str) -> dict
 def clave_y_base(tenant_id: UUID) -> tuple[str, str]:
     """La credencial de lectura y la dirección del CRM, para cargar.
 
-    Se reutiliza la misma pieza que registra la fuente en contecintelligence: es
-    la misma necesidad —leer el CRM por su API con permisos de lector— y tener
-    dos formas de emitir esa credencial sería tener dos cosas que rotar.
+    Nombre PROPIO y no el de la fuente. Emitir una clave ROTA la anterior que se
+    llame igual, así que compartir nombre hacía que cada carga del almacén matara
+    la credencial con la que quedó registrada la fuente en contecintelligence —y
+    al revés—. Dos usos distintos, dos credenciales.
     """
-    from crmcore.config import get_settings
+    from crmcore.integracion.clave_lectura import clave_de_lectura, url_del_crm
 
-    from services.analytics.fuente import _clave_de_lectura
-
-    return _clave_de_lectura(tenant_id), get_settings().ci_url_del_crm or ""
+    return clave_de_lectura(tenant_id, nombre="almacen-analitico"), url_del_crm()
