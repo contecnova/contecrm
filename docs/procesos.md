@@ -760,6 +760,8 @@ stateDiagram-v2
 | `POST /api/v1/informes` | Crear un informe | clave*, nombre*, objeto*, tipo, descripcion, columnas, agrupaciones, metricas, calculados, filtros, filtros_ejecucion, orden, pivote, limite, roles, solo_mios | 201, 422 | — |
 | `POST /api/v1/informes/correr-programadas` | Ejecutar y mandar lo que toca | — | 200, 422 | `report.delivered`, `report.failed` |
 | `POST /api/v1/informes/validar` | Comprobar una definición sin guardarla | clave*, nombre*, objeto*, tipo, descripcion, columnas, agrupaciones, metricas, calculados, filtros, filtros_ejecucion, orden, pivote, limite, roles, solo_mios | 200, 422 | — |
+| `PATCH /api/v1/informes/{informe_id}` | Corregir un informe | informe_id*, nombre, descripcion, tipo, columnas, agrupaciones, metricas, calculados, filtros, filtros_ejecucion, orden, pivote, limite, roles, solo_mios, activo | 200, 422 | — |
+| `DELETE /api/v1/informes/{informe_id}` | Borrar un informe | informe_id* | 204, 422 | — |
 | `POST /api/v1/informes/{informe_id}/ejecutar` | Ejecutar un informe | informe_id*, filtros, formato | 200, 422 | — |
 | `POST /api/v1/informes/{informe_id}/instantanea` | Guardar lo que dice hoy | informe_id* | 200, 422 | — |
 | `POST /api/v1/informes/{informe_id}/programar` | Programar el envío | informe_id*, periodicidad, hora, dia_semana, dia_mes, formato, destinatarios, destino_externo, omitir_si_vacio, nombre | 201, 422 | — |

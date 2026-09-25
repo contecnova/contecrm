@@ -30,14 +30,28 @@ export class ErrorApi extends Error {
     readonly codigo: string,
     readonly titulo: string,
     readonly detalle: unknown,
+    /** La frase del servidor. En esta API está escrita para leerse, no para
+     * depurar: «El motor analítico no pudo resolver el informe: …» dice qué
+     * pasó y dónde mirar, y sustituirla por un texto genérico del front tira
+     * justo lo que ayuda. */
+    readonly explicacion: string = "",
   ) {
     super(titulo || `Error ${estado}`);
     this.name = "ErrorApi";
   }
 
-  /** Si el registro ha cambiado debajo mientras se editaba. */
+  /** Si el registro ha cambiado debajo mientras se editaba.
+   *
+   * Por el CÓDIGO, no por el estado. Aquí valía cualquier 409, y 409 es el
+   * conflicto genérico de esta API: lo usan «el motor no pudo resolver el
+   * informe», «ese informe lo usa un cuadro» y «eso ya está en la papelera».
+   * Los tres salían en pantalla como «alguien ha cambiado este registro
+   * mientras lo editabas», que manda a recargar y volver a intentarlo — y
+   * ninguno se arregla así. Se vio en el cuadro de mando: seis componentes con
+   * un fallo del motor analítico, los seis diciendo que otro los había tocado.
+   */
   get esConflictoDeVersion(): boolean {
-    return this.estado === 412 || this.estado === 409;
+    return this.estado === 412 || this.codigo === "conflicto_de_version";
   }
 
   /** Si lo impide una política de acceso, y no la falta de permiso del rol. */
@@ -162,6 +176,7 @@ function problema(estado: number, cuerpo: unknown): ErrorApi {
     String(p.error_code ?? p.type ?? ""),
     String(p.title ?? p.detail ?? ""),
     p.detalle ?? p.detail ?? null,
+    String(p.detail ?? ""),
   );
 }
 

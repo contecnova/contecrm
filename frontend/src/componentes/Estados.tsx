@@ -106,6 +106,11 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
   else if (api.estado === 403) mensaje = t("errores.sinPermiso");
   else if (api.estado === 404) mensaje = t("errores.noEncontrado");
   else if (api.esConflictoDeVersion) mensaje = t("errores.conflicto");
+  // La frase del servidor antes que el título. El título es del TIPO de error
+  // —«Conflicto con el estado actual»— y la frase es de ESTE error: «El motor
+  // analítico no pudo resolver el informe: …». La primera no dice nada que se
+  // pueda hacer; la segunda dice dónde mirar.
+  else if (api.explicacion) mensaje = api.explicacion;
   else if (api.titulo) mensaje = api.titulo;
 
   return (

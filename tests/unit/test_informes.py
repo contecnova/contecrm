@@ -531,3 +531,64 @@ def test_el_propietario_ve_el_suyo_aunque_no_sea_de_su_rol(
     inf.crear_cuadro(uow, clave="mio", nombre="Mío", roles=["otro_rol"], propietario_id=yo)
     visibles = inf.cuadros_de(uow.db, uow.tenant_id, roles=frozenset({"comercial"}), usuario_id=yo)
     assert visibles[0]["propio"] is True
+
+
+# ── Corregir un informe (CRM-05.01.01.02) ─────────────────────────────────
+
+
+@pytest.mark.db
+def test_un_informe_se_puede_corregir(uow: UnidadDeTrabajo) -> None:
+    """Existía crear y no existía corregir.
+
+    Una errata —o un campo que resultó no existir— solo se arreglaba creando
+    otro informe al lado, y entonces los cuadros de mando siguen apuntando al
+    viejo: la pantalla sigue enseñando el número equivocado.
+    """
+    informe = _informe(uow, clave="para-corregir", nombre="Con errata")
+    inf.editar(uow, informe.id, cambios={"nombre": "Sin errata", "columnas": ["nombre"]})
+    assert informe.nombre == "Sin errata"
+    assert informe.columnas == ["nombre"]
+
+
+@pytest.mark.db
+def test_corregir_no_cambia_la_clave_ni_el_objeto(uow: UnidadDeTrabajo) -> None:
+    """La clave es como lo referencian los cuadros: cambiarla los deja apuntando
+    a nada. Y un informe de oportunidades convertido en uno de cuentas conserva
+    columnas y filtros que ya no existen — sale roto con el mismo nombre."""
+    informe = _informe(uow, clave="intocable", objeto="oportunidad")
+    inf.editar(uow, informe.id, cambios={"clave": "otra", "objeto": "cuenta"})
+    assert informe.clave == "intocable"
+    assert informe.objeto == "oportunidad"
+
+
+@pytest.mark.db
+def test_no_se_borra_un_informe_que_usa_un_cuadro(uow: UnidadDeTrabajo) -> None:
+    """Borrarlo deja el cuadro con un hueco que solo aparece al abrirlo.
+
+    Y aparece delante de quien lo abre, sin ninguna pista de qué pasó.
+    """
+    from crmcore.errors import Conflicto
+
+    informe = _informe(uow, clave="usado-en-un-cuadro")
+    inf.crear_cuadro(
+        uow,
+        clave="el-cuadro",
+        nombre="El cuadro",
+        descripcion="",
+        componentes=[{"tipo": "tabla", "informe": "usado-en-un-cuadro"}],
+        roles=[],
+        equipos=[],
+        por_defecto_para="",
+    )
+    with pytest.raises(Conflicto) as e:
+        inf.borrar_informe(uow, informe.id)
+    assert e.value.error_code == "informe.en_uso"
+    # Y se dice CUÁL, que es lo que permite arreglarlo sin buscarlo.
+    assert "El cuadro" in e.value.detalle["cuadros"]
+
+
+@pytest.mark.db
+def test_un_informe_que_ningun_cuadro_usa_se_borra(uow: UnidadDeTrabajo) -> None:
+    informe = _informe(uow, clave="sin-usar")
+    inf.borrar_informe(uow, informe.id)
+    assert informe.deleted_at is not None

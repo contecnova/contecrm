@@ -88,6 +88,16 @@ class FuenteRegistrada(Base, TimestampMixin):
     mapa_objetos: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    # Y qué campos tiene cada objeto ALLÍ: `{"oportunidad": ["etapa", "importe"]}`.
+    #
+    # Sale de la misma muestra que ya se pide para medir la forma de cada
+    # listado, así que no cuesta ni una llamada más. Es lo que permite rechazar
+    # un informe sobre un campo que no existe al guardarlo, en vez de dejar que
+    # falle al ejecutarse — que es delante de quien lo abre, y con un error del
+    # otro lado que no dice qué campo era.
+    campos_por_objeto: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     # pendiente | registrada | error
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente")
     registrada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -232,6 +242,9 @@ def registrar_fuente(
     fila.campos = descripcion["campos"]
     fila.mapa_objetos = {
         str(e["objeto"]): str(e["name"]) for e in entidades if e.get("objeto") and e.get("name")
+    }
+    fila.campos_por_objeto = {
+        str(e["objeto"]): list(e.get("campos") or []) for e in entidades if e.get("objeto")
     }
     try:
         externa = _publicar(
@@ -471,6 +484,17 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                     contratos.get(str(op.get("servicio") or "")), ruta
                 ),
             }
+            # Los campos que la entidad tiene DE VERDAD, sacados de la muestra
+            # que ya se está pidiendo. No cuesta una llamada más y es lo que
+            # permite rechazar un informe sobre un campo que no existe en vez de
+            # dejar que falle al ejecutarse, delante de quien lo abre.
+            primera: dict[str, Any] = {}
+            if isinstance(cuerpo, dict) and isinstance(cuerpo.get("items"), list):
+                primera = (cuerpo["items"] or [{}])[0] or {}
+            elif isinstance(cuerpo, list):
+                primera = (cuerpo or [{}])[0] or {}
+            entidad["campos"] = sorted(primera) if isinstance(primera, dict) else []
+
             if isinstance(cuerpo, dict) and "items" in cuerpo:
                 entidad["record_path"] = "items"
                 entidad["pagination"] = {
@@ -811,6 +835,20 @@ def anotar_uso(db: Session, tenant_id: UUID, pregunta_id: UUID) -> None:
 
 
 # ── El ejecutor de planes (CRM-05.01.04.05) ───────────────────────────────
+
+
+def campos_publicados(db: Session, tenant_id: UUID, objeto: str) -> list[str]:
+    """Los campos que ese objeto tiene en la fuente registrada.
+
+    Vacío significa «no se sabe» —no hay fuente registrada todavía, o ese objeto
+    no se publica— y quien pregunte no debe tomarlo por «no tiene ninguno»: dos
+    cosas muy distintas, y confundirlas rechazaría informes perfectamente válidos
+    en una instalación recién montada.
+    """
+    fila = db.execute(
+        select(FuenteRegistrada).where(FuenteRegistrada.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    return list((getattr(fila, "campos_por_objeto", None) or {}).get(objeto) or [])
 
 
 def _identidad_de_ejecucion(

@@ -7,6 +7,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -82,6 +83,7 @@ class CrearInforme(BaseModel):
 )
 def crear(datos: CrearInforme, db: DbDep, principal: AutenticadoDep) -> Any:
     avisos = inf.validar(datos.model_dump())
+    avisos += _comprobar_campos(db, principal.tenant_id, datos.model_dump())
     fila = inf.Informe(
         tenant_id=principal.tenant_id, propietario_id=principal.id, **datos.model_dump()
     )
@@ -273,6 +275,131 @@ def tendencia(
     informe_id: UUID, db: DbDep, principal: AutenticadoDep, desde: date | None = Query(None)
 ) -> Any:
     return inf.tendencia(db, principal.tenant_id, informe_id, desde=desde)
+
+
+def _comprobar_campos(db: Any, tenant_id: UUID, definicion: dict[str, Any]) -> list[str]:
+    """Rechaza un informe sobre un campo que el objeto no tiene.
+
+    Se comprobaba contra el metamodelo del CRM y no contra lo que la fuente
+    publica de verdad, así que un informe sobre un campo inventado se guardaba
+    tan tranquilo y fallaba **al ejecutarlo**: un 500 del motor de explotación,
+    delante de quien abre el cuadro de mando, sin decir qué campo era. Pasó
+    montando el primer cuadro con `rol_compra`, que no existe.
+
+    Si no hay fuente registrada todavía no se rechaza nada: no saber qué campos
+    hay no es lo mismo que saber que no están, y confundirlos dejaría sin poder
+    guardar un informe en una instalación recién montada.
+    """
+    from services.analytics.fuente import campos_publicados
+
+    objeto = str(definicion.get("objeto") or "")
+    publicados = set(campos_publicados(db, tenant_id, objeto))
+    if not publicados:
+        return []
+
+    # Los campos propios del cliente viajan dentro de `campos`, así que no
+    # aparecen como columna de la muestra: se preguntan al metamodelo y se suman.
+    from crmcore import metamodelo
+
+    publicados |= {
+        str(c.get("nombre")) for c in metamodelo.campos_de(db, tenant_id, objeto) if c.get("nombre")
+    }
+
+    usados: list[str] = [c for c in (definicion.get("columnas") or [])]
+    for lista in ("agrupaciones", "metricas", "filtros", "filtros_ejecucion", "orden"):
+        usados += [str(x.get("campo")) for x in (definicion.get(lista) or []) if x.get("campo")]
+    if definicion.get("pivote"):
+        usados.append(str(definicion["pivote"]))
+
+    faltan = sorted({c for c in usados if c and c not in publicados})
+    if faltan:
+        raise ErrorValidacion(
+            f"«{objeto}» no tiene {', '.join(faltan)}. Un informe sobre un campo "
+            "que no existe se guarda bien y falla al abrirlo, que es delante de "
+            "quien lo abre.",
+            error_code="informe.campo_inexistente",
+            detalle={"faltan": faltan, "disponibles": sorted(publicados)[:60]},
+        )
+    return []
+
+
+class EditarInforme(BaseModel):
+    """Lo que se puede cambiar de un informe ya guardado.
+
+    Todo opcional: se manda lo que cambia. La CLAVE no está —es como lo
+    referencian los cuadros de mando, y cambiarla los dejaría apuntando a nada—
+    ni el OBJETO, porque un informe de oportunidades convertido en uno de cuentas
+    conserva columnas y filtros que ya no existen, y lo que sale es un informe
+    roto con el mismo nombre. Para eso se crea otro.
+    """
+
+    nombre: str | None = Field(None, min_length=1, max_length=200)
+    descripcion: str | None = None
+    tipo: str | None = Field(None, description="tabular · agrupado · matricial · union")
+    columnas: list[str] | None = None
+    agrupaciones: list[dict[str, Any]] | None = None
+    metricas: list[dict[str, Any]] | None = None
+    calculados: list[dict[str, Any]] | None = None
+    filtros: list[dict[str, Any]] | None = None
+    filtros_ejecucion: list[dict[str, Any]] | None = None
+    orden: list[dict[str, Any]] | None = None
+    pivote: str | None = None
+    limite: int | None = Field(None, ge=1)
+    roles: list[str] | None = None
+    solo_mios: bool | None = None
+    activo: bool | None = None
+
+
+@router.patch(
+    "/{informe_id}",
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Corregir un informe",
+    description=(
+        "Sin esto, un informe con una errata —o con un campo que resultó no "
+        "existir— solo se podía arreglar creando otro al lado, y entonces los "
+        "cuadros de mando siguen apuntando al viejo. Se valida igual que al "
+        "crearlo y se devuelven los avisos."
+    ),
+)
+def editar(informe_id: UUID, datos: EditarInforme, uow: UowDep, principal: AutenticadoDep) -> Any:
+    cambios = {k: v for k, v in datos.model_dump().items() if v is not None}
+    actual = inf.informe_de(uow.db, principal.tenant_id, informe_id)
+    _comprobar_campos(uow.db, principal.tenant_id, {**actual, **cambios})
+    fila = inf.editar(uow, informe_id, cambios=cambios)
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "avisos": inf.validar(
+            {
+                "objeto": fila.objeto,
+                "tipo": fila.tipo,
+                "columnas": fila.columnas,
+                "agrupaciones": fila.agrupaciones,
+                "metricas": fila.metricas,
+                "calculados": fila.calculados,
+                "filtros": fila.filtros,
+                "orden": fila.orden,
+                "pivote": fila.pivote,
+            }
+        ),
+    }
+
+
+@router.delete(
+    "/{informe_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Borrar un informe",
+    description=(
+        "Va a la papelera del servicio, como todo lo demás: un informe borrado "
+        "por error es media tarde de trabajo de alguien.\n\n"
+        "**Se niega si algún cuadro de mando lo usa**, y dice cuáles. Borrarlo "
+        "igual dejaría esos cuadros con un hueco que solo se descubre al "
+        "abrirlos, delante de quien los abre."
+    ),
+)
+def borrar_informe(informe_id: UUID, uow: UowDep, principal: AutenticadoDep) -> None:
+    inf.borrar_informe(uow, informe_id, por=principal.id)
 
 
 # ── Cuadros de mando ──────────────────────────────────────────────────────

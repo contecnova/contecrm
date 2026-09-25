@@ -60,7 +60,14 @@ class _DocumentalSettings(BaseSettings):
     # funciona y el buscador devuelve 403 — que es justo el fallo que peor se
     # diagnostica, porque la mitad de la pantalla va bien. Quien quiera acotar,
     # que quite `documents:search` a sabiendas de que apaga el buscador.
-    dms_scopes: tuple[str, ...] = ("documents:read", "documents:search")
+    #
+    # Y `documents:write`, que no estaba: sin él, colocar un documento en la
+    # carpeta de un registro da 403. Y no solo eso — en contecmind el rol que se
+    # pide al canjear se RECORTA a lo que la aplicación tiene concedido, así que
+    # sin escritura el token bajaba a «usuario» y ni siquiera se podía crear la
+    # carpeta. Quien quiera un CRM que solo lea el corpus lo quita a sabiendas de
+    # que entonces los documentos se colocan a mano en el gestor.
+    dms_scopes: tuple[str, ...] = ("documents:read", "documents:search", "documents:write")
 
     # ── El árbol de carpetas del corpus ───────────────────────────────────
     # El área de contecmind donde vive el corpus de este CRM, POR SU NOMBRE.

@@ -838,6 +838,84 @@ def _informe(db: Session, tenant_id: UUID, informe_id: UUID) -> Informe:
 # ── Exportar (CRM-05.01.01.07) ────────────────────────────────────────────
 
 
+def informe_de(db: Session, tenant_id: UUID, informe_id: UUID) -> dict[str, Any]:
+    """La definición actual, como diccionario. Para validar un cambio parcial.
+
+    Un PATCH manda solo lo que cambia, así que comprobar únicamente lo que llega
+    dejaría pasar la combinación: cambiar el tipo a «agrupado» sin tocar las
+    agrupaciones se validaría contra unas agrupaciones que no vienen en el
+    cuerpo. Se valida el informe RESULTANTE.
+    """
+    informe = _informe(db, tenant_id, informe_id)
+    return {
+        "objeto": informe.objeto,
+        "tipo": informe.tipo,
+        "columnas": list(informe.columnas or []),
+        "agrupaciones": list(informe.agrupaciones or []),
+        "metricas": list(informe.metricas or []),
+        "calculados": list(informe.calculados or []),
+        "filtros": list(informe.filtros or []),
+        "filtros_ejecucion": list(informe.filtros_ejecucion or []),
+        "orden": list(informe.orden or []),
+        "pivote": informe.pivote,
+        "limite": informe.limite,
+    }
+
+
+def editar(uow: UnidadDeTrabajo, informe_id: UUID, *, cambios: dict[str, Any]) -> Informe:
+    """Cambia un informe ya guardado.
+
+    Existía crear y no existía corregir, así que una errata —o un campo que
+    resultó no existir en la fuente— solo se arreglaba creando otro informe al
+    lado. Y entonces los cuadros de mando siguen apuntando al viejo, que es la
+    peor parte: la pantalla sigue enseñando el número equivocado.
+
+    La clave y el objeto no se tocan (ver `EditarInforme`).
+    """
+    informe = _informe(uow.db, uow.tenant_id, informe_id)
+    for campo, valor in cambios.items():
+        if campo in ("clave", "objeto", "tenant_id", "id"):
+            continue
+        setattr(informe, campo, valor)
+    uow.db.flush()
+    logger.info(
+        "informe.editado",
+        tenant=str(uow.tenant_id),
+        informe=informe.clave,
+        campos=sorted(cambios),
+    )
+    return informe
+
+
+def borrar_informe(uow: UnidadDeTrabajo, informe_id: UUID, *, por: UUID | None = None) -> None:
+    """Manda el informe a la papelera, si no lo está usando ningún cuadro.
+
+    **Se comprueba antes y se dice cuáles.** Un informe borrado por debajo deja
+    el cuadro con un hueco que solo aparece al abrirlo, delante de quien lo abre,
+    y sin ninguna pista de qué pasó.
+    """
+    from crmcore.datos.papelera import borrar as a_papelera
+
+    informe = _informe(uow.db, uow.tenant_id, informe_id)
+    usado_en = [
+        cuadro.nombre
+        for cuadro in uow.db.execute(
+            select(CuadroMando).where(CuadroMando.tenant_id == uow.tenant_id)
+        )
+        .scalars()
+        .all()
+        if any(str(c.get("informe") or "") == informe.clave for c in (cuadro.componentes or []))
+    ]
+    if usado_en:
+        raise Conflicto(
+            f"«{informe.nombre}» lo usan {len(usado_en)} cuadro(s) de mando. "
+            "Quítalo de ellos primero, o se quedarán con un hueco.",
+            error_code="informe.en_uso",
+            detalle={"cuadros": sorted(usado_en)},
+        )
+    a_papelera(uow.db, informe, objeto="informe", etiqueta=informe.nombre, por=por)
+
+
 def exportar(
     filas: list[dict[str, Any]], *, formato: str = "csv", nombre: str = "informe"
 ) -> dict[str, Any]:
