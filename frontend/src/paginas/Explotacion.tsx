@@ -174,16 +174,41 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
   const [enCurso, setEnCurso] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
 
+  /**
+   * Lo pide y **espera a que termine**, preguntando por el trabajo.
+   *
+   * El alta no es una petición: recorre la superficie del CRM y prueba los
+   * cuarenta y siete listados para medir la forma de cada uno. Doce segundos, y
+   * el gateway corta a diez. El servidor contesta 202 con un identificador y
+   * esto pregunta por él hasta que acaba.
+   *
+   * Se sondea desde aquí y no se deja al usuario refrescando: pulsar un botón y
+   * que no pase nada visible es indistinguible de que no funcione.
+   */
   async function registrar() {
     setEnCurso(true);
     setFallo(null);
     try {
-      const r = await llamar<{ registrada: boolean; error?: string }>(
+      const alta = await llamar<{ consultar_en: string }>(
         "/api/v1/explotacion/registrar-fuente",
         { metodo: "POST" },
       );
-      if (r.datos.registrada) alTerminar();
-      else setFallo(r.datos.error || t("explotacion.registroFallido"));
+      const donde = alta.datos.consultar_en;
+      // Tope de espera: unos dos minutos. Sin tope, un worker caído deja el
+      // botón girando para siempre y nadie sabe si sigue vivo.
+      for (let intento = 0; intento < 60; intento += 1) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const ficha = await llamar<{ estado: string; error?: string | null }>(donde);
+        if (ficha.datos.estado === "completado") {
+          alTerminar();
+          return;
+        }
+        if (ficha.datos.estado === "fallido" || ficha.datos.estado === "cancelado") {
+          setFallo(ficha.datos.error || t("explotacion.registroFallido"));
+          return;
+        }
+      }
+      setFallo(t("explotacion.registroTarda"));
     } catch (e: unknown) {
       setFallo(e instanceof ErrorApi ? e.titulo : t("explotacion.registroFallido"));
     } finally {

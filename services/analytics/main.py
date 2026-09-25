@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from crmcore.service import crear_servicio
 
+# Importarlo registra el ejecutor del trabajo de alta de fuente. La API lo
+# necesita para poder ENCOLARLO —`encolar` se niega si no hay ejecutor, y hace
+# bien: aceptar un trabajo que nadie va a ejecutar es dejarlo encolado para
+# siempre—, y el worker lo importa por su cuenta porque es otro proceso.
+import services.analytics.trabajos_fuente  # noqa: F401,E402
 from services.analytics.api import ROUTERS
 from services.analytics.api_almacen import ROUTERS_ALMACEN
 from services.analytics.api_cuadros import ROUTERS_CUADROS

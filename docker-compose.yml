@@ -345,6 +345,22 @@ services:
     healthcheck:
       disable: true
 
+  # El alta del CRM como fuente consultable no cabe en una petición: recorre la
+  # superficie y prueba los cuarenta y siete listados para medir la forma de
+  # cada uno. Doce segundos, y el gateway corta a diez. Va por trabajo, y los
+  # trabajos necesitan quien los ejecute.
+  analytics-trabajos:
+    <<: *servicio
+    command: ["worker", "analytics", "trabajos_worker"]
+    environment:
+      <<: *entorno
+      SERVICE_NAME: analytics
+      DATABASE_URL: postgresql+psycopg://crm_analytics_app:contecrm_dev_only@postgres:5432/contecrm
+      APLICAR_MIGRACIONES: "false"
+    ports: []
+    healthcheck:
+      disable: true
+
   analytics:
     <<: *servicio
     command: ["servicio", "analytics"]

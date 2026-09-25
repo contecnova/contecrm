@@ -146,6 +146,17 @@ es un error —se concede la intersección— pero tampoco sirve de nada.
    `/superficie` para saber qué objetos hay, mide la forma de cada listado y da
    de alta la fuente. No hay nada que rellenar.
 
+   Va **en diferido**: la ruta responde `202` con un identificador de trabajo y
+   lo ejecuta `analytics-trabajos`. No es una preferencia de estilo — el alta
+   tarda unos doce segundos (recorre cuarenta y siete listados probando la forma
+   de cada uno) y el gateway corta a diez, así que de forma síncrona devolvía
+   **504 aunque por debajo el registro saliera bien**. Subir el plazo no lo
+   arregla: ese tope protege al resto, porque una petición que se queda diez
+   segundos ocupa un hueco de conexión.
+
+   El servicio `analytics-trabajos` tiene que estar levantado. Sin él, el botón
+   contesta `202` y el trabajo se queda encolado para siempre.
+
 Y en contecintelligence, dos cosas del lado de allá: la aplicación de contecrm
 necesita el alcance **`sources:write`** (con `sources:read` no puede registrarse)
 y sus **orígenes** tienen que incluir el del navegador, o el preflight de CORS

@@ -234,6 +234,8 @@ export default {
     registrarDetalle:
       "Da de alta los objetos del CRM en contecintelligence con una credencial de solo lectura. No hay nada que rellenar.",
     registroFallido: "No se ha podido registrar la fuente.",
+    registroTarda:
+      "El registro está tardando más de lo normal. Sigue en marcha: vuelve a esta pantalla en un minuto.",
     titulo: "Explotación",
     entradilla:
       "Preguntar sobre los datos del CRM sin salir de aquí. Las respuestas las " +

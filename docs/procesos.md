@@ -739,6 +739,7 @@ stateDiagram-v2
 | `POST /api/v1/analytics/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/analytics/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/analytics/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/analytics/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/analytics/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
@@ -755,7 +756,7 @@ stateDiagram-v2
 | `POST /api/v1/cuadros-mando/suscripciones` | Que el cuadro llegue solo | cuadro_id*, periodicidad, hora | 201, 422 | — |
 | `POST /api/v1/explotacion/preguntas` | Guardar una pregunta | clave*, titulo*, pregunta*, publicada, roles | 201, 422 | — |
 | `POST /api/v1/explotacion/preguntas/{pregunta_id}/publicar` | Convertir la pregunta en un informe del tenant | pregunta_id*, definicion* | 200, 422 | — |
-| `POST /api/v1/explotacion/registrar-fuente` | Publicar la descripción del CRM en contecintelligence | forzar | 200, 422 | `analytics.source.registered` |
+| `POST /api/v1/explotacion/registrar-fuente` | Publicar la descripción del CRM en contecintelligence | forzar | 202, 422 | — |
 | `POST /api/v1/informes` | Crear un informe | clave*, nombre*, objeto*, tipo, descripcion, columnas, agrupaciones, metricas, calculados, filtros, filtros_ejecucion, orden, pivote, limite, roles, solo_mios | 201, 422 | — |
 | `POST /api/v1/informes/correr-programadas` | Ejecutar y mandar lo que toca | — | 200, 422 | `report.delivered`, `report.failed` |
 | `POST /api/v1/informes/validar` | Comprobar una definición sin guardarla | clave*, nombre*, objeto*, tipo, descripcion, columnas, agrupaciones, metricas, calculados, filtros, filtros_ejecucion, orden, pivote, limite, roles, solo_mios | 200, 422 | — |
@@ -1144,7 +1145,7 @@ llamada de nadie.
 | `activity.rescheduled` | party | actividad_id, asunto, asignada_a, vencia_at, vence_at, veces | un proceso de fondo | — |
 | `ai.budget.exhausted` | intelligence | tenant, gastado | un proceso de fondo | — |
 | `ai.proposal.created` | intelligence | propuesta_id, tarea | un proceso de fondo | — |
-| `analytics.source.registered` | analytics | organizacion, objetos, campos | `POST /api/v1/explotacion/registrar-fuente` | — |
+| `analytics.source.registered` | analytics | organizacion, objetos, campos | un proceso de fondo | — |
 | `approval.decided` | orchestrator | solicitud_id, objeto, objeto_id, estado | `POST /api/v1/aprobaciones`, `POST /api/v1/aprobaciones/{aprobacion_id}/decidir` | — |
 | `approval.due.soon` | orchestrator | solicitud_id, etapa, vence_at | `POST /api/v1/aprobaciones/revisar-plazos` | — |
 | `approval.escalated` | orchestrator | solicitud_id, etapa, anadidos | `POST /api/v1/aprobaciones/revisar-plazos` | — |

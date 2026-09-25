@@ -86,6 +86,12 @@ class ConsultaAnalitica(Base):
 from crmcore.authz.politicas import PoliticaAbac, VersionPoliticaAbac  # noqa: E402
 from crmcore.datos.retencion import BloqueoLegal, PoliticaRetencion  # noqa: E402
 
+# La tabla de trabajos asíncronos, igual que en `party` y `sales`. La necesita el
+# alta del CRM como fuente consultable, que no cabe en una petición: recorre la
+# superficie y prueba los cuarenta y siete listados, doce segundos, y el gateway
+# corta a diez.
+from crmcore.datos.trabajos import Trabajo  # noqa: E402,F401
+
 # El esquema que el tenant se define, replicado aquí como en los demás servicios
 # (CRM-00.04.03.02). Faltaba, y no fallaba de forma visible: `analytics` YA se
 # suscribe al evento de cambio de esquema —lo hace `crear_servicio` para todos—,

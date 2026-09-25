@@ -7,7 +7,8 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from fastapi import APIRouter, Depends, status
+from crmcore.http.trabajos_router import crear_router_trabajos
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, Field
 
 from services.analytics import fuente as fte
@@ -25,13 +26,22 @@ router = APIRouter(prefix="/explotacion", tags=["explotación"])
         "No se reenvía si no ha cambiado nada —lo decide una huella—: un registro "
         "que se reenvía por reloj gasta en cada tenant sin que nadie haya tocado "
         "un campo, y lo que importa (que el campo nuevo esté) no depende del "
-        "reloj sino del cambio."
+        "reloj sino del cambio.\n\n"
+        "**Devuelve 202 y un identificador de trabajo.** El alta recorre la "
+        "superficie del CRM y prueba los cuarenta y siete listados para medir la "
+        "forma de cada respuesta: doce segundos largos, y el gateway corta a "
+        "diez. Hecho de forma síncrona devolvía 504 aunque por debajo saliera "
+        "bien, que es la peor combinación posible."
     ),
+    status_code=status.HTTP_202_ACCEPTED,
 )
-def registrar_fuente(uow: UowDep, principal: AutenticadoDep, forzar: bool = False) -> Any:
+def registrar_fuente(
+    respuesta: Response, uow: UowDep, principal: AutenticadoDep, forzar: bool = False
+) -> Any:
     from sqlalchemy import select
 
     from services.analytics.modelos import OrganizacionExterna
+    from services.analytics.trabajos_fuente import encolar_registro
 
     organizacion = uow.db.execute(
         select(OrganizacionExterna).where(OrganizacionExterna.tenant_id == principal.tenant_id)
@@ -39,14 +49,29 @@ def registrar_fuente(uow: UowDep, principal: AutenticadoDep, forzar: bool = Fals
     if organizacion is None:
         from crmcore.errors import Conflicto
 
+        # Esto se comprueba AQUÍ y no en el trabajo, aunque el trabajo también lo
+        # mire: es lo único que se puede saber al instante, y un 202 seguido de
+        # un trabajo que falla a los dos segundos por algo que ya se sabía es
+        # peor experiencia que un error inmediato.
         raise Conflicto(
             "Este tenant no tiene organización asignada en contecintelligence, "
             "así que no hay dónde registrar la fuente.",
             error_code="analytics.sin_organizacion",
         )
-    return fte.registrar_fuente(
-        uow, principal.tenant_id, organizacion=organizacion.organizacion, forzar=forzar
+
+    trabajo = encolar_registro(
+        uow.db, tenant_id=principal.tenant_id, forzar=forzar, pedido_por=principal.id
     )
+    respuesta.status_code = status.HTTP_202_ACCEPTED
+    return {
+        "trabajo_id": str(trabajo.id),
+        "estado": trabajo.estado,
+        # Con el servicio delante: `trabajos` es un recurso TRANSVERSAL —cada
+        # servicio guarda los suyos en su esquema— y el gateway enruta por
+        # `/api/v1/<servicio>/trabajos/...`. Sin el nombre no hay a quién
+        # mandarlo, y la respuesta era un 404 del gateway.
+        "consultar_en": f"/api/v1/analytics/trabajos/{trabajo.id}",
+    }
 
 
 @router.get(
@@ -152,4 +177,16 @@ def publicar(pregunta_id: UUID, datos: PublicarComoInforme, uow: UowDep) -> Any:
     return fte.publicar_como_informe(uow, pregunta_id, definicion=datos.definicion)
 
 
-ROUTERS_FUENTE = [router]
+# Los trabajos de este servicio. Sin este router, el alta de fuente devolvía un
+# identificador que no se podía consultar en ninguna parte: un 202 que no se
+# puede seguir es peor que un 504, porque el 504 al menos se ve.
+#
+# El permiso es el de administrar la explotación y no uno genérico: la ficha de
+# un trabajo guarda su entrada completa.
+router_trabajos = crear_router_trabajos(
+    permiso_ver="analitica:administrar",
+    permiso_cancelar="analitica:administrar",
+    prefijo="/analytics/trabajos",
+)
+
+ROUTERS_FUENTE = [router, router_trabajos]
