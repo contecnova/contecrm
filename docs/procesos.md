@@ -716,6 +716,7 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
+| `POST /api/v1/almacen/cargar` | Cargar el almacén ahora | tabla | 200, 422 | — |
 | `POST /api/v1/almacen/cargas` | Cargar filas en el almacén | tabla*, filas, hasta, completa | 200, 422 | — |
 | `POST /api/v1/almacen/destinos` | Declarar un destino de exportación continua | clave*, tipo*, tablas*, config, nombre | 201, 422 | — |
 | `POST /api/v1/almacen/destinos/confirmar` | Avanzar las marcas tras un envío confirmado | destino*, marcas, error | 200, 422 | — |
@@ -726,7 +727,7 @@ stateDiagram-v2
 | `PATCH /api/v1/almacen/federadas/{fuente_federada_id}` | Editar fuentes federadas | fuente_federada_id*, clave, nombre, tipo, config, objetos, tope_filas, timeout_s, activa | 200, 422 | — |
 | `DELETE /api/v1/almacen/federadas/{fuente_federada_id}` | Borrar fuentes federadas | fuente_federada_id* | 204, 422 | — |
 | `POST /api/v1/almacen/federadas/{fuente_federada_id}/archivar` | Archivar fuentes federadas | fuente_federada_id* | 200, 422 | — |
-| `POST /api/v1/almacen/tablas` | Declarar una tabla del almacén analítico | clave*, columnas*, servicio, objeto, nombre, estrategia, frecuencia_min | 201, 422 | — |
+| `POST /api/v1/almacen/tablas` | Declarar una tabla del almacén analítico | clave*, columnas*, servicio, objeto, nombre, ruta, estrategia, frecuencia_min | 201, 422 | — |
 | `POST /api/v1/analisis/actividad` | Relación entre actividad y resultados | sujetos, metrica | 200, 422 | — |
 | `POST /api/v1/analisis/cohortes` | Retención por cohorte | sujetos*, periodo, periodos, hoy | 200, 422 | — |
 | `POST /api/v1/analisis/contexto` | Preguntar sobre el registro que se está mirando | pregunta*, objeto*, registro_id*, etiqueta | 200, 422 | — |

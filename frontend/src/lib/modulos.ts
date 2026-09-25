@@ -75,6 +75,25 @@ export interface Recurso {
    */
   abre?: { modulo: string; objeto: string; campo: string };
   /**
+   * Acciones que actúan sobre la COLECCIÓN entera, no sobre una fila.
+   *
+   * Las de fila salen solas del contrato —la superficie las declara colgando
+   * del identificador— pero «cargar el almacén» o «recalcular» no cuelgan de
+   * ningún registro: son hermanas del listado, no hijas. No hay forma de
+   * deducirlas de la ruta sin acertar por casualidad, así que se declaran.
+   *
+   * Sin esto, `POST /almacen/cargar` existía en la API y no había ningún botón
+   * en ninguna pantalla que lo llamara: la tabla de frescura decía «nunca
+   * cargada» y no ofrecía cargarla.
+   */
+  acciones?: Array<{
+    ruta: string;
+    nombre: string;
+    /** Frase corta bajo el botón. Para lo que no se adivina por el rótulo. */
+    detalle?: string;
+    permiso?: string;
+  }>;
+  /**
    * Icono con el que se rotula la pestaña, **en vez del nombre**.
    *
    * Para lo que se repite en todos los módulos y cuyo contexto ya está claro:
@@ -1014,11 +1033,31 @@ export const MODULOS: Modulo[] = [
       },
       // El diccionario de métricas delante de las tablas: la pregunta que abre
       // la discusión es «¿qué quiere decir ingresos?», no «¿qué tablas hay?».
-      { nombre: "Métricas", listar: "/api/v1/metricas", servicio: "analytics" },
+      {
+        nombre: "Métricas",
+        listar: "/api/v1/metricas",
+        // Con alta y con ficha. La API tenía definir, certificar, versionar y
+        // plan desde el principio, y el front solo listaba: se veía el
+        // diccionario y no se podía tocar nada. La ficha sale de que exista un
+        // `GET /metricas/{clave}`, que es lo que faltaba al otro lado.
+        crear: "/api/v1/metricas",
+        objeto: "metrica",
+        servicio: "analytics",
+        columnas: ["clave", "nombre", "estado", "objeto", "agregacion", "unidad"],
+      },
       {
         nombre: "Frescura del almacén",
         listar: "/api/v1/almacen/frescura",
         servicio: "analytics",
+        acciones: [
+          {
+            ruta: "/api/v1/almacen/cargar",
+            nombre: "Cargar ahora",
+            detalle:
+              "Trae las filas de cada tabla declarada. Hasta que alguien lo hace, el almacén está vacío y los informes no tienen de dónde leer.",
+            permiso: "informe:write",
+          },
+        ],
       },
       {
         nombre: "Exportaciones",

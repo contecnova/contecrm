@@ -32,6 +32,14 @@ class DeclararTabla(BaseModel):
     servicio: str = ""
     objeto: str = ""
     nombre: str = ""
+    ruta: str = Field(
+        "",
+        max_length=200,
+        description=(
+            "Ruta de la API de la que se traen las filas, p. ej. `/api/v1/accounts`. "
+            "Sin ella la tabla no se carga sola, y la pantalla de frescura lo dice."
+        ),
+    )
     estrategia: str = Field("incremental", description="completa · incremental")
     frecuencia_min: int = 60
 
@@ -144,6 +152,35 @@ def declarar_tabla(datos: DeclararTabla, uow: UowDep) -> Any:
 )
 def cargar(datos: Cargar, uow: UowDep) -> Any:
     return alm.cargar(uow, **datos.model_dump())
+
+
+@router.post(
+    "/cargar",
+    dependencies=[Depends(exige_permiso("informe:write"))],
+    summary="Cargar el almacén ahora",
+    description=(
+        "Trae las filas de cada tabla declarada por la API pública del propio CRM, "
+        "con una credencial de solo lectura. Es lo que hace que «Frescura» deje de "
+        "decir «nunca cargada»: el diseño original esperaba que cada servicio "
+        "empujara lo suyo y ninguno lo hizo nunca.\n\n"
+        "Un fallo en una tabla no para las demás, y cada una lleva su resultado."
+    ),
+)
+def cargar_ahora(uow: UowDep, principal: AutenticadoDep, tabla: str = Query("")) -> Any:
+    from services.analytics import cargador
+
+    clave_api, base = cargador.clave_y_base(principal.tenant_id)
+    if not base:
+        from crmcore.errors import NoDisponible
+
+        raise NoDisponible(
+            "Falta CI_URL_DEL_CRM: sin saber con qué dirección se ve a sí mismo, "
+            "el CRM no puede leerse para llenar el almacén.",
+            error_code="almacen.sin_direccion",
+        )
+    if tabla:
+        return cargador.cargar_tabla(uow, tabla, clave_api=clave_api, base_url=base)
+    return cargador.cargar_todas(uow, clave_api=clave_api, base_url=base)
 
 
 @router.get(
@@ -280,6 +317,21 @@ def definir(datos: DefinirMetrica, uow: UowDep) -> Any:
 )
 def catalogo(db: DbDep, principal: AutenticadoDep, solo_certificadas: bool = Query(False)) -> Any:
     return sem.catalogo(db, principal.tenant_id, solo_certificadas=solo_certificadas)
+
+
+@router_metricas.get(
+    "/{clave}",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Una métrica",
+    description=(
+        "Existe para que la métrica tenga FICHA. El front deriva la ficha de que "
+        "haya un `GET` por identificador, y de la ficha cuelgan las acciones: sin "
+        "esta ruta, certificar o versionar estaban en la API y no se podían hacer "
+        "desde ninguna pantalla."
+    ),
+)
+def una_metrica(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    return sem.una(db, principal.tenant_id, clave)
 
 
 @router_metricas.post(

@@ -217,6 +217,23 @@ function BotonRegistrar({ alTerminar }: { alTerminar: () => void }) {
 function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
   const { t } = useTranslation();
   const [texto, setTexto] = useState("");
+  // Las últimas preguntas de ESTE tenant, no solo los ejemplos de fábrica. Es
+  // lo que convierte el diario de consultas en algo que sirve: la pestaña de al
+  // lado lo enseña y no se puede hacer nada con él, y repetir una pregunta es
+  // justo lo que uno quiere hacer con un historial.
+  const [recientes, setRecientes] = useState<string[]>([]);
+  useEffect(() => {
+    llamar<Array<{ pregunta: string }>>("/api/v1/analitica/consultas")
+      .then((r) => {
+        const vistas: string[] = [];
+        for (const c of r.datos) {
+          if (c.pregunta && !vistas.includes(c.pregunta)) vistas.push(c.pregunta);
+          if (vistas.length === 8) break;
+        }
+        setRecientes(vistas);
+      })
+      .catch(() => undefined);
+  }, []);
   const [pensando, setPensando] = useState(false);
   const [respuesta, setRespuesta] = useState<{ payload: Payload; texto: string } | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -279,8 +296,11 @@ function Preguntar({ diagnostico }: { diagnostico: Diagnostico }) {
         </button>
       </form>
 
+      <p className="text-3xs text-ink-faint">
+        {recientes.length ? t("explotacion.recientes") : t("explotacion.ejemplos")}
+      </p>
       <div className="flex flex-wrap gap-1.5">
-        {EJEMPLOS.map((e) => (
+        {(recientes.length ? recientes : EJEMPLOS).map((e) => (
           <button
             key={e}
             type="button"

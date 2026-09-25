@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utiles";
 import { Formulario } from "@/componentes/Formulario";
 import { Tabla } from "@/componentes/Tabla";
-import { llamar } from "@/lib/api";
+import { ErrorApi, llamar } from "@/lib/api";
 import {
   admite,
   camposDe,
@@ -149,6 +149,94 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
       )}
     </>
   );
+}
+
+/**
+ * Los botones que actúan sobre la colección entera.
+ *
+ * Se declaran en el recurso porque no se pueden deducir: una acción de fila
+ * cuelga del identificador y la superficie la delata sola, pero «cargar el
+ * almacén» es hermana del listado, no hija suya.
+ *
+ * **Y se dice qué contestó el servidor.** Estas acciones hacen trabajo —traer
+ * filas, recalcular— y una que no responde nada deja a quien la pulsa sin saber
+ * si pasó algo. Lo que devuelva se resume en una línea.
+ */
+function AccionesDeColeccion({
+  acciones,
+  alTerminar,
+}: {
+  acciones: NonNullable<Recurso["acciones"]>;
+  alTerminar: () => void;
+}) {
+  const [enCurso, setEnCurso] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<string | null>(null);
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  async function ejecutar(accion: NonNullable<Recurso["acciones"]>[number]) {
+    setEnCurso(accion.ruta);
+    setFallo(null);
+    setResultado(null);
+    try {
+      const r = await llamar<Record<string, unknown>>(accion.ruta, { metodo: "POST" });
+      setResultado(resumir(r.datos));
+      alTerminar();
+    } catch (e: unknown) {
+      setFallo(e instanceof ErrorApi ? e.titulo : String(e));
+    } finally {
+      setEnCurso(null);
+    }
+  }
+
+  return (
+    <div className="mb-4 flex flex-col gap-1.5">
+      <div className="flex flex-wrap gap-2">
+        {acciones.map((a) => (
+          <button
+            key={a.ruta}
+            type="button"
+            className="btn-secondary"
+            disabled={enCurso !== null}
+            onClick={() => void ejecutar(a)}
+          >
+            {enCurso === a.ruta ? "…" : a.nombre}
+          </button>
+        ))}
+      </div>
+      {acciones.filter((a) => a.detalle).map((a) => (
+        <p key={a.ruta} className="text-3xs text-ink-faint">
+          {a.detalle}
+        </p>
+      ))}
+      {resultado ? (
+        <p role="status" className="text-2xs text-success">
+          {resultado}
+        </p>
+      ) : null}
+      {fallo ? (
+        <p role="alert" className="text-2xs text-danger">
+          {fallo}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Lo que hizo la acción, en una línea legible. Nunca el JSON crudo. */
+function resumir(datos: unknown): string {
+  if (!datos || typeof datos !== "object") return "Hecho.";
+  const d = datos as Record<string, unknown>;
+  const tablas = d.tablas;
+  if (Array.isArray(tablas)) {
+    const partes = tablas.map((t) => {
+      const f = t as Record<string, unknown>;
+      const n = Number(f.aplicadas ?? f.cargadas ?? 0);
+      const mal = f.error || f.motivo;
+      return `${String(f.tabla)}: ${mal ? String(mal) : `${n} filas`}`;
+    });
+    return partes.join(" · ");
+  }
+  return "Hecho.";
 }
 
 function RecursoVista({
@@ -400,6 +488,10 @@ function RecursoVista({
             className="input-base"
           />
         </div>
+      ) : null}
+
+      {recurso.acciones?.length ? (
+        <AccionesDeColeccion acciones={recurso.acciones} alTerminar={() => void cargar()} />
       ) : null}
 
       {fallo ? <Fallo error={fallo} reintentar={() => void cargar()} /> : null}

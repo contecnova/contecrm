@@ -49,6 +49,12 @@ H_SCOPES = "x-crm-scopes"
 H_ACTOR_REAL = "x-crm-actor-real"
 H_SESION = "x-crm-sesion"
 H_PLATAFORMA = "x-crm-plataforma"
+# Qué CLASE de principal es: persona, servicio, automatización, agente. Faltaba,
+# y su ausencia no se notaba mientras todo lo que entraba eran personas. En
+# cuanto entró una credencial de máquina, los servicios de detrás la trataron
+# como a una persona sin registros a su nombre y le enseñaron CERO filas — sin
+# error, que es la forma más cara de equivocarse.
+H_TIPO = "x-crm-tipo"
 H_FIRMA = "x-crm-firma"
 H_MOMENTO = "x-crm-momento"
 
@@ -89,6 +95,7 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
         for h in (
             H_TENANT,
             H_USER,
+            H_TIPO,
             H_PERMISOS,
             H_ROLES,
             H_SCOPES,
@@ -240,6 +247,7 @@ def _principal_de_cabeceras(request: Request) -> Principal:
 
     return Principal(
         id=_uuid(H_USER),
+        tipo=request.headers.get(H_TIPO) or "usuario",
         tenant_id=_uuid(H_TENANT),
         actor_real_id=_uuid(H_ACTOR_REAL),
         sesion_id=_uuid(H_SESION),

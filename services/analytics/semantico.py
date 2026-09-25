@@ -383,6 +383,39 @@ def plan_de(
     return plan
 
 
+def una(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any]:
+    """Una métrica por su clave, en su versión vigente.
+
+    Faltaba, y sin ella la pantalla no podía tener FICHA: el front deriva la
+    ficha de que exista un `GET` por identificador, y de la ficha cuelgan las
+    acciones. O sea que certificar una métrica o sacarle una versión nueva
+    existían en la API y no se podían hacer desde ninguna parte.
+    """
+    from crmcore.errors import NoEncontrado
+
+    fila = db.execute(
+        select(Metrica).where(
+            Metrica.tenant_id == tenant_id, Metrica.clave == clave, Metrica.vigente.is_(True)
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado("Esa métrica no existe", error_code="metrica.no_encontrada")
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "version": fila.version,
+        "definicion": fila.definicion,
+        "objeto": fila.objeto,
+        "agregacion": fila.agregacion,
+        "dimensiones": fila.dimensiones,
+        "unidad": fila.unidad,
+        "estado": fila.estado,
+        "certificada": fila.estado == "certificada",
+        "dueno_id": str(fila.dueno_id) if fila.dueno_id else None,
+    }
+
+
 def catalogo(db: Session, tenant_id: UUID, *, solo_certificadas: bool = False) -> dict[str, Any]:
     """El diccionario de métricas, con su estado y su dueño.
 

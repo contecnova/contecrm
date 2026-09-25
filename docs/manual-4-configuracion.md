@@ -132,6 +132,59 @@ Y hay un techo por encima: los alcances que el administrador de contecmind
 concedió a esta aplicación al darla de alta. Pedir aquí más de lo concedido no
 es un error —se concede la intersección— pero tampoco sirve de nada.
 
+#### Para que «Explotación» funcione hacen falta tres cosas
+
+1. **`CI_URL_DEL_CRM`** — con qué dirección ve contecintelligence a este CRM. No
+   es `CI_BASE_URL` al revés: desde su contenedor, `localhost` es él mismo.
+   En la pila de desarrollo: `http://gateway:8000/api/v1`.
+2. **`CI_URL_PUBLICA`** — la dirección de contecintelligence **para el
+   navegador**. La pantalla pregunta desde el cliente con un token corto, así
+   que necesita una dirección que el navegador pueda resolver.
+   En desarrollo: `http://localhost:8100`.
+3. **Pulsar «Registrar el CRM como fuente consultable»** en la propia pantalla.
+   El servidor emite una credencial de solo lectura, lee su propia
+   `/superficie` para saber qué objetos hay, mide la forma de cada listado y da
+   de alta la fuente. No hay nada que rellenar.
+
+Y en contecintelligence, dos cosas del lado de allá: la aplicación de contecrm
+necesita el alcance **`sources:write`** (con `sources:read` no puede registrarse)
+y sus **orígenes** tienen que incluir el del navegador, o el preflight de CORS
+tumba la pregunta antes de salir.
+
+#### El almacén analítico no se llenaba solo
+
+`POST /almacen/cargas` esperaba que **cada servicio empujara lo suyo**, y en toda
+la vida del proyecto ninguno lo hizo. No fallaba nada: el almacén estaba vacío,
+«Frescura» decía «nunca cargada» para todas las tablas y siempre, y cualquier
+informe que leyera de ahí devolvía cero filas.
+
+Ahora hay un cargador (`POST /api/v1/almacen/cargar`, y el botón **Cargar ahora**
+en la pestaña de frescura) que trae las filas **por la API pública** del propio
+CRM con una credencial de solo lectura. Dos consecuencias buenas: el almacén ve
+exactamente lo que ve un lector —con su enmascarado por rol— y no hay trece
+cargadores que escribir.
+
+Cada tabla declara de dónde se trae (`ruta`). No se deduce del objeto: las
+etiquetas de la superficie son ambiguas —`casos` etiqueta también las *colas* de
+casos— y cargar la tabla equivocada es peor que no cargar.
+
+#### Una credencial de máquina no es una persona
+
+Las claves de API veían **cero filas** en cualquier listado con compartición. No
+era un permiso: era que `filtro_visibilidad` pregunta «¿de quién es este
+registro y a quién se lo han compartido?», y una credencial no posee nada ni
+está en ningún equipo. Devolvía una lista vacía sin un solo error.
+
+Un principal de tipo `servicio` representa al **tenant**, así que no se le aplica
+la compartición. Lo que sí se le sigue aplicando es el **ABAC**: las políticas de
+dato son del dato, y una integración que las esquivara sería la puerta de atrás
+de todas ellas. Y lo que lo acota es lo que se le dio al crearla: su tenant, su
+rol de solo lectura y sus alcances.
+
+Para que eso funcione, el `tipo` del principal **viaja en las cabeceras
+firmadas** (`x-crm-tipo`). No viajaba, y mientras todo lo que entraba eran
+personas no se notó.
+
 #### El canje de token con contecintelligence: DOS pasos
 
 Levantados los dos productos de verdad por primera vez (24-09-2026), el canje

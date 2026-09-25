@@ -82,6 +82,27 @@ def aplicar_visibilidad(
     if principal.es_admin_plataforma or principal.tiene(permiso_ver_todo or f"{objeto}:admin"):
         return consulta
 
+    # Una credencial de MÁQUINA no es una persona: no posee registros, no está en
+    # ningún equipo y nadie le ha compartido nada, así que el filtro de
+    # compartición la dejaba viendo CERO filas. Una integración con permiso de
+    # lectura que no lee nada no es una integración — y lo peor es que no falla:
+    # devuelve una lista vacía, que es una respuesta legítima. Así estaba el
+    # almacén analítico, cargando cero filas sin un solo error.
+    #
+    # La compartición responde a «¿a qué personas se les ha dado acceso?», y esa
+    # pregunta no tiene sentido para algo que representa al TENANT entero. Así
+    # que para un principal de servicio no se aplica.
+    #
+    # Lo que SÍ se le sigue aplicando, y va justo arriba, es el ABAC: las
+    # políticas de dato —«esta unidad de negocio no ve las oportunidades de la
+    # otra»— son del dato, no de la persona, y una integración que las esquivara
+    # sería la puerta de atrás de todas ellas.
+    #
+    # Y lo que la acota es lo que se le dio al crearla: su tenant, su rol de
+    # solo lectura y sus alcances. Nada de esto le abre otro tenant.
+    if getattr(principal, "tipo", "") == "servicio":
+        return consulta
+
     try:
         filtro = filtro_visibilidad(
             db,

@@ -99,6 +99,24 @@ class TablaAnalitica(Base, TimestampMixin, SoftDeleteMixin):
     columnas: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # De dónde se traen las filas: la ruta de la API que las lista, tal cual
+    # (`/api/v1/accounts`). Se DECLARA y no se adivina.
+    #
+    # El diseño original decía que las filas «las entrega el servicio dueño», y
+    # en toda la vida del proyecto NINGÚN servicio las entregó: `POST
+    # /almacen/cargas` no lo llamaba nadie, así que el almacén estaba vacío, la
+    # pantalla de frescura decía «nunca cargada» para siempre y los informes no
+    # tenían de dónde leer. Una arquitectura que nadie implementa no es una
+    # arquitectura.
+    #
+    # Ahora las trae el cargador por la API pública, que además hace que el
+    # almacén vea exactamente lo que ve un lector —con su enmascarado por rol— y
+    # no una copia del esquema por debajo.
+    #
+    # Adivinar la ruta desde el objeto no vale: las etiquetas de la superficie
+    # son ambiguas —`casos` casa también con «colas de casos»— y una carga que
+    # apunta a la tabla equivocada es peor que no cargar.
+    ruta: Mapped[str] = mapped_column(String(200), nullable=False, default="", server_default="")
     # Cada cuánto debería cargarse. Es lo que permite decir que una tabla está
     # obsoleta sin esperar a que alguien lo note en un panel.
     frecuencia_min: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
@@ -270,6 +288,7 @@ def declarar_tabla(
     servicio: str = "",
     objeto: str = "",
     nombre: str = "",
+    ruta: str = "",
     estrategia: str = "incremental",
     frecuencia_min: int = 60,
 ) -> TablaAnalitica:
@@ -296,6 +315,7 @@ def declarar_tabla(
         nombre=nombre.strip() or clave.strip(),
         servicio=servicio,
         objeto=objeto,
+        ruta=ruta.strip(),
         estrategia=estrategia,
         columnas=list(columnas),
         frecuencia_min=max(1, int(frecuencia_min)),

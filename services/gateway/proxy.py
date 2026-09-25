@@ -96,6 +96,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_SCOPES,
         H_SESION,
         H_TENANT,
+        H_TIPO,
         H_USER,
         firmar_cabeceras_internas,
     )
@@ -103,6 +104,10 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
     valores = {
         H_TENANT: str(principal.tenant_id or ""),
         H_USER: str(principal.id or ""),
+        # Persona o máquina. Los servicios de detrás deciden distinto: a una
+        # credencial de máquina no se le aplica la compartición, porque
+        # representa al tenant y no posee registros.
+        H_TIPO: str(getattr(principal, "tipo", "") or ""),
         H_PERMISOS: ",".join(sorted(principal.permisos)),
         H_ROLES: ",".join(sorted(principal.roles)),
         H_SCOPES: ",".join(sorted(principal.scopes)),

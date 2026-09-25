@@ -224,6 +224,8 @@ export default {
     // La caja de preguntar y el alta de la fuente.
     placeholder: "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
     preguntar: "Preguntar",
+    ejemplos: "Prueba con una de estas:",
+    recientes: "Lo último que se ha preguntado aquí:",
     pensando: "Pensando…",
     sinRespuesta: "No se ha podido responder a eso.",
     comoSeCalculo: "Cómo se ha calculado",
