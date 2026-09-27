@@ -68,6 +68,14 @@ VECINOS: dict[str, dict[str, Any]] = {
             "/api/v1/folders/{folder_id}/summary",
             "/api/v1/folders/{folder_id}/concepts",
             "/api/v1/documents/{document_id}/move",
+            # El aprovisionamiento: dar de alta en el gestor lo que se da de alta
+            # en el CRM. Se fijan AUNQUE NO EXISTAN TODAVÍA —el fichero guarda el
+            # hueco explícito— porque es justo lo que hace que el día que
+            # aparezcan se note, y que si aparecen con otra forma el gate lo diga
+            # en vez de descubrirlo al dar de alta un cliente.
+            "/api/v1/admin/tenants/by-external/{id_externo}",
+            "/api/v1/admin/users/by-external/{id_externo}",
+            "/api/v1/admin/departments/by-external/{id_externo}",
         ],
     },
 }

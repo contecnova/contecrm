@@ -224,15 +224,34 @@ class ConectorContecmind(ConectorGenerico):
     def _ruta(
         self, herramienta: HerramientaConectada, fila: SincronizacionSuite
     ) -> tuple[str, str]:
+        # Las rutas de aprovisionamiento de contecmind, por NUESTRO identificador.
+        #
+        # Aquí ponía `/api/v1/admin/organizations/{id_externo}`,
+        # `/admin/users/{id_externo}` y `/admin/departments/{id_externo}`, y
+        # **ninguna de las tres existe**: lo suyo es `/admin/users` con `POST` y
+        # `/{user_id}` con `PATCH`, y las organizaciones se llaman `tenants`. O
+        # sea que dar de alta un tenant del CRM nunca provisionó nada en el
+        # gestor documental. Es el quinto desajuste de ruta con este vecino, y
+        # como los otros cuatro no lo cazó ninguna prueba: nadie había ejecutado
+        # el camino entero.
+        #
+        # Se direcciona por el identificador NUESTRO y con `PUT` a propósito. Un
+        # aprovisionamiento que no se puede reintentar no es un
+        # aprovisionamiento: es una apuesta. Con el id del otro lado habría que
+        # buscar antes de crear, y entre la búsqueda y el alta hay una carrera
+        # que no se cierra desde fuera — dos altas a la vez crean dos usuarios.
         propias = {
-            ("tenant", "alta"): ("PUT", "/api/v1/admin/organizations/{id_externo}"),
-            ("tenant", "actualizacion"): ("PUT", "/api/v1/admin/organizations/{id_externo}"),
-            ("usuario", "alta"): ("PUT", "/api/v1/admin/users/{id_externo}"),
-            ("usuario", "actualizacion"): ("PUT", "/api/v1/admin/users/{id_externo}"),
-            ("usuario", "baja"): ("DELETE", "/api/v1/admin/users/{id_externo}"),
-            ("unidad", "alta"): ("PUT", "/api/v1/admin/departments/{id_externo}"),
-            ("unidad", "actualizacion"): ("PUT", "/api/v1/admin/departments/{id_externo}"),
-            ("unidad", "baja"): ("DELETE", "/api/v1/admin/departments/{id_externo}"),
+            ("tenant", "alta"): ("PUT", "/api/v1/admin/tenants/by-external/{id_externo}"),
+            ("tenant", "actualizacion"): ("PUT", "/api/v1/admin/tenants/by-external/{id_externo}"),
+            ("usuario", "alta"): ("PUT", "/api/v1/admin/users/by-external/{id_externo}"),
+            ("usuario", "actualizacion"): ("PUT", "/api/v1/admin/users/by-external/{id_externo}"),
+            ("usuario", "baja"): ("DELETE", "/api/v1/admin/users/by-external/{id_externo}"),
+            ("unidad", "alta"): ("PUT", "/api/v1/admin/departments/by-external/{id_externo}"),
+            (
+                "unidad",
+                "actualizacion",
+            ): ("PUT", "/api/v1/admin/departments/by-external/{id_externo}"),
+            ("unidad", "baja"): ("DELETE", "/api/v1/admin/departments/by-external/{id_externo}"),
         }
         clave = (fila.objeto, fila.operacion)
         if clave in propias:
