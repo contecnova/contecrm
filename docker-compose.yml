@@ -527,11 +527,31 @@ services:
     depends_on: [prometheus, tempo]
 
 volumes:
-  # Los datos irremplazables se declaran con nombre para que sobrevivan a un
-  # `docker compose down` (sin `-v`). Postgres es el sistema entero; NATS, los
-  # eventos aún no entregados.
+  # ── Los irremplazables: PROTEGIDOS de `docker compose down -v` ─────────────
+  #
+  # `external: true` hace que compose NUNCA los cree ni los borre. Un `down -v`
+  # —o `down --volumes`, o `--remove-orphans` con la bandera puesta— los deja
+  # intactos en vez de destruirlos.
+  #
+  # Declararlos con nombre a secas no bastaba: eso solo protege del `down` sin
+  # bandera, y el que se escribe cuando algo va raro es precisamente el que la
+  # lleva. Es el mismo patrón que contecmind puso tras perder su Postgres y su
+  # índice vectorial de golpe.
+  #
+  # Los crea `./setup.sh arrancar --docker` si no están. Y si faltan, compose se
+  # niega a arrancar diciendo cuál falta, que es mejor que arrancar con la base
+  # vacía y que alguien lo descubra porque «no hay datos».
+  #
+  # Aviso honesto de lo que esto NO cubre: un reinicio a fábrica de Docker
+  # Desktop borra su disco entero, volúmenes externos incluidos. Contra eso solo
+  # vale una copia fuera de Docker.
   datos_postgres:
+    name: contecrm_datos_postgres
+    external: true
   datos_nats:
+    name: contecrm_datos_nats
+    external: true
+  # ── Regenerables: se pueden perder sin drama ──────────────────────────────
   datos_redis:
   datos_prometheus:
   datos_grafana:

@@ -10,6 +10,7 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from crmcore.http.listados import montar_ficha
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -306,7 +307,7 @@ def arrancar(datos: ArrancarProceso, db: DbDep, principal: AutenticadoDep) -> An
 
 @router_inst.get(
     "",
-    response_model=list[InstanciaOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("proceso:read"))],
     summary="Instancias, filtrables por estado y por origen",
 )
@@ -317,6 +318,7 @@ def listar_instancias(
     clave: str = Query(""),
     origen_id: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(InstanciaProceso).where(InstanciaProceso.tenant_id == principal.tenant_id)
     if estado:
@@ -325,10 +327,8 @@ def listar_instancias(
         consulta = consulta.where(InstanciaProceso.clave == clave)
     if origen_id:
         consulta = consulta.where(InstanciaProceso.origen_id == origen_id)
-    return list(
-        db.execute(consulta.order_by(InstanciaProceso.created_at.desc()).limit(limite))
-        .scalars()
-        .all()
+    return paginar_consulta(
+        db, InstanciaProceso, consulta, limite=limite, cursor=cursor, modelo_salida=InstanciaOut
     )
 
 
@@ -436,7 +436,7 @@ router_tareas = APIRouter(prefix="/tareas", tags=["tareas humanas"])
 
 @router_tareas.get(
     "",
-    response_model=list[TareaOut],
+    response_model=PaginaDeListado,
     summary="Mi bandeja de tareas",
     description=(
         "Tareas asignadas a la persona o a alguno de sus roles. El proceso está "
@@ -448,23 +448,29 @@ def bandeja(
     principal: AutenticadoDep,
     estado: str = Query("pendiente"),
     limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     from sqlalchemy import or_
 
-    consulta = (
-        select(TareaHumana)
-        .where(
-            TareaHumana.tenant_id == principal.tenant_id,
-            TareaHumana.estado == estado,
-            or_(
-                TareaHumana.asignada_a == principal.id,
-                TareaHumana.asignada_rol.in_(list(principal.roles) or [""]),
-            ),
-        )
-        .order_by(TareaHumana.vence_at.nulls_last(), TareaHumana.created_at)
-        .limit(limite)
+    consulta = select(TareaHumana).where(
+        TareaHumana.tenant_id == principal.tenant_id,
+        TareaHumana.estado == estado,
+        or_(
+            TareaHumana.asignada_a == principal.id,
+            TareaHumana.asignada_rol.in_(list(principal.roles) or [""]),
+        ),
     )
-    return list(db.execute(consulta).scalars().all())
+    # Por vencimiento: una bandeja de tareas ordenada por fecha de creación
+    # esconde al final la que vence hoy.
+    return paginar_consulta(
+        db,
+        TareaHumana,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="vence_at",
+        modelo_salida=TareaOut,
+    )
 
 
 @router_tareas.post(

@@ -15,6 +15,7 @@ from crmcore.http.deps import (
     exige_firma_interna,
     exige_permiso,
 )
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -473,23 +474,33 @@ def crear_usuario(datos: CrearUsuario, uow: UowDep, principal: AutenticadoDep) -
 
 @router_usuarios.get(
     "",
-    response_model=list[UsuarioOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("user:read"))],
     summary="Usuarios del tenant",
+    description=(
+        "Por páginas con cursor. Antes devolvía la lista entera sin tope: en un "
+        "tenant de diez mil personas eso es diez mil filas en una respuesta, y el "
+        "navegador que la pide se queda parado sin que nadie sepa por qué."
+    ),
 )
-def listar_usuarios(db: DbDep, principal: AutenticadoDep) -> Any:
+def listar_usuarios(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
     # Se une por membresía y no se listan los usuarios a secas: `Usuario` es una
     # de las dos tablas sin `tenant_id`, así que aquí el aislamiento lo pone
     # esta unión y no el guard. El gate de alcance lo comprueba.
-    return list(
-        db.execute(
-            select(Usuario)
-            .join(Membresia, Membresia.usuario_id == Usuario.id)
-            .where(Membresia.tenant_id == principal.tenant_id)
-            .order_by(Usuario.email)
-        )
-        .scalars()
-        .all()
+    consulta = (
+        select(Usuario)
+        .join(Membresia, Membresia.usuario_id == Usuario.id)
+        .where(Membresia.tenant_id == principal.tenant_id)
+    )
+    # Por correo y no por fecha: es el orden con el que se busca a una persona en
+    # una lista, y el cursor tiene que ir por la misma columna que el orden.
+    return paginar_consulta(
+        db, Usuario, consulta, limite=limite, cursor=cursor, orden="email", modelo_salida=UsuarioOut
     )
 
 
@@ -508,12 +519,16 @@ def baja_usuario(usuario_id: UUID, uow: UowDep, principal: AutenticadoDep) -> No
 router_roles = APIRouter(prefix="/roles", tags=["roles y permisos"])
 
 
-@router_roles.get("", response_model=list[RolOut], summary="Roles del tenant")
-def listar_roles(db: DbDep, principal: AutenticadoDep) -> Any:
-    return list(
-        db.execute(select(RolTenant).where(RolTenant.tenant_id == principal.tenant_id))
-        .scalars()
-        .all()
+@router_roles.get("", response_model=PaginaDeListado, summary="Roles del tenant")
+def listar_roles(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(RolTenant).where(RolTenant.tenant_id == principal.tenant_id)
+    return paginar_consulta(
+        db, RolTenant, consulta, limite=limite, cursor=cursor, orden="nombre", modelo_salida=RolOut
     )
 
 
@@ -593,20 +608,26 @@ def explicar(datos: ExplicarPermiso, db: DbDep, principal: AutenticadoDep) -> An
 router_sesiones = APIRouter(prefix="/sesiones", tags=["sesiones"])
 
 
-@router_sesiones.get("", response_model=list[SesionOut], summary="Mis sesiones activas")
-def mis_sesiones(db: DbDep, principal: AutenticadoDep) -> Any:
-    return list(
-        db.execute(
-            select(Sesion)
-            .where(
-                Sesion.usuario_id == principal.id,
-                Sesion.revocada_at.is_(None),
-                Sesion.expira_at > datetime.now(timezone.utc),
-            )
-            .order_by(Sesion.ultima_actividad_at.desc())
-        )
-        .scalars()
-        .all()
+@router_sesiones.get("", response_model=PaginaDeListado, summary="Mis sesiones activas")
+def mis_sesiones(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(Sesion).where(
+        Sesion.usuario_id == principal.id,
+        Sesion.revocada_at.is_(None),
+        Sesion.expira_at > datetime.now(timezone.utc),
+    )
+    return paginar_consulta(
+        db,
+        Sesion,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="-ultima_actividad_at",
+        modelo_salida=SesionOut,
     )
 
 
@@ -684,19 +705,19 @@ def crear_clave(datos: CrearClaveApi, db: DbDep, principal: AutenticadoDep) -> A
 
 @router_claves.get(
     "",
-    response_model=list[ClaveApiOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("apikey:read"))],
     summary="Claves de API del tenant",
 )
-def listar_claves(db: DbDep, principal: AutenticadoDep) -> Any:
-    return list(
-        db.execute(
-            select(ClaveApi)
-            .where(ClaveApi.tenant_id == principal.tenant_id)
-            .order_by(ClaveApi.created_at.desc())
-        )
-        .scalars()
-        .all()
+def listar_claves(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(ClaveApi).where(ClaveApi.tenant_id == principal.tenant_id)
+    return paginar_consulta(
+        db, ClaveApi, consulta, limite=limite, cursor=cursor, modelo_salida=ClaveApiOut
     )
 
 
@@ -960,20 +981,30 @@ def crear_regla_comparticion(
 
 @router_comparticion.get(
     "",
-    response_model=list[dict],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("sharing:read"))],
     summary="Reglas de compartición del tenant",
 )
 def listar_reglas_comparticion(
-    db: DbDep, principal: AutenticadoDep, objeto: str = Query("")
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: str = Query(""),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     from crmcore.authz.comparticion import ReglaComparticion
 
     consulta = select(ReglaComparticion).where(ReglaComparticion.tenant_id == principal.tenant_id)
     if objeto:
         consulta = consulta.where(ReglaComparticion.objeto == objeto)
-    return [
-        {
+    return paginar_consulta(
+        db,
+        ReglaComparticion,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="nombre",
+        fila_a_dict=lambda r: {
             "id": str(r.id),
             "nombre": r.nombre,
             "objeto": r.objeto,
@@ -981,9 +1012,8 @@ def listar_reglas_comparticion(
             "acceso": r.acceso,
             "condiciones": r.condiciones,
             "activa": r.activa,
-        }
-        for r in db.execute(consulta.order_by(ReglaComparticion.nombre)).scalars().all()
-    ]
+        },
+    )
 
 
 @router_comparticion.post(

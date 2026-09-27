@@ -24,7 +24,6 @@ from crmcore.datos.seguimiento import (
     Notificacion,
     PreferenciaNotificacion,
     Seguimiento,
-    bandeja,
     dejar_de_seguir,
     marcar_leidas,
     notificar,
@@ -34,6 +33,7 @@ from crmcore.datos.seguimiento import (
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep
 from crmcore.http.listados import declarar_recurso, montar_ficha  # noqa: E402
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, status
 from pydantic import BaseModel, Field
@@ -379,16 +379,20 @@ class SeguimientoOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router_seguimiento.get("", response_model=list[SeguimientoOut], summary="Lo que sigo")
+@router_seguimiento.get("", response_model=PaginaDeListado, summary="Lo que sigo")
 def mis_seguimientos(
     db: DbDep,
     principal: AutenticadoDep,
     objeto_tipo: str | None = Query(None),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(Seguimiento).where(Seguimiento.usuario_id == principal.id)
     if objeto_tipo:
         consulta = consulta.where(Seguimiento.objeto_tipo == objeto_tipo)
-    return list(db.execute(consulta.order_by(Seguimiento.created_at.desc())).scalars().all())
+    return paginar_consulta(
+        db, Seguimiento, consulta, limite=limite, cursor=cursor, modelo_salida=SeguimientoOut
+    )
 
 
 @router_seguimiento.post(
@@ -475,21 +479,28 @@ def _salida(n: Notificacion) -> NotificacionOut:
     )
 
 
-@router_notificaciones.get("", response_model=list[NotificacionOut], summary="Mi bandeja")
+@router_notificaciones.get("", response_model=PaginaDeListado, summary="Mi bandeja")
 def mi_bandeja(
     db: DbDep,
     principal: AutenticadoDep,
     solo_no_leidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
-    filas = bandeja(
-        db,
-        tenant_id=principal.tenant_id,
-        usuario_id=principal.id,
-        solo_no_leidas=solo_no_leidas,
-        limite=limite,
+    consulta = select(Notificacion).where(
+        Notificacion.tenant_id == principal.tenant_id,
+        Notificacion.usuario_id == principal.id,
     )
-    return [_salida(n) for n in filas]
+    if solo_no_leidas:
+        consulta = consulta.where(Notificacion.leida_at.is_(None))
+    return paginar_consulta(
+        db,
+        Notificacion,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        fila_a_dict=_salida,
+    )
 
 
 class MarcarLeidas(BaseModel):

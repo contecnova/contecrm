@@ -9,6 +9,7 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -138,7 +139,7 @@ def crear(datos: CrearAutomatizacion, db: DbDep, principal: AutenticadoDep) -> A
 
 @router.get(
     "",
-    response_model=list[AutomatizacionOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("automation:read"))],
     summary="Automatizaciones del tenant",
 )
@@ -147,16 +148,24 @@ def listar(
     principal: AutenticadoDep,
     objetivo: str = Query(""),
     solo_activas: bool = Query(False),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(Automatizacion).where(Automatizacion.tenant_id == principal.tenant_id)
     if objetivo:
         consulta = consulta.where(Automatizacion.objetivo == objetivo)
     if solo_activas:
         consulta = consulta.where(Automatizacion.activa.is_(True))
-    return list(
-        db.execute(consulta.order_by(Automatizacion.prioridad, Automatizacion.nombre))
-        .scalars()
-        .all()
+    # Por prioridad, que es el orden en que se EJECUTAN: verlas en otro orden hace
+    # difícil entender cuál actúa primero sobre el mismo registro.
+    return paginar_consulta(
+        db,
+        Automatizacion,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="prioridad",
+        modelo_salida=AutomatizacionOut,
     )
 
 

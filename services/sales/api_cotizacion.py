@@ -10,6 +10,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso, montar_listado
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -83,7 +84,7 @@ def crear_producto(datos: CrearProducto, db: DbDep, principal: AutenticadoDep) -
 
 @router_prod.get(
     "",
-    response_model=list[ProductoOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("producto:read"))],
     summary="Catálogo del tenant",
 )
@@ -93,13 +94,22 @@ def listar_productos(
     familia: str = Query(""),
     solo_activos: bool = Query(True),
     limite: int = Query(200, ge=1, le=1000),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(cat.Producto).where(cat.Producto.tenant_id == principal.tenant_id)
     if familia:
         consulta = consulta.where(cat.Producto.familia == familia)
     if solo_activos:
         consulta = consulta.where(cat.Producto.activo.is_(True))
-    return list(db.execute(consulta.order_by(cat.Producto.sku).limit(limite)).scalars().all())
+    return paginar_consulta(
+        db,
+        cat.Producto,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="sku",
+        modelo_salida=ProductoOut,
+    )
 
 
 class CrearRelacion(BaseModel):

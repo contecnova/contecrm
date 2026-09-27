@@ -17,7 +17,8 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from fastapi import APIRouter, Depends, status
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -73,7 +74,7 @@ class SimulacionEntrada(BaseModel):
 
 @router_politicas.get(
     "",
-    response_model=list[dict],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("user:read"))],
     summary="Políticas de acceso del tenant",
     description=(
@@ -81,19 +82,26 @@ class SimulacionEntrada(BaseModel):
         "escribirlas y probarlas con el simulador sin que decidan nada."
     ),
 )
-def listar_politicas(db: DbDep, principal: AutenticadoDep) -> Any:
+def listar_politicas(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
     from crmcore.authz.politicas import PoliticaAbac, a_dict
 
-    filas = (
-        db.execute(
-            select(PoliticaAbac)
-            .where(PoliticaAbac.tenant_id == principal.tenant_id)
-            .order_by(PoliticaAbac.prioridad, PoliticaAbac.nombre)
-        )
-        .scalars()
-        .all()
+    consulta = select(PoliticaAbac).where(PoliticaAbac.tenant_id == principal.tenant_id)
+    # Por prioridad, que es el orden en que se APLICAN: verlas en otro orden hace
+    # difícil entender cuál gana.
+    return paginar_consulta(
+        db,
+        PoliticaAbac,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="prioridad",
+        fila_a_dict=a_dict,
     )
-    return [a_dict(f) for f in filas]
 
 
 @router_politicas.put(

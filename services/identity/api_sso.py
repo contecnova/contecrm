@@ -12,6 +12,7 @@ from uuid import UUID
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import Response
@@ -101,12 +102,22 @@ def _salida(fila: ProveedorIdentidad) -> ProveedorOut:
 SECRETAS = {"client_secret", "sp_private_key"}
 
 
-@router_idp.get("", response_model=list[ProveedorOut], summary="Proveedores del tenant")
-def listar(db: DbDep, principal: AutenticadoDep) -> Any:
-    filas = (
-        db.execute(select(ProveedorIdentidad).order_by(ProveedorIdentidad.nombre)).scalars().all()
+@router_idp.get("", response_model=PaginaDeListado, summary="Proveedores del tenant")
+def listar(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    return paginar_consulta(
+        db,
+        ProveedorIdentidad,
+        select(ProveedorIdentidad),
+        limite=limite,
+        cursor=cursor,
+        orden="nombre",
+        fila_a_dict=_salida,
     )
-    return [_salida(f) for f in filas]
 
 
 @router_idp.post(

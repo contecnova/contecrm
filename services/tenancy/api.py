@@ -19,7 +19,12 @@ from crmcore.http.deps import (
     exige_firma_interna,
     exige_permiso,
 )
-from crmcore.http.pagination import PaginaDeListado, ParametrosPagina, construir_pagina
+from crmcore.http.pagination import (
+    PaginaDeListado,
+    ParametrosPagina,
+    construir_pagina,
+    paginar_consulta,
+)
 from crmcore.runtime import settings as rt
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -197,10 +202,16 @@ def listar_unidades(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
 router_planes = APIRouter(prefix="/planes", tags=["planes"])
 
 
-@router_planes.get("", response_model=list[PlanOut], summary="Planes disponibles")
-def listar_planes(db: DbDep, _: AutenticadoDep) -> Any:
-    return list(
-        db.execute(select(Plan).where(Plan.activo.is_(True)).order_by(Plan.codigo)).scalars().all()
+@router_planes.get("", response_model=PaginaDeListado, summary="Planes disponibles")
+def listar_planes(
+    db: DbDep,
+    _: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(Plan).where(Plan.activo.is_(True))
+    return paginar_consulta(
+        db, Plan, consulta, limite=limite, cursor=cursor, orden="codigo", modelo_salida=PlanOut
     )
 
 

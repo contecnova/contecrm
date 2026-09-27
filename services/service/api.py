@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -242,8 +243,16 @@ def abrir(datos: AbrirCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
 
 @router_casos.get(
     "",
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("case:read"))],
     summary="Buscar casos",
+    description=(
+        "Por páginas con cursor. Devolvía una lista pelada con un tope de 50, y "
+        "sin declarar su modelo de respuesta: así la superficie no la reconocía "
+        "como colección y la explotación la registraba como una entidad que se "
+        "lee entera. La métrica «casos abiertos» contestaba **50 habiendo 153**, "
+        "con su cara de cifra buena."
+    ),
 )
 def listar(
     db: DbDep,
@@ -252,6 +261,7 @@ def listar(
     prioridad: str = Query("", max_length=20),
     cuenta_id: UUID | None = Query(None),
     limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(Caso).where(Caso.tenant_id == principal.tenant_id, Caso.deleted_at.is_(None))
     if estado:
@@ -260,9 +270,13 @@ def listar(
         consulta = consulta.where(Caso.prioridad == prioridad)
     if cuenta_id:
         consulta = consulta.where(Caso.cuenta_id == cuenta_id)
-    filas = db.execute(consulta.order_by(Caso.created_at.desc()).limit(limite)).scalars().all()
-    return [
-        {
+    return paginar_consulta(
+        db,
+        Caso,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        fila_a_dict=lambda f: {
             "id": str(f.id),
             "codigo": f.codigo,
             "asunto": f.asunto,
@@ -273,9 +287,8 @@ def listar(
                 f.vence_resolucion_at.isoformat() if f.vence_resolucion_at else None
             ),
             "incumplio_resolucion": f.incumplio_resolucion,
-        }
-        for f in filas
-    ]
+        },
+    )
 
 
 @router_casos.get(

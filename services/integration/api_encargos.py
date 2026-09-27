@@ -9,6 +9,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -85,19 +86,25 @@ def crear_proveedor(datos: CrearProveedor, db: DbDep, principal: AutenticadoDep)
 
 @router_proveedores.get(
     "",
-    response_model=list[ProveedorOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("integracion:read"))],
     summary="Proveedores configurados",
 )
-def listar_proveedores(db: DbDep, principal: AutenticadoDep) -> Any:
-    return list(
-        db.execute(
-            select(enc.Proveedor)
-            .where(enc.Proveedor.tenant_id == principal.tenant_id)
-            .order_by(enc.Proveedor.clave)
-        )
-        .scalars()
-        .all()
+def listar_proveedores(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(enc.Proveedor).where(enc.Proveedor.tenant_id == principal.tenant_id)
+    return paginar_consulta(
+        db,
+        enc.Proveedor,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="clave",
+        modelo_salida=ProveedorOut,
     )
 
 
@@ -214,7 +221,7 @@ def crear(datos: CrearEncargo, uow: UowDep) -> Any:
 
 @router.get(
     "",
-    response_model=list[EncargoOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("integracion:read"))],
     summary="Encargos en seguimiento",
 )
@@ -225,6 +232,7 @@ def listar(
     proveedor: str = Query(""),
     solo_mudos: bool = Query(False, description="Los que el proveedor lleva tiempo sin mover"),
     limite: int = Query(100, ge=1, le=500),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(enc.Encargo).where(enc.Encargo.tenant_id == principal.tenant_id)
     if estado:
@@ -233,8 +241,8 @@ def listar(
         consulta = consulta.where(enc.Encargo.proveedor == proveedor)
     if solo_mudos:
         consulta = consulta.where(enc.Encargo.mudo.is_(True))
-    return list(
-        db.execute(consulta.order_by(enc.Encargo.created_at.desc()).limit(limite)).scalars().all()
+    return paginar_consulta(
+        db, enc.Encargo, consulta, limite=limite, cursor=cursor, modelo_salida=EncargoOut
     )
 
 

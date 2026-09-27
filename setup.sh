@@ -161,6 +161,16 @@ arrancar_docker() {
     malo "Docker Compose no está disponible."
     exit 1
   fi
+  # Los volúmenes de datos son EXTERNOS a propósito: así un `down -v` no se los
+  # lleva. Compose no los crea —esa es justo la protección— así que se crean
+  # aquí. `docker volume create` es idempotente: si ya está, no hace nada.
+  for volumen in contecrm_datos_postgres contecrm_datos_nats; do
+    if ! docker volume inspect "$volumen" >/dev/null 2>&1; then
+      docker volume create "$volumen" >/dev/null
+      ok "Volumen de datos «$volumen» creado"
+    fi
+  done
+
   docker compose --profile app --profile consola up -d --build
   ok "Infraestructura, servicios y consola levantados"
 
@@ -354,7 +364,28 @@ case "${1:-ayuda}" in
   gates)    shift; gates "$@" ;;
   demo)     demo ;;
   vecinos)  shift; $PY scripts/vecinos.py "${1:-estado}" "${@:2}" ;;
-  *)
+
+  # Los verbos de las otras soluciones de la casa, que se escriben solos.
+  #
+  # Cada setup.sh habla un idioma distinto —aquí «arrancar», en contecpos
+  # «start», en contecintelligence «dev», en contecmind «prodlike»— y la mano
+  # escribe el del repositorio anterior. Aceptarlos cuesta una línea y ahorra
+  # el rato de mirar por qué no pasa nada.
+  start|up|dev)    shift; if [[ "${1:-}" == "--docker" ]]; then arrancar_docker; else arrancar_local; fi ;;
+  stop|down)       parar "${2:-}" ;;
+  status)          titulo "Estado"; estado ;;
+
+  ayuda|-h|--help|help|"")
     sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+
+  *)
+    # Antes esto imprimía la ayuda y salía con 0, así que un verbo mal escrito
+    # se veía exactamente igual que uno correcto que no hiciera nada: la
+    # cabecera en pantalla y el prompt de vuelta. Decirlo cuesta dos líneas.
+    echo "No conozco el comando «$1»." >&2
+    echo "" >&2
+    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//' >&2
+    exit 1
     ;;
 esac

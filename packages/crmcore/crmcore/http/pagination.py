@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
@@ -282,3 +283,67 @@ def construir_pagina(
             orden=params.orden,
         ).codificar()
     return Pagina(items=items, siguiente=siguiente)
+
+
+def paginar_consulta(
+    db: Any,
+    modelo: type,
+    consulta: Any,
+    *,
+    limite: int,
+    cursor: str = "",
+    orden: str = "-created_at",
+    fila_a_dict: Callable[[Any], dict[str, Any]] | None = None,
+    modelo_salida: type | None = None,
+) -> dict[str, Any]:
+    """Convierte una consulta ya filtrada en una PÁGINA con cursor.
+
+    Existe para los listados escritos a mano. `montar_listado` pagina solo, pero
+    hay listados con su propia consulta —filtros raros, campos compuestos, dos
+    tablas— que devolvían una lista pelada con un `limite`.
+
+    **Y una lista pelada no es la tabla: es su primera página**, sin nada que lo
+    diga. Quien la lee cree que la tiene entera. Medido cuando la explotación
+    empezó a dar cifras: la métrica «casos abiertos» contestaba 50 habiendo 153,
+    con su unidad y su cara de cifra buena. Un número así es peor que un error,
+    porque nadie lo comprueba. Y el front hacía lo mismo en pantalla.
+
+    Se pide una fila de más y se descarta: así se sabe si hay siguiente sin un
+    `count` que recorra la tabla entera.
+
+    `fila_a_dict` es la proyección que ya tenía cada ruta. Se pasa en vez de
+    imponer una: cada uno de estos listados compone campos que no son columnas
+    —un nombre completo, un contador— y quitárselos al paginar sería cambiar lo
+    que devuelve.
+
+    `modelo_salida` es el atajo para el caso normal: el modelo Pydantic que la
+    ruta declaraba antes en su `response_model`. **Hay que pasar uno de los
+    dos.** Una página lleva diccionarios, no objetos del ORM, y sin proyección
+    salían las filas crudas: eso no solo rompe la validación de la respuesta —es
+    lo que se nota— sino que publicaría columnas que el modelo de salida no
+    exponía, que es lo que no se nota.
+    """
+    params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden=orden)
+    consulta = aplicar_orden_y_cursor(
+        consulta,
+        modelo,
+        params,
+        columnas_permitidas={orden.lstrip("-+")},
+    )
+    filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
+    pagina = construir_pagina(filas, params, campos_orden=[orden])
+    if fila_a_dict is None and modelo_salida is not None:
+
+        def fila_a_dict(fila: Any) -> dict[str, Any]:
+            return dict(modelo_salida.model_validate(fila).model_dump())
+
+    if fila_a_dict is None:
+        raise RuntimeError(
+            "paginar_consulta necesita `fila_a_dict` o `modelo_salida`: una "
+            "página lleva diccionarios, no filas del ORM."
+        )
+    return {
+        "items": [fila_a_dict(f) for f in pagina.items],
+        "siguiente": pagina.siguiente,
+        "hay_mas": pagina.siguiente is not None,
+    }

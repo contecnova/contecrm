@@ -24,6 +24,7 @@ from crmcore.http.pagination import (
     ParametrosPagina,
     aplicar_orden_y_cursor,
     construir_pagina,
+    paginar_consulta,
 )
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Body, Depends, Query, status
@@ -717,7 +718,7 @@ def crear_actividad(datos: CrearActividad, uow: UowDep) -> Any:
 
 @router_actividades.get(
     "",
-    response_model=list[ActividadOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("activity:read"))],
     summary="Listar actividades",
 )
@@ -736,6 +737,7 @@ def listar_actividades(
     mias: bool = Query(False, description="Solo las asignadas a quien pregunta"),
     vencidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(Actividad).where(Actividad.deleted_at.is_(None))
     if cuenta_id is not None:
@@ -753,14 +755,16 @@ def listar_actividades(
             Actividad.vence_at < datetime.now(timezone.utc),
             Actividad.estado.in_(("pendiente", "en_curso")),
         )
-    return list(
-        db.execute(
-            consulta.order_by(Actividad.vence_at.nulls_last(), Actividad.created_at.desc()).limit(
-                limite
-            )
-        )
-        .scalars()
-        .all()
+    # Por vencimiento: una lista de actividades ordenada por fecha de creación
+    # esconde al final la que vence hoy, que es la que hay que hacer.
+    return paginar_consulta(
+        db,
+        Actividad,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="vence_at",
+        modelo_salida=ActividadOut,
     )
 
 
@@ -815,19 +819,32 @@ def crear_solicitud(datos: SolicitudDerechosEntrada, db: DbDep, principal: Auten
 
 @router_derechos.get(
     "",
-    response_model=list[SolicitudDerechosOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("contact:read"))],
     summary="Solicitudes y su plazo",
     description="Ordenadas por vencimiento: lo que antes vence, primero.",
 )
 def listar_solicitudes(
-    db: DbDep, _: AutenticadoDep, estado: str = Query(""), limite: int = Query(50, ge=1, le=200)
+    db: DbDep,
+    _: AutenticadoDep,
+    estado: str = Query(""),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(SolicitudDerechos)
     if estado:
         consulta = consulta.where(SolicitudDerechos.estado == estado)
-    filas = db.execute(consulta.order_by(SolicitudDerechos.vence_at).limit(limite)).scalars().all()
-    return [_solicitud_out(s) for s in filas]
+    # Por vencimiento: son solicitudes con plazo legal, y la que vence antes es
+    # la que hay que atender, no la más reciente.
+    return paginar_consulta(
+        db,
+        SolicitudDerechos,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="vence_at",
+        fila_a_dict=_solicitud_out,
+    )
 
 
 @router_derechos.post(

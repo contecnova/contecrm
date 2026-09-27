@@ -20,6 +20,7 @@ from crmcore.http.pagination import (
     ParametrosPagina,
     aplicar_orden_y_cursor,
     construir_pagina,
+    paginar_consulta,
 )
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Header, Query, Request, status
@@ -252,40 +253,46 @@ def crear_pipeline(datos: CrearPipeline, db: DbDep, principal: AutenticadoDep) -
 
 @router_pipelines.get(
     "",
-    response_model=list[PipelineOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("pipeline:read"))],
     summary="Pipelines con sus etapas",
 )
-def listar_pipelines(db: DbDep, principal: AutenticadoDep) -> Any:
-    pipelines = (
-        db.execute(
-            select(Pipeline)
-            .where(Pipeline.tenant_id == principal.tenant_id)
-            .order_by(Pipeline.por_defecto.desc(), Pipeline.nombre)
-        )
-        .scalars()
-        .all()
-    )
-    salida = []
-    for pipeline in pipelines:
+def listar_pipelines(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    def con_etapas(pipeline: Any) -> dict[str, Any]:
+        # Las etapas se piden por pipeline y no de una vez: son pocas por
+        # pipeline y traerlas todas para repartirlas después obliga a cargar en
+        # memoria las de los pipelines que esta página no enseña.
         etapas = (
             db.execute(select(Etapa).where(Etapa.pipeline_id == pipeline.id).order_by(Etapa.orden))
             .scalars()
             .all()
         )
-        salida.append(
-            PipelineOut(
-                id=pipeline.id,
-                clave=pipeline.clave,
-                nombre=pipeline.nombre,
-                descripcion=pipeline.descripcion,
-                ambito=pipeline.ambito,
-                activo=pipeline.activo,
-                por_defecto=pipeline.por_defecto,
-                etapas=[EtapaOut.model_validate(e) for e in etapas],
-            )
-        )
-    return salida
+        return PipelineOut(
+            id=pipeline.id,
+            clave=pipeline.clave,
+            nombre=pipeline.nombre,
+            descripcion=pipeline.descripcion,
+            ambito=pipeline.ambito,
+            activo=pipeline.activo,
+            por_defecto=pipeline.por_defecto,
+            etapas=[EtapaOut.model_validate(e) for e in etapas],
+        ).model_dump()
+
+    consulta = select(Pipeline).where(Pipeline.tenant_id == principal.tenant_id)
+    return paginar_consulta(
+        db,
+        Pipeline,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="nombre",
+        fila_a_dict=con_etapas,
+    )
 
 
 @router_pipelines.post(

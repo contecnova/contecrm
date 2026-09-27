@@ -20,6 +20,7 @@ from crmcore.http.deps import (
     UowDep,
     exige_permiso,
 )
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -77,19 +78,29 @@ class PlantillaOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router_plantillas.get("", response_model=list[PlantillaOut], summary="Listar plantillas")
+@router_plantillas.get("", response_model=PaginaDeListado, summary="Listar plantillas")
 def listar_plantillas(
     db: DbDep,
     _: AutenticadoDep,
     tipo: str | None = Query(None, description="correo | documento | notificacion | sms"),
     idioma: str | None = Query(None),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
 ) -> Any:
     consulta = select(Plantilla)
     if tipo:
         consulta = consulta.where(Plantilla.tipo == tipo)
     if idioma:
         consulta = consulta.where(Plantilla.idioma == idioma)
-    return db.execute(consulta.order_by(Plantilla.clave, Plantilla.idioma)).scalars().all()
+    return paginar_consulta(
+        db,
+        Plantilla,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="clave",
+        modelo_salida=PlantillaOut,
+    )
 
 
 @router_plantillas.post(
@@ -208,9 +219,22 @@ class FestivoOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router_calendarios.get("", response_model=list[CalendarioOut], summary="Listar calendarios")
-def listar_calendarios(db: DbDep, _: AutenticadoDep) -> Any:
-    return db.execute(select(CalendarioLaboral).order_by(CalendarioLaboral.clave)).scalars().all()
+@router_calendarios.get("", response_model=PaginaDeListado, summary="Listar calendarios")
+def listar_calendarios(
+    db: DbDep,
+    _: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    return paginar_consulta(
+        db,
+        CalendarioLaboral,
+        select(CalendarioLaboral),
+        limite=limite,
+        cursor=cursor,
+        orden="clave",
+        modelo_salida=CalendarioOut,
+    )
 
 
 @router_calendarios.post(

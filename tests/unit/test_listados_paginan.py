@@ -6,13 +6,13 @@ más. Medido cuando la explotación empezó a dar cifras: la métrica
 `casos_abiertos` contestaba **50 habiendo 153**, con su unidad y su cara de cifra
 buena. Un número así es peor que un error — nadie lo comprueba.
 
-El arreglo de verdad es dar cursor a los que faltan (`montar_listado` ya lo hace;
-los que faltan tienen el listado escrito a mano). Mientras tanto, la explotación
-los marca y avisa junto a cada cifra, y este gate impide que aparezca uno nuevo.
+Los veintidós que había ya paginan. El tope es **cero** y de aquí no sube: un
+listado nuevo que devuelva una lista pelada pone este gate en rojo antes de que
+nadie construya una cifra encima.
 
-**El tope solo se BAJA.** Subirlo para que pase es quitar la comprobación con
-otro nombre: si alguien añade un listado sin cursor, o le da cursor a otro, lo
-que toca es que este número baje.
+Que cero sea alcanzable importa. Un tope «histórico» que se queda en veintidós
+para siempre acaba siendo un permiso: lo que estaba mal se queda mal, con la
+bendición de una prueba en verde.
 """
 
 from __future__ import annotations
@@ -29,11 +29,8 @@ SERVICIOS = sorted(
     if p.is_dir() and not p.name.startswith("_") and (p / "main.py").exists()
 )
 
-# Cuántos listados raíz siguen sin paginar, contados por su contrato publicado.
-# Medido el 25-09-2026: 22 así, y 26 al llamarlos de verdad —cuatro no declaran
-# su esquema, así que estáticamente no se ven y solo salen al registrar la fuente.
-# Este número baja; no sube.
-TOPE_SIN_CURSOR = 22
+# Ninguno. Eran 22 el 25-09-2026 y se arreglaron todos el 27.
+TOPE_SIN_CURSOR = 0
 
 
 def _app(servicio: str) -> Any:

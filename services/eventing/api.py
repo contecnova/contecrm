@@ -11,6 +11,7 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from crmcore.red import exigir
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
@@ -151,19 +152,25 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
 
 @router.get(
     "",
-    response_model=list[SuscripcionOut],
+    response_model=PaginaDeListado,
     dependencies=[Depends(exige_permiso("webhook:read"))],
     summary="Suscripciones del tenant",
 )
-def listar(db: DbDep, principal: AutenticadoDep) -> Any:
-    return list(
-        db.execute(
-            select(Suscripcion)
-            .where(Suscripcion.tenant_id == principal.tenant_id)
-            .order_by(Suscripcion.nombre)
-        )
-        .scalars()
-        .all()
+def listar(
+    db: DbDep,
+    principal: AutenticadoDep,
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(Suscripcion).where(Suscripcion.tenant_id == principal.tenant_id)
+    return paginar_consulta(
+        db,
+        Suscripcion,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="nombre",
+        modelo_salida=SuscripcionOut,
     )
 
 
