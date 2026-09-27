@@ -3142,6 +3142,12 @@ la red, porque el 422 del gestor llegaría en su idioma y sin decir cuáles vale
 La bandeja de pendientes es **de quien pregunta**: va con su token, igual que
 todo lo demás del corpus, así que nadie ve lo que espera la firma de otro.
 
+**Junto a la aprobación se dice el estado real del documento en el gestor**: si
+está indexado y si se indexó con avisos —figuras, tablas o pies que se cayeron
+por el camino—. «Indexado» a secas cuando falta la mitad de las tablas hace
+creer que la búsqueda lo encuentra todo. Ese estado se pregunta al abrirlo y no
+se copia en el enlace, porque un estado copiado envejece sin avisar.
+
 **Dónde está.** Se llega por dos sitios y los dos enseñan lo mismo. En
 Automatización → *Aprobar documentos* está la bandeja: lo que espera tu
 decisión, con el porqué y, si delegas, en quién. Y en la ficha de un registro,

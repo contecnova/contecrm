@@ -235,6 +235,44 @@ function Fila({
 }
 
 /**
+ * El estado real de un documento del corpus.
+ *
+ * Lo que el enlace del CRM no sabe: si está indexado, si se indexó con avisos y
+ * qué es. Se pregunta al abrirlo y no se guarda en el enlace, porque un estado
+ * copiado envejece sin avisar y aquí envejecer significa enseñar «aprobado» de
+ * una versión que ya no es la vigente.
+ *
+ * Si el gestor no contesta, esto se calla y no tumba el panel: la aprobación es
+ * lo que se viene a hacer, y el estado es contexto.
+ */
+function EstadoDelDocumento({ documentoId }: { documentoId: string }) {
+  const { t } = useTranslation();
+  const [ficha, setFicha] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Record<string, unknown>>(`/api/v1/documentos/ficha/${documentoId}`, {
+      signal: control.signal,
+    })
+      .then((r) => setFicha(r.datos))
+      .catch(salvoCancelacion(() => setFicha(null)));
+    return () => control.abort();
+  }, [documentoId]);
+
+  if (!ficha) return null;
+  const avisos = Array.isArray(ficha.partial_warnings) ? ficha.partial_warnings.length : 0;
+  return (
+    <p className="text-3xs text-ink-faint">
+      {t("aprobaciones.indexado", { estado: String(ficha.status ?? "") })}
+      {/* Los avisos se dicen. «Indexado» a secas cuando se cayeron las figuras
+          o las tablas hace creer que la búsqueda lo encuentra todo. */}
+      {avisos > 0 ? ` · ${t("aprobaciones.conAvisos", { n: avisos })}` : ""}
+      {ficha.mime_type ? ` · ${String(ficha.mime_type)}` : ""}
+    </p>
+  );
+}
+
+/**
  * La aprobación de UN documento, para la ficha de un registro.
  *
  * Vive aquí y no en `Ficha.tsx` para que la bandeja y la ficha digan lo mismo
@@ -319,6 +357,7 @@ export function AprobacionDeDocumento({ documentoId }: { documentoId: string }) 
 
   return (
     <div className="space-y-2">
+      <EstadoDelDocumento documentoId={documentoId} />
       <p className="text-3xs text-ink-faint">
         {t("aprobaciones.controlEstado", {
           estado: estado.control_state ?? "",

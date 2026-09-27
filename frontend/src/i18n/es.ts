@@ -322,6 +322,8 @@ export default {
       rejected: "Rechazar",
       delegated: "Delegar",
     },
+    indexado: "En el gestor: {{estado}}",
+    conAvisos: "indexado con {{n}} aviso(s): faltan figuras, tablas o pies",
     controlEstado: "Control documental: {{estado}} · versión en curso {{version}}",
     enCurso: "Aprobación en curso: {{estado}}",
     noLaNecesita: "Este documento no pasa por aprobación.",

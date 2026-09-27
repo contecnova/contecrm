@@ -148,6 +148,27 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
             "items": cliente.flujos_de_aprobacion(token_usuario=_token_del_usuario(db, principal))
         }
 
+    @router.get(
+        "/ficha/{documento_id}",
+        summary="El estado real de un documento del corpus",
+        description=(
+            "Lo que el enlace del CRM **no** sabe: si está indexado, si se indexó "
+            "con avisos, de qué tipo es y cuánto ocupa. Se pregunta al abrirlo y "
+            "no se copia en el enlace: un «aprobado» caducado en una pantalla del "
+            "CRM es peor que no enseñar el estado, porque alguien firmará algo "
+            "creyendo que la versión vigente es otra.\n\n"
+            "**No devuelve el texto extraído.** El gestor lo trae en esta misma "
+            "respuesta y puede ser un contrato entero: pasarlo por aquí convierte "
+            "una consulta de estado en una descarga, y el CRM no tiene nada que "
+            "hacer con él — quien quiera el contenido va al gestor."
+        ),
+    )
+    def ficha_de_documento(documento_id: str, db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.documental import cliente
+
+        ficha = cliente.ficha(documento_id, token_usuario=_token_del_usuario(db, principal))
+        return {k: v for k, v in ficha.items() if k != "extracted_text"}
+
     # ── Aprobación de un documento ───────────────────────────────────────
     #
     # El motor vive en el gestor —quórum, segregación de funciones, recorrido
