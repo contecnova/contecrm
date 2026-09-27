@@ -1003,8 +1003,16 @@ def superficie_de_modulos(db: Session, tenant_id: UUID) -> dict[str, Any]:
 
 
 def anotar_uso(db: Session, tenant_id: UUID, *, modulo: str, seccion: str, clave: str) -> None:
-    """Cuenta un uso de un elemento del módulo. No falla nunca."""
-    try:
+    """Cuenta un uso de un elemento del módulo. No falla nunca.
+
+    En un SAVEPOINT y no solo en un `try`: esto escribe en la misma sesión que la
+    petición, y un fallo de la base la dejaría envenenada — el `except` atraparía
+    el error y la petición moriría después con `PendingRollbackError`, que es
+    justo lo que este bloque dice impedir.
+    """
+    from crmcore.db.al_margen import al_margen
+
+    with al_margen(db, "metadata.uso_modulo_no_anotado", modulo=modulo, clave=clave):
         fila = db.execute(
             select(ElementoModulo).where(
                 ElementoModulo.tenant_id == tenant_id,
@@ -1016,8 +1024,6 @@ def anotar_uso(db: Session, tenant_id: UUID, *, modulo: str, seccion: str, clave
         if fila is not None:
             fila.usos += 1
             fila.ultimo_uso_at = _ahora()
-    except Exception:  # noqa: BLE001 — una estadística no puede tumbar una petición
-        logger.warning("metadata.uso_modulo_no_anotado", modulo=modulo, clave=clave)
 
 
 def telemetria(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any]:

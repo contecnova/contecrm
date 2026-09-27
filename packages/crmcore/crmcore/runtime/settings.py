@@ -521,9 +521,13 @@ def _anotar_version(
             pass
     if tenant_id is None:
         return
-    try:
-        from crmcore.runtime.versiones import anotar
+    # En un SAVEPOINT: `anotar` escribe en la misma sesión que el cambio del
+    # ajuste, y un fallo suyo la dejaría envenenada — el `except` atraparía el
+    # error y el cambio moriría después con `PendingRollbackError`.
+    from crmcore.db.al_margen import al_margen
+    from crmcore.runtime.versiones import anotar
 
+    with al_margen(db, "ajuste.version_no_anotada", clave=clave):
         anotar(
             db,
             tenant_id=tenant_id,
@@ -534,8 +538,6 @@ def _anotar_version(
             valor_nuevo=nuevo,
             por=por,
         )
-    except Exception as exc:  # noqa: BLE001 — el histórico no puede tumbar el cambio
-        logger.error("ajuste.version_no_anotada", clave=clave, error=str(exc)[:200])
 
 
 from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402

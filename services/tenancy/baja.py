@@ -555,15 +555,28 @@ def _inventario_externo(db: Session, tenant_id: UUID) -> dict[str, Any]:
     # esperar a que se conteste a sí mismo por el bus sería dar un rodeo para
     # llegar a la tabla de al lado.
     if "tenancy" not in reportes:
-        try:
+        # En un SAVEPOINT: una lectura que falla —una tabla que no está en este
+        # esquema, por ejemplo— también deja la sesión inservible, y el
+        # certificado se está componiendo en esa misma sesión. Quedarse sin
+        # certificado por no poder leer una parte es peor que un certificado que
+        # dice qué parte no pudo leer.
+        from crmcore.db.al_margen import al_margen
+
+        fallo: list[str] = []
+        with al_margen(db, "baja.inventario_externo_fallido", tenant=str(tenant_id)):
             from crmcore.documental import inventario_para_certificado
 
-            propios = inventario_para_certificado(db, tenant_id)
+            try:
+                propios = inventario_para_certificado(db, tenant_id)
+            except Exception as exc:
+                fallo.append(str(exc)[:160])
+                raise
             documentos += [{**doc, "servicio": "tenancy"} for doc in propios]
             por_servicio["tenancy"] = len(propios)
-        except Exception as exc:  # noqa: BLE001 — no poder inventariar no impide certificar
-            logger.error("baja.inventario_externo_fallido", error=str(exc)[:200])
-            ilegibles.append(f"tenancy: {str(exc)[:160]}")
+        if fallo:
+            # Se dice en el certificado, no solo en el registro: un certificado
+            # que calla lo que no pudo leer se lee como completo.
+            ilegibles.append(f"tenancy: {fallo[0]}")
 
     esperados = servicios_esperados()
     sin_contestar = sorted(s for s in esperados if s not in por_servicio)

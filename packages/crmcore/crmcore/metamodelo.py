@@ -383,7 +383,14 @@ def anotar_uso(db: Session, tenant_id: UUID, objeto: str, campos: dict[str, Any]
     presentes = [k for k, v in (campos or {}).items() if v not in (None, "", [], {})]
     if not presentes:
         return
-    try:
+    # En un SAVEPOINT, no solo en un `try`. Lo de aquí escribe en la MISMA sesión
+    # que el alta, y un fallo de la base la deja envenenada: el `except` atrapa
+    # el primer error y la siguiente instrucción del alta muere igual con
+    # `PendingRollbackError`, con un mensaje que no menciona la causa. Que es
+    # exactamente lo que este bloque decía impedir y no impedía.
+    from crmcore.db.al_margen import al_margen
+
+    with al_margen(db, "metamodelo.uso_no_anotado", objeto=objeto, tenant=str(tenant_id)):
         for nombre in presentes:
             fila = db.execute(
                 select(UsoCampo).where(
@@ -399,14 +406,12 @@ def anotar_uso(db: Session, tenant_id: UUID, objeto: str, campos: dict[str, Any]
                 # dos escrituras en la misma transacción no verían la fila
                 # recién añadida e intentarían insertarla otra vez, reventando
                 # contra la restricción única. El alta se caía por culpa de una
-                # estadística, que es exactamente lo que el `try` de abajo
-                # pretendía impedir — y no lo impedía, porque el fallo salta al
-                # hacer commit y no aquí.
+                # estadística. Ahora, además, el bloque entero va en un
+                # SAVEPOINT: si la restricción salta de todas formas, se deshace
+                # solo esto y el alta sigue.
                 db.flush()
             fila.escrituras += 1
             fila.ultima_escritura_at = func.now()
-    except Exception:  # noqa: BLE001 — una estadística no puede tumbar un alta
-        logger.warning("metamodelo.uso_no_anotado", objeto=objeto, tenant=str(tenant_id))
 
 
 def validar_y_anotar(
