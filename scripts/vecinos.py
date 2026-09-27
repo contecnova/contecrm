@@ -35,6 +35,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 RAIZ = Path(__file__).resolve().parents[1]
 
@@ -85,6 +86,11 @@ class Vecino:
     # Los ajustes del `.env` con esa credencial.
     ajuste_cliente: str = ""
     ajuste_secreto: str = ""
+    # El ajuste del `.env` con los alcances que le pedimos. Se comprueban contra
+    # los que CONCEDE, que no son los mismos: el alta de la aplicación allí
+    # decide cuáles tiene, y pedir uno que no tiene no falla al canjear —falla
+    # al usarlo, con un 403 en la pantalla y días después.
+    ajuste_alcances: str = ""
     perfiles: tuple[str, ...] = ()
     entorno: dict[str, str] = field(default_factory=dict)
     # Su fichero de entorno, relativo al repositorio, cuando NO está junto al
@@ -140,6 +146,7 @@ VECINOS: tuple[Vecino, ...] = (
         ruta_token="/api/oauth/token",
         ajuste_cliente="CI_CLIENT_ID",
         ajuste_secreto="CI_CLIENT_SECRET",
+        ajuste_alcances="CI_SCOPES",
         # Su compose se engancha a la red de contecrm y necesita saber cuál es.
         entorno={"CONTECRM_NETWORK": ""},
     ),
@@ -157,6 +164,7 @@ VECINOS: tuple[Vecino, ...] = (
         ruta_token="/api/v1/oauth/token",
         ajuste_cliente="DMS_CLIENT_ID",
         ajuste_secreto="DMS_CLIENT_SECRET",
+        ajuste_alcances="DMS_SCOPES",
         perfiles=("app",),
         # Su arranque NO aplica migraciones. Sin esto, la base se queda atrás y
         # las rutas nuevas dan 500 por tablas que no existen — que es un fallo
@@ -567,7 +575,42 @@ def _credencial_vale(vecino: Vecino) -> bool | None:
         )
     except Exception:  # noqa: BLE001 — no poder comprobarlo no es un «no vale»
         return None
-    return respuesta.status_code < 400
+    if respuesta.status_code >= 400:
+        return False
+    return _alcances_que_faltan(vecino, respuesta)
+
+
+def _alcances_que_faltan(vecino: Vecino, respuesta: Any) -> bool | list[str]:
+    """Lo que pedimos y NO nos conceden.
+
+    Un canje que sale bien no quiere decir que podamos hacer lo que vamos a
+    hacer: los alcances los fija el alta de la aplicación al otro lado, y pedir
+    uno que no está concedido no falla aquí. Falla el día que alguien pulsa el
+    botón, con un 403 que en la pantalla se lee como «no tienes permiso» — y no
+    es de la persona, es de la aplicación.
+
+    Devuelve `True` cuando está todo, o la lista de los que faltan.
+    """
+    from crmcore.config import get_settings
+
+    if not vecino.ajuste_alcances:
+        return True
+    pedidos = list(getattr(get_settings(), vecino.ajuste_alcances.lower(), ()) or ())
+    if not pedidos:
+        return True
+    try:
+        datos = respuesta.json()
+    except Exception:  # noqa: BLE001
+        return True
+    # `scope` separado por espacios es lo que dice OAuth2; se acepta también una
+    # lista, que es como lo devuelve alguno de la casa. Si no viene ninguno de
+    # los dos no se inventa un veredicto: se da por bueno.
+    crudo = datos.get("scope", datos.get("scopes"))
+    if crudo is None:
+        return True
+    concedidos = set(crudo.split()) if isinstance(crudo, str) else {str(x) for x in crudo}
+    faltan = [a for a in pedidos if a not in concedidos]
+    return faltan or True
 
 
 def estado(vecinos: tuple[Vecino, ...]) -> int:
@@ -608,8 +651,17 @@ def estado(vecinos: tuple[Vecino, ...]) -> int:
                 "aplicación allí y poner sus datos en el `.env`"
             )
             peor = 1
+        elif isinstance(credencial, list):
+            malo(
+                f"{vecino.nombre}: acepta la credencial pero NO concede "
+                f"{', '.join(credencial)}. Lo pide el `.env` en "
+                f"{vecino.ajuste_alcances} y lo decide el alta de la aplicación "
+                "allí: hay que ampliarla, o lo que dependa de ese alcance dará "
+                "403 el día que alguien lo use"
+            )
+            peor = 1
         elif credencial:
-            ok(f"{vecino.nombre}: acepta nuestra credencial de aplicación")
+            ok(f"{vecino.nombre}: acepta nuestra credencial y concede lo que le pedimos")
 
         # Y, si alguna pantalla le llama desde el navegador, que el origen del
         # front esté permitido allí. Responder bien al servidor y cortar al
