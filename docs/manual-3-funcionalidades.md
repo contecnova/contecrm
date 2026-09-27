@@ -3142,6 +3142,16 @@ la red, porque el 422 del gestor llegaría en su idioma y sin decir cuáles vale
 La bandeja de pendientes es **de quien pregunta**: va con su token, igual que
 todo lo demás del corpus, así que nadie ve lo que espera la firma de otro.
 
+**Si no hay corpus, la pantalla lo dice en una frase, no en rojo.** Son tres
+situaciones distintas y se distinguen: apagado en este despliegue —no hay
+documentos que aprobar y los adjuntos de los registros siguen funcionando—,
+encendido pero sin respuesta —con la dirección y el error, para no tener que
+abrir los registros del servidor para saber si es la URL, la red o que está
+parado—, y en marcha. Cuando no responde ni se pide la bandeja: preguntarle a
+un gestor caído solo cambia una explicación clara por el primer error que
+salga, y el que salía mandaba a configurar una organización cuando lo que
+pasaba era que contecmind no estaba levantado.
+
 **Junto a la aprobación se dice el estado real del documento en el gestor**: si
 está indexado y si se indexó con avisos —figuras, tablas o pies que se cayeron
 por el camino—. «Indexado» a secas cuando falta la mitad de las tablas hace

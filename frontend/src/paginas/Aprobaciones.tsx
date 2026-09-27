@@ -49,8 +49,39 @@ export function Aprobaciones() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [recargar, setRecargar] = useState(0);
+  // Se pregunta ANTES si hay corpus en este despliegue. Sin esto, quien entra
+  // en un CRM sin contecmind se encuentra un error rojo donde debería leer una
+  // frase: no está roto, está apagado, y son dos cosas distintas.
+  const [corpus, setCorpus] = useState<{
+    activo?: boolean;
+    alcanzable?: boolean;
+    url?: string | null;
+    error?: string | null;
+    sin_el?: string;
+  } | null>(null);
 
   useEffect(() => {
+    const control = new AbortController();
+    llamar<{
+      activo?: boolean;
+      alcanzable?: boolean;
+      url?: string | null;
+      error?: string | null;
+      sin_el?: string;
+    }>("/api/v1/documentos/estado", {
+      signal: control.signal,
+    })
+      .then((r) => setCorpus(r.datos))
+      .catch(salvoCancelacion(() => setCorpus({ activo: true })));
+    return () => control.abort();
+  }, []);
+
+  useEffect(() => {
+    // Ni apagado ni caído: pedir la bandeja a un gestor que no responde solo
+    // sirve para cambiar una explicación clara por el error que salga primero
+    // —y el que salía era «este tenant no tiene organización asignada», que
+    // manda a configurar algo cuando lo que pasa es que contecmind no está—.
+    if (corpus && (corpus.activo === false || corpus.alcanzable === false)) return;
     const control = new AbortController();
     llamar<{ items: Solicitud[] }>("/api/v1/documentos/aprobaciones/pendientes", {
       signal: control.signal,
@@ -58,7 +89,7 @@ export function Aprobaciones() {
       .then((r) => setSolicitudes(r.datos.items ?? []))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, [recargar]);
+  }, [recargar, corpus]);
 
   // El permiso de aquí y el del motor son dos puertas distintas y las dos
   // cuentan: el CRM decide quién puede tocar documentos, y el gestor a quién le
@@ -75,9 +106,25 @@ export function Aprobaciones() {
         icono="approval"
         entradilla={t("aprobaciones.intro")}
       />
-      {fallo ? <Fallo error={fallo} /> : null}
+      {corpus?.activo === false ? (
+        <p className="mt-4 text-xs text-ink-muted">
+          {t("aprobaciones.sinCorpus")}
+          {corpus.sin_el ? ` ${corpus.sin_el}.` : ""}
+        </p>
+      ) : null}
+      {corpus?.activo !== false && corpus?.alcanzable === false ? (
+        // Con la dirección y el error del gestor: «no responde» a secas obliga
+        // a abrir los logs para saber si es la URL, la red o que está parado.
+        <p className="mt-4 text-xs text-ink-muted">
+          {t("aprobaciones.corpusCaido", { url: corpus.url ?? "" })}
+          {corpus.error ? ` (${corpus.error})` : ""}
+        </p>
+      ) : null}
+      {fallo && corpus?.activo !== false && corpus?.alcanzable !== false ? (
+        <Fallo error={fallo} />
+      ) : null}
       <div className="mt-4">
-        {solicitudes === null && !fallo ? <Cargando /> : null}
+        {solicitudes === null && !fallo && corpus === null ? <Cargando /> : null}
         {solicitudes !== null && solicitudes.length === 0 ? (
           <p className="text-xs text-ink-muted">{t("aprobaciones.nadaPendiente")}</p>
         ) : null}

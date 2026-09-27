@@ -307,6 +307,10 @@ export default {
     intro:
       "Lo que espera tu decisión en el gestor documental. Va con tu identidad: nadie ve lo que espera la firma de otro.",
     nadaPendiente: "No hay nada esperando tu decisión.",
+    sinCorpus:
+      "Este despliegue no tiene corpus documental, así que no hay documentos que aprobar. Lo resuelve contecmind, y se enciende con DMS_ENABLED.",
+    corpusCaido:
+      "El gestor documental no responde en {{url}}, así que ahora mismo no se puede saber qué espera tu decisión. Los adjuntos de los registros siguen funcionando: son otra cosa.",
     estado: "Estado: {{estado}}",
     etapa: "Etapa {{n}}",
     noTeToca:
