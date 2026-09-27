@@ -708,6 +708,53 @@ def _aviso_de_objeto_incompleto(db: Session, tenant_id: UUID, objeto: str) -> di
     }
 
 
+def _aviso_de_plan_no_aplicado(
+    plan: dict[str, Any], filas: list[Any], nombres: list[str]
+) -> dict[str, Any]:
+    """Lo que el informe pide y el motor conectado no devuelve.
+
+    El plan viaja entero, pero **quien lo ejecuta solo aplica lo que su esquema
+    declara**, y lo que no declara lo ignora sin decir nada: es un cuerpo JSON,
+    y un campo desconocido no es un error para nadie. Hoy `/api/query/plan` de
+    contecintelligence declara nueve campos y el plan lleva quince, así que un
+    informe con campos calculados se ejecuta SIN ellos y uno matricial sale sin
+    pivotar — con su tabla, sus cifras y su cara de informe correcto.
+
+    No se da por supuesto: **se mide**. Las filas son listas, así que su anchura
+    dice cuántas columnas trajo de verdad. Si trae las mismas que sabemos nombrar
+    y el informe pedía calculados, es que no se aplicaron. Y si trae más, es que
+    el motor ya los aplica y quien falta por enterarse es esta función — que es
+    justo el día en que hay que quitar el aviso, y así se nota.
+    """
+    calculados = list(plan.get("calculados") or [])
+    pivote = plan.get("pivote")
+    if not calculados and not pivote:
+        return {}
+    primera = next((f for f in filas if isinstance(f, (list, tuple))), None)
+    ancho = len(primera) if primera is not None else len(nombres)
+    if ancho > len(nombres):
+        return {
+            "aviso_plan": (
+                "El motor ha devuelto más columnas de las que este informe sabe "
+                "nombrar. Probablemente ya aplica los campos calculados o el "
+                "pivote: hay que nombrarlas aquí antes de fiarse de las cabeceras."
+            )
+        }
+    falta = []
+    if calculados:
+        falta.append(f"{len(calculados)} campo(s) calculado(s)")
+    if pivote:
+        falta.append(f"el pivote por «{pivote}»")
+    return {
+        "incompleto": True,
+        "aviso_plan": (
+            "Este informe define " + " y ".join(falta) + ", y el motor analítico "
+            "conectado no los aplica: el resultado es correcto pero NO es el "
+            "informe que se definió. Lo resuelve quien ejecuta el plan."
+        ),
+    }
+
+
 def _nombres_de_columna(plan: dict[str, Any]) -> list[str]:
     """Los nombres de las columnas del resultado, en su orden.
 
@@ -718,9 +765,12 @@ def _nombres_de_columna(plan: dict[str, Any]) -> list[str]:
     """
     nombres: list[str] = []
     for agrupacion in plan.get("agrupaciones") or []:
-        if isinstance(agrupacion, str):
-            nombres.append(agrupacion)
-            continue
+        # Una agrupación es SIEMPRE un diccionario con `campo`: así la valida la
+        # API, así la exige `_campos_usados` y así la construye `compilar`, que
+        # es quien arma este plan. Aquí había además una rama para cuando fuera
+        # texto suelto, inalcanzable: con una agrupación así, `compilar` revienta
+        # trescientas líneas antes. Una rama que contempla una forma que el
+        # sistema no acepta hace creer que esa forma vale.
         campo = str((agrupacion or {}).get("campo") or "")
         periodo = str((agrupacion or {}).get("periodo") or "")
         nombres.append(f"{campo}_{periodo}" if periodo else campo)
@@ -857,6 +907,9 @@ def ejecutar(
         "columnas": _nombres_de_columna(plan),
         "filas": filas,
         "cuantas": len(filas),
+        # Lo que el plan pide y el motor no devuelve. Medido contra las filas que
+        # han venido, no supuesto: ver `_aviso_de_plan_no_aplicado`.
+        **_aviso_de_plan_no_aplicado(plan, filas, _nombres_de_columna(plan)),
         # Se dice si se cortó, en vez de devolver las primeras y callar: un
         # informe truncado en silencio se lee como el total, y con eso se toman
         # decisiones.

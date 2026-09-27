@@ -46,6 +46,18 @@ interface Resultado {
   filas: unknown[][];
   truncado?: boolean;
   campos_retirados?: string[];
+  /**
+   * El resultado no es el informe que se definió, y el servidor dice por qué.
+   *
+   * `aviso_datos` es «el objeto se lee incompleto porque su listado no pagina»
+   * y `aviso_plan` es «el motor conectado no aplica los campos calculados o el
+   * pivote». Los dos venían en la respuesta y **no se pintaban en ninguna
+   * parte**: la cifra salía con su cara de cifra buena y el motivo se quedaba
+   * en el JSON, que es exactamente igual que no decirlo.
+   */
+  incompleto?: boolean;
+  aviso_datos?: string;
+  aviso_plan?: string;
 }
 
 interface InformeListado {
@@ -234,6 +246,15 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
             <p className="mt-1 text-3xs text-ink-faint">
               {t("cuadros.camposRetirados", { campos: resultado.campos_retirados.join(", ") })}
             </p>
+          ) : null}
+          {/* Estos dos van con el texto normal y no en gris claro: no son una
+              nota al pie, son la advertencia de que la cifra de arriba no
+              contesta la pregunta que parece contestar. */}
+          {resultado?.aviso_datos ? (
+            <p className="mt-1 text-2xs text-ink-muted">{resultado.aviso_datos}</p>
+          ) : null}
+          {resultado?.aviso_plan ? (
+            <p className="mt-1 text-2xs text-ink-muted">{resultado.aviso_plan}</p>
           ) : null}
         </>
       )}

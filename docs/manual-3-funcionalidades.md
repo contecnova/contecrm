@@ -7407,6 +7407,21 @@ La división sale del plan marcada con `proteger_division`, para que quien la
 ejecute se guarde del cero: en SQL, dividir por cero revienta la consulta entera,
 y en un informe eso es una pantalla en blanco en vez de una fila rara.
 
+**Quien los aplica es el motor que ejecuta el plan, y el resultado dice si no lo
+ha hecho.** El plan viaja entero, pero cada ejecutor aplica lo que su esquema
+declara y lo que no declara lo ignora sin error: es un cuerpo JSON, y un campo
+desconocido no es un fallo para nadie. Hoy el plan lleva quince campos y
+`/api/query/plan` de contecintelligence declara nueve, así que un informe con
+campos calculados se ejecuta sin ellos y uno matricial sale sin pivotar —con su
+tabla, sus cifras y su cara de informe correcto—.
+
+No se supone: se mide. Las filas son listas, así que su anchura dice cuántas
+columnas han venido de verdad. Si son las mismas que el informe sabe nombrar y
+había campos calculados, es que no se aplicaron, y el resultado sale marcado
+`incompleto` con el motivo escrito —que la pantalla enseña bajo la cifra, no en
+el JSON—. Y si vienen más columnas de las que se saben nombrar, el aviso cambia:
+significa que el motor ya los aplica y quien se ha quedado corto es esta parte.
+
 ### La seguridad se resuelve al compilar (`CRM-05.01.01.08`)
 
 Un informe que trae la facturación y la esconde en la pantalla **ya la ha sacado

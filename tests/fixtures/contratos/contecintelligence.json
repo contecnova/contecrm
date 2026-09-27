@@ -20,5 +20,38 @@
         "ttl_s"
       ]
     }
+  },
+  "/api/sources": {
+    "get": {
+      "campos": []
+    },
+    "post": {
+      "campos": [
+        "config",
+        "name",
+        "plantilla_id",
+        "source_type"
+      ]
+    }
+  },
+  "/api/sources/{source_id}": {
+    "delete": {
+      "campos": []
+    }
+  },
+  "/api/query/plan": {
+    "post": {
+      "campos": [
+        "agrupaciones",
+        "columnas",
+        "filtros",
+        "limite",
+        "metricas",
+        "orden",
+        "source_id",
+        "tipo",
+        "vista"
+      ]
+    }
   }
 }

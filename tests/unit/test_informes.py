@@ -592,3 +592,68 @@ def test_un_informe_que_ningun_cuadro_usa_se_borra(uow: UnidadDeTrabajo) -> None
     informe = _informe(uow, clave="sin-usar")
     inf.borrar_informe(uow, informe.id)
     assert informe.deleted_at is not None
+
+
+# ── Lo que el plan pide y el motor no aplica ──────────────────────────────
+
+
+def test_un_informe_con_campos_calculados_avisa_de_que_no_se_aplican(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """El plan viaja entero y el ejecutor solo aplica lo que su esquema declara.
+
+    `/api/query/plan` de contecintelligence declara nueve campos y el plan lleva
+    quince: `calculados` y `pivote` se ignoran sin error, porque un campo que un
+    cuerpo JSON no declara no es un fallo para nadie. El informe sale con su
+    tabla y sus cifras, y le faltan las columnas que alguien definió.
+    """
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    fila = _informe(
+        uow,
+        calculados=[
+            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
+        ],
+    )
+    salida = inf.ejecutar(uow, fila.id)
+    assert salida["incompleto"] is True
+    assert "calculado" in salida["aviso_plan"]
+    # Y las cabeceras no se inventan la columna que no ha venido.
+    assert "margen" not in salida["columnas"]
+
+
+def test_un_informe_matricial_avisa_de_que_no_se_pivota(uow: UnidadDeTrabajo) -> None:
+    # Una sola columna nombrada y una sola por fila: si no cuadraran, lo que
+    # saltaría es el otro aviso —el de que vienen columnas de más—, y esta
+    # prueba estaría mirando otra cosa.
+    inf.registrar_ejecutor(_ejecutor([["ACME"]]))
+    fila = _informe(uow, tipo="matricial", pivote="etapa", agrupaciones=[{"campo": "nombre"}])
+    salida = inf.ejecutar(uow, fila.id)
+    assert salida["incompleto"] is True
+    assert "etapa" in salida["aviso_plan"]
+
+
+def test_sin_calculados_ni_pivote_no_se_avisa_de_nada(uow: UnidadDeTrabajo) -> None:
+    """Un aviso que sale siempre deja de leerse."""
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    salida = inf.ejecutar(uow, _informe(uow).id)
+    assert "aviso_plan" not in salida
+
+
+def test_si_el_motor_ya_los_aplica_el_aviso_cambia(uow: UnidadDeTrabajo) -> None:
+    """Se mide, no se supone: una fila más ancha significa que ya vienen.
+
+    Es la condición que dice que hay que quitar este aviso, y por eso la prueba
+    existe: el día que contecintelligence aplique los calculados, esto avisa de
+    que las cabeceras se han quedado cortas en vez de seguir diciendo que no se
+    aplican.
+    """
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10, 3]]))
+    fila = _informe(
+        uow,
+        calculados=[
+            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
+        ],
+    )
+    salida = inf.ejecutar(uow, fila.id)
+    assert "incompleto" not in salida
+    assert "más columnas" in salida["aviso_plan"]

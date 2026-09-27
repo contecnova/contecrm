@@ -46,7 +46,18 @@ def _openapi_de(nombre: str, defecto: str) -> str:
 VECINOS: dict[str, dict[str, Any]] = {
     "contecintelligence": {
         "openapi": _openapi_de("contecintelligence", "http://localhost:8100/openapi.json"),
-        "rutas": ["/api/oauth/token", "/api/tokens/exchange"],
+        "rutas": [
+            "/api/oauth/token",
+            "/api/tokens/exchange",
+            # El alta de la fuente y el plan portable. Se fijan porque son los
+            # DOS cuerpos gordos que le mandamos: el registro de entidades y la
+            # consulta. Un nombre de campo que cambie ahí no se nota al
+            # enviarlo —pydantic ignora lo que no conoce— y sale semanas
+            # después como un informe vacío.
+            "/api/sources",
+            "/api/sources/{source_id}",
+            "/api/query/plan",
+        ],
     },
     "contecmind": {
         "openapi": _openapi_de("contecmind", "http://localhost:8200/api/v1/openapi.json"),
