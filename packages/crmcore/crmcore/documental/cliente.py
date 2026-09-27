@@ -840,7 +840,10 @@ def decidir_aprobacion(
             error_code="documental.decision_no_valida",
             detalle={"validas": list(DECISIONES)},
         )
-    cuerpo: dict[str, Any] = {"decision": decision, "comment": comentario}
+    # El campo del gestor se llama `note`. Mandarlo como `comment` no daba
+    # error —pydantic ignora lo que no conoce— y el comentario se perdía
+    # entero, en silencio: la decisión quedaba registrada sin el porqué.
+    cuerpo: dict[str, Any] = {"decision": decision, "note": comentario}
     if delegar_en:
         cuerpo["delegate_to"] = delegar_en
     return dict(

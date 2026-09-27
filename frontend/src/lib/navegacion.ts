@@ -144,6 +144,7 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar" , recursos: ["agentes-ia", "ia", "modelos", "sugerencias-caso", "transcripciones", "variantes", "voz"] },
 
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read" , recursos: ["aprobaciones"] },
+  { area: "automatizacion", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["aprobaciones-documentales"] },
   { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["compensacion", "encargos", "firma", "firma-presencial", "plantillas-documento", "suite", "suites"] },
 
   { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" , recursos: ["aislamiento", "residencia", "entornos", "sso-gobierno", "factores", "notificaciones", "scim"] },

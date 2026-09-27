@@ -34,6 +34,7 @@ import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe, recursoDe } from "@/lib/modulos";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { AprobacionDeDocumento } from "@/paginas/Aprobaciones";
 
 type Pestana = "datos" | "adjuntos" | "comentarios" | "documentos";
 
@@ -559,6 +560,7 @@ function Documentos({ tipo, id, nombre }: { tipo: string; id: string; nombre: st
           documento vive en el gestor, aquí está el enlace y el contexto. */}
       <p className="mb-2 text-2xs text-ink-faint">{t("ficha.documentosIntro")}</p>
       {filas.length === 0 ? <Vacio /> : <Tabla filas={filas} titulo={t("ficha.documentos")} />}
+      {filas.length > 0 ? <Aprobacion filas={filas} /> : null}
       <BuscarEnElCorpus
         tipo={tipo}
         id={id}
@@ -566,6 +568,56 @@ function Documentos({ tipo, id, nombre }: { tipo: string; id: string; nombre: st
         alEnlazar={() => setRecargar((n) => n + 1)}
       />
     </>
+  );
+}
+
+/**
+ * La aprobación de los documentos enlazados a este registro.
+ *
+ * Va debajo de la tabla y no como una columna suya porque esa tabla es
+ * genérica: se pinta de lo que devuelve la API, sin celdas a medida. Meter aquí
+ * una excepción obligaría a que la tabla supiera de aprobaciones, y entonces
+ * las otras treinta pantallas que la usan también.
+ *
+ * Cerrado de entrada: cada documento abierto es una llamada al gestor, y una
+ * ficha con doce contratos enlazados haría doce al abrir la pestaña.
+ */
+function Aprobacion({ filas }: { filas: Record<string, unknown>[] }) {
+  const { t } = useTranslation();
+  const [abierto, setAbierto] = useState<string | null>(null);
+
+  return (
+    <section className="mt-6 border-t border-ink-dim/30 pt-4">
+      <h3 className="mb-2 text-xs font-medium text-ink">{t("ficha.aprobacion")}</h3>
+      <ul className="space-y-1">
+        {filas.map((fila, i) => {
+          const id = String(fila.documento_id ?? fila.document_id ?? "");
+          const titulo = String(fila.titulo ?? fila.title ?? id);
+          if (!id) return null;
+          const esta = abierto === id;
+          return (
+            <li key={id || i} className="rounded border border-ink-dim/30 px-2 py-1">
+              <button
+                type="button"
+                onClick={() => setAbierto(esta ? null : id)}
+                aria-expanded={esta}
+                className="flex w-full items-center justify-between gap-2 text-left text-xs text-ink"
+              >
+                <span className="truncate">{titulo}</span>
+                <span className="shrink-0 text-2xs text-ink-muted">
+                  {esta ? t("ficha.cerrar") : t("ficha.verAprobacion")}
+                </span>
+              </button>
+              {esta ? (
+                <div className="mt-2 border-t border-ink-dim/30 pt-2">
+                  <AprobacionDeDocumento documentoId={id} />
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

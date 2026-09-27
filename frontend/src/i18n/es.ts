@@ -48,6 +48,7 @@ export default {
     cobertura: "Cobertura",
     recorrido: "Recorrido guiado",
     procesos: "Procesos en curso",
+    aprobacionesDoc: "Aprobar documentos",
     explotacion: "Preguntas publicadas",
     cuadros: "Cuadros de mando",
     casos: "Bandeja de casos",
@@ -301,6 +302,38 @@ export default {
     jsonAMedias: "El JSON está a medias: el diagrama vuelve en cuanto sea válido.",
     mover: "Mover",
   },
+  aprobaciones: {
+    titulo: "Aprobaciones de documentos",
+    intro:
+      "Lo que espera tu decisión en el gestor documental. Va con tu identidad: nadie ve lo que espera la firma de otro.",
+    nadaPendiente: "No hay nada esperando tu decisión.",
+    estado: "Estado: {{estado}}",
+    etapa: "Etapa {{n}}",
+    noTeToca:
+      "Aquí no te toca decidir. Quién firma y en qué orden lo lleva el gestor documental.",
+    comentario: "Por qué (queda registrado con la decisión)",
+    delegarEn: "Delegar en (identificador de la persona en el gestor)",
+    confirmar: "Confirmar la decisión",
+    enviando: "Enviando…",
+    decidida:
+      "Decidida. El gestor dice: {{estado}}. Aprobar no siempre acaba en «publicado»: si el reindexado del fichero falla, la versión queda aprobada, sigue publicada la anterior y la publicación se puede reintentar.",
+    decision: {
+      approved: "Aprobar",
+      rejected: "Rechazar",
+      delegated: "Delegar",
+    },
+    controlEstado: "Control documental: {{estado}} · versión en curso {{version}}",
+    enCurso: "Aprobación en curso: {{estado}}",
+    noLaNecesita: "Este documento no pasa por aprobación.",
+    flujo: "Flujo de aprobación",
+    flujoElQueToque: "El que corresponda",
+    aprobadores: "Quién aprueba (opcional)",
+    aprobadoresExigidos: "Quién aprueba (este flujo lo exige)",
+    aprobadoresPista: "Identificadores en el gestor, separados por comas",
+    faltanAprobadores:
+      "Este flujo toma los aprobadores de la propia solicitud, así que hay que decir quiénes son.",
+    pedir: "Pedir la aprobación",
+  },
   ficha: {
     identificadores: "Identificadores técnicos",
     editar: "Editar",
@@ -327,6 +360,9 @@ export default {
     buscar: "Buscar",
     buscando: "Buscando…",
     enlazar: "Enlazar aquí",
+    aprobacion: "Aprobación de estos documentos",
+    verAprobacion: "Ver aprobación",
+    cerrar: "Cerrar",
     corpusSinResultados:
       "No hay ningún documento que puedas ver con eso. La búsqueda va con tu identidad, así que enseña lo que verías entrando al gestor.",
   },

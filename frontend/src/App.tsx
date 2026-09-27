@@ -15,6 +15,7 @@ import { Inicio } from "@/paginas/Inicio";
 import { Pipeline } from "@/paginas/Pipeline";
 import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
+import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
 import { llamar } from "@/lib/api";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
@@ -155,6 +156,7 @@ export function App() {
           <Route path="/chat" element={<Chat sesion={sesion} />} />
           <Route path="/recorrido" element={<Recorrido />} />
           <Route path="/procesos" element={<Procesos />} />
+          <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/explotacion" element={<Explotacion />} />
           <Route path="/cuadros" element={<Cuadros />} />
           <Route path="/embudo" element={<Pipeline sesion={sesion} />} />

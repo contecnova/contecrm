@@ -3142,6 +3142,19 @@ la red, porque el 422 del gestor llegaría en su idioma y sin decir cuáles vale
 La bandeja de pendientes es **de quien pregunta**: va con su token, igual que
 todo lo demás del corpus, así que nadie ve lo que espera la firma de otro.
 
+**Dónde está.** Se llega por dos sitios y los dos enseñan lo mismo. En
+Automatización → *Aprobar documentos* está la bandeja: lo que espera tu
+decisión, con el porqué y, si delegas, en quién. Y en la ficha de un registro,
+bajo la pestaña Documentos, cada documento enlazado despliega su aprobación —su
+estado y, si te toca, pedirla—. Está cerrado de entrada a propósito: cada
+documento abierto es una llamada al gestor, y una ficha con doce contratos haría
+doce al abrir la pestaña.
+
+El aviso por correo lo manda el CRM y no el gestor, y no es un reparto
+caprichoso: contecmind **no conoce el correo** de una persona del CRM —no tiene
+ficha suya, por diseño—, así que el único que puede avisar es quien sabe a
+quién.
+
 ### Cada usuario ve lo que vería entrando al gestor
 
 La integración usa la credencial de aplicación **solo para canjear un token de
