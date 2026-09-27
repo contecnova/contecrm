@@ -12,6 +12,15 @@ Ha pasado dos veces en este repositorio —`/conocimiento/articulos` tapada por
 pantalla que se quedaba vacía. No es algo que se vea leyendo el fichero: hay que
 mirar el orden de dos decoradores que pueden estar a trescientas líneas.
 
+**Y la tapada no siempre es una ruta fija.** Esta prueba solo miraba las fijas y
+por eso pasaba en verde con OCHO rutas inalcanzables: una con parámetro también
+tapa a otra con parámetro cuando es más general en cada tramo. Eran
+`/documentos/aprobacion/{documento_id}` (tres servicios),
+`/ia/prediccion/acierto/{tipo}`, `/metricas/{metrica_id}`,
+`/firma/sobres/{sobre_firma_id}/archivar` y las dos de
+`/canales-servicio/{canal_id}`. Las dos últimas familias no eran ni cuestión de
+orden: eran la misma ruta escrita dos veces con distinto nombre de parámetro.
+
 Se comprueba sobre las rutas **realmente montadas**, porque parte se registran
 desde código (`crmcore.http.listados`) y un análisis del texto no las ve.
 """
@@ -80,22 +89,30 @@ def test_ninguna_ruta_con_parametro_tapa_una_ruta_fija(servicio: str) -> None:
         if "{" not in camino or not camino.startswith("/api/v1/"):
             continue
         metodos = {m.upper() for m in ops}
-        for fijo, ops_fijo in caminos[i + 1 :]:
-            if "{" in fijo or not fijo.startswith("/api/v1/"):
+        # La tapada NO tiene por qué ser una ruta fija, y darlo por hecho fue el
+        # agujero de la primera versión de esta prueba: pasaba en verde mientras
+        # ocho rutas eran inalcanzables. Basta con que la de delante sea más
+        # general en cada tramo — `/documentos/{objeto_tipo}/{objeto_id}` se
+        # traga `/documentos/aprobacion/{documento_id}` porque `{objeto_tipo}`
+        # encaja con el literal «aprobacion».
+        for detras, ops_detras in caminos[i + 1 :]:
+            if not detras.startswith("/api/v1/"):
                 continue
-            if not (metodos & {m.upper() for m in ops_fijo}):
+            if not (metodos & {m.upper() for m in ops_detras}):
                 continue
-            tramos_p, tramos_f = camino.split("/"), fijo.split("/")
-            if len(tramos_p) != len(tramos_f):
+            tramos_p, tramos_d = camino.split("/"), detras.split("/")
+            if len(tramos_p) != len(tramos_d):
                 continue
             if all(
-                tp == tf or tp.startswith("{") for tp, tf in zip(tramos_p, tramos_f, strict=True)
+                tp == td or tp.startswith("{") for tp, td in zip(tramos_p, tramos_d, strict=True)
             ):
-                tapadas.append(f"{fijo} queda tapada por {camino}, declarada antes")
+                tapadas.append(f"{detras} queda tapada por {camino}, declarada antes")
 
     assert not tapadas, (
         f"En «{servicio}» hay rutas inalcanzables:\n  "
         + "\n  ".join(dict.fromkeys(tapadas))
-        + "\n\nDeclara la ruta fija ANTES que la que lleva parámetro. El síntoma, si "
+        + "\n\nDeclara la ruta MÁS CONCRETA antes que la más general. Si las dos "
+        "tienen la misma forma y solo cambian el nombre del parámetro, no hay orden "
+        "que valga: son la misma ruta escrita dos veces y sobra una. El síntoma, si "
         "no, es un 422 diciendo que el nombre de la ruta no es un identificador válido."
     )

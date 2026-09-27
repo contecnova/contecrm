@@ -108,11 +108,16 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
 
         return cliente.estado()
 
-    # Estas dos van ANTES de `/{objeto_tipo}/{objeto_id}`, y no es cosmético:
-    # tienen los mismos dos tramos, FastAPI casa por orden de declaración y la
-    # de parámetros se las tragaba. El síntoma era un 422 diciendo que
-    # «aprobaciones» no es un tipo de objeto admitido, que no menciona el
-    # problema por ninguna parte.
+    # Todo lo de aprobación va ANTES de `/{objeto_tipo}/{objeto_id}`, y no es
+    # cosmético: tiene los mismos dos tramos, FastAPI casa por orden de
+    # declaración y la de parámetros se lo tragaba. El síntoma era un 422
+    # diciendo que «aprobaciones» no es un tipo de objeto admitido, que no
+    # menciona el problema por ninguna parte.
+    #
+    # Ojo con `/aprobacion/{documento_id}`: también quedaba tapada, y ahí no
+    # basta con mirar las rutas FIJAS. Una ruta con parámetro puede tapar a
+    # otra con parámetro cuando la de delante es más general —`{objeto_tipo}`
+    # se traga el literal «aprobacion»—, y eso no se ve leyendo el fichero.
     @router.get(
         "/aprobaciones/pendientes",
         summary="Lo que espera MI decisión",
@@ -142,6 +147,58 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
         return {
             "items": cliente.flujos_de_aprobacion(token_usuario=_token_del_usuario(db, principal))
         }
+
+    # ── Aprobación de un documento ───────────────────────────────────────
+    #
+    # El motor vive en el gestor —quórum, segregación de funciones, recorrido
+    # del grafo— y aquí solo se pasa. Lo que sí es del CRM es QUIÉN aprueba:
+    # los aprobadores son personas de aquí, elegidas al pedir la aprobación.
+
+    @router.get(
+        "/aprobacion/{documento_id}",
+        summary="Cómo va la aprobación de un documento",
+        description=(
+            "Trae también **si quien pregunta puede pedirla**. Ese cálculo no se "
+            "hace aquí: haría falta copiar el quórum, la segregación de funciones "
+            "y el recorrido del grafo, y esa copia se desincroniza el día que "
+            "cambie una regla — enseñando un botón que da 403."
+        ),
+    )
+    def ver_aprobacion(documento_id: str, db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.documental import cliente
+
+        return cliente.aprobacion_de(documento_id, token_usuario=_token_del_usuario(db, principal))
+
+    @router.post(
+        "/aprobacion/{documento_id}",
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[Depends(exige_permiso("documento:enlazar"))],
+        summary="Pedir la aprobación de un documento",
+        description=(
+            "Los aprobadores se eligen **al pedirla**, no al configurar el flujo: "
+            "quién tiene que firmar un contrato depende del contrato, no del tipo "
+            "de documento.\n\n"
+            "Si el flujo elegido exige aprobadores y no se dan, el gestor "
+            "contesta 422. Por eso el listado de flujos dice cuáles los exigen: "
+            "la pantalla los pide **antes** de dejar enviar, en vez de dejar que "
+            "alguien rellene el formulario y se coma el error."
+        ),
+    )
+    def pedir_aprobacion(
+        documento_id: str,
+        db: DbDep,
+        principal: AutenticadoDep,
+        datos: PedirAprobacion = Body(...),
+    ) -> Any:
+        from crmcore.documental import cliente
+
+        return cliente.pedir_aprobacion(
+            documento_id,
+            token_usuario=_token_del_usuario(db, principal),
+            aprobadores=datos.aprobadores,
+            flujo_id=datos.flujo_id,
+            version=datos.version,
+        )
 
     @router.get(
         "/{objeto_tipo}/{objeto_id}",
@@ -464,58 +521,6 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
                 limite=limite,
             )
         }
-
-    # ── Aprobación de un documento ───────────────────────────────────────
-    #
-    # El motor vive en el gestor —quórum, segregación de funciones, recorrido
-    # del grafo— y aquí solo se pasa. Lo que sí es del CRM es QUIÉN aprueba:
-    # los aprobadores son personas de aquí, elegidas al pedir la aprobación.
-
-    @router.get(
-        "/aprobacion/{documento_id}",
-        summary="Cómo va la aprobación de un documento",
-        description=(
-            "Trae también **si quien pregunta puede pedirla**. Ese cálculo no se "
-            "hace aquí: haría falta copiar el quórum, la segregación de funciones "
-            "y el recorrido del grafo, y esa copia se desincroniza el día que "
-            "cambie una regla — enseñando un botón que da 403."
-        ),
-    )
-    def ver_aprobacion(documento_id: str, db: DbDep, principal: AutenticadoDep) -> Any:
-        from crmcore.documental import cliente
-
-        return cliente.aprobacion_de(documento_id, token_usuario=_token_del_usuario(db, principal))
-
-    @router.post(
-        "/aprobacion/{documento_id}",
-        status_code=status.HTTP_201_CREATED,
-        dependencies=[Depends(exige_permiso("documento:enlazar"))],
-        summary="Pedir la aprobación de un documento",
-        description=(
-            "Los aprobadores se eligen **al pedirla**, no al configurar el flujo: "
-            "quién tiene que firmar un contrato depende del contrato, no del tipo "
-            "de documento.\n\n"
-            "Si el flujo elegido exige aprobadores y no se dan, el gestor "
-            "contesta 422. Por eso el listado de flujos dice cuáles los exigen: "
-            "la pantalla los pide **antes** de dejar enviar, en vez de dejar que "
-            "alguien rellene el formulario y se coma el error."
-        ),
-    )
-    def pedir_aprobacion(
-        documento_id: str,
-        db: DbDep,
-        principal: AutenticadoDep,
-        datos: PedirAprobacion = Body(...),
-    ) -> Any:
-        from crmcore.documental import cliente
-
-        return cliente.pedir_aprobacion(
-            documento_id,
-            token_usuario=_token_del_usuario(db, principal),
-            aprobadores=datos.aprobadores,
-            flujo_id=datos.flujo_id,
-            version=datos.version,
-        )
 
     @router.post(
         "/aprobaciones/{solicitud_id}/decidir",

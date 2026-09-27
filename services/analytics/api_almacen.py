@@ -519,6 +519,12 @@ ROUTERS_ALMACEN = [router, router_metricas, router_analisis]
 # ── La ficha del registro ─────────────────────────────────────────────────
 # Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
 # ninguna pantalla: existen, se prueban y nadie las usa.
+# Sin lectura: una métrica se lee por su CLAVE —`GET /metricas/{clave}`, más
+# arriba— porque es así como se la nombra en un informe y en una pregunta. La
+# lectura genérica por id tiene los mismos tramos, se declaraba después y era
+# inalcanzable: quien la pidiera con un UUID acabaría en la de clave, que
+# buscaría una métrica llamada como ese UUID y contestaría 404. Editar y borrar
+# sí van por id, y esos no chocan con nada.
 montar_ficha(
     router_metricas,
     modelo=sem.Metrica,
@@ -527,6 +533,7 @@ montar_ficha(
     permiso_escribir="analitica:administrar",
     nombre="Métricas",
     parametro="metrica_id",
+    con_lectura=False,
 )
 montar_ficha(
     router,

@@ -338,7 +338,7 @@ stateDiagram-v2
 | `PATCH /api/v1/firma/sobres/{sobre_firma_id}` | Editar sobres de firma | sobre_firma_id*, referencia, proveedor, referencia_externa, objeto_origen, cuenta_id, asunto, mensaje, nivel, plantilla, orden_estricto, estado, hash_enviado, hash_firmado, sello_tiempo, enviado_at, completado_at, caduca_at, ultima_novedad_at, ultimo_recordatorio_at, error, contexto | 200, 422 | — |
 | `DELETE /api/v1/firma/sobres/{sobre_firma_id}` | Borrar sobres de firma | sobre_firma_id* | 204, 422 | — |
 | `POST /api/v1/firma/sobres/{sobre_firma_id}/archivar` | Archivar sobres de firma | sobre_firma_id* | 200, 422 | — |
-| `POST /api/v1/firma/sobres/{sobre_id}/archivar` | Archivar el firmado y enlazarlo a su registro | sobre_id*, documento_firmado_id*, certificado_id, sello_tiempo, hash_firmado | 200, 422 | — |
+| `POST /api/v1/firma/sobres/{sobre_id}/archivar-firmado` | Archivar el firmado y enlazarlo a su registro | sobre_id*, documento_firmado_id*, certificado_id, sello_tiempo, hash_firmado | 200, 422 | — |
 | `POST /api/v1/firma/sobres/{sobre_id}/cancelar` | Cancelar un sobre en curso | sobre_id*, motivo* | 200, 422 | `signature.envelope.cancelled` |
 | `POST /api/v1/firma/sobres/{sobre_id}/enviar` | Mandarlo al proveedor | sobre_id* | 200, 422 | `signature.envelope.sent` |
 | `POST /api/v1/firma/sobres/{sobre_id}/recordar` | Recordar a quien le toca | sobre_id*, minimo_horas | 200, 422 | `signature.reminder.sent` |
@@ -868,9 +868,6 @@ stateDiagram-v2
 | `PUT /api/v1/agentes` | Capacidad y competencias de un agente | usuario_id*, capacidad, competencias, nivel, activo | 200, 422 | — |
 | `PUT /api/v1/agentes/presencia` | Cambiar mi presencia | presencia*, motivo | 200, 422 | — |
 | `POST /api/v1/canales-servicio` | Declarar un canal de entrada | clave*, nombre*, tipo, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia | 201, 422 | — |
-| `PATCH /api/v1/canales-servicio/{canal_id}` | Editar canales de servicio | canal_id*, clave, nombre, tipo, secreto_hash, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia, activo, recibidos, descartados | 200, 422 | — |
-| `DELETE /api/v1/canales-servicio/{canal_id}` | Borrar canales de servicio | canal_id* | 204, 422 | — |
-| `POST /api/v1/canales-servicio/{canal_id}/archivar` | Archivar canales de servicio | canal_id* | 200, 422 | — |
 | `PATCH /api/v1/canales-servicio/{canal_servicio_id}` | Editar canales de servicio | canal_servicio_id*, clave, nombre, tipo, secreto_hash, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia, activo, recibidos, descartados | 200, 422 | — |
 | `DELETE /api/v1/canales-servicio/{canal_servicio_id}` | Borrar canales de servicio | canal_servicio_id* | 204, 422 | — |
 | `POST /api/v1/canales-servicio/{canal_servicio_id}/archivar` | Archivar canales de servicio | canal_servicio_id* | 200, 422 | — |

@@ -396,7 +396,11 @@ montar_ficha(
     permiso_leer="case:read",
     permiso_escribir="service:write",
     nombre="Canales de servicio",
-    parametro="canal_id",
+    # Sin `parametro=`: el listado de arriba ya monta sus acciones con
+    # `{canal_servicio_id}`, y llamar aquí al mismo tramo `{canal_id}` daba dos
+    # rutas con la misma forma y distinto nombre. La segunda no se alcanzaba
+    # nunca —FastAPI casa por orden— así que la ficha del canal existía en el
+    # contrato y no respondía.
 )
 
 

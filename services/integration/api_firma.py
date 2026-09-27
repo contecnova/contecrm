@@ -303,8 +303,13 @@ class ArchivarFirmado(BaseModel):
     )
 
 
+# «archivar-firmado» y no «archivar» a secas: el listado genérico ya monta un
+# `/sobres/{id}/archivar` para todos los recursos —mandar el registro a la
+# papelera— con los mismos tres tramos. Con el mismo nombre, esta se declaraba
+# antes y dejaba la otra inalcanzable, y además las dos querían decir cosas
+# distintas: aquí se archiva EL FIRMADO, allí el sobre.
 @router.post(
-    "/sobres/{sobre_id}/archivar",
+    "/sobres/{sobre_id}/archivar-firmado",
     dependencies=[Depends(exige_permiso("firma:write"))],
     summary="Archivar el firmado y enlazarlo a su registro",
     description=(

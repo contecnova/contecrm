@@ -152,6 +152,20 @@ def puntuar(cuerpo: Puntuar, uow: UowDep) -> Any:
     return pred.puntuar(uow, **cuerpo.model_dump())
 
 
+# Va ANTES de `/{tipo}/{objeto_id}`: tiene los mismos tramos y «acierto» se leía
+# como un tipo de predicción, así que la respuesta era un 422 diciendo que
+# «oportunidad» no es un identificador válido.
+@router_prediccion.get(
+    "/acierto/{tipo}",
+    dependencies=[Depends(exige_permiso("ia:administrar"))],
+    summary="Cómo está acertando el modelo sobre lo ya cerrado",
+)
+def acierto(
+    tipo: str, db: DbDep, principal: AutenticadoDep, dias: int = Query(90, ge=7, le=730)
+) -> Any:
+    return pred.acierto(db, principal.tenant_id, tipo=tipo, dias=dias)
+
+
 @router_prediccion.get(
     "/{tipo}/{objeto_id}",
     dependencies=[Depends(exige_permiso("ia:usar"))],
@@ -175,17 +189,6 @@ def anotar_real(cuerpo: AnotarReal, uow: UowDep) -> Any:
     if fila is None:
         return {"anotada": False, "porque": "No había predicción para ese registro."}
     return {"anotada": True, "prediccion_id": str(fila.id)}
-
-
-@router_prediccion.get(
-    "/acierto/{tipo}",
-    dependencies=[Depends(exige_permiso("ia:administrar"))],
-    summary="Cómo está acertando el modelo sobre lo ya cerrado",
-)
-def acierto(
-    tipo: str, db: DbDep, principal: AutenticadoDep, dias: int = Query(90, ge=7, le=730)
-) -> Any:
-    return pred.acierto(db, principal.tenant_id, tipo=tipo, dias=dias)
 
 
 @router_prediccion.post(
