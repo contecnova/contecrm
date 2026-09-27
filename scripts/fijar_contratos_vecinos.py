@@ -68,6 +68,13 @@ VECINOS: dict[str, dict[str, Any]] = {
             "/api/v1/folders/{folder_id}/summary",
             "/api/v1/folders/{folder_id}/concepts",
             "/api/v1/documents/{document_id}/move",
+            # Aprobación por documento. El motor es suyo; lo de aquí es elegir
+            # QUIÉN aprueba, que son personas del CRM.
+            "/api/v1/documents/{document_id}/approval",
+            "/api/v1/approvals/pending",
+            "/api/v1/approvals/workflows",
+            "/api/v1/approvals/{request_id}/decide",
+            "/api/v1/approvals/{request_id}/cancel",
             # El aprovisionamiento: dar de alta en el gestor lo que se da de alta
             # en el CRM. Se fijan AUNQUE NO EXISTAN TODAVÍA —el fichero guarda el
             # hueco explícito— porque es justo lo que hace que el día que

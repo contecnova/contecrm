@@ -579,6 +579,11 @@ def mover_documento(documento_id: str, *, carpeta_id: str | None, token_usuario:
 # idiomas del CRM. Se listan aquí para que el front tenga qué traducir y para que
 # uno nuevo se note —si aparece un motivo que no está, se enseña el código tal
 # cual en vez de una cadena vacía, que es lo que haría un diccionario mudo.
+# Las decisiones que admite el gestor. Lista cerrada y de aquí: mandar una
+# palabra que él no conoce da un 422 que llega a la pantalla como «datos no
+# válidos», sin decir cuál.
+DECISIONES = ("approved", "rejected", "delegated")
+
 MOTIVOS_DE_PERMISO = (
     "area",
     "no_area",
@@ -746,3 +751,108 @@ def carpeta_de_registro(
         if not padre:
             return None
     return padre
+
+
+# ── Aprobación de un documento del corpus (RT-5) ──────────────────────────
+#
+# El motor de aprobación es de contecmind y no se reimplementa aquí: quórum,
+# segregación de funciones y recorrido del grafo viven allí. Lo que sí es de
+# aquí es **quién aprueba**, porque los aprobadores son personas del CRM.
+#
+# Dos cosas que este cliente NO calcula y que vienen dadas, a propósito:
+# `puedo_decidir` y `puedo_pedir`. Calcularlas aquí obligaría a copiar esas tres
+# reglas, y la copia se desincroniza el día que cambie una — enseñando botones
+# que dan 403, que es peor que no enseñarlos.
+
+
+def aprobacion_de(documento_id: str, *, token_usuario: str) -> dict[str, Any]:
+    """Cómo va la aprobación de un documento: estado, versiones y quién decide."""
+    return dict(
+        _llamar("GET", f"/api/v1/documents/{documento_id}/approval", token_usuario=token_usuario)
+        or {}
+    )
+
+
+def pedir_aprobacion(
+    documento_id: str,
+    *,
+    token_usuario: str,
+    aprobadores: list[str] | None = None,
+    flujo_id: str = "",
+    version: int | None = None,
+) -> dict[str, Any]:
+    """Pide la aprobación, eligiendo a quién se la pide.
+
+    Los aprobadores se eligen **al pedirla**, no al configurar el flujo: quién
+    tiene que firmar un contrato depende del contrato, no del tipo de documento.
+    Son identificadores de sujeto del gestor, los que devuelve el canje.
+
+    Sin flujo se resuelve el que toque. Si el flujo elegido **exige**
+    aprobadores y no se dan, el gestor contesta 422 — por eso la pantalla los
+    pide antes de dejar enviar, mirando `exige_aprobadores` del listado.
+    """
+    cuerpo: dict[str, Any] = {"approvers": list(aprobadores or []), "version_no": version}
+    if flujo_id:
+        cuerpo["workflow_id"] = flujo_id
+    return dict(
+        _llamar(
+            "POST",
+            f"/api/v1/documents/{documento_id}/approval",
+            token_usuario=token_usuario,
+            cuerpo=cuerpo,
+        )
+        or {}
+    )
+
+
+def aprobaciones_pendientes(*, token_usuario: str) -> list[dict[str, Any]]:
+    """Lo que espera la decisión de QUIEN PREGUNTA."""
+    cuerpo = _llamar("GET", "/api/v1/approvals/pending", token_usuario=token_usuario)
+    return list((cuerpo or {}).get("items") or cuerpo or [])
+
+
+def flujos_de_aprobacion(*, token_usuario: str) -> list[dict[str, Any]]:
+    """Los flujos entre los que se puede elegir, con si exigen aprobadores."""
+    cuerpo = _llamar("GET", "/api/v1/approvals/workflows", token_usuario=token_usuario)
+    return list((cuerpo or {}).get("items") or cuerpo or [])
+
+
+def decidir_aprobacion(
+    solicitud_id: str,
+    *,
+    token_usuario: str,
+    decision: str,
+    comentario: str = "",
+    delegar_en: str = "",
+) -> dict[str, Any]:
+    """Aprobar, rechazar o delegar.
+
+    **Aprobar no siempre acaba en «publicado».** Si el reindexado del fichero
+    falla, la versión queda aprobada, sigue publicada la anterior y la
+    publicación se puede reintentar. Es correcto, y hay que enseñarlo así: una
+    pantalla que espere «publicado» pintará como roto algo que funciona.
+    """
+    if decision not in DECISIONES:
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            f"«{decision}» no es una decisión de aprobación",
+            error_code="documental.decision_no_valida",
+            detalle={"validas": list(DECISIONES)},
+        )
+    cuerpo: dict[str, Any] = {"decision": decision, "comment": comentario}
+    if delegar_en:
+        cuerpo["delegate_to"] = delegar_en
+    return dict(
+        _llamar(
+            "POST",
+            f"/api/v1/approvals/{solicitud_id}/decide",
+            token_usuario=token_usuario,
+            cuerpo=cuerpo,
+        )
+        or {}
+    )
+
+
+def cancelar_aprobacion(solicitud_id: str, *, token_usuario: str) -> None:
+    _llamar("POST", f"/api/v1/approvals/{solicitud_id}/cancel", token_usuario=token_usuario)

@@ -52,6 +52,27 @@ class EnlaceEntrada(BaseModel):
     )
 
 
+class PedirAprobacion(BaseModel):
+    aprobadores: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Quién tiene que aprobarlo, por su identificador en el gestor — el "
+            "que devuelve el canje. Se eligen al PEDIR la aprobación y no al "
+            "configurar el flujo: quién firma un contrato depende del contrato"
+        ),
+    )
+    flujo_id: str = Field("", description="Vacío = el que corresponda por configuración")
+    version: int | None = Field(None, description="Vacío = la versión vigente")
+
+
+class DecidirAprobacion(BaseModel):
+    decision: str = Field(..., description="approved · rejected · delegated")
+    comentario: str = Field("", max_length=2000)
+    delegar_en: str = Field(
+        "", description="Solo con `delegated`: a quién, por su identificador en el gestor"
+    )
+
+
 class OrganizacionEntrada(BaseModel):
     organizacion: str = Field(
         min_length=1,
@@ -86,6 +107,41 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
         from crmcore.documental import cliente
 
         return cliente.estado()
+
+    # Estas dos van ANTES de `/{objeto_tipo}/{objeto_id}`, y no es cosmético:
+    # tienen los mismos dos tramos, FastAPI casa por orden de declaración y la
+    # de parámetros se las tragaba. El síntoma era un 422 diciendo que
+    # «aprobaciones» no es un tipo de objeto admitido, que no menciona el
+    # problema por ninguna parte.
+    @router.get(
+        "/aprobaciones/pendientes",
+        summary="Lo que espera MI decisión",
+        description=(
+            "Los avisos por correo los manda el CRM y no el gestor, y no es un "
+            "reparto caprichoso: el gestor **no conoce el correo** de una persona "
+            "del CRM —no tiene ficha suya, por diseño— así que el único que puede "
+            "avisar es quien sabe a quién."
+        ),
+    )
+    def aprobaciones_pendientes(db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.documental import cliente
+
+        return {
+            "items": cliente.aprobaciones_pendientes(
+                token_usuario=_token_del_usuario(db, principal)
+            )
+        }
+
+    @router.get(
+        "/aprobaciones/flujos",
+        summary="Los flujos de aprobación entre los que elegir",
+    )
+    def flujos_de_aprobacion(db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.documental import cliente
+
+        return {
+            "items": cliente.flujos_de_aprobacion(token_usuario=_token_del_usuario(db, principal))
+        }
 
     @router.get(
         "/{objeto_tipo}/{objeto_id}",
@@ -408,6 +464,96 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
                 limite=limite,
             )
         }
+
+    # ── Aprobación de un documento ───────────────────────────────────────
+    #
+    # El motor vive en el gestor —quórum, segregación de funciones, recorrido
+    # del grafo— y aquí solo se pasa. Lo que sí es del CRM es QUIÉN aprueba:
+    # los aprobadores son personas de aquí, elegidas al pedir la aprobación.
+
+    @router.get(
+        "/aprobacion/{documento_id}",
+        summary="Cómo va la aprobación de un documento",
+        description=(
+            "Trae también **si quien pregunta puede pedirla**. Ese cálculo no se "
+            "hace aquí: haría falta copiar el quórum, la segregación de funciones "
+            "y el recorrido del grafo, y esa copia se desincroniza el día que "
+            "cambie una regla — enseñando un botón que da 403."
+        ),
+    )
+    def ver_aprobacion(documento_id: str, db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.documental import cliente
+
+        return cliente.aprobacion_de(documento_id, token_usuario=_token_del_usuario(db, principal))
+
+    @router.post(
+        "/aprobacion/{documento_id}",
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[Depends(exige_permiso("documento:enlazar"))],
+        summary="Pedir la aprobación de un documento",
+        description=(
+            "Los aprobadores se eligen **al pedirla**, no al configurar el flujo: "
+            "quién tiene que firmar un contrato depende del contrato, no del tipo "
+            "de documento.\n\n"
+            "Si el flujo elegido exige aprobadores y no se dan, el gestor "
+            "contesta 422. Por eso el listado de flujos dice cuáles los exigen: "
+            "la pantalla los pide **antes** de dejar enviar, en vez de dejar que "
+            "alguien rellene el formulario y se coma el error."
+        ),
+    )
+    def pedir_aprobacion(
+        documento_id: str,
+        db: DbDep,
+        principal: AutenticadoDep,
+        datos: PedirAprobacion = Body(...),
+    ) -> Any:
+        from crmcore.documental import cliente
+
+        return cliente.pedir_aprobacion(
+            documento_id,
+            token_usuario=_token_del_usuario(db, principal),
+            aprobadores=datos.aprobadores,
+            flujo_id=datos.flujo_id,
+            version=datos.version,
+        )
+
+    @router.post(
+        "/aprobaciones/{solicitud_id}/decidir",
+        dependencies=[Depends(exige_permiso("documento:enlazar"))],
+        summary="Aprobar, rechazar o delegar",
+        description=(
+            "**Aprobar no siempre acaba en «publicado».** Si el reindexado del "
+            "fichero falla, la versión queda aprobada, sigue publicada la anterior "
+            "y la publicación se puede reintentar. Es correcto: una pantalla que "
+            "espere «publicado» pintaría como roto algo que funciona."
+        ),
+    )
+    def decidir_aprobacion(
+        solicitud_id: str,
+        db: DbDep,
+        principal: AutenticadoDep,
+        datos: DecidirAprobacion = Body(...),
+    ) -> Any:
+        from crmcore.documental import cliente
+
+        return cliente.decidir_aprobacion(
+            solicitud_id,
+            token_usuario=_token_del_usuario(db, principal),
+            decision=datos.decision,
+            comentario=datos.comentario,
+            delegar_en=datos.delegar_en,
+        )
+
+    @router.post(
+        "/aprobaciones/{solicitud_id}/cancelar",
+        status_code=status.HTTP_204_NO_CONTENT,
+        dependencies=[Depends(exige_permiso("documento:enlazar"))],
+        summary="Cancelar una solicitud de aprobación",
+    )
+    def cancelar_aprobacion(solicitud_id: str, db: DbDep, principal: AutenticadoDep) -> None:
+        from crmcore.documental import cliente
+
+        cliente.cancelar_aprobacion(solicitud_id, token_usuario=_token_del_usuario(db, principal))
 
     return router
 

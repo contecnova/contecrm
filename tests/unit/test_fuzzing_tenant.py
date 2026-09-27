@@ -69,6 +69,9 @@ PARAMETROS_NO_FILA = {
     "carpeta_id": (
         "es una carpeta del gestor documental, no una fila de este CRM. El\n        aislamiento lo aplica contecmind sobre el token del usuario, y ese token se\n        canjea para la organización mapeada a ESTE tenant (RT-5): sin mapeo no se\n        llama al gestor"
     ),
+    "documento_id": (
+        "es un documento del gestor documental, no una fila de este CRM. Igual que\n        `carpeta_id`: quien decide si se puede ver —y si se puede aprobar— es\n        contecmind, sobre el token del usuario canjeado para la organización\n        mapeada a ESTE tenant (RT-5)"
+    ),
     "capacidad_id": (
         "es un identificador del catálogo funcional (CRM-07.03.02), que es el mismo\n        para todos los tenants y no contiene dato de ninguno: la respuesta que sí\n        es de cada uno —qué controles la cubren— sale filtrada por tenant"
     ),

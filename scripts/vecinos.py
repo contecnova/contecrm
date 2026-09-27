@@ -79,6 +79,12 @@ class Vecino:
     # Una ruta suya a la que el NAVEGADOR llama directamente desde una pantalla
     # del CRM, si la hay. Vacío = el CRM solo habla con él desde el servidor.
     sonda_navegador: str = ""
+    # Su ruta de token de aplicación, si la tiene. Es lo que permite comprobar
+    # que la CREDENCIAL sigue valiendo, no solo que el servicio conteste.
+    ruta_token: str = ""
+    # Los ajustes del `.env` con esa credencial.
+    ajuste_cliente: str = ""
+    ajuste_secreto: str = ""
     perfiles: tuple[str, ...] = ()
     entorno: dict[str, str] = field(default_factory=dict)
     # Su fichero de entorno, relativo al repositorio, cuando NO está junto al
@@ -131,6 +137,9 @@ VECINOS: tuple[Vecino, ...] = (
         # navegador, con un token corto por usuario. O sea que el origen del
         # front tiene que estar permitido ALLÍ, y eso no se ve desde el servidor.
         sonda_navegador="/api/ask",
+        ruta_token="/api/oauth/token",
+        ajuste_cliente="CI_CLIENT_ID",
+        ajuste_secreto="CI_CLIENT_SECRET",
         # Su compose se engancha a la red de contecrm y necesita saber cuál es.
         entorno={"CONTECRM_NETWORK": ""},
     ),
@@ -145,6 +154,9 @@ VECINOS: tuple[Vecino, ...] = (
         sonda="/api/v1/openapi.json",
         ajuste_url="DMS_BASE_URL",
         ajuste_activo="DMS_ENABLED",
+        ruta_token="/api/v1/oauth/token",
+        ajuste_cliente="DMS_CLIENT_ID",
+        ajuste_secreto="DMS_CLIENT_SECRET",
         perfiles=("app",),
         # Su arranque NO aplica migraciones. Sin esto, la base se queda atrás y
         # las rutas nuevas dan 500 por tablas que no existen — que es un fallo
@@ -517,6 +529,47 @@ def _url_publicada(vecino: Vecino) -> str:
     return f"http://127.0.0.1:{puerto}" if puerto.isdigit() else ""
 
 
+def _credencial_vale(vecino: Vecino) -> bool | None:
+    """¿La credencial de aplicación del `.env` sigue valiendo ALLÍ?
+
+    Que el vecino conteste no significa que nos conozca. Su base se puede
+    restaurar, se puede perder un volumen, alguien puede revocar la aplicación —
+    y entonces el servicio responde perfectamente y **todo** lo que pasa por él
+    falla con «ha rechazado la credencial de aplicación», que parece un problema
+    de red y no lo es.
+
+    Pasó hoy: al perderse el volumen de contecintelligence desapareció la
+    aplicación `contecrm` registrada allí, y el estado seguía diciendo que todo
+    estaba bien mientras ningún informe se podía ejecutar.
+
+    Devuelve `None` si no se ha podido comprobar, que no es lo mismo que «no».
+    """
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    if not vecino.ruta_token:
+        return None
+    cliente = str(getattr(s, vecino.ajuste_cliente.lower(), "") or "")
+    secreto = getattr(s, vecino.ajuste_secreto.lower(), "")
+    secreto = secreto.get_secret_value() if hasattr(secreto, "get_secret_value") else str(secreto)
+    if not cliente or not secreto:
+        return False
+    publica = _url_publicada(vecino) or str(getattr(s, vecino.ajuste_url.lower(), "") or "")
+    if not publica:
+        return None
+    try:
+        import httpx
+
+        respuesta = httpx.post(
+            publica.rstrip("/") + vecino.ruta_token,
+            json={"client_id": cliente, "client_secret": secreto},
+            timeout=15.0,
+        )
+    except Exception:  # noqa: BLE001 — no poder comprobarlo no es un «no vale»
+        return None
+    return respuesta.status_code < 400
+
+
 def estado(vecinos: tuple[Vecino, ...]) -> int:
     red = red_de_contecrm()
     if red is None:
@@ -543,6 +596,20 @@ def estado(vecinos: tuple[Vecino, ...]) -> int:
             malo(f"{vecino.nombre}: NO responde en {url}")
             peor = 1
             continue
+
+        # Que conteste no basta: que nos CONOZCA. Una base restaurada o un
+        # volumen perdido dejan al vecino sano y a nosotros sin aplicación
+        # registrada, y eso se ve como un fallo de red que no lo es.
+        credencial = _credencial_vale(vecino)
+        if credencial is False:
+            malo(
+                f"{vecino.nombre}: responde pero RECHAZA nuestra credencial "
+                f"({vecino.ajuste_cliente}). Hay que volver a dar de alta la "
+                "aplicación allí y poner sus datos en el `.env`"
+            )
+            peor = 1
+        elif credencial:
+            ok(f"{vecino.nombre}: acepta nuestra credencial de aplicación")
 
         # Y, si alguna pantalla le llama desde el navegador, que el origen del
         # front esté permitido allí. Responder bien al servidor y cortar al

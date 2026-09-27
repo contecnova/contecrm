@@ -3112,6 +3112,36 @@ es `relevance`. Las citas huérfanas —cuyo documento ya no está— se **marca
 se esconden**: esconderlas haría que el resumen pareciera tener menos fundamento
 del que tenía cuando se generó.
 
+### Aprobar un documento del corpus
+
+Un contrato marco no se publica porque alguien lo suba: se publica cuando quien
+manda dice que sí. Ese recorrido —quórum, segregación de funciones, en qué orden
+firma cada uno— **es de contecmind y no se reimplementa aquí**. Lo que sí es de
+aquí es **quién aprueba**, porque los aprobadores son personas del CRM.
+
+Los aprobadores se eligen **al pedir la aprobación**, no al configurar el flujo:
+quién tiene que firmar un contrato depende del contrato, no del tipo de
+documento. Sin flujo elegido se resuelve el que toque. Si el flujo elegido exige
+aprobadores y no se dan, el gestor contesta 422, así que la pantalla los pide
+antes de dejar enviar mirando `exige_aprobadores` de la lista de flujos.
+
+**contecrm no calcula si alguien puede decidir ni si puede pedir**: las dos
+respuestas vienen dadas por el gestor. Calcularlas aquí obligaría a copiar sus
+reglas, y la copia se desincroniza el día que cambie una — enseñando botones
+que dan 403, que es peor que no enseñarlos.
+
+**Aprobar no siempre acaba en «publicado».** Si el reindexado del fichero falla,
+la versión queda aprobada, sigue publicada la anterior y la publicación se
+puede reintentar. Eso es correcto y se enseña así: una pantalla que dé por
+hecho «publicado» pintará como roto algo que funciona.
+
+Las decisiones son tres —aprobar, rechazar y **delegar**—, y delegar lleva en
+quién. Una decisión que no sea una de las tres se para aquí, antes de salir a
+la red, porque el 422 del gestor llegaría en su idioma y sin decir cuáles valen.
+
+La bandeja de pendientes es **de quien pregunta**: va con su token, igual que
+todo lo demás del corpus, así que nadie ve lo que espera la firma de otro.
+
 ### Cada usuario ve lo que vería entrando al gestor
 
 La integración usa la credencial de aplicación **solo para canjear un token de
