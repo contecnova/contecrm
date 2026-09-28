@@ -77,6 +77,17 @@ def test_toda_llamada_del_front_existe_como_ruta_publicada() -> None:
         publicadas |= set(app.openapi()["paths"])
 
     # `/api/v1/algo/{id}` en el servidor ↔ `/api/v1/algo/` + lo que sea aquí.
+    #
+    # LO QUE ESTO NO CAZA, dicho aquí para que nadie se fíe de más: una llamada
+    # inventada con el mismo número de tramos que una ruta con parámetro pasa
+    # como buena. `/api/v1/accounts/exportar` encajaría con
+    # `/api/v1/accounts/{cuenta_id}` aunque no exista. No se puede afinar sin
+    # inventar: hoy hay tres llamadas que pasan justamente por ahí y las tres
+    # son correctas —el front pide un vocabulario por su nombre, y el nombre es
+    # el valor del parámetro—, así que exigir coincidencia exacta rompería
+    # código bueno. Queda escrito en vez de arreglado a medias: un gate que
+    # promete más de lo que comprueba es peor que uno que no existe, porque se
+    # confía en él.
     patrones = [re.compile("^" + re.sub(r"\{[^}]+\}", "[^/]+", r) + "$") for r in publicadas]
 
     literal = re.compile(r'"(/api/v1/[^"$`]*)"')

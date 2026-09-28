@@ -258,3 +258,53 @@ def test_una_bandeja_vacia_es_una_lista_vacia_y_no_los_nombres_del_sobre(
 def test_una_busqueda_sin_resultados_tambien(dms_activo: Any, gestor_vacio: None) -> None:
     """El mismo `or` estaba en la búsqueda, esperando su turno."""
     assert cliente.buscar("contrato", token_usuario="t") == []
+
+
+# ── El motivo del gestor ──────────────────────────────────────────────────
+
+
+class _ConSobre:
+    """contecmind envuelve sus errores: `{"error": {"code", "message"}}`."""
+
+    def __call__(self, peticion: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "error": {
+                    "code": "not_found",
+                    "message": "version not found",
+                    "error_code": "doc_control.version_not_found",
+                }
+            },
+        )
+
+
+def test_un_404_del_gestor_llega_con_su_motivo(
+    dms_activo: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """«Eso ya no existe» manda a buscar donde no es.
+
+    contecmind devuelve 404 también cuando el documento SÍ está y lo que falta
+    es otra cosa. Medido contra el gestor de verdad con un documento recién
+    subido: contestó «version not found» —no estaba bajo control documental, así
+    que no había versión que aprobar— y aquí se leía como que el documento había
+    desaparecido. Quien lo vea se va a buscar un borrado que está donde lo dejó.
+
+    El motivo se perdía además por una segunda razón: sus errores vienen dentro
+    de un sobre `{"error": {...}}` y aquí solo se miraba el nivel de arriba.
+    """
+    import contextlib
+
+    from crmcore.errors import NoEncontrado
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_ConSobre())) as cli:
+            yield cli
+
+    monkeypatch.setattr("crmcore.red.cliente_seguro", _fabrica)
+
+    with pytest.raises(NoEncontrado) as exc:
+        cliente.aprobaciones_pendientes(token_usuario="t")
+    assert "version not found" in str(exc.value)
+    assert exc.value.detalle["motivo"] == "version not found"

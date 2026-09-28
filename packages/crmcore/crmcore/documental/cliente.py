@@ -448,9 +448,18 @@ def _llamar(
             error_code="documental.sin_permiso",
         )
     if respuesta.status_code == 404:
+        # CON EL MOTIVO DEL GESTOR, igual que el 5xx de abajo. «Eso ya no existe»
+        # a secas manda a buscar donde no es: contecmind devuelve 404 también
+        # cuando el documento SÍ está y lo que falta es otra cosa. Medido con un
+        # documento recién subido: contestó «version not found» —no estaba bajo
+        # control documental, así que no había versión que aprobar— y aquí se
+        # leía como que el documento había desaparecido. Quien lo vea se irá a
+        # buscar un documento borrado que está donde lo dejó.
         raise NoEncontrado(
-            "Eso ya no existe en el gestor documental",
+            "El gestor documental no lo encuentra"
+            + (f": {_motivo(respuesta)}" if _motivo(respuesta) else ""),
             error_code="documental.no_existe",
+            detalle={"motivo": _motivo(respuesta)},
         )
     if respuesta.status_code >= 500:
         # CON EL MOTIVO DEL GESTOR. Antes se dejaba subir el `raise_for_status`
@@ -483,12 +492,28 @@ def areas(*, token_usuario: str) -> list[dict[str, Any]]:
 
 
 def _motivo(respuesta: Any) -> str:
-    """Lo que el gestor dice que ha pasado, si lo dice."""
+    """Lo que el gestor dice que ha pasado, si lo dice.
+
+    contecmind envuelve sus errores: `{"error": {"code": ..., "message": ...}}`.
+    Aquí se miraba solo el nivel de arriba, así que **el motivo se perdía
+    entero** y llegaba una frase genérica del CRM. Medido con un documento que
+    existía: el gestor decía «version not found» —no estaba bajo control
+    documental— y aquí salía «Eso ya no existe», que manda a buscar un documento
+    borrado que está donde lo dejaron.
+
+    Se aceptan las dos formas porque las dos se usan: el sobre de contecmind y
+    el `detail` de FastAPI a secas.
+    """
     try:
         cuerpo = respuesta.json()
-        return str(cuerpo.get("detail") or cuerpo.get("message") or "")[:300]
     except Exception:  # noqa: BLE001 — si no es JSON, el texto vale igual
         return str(getattr(respuesta, "text", ""))[:300]
+    if not isinstance(cuerpo, dict):
+        return str(cuerpo)[:300]
+    envuelto = cuerpo.get("error")
+    if isinstance(envuelto, dict):
+        return str(envuelto.get("message") or envuelto.get("code") or "")[:300]
+    return str(cuerpo.get("detail") or cuerpo.get("message") or "")[:300]
 
 
 def _area(token_usuario: str) -> str:
