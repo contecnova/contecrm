@@ -32,6 +32,10 @@ import os
 
 import pytest
 
+# Su fallo llega a producción y no se arregla después: una fuga entre tenants o
+# una ruta publicada que no responde. Por eso esta prueba NO sale del push.
+pytestmark = pytest.mark.despliegue
+
 SERVICIOS = [
     "tenancy",
     "identity",

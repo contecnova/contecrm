@@ -34,6 +34,10 @@ from uuid import UUID
 
 import pytest
 
+# Su fallo llega a producción y no se arregla después: una fuga entre tenants o
+# una ruta publicada que no responde. Por eso esta prueba NO sale del push.
+pytestmark = pytest.mark.despliegue
+
 SERVICIOS = [
     "tenancy",
     "identity",
@@ -139,3 +143,31 @@ def test_ningun_listado_revienta_al_abrirlo(servicio: str, db: Any, tenant_id: U
         + "\n\nUn 500 al abrir una pantalla es una pantalla en blanco. Si la ruta "
         "no puede contestar sin datos, que conteste vacío."
     )
+
+
+# ── La recogida de Postgres abandonados ───────────────────────────────────
+
+
+def test_solo_se_recoge_lo_que_de_verdad_esta_abandonado() -> None:
+    """Dos condiciones, y las dos hacen falta.
+
+    El 28-09-2026 había ONCE servidores de pruebas sueltos, el más viejo de casi
+    catorce horas y 849 MB entre todos. El `cleanup()` del fixture no se ejecuta
+    cuando la tanda muere de mala manera —un `SIGKILL` no admite manejador— así
+    que se limpia al arrancar la siguiente.
+
+    Lo que no puede pasar es que la limpieza le mate el servidor a una sesión
+    que esté corriendo AHORA: de ahí la segunda condición. Se prueba la decisión
+    y no el efecto, porque un huérfano de verdad no se puede fabricar: en cuanto
+    termina quien lo creó, `pgserver` lo para.
+    """
+    from tests.conftest import esta_abandonado  # type: ignore[import-not-found]
+
+    # Huérfano y viejo: se recoge.
+    assert esta_abandonado("1", "13:50:15") is True
+    assert esta_abandonado("1", "2-03:00:00") is True
+    # Huérfano pero recién arrancado: es de una tanda que está corriendo.
+    assert esta_abandonado("1", "00:42") is False
+    assert esta_abandonado("1", "00:15:30") is False
+    # Viejo pero CON padre: alguien lo tiene cogido.
+    assert esta_abandonado("4821", "13:50:15") is False

@@ -23,6 +23,10 @@ from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from services.tenancy import aislamiento as ais
 from services.tenancy import residencia as res
 
+# Su fallo llega a producción y no se arregla después: una fuga entre tenants o
+# una ruta publicada que no responde. Por eso esta prueba NO sale del push.
+pytestmark = pytest.mark.despliegue
+
 
 @pytest.fixture
 def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:

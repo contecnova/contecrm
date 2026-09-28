@@ -18,6 +18,7 @@ segundos y nadie tiene que acordarse de etiquetar nada.
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -36,6 +37,101 @@ os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("METRICS_POR_TENANT", "false")
 
 
+# Cuánto puede llevar vivo un Postgres de pruebas antes de darlo por abandonado.
+# La suite entera tarda dos minutos, así que una hora es de sobra: nada que esté
+# sirviendo a una tanda de verdad llega ahí. Se mide en horas y no en minutos
+# para no matarle el servidor a otra sesión que esté corriendo en paralelo.
+HORAS_PARA_DARLO_POR_ABANDONADO = 1
+
+
+def esta_abandonado(ppid: str, etime: str) -> bool:
+    """¿Este servidor es de una tanda muerta, o de una que está corriendo?
+
+    Se decide con dos datos y nada más, para que se pueda comprobar sin
+    fabricar un proceso huérfano de verdad —que no hay forma de fabricar: en
+    cuanto acaba quien lo creó, `pgserver` lo para—.
+
+    **Padre 1** quiere decir que quien lo lanzó ya no está. **Y más de una hora
+    de vida** quiere decir que no es de una tanda en curso: la suite entera
+    tarda dos minutos. Las dos condiciones juntas, porque solo la primera
+    mataría el servidor de una sesión que esté corriendo ahora mismo en
+    paralelo, y eso sería cambiar un problema por otro peor.
+    """
+    if ppid != "1":
+        return False
+    # `etime` viene como [[dd-]hh:]mm:ss.
+    if "-" in etime:
+        return True  # días
+    if etime.count(":") < 2:
+        return False  # solo mm:ss
+    return int(etime.split(":")[0]) >= HORAS_PARA_DARLO_POR_ABANDONADO
+
+
+def _recoger_servidores_abandonados() -> None:
+    """Para los Postgres embebidos que dejaron tandas anteriores.
+
+    POR QUÉ HACE FALTA. El `cleanup()` del fixture se ejecuta al terminar, y por
+    eso no se ejecuta nunca cuando la tanda muere de mala manera: un `SIGKILL`,
+    un `pkill` del proceso padre, una terminal cerrada. El servidor queda
+    adoptado por init y sigue vivo. Medido el 28-09-2026: **once servidores
+    sueltos, el más viejo de casi catorce horas, 849 MB de directorios de datos**.
+
+    Y no es solo basura. Durante toda esa noche dimos por hecho que «dos tandas
+    a la vez se cuelgan por el Postgres embebido» era una propiedad del sistema
+    —así estaba escrito— y lo que había era una docena de instancias
+    abandonadas peleándose. La norma describía el síntoma como si fuera la
+    causa.
+
+    No se puede arreglar en el teardown, porque a `SIGKILL` no se le pone un
+    manejador. Así que se limpia al ARRANCAR, que es el único momento en que se
+    puede estar seguro: si un servidor de este repositorio lleva horas vivo y
+    huérfano, no está sirviendo a nadie.
+    """
+    import re
+    import shutil
+    import subprocess
+
+    raiz = str(Path(__file__).resolve().parent.parent)
+    try:
+        salida = subprocess.run(
+            ["ps", "-eo", "pid,ppid,etime,command"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+    except Exception:  # noqa: BLE001 — no poder mirarlo no puede romper la suite
+        return
+
+    for linea in salida.splitlines():
+        if raiz not in linea or "pgserver" not in linea:
+            continue
+        partes = linea.split(None, 3)
+        if len(partes) < 4 or not esta_abandonado(partes[1], partes[2]):
+            continue
+        datos = re.search(r"-D (\S+)", partes[3])
+        if not datos:
+            continue
+        carpeta = datos.group(1)
+        pg_ctl = (
+            Path(sys.prefix)
+            / "lib"
+            / "python3.12"
+            / "site-packages"
+            / ("pgserver/pginstall/bin/pg_ctl")
+        )
+        try:
+            # Se para con `pg_ctl`, no a machetazos: un `kill -9` deja el
+            # directorio de datos a medias y el siguiente arranque no abre.
+            subprocess.run(
+                [str(pg_ctl), "-D", carpeta, "-w", "-m", "fast", "stop"],
+                capture_output=True,
+                timeout=30,
+            )
+            shutil.rmtree(Path(carpeta).parent, ignore_errors=True)
+        except Exception:  # noqa: BLE001
+            continue
+
+
 @pytest.fixture(scope="session")
 def postgres_uri() -> Iterator[str]:
     """Postgres embebido para toda la sesión de pruebas.
@@ -46,6 +142,7 @@ def postgres_uri() -> Iterator[str]:
     """
     import pgserver
 
+    _recoger_servidores_abandonados()
     directorio = Path(tempfile.mkdtemp(prefix="contecrm-test-"))
     servidor = pgserver.get_server(directorio / "pgdata")
     uri = servidor.get_uri()

@@ -33,6 +33,10 @@ from crmcore.db.session import nueva_sesion
 
 from services.party.modelos import Contacto, Cuenta
 
+# Su fallo llega a producción y no se arregla después: una fuga entre tenants o
+# una ruta publicada que no responde. Por eso esta prueba NO sale del push.
+pytestmark = pytest.mark.despliegue
+
 
 def _cuenta(db: Any, tenant_id: UUID, nombre: str) -> Cuenta:
     fila = Cuenta(tenant_id=tenant_id, nombre=nombre, clave_canonica=nombre.lower())

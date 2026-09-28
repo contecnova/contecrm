@@ -155,53 +155,27 @@ GATES: list[Gate] = [
     ),
     Gate(
         "aislamiento",
-        [
-            PY,
-            "-m",
-            "pytest",
-            "-m",
-            "db",
-            "-q",
-            "--no-header",
-            "tests/unit/test_fuzzing_tenant.py",
-            "tests/unit/test_aislamiento_y_residencia.py",
-            "tests/unit/test_aislamiento_cache_y_almacen.py",
-            "tests/unit/test_guard_tenant_cache.py",
-            "tests/unit/test_baja_tenant.py",
-            "tests/unit/test_humo_de_listados.py",
-            "tests/unit/test_orden_de_rutas.py",
-        ],
+        [PY, "-m", "pytest", "-m", "db and despliegue", "-q", "--no-header"],
         # EN EL PUSH, y no con las demás. Lo que sale del push es lo que puede
         # esperar a la verificación del bloque; **una fuga de datos de un
-        # cliente a otro no puede esperar a nada**. Son 34 s de los 65 que
-        # costaba la suite entera con base de datos, y cazan lo único que no
-        # tiene arreglo después: que un tenant vea lo de otro, que una ruta
-        # publicada no responda, y que el aislamiento sobreviva a una baja.
+        # cliente a otro no puede esperar a nada**.
+        #
+        # Se eligen POR MARCA y no por una lista de ficheros. Esto era un
+        # `--ignore` con siete rutas, y tenía dos defectos: se queda atrás en
+        # cuanto alguien añade una prueba de aislamiento nueva —que entraría en
+        # el saco lento sin que nadie lo note— y obliga a contar las pruebas de
+        # los dos lados para saber que no se ha perdido ninguna. La marca viaja
+        # con la prueba y la pone quien la escribe, que es quien sabe si lo que
+        # comprueba puede esperar al lunes.
         #
         # El criterio para sacar algo del push NO es cuánto tarda: es qué caza.
-        # Sacar la suite entera por ser la más gorda habría dejado fuera esto.
         "tests",
         "ninguna ruta deja ver lo de otro tenant, y ninguna deja de responder",
         exclusivo=True,
     ),
     Gate(
         "pruebas-con-bd",
-        [
-            PY,
-            "-m",
-            "pytest",
-            "-m",
-            "db",
-            "-q",
-            "--no-header",
-            "--ignore=tests/unit/test_fuzzing_tenant.py",
-            "--ignore=tests/unit/test_aislamiento_y_residencia.py",
-            "--ignore=tests/unit/test_aislamiento_cache_y_almacen.py",
-            "--ignore=tests/unit/test_guard_tenant_cache.py",
-            "--ignore=tests/unit/test_baja_tenant.py",
-            "--ignore=tests/unit/test_humo_de_listados.py",
-            "--ignore=tests/unit/test_orden_de_rutas.py",
-        ],
+        [PY, "-m", "pytest", "-m", "db and not despliegue", "-q", "--no-header"],
         "suite",
         "motor de procesos, persistencia y todo lo demás que necesita base",
         exclusivo=True,

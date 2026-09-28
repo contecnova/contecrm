@@ -43,6 +43,10 @@ import pytest
 from crmcore.db.base import Base
 from starlette.testclient import TestClient
 
+# Su fallo llega a producción y no se arregla después: una fuga entre tenants o
+# una ruta publicada que no responde. Por eso esta prueba NO sale del push.
+pytestmark = pytest.mark.despliegue
+
 # Servicios con modelo de negocio propio y rutas por identificador. `gateway` se
 # queda fuera a propósito: no tiene datos, solo reenvía, y el permiso lo aplica
 # el servicio destino.
