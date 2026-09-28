@@ -75,9 +75,27 @@ repos:
         pass_filenames: false
         files: '^(services|packages)/.*\.py$'
 
-      # ── Por push: la suite entera ───────────────────────────────────────
+      # ── Por push: todo MENOS las dos suites ─────────────────────────────
+      #
+      # Las suites salieron de aquí el 28-09-2026, con los números delante: el
+      # push costaba 129 s y ellas eran 92 —27 s la de sin base de datos y 65 la
+      # de con base de datos—. Sin ellas se queda en unos 37. No se ha tocado ni
+      # quitado una sola comprobación: han cambiado de momento.
+      #
+      # LO QUE ESTO EXIGE A CAMBIO, y no lo obliga ninguna máquina:
+      #
+      #     python scripts/preflight.py --todo
+      #
+      # entero y en primer plano, ANTES DEL PUSH QUE CIERRA CADA BLOQUE. Aquí no
+      # hay CI que lo recoja después: si eso no se hace, un commit roto llega a
+      # main y habremos cambiado seguridad por tiempo.
+      #
+      # Se sale de aquí lo que son SUITES y nada más. Migraciones se queda —hoy
+      # mismo cazó un índice sin CONCURRENTLY que habría parado el servicio de
+      # un cliente— y los guardianes propios también: suman menos de 8 s entre
+      # todos, así que no son el coste de nada.
       - id: preflight
-        name: preflight --tests (gates + suite completa)
+        name: preflight --tests (todo menos las dos suites)
         entry: scripts/con-entorno.sh python scripts/preflight.py --tests
         language: system
         pass_filenames: false

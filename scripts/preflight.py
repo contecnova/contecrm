@@ -6,7 +6,14 @@ request, aquí lo comprueba la máquina de quien desarrolla, antes de que el
 cambio salga de ella.
 
     python scripts/preflight.py            # tier `fast`: segundos
-    python scripts/preflight.py --tests    # fast + la suite entera
+    python scripts/preflight.py --tests    # lo que corre el push (~37 s)
+    python scripts/preflight.py --todo     # TODO, con las dos suites (~130 s)
+
+OBLIGATORIO ANTES DEL PUSH QUE CIERRA UN BLOQUE: `--todo`, entero y en primer
+plano. El push ya no corre las dos suites —eran 92 de los 129 segundos que
+costaba— y eso significa que **la red que queda la pone quien empuja, no la
+máquina**. Si esto se salta, se ha cambiado seguridad por tiempo y el proyecto
+ha empeorado.
     python scripts/preflight.py --todo     # además, lo lento
 
 Esa apuesta tiene una consecuencia que conviene tener presente: **los gates solo
@@ -143,14 +150,60 @@ GATES: list[Gate] = [
     Gate(
         "pruebas-sin-bd",
         [PY, "-m", "pytest", "-m", "not db", "-q", "--no-header"],
-        "tests",
+        "suite",
         "todo lo que no necesita infraestructura",
     ),
     Gate(
-        "pruebas-con-bd",
-        [PY, "-m", "pytest", "-m", "db", "-q", "--no-header"],
+        "aislamiento",
+        [
+            PY,
+            "-m",
+            "pytest",
+            "-m",
+            "db",
+            "-q",
+            "--no-header",
+            "tests/unit/test_fuzzing_tenant.py",
+            "tests/unit/test_aislamiento_y_residencia.py",
+            "tests/unit/test_aislamiento_cache_y_almacen.py",
+            "tests/unit/test_guard_tenant_cache.py",
+            "tests/unit/test_baja_tenant.py",
+            "tests/unit/test_humo_de_listados.py",
+            "tests/unit/test_orden_de_rutas.py",
+        ],
+        # EN EL PUSH, y no con las demás. Lo que sale del push es lo que puede
+        # esperar a la verificación del bloque; **una fuga de datos de un
+        # cliente a otro no puede esperar a nada**. Son 34 s de los 65 que
+        # costaba la suite entera con base de datos, y cazan lo único que no
+        # tiene arreglo después: que un tenant vea lo de otro, que una ruta
+        # publicada no responda, y que el aislamiento sobreviva a una baja.
+        #
+        # El criterio para sacar algo del push NO es cuánto tarda: es qué caza.
+        # Sacar la suite entera por ser la más gorda habría dejado fuera esto.
         "tests",
-        "aislamiento entre tenants, motor de procesos y persistencia",
+        "ninguna ruta deja ver lo de otro tenant, y ninguna deja de responder",
+        exclusivo=True,
+    ),
+    Gate(
+        "pruebas-con-bd",
+        [
+            PY,
+            "-m",
+            "pytest",
+            "-m",
+            "db",
+            "-q",
+            "--no-header",
+            "--ignore=tests/unit/test_fuzzing_tenant.py",
+            "--ignore=tests/unit/test_aislamiento_y_residencia.py",
+            "--ignore=tests/unit/test_aislamiento_cache_y_almacen.py",
+            "--ignore=tests/unit/test_guard_tenant_cache.py",
+            "--ignore=tests/unit/test_baja_tenant.py",
+            "--ignore=tests/unit/test_humo_de_listados.py",
+            "--ignore=tests/unit/test_orden_de_rutas.py",
+        ],
+        "suite",
+        "motor de procesos, persistencia y todo lo demás que necesita base",
         exclusivo=True,
     ),
     Gate(
@@ -284,6 +337,16 @@ def main() -> int:
         tiers.add("tests")
     if args.todo:
         tiers.add("todo")
+        # LAS DOS SUITES SOLO AQUÍ. Son 92 s de los 129 que costaba el push
+        # —27 s sin base de datos y 65 s con ella, medidos— y sacarlas lo deja
+        # en unos 37. No se han tocado por dentro ni se ha quitado una sola
+        # comprobación: han cambiado de momento.
+        #
+        # LO QUE ESTO EXIGE A CAMBIO, y no es opcional: **antes del push que
+        # cierra un bloque hay que correr `--todo`, entero y en primer plano**.
+        # Si eso no se hace, se ha cambiado seguridad por tiempo y el proyecto
+        # ha empeorado. No hay aquí nada que lo obligue: lo obliga quien empuja.
+        tiers.add("suite")
 
     seleccionados = [
         g for g in GATES if (g.nombre == args.solo) or (not args.solo and g.tier in tiers)
