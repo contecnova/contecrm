@@ -575,3 +575,176 @@ def test_los_campos_fijos_no_pasan_por_el_mapeo(
     carga = suite._traducir(herramienta, {"nombre": "ACME"})
     assert carga["app_id"] == "abc"
     assert "OTRA_COSA" not in carga
+
+
+# ── Entrar y renovar: el token dura quince minutos ────────────────────────
+
+
+def _conector_con_login(db: Any, tenant_id: UUID, nombre: str, monkeypatch: Any) -> Any:
+    from crmcore.red import guard_url
+
+    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
+    return suite.conectar(
+        db,
+        tenant_id,
+        nombre=nombre,
+        base_url="https://mind.ejemplo.com",
+        credenciales={"usuario": "conector@ejemplo.test", "clave": "secreta"},
+        tipo="contecmind",
+        mapeo_campos={"_ruta_login": "/api/v1/auth/login"},
+    )
+
+
+def test_ante_un_token_vencido_la_operacion_acaba_saliendo(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """La prueba que de verdad hace falta, y no «renueva».
+
+    contecmind emite tokens de QUINCE MINUTOS. El conector guardaba uno escrito
+    en la configuración, así que el aprovisionamiento funcionaba el cuarto de
+    hora en que alguien lo montaba —justo cuando lo prueba y lo da por bueno— y
+    después daba 401 para siempre, disfrazado de credencial mal puesta.
+
+    No se espera al reloj: se le hace contestar 401 la primera vez, que es la
+    situación exacta. Una prueba contra el reloj de verdad o tarda quince
+    minutos o no comprueba nada.
+    """
+    import httpx
+    from crmcore.red import guard_url
+
+    from services.tenancy import suite_conector
+
+    herramienta = _conector_con_login(db, tenant_id, "mind-login", monkeypatch)
+    llamadas: list[str] = []
+
+    def _transporte(peticion: httpx.Request) -> httpx.Response:
+        llamadas.append(f"{peticion.method} {peticion.url.path}")
+        if peticion.url.path.endswith("/auth/login"):
+            return httpx.Response(200, json={"access_token": "nuevo"})
+        # La primera vez el token está vencido; tras renovar, pasa.
+        if peticion.headers.get("Authorization") != "Bearer nuevo":
+            return httpx.Response(401, json={"detail": "token expired"})
+        return httpx.Response(200, json={"id": "remoto-1"})
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as cli:
+            yield cli
+
+    monkeypatch.setattr(guard_url, "cliente_seguro", _fabrica)
+    suite_conector.ConectorGenerico._tokens.clear()
+
+    fila = suite.SincronizacionSuite(
+        tenant_id=tenant_id,
+        herramienta=herramienta.nombre,
+        objeto="usuario",
+        objeto_id=str(uuid4()),
+        operacion="alta",
+        carga={"email": "a@b.c"},
+    )
+    resultado = suite_conector.ConectorGenerico().aplicar(herramienta, fila)
+
+    assert resultado.ok is True, f"no salió: {resultado.detalle}"
+    assert resultado.identificador_externo == "remoto-1"
+    # Y el camino fue el esperado: intento, entrada, reintento.
+    assert llamadas[-1].startswith("PUT"), llamadas
+    assert any("/auth/login" in x for x in llamadas), llamadas
+
+
+def test_un_403_no_se_reintenta_nunca(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """Un 403 no es un token vencido: es una credencial que no puede hacer eso.
+
+    Reintentarlo convierte un permiso mal configurado en un bucle de peticiones
+    contra la otra herramienta, y el error real —que alguien tiene que
+    arreglar— queda enterrado bajo el ruido.
+    """
+    import contextlib
+
+    import httpx
+    from crmcore.red import guard_url
+
+    from services.tenancy import suite_conector
+
+    herramienta = _conector_con_login(db, tenant_id, "mind-403", monkeypatch)
+    intentos: list[str] = []
+
+    def _transporte(peticion: httpx.Request) -> httpx.Response:
+        intentos.append(peticion.url.path)
+        if peticion.url.path.endswith("/auth/login"):
+            return httpx.Response(200, json={"access_token": "t"})
+        return httpx.Response(403, json={"detail": "no puedes"})
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as cli:
+            yield cli
+
+    monkeypatch.setattr(guard_url, "cliente_seguro", _fabrica)
+    suite_conector.ConectorGenerico._tokens.clear()
+
+    fila = suite.SincronizacionSuite(
+        tenant_id=tenant_id,
+        herramienta=herramienta.nombre,
+        objeto="usuario",
+        objeto_id=str(uuid4()),
+        operacion="alta",
+        carga={"email": "a@b.c"},
+    )
+    resultado = suite_conector.ConectorGenerico().aplicar(herramienta, fila)
+
+    assert resultado.ok is False
+    assert "403" in (resultado.detalle or "")
+    # Una sola llamada a la ruta de verdad: ni un reintento.
+    assert len([x for x in intentos if not x.endswith("/auth/login")]) == 1, intentos
+
+
+def test_el_token_se_comparte_entre_llamadas(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """Un alta en cascada de doscientos usuarios no puede hacer doscientos logins.
+
+    Ese coste no aparece el día que se configura la integración con tres
+    usuarios de prueba: aparece el día que alguien sincroniza de verdad.
+    """
+    import contextlib
+
+    import httpx
+    from crmcore.red import guard_url
+
+    from services.tenancy import suite_conector
+
+    herramienta = _conector_con_login(db, tenant_id, "mind-cache", monkeypatch)
+    logins = 0
+
+    def _transporte(peticion: httpx.Request) -> httpx.Response:
+        nonlocal logins
+        if peticion.url.path.endswith("/auth/login"):
+            logins += 1
+            return httpx.Response(200, json={"access_token": "t"})
+        return httpx.Response(200, json={"id": "x"})
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as cli:
+            yield cli
+
+    monkeypatch.setattr(guard_url, "cliente_seguro", _fabrica)
+    suite_conector.ConectorGenerico._tokens.clear()
+
+    conector = suite_conector.ConectorGenerico()
+    for _ in range(5):
+        fila = suite.SincronizacionSuite(
+            tenant_id=tenant_id,
+            herramienta=herramienta.nombre,
+            objeto="usuario",
+            objeto_id=str(uuid4()),
+            operacion="alta",
+            carga={"email": "a@b.c"},
+        )
+        conector.aplicar(herramienta, fila)
+
+    assert logins == 1, f"cinco altas hicieron {logins} inicios de sesión"

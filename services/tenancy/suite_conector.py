@@ -113,6 +113,58 @@ class ConectorGenerico:
             return metodo.upper(), plantilla
         return RUTAS[(fila.objeto, fila.operacion)]
 
+    # Los tokens vivos, uno por herramienta y compartido por todas sus llamadas.
+    #
+    # Sin esto, un alta en cascada de doscientos usuarios haría doscientos
+    # inicios de sesión: ese coste aparece el día que alguien sincroniza de
+    # verdad, no el día que se configura con tres.
+    #
+    # En memoria del proceso y no en la base: es un secreto de corta vida, y
+    # guardarlo le alargaría la vida justo lo que dura una fila. Si el proceso
+    # se reinicia se vuelve a entrar, que cuesta una llamada.
+    _tokens: dict[str, str] = {}
+
+    def _token(
+        self, herramienta: HerramientaConectada, credenciales: dict[str, Any], *, renovar: bool
+    ) -> str:
+        """El token con el que llamar, entrando si hace falta.
+
+        Se admiten las dos formas porque las dos existen: un token escrito a
+        mano —hay herramientas con credenciales de larga vida— y entrar con
+        usuario y contraseña.
+
+        Lo segundo hace falta más de lo que parece: **contecmind emite tokens de
+        quince minutos**. Un token guardado en la configuración funciona el
+        cuarto de hora en que alguien monta la integración —justo cuando la
+        prueba y la da por buena— y después da 401 para siempre, disfrazado de
+        credencial mal puesta. Quien lo mire buscará en el sitio equivocado.
+        """
+        from crmcore.red import guard_url
+
+        clave = str(herramienta.id)
+        if not renovar and self._tokens.get(clave):
+            return self._tokens[clave]
+
+        ruta = str((herramienta.mapeo_campos or {}).get("_ruta_login") or "")
+        usuario = str(credenciales.get("usuario") or "")
+        secreto = str(credenciales.get("clave") or "")
+        if not (ruta and usuario and secreto):
+            # Sin con qué entrar, vale lo escrito a mano. Y si tampoco hay nada,
+            # se llama sin autenticación: que conteste el otro lado, que su
+            # mensaje dirá más que uno inventado aquí.
+            return str(credenciales.get("token") or "")
+
+        with guard_url.cliente_seguro(timeout=20.0) as cliente:
+            respuesta = cliente.post(
+                herramienta.base_url.rstrip("/") + ruta,
+                json={"email": usuario, "password": secreto},
+            )
+        respuesta.raise_for_status()
+        cuerpo = respuesta.json() or {}
+        token = str(cuerpo.get("access_token") or cuerpo.get("token") or "")
+        self._tokens[clave] = token
+        return token
+
     def aplicar(self, herramienta: HerramientaConectada, fila: SincronizacionSuite) -> Resultado:
         from crmcore.red import guard_url
         from crmcore.security.cifrado import descifrar_dict
@@ -135,19 +187,36 @@ class ConectorGenerico:
 
         try:
             credenciales = descifrar_dict(herramienta.credenciales or {})
-            cabeceras = {"Content-Type": "application/json"}
-            if credenciales.get("token"):
-                cabeceras["Authorization"] = f"Bearer {credenciales['token']}"
-            for clave, valor in ((herramienta.mapeo_campos or {}).get("_cabeceras") or {}).items():
-                cabeceras[str(clave)] = str(valor)
+            extra = {
+                str(k): str(v)
+                for k, v in (((herramienta.mapeo_campos or {}).get("_cabeceras")) or {}).items()
+            }
 
-            with guard_url.cliente_seguro(timeout=20.0) as cliente:
-                respuesta = cliente.request(
-                    metodo,
-                    url,
-                    json=None if metodo == "DELETE" else dict(fila.carga),
-                    headers=cabeceras,
-                )
+            def _llamar(*, renovar: bool) -> Any:
+                cabeceras = {"Content-Type": "application/json", **extra}
+                token = self._token(herramienta, credenciales, renovar=renovar)
+                if token:
+                    cabeceras["Authorization"] = f"Bearer {token}"
+                with guard_url.cliente_seguro(timeout=20.0) as cliente:
+                    return cliente.request(
+                        metodo,
+                        url,
+                        json=None if metodo == "DELETE" else dict(fila.carga),
+                        headers=cabeceras,
+                    )
+
+            respuesta = _llamar(renovar=False)
+            # UN 401 SE REINTENTA UNA VEZ, y sólo el 401. Es lo que pasa cuando el
+            # token ha vencido, y renovarlo lo arregla. **Un 403 no se reintenta
+            # nunca**: ahí el token vale y lo que no vale es lo que esa credencial
+            # puede hacer, así que reintentar sería un bucle sobre un permiso mal
+            # configurado. Mezclar los dos convierte un error de configuración en
+            # una tormenta de peticiones.
+            #
+            # Una sola vez, además: si tras renovar sigue diciendo 401, el problema
+            # no es la caducidad y hay que verlo, no insistir.
+            if respuesta.status_code == 401:
+                respuesta = _llamar(renovar=True)
             if respuesta.status_code >= 400:
                 # El cuerpo se recorta y se guarda: sin él, «HTTP 422» no le dice
                 # a nadie qué campo no le gustó a la otra herramienta.

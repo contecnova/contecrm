@@ -5688,6 +5688,30 @@ imposición. Tampoco van con las credenciales aunque se configuren a la vez —
 aquéllas se cifran y no se vuelven a enseñar, y un `app_id` que nadie puede
 mirar es un valor imposible de comprobar el día que el alta empiece a fallar.
 
+**La credencial puede ser un token o una cuenta, y casi siempre tiene que ser
+una cuenta.** Un token escrito en la configuración vale para herramientas con
+credenciales de larga vida, y para las demás es una trampa: **contecmind emite
+tokens de quince minutos**, así que un token guardado funciona el cuarto de hora
+en que alguien monta la integración —justo cuando la prueba y la da por buena— y
+después falla para siempre con un error de autenticación que parece una
+credencial mal escrita. Quien lo mire buscará donde no es.
+
+Por eso una herramienta puede llevar **usuario, contraseña y ruta de entrada**:
+el conector entra cuando hace falta y renueva cuando el token vence. **Un 401 se
+reintenta una vez tras renovar; un 403 no se reintenta nunca**, porque ahí el
+token vale y lo que no vale es lo que esa credencial puede hacer — reintentarlo
+convertiría un permiso mal configurado en un bucle de peticiones contra la otra
+herramienta, con el error de verdad enterrado bajo el ruido. El token se comparte
+entre todas las llamadas de esa herramienta: un alta en cascada de doscientas
+personas no puede ser doscientas entradas.
+
+La cuenta con la que entra la crea **quien configura la integración**, y en
+contecmind necesita ser administradora del tenant. No sirve el token delegado de
+la aplicación: ese se obtiene con la credencial de la aplicación y un nombre de
+usuario cualquiera, así que con él se podrían dar de alta y de baja personas.
+Pedir documentos en nombre de alguien y gobernar quién existe son dos cosas
+distintas y llevan credenciales distintas.
+
 La dirección pasa por el **guard de salidas**, igual que un webhook o un IdP:
 aquí viajan datos de personas y una credencial de administración, y una dirección
 apuntando a la red interna convertiría el empuje en una forma de hablar con lo

@@ -987,6 +987,64 @@ def _identidad_de_ejecucion(
     return emitido.token, str(fila.externa_id)
 
 
+def _pedir_plan(
+    base_url: str, cuerpo: dict[str, Any], token: str, *, plazo: float = 60.0
+) -> dict[str, Any]:
+    """Manda el plan y devuelve lo que conteste, o lo explica.
+
+    Está aparte de `ejecutar_plan` para poder probar **la traducción del error**
+    sin base de datos: es el trozo donde se decide qué lee quien abre el
+    informe cuando algo va mal, y eso hay que poder comprobarlo.
+    """
+    from crmcore.errors import ErrorDependencia
+    from crmcore.red import cliente_seguro
+
+    # `/api/query/plan`, no `/api/v1/query/plan`. Aquí ponía lo segundo y NO
+    # EXISTE: contecintelligence no publica nada bajo `/api/v1`. Es el cuarto
+    # desajuste de ruta con este vecino, y como los tres anteriores no lo cazaba
+    # ninguna prueba —un doble contesta lo que se le diga— sino levantarlo y
+    # mirar su contrato. Consecuencia: **todo informe y todo componente de cuadro
+    # de mando fallaba al ejecutarse**, con un «no ha podido resolver el plan»
+    # que parecía del otro lado.
+    url = base_url.rstrip("/") + RUTA_PLAN
+    with cliente_seguro(timeout=plazo) as cli:
+        respuesta = cli.post(url, json=cuerpo, headers={"Authorization": f"Bearer {token}"})
+    if respuesta.status_code >= 400:
+        # CON EL MOTIVO DEL OTRO LADO. Decía solo «no ha podido resolver el plan»
+        # y el código HTTP iba en un detalle que la pantalla no enseña: un 403
+        # por alcance, un 404 por fuente que no existe y un 400 por un campo que
+        # no está se veían exactamente igual, y los tres mandan a sitios
+        # distintos. Se persiguió el primero a ciegas más de lo necesario.
+        motivo = ""
+        try:
+            cuerpo_error = respuesta.json()
+            # Las dos formas, porque en la casa se usan las dos: `detail` plano
+            # —lo que devuelve FastAPI— y el sobre `{"error": {...}}`. Con el
+            # gestor documental esto mismo costó un mensaje entero: se leía solo
+            # el nivel de arriba, el motivo salía vacío y llegaba una frase
+            # genérica del CRM en lugar de lo que el otro lado había dicho.
+            #
+            # Importa más de lo que parece: contecintelligence ha pasado de un
+            # 500 mudo a un 400 que dice «Table with name ventas does not exist!
+            # Did you mean "data"?». Si eso se aplasta aquí, su trabajo no llega
+            # a quien abre el informe — y se pierde en el último tramo, que es
+            # donde menos se mira.
+            envuelto = cuerpo_error.get("error")
+            if isinstance(envuelto, dict):
+                motivo = str(envuelto.get("message") or envuelto.get("code") or "")
+            else:
+                motivo = str(cuerpo_error.get("detail") or cuerpo_error.get("message") or "")
+        except Exception:  # noqa: BLE001 — si no es JSON, el texto vale igual
+            motivo = respuesta.text[:300]
+        raise ErrorDependencia(
+            f"contecintelligence no ha podido resolver el plan ({respuesta.status_code})"
+            + (f": {motivo}" if motivo else ""),
+            error_code="analytics.plan_rechazado",
+            detalle={"codigo_http": respuesta.status_code, "motivo": motivo},
+        )
+    return dict(respuesta.json() or {})
+
+
 def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     """Manda el plan de un informe a contecintelligence y devuelve sus filas.
 
@@ -999,7 +1057,6 @@ def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     que la aplicación es una fuga con otro nombre.
     """
     from crmcore.db.session import sesion
-    from crmcore.red import cliente_seguro
 
     from services.analytics.cliente import _config
 
@@ -1028,36 +1085,11 @@ def ejecutar_plan(*, plan: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     # mirar su contrato. Consecuencia: **todo informe y todo componente de cuadro
     # de mando fallaba al ejecutarse**, con un «no ha podido resolver el plan»
     # que parecía del otro lado.
-    url = s.ci_base_url.rstrip("/") + RUTA_PLAN
     cuerpo = {k: v for k, v in plan.items() if not k.startswith("_")}
     # La fuente registrada de este tenant: el plan dice de qué se lee, pero no
     # contra qué fuente, y allí puede haber varias.
     cuerpo["source_id"] = fuente_id
-    with cliente_seguro(timeout=s.ci_timeout_s) as cli:
-        respuesta = cli.post(
-            url,
-            json=cuerpo,
-            headers={"Authorization": f"Bearer {token}"},
-        )
-    if respuesta.status_code >= 400:
-        # CON EL MOTIVO DEL OTRO LADO. Decía solo «no ha podido resolver el plan»
-        # y el código HTTP iba en un detalle que la pantalla no enseña: un 403
-        # por alcance, un 404 por fuente que no existe y un 400 por un campo que
-        # no está se veían exactamente igual, y los tres mandan a sitios
-        # distintos. Se persiguió el primero a ciegas más de lo necesario.
-        motivo = ""
-        try:
-            cuerpo_error = respuesta.json()
-            motivo = str(cuerpo_error.get("detail") or cuerpo_error.get("message") or "")
-        except Exception:  # noqa: BLE001 — si no es JSON, el texto vale igual
-            motivo = respuesta.text[:300]
-        raise ErrorDependencia(
-            f"contecintelligence no ha podido resolver el plan ({respuesta.status_code})"
-            + (f": {motivo}" if motivo else ""),
-            error_code="analytics.plan_rechazado",
-            detalle={"codigo_http": respuesta.status_code, "motivo": motivo},
-        )
-    datos = respuesta.json()
+    datos = _pedir_plan(s.ci_base_url, cuerpo, token, plazo=s.ci_timeout_s)
     return {"filas": list(datos.get("rows") or datos.get("filas") or [])}
 
 

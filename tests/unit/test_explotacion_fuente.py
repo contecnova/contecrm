@@ -322,3 +322,55 @@ def test_un_plan_no_sale_sin_saber_en_nombre_de_quien(uow: UnidadDeTrabajo) -> N
             tenant_id=uow.tenant_id,
         )
     assert e.value.error_code in ("analytics.sin_organizacion", "analytics.sin_fuente_registrada")
+
+
+# ── El motivo del otro lado llega hasta quien abre el informe ─────────────
+
+
+@pytest.mark.parametrize(
+    ("cuerpo", "esperado"),
+    [
+        # Lo que devuelve FastAPI a secas, que es lo que usa contecintelligence.
+        ({"detail": 'Table with name ventas does not exist! Did you mean "data"?'}, "ventas"),
+        # Y el sobre que usan otros servicios de la casa. Con el gestor
+        # documental esto costó un mensaje entero: se leía solo el nivel de
+        # arriba, el motivo salía vacío y al usuario le llegaba una frase
+        # genérica del CRM en vez de lo que el otro lado había dicho.
+        ({"error": {"code": "bad_request", "message": "la vista no existe"}}, "no existe"),
+    ],
+)
+def test_el_motivo_del_ejecutor_llega_entero(
+    cuerpo: dict[str, object], esperado: str, monkeypatch: Any
+) -> None:
+    """Si el motivo se aplasta aquí, se pierde en el último tramo.
+
+    contecintelligence pasó de un 500 mudo a un 400 que dice qué tabla no
+    existe y hasta sugiere la correcta. Todo ese trabajo no sirve de nada si
+    este lado lo cambia por «no se ha podido resolver el plan»: quien abre el
+    informe ve un error que no le dice dónde mirar, y el que lo escribió no se
+    entera de que su mensaje no llegó.
+    """
+    import contextlib
+
+    import httpx
+    from crmcore.errors import ErrorDependencia
+
+    from services.analytics import fuente as fte
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        def _transporte(peticion: httpx.Request) -> httpx.Response:
+            if peticion.url.path.endswith("/tokens/exchange"):
+                return httpx.Response(200, json={"token": "t", "expires_in": 900})
+            if peticion.url.path.endswith("/oauth/token"):
+                return httpx.Response(200, json={"access_token": "a", "expires_in": 900})
+            return httpx.Response(400, json=cuerpo)
+
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as cli:
+            yield cli
+
+    monkeypatch.setattr("crmcore.red.cliente_seguro", _fabrica)
+    with pytest.raises(ErrorDependencia) as exc:
+        fte._pedir_plan("http://ci.test", {"vista": "ventas", "source_id": "f1"}, "t")
+    assert esperado in str(exc.value)
+    assert esperado in str(exc.value.detalle.get("motivo", ""))
