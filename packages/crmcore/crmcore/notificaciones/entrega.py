@@ -89,6 +89,37 @@ class EntregaNotificacion(Base):
     )
 
 
+def enviados_en_el_periodo(db: Session, tenant_id: UUID, canal: str) -> int:
+    """Cuántos avisos se han mandado por este canal este mes.
+
+    Se cuentan las filas, no un contador: cada entrega ya deja la suya, así que
+    la cuenta es verdad por construcción. Si un día esto se queda corto, lo que
+    toca es un índice, no un contador que se desincronice.
+    """
+    from crmcore.cuotas import inicio_del_periodo
+
+    return int(
+        db.execute(
+            select(func.count())
+            .select_from(EntregaNotificacion)
+            .where(
+                EntregaNotificacion.tenant_id == tenant_id,
+                EntregaNotificacion.canal == canal,
+                EntregaNotificacion.created_at >= inicio_del_periodo(),
+            )
+        ).scalar_one()
+    )
+
+
+# Qué ajuste acota cada canal. **Declaración explícita: lo que no está aquí no se
+# corta.** Un canal nuevo que nadie declare pasa sin límite, que es de largo
+# preferible a cortarle el aviso a un cliente por un olvido nuestro.
+CUOTA_POR_CANAL = {
+    "email": "cuota_correos_mes",
+    "sms": "cuota_sms_mes",
+}
+
+
 def registrar_intento(
     db: Session,
     *,
@@ -98,7 +129,18 @@ def registrar_intento(
     canal: str,
     direccion: str,
 ) -> EntregaNotificacion:
-    """Abre —o recupera— la ficha de entrega de este aviso por este canal."""
+    """Abre —o recupera— la ficha de entrega de este aviso por este canal.
+
+    **Aquí se aplica la cuota del canal**, porque es la puerta por la que pasa
+    todo aviso saliente: ponerla en cada sitio que manda un correo garantiza que
+    al cuarto se olvide.
+
+    Se comprueba **antes** de abrir la ficha y sólo cuando la ficha es nueva: un
+    reintento de algo ya contado no puede consumir cuota dos veces, o un canal
+    con mal día se comería el mes.
+    """
+    from crmcore.cuotas import exigir
+
     fila = (
         db.execute(
             select(EntregaNotificacion).where(
@@ -110,6 +152,15 @@ def registrar_intento(
         .first()
     )
     if fila is None:
+        clave = CUOTA_POR_CANAL.get(canal)
+        if clave:
+            exigir(
+                db,
+                tenant_id,
+                clave=clave,
+                metrica=canal,
+                contar=lambda: enviados_en_el_periodo(db, tenant_id, canal),
+            )
         fila = EntregaNotificacion(
             tenant_id=tenant_id,
             notificacion_id=notificacion_id,

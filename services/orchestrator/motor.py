@@ -324,6 +324,28 @@ class Motor:
 
     # ── Arranque ─────────────────────────────────────────────────────────
 
+    def _ejecuciones_del_periodo(self, tenant_id: UUID) -> int:
+        """Procesos de primer nivel arrancados este mes por este tenant.
+
+        Se cuentan las filas y no un contador: cada instancia ya deja la suya,
+        así que la cuenta es verdad por construcción. Y sólo las de primer nivel,
+        por lo mismo que sólo ésas consumen.
+        """
+        from crmcore.cuotas import inicio_del_periodo
+        from sqlalchemy import func, select
+
+        return int(
+            self.db.execute(
+                select(func.count())
+                .select_from(InstanciaProceso)
+                .where(
+                    InstanciaProceso.tenant_id == tenant_id,
+                    InstanciaProceso.padre_id.is_(None),
+                    InstanciaProceso.created_at >= inicio_del_periodo(),
+                )
+            ).scalar_one()
+        )
+
     def arrancar(
         self,
         *,
@@ -362,6 +384,26 @@ class Motor:
             raise NoEncontrado(
                 f"No hay ninguna versión publicada del proceso «{clave}»",
                 error_code="proceso.definicion_no_encontrada",
+            )
+
+        # LA CUOTA DE EJECUCIONES, aquí porque es la puerta única por la que
+        # arranca un proceso: repartirla por los sitios que lo llaman garantiza
+        # que al cuarto se olvide.
+        #
+        # **Sólo las de primer nivel.** Un subproceso es parte de la misma
+        # ejecución, no otra: contarlo aparte haría que un proceso con diez
+        # subprocesos gastara once, y el cliente vería agotarse su cuota al
+        # triple de velocidad sin haber lanzado nada más. Y quien lo mire no
+        # podría cuadrar el número con lo que ve en su pantalla.
+        if profundidad == 0:
+            from crmcore.cuotas import exigir
+
+            exigir(
+                self.db,
+                tenant_id,
+                clave="cuota_workflows_mes",
+                metrica="workflows",
+                contar=lambda: self._ejecuciones_del_periodo(tenant_id),
             )
 
         instancia = InstanciaProceso(

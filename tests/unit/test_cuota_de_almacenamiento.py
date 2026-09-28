@@ -63,9 +63,11 @@ def test_al_pasarse_del_tope_no_se_sube(db: Any, tenant_id: UUID, contexto_tenan
     # Con los números dentro: «cuota agotada» a secas obliga a llamar para saber
     # cuánto queda y por cuánto se ha pasado.
     detalle = excinfo.value.detalle
-    assert detalle["max_mb"] == 1
-    assert detalle["ocupado_mb"] > 0
-    assert detalle["fichero_mb"] > 0
+    assert detalle["limite"] == 1
+    assert detalle["consumido"] > 0
+    # Qué ajuste hay que tocar para subirlo: sin esto, quien recibe el error
+    # tiene que averiguar a qué clave corresponde «almacenamiento».
+    assert detalle["ajuste"] == "cuota_almacenamiento_mb"
 
 
 def test_el_que_cabe_justo_entra(db: Any, tenant_id: UUID, contexto_tenant: UUID) -> None:

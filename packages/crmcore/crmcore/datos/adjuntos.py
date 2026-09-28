@@ -207,44 +207,28 @@ def espacio_ocupado(db: Session, tenant_id: UUID) -> int:
 def exigir_espacio(db: Session, tenant_id: UUID, entrantes: int) -> None:
     """Corta si el fichero no cabe en lo que le queda al tenant.
 
-    **Sin tope declarado se deja pasar**, y es deliberado: un despliegue que no
-    ha configurado cuotas no puede quedarse sin poder subir nada porque a
-    alguien se le olvidara declararlas. La omisión abre, nunca cierra.
+    El tope es **de este módulo**, no de toda la suite: cada servicio guarda lo
+    suyo en su esquema y cuenta lo suyo. Así el mensaje puede decir qué se ha
+    agotado, y el alta no depende de una lectura entre servicios.
 
-    El tope es de este módulo, no de toda la suite: cada servicio guarda lo suyo
-    en su esquema y cuenta lo suyo. Así el mensaje puede decir **qué** se ha
-    agotado, que con un tope global no se puede, y el alta no depende de una
-    lectura entre servicios.
+    La decisión de cortar vive en `crmcore.cuotas`, una sola vez para las cuatro
+    cuotas: tenerla copiada en cada sitio garantiza que dentro de un año una de
+    ellas trate el 0 como «cero» en vez de como «sin límite».
     """
-    from crmcore.runtime import settings as rt
-    from crmcore.tenancy.context import con_contexto, contexto_actual
+    from crmcore.cuotas import exigir
 
-    # EL TOPE ES DEL TENANT QUE SE PASA, no del contexto ambiente. `efectivo`
-    # resuelve por contexto, y casi siempre coinciden —quien sube es quien está
-    # dentro—, pero no siempre: un trabajo de sistema que sube en nombre de otro
-    # leería la cuota equivocada, y eso es dejar pasar a quien había que cortar
-    # o al revés. Lo cazó la prueba de que lo de un tenant no cuenta contra otro.
-    if contexto_actual().tenant_id == tenant_id:
-        max_mb = int(rt.efectivo("cuota_almacenamiento_mb", db) or 0)
-    else:
-        with con_contexto(tenant_id=tenant_id, origen="cuota"):
-            max_mb = int(rt.efectivo("cuota_almacenamiento_mb", db) or 0)
-    if max_mb <= 0:
-        return
-
-    ocupado = espacio_ocupado(db, tenant_id)
-    tope = max_mb * 1024 * 1024
-    if ocupado + entrantes > tope:
-        raise CuotaAgotada(
-            f"No cabe: ocupas {ocupado / 1024 / 1024:.0f} MB de {max_mb} MB y el "
-            f"fichero son {entrantes / 1024 / 1024:.1f} MB",
-            error_code="cuota.almacenamiento",
-            detalle={
-                "ocupado_mb": round(ocupado / 1024 / 1024, 1),
-                "max_mb": max_mb,
-                "fichero_mb": round(entrantes / 1024 / 1024, 1),
-            },
-        )
+    exigir(
+        db,
+        tenant_id,
+        clave="cuota_almacenamiento_mb",
+        metrica="almacenamiento",
+        contar=lambda: espacio_ocupado(db, tenant_id),
+        entrantes=entrantes,
+        unidad="MB",
+        # El ajuste va en MB y el conteo en bytes: la comparación tiene que ir
+        # en bytes o dos ficheros de 700 KB pasan con un tope de 1 MB.
+        escala=1024 * 1024,
+    )
 
 
 def subir(

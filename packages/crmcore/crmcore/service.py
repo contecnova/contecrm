@@ -117,6 +117,12 @@ def crear_servicio(
             # Y el de la papelera: lo borrado no sale en los listados sin que
             # cuarenta consultas tengan que acordarse de filtrarlo.
             instalar_guard_borrados()
+            # Y el de la cuota de registros. Si no se instalara, la cuota no se
+            # aplicaría y **nada fallaría**, que es la avería que más veces ha
+            # salido: por eso hay una prueba que comprueba esta línea.
+            from crmcore.cuota_registros import instalar_guard_cuota
+
+            instalar_guard_cuota()
             for aviso in verificar_rol_sin_bypass(get_engine()):
                 # Error y no excepción: en desarrollo se trabaja a menudo con el
                 # rol de administrador, y negarse a arrancar haría imposible el

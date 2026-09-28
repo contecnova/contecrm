@@ -4606,6 +4606,57 @@ fue.
 
 ## 53. Cuatro cosas de plataforma que se notan cuando ya es tarde
 
+### Las cuotas: por módulo, contadas de las filas y abriendo por omisión
+
+**Para el usuario.** Un plan puede acotar cuánto ocupa un cliente, cuántos
+correos manda, cuántos procesos lanza y cuántos registros guarda. Al pasarse, la
+operación se rechaza **diciendo qué se ha agotado, cuánto llevaba y qué ajuste
+hay que tocar** — no un «has llegado al límite» que obliga a preguntar.
+
+**Para mantenimiento**, tres decisiones que conviene entender antes de tocarlas:
+
+- **Por módulo, no un tope global.** Cada servicio guarda lo suyo en su esquema y
+  cuenta lo suyo. Así el alta no depende de una lectura entre servicios —cara y
+  que se cae con el vecino— y, sobre todo, **el mensaje puede decir qué se
+  agotó**: con un tope global, «has llegado al límite» no distingue contactos de
+  correos.
+- **Se cuenta, no se lleva contador.** Los adjuntos ya tienen su tamaño, las
+  entregas su fila y los registros su tabla. Un contador aparte se desincroniza
+  el primer día que algo desaparece por otra vía —una purga, una fusión, una
+  baja— y entonces el cliente paga por lo que no tiene. El día que contar se
+  quede corto, lo que toca **no es un contador**: es un índice, o un resumen
+  recalculable que se pueda comprobar contra las filas.
+- **La omisión abre, nunca cierra.** Sin tope declarado, o con tope 0, se deja
+  pasar. Un despliegue que no ha configurado cuotas no puede quedarse sin poder
+  trabajar por un olvido, y un fallo al declarar tiene que dejar pasar de más.
+
+Dónde se aplica cada una, que es lo que hay que saber para cambiarlas:
+
+| cuota | dónde corta | ajuste |
+| --- | --- | --- |
+| almacenamiento | al subir un fichero | `cuota_almacenamiento_mb` |
+| correos y SMS | al abrir la ficha de entrega del aviso | `cuota_correos_mes`, `cuota_sms_mes` |
+| procesos | al arrancar una instancia, **sólo las de primer nivel** | `cuota_workflows_mes` |
+| registros | al volcar la sesión, **sólo los modelos declarados** | `cuota_registros` |
+
+**Un subproceso no consume cuota propia**: es parte de la misma ejecución, y
+contarlo aparte haría que un proceso con diez subprocesos gastara once — un
+número que el cliente no podría cuadrar con lo que ve en su pantalla. **Y un
+reintento de un aviso ya contado tampoco**: si lo hiciera, un canal con mal día
+se comería el mes.
+
+**Qué cuenta como «registro» es explícito y corto.** Cuentas, contactos y
+actividades son lo que un cliente entiende por suyos; una fila de auditoría, una
+entrega de aviso o un apunte de consumo no lo son, y contarlos le agotaría la
+cuota con nuestro propio ruido.
+
+> **Tres de las seis del catálogo ya se aplicaban y no lo sabíamos.** Antes de
+> escribir nada se midió: el rate limiting está enchufado en un middleware desde
+> siempre, el gasto de IA corta el mes agotado, y el tamaño de fichero se
+> comprobaba. Medir antes de implementar ahorró tres implementaciones — y una de
+> ellas estuve a punto de darla por muerta porque el módulo sólo lo nombraba un
+> fichero de pruebas.
+
 ### Las tareas periódicas, y por qué no había ninguna
 
 **Para el usuario.** Hay cosas que pasan solas cada tanto: los recordatorios

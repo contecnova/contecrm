@@ -57,6 +57,23 @@ def _tareas() -> list[Any]:
     ]
 
 
+def _declarar_contables() -> None:
+    """Qué cuenta como «registro del cliente» en este módulo.
+
+    **Explícito y corto a propósito.** Cuentas, contactos y actividades son lo
+    que un cliente entiende por «sus registros»; una fila de auditoría, una
+    entrega de aviso o un apunte de consumo no lo son, y contarlos le agotaría la
+    cuota con nuestro propio ruido. Lo que no esté aquí no consume.
+    """
+    from crmcore.cuota_registros import declarar_contable
+
+    from services.party.modelos import Actividad, Contacto, Cuenta
+
+    declarar_contable(Cuenta, "cuentas")
+    declarar_contable(Contacto, "contactos")
+    declarar_contable(Actividad, "actividades")
+
+
 async def _al_arrancar() -> None:
     """Comprueba el gestor documental al desplegar, no al abrir el primero.
 
@@ -74,6 +91,7 @@ async def _al_arrancar() -> None:
     from crmcore.tareas import RelevoDeTareas
 
     comprobar_al_arrancar()
+    _declarar_contables()
     _relevo = RelevoDeTareas(_tareas())
     _tarea_relevo = asyncio.create_task(_relevo.correr(), name="party-tareas")
 

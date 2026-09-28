@@ -213,3 +213,18 @@ class _LimitsSettings(BaseSettings):
     # 2 MiB cubre de sobra cualquier respuesta de objeto o listado paginado,
     # que es donde el ETag sirve para algo.
     etag_retencion_max_bytes: int = Field(2 * 1024 * 1024, ge=64 * 1024, le=64 * 1024 * 1024)
+
+    # ── Cuotas por módulo (CRM-00.01.06.02) ───────────────────────────────
+    #
+    # Todas abren por omisión: **0 es sin límite**, y es el valor por defecto a
+    # propósito. Un despliegue que no ha configurado cuotas no puede quedarse sin
+    # poder trabajar porque a alguien se le olvidara declararlas, y un fallo al
+    # declarar una ruta tiene que dejar pasar de más, nunca cortar de menos.
+    #
+    # Van por módulo y no en un tope global: así el alta no depende de una
+    # lectura entre servicios y, sobre todo, **el mensaje puede decir qué se ha
+    # agotado**. «Has llegado al límite» no dice si sobran contactos o correos.
+    cuota_correos_mes: int = Field(0, ge=0, le=100_000_000)
+    cuota_sms_mes: int = Field(0, ge=0, le=100_000_000)
+    cuota_workflows_mes: int = Field(0, ge=0, le=100_000_000)
+    cuota_registros: int = Field(0, ge=0, le=1_000_000_000)
