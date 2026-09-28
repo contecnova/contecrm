@@ -1014,10 +1014,55 @@ def borrar_informe(uow: UnidadDeTrabajo, informe_id: UUID, *, por: UUID | None =
     a_papelera(uow.db, informe, objeto="informe", etiqueta=informe.nombre, por=por)
 
 
+def _en_diccionarios(
+    filas: list[Any], columnas: list[str] | None
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Las filas con sus nombres puestos, vengan como vengan.
+
+    Si una fila trae más valores que nombres, los de más salen como `columna_7`
+    en vez de perderse: un valor sin cabecera es un dato que nadie va a poder
+    leer, pero tirarlo es peor —y ha pasado, con los campos calculados—.
+    """
+    if not filas:
+        return list(columnas or []), []
+    if isinstance(filas[0], dict):
+        # Ya vienen con nombre. No se acepta como forma normal —el ejecutor
+        # devuelve listas y es la única que produce el sistema— pero llega de
+        # alguna prueba y de algún camino suelto, y reventar aquí sería cambiar
+        # un informe por una excepción.
+        return list(filas[0].keys()), [dict(f) for f in filas]
+    nombres = list(columnas or [])
+    ancho = max(len(f) for f in filas)
+    if len(nombres) < ancho:
+        nombres += [f"columna_{i + 1}" for i in range(len(nombres), ancho)]
+    return nombres, [
+        {nombres[i]: valor for i, valor in enumerate(fila) if i < len(nombres)} for fila in filas
+    ]
+
+
 def exportar(
-    filas: list[dict[str, Any]], *, formato: str = "csv", nombre: str = "informe"
+    filas: list[Any],
+    *,
+    columnas: list[str] | None = None,
+    formato: str = "csv",
+    nombre: str = "informe",
 ) -> dict[str, Any]:
     """Convierte las filas al formato pedido.
+
+    **Las filas vienen como LISTAS, no como diccionarios.** Es lo que devuelve el
+    ejecutor —`rows: list[list]`— y lo que `ejecutar` propaga, porque una fila en
+    lista pesa la mitad y un informe de cincuenta mil se nota. Los nombres van
+    aparte, en `columnas`.
+
+    Esto estaba escrito al revés: la firma pedía diccionarios y el cuerpo hacía
+    `filas[0].keys()`, así que **toda exportación reventaba** con «'list' object
+    has no attribute 'keys'». Descargar un informe en CSV daba un 500, y un
+    informe programado fallaba cada noche hasta que a los tres intentos se
+    desactivaba solo. No lo cazó nadie porque las pruebas le pasaban
+    diccionarios: una forma que el sistema no produce en ninguna parte.
+
+    Se siguen aceptando diccionarios —alguna llamada suelta los tiene— y
+    entonces las cabeceras salen de sus claves.
 
     CSV se genera aquí porque es texto y no necesita nada. **Excel y PDF no**: se
     devuelve el encargo para el generador documental, que ya existe y es común a
@@ -1025,6 +1070,7 @@ def exportar(
     obligaría a desplegarlo para cambiar una tipografía, y acabaría habiendo dos
     maquetaciones distintas del mismo dato.
     """
+    cabeceras, registros = _en_diccionarios(filas, columnas)
     if formato not in FORMATOS:
         raise ErrorValidacion(
             f"Formato «{formato}» no válido.",
@@ -1034,17 +1080,17 @@ def exportar(
     if formato == "json":
         return {"formato": "json", "filas": filas}
     if formato == "csv":
-        if not filas:
+        if not registros:
             return {"formato": "csv", "contenido": "", "filas": 0, "vacio": True}
         buffer = io.StringIO()
-        escritor = csv.DictWriter(buffer, fieldnames=list(filas[0].keys()))
+        escritor = csv.DictWriter(buffer, fieldnames=cabeceras)
         escritor.writeheader()
-        for fila in filas:
+        for fila in registros:
             escritor.writerow({k: _texto(v) for k, v in fila.items()})
         return {
             "formato": "csv",
             "contenido": buffer.getvalue(),
-            "filas": len(filas),
+            "filas": len(registros),
             "vacio": False,
         }
     return {
@@ -1052,8 +1098,8 @@ def exportar(
         "encargo": {
             "plantilla": f"informe/{formato}",
             "nombre": nombre,
-            "columnas": list(filas[0].keys()) if filas else [],
-            "filas": filas,
+            "columnas": cabeceras,
+            "filas": registros,
         },
         "filas": len(filas),
         "vacio": not filas,
@@ -1173,7 +1219,11 @@ def correr_programadas(
                 origen="programada",
                 formato=programacion.formato,
             )
-            paquete = exportar(salida["filas"], formato=programacion.formato)
+            paquete = exportar(
+                salida["filas"],
+                columnas=salida["columnas"],
+                formato=programacion.formato,
+            )
             programacion.ultimo_error = None
             programacion.fallos_seguidos = 0
             if paquete.get("vacio") and programacion.omitir_si_vacio:
@@ -1187,6 +1237,12 @@ def correr_programadas(
                         "programacion_id": str(programacion.id),
                         "formato": programacion.formato,
                         "filas": salida["cuantas"],
+                        # SIEMPRE, también cuando es `False`. Un campo que solo
+                        # aparece cuando hay problema obliga a quien integra a
+                        # distinguir «no está» de «está y es que no», y por el
+                        # camino se lee como que todo va bien.
+                        "incompleto": bool(salida.get("incompleto")),
+                        "aviso": str(salida.get("aviso_plan") or salida.get("aviso_datos") or ""),
                         "destinatarios": list(programacion.destinatarios or []),
                         "destino_externo": programacion.destino_externo or "",
                     },

@@ -711,3 +711,91 @@ def test_toda_clave_del_plan_esta_declarada_o_apuntada_como_no_aplicada(
         "NO_APLICADAS y del aviso: mientras estén, se sigue avisando de algo "
         "que ya funciona."
     )
+
+
+def test_el_informe_programado_dice_si_lo_que_manda_esta_incompleto(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Un informe que llega por correo se lee como el total.
+
+    En pantalla el aviso va debajo de la cifra; en un correo no hay debajo. Si
+    el evento no lo lleva, quien lo recibe se queda con un fichero de aspecto
+    impecable al que le faltan las columnas que alguien definió.
+
+    Va SIEMPRE, también cuando es `False`: un campo que solo aparece cuando hay
+    problema obliga a quien integra a distinguir «no está» de «está y es que
+    no», y por el camino se lee como que todo va bien.
+    """
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    fila = _informe(
+        uow,
+        calculados=[
+            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
+        ],
+    )
+    programacion = inf.programar(uow, fila.id, destinatarios=["jefe@ejemplo.test"])
+    programacion.proxima_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    uow.db.flush()
+
+    inf.correr_programadas(uow, uow.tenant_id)
+    entregado = next(e for e in uow._pendientes if e["tipo"] == "report.delivered")
+    assert entregado["data"]["incompleto"] is True
+    assert "calculado" in entregado["data"]["aviso"]
+
+
+def test_un_programado_completo_lo_dice_tambien(uow: UnidadDeTrabajo) -> None:
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    programacion = inf.programar(uow, _informe(uow).id, destinatarios=["a@b.c"])
+    programacion.proxima_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    uow.db.flush()
+    inf.correr_programadas(uow, uow.tenant_id)
+    entregado = next(e for e in uow._pendientes if e["tipo"] == "report.delivered")
+    assert entregado["data"]["incompleto"] is False
+
+
+# ── Exportar: las filas son LISTAS ────────────────────────────────────────
+
+
+def test_exportar_a_csv_con_la_forma_que_de_verdad_tienen_las_filas(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """El ejecutor devuelve `rows: list[list]`, no diccionarios.
+
+    `exportar` pedía diccionarios y hacía `filas[0].keys()`, así que descargar
+    un informe en CSV daba un 500 y un informe programado fallaba cada noche
+    hasta desactivarse solo a los tres intentos. Las pruebas no lo cazaron
+    porque le pasaban diccionarios: una forma que el sistema no produce.
+    """
+    salida = inf.exportar([["ACME", 10], ["OTRA", 20]], columnas=["nombre", "importe"])
+    assert salida["contenido"].splitlines()[0] == "nombre,importe"
+    assert salida["contenido"].splitlines()[1] == "ACME,10"
+    assert salida["filas"] == 2
+
+
+def test_un_valor_sin_cabecera_sale_con_un_nombre_puesto(uow: UnidadDeTrabajo) -> None:
+    """Tirarlo es peor: es un dato que el motor ha devuelto y nadie vería.
+
+    Pasa cuando el ejecutor aplica algo que este lado no sabe nombrar todavía
+    —los campos calculados, el día que se implementen allí—.
+    """
+    salida = inf.exportar([["ACME", 10, 3]], columnas=["nombre", "importe"])
+    assert salida["contenido"].splitlines()[0] == "nombre,importe,columna_3"
+    assert salida["contenido"].splitlines()[1] == "ACME,10,3"
+
+
+def test_el_encargo_de_pdf_tambien_lleva_sus_columnas(uow: UnidadDeTrabajo) -> None:
+    """El generador documental maqueta con ellas: sin nombres, una tabla muda."""
+    salida = inf.exportar([["ACME", 10]], columnas=["nombre", "importe"], formato="pdf")
+    assert salida["encargo"]["columnas"] == ["nombre", "importe"]
+    assert salida["encargo"]["filas"] == [{"nombre": "ACME", "importe": 10}]
+
+
+def test_descargar_un_informe_en_csv_no_revienta(uow: UnidadDeTrabajo) -> None:
+    """La vía completa, tal y como la llama la API."""
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    salida = inf.ejecutar(uow, _informe(uow).id, formato="csv")
+    export = inf.exportar(
+        salida["filas"], columnas=salida["columnas"], formato="csv", nombre=salida["informe"]
+    )
+    assert export["vacio"] is False
+    assert "ACME" in export["contenido"]

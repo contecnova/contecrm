@@ -35,8 +35,13 @@ REPORT_DELIVERED = registrar(
         tipo="report.delivered",
         version=1,
         productor="analytics",
-        descripcion="Un informe programado se ha ejecutado y sale hacia sus destinatarios",
-        campos=("informe_id", "programacion_id", "formato", "filas"),
+        descripcion=(
+            "Un informe programado se ha ejecutado y sale hacia sus destinatarios. "
+            "Lleva si el resultado está INCOMPLETO —el objeto se lee a medias, o "
+            "el motor no aplica los campos calculados— porque un informe que "
+            "llega por correo se lee como el total y nadie va a preguntar"
+        ),
+        campos=("informe_id", "programacion_id", "formato", "filas", "incompleto"),
     )
 )
 REPORT_FAILED = registrar(

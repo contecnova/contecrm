@@ -1232,7 +1232,7 @@ llamada de nadie.
 | `record.deleted` | core | objeto, registro_id, definitivo | un proceso de fondo | — |
 | `record.merged` | party | objeto, superviviente_id, absorbido_id | `POST /api/v1/accounts/{cuenta_id}/fusionar`, `POST /api/v1/data-quality/accounts/{cuenta_id}/merge` | — |
 | `refund.requested` | service | devolucion_id, resolucion_id, importe | `POST /api/v1/devoluciones/{devolucion_id}/resolver` | — |
-| `report.delivered` | analytics | informe_id, programacion_id, formato, filas | `POST /api/v1/informes/correr-programadas` | — |
+| `report.delivered` | analytics | informe_id, programacion_id, formato, filas, incompleto | `POST /api/v1/informes/correr-programadas` | — |
 | `report.failed` | analytics | informe_id, programacion_id, error, fallos_seguidos | `POST /api/v1/informes/correr-programadas` | — |
 | `return.authorized` | service | devolucion_id, codigo | `POST /api/v1/devoluciones/{devolucion_id}/autorizar` | — |
 | `return.closed` | service | devolucion_id, disposicion | `POST /api/v1/devoluciones/{devolucion_id}/cerrar` | — |

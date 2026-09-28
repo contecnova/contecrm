@@ -166,6 +166,9 @@ export default {
   },
   cuadros: {
     informeNoExiste: "El informe «{{clave}}» ya no existe.",
+    descargar: "CSV",
+    bajando: "Bajando…",
+    bajado: "Descargado: {{filas}} fila(s) en CSV.",
     truncado: "Cortado por el tope de filas: no es el total.",
     camposRetirados: "No ves estos campos: {{campos}}.",
     titulo: "Cuadros de mando",

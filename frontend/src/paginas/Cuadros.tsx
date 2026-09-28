@@ -180,6 +180,11 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
   const { t } = useTranslation();
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const [informeId, setInformeId] = useState("");
+  const [bajando, setBajando] = useState(false);
+  // Qué ha pasado con la descarga. Un fichero que se baja no cambia nada en la
+  // pantalla, así que quien no la ve no se entera de si ha salido o no.
+  const [bajado, setBajado] = useState("");
 
   useEffect(() => {
     if (!componente.informe) return;
@@ -203,6 +208,7 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
           signal: control.signal,
         });
         setResultado(r.datos);
+        setInformeId(informe.id);
       } catch (e) {
         setFallo(e);
       }
@@ -215,11 +221,58 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
     [componente, resultado],
   );
 
+  /**
+   * Baja el informe en CSV.
+   *
+   * Se pide al servidor y no se compone aquí con lo que ya está en pantalla: lo
+   * de la pantalla puede venir recortado por el tope del componente, y un
+   * fichero que se manda por correo con menos filas de las que hay es
+   * exactamente el fallo que este sistema se pasa el día evitando.
+   */
+  const descargar = useCallback(async () => {
+    if (!informeId) return;
+    setBajando(true);
+    try {
+      const r = await llamar<{ export?: { contenido?: string } }>(
+        `/api/v1/informes/${informeId}/ejecutar`,
+        { metodo: "POST", cuerpo: { formato: "csv" } },
+      );
+      const contenido = r.datos.export?.contenido ?? "";
+      const url = URL.createObjectURL(new Blob([contenido], { type: "text/csv;charset=utf-8" }));
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `${componente.informe ?? "informe"}.csv`;
+      enlace.click();
+      URL.revokeObjectURL(url);
+      setBajado(t("cuadros.bajado", { filas: (contenido.split("\n").length || 1) - 2 }));
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setBajando(false);
+    }
+  }, [informeId, componente.informe, t]);
+
   return (
     <article className="rounded-lg border border-ink-dim/40 bg-paper-light p-3">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-sm text-ink">{componente.titulo ?? componente.informe ?? componente.tipo}</h2>
-        <span className="text-3xs uppercase text-ink-faint">{componente.tipo}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          {/* La exportación existía en la API y no se podía pedir desde ninguna
+              pantalla: había que llamarla a mano. Y llevaba tiempo rota —las
+              filas son listas y el generador esperaba diccionarios—, cosa que
+              nadie notó justamente porque no había por dónde pulsarla. */}
+          {informeId ? (
+            <button
+              type="button"
+              onClick={() => void descargar()}
+              disabled={bajando}
+              className="rounded border border-ink-dim/60 px-2 py-0.5 text-3xs text-ink-muted disabled:opacity-50"
+            >
+              {bajando ? t("cuadros.bajando") : t("cuadros.descargar")}
+            </button>
+          ) : null}
+          <span className="text-3xs uppercase text-ink-faint">{componente.tipo}</span>
+        </span>
       </div>
       {/* Que un componente ignore el filtro global se DICE: si no, quien cambia
           el trimestre y ve una cifra que no se mueve concluye que el filtro no
@@ -256,6 +309,11 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
           {resultado?.aviso_plan ? (
             <p className="mt-1 text-2xs text-ink-muted">{resultado.aviso_plan}</p>
           ) : null}
+          {/* Siempre en el árbol, aunque vacío: una región de estado que
+              aparece a la vez que su texto puede no llegar a leerse. */}
+          <p role="status" className="mt-1 text-3xs text-ink-faint">
+            {bajado}
+          </p>
         </>
       )}
     </article>

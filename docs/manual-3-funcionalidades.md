@@ -7415,6 +7415,21 @@ desconocido no es un fallo para nadie. Hoy el plan lleva quince campos y
 campos calculados se ejecuta sin ellos y uno matricial sale sin pivotar —con su
 tabla, sus cifras y su cara de informe correcto—.
 
+**Las filas viajan como listas y los nombres aparte.** Una fila en lista pesa
+la mitad, y un informe de cincuenta mil se nota. La exportación lo daba por
+sentado al revés —pedía diccionarios— así que descargar un informe en CSV era un
+error del servidor y un informe programado fallaba cada noche hasta desactivarse
+solo a los tres intentos. Ahora la exportación recibe las columnas, y un valor
+que llegue sin cabecera sale nombrado (`columna_3`) en vez de perderse: es un
+dato que el motor ha devuelto, y tirarlo es peor que enseñarlo con un nombre
+provisional.
+
+Y se puede pedir desde la pantalla, que es lo que faltaba para que alguien lo
+notara: cada componente de un cuadro tiene su descarga en CSV. Se pide al
+servidor y no se compone con lo que ya está pintado, porque lo pintado puede
+venir recortado por el tope del componente —y un fichero que sale por correo con
+menos filas de las que hay es justo el fallo que todo esto evita—.
+
 No se supone: se mide. Las filas son listas, así que su anchura dice cuántas
 columnas han venido de verdad. Si son las mismas que el informe sabe nombrar y
 había campos calculados, es que no se aplicaron, y el resultado sale marcado

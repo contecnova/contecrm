@@ -163,8 +163,14 @@ def ejecutar(informe_id: UUID, datos: Ejecutar, uow: UowDep, principal: Autentic
         formato=datos.formato,
     )
     if datos.formato != "json":
+        # CON LAS COLUMNAS. Las filas son listas: sin los nombres, la exportación
+        # no tiene de dónde sacar la cabecera y reventaba con «'list' object has
+        # no attribute 'keys'» — o sea, descargar un informe en CSV era un 500.
         salida["export"] = inf.exportar(
-            salida["filas"], formato=datos.formato, nombre=salida["informe"]
+            salida["filas"],
+            columnas=salida["columnas"],
+            formato=datos.formato,
+            nombre=salida["informe"],
         )
     return salida
 
