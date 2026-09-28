@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib
 import os
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -267,4 +268,88 @@ def test_el_postgres_de_desarrollo_no_se_recoge() -> None:
     assert "contecrm-test-" in fuente, (
         "la recogida ya no filtra por el prefijo de los directorios de pruebas: "
         "sin eso para también el Postgres de desarrollo"
+    )
+
+
+# ── Que nadie se olvide de la marca ───────────────────────────────────────
+#
+# Una prueba de aislamiento SIN la marca `despliegue` cae al nivel de bloque y
+# **no falla nada**: sigue corriendo, sigue en verde, y simplemente deja de
+# proteger el push. Es el peor tipo de agujero —el que no se nota— y hasta
+# ahora dependía de que quien la escribiera se acordara.
+#
+# La señal de que una prueba comprueba aislamiento es que use `otro_tenant_id`:
+# el fixture existe para una sola cosa, preguntar como un tenant por lo de otro.
+# Así que toda prueba que lo use tiene que haber DECIDIDO a qué nivel va, y esta
+# comprobación no decide por ella: la obliga a decidir.
+
+# Las que comprueban aislamiento DE SU DOMINIO y pueden esperar al bloque. El
+# motivo es común y por eso se escribe una vez: el fuzzing recorre **todas** las
+# rutas de los trece servicios con un identificador ajeno y está en el push, así
+# que la red ancha ya la cubre; éstas comprueban el detalle de su área.
+#
+# Si una de estas empieza a proteger algo que no puede esperar, se le pone la
+# marca y se quita de aquí. Y si aparece un fichero nuevo con `otro_tenant_id`
+# que no esté ni marcado ni aquí, esta prueba lo dice.
+AISLAMIENTO_DE_DOMINIO = {
+    "test_adjuntos_y_notificaciones.py",
+    "test_auditoria_cadena.py",
+    "test_busqueda.py",
+    "test_byok.py",
+    "test_captura_leads.py",
+    "test_casos_y_sla.py",
+    "test_cumplimiento_y_slo.py",
+    "test_documental.py",
+    "test_forecast.py",
+    "test_grc.py",
+    "test_metamodelo.py",
+    "test_proyeccion_campos.py",
+    "test_relaciones_metadata.py",
+    "test_retencion.py",
+    "test_scim.py",
+    "test_tablas_decision.py",
+    "test_trabajos_y_masivo.py",
+    "test_visibilidad_listados.py",
+}
+
+
+def test_toda_prueba_de_aislamiento_ha_decidido_a_que_nivel_va() -> None:
+    """La red que le faltaba a la marca.
+
+    Sin esto, quien escriba mañana una prueba de aislamiento y olvide
+    `pytestmark = pytest.mark.despliegue` no se entera de nada: la prueba pasa,
+    el push pasa, y lo único que ocurre es que deja de correr donde importa.
+    Un olvido que no rompe nada es un olvido que nadie corrige.
+
+    No decide por nadie: obliga a que la decisión esté escrita, en la marca o en
+    la lista de las que pueden esperar.
+    """
+    raiz = Path(__file__).resolve().parent
+    sin_decidir: list[str] = []
+    sobran: list[str] = []
+
+    for fichero in sorted(raiz.glob("test_*.py")):
+        texto = fichero.read_text("utf-8")
+        usa_otro_tenant = "otro_tenant_id" in texto
+        tiene_marca = "mark.despliegue" in texto
+        declarada = fichero.name in AISLAMIENTO_DE_DOMINIO
+
+        if usa_otro_tenant and not tiene_marca and not declarada:
+            sin_decidir.append(fichero.name)
+        if declarada and not usa_otro_tenant:
+            sobran.append(fichero.name)
+
+    assert not sin_decidir, (
+        "Estas pruebas comprueban aislamiento entre tenants y no han decidido a "
+        "qué nivel van:\n  "
+        + "\n  ".join(sin_decidir)
+        + "\n\nO llevan `pytestmark = pytest.mark.despliegue` —y entonces corren en "
+        "cada push— o se añaden a AISLAMIENTO_DE_DOMINIO, que significa que el "
+        "fuzzing ya cubre su caso genérico y el detalle puede esperar al bloque. "
+        "Lo que no vale es no decidirlo: el olvido no rompe nada y por eso no se "
+        "corrige nunca."
+    )
+    assert not sobran, (
+        f"{sobran} ya no comprueba aislamiento: quítalo de AISLAMIENTO_DE_DOMINIO. "
+        "Una lista con entradas que sobran se deja de leer."
     )
