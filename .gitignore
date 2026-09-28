@@ -17,10 +17,17 @@ __pycache__/
 
 # Datos y salidas locales
 data/
-# El almacén local de adjuntos (STORAGE_LOCAL_PATH por defecto). Lo llenan el
-# desarrollo y la suite de pruebas, y son bytes de ficheros subidos: no tienen
-# nada que hacer en el repositorio.
-datos/
+# El almacén local de adjuntos (STORAGE_LOCAL_PATH por defecto: ./datos/adjuntos).
+# Lo llenan el desarrollo y la suite de pruebas, y son bytes de ficheros subidos:
+# no tienen nada que hacer en el repositorio.
+#
+# ANCLADO A LA RAÍZ, y no es un detalle: sin la barra de delante, `datos/` casa
+# con **cualquier** directorio llamado así a cualquier profundidad, y hay uno que
+# es código —`packages/crmcore/crmcore/datos/`, donde viven adjuntos, papelera,
+# retención y comentarios—. Los ficheros que ya estaban seguidos sobrevivían,
+# así que no se notaba; lo que se perdía era **el siguiente**: un módulo nuevo
+# ahí dentro no lo añadía `git add -A` y el push salía en verde sin él.
+/datos/
 var/
 logs/
 *.log
