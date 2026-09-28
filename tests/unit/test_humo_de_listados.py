@@ -114,6 +114,79 @@ def _listados_de(app: Any) -> list[str]:
     return sorted(caminos)
 
 
+def _escrituras_de(app: Any) -> list[tuple[str, str]]:
+    """Las escrituras a una COLECCIÓN: crear algo donde antes no había nada.
+
+    Solo las que no llevan parámetros en la ruta. Las que sí los llevan —editar
+    o borrar un registro concreto— ya las recorre `test_fuzzing_tenant` con un
+    identificador de otro tenant, y repetirlas aquí sería pagar dos veces por lo
+    mismo.
+    """
+    caminos = []
+    for camino, ops in (app.openapi().get("paths") or {}).items():
+        if "{" in camino or not camino.startswith("/api/v1/"):
+            continue
+        for metodo in ("post", "put", "patch"):
+            if metodo in ops:
+                caminos.append((metodo.upper(), camino))
+    return sorted(caminos)
+
+
+@pytest.mark.parametrize("servicio", SERVICIOS)
+def test_ninguna_escritura_revienta_con_el_cuerpo_vacio(
+    servicio: str, db: Any, tenant_id: UUID
+) -> None:
+    """Mandar `{}` a una escritura tiene que dar 422, nunca 500.
+
+    Un 422 es la respuesta correcta —«te faltan estos campos»— y es lo que
+    convierte un formulario en algo que se puede rellenar. Un 500 es una
+    pantalla que dice «error interno» sin decir qué falta, y además **puede
+    dejar datos a medias**: una escritura que revienta después de haber escrito
+    algo es peor que una que no escribe.
+
+    Esto es el complemento del barrido de listados, que solo abría los GET. Lo
+    que de verdad hace daño está en el otro lado: quien lee un listado roto ve
+    una pantalla vacía, y quien manda una escritura rota puede dejar el registro
+    partido por la mitad.
+    """
+    from crmcore.config import limpiar_cache_settings
+    from fastapi.testclient import TestClient
+
+    os.environ["SERVICE_NAME"] = servicio
+    limpiar_cache_settings()
+    app = importlib.import_module(f"services.{servicio}.main").app
+
+    cliente = TestClient(app, raise_server_exceptions=False)
+    cabeceras = _cabeceras(tenant_id)
+    rotas: list[str] = []
+    for metodo, camino in _escrituras_de(app):
+        respuesta = cliente.request(metodo, camino, headers=cabeceras, json={})
+        # SOLO EL 500, y no todo lo que empieza por cinco. Un 502 o un 503 son
+        # respuestas previstas y con motivo —«falta la dirección de identity»—
+        # y eso no es un fallo: es el sistema diciendo qué le falta. El 500 es
+        # el que no dice nada, y es el que puede haber dejado algo a medias.
+        #
+        # La primera versión exigía `>= 500` y marcó en rojo una ruta que no
+        # lleva cuerpo: con `{}` hace su trabajo, llama al vecino y contesta 502
+        # porque en el entorno de pruebas no hay vecino. La prueba estaba mal, no
+        # la ruta.
+        if respuesta.status_code == 500:
+            detalle = ""
+            try:
+                detalle = str(respuesta.json())[:160]
+            except Exception:  # noqa: BLE001
+                detalle = respuesta.text[:160]
+            rotas.append(f"{respuesta.status_code} {metodo} {camino} → {detalle}")
+
+    assert not rotas, (
+        f"En «{servicio}» hay escrituras que revientan con el cuerpo vacío:\n  "
+        + "\n  ".join(rotas)
+        + "\n\nCon `{}` lo correcto es un 422 diciendo qué falta, o hacer el "
+        "trabajo si la ruta no lleva cuerpo. Un 500 no dice nada y puede haber "
+        "dejado datos a medias."
+    )
+
+
 @pytest.mark.parametrize("servicio", SERVICIOS)
 def test_ningun_listado_revienta_al_abrirlo(servicio: str, db: Any, tenant_id: UUID) -> None:
     from crmcore.config import limpiar_cache_settings
