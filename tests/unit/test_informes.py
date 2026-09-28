@@ -657,3 +657,57 @@ def test_si_el_motor_ya_los_aplica_el_aviso_cambia(uow: UnidadDeTrabajo) -> None
     salida = inf.ejecutar(uow, fila.id)
     assert "incompleto" not in salida
     assert "más columnas" in salida["aviso_plan"]
+
+
+def test_toda_clave_del_plan_esta_declarada_o_apuntada_como_no_aplicada(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """El plan y el esquema de quien lo ejecuta, comparados clave a clave.
+
+    No se puede leer del código —el cuerpo sale de `plan.items()`, no de un
+    diccionario literal— así que se compila uno de verdad y se mira. Lo que se
+    defiende es que nadie añada una clave al plan sin decidir qué pasa con ella:
+    o la declara el ejecutor, o se apunta aquí como sabida y no aplicada.
+
+    Las seis de abajo son las que hoy se pierden. `calculados` y `pivote` cambian
+    el resultado y por eso el informe sale avisando; las otras cuatro son
+    contexto que contecrm consume por su cuenta al componer la respuesta.
+    """
+    import json
+    from pathlib import Path
+
+    NO_APLICADAS = {
+        "calculados": "el motor no las aplica; el resultado sale marcado «incompleto»",
+        "pivote": "idem: un matricial sale sin pivotar, y se avisa",
+        "pedir": "es `limite + 1`, para saber si hay más; el ejecutor aplica `limite`",
+        "objeto": "de qué objeto del CRM es; se usa aquí, no allí",
+        "campos_retirados": "lo que se quitó por permisos; va a la respuesta, no a la consulta",
+        "acotado_al_usuario": "idem: se dice en la respuesta",
+    }
+
+    contrato = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "tests"
+            / "fixtures"
+            / "contratos"
+            / "contecintelligence.json"
+        ).read_text("utf-8")
+    )
+    declaradas = set(contrato["/api/query/plan"]["post"]["campos"])
+
+    plan = inf.compilar(uow.db, uow.tenant_id, _informe(uow))
+    viajan = {k for k in plan if not k.startswith("_")}
+
+    sin_decidir = sorted(viajan - declaradas - set(NO_APLICADAS))
+    assert not sin_decidir, (
+        f"El plan manda {sin_decidir} y `/api/query/plan` no lo declara: se "
+        "ignorará sin error. O se implementa allí y se refresca el contrato, o "
+        "se apunta en NO_APLICADAS con lo que pasa cuando se pierde."
+    )
+    ya_declaradas = sorted(set(NO_APLICADAS) & declaradas)
+    assert not ya_declaradas, (
+        f"{ya_declaradas} ya está en el esquema del ejecutor. Quítalas de "
+        "NO_APLICADAS y del aviso: mientras estén, se sigue avisando de algo "
+        "que ya funciona."
+    )

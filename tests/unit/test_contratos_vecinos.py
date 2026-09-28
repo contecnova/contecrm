@@ -59,6 +59,13 @@ PENDIENTES: dict[tuple[str, str], str] = {
     ): "idem: sin canje no hay con qué autenticarse, y por eso DMS_ENABLED=false",
 }
 
+# Módulos que mandan cuerpos al vecino además de su cliente. El alta de una
+# fuente y la ejecución de un plan no viven en `cliente.py` —viven donde está la
+# lógica que los compone— y por eso se quedaban fuera de esta prueba.
+OTROS_MODULOS: dict[str, list[Path]] = {
+    "contecintelligence": [RAIZ / "services" / "analytics" / "fuente.py"],
+}
+
 CLIENTES: dict[str, dict[str, Any]] = {
     "contecintelligence": {
         "modulo": RAIZ / "services" / "analytics" / "cliente.py",
@@ -418,4 +425,22 @@ def test_ninguna_funcion_que_manda_cuerpo_se_queda_sin_ejercitar(vecino: str) ->
         f"{vecino}: estas funciones mandan un cuerpo y nadie comprueba sus "
         f"campos contra el contrato: {huerfanas}.\nAñádelas a LLAMADAS con "
         "argumentos de mentira, o a NO_EJERCITADAS con el motivo."
+    )
+
+
+def test_el_alta_de_una_fuente_manda_lo_que_su_esquema_declara() -> None:
+    """`_publicar` vive en `fuente.py` y se quedaba fuera de esta prueba.
+
+    El cuerpo del plan no se puede leer del código —sale de `plan.items()`— y
+    por eso lo comprueba `test_informes.py`, compilando uno de verdad. El del
+    alta sí es un diccionario literal, así que se mira aquí.
+    """
+    contrato = _contrato("contecintelligence")
+    declarado = set(contrato["/api/sources"]["post"]["campos"])
+    enviados = _cuerpos_que_enviamos(OTROS_MODULOS["contecintelligence"][0])
+    assert "_publicar" in enviados, "«_publicar» ya no manda un cuerpo literal"
+    sobran = sorted(set(enviados["_publicar"]) - declarado)
+    assert not sobran, (
+        f"El alta de la fuente manda {sobran} y `/api/sources` no lo declara "
+        f"(acepta {sorted(declarado)}). Un campo que no declara se ignora."
     )
