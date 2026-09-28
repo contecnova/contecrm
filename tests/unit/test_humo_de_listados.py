@@ -56,6 +56,37 @@ SERVICIOS = [
 ]
 
 
+# Cuánto barre cada servicio, medido el 28-09-2026: (escrituras, listados).
+#
+# EL TOTAL, AL LADO DEL SUELO. Sin eso un número de cobertura no dice nada: la
+# prueba de fugas entre tenants publicaba cuántas rutas probaba y **nadie tenía
+# el total real enfrente**, así que parecía razonable mientras se dejaba 709 de
+# 1.878 sin mirar. Y se cuenta **del producto** —las aplicaciones tal como se
+# despliegan—, no de una lista escrita a mano, que es la otra mitad del error.
+#
+# Margen del 10 % hacia abajo: retirar una ruta a propósito no rompe el gate, y
+# que un filtro deje de encontrar la mitad, sí.
+BARRIDO_ESPERADO = {
+    "tenancy": (24, 40),
+    "identity": (38, 42),
+    "metadata": (10, 20),
+    "orchestrator": (13, 17),
+    "automation": (4, 12),
+    "integration": (56, 44),
+    "eventing": (4, 16),
+    "party": (32, 43),
+    "sales": (64, 67),
+    "analytics": (29, 30),
+    "intelligence": (40, 28),
+    "service": (39, 54),
+    "marketing": (42, 37),
+}
+
+
+def _suelo(servicio: str, cual: int) -> int:
+    return int(BARRIDO_ESPERADO[servicio][cual] * 0.9)
+
+
 @pytest.fixture(autouse=True)
 def _devolver_el_servicio() -> Any:
     from crmcore.config import limpiar_cache_settings
@@ -179,6 +210,19 @@ def test_ninguna_escritura_revienta_con_el_cuerpo_vacio(
                 detalle = respuesta.text[:160]
             rotas.append(f"{respuesta.status_code} {metodo} {camino} → {detalle}")
 
+    # BARRER CERO NO ES ESTAR EN VERDE. Si el filtro dejara de encontrar rutas
+    # —porque cambie el prefijo, porque el servicio mueva sus routers o porque
+    # este ayudante se rompa—, la lista de rotas saldría vacía y esto pasaría sin
+    # haber mirado nada. Es exactamente el defecto que tenía la prueba de fugas
+    # entre tenants, donde costó 709 rutas sin comprobar.
+    cuantas = len(_escrituras_de(app))
+    assert cuantas >= _suelo(servicio, 0), (
+        f"El barrido solo ve {cuantas} escrituras a colección en «{servicio}»; "
+        f"había {BARRIDO_ESPERADO[servicio][0]}. O el servicio ha cambiado de "
+        "forma o este barrido ha dejado de encontrarlas: las dos cosas hay que "
+        "mirarlas. Si la bajada es a propósito, ajusta el número en el mismo "
+        "commit y di por qué."
+    )
     assert not rotas, (
         f"En «{servicio}» hay escrituras que revientan con el cuerpo vacío:\n  "
         + "\n  ".join(rotas)
@@ -211,6 +255,12 @@ def test_ningun_listado_revienta_al_abrirlo(servicio: str, db: Any, tenant_id: U
                 detalle = respuesta.text[:160]
             rotas.append(f"{respuesta.status_code} GET {camino} → {detalle}")
 
+    cuantos = len(_listados_de(app))
+    assert cuantos >= _suelo(servicio, 1), (
+        f"El barrido solo ve {cuantos} listados en «{servicio}»; había "
+        f"{BARRIDO_ESPERADO[servicio][1]}. O ha cambiado de forma o este barrido "
+        "ha dejado de encontrarlos."
+    )
     assert not rotas, (
         f"En «{servicio}» hay listados que revientan al abrirlos:\n  "
         + "\n  ".join(rotas)

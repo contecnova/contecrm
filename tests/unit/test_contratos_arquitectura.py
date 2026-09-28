@@ -50,9 +50,11 @@ def test_ningun_servicio_importa_modulos_de_otro() -> None:
         ("eventing", "orchestrator"),
     }
     infracciones: list[str] = []
+    leidos = 0
 
     for servicio in SERVICIOS:
         for fichero in _modulos(SERVICIOS_DIR / servicio):
+            leidos += 1
             arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
             for nodo in ast.walk(arbol):
                 modulo = ""
@@ -69,6 +71,9 @@ def test_ningun_servicio_importa_modulos_de_otro() -> None:
                     f"{fichero.relative_to(RAIZ)} importa «{modulo}» (servicio «{ajeno}»)"
                 )
 
+    # Y que de verdad se haya leído el árbol: si `_modulos` dejara de encontrar
+    # ficheros, esto pasaría en verde sin haber abierto ninguno.
+    assert leidos > 200, f"Solo se han leído {leidos} módulos de servicio; son cientos"
     assert not infracciones, "Servicios acoplados:\n  " + "\n  ".join(infracciones)
 
 

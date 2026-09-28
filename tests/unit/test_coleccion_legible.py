@@ -119,6 +119,12 @@ def _colecciones(por_camino: dict[str, set[str]]) -> list[str]:
 @pytest.mark.parametrize("servicio", SERVICIOS)
 def test_toda_coleccion_que_admite_alta_se_puede_listar(servicio: str) -> None:
     por_camino = _contrato(servicio)
+    # Un contrato vacío dejaría este gate en verde sin haber mirado nada, que es
+    # el defecto que costó 709 rutas sin comprobar en la prueba de fugas.
+    assert por_camino, (
+        f"«{servicio}» no publica contrato: o ha cambiado de forma o leerlo se ha "
+        "roto. Las dos cosas hay que mirarlas."
+    )
     sin_listado: list[str] = []
     for camino in _colecciones(por_camino):
         metodos = por_camino[camino]

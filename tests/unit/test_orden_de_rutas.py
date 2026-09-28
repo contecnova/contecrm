@@ -88,6 +88,16 @@ def test_ninguna_ruta_con_parametro_tapa_una_ruta_fija(servicio: str) -> None:
     # diccionario de `paths` es el de declaración, que es el que se prueba.
     caminos = list((app.openapi().get("paths") or {}).items())
 
+    # MIRAR CERO RUTAS NO ES ESTAR EN VERDE. Si el contrato viniera vacío
+    # —porque el servicio cambie de forma o porque leerlo se rompa—, la lista de
+    # tapadas saldría vacía y esto pasaría sin haber comprobado nada. Es el
+    # defecto que tenía la prueba de fugas entre tenants, y allí costó 709 rutas.
+    con_parametro = [c for c, _ in caminos if "{" in c and c.startswith("/api/v1/")]
+    assert con_parametro, (
+        f"«{servicio}» no publica ni una ruta con parámetro: o ha cambiado de forma "
+        "o el contrato no se está leyendo. Pasar en verde sin mirar nada, no."
+    )
+
     tapadas: list[str] = []
     for i, (camino, ops) in enumerate(caminos):
         if "{" not in camino or not camino.startswith("/api/v1/"):
