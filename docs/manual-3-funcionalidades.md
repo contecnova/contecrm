@@ -6713,6 +6713,22 @@ costó**, **qué pasó** y **cuánto trajo**. Cuando viven en tres sitios distin
 viven, casi siempre en tres hojas de cálculo— la conversación de final de
 trimestre empieza con tres números que no coinciden y acaba sin decidir nada.
 
+### Los miembros de una campaña se pueden listar (`CRM-02.02.01.04`)
+
+`GET /campanas/{id}/miembros`, con filtro por estado. Devuelve quién está, en qué
+estado y **de dónde salió**: sin la fuente de alta no se distingue a quien se
+importó de quien entró por un formulario, y eso es lo que decide si se le puede
+escribir.
+
+Se filtra por estado porque es lo que se hace con esto: la lista entera de una
+campaña de veinte mil no la mira nadie; los que abrieron y no respondieron, sí.
+
+> **Faltaba, y se vio el 28-09-2026 al ejercitar la familia.** Se podían añadir
+> miembros y cambiarles el estado, y **no había forma de listarlos**: el embudo
+> dice *cuántos* hay en cada estado y no *quiénes*. Para quien lleva la campaña,
+> la diferencia entre «40 han hecho clic» y poder llamarlos es toda. Los datos
+> estaban guardados y no llegaba ninguna puerta.
+
 ### La jerarquía es real, no una etiqueta (`CRM-02.02.01.01`)
 
 Programa → campaña → táctica, y se comprueba: una táctica no puede tener debajo un

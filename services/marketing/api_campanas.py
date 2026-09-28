@@ -172,6 +172,30 @@ def avanzar(campana_id: UUID, datos: Avanzar, uow: UowDep, principal: Autenticad
 
 
 @router_campanas.get(
+    "/{campana_id}/miembros",
+    dependencies=[Depends(exige_permiso("campaign:read"))],
+    summary="Quiénes están en la campaña, con su estado",
+    description=(
+        "Faltaba: se podían añadir miembros y cambiarles el estado, y no había "
+        "forma de listarlos. El embudo dice **cuántos** hay en cada estado y no "
+        "**quiénes**, y para quien lleva la campaña la diferencia entre «40 han "
+        "hecho clic» y poder llamarlos es toda.\n\n"
+        "Se puede filtrar por estado, que es lo que se hace con esto: la lista "
+        "entera de una campaña de veinte mil no la mira nadie; los que abrieron "
+        "y no respondieron, sí."
+    ),
+)
+def listar_miembros(
+    campana_id: UUID,
+    db: DbDep,
+    principal: AutenticadoDep,
+    estado: str = Query("", max_length=20),
+    limite: int = Query(200, ge=1, le=1000),
+) -> Any:
+    return cmp.miembros_de(db, principal.tenant_id, campana_id, estado=estado, limite=limite)
+
+
+@router_campanas.get(
     "/{campana_id}/embudo",
     dependencies=[Depends(exige_permiso("campaign:read"))],
     summary="El embudo de la campaña",

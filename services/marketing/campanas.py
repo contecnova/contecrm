@@ -594,6 +594,51 @@ def avanzar(
     return fila
 
 
+def miembros_de(
+    db: Session,
+    tenant_id: UUID,
+    campana_id: UUID,
+    *,
+    estado: str = "",
+    limite: int = 200,
+) -> list[dict[str, Any]]:
+    """Quiénes están en la campaña, con su estado y de dónde salieron.
+
+    **Faltaba.** Se podían añadir miembros y cambiarles el estado, y no había
+    forma de listarlos: el embudo dice *cuántos* hay en cada estado y no
+    *quiénes*. Para quien lleva la campaña, la diferencia entre «40 han hecho
+    clic» y poder llamarlos es toda.
+
+    Se filtra por estado porque es lo que se hace con esto: la lista entera de
+    una campaña de veinte mil no la mira nadie; los que han abierto y no han
+    respondido, sí.
+    """
+    consulta = select(MiembroCampana).where(
+        MiembroCampana.tenant_id == tenant_id,
+        MiembroCampana.campana_id == campana_id,
+    )
+    if estado:
+        consulta = consulta.where(MiembroCampana.estado == estado)
+    filas = (
+        db.execute(consulta.order_by(MiembroCampana.estado_at.desc()).limit(limite)).scalars().all()
+    )
+    return [
+        {
+            "objeto": f.objeto,
+            "objeto_id": str(f.objeto_id),
+            "estado": f.estado,
+            # De dónde salió: sin esto no se puede distinguir a quien se importó
+            # de quien entró por un formulario, que es lo que decide si se le
+            # puede escribir.
+            "fuente_alta": f.fuente_alta,
+            "asistio": f.asistio,
+            "alta_at": f.alta_at.isoformat(),
+            "estado_at": f.estado_at.isoformat(),
+        }
+        for f in filas
+    ]
+
+
 def embudo(db: Session, tenant_id: UUID, campana_id: UUID) -> dict[str, Any]:
     """El embudo de la campaña, acumulado.
 

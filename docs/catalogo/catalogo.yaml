@@ -692,13 +692,13 @@ modulos:
           - id: CRM-02.02.01
             nombre: Gestión de campañas
             capacidades:
-              - {id: CRM-02.02.01.01, c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto)", t: "Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste"}
-              - {id: CRM-02.02.01.02, c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py + budgets_service.py", t: "Objetivos, KPIs y comparativa de plan vs. real"}
-              - {id: CRM-02.02.01.03, c: A, fase: 4, svc: marketing, estado: hecho, t: "Calendario de marketing compartido y gestión de solapamientos"}
-              - {id: CRM-02.02.01.04, c: C, fase: 4, svc: marketing, estado: hecho, t: "Miembros de campaña con estados de progresión y fuente de alta"}
-              - {id: CRM-02.02.01.05, c: A, fase: 4, svc: marketing, estado: hecho, t: "Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline"}
-              - {id: CRM-02.02.01.06, c: A, fase: 4, svc: marketing, estado: hecho, t: "Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven"}
-              - {id: CRM-02.02.01.07, c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia)", t: "Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento"}
+              - {id: CRM-02.02.01.01, visto: '2026-09-28 programa → campaña → táctica creados por la API, con su nivel de vuelta', c: C, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/campaign_pdf.py + portfolio_service.py (jerarquía con presupuesto)", t: "Jerarquía de campañas (programa → campaña → táctica) con presupuesto y coste"}
+              - {id: CRM-02.02.01.02, visto: '2026-09-28 objetivos guardados al crear y leídos en la ficha', c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py + budgets_service.py", t: "Objetivos, KPIs y comparativa de plan vs. real"}
+              - {id: CRM-02.02.01.03, visto: '2026-09-28 GET /campanas/calendario con rango, y no lo tapa la ficha /{campana_id}', c: A, fase: 4, svc: marketing, estado: hecho, t: "Calendario de marketing compartido y gestión de solapamientos"}
+              - {id: CRM-02.02.01.04, visto: '2026-09-28 faltaba el listado: se añadían miembros y su estado y fuente no se podían leer; añadido GET /campanas/{id}/miembros', c: C, fase: 4, svc: marketing, estado: hecho, t: "Miembros de campaña con estados de progresión y fuente de alta"}
+              - {id: CRM-02.02.01.05, visto: '2026-09-28 gasto anotado y reflejado en el consumo; el rendimiento dice cuándo el ROI no es medible en vez de inventarlo', c: A, fase: 4, svc: marketing, estado: hecho, t: "Cálculo de ROI, coste por lead, coste por oportunidad e influencia en pipeline"}
+              - {id: CRM-02.02.01.06, visto: '2026-09-28 atribución de un lead sin toques contesta en vez de reventar', c: A, fase: 4, svc: marketing, estado: hecho, t: "Modelos de atribución: first touch, last touch, lineal, en U, en W, por decaimiento, data-driven"}
+              - {id: CRM-02.02.01.07, visto: '2026-09-28 un evento es una campaña con lugar y aforo: tarjeta de asistencia e inscripción por la API', c: A, fase: 4, svc: marketing, estado: hecho, reutiliza: "contecflow-PSA:app/services/bookings_service.py (inscripciones y asistencia)", t: "Gestión de eventos y ferias: inscripciones, asistencia, seguimiento post-evento"}
           - id: CRM-02.02.02
             nombre: Journey builder / automatización de marketing
             capacidades:
