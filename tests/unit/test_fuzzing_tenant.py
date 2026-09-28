@@ -138,6 +138,10 @@ ALIAS_POR_SERVICIO = {
     # es la FILA que define ese objeto. Con un alias global, uno de los dos
     # sentidos se quedaba sin probar.
     ("metadata", "objeto_id"): "objetodefinido",
+    # Los perfiles de suite de productividad viven en la tabla de conexiones
+    # junto a las demás integraciones —el listado los acota por `clase`—, así
+    # que el parámetro no puede apuntar a un modelo que no existe.
+    ("integration", "perfil_suite_id"): "conexion",
 }
 
 ALIAS_MODELO = {
@@ -150,6 +154,30 @@ ALIAS_MODELO = {
     "membresia_id": "membresia",
     "proveedor_id": "proveedoridentidad",
     "entrada_id": "entradapapelera",
+    # Los cinco que quedaron al barrer el servicio completo: la ruta les da un
+    # nombre corto —«la orden», «la excepción»— y el modelo lleva dentro de qué
+    # es, que es lo correcto en los dos sitios. No se renombra ninguno de los
+    # dos: se dice aquí a qué apunta cada uno.
+    "orden_id": "ordentrabajo",
+    "excepcion_id": "excepcioncalidad",
+    "destino_id": "destinoexportacion",
+    "enlace_id": "enlaceembebido",
+    "pregunta_id": "preguntaguardada",
+    # Y los que aparecieron al barrer el servicio entero. El patrón se repite:
+    # la ruta nombra el parámetro por cómo se lee —«el sobre», «el fondo»— y el
+    # modelo lleva dentro de qué es. Los dos nombres están bien; lo que faltaba
+    # era decir aquí a qué apunta cada uno.
+    "activo_marketing_id": "activo",
+    "conflicto_id": "conflictosincronizacion",
+    "disputa_id": "disputacomision",
+    "dominio_id": "dominioenvio",
+    "exposicion_mcp_id": "exposicion",
+    "exposicion_mcp_raiz_id": "exposicion",
+    "fondo_id": "fondomdf",
+    "justificacion_id": "justificacionmdf",
+    "plantilla_correo_marketing_id": "plantillacorreo",
+    "registro_id": "registrooportunidad",
+    "sobre_firma_id": "sobre",
     # La pareja propuesta en la cola de duplicados. Se llama «candidato» en la
     # ruta porque es como se lee —«decidir este candidato»— y el modelo lleva el
     # objeto dentro para no chocar con el candidato que devuelve la búsqueda al
@@ -348,7 +376,20 @@ def _modelo_de_tabla(nombre_tabla: str) -> Any:
 
 @contextmanager
 def _cliente(nombre: str) -> Iterator[tuple[Any, Any]]:
-    """El servicio levantado **con su ciclo de vida**, no solo montado.
+    """El servicio **tal como se despliega**, y con su ciclo de vida.
+
+    `main.app` y no una aplicación armada aquí con `api.ROUTERS`. La diferencia
+    no era cosmética: los servicios se componen en su `main`, que suma los
+    routers que viven en otros ficheros —recorridos, canales, fondos,
+    comisiones, cadencias…—, y armarla aquí con uno solo de ellos dejaba
+    **709 rutas de 1.878 sin comprobar jamás contra fugas entre tenants**. El
+    38 % del producto, en la única prueba que existe para eso. Los servicios
+    con un solo fichero de API salían bien y los grandes —`sales` 173,
+    `integration` 155, `marketing` 116— eran los que más se quedaban fuera,
+    que es exactamente al revés de lo que conviene.
+
+    Y no se veía: la prueba pasaba, decía cuántas rutas había probado, y el
+    número parecía razonable porque nadie tenía delante el número real.
 
     El `with` importa: `TestClient` solo ejecuta el arranque de la aplicación si
     se usa como gestor de contexto, y en el arranque es donde el servicio instala
@@ -357,17 +398,32 @@ def _cliente(nombre: str) -> Iterator[tuple[Any, Any]]:
     se encontró el fallo del guard: la prueba fallaba por el motivo equivocado y
     al buscar por qué apareció el de verdad.
     """
-    from crmcore.service import crear_servicio
+    import importlib
+    import os
 
-    modulo = __import__(f"services.{nombre}.api", fromlist=["ROUTERS"])
-    app = crear_servicio(
-        nombre=nombre,
-        descripcion=f"{nombre} para el fuzzing entre tenants",
-        routers=modulo.ROUTERS,
-        necesita_bus=False,
-    )
-    with TestClient(app) as cliente:
-        yield app, cliente
+    from crmcore.config import get_settings
+
+    # EL RELEVO DEL OUTBOX, APAGADO. `main.app` lo arranca —es lo que hace en
+    # producción— y en una prueba comparte conexión con la sesión, así que sus
+    # `RELEASE SAVEPOINT` se cruzan con los de la transacción del test y todo lo
+    # que viene después revienta con `PendingRollbackError`. No se está probando
+    # el outbox: se está probando quién puede ver qué.
+    #
+    # Va por configuración y no tocando el módulo, porque es exactamente para lo
+    # que existe `OUTBOX_ENABLED`.
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        app = importlib.import_module(f"services.{nombre}.main").app
+        with TestClient(app) as cliente:
+            yield app, cliente
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
 
 
 def _cabeceras(tenant_id: UUID) -> dict[str, str]:
@@ -425,7 +481,14 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
             nombre_objeto = ALIAS_POR_SERVICIO.get((servicio, parametro)) or ALIAS_MODELO.get(
                 parametro, parametro[: -len("_id")]
             )
-            modelo = modelos.get(nombre_objeto)
+            # Y SIN LAS BARRAS BAJAS, que es como se llaman de verdad las clases.
+            # Los modelos se indexan por `Clase.__name__.lower()`, o sea
+            # `planconjunto`, y de un parámetro salía `plan_conjunto`: **ningún
+            # parámetro de más de una palabra ha resuelto nunca**. Eran 37, y
+            # cada uno se quedaba sin probar contra fugas entre tenants sin que
+            # nada fallara, porque no encontrar el modelo sólo apuntaba la ruta
+            # en una lista.
+            modelo = modelos.get(nombre_objeto) or modelos.get(nombre_objeto.replace("_", ""))
             if modelo is None:
                 sin_resolver.append(f"{etiqueta} (parámetro «{parametro}»)")
                 continue
@@ -459,15 +522,34 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
                 # un webhook y dos vistas de IA—, todas devolviendo vacío. Dar
                 # la alarma donde no la hay gasta el crédito de la prueba: a la
                 # tercera, quien la lee empieza a saltársela.
+                inexistente = uuid4()
                 sin_registro = cliente.request(
                     metodo,
-                    plantilla.replace(f"{{{parametro}}}", str(uuid4())),
+                    plantilla.replace(f"{{{parametro}}}", str(inexistente)),
                     headers=_cabeceras(otro_tenant_id),
                     json=_cuerpo_minimo(metodo),
                 )
-                revela = (respuesta.status_code, respuesta.text) != (
+
+                # SE COMPARA SIN EL ECO DEL IDENTIFICADOR. Media API devuelve en
+                # el cuerpo el id que se le ha pedido —`{"contacto_id": "…",
+                # "interacciones": []}`—, y con eso los dos textos difieren
+                # SIEMPRE, incluso cuando las dos respuestas están vacías y no
+                # dicen nada de nadie. Al ampliar el barrido al servicio
+                # completo, eso marcó como fuga dos rutas que filtran por
+                # `tenant_id` correctamente y devuelven vacío en los dos casos.
+                #
+                # Dar la alarma donde no la hay gasta el crédito de la prueba: a
+                # la tercera, quien la lee empieza a saltársela. Lo que sí sigue
+                # cazándose es cualquier otra diferencia, que es lo que importa.
+                def _sin_eco(texto: str, identificador: object) -> str:
+                    return texto.replace(str(identificador), "«EL-ID-PEDIDO»")
+
+                revela = (
+                    respuesta.status_code,
+                    _sin_eco(respuesta.text, fila.id),
+                ) != (
                     sin_registro.status_code,
-                    sin_registro.text,
+                    _sin_eco(sin_registro.text, inexistente),
                 )
                 if revela:
                     filtradas.append(
@@ -507,7 +589,14 @@ def test_la_suite_cubre_una_cantidad_de_rutas_que_no_puede_bajar(
                 for _m, _r, p in _rutas_con_id(app)
                 if p.endswith("_id") and p not in PARAMETROS_NO_FILA
             )
-    assert total >= 40, f"Solo {total} rutas con identificador; antes había al menos 40"
+    # 669 el 28-09-2026, al pasar el barrido al servicio completo. El suelo
+    # estaba en 40 y la cifra real ya era de cientos: un suelo que ninguna
+    # regresión imaginable podía tocar no protege de nada, y además hacía
+    # creer que sí. Se deja un margen corto a propósito.
+    assert total >= 650, (
+        f"Solo {total} rutas con identificador; había 669. Si la bajada es a "
+        "propósito, baja el suelo en el mismo commit y di por qué."
+    )
 
 
 @pytest.mark.db

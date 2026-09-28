@@ -160,18 +160,18 @@ def listar_planes(db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 @router.post(
-    "/{plan_id}/reglas",
+    "/{plan_comision_id}/reglas",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("commission:write"))],
     summary="Añadir una regla al plan",
 )
-def anadir_regla(plan_id: UUID, datos: CrearRegla, uow: UowDep) -> Any:
-    fila = com.anadir_regla(uow, plan_id, **datos.model_dump())
+def anadir_regla(plan_comision_id: UUID, datos: CrearRegla, uow: UowDep) -> Any:
+    fila = com.anadir_regla(uow, plan_comision_id, **datos.model_dump())
     return {"id": str(fila.id), "tipo": fila.tipo, "modo_tramo": fila.modo_tramo}
 
 
 @router.get(
-    "/{plan_id}/revision",
+    "/{plan_comision_id}/revision",
     dependencies=[Depends(exige_permiso("commission:read"))],
     summary="Revisar el plan antes de activarlo",
     description=(
@@ -180,33 +180,33 @@ def anadir_regla(plan_id: UUID, datos: CrearRegla, uow: UowDep) -> Any:
         "quien vendió 49.000."
     ),
 )
-def revision(plan_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    return com.revisar_plan(db, principal.tenant_id, plan_id)
+def revision(plan_comision_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    return com.revisar_plan(db, principal.tenant_id, plan_comision_id)
 
 
 @router.post(
-    "/{plan_id}/activar",
+    "/{plan_comision_id}/activar",
     dependencies=[Depends(exige_permiso("commission:write"))],
     summary="Activar el plan",
 )
-def activar(plan_id: UUID, uow: UowDep, forzar: bool = Query(False)) -> Any:
-    fila = com.activar_plan(uow, plan_id, forzar=forzar)
+def activar(plan_comision_id: UUID, uow: UowDep, forzar: bool = Query(False)) -> Any:
+    fila = com.activar_plan(uow, plan_comision_id, forzar=forzar)
     return {"id": str(fila.id), "estado": fila.estado}
 
 
 @router.post(
-    "/{plan_id}/asignaciones",
+    "/{plan_comision_id}/asignaciones",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(exige_permiso("commission:write"))],
     summary="Asignar el plan a una persona o a un partner",
 )
-def asignar(plan_id: UUID, datos: Asignar, uow: UowDep) -> Any:
-    fila = com.asignar(uow, plan_id, **datos.model_dump())
+def asignar(plan_comision_id: UUID, datos: Asignar, uow: UowDep) -> Any:
+    fila = com.asignar(uow, plan_comision_id, **datos.model_dump())
     return {"id": str(fila.id)}
 
 
 @router.post(
-    "/{plan_id}/simular",
+    "/{plan_comision_id}/simular",
     dependencies=[Depends(exige_permiso("commission:read"))],
     summary="Simular una liquidación",
     description=(
@@ -214,18 +214,18 @@ def asignar(plan_id: UUID, datos: Asignar, uow: UowDep) -> Any:
         "camino acaba no coincidiendo con la nómina."
     ),
 )
-def simular(plan_id: UUID, datos: Simular, db: DbDep, principal: AutenticadoDep) -> Any:
+def simular(plan_comision_id: UUID, datos: Simular, db: DbDep, principal: AutenticadoDep) -> Any:
     return com.calcular(
         db,
         principal.tenant_id,
-        plan_id=plan_id,
+        plan_id=plan_comision_id,
         operaciones=datos.operaciones,
         cuota=datos.cuota,
     )
 
 
 @router.post(
-    "/{plan_id}/prevision",
+    "/{plan_comision_id}/prevision",
     dependencies=[Depends(exige_permiso("commission:read"))],
     summary="Previsión de comisión con el pipeline",
     description=(
@@ -234,11 +234,13 @@ def simular(plan_id: UUID, datos: Simular, db: DbDep, principal: AutenticadoDep)
         "ganada y se acaba gastando."
     ),
 )
-def prevision(plan_id: UUID, datos: Previsionar, db: DbDep, principal: AutenticadoDep) -> Any:
+def prevision(
+    plan_comision_id: UUID, datos: Previsionar, db: DbDep, principal: AutenticadoDep
+) -> Any:
     return com.previsionar(
         db,
         principal.tenant_id,
-        plan_id=plan_id,
+        plan_id=plan_comision_id,
         cerradas=datos.cerradas,
         pipeline=datos.pipeline,
         cuota=datos.cuota,
@@ -399,5 +401,5 @@ montar_ficha(
     permiso_leer="commission:read",
     permiso_escribir="commission:write",
     nombre="Planes de comisión",
-    parametro="plan_id",
+    parametro="plan_comision_id",
 )

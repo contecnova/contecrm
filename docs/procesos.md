@@ -632,7 +632,7 @@ stateDiagram-v2
 | `POST /api/v1/partners` | Dar de alta un partner | clave*, nombre*, tipo, canal, pais, cuenta_id, nivel_id, responsable_id, pasos_onboarding | 201, 422 | — |
 | `DELETE /api/v1/partners/accesos/{acceso_id}` | Revocar el acceso al portal | acceso_id*, motivo | 200, 422 | — |
 | `POST /api/v1/partners/acuerdos` | Fijar un acuerdo de canal | partner_id, nivel_id, lista_precio_id, descuento_maximo_pct, margen_minimo_pct, desde, hasta | 201, 422 | — |
-| `POST /api/v1/partners/planes/{plan_id}/revisiones` | Anotar una revisión del plan conjunto | plan_id*, fecha, logrado, notas | 200, 422 | — |
+| `POST /api/v1/partners/planes/{plan_conjunto_id}/revisiones` | Anotar una revisión del plan conjunto | plan_conjunto_id*, fecha, logrado, notas | 200, 422 | — |
 | `POST /api/v1/partners/rendimiento` | Rendimiento del canal | desde*, hasta*, cerrado_por_partner | 200, 422 | — |
 | `PATCH /api/v1/partners/{partner_id}` | Editar partners | partner_id*, clave, nombre, cuenta_id, tipo, canal, pais, nivel_id, estado, responsable_id, onboarding, activado_at, motivo_estado | 200, 422 | — |
 | `DELETE /api/v1/partners/{partner_id}` | Borrar partners | partner_id* | 204, 422 | — |
@@ -654,14 +654,14 @@ stateDiagram-v2
 | `POST /api/v1/pipelines/{pipeline_id}/archivar` | Archivar procesos de venta | pipeline_id* | 200, 422 | — |
 | `POST /api/v1/pipelines/{pipeline_id}/etapas` | Añadir una etapa | pipeline_id*, clave*, nombre*, orden, probabilidad, color, terminal, ganada, criterios_salida, checklist, dias_estancamiento | 201, 422 | — |
 | `POST /api/v1/planes-comision` | Crear un plan de comisiones | clave*, nombre*, desde*, hasta, base, moneda, periodicidad, devengo, tope_periodo | 201, 422 | — |
-| `PATCH /api/v1/planes-comision/{plan_id}` | Editar planes de comisión | plan_id*, clave, nombre, base, moneda, periodicidad, desde, hasta, estado, devengo, tope_periodo | 200, 422 | — |
-| `DELETE /api/v1/planes-comision/{plan_id}` | Borrar planes de comisión | plan_id* | 204, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/activar` | Activar el plan | plan_id*, forzar | 200, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/archivar` | Archivar planes de comisión | plan_id* | 200, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/asignaciones` | Asignar el plan a una persona o a un partner | plan_id*, usuario_id, partner_id, desde, hasta, cuota | 201, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/prevision` | Previsión de comisión con el pipeline | plan_id*, cerradas, pipeline, cuota | 200, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/reglas` | Añadir una regla al plan | plan_id*, tipo*, nombre, orden, desde_valor, hasta_valor, porcentaje, importe_fijo, multiplicador, modo_tramo, condiciones, vigente_desde, vigente_hasta | 201, 422 | — |
-| `POST /api/v1/planes-comision/{plan_id}/simular` | Simular una liquidación | plan_id*, operaciones*, cuota | 200, 422 | — |
+| `PATCH /api/v1/planes-comision/{plan_comision_id}` | Editar planes de comisión | plan_comision_id*, clave, nombre, base, moneda, periodicidad, desde, hasta, estado, devengo, tope_periodo | 200, 422 | — |
+| `DELETE /api/v1/planes-comision/{plan_comision_id}` | Borrar planes de comisión | plan_comision_id* | 204, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/activar` | Activar el plan | plan_comision_id*, forzar | 200, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/archivar` | Archivar planes de comisión | plan_comision_id* | 200, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/asignaciones` | Asignar el plan a una persona o a un partner | plan_comision_id*, usuario_id, partner_id, desde, hasta, cuota | 201, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/prevision` | Previsión de comisión con el pipeline | plan_comision_id*, cerradas, pipeline, cuota | 200, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/reglas` | Añadir una regla al plan | plan_comision_id*, tipo*, nombre, orden, desde_valor, hasta_valor, porcentaje, importe_fijo, multiplicador, modo_tramo, condiciones, vigente_desde, vigente_hasta | 201, 422 | — |
+| `POST /api/v1/planes-comision/{plan_comision_id}/simular` | Simular una liquidación | plan_comision_id*, operaciones*, cuota | 200, 422 | — |
 | `POST /api/v1/planes-conjuntos` | Guardar el plan conjunto con el cliente | oportunidad_id*, pasos, fecha_objetivo | 201, 422 | — |
 | `POST /api/v1/planes-conjuntos/revision` | Registrar una revisión estructurada de la oportunidad | oportunidad_id*, respuestas, probabilidad_declarada, fecha_declarada, acuerdos | 201, 422 | — |
 | `PATCH /api/v1/planes-conjuntos/{plan_conjunto_id}` | Editar planes conjuntos | plan_conjunto_id*, oportunidad_id, fecha_objetivo, pasos, compartido_con_el_cliente, visto_por_el_cliente_at | 200, 422 | — |

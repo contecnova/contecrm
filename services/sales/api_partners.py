@@ -480,12 +480,12 @@ def crear_plan(partner_id: UUID, datos: Plan, uow: UowDep) -> Any:
 
 
 @router.post(
-    "/planes/{plan_id}/revisiones",
+    "/planes/{plan_conjunto_id}/revisiones",
     dependencies=[Depends(exige_permiso("partner:write"))],
     summary="Anotar una revisión del plan conjunto",
 )
-def revisar_plan(plan_id: UUID, datos: Revision, uow: UowDep) -> Any:
-    return prt.revisar_plan(uow, plan_id, **datos.model_dump())
+def revisar_plan(plan_conjunto_id: UUID, datos: Revision, uow: UowDep) -> Any:
+    return prt.revisar_plan(uow, plan_conjunto_id, **datos.model_dump())
 
 
 @router.post(
