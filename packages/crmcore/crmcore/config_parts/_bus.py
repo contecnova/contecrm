@@ -74,6 +74,11 @@ class _BusSettings(BaseSettings):
     webhook_timeout_s: float = Field(10.0, ge=0.5, le=120.0)
     webhook_max_intentos: int = Field(6, ge=1, le=50)
     webhook_backoff_base_s: float = Field(5.0, ge=0.5, le=600.0)
+
+    # Cada cuánto se recogen las entregas fallidas cuyo momento de reintento ya
+    # llegó. Sin este relevo el backoff no existe: `proximo_intento_at` sería una
+    # fecha guardada en una fila que nadie vuelve a mirar.
+    webhook_reintento_intervalo_s: float = Field(10.0, ge=1.0, le=300.0)
     # Ventana en la que se acepta la firma de una petición entrante, para que
     # un mensaje capturado no se pueda reenviar más tarde (anti-replay).
     webhook_firma_ventana_s: int = Field(300, ge=30, le=3600)

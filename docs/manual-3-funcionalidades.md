@@ -4606,6 +4606,42 @@ fue.
 
 ## 53. Cuatro cosas de plataforma que se notan cuando ya es tarde
 
+### Los webhooks salientes: quién reparte, y quién recoge lo que falló
+
+**Para el usuario.** Se crea una suscripción con una URL, los tipos de evento que
+interesan y, si hace falta, condiciones sobre el contenido —«oportunidad ganada
+de más de 10.000»—. Cada entrega va **firmada con HMAC** y con la clave de
+deduplicación en cabecera, para que el receptor descarte un duplicado sin
+parsear el cuerpo. Lo que falla se reintenta con espera creciente, y un endpoint
+con veinte fallos seguidos se desactiva solo: seguir llamando a algo que ya no
+existe es tráfico, ruido y una cola que no se vacía nunca.
+
+**Para mantenimiento.** Dos piezas, y las dos tienen que estar enchufadas:
+
+- un **consumidor del bus** (`eventing-webhooks`, patrón ancho) que casa el
+  evento con las suscripciones del tenant y entrega;
+- un **relevo de reintentos** que arranca con el servicio y recorre las entregas
+  cuyo `proximo_intento_at` ya ha llegado. Su intervalo es configuración
+  (`webhook_reintento_intervalo_s`), no una constante.
+
+> **Se vio funcionar el 28-09-2026, y hasta ese día no salía un solo webhook.**
+> El reparto estaba entero —firma, reintentos, desactivación del endpoint
+> muerto— con sus pruebas unitarias en verde, y **no lo importaba nadie**: el
+> servicio declaraba sus rutas y ningún consumidor. Un `grep` del módulo en todo
+> el árbol daba una sola coincidencia, un fichero de pruebas.
+>
+> Para el cliente era el fallo más difícil de ver que existe: crea su
+> suscripción, la ve en el listado, mira su historial de entregas, lo ve vacío
+> **y cree que todavía no ha pasado nada**. No hay error que buscar, porque no
+> hay error.
+>
+> Y la descripción del propio servicio prometía «reintentos con backoff» y
+> «desactivación automática de endpoints muertos». Es el mismo patrón que la
+> suspensión de tenants el mismo día: no un guardián apagado, sino **un guardián
+> que nunca se encendió y que se contaba como encendido**. Por eso las pruebas
+> de esto son del camino —un evento entra por el bus y tiene que salir un POST—
+> y no de la función: la función siempre estuvo bien.
+
 ### Recibir eventos sin exponer un endpoint (`CRM-00.02.02.10`)
 
 Los webhooks exigen una dirección pública y estable. Eso deja fuera a media
