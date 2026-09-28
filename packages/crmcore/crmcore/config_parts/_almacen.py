@@ -28,6 +28,12 @@ class _AlmacenSettings(BaseSettings):
     # Tamaño máximo por fichero, en MB. 25 es el límite práctico del correo, que
     # es de donde llega la mayoría de adjuntos.
     adjunto_max_mb: int = Field(25, ge=1, le=5_000)
+
+    # Tope de espacio por tenant EN ESTE MÓDULO. Cero es sin límite, y es el
+    # valor por defecto a propósito: un despliegue que no ha configurado cuotas
+    # no puede quedarse sin poder subir nada porque a alguien se le olvidara
+    # declararlas. La omisión abre, nunca cierra.
+    cuota_almacenamiento_mb: int = Field(0, ge=0, le=10_000_000)
     # Extensiones admitidas. **Lista blanca, no negra**: una lista negra siempre
     # se queda corta —basta una extensión nueva o una mayúscula— y lo que está
     # en juego es ejecutar algo en el navegador de quien lo descargue.

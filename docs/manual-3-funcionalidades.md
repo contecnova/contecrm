@@ -4606,6 +4606,49 @@ fue.
 
 ## 53. Cuatro cosas de plataforma que se notan cuando ya es tarde
 
+### Las tareas periódicas, y por qué no había ninguna
+
+**Para el usuario.** Hay cosas que pasan solas cada tanto: los recordatorios
+vencidos se emiten, los informes programados se ejecutan y se mandan, y los
+estados caducados de SSO, SAML y MFA se tiran para que sus tablas no crezcan sin
+techo. Todo eso ocurre sin que nadie pulse nada.
+
+**Para mantenimiento.** Cada servicio que tiene barridos arranca un **relevo de
+tareas** con su lista, y cada tarea lleva su propio intervalo, configurable
+(`tarea_recordatorios_intervalo_s`, `tarea_informes_intervalo_s`,
+`tarea_reverificaciones_intervalo_s`, `tarea_purgas_intervalo_s`). Tres reglas,
+y las tres nacen de averías reales:
+
+- **Se aísla por tenant y se sigue.** Un fallo en el tenant 40 no puede parar a
+  los 200 siguientes, y el que falla deja **su identificador y su motivo** en el
+  registro — no un contador, que no sirve para arreglar nada.
+- **A los tres fallos seguidos deja de ser un fallo y pasa a ser una avería**,
+  y sale en la **página de estado**, no sólo en el log. Un barrido que falla
+  siempre en el mismo sitio y sigue en verde es otra avería silenciosa.
+- **Late aunque no haya nada que barrer.** Si sólo se registrara al trabajar,
+  una tarea parada y una sin trabajo se verían igual desde fuera.
+
+> **Esto no existía, y se vio el 28-09-2026.** Había **seis** funciones
+> escritas, probadas y **sin nadie que las llamara**: los recordatorios vencidos
+> no se emitían nunca, los informes programados no salían —la ruta
+> `POST /informes/correr-programadas` existía y no la disparaba nadie— y tres
+> tablas de caducados crecían para siempre.
+>
+> El peor era el recordatorio: un comercial lo pone en una actividad, lo ve
+> guardado con su fecha, **y no le llega nunca**. Sin error, porque no hay error.
+> Y `purgar_estados` lo decía en su propia documentación —«La ejecuta una tarea
+> periódica»— cuando no había ninguna.
+>
+> **No faltaban seis cosas: faltaba una.** contecrm tenía workers de cola —que
+> consumen lo que se les encola— y nada que hiciera «cada N minutos, barre
+> esto». Seis arreglos habrían sido seis sitios donde volver a olvidarse.
+>
+> Hay una prueba que impide la séptima: si alguien escribe otra función con
+> pinta de barrido y **no la llama nadie** en producción, el gate cae y dice
+> cuál. Que una prueba unitaria la llame no cuenta — eso es exactamente lo que
+> pasaba con las seis.
+
+
 ### Los webhooks salientes: quién reparte, y quién recoge lo que falló
 
 **Para el usuario.** Se crea una suscripción con una URL, los tipos de evento que

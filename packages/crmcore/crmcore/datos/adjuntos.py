@@ -190,6 +190,63 @@ def validar(nombre: str, datos: bytes, db: Session | None = None) -> None:
         raise ErrorValidacion("El fichero está vacío", error_code="adjunto.fichero_vacio")
 
 
+def espacio_ocupado(db: Session, tenant_id: UUID) -> int:
+    """Bytes que este tenant ocupa aquí, sumados de las propias filas.
+
+    **Sin contador.** El tamaño ya está en cada adjunto, así que sumarlo es la
+    verdad por construcción: un contador aparte se desincroniza el primer día
+    que alguien borre una fila por otra vía, y entonces el cliente paga por
+    espacio que no ocupa o se le deja pasar del tope.
+    """
+    total = db.execute(
+        select(func.coalesce(func.sum(Adjunto.tamano), 0)).where(Adjunto.tenant_id == tenant_id)
+    ).scalar_one()
+    return int(total)
+
+
+def exigir_espacio(db: Session, tenant_id: UUID, entrantes: int) -> None:
+    """Corta si el fichero no cabe en lo que le queda al tenant.
+
+    **Sin tope declarado se deja pasar**, y es deliberado: un despliegue que no
+    ha configurado cuotas no puede quedarse sin poder subir nada porque a
+    alguien se le olvidara declararlas. La omisión abre, nunca cierra.
+
+    El tope es de este módulo, no de toda la suite: cada servicio guarda lo suyo
+    en su esquema y cuenta lo suyo. Así el mensaje puede decir **qué** se ha
+    agotado, que con un tope global no se puede, y el alta no depende de una
+    lectura entre servicios.
+    """
+    from crmcore.runtime import settings as rt
+    from crmcore.tenancy.context import con_contexto, contexto_actual
+
+    # EL TOPE ES DEL TENANT QUE SE PASA, no del contexto ambiente. `efectivo`
+    # resuelve por contexto, y casi siempre coinciden —quien sube es quien está
+    # dentro—, pero no siempre: un trabajo de sistema que sube en nombre de otro
+    # leería la cuota equivocada, y eso es dejar pasar a quien había que cortar
+    # o al revés. Lo cazó la prueba de que lo de un tenant no cuenta contra otro.
+    if contexto_actual().tenant_id == tenant_id:
+        max_mb = int(rt.efectivo("cuota_almacenamiento_mb", db) or 0)
+    else:
+        with con_contexto(tenant_id=tenant_id, origen="cuota"):
+            max_mb = int(rt.efectivo("cuota_almacenamiento_mb", db) or 0)
+    if max_mb <= 0:
+        return
+
+    ocupado = espacio_ocupado(db, tenant_id)
+    tope = max_mb * 1024 * 1024
+    if ocupado + entrantes > tope:
+        raise CuotaAgotada(
+            f"No cabe: ocupas {ocupado / 1024 / 1024:.0f} MB de {max_mb} MB y el "
+            f"fichero son {entrantes / 1024 / 1024:.1f} MB",
+            error_code="cuota.almacenamiento",
+            detalle={
+                "ocupado_mb": round(ocupado / 1024 / 1024, 1),
+                "max_mb": max_mb,
+                "fichero_mb": round(entrantes / 1024 / 1024, 1),
+            },
+        )
+
+
 def subir(
     db: Session,
     *,
@@ -220,6 +277,7 @@ def subir(
     from crmcore.runtime import settings as rt
 
     validar(nombre, datos, db)
+    exigir_espacio(db, tenant_id, len(datos))
     if carpeta_id is not None:
         _exigir_carpeta_del_objeto(db, carpeta_id, objeto_tipo, objeto_id)
     sha = hashlib.sha256(datos).hexdigest()

@@ -196,6 +196,24 @@ CLAVES: dict[str, ClaveAjuste] = {
             sensible=True,
         ),
         # Límites y cuotas
+        #
+        # Las cuotas van **por módulo** y no en un tope global: cada servicio
+        # guarda lo suyo en su esquema y cuenta lo suyo. Así el alta no depende
+        # de una lectura entre servicios —que sería cara y se caería con el
+        # vecino— y, sobre todo, **el mensaje puede decir QUÉ se ha agotado**,
+        # que con un tope global no se puede.
+        #
+        # Y todas abren por omisión: 0 o sin declarar es «sin límite». Un
+        # despliegue que no ha configurado cuotas no puede quedarse sin poder
+        # trabajar porque a alguien se le olvidara declararlas.
+        _c(
+            "cuota_almacenamiento_mb",
+            "int",
+            "Megabytes de ficheros que puede ocupar un tenant en este módulo (0 = sin límite)",
+            minimo=0,
+            maximo=10_000_000,
+            campo_settings="cuota_almacenamiento_mb",
+        ),
         _c(
             "rate_limit_por_tenant",
             "int",

@@ -65,3 +65,17 @@ class _ServicioSettings(BaseSettings):
     # Aviso cuando la última copia supera este porcentaje del RPO. Al 80 % queda
     # margen para reaccionar; al 100 % el aviso llega cuando ya se ha incumplido.
     rpo_aviso_pct: int = Field(80, ge=10, le=100)
+
+    # ── Tareas periódicas ─────────────────────────────────────────────────
+    #
+    # contecrm tenía workers de cola y **nada que hiciera «cada N minutos, barre
+    # esto»**. Seis funciones estaban escritas, probadas y sin llamador: los
+    # recordatorios vencidos no se emitían nunca, los informes programados no
+    # salían, y tres tablas de estados caducados crecían sin techo.
+    #
+    # Los intervalos son ajustes y no constantes porque el ritmo que le conviene
+    # a un despliegue de tres tenants no es el de uno de trescientos.
+    tarea_recordatorios_intervalo_s: int = Field(60, ge=5, le=3_600)
+    tarea_reverificaciones_intervalo_s: int = Field(3_600, ge=60, le=86_400)
+    tarea_informes_intervalo_s: int = Field(300, ge=30, le=86_400)
+    tarea_purgas_intervalo_s: int = Field(3_600, ge=60, le=86_400)
