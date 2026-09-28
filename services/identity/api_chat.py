@@ -490,6 +490,16 @@ def fijar_presencia(datos: EstadoPresencia, uow: UowDep, principal: AutenticadoD
         "Lleva latido: un flujo sin datos durante minutos lo cierra cualquier "
         "intermediario, y el cliente cree que el servidor se ha caído."
     ),
+    # EL CONTRATO TIENE QUE DECIR QUE ESTO ES UN FLUJO, y hasta ahora solo lo
+    # decía la descripción en prosa. El contrato publicado anunciaba una
+    # respuesta JSON corriente, así que cualquiera que lo lea —un cliente
+    # generado, un catálogo de API, una herramienta que recorra rutas— la pide
+    # como una más y se queda esperando para siempre a que termine algo que no
+    # termina por diseño. Ha pasado dos veces aquí: colgó el registro de
+    # fuentes, que lo tapó con un plazo corto, y colgó diez minutos el barrido
+    # de listados. Las dos veces el síntoma fue el mismo y no decía nada: cero
+    # por ciento de CPU, sin error y sin avanzar.
+    responses={200: {"content": {"text/event-stream": {}}, "description": "Flujo de eventos"}},
 )
 async def eventos(
     db: DbDep,

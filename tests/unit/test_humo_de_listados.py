@@ -96,6 +96,16 @@ def _listados_de(app: Any) -> list[str]:
         # fallo que se busca aquí: se saltan para que el resultado sea legible.
         if any(p.get("required") for p in get.get("parameters") or []):
             continue
+        # LOS FLUJOS DE EVENTOS NO SE ABREN AQUÍ, y no es una excepción cómoda:
+        # un `text/event-stream` se queda abierto a propósito mandando lo que
+        # pasa, así que pedirlo y esperar a que termine es esperar para siempre.
+        # Colgó este barrido diez minutos en `identity` —`/chat/eventos`— y es
+        # el mismo tropiezo que ya tuvo el registro de fuentes, que lo resolvió
+        # con un plazo corto. Aquí no hace falta plazo: se reconoce por lo que
+        # el propio contrato declara que devuelve.
+        respuestas = (get.get("responses") or {}).get("200") or {}
+        if "text/event-stream" in (respuestas.get("content") or {}):
+            continue
         caminos.append(camino)
     return sorted(caminos)
 

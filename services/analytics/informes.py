@@ -713,44 +713,29 @@ def _aviso_de_plan_no_aplicado(
 ) -> dict[str, Any]:
     """Lo que el informe pide y el motor conectado no devuelve.
 
-    El plan viaja entero, pero **quien lo ejecuta solo aplica lo que su esquema
-    declara**, y lo que no declara lo ignora sin decir nada: es un cuerpo JSON,
-    y un campo desconocido no es un error para nadie. Hoy `/api/query/plan` de
-    contecintelligence declara nueve campos y el plan lleva quince, así que un
-    informe con campos calculados se ejecuta SIN ellos y uno matricial sale sin
-    pivotar — con su tabla, sus cifras y su cara de informe correcto.
+    Ya no avisa de los campos calculados ni del pivote: el ejecutor los aplica
+    desde que su esquema los declara, y este aviso se retiró el día que dejó de
+    ser cierto —lo obligó la prueba que compara el plan con ese esquema, que es
+    para lo que estaba escrita—.
 
-    No se da por supuesto: **se mide**. Las filas son listas, así que su anchura
-    dice cuántas columnas trajo de verdad. Si trae las mismas que sabemos nombrar
-    y el informe pedía calculados, es que no se aplicaron. Y si trae más, es que
-    el motor ya los aplica y quien falta por enterarse es esta función — que es
-    justo el día en que hay que quitar el aviso, y así se nota.
+    Queda la otra mitad, que sigue haciendo falta: **si vienen más columnas de
+    las que este lado sabe nombrar, las cabeceras y los datos no cuadran**. Una
+    tabla así no da ningún error: enseña números que parecen números y nombra
+    cada uno con la columna de al lado. Es lo que habría pasado hoy mismo al
+    desplegarse los calculados si nadie hubiera nombrado las nuevas.
+
+    Se mide, no se supone: las filas son listas, así que su anchura dice cuántas
+    columnas han venido de verdad.
     """
-    calculados = list(plan.get("calculados") or [])
-    pivote = plan.get("pivote")
-    if not calculados and not pivote:
-        return {}
     primera = next((f for f in filas if isinstance(f, (list, tuple))), None)
-    ancho = len(primera) if primera is not None else len(nombres)
-    if ancho > len(nombres):
-        return {
-            "aviso_plan": (
-                "El motor ha devuelto más columnas de las que este informe sabe "
-                "nombrar. Probablemente ya aplica los campos calculados o el "
-                "pivote: hay que nombrarlas aquí antes de fiarse de las cabeceras."
-            )
-        }
-    falta = []
-    if calculados:
-        falta.append(f"{len(calculados)} campo(s) calculado(s)")
-    if pivote:
-        falta.append(f"el pivote por «{pivote}»")
+    if primera is None or len(primera) <= len(nombres):
+        return {}
     return {
         "incompleto": True,
         "aviso_plan": (
-            "Este informe define " + " y ".join(falta) + ", y el motor analítico "
-            "conectado no los aplica: el resultado es correcto pero NO es el "
-            "informe que se definió. Lo resuelve quien ejecuta el plan."
+            f"El motor ha devuelto {len(primera)} columnas y este informe solo "
+            f"sabe nombrar {len(nombres)}. Las cabeceras pueden no corresponder "
+            "con los datos: hay que nombrarlas aquí antes de fiarse de la tabla."
         ),
     }
 
@@ -758,29 +743,43 @@ def _aviso_de_plan_no_aplicado(
 def _nombres_de_columna(plan: dict[str, Any]) -> list[str]:
     """Los nombres de las columnas del resultado, en su orden.
 
-    Es el mismo orden en que las compone `compilar`: primero las agrupaciones,
-    después las métricas y, si no hay agrupación, las columnas sueltas. Si los
-    dos se separaran, las cabeceras dirían una cosa y los datos serían otra, que
-    es peor que no tener cabeceras.
+    **Es el orden en que las emite quien ejecuta el plan, no el que parezca
+    natural aquí**, y por eso está escrito mirando su compilador:
+
+        agrupaciones · pivote · métricas · calculados · columnas sueltas
+
+    El pivote va entre las agrupaciones y las métricas porque para el ejecutor
+    es una agrupación más. Los calculados van después de las métricas porque uno
+    puede referirse al alias de una métrica y no al revés. Y las columnas
+    sueltas van al final y **solo si no hay agrupaciones**: con agrupación, una
+    columna fuera del GROUP BY haría fallar el informe entero, así que él no las
+    pide.
+
+    Si estos dos órdenes se separan, no sale ningún error: sale una tabla donde
+    cada cabecera nombra la columna de al lado. Números que parecen números, mal
+    etiquetados, y nadie lo ve leyendo la pantalla.
     """
     nombres: list[str] = []
-    for agrupacion in plan.get("agrupaciones") or []:
+    agrupaciones = plan.get("agrupaciones") or []
+    for agrupacion in agrupaciones:
         # Una agrupación es SIEMPRE un diccionario con `campo`: así la valida la
-        # API, así la exige `_campos_usados` y así la construye `compilar`, que
-        # es quien arma este plan. Aquí había además una rama para cuando fuera
-        # texto suelto, inalcanzable: con una agrupación así, `compilar` revienta
-        # trescientas líneas antes. Una rama que contempla una forma que el
-        # sistema no acepta hace creer que esa forma vale.
+        # API, así la exige `_campos_usados` y así la construye `compilar`.
         campo = str((agrupacion or {}).get("campo") or "")
         periodo = str((agrupacion or {}).get("periodo") or "")
         nombres.append(f"{campo}_{periodo}" if periodo else campo)
+    if plan.get("pivote"):
+        nombres.append(str(plan["pivote"]))
     for metrica in plan.get("metricas") or []:
         agregado = str((metrica or {}).get("agregado") or "suma")
         campo = str((metrica or {}).get("campo") or "")
         nombres.append(
             str((metrica or {}).get("como") or (f"{agregado}_{campo}" if campo else agregado))
         )
-    if not nombres:
+    for calculado in plan.get("calculados") or []:
+        alias = str((calculado or {}).get("como") or "")
+        if alias:
+            nombres.append(alias)
+    if not agrupaciones:
         for columna in plan.get("columnas") or []:
             nombres.append(
                 columna if isinstance(columna, str) else str((columna or {}).get("campo") or "")

@@ -597,66 +597,84 @@ def test_un_informe_que_ningun_cuadro_usa_se_borra(uow: UnidadDeTrabajo) -> None
 # ── Lo que el plan pide y el motor no aplica ──────────────────────────────
 
 
-def test_un_informe_con_campos_calculados_avisa_de_que_no_se_aplican(
-    uow: UnidadDeTrabajo,
-) -> None:
-    """El plan viaja entero y el ejecutor solo aplica lo que su esquema declara.
+def test_las_cabeceras_nombran_las_columnas_calculadas(uow: UnidadDeTrabajo) -> None:
+    """El motor las devuelve desde que su esquema las declara.
 
-    `/api/query/plan` de contecintelligence declara nueve campos y el plan lleva
-    quince: `calculados` y `pivote` se ignoran sin error, porque un campo que un
-    cuerpo JSON no declara no es un fallo para nadie. El informe sale con su
-    tabla y sus cifras, y le faltan las columnas que alguien definió.
-    """
-    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
-    fila = _informe(
-        uow,
-        calculados=[
-            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
-        ],
-    )
-    salida = inf.ejecutar(uow, fila.id)
-    assert salida["incompleto"] is True
-    assert "calculado" in salida["aviso_plan"]
-    # Y las cabeceras no se inventan la columna que no ha venido.
-    assert "margen" not in salida["columnas"]
-
-
-def test_un_informe_matricial_avisa_de_que_no_se_pivota(uow: UnidadDeTrabajo) -> None:
-    # Una sola columna nombrada y una sola por fila: si no cuadraran, lo que
-    # saltaría es el otro aviso —el de que vienen columnas de más—, y esta
-    # prueba estaría mirando otra cosa.
-    inf.registrar_ejecutor(_ejecutor([["ACME"]]))
-    fila = _informe(uow, tipo="matricial", pivote="etapa", agrupaciones=[{"campo": "nombre"}])
-    salida = inf.ejecutar(uow, fila.id)
-    assert salida["incompleto"] is True
-    assert "etapa" in salida["aviso_plan"]
-
-
-def test_sin_calculados_ni_pivote_no_se_avisa_de_nada(uow: UnidadDeTrabajo) -> None:
-    """Un aviso que sale siempre deja de leerse."""
-    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
-    salida = inf.ejecutar(uow, _informe(uow).id)
-    assert "aviso_plan" not in salida
-
-
-def test_si_el_motor_ya_los_aplica_el_aviso_cambia(uow: UnidadDeTrabajo) -> None:
-    """Se mide, no se supone: una fila más ancha significa que ya vienen.
-
-    Es la condición que dice que hay que quitar este aviso, y por eso la prueba
-    existe: el día que contecintelligence aplique los calculados, esto avisa de
-    que las cabeceras se han quedado cortas en vez de seguir diciendo que no se
-    aplican.
+    Y las devuelve DESPUÉS de las métricas, porque un calculado puede referirse
+    al alias de una métrica. Si aquí fueran en otro orden, cada cabecera
+    nombraría la columna de al lado: una tabla con números bien calculados y mal
+    etiquetados, que no da ningún error y nadie detecta leyéndola.
     """
     inf.registrar_ejecutor(_ejecutor([["ACME", 10, 3]]))
     fila = _informe(
         uow,
+        agrupaciones=[{"campo": "nombre"}],
+        metricas=[{"agregado": "suma", "campo": "importe", "como": "total"}],
         calculados=[
             {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
         ],
     )
     salida = inf.ejecutar(uow, fila.id)
-    assert "incompleto" not in salida
-    assert "más columnas" in salida["aviso_plan"]
+    assert salida["columnas"] == ["nombre", "total", "margen"]
+    assert "aviso_plan" not in salida
+
+
+def test_el_pivote_va_entre_las_agrupaciones_y_las_metricas(uow: UnidadDeTrabajo) -> None:
+    """Para quien ejecuta es una agrupación más, y ahí lo coloca."""
+    inf.registrar_ejecutor(_ejecutor([["ACME", "ganada", 10]]))
+    fila = _informe(
+        uow,
+        tipo="matricial",
+        pivote="etapa",
+        agrupaciones=[{"campo": "nombre"}],
+        metricas=[{"agregado": "suma", "campo": "importe", "como": "total"}],
+    )
+    salida = inf.ejecutar(uow, fila.id)
+    assert salida["columnas"] == ["nombre", "etapa", "total"]
+    assert "aviso_plan" not in salida
+
+
+def test_las_columnas_sueltas_van_al_final_y_solo_sin_agrupacion(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Con agrupación no se piden: una columna fuera del GROUP BY revienta.
+
+    Este orden estuvo mal un rato: al añadir los calculados, la condición que
+    decidía si pedir las columnas sueltas dejó de ser equivalente y un informe
+    tabular con un calculado perdía sus columnas de la cabecera.
+    """
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10, 3]]))
+    fila = _informe(
+        uow,
+        columnas=["nombre", "importe"],
+        calculados=[
+            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
+        ],
+    )
+    assert inf.ejecutar(uow, fila.id)["columnas"] == ["margen", "nombre", "importe"]
+
+
+def test_si_vienen_mas_columnas_de_las_que_sabemos_nombrar_se_dice(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Es la mitad del aviso que se queda, y la que de verdad protege.
+
+    El día que el ejecutor emita algo que este lado no nombra —como pasó al
+    desplegarse los campos calculados— las cabeceras dejan de corresponder con
+    los datos sin dar un solo error. Se mide por la anchura de las filas, que es
+    el único dato fiable que hay.
+    """
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10, 3, 7]]))
+    salida = inf.ejecutar(uow, _informe(uow).id)
+    assert salida["incompleto"] is True
+    assert "4 columnas" in salida["aviso_plan"]
+    assert "sabe nombrar 2" in salida["aviso_plan"]
+
+
+def test_cuando_cuadran_no_se_avisa_de_nada(uow: UnidadDeTrabajo) -> None:
+    """Un aviso que sale siempre deja de leerse."""
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
+    assert "aviso_plan" not in inf.ejecutar(uow, _informe(uow).id)
 
 
 def test_toda_clave_del_plan_esta_declarada_o_apuntada_como_no_aplicada(
@@ -676,9 +694,12 @@ def test_toda_clave_del_plan_esta_declarada_o_apuntada_como_no_aplicada(
     import json
     from pathlib import Path
 
+    # Las cuatro que quedan son contexto que contecrm compone por su cuenta, no
+    # instrucciones para quien ejecuta. `calculados` y `pivote` estuvieron aquí
+    # hasta que el motor los declaró en su esquema, y salieron el mismo día:
+    # esta prueba se queja también cuando sobra una entrada, que es lo que
+    # impide que un aviso siga puesto después de dejar de ser cierto.
     NO_APLICADAS = {
-        "calculados": "el motor no las aplica; el resultado sale marcado «incompleto»",
-        "pivote": "idem: un matricial sale sin pivotar, y se avisa",
         "pedir": "es `limite + 1`, para saber si hay más; el ejecutor aplica `limite`",
         "objeto": "de qué objeto del CRM es; se usa aquí, no allí",
         "campos_retirados": "lo que se quitó por permisos; va a la respuesta, no a la consulta",
@@ -720,19 +741,16 @@ def test_el_informe_programado_dice_si_lo_que_manda_esta_incompleto(
 
     En pantalla el aviso va debajo de la cifra; en un correo no hay debajo. Si
     el evento no lo lleva, quien lo recibe se queda con un fichero de aspecto
-    impecable al que le faltan las columnas que alguien definió.
+    impecable cuyas cabeceras no corresponden con sus datos.
 
     Va SIEMPRE, también cuando es `False`: un campo que solo aparece cuando hay
     problema obliga a quien integra a distinguir «no está» de «está y es que
     no», y por el camino se lee como que todo va bien.
     """
-    inf.registrar_ejecutor(_ejecutor([["ACME", 10]]))
-    fila = _informe(
-        uow,
-        calculados=[
-            {"como": "margen", "izquierda": "importe", "operacion": "-", "derecha": "importe"}
-        ],
-    )
+    # Cuatro valores por fila y dos cabeceras: el motor devuelve algo que este
+    # lado no sabe nombrar, que es la situación que hay que contar.
+    inf.registrar_ejecutor(_ejecutor([["ACME", 10, 3, 7]]))
+    fila = _informe(uow)
     programacion = inf.programar(uow, fila.id, destinatarios=["jefe@ejemplo.test"])
     programacion.proxima_at = datetime.now(timezone.utc) - timedelta(hours=1)
     uow.db.flush()
@@ -740,7 +758,7 @@ def test_el_informe_programado_dice_si_lo_que_manda_esta_incompleto(
     inf.correr_programadas(uow, uow.tenant_id)
     entregado = next(e for e in uow._pendientes if e["tipo"] == "report.delivered")
     assert entregado["data"]["incompleto"] is True
-    assert "calculado" in entregado["data"]["aviso"]
+    assert "columnas" in entregado["data"]["aviso"]
 
 
 def test_un_programado_completo_lo_dice_tambien(uow: UnidadDeTrabajo) -> None:

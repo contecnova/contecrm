@@ -7407,13 +7407,30 @@ La división sale del plan marcada con `proteger_division`, para que quien la
 ejecute se guarde del cero: en SQL, dividir por cero revienta la consulta entera,
 y en un informe eso es una pantalla en blanco en vez de una fila rara.
 
-**Quien los aplica es el motor que ejecuta el plan, y el resultado dice si no lo
-ha hecho.** El plan viaja entero, pero cada ejecutor aplica lo que su esquema
-declara y lo que no declara lo ignora sin error: es un cuerpo JSON, y un campo
-desconocido no es un fallo para nadie. Hoy el plan lleva quince campos y
-`/api/query/plan` de contecintelligence declara nueve, así que un informe con
-campos calculados se ejecuta sin ellos y uno matricial sale sin pivotar —con su
-tabla, sus cifras y su cara de informe correcto—.
+**Quien los aplica es el motor que ejecuta el plan.** El plan viaja entero, pero
+cada ejecutor aplica lo que su esquema declara y lo que no declara lo ignora sin
+error: es un cuerpo JSON, y un campo desconocido no es un fallo para nadie.
+Durante un tiempo el motor conectado no aplicaba los campos calculados ni el
+pivote —los ejecutaba sin ellos, con su tabla y su cara de informe correcto— y
+el resultado salía marcado como incompleto para no mentir. Ya los aplica, así
+que ese aviso se retiró: **lo obligó la prueba que compara el plan con el
+esquema del ejecutor**, que se queja tanto cuando falta una declaración como
+cuando sobra un aviso que ya no es cierto.
+
+**El orden de las cabeceras es el del ejecutor, no el que parezca natural aquí**:
+agrupaciones, pivote, métricas, calculados y, solo si no hay agrupaciones, las
+columnas sueltas al final. El pivote va con las agrupaciones porque para él es
+una agrupación más; los calculados van después de las métricas porque uno puede
+referirse al alias de una métrica y no al revés. Si los dos órdenes se separan
+no salta ningún error: sale una tabla donde cada cabecera nombra la columna de
+al lado. Números bien calculados, mal etiquetados, y nadie lo ve leyendo la
+pantalla.
+
+Por eso se mide: **si vienen más columnas de las que este lado sabe nombrar, se
+dice**. Las filas son listas, así que su anchura es el único dato fiable de
+cuántas han venido. Ese aviso es el que protege el día que el motor aprende algo
+nuevo —como pasó al desplegarse los campos calculados— y aquí todavía no se ha
+nombrado.
 
 **Las filas viajan como listas y los nombres aparte.** Una fila en lista pesa
 la mitad, y un informe de cincuenta mil se nota. La exportación lo daba por

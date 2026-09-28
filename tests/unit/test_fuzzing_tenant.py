@@ -50,7 +50,32 @@ from starlette.testclient import TestClient
 # nombre (`/objetos/{objeto}/campos/{nombre}`), no por identificador, así que no
 # hay identificador ajeno que enumerar. Su aislamiento lo cubre el guard del
 # ORM, que tiene sus propias pruebas.
-SERVICIOS = ("party", "sales", "orchestrator", "tenancy", "identity")
+# LOS TRECE, no los cinco de antes.
+#
+# Esta lista tenía cinco servicios y ningún comentario que dijera por qué esos.
+# El aislamiento lo sostienen el RLS y el guard, que son de todos, y hay pruebas
+# de dominio repartidas; pero el fuzzing es la única que recorre **todas** las
+# rutas sin que nadie haya tenido que acordarse de ellas, y ocho servicios se
+# quedaban fuera de esa red — entre ellos servicio, marketing, analítica e
+# integración, que es por donde entra y sale el dato de fuera.
+#
+# Si alguno hay que sacar, que sea con su motivo escrito al lado, como los
+# parámetros de `PARAMETROS_NO_FILA`.
+SERVICIOS = (
+    "party",
+    "sales",
+    "orchestrator",
+    "tenancy",
+    "identity",
+    "metadata",
+    "automation",
+    "integration",
+    "eventing",
+    "analytics",
+    "intelligence",
+    "service",
+    "marketing",
+)
 
 # Parámetros de ruta que NO identifican una fila de este servicio, con el motivo.
 # Se listan para que la resolución automática no tenga que adivinar y, sobre
@@ -89,9 +114,26 @@ EXENTAS: dict[str, str] = {}
 # servicio. Sin esto, uno de los dos modelos se quedaba sin probar **en
 # silencio**: el chat entero —siete rutas— no se estaba comprobando contra
 # fugas entre tenants.
+# Parámetros que no identifican una fila SOLO en un servicio concreto. Va
+# aparte de `PARAMETROS_NO_FILA`, que es global: `objeto_id` en metadata SÍ es
+# una fila —la que define el objeto— y saltarlo en todas partes dejaría esa sin
+# probar. Un hueco por servicio se escribe por servicio.
+NO_FILA_POR_SERVICIO: dict[tuple[str, str], str] = {
+    (
+        "marketing",
+        "objeto_id",
+    ): "es el registro al que se le mide la presión —un contacto, un lead—, y vive en otro servicio",
+}
+
 ALIAS_POR_SERVICIO = {
     ("identity", "conversacion_id"): "conversacionchat",
     ("identity", "mensaje_id"): "mensajechat",
+    # `objeto_id` significa dos cosas distintas y por eso va aquí y no en el
+    # alias global: en casi todo el sistema es «el identificador del registro de
+    # cualquier objeto» —lo que cuelga un adjunto o un documento— y en metadata
+    # es la FILA que define ese objeto. Con un alias global, uno de los dos
+    # sentidos se quedaba sin probar.
+    ("metadata", "objeto_id"): "objetodefinido",
 }
 
 ALIAS_MODELO = {
@@ -120,6 +162,25 @@ ALIAS_MODELO = {
     "relacion_id": "relacioncuenta",
     "direccion_id": "direccion",
     "identificador_id": "identificadorfiscal",
+    # Los ocho servicios que entraron al ampliar esta lista de cinco a trece.
+    # Cada uno se llama en su ruta como se lee —«el canal de servicio», «el
+    # hilo», «el acceso»— y su modelo lleva el nombre largo. Sin estos alias no
+    # fallaba nada: las rutas se quedaban SIN PROBAR y la prueba lo decía en un
+    # aviso aparte, que es justo el hueco que hay que cerrar y no tapar.
+    "canal_servicio_id": "canalservicio",
+    "hilo_id": "hilocomunidad",
+    "credito_servicio_id": "creditoservicio",
+    "regla_escalado_id": "reglaescalada",
+    "agente_autonomo_id": "agente",
+    "proveedor_ia_id": "proveedoria",
+    "acceso_portal_id": "accesoportal",
+    "acceso_id": "accesoportal",
+    "regla_fatiga_id": "reglafatiga",
+    "webhook_id": "suscripcion",
+    "fallido_id": "eventofallido",
+    "credito_id": "creditoservicio",
+    "paso_id": "pasoagente",
+    "campo_id": "campoextraido",
     "miembro_id": "miembroequipocuenta",
     "canal_id": "canalcaptura",
     # Los nombres que `montar_ficha` deriva del objeto y que no coinciden con
@@ -208,11 +269,33 @@ def _crear_fila(db: Any, modelo: Any, tenant_id: UUID, _profundidad: int = 0) ->
     import datetime as dt
     import decimal
 
+    # LAS COLUMNAS QUE FORMAN PARTE DE UNA RESTRICCIÓN ÚNICA NO SE SALTAN por
+    # tener valor por defecto. `ReglaFatiga.canal` es `default="email"` y entra
+    # en un único `(tenant_id, canal)`: al saltarla, las dos filas que esta
+    # prueba crea salían las dos con «email» y la segunda reventaba con un
+    # error de integridad. El servicio entero se quedaba sin probar, y el
+    # motivo que salía era de la base de datos, no de lo que se buscaba.
+    unicas: set[str] = set()
+    for restriccion in modelo.__table__.constraints:
+        if restriccion.__class__.__name__ == "UniqueConstraint":
+            unicas |= {c.name for c in restriccion.columns}
+    for indice in modelo.__table__.indexes:
+        if indice.unique:
+            unicas |= {c.name for c in indice.columns}
+
     valores: dict[str, Any] = {"tenant_id": tenant_id}
     for columna in modelo.__table__.columns:
         if columna.name in valores or columna.nullable or columna.primary_key:
             continue
-        if columna.default is not None or columna.server_default is not None:
+        # Solo se fuerza el valor único cuando la columna es de texto y cabe:
+        # inventarse uno en una columna corta, o en algo que no sea texto, sería
+        # cambiar un fallo por otro.
+        forzar = (
+            columna.name in unicas
+            and "CHAR" in str(columna.type).upper()
+            and (getattr(columna.type, "length", 0) or 0) >= 8
+        )
+        if not forzar and (columna.default is not None or columna.server_default is not None):
             continue
 
         ajena = next(iter(columna.foreign_keys), None)
@@ -327,6 +410,8 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
                 continue
             if parametro in PARAMETROS_NO_FILA:
                 continue
+            if (servicio, parametro) in NO_FILA_POR_SERVICIO:
+                continue
             if not parametro.endswith("_id"):
                 continue
 
@@ -355,10 +440,37 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
             )
             probadas += 1
 
-            if respuesta.status_code in (200, 201, 204):
-                filtradas.append(f"{etiqueta} → {respuesta.status_code} (VE EL REGISTRO AJENO)")
-            elif respuesta.status_code == 403:
+            if respuesta.status_code == 403:
                 filtradas.append(f"{etiqueta} → 403 (confirma que existe; debe ser 404)")
+            elif respuesta.status_code in (200, 201, 204):
+                # UN 200 NO ES UNA FUGA POR SÍ MISMO. Lo que filtra es
+                # **responder distinto** a un identificador ajeno que a uno que
+                # no existe: ahí es donde alguien de fuera averigua que el
+                # registro está. Una sub-colección que devuelve `[]` en los dos
+                # casos no dice nada de nadie.
+                #
+                # Antes se exigía 404 a secas, y al ampliar esto a los trece
+                # servicios salieron cuatro rutas marcadas como fuga que no lo
+                # eran —las ejecuciones de una automatización, las entregas de
+                # un webhook y dos vistas de IA—, todas devolviendo vacío. Dar
+                # la alarma donde no la hay gasta el crédito de la prueba: a la
+                # tercera, quien la lee empieza a saltársela.
+                sin_registro = cliente.request(
+                    metodo,
+                    plantilla.replace(f"{{{parametro}}}", str(uuid4())),
+                    headers=_cabeceras(otro_tenant_id),
+                    json=_cuerpo_minimo(metodo),
+                )
+                revela = (respuesta.status_code, respuesta.text) != (
+                    sin_registro.status_code,
+                    sin_registro.text,
+                )
+                if revela:
+                    filtradas.append(
+                        f"{etiqueta} → {respuesta.status_code} con el registro ajeno y "
+                        f"{sin_registro.status_code} con uno inexistente: la diferencia "
+                        "dice que ese registro existe"
+                    )
 
     assert not filtradas, "Rutas que filtran la existencia de un registro ajeno:\n  " + "\n  ".join(
         filtradas

@@ -43,11 +43,13 @@
     "post": {
       "campos": [
         "agrupaciones",
+        "calculados",
         "columnas",
         "filtros",
         "limite",
         "metricas",
         "orden",
+        "pivote",
         "source_id",
         "tipo",
         "vista"
