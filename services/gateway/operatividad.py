@@ -28,7 +28,7 @@ import time
 from typing import Any
 from uuid import UUID
 
-from crmcore.errors import NoDisponible, SoloLectura, TenantSuspendido
+from crmcore.errors import NoDisponible, Prohibido, SoloLectura, TenantSuspendido
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -111,4 +111,56 @@ async def exigir(cliente: Any, url_base: str, tenant_id: UUID | None, metodo: st
         )
 
 
-__all__ = ["METODOS_DE_ESCRITURA", "NoDisponible", "exigir", "limpiar_cache"]
+# Servicios que NUNCA se cierran por plan, con el motivo al lado. Cerrar
+# cualquiera de estos dejaría a un cliente sin poder entrar, sin poder mirar lo
+# que ha contratado o sin poder pagar — o sea, sin poder arreglar la situación.
+NUNCA_POR_PLAN = {
+    "gateway": "es la puerta: cerrarla es cerrarlo todo",
+    "identity": "entrar y gestionar usuarios no depende de lo contratado",
+    "tenancy": "es donde se ve y se cambia el propio plan",
+    "docs": "el manual se lee siempre",
+}
+
+
+async def exigir_capacidad(
+    cliente: Any, url_base: str, tenant_id: UUID | None, servicio: str
+) -> None:
+    """Corta si el plan del tenant no incluye este módulo.
+
+    **Se cierra por módulo**, que es como se vende: un cliente que no ha
+    contratado marketing no tiene por qué poder usar sus rutas sabiéndose la URL.
+    El gateway ya sabe a qué servicio va cada ruta, así que no hace falta una
+    tabla de rutas que mantener —y que se quedaría vieja—.
+
+    **Y sólo se cierra lo que el plan niega EXPLÍCITAMENTE.** Un plan que no
+    menciona un módulo lo deja pasar: la omisión abre, nunca cierra. Si cerrara
+    por omisión, un plan mal escrito —o vacío, que es el de cualquier instalación
+    recién montada— dejaría al cliente sin producto.
+    """
+    if tenant_id is None or servicio in NUNCA_POR_PLAN:
+        return
+
+    guardado = _cache.get(str(tenant_id))
+    if guardado is None:
+        # Sin dato en caché no se inventa: lo habrá traído `exigir`, que corre
+        # antes en la misma petición. Si no está, se deja pasar por lo mismo que
+        # allí — no cerrar el sistema porque `tenancy` esté reiniciándose.
+        return
+
+    capacidades = guardado[1].get("capacidades") or {}
+    if servicio in capacidades and not capacidades[servicio]:
+        raise Prohibido(
+            f"«{servicio}» no está incluido en el plan contratado",
+            error_code="plan.capacidad_no_contratada",
+            detalle={"modulo": servicio},
+        )
+
+
+__all__ = [
+    "METODOS_DE_ESCRITURA",
+    "NUNCA_POR_PLAN",
+    "NoDisponible",
+    "exigir",
+    "exigir_capacidad",
+    "limpiar_cache",
+]

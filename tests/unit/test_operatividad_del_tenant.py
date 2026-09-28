@@ -198,3 +198,86 @@ def test_el_plazo_de_la_cache_es_configurable() -> None:
     from crmcore.runtime.keys import CLAVES
 
     assert "gateway_operatividad_ttl_s" in CLAVES
+
+
+# ── El plan: que la API rechace lo no contratado (CRM-00.01.04.05) ────────
+
+
+def _con_plan(capacidades: dict[str, bool]) -> dict[str, Any]:
+    return {**ACTIVO, "capacidades": capacidades}
+
+
+async def _pedir_plan(estado: dict[str, Any], servicio: str) -> Any:
+    """Primero la operatividad —que es quien llena la caché— y luego el plan,
+    en el mismo orden en que las llama el proxy."""
+    from crmcore.errors import CrmError
+
+    from services.gateway import operatividad
+
+    recibidas: list[httpx.Request] = []
+    tenant = uuid4()
+    async with _cliente(estado, recibidas) as cliente:
+        await operatividad.exigir(cliente, "http://tenancy", tenant, "GET")
+        try:
+            await operatividad.exigir_capacidad(cliente, "http://tenancy", tenant, servicio)
+        except CrmError as exc:
+            return exc
+    return None
+
+
+async def test_un_modulo_que_el_plan_niega_se_rechaza() -> None:
+    """Hoy basta con saberse la URL para usar algo que no se ha pagado."""
+    fallo = await _pedir_plan(_con_plan({"marketing": False}), "marketing")
+    assert fallo is not None, "un módulo no contratado ha pasado"
+    assert fallo.error_code == "plan.capacidad_no_contratada"
+    assert fallo.detalle["modulo"] == "marketing"
+
+
+async def test_un_modulo_que_el_plan_incluye_pasa() -> None:
+    """La otra mitad. Sin ella, «cerrar lo no contratado» se implementa como
+    «cerrar» y sale en verde."""
+    assert await _pedir_plan(_con_plan({"marketing": True}), "marketing") is None
+
+
+async def test_un_modulo_que_el_plan_NO_MENCIONA_pasa() -> None:
+    """La omisión abre, nunca cierra.
+
+    Si cerrara por omisión, un plan vacío —el de cualquier instalación recién
+    montada— dejaría al cliente sin producto, y un plan al que se le olvida una
+    línea le cortaría un módulo que sí pagó.
+    """
+    assert await _pedir_plan(_con_plan({"marketing": False}), "sales") is None
+    assert await _pedir_plan(_con_plan({}), "marketing") is None
+
+
+async def test_hay_modulos_que_no_se_cierran_nunca() -> None:
+    """Cerrar cualquiera de éstos deja al cliente sin poder entrar, sin ver lo
+    que ha contratado o sin poder arreglarlo: sin salida."""
+    from services.gateway.operatividad import NUNCA_POR_PLAN
+
+    for servicio in NUNCA_POR_PLAN:
+        assert (
+            await _pedir_plan(_con_plan({servicio: False}), servicio) is None
+        ), f"«{servicio}» se ha cerrado por plan y no debe cerrarse nunca"
+
+
+def test_las_excepciones_de_plan_dicen_por_que() -> None:
+    from services.gateway.operatividad import NUNCA_POR_PLAN
+
+    for servicio, motivo in NUNCA_POR_PLAN.items():
+        assert motivo.strip(), f"«{servicio}» está exento y no dice por qué"
+
+
+def test_el_proxy_comprueba_el_plan_antes_de_reenviar() -> None:
+    """Lo que faltaba no era la comprobación: era la llamada. `exigir_capacidad`
+    llevaba escrita en `tenancy` desde el principio y no la llamaba nadie."""
+    import inspect
+
+    from services.gateway import api
+
+    fuente = inspect.getsource(api.proxy_api)
+    assert "operatividad.exigir_capacidad" in fuente, (
+        "El proxy ya no comprueba el plan: se puede usar un módulo no contratado "
+        "sabiéndose la URL, y ninguna otra prueba lo nota."
+    )
+    assert fuente.index("operatividad.exigir_capacidad") < fuente.index("proxy.reenviar")

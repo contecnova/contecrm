@@ -686,6 +686,15 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
             getattr(principal, "tenant_id", None),
             request.method,
         )
+        # Y si el plan incluye este módulo. Va DESPUÉS de la operatividad y con
+        # el mismo dato cacheado: un tenant suspendido tiene que enterarse de que
+        # está suspendido, no de que no ha contratado marketing.
+        await operatividad.exigir_capacidad(
+            _cliente,
+            destino_tenancy.url_base,
+            getattr(principal, "tenant_id", None),
+            nombre,
+        )
 
     s = get_settings()
     respuesta = await proxy.reenviar(

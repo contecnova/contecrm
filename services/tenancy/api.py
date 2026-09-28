@@ -420,7 +420,11 @@ def operatividad_de(tenant_id: UUID) -> Any:
     from crmcore.db.session import sesion
 
     with sesion(sistema=True) as db:
-        return svc.operatividad(db, tenant_id)
+        # Las capacidades del plan viajan con la operatividad y no en otra
+        # llamada: el gateway las necesita en la misma petición y con la misma
+        # caché, y pedirlas aparte sería doblar el tráfico interno para el mismo
+        # dato del mismo tenant.
+        return {**svc.operatividad(db, tenant_id), "capacidades": svc.capacidades_de(db, tenant_id)}
 
 
 from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402

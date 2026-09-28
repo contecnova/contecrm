@@ -4657,6 +4657,34 @@ cuota con nuestro propio ruido.
 > ellas estuve a punto de darla por muerta porque el módulo sólo lo nombraba un
 > fichero de pruebas.
 
+### El plan cierra módulos, y la omisión abre
+
+**Para el usuario.** Un módulo que no está en el plan contratado se rechaza desde
+la API, no sólo se oculta del menú. Hasta ahora bastaba con saberse la URL para
+usar algo que no se había pagado: la pantalla obedecía y el servidor no.
+
+**Para mantenimiento.** Se cierra **por módulo**, que es como se vende, y lo
+comprueba el gateway —que ya sabe a qué servicio va cada ruta—, con el mismo dato
+cacheado que la operatividad: una sola llamada interna para las dos cosas.
+
+Dos reglas que conviene no invertir:
+
+- **Sólo se cierra lo que el plan niega explícitamente.** Un módulo que el plan
+  no menciona pasa. Si cerrara por omisión, un plan vacío —el de cualquier
+  instalación recién montada— dejaría al cliente sin producto, y a un plan al que
+  se le olvida una línea le cortaría un módulo que sí pagó.
+- **Hay módulos que no se cierran nunca**, con el motivo escrito al lado:
+  `gateway` es la puerta, `identity` es entrar, `tenancy` es donde se ve y se
+  cambia el propio plan, y `docs` es el manual. Cerrar cualquiera de ellos deja
+  al cliente **sin salida para arreglar la situación**.
+
+Y el orden importa: primero la suspensión, después el plan. Un tenant suspendido
+tiene que enterarse de que está suspendido, no de que no ha contratado marketing.
+
+> **`exigir_capacidad` llevaba escrita en `tenancy` desde el principio y no la
+> llamaba nadie**, como la suspensión y como los seis barridos. El plan se podía
+> configurar entero y no cerraba nada.
+
 ### El panel de consumo: suma por módulo, y lo que no se lee no vale cero
 
 **Para el usuario.** `GET /estado/consumo` en el gateway dice cuánta cuota lleva
