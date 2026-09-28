@@ -212,6 +212,89 @@ async def estado_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/estado/consumo",
+    summary="Cuánta cuota lleva gastada este tenant, sumando todos los módulos",
+    description=(
+        "Las cuotas van **por módulo** —cada servicio guarda lo suyo y cuenta lo "
+        "suyo—, así que la suma se compone preguntando a cada uno.\n\n"
+        "**Un servicio que no contesta sale como «no se ha podido leer», nunca "
+        "como cero.** Un cero es una afirmación falsa —«no has gastado nada»— y "
+        "un cliente que ve ceros llega al tope sin haber visto subir el número "
+        "nunca. «No se ha podido leer» es verdad y se puede mirar."
+    ),
+)
+async def consumo_del_tenant(request: Request, principal: AutenticadoDep) -> Any:
+    import asyncio
+    from datetime import datetime, timezone
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/consumo",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return {"servicio": nombre, "legible": True, "metricas": respuesta.json()["metricas"]}
+        except Exception:  # noqa: BLE001 — un servicio caído es información, no un error
+            # NO SE DEVUELVE CERO. El mensaje del error tampoco se filtra: lleva
+            # host y puerto, y esto lo ve el cliente.
+            return {
+                "servicio": nombre,
+                "legible": False,
+                "porque": "El servicio no responde: su consumo no se ha podido leer",
+            }
+
+    # En paralelo, por lo mismo que la página de estado: en serie, diez servicios
+    # con cinco segundos de plazo son cincuenta segundos de espera justo cuando
+    # algo va mal.
+    respuestas = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+
+    # La suma por métrica, arrastrando lo que no se ha podido leer. Sumar sólo lo
+    # legible y callar lo demás daría un total que parece completo y no lo es.
+    total: dict[str, dict[str, Any]] = {}
+    sin_leer: list[str] = []
+    for r in respuestas:
+        if not r["legible"]:
+            sin_leer.append(r["servicio"])
+            continue
+        for m in r["metricas"]:
+            if not m.get("legible", True):
+                sin_leer.append(f"{r['servicio']}/{m['metrica']}")
+                continue
+            acumulado = total.setdefault(
+                m["metrica"], {"metrica": m["metrica"], "consumido": 0, "por_modulo": {}}
+            )
+            acumulado["consumido"] += m["consumido"]
+            acumulado["por_modulo"][r["servicio"]] = m["consumido"]
+            # El tope es por módulo, así que el máximo declarado se enseña al
+            # lado en vez de sumarse: sumar topes daría un límite que no existe
+            # en ninguna parte.
+            if not m["sin_limite"]:
+                acumulado.setdefault("topes_por_modulo", {})[r["servicio"]] = m["limite"]
+
+    return {
+        "consultado_at": datetime.now(timezone.utc).isoformat(),
+        "metricas": sorted(total.values(), key=lambda m: m["metrica"]),
+        # Se dice arriba y no enterrado en una fila: un total al que le falta un
+        # módulo no es un total, y quien lo mire tiene que saberlo antes de
+        # tomar una decisión con él.
+        "completo": not sin_leer,
+        "no_leidos": sorted(set(sin_leer)),
+    }
+
+
+@router.get(
     "/estado/slo",
     summary="Cuánto margen queda antes de incumplir lo prometido",
     description=(

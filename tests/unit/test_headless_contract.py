@@ -177,6 +177,10 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # La presión de cada servicio se compone en el gateway: la de uno solo no
     # dice nada, porque lo que se aplaza depende del que esté peor (CRM-08.01.01.06).
     "/api/v1/estado/presion",
+    # Las cuotas van POR MÓDULO, así que el consumo de uno solo es un trozo: el
+    # gateway pregunta a todos y suma, diciendo cuáles no ha podido leer. Llegar
+    # al de un servicio suelto daría un número que parece el total y no lo es.
+    "/api/v1/estado/consumo",
     "/api/v1/superficie",
 }
 

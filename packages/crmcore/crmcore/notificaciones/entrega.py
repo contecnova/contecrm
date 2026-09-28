@@ -120,6 +120,17 @@ CUOTA_POR_CANAL = {
 }
 
 
+def registrar_medidores_de_consumo() -> None:
+    """Declara al panel que este módulo sabe contar correos y SMS."""
+    from crmcore.consumo import registrar_medidor
+
+    for canal, clave in CUOTA_POR_CANAL.items():
+        registrar_medidor(
+            canal,
+            lambda db, t, c=canal, k=clave: (enviados_en_el_periodo(db, t, c), k),
+        )
+
+
 def registrar_intento(
     db: Session,
     *,

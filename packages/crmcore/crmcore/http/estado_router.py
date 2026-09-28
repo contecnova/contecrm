@@ -38,6 +38,22 @@ def crear_router_estado(servicio: str) -> APIRouter:
         return {"servicio": servicio, **calcular(db, principal.tenant_id)}
 
     @router.get(
+        "/consumo",
+        summary=f"Cuánta cuota lleva gastada este tenant en «{servicio}»",
+        description=(
+            "Lo que **este módulo** cuenta para este tenant. La suma de todos "
+            "los módulos la compone el gateway en la misma ruta.\n\n"
+            "Va por módulo porque las cuotas van por módulo: cada servicio "
+            "guarda lo suyo en su esquema y cuenta lo suyo, y así el número que "
+            "se enseña se puede cuadrar con lo que el cliente ve en su pantalla."
+        ),
+    )
+    def consumo(db: DbDep, principal: AutenticadoDep) -> Any:
+        from crmcore.consumo import medido_aqui
+
+        return {"servicio": servicio, "metricas": medido_aqui(db, principal.tenant_id)}
+
+    @router.get(
         "/contratos",
         summary=f"Contratos de evento que «{servicio}» consume y cumple",
         description=(

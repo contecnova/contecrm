@@ -118,3 +118,25 @@ def instalar_guard_cuota() -> None:
 
     if not event.contains(Session, "before_flush", _al_volcar):
         event.listen(Session, "before_flush", _al_volcar)
+
+    # Y se declara qué sabe medir este módulo, para el panel de consumo. Va aquí
+    # y no en cada servicio porque quien sabe contar registros es este módulo:
+    # repartirlo obligaría a cada servicio a acordarse, y al cuarto se olvida.
+    from crmcore.consumo import registrar_medidor
+
+    registrar_medidor("registros", _medir_registros)
+    registrar_medidor("almacenamiento_mb", _medir_almacenamiento)
+
+    from crmcore.notificaciones.entrega import registrar_medidores_de_consumo
+
+    registrar_medidores_de_consumo()
+
+
+def _medir_registros(db: Any, tenant_id: UUID) -> tuple[int, str]:
+    return sum(registros_guardados(db, tenant_id).values()), "cuota_registros"
+
+
+def _medir_almacenamiento(db: Any, tenant_id: UUID) -> tuple[int, str]:
+    from crmcore.datos.adjuntos import espacio_ocupado
+
+    return espacio_ocupado(db, tenant_id) // (1024 * 1024), "cuota_almacenamiento_mb"

@@ -4657,6 +4657,34 @@ cuota con nuestro propio ruido.
 > ellas estuve a punto de darla por muerta porque el módulo sólo lo nombraba un
 > fichero de pruebas.
 
+### El panel de consumo: suma por módulo, y lo que no se lee no vale cero
+
+**Para el usuario.** `GET /estado/consumo` en el gateway dice cuánta cuota lleva
+gastada el tenant, **sumando todos los módulos y diciendo de dónde sale cada
+parte**. Sin el desglose, un total no se puede cuadrar con lo que se ve en cada
+pantalla.
+
+**Y si un servicio no contesta, se dice.** Nunca un cero:
+
+> Un cero es una afirmación falsa —«no has gastado nada»—. Un cliente que ve
+> ceros llega al tope **sin haber visto subir el número nunca**, y eso convierte
+> la cuota en una encerrona. «No se ha podido leer» es verdad y se puede mirar.
+
+La respuesta lleva `completo: false` y la lista de lo no leído **arriba, no
+enterrado en una fila**: un total al que le falta un módulo no es un total, y
+quien lo mire tiene que saberlo antes de tomar una decisión con él. Lo mismo si
+un módulo contesta pero una de sus métricas no se pudo medir.
+
+**Para mantenimiento.** Cada servicio publica lo suyo en `/estado/consumo` y el
+gateway compone, igual que con la página de estado — en paralelo, porque en
+serie diez servicios con cinco segundos de plazo son cincuenta segundos de espera
+justo cuando algo va mal.
+
+**Los topes no se suman.** Las cuotas son por módulo: 100 en `party` y 100 en
+`sales` no son 200, son dos topes distintos y cada uno corta por su lado. Sumarlos
+daría un límite que no existe en ninguna parte, así que se enseñan al lado, uno
+por módulo.
+
 ### Las tareas periódicas, y por qué no había ninguna
 
 **Para el usuario.** Hay cosas que pasan solas cada tanto: los recordatorios
