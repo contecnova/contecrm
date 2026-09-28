@@ -53,7 +53,22 @@ titulo(){ echo -e "\n${VERDE}── $* ${FIN}"; }
 PY=".venv/bin/python"
 PIP=".venv/bin/pip"
 VAR="var"                 # pid, logs y datos locales; está en .gitignore
-SERVICIOS=(tenancy identity metadata orchestrator automation integration eventing party sales analytics gateway)
+# LOS CATORCE, no once. Faltaban `service`, `marketing` e `intelligence`: se
+# añadieron al producto después y nadie los puso aquí, así que quien seguía el
+# camino documentado levantaba un CRM sin casos, sin marketing y sin IA.
+SERVICIOS=(tenancy identity metadata orchestrator automation integration eventing party sales service marketing analytics intelligence gateway)
+
+# Y LOS WORKERS, que no estaban en absoluto: `setup.sh` no mencionaba la palabra
+# «worker» ni una vez, mientras el compose arrancaba seis.
+#
+# Es el fallo más difícil de ver que hay: un sistema sin workers **arranca,
+# contesta y se ve perfecto**, y lo asíncrono se encola y no pasa nunca, sin
+# error. Ya se cazó una vez por el lado de Docker —el comentario sigue en el
+# `docker-compose.yml`— y nadie miró el lado nativo.
+#
+# Cada entrada es `servicio:modulo`, igual que en el compose: un servicio puede
+# tener más de un bucle.
+WORKERS=(orchestrator:worker identity:reparto_worker party:trabajos_worker sales:trabajos_worker intelligence:trabajos_worker analytics:trabajos_worker)
 
 # Puertos locales. El gateway es el único que hace falta conocer: los demás
 # están detrás de él y se publican solo para poder llamarlos al depurar.
@@ -73,6 +88,9 @@ puerto_de() {
     party)        echo 8008 ;;
     sales)        echo 8009 ;;
     analytics)    echo 8010 ;;
+    service)      echo 8011 ;;
+    marketing)    echo 8012 ;;
+    intelligence) echo 8013 ;;
     gateway)      echo "${GATEWAY_PORT:-8080}" ;;
     *)            echo 0 ;;
   esac
@@ -237,6 +255,19 @@ arrancar_local() {
     ok "$s en :$puerto"
   done
 
+  # Los workers, DESPUÉS de los servicios HTTP: es el servicio de cada esquema
+  # quien aplica las migraciones, y dos procesos migrando a la vez es la forma
+  # habitual de dejar un `alembic` a medias. Por eso el compose les pone
+  # `APLICAR_MIGRACIONES: false` y aquí ya están hechas más arriba.
+  for w in "${WORKERS[@]}"; do
+    local svc="${w%%:*}" modulo="${w##*:}"
+    SERVICE_NAME="$svc" APLICAR_MIGRACIONES=false \
+      nohup .venv/bin/python -m "services.$svc.$modulo" \
+        > "$VAR/log/$svc-$modulo.log" 2>&1 &
+    echo $! > "$VAR/pid/$svc-$modulo.pid"
+    ok "worker $svc/$modulo"
+  done
+
   echo
   info "Esperando a que respondan…"
   sleep 3
@@ -314,6 +345,15 @@ parar() {
       parados=$((parados + 1))
     fi
   done
+  for w in "${WORKERS[@]}"; do
+    local pidfile="$VAR/pid/${w%%:*}-${w##*:}.pid"
+    if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+      kill "$(cat "$pidfile")" 2>/dev/null || true
+      rm -f "$pidfile"
+      ok "worker ${w%%:*}/${w##*:} parado"
+      parados=$((parados + 1))
+    fi
+  done
   [[ $parados -eq 0 ]] && info "No había nada corriendo"
   # El Postgres embebido se queda vivo a propósito: arrancarlo cuesta segundos y
   # los datos locales siguen ahí para la próxima.
@@ -333,6 +373,20 @@ estado() {
       aviso "$s :$puerto vivo pero NO listo — mira $VAR/log/$s.log"
     else
       malo "$s :$puerto no responde"
+    fi
+  done
+
+  # LOS WORKERS SE MIRAN POR PROCESO, no con `curl`: no escuchan en ningún
+  # puerto. Y se miran, que es lo que faltaba: un worker caído no se nota desde
+  # fuera —el sistema arranca, contesta y se ve perfecto— mientras lo asíncrono
+  # se encola y no pasa nunca, sin error.
+  for w in "${WORKERS[@]}"; do
+    local svc="${w%%:*}" modulo="${w##*:}"
+    local pidfile="$VAR/pid/$svc-$modulo.pid"
+    if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+      ok "worker $svc/$modulo corriendo"
+    else
+      malo "worker $svc/$modulo NO corre — lo asíncrono se encolará y no pasará nunca"
     fi
   done
 }

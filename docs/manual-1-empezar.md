@@ -26,14 +26,36 @@ aleatorios** —nunca valores de ejemplo, que acaban llegando a producción porq
 ./setup.sh arrancar
 ```
 
-En unos segundos tienes los ocho servicios en pie con un Postgres embebido:
+En unos segundos tienes los **catorce servicios y los seis workers** en pie, con
+un Postgres embebido:
 
 ```
-  ✓ tenancy :8001 listo          ✓ automation :8005 listo
-  ✓ identity :8002 listo         ✓ integration :8006 listo
-  ✓ metadata :8003 listo         ✓ eventing :8007 listo
-  ✓ orchestrator :8004 listo     ✓ gateway :8080 listo
+  ✓ tenancy :8001 listo          ✓ sales :8009 listo
+  ✓ identity :8002 listo         ✓ service :8011 listo
+  ✓ metadata :8003 listo         ✓ marketing :8012 listo
+  ✓ orchestrator :8004 listo     ✓ analytics :8010 listo
+  ✓ automation :8005 listo       ✓ intelligence :8013 listo
+  ✓ integration :8006 listo      ✓ gateway :8080 listo
+  ✓ eventing :8007 listo
+  ✓ party :8008 listo
+  ✓ worker orchestrator/worker corriendo
+  ✓ worker identity/reparto_worker corriendo
+  ✓ worker party/trabajos_worker corriendo
+  ✓ worker sales/trabajos_worker corriendo
+  ✓ worker intelligence/trabajos_worker corriendo
+  ✓ worker analytics/trabajos_worker corriendo
 ```
+
+**Los workers importan más de lo que parece.** No escuchan en ningún puerto, así
+que un sistema sin ellos **arranca, contesta y se ve perfecto**: lo que no hace
+es ejecutar nada de fondo. Los trabajos se encolan y no pasan nunca, **sin
+error**. Por eso `./setup.sh estado` los mira por proceso y los canta aparte; si
+alguno no corre, lo dice con esas palabras.
+
+> Este documento decía «los ocho servicios», `setup.sh` arrancaba once y el
+> `docker-compose.yml` veinte. Las tres listas se habían separado solas, porque
+> separarse no rompía nada. Ahora hay una prueba que compara la del compose con
+> la de `setup.sh` y falla cuando divergen.
 
 La documentación interactiva de la API está en
 **<http://localhost:8080/api/v1/docs>**.
