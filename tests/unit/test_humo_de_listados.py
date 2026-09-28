@@ -171,3 +171,27 @@ def test_solo_se_recoge_lo_que_de_verdad_esta_abandonado() -> None:
     assert esta_abandonado("1", "00:15:30") is False
     # Viejo pero CON padre: alguien lo tiene cogido.
     assert esta_abandonado("4821", "13:50:15") is False
+
+
+def test_el_postgres_de_desarrollo_no_se_recoge() -> None:
+    """`var/pgdata` es persistente A PROPÓSITO y no es de ninguna tanda.
+
+    Lo levanta `scripts/postgres_local.py` para `setup.sh`: es el Postgres con
+    el que se desarrolla, vive fuera de cualquier prueba y lleva horas
+    encendido por definición. La primera versión de esta recogida lo daba por
+    abandonado —era de este repositorio, huérfano y viejo, las tres cosas— y lo
+    habría parado en mitad del trabajo de alguien.
+
+    Se distingue por el prefijo del directorio: los de pruebas nacen en un
+    temporal `contecrm-test-…` y éste no.
+    """
+    import inspect
+
+    from tests import conftest
+    from tests.conftest import _recoger_servidores_abandonados  # noqa: F401  (existe)
+
+    fuente = inspect.getsource(conftest._recoger_servidores_abandonados)
+    assert "contecrm-test-" in fuente, (
+        "la recogida ya no filtra por el prefijo de los directorios de pruebas: "
+        "sin eso para también el Postgres de desarrollo"
+    )

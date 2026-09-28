@@ -105,6 +105,20 @@ def _recoger_servidores_abandonados() -> None:
     for linea in salida.splitlines():
         if raiz not in linea or "pgserver" not in linea:
             continue
+        # SOLO LOS DE PRUEBAS, reconocidos por el prefijo de su directorio.
+        #
+        # No todo `pgserver` de este repositorio es basura: `scripts/postgres_local.py`
+        # levanta uno PERSISTENTE a propósito en `var/pgdata` —es el Postgres de
+        # desarrollo que usa `setup.sh`, y vive fuera de cualquier tanda—. Este
+        # recolector lo daba por abandonado en cuanto pasaba una hora, que es
+        # siempre, y lo habría parado en mitad del trabajo de alguien.
+        #
+        # Es el mismo error que vengo arreglando toda la noche, cometido por mí
+        # al escribir la limpieza: una condición que parece precisa —«de este
+        # repositorio y huérfano y viejo»— y que incluye un caso legítimo que
+        # nadie miró.
+        if "contecrm-test-" not in linea:
+            continue
         partes = linea.split(None, 3)
         if len(partes) < 4 or not esta_abandonado(partes[1], partes[2]):
             continue
