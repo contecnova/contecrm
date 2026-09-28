@@ -30,6 +30,7 @@ Instalación, **obligatoria**:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -37,6 +38,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -297,6 +299,93 @@ def _correr(gate: Gate) -> tuple[bool, float, str]:
     return (proceso.returncode == 0, time.perf_counter() - inicio, salida)
 
 
+# ── Constancia de qué nivel corrió (y de lo que no corrió) ────────────────
+#
+# El tercer nivel —la suite entera antes del push que cierra un bloque— se
+# apoya en que alguien se acuerde. Eso no es una garantía: es exactamente el
+# `make` voluntario que en otro repositorio de la casa dejó seis pruebas en
+# rojo durante semanas sin que nadie se enterara. Un gancho o corre en cada
+# push —y entonces no puede llevar las suites— o depende de la memoria de
+# quien empuja.
+#
+# No se puede obligar hacia atrás. Lo que sí se puede es **impedir que se
+# mienta**: aquí queda apuntado cuándo pasó el nivel completo por última vez, y
+# el nivel del push dice cuántos commits llevas sin él. Quita la coartada.
+#
+# El apunte NO se versiona, a propósito: es constancia de lo que corrió EN ESTA
+# MÁQUINA. Un clon recién hecho dice «nunca», que es la verdad.
+APUNTE = RAIZ / ".verificacion-bloque"
+
+# A partir de aquí se dice en rojo. Diez commits es más de un día de trabajo:
+# suficiente para que la suite lleve sin correr lo bastante como para que algo
+# se haya roto sin que nadie lo sepa.
+COMMITS_PARA_GRITAR = 10
+
+
+def _commit_actual() -> str:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=RAIZ, capture_output=True, text=True, timeout=10
+        ).stdout.strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _apuntar_pase_completo() -> None:
+    try:
+        APUNTE.write_text(
+            json.dumps(
+                {"commit": _commit_actual(), "cuando": datetime.now(timezone.utc).isoformat()},
+                indent=2,
+            )
+            + "\n"
+        )
+    except Exception:  # noqa: BLE001 — no poder apuntarlo no puede tumbar el preflight
+        return
+
+
+def _commits_desde_el_ultimo_pase() -> tuple[int, str] | None:
+    """Cuántos commits van sin un pase completo, y cuándo fue. `None` = nunca."""
+    try:
+        apunte = json.loads(APUNTE.read_text())
+        r = subprocess.run(
+            ["git", "rev-list", "--count", f"{apunte['commit']}..HEAD"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if r.returncode != 0:
+            return None  # el commit apuntado ya no existe: rebase, o rama nueva
+        return int(r.stdout.strip() or 0), str(apunte.get("cuando", ""))[:16].replace("T", " ")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _decir_que_falta_por_correr(completo: bool) -> None:
+    if completo:
+        _apuntar_pase_completo()
+        print("Apuntado: el nivel completo ha pasado aquí.")
+        return
+
+    desde = _commits_desde_el_ultimo_pase()
+    if desde is None:
+        print(
+            "\nAQUÍ NO CONSTA NINGÚN PASE DEL NIVEL COMPLETO.\n"
+            "Las dos suites no las ha corrido nadie en esta máquina."
+        )
+    elif desde[0] == 0:
+        print("\nEl nivel completo pasó en este mismo commit.")
+    else:
+        aviso = "AVISO: " if desde[0] >= COMMITS_PARA_GRITAR else ""
+        print(f"\n{aviso}Van {desde[0]} commit(s) sin un pase del nivel completo")
+        print(f"(el último, {desde[1]}).")
+    print(
+        "Antes del push que cierra el bloque: «python scripts/preflight.py --todo», "
+        "entero y en primer plano."
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -391,6 +480,10 @@ def main() -> int:
         f"\nTodo en verde. {total:.0f}s de reloj de {PRESUPUESTO_S:.0f}s de "
         f"presupuesto, con hasta {PARALELOS} gates a la vez."
     )
+    # Y QUÉ NIVEL FUE ÉSTE. Un push con el subconjunto no puede constar como
+    # batería completa: si no se dice, «todo en verde» se lee igual en los dos
+    # casos y ahí es donde se afloja la red sin que nadie lo decida.
+    _decir_que_falta_por_correr(completo="suite" in tiers)
     return 0
 
 

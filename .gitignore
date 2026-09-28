@@ -34,3 +34,9 @@ site/
 # Dependencias y salida de compilación del front oficial.
 frontend/node_modules/
 frontend/dist/
+
+# Constancia de qué nivel de comprobación corrió EN ESTA MÁQUINA. No se versiona
+# a propósito: un clon recién hecho tiene que decir «aquí no consta ningún pase»,
+# que es la verdad. Si viajara con el repositorio, diría que pasó en la máquina
+# de otro y eso es justo la coartada que este apunte existe para quitar.
+.verificacion-bloque
