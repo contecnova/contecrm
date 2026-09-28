@@ -132,6 +132,27 @@ def _datos() -> dict:
                             "funcion": funcion["nombre"],
                             "hay": nota.get("hay", ""),
                             "falta": nota.get("falta", ""),
+                            # VISTO FUNCIONAR, que no es lo mismo que «hecho».
+                            #
+                            # «Hecho» quiere decir declarado, con código, con
+                            # prueba y con manual. El 28-09-2026 aparecieron
+                            # seis cosas que constaban hechas y no funcionaban
+                            # —una exportación que daba error del servidor, un
+                            # token que caducaba a los quince minutos, cuatro
+                            # migraciones que rompen al actualizar a un cliente
+                            # con datos— y **ninguna habría movido ese número**.
+                            #
+                            # Se marca SOLO lo recorrido contra el sistema en
+                            # marcha, y dice cómo se recorrió. Nunca por
+                            # deducción: una marca puesta porque «obviamente
+                            # funciona» devuelve el problema al sitio donde
+                            # estaba. Y se marca cuando se ve, no auditando las
+                            # 772 de golpe: una columna vacía al 99 % diría de
+                            # menos igual que el total dice de más.
+                            #
+                            # El hueco entre «hecho» y «visto» es el mapa de lo
+                            # que nadie ha comprobado nunca.
+                            "visto": cap.get("visto", ""),
                         }
                     )
 

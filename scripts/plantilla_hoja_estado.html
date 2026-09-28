@@ -243,6 +243,15 @@
     font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--curso); font-weight: 600; margin-inline-end: 6px;
   }
+  /* Lo recorrido contra el sistema en marcha. Va con la cita de cómo se
+     recorrió: una marca sin decir cómo es una opinión con mejor letra. */
+  .visto {
+    grid-column: 2; margin-top: 4px; font-size: 12.5px;
+    color: var(--hecho); background: var(--hecho-fondo);
+    border-radius: 3px; padding: 6px 9px;
+  }
+  @media (max-width: 560px) { .visto { grid-column: 1; } }
+
   .reutiliza {
     grid-column: 2; margin-top: 4px;
     font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -521,6 +530,10 @@
          </div>` : "";
     const reutiliza = c.reutiliza
       ? `<div class="reutiliza">reutiliza · ${esc(c.reutiliza)}</div>` : "";
+    // Lo recorrido contra el sistema en marcha, CON la cita de cómo. Sin el
+    // cómo sería una marca de confianza, que es justo lo que no hace falta.
+    const visto = c.visto
+      ? `<div class="visto">visto funcionar · ${esc(c.visto)}</div>` : "";
     return `<article class="cap">
       <div class="cap-id">${esc(c.id)}</div>
       <p class="cap-t">${esc(c.t)}</p>
@@ -531,6 +544,7 @@
         <span class="crit" style="border-left-color:transparent;padding-left:0">F${esc(c.fase)}</span>
       </div>
       ${medias}
+      ${visto}
       ${reutiliza}
     </article>`;
   }
