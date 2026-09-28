@@ -5672,6 +5672,22 @@ Reescribir el transporte entero por producto es lo que hace que mantener cinco
 conectores sea imposible. Y siempre hay conector: un tipo desconocido cae en el
 genérico en vez de quedarse sin transporte.
 
+**Y valores constantes de la conexión, que no son un dato del objeto.** El
+mapeo de campos renombra —lo que aquí es `nombre` allí es `name`— pero no puede
+inventarse una clave que no viene en el origen, y algunas herramientas exigen
+justo eso. El caso real: dar de alta una organización en contecmind pide
+`app_id`, que dice **qué aplicación la nombra**; eso no es un campo del tenant,
+es de la conexión. Sin poder declararlo, el alta salía sin él y se comía un 422,
+y la única salida habría sido un conector propio para contecmind con ese campo
+escrito dentro — que es exactamente lo que este diseño evita.
+
+Los campos fijos se escriben **con el nombre de allí**, porque son suyos: no
+pasan por el mapeo, o se traduciría dos veces. Y **no pisan el dato del objeto**
+si el objeto ya lo trae: un valor por conexión es un valor por defecto, no una
+imposición. Tampoco van con las credenciales aunque se configuren a la vez —
+aquéllas se cifran y no se vuelven a enseñar, y un `app_id` que nadie puede
+mirar es un valor imposible de comprobar el día que el alta empiece a fallar.
+
 La dirección pasa por el **guard de salidas**, igual que un webhook o un IdP:
 aquí viajan datos de personas y una credencial de administración, y una dirección
 apuntando a la red interna convertiría el empuje en una forma de hablar con lo

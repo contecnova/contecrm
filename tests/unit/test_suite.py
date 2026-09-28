@@ -489,3 +489,89 @@ def test_sin_forma_de_leer_no_se_da_por_sincronizado(
     salida = suite_conector.reconciliar_con_remoto(db, tenant_id, "contecmind")
     assert salida["medible"] is False
     assert "no declara cómo listar" in salida["motivo"]
+
+
+# ── Campos constantes por conexión (CRM-00.01.07.08) ──────────────────────
+
+
+def test_un_campo_que_exige_la_herramienta_y_no_es_del_objeto_se_configura(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """El caso real: contecmind exige `app_id` para dar de alta una organización.
+
+    `app_id` dice QUÉ APLICACIÓN la nombra, así que no es un campo del tenant:
+    es de la conexión. El mapeo de campos no podía resolverlo por definición
+    —renombra claves, no inventa las que no vienen— y el alta salía sin él y se
+    comía un 422 del gestor.
+
+    La alternativa era un conector propio para contecmind con ese campo escrito
+    dentro, y eso es justo lo que esta arquitectura evita: dirección, credencial
+    y configuración, sin código por proveedor.
+    """
+    from crmcore.red import guard_url
+
+    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
+    herramienta = suite.conectar(
+        db,
+        tenant_id,
+        nombre="mind-con-app",
+        base_url="https://mind.ejemplo.com",
+        credenciales={"token": "x"},
+        tipo="contecmind",
+        campos_fijos={"app_id": "11111111-2222-3333-4444-555555555555"},
+    )
+    carga = suite._traducir(herramienta, {"nombre": "ACME"})
+    assert carga["app_id"] == "11111111-2222-3333-4444-555555555555"
+    assert carga["nombre"] == "ACME"
+
+
+def test_un_campo_fijo_no_pisa_el_dato_del_objeto(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """Un valor por conexión es un valor POR DEFECTO, no una imposición.
+
+    Ésta es la prueba que hace falta de verdad: si el fijo pisara al objeto, el
+    fallo no daría ningún error —la carga saldría bien formada— y se empujaría
+    el mismo valor para todos los registros. La otra, que el valor llegue,
+    fallaría a gritos; ésta fallaría en silencio.
+    """
+    from crmcore.red import guard_url
+
+    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
+    herramienta = suite.conectar(
+        db,
+        tenant_id,
+        nombre="mind-defecto",
+        base_url="https://mind.ejemplo.com",
+        credenciales={"token": "x"},
+        tipo="contecmind",
+        campos_fijos={"rol": "lector"},
+    )
+    carga = suite._traducir(herramienta, {"rol": "admin"})
+    assert carga["rol"] == "admin", "el dato del objeto manda sobre el valor por conexión"
+
+
+def test_los_campos_fijos_no_pasan_por_el_mapeo(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """Se escriben con el nombre de ALLÍ, porque son campos suyos.
+
+    Traducirlos sería traducir dos veces: quien configura la conexión ya está
+    escribiendo lo que el otro lado espera recibir.
+    """
+    from crmcore.red import guard_url
+
+    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
+    herramienta = suite.conectar(
+        db,
+        tenant_id,
+        nombre="mind-sin-traducir",
+        base_url="https://mind.ejemplo.com",
+        credenciales={"token": "x"},
+        tipo="contecmind",
+        mapeo_campos={"app_id": "OTRA_COSA"},
+        campos_fijos={"app_id": "abc"},
+    )
+    carga = suite._traducir(herramienta, {"nombre": "ACME"})
+    assert carga["app_id"] == "abc"
+    assert "OTRA_COSA" not in carga

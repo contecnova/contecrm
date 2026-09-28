@@ -31,6 +31,17 @@ class ConectarHerramienta(BaseModel):
     )
     mapeo_roles: dict[str, Any] = Field(default_factory=dict)
     mapeo_campos: dict[str, Any] = Field(default_factory=dict)
+    campos_fijos: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Valores constantes que esta herramienta exige en toda carga y que "
+            "no son un dato del objeto, sino de la conexión. Van con el nombre "
+            "de ALLÍ: no pasan por el mapeo de campos. Ejemplo real: contecmind "
+            "exige `app_id` al dar de alta una organización —qué aplicación la "
+            "nombra— y eso no es un campo del tenant, así que el mapeo no podía "
+            "resolverlo: el mapeo renombra, no inventa."
+        ),
+    )
     objetos: list[str] = Field(default_factory=list)
     identificador_externo: str = Field("", max_length=200)
 
@@ -57,6 +68,7 @@ def conectar(datos: ConectarHerramienta, uow: UowDep, principal: AutenticadoDep)
         tipo=datos.tipo,
         mapeo_roles=datos.mapeo_roles,
         mapeo_campos=datos.mapeo_campos,
+        campos_fijos=datos.campos_fijos,
         objetos=datos.objetos or None,
         identificador_externo=datos.identificador_externo,
     )

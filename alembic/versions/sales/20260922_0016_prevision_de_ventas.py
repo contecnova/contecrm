@@ -255,7 +255,17 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_lineas_oportunidad_familia"), "lineas_oportunidad", ["familia"], unique=False
     )
-    op.add_column("oportunidades", sa.Column("probabilidad_manual", sa.Boolean(), nullable=False))
+    # Con `server_default`, que se retira después: `nullable=False` sin él falla
+    # en cuanto «oportunidades» tiene filas, que es siempre en una instalación
+    # en uso. En una vacía pasa, y por eso esto no se ve hasta actualizar a un
+    # cliente con datos — cuando ya es un despliegue a medias.
+    op.add_column(
+        "oportunidades",
+        sa.Column(
+            "probabilidad_manual", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+    )
+    op.alter_column("oportunidades", "probabilidad_manual", server_default=None)
     op.add_column(
         "oportunidades", sa.Column("categoria_forecast", sa.String(length=40), nullable=True)
     )

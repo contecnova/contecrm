@@ -118,7 +118,41 @@
       "campos": []
     }
   },
-  "/api/v1/admin/tenants/by-external/{id_externo}": null,
-  "/api/v1/admin/users/by-external/{id_externo}": null,
-  "/api/v1/admin/departments/by-external/{id_externo}": null
+  "/api/v1/admin/tenants/by-external/{id_externo}": {
+    "put": {
+      "campos": [
+        "app_id",
+        "name",
+        "slug"
+      ]
+    }
+  },
+  "/api/v1/admin/users/by-external/{id_externo}": {
+    "put": {
+      "campos": [
+        "email",
+        "is_active",
+        "password",
+        "role",
+        "tenant_id"
+      ]
+    },
+    "delete": {
+      "campos": []
+    }
+  },
+  "/api/v1/admin/departments/by-external/{id_externo}": {
+    "put": {
+      "campos": [
+        "description",
+        "is_active",
+        "name",
+        "slug",
+        "tenant_id"
+      ]
+    },
+    "delete": {
+      "campos": []
+    }
+  }
 }

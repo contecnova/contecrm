@@ -143,9 +143,24 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
+    # CON `server_default` y quitándolo después: sin él, `nullable=False` sobre
+    # una tabla que ya tiene proveedores falla al aplicar la migración —«column
+    # contains null values»— y deja el despliegue a medias. En una instalación
+    # nueva pasa, porque la tabla está vacía; por eso esto no lo caza ninguna
+    # prueba y se descubre actualizando a un cliente con datos.
+    #
+    # Se retira el `server_default` al final para que el esquema siga
+    # coincidiendo con el modelo, que no declara ninguno.
     op.add_column(
-        "proveedores_identidad", sa.Column("permite_idp_initiated", sa.Boolean(), nullable=False)
+        "proveedores_identidad",
+        sa.Column(
+            "permite_idp_initiated",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
     )
+    op.alter_column("proveedores_identidad", "permite_idp_initiated", server_default=None)
     op.add_column(
         "proveedores_identidad",
         sa.Column(

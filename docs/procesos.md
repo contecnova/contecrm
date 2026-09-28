@@ -93,7 +93,7 @@ stateDiagram-v2
 | `POST /api/v1/sandboxes/reglas` | Comprobar que toda columna personal tiene decidido su tratamiento | campos_personales, reglas | 200, 422 | — |
 | `POST /api/v1/suite/aplicar` | Aplicar la cola pendiente | herramienta, tope | 200, 422 | — |
 | `POST /api/v1/suite/cuarentena/{sincronizacion_id}/reintentar` | Volver a intentar algo apartado | sincronizacion_id* | 200, 422 | — |
-| `POST /api/v1/suite/herramientas` | Conectar una herramienta de la suite | nombre*, base_url*, credenciales, tipo, mapeo_roles, mapeo_campos, objetos, identificador_externo | 201, 422 | — |
+| `POST /api/v1/suite/herramientas` | Conectar una herramienta de la suite | nombre*, base_url*, credenciales, tipo, mapeo_roles, mapeo_campos, campos_fijos, objetos, identificador_externo | 201, 422 | — |
 | `POST /api/v1/suite/provisionar/organizacion` | Replicar áreas y departamentos a las herramientas | — | 200, 422 | — |
 | `POST /api/v1/suite/provisionar/tenant` | Dar de alta este tenant en las herramientas conectadas | — | 200, 422 | — |
 | `POST /api/v1/suite/provisionar/usuario` | Alta, cambio o baja de un usuario en toda la suite | id*, email*, nombre, roles, unidad, activa, operacion | 200, 422 | — |

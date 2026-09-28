@@ -115,6 +115,21 @@ class HerramientaConectada(Base, TimestampMixin):
     # Y entre campos, para el transporte genérico: qué nombre tiene allí cada
     # cosa de aquí.
     mapeo_campos: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # VALORES CONSTANTES que la herramienta exige en toda carga y que **no son
+    # un dato del objeto que se empuja, sino de la conexión**.
+    #
+    # El caso que lo destapó: dar de alta una organización en contecmind exige
+    # `app_id` —qué aplicación la nombra—, y eso no es un campo del tenant. El
+    # mapeo sabe renombrar `nombre` a `name`, pero no puede inventarse un campo
+    # que no existe en el origen, así que el alta salía sin él y se comía un
+    # 422. Y no se puede resolver con un conector propio para contecmind: eso es
+    # justo lo que esta arquitectura evita.
+    #
+    # Se guardan ya con el nombre de ALLÍ, porque son suyos: no pasan por el
+    # mapeo. Y no van en `credenciales` aunque se configuren a la vez: aquello
+    # se cifra y no se enseña, y esto se enseña en la pantalla de la conexión
+    # para que se pueda corregir.
+    campos_fijos: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     # Qué objetos se empujan a esta herramienta. Un gestor documental puede
     # querer usuarios y unidades pero no el plan comercial.
     objetos: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
@@ -317,9 +332,15 @@ def _traducir(herramienta: HerramientaConectada, carga: dict[str, Any]) -> dict[
     no se programa.
     """
     mapeo = herramienta.mapeo_campos or {}
-    if not mapeo:
-        return carga
-    return {str(mapeo.get(k, k)): v for k, v in carga.items()}
+    traducida = {str(mapeo.get(k, k)): v for k, v in carga.items()} if mapeo else dict(carga)
+    # Los fijos van DESPUÉS de traducir y ya con el nombre de allí: son campos
+    # suyos, no nuestros, así que pasarlos por el mapeo sería traducir dos veces.
+    # Y no pisan lo que traiga el objeto: si una carga ya lleva ese campo, manda
+    # el dato del objeto —un valor por conexión es un valor por defecto, no una
+    # imposición—.
+    for clave, valor in (herramienta.campos_fijos or {}).items():
+        traducida.setdefault(str(clave), valor)
+    return traducida
 
 
 def carga_de_usuario(
@@ -968,6 +989,7 @@ def conectar(
     tipo: str = "generico",
     mapeo_roles: dict[str, Any] | None = None,
     mapeo_campos: dict[str, Any] | None = None,
+    campos_fijos: dict[str, Any] | None = None,
     objetos: list[str] | None = None,
     identificador_externo: str = "",
 ) -> HerramientaConectada:
@@ -1001,6 +1023,7 @@ def conectar(
         credenciales=cifrar_dict(credenciales or {}),
         mapeo_roles=mapeo_roles or {},
         mapeo_campos=mapeo_campos or {},
+        campos_fijos=campos_fijos or {},
         objetos=objetos or list(OBJETOS),
         identificador_externo=identificador_externo,
     )

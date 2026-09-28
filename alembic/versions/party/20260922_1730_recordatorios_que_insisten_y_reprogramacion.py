@@ -20,10 +20,21 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column("actividades", sa.Column("repetir_cada_min", sa.Integer(), nullable=True))
-    op.add_column("actividades", sa.Column("avisos_enviados", sa.Integer(), nullable=False))
+    # Con `server_default`, que se retira después: `nullable=False` sin él falla
+    # en cuanto la tabla tiene filas, y «actividades» las tiene desde el primer
+    # día en cualquier instalación en uso.
+    op.add_column(
+        "actividades",
+        sa.Column("avisos_enviados", sa.Integer(), nullable=False, server_default=sa.text("0")),
+    )
+    op.alter_column("actividades", "avisos_enviados", server_default=None)
     op.add_column("actividades", sa.Column("max_avisos", sa.Integer(), nullable=True))
     op.add_column("actividades", sa.Column("reprogramar_cada_dias", sa.Integer(), nullable=True))
-    op.add_column("actividades", sa.Column("veces_reprogramada", sa.Integer(), nullable=False))
+    op.add_column(
+        "actividades",
+        sa.Column("veces_reprogramada", sa.Integer(), nullable=False, server_default=sa.text("0")),
+    )
+    op.alter_column("actividades", "veces_reprogramada", server_default=None)
     op.add_column("actividades", sa.Column("max_reprogramaciones", sa.Integer(), nullable=True))
 
 
