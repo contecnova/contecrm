@@ -50,10 +50,11 @@ interface Resultado {
    * El resultado no es el informe que se definió, y el servidor dice por qué.
    *
    * `aviso_datos` es «el objeto se lee incompleto porque su listado no pagina»
-   * y `aviso_plan` es «el motor conectado no aplica los campos calculados o el
-   * pivote». Los dos venían en la respuesta y **no se pintaban en ninguna
-   * parte**: la cifra salía con su cara de cifra buena y el motivo se quedaba
-   * en el JSON, que es exactamente igual que no decirlo.
+   * y `aviso_plan` es «el motor ha devuelto más columnas de las que este
+   * informe sabe nombrar», que significa que las cabeceras pueden no
+   * corresponder con los datos. Los dos venían en la respuesta y **no se
+   * pintaban en ninguna parte**: la cifra salía con su cara de cifra buena y el
+   * motivo se quedaba en el JSON, que es exactamente igual que no decirlo.
    */
   incompleto?: boolean;
   aviso_datos?: string;
