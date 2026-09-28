@@ -12,6 +12,7 @@ llega sin que nadie la haya pedido.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -584,10 +585,12 @@ def salida_propagada(db: Session, sesion: Sesion, tenant_id: UUID) -> dict[str, 
 
 # ── SSO compartido por la suite (CRM-00.01.07.09) ─────────────────────────
 
-# Las herramientas de la casa que comparten proveedor de identidad. Es una lista
-# y no un descubrimiento automático porque conectar una herramienta nueva al SSO
-# de un cliente es una decisión suya, no un efecto de que aparezca un servicio.
-HERRAMIENTAS_SUITE = ("contecrm", "contecmind", "contecflow")
+# Qué herramientas se cablean contra el proveedor es **una decisión del cliente**
+# y se declara en el propio proveedor, no se descubre solo ni viene escrita aquí:
+# conectar una herramienta nueva al SSO es algo que se pide, no un efecto de que
+# aparezca un servicio. Aquí hubo tres nombres de la casa escritos a fuego, y eso
+# dejaba fuera a la cuarta el día que existiera y a cualquier herramienta que no
+# fuera nuestra desde el primer día.
 
 
 def _huella_certificados(certificados: Any) -> str:
@@ -606,6 +609,7 @@ def plan_de_sso_compartido(
     db: Session,
     tenant_id: UUID,
     *,
+    herramientas: Sequence[str] | None = None,
     herramientas_conectadas: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Qué herramientas de la suite usan ya el proveedor de identidad del tenant.
@@ -618,6 +622,18 @@ def plan_de_sso_compartido(
     dice estar conectada y tiene otro certificado no está compartiendo el SSO:
     está teniendo el suyo, y el día que el cliente rote el certificado se caerá
     solo esa.
+
+    **Qué herramientas se miran es configuración, no producto.** Salen del propio
+    proveedor (`config["herramientas"]`), que es donde se declara qué se cablea
+    contra él. Traer tres nombres escritos en el código dejaba fuera a la cuarta
+    el día que existiera, y a cualquier herramienta que no fuera de la casa desde
+    el primer día. La lista fija se queda sólo como último recurso para un
+    proveedor que no declare ninguna.
+
+    Y el cableado se declara **aquí y no en la conexión de aprovisionamiento**,
+    porque son dos hechos distintos: que empujemos usuarios a una herramienta no
+    dice nada de contra quién autentica, y una puede estar conectada para lo
+    primero y no para lo segundo.
     """
     from services.identity.modelos import ProveedorIdentidad
 
@@ -641,9 +657,29 @@ def plan_de_sso_compartido(
             "herramientas": [],
         }
 
-    estado = herramientas_conectadas or {}
+    declaradas = (proveedor.config or {}).get("herramientas") or {}
+    nombres = list(herramientas) if herramientas is not None else sorted(declaradas)
+
+    if not nombres:
+        # Ni «completo» ni «incompleto»: no hay nada que compartir. Decir que sí
+        # porque la lista está vacía —que es lo que sale de comparar dos ceros—
+        # pintaría de verde a un tenant sin ninguna herramienta cableada.
+        return {
+            "hay_proveedor": True,
+            "proveedor": proveedor.nombre,
+            "tipo": proveedor.tipo,
+            "herramientas": [],
+            "comparten": [],
+            "completo": False,
+            "que_significa": (
+                "Hay proveedor de identidad, pero no hay ninguna herramienta "
+                "declarada contra él: no hay con quién compartirlo todavía."
+            ),
+        }
+
+    estado = herramientas_conectadas or declaradas or {}
     filas = []
-    for herramienta in HERRAMIENTAS_SUITE:
+    for herramienta in nombres:
         suyo = estado.get(herramienta) or {}
         conectada = bool(suyo.get("conectada"))
         # La huella se calcula de los certificados declarados: el modelo guarda
@@ -678,11 +714,11 @@ def plan_de_sso_compartido(
         "tipo": proveedor.tipo,
         "herramientas": filas,
         "comparten": comparten,
-        "completo": len(comparten) == len(HERRAMIENTAS_SUITE),
+        "completo": len(comparten) == len(nombres),
         "que_significa": (
-            "Las tres herramientas entran por el mismo proveedor: una rotación de "
-            "certificado se hace una vez."
-            if len(comparten) == len(HERRAMIENTAS_SUITE)
+            "Todas las herramientas conectadas entran por el mismo proveedor: una "
+            "rotación de certificado se hace una vez."
+            if len(comparten) == len(nombres)
             else "No todas comparten. Cada una que no lo haga es una configuración "
             "más que mantener y un certificado más que caduca por su cuenta."
         ),

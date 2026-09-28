@@ -593,6 +593,11 @@ export default {
     bajasSinAplicar: "{{cuantas}} bajas sin aplicar: son accesos que siguen abiertos.",
     sinBajasPendientes: "No hay bajas pendientes de aplicar.",
     cuarentena: "{{cuantas}} elementos en cuarentena.",
+    queSeMando: "Qué se mandó",
+    intentos: "Intentos",
+    esUnaBaja: "BAJA —",
+    reintentar: "Volver a intentarlo",
+    reintentando: "Reintentando…",
     noEsControlRemoto:
       "Esto no es un panel de control remoto: cada herramienta manda en lo suyo y aquí se ve lo que publica.",
   },

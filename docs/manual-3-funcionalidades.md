@@ -5614,6 +5614,20 @@ mira tiene que adivinar si el problema es el dato o la herramienta.
 Y una herramienta desactivada **no gasta intentos**: si los gastara, el objeto
 acabaría en cuarentena por algo que no tiene nada que ver con él.
 
+**Para el usuario: la cuarentena se ve y se reintenta desde la consola.** Cada
+fila apartada sale con la herramienta, lo que se mandó, cuántos intentos lleva y
+el último error, y con su botón de volver a intentarlo. Las bajas van marcadas,
+porque son las únicas cuyo retraso deja un acceso abierto y en una lista larga se
+pierden entre las demás.
+
+> **Se vio funcionar el 28-09-2026**, y hasta ese día la consola decía «hay 3
+> elementos en cuarentena» y ahí se acababa: ni cuáles, ni con qué se mandaron,
+> ni forma de reintentarlos, **aunque las dos rutas llevaban en el servidor desde
+> el primer día**. Además, el listado no devolvía el identificador de la fila
+> apartada, que es justo lo que la ruta de reintento necesita: existía y era
+> inalcanzable. Un aviso sin salida enseña a quien lo lee a dejar de mirarlo, que
+> es lo contrario de para lo que se apartó.
+
 ### El mapeo de roles es dato (`CRM-00.01.07.04`)
 
 El mismo usuario es «director comercial» aquí, «editor» en el gestor documental y
@@ -5652,6 +5666,25 @@ consumidor a recorrerlo, y la mitad de las herramientas quieren la lista.
 Y cuando el conector **no sabe leer** el estado remoto, se dice. «No se ha podido
 comprobar» y «está todo bien» son cosas distintas, y confundirlas es precisamente
 por lo que nadie se fía de los paneles de sincronización.
+
+**Para mantenimiento: por qué no se puede comprobar, hay tres motivos y se
+distinguen.** Que la herramienta no declare `_listados`, que conteste un error, o
+que la llamada reviente. El mensaje dice cuál de los tres ha sido, y si sólo se
+pudo leer parte, `motivos_ilegibles` explica lo que faltó — una reconciliación
+que leyó la mitad se leería como completa sin eso.
+
+> **Se vio funcionar el 28-09-2026, y se encontraron dos fallos que llevaban
+> tiempo.** La lectura del estado remoto **no entraba con usuario y contraseña**:
+> sólo miraba un token escrito a mano en la configuración. Una herramienta que
+> emite tokens de quince minutos —contecmind, la primera para la que se escribió
+> esto— no tiene ninguno, así que escribir funcionaba y **leer no**: la
+> reconciliación quedaba apagada para siempre, y de la forma más difícil de ver,
+> porque el panel decía exactamente lo que tenía que decir.
+>
+> Y el motivo que daba era el equivocado: decía «declara `_listados` en su
+> mapeo» con `_listados` ya declarado y un 401 por debajo. Ir a poner lo que ya
+> está puesto es la peor forma de perder una tarde, porque quien la pierde acaba
+> concluyendo que el panel miente.
 
 ### Simular antes de aplicar (`CRM-00.01.07.11`)
 
@@ -10166,9 +10199,29 @@ revisa una lista de tres mil cuentas antes de aprobar.
 
 ### Baja en cascada con certificado único (`CRM-00.01.07.13`)
 
-O se cierra en las tres herramientas de la suite **o se dice cuál ha quedado
-abierta**. Firmar que se destruyó todo sin comprobar la tercera es firmar sobre
+O se cierra en todas las herramientas conectadas **o se dice cuál ha quedado
+abierta**. Firmar que se destruyó todo sin comprobar la última es firmar sobre
 algo que sigue ahí, y eso es peor que no dar certificado.
+
+**Para el usuario.** Son dos pasos y en este orden: `POST /suite/cerrar` pide la
+baja en todas las herramientas —va con prioridad de baja, la máxima— y después
+`GET /suite/certificado-de-cierre` dice si se puede firmar. Entre medias hay que
+aplicar la cola: **encolar no es cerrar**, y el certificado no firma hasta que
+consta aplicada en cada una.
+
+**Para mantenimiento.** El certificado lee el estado real de la fila de
+sincronización de cada herramienta, no un registro aparte, porque el estado que
+vale es el que decide si se volverá a intentar. Tres respuestas posibles por
+herramienta: no se ha pedido la baja, está pedida y sin aplicar (con el último
+error), o cerrada. Las dos primeras impiden firmar.
+
+> **Se vio funcionar el 28-09-2026, y hasta ese día no existía.** El alta en
+> cascada llevaba desde el principio; la baja, no. Cerrar un cliente en el CRM no
+> le decía nada a las demás herramientas y su gente seguía entrando en el gestor
+> documental con el contrato terminado. La función que compone el certificado
+> estaba escrita y probada, y **no la llamaba nadie**: ni ruta, ni consumidor.
+> Una capacidad que consta hecha y no se puede ejercer no se descubre hasta que
+> hace falta, y aquí hacía falta el día de una auditoría.
 
 ## Marca blanca (`CRM-00.01.04.06`)
 
@@ -10244,14 +10297,48 @@ importan.
 
 ## SSO compartido por la suite (`CRM-00.01.07.09`)
 
-El proveedor de identidad se configura **una vez** y lo usan las tres
-herramientas. Repetir la configuración en cada una es cómo se acaba con tres
-certificados distintos, dos caducados y nadie sabiendo cuál es el bueno.
+El proveedor de identidad se configura **una vez** y lo usan todas las
+herramientas conectadas. Repetir la configuración en cada una es cómo se acaba
+con tres certificados distintos, dos caducados y nadie sabiendo cuál es el bueno.
 
 Lo que se publica es el **estado real y no la intención**: una herramienta que
 dice estar conectada y tiene otro certificado no comparte el SSO, tiene el suyo —
 y el día que el cliente rote el certificado se cae solo esa, sin que nadie
 entienda por qué.
+
+**Para el usuario.** `GET /proveedores-identidad/suite` lo dice de una vez: qué
+proveedor hay, qué herramientas comparten de verdad, cuáles no y por qué. Un
+tenant **con proveedor y sin ninguna herramienta declarada no sale en verde**: no
+hay con quién compartirlo todavía, que no es lo mismo que estar completo.
+
+**Para mantenimiento.** El cableado se declara en la configuración del **proveedor**:
+
+```json
+"herramientas": { "gestor-documental": { "conectada": true, "huella_certificado": "…" } }
+```
+
+Y se declara ahí, y no en la conexión de aprovisionamiento, porque son dos hechos
+distintos: que empujemos usuarios a una herramienta no dice nada de contra quién
+autentica, y una puede estar conectada para lo primero y no para lo segundo.
+
+La huella se calcula ordenando los certificados del proveedor, para que durante
+una rotación —cuando conviven el viejo y el nuevo— no parezca que cada
+herramienta tiene uno distinto justo el día en que hay que mirarlo.
+
+Y **los nombres salen de esa configuración, no del producto**. Antes eran tres
+nombres de la casa escritos en el código, lo que dejaba fuera a la cuarta el día
+que existiera y a cualquier herramienta que no fuera nuestra desde el primer día.
+
+> **La ruta va declarada antes que la ficha `/{proveedor_id}`**, o no se alcanza
+> nunca: la petición acabaría buscando un proveedor llamado «suite». Hay una
+> prueba que lo fija, porque el mismo día ocho rutas del producto resultaron
+> inalcanzables exactamente por esto.
+
+> **Se vio funcionar el 28-09-2026**, y al ejercerla se encontró que la
+> comprobación entera existía desde el principio **sin ruta, sin consumidor y sin
+> prueba**: la capacidad constaba hecha y no había forma de ejercerla. De camino
+> apareció que comparar dos listas vacías daba «completo», así que un tenant sin
+> ninguna herramienta conectada salía en verde.
 
 ## IA sin salida de datos (`CRM-00.01.05.04`)
 

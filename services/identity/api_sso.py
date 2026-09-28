@@ -488,6 +488,34 @@ def _entrada(
 # ── La ficha del registro ─────────────────────────────────────────────────
 # Sin ella, las acciones que cuelgan de un registro no se alcanzan desde
 # ninguna pantalla: existen, se prueban y nadie las usa.
+
+
+# ── SSO compartido por la suite (CRM-00.01.07.09) ─────────────────────────
+
+
+@router_idp.get(
+    "/suite",
+    dependencies=[Depends(exige_permiso("idp:configurar"))],
+    summary="Qué herramientas de la suite comparten de verdad este proveedor",
+    description=(
+        "El proveedor se configura **una vez** y lo usan todas las herramientas "
+        "cableadas contra él. Repetirlo en cada una es cómo se acaba con tres "
+        "certificados distintos, dos caducados y nadie sabiendo cuál es el "
+        "bueno.\n\n"
+        "Lo que se publica es el **estado real y no la intención**: una "
+        "herramienta que dice estar conectada y tiene otro certificado no "
+        "comparte el SSO, tiene el suyo, y el día que el cliente rote el "
+        "certificado se cae sólo esa sin que nadie entienda por qué.\n\n"
+        "Las herramientas se declaran en la configuración del proveedor, en "
+        "`herramientas: {nombre: {conectada, huella_certificado}}`."
+    ),
+)
+def sso_de_la_suite(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.identity import sso_gobierno
+
+    return sso_gobierno.plan_de_sso_compartido(db, principal.tenant_id)
+
+
 montar_ficha(
     router_idp,
     modelo=ProveedorIdentidad,

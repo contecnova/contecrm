@@ -554,6 +554,12 @@ def cuarentena(db: Session, tenant_id: UUID) -> list[dict[str, Any]]:
     )
     return [
         {
+            # El identificador de la fila apartada, que es con lo que se la
+            # reintenta. Sin él, la única acción que ofrece esta pantalla —«volver
+            # a intentarlo»— no se puede pedir: la ruta existía y no había forma
+            # de llegar a ella desde lo que se enseñaba. `objeto_id` no sirve,
+            # porque es el del usuario o la unidad, no el de la sincronización.
+            "id": str(f.id),
             "herramienta": f.herramienta,
             "objeto": f.objeto,
             "objeto_id": f.objeto_id,
@@ -625,6 +631,95 @@ def provisionar_tenant(db: Session, tenant_id: UUID) -> dict[str, Any]:
         # en el CRM.
         "sin_herramientas": not encoladas,
     }
+
+
+def cerrar_tenant(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Encola la **baja** del tenant en cada herramienta conectada (CRM-00.01.07.13).
+
+    El alta en cascada llevaba desde el principio y la baja no existía: cerrar un
+    cliente en el CRM no le decía nada a las demás herramientas, y su gente
+    seguía entrando en el gestor documental con el contrato ya terminado. Nadie
+    lo descubre hasta una auditoría, que es tarde.
+
+    Va con la prioridad de baja, que es la máxima: un alta que tarda es una
+    molestia, una baja que tarda es una puerta abierta.
+    """
+    identidad = identidad_de_tenant(db, tenant_id)
+    encoladas = []
+    for herramienta in herramientas(db, tenant_id, solo_activas=False):
+        if "tenant" not in (herramienta.objetos or list(OBJETOS)):
+            continue
+        encolar(
+            db,
+            tenant_id,
+            herramienta=herramienta.nombre,
+            objeto="tenant",
+            objeto_id=str(tenant_id),
+            operacion="baja",
+            carga=_traducir(herramienta, identidad),
+        )
+        encoladas.append(herramienta.nombre)
+
+    registrar(
+        db,
+        accion="suite.tenant_cerrado",
+        objeto="tenant",
+        objeto_id=tenant_id,
+        datos={"herramientas": encoladas},
+        tenant_id=tenant_id,
+    )
+    return {
+        "tenant": identidad["slug"],
+        "herramientas": encoladas,
+        "sin_herramientas": not encoladas,
+    }
+
+
+def certificado_de_cierre(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """El certificado único de baja, leyendo el estado **real** de la cola.
+
+    La regla que lo hace valer algo vive en `ciclo_vida`: o se cierra en todas o
+    se dice cuál ha quedado abierta. Lo que faltaba era quien le contara qué ha
+    pasado de verdad; sin eso, la función estaba escrita, probada y era
+    inalcanzable, y la capacidad constaba hecha.
+
+    Se mira la fila de sincronización de cada herramienta, no un registro
+    aparte: el estado que vale es el que decide si se volverá a intentar.
+    """
+    from services.tenancy.ciclo_vida import certificado_de_baja
+
+    cierres: dict[str, dict[str, Any]] = {}
+    for herramienta in herramientas(db, tenant_id, solo_activas=False):
+        if "tenant" not in (herramienta.objetos or list(OBJETOS)):
+            continue
+        fila = db.execute(
+            select(SincronizacionSuite).where(
+                SincronizacionSuite.tenant_id == tenant_id,
+                SincronizacionSuite.herramienta == herramienta.nombre,
+                SincronizacionSuite.objeto == "tenant",
+                SincronizacionSuite.objeto_id == str(tenant_id),
+            )
+        ).scalar_one_or_none()
+
+        if fila is None or fila.operacion != "baja":
+            # No haber pedido la baja no es haberla aplicado. Contarlo como
+            # cerrado sería justo la firma en falso que este certificado existe
+            # para no dar.
+            cierres[herramienta.nombre] = {
+                "cerrado": False,
+                "porque": "no se ha pedido la baja del tenant en esta herramienta",
+            }
+        elif fila.estado == "aplicado":
+            cierres[herramienta.nombre] = {"cerrado": True}
+        else:
+            cierres[herramienta.nombre] = {
+                "cerrado": False,
+                "porque": (
+                    f"la baja está «{fila.estado}»: "
+                    f"{fila.ultimo_error or 'sin aplicar todavía'}"
+                ),
+            }
+    return certificado_de_baja(db, tenant_id, cierres=cierres)
 
 
 def provisionar_usuario(

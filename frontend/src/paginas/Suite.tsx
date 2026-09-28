@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { llamar, salvoCancelacion } from "@/lib/api";
+import { usePuedeOperar } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { Casilla, Rejilla } from "@/componentes/Rejilla";
 
@@ -48,6 +49,7 @@ export function SuiteGobierno() {
   const { t } = useTranslation();
   const [datos, setDatos] = useState<Panel | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+  const [recargar, setRecargar] = useState(0);
 
   useEffect(() => {
     const control = new AbortController();
@@ -55,7 +57,7 @@ export function SuiteGobierno() {
       .then((r) => setDatos(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, []);
+  }, [recargar]);
 
   if (fallo) return <Fallo error={fallo} />;
   if (!datos) return <Cargando />;
@@ -124,9 +126,12 @@ export function SuiteGobierno() {
           </Rejilla>
 
           {datos.cuarentena > 0 ? (
-            <p className="mt-3 text-2xs text-warning">
-              {t("suite.cuarentena", { cuantas: datos.cuarentena })}
-            </p>
+            <>
+              <p className="mt-3 text-2xs text-warning" role="status">
+                {t("suite.cuarentena", { cuantas: datos.cuarentena })}
+              </p>
+              <Cuarentena alReintentar={() => setRecargar((n) => n + 1)} />
+            </>
           ) : null}
         </>
       )}
@@ -135,5 +140,107 @@ export function SuiteGobierno() {
         {t("suite.noEsControlRemoto")}
       </p>
     </>
+  );
+}
+
+interface Apartado {
+  id: string;
+  herramienta: string;
+  objeto: string;
+  objeto_id: string;
+  operacion: string;
+  intentos: number;
+  error: string | null;
+  carga: Record<string, unknown>;
+  gravedad: string;
+}
+
+/**
+ * Lo apartado, con qué se mandó y con el botón de volver a intentarlo.
+ *
+ * Antes esta pantalla decía «hay 3 en cuarentena» y ahí se acababa: no había
+ * forma de ver cuáles ni de reintentarlas, aunque las dos rutas existían en el
+ * servidor desde el primer día. Un aviso sin salida enseña a quien lo lee a no
+ * mirarlo, que es justo lo contrario de para lo que se apartó.
+ *
+ * Y se enseña **lo que se mandó**: sin eso, quien lo mira tiene que adivinar si
+ * el problema es el dato o la herramienta.
+ */
+function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
+  const { t } = useTranslation();
+  const puedeOperar = usePuedeOperar();
+  const [filas, setFilas] = useState<Apartado[] | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [enviando, setEnviando] = useState("");
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Apartado[]>("/api/v1/suite/cuarentena", { signal: control.signal })
+      .then((r) => setFilas(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, []);
+
+  async function reintentar(id: string) {
+    setEnviando(id);
+    try {
+      await llamar(`/api/v1/suite/cuarentena/${id}/reintentar`, {
+        metodo: "POST",
+      });
+      setFilas((previas) => (previas ?? []).filter((f) => f.id !== id));
+      alReintentar();
+    } catch (e) {
+      setFallo(e);
+    } finally {
+      setEnviando("");
+    }
+  }
+
+  if (fallo) return <Fallo error={fallo} />;
+  if (!filas) return <Cargando />;
+
+  const puede = puedeOperar("POST", "/api/v1/suite/cuarentena/{id}/reintentar");
+
+  return (
+    <Rejilla
+      className="mt-2"
+      cabeceras={[
+        t("suite.herramienta"),
+        t("suite.queSeMando"),
+        t("suite.intentos"),
+        t("suite.ultimoError"),
+        "",
+      ]}
+    >
+      {filas.map((f) => (
+        <tr key={f.id} className="border-b border-ink-dim/30 last:border-0">
+          <Casilla className="text-ink">{f.herramienta}</Casilla>
+          <Casilla className="text-3xs text-ink-muted">
+            {/* La baja se marca: es la única cuyo retraso deja un acceso
+                abierto, y en una lista larga se pierde entre las demás. */}
+            {f.gravedad === "alta" ? (
+              <span className="text-danger">{t("suite.esUnaBaja")} </span>
+            ) : null}
+            {f.objeto}: {JSON.stringify(f.carga)}
+          </Casilla>
+          <Casilla className="text-ink-muted">{f.intentos}</Casilla>
+          <Casilla className="text-3xs text-ink-faint">{f.error ?? "—"}</Casilla>
+          <Casilla>
+            {puede ? (
+              <button
+                type="button"
+                onClick={() => void reintentar(f.id)}
+                disabled={enviando === f.id}
+                className="rounded border border-ink-dim/60 px-2 py-1 text-3xs text-ink disabled:opacity-50"
+              >
+                {enviando === f.id
+                  ? t("suite.reintentando")
+                  : t("suite.reintentar")}
+              </button>
+            ) : null}
+          </Casilla>
+        </tr>
+      ))}
+    </Rejilla>
   );
 }

@@ -46,6 +46,23 @@ class Resultado:
     identificador_externo: str = ""
 
 
+@dataclass(slots=True)
+class Lectura:
+    """Lo que hay en la otra herramienta, o **por qué** no se ha podido leer.
+
+    Antes esto era un `dict | None`, y el `None` significaba tres cosas muy
+    distintas: que la herramienta no declara cómo listar, que ha contestado un
+    error, o que la llamada ha reventado. Quien lo recibía sólo sabía nombrar la
+    primera, así que una herramienta con `_listados` bien declarado y un 401 por
+    credencial le decía al operador **«declara `_listados` en su mapeo»**. Ir a
+    poner lo que ya está puesto es la peor forma de perder una tarde, porque
+    quien la pierde acaba concluyendo que el panel miente.
+    """
+
+    estado: dict[str, dict[str, Any]] | None
+    motivo: str = ""
+
+
 class Conector(Protocol):
     """Lo que tiene que saber hacer un conector."""
 
@@ -55,15 +72,14 @@ class Conector(Protocol):
         """Aplica un cambio. **Nunca lanza.**"""
         ...
 
-    def leer_estado(
-        self, herramienta: HerramientaConectada, objeto: str
-    ) -> dict[str, dict[str, Any]] | None:
-        """El estado remoto para reconciliar, o `None` si no sabe leerlo.
+    def leer_estado(self, herramienta: HerramientaConectada, objeto: str) -> Lectura:
+        """El estado remoto para reconciliar, con el motivo si no se ha podido.
 
-        `None` y `{}` son cosas distintas: el diccionario vacío dice «allí no hay
-        nada», y eso llevaría a reencolarlo todo. `None` dice «no se ha podido
-        leer», y entonces la reconciliación se salta en vez de inventarse una
-        divergencia que no se ha comprobado.
+        `Lectura(None, …)` y `Lectura({}, …)` son cosas distintas: el diccionario
+        vacío dice «allí no hay nada», y eso llevaría a reencolarlo todo. El
+        `None` dice «no se ha podido leer», y entonces la reconciliación se salta
+        en vez de inventarse una divergencia que no se ha comprobado — pero
+        **diciendo por qué**, que es lo que permite arreglarlo.
         """
         ...
 
@@ -244,15 +260,20 @@ class ConectorGenerico:
         except Exception as exc:  # noqa: BLE001 — el contrato es no lanzar
             return Resultado(ok=False, detalle=f"{type(exc).__name__}: {str(exc)[:300]}")
 
-    def leer_estado(
-        self, herramienta: HerramientaConectada, objeto: str
-    ) -> dict[str, dict[str, Any]] | None:
+    def leer_estado(self, herramienta: HerramientaConectada, objeto: str) -> Lectura:
         """Lee el estado remoto si la herramienta declara cómo listarlo.
 
-        Si no lo declara, devuelve `None` y la reconciliación se salta para esa
-        herramienta **diciéndolo**. Dar por buena la sincronización porque no se
-        puede comprobar es exactamente el error que este módulo existe para
-        evitar.
+        **Se entra igual que para escribir.** Esto leía sólo el token escrito a
+        mano en la configuración, y una herramienta que emite tokens de quince
+        minutos —contecmind, la primera para la que se escribió esto— no tiene
+        ninguno: se entra con usuario y contraseña. El resultado no era un error
+        ruidoso sino un «no se ha podido comprobar» permanente, o sea la
+        reconciliación entera apagada de la forma más difícil de ver, porque el
+        panel decía exactamente lo que tenía que decir.
+
+        Si la herramienta no declara cómo listar, la reconciliación se salta
+        **diciéndolo**. Dar por buena la sincronización porque no se puede
+        comprobar es el error que este módulo existe para evitar.
         """
         from crmcore.red import guard_url
         from crmcore.security.cifrado import descifrar_dict
@@ -260,28 +281,58 @@ class ConectorGenerico:
         listados = (herramienta.mapeo_campos or {}).get("_listados") or {}
         plantilla = listados.get(objeto)
         if not plantilla:
-            return None
+            return Lectura(
+                None,
+                f"«{herramienta.nombre}» no declara cómo listar {objeto}. Declara "
+                "`_listados` en su mapeo o usa un conector que sepa leerlo.",
+            )
         try:
             credenciales = descifrar_dict(herramienta.credenciales or {})
-            cabeceras = {}
-            if credenciales.get("token"):
-                cabeceras["Authorization"] = f"Bearer {credenciales['token']}"
+            # Las mismas cabeceras extra que al escribir: una herramienta que
+            # exige `X-Tenant` para su API lo exige en toda ella, y tenerlas sólo
+            # en la escritura dejaba la lectura fallando por algo que ya estaba
+            # configurado.
+            extra = {
+                str(k): str(v)
+                for k, v in (((herramienta.mapeo_campos or {}).get("_cabeceras")) or {}).items()
+            }
             url = herramienta.base_url.rstrip("/") + str(plantilla).format(
                 tenant=herramienta.identificador_externo
             )
-            with guard_url.cliente_seguro(timeout=30.0) as cliente:
-                respuesta = cliente.get(url, headers=cabeceras)
+
+            def _llamar(*, renovar: bool) -> Any:
+                cabeceras = dict(extra)
+                token = self._token(herramienta, credenciales, renovar=renovar)
+                if token:
+                    cabeceras["Authorization"] = f"Bearer {token}"
+                with guard_url.cliente_seguro(timeout=30.0) as cliente:
+                    return cliente.get(url, headers=cabeceras)
+
+            # Un 401 se reintenta una vez y sólo el 401, por lo mismo que al
+            # escribir: es lo que pasa con un token vencido, y un 403 es un
+            # permiso mal configurado que reintentar convierte en una tormenta.
+            respuesta = _llamar(renovar=False)
+            if respuesta.status_code == 401:
+                respuesta = _llamar(renovar=True)
             if respuesta.status_code >= 400:
-                return None
+                return Lectura(
+                    None,
+                    f"«{herramienta.nombre}» contestó HTTP {respuesta.status_code} al "
+                    f"listar {objeto}: {respuesta.text[:200]}",
+                )
             cuerpo = respuesta.json()
             elementos = cuerpo if isinstance(cuerpo, list) else (cuerpo.get("items") or [])
             clave = (herramienta.mapeo_campos or {}).get("_clave_remota", "id_externo")
-            return {str(e.get(clave)): e for e in elementos if isinstance(e, dict)}
+            return Lectura({str(e.get(clave)): e for e in elementos if isinstance(e, dict)})
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "suite.lectura_remota_fallida", herramienta=herramienta.nombre, error=str(exc)[:200]
             )
-            return None
+            return Lectura(
+                None,
+                f"no se pudo leer {objeto} de «{herramienta.nombre}»: "
+                f"{type(exc).__name__}: {str(exc)[:200]}",
+            )
 
 
 registrar(ConectorGenerico())
@@ -434,25 +485,33 @@ def reconciliar_con_remoto(db: Session, tenant_id: UUID, herramienta: str) -> di
     conector = conector_de(conectada.tipo)
     remoto: dict[str, dict[str, Any]] = {}
     ilegibles: list[str] = []
+    motivos: list[str] = []
     for objeto in conectada.objetos or []:
-        leido = conector.leer_estado(conectada, str(objeto)) if conector else None
-        if leido is None:
+        lectura = (
+            conector.leer_estado(conectada, str(objeto))
+            if conector
+            else Lectura(None, f"«{herramienta}» no tiene conector.")
+        )
+        if lectura.estado is None:
             ilegibles.append(str(objeto))
+            motivos.append(lectura.motivo)
             continue
-        remoto.update(leido)
+        remoto.update(lectura.estado)
 
     if ilegibles and not remoto:
+        # El motivo es **el que ha pasado**, no uno fijo. Con uno fijo, una
+        # herramienta que contesta 401 recibía «declara `_listados`» teniéndolo
+        # declarado, y quien lo leía se iba a mirar donde no era.
         return {
             "herramienta": herramienta,
             "medible": False,
-            "motivo": (
-                f"«{herramienta}» no declara cómo listar {', '.join(ilegibles)}, así "
-                "que no se puede comprobar si está sincronizada. Declara `_listados` "
-                "en su mapeo o usa un conector que sepa leerlo."
-            ),
+            "motivo": " · ".join(m for m in motivos if m),
         }
 
     salida = reconciliar(db, tenant_id, herramienta, remoto)
     salida["medible"] = True
     salida["objetos_ilegibles"] = ilegibles
+    # Lo parcialmente ilegible también dice por qué: si no, una reconciliación
+    # que sólo pudo leer la mitad se lee como completa.
+    salida["motivos_ilegibles"] = [m for m in motivos if m]
     return salida

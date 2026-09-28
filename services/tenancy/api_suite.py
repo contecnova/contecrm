@@ -300,6 +300,39 @@ def reparar(herramienta: str, datos: Reparar, uow: UowDep, principal: Autenticad
     )
 
 
+# ── Baja en cascada y certificado único (CRM-00.01.07.13) ─────────────────
+
+
+@router_suite.post(
+    "/cerrar",
+    dependencies=[Depends(exige_permiso("tenant:write"))],
+    summary="Dar de baja este tenant en todas las herramientas conectadas",
+    description=(
+        "El alta en cascada existía desde el principio y la baja no: cerrar un "
+        "cliente en el CRM no le decía nada a las demás herramientas, y su gente "
+        "seguía entrando en el gestor documental con el contrato terminado.\n\n"
+        "Encola, no cierra: lo que cierra es aplicar la cola, y el certificado "
+        "dice cuál ha quedado abierta."
+    ),
+)
+def cerrar(uow: UowDep, principal: AutenticadoDep) -> Any:
+    return suite.cerrar_tenant(uow.db, principal.tenant_id)
+
+
+@router_suite.get(
+    "/certificado-de-cierre",
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Un solo certificado para todas las herramientas de la suite",
+    description=(
+        "O se ha cerrado en todas o se dice cuál ha quedado abierta. Firmar que "
+        "se destruyó todo sin comprobar la tercera es firmar sobre algo que "
+        "sigue ahí, y eso es peor que no dar certificado."
+    ),
+)
+def certificado_de_cierre(db: DbDep, principal: AutenticadoDep) -> Any:
+    return suite.certificado_de_cierre(db, principal.tenant_id)
+
+
 # ── Auditoría transversal (CRM-00.01.07.12) ───────────────────────────────
 
 

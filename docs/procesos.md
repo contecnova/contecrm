@@ -92,6 +92,7 @@ stateDiagram-v2
 | `POST /api/v1/sandboxes/plan` | Preparar una copia a un entorno que no es producción | proposito*, porcentaje, anonimizar, motivo_sin_anonimizar | 200, 422 | — |
 | `POST /api/v1/sandboxes/reglas` | Comprobar que toda columna personal tiene decidido su tratamiento | campos_personales, reglas | 200, 422 | — |
 | `POST /api/v1/suite/aplicar` | Aplicar la cola pendiente | herramienta, tope | 200, 422 | — |
+| `POST /api/v1/suite/cerrar` | Dar de baja este tenant en todas las herramientas conectadas | — | 200, 422 | — |
 | `POST /api/v1/suite/cuarentena/{sincronizacion_id}/reintentar` | Volver a intentar algo apartado | sincronizacion_id* | 200, 422 | — |
 | `POST /api/v1/suite/herramientas` | Conectar una herramienta de la suite | nombre*, base_url*, credenciales, tipo, mapeo_roles, mapeo_campos, campos_fijos, objetos, identificador_externo | 201, 422 | — |
 | `POST /api/v1/suite/provisionar/organizacion` | Replicar áreas y departamentos a las herramientas | — | 200, 422 | — |
