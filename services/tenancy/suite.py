@@ -333,13 +333,16 @@ def _traducir(herramienta: HerramientaConectada, carga: dict[str, Any]) -> dict[
     """
     mapeo = herramienta.mapeo_campos or {}
     traducida = {str(mapeo.get(k, k)): v for k, v in carga.items()} if mapeo else dict(carga)
-    # Los fijos van DESPUÉS de traducir y ya con el nombre de allí: son campos
-    # suyos, no nuestros, así que pasarlos por el mapeo sería traducir dos veces.
-    # Y no pisan lo que traiga el objeto: si una carga ya lleva ese campo, manda
-    # el dato del objeto —un valor por conexión es un valor por defecto, no una
-    # imposición—.
-    for clave, valor in (herramienta.campos_fijos or {}).items():
-        traducida.setdefault(str(clave), valor)
+    # LOS CAMPOS FIJOS NO SE APLICAN AQUÍ, y es deliberado. Aquí se compone lo
+    # que se ENCOLA, y un valor de la conexión metido en la fila se queda
+    # congelado con ella. El caso real: montas la integración, el alta falla
+    # porque falta `app_id`, lo configuras… y la cola sigue fallando para
+    # siempre, porque las filas pendientes llevan la carga vieja. Quien lo mire
+    # concluirá que configurarlo no sirve de nada.
+    #
+    # Se aplican al ENVIAR, en el conector, que es donde se sabe con qué
+    # conexión se está hablando en ese momento. Así corregir la configuración
+    # arregla también lo que ya estaba en la cola.
     return traducida
 
 

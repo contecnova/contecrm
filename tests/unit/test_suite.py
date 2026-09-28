@@ -494,6 +494,44 @@ def test_sin_forma_de_leer_no_se_da_por_sincronizado(
 # ── Campos constantes por conexión (CRM-00.01.07.08) ──────────────────────
 
 
+def _fila_de_tenant(herramienta: Any, tenant_id: UUID) -> Any:
+    return suite.SincronizacionSuite(
+        tenant_id=tenant_id,
+        herramienta=herramienta.nombre,
+        objeto="tenant",
+        objeto_id=str(uuid4()),
+        operacion="alta",
+        identificador_externo="org-1",
+        carga={"name": "ACME"},
+    )
+
+
+def _capturar_carga(monkeypatch: Any) -> list[dict[str, Any]]:
+    """Qué cuerpo sale por el cable, que es lo único que importa aquí."""
+    import contextlib
+
+    import httpx
+    from crmcore.red import guard_url
+
+    salidas: list[dict[str, Any]] = []
+
+    def _transporte(peticion: httpx.Request) -> httpx.Response:
+        import json as _json
+
+        if peticion.url.path.endswith("/auth/login"):
+            return httpx.Response(200, json={"access_token": "t"})
+        salidas.append(_json.loads(peticion.content) if peticion.content else {})
+        return httpx.Response(200, json={"id": "remoto"})
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_transporte)) as cli:
+            yield cli
+
+    monkeypatch.setattr(guard_url, "cliente_seguro", _fabrica)
+    return salidas
+
+
 def test_un_campo_que_exige_la_herramienta_y_no_es_del_objeto_se_configura(
     db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
 ) -> None:
@@ -501,28 +539,53 @@ def test_un_campo_que_exige_la_herramienta_y_no_es_del_objeto_se_configura(
 
     `app_id` dice QUÉ APLICACIÓN la nombra, así que no es un campo del tenant:
     es de la conexión. El mapeo de campos no podía resolverlo por definición
-    —renombra claves, no inventa las que no vienen— y el alta salía sin él y se
-    comía un 422 del gestor.
-
-    La alternativa era un conector propio para contecmind con ese campo escrito
-    dentro, y eso es justo lo que esta arquitectura evita: dirección, credencial
-    y configuración, sin código por proveedor.
+    —renombra claves, no inventa las que no vienen— y el alta se comía un 422
+    del gestor. Verificado contra contecmind de verdad: sin el campo contesta
+    «app_id: Field required»; con él, deja de quejarse del cuerpo.
     """
-    from crmcore.red import guard_url
+    from services.tenancy import suite_conector
 
-    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
-    herramienta = suite.conectar(
-        db,
-        tenant_id,
-        nombre="mind-con-app",
-        base_url="https://mind.ejemplo.com",
-        credenciales={"token": "x"},
-        tipo="contecmind",
-        campos_fijos={"app_id": "11111111-2222-3333-4444-555555555555"},
+    herramienta = _conector_con_login(db, tenant_id, "mind-fijos", monkeypatch)
+    herramienta.campos_fijos = {"app_id": "11111111-2222-3333-4444-555555555555"}
+    db.flush()
+    salidas = _capturar_carga(monkeypatch)
+    suite_conector.ConectorGenerico._tokens.clear()
+
+    suite_conector.ConectorContecmind().aplicar(
+        herramienta, _fila_de_tenant(herramienta, tenant_id)
     )
-    carga = suite._traducir(herramienta, {"nombre": "ACME"})
-    assert carga["app_id"] == "11111111-2222-3333-4444-555555555555"
-    assert carga["nombre"] == "ACME"
+
+    assert salidas, "no salió ninguna carga"
+    assert salidas[-1]["app_id"] == "11111111-2222-3333-4444-555555555555"
+    assert salidas[-1]["name"] == "ACME"
+
+
+def test_el_campo_fijo_se_aplica_al_ENVIAR_y_no_al_encolar(
+    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
+) -> None:
+    """Es lo que hace que configurarlo sirva de algo.
+
+    La primera versión los metía al componer la carga, o sea al ENCOLAR, y el
+    valor quedaba congelado en la fila. El camino real es justo el contrario:
+    montas la integración, el alta falla porque falta `app_id`, lo configuras… y
+    **la cola seguiría fallando para siempre**, porque las filas pendientes
+    llevan la carga vieja. Quien lo mirara concluiría que configurarlo no sirve.
+
+    Aquí la fila se crea ANTES de configurar el campo, que es el orden en que
+    pasa de verdad.
+    """
+    from services.tenancy import suite_conector
+
+    herramienta = _conector_con_login(db, tenant_id, "mind-tarde", monkeypatch)
+    fila = _fila_de_tenant(herramienta, tenant_id)  # encolada sin el campo
+    herramienta.campos_fijos = {"app_id": "abc"}  # configurado DESPUÉS
+    db.flush()
+
+    salidas = _capturar_carga(monkeypatch)
+    suite_conector.ConectorGenerico._tokens.clear()
+    suite_conector.ConectorContecmind().aplicar(herramienta, fila)
+
+    assert salidas[-1]["app_id"] == "abc", "configurarlo no arregló lo que ya estaba en la cola"
 
 
 def test_un_campo_fijo_no_pisa_el_dato_del_objeto(
@@ -530,51 +593,23 @@ def test_un_campo_fijo_no_pisa_el_dato_del_objeto(
 ) -> None:
     """Un valor por conexión es un valor POR DEFECTO, no una imposición.
 
-    Ésta es la prueba que hace falta de verdad: si el fijo pisara al objeto, el
-    fallo no daría ningún error —la carga saldría bien formada— y se empujaría
-    el mismo valor para todos los registros. La otra, que el valor llegue,
-    fallaría a gritos; ésta fallaría en silencio.
+    Si el fijo pisara al objeto, el fallo no daría ningún error —la carga
+    saldría bien formada— y se empujaría el mismo valor para todos los
+    registros. La otra prueba fallaría a gritos; ésta fallaría en silencio.
     """
-    from crmcore.red import guard_url
+    from services.tenancy import suite_conector
 
-    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
-    herramienta = suite.conectar(
-        db,
-        tenant_id,
-        nombre="mind-defecto",
-        base_url="https://mind.ejemplo.com",
-        credenciales={"token": "x"},
-        tipo="contecmind",
-        campos_fijos={"rol": "lector"},
+    herramienta = _conector_con_login(db, tenant_id, "mind-defecto", monkeypatch)
+    herramienta.campos_fijos = {"name": "EL DE LA CONEXIÓN"}
+    db.flush()
+    salidas = _capturar_carga(monkeypatch)
+    suite_conector.ConectorGenerico._tokens.clear()
+
+    suite_conector.ConectorContecmind().aplicar(
+        herramienta, _fila_de_tenant(herramienta, tenant_id)
     )
-    carga = suite._traducir(herramienta, {"rol": "admin"})
-    assert carga["rol"] == "admin", "el dato del objeto manda sobre el valor por conexión"
 
-
-def test_los_campos_fijos_no_pasan_por_el_mapeo(
-    db: Any, tenant_id: UUID, tenant: Tenant, monkeypatch: Any, con_cifrado: Any
-) -> None:
-    """Se escriben con el nombre de ALLÍ, porque son campos suyos.
-
-    Traducirlos sería traducir dos veces: quien configura la conexión ya está
-    escribiendo lo que el otro lado espera recibir.
-    """
-    from crmcore.red import guard_url
-
-    monkeypatch.setattr(guard_url, "exigir", lambda url: None)
-    herramienta = suite.conectar(
-        db,
-        tenant_id,
-        nombre="mind-sin-traducir",
-        base_url="https://mind.ejemplo.com",
-        credenciales={"token": "x"},
-        tipo="contecmind",
-        mapeo_campos={"app_id": "OTRA_COSA"},
-        campos_fijos={"app_id": "abc"},
-    )
-    carga = suite._traducir(herramienta, {"nombre": "ACME"})
-    assert carga["app_id"] == "abc"
-    assert "OTRA_COSA" not in carga
+    assert salidas[-1]["name"] == "ACME", "el dato del objeto manda sobre el valor por conexión"
 
 
 # ── Entrar y renovar: el token dura quince minutos ────────────────────────

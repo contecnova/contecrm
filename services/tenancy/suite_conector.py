@@ -192,6 +192,17 @@ class ConectorGenerico:
                 for k, v in (((herramienta.mapeo_campos or {}).get("_cabeceras")) or {}).items()
             }
 
+            # LOS VALORES CONSTANTES DE LA CONEXIÓN, aquí y no al encolar: son
+            # de la herramienta, no del objeto, y ponerlos en la fila los
+            # congelaría con ella. Configurar `app_id` después de que la cola
+            # empiece a fallar tiene que arreglar lo que ya está encolado.
+            #
+            # `setdefault`: no pisan el dato del objeto. Un valor por conexión es
+            # un valor por defecto, no una imposición.
+            carga = dict(fila.carga)
+            for clave_fija, valor_fijo in (herramienta.campos_fijos or {}).items():
+                carga.setdefault(str(clave_fija), valor_fijo)
+
             def _llamar(*, renovar: bool) -> Any:
                 cabeceras = {"Content-Type": "application/json", **extra}
                 token = self._token(herramienta, credenciales, renovar=renovar)
@@ -201,7 +212,7 @@ class ConectorGenerico:
                     return cliente.request(
                         metodo,
                         url,
-                        json=None if metodo == "DELETE" else dict(fila.carga),
+                        json=None if metodo == "DELETE" else carga,
                         headers=cabeceras,
                     )
 

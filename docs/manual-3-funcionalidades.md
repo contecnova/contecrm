@@ -5682,7 +5682,13 @@ y la única salida habría sido un conector propio para contecmind con ese campo
 escrito dentro — que es exactamente lo que este diseño evita.
 
 Los campos fijos se escriben **con el nombre de allí**, porque son suyos: no
-pasan por el mapeo, o se traduciría dos veces. Y **no pisan el dato del objeto**
+pasan por el mapeo, o se traduciría dos veces. Y **se aplican al enviar, no al
+encolar**: si fueran parte de la carga guardada, el valor quedaría congelado con
+la fila y el camino real sería este —montas la integración, el alta falla porque
+falta el campo, lo configuras, y la cola sigue fallando para siempre porque lo
+pendiente lleva la carga vieja—. Quien lo mirara concluiría que configurarlo no
+sirve de nada. Aplicándolos al enviar, corregir la configuración arregla también
+lo que ya estaba encolado. Y **no pisan el dato del objeto**
 si el objeto ya lo trae: un valor por conexión es un valor por defecto, no una
 imposición. Tampoco van con las credenciales aunque se configuren a la vez —
 aquéllas se cifran y no se vuelven a enseñar, y un `app_id` que nadie puede
@@ -5706,7 +5712,12 @@ entre todas las llamadas de esa herramienta: un alta en cascada de doscientas
 personas no puede ser doscientas entradas.
 
 La cuenta con la que entra la crea **quien configura la integración**, y en
-contecmind necesita ser administradora del tenant. No sirve el token delegado de
+contecmind necesita ser administradora del tenant. Para dar de alta usuarios y
+departamentos basta con eso; **dar de alta una ORGANIZACIÓN exige además rol
+cross-tenant**, y es coherente: crear una organización nueva no es algo que
+pueda hacer el administrador de otra. Verificado contra su API: con una cuenta
+de tenant el alta de usuario sale y la de organización contesta «only a
+cross-tenant admin can provision». No sirve el token delegado de
 la aplicación: ese se obtiene con la credencial de la aplicación y un nombre de
 usuario cualquiera, así que con él se podrían dar de alta y de baja personas.
 Pedir documentos en nombre de alguien y gobernar quién existe son dos cosas
