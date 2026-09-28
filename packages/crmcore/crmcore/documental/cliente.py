@@ -367,7 +367,11 @@ def buscar(texto: str, *, token_usuario: str, limite: int = 20) -> list[dict[str
         )
     respuesta.raise_for_status()
     cuerpo = respuesta.json()
-    return list(cuerpo.get("items") or cuerpo.get("results") or [])
+    # Igual que arriba: por tipo y no por verdad. Con `or`, una búsqueda sin
+    # resultados devolvía las claves del sobre en vez de una lista vacía.
+    if isinstance(cuerpo, dict) and isinstance(cuerpo.get("results"), list):
+        return [x for x in cuerpo["results"] if isinstance(x, dict)]
+    return _lista_de(cuerpo)
 
 
 def ficha(documento_id: str, *, token_usuario: str) -> dict[str, Any]:
@@ -765,6 +769,29 @@ def carpeta_de_registro(
 # que dan 403, que es peor que no enseñarlos.
 
 
+def _lista_de(cuerpo: Any) -> list[dict[str, Any]]:
+    """La lista que trae la respuesta, venga envuelta o pelada.
+
+    Se decide POR EL TIPO y no por si está vacía. Antes era
+    `cuerpo.get("items") or cuerpo or []`, y con la bandeja vacía —`{"items":
+    [], "total": 0}`— el `or` descartaba la lista vacía por falsa, caía al
+    diccionario entero y `list()` devolvía **los nombres de las claves**:
+    `["items", "total"]`. La pantalla pintaba dos filas fantasma llamadas
+    «items» y «total» justo cuando no había nada que decidir.
+
+    No lo cazó la prueba con transporte simulado porque allí la bandeja traía
+    una solicitud; se vio al llamar a contecmind de verdad con la base vacía,
+    que es el caso normal el primer día de cualquier instalación.
+    """
+    if isinstance(cuerpo, list):
+        return [x for x in cuerpo if isinstance(x, dict)]
+    if isinstance(cuerpo, dict):
+        items = cuerpo.get("items")
+        if isinstance(items, list):
+            return [x for x in items if isinstance(x, dict)]
+    return []
+
+
 def aprobacion_de(documento_id: str, *, token_usuario: str) -> dict[str, Any]:
     """Cómo va la aprobación de un documento: estado, versiones y quién decide."""
     return dict(
@@ -807,14 +834,12 @@ def pedir_aprobacion(
 
 def aprobaciones_pendientes(*, token_usuario: str) -> list[dict[str, Any]]:
     """Lo que espera la decisión de QUIEN PREGUNTA."""
-    cuerpo = _llamar("GET", "/api/v1/approvals/pending", token_usuario=token_usuario)
-    return list((cuerpo or {}).get("items") or cuerpo or [])
+    return _lista_de(_llamar("GET", "/api/v1/approvals/pending", token_usuario=token_usuario))
 
 
 def flujos_de_aprobacion(*, token_usuario: str) -> list[dict[str, Any]]:
     """Los flujos entre los que se puede elegir, con si exigen aprobadores."""
-    cuerpo = _llamar("GET", "/api/v1/approvals/workflows", token_usuario=token_usuario)
-    return list((cuerpo or {}).get("items") or cuerpo or [])
+    return _lista_de(_llamar("GET", "/api/v1/approvals/workflows", token_usuario=token_usuario))
 
 
 def decidir_aprobacion(

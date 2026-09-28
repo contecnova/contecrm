@@ -170,6 +170,13 @@ def _importar_todos_los_modelos() -> None:
         "crmcore.datos.adjuntos",
         "crmcore.datos.comentarios",
         "crmcore.datos.retencion",
+        # Los vocabularios de negocio: tabla común, como `ajustes_runtime`, y en
+        # el esquema de CADA servicio. Faltaba aquí desde que se creó, así que su
+        # tabla no existía en pruebas y **ninguna prueba con base de datos podía
+        # tocarla**: las tres rutas que la leen —motivos de descarte, motivos de
+        # pérdida y el listado de vocabularios— reventaban con «relation
+        # valores_vocabulario does not exist» en cuanto alguien las abría.
+        "crmcore.vocabulario",
         "crmcore.datos.jerarquia",
         "crmcore.busqueda",
         "crmcore.authz.proyeccion",
@@ -224,6 +231,18 @@ def _importar_todos_los_modelos() -> None:
         "services.marketing.fondos",
         "services.service.activos",
         "services.service.campo",
+        # El servicio de casos entero. Faltaba, y con él VEINTICUATRO tablas:
+        # casos, colas, SLA, escalada, encuestas, conocimiento, comunidad,
+        # portal, entitlements, omnicanal y macros. Ninguna se creaba en el
+        # esquema de pruebas, así que ninguna prueba con base de datos podía
+        # tocarlas — no es que estuvieran mal probadas: es que no se podían
+        # probar. Se vio con el barrido de humo de los listados.
+        "services.service.modelos",
+        "services.service.operacion",
+        "services.service.omnicanal",
+        "services.service.conocimiento",
+        "services.service.portal",
+        "services.service.entitlements",
         "services.service.postventa",
         "services.service.problemas",
         "services.integration.telemetria",

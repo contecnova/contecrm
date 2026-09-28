@@ -1,6 +1,24 @@
 {
-  "/api/v1/oauth/token": null,
-  "/api/v1/tokens/exchange": null,
+  "/api/v1/oauth/token": {
+    "post": {
+      "campos": [
+        "client_id",
+        "client_secret",
+        "grant_type"
+      ]
+    }
+  },
+  "/api/v1/tokens/exchange": {
+    "post": {
+      "campos": [
+        "role",
+        "scopes",
+        "subject",
+        "tenant",
+        "ttl_s"
+      ]
+    }
+  },
   "/api/v1/documents/search": {
     "get": {
       "campos": []
@@ -13,5 +31,94 @@
     "delete": {
       "campos": []
     }
-  }
+  },
+  "/api/v1/areas": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/folders": {
+    "get": {
+      "campos": []
+    },
+    "post": {
+      "campos": [
+        "area_id",
+        "name",
+        "parent_id"
+      ]
+    }
+  },
+  "/api/v1/folders/{folder_id}/documents": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/folders/{folder_id}/effective-permissions": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/folders/{folder_id}/summary": {
+    "post": {
+      "campos": [
+        "con_subcarpetas",
+        "pregunta"
+      ]
+    }
+  },
+  "/api/v1/folders/{folder_id}/concepts": {
+    "post": {
+      "campos": [
+        "con_subcarpetas",
+        "pregunta"
+      ]
+    }
+  },
+  "/api/v1/documents/{document_id}/move": {
+    "post": {
+      "campos": [
+        "folder_id"
+      ]
+    }
+  },
+  "/api/v1/documents/{document_id}/approval": {
+    "get": {
+      "campos": []
+    },
+    "post": {
+      "campos": [
+        "approvers",
+        "version_no",
+        "workflow_id"
+      ]
+    }
+  },
+  "/api/v1/approvals/pending": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/approvals/workflows": {
+    "get": {
+      "campos": []
+    }
+  },
+  "/api/v1/approvals/{request_id}/decide": {
+    "post": {
+      "campos": [
+        "decision",
+        "delegate_to",
+        "note"
+      ]
+    }
+  },
+  "/api/v1/approvals/{request_id}/cancel": {
+    "post": {
+      "campos": []
+    }
+  },
+  "/api/v1/admin/tenants/by-external/{id_externo}": null,
+  "/api/v1/admin/users/by-external/{id_externo}": null,
+  "/api/v1/admin/departments/by-external/{id_externo}": null
 }

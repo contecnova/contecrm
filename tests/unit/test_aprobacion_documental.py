@@ -207,3 +207,54 @@ def test_los_flujos_dicen_cuales_exigen_aprobadores(dms_activo: Any, gestor: _Ge
     """Sin esto la pantalla deja enviar y se come un 422 del gestor."""
     flujos = cliente.flujos_de_aprobacion(token_usuario="t")
     assert flujos[0]["exige_aprobadores"] is True
+
+
+# ── El sobre vacío ────────────────────────────────────────────────────────
+
+
+class _Vacio:
+    """Un contecmind recién instalado: contesta bien, y no tiene nada."""
+
+    def __call__(self, peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.path == "/api/v1/approvals/pending":
+            return httpx.Response(200, json={"items": [], "total": 0})
+        if peticion.url.path == "/api/v1/approvals/workflows":
+            return httpx.Response(200, json={"items": []})
+        if peticion.url.path == "/api/v1/documents/search":
+            return httpx.Response(200, json={"query": "x", "scope": "all_corpus", "items": []})
+        return httpx.Response(404, json={"detail": "no"})
+
+
+@pytest.fixture
+def gestor_vacio(monkeypatch: pytest.MonkeyPatch) -> None:
+    import contextlib
+
+    @contextlib.contextmanager
+    def _fabrica(**_: Any) -> Any:
+        with httpx.Client(transport=httpx.MockTransport(_Vacio())) as cli:
+            yield cli
+
+    monkeypatch.setattr("crmcore.red.cliente_seguro", _fabrica)
+
+
+def test_una_bandeja_vacia_es_una_lista_vacia_y_no_los_nombres_del_sobre(
+    dms_activo: Any, gestor_vacio: None
+) -> None:
+    """Devolvía `["items", "total"]`, y la pantalla pintaba dos filas fantasma.
+
+    El código era `cuerpo.get("items") or cuerpo or []`. Con la bandeja vacía,
+    el `or` descarta la lista vacía por falsa, cae al diccionario entero y
+    `list()` de un diccionario son sus CLAVES. Justo cuando no hay nada que
+    decidir, que es el primer día de cualquier instalación.
+
+    No lo cazó la prueba de más arriba porque su gestor de mentira devuelve una
+    solicitud. Se vio llamando a contecmind de verdad con la base vacía: es el
+    caso que un doble no te enseña si no se lo pides.
+    """
+    assert cliente.aprobaciones_pendientes(token_usuario="t") == []
+    assert cliente.flujos_de_aprobacion(token_usuario="t") == []
+
+
+def test_una_busqueda_sin_resultados_tambien(dms_activo: Any, gestor_vacio: None) -> None:
+    """El mismo `or` estaba en la búsqueda, esperando su turno."""
+    assert cliente.buscar("contrato", token_usuario="t") == []

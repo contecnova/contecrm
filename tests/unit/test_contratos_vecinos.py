@@ -49,14 +49,11 @@ CONTRATOS = RAIZ / "tests" / "fixtures" / "contratos"
 # aparece una que no está aquí como si una de aquí ya existe —entonces hay que
 # quitarla, y eso es justo lo que se quiere que alguien note el día que ocurra.
 PENDIENTES: dict[tuple[str, str], str] = {
-    (
-        "contecmind",
-        "/api/v1/oauth/token",
-    ): "contecmind no tiene credenciales de aplicación; especificado en su docs/DESIGN_aplicaciones_anfitrionas.md",
-    (
-        "contecmind",
-        "/api/v1/tokens/exchange",
-    ): "idem: sin canje no hay con qué autenticarse, y por eso DMS_ENABLED=false",
+    # Vacía, y es una noticia: hasta hoy contecmind no tenía credenciales de
+    # aplicación ni canje, así que las dos rutas en las que se apoya toda la
+    # integración del corpus estaban aquí declaradas como inexistentes y
+    # `DMS_ENABLED` no podía ponerse en verde con fundamento. Ya las publica —
+    # medido contra su OpenAPI, no supuesto— y por eso esta lista se vacía.
 }
 
 # Módulos que mandan cuerpos al vecino además de su cliente. El alta de una
@@ -206,51 +203,10 @@ def test_los_dos_clientes_de_la_casa_hacen_lo_mismo() -> None:
 # con el motivo. Igual que PENDIENTES: no es una lista de excepciones, es la de
 # trabajo pendiente, y la prueba se queja también cuando sobra una entrada.
 SIN_FIJAR: dict[tuple[str, str], str] = {
-    ("contecmind", "/api/v1/areas"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/folders"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/folders/{folder_id}/documents"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/folders/{folder_id}/effective-permissions"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/folders/{folder_id}/summary"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/folders/{folder_id}/concepts"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/documents/{document_id}/move"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/documents/{document_id}/approval"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/approvals/pending"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/approvals/workflows"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/approvals/{request_id}/decide"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/approvals/{request_id}/cancel"): (
-        "el contrato de contecmind se fijó cuando solo se le pedían cuatro rutas y no se ha podido refrescar desde entonces: hace falta tenerlo levantado, y levantarlo es de su sesión, no de esta"
-    ),
-    ("contecmind", "/api/v1/admin/tenants/by-external/{id_externo}"): (
-        "idem, y además estas tres todavía no existen allí: están acordadas y pendientes de implementar (ver el comentario del script)"
-    ),
-    ("contecmind", "/api/v1/admin/users/by-external/{id_externo}"): (
-        "idem, y además estas tres todavía no existen allí: están acordadas y pendientes de implementar (ver el comentario del script)"
-    ),
-    ("contecmind", "/api/v1/admin/departments/by-external/{id_externo}"): (
-        "idem, y además estas tres todavía no existen allí: están acordadas y pendientes de implementar (ver el comentario del script)"
-    ),
+    # Las tres de aprovisionamiento: acordadas con la sesión de contecmind y
+    # todavía sin implementar allí. El contrato las guarda como hueco EXPLÍCITO
+    # —`null`— y por eso no hacen falta aquí; esta lista queda vacía a
+    # propósito, que es como tiene que estar.
 }
 
 
