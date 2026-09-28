@@ -13,7 +13,7 @@ from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
-from services.gateway import proxy, rutas
+from services.gateway import operatividad, proxy, rutas
 from services.gateway.sesion import crear_router_sesion
 
 logger = get_logger(__name__)
@@ -586,6 +586,22 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
             f"El servicio «{nombre}» no está desplegado en esta instalación",
             error_code="gateway.servicio_no_desplegado",
             detalle={"servicio": nombre},
+        )
+
+    # ¿PUEDE ESTE TENANT OPERAR? Aquí y no en cada servicio: es el único paso
+    # obligado de toda la API pública, y repetir la comprobación trece veces
+    # garantiza que a la catorceava se olvide.
+    #
+    # Esto no existía. La comprobación estaba escrita en `tenancy` desde el
+    # principio —con una documentación que decía «lo llama el gateway en cada
+    # petición»— y no la llamaba nadie: un tenant suspendido creaba cuentas.
+    destino_tenancy = _destinos.get("tenancy")
+    if destino_tenancy is not None:
+        await operatividad.exigir(
+            _cliente,
+            destino_tenancy.url_base,
+            getattr(principal, "tenant_id", None),
+            request.method,
         )
 
     s = get_settings()

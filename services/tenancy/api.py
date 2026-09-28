@@ -393,6 +393,36 @@ def resolver_slug(slug: str) -> Any:
     return {k: v for k, v in datos.items() if k != "estado"}
 
 
+@router_interno.get(
+    "/{tenant_id}/operatividad",
+    response_model=dict,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Si este tenant puede leer y escribir ahora mismo",
+)
+def operatividad_de(tenant_id: UUID) -> Any:
+    """Lo que el gateway necesita saber antes de dejar pasar una petición.
+
+    Existe porque **la suspensión no se aplicaba en ninguna parte**. La
+    comprobación estaba escrita en `tenancy` desde el principio y no la llamaba
+    nadie, aunque su documentación dijera que «lo llama el gateway en cada
+    petición». El 28-09-2026 se montó el caso: un tenant suspendido creó una
+    cuenta —201— y uno en solo lectura también.
+
+    La regla de qué estado permite qué se queda **aquí**, que es de quien es el
+    tenant; esto sólo la publica para que el único sitio por el que pasa todo
+    pueda aplicarla. El gateway no puede leer esta tabla —los permisos de
+    Postgres se lo impiden, que es el aislamiento funcionando—.
+
+    Sesión de sistema porque la pregunta es sobre un tenant y la hace un
+    servicio, no alguien dentro de él.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return svc.operatividad(db, tenant_id)
+
+
 from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402
 
 ROUTERS = [

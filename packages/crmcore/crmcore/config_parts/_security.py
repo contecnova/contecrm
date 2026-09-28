@@ -86,6 +86,12 @@ class _SecuritySettings(BaseSettings):
     # separados por comas. Existe porque hay instalaciones con el IdP o el ERP
     # en la red interna, y negarlo obligaría a apagar el guard entero.
     url_guard_hosts_permitidos: str = ""
+
+    # Cuánto recuerda el gateway que un tenant puede operar. Sin caché, cada
+    # petición de la API añadiría una llamada a `tenancy`: el doble de latencia
+    # en el camino de todo. Treinta segundos es el compromiso, y es el tiempo
+    # que tarda una suspensión en surtir efecto.
+    gateway_operatividad_ttl_s: int = 30
     # Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite
     # tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS
     # que no contesta colgaría el hilo que atiende la petición.

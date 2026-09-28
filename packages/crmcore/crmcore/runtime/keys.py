@@ -112,6 +112,19 @@ CLAVES: dict[str, ClaveAjuste] = {
             minimo_ambito="global",
             sensible=True,
         ),
+        # Estado operativo del tenant en el gateway (CRM-00.01.03.04)
+        _c(
+            "gateway_operatividad_ttl_s",
+            "int",
+            (
+                "Segundos que el gateway recuerda si un tenant puede operar. "
+                "Suspender a alguien tarda como mucho esto en surtir efecto"
+            ),
+            minimo=0,
+            maximo=300,
+            campo_settings="gateway_operatividad_ttl_s",
+            minimo_ambito="global",
+        ),
         # Colaboración (CRM-06.02.01.01)
         _c(
             "comentario_max_caracteres",

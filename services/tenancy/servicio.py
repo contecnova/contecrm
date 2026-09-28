@@ -218,8 +218,36 @@ def cambiar_estado(
     return tenant
 
 
+def operatividad(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Si este tenant puede leer y escribir, y por qué no.
+
+    Devuelve el estado en vez de lanzar porque **el gateway lo cachea**: una
+    llamada a tenancy por cada petición de la API sería doblar la latencia de
+    todo el sistema. Quien decide sigue siendo esta capa —la regla de qué estado
+    permite qué vive aquí y en un solo sitio—; el gateway sólo la aplica.
+    """
+    tenant = db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise NoEncontrado("El tenant no existe", error_code="tenant.no_encontrado")
+    return {
+        "estado": tenant.estado,
+        "puede_leer": tenant.puede_leer,
+        "puede_escribir": tenant.puede_escribir,
+        "motivo": tenant.motivo_estado or "",
+    }
+
+
 def exigir_operativo(db: Session, tenant_id: UUID, *, escritura: bool) -> Tenant:
-    """Comprueba que el tenant puede operar. Lo llama el gateway en cada petición.
+    """Comprueba que el tenant puede operar.
+
+    **Esta función existía desde el principio y no la llamaba nadie**, mientras
+    su propia documentación decía que «lo llama el gateway en cada petición». No
+    era verdad: el 28-09-2026 se montó el caso y un tenant SUSPENDIDO creó una
+    cuenta —201—, y uno en solo lectura también. La suspensión y la ventana de
+    mantenimiento existían en la tabla y en ningún sitio más.
+
+    Ahora la aplica el gateway sobre `operatividad`, con caché corta. Esta sigue
+    aquí para quien tenga la sesión delante y quiera el objeto.
 
     El estado `solo_lectura` es lo que hace posible una ventana de mantenimiento
     sin corte (CRM-08.02.01.03): quien consulta sigue trabajando y quien escribe
