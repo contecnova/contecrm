@@ -132,7 +132,15 @@ def test_la_degradacion_dice_que_se_puede_hacer_sin_el(
 ) -> None:
     """«Servicio no disponible» a secas deja al usuario sin saber si esperar, si
     llamar a alguien o si hacer otra cosa. Lo que hace falta es qué SÍ funciona."""
+    from services.analytics.cliente import comprobar
     from services.analytics.fuente import diagnostico
+
+    # SE SONDEA PRIMERO, como hace el arranque. El diagnóstico lee el último
+    # resultado conocido, así que sin sondear no dice «no responde» sino el
+    # primer problema que encuentre. Sola pasaba —mi fixture disparaba el sondeo—
+    # y en la suite fallaba, porque otra prueba dejaba el estado sin sondear: un
+    # fallo de secuencia mío, no del diagnóstico.
+    comprobar()
 
     salida = diagnostico(db, tenant_id)
 
