@@ -24,6 +24,22 @@ from crmcore.errors import Conflicto, ErrorValidacion
 from services.marketing import fondos as mdf
 
 
+# El «hoy» del producto, no el de la máquina.
+#
+# Estas comprobaciones construían lo que esperan con `_hoy()` —hora local—
+# mientras el producto calcula el día en la zona del tenant, que sin ninguna
+# configurada es UTC. Resultado: **verdes veintidós horas al día y rojas dos**,
+# entre medianoche y las dos de la mañana en Madrid. Se descubrió porque una
+# tanda cruzó la medianoche.
+#
+# No se toca el producto: calcular en UTC cuando nadie ha dicho su zona es
+# correcto. Lo que estaba mal era comparar contra otro reloj.
+def _hoy() -> date:
+    from crmcore.fechas import hoy
+
+    return hoy()
+
+
 @pytest.fixture
 def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
     return UnidadDeTrabajo(db=db, tenant_id=tenant_id)
@@ -42,8 +58,8 @@ def _fondo(uow: UnidadDeTrabajo, partner_id: UUID, asignado: Decimal = Decimal(1
     fila, _ = mdf.crear_fondo(
         uow,
         partner_id=partner_id,
-        desde=date.today() - timedelta(days=30),
-        hasta=date.today() + timedelta(days=300),
+        desde=_hoy() - timedelta(days=30),
+        hasta=_hoy() + timedelta(days=300),
         asignado=asignado,
     )
     return fila
@@ -59,8 +75,8 @@ def test_el_partner_llega_por_evento_y_se_avisa_si_no_ha_llegado(
     _, avisos = mdf.crear_fondo(
         uow,
         partner_id=uuid4(),
-        desde=date.today(),
-        hasta=date.today() + timedelta(days=90),
+        desde=_hoy(),
+        hasta=_hoy() + timedelta(days=90),
         asignado=Decimal(1000),
     )
     assert avisos and "bus de eventos" in avisos[0]
@@ -71,8 +87,8 @@ def test_un_fondo_de_cero_no_es_un_fondo(uow: UnidadDeTrabajo, partner_id: UUID)
         mdf.crear_fondo(
             uow,
             partner_id=partner_id,
-            desde=date.today(),
-            hasta=date.today() + timedelta(days=90),
+            desde=_hoy(),
+            hasta=_hoy() + timedelta(days=90),
             asignado=Decimal(0),
         )
 
@@ -145,8 +161,8 @@ def test_el_plazo_no_se_pasa_del_cierre_del_fondo(uow: UnidadDeTrabajo, partner_
     fila, _ = mdf.crear_fondo(
         uow,
         partner_id=partner_id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=10),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=10),
         asignado=Decimal(5000),
     )
     solicitud = mdf.solicitar(uow, fila.id, titulo="Feria", importe=Decimal(1000))
@@ -170,7 +186,7 @@ def test_justificar_fuera_de_plazo_se_admite_marcado(
     fondo = _fondo(uow, partner_id)
     solicitud = mdf.solicitar(uow, fondo.id, titulo="Feria", importe=Decimal(1000))
     mdf.decidir(uow, solicitud.id, aprobar=True)
-    solicitud.justificar_antes_de = date.today() - timedelta(days=1)
+    solicitud.justificar_antes_de = _hoy() - timedelta(days=1)
     uow.db.flush()
     _, avisos = mdf.justificar(
         uow,
@@ -255,7 +271,7 @@ def test_caducar_libera_el_dinero_y_deja_constancia(uow: UnidadDeTrabajo, partne
     fondo = _fondo(uow, partner_id)
     solicitud = mdf.solicitar(uow, fondo.id, titulo="Feria", importe=Decimal(4000))
     mdf.decidir(uow, solicitud.id, aprobar=True)
-    solicitud.justificar_antes_de = date.today() - timedelta(days=1)
+    solicitud.justificar_antes_de = _hoy() - timedelta(days=1)
     uow.db.flush()
 
     salida = mdf.caducar_pendientes(uow)

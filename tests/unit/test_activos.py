@@ -24,6 +24,22 @@ from crmcore.errors import Conflicto, ErrorValidacion
 from services.service import activos as act
 
 
+# El «hoy» del producto, no el de la máquina.
+#
+# Estas comprobaciones construían lo que esperan con `_hoy()` —hora local—
+# mientras el producto calcula el día en la zona del tenant, que sin ninguna
+# configurada es UTC. Resultado: **verdes veintidós horas al día y rojas dos**,
+# entre medianoche y las dos de la mañana en Madrid. Se descubrió porque una
+# tanda cruzó la medianoche.
+#
+# No se toca el producto: calcular en UTC cuando nadie ha dicho su zona es
+# correcto. Lo que estaba mal era comparar contra otro reloj.
+def _hoy() -> date:
+    from crmcore.fechas import hoy
+
+    return hoy()
+
+
 @pytest.fixture
 def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
     return UnidadDeTrabajo(db=db, tenant_id=tenant_id)
@@ -136,9 +152,7 @@ def test_sin_garantias_no_se_dice_que_no_hay_cobertura(uow: UnidadDeTrabajo) -> 
 def test_una_garantia_que_no_cubre_nada_no_se_guarda(uow: UnidadDeTrabajo) -> None:
     fila = _activo(uow)
     with pytest.raises(ErrorValidacion):
-        act.registrar_garantia(
-            uow, fila.id, desde=date.today(), hasta=date.today() + timedelta(days=365)
-        )
+        act.registrar_garantia(uow, fila.id, desde=_hoy(), hasta=_hoy() + timedelta(days=365))
 
 
 def test_la_cobertura_va_por_concepto(uow: UnidadDeTrabajo) -> None:
@@ -148,8 +162,8 @@ def test_la_cobertura_va_por_concepto(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=365),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=365),
         cobertura=["piezas", "mano_obra"],
     )
     assert act.cobertura_de(uow.db, uow.tenant_id, fila.id, concepto="piezas")["cubierto"] is True
@@ -162,8 +176,8 @@ def test_una_garantia_vencida_lo_dice_con_su_fecha(uow: UnidadDeTrabajo) -> None
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=800),
-        hasta=date.today() - timedelta(days=30),
+        desde=_hoy() - timedelta(days=800),
+        hasta=_hoy() - timedelta(days=30),
         cobertura=["piezas"],
     )
     estado = act.cobertura_de(uow.db, uow.tenant_id, fila.id)
@@ -177,8 +191,8 @@ def test_el_tope_de_uso_corta_antes_que_la_fecha(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=365),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=365),
         cobertura=["piezas"],
         limite_contador=Decimal(4000),
     )
@@ -193,16 +207,16 @@ def test_gana_la_garantia_mas_especifica(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=100),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=100),
         cobertura=["piezas"],
         tipo="fabricante",
     )
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=50),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=50),
         cobertura=["piezas"],
         tipo="contrato",
         proveedor="Nosotros",
@@ -216,15 +230,15 @@ def test_las_garantias_por_vencer_salen_ordenadas(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=20),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=20),
         cobertura=["piezas"],
     )
     act.registrar_garantia(
         uow,
         fila.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=500),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=500),
         cobertura=["piezas"],
         tipo="extension",
     )
@@ -253,8 +267,8 @@ def test_las_garantias_no_se_heredan_sin_pedirlo(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         viejo.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=300),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=300),
         cobertura=["piezas"],
     )
     nuevo = act.sustituir(uow, viejo.id, nuevo_nombre="Nueva", motivo="Avería")
@@ -264,8 +278,8 @@ def test_las_garantias_no_se_heredan_sin_pedirlo(uow: UnidadDeTrabajo) -> None:
     act.registrar_garantia(
         uow,
         otro_viejo.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=300),
+        desde=_hoy() - timedelta(days=10),
+        hasta=_hoy() + timedelta(days=300),
         cobertura=["piezas"],
     )
     heredado = act.sustituir(

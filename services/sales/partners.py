@@ -386,7 +386,18 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, no en el servidor.
+
+    Calculaba en UTC. Entre medianoche y las dos de la mañana en Madrid —y
+    durante trece horas en Auckland— «hoy» era ayer para el servidor y hoy para
+    el cliente, así que los días que quedaban salían con uno de más y un plazo
+    que vencía hoy se seguía admitiendo. El huso sale del ajuste por tenant que
+    ya existía, el mismo que usa el formateo.
+    """
+    from crmcore.fechas import hoy
+
+    return hoy(db)
     return datetime.now(timezone.utc).date()
 
 
@@ -530,7 +541,7 @@ def certificar(
         clave=clave.strip(),
         nombre=nombre.strip() or clave.strip(),
         persona=persona.strip(),
-        obtenida_el=obtenida_el or _hoy(),
+        obtenida_el=obtenida_el or _hoy(uow.db),
         caduca_el=caduca_el,
         evidencia_url=evidencia_url,
     )
@@ -543,7 +554,7 @@ def certificaciones_vigentes(
     db: Session, tenant_id: UUID, partner_id: UUID, *, en_fecha: date | None = None
 ) -> set[str]:
     """Las claves de certificación que el partner tiene **hoy**."""
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     filas = (
         db.execute(
             select(CertificacionPartner).where(
@@ -699,7 +710,7 @@ def certificaciones_por_caducar(
     preaviso es un ajuste porque depende de lo que tarde el examen de cada
     fabricante.
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     preaviso = int(
         dias if dias is not None else (rt.efectivo("partner_preaviso_certificacion_dias", db) or 60)
     )
@@ -928,7 +939,7 @@ def conflicto_de(
     en_fecha: date | None = None,
 ) -> RegistroOportunidad | None:
     """El registro vivo que protege a ese cliente final, si lo hay."""
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     clave = _clave_cliente(nif=nif, dominio=dominio, cuenta_id=cuenta_id)
     if clave is None:
         return None
@@ -1107,7 +1118,7 @@ def decidir_registro(
                 else int(rt.efectivo("partner_proteccion_dias", uow.db) or 90)
             )
         fila.estado = "aprobado"
-        fila.protegido_hasta = _hoy() + timedelta(days=int(dias))
+        fila.protegido_hasta = _hoy(uow.db) + timedelta(days=int(dias))
     else:
         fila.estado = "rechazado"
         fila.protegido_hasta = None
@@ -1144,7 +1155,7 @@ def caducar_protecciones(uow: UnidadDeTrabajo, *, en_fecha: date | None = None) 
     vez que alguien mira: el partner tiene derecho a ver cuándo se le cayó la
     protección y por qué, y una caducidad implícita no deja rastro de nada.
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(uow.db)
     filas = (
         uow.db.execute(
             select(RegistroOportunidad).where(
@@ -1198,7 +1209,7 @@ def acuerdo_de(
     db: Session, tenant_id: UUID, partner_id: UUID, *, en_fecha: date | None = None
 ) -> AcuerdoCanal | None:
     """El acuerdo vigente: primero el del partner, si no el de su nivel."""
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     partner = _partner(db, tenant_id, partner_id)
 
     def _vigente(fila: AcuerdoCanal) -> bool:
@@ -1420,7 +1431,7 @@ def revisar_plan(
             }
         )
     revision = {
-        "fecha": str(fecha or _hoy()),
+        "fecha": str(fecha or _hoy(uow.db)),
         "notas": notas,
         "detalle": detalle,
     }

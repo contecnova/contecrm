@@ -103,9 +103,11 @@ def editar_tenant(tenant_id: UUID, datos: EditarTenant, uow: UowDep, _: Platafor
     tenant = uow.db.get(Tenant, tenant_id)
     if tenant is None:
         raise NoEncontrado("Ese tenant no existe", error_code="tenancy.tenant_no_existe")
-    for campo, valor in datos.model_dump(exclude_unset=True).items():
+    cambios = datos.model_dump(exclude_unset=True)
+    for campo, valor in cambios.items():
         setattr(tenant, campo, valor)
     uow.db.flush()
+    svc.propagar_localizacion(uow.db, tenant, cambios)
     return tenant
 
 

@@ -218,6 +218,32 @@ def cambiar_estado(
     return tenant
 
 
+def propagar_localizacion(db: Session, tenant: Tenant, cambios: dict[str, Any]) -> None:
+    """Lleva idioma, huso y moneda del perfil a los ajustes, que es lo que se lee.
+
+    **Estaban desconectados.** `Tenant.zona_horaria` lo ponía el administrador en
+    el perfil y **no lo leía nadie**: el formateo y los cálculos de fecha van por
+    `rt.efectivo("zona_horaria")`, que nadie rellenaba, así que caía a UTC. Un
+    cliente configuraba su huso y el producto seguía en el del servidor.
+
+    Se propaga al cambiar y no se lee del tenant en cada consulta porque el
+    ajuste tiene su propia cadena —usuario → unidad → tenant → global—, y un
+    usuario puede tener el suyo: leer el del tenant directamente se saltaría la
+    preferencia de la persona, que es justo lo que el ajuste existe para
+    respetar.
+    """
+    from crmcore.runtime import settings as rt
+
+    for campo, clave in (
+        ("zona_horaria", "zona_horaria"),
+        ("idioma", "idioma"),
+        ("moneda", "moneda_funcional"),
+    ):
+        if campo not in cambios or not cambios[campo]:
+            continue
+        rt.fijar(db, clave, cambios[campo], ambito="tenant", ambito_id=str(tenant.id))
+
+
 def operatividad(db: Session, tenant_id: UUID) -> dict[str, Any]:
     """Si este tenant puede leer y escribir, y por qué no.
 

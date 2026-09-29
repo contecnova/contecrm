@@ -196,7 +196,18 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, no en el servidor.
+
+    Calculaba en UTC. Entre medianoche y las dos de la mañana en Madrid —y
+    durante trece horas en Auckland— «hoy» era ayer para el servidor y hoy para
+    el cliente, así que los días que quedaban salían con uno de más y un plazo
+    que vencía hoy se seguía admitiendo. El huso sale del ajuste por tenant que
+    ya existía, el mismo que usa el formateo.
+    """
+    from crmcore.fechas import hoy
+
+    return hoy(db)
     return datetime.now(timezone.utc).date()
 
 
@@ -459,7 +470,7 @@ def decidir(
         else (rt.efectivo("mdf_dias_para_justificar", uow.db) or 60)
     )
     fondo = _fondo(uow.db, uow.tenant_id, fila.fondo_id)
-    base = fila.fecha_actividad or _hoy()
+    base = fila.fecha_actividad or _hoy(uow.db)
     fila.estado = "aprobada"
     fila.importe_aprobado = importe
     fila.motivo = motivo.strip()
@@ -523,7 +534,7 @@ def justificar(
         )
 
     avisos: list[str] = []
-    if fila.justificar_antes_de and _hoy() > fila.justificar_antes_de:
+    if fila.justificar_antes_de and _hoy(uow.db) > fila.justificar_antes_de:
         avisos.append(f"Fuera de plazo: había que justificar antes del {fila.justificar_antes_de}.")
     aprobado = Decimal(fila.importe_aprobado or 0)
     if Decimal(importe) > aprobado:
@@ -641,7 +652,7 @@ def caducar_pendientes(uow: UnidadDeTrabajo, *, en_fecha: date | None = None) ->
     reserva. Una caducidad calculada al vuelo no deja constancia de nada y acaba
     en «a mí nadie me avisó».
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(uow.db)
     filas = (
         uow.db.execute(
             select(SolicitudMdf).where(

@@ -803,13 +803,13 @@ modulos:
           - id: CRM-03.02.02
             nombre: Territorios, cuotas y capacidad
             capacidades:
-              - {id: CRM-03.02.02.01, c: A, fase: 2, svc: sales, estado: hecho, t: "Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal"}
-              - {id: CRM-03.02.02.02, c: A, fase: 2, svc: sales, estado: hecho, t: "Jerarquía de territorios con asignación automática y reglas de excepción"}
-              - {id: CRM-03.02.02.03, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/scenarios_service.py (simulación)", t: "Simulación y planificación de territorios antes de publicar"}
-              - {id: CRM-03.02.02.04, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py", t: "Cuotas por usuario, equipo, periodo, producto y métrica"}
-              - {id: CRM-03.02.02.05, c: A, fase: 2, svc: sales, estado: hecho, t: "Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo"}
-              - {id: CRM-03.02.02.06, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/performance_service.py", t: "Seguimiento de consecución y ranking"}
-              - {id: CRM-03.02.02.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py", t: "Planificación de capacidad y cobertura de pipeline vs. cuota"}
+              - {id: CRM-03.02.02.01, visto: '2026-09-28 territorio creado por la API con criterios de geografía, y leídos de vuelta en su ficha', c: A, fase: 2, svc: sales, estado: hecho, t: "Modelo de territorios por geografía, sector, tamaño, producto o cuenta nominal"}
+              - {id: CRM-03.02.02.02, visto: '2026-09-28 excepción nominal rechazada sin motivo (422) y admitida con él', c: A, fase: 2, svc: sales, estado: hecho, t: "Jerarquía de territorios con asignación automática y reglas de excepción"}
+              - {id: CRM-03.02.02.03, visto: '2026-09-28 simular reparte sin tocar nada, y resolver dice a qué territorio cae una cuenta suelta', c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/scenarios_service.py (simulación)", t: "Simulación y planificación de territorios antes de publicar"}
+              - {id: CRM-03.02.02.04, visto: '2026-09-28 cuota por usuario y periodo creada por la API y visible en su listado', c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/okr_service.py", t: "Cuotas por usuario, equipo, periodo, producto y métrica"}
+              - {id: CRM-03.02.02.05, visto: '2026-09-28 cuota trimestral con sus fechas; el prorrateo se apoya en ellas', c: A, fase: 2, svc: sales, estado: hecho, t: "Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo"}
+              - {id: CRM-03.02.02.06, visto: '2026-09-28 consecución contesta sin cuotas —caso normal el primer día— y con ellas', c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/performance_service.py", t: "Seguimiento de consecución y ranking"}
+              - {id: CRM-03.02.02.07, visto: '2026-09-28 cobertura de pipeline contra cuota pedida por la API con el pipeline que llega de fuera', c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py", t: "Planificación de capacidad y cobertura de pipeline vs. cuota"}
           - id: CRM-03.02.03
             nombre: Incentivos y comisiones (interfaz)
             capacidades:

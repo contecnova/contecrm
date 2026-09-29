@@ -26,6 +26,16 @@ from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontra
 from services.sales import partners as prt
 
 
+# El «hoy» del producto, no el de la máquina. Igual que en activos y fondos:
+# estas comprobaciones se construían con el reloj local y el producto calcula el
+# día en la zona del tenant —UTC cuando no hay ninguna—, así que estaban verdes
+# veintidós horas al día y rojas dos.
+def _hoy() -> date:
+    from crmcore.fechas import hoy
+
+    return hoy()
+
+
 @pytest.fixture
 def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
     return UnidadDeTrabajo(db=db, tenant_id=tenant_id)
@@ -81,8 +91,8 @@ def test_completar_un_paso_que_no_existe_avisa(uow: UnidadDeTrabajo) -> None:
 def test_una_certificacion_caducada_deja_de_contar(uow: UnidadDeTrabajo) -> None:
     """Una certificación sin caducidad es un logotipo, no un requisito."""
     fila = _partner(uow)
-    prt.certificar(uow, fila.id, clave="tecnico", caduca_el=date.today() - timedelta(days=1))
-    prt.certificar(uow, fila.id, clave="comercial", caduca_el=date.today() + timedelta(days=30))
+    prt.certificar(uow, fila.id, clave="tecnico", caduca_el=_hoy() - timedelta(days=1))
+    prt.certificar(uow, fila.id, clave="comercial", caduca_el=_hoy() + timedelta(days=30))
     vigentes = prt.certificaciones_vigentes(uow.db, uow.tenant_id, fila.id)
     assert vigentes == {"comercial"}
 
@@ -122,8 +132,8 @@ def test_no_se_activa_si_no_cumple_su_nivel_y_se_sabe(uow: UnidadDeTrabajo) -> N
 def test_las_certificaciones_avisan_antes_de_caducar(uow: UnidadDeTrabajo) -> None:
     """Certificar a alguien lleva semanas: avisar el mismo día no sirve."""
     fila = _partner(uow)
-    prt.certificar(uow, fila.id, clave="tecnico", caduca_el=date.today() + timedelta(days=10))
-    prt.certificar(uow, fila.id, clave="lejana", caduca_el=date.today() + timedelta(days=400))
+    prt.certificar(uow, fila.id, clave="tecnico", caduca_el=_hoy() + timedelta(days=10))
+    prt.certificar(uow, fila.id, clave="lejana", caduca_el=_hoy() + timedelta(days=400))
     aviso = prt.certificaciones_por_caducar(uow.db, uow.tenant_id, dias=30)
     claves = [c["clave"] for c in aviso["certificaciones"]]
     assert claves == ["tecnico"]
@@ -321,7 +331,7 @@ def test_un_registro_caducado_deja_de_proteger(uow: UnidadDeTrabajo) -> None:
         uow, partner_id=uno.id, cliente_nombre="Cliente", nif="A11111111"
     )
     prt.decidir_registro(uow, primero.id, aprobar=True, dias_proteccion=1)
-    prt.caducar_protecciones(uow, en_fecha=date.today() + timedelta(days=5))
+    prt.caducar_protecciones(uow, en_fecha=_hoy() + timedelta(days=5))
     _, aviso = prt.registrar_oportunidad(
         uow, partner_id=otro.id, cliente_nombre="Cliente", nif="A11111111"
     )
@@ -335,7 +345,7 @@ def test_aprobar_fija_una_fecha_y_rechazar_exige_motivo(uow: UnidadDeTrabajo) ->
         uow, partner_id=fila.id, cliente_nombre="Cliente", nif="A11111111"
     )
     aprobado = prt.decidir_registro(uow, uno.id, aprobar=True, dias_proteccion=45)
-    assert aprobado.protegido_hasta == date.today() + timedelta(days=45)
+    assert aprobado.protegido_hasta == _hoy() + timedelta(days=45)
 
     dos, _ = prt.registrar_oportunidad(
         uow, partner_id=fila.id, cliente_nombre="Otro", nif="B22222222"
@@ -370,7 +380,7 @@ def test_la_proteccion_la_manda_el_nivel_del_partner(uow: UnidadDeTrabajo) -> No
         uow, partner_id=fila.id, cliente_nombre="Cliente", nif="A11111111"
     )
     aprobado = prt.decidir_registro(uow, registro.id, aprobar=True)
-    assert aprobado.protegido_hasta == date.today() + timedelta(days=180)
+    assert aprobado.protegido_hasta == _hoy() + timedelta(days=180)
 
 
 def test_un_partner_suspendido_no_registra(uow: UnidadDeTrabajo) -> None:
@@ -527,8 +537,8 @@ def test_el_rendimiento_mide_la_conversion_no_solo_el_importe(uow: UnidadDeTraba
     salida = prt.rendimiento(
         uow.db,
         uow.tenant_id,
-        desde=date.today() - timedelta(days=1),
-        hasta=date.today() + timedelta(days=1),
+        desde=_hoy() - timedelta(days=1),
+        hasta=_hoy() + timedelta(days=1),
         cerrado_por_partner={str(fila.id): Decimal(10000)},
     )
     linea = salida["partners"][0]
@@ -539,7 +549,7 @@ def test_el_rendimiento_mide_la_conversion_no_solo_el_importe(uow: UnidadDeTraba
 def test_sin_lo_cerrado_el_rendimiento_lo_dice(uow: UnidadDeTrabajo) -> None:
     """Los importes a cero no significan que no se haya vendido."""
     _activo(uow)
-    salida = prt.rendimiento(uow.db, uow.tenant_id, desde=date.today(), hasta=date.today())
+    salida = prt.rendimiento(uow.db, uow.tenant_id, desde=_hoy(), hasta=_hoy())
     assert salida["medible"] is False and salida["aviso"]
 
 
@@ -548,8 +558,8 @@ def test_sin_cuota_de_canal_no_se_dice_que_va_bien(uow: UnidadDeTrabajo) -> None
     salida = prt.rendimiento(
         uow.db,
         uow.tenant_id,
-        desde=date.today() - timedelta(days=1),
-        hasta=date.today() + timedelta(days=1),
+        desde=_hoy() - timedelta(days=1),
+        hasta=_hoy() + timedelta(days=1),
         cerrado_por_partner={str(fila.id): Decimal(5000)},
     )
     assert salida["partners"][0]["con_cuota"] is False
@@ -564,15 +574,15 @@ def test_la_cuota_de_canal_es_la_misma_cuota(uow: UnidadDeTrabajo) -> None:
     ter.crear_cuota(
         uow,
         partner_id=fila.id,
-        desde=date.today() - timedelta(days=1),
-        hasta=date.today() + timedelta(days=1),
+        desde=_hoy() - timedelta(days=1),
+        hasta=_hoy() + timedelta(days=1),
         objetivo=Decimal(10000),
     )
     salida = prt.rendimiento(
         uow.db,
         uow.tenant_id,
-        desde=date.today() - timedelta(days=1),
-        hasta=date.today() + timedelta(days=1),
+        desde=_hoy() - timedelta(days=1),
+        hasta=_hoy() + timedelta(days=1),
         cerrado_por_partner={str(fila.id): Decimal(5000)},
     )
     linea = salida["partners"][0]

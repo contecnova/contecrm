@@ -4606,6 +4606,35 @@ fue.
 
 ## 53. Cuatro cosas de plataforma que se notan cuando ya es tarde
 
+### «Hoy» es el del cliente, no el del servidor (`CRM-00.01.04.07`)
+
+**Para el usuario.** Los días que quedan de una garantía, los plazos que vencen y
+el mes del presupuesto se cuentan **en la zona horaria del cliente**, la que tiene
+configurada en su perfil.
+
+**Para mantenimiento.** `crmcore.fechas.hoy(db)` resuelve el huso por el mismo
+ajuste que usa el formateo, con la cadena de siempre —usuario → unidad → tenant →
+global—. Sin zona configurada cae a UTC, y no se adivina: un valor inventado
+escondería el problema en vez de dejarlo igual.
+
+Y el huso del perfil **llega al ajuste**: al editar un tenant se propagan zona,
+idioma y moneda. Antes eran dos sitios que no se hablaban.
+
+> **Se descubrió por accidente, y ése es el detalle que más dice.** Una tanda de
+> pruebas cruzó la medianoche y empezó a fallar; repetida a la una de la mañana,
+> siguió fallando. A las once de la noche del mismo día habría pasado en verde,
+> que es lo que llevaba pasando.
+>
+> Lo que había debajo eran dos cosas. **Veinticinco sitios calculaban la fecha en
+> UTC**, así que entre medianoche y las dos de la mañana en Madrid —y durante
+> **trece horas** en Auckland— «hoy» era ayer para el servidor y hoy para el
+> cliente. Y **`Tenant.zona_horaria` no lo leía nadie**: el cliente configuraba su
+> huso en el perfil y era un campo de sólo escritura.
+>
+> Quedan por convertir los sitios que no tienen sesión a mano. Los tres módulos
+> donde se veía —garantías, fondos MDF y protección de partners— ya usan el huso
+> del tenant.
+
 ### Las cuotas: por módulo, contadas de las filas y abriendo por omisión
 
 **Para el usuario.** Un plan puede acotar cuánto ocupa un cliente, cuántos

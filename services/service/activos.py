@@ -229,7 +229,18 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, no en el servidor.
+
+    Calculaba en UTC. Entre medianoche y las dos de la mañana en Madrid —y
+    durante trece horas en Auckland— «hoy» era ayer para el servidor y hoy para
+    el cliente, así que los días que quedaban salían con uno de más y un plazo
+    que vencía hoy se seguía admitiendo. El huso sale del ajuste por tenant que
+    ya existía, el mismo que usa el formateo.
+    """
+    from crmcore.fechas import hoy
+
+    return hoy(db)
     return datetime.now(timezone.utc).date()
 
 
@@ -339,7 +350,7 @@ def crear(
         ubicacion=ubicacion.strip(),
         latitud=latitud,
         longitud=longitud,
-        instalado_el=instalado_el or _hoy(),
+        instalado_el=instalado_el or _hoy(uow.db),
         padre_id=padre_id,
         contador=contador,
         unidad_contador=unidad_contador,
@@ -388,7 +399,7 @@ def cambiar_estado(
     anterior = fila.estado
     fila.estado = estado
     if estado == "retirado":
-        fila.retirado_el = _hoy()
+        fila.retirado_el = _hoy(uow.db)
         fila.motivo_retirada = motivo.strip()
     anotar(
         uow.db,
@@ -425,7 +436,7 @@ def sustituir(
             error_code="activos.motivo_obligatorio",
         )
     cambiar_estado(uow, activo_id, estado="sustituido", motivo=motivo)
-    viejo.retirado_el = _hoy()
+    viejo.retirado_el = _hoy(uow.db)
 
     nuevo, _ = crear(
         uow,
@@ -738,7 +749,7 @@ def cobertura_de(
     se sabe (`concluyente: false`). Un `false` por ausencia de datos factura al
     cliente que sí tenía cobertura, y esa factura llega antes que la corrección.
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     activo = obtener(db, tenant_id, activo_id)
     filas = (
         db.execute(
@@ -818,7 +829,7 @@ def garantias_por_vencer(
 
     from crmcore.runtime import settings as rt
 
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     dias = int(dias if dias is not None else (rt.efectivo("garantia_preaviso_dias", db) or 90))
     limite = hoy + timedelta(days=dias)
     filas = (
