@@ -212,7 +212,7 @@ stateDiagram-v2
 | `POST /api/v1/metadata/objetos/{objeto}/diseno` | Guardar un diseño de formulario | objeto*, nombre*, secciones, rol, es_defecto | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{objeto}/diseno/comprobar` | Qué le pasa a este diseño, sin guardarlo | objeto*, nombre*, secciones, rol, es_defecto | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{objeto}/lista/comprobar` | Comprobar las columnas de una vista de lista | objeto*, columnas | 200, 422 | — |
-| `POST /api/v1/metadata/objetos/{objeto}/semantica` | Declarar qué significa un campo personalizado | objeto*, clave*, etiqueta*, tipo*, descripcion*, rol*, valores, sensible, explotable | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{objeto}/semantica` | Declarar qué significa un campo personalizado | objeto*, nombre*, descripcion*, rol*, valores, explotable | 200, 422 | — |
 | `POST /api/v1/metadata/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/metadata/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/metadata/paquete/instalar` | Instalar un paquete de esquema | paquete*, aplicar | 200, 422 | — |

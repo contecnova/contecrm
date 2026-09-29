@@ -428,7 +428,7 @@ def test_una_descripcion_que_repite_la_etiqueta_no_vale() -> None:
     de que ahora parece completo."""
     with pytest.raises(ErrorValidacion) as fallo:
         sm.describir_campo(
-            clave="cmp_2",
+            nombre="cmp_2",
             etiqueta="Segmento",
             tipo="lista",
             descripcion="Segmento",
@@ -443,7 +443,7 @@ def test_una_descripcion_que_repite_la_etiqueta_no_vale() -> None:
 def test_los_valores_de_una_lista_se_explican_uno_a_uno() -> None:
     """Saber que admite «A», «B» y «C» no sirve de nada."""
     salida = sm.describir_campo(
-        clave="cmp_2",
+        nombre="cmp_2",
         etiqueta="Estado de crédito",
         tipo="lista",
         descripcion="En qué punto está la revisión de crédito del cliente, la rellena finanzas",
@@ -457,7 +457,7 @@ def test_un_campo_sensible_no_entra_en_el_contexto() -> None:
     """Quien crea el campo rara vez piensa que su contenido se manda a un
     proveedor de inferencia."""
     campo = sm.describir_campo(
-        clave="cmp_9",
+        nombre="cmp_9",
         etiqueta="Diagnóstico",
         tipo="texto",
         descripcion="Diagnóstico clínico del paciente, lo rellena el personal sanitario",
@@ -473,9 +473,9 @@ def test_se_dice_cuanto_del_modelo_se_puede_explotar() -> None:
     la mayoría de los proyectos decepcionantes."""
     salida = sm.cobertura(
         campos=[
-            {"clave": "a", "descripcion": "x" * 40, "explotable": True},
-            {"clave": "b", "descripcion": ""},
-            {"clave": "c", "descripcion": ""},
+            {"nombre": "a", "descripcion": "x" * 40, "explotable": True},
+            {"nombre": "b", "descripcion": ""},
+            {"nombre": "c", "descripcion": ""},
         ]
     )
     assert salida["pct"] < 70

@@ -1188,13 +1188,15 @@ def comprobar_lista(objeto: str, cuerpo: ColumnasIn, db: DbDep, principal: Auten
 
 
 class CampoSemanticoIn(BaseModel):
-    clave: str
-    etiqueta: str
-    tipo: str
+    # El campo ya existe: se describe, no se crea. Por eso aquí no van ni la
+    # etiqueta, ni el tipo, ni la sensibilidad —están en el campo—. Recibir la
+    # sensibilidad permitiría declarar «esto no es sensible» sobre un campo
+    # clasificado como personal, que es justo la puerta por la que se escapa un
+    # dato de salud a un proveedor de inferencia.
+    nombre: str
     descripcion: str
     rol: str
     valores: list[dict[str, Any]] = Field(default_factory=list)
-    sensible: bool = False
     explotable: bool = True
 
 
@@ -1214,17 +1216,22 @@ class CampoSemanticoIn(BaseModel):
         "inferencia, y quien lo creó rara vez lo piensa."
     ),
 )
-def declarar_semantica(objeto: str, cuerpo: CampoSemanticoIn, principal: AutenticadoDep) -> Any:
+def declarar_semantica(
+    objeto: str, cuerpo: CampoSemanticoIn, db: DbDep, principal: AutenticadoDep
+) -> Any:
     from services.metadata import semantica
 
-    return semantica.describir_campo(
-        clave=cuerpo.clave,
-        etiqueta=cuerpo.etiqueta,
-        tipo=cuerpo.tipo,
+    # SE GUARDA. Esta ruta validaba el cuerpo, devolvía el resultado y no
+    # escribía nada: quien declaraba la semántica se iba creyendo que estaba
+    # hecho y el catálogo seguía vacío.
+    return semantica.declarar(
+        db,
+        principal.tenant_id,
+        objeto,
+        nombre=cuerpo.nombre,
         descripcion=cuerpo.descripcion,
         rol=cuerpo.rol,
         valores=cuerpo.valores,
-        sensible=cuerpo.sensible,
         explotable=cuerpo.explotable,
     )
 
@@ -1244,11 +1251,13 @@ def declarar_semantica(objeto: str, cuerpo: CampoSemanticoIn, principal: Autenti
     ),
 )
 def contexto_semantico(objeto: str, db: DbDep, principal: AutenticadoDep) -> Any:
-    from crmcore.metamodelo import campos_de
-
     from services.metadata import semantica
 
-    campos = campos_de(db, principal.tenant_id, objeto)
+    # SE LEE DE LA TABLA DE CAMPOS, no de la réplica del bus. La réplica lleva
+    # a propósito sólo lo que hace falta para validar, filtrar e indexar, así
+    # que no lleva descripciones: componer el contexto desde ella devolvía
+    # siempre «no hay campos» y reventaba con `KeyError` en cuanto había uno.
+    campos = semantica.campos_descritos(db, principal.tenant_id, objeto)
     return {
         **semantica.contexto_semantico(objeto=objeto, campos=campos),
         "cobertura": semantica.cobertura(campos=campos),

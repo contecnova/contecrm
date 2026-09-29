@@ -12040,9 +12040,22 @@ personalizados se describen, y se exige que la descripción **diga algo más que
 etiqueta** —«Segmento: segmento» es la forma más común de rellenarlo y deja el
 catálogo igual de inútil, con la diferencia de que ahora parece completo—. Los
 valores de una lista se explican uno a uno: saber que `C` significa «cliente en
-revisión de crédito» cambia lo que se puede preguntar. Lo sensible se marca y
-queda fuera del contexto que se manda a un proveedor de inferencia, porque quien
-crea el campo rara vez lo piensa. Y se publica la **cobertura**: con el 30 % de
+revisión de crédito» cambia lo que se puede preguntar.
+
+**Un campo no se explota hasta que alguien lo decide.** Los campos nacen fuera del
+contexto y sólo entran cuando se describen y se marcan como explotables: un campo
+que acaba en un contexto de inferencia porque sí es exactamente lo que no se
+quiere, y el valor por defecto es el que decide eso en la práctica.
+
+**Y lo sensible no sale aunque se marque explotable.** Qué es sensible no se
+declara al describir el campo: sale de la clasificación que el campo ya tiene
+—`confidencial`, `personal` o `especial`—, que es la misma de la que salen el
+enmascaramiento por rol y el mapa de datos personales. Si se pudiera declarar
+aparte, bastaría con decir «esto no es sensible» sobre un campo clasificado como
+dato de salud para que saliera; y con dos sitios donde marcarlo, tarde o temprano
+dicen cosas distintas y no se sabe cuál manda.
+
+Y se publica la **cobertura**: con el 30 % de
 los campos descritos, la IA entiende el 30 %, y la distancia entre eso y lo que la
 gente cree que compró es la razón de la mayoría de los proyectos de IA
 decepcionantes.

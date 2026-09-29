@@ -84,6 +84,40 @@ class CampoDefinido(Base, TimestampMixin):
     # confidencial | personal | especial. De aquí salen el enmascaramiento por
     # rol y el mapa de datos personales.
     sensibilidad: Mapped[str] = mapped_column(String(20), nullable=False, default="interno")
+
+    # ── Qué significa el campo, para lo que tenga que razonar con él ──────
+    # (CRM-00.04.03.07). Viven aquí y no en una tabla aparte porque son
+    # atributos del campo, uno a uno: separarlos permitiría semántica huérfana
+    # —una descripción de un campo que ya no existe— y obligaría a un join en
+    # el camino que más se recorre, que es publicar el esquema.
+    #
+    # `sensible` NO es una columna: se deriva de `sensibilidad`, que ya es la
+    # clasificación oficial (CRM-07.03.01.05) y de la que salen el
+    # enmascaramiento y el mapa de datos personales. Dos columnas para la misma
+    # verdad acaban diciendo cosas distintas, y entonces no se sabe cuál manda.
+    descripcion_semantica: Mapped[str] = mapped_column(
+        Text, nullable=False, default="", server_default=text("''")
+    )
+    # identificador | clasificacion | medida | fecha | estado | texto_libre |
+    # referencia | interno. Vacío significa «sin declarar», que es distinto de
+    # «interno»: lo primero es que nadie lo ha pensado y lo segundo es una
+    # decisión.
+    rol_semantico: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="", server_default=text("''")
+    )
+    # Qué significa cada valor de una lista. Saber que admite «A», «B» y «C» no
+    # sirve de nada; saber que «C» es «cliente en revisión de crédito» cambia lo
+    # que se puede preguntar.
+    valores_semanticos: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # Que se pueda explotar es una decisión de quien define el campo, y por
+    # defecto NO: un campo que entra en un contexto de inferencia sin que nadie
+    # lo haya decidido es exactamente lo que no se quiere.
+    explotable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
     orden: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Un campo deprecado sigue leyéndose pero no se ofrece para escribir: es lo
