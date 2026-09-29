@@ -1003,9 +1003,9 @@ modulos:
               - {id: CRM-05.01.04.05, c: C, fase: 2, svc: analytics, estado: hecho, t: "Propagacion de permisos y comparticion: la consulta analitica nunca devuelve mas de lo que el usuario ve en el CRM"}
               - {id: CRM-05.01.04.06, c: A, fase: 2, svc: analytics, estado: hecho, t: "Preguntas guardadas y publicadas como informe del tenant, con su programación y distribución desde el CRM"}
               - {id: CRM-05.01.04.07, c: A, fase: 2, svc: analytics, estado: hecho, t: "Auditoría de las consultas analíticas: quién preguntó qué, sobre qué datos y qué se le devolvió"}
-              - {id: CRM-05.01.04.08, c: A, fase: 2, svc: analytics, estado: hecho, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
+              - {id: CRM-05.01.04.08, visto: '2026-09-29 con contecintelligence caído: el CRM arranca igual, el diagnóstico dice «no responde» y qué sí funciona, y CI_OBLIGATORIO_PARA_ARRANCAR sí lo para', c: A, fase: 2, svc: analytics, estado: hecho, t: "Degradación explicada cuando contecintelligence no responde: el CRM sigue operativo y la explotación avisa"}
               - {id: CRM-05.01.04.10, c: C, fase: 2, svc: analytics, estado: hecho, t: "contecintelligence como dependencia de despliegue: la pila lo levanta, o se configura la dirección de uno ya en marcha"}
-              - {id: CRM-05.01.04.11, c: C, fase: 2, svc: analytics, estado: hecho, t: "Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe"}
+              - {id: CRM-05.01.04.11, visto: '2026-09-29 comprobación al arrancar ejercitada: avisa con el vecino caído, distingue «sin dirección» de «no responde», y apagado no avisa de nada', c: C, fase: 2, svc: analytics, estado: hecho, t: "Comprobación al arrancar de que contecintelligence responde, con el fallo dicho ahí y no al abrir el primer informe"}
               - {id: CRM-05.01.04.12, c: A, fase: 2, svc: analytics, estado: hecho, t: "Salud de la integración visible: versión, latencia y último error, en el estado del propio CRM"}
               - {id: CRM-05.01.04.09, c: A, fase: 5, svc: analytics, estado: hecho, t: "Contexto del registro en curso: preguntar sobre la cuenta o la oportunidad abierta sin escribir el filtro"}
           - id: CRM-05.01.03
