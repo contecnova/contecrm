@@ -171,6 +171,20 @@ GATES: list[Gate] = [
         # comprueba puede esperar al lunes.
         #
         # El criterio para sacar algo del push NO es cuánto tarda: es qué caza.
+        #
+        # Y NO SE PARTE EN VARIOS GATES. Se propuso dos veces —recorre los trece
+        # servicios en serie— y las dos se descartó, la segunda con el motivo que
+        # no caduca: los gates que tocan base son `exclusivo` porque cada uno
+        # levanta su propio Postgres embebido, y ya hay un cerrojo que los turna.
+        # Partir éste en cuatro daría cuatro gates haciendo la misma cola **más
+        # cuatro arranques de Postgres en vez de uno**: perdería.
+        #
+        # Lo que habría que reabrir el día que apriete **no es «repartir gates»**:
+        # es **«xdist con esquema por trabajador»**, que paraleliza DENTRO del
+        # gate. Hoy ni `pytest-xdist` está instalado ni el `conftest` contempla
+        # trabajadores, así que es trabajo de verdad y su beneficio está sin
+        # medir. Queda escrito aquí para que nadie repita la hora que costó
+        # averiguarlo.
         "tests",
         "ninguna ruta deja ver lo de otro tenant, y ninguna deja de responder",
         exclusivo=True,

@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -76,6 +76,48 @@ def guardar_regla(codigo: str, datos: ReglaEntrada, uow: UowDep, principal: Aute
         uow.db, tenant_id=principal.tenant_id, codigo=codigo, **datos.model_dump()
     )
     return {"codigo": fila.codigo, "nombre": fila.nombre, "nivel": fila.nivel}
+
+
+@router_sod.get(
+    "/excepciones",
+    dependencies=[Depends(exige_permiso("role:read"))],
+    summary="Qué conflictos están aprobados, para quién y por qué",
+    description=(
+        "**Faltaba, y sin esto la excepción no es un control.** Aprobar un "
+        "conflicto exige motivo escrito y caducidad —el alta lo obliga— y no "
+        "había forma de leer ninguno de los dos: la prueba de auditoría se "
+        "generaba y se archivaba donde nadie podía recuperarla.\n\n"
+        "Quien revisa un informe de segregación tiene que poder contestar «¿y "
+        "éstos por qué están permitidos?».\n\n"
+        "Por defecto sólo las vigentes: una lista con las de hace tres años "
+        "obliga a filtrar a mano justo cuando se está revisando."
+    ),
+)
+def listar_excepciones(
+    db: DbDep,
+    principal: AutenticadoDep,
+    regla: str = Query("", max_length=40),
+    incluir_caducadas: bool = Query(False),
+) -> Any:
+    return sod.excepciones(
+        db, principal.tenant_id, regla_codigo=regla, incluir_caducadas=incluir_caducadas
+    )
+
+
+@router_sod.get(
+    "/reglas/{codigo}/excepciones",
+    dependencies=[Depends(exige_permiso("role:read"))],
+    summary="Las excepciones aprobadas de esta regla",
+)
+def listar_excepciones_de_regla(
+    codigo: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    incluir_caducadas: bool = Query(False),
+) -> Any:
+    return sod.excepciones(
+        db, principal.tenant_id, regla_codigo=codigo, incluir_caducadas=incluir_caducadas
+    )
 
 
 @router_sod.post(

@@ -48,7 +48,37 @@ SERVICIOS = [
 # porque la próxima acción de ese tipo tendrá que declararse aquí **con su
 # motivo** — una excepción sin motivo acaba siendo la puerta por la que vuelve
 # el problema.
-ACCIONES: dict[str, str] = {}
+ACCIONES: dict[str, str] = {
+    # Subcolecciones que SÍ se leen, por una puerta mejor que la suya. Cada una
+    # con dónde, para que la exención se pueda comprobar y no sea un permiso.
+    #
+    # Se verificaron una a una antes de escribirlas aquí: de siete que marcó el
+    # gate al extenderlo, seis tenían puerta. Una candidata es una hipótesis.
+    "/accounts/{cuenta_id}/direcciones": "las devuelve `GET /accounts/{id}/360`",
+    "/contacts/{contacto_id}/cuentas": (
+        "se leen desde el otro lado, en `GET /accounts/{id}/relaciones`; la "
+        "asimetría es real pero el dato se alcanza"
+    ),
+    "/proveedores/{cuenta_id}/homologacion": (
+        "las lista `GET /proveedores/{id}/homologaciones`, que se añadió justo "
+        "por esto: «se podía consultar de una en una sabiendo ya el nombre»"
+    ),
+    "/metadata/objetos/{nombre}/campos": (
+        "los devuelve `GET /metadata/objetos/{nombre}/describe`, con sus "
+        "validaciones y layouts — que es lo que un frontend necesita"
+    ),
+    "/sso-gobierno/proveedores/{proveedor_id}/certificados": (
+        "los revisa `GET /factores/certificados`, que es donde se miran: con su "
+        "caducidad al lado"
+    ),
+    "/tenants/{tenant_id}/exportacion": (
+        "las lista `GET /tenants/{id}/exportaciones`, en plural: el alta va en "
+        "singular y el listado en plural, así que el gate no los empareja"
+    ),
+    "/integraciones/conexiones/{conexion_id}/operaciones": (
+        "vienen dentro del manifiesto de la conexión, que es de donde salen"
+    ),
+}
 
 
 @pytest.fixture(autouse=True)
@@ -106,7 +136,17 @@ def _colecciones(por_camino: dict[str, set[str]]) -> list[str]:
     caminos = set(por_camino)
     salida = []
     for camino in caminos:
-        if "{" in camino:
+        # LAS SUBCOLECCIONES TAMBIÉN. Esto se saltaba cualquier camino con `{`, o
+        # sea que la regla estaba escrita y **no se aplicaba justo donde más se
+        # incumple**: las direcciones de una cuenta, los miembros de una campaña,
+        # las excepciones de segregación de funciones. Una auditoría a mano tardó
+        # ochenta y nueve minutos en encontrar UNA de esta forma; al mirar aquí
+        # salieron once en segundos.
+        #
+        # Lo que sí se exige es que sea un CONJUNTO y no un efecto: se reconoce
+        # porque cuelgan fichas de él, igual que en la raíz. Sin eso, el gate le
+        # pediría un listado a `/activos/{id}/archivar`, que no significa nada.
+        if camino.rstrip("/").endswith("}"):
             continue
         if any(
             otro.startswith(camino + "/") and otro[len(camino) + 1 :].startswith("{")

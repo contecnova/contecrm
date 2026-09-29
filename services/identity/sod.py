@@ -178,6 +178,49 @@ def aprobar_excepcion(
     return fila
 
 
+def excepciones(
+    db: Session, tenant_id: UUID, *, regla_codigo: str = "", incluir_caducadas: bool = False
+) -> list[dict[str, Any]]:
+    """Qué conflictos se han aprobado, para quién, por qué y hasta cuándo.
+
+    **Faltaba, y es lo que convierte esto en un control.** Aprobar una excepción
+    a la segregación de funciones exige motivo escrito y fecha de caducidad —el
+    código lo obliga—, y **no había forma de leer ninguno de los dos**: la prueba
+    de auditoría se generaba y se archivaba donde nadie podía recuperarla.
+
+    Quien revisa un informe de segregación tiene que poder contestar «¿y éstos
+    por qué están permitidos?», y esa respuesta estaba guardada en una tabla sin
+    puerta.
+
+    Por defecto sólo las vigentes: una lista con las de hace tres años obliga a
+    filtrar a mano justo cuando se está revisando.
+    """
+    from crmcore.fechas import hoy
+
+    consulta = select(ExcepcionSoD).where(ExcepcionSoD.tenant_id == tenant_id)
+    if regla_codigo:
+        consulta = consulta.where(ExcepcionSoD.regla_codigo == regla_codigo)
+    if not incluir_caducadas:
+        consulta = consulta.where(ExcepcionSoD.caduca_at >= hoy(db))
+
+    filas = db.execute(consulta.order_by(ExcepcionSoD.caduca_at)).scalars().all()
+    return [
+        {
+            "id": str(f.id),
+            "regla_codigo": f.regla_codigo,
+            "usuario_id": str(f.usuario_id),
+            # El motivo va dentro: sin él, la lista dice que hay excepciones y no
+            # por qué, que es justo lo que hay que revisar.
+            "motivo": f.motivo,
+            "aprobada_por": str(f.aprobada_por) if f.aprobada_por else None,
+            "caduca_at": f.caduca_at.isoformat(),
+            "vigente": f.caduca_at >= hoy(db),
+            "created_at": f.created_at.isoformat(),
+        }
+        for f in filas
+    ]
+
+
 def violaciones(db: Session, tenant_id: UUID) -> dict[str, Any]:
     """Quién tiene hoy permisos incompatibles, y con qué regla.
 
