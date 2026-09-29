@@ -6,10 +6,12 @@ proveedores del tenant (CRM-00.05.01.03) y el alta automática (CRM-00.05.01.04)
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 from uuid import UUID
 
-from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha  # noqa: E402
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
@@ -20,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.identity import oidc as oidc_cli
-from services.identity import organigrama, sso
+from services.identity import organigrama, sso, sso_gobierno
 from services.identity import saml as saml_sp
 from services.identity.modelos import ProveedorIdentidad
 
@@ -241,6 +243,38 @@ def metadatos_saml(proveedor_id: UUID, db: DbDep) -> Any:
 # ── Flujo de inicio de sesión ─────────────────────────────────────────────
 
 
+# ── Sesión para las rutas por las que se entra ────────────────────────────
+
+
+@contextmanager
+def _trabajo(tenant_id: UUID) -> Iterator[Any]:
+    """Unidad de trabajo para una ruta a la que se llega **sin autenticar**.
+
+    Estas tres rutas no pueden usar `UowDep`: esa dependencia abre la sesión con
+    el tenant del principal, y aquí todavía no hay principal —el proveedor de
+    identidad llega anónimo, que es como llega siempre—. Con `UowDep`
+    contestaban 500, «se ha abierto una sesión sin tenant», **las tres**: el
+    SSO no funcionaba de punta a punta y nadie lo había ejercitado nunca.
+
+    Es exactamente lo que ya le pasó a `/auth/login`, que lo dejó escrito en su
+    propio comentario. Esto es el mismo patrón.
+
+    El tenant es una **pista sin firmar** y no concede acceso por sí sola: lo
+    que concede acceso es la firma de la aserción contra el certificado de ESE
+    proveedor de ESE tenant, o el estado de un solo uso que solo emitimos
+    nosotros.
+    """
+    from crmcore.bus.outbox import despertar_relevo
+    from crmcore.db.session import sesion
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    with sesion(tenant_id) as db:
+        uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+        yield uow
+        uow._volcar_eventos()
+    despertar_relevo()
+
+
 class Iniciar(BaseModel):
     tenant_id: UUID
     email: str | None = Field(
@@ -261,15 +295,29 @@ class Iniciar(BaseModel):
         "un log de proxy, en un `Referer`— puede canjearlo."
     ),
 )
-def iniciar(datos: Iniciar, uow: UowDep) -> Any:
+def iniciar(datos: Iniciar) -> Any:
+    with _trabajo(datos.tenant_id) as uow:
+        return _iniciar(datos, uow)
+
+
+def _iniciar(datos: Iniciar, uow: Any) -> Any:
     fila = sso.proveedor_para(uow.db, datos.tenant_id, email=datos.email, nombre=datos.proveedor)
 
     if fila.tipo == "saml":
-        return {
-            "tipo": "saml",
-            "url": saml_sp.url_de_inicio(fila.config or {}, volver_a=datos.volver_a),
-            "proveedor": fila.nombre,
-        }
+        inicio = saml_sp.url_de_inicio(fila.config or {}, volver_a=datos.volver_a)
+        # SE GUARDA, igual que el `state` de OIDC y por lo mismo: es lo que ata
+        # la respuesta a esta petición y lo que la hace de un solo uso. Antes se
+        # tiraba, y entonces la vuelta no se comparaba con nada.
+        sso.guardar_estado(
+            uow.db,
+            tenant_id=datos.tenant_id,
+            proveedor_id=fila.id,
+            estado=inicio.id_peticion,
+            nonce="",
+            verificador="",
+            volver_a=datos.volver_a,
+        )
+        return {"tipo": "saml", "url": inicio.url, "proveedor": fila.nombre}
 
     proveedor = oidc_cli.desde_modelo(fila)
     autorizacion = oidc_cli.construir_autorizacion(proveedor)
@@ -300,7 +348,15 @@ class VueltaOIDC(BaseModel):
         "**un solo uso**: sin eso, quien capture la respuesta la reenvía y entra."
     ),
 )
-def callback_oidc(datos: VueltaOIDC, uow: UowDep) -> Any:
+def callback_oidc(datos: VueltaOIDC) -> Any:
+    # El tenant vive DENTRO del estado, así que hay que mirarlo antes de
+    # poder abrir la sesión. Se mira sin gastarlo: el vale se quema dentro de
+    # la transacción que completa la entrada, y si esa falla no se pierde.
+    with _trabajo(sso.tenant_del_estado(datos.state)) as uow:
+        return _callback_oidc(datos, uow)
+
+
+def _callback_oidc(datos: VueltaOIDC, uow: Any) -> Any:
     estado = sso.consumir_estado(uow.db, datos.state)
     fila = uow.db.get(ProveedorIdentidad, estado.proveedor_id)
     if fila is None or not fila.activo:
@@ -354,16 +410,46 @@ def callback_oidc(datos: VueltaOIDC, uow: UowDep) -> Any:
 )
 async def acs_saml(
     peticion: Request,
-    uow: UowDep,
     tenant_id: UUID = Query(...),
     proveedor: str | None = Query(None),
 ) -> Any:
     formulario = dict(await peticion.form())
+    with _trabajo(tenant_id) as uow:
+        return _acs_saml(formulario, uow, tenant_id, proveedor)
+
+
+def _acs_saml(formulario: dict[str, Any], uow: Any, tenant_id: UUID, proveedor: str | None) -> Any:
     fila = sso.proveedor_para(uow.db, tenant_id, nombre=proveedor)
     if fila.tipo != "saml":
         raise ErrorValidacion("Ese proveedor no es SAML", error_code="saml.proveedor_no_es_saml")
 
-    correo, nombre, grupos, contexto = saml_sp.procesar_respuesta(fila.config or {}, formulario)
+    # Hay dos vías y cada una se cierra de una forma. Si la aserción cita una
+    # petición, esa petición tiene que constar como nuestra y se gasta al usarla.
+    # Si no cita ninguna, empieza en el IdP: eso va apagado por defecto y se
+    # apunta la aserción para que no valga dos veces.
+    citada = saml_sp.en_respuesta_a(formulario)
+    if citada:
+        estado = sso.consumir_estado(uow.db, citada)
+        if estado.proveedor_id != fila.id or estado.tenant_id != tenant_id:
+            # Un inicio abierto con un proveedor no puede cerrarse con otro: si
+            # no, un tenant con un IdP propio podría cerrar el inicio de otro.
+            raise NoAutenticado(
+                "Ese inicio de sesión no es de este proveedor",
+                error_code="sso.estado_de_otro_proveedor",
+            )
+
+    correo, nombre, grupos, contexto = saml_sp.procesar_respuesta(
+        fila.config or {}, formulario, id_peticion=citada or None
+    )
+
+    if not citada:
+        sso_gobierno.admitir_asercion_idp(
+            uow.db,
+            fila,
+            id_asercion=contexto.get("id_asercion", ""),
+            no_despues_de=_momento(contexto.get("no_despues_de", "")),
+            en_respuesta_a=contexto.get("en_respuesta_a") or None,
+        )
     usuario = sso.entrar_o_provisionar(
         uow.db,
         tenant_id=tenant_id,
@@ -385,6 +471,30 @@ async def acs_saml(
         indice_idp=str(contexto.get("session_index") or ""),
         sujeto_idp=str(contexto.get("name_id") or correo),
     )
+
+
+def _momento(texto: str) -> Any:
+    """El `NotOnOrAfter` de la aserción, tal como lo da la librería.
+
+    `python3-saml` lo devuelve como **marca de tiempo unix**, no como texto ISO:
+    lo pasa por `parse_SAML_to_time`, que documenta `rtype: int`. Leerlo como
+    ISO fallaría siempre, en silencio, y la aserción se quedaría con la ventana
+    por defecto sin que nadie se enterara — que es peor que no leerlo, porque
+    parece que se lee.
+
+    Si no viene o no se entiende se devuelve `None` y el registro de aserciones
+    pone su propia ventana: quedarse sin ventana por no saber leer una fecha
+    sería aceptar la aserción para siempre.
+    """
+    from datetime import datetime, timezone
+
+    if not texto:
+        return None
+    try:
+        return datetime.fromtimestamp(float(texto), tz=timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        logger.warning("saml.no_despues_de_ilegible", valor=texto[:60])
+        return None
 
 
 def _como_proveedor(fila: ProveedorIdentidad) -> Any:

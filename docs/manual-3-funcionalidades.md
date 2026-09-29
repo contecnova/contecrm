@@ -5291,6 +5291,22 @@ activarlo tiene que ser la decisión de alguien que sepa que está aceptando
 aserciones que él no ha pedido. Una aserción sin identificador se rechaza:
 aceptar «porque no se puede comprobar» es no tener la comprobación.
 
+Y las dos vías se cierran distinto, en el punto de retorno:
+
+- **Si la aserción cita una petición**, esa petición tiene que constar como
+  emitida por nosotros y **se gasta al usarla**, igual que el `state` de OIDC.
+  Una respuesta que cita algo que nunca pedimos no entra, y la misma respuesta
+  dos veces solo entra la primera.
+- **Si no cita ninguna**, empieza en el IdP: se mira el interruptor del tenant y
+  se apunta la aserción para que no valga otra vez.
+
+Una advertencia para quien mantenga esto. La librería que valida la firma
+—`python3-saml`— **solo compara el `InResponseTo` si se le pasa el identificador
+de la petición**; sin él, no lo mira. Y el ajuste que parecía cubrirlo,
+`rejectUnsolicitedResponsesWithInResponseTo`, **no está implementado en la
+versión 1.16.0** que se usa: pedirlo no hace nada. Una defensa que parece puesta
+y no lo está es peor que no tenerla, porque nadie la vuelve a mirar.
+
 ### Cierre de sesión único (`CRM-00.05.01.12`)
 
 Cuando la persona sale del IdP, lo que llega es **su** identificador de sesión

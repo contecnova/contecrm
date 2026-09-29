@@ -416,6 +416,17 @@ def get_uow(principal: PrincipalDep) -> Iterator[Any]:
     from crmcore.db.session import nueva_sesion
     from crmcore.db.uow import UnidadDeTrabajo
 
+    if principal.es_anonimo and principal.tenant_id is None:
+        # La MISMA guarda que `get_db`, y por lo mismo. Estaba solo allí, así
+        # que toda ruta de escritura sin autenticar contestaba 500 —«se ha
+        # abierto una sesión sin tenant»— en vez de 401. Un 500 dice «esto está
+        # roto»; lo que pasa es que no has entrado.
+        #
+        # Que una de las dos dependencias tuviera la guarda y la otra no hacía
+        # que la respuesta dependiera de cuál usara el endpoint, que es lo mismo
+        # que ya pasó con el orden de los parámetros.
+        raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
+
     db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
     uow = UnidadDeTrabajo(db=db, tenant_id=db.info.get("tenant_id"))
     try:

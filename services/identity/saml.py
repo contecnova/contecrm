@@ -24,6 +24,7 @@ uno.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from crmcore.errors import ErrorValidacion, NoAutenticado, NoDisponible
@@ -116,6 +117,13 @@ def _ajustes(config: dict[str, Any]) -> dict[str, Any]:
             "wantAssertionsSigned": True,
             "wantMessagesSigned": bool(config.get("exigir_mensaje_firmado", False)),
             "requestedAuthnContext": False,
+            # OJO: `python3-saml` 1.16.0 **ignora** este ajuste —no aparece en
+            # su código— así que no se puede contar con él. Se deja porque una
+            # versión posterior podría implementarlo y entonces suma, pero la
+            # comprobación de verdad la hace `procesar_respuesta` con el
+            # identificador de la petición y la hace el ACS con el registro de
+            # aserciones ya usadas. Un ajuste que no se cumple es peor que no
+            # ponerlo: parece que la defensa está puesta.
             "rejectUnsolicitedResponsesWithInResponseTo": True,
         },
     }
@@ -142,7 +150,21 @@ def _peticion(datos: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def url_de_inicio(config: dict[str, Any], *, volver_a: str | None = None) -> str:
+@dataclass(frozen=True)
+class Inicio:
+    """A dónde se manda al usuario, y con qué identificador se le espera.
+
+    El identificador **se devuelve** y no se tira: es lo que ata la respuesta a
+    esta petición concreta. Sin guardarlo no hay nada contra lo que comparar el
+    `InResponseTo` que vuelve, y entonces vale cualquier aserción firmada,
+    incluida una que se reenvía por segunda vez.
+    """
+
+    url: str
+    id_peticion: str
+
+
+def url_de_inicio(config: dict[str, Any], *, volver_a: str | None = None) -> Inicio:
     """URL a la que se manda al usuario para que se autentique en su IdP."""
     exigir_disponible()
     from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -155,7 +177,36 @@ def url_de_inicio(config: dict[str, Any], *, volver_a: str | None = None) -> str
             detalle={"problemas": problemas},
         )
     auth = OneLogin_Saml2_Auth(_peticion({}, config), _ajustes(config))
-    return str(auth.login(return_to=volver_a))
+    url = str(auth.login(return_to=volver_a))
+    return Inicio(url=url, id_peticion=str(auth.get_last_request_id() or ""))
+
+
+def en_respuesta_a(datos_post: dict[str, Any]) -> str:
+    """El `InResponseTo` que trae la respuesta, **sin validarla todavía**.
+
+    Sirve de llave para buscar la petición que la originó, y para nada más: no
+    se cree lo que diga. La comprobación de verdad es que esa petición conste
+    como emitida por nosotros y no se haya usado ya; si no consta, la respuesta
+    cita algo que nunca pedimos y se rechaza.
+
+    Se lee con el analizador de la librería y no con una expresión regular: un
+    XML puede traer el atributo de veinte formas —espacios de nombres,
+    comentarios, entidades— y una expresión regular acierta con las de prueba.
+    """
+    import base64
+    from xml.etree import ElementTree
+
+    crudo = datos_post.get("SAMLResponse") or ""
+    if not crudo:
+        return ""
+    try:
+        xml = base64.b64decode(crudo, validate=False)
+        raiz = ElementTree.fromstring(xml)
+    except Exception:  # noqa: BLE001 — aquí no se distingue nada: si no se
+        # puede leer, se trata como si no citara nada y la librería lo rechazará
+        # por su cuenta al validarlo.
+        return ""
+    return str(raiz.get("InResponseTo") or "")
 
 
 def metadatos(config: dict[str, Any]) -> str:
@@ -176,9 +227,17 @@ def metadatos(config: dict[str, Any]) -> str:
 
 
 def procesar_respuesta(
-    config: dict[str, Any], datos_post: dict[str, Any]
+    config: dict[str, Any], datos_post: dict[str, Any], *, id_peticion: str | None = None
 ) -> tuple[str, str, list[str], dict[str, str]]:
     """Valida la aserción y devuelve (correo, nombre, grupos, contexto).
+
+    `id_peticion` es el identificador de la petición que abrimos nosotros. Se le
+    pasa a la librería para que compare el `InResponseTo`: sin él esa
+    comprobación **no se hace** —la librería solo la hace cuando se le da algo
+    contra lo que comparar— y entra cualquier aserción firmada, incluida una
+    reenviada. Va a `None` solo cuando la aserción no cita ninguna petición, que
+    es el caso de las que empiezan en el IdP, y ese camino lo cierra el registro
+    de aserciones ya usadas.
 
     La validación —firma, destinatario, vigencia, condiciones— la hace la
     librería. Aquí solo se traduce el resultado y se comprueba que trae lo
@@ -195,7 +254,7 @@ def procesar_respuesta(
     from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
     auth = OneLogin_Saml2_Auth(_peticion(datos_post, config), _ajustes(config))
-    auth.process_response()
+    auth.process_response(request_id=id_peticion or None)
 
     errores = auth.get_errors()
     if errores:
@@ -244,6 +303,13 @@ def procesar_respuesta(
         "session_index": str(auth.get_session_index() or ""),
         "name_id": str(auth.get_nameid() or ""),
         "authn_context": str((auth.get_last_authn_contexts() or [""])[0] or ""),
+        # Lo que hace falta para anotar la aserción como usada: su identificador
+        # y hasta cuándo vale. Sin sacarlos aquí se pierden —la librería los
+        # tiene solo mientras vive el objeto— y sin ellos no hay forma de
+        # detectar el reenvío de una aserción que no cita petición.
+        "id_asercion": str(auth.get_last_assertion_id() or ""),
+        "no_despues_de": str(auth.get_last_assertion_not_on_or_after() or ""),
+        "en_respuesta_a": str(auth.get_last_response_in_response_to() or ""),
     }
     return correo.strip().lower(), nombre.strip(), grupos, contexto
 

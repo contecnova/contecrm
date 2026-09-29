@@ -101,6 +101,33 @@ def guardar_estado(
     return fila
 
 
+def tenant_del_estado(estado: str) -> UUID:
+    """De qué tenant es un inicio a medias, **sin gastarlo**.
+
+    Hace falta antes de poder abrir la sesión: la vuelta del proveedor llega sin
+    autenticar y el tenant vive dentro del estado, así que hay un huevo y una
+    gallina. Se resuelve con una sesión de sistema que mira **una fila
+    encontrada por un secreto** —el estado va hasheado y no se puede adivinar— y
+    que no lee nada más.
+
+    No se consume aquí: gastarlo es cosa de la transacción que completa la
+    entrada, para que un fallo a mitad no deje al usuario con el vale quemado y
+    sin sesión.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(None, sistema=True) as db:
+        fila = db.execute(
+            select(EstadoSSO.tenant_id).where(EstadoSSO.estado_hash == _hash(estado))
+        ).scalar_one_or_none()
+    if fila is None:
+        raise NoAutenticado(
+            "Este inicio de sesión no consta o ya se ha usado",
+            error_code="sso.estado_desconocido",
+        )
+    return fila
+
+
 def consumir_estado(db: Session, estado: str) -> EstadoSSO:
     """Recupera el estado y **lo borra**. Un solo uso.
 
