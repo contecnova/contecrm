@@ -874,32 +874,14 @@ def validar_clave(datos: ValidarClaveApi) -> Any:
 def _resolver_tenant(valor: str) -> UUID:
     """Traduce el slug o el identificador del tenant a UUID.
 
-    Llama al servicio de tenancy por HTTP en vez de leer su tabla: la propiedad
-    exclusiva de datos por servicio es justo lo que hace que esa consulta ni
-    siquiera esté permitida a nivel de permisos de base de datos.
+    La implementación vive en `crmcore.http.interno` porque lo necesitan todas
+    las puertas de entrada y hay más de una —el portal del partner tropezó con
+    lo mismo—. Dos implementaciones de «¿de qué tenant es este nombre?» divergen
+    siempre, y la que se queda atrás es la puerta por la que se entra.
     """
-    from crmcore.ids import es_id_valido, sin_prefijo
+    from crmcore.http.interno import resolver_tenant
 
-    if es_id_valido(valor):
-        return sin_prefijo(valor)
-
-    # Se pregunta a tenancy. Antes esto era un error —«indica el identificador
-    # del tenant»— y el efecto es que no se podía entrar: la pantalla de acceso
-    # pide el nombre de la organización, que es lo único que un usuario tiene,
-    # y el sistema exigía un UUID que nadie se sabe. Un agujero en la puerta.
-    from crmcore.errors import ErrorValidacion
-    from crmcore.http.interno import pedir
-
-    datos = pedir("tenancy", f"/api/v1/interno/tenants/por-slug/{valor}")
-    if datos is None:
-        # Mismo error que una contraseña mal puesta y por el mismo motivo: decir
-        # «esa organización no existe» convierte la pantalla de acceso en un
-        # buscador de clientes.
-        raise ErrorValidacion(
-            "Credenciales no válidas",
-            error_code="auth.credenciales_invalidas",
-        )
-    return sin_prefijo(str(datos["tenant_id"]))
+    return resolver_tenant(valor)
 
 
 def _sesion_del_token(request: Request) -> UUID | None:

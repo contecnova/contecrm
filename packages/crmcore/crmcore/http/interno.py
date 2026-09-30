@@ -88,3 +88,36 @@ def pedir(servicio: str, ruta: str, *, timeout_s: float = 5.0) -> dict[str, Any]
             error_code="interno.respuesta_inesperada",
         )
     return dict(salida.json())
+
+
+def resolver_tenant(valor: str) -> Any:
+    """Traduce el identificador o el slug del tenant a UUID.
+
+    Vive aquí y no en un servicio porque lo necesitan **todas las puertas de
+    entrada**, y hay más de una: el inicio de sesión del CRM, el portal del
+    partner, el del cliente. A esas rutas se llega sin credencial —es donde se
+    consigue la primera— así que el tenant no puede venir del principal: llega
+    en el cuerpo, como una pista sin firmar, y lo que concede acceso es lo que
+    venga detrás.
+
+    Se pregunta a `tenancy` por HTTP en vez de leer su tabla: la propiedad
+    exclusiva de datos por servicio es justo lo que hace que esa consulta ni
+    siquiera esté permitida a nivel de permisos de base de datos.
+
+    **El error es el mismo que una credencial mal puesta**, y a propósito: decir
+    «esa organización no existe» convierte cualquier pantalla de acceso en un
+    buscador de clientes, que es media lista de la competencia.
+    """
+    from crmcore.errors import ErrorValidacion
+    from crmcore.ids import es_id_valido, sin_prefijo
+
+    if es_id_valido(valor):
+        return sin_prefijo(valor)
+
+    datos = pedir("tenancy", f"/api/v1/interno/tenants/por-slug/{valor}")
+    if datos is None:
+        raise ErrorValidacion(
+            "Credenciales no válidas",
+            error_code="auth.credenciales_invalidas",
+        )
+    return sin_prefijo(str(datos["tenant_id"]))

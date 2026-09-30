@@ -670,8 +670,8 @@ stateDiagram-v2
 | `PATCH /api/v1/plantillas-correo/{plantilla_correo_id}` | Editar plantillas de correo | plantilla_correo_id*, clave, nombre, asunto, cuerpo, enviados, abiertos, clicados, respondidos, reuniones, activa | 200, 422 | — |
 | `DELETE /api/v1/plantillas-correo/{plantilla_correo_id}` | Borrar plantillas de correo | plantilla_correo_id* | 204, 422 | — |
 | `POST /api/v1/plantillas-correo/{plantilla_correo_id}/archivar` | Archivar plantillas de correo | plantilla_correo_id* | 200, 422 | — |
-| `POST /api/v1/portal-partner/canjear` | Canjear el enlace y abrir sesión de partner | token* | 200, 422 | — |
-| `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | email* | 200, 422 | — |
+| `POST /api/v1/portal-partner/canjear` | Canjear el enlace y abrir sesión de partner | tenant*, token* | 200, 422 | — |
+| `POST /api/v1/portal-partner/entrar` | Pedir un enlace de entrada al portal | tenant*, email* | 200, 422 | — |
 | `POST /api/v1/presupuestos` | Crear un presupuesto | lineas*, cuenta_id, oportunidad_id, contacto_id, titulo, moneda, canal, idioma, marca, dias_validez, notas, condiciones | 201, 422 | `quote.created` |
 | `POST /api/v1/presupuestos/caducar-vencidos` | Marcar caducados los que pasaron su vigencia | — | 200, 422 | — |
 | `PATCH /api/v1/presupuestos/{presupuesto_id}` | Editar presupuestos | presupuesto_id*, numero, anterior_id, oportunidad_id, cuenta_id, contacto_id, titulo, estado, moneda, canal, idioma, marca, valido_hasta, enviado_at, aceptado_at, subtotal, descuento_total, total, coste_total, margen_pct, motivo_aprobacion, notas, condiciones, created_by, updated_by, created_origen, updated_origen | 200, 422 | — |

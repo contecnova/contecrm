@@ -11,6 +11,8 @@ Dos familias de rutas que parecen la misma y no lo son:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -511,11 +513,48 @@ def rendimiento(datos: Rendimiento, db: DbDep, principal: AutenticadoDep) -> Any
 # ── Portal del partner ────────────────────────────────────────────────────
 
 
+# ── La puerta del portal del partner ──────────────────────────────────────
+#
+# A estas dos rutas se llega **sin credencial ninguna**: son donde el partner
+# consigue la primera. Por eso no pueden pedir la sesión con `UowDep`, que la
+# abre con el tenant del principal — y aquí no hay principal.
+#
+# Medido el 29-09-2026: las dos contestaban `401 auth.requerida`. La puerta
+# pedía la llave que reparte, así que **ningún partner podía entrar nunca**. Es
+# lo mismo que le pasó a `/auth/login` y a las tres rutas de SSO.
+#
+# El tenant llega en el cuerpo y es una **pista sin firmar**: no concede acceso
+# por sí sola. Lo que concede acceso es tener un acceso activo con ese correo en
+# ese tenant, o un enlace de un solo uso que emitimos nosotros.
+
+
+@contextmanager
+def _trabajo_sin_credencial(tenant: str) -> Iterator[Any]:
+    """Unidad de trabajo para una puerta de entrada, con el tenant del cuerpo."""
+    from crmcore.bus.outbox import despertar_relevo
+    from crmcore.db.session import sesion
+    from crmcore.db.uow import UnidadDeTrabajo
+    from crmcore.http.interno import resolver_tenant
+    from crmcore.tenancy.context import con_contexto
+
+    tenant_id = resolver_tenant(tenant)
+    with con_contexto(tenant_id=tenant_id, origen="api"), sesion(tenant_id) as db:
+        uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+        yield uow
+        uow._volcar_eventos()
+    despertar_relevo()
+
+
 class Entrar(BaseModel):
+    # El tenant, igual que en el inicio de sesión del CRM: la pantalla del
+    # portal pide el nombre de la organización, que es lo único que un partner
+    # tiene. Sin esto la ruta no puede abrir ninguna sesión.
+    tenant: str = Field(min_length=1, max_length=200)
     email: str
 
 
 class Canjear(BaseModel):
+    tenant: str = Field(min_length=1, max_length=200)
     token: str
 
 
@@ -524,25 +563,34 @@ class Canjear(BaseModel):
     summary="Pedir un enlace de entrada al portal",
     description=(
         "Responde **igual exista o no** el correo: distinguirlos convertiría el "
-        "portal en un comprobador de qué empresas son partners nuestros."
+        "portal en un comprobador de qué empresas son partners nuestros.\n\n"
+        "El tenant va en el cuerpo porque a esta ruta se llega sin haber "
+        "entrado: es una pista sin firmar, y lo que concede acceso es tener un "
+        "acceso activo con ese correo."
     ),
 )
-def entrar(datos: Entrar, uow: UowDep) -> Any:
-    enlace, token = prt.emitir_enlace(uow, email=datos.email)
-    return {
-        "enviado": True,
-        # El token solo sale en la respuesta cuando no hay canal de correo
-        # configurado; en producción va por correo y aquí no se devuelve.
-        "token": token or None,
-        "caduca_at": enlace.caduca_at.isoformat() if enlace is not None else None,
-    }
+def entrar(datos: Entrar) -> Any:
+    with _trabajo_sin_credencial(datos.tenant) as uow:
+        enlace, token = prt.emitir_enlace(uow, email=datos.email)
+        return {
+            "enviado": True,
+            # El token solo sale en la respuesta cuando no hay canal de correo
+            # configurado; en producción va por correo y aquí no se devuelve.
+            "token": token or None,
+            "caduca_at": enlace.caduca_at.isoformat() if enlace is not None else None,
+        }
 
 
 @router_portal.post(
     "/canjear",
     summary="Canjear el enlace y abrir sesión de partner",
 )
-def canjear(datos: Canjear, uow: UowDep, request: Request) -> Any:
+def canjear(datos: Canjear, request: Request) -> Any:
+    with _trabajo_sin_credencial(datos.tenant) as uow:
+        return _canjear(datos, uow, request)
+
+
+def _canjear(datos: Canjear, uow: Any, request: Request) -> Any:
     acceso = prt.canjear_enlace(uow, datos.token, ip=request.client.host if request.client else "")
     return {
         "acceso_id": str(acceso.id),
