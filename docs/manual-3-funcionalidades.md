@@ -1151,9 +1151,39 @@ separados, y esa separación es la parte que importa:
    (CRM-05.01.04.03).
 
 Cada tenant de contecrm se corresponde con una organización de
-`contecintelligence`, creada al provisionar (CRM-05.01.04.02). Quién pertenece a
-qué **lo dice el servidor**, no el navegador: si lo dijera un identificador en la
-URL, el aislamiento valdría lo que valga el JavaScript de esa pantalla.
+`contecintelligence`, **creada al provisionar y sin que nadie tenga que
+acordarse** (CRM-05.01.04.02): dar de alta un cliente emite el aviso de alta y la
+correspondencia se crea con él. Antes había que asignarla a mano desde una
+pantalla de plataforma, así que un cliente nuevo funcionaba hasta que alguien le
+preguntaba algo a la explotación del dato — y entonces salía «este tenant no
+tiene organización asignada», meses después y con el cliente delante.
+
+**La organización lleva el identificador del tenant, no su nombre comercial**, y
+conviene entender por qué, porque parece al revés:
+
+- El identificador **no se puede cambiar**. Va en subdominios, en URLs y en lo
+  que los integradores ya tienen guardado, así que el producto no deja
+  editarlo. Eso es justo lo que hace falta al otro lado: `contecintelligence`
+  solo acepta nombrar organizaciones que tenga dadas de alta, y el nombre que le
+  demos hoy tiene que seguir valiendo dentro de dos años.
+- El nombre comercial **sí se corrige**: existe una pantalla para arreglarle una
+  errata. Si la organización llevara ese nombre, cada corrección dejaría la
+  correspondencia apuntando a algo que allí ya no se llama así, y allí no
+  podemos renombrar nada.
+
+De ahí sale la respuesta a la pregunta que siempre aparece: **cambiar el nombre
+del cliente no cambia nada en `contecintelligence`, y no hace falta que lo
+cambie.** No es un cabo suelto: es que la correspondencia se apoya en lo que no
+se mueve. Si algún día se quisiera que allí se viera el nombre bonito, eso es un
+campo de presentación suyo y no la clave que las une.
+
+La correspondencia nace **pendiente**, no activa. Que exista aquí no significa
+que al otro lado la conozcan, y darla por buena sin verificarla haría que el
+primer fallo apareciera como «no hay datos» en vez de «falta darla de alta».
+
+Quién pertenece a qué **lo dice el servidor**, no el navegador: si lo dijera un
+identificador en la URL, el aislamiento valdría lo que valga el JavaScript de esa
+pantalla.
 
 ### Lo que no se delega
 

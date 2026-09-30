@@ -706,6 +706,74 @@ async def consumir_esquema_cambiado(mensaje: Any) -> None:
         registrar_fuente(uow, tenant_id, organizacion=fila.organizacion)
 
 
+# ── La correspondencia, creada al provisionar (CRM-05.01.04.02) ───────────
+
+
+TENANT_PROVISIONADO = "tenant.provisioned"
+
+
+async def consumir_tenant_provisionado(mensaje: Any) -> None:
+    """Le da al tenant nuevo su organización en contecintelligence.
+
+    **Faltaba el cable.** La tabla existía, la ruta para asignarla a mano
+    existía, y no la rellenaba nadie: todo tenant nuevo nacía sin
+    correspondencia, y la primera pregunta que alguien hiciera contra la
+    explotación del dato se encontraba «este tenant no tiene organización
+    asignada». Un paso manual que hay que recordar es un paso que se olvida.
+
+    **El nombre de la organización es el `slug`, no el nombre comercial.** Los
+    dos identifican al cliente, pero solo uno sirve aquí:
+
+    - El `slug` es **inmutable por diseño** —`EditarTenant` no lo admite, y su
+      propio comentario dice por qué: va en subdominios, en URLs y en los
+      identificadores que ya tienen fuera—. Eso es justo lo que hace falta al
+      otro lado: contecintelligence solo acepta nombrar organizaciones que
+      tenga mapeadas, así que el nombre que le demos hoy tiene que seguir
+      valiendo dentro de dos años.
+    - El `nombre` es comercial y se cambia: existe una ruta para corregirle una
+      errata. Si la organización llevara el nombre, cada corrección dejaría la
+      correspondencia apuntando a una organización que allí ya no se llama así
+      —y allí no podemos renombrarla nosotros—.
+
+    **Y por eso el renombrado NO se propaga**: no hay nada que propagar. Quien
+    cambie el nombre comercial del cliente en contecrm no toca su organización,
+    porque la organización lleva el identificador y no la etiqueta. Si algún día
+    se quisiera que allí se viera el nombre bonito, eso es un campo de
+    presentación suyo, no la clave de la correspondencia.
+
+    Es **idempotente**: la entrega es al menos una vez, y una segunda entrega no
+    puede volver a poner en «pendiente» una organización ya verificada.
+    """
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+
+    from services.analytics.modelos import OrganizacionExterna
+
+    if str(getattr(mensaje, "tipo", "") or "") != TENANT_PROVISIONADO:
+        return
+    datos = getattr(mensaje, "data", None) or {}
+    bruto = getattr(mensaje, "tenant_id", None) or datos.get("tenant_id")
+    slug = str(datos.get("slug") or "").strip()
+    if not bruto or not slug:
+        # Sin `slug` no hay nombre que dar, y inventarlo —del identificador, por
+        # ejemplo— crearía una organización que allí no existe y que nadie
+        # sabría de dónde salió.
+        logger.warning("analytics.provisionado_sin_slug", datos=datos)
+        return
+    tenant_id = UUID(str(bruto))
+
+    with con_contexto(tenant_id=tenant_id, origen="bus"), unidad_de_trabajo(tenant_id) as uow:
+        ya = uow.db.execute(
+            select(OrganizacionExterna).where(OrganizacionExterna.tenant_id == tenant_id)
+        ).scalar_one_or_none()
+        if ya is not None:
+            # Ni se pisa ni se toca el estado: puede llevar meses verificada.
+            return
+        uow.db.add(OrganizacionExterna(tenant_id=tenant_id, organizacion=slug, estado="pendiente"))
+        uow.db.flush()
+    logger.info("analytics.organizacion_creada", organizacion=slug)
+
+
 # ── Degradación explicada (CRM-05.01.04.08) ───────────────────────────────
 
 

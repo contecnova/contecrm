@@ -17,7 +17,12 @@ from services.analytics.api_cuadros import ROUTERS_CUADROS
 from services.analytics.api_fuente import ROUTERS_FUENTE
 from services.analytics.api_informes import ROUTERS_INFORMES
 from services.analytics.cliente import comprobar_al_arrancar
-from services.analytics.fuente import consumir_esquema_cambiado, ejecutar_plan
+from services.analytics.fuente import (
+    TENANT_PROVISIONADO,
+    consumir_esquema_cambiado,
+    consumir_tenant_provisionado,
+    ejecutar_plan,
+)
 from services.analytics.informes import correr_programadas, registrar_ejecutor
 
 _relevo: Any = None
@@ -124,7 +129,14 @@ app = crear_servicio(
     # contecintelligence se queda vieja. Se rehace por evento y no por reloj: un
     # registro que se refresca cada noche está desfasado justo después de que
     # alguien añada un campo, que es cuando lo va a buscar.
-    consumidores=[("metadata.schema.changed", consumir_esquema_cambiado, "analytics-fuente")],
+    #
+    # Y al provisionar un tenant se le crea su correspondencia con
+    # contecintelligence. Estaba la tabla, estaba la ruta para asignarla a mano
+    # y no la rellenaba nadie: todo tenant nuevo nacía sin organización.
+    consumidores=[
+        ("metadata.schema.changed", consumir_esquema_cambiado, "analytics-fuente"),
+        (TENANT_PROVISIONADO, consumir_tenant_provisionado, "analytics-organizaciones"),
+    ],
     # La comprobación va al arranque para que el fallo le llegue a quien
     # despliega, y no a quien abre el primer informe tres días después.
     al_arrancar=_al_arrancar,
