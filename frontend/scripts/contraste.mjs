@@ -49,7 +49,18 @@ for (const [tema, selector] of [["claro", ":root {"], ["oscuro", ".dark {"]]) {
   const peor = tokens.get("paper-lighter");
   if (!peor) throw new Error(`El tema ${tema} no declara \`--paper-lighter\``);
   for (const [nombre, valor] of tokens) {
-    if (!nombre.endsWith("-text")) continue;
+    // Los `-text` y, ADEMÁS, los dos que llevan texto sin llamarse así.
+    //
+    // `textColor.ink.DEFAULT` resuelve a `--ink` y `textColor.ink.muted` a
+    // `--ink-muted` en `tailwind.config.js`: son los colores del cuerpo y de
+    // las etiquetas, o sea la mayor parte del texto de la aplicación, y este
+    // gate no los miraba. Se descubrió al repintar la paleta a la de
+    // contecmind, cuando hizo falta medir los dos temas enteros.
+    //
+    // `--ink-faint` NO entra: `textColor.ink.faint` resuelve a
+    // `--ink-faint-text`, así que la clase `text-ink-faint` —143 usos medidos—
+    // usa la variante accesible, y `--ink-faint` queda de relleno para bordes.
+    if (!nombre.endsWith("-text") && nombre !== "ink" && nombre !== "ink-muted") continue;
     medidos += 1;
     const r = razon(valor, peor);
     if (r < MINIMO) {
@@ -79,4 +90,4 @@ if (fallos.length > 0) {
   );
   process.exit(1);
 }
-console.log(`contraste: ${medidos} tokens de texto, todos ≥ ${MINIMO}:1`);
+console.log(`contraste: ${medidos} tokens de texto en los dos temas, todos ≥ ${MINIMO}:1`);

@@ -6,18 +6,28 @@
  * cosa que mantener, actualizar y auditar.
  */
 
-// DM Sans es la tipografía de la pantalla de entrada, que es la de
-// contecflow: se pidió que fuera exacta, y una fuente parecida no lo es.
-import "@fontsource/dm-sans/400.css";
-import "@fontsource/dm-sans/500.css";
-import "@fontsource/dm-sans/600.css";
-import "@fontsource/dm-sans/700.css";
-import "@fontsource/dm-sans/800.css";
+// Las mismas que carga contecmind, y en sus mismos pesos (29-09-2026).
+//
+// La lista de `fontFamily` empieza por «Google Sans Text», que es lo que pone
+// contecmind, pero NINGUNO de los dos productos la tiene: es propietaria de
+// Google y su propio comentario lo dice. Lo que renderizan los dos de verdad
+// es **Geist**, que es la siguiente de la lista y sí está cargada. Dejar la
+// lista sin cargar Geist habría hecho que el navegador cayera a la del sistema
+// y que las dos aplicaciones se vieran distintas mientras el fichero decía que
+// eran iguales.
+//
+// Se cargan los pesos 300 a 800 porque son los que carga contecmind: con menos,
+// el navegador sintetiza los que falten y el trazo no es el mismo.
+import "@fontsource/geist/300.css";
 import "@fontsource/geist/400.css";
 import "@fontsource/geist/500.css";
 import "@fontsource/geist/600.css";
-// Geist Mono, la monoespaciada de contecflow.
-import "@fontsource/geist-mono/400.css";
+import "@fontsource/geist/700.css";
+import "@fontsource/geist/800.css";
+// Roboto Mono, la monoespaciada de contecmind. Antes era Geist Mono, la de
+// contecflow.
+import "@fontsource/roboto-mono/400.css";
+import "@fontsource/roboto-mono/500.css";
 import "@material-symbols/font-400/outlined.css";
 import "@/index.css";
 

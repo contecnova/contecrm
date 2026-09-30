@@ -172,21 +172,45 @@ son texto y siempre en 10-12px. Sube al mismo tono hasta 4.61:1.
   pasa el `tsc`, pasa el `eslint`, construye— y el elemento sale sin color.
 
 
-Paleta, tipografía (**DM Sans** y Geist Mono), radios y sombras: adoptados
-enteros desde `contecflow-PSA/frontend/src/index.css`, no «inspirados en». Quien
-usa dos productos de la casa no debe notar que cambia de uno a otro, y dos
-paletas parecidas se separan a la tercera pantalla que alguien añade.
+Paleta, tipografía (**Geist** y Roboto Mono) y radios: los de contecmind,
+adoptados enteros desde `contecmind/frontend/src/index.css` el 29-09-2026, no
+«inspirados en». Quien usa dos productos de la casa no debe notar que cambia de
+uno a otro, y dos paletas parecidas se separan a la tercera pantalla que alguien
+añade.
 
-En claro siguen los de contecmind: contecflow no tiene tema claro, así que no
-hay nada que copiar, y quitarlo dejaría sin producto a quien trabaja con luz.
+**Antes eran los de contecflow**, y conviene saber por qué se cambió y qué se
+perdió. El motivo de traer los suyos seguía siendo cierto: DM Sans se lee con
+menos esfuerzo en pantallas densas —tablas de doce columnas, listas largas— y
+sus radios, algo menos redondos, evitan que una tabla con muchas cajas pequeñas
+parezca un montón de pastillas. Eso es lo que se sacrifica. Se cambió porque el
+catálogo declara que el sistema de diseño es idéntico al de contecmind, y entre
+hacerlo cierto o matizar el enunciado se eligió hacerlo cierto.
 
-Dos cosas que no se copiaron a ciegas:
+Y se midió antes de decirlo: de los 30 tokens que los dos productos comparten,
+**26 tenían valor distinto en claro y 25 en oscuro**; solo coincidían 6 nombres.
+Hoy hay un gate que lo comprueba contra el fichero de contecmind y se pone rojo
+si se vuelven a separar.
+
+Sobre la tipografía hay un detalle que conviene no perder: la lista empieza por
+«Google Sans Text», que es lo que pone contecmind, pero **ninguno de los dos
+productos la tiene** —es propietaria de Google y el comentario de contecmind lo
+dice—. Lo que los dos renderizan de verdad es Geist. Nombrarla sin cargarla
+habría hecho que el navegador cayera a la del sistema mientras el fichero decía
+que eran iguales, así que aquí se cargan los mismos pesos que carga contecmind,
+del 300 al 800.
+
+Tres cosas que no se copiaron a ciegas:
 
 - **Los `-text`.** El token base es el relleno; la variante de texto es el mismo
-  color subido en luminosidad hasta 4.6:1 contra `paper-lighter` (#1e2d45), que
-  es la superficie más clara y por tanto el peor caso. Con los valores de
-  contecflow tal cual, el texto tenue daba 3.90:1 y el acento 4.32:1 — los dos
-  por debajo. Suben a #8696b2 y #5994f7.
+  color subido en luminosidad hasta pasar 4.5:1 contra `paper-lighter`, que es
+  la superficie más clara y por tanto el peor caso.
+- **Dos tokens propios hubo que subirlos al adoptar la paleta ajena.** La
+  superficie `--paper-lighter` de contecmind es más clara que la que había, y
+  dejó `--coral-text` en 4.13:1 y `--chart-pink-text` en 4.14:1 — los dos por
+  debajo del mínimo legible. Son tokens de gráficas, que contecmind no tiene, así
+  que seguirle no los arregla: se aclaran un 9 %. Hay un gate que mide el
+  contraste de los 38 tokens de texto y no deja bajar de 4.5:1.
+- **Las elevaciones no se tocaron**: ya coincidían al byte con las suyas.
 - **Las sombras.** Una sombra es la ausencia de luz sobre una superficie, así
   que no puede ser un valor único para toda la app: las de Material son gris
   translúcido pensado para blanco y en oscuro no se ven —una tarjeta elevada
@@ -201,10 +225,15 @@ Dos cosas que no se copiaron a ciegas:
 
 Es la **única** pantalla del CRM que se sale del sistema de diseño, y se sale a
 propósito: se ve antes de entrar, no tiene marco alrededor y es la que comparten
-las dos soluciones de la casa. Por eso sus valores van escritos —la tipografía
-DM Sans, `#080c14` de fondo, la tarjeta de 400 px con radio 20, los campos de 44
-de alto— y no traducidos a los tokens de este producto, que son otros y darían
-otra pantalla.
+las dos soluciones de la casa. Por eso sus valores van escritos —`#080c14` de
+fondo, la tarjeta de 400 px con radio 20, los campos de 44 de alto— y no
+traducidos a los tokens de este producto, que son otros y darían otra pantalla.
+
+Su tipografía **ya no es la de contecflow**: al adoptar el sistema de diseño de
+contecmind dejó de cargarse DM Sans, y una fuente que se nombra y no está no es
+«exacta», es la del sistema. Queda pendiente decidir si esta pantalla entera
+pasa también a contecmind: hoy el CRM se ve como contecmind y su puerta como
+contecflow, que es justo la incoherencia que el cambio venía a quitar.
 
 Un detalle donde se separa a propósito: el nombre del producto es un `h1` y no
 un `span`. Se ve igual, y quien navega con lector de pantalla necesita que la

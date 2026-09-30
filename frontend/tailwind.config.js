@@ -174,24 +174,44 @@ export default {
         },
       },
       fontFamily: {
-        // La de contecflow, y en su mismo orden. Se cambió desde Geist porque
-        // se lee con menos esfuerzo en las pantallas densas de este producto
-        // —tablas de doce columnas, listas largas— y porque quien usa las dos
-        // soluciones no debería notar que cambia de producto.
-        sans: ['"DM Sans"', '"Geist"', "system-ui", "-apple-system", "sans-serif"],
-        mono: ['"Geist Mono"', '"Space Mono"', "ui-monospace", "monospace"],
+        // La de contecmind, y en su mismo orden (29-09-2026).
+        //
+        // ANTES ESTABA DM Sans, la de contecflow, y el motivo sigue siendo
+        // cierto: se lee con menos esfuerzo en las pantallas densas de este
+        // producto —tablas de doce columnas, listas largas— y esa fue la razón
+        // de traerla. Se cambia a la de contecmind por coherencia de casa: el
+        // catálogo dice que el sistema de diseño es idéntico al suyo, y entre
+        // hacerlo cierto o matizar el enunciado se eligió hacerlo cierto.
+        //
+        // Lo que se sacrifica queda escrito aquí a propósito: si dentro de un
+        // año alguien nota que cuesta leer una tabla larga, esto es lo que
+        // tiene que encontrar, y no una decisión sin rastro.
+        sans: [
+          '"Google Sans Text"',
+          '"Google Sans"',
+          '"Geist"',
+          "Roboto",
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "sans-serif",
+        ],
+        mono: ['"Roboto Mono"', '"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       borderRadius: {
-        // Los de contecflow: 6 / 10 / 14 / 18. Algo menos redondos que los de
-        // Material, que es lo que hace que una tabla con muchas cajas pequeñas
-        // no parezca un montón de pastillas.
+        // Los de contecmind (29-09-2026), que son los de Material 3.
+        //
+        // ANTES eran los de contecflow —6 / 10 / 14 / 18—, algo menos
+        // redondos, y la razón era que una tabla con muchas cajas pequeñas no
+        // pareciera un montón de pastillas. Eso sigue siendo verdad y es lo
+        // que se sacrifica; se cambia por lo mismo que la tipografía.
         DEFAULT: "0.5rem",         // 8px
-        sm: "0.375rem",            // 6px  — --radius-sm
-        md: "0.625rem",            // 10px — --radius-md
-        lg: "0.875rem",            // 14px — --radius-lg
-        xl: "1.125rem",            // 18px — --radius-xl
-        "2xl": "1.25rem",          // 20px — tarjetas grandes
-        "3xl": "1.5rem",           // 24px
+        sm: "0.375rem",            // 6px
+        md: "0.5rem",              // 8px
+        lg: "0.75rem",             // 12px
+        xl: "1rem",                // 16px
+        "2xl": "1.5rem",           // 24px — Material extra-large
+        "3xl": "1.75rem",          // 28px
       },
       animation: {
         "pulse-slow": "pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",

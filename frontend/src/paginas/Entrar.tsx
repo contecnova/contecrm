@@ -1,12 +1,18 @@
 /**
  * Entrada al CRM (CRM-07.04.02.01, CRM-00.05.01.23, CRM-00.05.01.26).
  *
- * **El diseño es el de contecflow, carácter por carácter**: la misma tipografía
- * (DM Sans), los mismos colores, la misma tarjeta de 400 px con radio 20, los
- * mismos campos de 44 px de alto y la misma separación con «o».
+ * **El diseño es el de contecflow, carácter por carácter**: sus colores, su
+ * tarjeta de 400 px con radio 20, sus campos de 44 px de alto y su separación
+ * con «o».
  *
- * Los valores van escritos y no leídos de los tokens, aunque desde que el
- * sistema de diseño entero es el de contecflow **coincidan**: esta pantalla se
+ * La tipografía ya NO es la suya. Al adoptar el sistema de diseño de
+ * contecmind (29-09-2026) dejó de cargarse DM Sans, y una fuente que se nombra
+ * y no está no es «idéntica»: es la del sistema. Queda pendiente decidir si
+ * esta pantalla entera pasa también a contecmind — hoy el CRM se ve como
+ * contecmind y su puerta como contecflow.
+ *
+ * Los valores van escritos y no leídos de los tokens, y ahora YA NO coinciden
+ * —el sistema de diseño pasó a ser el de contecmind—: esta pantalla se
  * ve ANTES de entrar, cuando todavía no hay tema elegido, así que tiene que ser
  * oscura siempre. Leyendo los tokens saldría clara para quien tenga el tema
  * claro guardado, y contecflow no tiene pantalla de entrada clara.
@@ -50,7 +56,13 @@ const C = {
   exito: "#34d399",
   exitoFondo: "rgba(52, 211, 153, 0.08)",
   exitoBorde: "rgba(52, 211, 153, 0.2)",
-  fuente: "'DM Sans', 'Geist', system-ui, sans-serif",
+  // DM Sans YA NO SE CARGA: al adoptar el sistema de diseño de contecmind
+  // (29-09-2026) se quitó de `main.tsx`, así que nombrarla aquí solo hacía que
+  // el navegador la buscara, no la encontrara y cayera a la siguiente. Se deja
+  // la que de verdad se renderiza. Si algún día se vuelve a cargar DM Sans,
+  // esta línea vuelve — pero nombrar una fuente que no está es decir que la
+  // pantalla es idéntica cuando no lo es.
+  fuente: "'Geist', system-ui, sans-serif",
 } as const;
 
 const st: Record<string, CSSProperties> = {
