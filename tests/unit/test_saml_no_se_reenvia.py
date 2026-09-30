@@ -40,6 +40,10 @@ saml_instalado = pytest.mark.skipif(
 
 ACS = "https://crm.ejemplo.com/api/v1/sso/saml/acs"
 
+# Un tenant con forma correcta y que no existe: lo que se mira es POR QUÉ
+# falla, no que funcione.
+UUID_DE_PRUEBA = "00000000-0000-0000-0000-000000000001"
+
 
 def _par_de_claves() -> tuple[str, str]:
     """Clave y certificado autofirmados para hacer de IdP."""
@@ -446,10 +450,24 @@ def tenant_confirmado() -> Any:
     tenant = uuid4()
     yield tenant
 
-    with sesion(None, sistema=True) as db:
-        for tabla in reversed(Base.metadata.sorted_tables):
-            if "tenant_id" in tabla.c:
-                db.execute(tabla.delete().where(tabla.c.tenant_id == tenant))
+    # UNA TRANSACCIÓN POR TABLA. Con todas dentro de la misma, el primer
+    # `UndefinedTable` —hay modelos compartidos que no existen en el esquema de
+    # este servicio— aborta la transacción entera y **las demás ni se intentan**:
+    # el borrado parece hecho y no lo está. Se cuenta lo borrado para que un cero
+    # se vea, en vez de pasar por limpio.
+    borradas = 0
+    for tabla in reversed(Base.metadata.sorted_tables):
+        if "tenant_id" not in tabla.c:
+            continue
+        try:
+            with sesion(None, sistema=True) as db:
+                borradas += db.execute(tabla.delete().where(tabla.c.tenant_id == tenant)).rowcount
+        except Exception:  # noqa: BLE001 — una tabla que no está en este esquema
+            continue
+    assert borradas, (
+        "la limpieza no ha borrado ni una fila: o la prueba no escribió nada "
+        "—y entonces no probaba lo que dice— o el borrado no está llegando"
+    )
 
 
 @saml_instalado
@@ -536,4 +554,49 @@ def test_una_respuesta_que_cita_una_peticion_que_no_hicimos_no_entra(
     assert salida.status_code != 200, (
         "ha entrado citando una petición que nunca emitimos: el identificador "
         "del inicio no se está guardando ni comprobando"
+    )
+
+
+# ── Las tres puertas del SSO, abiertas ────────────────────────────────────
+#
+# El barrido anónimo general NO cubre esto y está dicho en su cabecera: desde
+# que `get_uow` convierte «anónimo sin tenant» en 401, una ruta rota así contesta
+# 401 y desde fuera parece correcta. Aquí se mira el **código de error**, que es
+# lo único que distingue «no has entrado» de «esta puerta pide la llave que
+# reparte».
+
+
+@pytest.mark.parametrize(
+    ("camino", "cuerpo"),
+    [
+        ("/api/v1/sso/iniciar", {"json": {"tenant_id": UUID_DE_PRUEBA}}),
+        ("/api/v1/sso/oidc/callback", {"json": {"code": "x", "state": "y"}}),
+        ("/api/v1/sso/saml/acs", {"data": {"SAMLResponse": "x"}}),
+    ],
+)
+def test_las_puertas_del_sso_no_exigen_haber_entrado(
+    identity_arrancado: Any, camino: str, cuerpo: dict[str, Any]
+) -> None:
+    """A las tres se llega sin credencial: es donde se consigue la primera.
+
+    Las tres contestaban 500 «se ha abierto una sesión sin tenant» porque pedían
+    la sesión a `UowDep`, que la ata al tenant del principal. Lo que se comprueba
+    no es que funcionen —con datos inventados tienen que fallar— sino que fallan
+    por el motivo correcto: «no encuentro ese proveedor», no «tienes que haber
+    entrado».
+    """
+    salida = identity_arrancado.post(camino, params={"tenant_id": UUID_DE_PRUEBA}, **cuerpo)
+
+    assert (
+        salida.status_code < 500
+    ), f"{camino} revienta ante quien llega sin credencial: {salida.text[:200]}"
+    codigo = ""
+    try:
+        codigo = str(salida.json().get("error_code") or "")
+    except ValueError:
+        pass
+    assert codigo != "auth.requerida", (
+        f"{camino} pide haber entrado para dejar entrar. El proveedor de "
+        "identidad llega anónimo, que es como llega siempre: esta ruta tiene que "
+        "abrir su propia sesión con el tenant que pueda probar."
     )
