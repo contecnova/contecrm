@@ -8124,11 +8124,23 @@ público, y lo normal es que traiga cifras de negocio.
 La comprobación del dominio es por coincidencia exacta o de subdominio, **nunca
 «contiene»**: con «contiene», `micrm.com.ataque.net` pasaría por `micrm.com`.
 
-El enlace **actúa como una persona concreta** y se dice cuál. El embebido no
-autentica a quien está delante de la pantalla ajena, así que fijar a quién
-representa es lo que impide que un cuadro incrustado enseñe más de lo que ve quien
-lo montó. El secreto se devuelve una vez y en la base queda su hash; revocar no
-borra, porque el uso queda en el histórico.
+El enlace **declara a qué persona representa** y se dice cuál. El secreto se
+devuelve una vez y en la base queda su hash; revocar no borra, porque el uso
+queda en el histórico.
+
+**Lo que ese «actúa como» hace hoy, y lo que no** (medido el 04-10-2026, porque
+este párrafo prometía más de lo que hay): se guarda y se devuelve al resolver el
+enlace, y **no lo aplica nadie**. La ruta del embebido exige que quien mira
+tenga sesión en el CRM y permiso de lectura de informes, así que no hay fuga —
+nadie ve más de lo que le corresponde—. Lo que no se cumple es el tope: un
+cuadro montado por un comercial y abierto por un director enseña los datos del
+director, no los del comercial. Si lo que se quiere es que el embebido enseñe
+siempre lo mismo a todo el mundo, hace falta ejecutar la consulta **como** esa
+persona, y eso está por decidir.
+
+Y el enunciado del catálogo dice «con SSO», que tampoco es exactamente esto: el
+embebido **no autentica a quien está delante de la pantalla ajena**. Lo que
+hace es exigir que ya tenga sesión aquí, que es otra cosa.
 
 Un secreto inexistente, revocado o de otro dominio dan **el mismo error**:
 distinguirlos le diría a quien prueba si ese cuadro existe y desde dónde se sirve.
