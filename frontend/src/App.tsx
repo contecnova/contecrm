@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
+import { Frontera } from "@/componentes/Frontera";
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Cuenta } from "@/paginas/Cuenta";
@@ -136,8 +137,14 @@ export function App() {
 
   return (
     <Marco sesion={sesion}>
-      <Suspense fallback={<Cargando />}>
-        <Routes>
+      {/* La frontera va DENTRO del marco: lo que se cae es el contenido de la
+          pantalla, así que el menú y la barra siguen ahí y el usuario puede
+          irse a otro sitio. Sin ella, un error al pintar cualquier pantalla
+          dejaba el `<body>` vacío — ni mensaje, ni menú, ni forma de volver.
+          Se midió el 04-10-2026 al montar las pruebas de pantalla. */}
+      <Frontera clave={window.location.pathname}>
+        <Suspense fallback={<Cargando />}>
+          <Routes>
           <Route path="/" element={<Inicio sesion={sesion} />} />
           <Route path="/administracion" element={<Consola sesion={sesion} />} />
           <Route path="/m/:ruta" element={<Modulo sesion={sesion} />} />
@@ -182,8 +189,9 @@ export function App() {
               nadie mira. Es la peor forma de fallar — parece que la aplicación
               se ha roto, y no hay nada que leer ni a dónde ir. */}
           <Route path="*" element={<NoExiste />} />
-        </Routes>
-      </Suspense>
+          </Routes>
+        </Suspense>
+      </Frontera>
     </Marco>
   );
 }

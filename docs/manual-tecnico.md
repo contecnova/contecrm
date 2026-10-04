@@ -221,6 +221,50 @@ Tres cosas que no se copiaron a ciegas:
   niveles y aquí hacen falta cinco —hay modales sobre paneles sobre tarjetas—,
   así que se continúa su progresión.
 
+#### Una pantalla rota no se lleva la aplicación entera
+
+Hasta el 04-10-2026 **no había ninguna frontera de error en todo el front**. Un
+`TypeError` al pintar cualquier pantalla —por ejemplo, una respuesta de la API
+con una forma que esa pantalla no esperaba— dejaba el `<body>` **vacío**. No una
+pantalla de error: vacío. Sin mensaje, sin menú, sin forma de volver, y sin nada
+que el usuario pudiera contarle a soporte. React desmonta el árbol entero cuando
+un error sube sin que nadie lo recoja, y eso es lo que pasaba.
+
+Se descubrió montando las pruebas de pantalla: la primera dio «0 elementos
+visibles» con la página entera en blanco.
+
+La frontera va **dentro del marco**, no fuera, y es deliberado: lo que se cae es
+el contenido, así que el menú, la barra y la paleta siguen ahí y el usuario puede
+irse a otro sitio. Una frontera por encima del marco convertiría el mismo fallo
+en la misma pantalla en blanco con otro texto. Y se remonta al cambiar de ruta,
+porque si no una pantalla rota deja a quien navega atrapado en su error.
+
+#### Las pruebas de pantalla, y qué NO comprueban
+
+`npm --prefix frontend run pantallas` abre las 22 pantallas fijas en un navegador
+de verdad y exige tres cosas: que la aplicación monte, que no se quede en blanco
+y que nada se salga del ancho de la ventana. Corre en el nivel `--todo` del
+preflight y tarda unos 14 segundos.
+
+**No comprueba que cada pantalla enseñe lo que dice enseñar**, y conviene que
+esto quede escrito porque un verde se lee como lo que no es: para eso hace falta
+un doble que devuelva la forma correcta de cada llamada, y eso es trabajo por
+pantalla que no está hecho. De las 53 capacidades de pantalla del catálogo, esto
+cubre la primera condición de todas: que existan y se abran.
+
+Tres trampas que el doble evita a propósito, las tres por avisos de contecpos,
+donde un barrido llevaba 83 rutas en verde sin haber mirado una sola pantalla:
+
+- **Se filtra por `resourceType`, no por trozos de la dirección.** Allí el doble
+  interceptaba «la dirección contiene `/agenda/`», y la dirección de la propia
+  pantalla también lo contiene: servía `[]` **como documento**, y la página
+  entera era el texto «[]». Sin error, con texto visible y cabiendo en pantalla.
+- **Se exige que la aplicación haya montado.** Allí no montaba y se quedaba en la
+  pantalla de «Arrancando…», que tiene un `<h1>`, así que hasta la comprobación
+  del título pasaba.
+- **Se cuentan elementos con caja**, no `innerText`: el texto de un elemento con
+  `display:none` cuenta, y una pantalla vacía con un menú oculto sale llena.
+
 #### La pantalla de entrada es la de contecflow, exacta
 
 Es la **única** pantalla del CRM que se sale del sistema de diseño, y se sale a

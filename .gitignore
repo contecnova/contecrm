@@ -47,3 +47,9 @@ frontend/dist/
 # que es la verdad. Si viajara con el repositorio, diría que pasó en la máquina
 # de otro y eso es justo la coartada que este apunte existe para quitar.
 .verificacion-bloque
+
+# Resultados y trazas de las pruebas de pantalla. Se regeneran en cada pase y
+# una traza pesa megas: en el repositorio no pinta nada.
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/

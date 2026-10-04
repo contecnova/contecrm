@@ -1264,7 +1264,7 @@ modulos:
           - id: CRM-07.04.04
             nombre: Calidad del front
             capacidades:
-              - {id: CRM-07.04.04.01, c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/vitest.config.ts + playwright.config.ts", t: "Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada"}
+              - {id: CRM-07.04.04.01, visto: '2026-10-04 Playwright instalado (1.62.1, el chromium 1234 ya estaba en cache: sin descarga) y barrido de las 22 pantallas fijas: montan, no dejan la aplicacion en blanco y no se desbordan a 1280 px. NO comprueba que cada una ensene lo que dice: eso pide un doble con la forma correcta de cada llamada, pantalla a pantalla, y no esta hecho. Montandolo aparecio que NO HABIA NINGUNA FRONTERA DE ERROR en todo el front: un TypeError al pintar dejaba el body vacio, sin mensaje ni menu ni forma de volver. Arreglado y validado quitandola', c: C, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/vitest.config.ts + playwright.config.ts", t: "Pruebas de componente y de extremo a extremo sobre la pila real, sin API simulada"}
               - {id: CRM-07.04.04.02, c: C, fase: 1, svc: front, estado: hecho, t: "Comprobación automática de accesibilidad en las pantallas principales"}
               - {id: CRM-07.04.04.03, c: A, fase: 1, svc: front, estado: hecho, t: "Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local"}
               - {id: CRM-07.04.04.04, c: A, fase: 1, svc: front, estado: hecho, reutiliza: "contecmind:frontend/scripts/check-dead-exports.mjs", t: "Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI"}

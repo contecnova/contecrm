@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs"
+    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs",
+    "pantallas": "playwright test --project=chromium"
   },
   "dependencies": {
     "@fontsource/geist": "^5.2.9",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

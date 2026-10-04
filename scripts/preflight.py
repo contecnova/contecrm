@@ -215,6 +215,30 @@ GATES: list[Gate] = [
         opcional=True,
     ),
     Gate(
+        "pantallas",
+        ["npm", "--prefix", "frontend", "run", "pantallas"],
+        "suite",
+        "las pantallas del front montan, no dejan la aplicación en blanco y caben",
+        # En el nivel `suite` —el de `--todo`— y no en el del push: arranca un
+        # navegador y
+        # construye la aplicación, así que son ~25 s. En el ciclo rápido sería
+        # el coste, y el coste nunca pueden ser los guardianes.
+        #
+        # Opcional por lo mismo que el gate del front: una máquina sin Node no
+        # puede correrlo, y negarse por eso convertiría el preflight en una
+        # instalación obligatoria.
+        opcional=True,
+        # EXCLUSIVO, y no por el Postgres: abre navegadores de verdad y los
+        # cronometra. Compitiendo con los otros cinco gates, una pantalla tarda
+        # en montar más de lo que se le espera y sale como rota. Medido:
+        # «Marketing» pasó 3 de 3 corriendo sola y falló dentro del preflight.
+        #
+        # Un gate que falla según lo ocupada que esté la máquina es peor que no
+        # tenerlo: enseña a desconfiar del rojo, y entonces el rojo de verdad
+        # tampoco se mira.
+        exclusivo=True,
+    ),
+    Gate(
         "docs",
         [PY, "-m", "mkdocs", "build", "--strict", "--quiet"],
         "todo",

@@ -32,5 +32,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/pruebas/preparar.ts"],
+    // `e2e/` es de Playwright, no de vitest: sus ficheros importan `test` de
+    // `@playwright/test`, que no es el de aquí. Sin excluirlos, vitest los
+    // recoge y el gate del front falla por recoger pruebas que no le tocan.
+    exclude: ["node_modules/**", "dist/**", "e2e/**"],
   },
 });
