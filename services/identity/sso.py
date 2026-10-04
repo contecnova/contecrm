@@ -336,10 +336,25 @@ def proveedor_para(
         return candidatos[0]
 
     if email and "@" in email:
-        dominio = email.rsplit("@", 1)[1].strip().lower()
-        por_dominio = [p for p in candidatos if (p.dominio_email or "").strip().lower() == dominio]
-        if por_dominio:
-            return por_dominio[0]
+        # SE DELEGA en la resolución de `sso_gobierno`, que es la buena.
+        #
+        # Aquí había una segunda: comparaba solo con `dominio_email` y no
+        # miraba ni la lista de dominios añadidos ni la herencia de
+        # subdominios. O sea que un usuario de un dominio extra —los que
+        # acumula una empresa tras una adquisición— o de `ventas.ejemplo.com`
+        # **no podía entrar por ninguna puerta**: el SSO forzado SÍ encontraba
+        # su proveedor y le bloqueaba la contraseña, y esta no lo encontraba y
+        # le negaba el SSO. Fuera del CRM, sin nada que lo explicara.
+        #
+        # Dos implementaciones de «¿qué proveedor le toca a este correo?»
+        # divergen siempre, y la que se queda atrás es la puerta por la que no
+        # se entra. El import es local porque `sso_gobierno` ya importa de
+        # aquí.
+        from services.identity.sso_gobierno import proveedor_por_correo
+
+        suyo = proveedor_por_correo(db, tenant_id, email)
+        if suyo is not None:
+            return suyo
 
     sin_dominio = [p for p in candidatos if not (p.dominio_email or "").strip()]
     if sin_dominio:
