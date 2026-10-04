@@ -529,3 +529,57 @@ def test_el_eco_se_detecta_y_no_rebota(uow: UnidadDeTrabajo) -> None:
     )
     assert segunda["eco"] is True
     assert segunda["escribir_fuera"] == {} and segunda["escribir_dentro"] == {}
+
+
+# ── La traducción de salida, que no tenía puerta ─────────────────────────
+
+
+def test_la_traduccion_de_salida_se_alcanza_por_la_api() -> None:
+    """`desde_canonico` estaba escrita, probada y **sin ninguna ruta**.
+
+    Se podía traducir lo que llegaba de fuera y no había forma de obtener la
+    traducción de salida. Quien tuviera que mandar algo a ese sistema se
+    escribía el mapeo otra vez por su cuenta, y entonces hay dos mapeos del
+    mismo adaptador: el que se queda atrás manda datos al campo equivocado y
+    eso no se descubre hasta que alguien mira el sistema de destino.
+    """
+    import inspect
+
+    from services.integration import api_telemetria
+
+    fuente = inspect.getsource(api_telemetria)
+    assert "desde_canonico" in fuente, (
+        "la traducción de salida no se alcanza desde ninguna ruta: el mapeo "
+        "solo sirve para entrar"
+    )
+    assert "traducir-salida" in fuente
+
+
+def test_la_salida_respeta_la_direccion_declarada_por_campo(uow: UnidadDeTrabajo) -> None:
+    """Lo marcado como «solo hacia dentro» no sale, aunque esté mapeado.
+
+    Es la mitad que distingue un mapeo de una copia: hay campos que el sistema
+    externo manda y no acepta —un identificador suyo, una fecha de alta— y
+    devolvérselos es cómo se pisan datos que no son nuestros.
+    """
+    _objeto(uow)
+    can.registrar_adaptador(
+        uow,
+        objeto="cuenta",
+        sistema="erp",
+        mapeo={"nombre": "razon_social", "nif": "cif"},
+        direccion_por_campo={"nif": "hacia_dentro"},
+    )
+
+    salida = can.desde_canonico(
+        uow.db,
+        uow.tenant_id,
+        objeto="cuenta",
+        sistema="erp",
+        datos={"nombre": "Acme SL", "nif": "B1", "inventado": "x"},
+    )
+
+    assert salida["datos"] == {"razon_social": "Acme SL"}
+    # Lo que no viaja se DICE, no se tira: un campo que no llega al destino
+    # tiene que verse, porque si no parece que se mandó.
+    assert salida["no_viajan"] == ["inventado", "nif"]

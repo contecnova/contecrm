@@ -261,6 +261,34 @@ def traducir(
     )
 
 
+@router_canonico.post(
+    "/traducir-salida",
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Traducir un registro del idioma común al del sistema externo",
+    description=(
+        "La vuelta de `/traducir`. **Faltaba entera**: se podía traducir lo que "
+        "llegaba de fuera y no había forma de obtener la traducción de salida, "
+        "así que quien tenía que mandar algo a ese sistema se escribía el mapeo "
+        "otra vez por su cuenta — y entonces hay dos mapeos del mismo adaptador "
+        "y el que se queda atrás manda datos al campo equivocado.\n\n"
+        "Lo que **no viaja** se devuelve aparte y no se tira: un campo que el "
+        "sistema externo no acepta tiene que verse, no desaparecer. Y respeta la "
+        "dirección declarada por campo: lo marcado como `hacia_dentro` no sale, "
+        "aunque esté mapeado."
+    ),
+)
+def traducir_salida(
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: str = Query(...),
+    sistema: str = Query(...),
+    datos: dict[str, Any] | None = None,
+) -> Any:
+    return can.desde_canonico(
+        db, principal.tenant_id, objeto=objeto, sistema=sistema, datos=datos or {}
+    )
+
+
 # ── Sincronización bidireccional ──────────────────────────────────────────
 
 

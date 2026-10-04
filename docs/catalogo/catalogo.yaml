@@ -342,7 +342,7 @@ modulos:
               - {id: CRM-00.03.04.06, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/services/integration_test_service.py", t: "Monitor de integraciones: ejecuciones, errores, reproceso, alertas"}
               - {id: CRM-00.03.04.07, c: C, fase: 0, svc: integration, estado: hecho, reutiliza: "contecmind:app/models/ingest_dlq.py + app/tasks/dlq_requeue.py", t: "Cola de mensajes fallidos con corrección y reenvío asistido"}
               - {id: CRM-00.03.04.08, c: A, fase: 2, svc: integration, estado: hecho, t: "Sincronización bidireccional con resolución de conflictos configurable"}
-              - {id: CRM-00.03.04.09, c: A, fase: 2, svc: integration, estado: hecho, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
+              - {id: CRM-00.03.04.09, visto: '2026-10-04 desde_canonico estaba escrita, probada y SIN NINGUNA RUTA: se podia traducir lo que entraba y no habia forma de obtener la traduccion de salida, asi que quien mandaba algo a ese sistema se reescribia el mapeo por su cuenta y acababa habiendo dos. Anadida POST /modelo-canonico/traducir-salida, que respeta la direccion declarada por campo y devuelve aparte lo que no viaja', c: A, fase: 2, svc: integration, estado: hecho, t: "Modelo canónico de intercambio y adaptadores por sistema externo"}
               - {id: CRM-00.03.04.10, c: A, fase: 6, svc: integration, estado: hecho, reutiliza: "contecflow-PSA:app/models/marketplace.py + app/services/marketplace_service.py", t: "Marketplace / registro de integraciones instalables por tenant"}
               - {id: CRM-00.03.04.11, c: D, fase: 6, svc: integration, estado: hecho, t: "Soporte MCP (Model Context Protocol) o equivalente para exposición a agentes de IA"}
 

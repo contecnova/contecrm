@@ -358,6 +358,7 @@ stateDiagram-v2
 | `POST /api/v1/modelo-canonico/adaptadores` | Declarar cómo traduce un sistema externo | objeto*, sistema*, mapeo*, politica, politica_por_campo, direccion, direccion_por_campo, campo_modificado | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/objetos` | Definir un objeto del idioma común | clave*, campos*, nombre, descripcion, claves_negocio | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/traducir` | Traducir un registro externo al idioma común | objeto*, sistema* | 200, 422 | — |
+| `POST /api/v1/modelo-canonico/traducir-salida` | Traducir un registro del idioma común al del sistema externo | objeto*, sistema* | 200, 422 | — |
 | `POST /api/v1/plantillas-documento` | Guardar una versión nueva de plantilla | clave*, cuerpo*, tipo, nombre, idioma, clausulas_bloqueadas | 201, 422 | — |
 | `POST /api/v1/plantillas-documento/comprobar` | Qué faltaría si se generase ahora, sin generar nada | clave*, datos, objeto, objeto_id, permitir_incompleto | 200, 422 | — |
 | `POST /api/v1/plantillas-documento/generar` | Componer el documento (CRM-06.01.01.06) | clave*, datos, objeto, objeto_id, permitir_incompleto | 200, 422 | — |

@@ -138,6 +138,11 @@ ABIERTOS = {
     ("orchestrator", "post", "/api/v1/tablas-decision/{clave}/evaluar"),
     # Cargas de sistemas de terceros y simulaciones sobre ellas.
     ("integration", "post", "/api/v1/modelo-canonico/traducir"),
+    # Y su vuelta: un registro en el idioma común, cuyos campos los declara el
+    # objeto canónico del tenant y no este endpoint. Por el mismo motivo que la
+    # de entrada, y con el mismo cuidado: la excusa «esto es libre» es la que
+    # deja sin formulario a media aplicación, así que va nombrada una a una.
+    ("integration", "post", "/api/v1/modelo-canonico/traducir-salida"),
     ("integration", "post", "/api/v1/proveedores-servicio/simular"),
     ("integration", "post", "/api/v1/firma/simular"),
     # Importación: filas tal cual vienen del fichero.
