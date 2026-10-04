@@ -66,6 +66,48 @@ async def entregar(
 
     s = get_settings()
     cuerpo = evento.a_json().encode()
+
+    # TOPE DE TAMAÑO. `WEBHOOK_MAX_PAYLOAD_KB` existía en los ajustes,
+    # documentado —«un payload gigante es casi siempre un error de diseño y
+    # además revienta al receptor»— y **no lo leía nadie**: se mandaba lo que
+    # hubiera.
+    #
+    # No se recorta el cuerpo: un JSON cortado por la mitad es peor que no
+    # mandarlo, porque el receptor lo parsea, falla, y lo que ve en su registro
+    # es «JSON inválido» y no «esto era demasiado grande». Se falla aquí, con el
+    # motivo dentro, y el reintento no lo va a arreglar — pero la entrega queda
+    # registrada con su causa, que es lo que hace falta para corregir el evento.
+    tope = int(s.webhook_max_payload_kb) * 1024
+    if len(cuerpo) > tope:
+        logger.error(
+            "entrega.payload_demasiado_grande",
+            evento=str(evento.id),
+            tipo=evento.type,
+            bytes=len(cuerpo),
+            tope=tope,
+        )
+        descartada = Entrega(
+            tenant_id=suscripcion.tenant_id,
+            suscripcion_id=suscripcion.id,
+            evento_id=evento.id,
+            tipo=evento.type,
+            dedup_key=evento.dedup_key,
+            intento=intento,
+            resultado="fallido",
+            duracion_ms=0,
+            error=(
+                f"El evento ocupa {len(cuerpo) // 1024} KB y el tope de entrega son "
+                f"{s.webhook_max_payload_kb} KB. Reintentarlo no lo va a arreglar: "
+                "hay que reducir lo que el evento lleva dentro."
+            ),
+        )
+        # NO se programa reintento: no es un fallo de red, es un evento que no
+        # cabe. Reintentarlo cada pocos minutos para siempre llena la tabla de
+        # entregas y tapa los fallos que sí se arreglan solos.
+        db.add(descartada)
+        db.flush()
+        return descartada
+
     momento = int(time.time())
     cabeceras = {
         "Content-Type": "application/json",

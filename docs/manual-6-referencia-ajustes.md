@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**202 ajustes** en total, de los cuales **75** son editables en caliente por tenant.
+**218 ajustes** en total, de los cuales **81** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -78,10 +78,12 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `OUTBOX_BACKOFF_BASE_S` | — | `2.0` | 0.1–300.0 | Base del backoff exponencial entre intentos, en segundos. |
 | `INBOX_ENABLED` | — | `True` |  | Registro de `dedup_key` ya procesadas. Es lo que convierte la entrega at-least-once en efecto exactly-once desde fuera. |
 | `INBOX_RETENCION_DIAS` | — | `7` | 1–365 | Cuánto se recuerda una clave. Debe cubrir de sobra la ventana de reintentos del productor; una semana la cubre con holgura. |
+| `OUTBOX_RETENCION_DIAS` | — | `7` | 1–365 | Cuánto se guarda un evento ya publicado en la tabla de salida. La tabla es un buzón, no un histórico —el histórico de qué pasó está en la auditoría— y sin purga crece para siempre. Se añade al enganchar la purga: `purgar_publicados` exigía un plazo y no había ajuste para dárselo, así que el… |
 | `WEBHOOKS_ENABLED` | 🔥 `webhooks_enabled` | `True` |  |  |
 | `WEBHOOK_TIMEOUT_S` | 🔥 `webhook_timeout_s` | `10.0` | 0.5–120.0 |  |
 | `WEBHOOK_MAX_INTENTOS` | 🔥 `webhook_max_intentos` | `6` | 1–50 |  |
 | `WEBHOOK_BACKOFF_BASE_S` | — | `5.0` | 0.5–600.0 |  |
+| `WEBHOOK_REINTENTO_INTERVALO_S` | — | `10.0` | 1.0–300.0 | Cada cuánto se recogen las entregas fallidas cuyo momento de reintento ya llegó. Sin este relevo el backoff no existe: `proximo_intento_at` sería una fecha guardada en una fila que nadie vuelve a mirar. |
 | `WEBHOOK_FIRMA_VENTANA_S` | — | `300` | 30–3600 | Ventana en la que se acepta la firma de una petición entrante, para que un mensaje capturado no se pueda reenviar más tarde (anti-replay). |
 | `WEBHOOK_MAX_PAYLOAD_KB` | — | `256` | 1–10240 | Tamaño máximo del cuerpo que se entrega. Un payload gigante es casi siempre un error de diseño y además revienta al receptor. |
 | `OUTBOX_ORDEN_POR_AGREGADO` | — | `True` |  | Un solo evento por agregado en cada vuelta del relevo. Sin esto, un evento que falla y se reintenta con espera deja salir antes al siguiente del mismo registro: quien lo consuma vería «actualizada» antes que «creada». El coste es que un registro muy activo avanza a un evento por vuelta. Se paga… |
@@ -125,8 +127,15 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SSO_MARGEN_RELOJ_S` | — | `60` | 0–600 | Margen de reloj admitido al validar la vigencia de un token. Los relojes del IdP y del servidor no van sincronizados al milisegundo, y sin margen un token recién emitido puede parecer futuro. |
 | `SSO_ESTADO_TTL_S` | 🔥 `sso_estado_ttl_s` | `300` | 60–3600 | Cuánto vive un inicio de sesión a medias —el estado entre que se manda al usuario al IdP y vuelve—. Cinco minutos basta para escribir una contraseña y pasar el segundo factor; más deja la ventana abierta. |
 | `SESION_COOKIE_NOMBRE` | — | `contecrm_sesion` |  | El token de acceso viaja en cookie cuando quien llama es un navegador. Es la única forma de que un XSS no se lleve la sesión: lo que está en `localStorage` lo lee cualquier script inyectado, y una cookie `HttpOnly` no. Nombre configurable porque dos despliegues de la casa en el mismo dominio se… |
-| `SESION_COOKIE_SECURE` | — | `True` |  | `secure` en producción SIEMPRE: una cookie sin él viaja en claro si alguien fuerza http, y con ella va la sesión entera. Se deja configurable para poder trabajar en local sobre http, y el arranque avisa si se despliega en producción con esto apagado. |
+| `SESION_COOKIE_SECURE_BRUTO` | — | `None` |  | `secure` en producción SIEMPRE: una cookie sin él viaja en claro si alguien fuerza http, y con ella va la sesión entera. Sin decidir (`None`) lo resuelve el entorno: apagado en desarrollo, encendido en el resto. Estaba fijo a `True`, y en local sobre http eso hace que **Safari descarte la cookie… |
 | `SESION_COOKIE_SAMESITE` | — | `lax` |  | `lax` y no `strict`: con `strict` la vuelta del proveedor de identidad —que es una navegación desde otro dominio— llega sin cookie y el SSO no completa nunca. `lax` sigue bloqueando el envío en peticiones cruzadas de escritura, que es de lo que protege. |
+| `SUPERADMIN_EMAIL` | — | *(vacío)* |  | Sin esto, una instalación recién levantada no tiene a nadie que pueda abrir la consola de plataforma —dar de alta empresas, ver su consumo, suspender una—: `es_plataforma` existía en el modelo, lo exigían ciento sesenta y una operaciones, y no había ninguna forma de ponerlo. El producto… |
+| `SUPERADMIN_PASSWORD` | — | *(secreto)* |  |  |
+| `SUPERADMIN_TENANT` | — | `plataforma` |  | El tenant al que pertenece. Entrar exige uno —no hay sesión sin empresa—, así que el operador tiene el suyo propio y no se cuela en el de un cliente, donde vería sus datos sin querer. |
+| `SUPERADMIN_NOMBRE` | — | `Operación de la plataforma` |  |  |
+| `PASSKEY_RP_ID` | — | *(secreto)* |  | Una passkey se ata a un **dominio** y el navegador no la entrega a otro: eso es lo que la hace resistente al phishing, y también lo que obliga a declararlo bien. Los dos van vacíos a propósito: se derivan de `public_base_url` y de `cors_origins`, que ya describen dónde vive esto. Declararlos… |
+| `PASSKEY_RP_NOMBRE` | — | *(secreto)* |  |  |
+| `PASSKEY_ORIGENES` | — | *(secreto)* |  | Orígenes exactos desde los que se acepta una passkey, separados por comas. Vacío = los de CORS, que es de donde llega el navegador. |
 
 ## Límites, resiliencia y topes de proceso
 
@@ -140,7 +149,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `RATE_LIMIT_POR_IP` | — | `1200` | 0–1000000 |  |
 | `MAX_BODY_MB` | — | `25` | 1–1024 |  |
 | `BULK_MAX_ITEMS` | 🔥 `bulk_max_items` | `1000` | 1–100000 | Tope de elementos en una operación masiva (CRM-00.02.01.11). Por encima, la API obliga a usar el camino asíncrono con job id, que es el que tiene progreso, reanudación e informe parcial. |
-| `COMPOSITE_MAX_OPS` | — | `25` | 1–500 | Tope de operaciones en una petición compuesta (CRM-00.02.01.13). |
+| `COMPOSITE_MAX_OPS` | — | `20` | 1–500 | Tope de operaciones en una petición compuesta (CRM-00.02.01.13). Más que eso es una carga masiva, y para eso está el camino masivo con su trabajo diferido y su informe parcial. (30-09-2026: el valor por defecto pasa de 25 a 20, que es el que la API aplicaba de verdad —`compuesto.py` llevaba un… |
 | `PAGE_MAX_SIZE` | 🔥 `page_max_size` | `200` | 1–10000 | Página máxima que se puede pedir. Sin tope, un `limit=1000000` es una denegación de servicio escrita por el propio cliente sin querer. |
 | `PAGE_DEFAULT_SIZE` | — | `50` | 1–1000 |  |
 | `TRABAJO_MAX_ITEMS` | 🔥 `trabajo_max_items` | `100000` | 1–5000000 | Elementos que admite una operación masiva por el camino diferido. Es dos órdenes de magnitud más que el síncrono porque aquí no hay nadie esperando: el límite ya no es la paciencia de un navegador, sino lo que cabe razonablemente en el JSONB de una fila. |
@@ -156,7 +165,8 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `CB_UMBRAL_FALLOS` | — | `5` | 1–1000 | Fallos consecutivos que abren el circuito. |
 | `CB_REPOSO_S` | — | `30` | 1–3600 | Tiempo que permanece abierto antes de dejar pasar una petición de prueba. |
 | `DEGRADACION_ENABLED` | — | `True` |  |  |
-| `DEGRADACION_UMBRAL_POOL` | — | `0.85` | 0.1–1.0 | Uso del pool de conexiones (0..1) a partir del cual se difiere lo no crítico: recálculos, enriquecimientos, informes programados. Se difiere, no se pierde. |
+| `DEGRADACION_UMBRAL_POOL` | — | `0.6` | 0.1–1.0 | Presión (0..1) a partir de la cual se difiere lo no crítico: recálculos, enriquecimientos, informes programados. Se difiere, no se pierde. El nombre dice «pool» porque el pool de conexiones era la única señal cuando se declaró, y sigue siendo la que avisa antes. Hoy la presión las combina —pool,… |
+| `DEGRADACION_UMBRAL_NORMAL` | — | `0.9` | 0.1–1.0 | Y el de lo NORMAL, que es más alto: una escritura que alguien está haciendo delante de la pantalla solo se corta cuando ya no hay más remedio. Estaba escrito en el código —un 0.9— junto al otro; los dos umbrales deciden lo mismo y tenían dos vidas distintas, una configurable que no se leía y… |
 | `PROCESO_MAX_PASOS` | 🔥 `proceso_max_pasos` | `1000` | 1–1000000 | Topes que impiden un proceso desbocado. Sin ellos, una automatización que se dispara a sí misma consume el sistema entero. |
 | `PROCESO_MAX_PROFUNDIDAD` | — | `10` | 1–100 |  |
 | `PROCESO_MAX_DURACION_H` | 🔥 `proceso_max_duracion_h` | `720` | 1–8760 |  |
@@ -183,6 +193,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `GRPC_MENSAJE_MAX_BYTES` | — |  |  | Tamaño máximo de mensaje. El de gRPC por defecto son 4 MiB, y subirlo sin pensarlo convierte un `List` mal filtrado en una respuesta que no cabe en la memoria de nadie. |
 | `GRPC_ELEMENTOS_POR_FLUJO` | — | `10000` | 1–10000000 | Elementos y segundos que aguanta un flujo abierto. Un `Watch` retiene una conexión mientras dura: sin tope, el cliente que lo abre y se va de vacaciones deja esa conexión ocupada hasta que alguien mira por qué el pool está lleno. |
 | `GRPC_SEGUNDOS_POR_FLUJO` | — | `300` | 5–86400 |  |
+| `ETAG_RETENCION_MAX_BYTES` | — |  |  | Cuánto cuerpo se guarda en memoria antes de mandarlo, para poder sacarle la versión y añadir el `ETag`. Pasado el tope se suelta lo que haya y el resto va directo, sin cabecera: una exportación de cien megas no vale una cabecera de treinta bytes, y multiplicada por las peticiones a la vez es la… |
+| `CUOTA_CORREOS_MES` | 🔥 `cuota_correos_mes` | `0` | 0–100000000 | Todas abren por omisión: **0 es sin límite**, y es el valor por defecto a propósito. Un despliegue que no ha configurado cuotas no puede quedarse sin poder trabajar porque a alguien se le olvidara declararlas, y un fallo al declarar una ruta tiene que dejar pasar de más, nunca cortar de menos.… |
+| `CUOTA_SMS_MES` | 🔥 `cuota_sms_mes` | `0` | 0–100000000 |  |
+| `CUOTA_WORKFLOWS_MES` | 🔥 `cuota_workflows_mes` | `0` | 0–100000000 |  |
+| `CUOTA_REGISTROS` | 🔥 `cuota_registros` | `0` | 0–1000000000 |  |
 
 ## Observabilidad y auditoría
 
@@ -240,6 +255,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `TRUST_PROXY_HEADERS` | — | `False` |  | Confiar en las cabeceras de proxy (X-Forwarded-For). Solo debe activarse si de verdad hay un proxy delante: si no, cualquiera falsea su IP y se salta el rate limiting y las listas de permitidos. |
 | `TRUSTED_PROXIES` | — | *(vacío)* |  | Redes desde las que se aceptan esas cabeceras, separadas por comas. |
 | `URL_GUARD_HOSTS_PERMITIDOS` | 🔥 `url_guard_hosts_permitidos` | *(vacío)* |  | Hosts internos que el operador admite pese a estar en rango privado, separados por comas. Existe porque hay instalaciones con el IdP o el ERP en la red interna, y negarlo obligaría a apagar el guard entero. |
+| `GATEWAY_OPERATIVIDAD_TTL_S` | 🔥 `gateway_operatividad_ttl_s` | `30` |  | Cuánto recuerda el gateway que un tenant puede operar. Sin caché, cada petición de la API añadiría una llamada a `tenancy`: el doble de latencia en el camino de todo. Treinta segundos es el compromiso, y es el tiempo que tarda una suspensión en surtir efecto. |
 | `URL_GUARD_DNS_TIMEOUT_S` | — | `3.0` | 0.1–30.0 | Plazo para resolver el DNS de una URL de salida. `getaddrinfo` no admite tiempo límite, así que se ejecuta en un hilo aparte con este plazo: un DNS que no contesta colgaría el hilo que atiende la petición. |
 | `POLITICA_SENSIBILIDAD` | 🔥 `politica_sensibilidad` |  |  | `ve_hasta` es el nivel máximo que se ve EN CLARO; `enmascara`, hasta dónde se ve con los últimos caracteres. Por encima de eso, no se ve. Los valores por defecto son conservadores a propósito: un rol que no aparezca aquí no ve nada por encima de `interno`. Un rol nuevo sin configurar no puede… |
 | `ABAC_MOTOR_EXTERNO_ENABLED` | — | `False` |  |  |

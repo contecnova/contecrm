@@ -68,12 +68,27 @@ class Tarea:
     nombre: str
     intervalo_s: float
     funcion: Callable[[], dict[str, Any]]
+    # Si corre en la primera vuelta o espera un intervalo.
+    #
+    # Los barridos que **recuperan trabajo atrasado** —recordatorios vencidos,
+    # reintentos pendientes— tienen que correr al arrancar: lo que se quedó sin
+    # hacer mientras el servicio estaba parado es justo lo que hay que hacer
+    # primero.
+    #
+    # Las **purgas** no: borrar no corre prisa, y arrancar catorce servicios a la
+    # vez en un despliegue dispararía catorce borrados masivos simultáneos contra
+    # la misma base, justo en el momento de más carga. Esperan su turno.
+    al_arrancar: bool = True
 
 
 @dataclass(slots=True)
 class EstadoTarea:
     ultimo_intento: float = 0.0
     ultimo_exito: float = 0.0
+    # Cuándo se vio esta tarea por primera vez y cada cuánto toca. Se guardan
+    # para poder distinguir «no ha corrido nunca» de «todavía no le toca».
+    primera_vez: float = 0.0
+    intervalo_s: float = 0.0
     fallos_seguidos: int = 0
     ultimo_error: str = ""
     vueltas: int = 0
@@ -102,6 +117,15 @@ def estado_de_las_tareas() -> dict[str, dict[str, Any]]:
                 round(ahora - e.ultimo_exito, 1) if e.ultimo_exito else None
             ),
             "averiada": e.fallos_seguidos >= FALLOS_PARA_AVERIA,
+            # Si ya le ha dado tiempo de correr al menos una vez. Hace falta
+            # para no llamar «sin estrenar» a la que todavía espera su turno:
+            # las purgas arrancan sin correr a propósito, así que recién
+            # desplegado NINGUNA ha corrido todavía y eso es lo normal, no una
+            # degradación. Sin esto, cada despliegue sacaba los catorce
+            # servicios en «degradado» durante el primer intervalo.
+            "le_ha_dado_tiempo": bool(
+                e.ultimo_exito or (e.ultimo_intento and ahora - e.primera_vez > e.intervalo_s)
+            ),
         }
         for nombre, e in _estado.items()
     }
@@ -145,6 +169,14 @@ class RelevoDeTareas:
         ahora = time.monotonic()
         for tarea in self.tareas:
             estado = _estado.setdefault(tarea.nombre, EstadoTarea())
+            if not estado.primera_vez:
+                estado.primera_vez = ahora
+            estado.intervalo_s = tarea.intervalo_s
+            if not estado.ultimo_intento and not tarea.al_arrancar:
+                # Primera vuelta y no le toca arrancar: se apunta la hora para
+                # que el intervalo cuente desde ahora, y se espera.
+                estado.ultimo_intento = ahora
+                continue
             if estado.ultimo_intento and ahora - estado.ultimo_intento < tarea.intervalo_s:
                 continue
             await self._ejecutar(tarea, estado)
@@ -206,7 +238,20 @@ def por_tenant(
                 )
         if fallidos:
             logger.error("tareas.tenants_fallidos", cuantos=len(fallidos), detalle=fallidos)
-        return {"tenants": hechos, "fallidos": len(fallidos)}
+        # EL DETALLE VA EN LA SALIDA, no solo al registro. Devolvía
+        # `{"fallidos": 3}` mientras la cabecera de esta función prometía «el que
+        # falla deja su identificador y su motivo — no un contador, que no sirve
+        # para arreglar nada», y la página de estado enseña justamente esta
+        # salida: quien la mirara veía un tres y tenía que ir a buscar el
+        # registro del servidor, que es lo que este módulo existe para evitar.
+        #
+        # Se recortan a los diez primeros: con doscientos tenants rotos lo que
+        # hace falta es saber que están rotos, y el registro los tiene todos.
+        return {
+            "tenants": hechos,
+            "fallidos": len(fallidos),
+            "cuales": fallidos[:10],
+        }
 
     return _correr
 
@@ -231,10 +276,28 @@ def _componente_tareas(db: Any, tenant_id: Any) -> dict[str, Any] | None:
     averiadas = {n: e for n, e in estado.items() if e["averiada"]}
     # Una tarea que nunca ha llegado a completarse no está «bien»: está sin
     # estrenar, y eso importa el día del despliegue.
-    sin_estrenar = [n for n, e in estado.items() if e["desde_el_ultimo_exito_s"] is None]
+    # Sin estrenar = ha tenido tiempo y sigue sin completarse. Una tarea que
+    # todavía espera su primer turno no es un problema: es un servicio recién
+    # arrancado.
+    sin_estrenar = [
+        n
+        for n, e in estado.items()
+        if e["desde_el_ultimo_exito_s"] is None and e["le_ha_dado_tiempo"]
+    ]
 
+    # LA CLAVE `componente` ES OBLIGATORIA, y faltaba en las tres salidas. Todas
+    # las demás fichas la llevan y la página la usa para titular cada bloque, así
+    # que esto reventaba la página entera con un `KeyError` — no se notaba porque
+    # el componente solo se registraba en los servicios que ya tenían tareas, y
+    # apareció en cuanto los barridos del núcleo lo pusieron en los catorce.
+    #
+    # Y el estado bueno decía «ok», que NO es uno de los tres válidos
+    # (`operativo`, `degradado`, `caido`): el cálculo del peor estado recorre esa
+    # lista, así que un «ok» no casaba con nada y el componente no contaba para
+    # el estado global. Un componente que no suma es un componente que no avisa.
     if averiadas:
         return {
+            "componente": "tareas_periodicas",
             "estado": "caido",
             "detalle": "; ".join(
                 f"«{n}» lleva {e['fallos_seguidos']} fallos seguidos: {e['ultimo_error']}"
@@ -244,11 +307,17 @@ def _componente_tareas(db: Any, tenant_id: Any) -> dict[str, Any] | None:
         }
     if sin_estrenar:
         return {
+            "componente": "tareas_periodicas",
             "estado": "degradado",
             "detalle": f"sin completar todavía: {', '.join(sorted(sin_estrenar))}",
             "tareas": estado,
         }
-    return {"estado": "ok", "detalle": f"{len(estado)} tarea(s) al día", "tareas": estado}
+    return {
+        "componente": "tareas_periodicas",
+        "estado": "operativo",
+        "detalle": f"{len(estado)} tarea(s) al día",
+        "tareas": estado,
+    }
 
 
 def registrar_componente_de_salud() -> None:

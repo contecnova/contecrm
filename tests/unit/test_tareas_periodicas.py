@@ -140,13 +140,20 @@ def test_un_tenant_que_falla_no_para_a_los_siguientes() -> None:
     salida = por_tenant(lambda: ["a", "b", "c"], _trabajo)()
 
     assert vistos == ["a", "c"], "el fallo de «b» ha parado a «c»"
-    assert salida == {"tenants": 2, "fallidos": 1}
+    assert salida["tenants"] == 2
+    assert salida["fallidos"] == 1
+    # CUÁL falló y por qué, no cuántos. La página de estado enseña esta salida,
+    # y un «1» obliga a ir a buscar el registro del servidor — que es justo lo
+    # que este módulo existe para evitar.
+    assert salida["cuales"] == [
+        {"tenant": "b", "error": "RuntimeError: este tenant tiene el dato mal"}
+    ]
 
 
 def test_sin_tenants_que_barrer_no_falla(caplog: Any) -> None:
     """Cero tenants con trabajo es un caso normal, no un error."""
     salida = por_tenant(lambda: [], lambda _t: {})()
-    assert salida == {"tenants": 0, "fallidos": 0}
+    assert salida == {"tenants": 0, "fallidos": 0, "cuales": []}
 
 
 # ── El monitor de salud lo enseña ─────────────────────────────────────────
@@ -192,3 +199,93 @@ async def test_una_tarea_sin_estrenar_se_dice() -> None:
     assert salida is not None
     assert salida["estado"] == "degradado"
     assert "nueva" in salida["detalle"]
+
+
+def test_la_ficha_de_estado_cumple_el_contrato_de_los_componentes() -> None:
+    """Las tres salidas, con su clave y con un estado de los válidos.
+
+    Faltaba `componente` en las tres y el estado bueno decía «ok», que no es uno
+    de los tres válidos. No se notaba porque el componente solo se registraba en
+    los servicios que ya tenían tareas; apareció en cuanto los barridos del
+    núcleo lo pusieron en los catorce, y entonces **reventó la página de estado
+    entera** con un `KeyError`.
+
+    Lo del estado era más silencioso y peor: el cálculo del peor estado recorre
+    `("operativo", "degradado", "caido")`, así que un «ok» no casaba con nada y
+    este componente no contaba para el estado global. Un componente que no suma
+    es un componente que no avisa.
+    """
+    from crmcore.datos.estado import ESTADOS
+    from crmcore.tareas import EstadoTarea, _componente_tareas, _estado
+
+    for nombre in list(_estado):
+        _estado.pop(nombre, None)
+
+    # Sin tareas no hay ficha: un bloque vacío en un servicio que no barre nada
+    # solo hace que se deje de mirar la página.
+    assert _componente_tareas(None, None) is None
+
+    casos = {
+        "al día": EstadoTarea(ultimo_intento=1.0, ultimo_exito=1.0),
+        # Con tiempo de sobra y sin un solo éxito: eso sí es «sin estrenar».
+        "sin estrenar": EstadoTarea(ultimo_intento=1.0, primera_vez=1.0, intervalo_s=1.0),
+        "averiada": EstadoTarea(ultimo_intento=1.0, fallos_seguidos=9, ultimo_error="revienta"),
+    }
+    for nombre, estado_tarea in casos.items():
+        for otro in list(_estado):
+            _estado.pop(otro, None)
+        _estado["prueba.tarea"] = estado_tarea
+
+        ficha = _componente_tareas(None, None)
+
+        assert ficha is not None, nombre
+        assert ficha["componente"] == "tareas_periodicas", f"«{nombre}» sin la clave obligatoria"
+        assert ficha["estado"] in ESTADOS, (
+            f"«{nombre}» devuelve el estado «{ficha['estado']}», que no es uno de "
+            f"los válidos {ESTADOS}: no contaría para el estado global"
+        )
+        assert ficha["detalle"].strip(), f"«{nombre}» sin detalle"
+
+    for nombre in list(_estado):
+        _estado.pop(nombre, None)
+
+
+def test_una_tarea_que_todavia_no_le_toca_no_sale_como_degradada() -> None:
+    """Recién arrancado, NINGUNA purga ha corrido: es lo normal, no una avería.
+
+    Las purgas esperan su primer intervalo a propósito —para no disparar catorce
+    borrados masivos a la vez en un despliegue— así que contarlas como «sin
+    estrenar» sacaba los catorce servicios en «degradado» durante el primer
+    intervalo después de cada despliegue. Una página de estado que avisa en cada
+    despliegue es una página que se deja de mirar.
+    """
+    import time as _t
+
+    from crmcore.tareas import EstadoTarea, _componente_tareas, _estado
+
+    for nombre in list(_estado):
+        _estado.pop(nombre, None)
+
+    ahora = _t.monotonic()
+    # Vista hace un segundo, con un intervalo de una hora: todavía no le toca.
+    _estado["prueba.purga"] = EstadoTarea(ultimo_intento=ahora, primera_vez=ahora, intervalo_s=3600)
+
+    ficha = _componente_tareas(None, None)
+
+    assert ficha is not None
+    assert ficha["estado"] == "operativo", (
+        f"una tarea que todavía no le toca sale como «{ficha['estado']}»: cada "
+        "despliegue avisaría de una avería que no existe"
+    )
+
+    # Y con el intervalo vencido sí: lo que no puede es taparse para siempre.
+    _estado["prueba.purga"] = EstadoTarea(
+        ultimo_intento=ahora, primera_vez=ahora - 7200, intervalo_s=3600
+    )
+    assert _componente_tareas(None, None)["estado"] == "degradado", (
+        "una tarea que lleva dos intervalos sin completarse tiene que decirse: "
+        "si no, este arreglo tapa la avería que el componente existe para ver"
+    )
+
+    for nombre in list(_estado):
+        _estado.pop(nombre, None)

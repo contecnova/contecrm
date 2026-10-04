@@ -45,6 +45,83 @@ logger = get_logger(__name__)
 _estado: dict[str, Any] = {"bus": None, "relevo": None, "listo": False, "motivos": []}
 
 
+def _barridos_del_nucleo(servicio: str) -> list[Any]:
+    """Las purgas de las tablas que tiene TODO servicio.
+
+    Las tres estaban escritas, probadas y **sin llamador**, así que las tres
+    tablas crecían sin techo en los catorce servicios a la vez:
+
+        inbox.purgar          claves de deduplicación de eventos entrantes
+        outbox.purgar_publicados   eventos ya publicados
+        adjuntos.purgar_huerfanos  ficheros subidos que nunca se enlazaron
+
+    Se registran aquí y no en cada `main.py` por lo mismo que la idempotencia se
+    monta global: son catorce sitios donde acordarse, y «funciona donde alguien
+    se acordó» no es una garantía. Con esto, además, `INBOX_RETENCION_DIAS` y
+    `OUTBOX_RETENCION_DIAS` dejan de ser ajustes decorativos.
+
+    Las funciones se importan **aquí y no dentro del `_correr`**: si alguien
+    renombra una, el arranque revienta —que es cuando hay alguien mirando— en
+    vez de fallar en la primera vuelta y tardar tres en marcarse averiada.
+    """
+    from crmcore.bus import inbox, outbox
+    from crmcore.config import get_settings
+    from crmcore.datos import adjuntos
+    from crmcore.db.session import sesion
+    from crmcore.tareas import Tarea, por_tenant
+
+    s = get_settings()
+    cada = int(s.tarea_purgas_intervalo_s)
+
+    def _purga(funcion: Any, clave: str, **kwargs: Any) -> Any:
+        def _correr() -> dict[str, Any]:
+            with sesion(sistema=True) as db:
+                return {clave: funcion(db, **kwargs)}
+
+        return _correr
+
+    def _tenants_con_adjuntos() -> list[Any]:
+        """Los tenants que tienen algo que barrer, de SU propia tabla.
+
+        No se pide la lista de tenants a `tenancy`: es de otro servicio y no se
+        lee desde aquí. Además, la lista buena es más corta — la mayoría de los
+        tenants no tienen adjuntos huérfanos.
+        """
+        from sqlalchemy import select
+
+        from crmcore.datos.adjuntos import Adjunto
+
+        with sesion(sistema=True) as db:
+            return [t for (t,) in db.execute(select(Adjunto.tenant_id).distinct()).all()]
+
+    def _huerfanos_de(tenant_id: Any) -> dict[str, Any]:
+        with sesion(sistema=True) as db:
+            return {"borrados": adjuntos.purgar_huerfanos(db, tenant_id)}
+
+    return [
+        Tarea(
+            f"{servicio}.inbox",
+            cada,
+            _purga(inbox.purgar, "borrados", dias=int(s.inbox_retencion_dias)),
+            al_arrancar=False,
+        ),
+        Tarea(
+            f"{servicio}.outbox",
+            cada,
+            _purga(outbox.purgar_publicados, "borrados", dias=int(s.outbox_retencion_dias)),
+            al_arrancar=False,
+        ),
+        # Por tenant, y aislando cada uno: un fallo en el tenant 40 no puede
+        # parar a los 200 siguientes.
+        Tarea(
+            f"{servicio}.adjuntos_huerfanos",
+            cada,
+            por_tenant(_tenants_con_adjuntos, _huerfanos_de),
+            al_arrancar=False,
+        ),
+    ]
+
+
 def crear_servicio(
     *,
     nombre: str,
@@ -232,6 +309,26 @@ def crear_servicio(
                 _estado["motivos"].append(f"bus no disponible: {exc}")
                 logger.error("arranque.bus_no_disponible", error=str(exc)[:300])
 
+        # ── Los barridos del núcleo, en TODOS los servicios ───────────────
+        #
+        # Tres tablas del núcleo crecían sin techo porque su función de purga no
+        # la llamaba nadie: la bandeja de entrada de eventos, la de salida y los
+        # adjuntos huérfanos. Las tres existen en los catorce servicios, así que
+        # colgarlas del `main.py` de cada uno sería «funciona en los que alguien
+        # se acordó» — que es exactamente lo que ya pasó.
+        #
+        # Van aquí, en el arranque común, y con ellas los ajustes que las
+        # gobiernan dejan de ser decorativos: `INBOX_RETENCION_DIAS` existía,
+        # estaba documentado y no lo leía nadie.
+        if necesita_db:
+            from crmcore.tareas import RelevoDeTareas
+
+            _base = RelevoDeTareas(_barridos_del_nucleo(nombre))
+            _estado["relevo_base_obj"] = _base
+            _estado["relevo_base"] = asyncio.create_task(
+                _base.correr(), name=f"{nombre}-barridos-nucleo"
+            )
+
         if al_arrancar:
             resultado = al_arrancar()
             if asyncio.iscoroutine(resultado):
@@ -248,6 +345,12 @@ def crear_servicio(
                 resultado = al_parar()
                 if asyncio.iscoroutine(resultado):
                     await resultado
+            base_obj = _estado.get("relevo_base_obj")
+            if base_obj:
+                base_obj.parar()
+            base = _estado.get("relevo_base")
+            if base:
+                base.cancel()
             relevo_obj = _estado.get("relevo_obj")
             if relevo_obj:
                 relevo_obj.parar()
@@ -346,6 +449,7 @@ def _montar_middlewares(app: FastAPI, s: Any, nombre: str = "") -> None:
         ContextoMiddleware,
         IdempotenciaMiddleware,
         LimitesMiddleware,
+        TiempoMaximoMiddleware,
         TiemposMiddleware,
     )
 
@@ -355,6 +459,10 @@ def _montar_middlewares(app: FastAPI, s: Any, nombre: str = "") -> None:
     app.add_middleware(ETagMiddleware)
     app.add_middleware(LimitesMiddleware)
     app.add_middleware(TiemposMiddleware, servicio=nombre)
+    # Va POR FUERA de los tiempos y por dentro del contexto: lo que corta tiene
+    # que quedar medido como petición cortada, y el corte necesita el contexto
+    # puesto para que el registro diga de qué tenant era.
+    app.add_middleware(TiempoMaximoMiddleware)
     # El más externo después del contexto: una respuesta que no pase por aquí
     # sale sin HSTS, y una petición en claro que no pase por aquí ya ha viajado.
     app.add_middleware(CifradoEnTransitoMiddleware)
@@ -398,14 +506,35 @@ def _montar_salud(app: FastAPI, nombre: str, version: str) -> None:
         comprobaciones: dict[str, Any] = {}
         ok = True
 
-        try:
+        # CADA COMPROBACIÓN, ACOTADA EN TIEMPO. `HEALTH_CHECK_TIMEOUT_S` existía
+        # en los ajustes, documentado —«un readiness lento hace que el
+        # orquestador crea que el servicio está caído»— y **no lo leía nadie**:
+        # una base colgada dejaba colgado el propio readiness, y entonces el que
+        # decide es el tiempo de espera del orquestador, que mata el proceso sin
+        # dejar ni un diagnóstico. Decir «no listo» en tres segundos es
+        # infinitamente más útil que no decir nada en treinta.
+        espera = float(s.health_check_timeout_s)
+
+        def _ping_db() -> None:
             from sqlalchemy import text
 
             from crmcore.db.session import get_engine
 
             with get_engine().connect() as conn:
                 conn.execute(text("SELECT 1"))
+
+        try:
+            # En un hilo porque la comprobación es síncrona. Y con un límite:
+            # `wait_for` deja de ESPERAR al hilo, pero **no lo interrumpe** —la
+            # conexión colgada sigue colgada hasta que el driver se rinda—. Lo
+            # que se gana es que el readiness contesta a tiempo en vez de
+            # colgarse con ella, que es lo que hace falta para que el
+            # orquestador sepa qué pasa en vez de matar el proceso a ciegas.
+            await asyncio.wait_for(asyncio.to_thread(_ping_db), timeout=espera)
             comprobaciones["db"] = "ok"
+        except TimeoutError:
+            comprobaciones["db"] = f"no contesta en {espera:g} s"
+            ok = False
         except Exception as exc:  # noqa: BLE001 — el readiness informa, no lanza
             comprobaciones["db"] = f"error: {str(exc)[:160]}"
             ok = False
@@ -413,8 +542,12 @@ def _montar_salud(app: FastAPI, nombre: str, version: str) -> None:
         bus = _estado.get("bus")
         if bus is not None:
             try:
-                comprobaciones["bus"] = "ok" if await bus.ping() else "sin conexión"
+                vivo = await asyncio.wait_for(bus.ping(), timeout=espera)
+                comprobaciones["bus"] = "ok" if vivo else "sin conexión"
                 ok = ok and comprobaciones["bus"] == "ok"
+            except TimeoutError:
+                comprobaciones["bus"] = f"no contesta en {espera:g} s"
+                ok = False
             except Exception as exc:  # noqa: BLE001 — el readiness informa, no lanza
                 comprobaciones["bus"] = f"error: {str(exc)[:160]}"
                 ok = False

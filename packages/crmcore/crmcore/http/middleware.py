@@ -549,3 +549,101 @@ def fijar_identidad_en_contexto(
             actor_real_id=actor_real_id,
         )
     )
+
+
+class TiempoMaximoMiddleware:
+    """Corta una petición que no contesta a tiempo y devuelve 504.
+
+    `REQUEST_TIMEOUT_S` estaba en los ajustes, documentado —«una petición que
+    pasa de aquí se corta y devuelve 504; existe para que una consulta
+    patológica no retenga una conexión del pool indefinidamente»— y **no lo
+    leía nadie**. Una consulta desbocada retenía su conexión hasta que el
+    cliente se rendía, y cuarenta de esas dejan al servicio sin pool con la base
+    perfectamente sana.
+
+    Dos decisiones que importan:
+
+    **Se acota hasta que la respuesta EMPIEZA, no hasta que termina.** Una
+    descarga larga o un `text/event-stream` son lentos a propósito, y cortarlos
+    a los sesenta segundos rompería exactamente lo que está funcionando. Lo que
+    no puede pasar es que el manejador se quede pensando sin haber contestado
+    nada.
+
+    **La cancelación llega al manejador**, así que la transacción se deshace por
+    el camino de siempre: el `except` de la unidad de trabajo ve el
+    `CancelledError` y hace `rollback`. Sin eso, cortar dejaría escrituras a
+    medias, que es peor que la consulta lenta.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        import asyncio
+
+        from crmcore.config import get_settings
+
+        if scope["type"] != "http" or scope.get("path") in RUTAS_INFRAESTRUCTURA:
+            await self.app(scope, receive, send)
+            return
+
+        limite = float(get_settings().request_timeout_s)
+        if limite <= 0:
+            await self.app(scope, receive, send)
+            return
+
+        empezo_a_responder = asyncio.Event()
+
+        async def send_vigilando(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                empezo_a_responder.set()
+            await send(message)
+
+        tarea = asyncio.ensure_future(self.app(scope, receive, send_vigilando))
+        espera = asyncio.ensure_future(empezo_a_responder.wait())
+        try:
+            hechas, _ = await asyncio.wait(
+                {tarea, espera}, timeout=limite, return_when=asyncio.FIRST_COMPLETED
+            )
+            if tarea in hechas:
+                await tarea
+                return
+            if espera in hechas:
+                # Ya está contestando: se deja terminar, por larga que sea.
+                await tarea
+                return
+
+            # Ni ha contestado ni ha terminado dentro del plazo.
+            tarea.cancel()
+            logger.error(
+                "middleware.peticion_cortada",
+                ruta=scope.get("path", ""),
+                metodo=scope.get("method", ""),
+                limite_s=limite,
+            )
+            try:
+                await tarea
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
+            if not empezo_a_responder.is_set():
+                cuerpo = (
+                    b'{"type":"https://contecrm.dev/errores/tiempo_agotado",'
+                    b'"title":"Tiempo agotado","status":504,'
+                    b'"detail":"La peticion ha tardado demasiado y se ha cortado '
+                    b"para no retener recursos. Acota lo que pides y vuelve a "
+                    b'intentarlo.","code":"tiempo_agotado",'
+                    b'"error_code":"http.tiempo_agotado"}'
+                )
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 504,
+                        "headers": [
+                            (b"content-type", b"application/problem+json"),
+                            (b"content-length", str(len(cuerpo)).encode()),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": cuerpo})
+        finally:
+            espera.cancel()

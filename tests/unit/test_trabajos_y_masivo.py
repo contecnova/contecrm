@@ -904,3 +904,40 @@ def test_el_guard_esta_puesto_en_cualquier_proceso_que_abra_una_sesion(
     from sqlalchemy import event
 
     assert event.contains(Session, "do_orm_execute", _al_ejecutar)
+
+
+def test_la_ventana_de_la_firma_sale_de_la_configuracion(monkeypatch: Any) -> None:
+    """Era una constante mientras el ajuste existía y no lo leía nadie.
+
+    `WEBHOOK_FIRMA_VENTANA_S` está documentado en el manual de referencia como
+    configurable entre 30 y 3600 segundos, y `verificar_firma` usaba un 300
+    escrito en el código. Quien la bajara para apretar el anti-replay, o la
+    subiera porque sus máquinas van desfasadas, cambiaba un número que no hacía
+    nada.
+
+    Se comprueba con un mensaje **viejo**: con la ventana corta se rechaza y con
+    la ventana larga se acepta. Sin las dos mitades, un cambio que rechazara
+    todo pasaría igual.
+    """
+    import time
+
+    from crmcore.config import get_settings
+    from crmcore.security.firma import firmar, verificar_firma
+
+    cuerpo = b'{"hola": "mundo"}'
+    hace_un_rato = int(time.time()) - 200
+    firma = firmar(cuerpo, "secreto-de-prueba", hace_un_rato)
+
+    monkeypatch.setenv("WEBHOOK_FIRMA_VENTANA_S", "60")
+    get_settings.cache_clear()
+    assert not verificar_firma(
+        cuerpo, "secreto-de-prueba", firma, hace_un_rato
+    ), "con la ventana en 60 s, un mensaje de hace 200 s tendría que rechazarse"
+
+    monkeypatch.setenv("WEBHOOK_FIRMA_VENTANA_S", "600")
+    get_settings.cache_clear()
+    assert verificar_firma(cuerpo, "secreto-de-prueba", firma, hace_un_rato), (
+        "con la ventana en 600 s tendría que aceptarse: si no, la ventana no se "
+        "está leyendo y lo que hay es un rechazo constante"
+    )
+    get_settings.cache_clear()

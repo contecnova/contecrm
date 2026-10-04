@@ -302,3 +302,120 @@ def test_el_barrido_de_reverificacion_tiene_tope(
     assert salida["tope"] == 10
     assert salida["al_dia"] is True
     assert "urgencia" in salida["que_significa"] or salida["quedan_caducados"] == 0
+
+
+# ── Umbrales que estaban escritos y no se leían ───────────────────────────
+
+
+def test_el_cortacircuitos_lee_su_umbral_de_la_configuracion(monkeypatch: Any) -> None:
+    """`CB_UMBRAL_FALLOS` existía, se documentaba y no lo leía nadie.
+
+    El cortacircuitos llevaba un `5` escrito en el código. Una instalación que
+    quisiera abrir antes —porque su proveedor de correo se cae a menudo y no
+    quiere gastar hilos reintentando contra algo caído— cambiaba un número en la
+    pantalla de ajustes y no pasaba nada. Un umbral que nadie consulta no limita.
+
+    Se comprueban **las dos mitades**: con el umbral en 2 abre al segundo fallo,
+    y con el umbral en 10 no ha abierto al segundo. Sin la segunda, un cambio
+    que abriera siempre pasaría igual.
+    """
+    from crmcore.config import get_settings
+    from crmcore.resiliencia import _circuitos, anotar_fallo, circuito_abierto
+
+    monkeypatch.setenv("CB_UMBRAL_FALLOS", "2")
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-a", None)
+    anotar_fallo("recurso-a")
+    assert not circuito_abierto("recurso-a"), "ha abierto al primer fallo con el umbral en 2"
+    anotar_fallo("recurso-a")
+    assert circuito_abierto("recurso-a"), "con el umbral en 2 tendría que estar abierto"
+
+    monkeypatch.setenv("CB_UMBRAL_FALLOS", "10")
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-b", None)
+    anotar_fallo("recurso-b")
+    anotar_fallo("recurso-b")
+    assert not circuito_abierto("recurso-b"), (
+        "con el umbral en 10 no puede estar abierto a los dos fallos: si lo está, "
+        "el umbral no se está leyendo"
+    )
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-a", None)
+    _circuitos.pop("recurso-b", None)
+
+
+def test_el_cortacircuitos_lee_su_descanso_de_la_configuracion(monkeypatch: Any) -> None:
+    """`CB_REPOSO_S`, lo mismo. Se mira el valor que queda apuntado en el
+    circuito, no se espera al reloj: una prueba que duerme 30 segundos no la
+    corre nadie."""
+    from crmcore.config import get_settings
+    from crmcore.resiliencia import _circuitos, anotar_fallo
+
+    monkeypatch.setenv("CB_UMBRAL_FALLOS", "1")
+    monkeypatch.setenv("CB_REPOSO_S", "120")
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-c", None)
+
+    anotar_fallo("recurso-c")
+
+    assert _circuitos["recurso-c"].descanso_s == 120.0
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-c", None)
+
+
+def test_quien_llame_con_sus_propios_valores_los_impone(monkeypatch: Any) -> None:
+    """La configuración es el valor por defecto, no una camisa de fuerza.
+
+    Hay recursos que merecen otro trato —un proveedor de inferencia caro no se
+    reintenta como una caché— y eso se decide en la llamada.
+    """
+    from crmcore.config import get_settings
+    from crmcore.resiliencia import _circuitos, anotar_fallo, circuito_abierto
+
+    monkeypatch.setenv("CB_UMBRAL_FALLOS", "10")
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-d", None)
+
+    anotar_fallo("recurso-d", umbral=1)
+
+    assert circuito_abierto("recurso-d")
+    get_settings.cache_clear()
+    _circuitos.pop("recurso-d", None)
+
+
+def test_los_umbrales_de_degradacion_salen_de_la_configuracion(monkeypatch: Any) -> None:
+    """`DEGRADACION_UMBRAL_POOL` existía, se documentaba y no lo leía nadie.
+
+    `admite` decidía con un 0.9 y un 0.6 escritos en el código. Quien bajara el
+    umbral para proteger antes su instalación cambiaba un número que no hacía
+    nada — y lo peor de todo es que la pantalla de ajustes decía que sí.
+
+    Las dos mitades: con el umbral bajo se difiere, con el umbral alto pasa.
+    """
+    from crmcore.config import get_settings
+    from crmcore.resiliencia import CRITICA, DIFERIBLE, NORMAL, admite, fijar_presion
+
+    fijar_presion(0.7)
+
+    monkeypatch.setenv("DEGRADACION_UMBRAL_POOL", "0.5")
+    monkeypatch.setenv("DEGRADACION_UMBRAL_NORMAL", "0.8")
+    get_settings.cache_clear()
+    assert not admite(DIFERIBLE), "con el umbral en 0.5 y presión 0.7 tendría que diferirse"
+    assert admite(NORMAL), "con el umbral normal en 0.8 y presión 0.7 tendría que pasar"
+
+    monkeypatch.setenv("DEGRADACION_UMBRAL_POOL", "0.9")
+    monkeypatch.setenv("DEGRADACION_UMBRAL_NORMAL", "0.6")
+    get_settings.cache_clear()
+    assert admite(DIFERIBLE), (
+        "con el umbral en 0.9 y presión 0.7 tendría que pasar: si no, el umbral "
+        "no se lee y lo que hay es un rechazo constante"
+    )
+    assert not admite(NORMAL), "con el umbral normal en 0.6 y presión 0.7 tendría que cortarse"
+
+    # Lo crítico no cae nunca, pongamos lo que pongamos: una escritura de
+    # cliente no se difiere porque el sistema vaya cargado.
+    fijar_presion(1.0)
+    assert admite(CRITICA)
+
+    fijar_presion(0.0)
+    get_settings.cache_clear()

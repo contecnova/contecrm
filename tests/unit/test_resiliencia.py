@@ -122,7 +122,21 @@ def test_lo_critico_no_cae_nunca() -> None:
     assert resiliencia.admite(resiliencia.DIFERIBLE) is False
 
 
-def test_lo_diferible_cae_primero() -> None:
+def test_lo_diferible_cae_primero(monkeypatch: Any) -> None:
+    """Con la misma presión, lo diferible cae y lo normal pasa.
+
+    Los umbrales se fijan aquí en vez de heredarlos del entorno. Antes estaban
+    escritos en `admite()` —0.6 y 0.9— y esta prueba se apoyaba en ellos; al
+    pasar a configuración, el valor efectivo depende del `.env` de cada máquina
+    y la prueba empezaba a decir cosas distintas según dónde corriera. Lo que se
+    comprueba es el ORDEN en que caen, que es la regla, no un número.
+    """
+    from crmcore.config import get_settings
+
+    monkeypatch.setenv("DEGRADACION_UMBRAL_POOL", "0.6")
+    monkeypatch.setenv("DEGRADACION_UMBRAL_NORMAL", "0.9")
+    get_settings.cache_clear()
+
     resiliencia.fijar_presion(0.7)
     assert resiliencia.admite(resiliencia.NORMAL) is True
     assert resiliencia.admite(resiliencia.DIFERIBLE) is False

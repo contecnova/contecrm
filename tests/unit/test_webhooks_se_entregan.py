@@ -338,3 +338,63 @@ def test_la_descripcion_del_servicio_no_promete_lo_que_no_hace() -> None:
             "La descripción promete reintentos y no hay quien los recoja. O se "
             "enchufa el relevo, o se quita la promesa."
         )
+
+
+async def test_un_evento_demasiado_grande_no_se_manda_ni_se_reintenta(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, monkeypatch: Any
+) -> None:
+    """`WEBHOOK_MAX_PAYLOAD_KB` existía, se documentaba y no lo leía nadie.
+
+    Se mandaba lo que hubiera. Un evento gigante revienta al receptor —que es lo
+    que el ajuste dice que evita— y encima se reintenta, así que el mismo
+    payload imposible vuelve cada pocos minutos.
+
+    Y no se recorta: un JSON cortado por la mitad es peor que no mandarlo,
+    porque el receptor lo parsea, falla, y en su registro ve «JSON inválido» en
+    vez de «esto era demasiado grande».
+
+    Las dos mitades: con el tope bajo no sale, con el tope alto sale.
+    """
+    from crmcore.config import get_settings
+
+    from services.eventing.entrega import entregar
+
+    llamadas: list[Any] = []
+
+    async def _post_falso(self: Any, url: str, **kwargs: Any) -> Any:
+        llamadas.append(url)
+
+        class _R:
+            status_code = 200
+            text = "ok"
+
+        return _R()
+
+    import httpx
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", _post_falso)
+
+    suscripcion = _suscribir(db, tenant_id, eventos=["account.created"])
+    # Un evento grande de verdad, no uno truncado: lo que se prueba es el tope.
+    evento = _evento(tenant_id, datos={"nombre": "ACME", "relleno": "x" * 40_000})
+
+    monkeypatch.setenv("WEBHOOK_MAX_PAYLOAD_KB", "1")
+    get_settings.cache_clear()
+    salida = await entregar(db, suscripcion, evento)
+    assert salida.resultado == "fallido"
+    assert "tope de entrega" in (salida.error or ""), salida.error
+    assert salida.proximo_intento_at is None, (
+        "se ha programado reintento de un evento que no cabe: el mismo payload "
+        "imposible volvería cada pocos minutos para siempre"
+    )
+    assert llamadas == [], "ha llegado a llamar al endpoint con un evento que no cabe"
+
+    monkeypatch.setenv("WEBHOOK_MAX_PAYLOAD_KB", "256")
+    get_settings.cache_clear()
+    salida = await entregar(db, suscripcion, evento)
+    assert salida.resultado == "entregado", (
+        "con el tope en 256 KB tendría que entregarse: si no, el tope no se lee "
+        "y lo que hay es un rechazo constante"
+    )
+    assert llamadas, "no ha llamado al endpoint"
+    get_settings.cache_clear()

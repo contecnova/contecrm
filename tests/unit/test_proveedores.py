@@ -22,7 +22,14 @@ from services.party.modelos import Cuenta
 from services.sales import proveedores_comercial as pcom
 from services.service import proveedores_sla as psla
 
-HOY = date(2026, 9, 23)
+# ANCLADO AL DÍA DE HOY, no a una fecha escrita.
+#
+# Era `date(2026, 9, 23)`, y el 4 de octubre la suite empezó a fallar sola: las
+# pruebas que piden una homologación «válida hasta dentro de diez días» pasaron
+# a pedirla con una fecha ya pasada, y el producto —con razón— las rechaza. Una
+# fecha fija en una prueba es una bomba de relojería: funciona hasta que no, y
+# el día que revienta no hay ningún cambio que lo explique.
+HOY = date.today()
 
 
 @pytest.fixture

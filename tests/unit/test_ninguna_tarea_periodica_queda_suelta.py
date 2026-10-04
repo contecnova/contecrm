@@ -30,6 +30,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 
+# Cuántas candidatas tiene que encontrar como mínimo. Sin esto, un cambio en el
+# recorrido que dejara la lista vacía haría que esta prueba pasara en verde sin
+# haber mirado nada. Medido el 30-09-2026 tras incluir `packages/`.
+SUELO_DE_CANDIDATAS = 10
+
 # Nombres que delatan una tarea de reloj: algo que hay que pasar cada tanto.
 PISTAS = (
     "barrer_",
@@ -49,8 +54,19 @@ NO_SON_TAREAS: dict[str, str] = {
 
 
 def _candidatas() -> dict[str, Path]:
+    """Las funciones con pinta de barrido, **en los servicios Y en el núcleo**.
+
+    Miraba solo `services/` y por eso se le escapó `crmcore.bus.inbox.purgar`,
+    que no la llamaba nadie: la tabla de eventos entrantes crecía sin techo en
+    los catorce servicios a la vez, y `INBOX_RETENCION_DIAS` era un ajuste que
+    no hacía nada. Un guardián que no mira donde está el código pasa en verde
+    por no haber mirado, que es la forma más cara de estar equivocado.
+    """
     encontradas: dict[str, Path] = {}
-    for fichero in (RAIZ / "services").rglob("*.py"):
+    for fichero in [
+        *(RAIZ / "services").rglob("*.py"),
+        *(RAIZ / "packages").rglob("*.py"),
+    ]:
         if "__pycache__" in str(fichero):
             continue
         try:
@@ -69,7 +85,15 @@ def _candidatas() -> dict[str, Path]:
 
 def _codigo_de_produccion() -> list[tuple[str, str]]:
     """Todo el código que puede llamarlas. **Las pruebas no cuentan**: que una
-    prueba la llame es exactamente lo que pasaba con las seis."""
+    prueba la llame es exactamente lo que pasaba con las seis.
+
+    LÍMITE CONOCIDO, dicho para que nadie se confíe: esto cuenta apariciones del
+    nombre en el TEXTO, no llamadas. Una mención en un comentario cuenta como
+    uso, así que un nombre corriente —`purgar` a secas, sin sufijo— se da por
+    llamado sin estarlo. Por eso `crmcore.bus.inbox.purgar` se escapó hasta el
+    30-09-2026 y se enganchó a mano. Para cerrarlo de verdad habría que contar
+    llamadas con AST en vez de con expresiones regulares.
+    """
     ficheros = []
     for carpeta in ("services", "packages", "scripts"):
         for fichero in (RAIZ / carpeta).rglob("*.py"):
@@ -80,9 +104,16 @@ def _codigo_de_produccion() -> list[tuple[str, str]]:
 
 def test_toda_funcion_con_pinta_de_barrido_la_llama_alguien() -> None:
     produccion = _codigo_de_produccion()
+    candidatas = _candidatas()
     sueltas: list[str] = []
 
-    for nombre, definida_en in sorted(_candidatas().items()):
+    assert len(candidatas) >= SUELO_DE_CANDIDATAS, (
+        f"solo se han encontrado {len(candidatas)} funciones con pinta de "
+        f"barrido, menos del suelo de {SUELO_DE_CANDIDATAS}. El recorrido se ha "
+        "quedado corto y su «ninguna suelta» no significa nada."
+    )
+
+    for nombre, definida_en in sorted(candidatas.items()):
         usos = 0
         for ruta, texto in produccion:
             encontrados = len(re.findall(rf"\b{re.escape(nombre)}\b", texto))

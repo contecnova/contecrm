@@ -24,10 +24,27 @@ import time
 H_FIRMA = "X-Contecrm-Firma"
 H_MOMENTO = "X-Contecrm-Momento"
 
-# Ventana por defecto en la que se acepta un mensaje firmado. Cinco minutos
-# absorben el desfase de reloj razonable entre dos máquinas sin dejar abierta
-# una ventana de reenvío que valga para nada.
-VENTANA_S = 300
+
+def ventana_por_defecto() -> int:
+    """Ventana en la que se acepta un mensaje firmado, **de la configuración**.
+
+    Cinco minutos por defecto: absorben el desfase de reloj razonable entre dos
+    máquinas sin dejar abierta una ventana de reenvío que valga para nada.
+
+    Era una constante —`VENTANA_S = 300`— mientras existía `WEBHOOK_FIRMA_VENTANA_S`
+    en los ajustes, documentado en el manual de referencia como configurable
+    entre 30 y 3600 segundos, y **sin que lo leyera nadie**. O sea que quien
+    bajara la ventana para apretar el anti-replay, o la subiera porque sus
+    máquinas van desfasadas, cambiaba un número que no hacía nada. Un límite que
+    nadie consulta no limita.
+
+    Se lee de `Settings` y no del ajuste por tenant: quien verifica una firma es
+    el que recibe, y en ese momento todavía no se sabe de qué tenant es el
+    mensaje —saberlo es justo lo que la firma permite—.
+    """
+    from crmcore.config import get_settings
+
+    return int(get_settings().webhook_firma_ventana_s)
 
 
 def firmar(cuerpo: bytes, secreto: str, momento: int) -> str:
@@ -42,7 +59,7 @@ def firmar(cuerpo: bytes, secreto: str, momento: int) -> str:
 
 
 def verificar_firma(
-    cuerpo: bytes, secreto: str, firma: str, momento: int, *, ventana_s: int = VENTANA_S
+    cuerpo: bytes, secreto: str, firma: str, momento: int, *, ventana_s: int | None = None
 ) -> bool:
     """Verificación de referencia, para que el integrador la copie.
 
@@ -51,7 +68,7 @@ def verificar_firma(
     por tiempo), olvidando la ventana, o firmando el JSON reserializado en vez
     de los bytes recibidos.
     """
-    if abs(time.time() - momento) > ventana_s:
+    if abs(time.time() - momento) > (ventana_s if ventana_s is not None else ventana_por_defecto()):
         return False
     return hmac.compare_digest(firmar(cuerpo, secreto, momento), firma)
 

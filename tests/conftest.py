@@ -413,6 +413,7 @@ def _limpiar_estado_global() -> Iterator[None]:
     """
     yield
     from crmcore.bus.memoria import limpiar
+    from crmcore.config import get_settings
     from crmcore.http.rate_limit import limpiar_memoria
     from crmcore.obs.metrics import reset_metricas
     from crmcore.runtime.settings import invalidar
@@ -421,6 +422,14 @@ def _limpiar_estado_global() -> Iterator[None]:
     limpiar_memoria()
     invalidar()
     reset_metricas()
+    # Y la caché de `Settings`, que NO estaba. `invalidar()` limpia los ajustes
+    # de runtime —los que viven en la base— pero `get_settings` es un `lru_cache`
+    # sobre el `.env` y las variables de entorno: una prueba que hace
+    # `monkeypatch.setenv` y limpia la caché deja el valor nuevo cacheado, y
+    # `monkeypatch` deshace la variable DESPUÉS, sin volver a limpiar. El
+    # resultado es que la siguiente prueba hereda un ajuste que ya no existe en
+    # el entorno, y falla —o pasa— por algo que no tiene que ver con ella.
+    get_settings.cache_clear()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

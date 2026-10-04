@@ -27,7 +27,14 @@ class _LimitsSettings(BaseSettings):
     # progreso, reanudación e informe parcial.
     bulk_max_items: int = Field(1_000, ge=1, le=100_000)
     # Tope de operaciones en una petición compuesta (CRM-00.02.01.13).
-    composite_max_ops: int = Field(25, ge=1, le=500)
+    # Más que eso es una carga masiva, y para eso está el camino masivo con su
+    # trabajo diferido y su informe parcial.
+    #
+    # (30-09-2026: el valor por defecto pasa de 25 a 20, que es el que la API
+    # aplicaba de verdad —`compuesto.py` llevaba un 20 escrito mientras este
+    # ajuste decía 25 y no lo leía nadie—. Quien lo tenga puesto en su `.env`
+    # sigue mandando: ahora, por fin, de verdad.)
+    composite_max_ops: int = Field(20, ge=1, le=500)
 
     # Página máxima que se puede pedir. Sin tope, un `limit=1000000` es una
     # denegación de servicio escrita por el propio cliente sin querer.
@@ -78,10 +85,25 @@ class _LimitsSettings(BaseSettings):
 
     # ── Degradación bajo carga (CRM-00.01.06.04) ──────────────────────────
     degradacion_enabled: bool = True
-    # Uso del pool de conexiones (0..1) a partir del cual se difiere lo no
-    # crítico: recálculos, enriquecimientos, informes programados. Se difiere,
-    # no se pierde.
-    degradacion_umbral_pool: float = Field(0.85, ge=0.1, le=1.0)
+    # Presión (0..1) a partir de la cual se difiere lo no crítico: recálculos,
+    # enriquecimientos, informes programados. Se difiere, no se pierde.
+    #
+    # El nombre dice «pool» porque el pool de conexiones era la única señal
+    # cuando se declaró, y sigue siendo la que avisa antes. Hoy la presión las
+    # combina —pool, latencia y cola— y este umbral gobierna la combinada. Se
+    # mantiene el nombre para no romper el `.env` de quien ya lo tenga puesto.
+    #
+    # (30-09-2026: el valor por defecto pasa de 0.85 a 0.6, que es el que el
+    # sistema aplicaba de verdad —`admite()` llevaba un 0.6 escrito mientras
+    # este ajuste decía 0.85 y no lo leía nadie—. Poner 0.85 al enchufarlo habría
+    # hecho que empezara a diferir más tarde que hasta ahora.)
+    degradacion_umbral_pool: float = Field(0.6, ge=0.1, le=1.0)
+    # Y el de lo NORMAL, que es más alto: una escritura que alguien está
+    # haciendo delante de la pantalla solo se corta cuando ya no hay más
+    # remedio. Estaba escrito en el código —un 0.9— junto al otro; los dos
+    # umbrales deciden lo mismo y tenían dos vidas distintas, una configurable
+    # que no se leía y otra escrita que sí.
+    degradacion_umbral_normal: float = Field(0.9, ge=0.1, le=1.0)
 
     # ── Motor de procesos (CRM-00.03.02.16) ───────────────────────────────
     # Topes que impiden un proceso desbocado. Sin ellos, una automatización que

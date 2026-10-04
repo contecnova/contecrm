@@ -30,10 +30,24 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Tope de operaciones por petición. Veinte cubre cualquier alta compuesta real;
-# más que eso es una carga masiva, y para eso está el camino masivo con su
-# trabajo diferido y su informe parcial.
-MAX_OPERACIONES = 20
+
+def _tope() -> int:
+    """Tope de operaciones por petición, **de la configuración**.
+
+    Veinte cubre cualquier alta compuesta real; más que eso es una carga masiva,
+    y para eso está el camino masivo con su trabajo diferido y su informe
+    parcial.
+
+    Era un `20` escrito aquí mientras `COMPOSITE_MAX_OPS` existía en los
+    ajustes, documentado y editable, **sin que lo leyera nadie** — y además con
+    otro valor, 25, así que la pantalla de ajustes decía una cosa y la API
+    aplicaba otra. Un integrador que mirara el ajuste y mandara 25 operaciones
+    recibía un error que no cuadraba con lo que había leído.
+    """
+    from crmcore.config import get_settings
+
+    return int(get_settings().composite_max_ops)
+
 
 # `$3.id`, `$1.cuenta_id`… Referencia al resultado de otra operación.
 REFERENCIA = re.compile(r"^\$(\d+)\.([A-Za-z_][A-Za-z0-9_]*)$")
@@ -51,11 +65,12 @@ def validar(operaciones: list[dict[str, Any]]) -> None:
             "Una petición compuesta sin operaciones no hace nada",
             error_code="compuesto.vacia",
         )
-    if len(operaciones) > MAX_OPERACIONES:
+    tope = _tope()
+    if len(operaciones) > tope:
         raise ErrorValidacion(
-            f"Caben {MAX_OPERACIONES} operaciones por petición; para más, el camino masivo",
+            f"Caben {tope} operaciones por petición; para más, el camino masivo",
             error_code="compuesto.demasiadas",
-            detalle={"tope": MAX_OPERACIONES, "enviadas": len(operaciones)},
+            detalle={"tope": tope, "enviadas": len(operaciones)},
         )
 
     for indice, operacion in enumerate(operaciones, start=1):

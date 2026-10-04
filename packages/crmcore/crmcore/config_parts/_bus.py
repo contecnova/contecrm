@@ -68,6 +68,15 @@ class _BusSettings(BaseSettings):
     # Cuánto se recuerda una clave. Debe cubrir de sobra la ventana de
     # reintentos del productor; una semana la cubre con holgura.
     inbox_retencion_dias: int = Field(7, ge=1, le=365)
+    # Cuánto se guarda un evento ya publicado en la tabla de salida. La tabla es
+    # un buzón, no un histórico —el histórico de qué pasó está en la auditoría—
+    # y sin purga crece para siempre.
+    #
+    # Se añade al enganchar la purga: `purgar_publicados` exigía un plazo y no
+    # había ajuste para dárselo, así que el único sitio donde podía salir era una
+    # constante. Un plazo de retención es exactamente lo que cada instalación
+    # necesita poder cambiar.
+    outbox_retencion_dias: int = Field(7, ge=1, le=365)
 
     # ── Webhooks salientes (CRM-00.02.02.01..03) ──────────────────────────
     webhooks_enabled: bool = True

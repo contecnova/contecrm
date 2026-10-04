@@ -403,6 +403,8 @@ def verificar_id_token(
     proveedor: Proveedor, id_token: str, *, nonce: str | None = None
 ) -> dict[str, Any]:
     """Comprueba firma, emisor, audiencia, vigencia y nonce. Devuelve los claims."""
+    from crmcore.config import get_settings
+
     try:
         cabecera = jwt.get_unverified_header(id_token)
     except InvalidTokenError as exc:
@@ -436,6 +438,12 @@ def verificar_id_token(
             # OIDC, y un token sin él no identifica a nadie. Exigirlo aquí evita
             # que cualquier código de más abajo confíe en uno que no lo trae.
             options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+            # MARGEN DE RELOJ. Sin él, un token recién emitido por un IdP cuyo
+            # reloj va unos segundos adelantado parece del futuro y se rechaza:
+            # el usuario ve «no válido», vuelve a intentarlo, y le vuelve a
+            # pasar. `SSO_MARGEN_RELOJ_S` existía en los ajustes, documentado
+            # exactamente para esto, y **no lo leía nadie**.
+            leeway=int(get_settings().sso_margen_reloj_s),
         )
     except InvalidTokenError as exc:
         raise ErrorValidacion(

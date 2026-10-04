@@ -96,11 +96,36 @@ def mampara(recurso: str, tenant_id: UUID | None, *, tope: int) -> Iterator[None
             estado.en_curso = max(0, estado.en_curso - 1)
 
 
+def _umbral_configurado() -> int:
+    """Fallos seguidos que abren el circuito, **de la configuración**.
+
+    Era un `5` escrito aquí mientras existía `CB_UMBRAL_FALLOS` en los ajustes,
+    editable y documentado, **sin que lo leyera nadie**. Una instalación que
+    quisiera abrir antes —porque su proveedor de correo se cae a menudo y no
+    quiere gastar hilos reintentando— cambiaba un número que no hacía nada.
+    """
+    from crmcore.config import get_settings
+
+    return int(get_settings().cb_umbral_fallos)
+
+
+def _descanso_configurado() -> float:
+    """Cuánto se queda abierto el circuito, **de la configuración**.
+
+    Lo mismo que el umbral: `CB_REPOSO_S` existía y no lo leía nadie.
+    """
+    from crmcore.config import get_settings
+
+    return float(get_settings().cb_reposo_s)
+
+
 @dataclass
 class _Circuito:
     fallos: int = 0
     abierto_hasta: float = 0.0
-    # Cuántos fallos seguidos abren el circuito, y cuánto se queda abierto.
+    # Cuántos fallos seguidos abren el circuito, y cuánto se queda abierto. Los
+    # valores efectivos salen de la configuración; aquí solo hay un arranque
+    # razonable para un circuito que todavía no ha fallado nunca.
     umbral: int = 5
     descanso_s: float = 30.0
     aperturas: int = 0
@@ -124,10 +149,19 @@ def circuito_abierto(recurso: str) -> bool:
     return False
 
 
-def anotar_fallo(recurso: str, *, umbral: int = 5, descanso_s: float = 30.0) -> None:
-    """Apunta un fallo y abre el circuito si ya van demasiados seguidos."""
+def anotar_fallo(
+    recurso: str, *, umbral: int | None = None, descanso_s: float | None = None
+) -> None:
+    """Apunta un fallo y abre el circuito si ya van demasiados seguidos.
+
+    Sin `umbral` ni `descanso_s` se usan los de la configuración. Quien llame
+    con valores propios los impone para ese recurso: hay recursos que merecen
+    otro trato —un proveedor de inferencia caro no se reintenta como una caché—
+    y eso se decide en la llamada, no en un ajuste global.
+    """
     circuito = _circuitos[recurso]
-    circuito.umbral, circuito.descanso_s = umbral, descanso_s
+    circuito.umbral = _umbral_configurado() if umbral is None else umbral
+    circuito.descanso_s = _descanso_configurado() if descanso_s is None else descanso_s
     circuito.fallos += 1
     if circuito.fallos >= circuito.umbral:
         circuito.abierto_hasta = time.monotonic() + circuito.descanso_s
@@ -151,7 +185,9 @@ def anotar_exito(recurso: str) -> None:
 
 
 @contextmanager
-def circuito(recurso: str, *, umbral: int = 5, descanso_s: float = 30.0) -> Iterator[None]:
+def circuito(
+    recurso: str, *, umbral: int | None = None, descanso_s: float | None = None
+) -> Iterator[None]:
     """Protege una llamada a un recurso que puede caerse.
 
     Reintentar contra algo caído no lo arregla y sí consume el hilo que lo
@@ -209,11 +245,19 @@ def admite(prioridad: str) -> bool:
     iguales dos cosas que no lo son: una la está haciendo alguien delante de la
     pantalla y la otra puede esperar diez minutos sin que nadie lo note.
     """
+    from crmcore.config import get_settings
+
     if prioridad == CRITICA:
         return True
+    s = get_settings()
     if prioridad == NORMAL:
-        return _presion.valor < 0.9
-    return _presion.valor < 0.6
+        return _presion.valor < float(s.degradacion_umbral_normal)
+    # Los dos umbrales estaban escritos aquí —0.9 y 0.6— mientras
+    # `DEGRADACION_UMBRAL_POOL` existía en los ajustes, documentado como «a
+    # partir del cual se difiere lo no crítico», y no lo leía nadie. Quien lo
+    # bajara para proteger antes su instalación cambiaba un número que no hacía
+    # nada.
+    return _presion.valor < float(s.degradacion_umbral_pool)
 
 
 def exigir(prioridad: str) -> None:

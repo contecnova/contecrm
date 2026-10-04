@@ -12,7 +12,7 @@ que el comercial cree que vendió.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -26,8 +26,15 @@ from services.party import metricas_embebidas as met
 from services.sales import ingresos as ing
 from services.sales import plan_conjunto as pc
 
-HOY = date(2026, 9, 23)
-AHORA = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+# ANCLADO AL DÍA DE HOY, no a una fecha escrita.
+#
+# Era `date(2026, 9, 23)`, y el 4 de octubre la suite empezó a fallar sola: las
+# pruebas que piden una homologación «válida hasta dentro de diez días» pasaron
+# a pedirla con una fecha ya pasada, y el producto —con razón— las rechaza. Una
+# fecha fija en una prueba es una bomba de relojería: funciona hasta que no, y
+# el día que revienta no hay ningún cambio que lo explique.
+HOY = date.today()
+AHORA = datetime.combine(HOY, time(12, 0), tzinfo=timezone.utc)
 
 
 @pytest.fixture

@@ -615,3 +615,94 @@ def test_los_metadatos_del_sp_se_generan_y_son_validos() -> None:
 
     assert "EntityDescriptor" in xml
     assert ACS in xml
+
+
+def test_el_margen_de_reloj_del_sso_sale_de_la_configuracion(monkeypatch: Any) -> None:
+    """`SSO_MARGEN_RELOJ_S` existía, se documentaba y no lo leía nadie.
+
+    Los relojes del IdP y del servidor no van sincronizados al milisegundo. Sin
+    margen, un token recién emitido por un IdP que va unos segundos adelantado
+    parece del futuro y se rechaza: el usuario ve «no válido», vuelve a
+    intentarlo y le vuelve a pasar, sin nada en ningún registro que lo explique.
+
+    Se comprueban las dos mitades con un token emitido **en el futuro**: sin
+    margen se rechaza, con margen se acepta. Sin la segunda, un cambio que
+    aceptara cualquier cosa pasaría igual.
+    """
+    import time
+
+    import jwt as pyjwt
+    import pytest
+    from crmcore.config import get_settings
+    from crmcore.errors import ErrorValidacion
+
+    from services.identity.oidc import Proveedor, verificar_id_token
+
+    secreto = "secreto-de-prueba-para-el-margen"
+    ahora = int(time.time())
+    # El caso real: el IdP va unos segundos adelantado, así que el token dice
+    # que todavía no vale (`nbf`). Es lo que el margen de reloj absorbe.
+    dentro_de_un_rato = ahora + 30
+    token = pyjwt.encode(
+        {
+            "iss": "https://idp.ejemplo.com",
+            "aud": "cliente-1",
+            "sub": "u-1",
+            "iat": ahora,
+            "nbf": dentro_de_un_rato,
+            "exp": ahora + 600,
+        },
+        secreto,
+        algorithm="HS256",
+    )
+    # El `Proveedor` de verdad y no un objeto inventado: uno a medias pasa
+    # hasta que el código lee un campo que no le pusimos, y entonces la prueba
+    # falla por el motivo equivocado.
+    proveedor = Proveedor(
+        id="p-1",
+        tenant_id=uuid4(),
+        nombre="IdP de prueba",
+        issuer_url="https://idp.ejemplo.com",
+        client_id="cliente-1",
+        client_secret=secreto,
+        redirect_uri="https://crm.ejemplo.com/cb",
+        # Apagado porque el token de esta prueba no trae correo: lo que se
+        # comprueba aquí es el margen de reloj, y un fallo por otra cosa haría
+        # pasar la prueba por el motivo equivocado.
+        exigir_email_verificado=False,
+    )
+
+    # El descubrimiento y la clave se sustituyen: lo que se prueba es el margen
+    # de reloj, no la red. Con HS256 la clave es el secreto compartido, en la
+    # forma JWK que espera PyJWT.
+    import base64
+    import json as _json
+
+    from services.identity import oidc as _oidc
+
+    monkeypatch.setattr(_oidc, "_descubrir", lambda _p: {"issuer": "https://idp.ejemplo.com"})
+    monkeypatch.setattr(
+        _oidc,
+        "_resolver_clave",
+        lambda _p, _kid: _json.dumps(
+            {
+                "kty": "oct",
+                "k": base64.urlsafe_b64encode(secreto.encode()).decode().rstrip("="),
+            }
+        ),
+    )
+    monkeypatch.setattr(_oidc, "_algoritmo", lambda _p, _c: "HS256")
+
+    monkeypatch.setenv("SSO_MARGEN_RELOJ_S", "0")
+    get_settings.cache_clear()
+    with pytest.raises(ErrorValidacion):
+        verificar_id_token(proveedor, token)
+
+    monkeypatch.setenv("SSO_MARGEN_RELOJ_S", "120")
+    get_settings.cache_clear()
+    claims = verificar_id_token(proveedor, token)
+    assert claims["sub"] == "u-1", (
+        "con 120 s de margen un token emitido hace 30 s en el futuro tiene que "
+        "aceptarse: si no, el margen no se está leyendo"
+    )
+    get_settings.cache_clear()

@@ -48,13 +48,31 @@ def test_una_referencia_a_un_campo_que_no_vino_se_deja_visible() -> None:
     assert compuesto.resolver({"x": "$1.no_existe"}, [{"id": "1"}]) == {"x": "$1.no_existe"}
 
 
-def test_hay_tope_de_operaciones() -> None:
+def test_el_tope_de_operaciones_sale_de_la_configuracion(monkeypatch: Any) -> None:
     """Más que eso es una carga masiva, y para eso está el camino masivo con su
-    trabajo diferido y su informe parcial."""
-    muchas = [{"metodo": "POST", "ruta": "/a"}] * (compuesto.MAX_OPERACIONES + 1)
+    trabajo diferido y su informe parcial.
+
+    El tope era una constante mientras `COMPOSITE_MAX_OPS` existía en los
+    ajustes —y con otro valor: la pantalla decía 25 y la API aplicaba 20—. Un
+    integrador que leyera el ajuste y mandara 25 recibía un error que no cuadraba
+    con lo que había leído.
+
+    Las dos mitades: con el tope en 3 se rechazan 4, y con el tope en 10 pasan.
+    """
+    from crmcore.config import get_settings
+
+    monkeypatch.setenv("COMPOSITE_MAX_OPS", "3")
+    get_settings.cache_clear()
+    cuatro = [{"metodo": "POST", "ruta": "/a"}] * 4
     with pytest.raises(ErrorValidacion) as e:
-        compuesto.validar(muchas)
+        compuesto.validar(cuatro)
     assert e.value.error_code == "compuesto.demasiadas"
+    assert e.value.detalle["tope"] == 3, "el error tiene que decir el tope que aplica"
+
+    monkeypatch.setenv("COMPOSITE_MAX_OPS", "10")
+    get_settings.cache_clear()
+    compuesto.validar(cuatro)  # no lanza
+    get_settings.cache_clear()
 
 
 def test_una_peticion_vacia_se_rechaza() -> None:
