@@ -345,6 +345,51 @@ def listar_sftp(config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     import fnmatch
 
+    cliente = _conectar(config)
+    try:
+        sftp = cliente.open_sftp()
+        ruta = str(config.get("ruta") or ".")
+        patron = str(config.get("patron") or "*")
+        salida = []
+        for atributos in sftp.listdir_attr(ruta):
+            if not fnmatch.fnmatch(atributos.filename, patron):
+                continue
+            salida.append(
+                {
+                    "nombre": atributos.filename,
+                    "ruta": f"{ruta.rstrip('/')}/{atributos.filename}",
+                    "tamano": atributos.st_size,
+                    "modificado": atributos.st_mtime,
+                    # Se MARCA y no se esconde: quien liste tiene que poder ver
+                    # que hay un fichero llegando. Esconderlo haría que una
+                    # carpeta con cinco ficheros a medias pareciera vacía, y
+                    # entonces nadie entiende por qué no entra nada.
+                    "en_curso": en_curso_de_escritura(atributos.filename, config),
+                }
+            )
+        return sorted(salida, key=lambda f: f["modificado"] or 0)
+    finally:
+        cliente.close()
+
+
+def _b64(texto: str) -> bytes:
+    import base64
+
+    return base64.b64decode(texto)
+
+
+def _conectar(config: dict[str, Any]) -> Any:
+    """Abre la conexión SFTP **comprobando la huella del host**.
+
+    Estaba escrito tres veces, y la tercera —`archivar_sftp`— usaba
+    `AutoAddPolicy()` fijo: aceptaba la clave que viniera. O sea que listar y
+    descargar exigían la huella, y mover el fichero ya procesado se la saltaba.
+    Quien se pusiera en medio no recibía el maestro de clientes, pero sí podía
+    hacerse pasar por el servidor en el momento de archivar.
+
+    Tres copias de «conéctate al SFTP» divergen siempre, y la que se queda atrás
+    es la puerta por la que se entra.
+    """
     import paramiko
 
     host = str(config.get("host") or "")
@@ -376,67 +421,121 @@ def listar_sftp(config: dict[str, Any]) -> list[dict[str, Any]]:
         key_filename=config.get("clave_privada"),
         timeout=float(config.get("timeout_s") or 30),
     )
-    try:
-        sftp = cliente.open_sftp()
-        ruta = str(config.get("ruta") or ".")
-        patron = str(config.get("patron") or "*")
-        salida = []
-        for atributos in sftp.listdir_attr(ruta):
-            if not fnmatch.fnmatch(atributos.filename, patron):
-                continue
-            salida.append(
-                {
-                    "nombre": atributos.filename,
-                    "ruta": f"{ruta.rstrip('/')}/{atributos.filename}",
-                    "tamano": atributos.st_size,
-                    "modificado": atributos.st_mtime,
-                }
-            )
-        return sorted(salida, key=lambda f: f["modificado"] or 0)
-    finally:
-        cliente.close()
+    return cliente
 
 
-def _b64(texto: str) -> bytes:
-    import base64
+def en_curso_de_escritura(nombre: str, config: dict[str, Any] | None = None) -> bool:
+    """Si el nombre dice que todavía lo están escribiendo.
 
-    return base64.b64decode(texto)
+    Es la forma **fiable** de saberlo, y la única que lo es de verdad: quien
+    escribe sube a `fichero.part` y renombra al acabar, así que un nombre
+    terminado significa fichero terminado. Pero depende de que el cliente lo
+    haga así — es un acuerdo con él, no una capacidad nuestra— y por eso no
+    basta con esto: el tamaño se comprueba igual.
+    """
+    import fnmatch
+
+    from crmcore.config import get_settings
+
+    patrones = str((config or {}).get("patron_en_curso") or get_settings().sftp_patron_en_curso)
+    return any(fnmatch.fnmatch(nombre, p.strip()) for p in patrones.split(",") if p.strip())
+
+
+class FicheroIncompleto(ErrorDependencia):
+    """El fichero todavía se está escribiendo. **Se reintenta, no se procesa.**
+
+    Es un error propio y no un `ErrorValidacion` a propósito: no es que el
+    fichero esté mal, es que todavía no está. Quien lo recoja tiene que volver
+    a intentarlo en la pasada siguiente, no marcarlo como fallido ni archivarlo.
+    """
+
+    error_code_por_defecto = "transportes.sftp_incompleto"
 
 
 def descargar_sftp(config: dict[str, Any], ruta: str) -> str:
-    """Descarga un fichero. **No lo borra**: eso se decide después.
+    """Descarga un fichero **entero**, o no lo descarga. No lo borra.
 
     Borrar al leer es cómo se pierde un día entero de pedidos: el proceso falla
     después de leer, el mayorista no lo vuelve a mandar, y el fichero ya no está.
-    """
-    import paramiko
 
-    cliente = paramiko.SSHClient()
-    cliente.set_missing_host_key_policy(
-        paramiko.AutoAddPolicy()
-        if config.get("aceptar_host_desconocido")
-        else paramiko.RejectPolicy()
-    )
-    if config.get("huella_host"):
-        cliente.get_host_keys().add(
-            str(config.get("host")),
-            str(config.get("tipo_clave") or "ssh-rsa"),
-            paramiko.RSAKey(data=_b64(str(config["huella_host"]))),
+    **Y un fichero a medio escribir no se procesa nunca.** Antes se leía lo que
+    hubiera y se devolvía como si estuviera completo: un fichero de movimientos
+    truncado a la mitad entraba como entero y no se descubría hasta que alguien
+    cuadraba las cuentas. Importar la mitad es peor que no importar nada, porque
+    parece que fue bien.
+
+    Se comprueba de dos formas y las dos hacen falta:
+
+    1. **El nombre**, si el cliente usa `.part`/`.tmp` y renombra al acabar. Es
+       la única fiable de verdad, pero es un acuerdo con él, no algo nuestro.
+    2. **El tamaño, mirado dos veces** separadas por una espera configurable.
+       Funciona contra cualquier servidor y no necesita acuerdo, pero **falla si
+       quien escribe pausa más que la espera**: por eso la espera se configura y
+       por eso no se usa sola.
+
+    Y se vuelve a mirar DESPUÉS de leer: si el tamaño ha cambiado mientras se
+    leía, lo leído no vale y se descarta. Abortar a mitad y quedarse con el
+    trozo sería exactamente lo que esto viene a impedir.
+    """
+    import time
+
+    from crmcore.config import get_settings
+
+    ajustes = get_settings()
+    nombre = ruta.rsplit("/", 1)[-1]
+    if en_curso_de_escritura(nombre, config):
+        raise FicheroIncompleto(
+            f"«{nombre}» todavía se está escribiendo: su nombre lo dice. Se "
+            "vuelve a intentar en la pasada siguiente.",
+            error_code="transportes.sftp_incompleto",
+            detalle={"fichero": nombre, "motivo": "nombre_en_curso"},
         )
-    cliente.connect(
-        hostname=str(config.get("host")),
-        port=int(config.get("puerto") or 22),
-        username=str(config.get("usuario") or ""),
-        password=config.get("clave"),
-        key_filename=config.get("clave_privada"),
-        timeout=float(config.get("timeout_s") or 30),
-    )
+
+    espera = float(config.get("espera_estabilidad_s") or ajustes.sftp_espera_estabilidad_s)
+    cliente = _conectar(config)
     try:
         sftp = cliente.open_sftp()
-        with sftp.open(ruta, "r") as fichero:
-            return fichero.read().decode(
-                str(config.get("codificacion") or "utf-8"), errors="replace"
+
+        antes = sftp.stat(ruta)
+        time.sleep(espera)
+        despues = sftp.stat(ruta)
+        if (antes.st_size, antes.st_mtime) != (despues.st_size, despues.st_mtime):
+            raise FicheroIncompleto(
+                f"«{nombre}» ha cambiado de tamaño mientras se miraba "
+                f"({antes.st_size} → {despues.st_size} bytes): todavía lo están "
+                "escribiendo. Se vuelve a intentar en la pasada siguiente.",
+                error_code="transportes.sftp_incompleto",
+                detalle={
+                    "fichero": nombre,
+                    "motivo": "tamano_cambia",
+                    "antes": antes.st_size,
+                    "despues": despues.st_size,
+                },
             )
+
+        with sftp.open(ruta, "r") as fichero:
+            crudo = fichero.read()
+
+        # SE VUELVE A MIRAR. Si creció mientras leíamos, lo leído es un trozo:
+        # se descarta entero y se empieza de cero cuando el fichero esté.
+        final = sftp.stat(ruta)
+        if (final.st_size, final.st_mtime) != (despues.st_size, despues.st_mtime) or len(
+            crudo
+        ) != despues.st_size:
+            raise FicheroIncompleto(
+                f"«{nombre}» ha cambiado mientras se leía: se han leído "
+                f"{len(crudo)} bytes de {final.st_size}. Se descarta lo leído y "
+                "se empieza de cero en la pasada siguiente.",
+                error_code="transportes.sftp_incompleto",
+                detalle={
+                    "fichero": nombre,
+                    "motivo": "cambia_al_leer",
+                    "leidos": len(crudo),
+                    "tamano": final.st_size,
+                },
+            )
+
+        return crudo.decode(str(config.get("codificacion") or "utf-8"), errors="replace")
     finally:
         cliente.close()
 
@@ -446,9 +545,11 @@ def archivar_sftp(config: dict[str, Any], ruta: str) -> str:
 
     Mover y no borrar: cuando dentro de un mes haya que explicar por qué un
     pedido entró mal, el fichero original es lo único que lo explica.
-    """
-    import paramiko
 
+    **Comprueba la huella del host como las otras dos.** No lo hacía: usaba
+    `AutoAddPolicy()` fijo, así que listar y descargar exigían la huella y
+    mover el fichero ya procesado aceptaba la clave que viniera.
+    """
     destino_dir = str(config.get("archivo") or "")
     if not destino_dir:
         raise ErrorValidacion(
@@ -456,16 +557,7 @@ def archivar_sftp(config: dict[str, Any], ruta: str) -> str:
             "fichero entrando cada noche.",
             error_code="transportes.sftp_sin_archivo",
         )
-    cliente = paramiko.SSHClient()
-    cliente.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    cliente.connect(
-        hostname=str(config.get("host")),
-        port=int(config.get("puerto") or 22),
-        username=str(config.get("usuario") or ""),
-        password=config.get("clave"),
-        key_filename=config.get("clave_privada"),
-        timeout=float(config.get("timeout_s") or 30),
-    )
+    cliente = _conectar(config)
     try:
         sftp = cliente.open_sftp()
         destino = f"{destino_dir.rstrip('/')}/{ruta.rsplit('/', 1)[-1]}"
@@ -553,3 +645,81 @@ registrar_transporte("edi", leer_edi)
 registrar_transporte("soap", leer_soap)
 registrar_transporte("sftp", listar_sftp)
 registrar_transporte("amqp", consumir_amqp)
+
+
+# ── Recoger de un SFTP, con la regla del fichero incompleto ───────────────
+
+
+def recoger_de_sftp(
+    config: dict[str, Any], *, intentos: dict[str, int] | None = None
+) -> dict[str, Any]:
+    """Lista, salta lo que todavía se escribe y baja lo que está entero.
+
+    Es la pieza que un barrido llamaría cada tanto. **Ese barrido no existe
+    todavía**, y conviene saberlo: medido el 04-10-2026, los cinco transportes
+    heredados —sftp, fichero, edi, soap, amqp— están registrados y **nadie los
+    ejecuta nunca**. `_MANEJADORES` solo se escribe y se lista. Montar el
+    barrido es una decisión de producto —cada cuánto, con qué configuración,
+    dónde van los resultados— y no se inventa aquí.
+
+    Lo que sí está decidido y es lo que hace esta función:
+
+    **Un fichero incompleto no se procesa nunca, se reintenta.** Ni se marca
+    como fallido ni se archiva: se deja donde está y se vuelve a mirar en la
+    pasada siguiente. Procesar lo que se haya alcanzado a leer es peor que no
+    procesarlo, porque parece que fue bien.
+
+    **Y el reintento no es infinito en silencio.** Un fichero que nunca termina
+    de escribirse se reintentaría cada pasada para siempre sin que nadie lo
+    supiera. Se cuentan los intentos y se avisa a partir del umbral, que está en
+    `SFTP_INTENTOS_PARA_AVISAR`.
+
+    El contador lo pone quien llama (`intentos`), y es a propósito: **en memoria
+    se pierde al reiniciar**, y entonces un fichero atascado desde hace tres
+    días vuelve a empezar de cero y el aviso no salta nunca. Quien monte el
+    barrido tiene que guardarlo donde guarde su estado. Sin diccionario se usa
+    uno del proceso, que vale para una pasada y no para vigilar.
+    """
+    from crmcore.config import get_settings
+
+    cuenta = _INTENTOS if intentos is None else intentos
+    umbral = int(get_settings().sftp_intentos_para_avisar)
+
+    bajados: list[dict[str, Any]] = []
+    esperando: list[dict[str, Any]] = []
+
+    for fichero in listar_sftp(config):
+        clave = str(fichero["ruta"])
+        try:
+            contenido = descargar_sftp(config, clave)
+        except FicheroIncompleto as incompleto:
+            cuenta[clave] = cuenta.get(clave, 0) + 1
+            veces = cuenta[clave]
+            esperando.append({"ruta": clave, "intentos": veces, "motivo": str(incompleto)})
+            if veces >= umbral:
+                # A nivel de error y no de aviso: un fichero que lleva cinco
+                # pasadas sin terminar de escribirse no es un retraso, es algo
+                # que alguien tiene que ir a mirar.
+                logger.error(
+                    "sftp.fichero_nunca_termina",
+                    ruta=clave,
+                    intentos=veces,
+                    umbral=umbral,
+                    motivo=str(incompleto)[:200],
+                )
+            continue
+        cuenta.pop(clave, None)
+        bajados.append({"ruta": clave, "contenido": contenido})
+
+    return {
+        "bajados": len(bajados),
+        "ficheros": bajados,
+        # Los que esperan se devuelven CON su cuenta: un número suelto no dice
+        # cuál lleva días atascado, y eso es lo único que sirve para arreglarlo.
+        "esperando": esperando,
+    }
+
+
+# Contador de intentos del proceso. Se pierde al reiniciar — está dicho arriba
+# y es justo por lo que `recoger_de_sftp` deja que quien llame traiga el suyo.
+_INTENTOS: dict[str, int] = {}

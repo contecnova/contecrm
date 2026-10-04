@@ -97,3 +97,31 @@ class _AlmacenSettings(BaseSettings):
     adjunto_exigir_analisis: bool = False
     # URL del analizador (ICAP, clamd HTTP o el que sea). Vacío = sin análisis.
     adjunto_analizador_url: str = ""
+
+    # ── Ficheros que llegan por SFTP (CRM-06.01.01.*) ─────────────────────
+    #
+    # Un fichero a medio escribir no se procesa NUNCA: se rechaza y se vuelve a
+    # intentar. Procesar lo que se haya alcanzado a leer es peor que no
+    # procesarlo, porque parece que fue bien — un fichero de movimientos
+    # truncado a la mitad importado como si estuviera entero no se descubre
+    # hasta que alguien cuadra las cuentas.
+    #
+    # Cómo se sabe que está a medias, y qué vale cada forma:
+    #
+    #   1. El nombre lo dice (`.part`, `.tmp`, o subir y renombrar al acabar).
+    #      Es la ÚNICA fiable de verdad, pero depende de que quien escribe lo
+    #      haga así: es un acuerdo con el cliente, no una capacidad nuestra.
+    #   2. El tamaño cambia entre dos miradas. Funciona contra cualquier
+    #      servidor y no necesita acuerdo, pero **falla si quien escribe pausa
+    #      más que la espera**. Por eso la espera se configura.
+    #
+    # Se usan las dos: la primera cuando el cliente la respeta, la segunda
+    # siempre.
+    sftp_patron_en_curso: str = "*.part,*.tmp,*.filepart,.*"
+    # Segundos entre las dos miradas al tamaño. Subirlo da más margen a un
+    # escritor lento; bajarlo procesa antes. El límite está escrito arriba.
+    sftp_espera_estabilidad_s: float = Field(2.0, ge=0.1, le=120.0)
+    # A partir de cuántos intentos seguidos se avisa de que un fichero nunca
+    # termina de escribirse. Sin esto, un fichero roto se reintentaría cada
+    # pasada para siempre y nadie se enteraría.
+    sftp_intentos_para_avisar: int = Field(5, ge=1, le=1_000)

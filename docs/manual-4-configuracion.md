@@ -625,10 +625,49 @@ un proxy es XML perfectamente formado y pasaría por respuesta vacía.
 
 **SFTP no acepta cualquier host.** Sin la huella declarada, la conexión se
 rechaza: aceptar la clave que venga es abrir la puerta a que alguien se ponga en
-medio del canal por el que viaja el maestro de clientes. Y el fichero **no se
-borra al leerlo**: se archiva después, porque media integración heredada se pierde
-cuando el proceso falla tras borrar el origen y el mayorista no lo vuelve a
-mandar.
+medio del canal por el que viaja el maestro de clientes. Lo comprueban **las
+tres** operaciones —listar, descargar y archivar— desde el 04-10-2026: hasta
+entonces archivar aceptaba la clave que viniera, así que listar y descargar
+exigían la huella y mover el fichero ya procesado se la saltaba.
+
+Y el fichero **no se borra al leerlo**: se archiva después, porque media
+integración heredada se pierde cuando el proceso falla tras borrar el origen y
+el mayorista no lo vuelve a mandar.
+
+### Un fichero a medio escribir no se procesa nunca
+
+Se rechaza y se vuelve a intentar. Nunca se procesa lo que se haya alcanzado a
+leer: un fichero de movimientos truncado a la mitad importado como si estuviera
+entero es peor que no importarlo, porque **parece que fue bien** y no se
+descubre hasta que alguien cuadra las cuentas.
+
+Se mira de dos formas, y las dos hacen falta porque no valen lo mismo:
+
+- **El nombre lo dice** (`.part`, `.tmp`, o subir con otro nombre y renombrar al
+  acabar). Es la única fiable de verdad, pero depende de que quien escribe lo
+  haga así: es un **acuerdo con el cliente**, no una capacidad nuestra. Los
+  patrones se configuran en `SFTP_PATRON_EN_CURSO`.
+- **El tamaño cambia entre dos miradas**, separadas por
+  `SFTP_ESPERA_ESTABILIDAD_S`. Funciona contra cualquier servidor y no necesita
+  acuerdo, pero **falla si quien escribe pausa más que la espera** — por eso la
+  espera se configura y por eso no se usa sola.
+
+Y se vuelve a mirar **después** de leer: si el fichero ha cambiado mientras se
+leía, o lo leído no cuadra con el tamaño, se descarta entero y se empieza de
+cero en la pasada siguiente.
+
+Los intentos se cuentan. A partir de `SFTP_INTENTOS_PARA_AVISAR` se avisa como
+error, porque un fichero que nunca termina de escribirse se reintentaría cada
+pasada para siempre sin que nadie lo supiera. El contador lo guarda quien hace
+la pasada: en memoria se pierde al reiniciar, y entonces un fichero atascado
+desde hace tres días vuelve a empezar de cero y el aviso no salta nunca.
+
+**Lo que falta, dicho claro:** no hay todavía ningún barrido que ejecute estos
+transportes. Medido el 04-10-2026, los cinco —SOAP, SFTP, ficheros, EDI y
+AMQP— están registrados y **nadie los ejecuta**: el registro solo se escribe y
+se lista. La pieza que recoge de un SFTP respetando todo lo de arriba existe y
+está probada (`recoger_de_sftp`); lo que falta es decidir cada cuánto se pasa,
+con qué configuración y dónde van los resultados.
 
 **AMQP publica persistente por defecto** y confirma **tras procesar**: confirmar al
 recibir perdería el mensaje en un fallo posterior sin que nadie se enterara.
