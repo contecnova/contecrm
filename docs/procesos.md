@@ -150,6 +150,7 @@ stateDiagram-v2
 | `PUT /api/v1/politicas-acceso/{nombre}` | Crear o cambiar una política | nombre*, nombre*, objeto*, acciones*, condiciones, combinacion, prioridad, alcance, campos, activa, descripcion | 200, 422 | — |
 | `DELETE /api/v1/politicas-acceso/{nombre}` | Quitar una política | nombre* | 204, 422 | — |
 | `POST /api/v1/proveedores-identidad` | Configurar un proveedor de identidad | nombre*, tipo*, dominio_email, config, mapeo_roles, jit_provisioning, activo | 201, 422 | — |
+| `POST /api/v1/proveedores-identidad/perfiles/{clave}/resolver` | Resolver un perfil con los ajustes del cliente encima | clave*, campo_email, campo_nombre, campo_grupos | 200, 422 | — |
 | `PATCH /api/v1/proveedores-identidad/{proveedor_id}` | Editar proveedores de identidad | proveedor_id*, nombre, tipo, activo, dominio_email, config, mapeo_roles, jit_provisioning, dominios, permite_idp_initiated, acr_con_mfa, certificados | 200, 422 | — |
 | `DELETE /api/v1/proveedores-identidad/{proveedor_id}` | Borrar proveedores de identidad | proveedor_id* | 204, 422 | — |
 | `POST /api/v1/proveedores-identidad/{proveedor_id}/archivar` | Archivar proveedores de identidad | proveedor_id* | 200, 422 | — |

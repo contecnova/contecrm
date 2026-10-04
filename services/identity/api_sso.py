@@ -104,6 +104,74 @@ def _salida(fila: ProveedorIdentidad) -> ProveedorOut:
 SECRETAS = {"client_secret", "sp_private_key"}
 
 
+class AjustesPerfil(BaseModel):
+    """Lo que un cliente cambia de un perfil, y nada más.
+
+    Se declara en vez de aceptar un diccionario suelto: un cuerpo sin esquema
+    se pinta como un formulario vacío, y entonces quien configura el proveedor
+    desde la consola no ve qué puede tocar. Son tres campos, y son justo los
+    que cambian entre proveedores — el protocolo no se ajusta, porque es lo que
+    el perfil **es**.
+    """
+
+    campo_email: str | None = Field(
+        None, description="Qué campo del token trae el correo. Sin él no hay identidad usable."
+    )
+    campo_nombre: str | None = Field(None, description="Qué campo trae el nombre para mostrar.")
+    campo_grupos: str | None = Field(
+        None,
+        description=(
+            "Cómo llama este proveedor a los grupos. Equivocarse aquí no da un "
+            "error: da un usuario que entra sin permisos."
+        ),
+    )
+
+
+@router_idp.get(
+    "/perfiles",
+    summary="Perfiles de proveedor declarados",
+    description=(
+        "Lo que cambia entre proveedores de identidad son las direcciones y los "
+        "nombres de los campos, y eso es **configuración**: un módulo por casa "
+        "—uno para cada proveedor de SSO, otro para cada uno de MFA— convierte "
+        "cada implantación nueva en una versión del producto que hay que "
+        "mantener diez años.\n\n"
+        "Esta ruta faltaba: los perfiles estaban declarados y probados, y **no "
+        "los alcanzaba ninguna ruta**, así que quien configuraba un proveedor "
+        "tenía que saberse de memoria qué campo trae el correo en el suyo. "
+        "Equivocarse ahí no da un error: da un usuario que entra sin grupos y "
+        "sin permisos, y nadie lo relaciona con el campo mal escrito."
+    ),
+)
+def listar_perfiles(_: AutenticadoDep) -> Any:
+    return {
+        "sso": {clave: dict(valor) for clave, valor in sso.PERFILES_SSO.items()},
+        "mfa": {clave: dict(valor) for clave, valor in sso.PERFILES_MFA.items()},
+        "como_se_anade": (
+            "Añadir un perfil es configuración, no código: se declara qué campo "
+            "trae el correo, cuál el nombre y cómo llama a los grupos."
+        ),
+    }
+
+
+@router_idp.post(
+    "/perfiles/{clave}/resolver",
+    summary="Resolver un perfil con los ajustes del cliente encima",
+    description=(
+        "Devuelve la configuración que resultaría, y **dice si está completa**. "
+        "Un perfil sin campo de correo deja un usuario sin identidad utilizable: "
+        "no es un error visible, es un usuario que no encaja con ninguna cuenta.\n\n"
+        "Un perfil desconocido **no cae al genérico en silencio**: se dice."
+    ),
+)
+def resolver_perfil(clave: str, ajustes: AjustesPerfil, _: AutenticadoDep) -> Any:
+    # El cuerpo va OBLIGATORIO aunque sus tres campos sean opcionales: con
+    # `AjustesPerfil | None` el esquema sale como `anyOf` y la consola, que se
+    # construye del contrato, no encuentra los campos — pinta un formulario
+    # vacío. Mandar `{}` es perfectamente válido y devuelve el perfil base.
+    return sso.perfil_sso(clave, ajustes.model_dump(exclude_none=True))
+
+
 @router_idp.get("", response_model=PaginaDeListado, summary="Proveedores del tenant")
 def listar(
     db: DbDep,

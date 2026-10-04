@@ -419,3 +419,22 @@ def test_los_umbrales_de_degradacion_salen_de_la_configuracion(monkeypatch: Any)
 
     fijar_presion(0.0)
     get_settings.cache_clear()
+
+
+def test_los_perfiles_de_proveedor_se_alcanzan_desde_la_api() -> None:
+    """Estaban declarados, probados y **sin ninguna ruta** (`CRM-00.05.01.16`).
+
+    Quien configuraba un proveedor tenía que saberse de memoria qué campo trae
+    el correo en el suyo. Equivocarse ahí no da un error: da un usuario que
+    entra sin grupos y sin permisos, y nadie lo relaciona con el campo mal
+    escrito — que es exactamente lo que los perfiles existen para evitar.
+    """
+    import inspect
+
+    from services.identity import api_sso
+
+    fuente = inspect.getsource(api_sso)
+    assert (
+        "PERFILES_SSO" in fuente
+    ), "los perfiles no se alcanzan desde ninguna ruta: existen y no los ve nadie"
+    assert "perfil_sso(" in fuente, "no hay forma de resolver un perfil con los ajustes encima"
