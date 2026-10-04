@@ -50,6 +50,7 @@ from uuid import UUID
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -1296,7 +1297,7 @@ def tomar_instantanea(
     de tendencia saldría con un pico que no ocurrió.
     """
     tenant_id = uow.tenant_id
-    dia = el_dia or date.today()
+    dia = el_dia or hoy(uow.db)
     salida = ejecutar(uow, informe_id, es_admin=True, origen="programada")
 
     resumen: dict[str, Any] = {"filas": salida["cuantas"]}

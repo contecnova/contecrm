@@ -31,6 +31,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import Boolean, Date, DateTime, Index, Integer, String, Text, func, select
@@ -355,7 +356,7 @@ def evaluar_control(
             error_code="grc.sin_plan_de_accion",
         )
 
-    cuando = fecha or datetime.now(timezone.utc).date()
+    cuando = fecha or hoy(db)
     fila = EvaluacionControl(
         tenant_id=tenant_id,
         control_codigo=control_codigo,
@@ -613,7 +614,7 @@ def vencidos(db: Session, tenant_id: UUID) -> dict[str, Any]:
     Un GRC sin esta vista es un archivo. Lo que hace que se use es que alguien
     pueda abrir una pantalla y ver exactamente qué le falta.
     """
-    hoy = datetime.now(timezone.utc).date()
+    dia = hoy(db)
     controles = (
         db.execute(select(Control).where(Control.tenant_id == tenant_id, Control.activo.is_(True)))
         .scalars()
@@ -627,7 +628,7 @@ def vencidos(db: Session, tenant_id: UUID) -> dict[str, Any]:
         for c in controles
         if c.codigo in ultimas
         and ultimas[c.codigo]["proxima_at"]
-        and date.fromisoformat(ultimas[c.codigo]["proxima_at"]) < hoy
+        and date.fromisoformat(ultimas[c.codigo]["proxima_at"]) < dia
     ]
     no_efectivos = [
         {"control": codigo, "resultado": datos["resultado"]}

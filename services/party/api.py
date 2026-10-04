@@ -8,6 +8,7 @@ from uuid import UUID
 
 from crmcore.authz.visibilidad import aplicar_visibilidad
 from crmcore.errors import ErrorValidacion
+from crmcore.fechas import hoy
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
@@ -1428,10 +1429,8 @@ def geocodificar_direccion(cuenta_id: UUID, direccion_id: UUID, uow: UowDep) -> 
     ),
 )
 def listar_equipo(cuenta_id: UUID, db: DbDep, solo_vigentes: bool = Query(False)) -> Any:
-    from datetime import date
-
     svc.exigir_cuenta(db, cuenta_id)
-    hoy = date.today()
+    dia = hoy(db)
     return [
         MiembroEquipoOut(
             id=m.id,
@@ -1441,7 +1440,7 @@ def listar_equipo(cuenta_id: UUID, db: DbDep, solo_vigentes: bool = Query(False)
             acceso=m.acceso,
             desde=m.desde,
             hasta=m.hasta,
-            vigente=(m.desde is None or m.desde <= hoy) and (m.hasta is None or m.hasta >= hoy),
+            vigente=(m.desde is None or m.desde <= dia) and (m.hasta is None or m.hasta >= dia),
         )
         for m in svc.equipo_de_cuenta(db, cuenta_id, solo_vigentes=solo_vigentes)
     ]
@@ -1463,10 +1462,8 @@ def listar_equipo(cuenta_id: UUID, db: DbDep, solo_vigentes: bool = Query(False)
     ),
 )
 def añadir_miembro_equipo(cuenta_id: UUID, datos: MiembroEquipoEntrada, uow: UowDep) -> Any:
-    from datetime import date
-
     miembro = svc.añadir_al_equipo(uow, cuenta_id=cuenta_id, **datos.model_dump())
-    hoy = date.today()
+    dia = hoy(uow.db)
     return MiembroEquipoOut(
         id=miembro.id,
         cuenta_id=miembro.cuenta_id,
@@ -1475,8 +1472,8 @@ def añadir_miembro_equipo(cuenta_id: UUID, datos: MiembroEquipoEntrada, uow: Uo
         acceso=miembro.acceso,
         desde=miembro.desde,
         hasta=miembro.hasta,
-        vigente=(miembro.desde is None or miembro.desde <= hoy)
-        and (miembro.hasta is None or miembro.hasta >= hoy),
+        vigente=(miembro.desde is None or miembro.desde <= dia)
+        and (miembro.hasta is None or miembro.hasta >= dia),
     )
 
 

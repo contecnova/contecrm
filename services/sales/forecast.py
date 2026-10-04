@@ -39,6 +39,7 @@ from crmcore.audit import registrar
 from crmcore.datos.cambio import convertir
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.logging import get_logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -315,7 +316,7 @@ def _importe_funcional(
             importe=oportunidad.importe or CERO,
             desde=oportunidad.moneda,
             hasta=moneda,
-            en_fecha=oportunidad.fecha_cierre or date.today(),
+            en_fecha=oportunidad.fecha_cierre or hoy(db),
         )
     except NoEncontrado:
         fallidas.append(str(oportunidad.id))
@@ -508,7 +509,7 @@ def desglose(
                     importe=importe,
                     desde=moneda_op,
                     hasta=moneda,
-                    en_fecha=fecha or date.today(),
+                    en_fecha=fecha or hoy(db),
                 )
             except NoEncontrado:
                 sin_cambio += 1
@@ -702,7 +703,7 @@ def tomar_instantanea(
     foto = InstantaneaForecast(
         tenant_id=tenant_id,
         periodo=periodo_clave,
-        etiqueta=etiqueta or datetime.now(timezone.utc).date().isoformat(),
+        etiqueta=etiqueta or hoy(db).isoformat(),
         tomada_por=por,
         moneda=moneda,
     )

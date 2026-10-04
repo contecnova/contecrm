@@ -33,7 +33,7 @@ que no pase nada y parezca que va bien.
 from __future__ import annotations
 
 import hashlib
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable
 from uuid import UUID
@@ -42,6 +42,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorDependencia, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -546,7 +547,7 @@ def _siguiente_referencia(db: Session, tenant_id: UUID) -> str:
         ).scalar_one()
         or 0
     )
-    return f"SOB-{date.today().year}-{cuantos + 1:05d}"
+    return f"SOB-{hoy(db).year}-{cuantos + 1:05d}"
 
 
 def crear(

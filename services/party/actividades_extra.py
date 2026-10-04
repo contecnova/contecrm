@@ -25,6 +25,7 @@ from uuid import UUID
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -235,7 +236,7 @@ def aplicar_plantilla(
             "Esa plantilla está desactivada", error_code="plantilla_actividades.desactivada"
         )
 
-    arranque = desde or date.today()
+    arranque = desde or hoy(uow.db)
     asignaciones = asignaciones or {}
     creadas: list[str] = []
     a_quien_lanza = 0

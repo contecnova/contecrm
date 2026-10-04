@@ -60,6 +60,7 @@ from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from crmcore.db.base import Base, TimestampMixin
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 
@@ -267,7 +268,7 @@ def filtro_visibilidad(
                 ComparticionManual.revocada_at.is_(None),
                 or_(
                     ComparticionManual.hasta.is_(None),
-                    ComparticionManual.hasta >= date.today(),
+                    ComparticionManual.hasta >= hoy(db),
                 ),
             )
         )
@@ -426,7 +427,7 @@ def _comparticion_manual(
             ComparticionManual.objeto == objeto,
             ComparticionManual.registro_id == UUID(str(registro_id)),
             ComparticionManual.revocada_at.is_(None),
-            or_(ComparticionManual.hasta.is_(None), ComparticionManual.hasta >= date.today()),
+            or_(ComparticionManual.hasta.is_(None), ComparticionManual.hasta >= hoy(db)),
         )
     ).scalar_one_or_none()
 

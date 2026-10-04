@@ -18,6 +18,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -219,7 +220,7 @@ def entitlement_aplicable(
     revés, un cliente con un contrato de soporte negociado aparte recibiría lo
     que le da su plan comercial — que es justo lo que pagó por mejorar.
     """
-    en_fecha = en_fecha or date.today()
+    en_fecha = en_fecha or hoy(db)
     filas = (
         db.execute(
             select(Entitlement).where(
@@ -366,7 +367,7 @@ def saldo(db: Session, tenant_id: UUID, entitlement_id: UUID) -> dict[str, Any]:
         # libres que vence el viernes es tan inservible como uno agotado, y en
         # las hojas de cálculo esto se descubre siempre tarde.
         "caduca_en_dias": (
-            (entitlement.vigente_hasta - date.today()).days if entitlement.vigente_hasta else None
+            (entitlement.vigente_hasta - hoy(db)).days if entitlement.vigente_hasta else None
         ),
     }
 

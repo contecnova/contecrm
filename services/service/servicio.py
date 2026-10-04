@@ -17,6 +17,7 @@ from crmcore.audit import registrar
 from crmcore.datos.calendario import CalendarioLaboral, sumar_horas_laborables
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.logging import get_logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -152,7 +153,7 @@ def sla_aplicable(
     encaje— un cliente con contrato especial recibiría el trato estándar, que es
     justo el que se paga por no tener.
     """
-    en_fecha = en_fecha or date.today()
+    en_fecha = en_fecha or hoy(db)
     filas = (
         db.execute(
             select(DefinicionSLA).where(
@@ -259,7 +260,7 @@ def aplicar_sla(db: Session, caso: Caso, *, tier_cliente: str = "") -> Definicio
 
 
 def _siguiente_codigo(db: Session, tenant_id: UUID) -> str:
-    anio = date.today().year
+    anio = hoy(db).year
     cuantos = int(
         db.execute(
             select(func.count()).select_from(Caso).where(Caso.tenant_id == tenant_id)

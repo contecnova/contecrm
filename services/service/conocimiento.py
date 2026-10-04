@@ -36,6 +36,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -675,7 +676,7 @@ def eficacia(db: Session, tenant_id: UUID, *, minimo_vistas: int = 20) -> dict[s
     negativo no salga como el peor de la base.
     """
     articulos = db.execute(select(Articulo).where(Articulo.tenant_id == tenant_id)).scalars().all()
-    hoy = date.today()
+    dia = hoy(db)
 
     dañinos, huerfanos, caducados = [], [], []
     for a in articulos:
@@ -693,13 +694,13 @@ def eficacia(db: Session, tenant_id: UUID, *, minimo_vistas: int = 20) -> dict[s
             )
         if a.estado == "publicado" and a.vistas == 0 and a.usos_en_caso == 0:
             huerfanos.append({"clave": a.clave, "idioma": a.idioma})
-        if a.revisar_el is not None and a.revisar_el < hoy and a.estado == "publicado":
+        if a.revisar_el is not None and a.revisar_el < dia and a.estado == "publicado":
             caducados.append(
                 {
                     "clave": a.clave,
                     "idioma": a.idioma,
                     "revisar_el": a.revisar_el.isoformat(),
-                    "dias_vencido": (hoy - a.revisar_el).days,
+                    "dias_vencido": (dia - a.revisar_el).days,
                 }
             )
 
@@ -780,7 +781,7 @@ def buscar(
             )
         )
 
-    hoy = date.today()
+    dia = hoy(db)
     filas = db.execute(consulta.limit(limite)).all()
     return [
         {
@@ -795,7 +796,7 @@ def buscar(
             # Se marca lo que ya debería haberse revisado en vez de esconderlo:
             # ocultarlo dejaría al cliente sin respuesta, y enseñarlo sin avisar
             # le daría una que puede estar vieja. Decirlo es lo único honesto.
-            "pendiente_de_revision": bool(a.revisar_el and a.revisar_el < hoy),
+            "pendiente_de_revision": bool(a.revisar_el and a.revisar_el < dia),
         }
         for a, v in filas
     ]
@@ -819,7 +820,7 @@ def leer(
             VersionArticulo.version == (articulo.version_publicada or 1),
         )
     ).scalar_one_or_none()
-    hoy = date.today()
+    dia = hoy(db)
     return {
         "articulo_id": str(articulo.id),
         "clave": articulo.clave,
@@ -831,7 +832,7 @@ def leer(
         "utiles": articulo.utiles,
         "inutiles": articulo.inutiles,
         "obsoleto": articulo.estado == "obsoleto",
-        "pendiente_de_revision": bool(articulo.revisar_el and articulo.revisar_el < hoy),
+        "pendiente_de_revision": bool(articulo.revisar_el and articulo.revisar_el < dia),
         "aviso": (
             "Este artículo está retirado y puede no ser correcto."
             if articulo.estado == "obsoleto"

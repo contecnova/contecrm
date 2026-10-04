@@ -241,7 +241,7 @@ def _hoy(db: Any = None) -> date:
     from crmcore.fechas import hoy
 
     return hoy(db)
-    return datetime.now(timezone.utc).date()
+    return hoy(db)
 
 
 def obtener(db: Session, tenant_id: UUID, activo_id: UUID) -> ActivoInstalado:

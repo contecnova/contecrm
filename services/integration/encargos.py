@@ -43,6 +43,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -399,7 +400,7 @@ def elegir_proveedor(
 
 
 def _siguiente_referencia(db: Session, tenant_id: UUID) -> str:
-    anio = date.today().year
+    anio = hoy(db).year
     cuantos = int(
         db.execute(
             select(func.count()).select_from(Encargo).where(Encargo.tenant_id == tenant_id)

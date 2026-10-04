@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.errors import Conflicto, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.http.deps import (
     AutenticadoDep,
     DbDep,
@@ -422,7 +423,7 @@ def convertir_importe(
         "importe": str(importe),
         "desde": desde.upper(),
         "hasta": hasta.upper(),
-        "fecha": (en_fecha or date.today()).isoformat(),
+        "fecha": (en_fecha or hoy(db)).isoformat(),
         "resultado": str(resultado),
     }
 

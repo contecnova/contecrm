@@ -208,7 +208,7 @@ def _hoy(db: Any = None) -> date:
     from crmcore.fechas import hoy
 
     return hoy(db)
-    return datetime.now(timezone.utc).date()
+    return hoy(db)
 
 
 def _redondear(valor: Decimal) -> Decimal:

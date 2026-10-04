@@ -23,12 +23,13 @@ desaparece y tampoco se mira. Se aprueban, con motivo y con fecha.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
 from crmcore.db.base import Base
 from crmcore.errors import ErrorValidacion
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import Boolean, Date, DateTime, Index, String, Text, func, select
@@ -154,7 +155,7 @@ def aprobar_excepcion(
         raise ErrorValidacion(
             "Aprobar un conflicto exige motivo escrito", error_code="sod.excepcion_sin_motivo"
         )
-    if caduca_at <= datetime.now(timezone.utc).date():
+    if caduca_at <= hoy(db):
         raise ErrorValidacion(
             "La excepción tiene que caducar en el futuro",
             error_code="sod.excepcion_ya_caducada",
@@ -241,13 +242,13 @@ def violaciones(db: Session, tenant_id: UUID) -> dict[str, Any]:
     if not reglas:
         return {"reglas": 0, "violaciones": [], "excepciones_vigentes": 0}
 
-    hoy = datetime.now(timezone.utc).date()
+    dia = hoy(db)
     exentos: dict[str, set[UUID]] = {}
     vigentes = 0
     for excepcion in (
         db.execute(select(ExcepcionSoD).where(ExcepcionSoD.tenant_id == tenant_id)).scalars().all()
     ):
-        if excepcion.caduca_at >= hoy:
+        if excepcion.caduca_at >= dia:
             exentos.setdefault(excepcion.regla_codigo, set()).add(excepcion.usuario_id)
             vigentes += 1
 

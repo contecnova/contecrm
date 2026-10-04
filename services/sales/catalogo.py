@@ -40,6 +40,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -247,7 +248,7 @@ def listas_aplicables(
     baja, no por una regla escondida: si el desempate fuera implícito, nadie
     podría explicar por qué se aplicó una y no otra.
     """
-    hoy = en_fecha or date.today()
+    dia = en_fecha or hoy(db)
     filas = (
         db.execute(
             select(ListaPrecio)
@@ -276,9 +277,9 @@ def listas_aplicables(
             continue
         if moneda and lista.moneda != moneda:
             continue
-        if lista.desde and hoy < lista.desde:
+        if lista.desde and dia < lista.desde:
             continue
-        if lista.hasta and hoy > lista.hasta:
+        if lista.hasta and dia > lista.hasta:
             continue
         salida.append(lista)
     return salida

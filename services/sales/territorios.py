@@ -37,6 +37,7 @@ from uuid import UUID
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -324,7 +325,7 @@ def resolver(
                 ExcepcionTerritorio.cuenta_id == cuenta_id,
             )
         ).scalar_one_or_none()
-        if excepcion is not None and (excepcion.hasta is None or excepcion.hasta >= date.today()):
+        if excepcion is not None and (excepcion.hasta is None or excepcion.hasta >= hoy(db)):
             # La excepción manda sobre cualquier regla. Es el punto entero de que
             # exista: si una regla pudiera ganarle, no serviría para nada.
             territorio = db.get(Territorio, excepcion.territorio_id)
@@ -740,7 +741,7 @@ def cobertura(
     siete. Se devuelve el valor usado para que quien lo lea sepa contra qué se
     está comparando.
     """
-    hoy = en_fecha or date.today()
+    dia = en_fecha or hoy(db)
     pipeline_por_sujeto = pipeline_por_sujeto or {}
     estado = consecucion(
         db, tenant_id, desde=desde, hasta=hasta, logrado_por_sujeto=logrado_por_sujeto
@@ -765,7 +766,7 @@ def cobertura(
         )
 
     return {
-        "en_fecha": str(hoy),
+        "en_fecha": str(dia),
         "cobertura_minima": str(minimo),
         "sujetos": filas,
         "en_riesgo": [f for f in filas if not f["suficiente"] and not f["ya_cumplida"]],

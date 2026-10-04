@@ -13,6 +13,7 @@ from crmcore.authz.decision import exigir
 from crmcore.datos.estados import aplicar as aplicar_estado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.logging import get_logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -160,7 +161,7 @@ def descartar_lead(uow: UnidadDeTrabajo, lead_id: UUID, *, motivo: str, nota: st
     lead.motivo_descarte = motivo
     lead.nota_descarte = nota or None
     # Un «ahora no» no es un no para siempre: se programa la vuelta a la cola.
-    lead.reciclar_at = (date.today() + timedelta(days=dias)) if dias > 0 else None
+    lead.reciclar_at = (hoy(uow.db) + timedelta(days=dias)) if dias > 0 else None
 
     registrar(
         uow.db,
@@ -427,7 +428,7 @@ def _siguiente_codigo(db: Session, tenant_id: UUID) -> str:
     """
     from services.sales.ajustes import ajustes
 
-    anio = date.today().year
+    anio = hoy(db).year
     prefijo = f"{ajustes().codigo_prefijo}-{anio}-"
     total = (
         db.execute(
@@ -563,7 +564,7 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
         nuevo="ganada" if ganada else "perdida",
         motivo=motivo,
     )
-    oportunidad.fecha_cierre_real = date.today()
+    oportunidad.fecha_cierre_real = hoy(uow.db)
     oportunidad.probabilidad = 100 if ganada else 0
     if bool(rt.efectivo("bloquear_al_cerrar", uow.db)):
         oportunidad.bloqueada = True

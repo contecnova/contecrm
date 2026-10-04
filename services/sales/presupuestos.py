@@ -33,6 +33,7 @@ from crmcore.audit import registrar
 from crmcore.db.base import Base, EntidadBase, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -311,7 +312,7 @@ def _siguiente(db: Session, tenant_id: UUID, modelo: Any, prefijo: str) -> str:
         ).scalar_one()
         or 0
     )
-    return f"{prefijo}-{date.today().year}-{cuantos + 1:05d}"
+    return f"{prefijo}-{hoy(db).year}-{cuantos + 1:05d}"
 
 
 # ── Presupuestos (CRM-03.03.02.01, CRM-03.03.02.05) ───────────────────────
@@ -402,7 +403,7 @@ def crear(
         marca=marca,
         notas=notas,
         condiciones=condiciones,
-        valido_hasta=date.today() + timedelta(days=dias_validez),
+        valido_hasta=hoy(uow.db) + timedelta(days=dias_validez),
     )
     uow.db.add(presupuesto)
     uow.db.flush()
@@ -818,7 +819,7 @@ def aceptar(uow: UnidadDeTrabajo, presupuesto_id: UUID) -> Pedido:
             "puede facturar. Conviértelo antes de aceptarlo.",
             error_code="presupuesto.sin_cuenta",
         )
-    if presupuesto.valido_hasta and presupuesto.valido_hasta < date.today():
+    if presupuesto.valido_hasta and presupuesto.valido_hasta < hoy(uow.db):
         raise Conflicto(
             f"Ese presupuesto caducó el {presupuesto.valido_hasta}. Haz una "
             "versión nueva con los precios de hoy.",
@@ -860,14 +861,14 @@ def caducar_vencidos(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any]:
     seis meses después aparece en el pipeline como negocio vivo, y la previsión
     lo cuenta.
     """
-    hoy = date.today()
+    dia = hoy(uow.db)
     filas = (
         uow.db.execute(
             select(Presupuesto).where(
                 Presupuesto.tenant_id == tenant_id,
                 Presupuesto.estado.in_(("borrador", "enviado", "aprobado")),
                 Presupuesto.valido_hasta.isnot(None),
-                Presupuesto.valido_hasta < hoy,
+                Presupuesto.valido_hasta < dia,
             )
         )
         .scalars()
@@ -1037,7 +1038,7 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
     Los contratos sin renovación automática también avisan. Son los que se
     olvidan: nadie los renueva y el cliente se va sin que nadie lo haya decidido.
     """
-    hoy = date.today()
+    dia = hoy(uow.db)
     vigentes = (
         uow.db.execute(
             select(Contrato).where(
@@ -1054,14 +1055,14 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
 
     for contrato in vigentes:
         aviso = contrato.fin - timedelta(days=contrato.preaviso_dias)
-        if not contrato.preaviso_dado and hoy >= aviso:
+        if not contrato.preaviso_dado and dia >= aviso:
             contrato.preaviso_dado = True
             avisados.append(
                 {
                     "contrato_id": str(contrato.id),
                     "numero": contrato.numero,
                     "vence": str(contrato.fin),
-                    "dias": (contrato.fin - hoy).days,
+                    "dias": (contrato.fin - dia).days,
                     "automatica": contrato.renovacion_automatica,
                 }
             )
@@ -1073,13 +1074,13 @@ def revisar_renovaciones(uow: UnidadDeTrabajo, tenant_id: UUID) -> dict[str, Any
                     "numero": contrato.numero,
                     "cuenta_id": str(contrato.cuenta_id),
                     "vence": str(contrato.fin),
-                    "dias_restantes": (contrato.fin - hoy).days,
+                    "dias_restantes": (contrato.fin - dia).days,
                     "renovacion_automatica": contrato.renovacion_automatica,
                 },
                 dedup_key=f"preaviso:{contrato.id}",
             )
 
-        if contrato.renovacion_automatica and hoy > contrato.fin:
+        if contrato.renovacion_automatica and dia > contrato.fin:
             nuevo = Contrato(
                 tenant_id=tenant_id,
                 numero=_siguiente(uow.db, tenant_id, Contrato, "CTR"),
@@ -1222,7 +1223,7 @@ def cambiar_suscripcion(
             error_code="suscripcion.cancelada",
         )
 
-    dia = efectivo_el or date.today()
+    dia = efectivo_el or hoy(uow.db)
     antes_plan, antes_importe = fila.plan, Decimal(fila.importe_periodo)
 
     if tipo == "cambio_plan" and plan:
@@ -1297,7 +1298,7 @@ def ingreso_recurrente(
     infla el recurrente con dinero que no entra. Se dicen aparte, porque es la
     cifra que avisa de una fuga antes de que se convierta en baja.
     """
-    hoy = en_fecha or date.today()
+    dia = en_fecha or hoy(db)
     filas = (
         db.execute(select(SuscripcionCliente).where(SuscripcionCliente.tenant_id == tenant_id))
         .scalars()
@@ -1312,7 +1313,7 @@ def ingreso_recurrente(
     pausado = Decimal(0)
     for fila in filas:
         mensual = Decimal(fila.importe_periodo) * factor.get(fila.periodicidad, Decimal(1))
-        if fila.estado == "activa" and fila.inicio <= hoy and (fila.fin is None or fila.fin >= hoy):
+        if fila.estado == "activa" and fila.inicio <= dia and (fila.fin is None or fila.fin >= dia):
             mrr += mensual
         elif fila.estado == "pausada":
             pausado += mensual

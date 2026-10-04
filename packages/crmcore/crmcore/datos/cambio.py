@@ -32,6 +32,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from crmcore.db.base import Base
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 
@@ -101,7 +102,7 @@ def convertir(
     # con «no hay tipo de cambio» teniéndolo delante.
     db.flush()
 
-    en_fecha = en_fecha or date.today()
+    en_fecha = en_fecha or hoy(db)
     fila = db.execute(
         select(TipoCambio)
         .where(
@@ -157,7 +158,7 @@ def fijar_tipo_cambio(
             "El tipo de cambio tiene que ser mayor que cero",
             error_code="tenancy.tipo_cambio_invalido",
         )
-    en_fecha = en_fecha or date.today()
+    en_fecha = en_fecha or hoy(db)
     existente = db.execute(
         select(TipoCambio).where(
             TipoCambio.tenant_id == tenant_id,

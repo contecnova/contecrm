@@ -10,6 +10,7 @@ from crmcore.audit.chain import registrar, registrar_cambios
 from crmcore.authz.decision import exigir
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.logging import get_logger
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -559,7 +560,6 @@ def cerrar_vinculo(db: Session, *, contacto_id: UUID, cuenta_id: UUID, motivo: s
     Borrarlo dejaría sin sentido el histórico de la cuenta —quién firmó aquel
     contrato— y perdería el recorrido profesional del contacto.
     """
-    from datetime import date
 
     vinculo = db.execute(
         select(RelacionContactoCuenta).where(
@@ -570,7 +570,7 @@ def cerrar_vinculo(db: Session, *, contacto_id: UUID, cuenta_id: UUID, motivo: s
     ).scalar_one_or_none()
     if vinculo is None:
         raise NoEncontrado("No hay vínculo vivo entre esos dos", error_code="party.vinculo_no_vivo")
-    vinculo.hasta = date.today()
+    vinculo.hasta = hoy(db)
     vinculo.principal = False
     registrar(
         db,
@@ -1100,7 +1100,6 @@ def equipo_de_cuenta(db: Session, cuenta_id: UUID, *, solo_vigentes: bool = Fals
     corregir una fecha mal puesta. `solo_vigentes` es para quien pregunta «quién
     lleva esto hoy».
     """
-    from datetime import date
 
     from sqlalchemy import or_
 
@@ -1108,10 +1107,10 @@ def equipo_de_cuenta(db: Session, cuenta_id: UUID, *, solo_vigentes: bool = Fals
 
     consulta = select(MiembroEquipoCuenta).where(MiembroEquipoCuenta.cuenta_id == cuenta_id)
     if solo_vigentes:
-        hoy = date.today()
+        dia = hoy(db)
         consulta = consulta.where(
-            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= hoy),
-            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= hoy),
+            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= dia),
+            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= dia),
         )
     return list(db.execute(consulta.order_by(MiembroEquipoCuenta.rol)).scalars().all())
 

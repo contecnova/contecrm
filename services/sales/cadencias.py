@@ -43,6 +43,7 @@ from uuid import UUID
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -844,7 +845,7 @@ def huecos(
     if fila is None or not fila.activa:
         return []
 
-    inicio = desde or date.today()
+    inicio = desde or hoy(db)
     ocupado = list(ocupado or [])
     minimo = _ahora() + timedelta(hours=fila.antelacion_horas)
     salida: list[dict[str, Any]] = []

@@ -22,6 +22,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.visibilidad import registrar_resolutor
+from crmcore.fechas import hoy
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -43,19 +44,17 @@ def equipos(db: Session, principal: Any, objeto: str) -> dict[UUID, str]:
     if objeto != "cuenta":
         return {}
 
-    from datetime import date
-
     from sqlalchemy import or_
 
     from services.party.modelos import MiembroEquipoCuenta
 
-    hoy = date.today()
+    dia = hoy(db)
     filas = db.execute(
         select(MiembroEquipoCuenta.cuenta_id, MiembroEquipoCuenta.acceso).where(
             MiembroEquipoCuenta.tenant_id == principal.tenant_id,
             MiembroEquipoCuenta.usuario_id == principal.id,
-            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= hoy),
-            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= hoy),
+            or_(MiembroEquipoCuenta.desde.is_(None), MiembroEquipoCuenta.desde <= dia),
+            or_(MiembroEquipoCuenta.hasta.is_(None), MiembroEquipoCuenta.hasta >= dia),
         )
     ).all()
 
