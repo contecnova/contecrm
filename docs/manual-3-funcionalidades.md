@@ -5276,6 +5276,23 @@ La comprobación va **después** de validar la contraseña y la membresía. Si f
 antes, el mensaje «esta organización exige SSO» le diría a quien prueba correos
 al azar cuáles existen y en qué tenant.
 
+**Y vale para las tres puertas, no para la principal.** Hasta el 04-10-2026
+solo la contraseña lo comprobaba:
+
+- **La passkey entraba.** Es la que más importa, porque una passkey es una
+  credencial **local**: vive en el dispositivo y en nuestra base, no en el
+  directorio del cliente. Quien causaba baja perdía el SSO y conservaba su
+  passkey, así que seguía entrando — que es exactamente lo único que forzar el
+  SSO viene a impedir. Que una passkey sea más fuerte que una contraseña no
+  cambia nada: lo que se exige aquí no es fortaleza, es que la baja corte.
+- **El restablecimiento dejaba poner una contraseña nueva**, que el inicio de
+  sesión iba a rechazar siempre. Menos grave y más absurdo: el usuario acaba
+  convencido de que escribe mal la contraseña que acaba de elegir. «Sin
+  contraseña local» tiene que valer también para la puerta que las crea.
+
+Forzar el SSO vale lo que valga la puerta más floja, así que hay una prueba que
+recorre las tres y falla si alguna deja de comprobarlo.
+
 **La excepción de rescate es nominal y queda escrita.** Sin ninguna, un IdP mal
 configurado —o un certificado caducado un sábado— deja al cliente fuera de su
 propio CRM sin forma de arreglarlo, y la salida acaba siendo tocar la base de

@@ -34,7 +34,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import ErrorValidacion, NoAutenticado
+from crmcore.errors import ErrorValidacion, NoAutenticado, Prohibido
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import Boolean, DateTime, Index, String, select
@@ -165,6 +165,24 @@ def confirmar(db: Session, token: str, *, contrasena: str, ip: str = "") -> UUID
     usuario = db.get(Usuario, enlace.usuario_id)
     if usuario is None or not usuario.activo:
         raise NoAutenticado("El enlace no vale", error_code="restablecer.enlace_no_valido")
+
+    # SI EL TENANT FUERZA EL SSO, aquí no se pone contraseña (CRM-00.05.01.13).
+    #
+    # No lo miraba nadie: se podía pedir el enlace, elegir una contraseña nueva
+    # y que el sistema la guardara tan contento — para después rechazarla en
+    # cada intento de entrar, porque el login sí lo comprueba. El usuario acaba
+    # convencido de que escribe mal la contraseña que acaba de poner.
+    #
+    # Y lo de fondo: «sin contraseña local» tiene que valer también para la
+    # puerta que las crea, no solo para la que las acepta.
+    from services.identity.sso_gobierno import puede_tener_contrasena_local
+
+    if not puede_tener_contrasena_local(db, enlace.tenant_id, usuario.email):
+        raise Prohibido(
+            "Esta organización entra por su proveedor de identidad: aquí no se "
+            "pone contraseña. Entra por el enlace de tu organización.",
+            error_code="restablecer.sso_obligatorio",
+        )
 
     usuario.hash_contrasena = svc.hashear_contrasena(contrasena)
     enlace.usado_at = _ahora()

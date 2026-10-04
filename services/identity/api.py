@@ -258,6 +258,21 @@ def entrar_con_passkey(datos: FirmaPasskey, request: Request) -> Any:
             from crmcore.errors import NoAutenticado
 
             raise NoAutenticado("Esa llave no vale aquí", error_code="passkey.usuario_inactivo")
+
+        # EL SSO FORZADO TAMBIÉN AQUÍ (CRM-00.05.01.13). No se comprobaba: de
+        # las tres puertas que abren sesión, solo la contraseña lo miraba.
+        #
+        # Y es la vía de escape que más importa, porque la passkey es una
+        # credencial **local**: vive en el dispositivo y en nuestra base, no en
+        # el directorio del cliente. Quien causa baja en el directorio pierde el
+        # SSO y conserva su passkey, así que seguía entrando — que es
+        # exactamente lo único que forzar el SSO viene a impedir.
+        #
+        # Que sea más fuerte que una contraseña no cambia nada: lo que se exige
+        # no es fortaleza, es que dar de baja a alguien corte el acceso.
+        from services.identity.sso_gobierno import exigir_sso_si_toca
+
+        exigir_sso_si_toca(db, usuario, tenant_id)
         # Una passkey con verificación del usuario es más fuerte que una
         # contraseña: se anota como tal para la reautenticación reforzada, que
         # pregunta cuándo fue el último factor fuerte.
