@@ -130,7 +130,18 @@ CARPETAS = (
 #                   consentir el entrenamiento, y el modo sin salida de datos.
 #                   Ninguna daba error: el producto se comportaba como si esas
 #                   decisiones no existieran, y todo en verde.
-TOPE = 81
+#   05-10-2026  71  Ventas: diez, y dos de ellas no eran «una ruta que falta»
+#                   sino un circuito abierto. La CALIBRACIÓN no podía funcionar
+#                   nunca: la columna `resultado` de una revisión llevaba desde
+#                   el primer día el comentario «para poder compararlo con lo
+#                   que pasó» y no la escribía nadie, así que con el archivo
+#                   lleno contestaba «no hay suficientes para concluir». Y el
+#                   MARGEN POR LÍNEA no se miraba: el total tapa una línea
+#                   vendida por debajo de coste, la aprobación sale por el
+#                   total, y lo que se descubre después es que el producto que
+#                   más se vende pierde dinero en cada unidad. El contrato con
+#                   el proveedor y su alcance no tenían ninguna puerta.
+TOPE = 71
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

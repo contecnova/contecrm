@@ -144,9 +144,25 @@ def margen_de_oferta(
     margen = venta_medible - coste
     pct = _pct(margen, venta_medible)
 
+    # Línea a línea, además del total. Un margen global sano puede llevar dentro
+    # una línea vendida por debajo de coste: el total la tapa, la aprobación sale
+    # por el total, y lo que se descubre después es que el producto que más se
+    # vende pierde dinero en cada unidad. `margen_de_linea` ya lo decidía y no la
+    # llamaba nadie.
+    en_perdidas = []
+    for x in medibles:
+        detalle = margen_de_linea(
+            precio_venta=Decimal(str(x.get("precio_venta") or 0)),
+            coste=Decimal(str(x.get("coste"))),
+            cantidad=Decimal(str(x.get("cantidad") or 1)),
+        )
+        if detalle.get("en_perdidas"):
+            en_perdidas.append({"referencia": x.get("referencia"), **detalle})
+
     return {
         "completo": not sin_coste,
         "lineas_sin_coste": [x.get("referencia") for x in sin_coste],
+        "lineas_en_perdidas": en_perdidas,
         "venta_total": str(venta),
         "venta_con_coste_conocido": str(venta_medible),
         "coste": str(coste),
@@ -158,6 +174,13 @@ def margen_de_oferta(
             f"{margen_minimo_pct} %."
             if medibles
             else "No hay ninguna línea con coste: no se puede hablar de margen."
+        ),
+        "aviso_lineas_en_perdidas": (
+            ""
+            if not en_perdidas
+            else f"{len(en_perdidas)} línea(s) se venden por debajo de coste. El total "
+            "las tapa: la aprobación sale por el margen global y el producto que más se "
+            "vende pierde dinero en cada unidad."
         ),
         "aviso": (
             ""

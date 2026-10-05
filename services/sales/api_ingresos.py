@@ -50,6 +50,17 @@ class MetricasIn(BaseModel):
     lineas: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class CerradasIn(BaseModel):
+    cerradas: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Las oportunidades cerradas con su `importe` y su `relacion` "
+            "(`nueva`, `renovacion`, `sustitucion`…): la relación es la que "
+            "decide si eso es crecimiento o es mantenerse"
+        ),
+    )
+
+
 class CalendarioIn(BaseModel):
     oportunidad_id: UUID
     importe_total: Decimal
@@ -107,6 +118,24 @@ class RevisionIn(BaseModel):
 )
 def metricas(cuerpo: MetricasIn, principal: AutenticadoDep) -> Any:
     return ing.metricas_de_ingreso(lineas=cuerpo.lineas)
+
+
+@router_ingresos.post(
+    "/crecimiento",
+    dependencies=[Depends(exige_permiso("sales:read"))],
+    summary="Cuánto se ha crecido de verdad, descontando lo que solo se mantiene",
+    description=(
+        "Es la cifra que se enseña en el comité y la que más se infla sin "
+        "querer: **sumar las renovaciones al crecimiento hace que un año plano "
+        "parezca bueno**, y la corrección llega el día que alguien cruza con "
+        "facturación — delante de todo el mundo.\n\n"
+        "Una renovación y una sustitución mantienen ingreso; no lo añaden. Se "
+        "devuelven los dos números por separado y el porcentaje del cierre que "
+        "es crecimiento de verdad, que es el que contesta a «¿vamos bien?»."
+    ),
+)
+def crecimiento(cuerpo: CerradasIn, principal: AutenticadoDep) -> Any:
+    return ing.crecimiento_real(cerradas=cuerpo.cerradas)
 
 
 @router_ingresos.post(
@@ -321,6 +350,63 @@ def sin_revisar(db: DbDep, principal: AutenticadoDep, dias: int = Query(30)) -> 
         # un nivel más arriba.
         hoy=fechas.hoy(db),
     )
+
+
+@router_planes.get(
+    "/calibracion",
+    dependencies=[Depends(exige_permiso("sales:read"))],
+    summary="Cuánto se parece lo que se dice en las revisiones a lo que pasa",
+    description=(
+        "Es el único uso que justifica guardar las revisiones. Si todo lo que se "
+        "revisa al 80 % se gana la mitad de las veces, **el 80 % no significa "
+        "80 %**: significa «me gusta este caso», y el forecast construido con eso "
+        "no cuadra nunca.\n\n"
+        "Con pocas revisiones cerradas **no se concluye**. Llamar optimista a un "
+        "equipo con seis casos es injusto y le quita credibilidad al ejercicio "
+        "entero, que es como se deja de revisar.\n\n"
+        "El resultado de cada revisión se anota **al cerrar la oportunidad**, "
+        "que es el único momento en que se sabe."
+    ),
+)
+def calibracion(db: DbDep, principal: AutenticadoDep) -> Any:
+    return pc.calibracion(db, principal.tenant_id)
+
+
+@router_planes.get(
+    "/{plan_conjunto_id}/estado",
+    dependencies=[Depends(exige_permiso("sales:read"))],
+    summary="Cómo va el plan, y de quién es lo que va retrasado",
+    description=(
+        "Distinguirlo es todo el valor. Si lo que se retrasa es **nuestro**, se "
+        "aprieta dentro; si lo que se retrasa es **del cliente**, la fecha de "
+        "cierre que hay en el CRM es una ilusión — y eso es lo que hay que "
+        "contar antes de que llegue el final del trimestre, no después.\n\n"
+        "Se dice además si el cliente lo ha **visto**: un plan «conjunto» que el "
+        "cliente no ha abierto es nuestro plan, y conviene que el CRM no diga lo "
+        "contrario."
+    ),
+)
+def estado_del_plan(plan_conjunto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    fila = db.get(PlanConjuntoCliente, plan_conjunto_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Ese plan conjunto no existe", error_code="plan_conjunto.no_encontrado")
+    return {
+        "plan_conjunto_id": str(fila.id),
+        "oportunidad_id": str(fila.oportunidad_id),
+        **pc.estado_del_plan(
+            plan={
+                "pasos": list(fila.pasos or []),
+                "compartido_con_el_cliente": fila.compartido_con_el_cliente,
+                "visto_por_el_cliente_at": fila.visto_por_el_cliente_at,
+            },
+            # El día lo pone quien tiene la sesión: «retrasado» calculado en UTC
+            # adelanta un día para media Europa de madrugada, y un paso que no lo
+            # está sale en rojo delante del cliente.
+            hoy=fechas.hoy(db),
+        ),
+    }
 
 
 # ── Listados ──────────────────────────────────────────────────────────────

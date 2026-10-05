@@ -632,6 +632,7 @@ stateDiagram-v2
 | `PATCH /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/carpeta` | Archivar un adjunto en una carpeta | objeto_tipo*, adjunto_id*, carpeta_id | 200, 422 | — |
 | `POST /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/enlace` | Generar un enlace firmado | objeto_tipo*, adjunto_id* | 200, 422 | — |
 | `PUT /api/v1/agenda/disponibilidad` | Declarar cuándo me puedo reunir | tramos*, duracion_min, margen_min, antelacion_horas, equipo | 200, 422 | — |
+| `POST /api/v1/agenda/turno` | A quién del equipo le toca la próxima reunión, con sus huecos | equipo*, desde, dias | 200, 422 | — |
 | `POST /api/v1/cadencias` | Crear una cadencia | clave*, nombre*, descripcion, pasos*, salida_por_cuenta, solo_laborable | 201, 422 | — |
 | `POST /api/v1/cadencias/avanzar` | Ejecutar los pasos que tocan | — | 200, 422 | `cadence.step.due` |
 | `POST /api/v1/cadencias/inscripciones/{inscripcion_id}/salir` | Sacar a alguien de la cadencia | inscripcion_id*, motivo* | 200, 422 | `cadence.exited` |
@@ -661,6 +662,7 @@ stateDiagram-v2
 | `POST /api/v1/coste/peticion` | Preparar una petición de oferta al proveedor | proveedores, lineas, fecha_limite*, oportunidad_id | 200, 422 | — |
 | `POST /api/v1/coste/rappel` | Qué se recuperará del proveedor y a qué periodo pertenece | compra_acumulada*, tramos, cerrado | 200, 422 | — |
 | `POST /api/v1/coste/reparto` | Repartir entre los proveedores que pueden servir | candidatos, cantidad*, regla | 200, 422 | — |
+| `POST /api/v1/coste/respuestas` | Qué ha contestado cada proveedor, y quién no ha contestado | pedidas_a, respuestas, fecha_limite* | 200, 422 | — |
 | `POST /api/v1/cuotas` | Fijar una cuota | desde*, hasta*, objetivo*, usuario_id, equipo, territorio_id, periodo, metrica, moneda, familia, activa_desde, activa_hasta | 201, 422 | — |
 | `POST /api/v1/cuotas/cobertura` | Si hay pipeline suficiente para llegar | desde*, hasta*, pipeline_por_sujeto, logrado_por_sujeto, minimo | 200, 422 | — |
 | `PATCH /api/v1/cuotas/{cuota_id}` | Editar cuotas | cuota_id*, usuario_id, equipo, territorio_id, partner_id, periodo, desde, hasta, metrica, objetivo, moneda, familia, activa_desde, activa_hasta | 200, 422 | — |
@@ -680,6 +682,7 @@ stateDiagram-v2
 | `POST /api/v1/forecast/periodos/{clave}/jerarquia` | Previsión por comercial, equipo, región y compañía | clave*, nodos*, moneda | 200, 422 | — |
 | `POST /api/v1/forecast/periodos/{clave}/reabrir` | Reabrir un periodo cerrado | clave*, motivo* | 200, 422 | — |
 | `POST /api/v1/ingresos/calendario` | Repartir el importe por periodos | oportunidad_id*, importe_total*, desde*, meses*, tipo, moneda | 201, 422 | — |
+| `POST /api/v1/ingresos/crecimiento` | Cuánto se ha crecido de verdad, descontando lo que solo se mantiene | cerradas | 200, 422 | — |
 | `POST /api/v1/ingresos/metricas` | ARR, MRR, TCV y ACV separando lo recurrente de lo puntual | lineas | 200, 422 | — |
 | `POST /api/v1/ingresos/relacionar` | Enlazar dos oportunidades diciendo qué tipo de relación es | origen_id*, destino_id*, tipo* | 200, 422 | — |
 | `POST /api/v1/ingresos/reparto` | Repartir el crédito entre comerciales | oportunidad_id*, participaciones | 200, 422 | — |
@@ -737,6 +740,7 @@ stateDiagram-v2
 | `POST /api/v1/partners/{partner_id}/activar` | Activar un partner | partner_id*, facturacion, forzar, motivo | 200, 422 | `partner.activated` |
 | `POST /api/v1/partners/{partner_id}/archivar` | Archivar partners | partner_id* | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/certificaciones` | Registrar una certificación | partner_id*, clave*, nombre, persona, obtenida_el, caduca_el, evidencia_url | 201, 422 | — |
+| `POST /api/v1/partners/{partner_id}/descuento` | Si ese precio lo puede dar el partner solo o necesita aprobación | partner_id*, precio_lista*, precio_ofertado*, coste | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/estado` | Suspender, reactivar o dar de baja | partner_id*, estado*, motivo | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/pasos/{paso}` | Marcar hecho un paso del alta | partner_id*, paso* | 200, 422 | — |
 | `POST /api/v1/partners/{partner_id}/planes` | Plan de negocio conjunto | partner_id*, nombre*, desde*, hasta*, objetivos, acciones | 201, 422 | — |
@@ -780,6 +784,9 @@ stateDiagram-v2
 | `POST /api/v1/productos` | Dar de alta un producto | sku*, nombre*, descripcion, familia, tipo_ingreso, periodicidad, unidad, precio_base, moneda, coste, margen_minimo_pct, atributos | 201, 422 | — |
 | `POST /api/v1/productos/comprobar-configuracion` | ¿Se pueden vender juntos? | lineas* | 200, 422 | — |
 | `POST /api/v1/productos/relaciones` | Declarar qué va con qué | producto_id*, relacion*, otro_id*, cantidad, motivo | 201, 422 | — |
+| `POST /api/v1/proveedores-comerciales/alcance` | Declarar qué puede servir un proveedor, en positivo | alcance | 200, 422 | — |
+| `POST /api/v1/proveedores-comerciales/contrato` | Qué hay que hacer con este contrato y cuándo, mirando lo vendido | vigente_hasta, renovacion_automatica, dias_preaviso, compromisos_con_clientes | 200, 422 | — |
+| `POST /api/v1/proveedores-comerciales/puede-servir` | Si este proveedor puede atender este caso, y por qué no | categoria, geografia, cliente_id, alcance | 200, 422 | — |
 | `POST /api/v1/registros-oportunidad` | Registrar una oportunidad de canal | partner_id, cliente_nombre*, nif, dominio, cuenta_id, contacto, importe_estimado, moneda, cierre_estimado, descripcion | 201, 422 | `partner.deal.registered` |
 | `POST /api/v1/registros-oportunidad/caducar` | Cerrar las protecciones vencidas | — | 200, 422 | `partner.deal.expired` |
 | `POST /api/v1/registros-oportunidad/{registro_id}/decidir` | Aprobar o rechazar un registro | registro_id*, aprobar*, motivo, dias_proteccion | 200, 422 | `partner.deal.decided` |

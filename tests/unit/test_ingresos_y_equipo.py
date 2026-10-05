@@ -309,17 +309,69 @@ def test_un_acuerdo_sin_dueño_es_la_misma_reunion_repetida(
     assert fallo.value.error_code == "revision.acuerdo_incompleto"
 
 
+def _revisar_y_cerrar(uow: UnidadDeTrabajo, *, probabilidad: int, ganada: bool) -> None:
+    """Una revisión y el cierre que la cierra.
+
+    Se entra por donde se entra de verdad. Antes estas pruebas le pasaban la
+    lista de revisiones a `calibracion` por parámetro, así que medían el cálculo
+    y **no el circuito** — y el circuito estaba abierto: nadie escribía el
+    resultado, así que con el archivo lleno la calibración contestaba siempre
+    «no hay suficientes para concluir».
+    """
+    oportunidad_id = uuid4()
+    pc.revisar(
+        uow,
+        oportunidad_id=oportunidad_id,
+        respuestas={
+            "que_puede_salir_mal": "Que no haya presupuesto",
+            "que_falta_por_saber": "Quién firma",
+        },
+        probabilidad_declarada=probabilidad,
+        fecha_declarada=HOY,
+        acuerdos=[],
+        revisada_por=uuid4(),
+    )
+    pc.anotar_resultado(uow, oportunidad_id, ganada=ganada)
+
+
 @pytest.mark.db
 def test_con_pocas_revisiones_no_se_llama_optimista_a_nadie(
     uow: UnidadDeTrabajo, contexto_tenant: UUID
 ) -> None:
     """Es injusto y le quita credibilidad al ejercicio entero."""
-    salida = pc.calibracion(
-        uow.db,
-        uow.tenant_id,
-        revisiones=[{"probabilidad_declarada": 80, "resultado": "perdido"} for _ in range(6)],
-    )
+    for _ in range(6):
+        _revisar_y_cerrar(uow, probabilidad=80, ganada=False)
+    salida = pc.calibracion(uow.db, uow.tenant_id)
     assert salida["medible"] is False
+    assert salida["cerradas"] == 6
+
+
+@pytest.mark.db
+def test_una_revision_sin_cerrar_no_cuenta_para_la_calibracion(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID
+) -> None:
+    """Y es lo que hacía que no contara ninguna.
+
+    La columna del resultado existía desde el primer día «para poder compararlo
+    con lo que pasó» y no la escribía nadie. Diez años de revisiones habrían dado
+    la misma respuesta: «no hay suficientes».
+    """
+    for _ in range(20):
+        pc.revisar(
+            uow,
+            oportunidad_id=uuid4(),
+            respuestas={
+                "que_puede_salir_mal": "Nada",
+                "que_falta_por_saber": "Nada",
+            },
+            probabilidad_declarada=85,
+            fecha_declarada=HOY,
+            acuerdos=[],
+            revisada_por=uuid4(),
+        )
+    salida = pc.calibracion(uow.db, uow.tenant_id)
+    assert salida["medible"] is False
+    assert salida["cerradas"] == 0
 
 
 @pytest.mark.db
@@ -328,11 +380,9 @@ def test_un_80_que_se_gana_la_mitad_de_las_veces_no_significa_80(
 ) -> None:
     """Significa «me gusta este caso», y el forecast construido con eso no cuadra
     nunca."""
-    revisiones = [
-        {"probabilidad_declarada": 85, "resultado": "ganado" if i % 2 else "perdido"}
-        for i in range(20)
-    ]
-    salida = pc.calibracion(uow.db, uow.tenant_id, revisiones=revisiones)
+    for i in range(20):
+        _revisar_y_cerrar(uow, probabilidad=85, ganada=bool(i % 2))
+    salida = pc.calibracion(uow.db, uow.tenant_id)
     assert salida["medible"] is True
     assert salida["tramos_desviados"]
 

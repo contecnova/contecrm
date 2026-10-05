@@ -292,6 +292,53 @@ def ver_huecos(
     return cad.huecos(db, principal.tenant_id, usuario_id or principal.id, desde=desde, dias=dias)
 
 
+class TurnoDeEquipo(BaseModel):
+    equipo: str = Field(..., min_length=1, description="El equipo que atiende estas reuniones")
+    desde: date | None = None
+    dias: int = Field(5, ge=1, le=30)
+
+
+@router_agenda.post(
+    "/turno",
+    dependencies=[Depends(exige_permiso("lead:write"))],
+    summary="A quién del equipo le toca la próxima reunión, con sus huecos",
+    description=(
+        "El reparto va por **quién lleva más tiempo sin recibir una**, no por "
+        "orden alfabético ni por identificador: los dos dan siempre la misma "
+        "persona primero, y el reparto deja de repartir — que es como se acaba "
+        "con un comercial desbordado y otro sin agenda.\n\n"
+        "Es `POST` y no `GET` porque **consume el turno**: la vuelta queda "
+        "anotada en el momento de preguntar. Preguntar dos veces sin llegar a "
+        "citar a nadie salta a una persona de la rueda, así que se pregunta "
+        "cuando se va a proponer la reunión, no para mirar.\n\n"
+        "Los huecos que acompañan son los de esa persona, contrastados con su "
+        "calendario si lo hay: una disponibilidad sin mirar el calendario "
+        "produce la reunión que hay que mover, y moverla cuesta más que no "
+        "haberla propuesto."
+    ),
+)
+def turno_de_equipo(datos: TurnoDeEquipo, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    usuario_id = cad.siguiente_del_equipo(db, principal.tenant_id, datos.equipo)
+    if usuario_id is None:
+        raise NoEncontrado(
+            f"Nadie del equipo «{datos.equipo}» tiene disponibilidad declarada y activa. "
+            "Repartir reuniones entre cero personas no falla: deja la reunión sin "
+            "proponer y sin que nadie se entere.",
+            error_code="agenda.equipo_sin_disponibilidad",
+            detalle={"equipo": datos.equipo},
+        )
+    return {
+        "usuario_id": str(usuario_id),
+        "equipo": datos.equipo,
+        "turno_consumido": True,
+        "huecos": cad.huecos(
+            db, principal.tenant_id, usuario_id, desde=datos.desde, dias=datos.dias
+        ),
+    }
+
+
 class CrearMetodologia(BaseModel):
     clave: str = Field(..., min_length=1, max_length=80)
     nombre: str = Field(..., min_length=1, max_length=200)

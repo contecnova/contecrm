@@ -12032,6 +12032,11 @@ nadie piensa en lo que todavía no ha pasado. Y cuando no puede servir un caso s
 dice **por qué**: en un caso se busca otro proveedor y en el otro se cambia lo que
 se ofrece.
 
+Las tres cosas —el estado del contrato, el alcance declarado y si puede servir un
+caso concreto— se preguntan **antes de comprometer nada**, que es cuando todavía
+sirven de algo. Encargar fuera de alcance no falla en el momento: falla en la
+entrega, con la oferta ya firmada.
+
 **Y el acuerdo de servicio del proveedor se compara con el que se le promete al
 cliente.** Comercial promete cuatro horas de respuesta porque es lo que pide el
 pliego, y el proveedor que va a ir tiene contratadas ocho. Nadie miente: es que los
@@ -12052,6 +12057,18 @@ Un CRM sabe poner precio a lo que se vende y, si no sabe lo que cuesta, **no pue
 decir el margen** — que es lo único que un responsable aprueba o rechaza de
 verdad. Aprobar por porcentaje de descuento es aprobar a ciegas: un 5 % sobre algo
 que se compra caro pierde dinero y un 30 % sobre algo que se compra bien no.
+
+Y el margen se dice **también línea a línea**. Un total sano tapa una línea
+vendida por debajo de coste: la aprobación sale por el total, nadie mira dentro, y
+lo que se descubre meses después es que el producto que más se vende pierde dinero
+en cada unidad. Las líneas en pérdidas salen nombradas, no contadas.
+
+Y al pedir ofertas, lo que hay que mirar es **quién no ha contestado**. Es lo que
+casi nunca se enseña: si tres de cinco no han contestado, la comparación no es
+entre cinco opciones sino entre dos, y decidir sin saberlo es creer que se ha
+comparado el mercado cuando se ha comparado lo que llegó. Se dice también quién
+llegó fuera de plazo, porque una oferta buena recibida tarde no es una opción: es
+la conversación de por qué se eligió otra.
 
 **La tarifa de coste va en el mismo motor de precios**, con el sentido cambiado.
 Un motor paralelo para costes acabaría con dos formas de escalar por volumen y dos
@@ -12407,8 +12424,11 @@ enseña en la reunión y no se mira entre reuniones.
 Al mirar cómo va, lo importante es **de quién es lo que se retrasa**. Si es
 nuestro, se aprieta dentro; si es del cliente, la fecha de cierre que hay en el
 CRM es una ilusión — y eso es lo que hay que contar antes de que llegue el final
-del trimestre, no después. Y si el cliente no ha visto el plan, se dice: un plan
-«conjunto» que solo hemos leído nosotros es nuestro plan.
+del trimestre, no después. Un paso **conjunto** retrasado va en su propio grupo y
+no en el del cliente: depende de los dos, así que ni se arregla apretando dentro
+ni esperando fuera, y meterlo entre los del cliente es la lectura cómoda — la que
+deja de apretar. Y si el cliente no ha visto el plan, se dice: un plan «conjunto»
+que solo hemos leído nosotros es nuestro plan.
 
 **La revisión de oportunidad** es la conversación en la que un jefe pregunta por
 qué esto va a cerrar. Sin estructura se convierte en «¿cómo lo ves?» y en un
@@ -12421,6 +12441,9 @@ la misma reunión repetida dentro de dos semanas.
 Lo que justifica guardarlas es poder **compararlas con lo que pasó**. Si todo lo
 que se revisa al 80 % se gana la mitad de las veces, el 80 % no significa 80 %:
 significa «me gusta este caso», y el forecast construido con eso no cuadra nunca.
+El resultado de cada revisión se anota **al cerrar la oportunidad**, que es el
+único momento en que se sabe: pedirlo aparte significa que no lo pide nadie, y
+entonces la comparación no se puede hacer por mucho archivo que haya.
 Con menos de diez revisiones cerradas no se concluye: llamar optimista a un equipo
 con seis casos es injusto y le quita credibilidad al ejercicio entero. Y se revisan
 las grandes y las avanzadas, no todas: revisar cien oportunidades pequeñas al mes

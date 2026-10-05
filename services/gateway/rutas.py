@@ -211,6 +211,10 @@ PREFIJOS: dict[str, str] = {
     "oportunidades": "sales",
     # Coste, tarifas de proveedor y capacidad (CRM-09.02.01).
     "coste": "sales",
+    # El contrato con el proveedor y su alcance comercial: va a `sales` y no a
+    # `party` porque las dos cosas deciden qué se puede vender
+    # (CRM-09.01.01.07, CRM-09.01.01.09).
+    "proveedores-comerciales": "sales",
     # Ingresos recurrentes, reparto, grupo de compra y plan conjunto
     # (CRM-03.01.01, CRM-03.01.02).
     "ingresos": "sales",

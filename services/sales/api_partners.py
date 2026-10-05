@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import fechas
 from crmcore.authz.estanco import aplicar_estanco, exigir_propio
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha
@@ -439,6 +440,49 @@ def crear_acuerdo(datos: Acuerdo, uow: UowDep) -> Any:
     uow.db.add(fila)
     uow.db.flush()
     return {"id": str(fila.id)}
+
+
+class DescuentoIn(BaseModel):
+    precio_lista: Decimal = Field(..., gt=0)
+    precio_ofertado: Decimal = Field(..., ge=0)
+    coste: Decimal | None = Field(
+        None,
+        description=(
+            "Sin coste no se afirma que el margen esté bien: no se ha medido, y "
+            "la respuesta lo dice en vez de callarlo"
+        ),
+    )
+
+
+@router.post(
+    "/{partner_id}/descuento",
+    dependencies=[Depends(exige_permiso("partner:read"))],
+    summary="Si ese precio lo puede dar el partner solo o necesita aprobación",
+    description=(
+        "El precio de catálogo dice cuál es el **suelo**; esto contesta sobre el "
+        "precio que el partner quiere dar de verdad, que es la pregunta que se "
+        "hace al montar la oferta y no después de haberla mandado.\n\n"
+        "Se comprueban las **dos** condiciones del acuerdo: el tope de descuento "
+        "del canal y el margen mínimo pactado. Y si no se pasa el coste, la "
+        "respuesta dice que el margen **no se ha medido** en vez de dar por "
+        "bueno lo que no se ha mirado: un «sin problemas» que en realidad "
+        "significa «no lo sé» es lo que hace que se firme un precio que pierde "
+        "dinero."
+    ),
+)
+def descuento(partner_id: UUID, cuerpo: DescuentoIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    return prt.comprobar_descuento(
+        db,
+        principal.tenant_id,
+        partner_id=partner_id,
+        precio_lista=cuerpo.precio_lista,
+        precio_ofertado=cuerpo.precio_ofertado,
+        coste=cuerpo.coste,
+        # La vigencia del acuerdo se mira con el día del cliente: un acuerdo que
+        # vence hoy, leído en UTC de madrugada, aparece vencido un día antes y
+        # manda a pedir aprobación a quien no la necesita.
+        en_fecha=fechas.hoy(db),
+    )
 
 
 @router.get(

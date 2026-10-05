@@ -202,6 +202,7 @@ def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[st
     pasos = list(plan.get("pasos") or [])
     retrasados_nuestros: list[str] = []
     retrasados_del_cliente: list[str] = []
+    retrasados_conjuntos: list[str] = []
     hechos = 0
 
     for paso in pasos:
@@ -212,8 +213,15 @@ def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[st
         if isinstance(fecha, str):
             fecha = date.fromisoformat(fecha)
         if isinstance(fecha, date) and fecha < momento:
-            if paso.get("de_quien") == "nuestro":
+            # Los tres cubos, y no dos. «conjunto» es un valor admitido del
+            # vocabulario, y meterlo en el cubo del cliente —que es lo que hacía
+            # el `else`— convierte un paso que también es nuestro en un retraso
+            # ajeno: la lectura más cómoda y la que deja de apretar dentro.
+            de_quien = str(paso.get("de_quien") or "")
+            if de_quien == "nuestro":
                 retrasados_nuestros.append(str(paso.get("titulo")))
+            elif de_quien == "conjunto":
+                retrasados_conjuntos.append(str(paso.get("titulo")))
             else:
                 retrasados_del_cliente.append(str(paso.get("titulo")))
 
@@ -225,12 +233,16 @@ def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[st
         "hechos": hechos,
         "retrasados_nuestros": retrasados_nuestros,
         "retrasados_del_cliente": retrasados_del_cliente,
+        "retrasados_conjuntos": retrasados_conjuntos,
         "compartido": compartido,
         "visto_por_el_cliente": bool(visto),
-        "la_fecha_es_creible": not retrasados_del_cliente,
+        # Un paso conjunto retrasado también deja la fecha en el aire: depende de
+        # alguien de fuera igual que uno del cliente, y creérsela por estar
+        # escrito «conjunto» es creérsela por la etiqueta.
+        "la_fecha_es_creible": not retrasados_del_cliente and not retrasados_conjuntos,
         "que_significa": (
             "El plan va en fecha."
-            if not retrasados_nuestros and not retrasados_del_cliente
+            if not retrasados_nuestros and not retrasados_del_cliente and not retrasados_conjuntos
             else " ".join(
                 filter(
                     None,
@@ -243,6 +255,11 @@ def estado_del_plan(*, plan: dict[str, Any], hoy: date | None = None) -> dict[st
                         "fecha de cierre que hay en el CRM es una ilusión, y eso hay que "
                         "contarlo antes del final del trimestre."
                         if retrasados_del_cliente
+                        else "",
+                        f"{len(retrasados_conjuntos)} pasos conjuntos retrasados: "
+                        "dependen de los dos, así que no se arreglan apretando dentro "
+                        "ni esperando fuera."
+                        if retrasados_conjuntos
                         else "",
                     ],
                 )
@@ -328,9 +345,37 @@ def revisar(
     }
 
 
-def calibracion(
-    db: Session, tenant_id: UUID, *, revisiones: list[dict[str, Any]]
-) -> dict[str, Any]:
+def anotar_resultado(uow: UnidadDeTrabajo, oportunidad_id: UUID, *, ganada: bool) -> int:
+    """Escribe en las revisiones de esa oportunidad **cómo acabó**.
+
+    Sin esto la calibración no existe. La columna `resultado` llevaba desde el
+    primer día con el comentario «para poder compararlo con lo que pasó» y **no
+    la escribía nadie**: todas las revisiones se quedaban con el resultado vacío,
+    así que la calibración —que descarta las que no tienen resultado— contestaba
+    siempre «no hay suficientes para concluir». Una respuesta perfectamente
+    razonable que habría seguido saliendo con diez años de revisiones dentro.
+
+    Se anota **al cerrar**, que es el único momento en que se sabe. Pedirlo
+    aparte significa que nadie lo pide.
+    """
+    filas = (
+        uow.db.execute(
+            select(RevisionOportunidad).where(
+                RevisionOportunidad.tenant_id == uow.tenant_id,
+                RevisionOportunidad.oportunidad_id == oportunidad_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for fila in filas:
+        fila.resultado = "ganado" if ganada else "perdido"
+    if filas:
+        uow.db.flush()
+    return len(filas)
+
+
+def calibracion(db: Session, tenant_id: UUID) -> dict[str, Any]:
     """Cuánto se parece lo que se dice en las revisiones a lo que pasa.
 
     Es el único uso que justifica guardarlas. Si todo lo que se revisa al 80 % se
@@ -339,7 +384,19 @@ def calibracion(
 
     Con pocas revisiones cerradas **no se concluye**: llamar optimista a un equipo
     con seis casos es injusto y además quita credibilidad al ejercicio entero.
+
+    Lee las revisiones **de la tabla**. Antes recibía la lista por parámetro y se
+    le pasaban `db` y `tenant_id` que no usaba: una firma que dice que lee y no
+    lee, y que dejaba la medida en manos de quien llamara —que no llamaba nadie—.
     """
+    revisiones = [
+        {"probabilidad_declarada": f.probabilidad_declarada, "resultado": f.resultado}
+        for f in db.execute(
+            select(RevisionOportunidad).where(RevisionOportunidad.tenant_id == tenant_id)
+        )
+        .scalars()
+        .all()
+    ]
     cerradas = [r for r in revisiones if r.get("resultado") in ("ganado", "perdido")]
     if len(cerradas) < 10:
         return {

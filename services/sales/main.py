@@ -14,6 +14,7 @@ from services.sales.api_coste import ROUTERS_COSTE
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
 from services.sales.api_ingresos import ROUTERS_INGRESOS
 from services.sales.api_partners import ROUTERS_PARTNERS
+from services.sales.api_proveedores import ROUTERS_PROVEEDORES
 from services.sales.api_territorios import ROUTERS_TERRITORIOS
 from services.sales.consumidores import (
     consumir_comando,
@@ -54,6 +55,7 @@ app = crear_servicio(
         *ROUTERS_TERRITORIOS,
         *ROUTERS_PARTNERS,
         *ROUTERS_COMISIONES,
+        *ROUTERS_PROVEEDORES,
     ],
     al_arrancar=_al_arrancar,
     routers_sin_prefijo=ROUTERS_SIN_PREFIJO,

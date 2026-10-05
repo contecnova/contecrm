@@ -29,6 +29,7 @@ from services.sales.modelos import (
     Pipeline,
 )
 from services.sales.origen import registrar_alta
+from services.sales.plan_conjunto import anotar_resultado
 
 logger = get_logger(__name__)
 
@@ -592,6 +593,12 @@ def _cerrar(uow: UnidadDeTrabajo, oportunidad: Oportunidad, *, ganada: bool, mot
             )
         if not oportunidad.motivo_perdida:
             oportunidad.motivo_perdida = motivo
+
+    # Lo que se dijo en las revisiones se compara con lo que pasó, y «lo que
+    # pasó» sólo se sabe aquí. Sin esta línea la columna `resultado` se quedaba
+    # siempre vacía y la calibración contestaba «no hay suficientes para
+    # concluir» para siempre, con el archivo lleno de revisiones.
+    anotar_resultado(uow, oportunidad.id, ganada=ganada)
 
     uow.emitir(
         "opportunity.won" if ganada else "opportunity.lost",

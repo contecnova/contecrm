@@ -48,6 +48,15 @@ class PeticionIn(BaseModel):
     oportunidad_id: UUID | None = None
 
 
+class RespuestasIn(BaseModel):
+    pedidas_a: list[UUID] = Field(default_factory=list, description="A quién se le pidió oferta")
+    respuestas: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Cada una con `proveedor_id` y, si la hay, `recibida_el`",
+    )
+    fecha_limite: date
+
+
 class RepartoIn(BaseModel):
     candidatos: list[dict[str, Any]] = Field(default_factory=list)
     cantidad: Decimal
@@ -179,6 +188,32 @@ def peticion(cuerpo: PeticionIn, db: DbDep, principal: AutenticadoDep) -> Any:
         # Una fecha límite «de hoy» calculada en UTC adelanta el plazo un día
         # para media Europa de madrugada, y el plazo de una petición de oferta
         # es lo que decide si la respuesta llega a tiempo.
+        hoy=fechas.hoy(db),
+    )
+
+
+@router_coste.post(
+    "/respuestas",
+    dependencies=[Depends(exige_permiso("sales:read"))],
+    summary="Qué ha contestado cada proveedor, y quién no ha contestado",
+    description=(
+        "**Lo segundo es lo que casi nunca se enseña y lo que más se necesita.** "
+        "Si tres de cinco no han contestado, la comparación no es entre cinco "
+        "opciones: es entre dos, y decidir sin saberlo es creer que se ha "
+        "comparado el mercado cuando se ha comparado lo que llegó.\n\n"
+        "Se dice también **quién llegó fuera de plazo**, porque una oferta buena "
+        "recibida tarde no es una opción: es la conversación de por qué se "
+        "eligió otra."
+    ),
+)
+def respuestas(cuerpo: RespuestasIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    return cst.recoger_respuestas(
+        pedidas_a=cuerpo.pedidas_a,
+        respuestas=cuerpo.respuestas,
+        fecha_limite=cuerpo.fecha_limite,
+        # Igual que al preparar la petición: un «hoy» en UTC cierra el plazo un
+        # día antes para media Europa de madrugada, y el plazo es lo que decide
+        # si una respuesta cuenta.
         hoy=fechas.hoy(db),
     )
 
