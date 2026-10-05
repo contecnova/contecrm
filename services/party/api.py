@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.authz.visibilidad import aplicar_visibilidad
-from crmcore.errors import ErrorValidacion
+from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
@@ -505,6 +505,51 @@ def fusionar_cuentas(
 
 
 @router_calidad.post(
+    "/contacts/{contacto_id}/merge",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("account:merge"))],
+    summary="Fusionar dos contactos",
+    description=(
+        "La misma operación que con cuentas, y **faltaba**: se podían fusionar "
+        "empresas duplicadas y no personas, que es donde más duplicados hay — la "
+        "misma persona entra por un formulario, por una importación y por una "
+        "tarjeta escaneada.\n\n"
+        "El absorbido **no se borra**: se marca y conserva su identificador, "
+        "porque hay actividades y consentimientos que apuntan a él. La fusión se "
+        "puede deshacer."
+    ),
+)
+def fusionar_contactos(
+    contacto_id: UUID, datos: Fusionar, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    fusion = duplicados.fusionar_contactos(
+        uow.db,
+        superviviente_id=contacto_id,
+        absorbido_id=datos.absorbido_id,
+        campos_ganadores=datos.campos_ganadores,
+        motivo=datos.motivo,
+        por=principal.id,
+    )
+    uow.db.flush()
+    uow.emitir(
+        "record.merged",
+        subject=("contacto", contacto_id),
+        data={
+            "objeto": "contacto",
+            "superviviente_id": str(contacto_id),
+            "absorbido_id": str(datos.absorbido_id),
+        },
+    )
+    return {
+        "fusion_id": str(fusion.id),
+        "relaciones_movidas": fusion.relaciones_movidas,
+        "campos_del_absorbido": [
+            c for c, quien in fusion.supervivencia.items() if quien == "absorbida"
+        ],
+    }
+
+
+@router_calidad.post(
     "/merges/{fusion_id}/undo",
     status_code=status.HTTP_200_OK,
     response_model=dict,
@@ -978,6 +1023,49 @@ def ejecutar_rectificacion(
     return derechos.ejecutar_rectificacion(
         db, solicitud_id, cambios=cuerpo.cambios, por=principal.id
     )
+
+
+class ComprobarEvidencia(BaseModel):
+    accion: str = Field(..., min_length=1, examples=["acceso"])
+    contenido: dict[str, Any] = Field(default_factory=dict)
+
+
+@router_derechos.post(
+    "/{solicitud_id}/comprobar-evidencia",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Si este contenido es el que consta entregado",
+    description=(
+        "**Es la otra mitad de la evidencia**, y no la tenía nadie: guardar la "
+        "huella de lo entregado no sirve de nada si no hay forma de "
+        "comprobarla.\n\n"
+        "Con esto, ante una reclamación dos años después se puede demostrar que "
+        "el expediente que se entregó es el que consta — sin haber conservado una "
+        "copia, que sería conservar justo los datos que el interesado quería que "
+        "dejáramos de tener."
+    ),
+)
+def comprobar_evidencia(
+    solicitud_id: UUID, cuerpo: ComprobarEvidencia, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.party import derechos
+    from services.party.modelos import SolicitudDerechos
+
+    solicitud = db.get(SolicitudDerechos, solicitud_id)
+    if solicitud is None or solicitud.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Esa solicitud no existe", error_code="party.solicitud_no_existe")
+    coincide = derechos.comprobar_evidencia(solicitud, cuerpo.accion, cuerpo.contenido)
+    return {
+        "coincide": coincide,
+        "accion": cuerpo.accion,
+        "porque": (
+            "La huella del contenido entregado coincide con la que consta."
+            if coincide
+            else "No coincide, o no hay evidencia guardada para esa acción. Las dos "
+            "cosas se responden igual a propósito: decir cuál de las dos es le "
+            "diría a quien prueba si para esa solicitud hubo entrega."
+        ),
+    }
 
 
 @router_derechos.post(

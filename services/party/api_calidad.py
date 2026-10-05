@@ -13,6 +13,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
@@ -21,7 +22,12 @@ from pydantic import BaseModel, Field
 from services.party import cuenta_360 as c360
 from services.party import mdm
 from services.party import stewardship as stw
-from services.party.cuenta_360 import EstadoFinanciero, PlanCuenta, RelacionPersona
+from services.party.cuenta_360 import (
+    CambioDeEmpresa,
+    EstadoFinanciero,
+    PlanCuenta,
+    RelacionPersona,
+)
 from services.party.stewardship import ExcepcionCalidad
 
 router_calidad = APIRouter(prefix="/calidad-dato", tags=["calidad del dato"])
@@ -399,7 +405,233 @@ montar_listado(
 )
 
 
-ROUTERS_CALIDAD = [router_calidad, router_plan, router_personas]
+# ── Lo del plan de cuenta y el mapa de poder que no se podía pedir ────────
+#
+# Medido el 05-10-2026: siete decisiones de `cuenta_360` y tres de identidad y
+# linaje estaban escritas, probadas y **sin una sola puerta**. El plan de cuenta
+# tenía su tabla y su listado, y lo que lo convierte en un plan —el hueco
+# calculado, el aviso de caducidad, el mapa de con quién no se ha hablado— no se
+# podía pedir desde ninguna parte.
+
+
+class HuecoIn(BaseModel):
+    catalogo: list[dict[str, Any]] = Field(default_factory=list)
+    ya_le_vendemos: list[str] = Field(default_factory=list)
+
+
+@router_plan.post(
+    "/hueco",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Qué del catálogo no se le vende todavía",
+    description=(
+        "**Calculado, no tecleado**, y es lo único que separa un plan de cuenta "
+        "de una lista de deseos. Si el hueco lo escribe el comercial, escribe lo "
+        "que tiene en la cabeza; calculado contra lo que ya se factura, aparece "
+        "lo que nadie había mirado."
+    ),
+)
+def hueco_del_plan(cuerpo: HuecoIn, principal: AutenticadoDep) -> Any:
+    return c360.calcular_hueco(catalogo=cuerpo.catalogo, ya_le_vendemos=cuerpo.ya_le_vendemos)
+
+
+@router_plan.get(
+    "/{plan_cuenta_id}/caducado",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Si este plan lleva demasiado sin revisarse",
+    description=(
+        "Un plan anual que nadie toca desde enero no es un plan: es un "
+        "documento. Se avisa en vez de dejarlo envejecer en silencio, porque en "
+        "la reunión de seguimiento se enseña igual y nadie mira la fecha."
+    ),
+)
+def plan_caducado(plan_cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    fila = db.get(PlanCuenta, plan_cuenta_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Ese plan no existe", error_code="party.plan_no_existe")
+    return c360.plan_caducado(revisado_at=fila.revisado_at)
+
+
+class MapaIn(BaseModel):
+    contactos: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_personas.post(
+    "/mapa-de-poder",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Quién manda, quién ayuda, quién estorba y con quién no se ha hablado",
+    description=(
+        "Lo último es lo que de verdad hace falta antes de una reunión. Un mapa "
+        "que sólo enseña a los conocidos confirma lo que el comercial ya sabía; "
+        "el valor está en el **decisor con el que nadie ha hablado**."
+    ),
+)
+def mapa_de_poder(cuerpo: MapaIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    return c360.mapa_de_poder(db, principal.tenant_id, contactos=cuerpo.contactos)
+
+
+@router_calidad.get(
+    "/uniones-propuestas",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Pares de contactos que parecen la misma persona",
+    description=(
+        "**Propone, no une.** Unir automáticamente dos personas distintas le "
+        "enseña a una el historial de la otra, y eso no se deshace aunque se "
+        "deshaga la unión."
+    ),
+)
+def uniones_propuestas(
+    db: DbDep,
+    principal: AutenticadoDep,
+    umbral: int | None = Query(None, ge=0, le=100),
+    limite: int = Query(50, ge=1, le=200),
+) -> Any:
+    from services.party import identidad
+
+    return identidad.proponer_uniones(db, principal.tenant_id, umbral=umbral, limite=limite)
+
+
+@router_calidad.get(
+    "/identidades/{objeto}/{objeto_id}",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Con qué identificadores se conoce a esta persona en cada canal",
+    description=(
+        "Correo, cookie, teléfono, identificador de la aplicación, del ERP. "
+        "Resolver la identidad entre canales es lo que impide que la misma "
+        "persona cuente como cuatro, y para poder revisarlo hay que poder verlo."
+    ),
+)
+def identidades_de(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.party import identidad
+
+    return identidad.identidades_de(db, principal.tenant_id, objeto=objeto, objeto_id=objeto_id)
+
+
+# ── El contacto que cambia de empresa ─────────────────────────────────────
+#
+# Tres decisiones escritas y sin puerta. Lo que pasa sin ellas: la persona se va
+# a otra empresa, su ficha se queda en la cuenta antigua y el comercial le
+# escribe a una dirección que ya no existe — o peor, le escribe al correo nuevo
+# con el histórico de la empresa anterior delante.
+
+router_cambios = APIRouter(prefix="/cambios-de-empresa", tags=["calidad del dato"])
+
+
+class IndicioIn(BaseModel):
+    contacto_id: UUID
+    cuenta_anterior_id: UUID | None = None
+    indicio: str = Field(..., min_length=1, examples=["rebote_duro"])
+    detalle: str = ""
+
+
+@router_cambios.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Abrir la sospecha de que alguien ha cambiado de empresa",
+    description=(
+        "**Sospecha, no hecho.** Mover el contacto en cuanto rebota un correo "
+        "dejaría la cuenta antigua sin su interlocutor por un buzón lleno. Lo que "
+        "se abre es una revisión con su indicio."
+    ),
+)
+def abrir_cambio(cuerpo: IndicioIn, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = c360.detectar_cambio(
+        uow,
+        contacto_id=cuerpo.contacto_id,
+        cuenta_anterior_id=cuerpo.cuenta_anterior_id,
+        indicio=cuerpo.indicio,
+        detalle=cuerpo.detalle,
+    )
+    return {"id": str(fila.id), "estado": fila.estado}
+
+
+class ConfirmarCambio(BaseModel):
+    cuenta_nueva_id: UUID
+    contacto_nuevo_id: UUID
+
+
+@router_cambios.post(
+    "/{cambio_de_empresa_id}/confirmar",
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Confirmar el cambio y dejar el rastro en las dos cuentas",
+)
+def confirmar_cambio(
+    cambio_de_empresa_id: UUID, cuerpo: ConfirmarCambio, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return c360.confirmar_cambio(
+        uow,
+        cambio_id=cambio_de_empresa_id,
+        cuenta_nueva_id=cuerpo.cuenta_nueva_id,
+        contacto_nuevo_id=cuerpo.contacto_nuevo_id,
+    )
+
+
+@router_cambios.post(
+    "/{cambio_de_empresa_id}/descartar",
+    dependencies=[Depends(exige_permiso("contact:write"))],
+    summary="Descartar la sospecha, con motivo",
+    description=(
+        "Con motivo porque la misma señal volverá: sin saber por qué se descartó, "
+        "la revisión siguiente vuelve a abrirla y se descarta otra vez."
+    ),
+)
+def descartar_cambio(
+    cambio_de_empresa_id: UUID,
+    uow: UowDep,
+    principal: AutenticadoDep,
+    motivo: str = Query("", max_length=500),
+) -> Any:
+    return c360.descartar_cambio(uow, cambio_id=cambio_de_empresa_id, motivo=motivo)
+
+
+class CuentaPersonalIn(BaseModel):
+    """Lo que se mira de una cuenta de persona.
+
+    Se declara en vez de aceptar un diccionario suelto: un cuerpo sin esquema se
+    pinta como un formulario vacío, y quien lo usa tiene que adivinar los campos.
+    """
+
+    nombre: str = ""
+    sector_codigo: str | None = Field(
+        None,
+        description=(
+            "De empresa, y por eso se mira: pedirle el CNAE a un particular es lo "
+            "que hace que el comercial escriba cualquier cosa para poder guardar"
+        ),
+    )
+    empleados: int | None = None
+    facturacion_anual: float | None = None
+
+
+@router_plan.post(
+    "/cuenta-personal/validar",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Si esta cuenta de persona está completa para poder usarse",
+    description=(
+        "Una cuenta personal **no es una empresa con menos campos**: la ficha "
+        "entera pasa a ser dato personal —el nombre de la cuenta es el nombre de "
+        "alguien y su dirección su domicilio— y los campos de empresa dejan de "
+        "tener sentido, así que no se pueden exigir."
+    ),
+)
+def validar_cuenta_personal(cuerpo: CuentaPersonalIn, principal: AutenticadoDep) -> Any:
+    return c360.validar_cuenta_personal(datos=cuerpo.model_dump(exclude_none=True))
+
+
+# El listado de los cambios detectados. Sin él, abrir uno para confirmarlo o
+# descartarlo exigiría saberse su identificador: la cola de revisión existiría y
+# no se podría abrir.
+montar_listado(
+    router_cambios,
+    modelo=CambioDeEmpresa,
+    objeto="cambio_de_empresa",
+    permiso="party:read",
+    permiso_escribir="contact:write",
+    nombre="Cambios de empresa",
+)
+
+
+ROUTERS_CALIDAD = [router_calidad, router_plan, router_personas, router_cambios]
 
 
 # ── Salud de la cuenta, replicada (CRM-01.01.05.07) ───────────────────────

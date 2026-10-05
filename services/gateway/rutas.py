@@ -199,6 +199,9 @@ PREFIJOS: dict[str, str] = {
     "calidad-dato": "party",
     "planes-cuenta": "party",
     "mapa-personas": "party",
+    # El contacto que cambia de empresa: la sospecha, su confirmación y su
+    # descarte. Lo lleva `party` porque la ficha es suya.
+    "cambios-de-empresa": "party",
     # El proveedor es una cuenta con rol (CRM-09.01.01.01); esto es lo que se
     # le añade encima: homologación, papeles y contactos.
     "proveedores": "party",

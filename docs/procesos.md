@@ -484,6 +484,11 @@ stateDiagram-v2
 | `POST /api/v1/calidad-dato/enriquecimiento/aplicar` | Aplicar lo del proveedor sin pisar lo que escribió una persona | actuales, del_proveedor, escritos_a_mano | 200, 422 | — |
 | `POST /api/v1/calidad-dato/enriquecimiento/planificar` | Qué se va a enriquecer y cuánto va a costar | candidatas, coste_por_consulta, presupuesto | 200, 422 | — |
 | `POST /api/v1/calidad-dato/golden` | Componer la ficha buena a partir de lo que dice cada sistema | campos, reglas, confianza_por_fuente | 200, 422 | — |
+| `POST /api/v1/cambios-de-empresa` | Abrir la sospecha de que alguien ha cambiado de empresa | contacto_id*, cuenta_anterior_id, indicio*, detalle | 201, 422 | — |
+| `PATCH /api/v1/cambios-de-empresa/{cambio_de_empresa_id}` | Editar cambios de empresa | cambio_de_empresa_id*, contacto_id, cuenta_anterior_id, indicio, detalle, estado, contacto_nuevo_id, cuenta_nueva_id | 200, 422 | — |
+| `POST /api/v1/cambios-de-empresa/{cambio_de_empresa_id}/archivar` | Archivar cambios de empresa | cambio_de_empresa_id* | 200, 422 | — |
+| `POST /api/v1/cambios-de-empresa/{cambio_de_empresa_id}/confirmar` | Confirmar el cambio y dejar el rastro en las dos cuentas | cambio_de_empresa_id*, cuenta_nueva_id*, contacto_nuevo_id* | 200, 422 | — |
+| `POST /api/v1/cambios-de-empresa/{cambio_de_empresa_id}/descartar` | Descartar la sospecha, con motivo | cambio_de_empresa_id*, motivo | 200, 422 | — |
 | `POST /api/v1/comentarios/{objeto_tipo}/hilos/{hilo_id}/resolver` | Dar un hilo por resuelto | objeto_tipo*, hilo_id*, resuelto | 200, 422 | — |
 | `PATCH /api/v1/comentarios/{objeto_tipo}/{comentario_id}` | Editar un comentario propio | objeto_tipo*, comentario_id*, cuerpo* | 200, 422 | — |
 | `DELETE /api/v1/comentarios/{objeto_tipo}/{comentario_id}` | Retirar un comentario | objeto_tipo*, comentario_id* | 200, 422 | — |
@@ -499,12 +504,14 @@ stateDiagram-v2
 | `POST /api/v1/data-quality/accounts/duplicates/barrido` | Buscar duplicados en todo el maestro | limite | 200, 422 | — |
 | `POST /api/v1/data-quality/accounts/duplicates/cola/{candidato_id}` | Decidir una pareja | candidato_id*, decision*, superviviente_id, nota | 200, 422 | — |
 | `POST /api/v1/data-quality/accounts/{cuenta_id}/merge` | Fusionar dos cuentas | cuenta_id*, absorbido_id*, campos_ganadores, motivo* | 200, 422 | `account.merged`, `record.merged` |
+| `POST /api/v1/data-quality/contacts/{contacto_id}/merge` | Fusionar dos contactos | contacto_id*, absorbido_id*, campos_ganadores, motivo* | 200, 422 | `record.merged` |
 | `POST /api/v1/data-quality/merges/{fusion_id}/undo` | Deshacer una fusión | fusion_id*, motivo* | 200, 422 | — |
 | `POST /api/v1/data-subject-requests` | Registrar una solicitud de derechos | email_solicitante*, tipo*, contacto_id, canal_entrada | 201, 422 | — |
 | `POST /api/v1/data-subject-requests/limitaciones/{contacto_id}/levantar` | Levantar la limitación, dejando dicho por qué | contacto_id*, motivo* | 200, 422 | `contact.processing_lifted` |
 | `PATCH /api/v1/data-subject-requests/{solicitud_id}` | Editar solicitudes de derechos | solicitud_id*, contacto_id, email_solicitante, tipo, estado, canal_entrada, recibida_at, vence_at, resuelta_at, resolucion, evidencia, responsable_id | 200, 422 | — |
 | `DELETE /api/v1/data-subject-requests/{solicitud_id}` | Borrar solicitudes de derechos | solicitud_id* | 204, 422 | — |
 | `POST /api/v1/data-subject-requests/{solicitud_id}/archivar` | Archivar solicitudes de derechos | solicitud_id* | 200, 422 | — |
+| `POST /api/v1/data-subject-requests/{solicitud_id}/comprobar-evidencia` | Si este contenido es el que consta entregado | solicitud_id*, accion*, contenido | 200, 422 | — |
 | `POST /api/v1/data-subject-requests/{solicitud_id}/ejecutar-acceso` | Reunir todo lo que este servicio guarda de la persona | solicitud_id* | 200, 422 | — |
 | `POST /api/v1/data-subject-requests/{solicitud_id}/ejecutar-limitacion` | Bloquear el tratamiento sin borrar nada (CRM-02.04.02.05) | solicitud_id*, tratamientos, motivo | 200, 422 | `contact.processing_limited` |
 | `POST /api/v1/data-subject-requests/{solicitud_id}/ejecutar-oposicion` | Atender la oposición al tratamiento | solicitud_id*, tratamientos, motivo | 200, 422 | `contact.processing_limited` |
@@ -519,6 +526,7 @@ stateDiagram-v2
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/mapa-personas` | Anotar cómo se relacionan dos personas de la cuenta | origen_id*, destino_id*, tipo*, motivo | 201, 422 | — |
+| `POST /api/v1/mapa-personas/mapa-de-poder` | Quién manda, quién ayuda, quién estorba y con quién no se ha hablado | contactos | 200, 422 | — |
 | `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, origen_id, destino_id, tipo, motivo, anotada_por_id | 200, 422 | — |
 | `DELETE /api/v1/mapa-personas/{relacion_persona_id}` | Borrar mapa de personas | relacion_persona_id* | 204, 422 | — |
 | `POST /api/v1/party-admin/importar/cuentas` | Importar cuentas desde filas | simular, actualizar | 200, 422 | — |
@@ -539,9 +547,11 @@ stateDiagram-v2
 | `POST /api/v1/party/retencion/purgar` | Aplicar la retención | clase, simular | 200, 422 | — |
 | `POST /api/v1/party/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/planes-cuenta` | Guardar el plan de una cuenta | cuenta_id*, periodo*, objetivos, riesgos, hueco, objetivo_importe | 201, 422 | — |
+| `POST /api/v1/planes-cuenta/cuenta-personal/validar` | Si esta cuenta de persona está completa para poder usarse | nombre, sector_codigo, empleados, facturacion_anual | 200, 422 | — |
 | `POST /api/v1/planes-cuenta/financiero` | Replicar el estado financiero que dice el ERP | cuenta_id*, estado*, origen*, vigente_at*, limite_credito, credito_dispuesto, deuda_vencida, bloqueado, motivo_bloqueo | 200, 422 | — |
 | `PATCH /api/v1/planes-cuenta/financiero/{estado_financiero_id}` | Editar estados financieros | estado_financiero_id*, cuenta_id, estado, limite_credito, credito_dispuesto, deuda_vencida, dias_vencido_maximo, moneda, bloqueado, motivo_bloqueo, vigente_at, origen | 200, 422 | — |
 | `POST /api/v1/planes-cuenta/financiero/{estado_financiero_id}/archivar` | Archivar estados financieros | estado_financiero_id* | 200, 422 | — |
+| `POST /api/v1/planes-cuenta/hueco` | Qué del catálogo no se le vende todavía | catalogo, ya_le_vendemos | 200, 422 | — |
 | `PATCH /api/v1/planes-cuenta/{plan_cuenta_id}` | Editar planes de cuenta | plan_cuenta_id*, cuenta_id, periodo, objetivo_importe, moneda, objetivos, riesgos, hueco, calculado_at, revisado_at, responsable_id | 200, 422 | — |
 | `DELETE /api/v1/planes-cuenta/{plan_cuenta_id}` | Borrar planes de cuenta | plan_cuenta_id* | 204, 422 | — |
 | `POST /api/v1/plantillas-actividad` | Crear una plantilla de actividades | clave*, nombre*, proceso, descripcion, actividades* | 201, 422 | — |
@@ -1300,7 +1310,7 @@ llamada de nadie.
 | `quote.sent` | sales | presupuesto_id, numero, version, total | `POST /api/v1/presupuestos/{presupuesto_id}/enviar` | — |
 | `record.commented` | core | comentario_id, objeto_tipo, objeto_id, hilo_id, autor_id, menciones | `POST /api/v1/comentarios/{objeto_tipo}/{objeto_id}` | — |
 | `record.deleted` | core | objeto, registro_id, definitivo | un proceso de fondo | — |
-| `record.merged` | party | objeto, superviviente_id, absorbido_id | `POST /api/v1/accounts/{cuenta_id}/fusionar`, `POST /api/v1/data-quality/accounts/{cuenta_id}/merge` | — |
+| `record.merged` | party | objeto, superviviente_id, absorbido_id | `POST /api/v1/accounts/{cuenta_id}/fusionar`, `POST /api/v1/data-quality/accounts/{cuenta_id}/merge`, `POST /api/v1/data-quality/contacts/{contacto_id}/merge` | — |
 | `refund.requested` | service | devolucion_id, resolucion_id, importe | `POST /api/v1/devoluciones/{devolucion_id}/resolver` | — |
 | `report.delivered` | analytics | informe_id, programacion_id, formato, filas, incompleto | `POST /api/v1/informes/correr-programadas` | — |
 | `report.failed` | analytics | informe_id, programacion_id, error, fallos_seguidos | `POST /api/v1/informes/correr-programadas` | — |
