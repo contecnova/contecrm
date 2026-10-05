@@ -931,7 +931,7 @@ modulos:
           - id: CRM-04.03.02
             nombre: Autoservicio
             capacidades:
-              - {id: CRM-04.03.02.01, c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py", t: "Portal de cliente headless: casos, pedidos, facturas, activos, contratos"}
+              - {id: CRM-04.03.02.01, visto: '2026-10-05 el portal ANUNCIABA OCHO SECCIONES y servia una: contratos, activos, pedidos, facturas y contactos no tienen endpoint, asi que el cliente pintaba botones que no llevan a ninguna parte — justo lo contrario de para lo que existe secciones_de. Ahora se cruza con las servidas. Y exigir_nivel no la llamaba nadie: la seccion solo se le contaba al cliente, que es una ayuda y no un control. Anadida exigir_seccion en el servidor. Mutado: quitando el cruce cae', c: A, fase: 3, svc: service, estado: hecho, reutiliza: "contecflow-PSA:app/models/client_portal.py (349) + app/services/client_portal_service.py", t: "Portal de cliente headless: casos, pedidos, facturas, activos, contratos"}
               - {id: CRM-04.03.02.02, c: A, fase: 5, svc: intelligence, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/ai_auto_resolution_service.py; contecmind:app/services/agent/", t: "Chatbot/agente de IA con acceso al conocimiento y a acciones transaccionales"}
               - {id: CRM-04.03.02.03, c: A, fase: 3, svc: service, estado: hecho, t: "Escalado a humano preservando el contexto completo"}
               - {id: CRM-04.03.02.04, c: D, fase: 6, svc: service, estado: hecho, t: "Comunidad, foros y preguntas frecuentes"}

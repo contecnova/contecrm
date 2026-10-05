@@ -47,9 +47,15 @@ CARPETAS = (
     "packages/crmcore/crmcore/notificaciones",
 )
 
-# Tope medido el 04-10-2026. No se sube sin arreglar otras tantas: cada número
-# de más es una función que promete algo que no ocurre.
-TOPE = 47
+# Tope medido. **Baja o se queda, nunca sube**: cada número de más es una
+# función que promete algo que no ocurre.
+#
+#   04-10-2026  47  medición inicial
+#   05-10-2026  46  `portal.exigir_nivel` quitada — no la llamaba nadie, no
+#                   tenía prueba, y solapaba con `exigir_seccion`, que sí se
+#                   usa. Dos comprobaciones de permiso con una sin usar es cómo
+#                   acaba usándose la floja.
+TOPE = 46
 
 # Las que no cuentan, con su motivo. Vacío hoy a propósito: la lista de 47 es
 # deuda reconocida, no exenciones.

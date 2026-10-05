@@ -245,3 +245,100 @@ def test_sin_tenant_no_se_acepta_la_peticion(api_sales: Any) -> None:
     """Sin él la ruta no puede abrir ninguna sesión, y adivinarlo sería peor."""
     salida = api_sales.post("/api/v1/portal-partner/entrar", json={"email": "a@b.com"})
     assert salida.status_code == 422
+
+
+# ── Y el portal de cliente: lo que anuncia es lo que sirve ───────────────
+
+
+def test_el_portal_no_anuncia_lo_que_no_sirve() -> None:
+    """`secciones_de` decía ocho y había ruta para una (`CRM-04.03.02.01`).
+
+    El portal anunciaba contratos, activos, pedidos, facturas y contactos, y no
+    hay endpoint para ninguna: el cliente pinta botones que no llevan a ninguna
+    parte — que es justo lo contrario de para lo que existe esa función, cuyo
+    comentario decía «para que el portal no pinte botones que…».
+
+    Añadir una sección a `SECCIONES_SERVIDAS` sin su ruta hace fallar esto, y
+    es deliberado: una sección anunciada y sin servir es una promesa que el
+    cliente descubre pulsando.
+    """
+    import inspect
+
+    from services.service import api_conocimiento, portal
+
+    rutas = inspect.getsource(api_conocimiento)
+    sin_ruta = [s for s in portal.SECCIONES_SERVIDAS if f'"/mi/{s}"' not in rutas]
+    assert not sin_ruta, (
+        f"estas secciones se anuncian y no tienen ruta: {sin_ruta}. O se sirve, "
+        "o se quita de SECCIONES_SERVIDAS."
+    )
+
+
+def test_la_seccion_se_comprueba_en_el_servidor() -> None:
+    """`secciones_de` es una ayuda al cliente, no un control.
+
+    Filtrar en el cliente funciona hasta que alguien mira la respuesta de la
+    API, y entonces el portal deja de ser un portal para ser una copia del CRM
+    con un filtro de pantalla. `exigir_seccion` no la llamaba nadie.
+    """
+    import inspect
+
+    from services.service import api_conocimiento
+
+    assert "exigir_seccion(" in inspect.getsource(
+        api_conocimiento.mis_casos
+    ), "la ruta de casos del portal no comprueba la sección en el servidor"
+
+
+def test_un_acceso_sin_la_seccion_no_entra() -> None:
+    """Las secciones declaradas en el acceso **intersecan** con las del nivel:
+    declarar una no puede ser una forma de saltarse el otro."""
+    from crmcore.errors import Prohibido
+
+    from services.service import portal as prt
+
+    class _Acceso:
+        nivel = "propio"
+        secciones = ["conocimiento"]  # no incluye «casos»
+
+    with pytest.raises(Prohibido) as fallo:
+        prt.exigir_seccion(_Acceso(), "casos")
+    assert fallo.value.error_code == "portal.seccion_no_permitida"
+
+
+def test_un_acceso_con_la_seccion_si_entra() -> None:
+    """La otra mitad: sin esto, un cambio que cerrara todo pasaría igual."""
+    from services.service import portal as prt
+
+    class _Acceso:
+        nivel = "propio"
+        secciones: list[str] = []
+
+    prt.exigir_seccion(_Acceso(), "casos")  # no lanza
+
+
+def test_el_nivel_mas_alto_tampoco_ve_secciones_que_no_existen() -> None:
+    """La mitad que faltaba, y sin ella la de arriba no significaba nada.
+
+    Un acceso de nivel `admin` tiene ocho secciones por nivel y solo una está
+    servida. Comprobar que `SECCIONES_SERVIDAS` cuadra con las rutas no basta:
+    hay que comprobar que `secciones_de` **la usa**. Sin esto, quitar el cruce
+    pasaba en verde y el portal volvía a anunciar siete botones muertos.
+    """
+    from services.service import portal as prt
+
+    class _Admin:
+        nivel = "admin"
+        secciones: list[str] = []
+
+    anunciadas = set(prt.secciones_de(_Admin()))
+    por_nivel = set(prt.SECCIONES_POR_NIVEL["admin"])
+
+    assert anunciadas <= set(
+        prt.SECCIONES_SERVIDAS
+    ), f"se anuncian secciones sin ruta detrás: {sorted(anunciadas - set(prt.SECCIONES_SERVIDAS))}"
+    assert por_nivel - anunciadas, (
+        "este nivel ve todas las secciones declaradas, así que la prueba no "
+        "distingue nada: o se han servido todas —y entonces hay que quitarla— "
+        "o el cruce no se está aplicando"
+    )

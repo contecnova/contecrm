@@ -63,7 +63,6 @@ logger = get_logger(__name__)
 # suyo, el responsable que ve lo de su empresa y el que además da de alta a sus
 # compañeros sin llamarnos.
 NIVELES = ("propio", "cuenta", "admin")
-ORDEN_NIVEL = {n: i for i, n in enumerate(NIVELES)}
 
 
 class AccesoPortal(Base, TimestampMixin, SoftDeleteMixin):
@@ -392,13 +391,24 @@ def canjear_enlace(uow: UnidadDeTrabajo, token: str, *, ip: str = "") -> AccesoP
     return acceso
 
 
-def exigir_nivel(acceso: AccesoPortal, minimo: str) -> None:
-    if ORDEN_NIVEL.get(acceso.nivel, 0) < ORDEN_NIVEL[minimo]:
+def exigir_seccion(acceso: AccesoPortal, seccion: str) -> None:
+    """Esta sección, para este acceso, **comprobado en el servidor**.
+
+    `secciones_de` existe para que el portal no pinte botones que no llevan a
+    ninguna parte, y eso está bien — pero es una ayuda al cliente, no un
+    control. Filtrar en el cliente funciona hasta que alguien mira la respuesta
+    de la API, y entonces el portal deja de ser un portal para ser una copia
+    del CRM con un filtro de pantalla.
+
+    Se apoya en `secciones_de`, así que respeta las tres reglas a la vez: el
+    nivel, las secciones declaradas del acceso y lo que de verdad está servido.
+    """
+    if seccion not in secciones_de(acceso):
         raise Prohibido(
             "Tu acceso no llega a esta sección. Habla con el responsable de tu "
             "empresa si necesitas más permisos.",
-            error_code="portal.nivel_insuficiente",
-            detalle={"tu_nivel": acceso.nivel, "necesario": minimo},
+            error_code="portal.seccion_no_permitida",
+            detalle={"seccion": seccion, "las_tuyas": secciones_de(acceso)},
         )
 
 
@@ -601,16 +611,36 @@ def escribir_desde_portal(
     }
 
 
-def secciones_de(acceso: AccesoPortal) -> list[str]:
-    """Qué puede abrir este contacto.
+# Las secciones que de verdad tienen una ruta detrás.
+#
+# Medido el 04-10-2026: el portal anunciaba **ocho** y servía **una**. La lista
+# de arriba dice qué puede ver cada nivel, y esta dice qué existe; cruzarlas es
+# lo que impide que el cliente pinte botones que no llevan a ninguna parte —que
+# es justo lo contrario de para lo que existe `secciones_de`, cuyo comentario
+# decía «para que el portal no pinte botones que…».
+#
+# Añadir una sección aquí sin su ruta hace fallar
+# `test_el_portal_no_anuncia_lo_que_no_sirve`. Es deliberado: una sección
+# anunciada y sin servir es una promesa que el cliente descubre pulsando.
+SECCIONES_SERVIDAS = ("casos",)
 
-    Si el acceso declara secciones concretas, se **intersecan** con las de su
-    nivel en vez de sustituirlas: declarar una sección no puede ser una forma de
-    saltarse el nivel, que es lo que pasaría si las declaradas mandaran.
+
+def secciones_de(acceso: AccesoPortal) -> list[str]:
+    """Qué puede abrir este contacto, **de lo que existe**.
+
+    Tres filtros y los tres hacen falta:
+
+    1. Las de su **nivel**.
+    2. Si el acceso declara secciones concretas, se **intersecan** con las de su
+       nivel en vez de sustituirlas: declarar una sección no puede ser una forma
+       de saltarse el nivel, que es lo que pasaría si las declaradas mandaran.
+    3. Y las que **están servidas**. Sin esto el portal anunciaba contratos,
+       activos, pedidos, facturas y contactos, y no hay endpoint para ninguna.
     """
     del_nivel = set(SECCIONES_POR_NIVEL.get(acceso.nivel, ()))
     declaradas = {str(s) for s in (acceso.secciones or [])}
-    return sorted(del_nivel & declaradas) if declaradas else sorted(del_nivel)
+    suyas = (del_nivel & declaradas) if declaradas else del_nivel
+    return sorted(suyas & set(SECCIONES_SERVIDAS))
 
 
 def abrir_caso_desde_portal(

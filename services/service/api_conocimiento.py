@@ -530,7 +530,13 @@ def mi_resumen(db: DbDep, sesion: PortalDep) -> Any:
     ),
 )
 def mis_casos(db: DbDep, sesion: PortalDep, limite: int = Query(50, ge=1, le=200)) -> Any:
-    return prt.mis_casos(db, _mi_acceso(db, sesion), limite=limite)
+    acceso = _mi_acceso(db, sesion)
+    # LA SECCIÓN SE COMPRUEBA EN EL SERVIDOR. `secciones_de` solo se le contaba
+    # al cliente «para que no pinte botones», y el propio módulo avisa de que
+    # filtrar en el cliente funciona hasta que alguien mira la respuesta de la
+    # API. `exigir_seccion` no la llamaba nadie.
+    prt.exigir_seccion(acceso, "casos")
+    return prt.mis_casos(db, acceso, limite=limite)
 
 
 class AbrirPeticion(BaseModel):
