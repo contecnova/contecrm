@@ -183,6 +183,16 @@ def crear_campo(nombre: str, datos: CrearCampo, db: DbDep, principal: Autenticad
             "Ya existe un campo con ese nombre en el objeto",
             error_code="metadata.campo_duplicado",
         )
+    # EL TOPE DE CAMPOS SE APLICA AQUÍ. `exigir_hueco` estaba escrita, probada y
+    # sin llamante, y había una ruta que **enseñaba** el límite: o sea, el
+    # sistema sabía decir que un objeto estaba lleno y dejaba añadir igual.
+    #
+    # Lo que pasa sin tope no es un error: es una tabla con cuatrocientas
+    # columnas JSONB, formularios de tres pantallas y consultas que se arrastran.
+    # Y cuando se nota, quitar campos ya no se puede porque alguien los usa.
+    from services.metadata.gobierno import exigir_hueco
+
+    exigir_hueco(db, principal.tenant_id, objeto.id)
     campo = CampoDefinido(tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump())
     db.add(campo)
     db.flush()
@@ -258,7 +268,90 @@ def validar(nombre: str, datos: ValidarRegistro, db: DbDep, principal: Autentica
         .all()
     )
     valores, errores = validar_registro(campos, datos.datos, reglas=reglas, parcial=datos.parcial)
+    if datos.exigir:
+        # Con `exigir` se corta con 422 y **todos** los errores dentro. Lo pide
+        # quien importa en bloque: una importación que recibe «válido: false» y
+        # sigue adelante mete el registro malo igual, y el que lo revisa después
+        # ya no sabe cuál era. Informar y exigir son dos cosas, y las dos hacen
+        # falta — por eso es un parámetro y no dos rutas que se dupliquen.
+        from services.metadata.validacion import exigir_valido
+
+        exigir_valido(errores)
     return ResultadoValidacion(valido=not errores, errores=errores, valores=valores)
+
+
+class VisibilidadIn(BaseModel):
+    secciones: list[dict[str, Any]] = Field(default_factory=list)
+    registro: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post(
+    "/objetos/{nombre}/visibilidad",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué secciones y campos se ven con este registro delante",
+    description=(
+        "**Las condiciones se resuelven en el servidor.** Si las evaluara el "
+        "front, el dato del campo escondido habría viajado hasta el navegador "
+        "igualmente — y ahí lo ve cualquiera que abra las herramientas de "
+        "desarrollo."
+    ),
+)
+def visibilidad(nombre: str, cuerpo: VisibilidadIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata.disenador import evaluar_visibilidad
+
+    _objeto(db, principal.tenant_id, nombre)
+    return evaluar_visibilidad(secciones=cuerpo.secciones, registro=cuerpo.registro)
+
+
+class FormularioIn(BaseModel):
+    campos: list[dict[str, Any]] = Field(default_factory=list)
+    secciones: list[dict[str, Any]] | None = None
+
+
+@router.post(
+    "/objetos/{nombre}/formulario",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="El formulario que puede pintar cualquier front",
+    description=(
+        "**Los permisos se resuelven aquí.** Mandar el formulario completo y que "
+        "el front esconda lo que no toca deja el dato viajando hasta el "
+        "navegador: basta con abrir las herramientas para verlo."
+    ),
+)
+def formulario(nombre: str, cuerpo: FormularioIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata.vistas_servidas import servir_formulario
+
+    _objeto(db, principal.tenant_id, nombre)
+    return servir_formulario(
+        objeto=nombre,
+        campos=cuerpo.campos,
+        permisos_del_usuario=frozenset(principal.permisos or ()),
+        secciones=cuerpo.secciones,
+    )
+
+
+class TraducirIn(BaseModel):
+    datos: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post(
+    "/objetos/{nombre}/traducir-entrada",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Aceptar el nombre viejo de un campo y traducirlo al nuevo",
+    description=(
+        "Y **contar cada uso**, que es la parte que importa: es lo que permite "
+        "decidir cuándo se puede retirar el nombre viejo **midiendo** en vez de "
+        "suponiendo. Sin el contador la retirada se hace por fecha, y el día que "
+        "toca siempre hay alguien usándolo."
+    ),
+)
+def traducir_entrada(nombre: str, cuerpo: TraducirIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.metadata.gobierno import traducir_entrada as traducir
+
+    return traducir(db, principal.tenant_id, nombre, cuerpo.datos)
 
 
 @router.post(

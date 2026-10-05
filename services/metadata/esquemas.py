@@ -150,6 +150,15 @@ class ValidarRegistro(BaseModel):
     parcial: bool = Field(
         False, description="True para simular un PATCH: no exige los obligatorios ausentes"
     )
+    exigir: bool = Field(
+        False,
+        description=(
+            "True para **cortar** con 422 y todos los errores dentro, en vez de "
+            "informar. Lo pide quien importa en bloque: una importación que "
+            "recibe «válido: false» y sigue adelante mete el registro malo igual, "
+            "y quien lo revisa después ya no sabe cuál era"
+        ),
+    )
 
 
 class ResultadoValidacion(BaseModel):

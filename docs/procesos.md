@@ -225,12 +225,15 @@ stateDiagram-v2
 | `POST /api/v1/metadata/objetos` | Crear un objeto propio del tenant | nombre*, etiqueta*, etiqueta_plural, descripcion, icono, papelera, estados | 201, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/campos` | Añadir un campo a un objeto | nombre*, nombre*, etiqueta*, tipo*, ayuda, obligatorio, unico, solo_lectura, valor_defecto, restricciones, sensibilidad, orden | 201, 422 | — |
 | `DELETE /api/v1/metadata/objetos/{nombre}/campos/{campo}` | Deprecar un campo | nombre*, campo* | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/formulario` | El formulario que puede pintar cualquier front | nombre*, campos, secciones | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/publicar` | Publicar el esquema a todos los servicios | nombre*, nota | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/reglas` | Crear una regla de validación | nombre*, nombre*, mensaje*, condiciones*, combinacion, momento, estado_desde, estado_hasta | 201, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/renombrar-campo` | Empezar un renombrado compatible (CRM-00.04.01.10) | nombre*, desde*, hasta* | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/retirar-campo-viejo` | Retirar el nombre viejo, si de verdad ha dejado de usarse | nombre*, desde*, dias_sin_uso | 200, 422 | — |
 | `PUT /api/v1/metadata/objetos/{nombre}/tipos/{clave}` | Crear o cambiar un tipo de registro | nombre*, clave*, nombre, layout, valores_lista, campos_ocultos, por_defecto | 200, 422 | — |
-| `POST /api/v1/metadata/objetos/{nombre}/validar` | Validar un registro sin guardarlo | nombre*, datos*, parcial | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/traducir-entrada` | Aceptar el nombre viejo de un campo y traducirlo al nuevo | nombre*, datos | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/validar` | Validar un registro sin guardarlo | nombre*, datos*, parcial, exigir | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/visibilidad` | Qué secciones y campos se ven con este registro delante | nombre*, secciones, registro | 200, 422 | — |
 | `PATCH /api/v1/metadata/objetos/{objeto_id}` | Editar objetos del modelo | objeto_id*, nombre, etiqueta, etiqueta_plural, descripcion, origen, icono, activo, papelera, estados | 200, 422 | — |
 | `DELETE /api/v1/metadata/objetos/{objeto_id}` | Borrar objetos del modelo | objeto_id* | 204, 422 | — |
 | `POST /api/v1/metadata/objetos/{objeto_id}/archivar` | Archivar objetos del modelo | objeto_id* | 200, 422 | — |

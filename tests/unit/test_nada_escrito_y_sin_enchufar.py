@@ -109,7 +109,15 @@ CARPETAS = (
 #                   pedir. Y la modalidad de aislamiento ahora sale del tier
 #                   contratado: aprovisionar con la plantilla de siempre es cómo
 #                   un cliente que paga por base dedicada acaba en la compartida.
-TOPE = 97
+#   05-10-2026  92  Metadatos: el tope de campos a medida se ENSEÑABA en una
+#                   ruta y no se aplicaba —el sistema sabía decir que un objeto
+#                   estaba lleno y dejaba añadir igual—, y la visibilidad por
+#                   condición, el formulario servido y la traducción del nombre
+#                   viejo de un campo no se podían pedir. Lo primero no da un
+#                   error: da una tabla con cuatrocientas columnas y consultas
+#                   que se arrastran, y cuando se nota ya no se pueden quitar
+#                   porque alguien las usa.
+TOPE = 92
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
