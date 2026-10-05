@@ -90,6 +90,19 @@ def test_un_caso_sin_fecha_impide_particionar_por_tiempo() -> None:
     assert fallo.value.error_code == "modelo.caso_sin_fecha"
 
 
+def test_sin_historico_no_hay_particion_y_se_dice() -> None:
+    """Salió al darle puerta: con el cuerpo vacío contestaba un 500.
+
+    Un 500 manda a mirar el log en vez de los datos. Y el caso de un solo caso
+    tampoco es un límite inocente: deja un lado vacío, y un modelo comprobado
+    contra cero casos da un número que no significa nada.
+    """
+    for casos in ([], [{"cerrado_el": date(2026, 1, 1)}]):
+        with pytest.raises(ErrorValidacion) as fallo:
+            ent.particion_temporal(casos=casos)
+        assert fallo.value.error_code == "modelo.historico_insuficiente"
+
+
 def test_el_modelo_se_compara_con_la_regla_tonta() -> None:
     """Si solo se gana el 15 %, decir «todos pierden» acierta el 85 %: un modelo
     con un 86 % no aporta nada y con ese número se justifica un proyecto."""

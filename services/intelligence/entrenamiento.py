@@ -165,7 +165,20 @@ def particion_temporal(
             "se puede separar por tiempo, y separar al azar infla el acierto.",
             error_code="modelo.caso_sin_fecha",
         )
-    ordenados = sorted(con_fecha, key=lambda c: c["cerrado_el"])
+    # Con menos de dos casos no hay partición posible: uno de los dos lados se
+    # queda vacío. Salió al darle puerta —con `{}` por cuerpo contestaba un 500
+    # por índice fuera de rango—, y un 500 no dice nada y hace mirar el log en
+    # vez de los datos. Entrenar con cero casos tampoco es un caso límite que
+    # convenga dejar pasar en silencio: el modelo saldría igual, con un acierto
+    # medido contra nada.
+    if len(ordenados := sorted(con_fecha, key=lambda c: c["cerrado_el"])) < 2:
+        raise ErrorValidacion(
+            f"Con {len(ordenados)} caso(s) no hay nada que partir: uno de los dos "
+            "lados se queda vacío, y un modelo entrenado con cero casos o "
+            "comprobado contra cero casos da un número que no significa nada.",
+            error_code="modelo.historico_insuficiente",
+            detalle={"casos": len(ordenados)},
+        )
     corte = len(ordenados) - max(1, len(ordenados) * pct_validacion // 100)
     return {
         "entrenamiento": ordenados[:corte],

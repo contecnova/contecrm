@@ -12154,7 +12154,9 @@ modelo ve cómo acabó lo que tiene que predecir y el acierto sale magnífico y
 completamente inútil — en producción no existe el futuro. La separación **se pide
 y se devuelve**: qué casos entrenan, cuáles comprueban y por qué fecha se cortó.
 Un caso **sin fecha de cierre la para** y se dice cuántos son, porque sin fecha no
-hay más remedio que repartir al azar, que es justo lo que se está evitando.
+hay más remedio que repartir al azar, que es justo lo que se está evitando. Y con
+menos de dos casos no se parte nada: uno de los dos lados se quedaría vacío, y un
+modelo comprobado contra cero casos da un número que no significa nada.
 
 **Y se compara con la regla tonta.** Si solo se gana el 15 %, decir «todos
 pierden» acierta el 85 % de las veces: un modelo con un 86 % suena bien y no
