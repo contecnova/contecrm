@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.reverificacion import dependencia as exige_reverificacion
 
 
 class Previsualizar(BaseModel):
@@ -277,7 +278,13 @@ def crear_router_restauracion(servicio: str) -> APIRouter:
 
     @router.post(
         "",
-        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        dependencies=[
+            Depends(exige_permiso("datos:restaurar")),
+            # Restaurar escribe encima de lo que hay ahora: es de las ocho
+            # operaciones declaradas sensibles y es la que menos se puede
+            # deshacer. La lista existía y no la aplicaba nadie.
+            exige_reverificacion("restauracion"),
+        ],
         summary="Devolver registros concretos a como estaban",
         description=(
             "Sin restaurar nada más. Es el hueco entre la papelera —que cubre el "

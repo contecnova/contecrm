@@ -726,9 +726,20 @@ def montar_exportacion(
 
     tiene_borrado = hasattr(modelo, "deleted_at")
 
+    from crmcore.http.reverificacion import dependencia as exige_reverificacion
+
     @router.get(
         f"{ruta}/exportar",
-        dependencies=[Depends(exige_permiso(permiso))],
+        dependencies=[
+            Depends(exige_permiso(permiso)),
+            # Exportar en masa es una de las ocho operaciones sensibles
+            # declaradas. La lista existía, se publicaba en una ruta y **no la
+            # aplicaba nadie**: el robo de datos de un CRM casi nunca es una
+            # intrusión, es alguien de dentro con permiso para leer que se lleva
+            # más de lo que le toca — y el permiso no lo ve, porque está
+            # haciendo exactamente lo que puede hacer.
+            exige_reverificacion("exportacion_masiva"),
+        ],
         summary=f"Exportar {nombre.lower()}",
         description=(
             "El mismo listado, con los mismos filtros de la URL, en filas "

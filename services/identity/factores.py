@@ -352,16 +352,11 @@ def purgar_desafios(db: Session, *, limite: int = 5000) -> int:
 # una lista de `if` repartidos: lo que hace que una operación sensible nueva
 # quede cubierta es añadirla aquí, y lo que hace que se vea lo que NO está
 # cubierto es poder leer la tabla entera de una vez.
-OPERACIONES_SENSIBLES: dict[str, str] = {
-    "exportacion_masiva": "Exportar muchos registros de una vez",
-    "cambio_permisos": "Cambiar roles, permisos o políticas de acceso",
-    "borrado_masivo": "Borrar registros en bloque",
-    "suplantacion": "Entrar como otro usuario",
-    "clave_api": "Crear o regenerar una credencial de máquina",
-    "cambio_mfa": "Desactivar o reconfigurar el segundo factor",
-    "restauracion": "Restaurar datos sobre los actuales",
-    "baja_tenant": "Dar de baja el tenant",
-}
+# La tabla vive en `crmcore` y aquí solo se re-exporta. La mitad de estas
+# operaciones ocurren en OTROS servicios —exportar, borrar en bloque,
+# restaurar—, y tenerla aquí era lo que obligaba a que la comprobación viviera
+# aquí también: por eso no vivía en ninguna parte y la lista no aplicaba nada.
+from crmcore.http.reverificacion import OPERACIONES_SENSIBLES  # noqa: E402
 
 
 def anotar_factor(db: Session, sesion: Sesion, factor: str) -> None:
@@ -725,10 +720,85 @@ MOTIVOS_RIESGO = {
 APROBADORES_DESBLOQUEO = 2
 
 
+# De dónde sale el país de una IP. Es un **puerto**: aquí no hay ninguna base de
+# geolocalización ni ninguna llamada a un tercero, porque atar el producto a un
+# proveedor concreto para esto es exactamente lo que no se hace. Quien lo
+# despliegue registra el suyo; si no hay ninguno, la señal del país no se mide y
+# **se dice que no se mide**, en vez de contarla como «todo bien».
+_LOCALIZADOR: Any = None
+
+
+def registrar_localizador(fn: Any) -> None:
+    """Enchufa quien sabe de qué país es una IP.
+
+    Sin esto, `evaluar_riesgo` recibe `pais_conocido=None` y lo cuenta como
+    «sin medir». Dar por conocido el país cuando no se sabe es la forma de que
+    la señal más útil de las seis —entrar desde otro país— no salte nunca y
+    nadie se entere de que no salta.
+    """
+    global _LOCALIZADOR
+    _LOCALIZADOR = fn
+
+
+def contexto_de_entrada(
+    db: Session,
+    usuario_id: UUID,
+    tenant_id: UUID,
+    *,
+    ip: str = "",
+    huella: str = "",
+) -> dict[str, Any]:
+    """Qué ha cambiado desde la última vez que entró esta persona.
+
+    Lo que alimenta a `evaluar_riesgo`, medido contra las sesiones que ya hay.
+    Va aquí y no en la ruta porque la ruta no debe saber de qué tablas sale: lo
+    que la ruta decide es qué hacer con el veredicto.
+    """
+    anteriores = list(
+        db.execute(
+            select(Sesion)
+            .where(Sesion.tenant_id == tenant_id, Sesion.usuario_id == usuario_id)
+            .order_by(Sesion.creada_at.desc())
+            .limit(50)
+        )
+        .scalars()
+        .all()
+    )
+    ips = {s.ip for s in anteriores if s.ip}
+    ultima = _con_tz(anteriores[0].creada_at) if anteriores else None
+
+    pais_actual = _LOCALIZADOR(ip) if (_LOCALIZADOR is not None and ip) else None
+    pais_conocido: bool | None = None
+    minutos_desde_otro_pais: int | None = None
+    if pais_actual is not None:
+        paises = {p for p in (_LOCALIZADOR(s.ip) for s in anteriores if s.ip) if p}
+        pais_conocido = pais_actual in paises if paises else True
+        for sesion in anteriores:
+            otro = _LOCALIZADOR(sesion.ip) if sesion.ip else None
+            if otro and otro != pais_actual:
+                creada = _con_tz(sesion.creada_at)
+                if creada is not None:
+                    minutos_desde_otro_pais = int((_ahora() - creada).total_seconds() // 60)
+                break
+
+    return {
+        # Primera entrada: nada ha cambiado porque no hay con qué comparar. No
+        # es «todo conocido» —no se ha visto nunca— pero tampoco es sospechoso,
+        # y tratarlo como riesgo pediría el factor a todo el mundo el día que se
+        # da de alta, que es cuando menos configurado lo tiene.
+        "ip_conocida": (ip in ips) if (ips and ip) else True,
+        "pais_conocido": pais_conocido,
+        "dispositivo_conocido": dispositivo_de_confianza(db, usuario_id, tenant_id, huella)
+        is not None,
+        "minutos_desde_otro_pais": minutos_desde_otro_pais,
+        "dias_sin_entrar": int((_ahora() - ultima).days) if ultima is not None else 0,
+    }
+
+
 def evaluar_riesgo(
     *,
     ip_conocida: bool,
-    pais_conocido: bool,
+    pais_conocido: bool | None,
     dispositivo_conocido: bool,
     minutos_desde_otro_pais: int | None = None,
     dias_sin_entrar: int = 0,
@@ -750,7 +820,16 @@ def evaluar_riesgo(
         motivos.append("dispositivo_nuevo")
     if not ip_conocida:
         motivos.append("ip_nueva")
-    if not pais_conocido:
+    # `None` es «no se ha podido medir», que no es lo mismo que «es conocido».
+    # Contarlo como conocido haría que la señal más útil de las seis no saltara
+    # jamás en un despliegue sin localizador, y sin que nadie lo supiera.
+    sin_medir: list[str] = []
+    if pais_conocido is None:
+        sin_medir.append(
+            "El país no se ha podido medir: no hay localizador de IP configurado, así "
+            "que entrar desde otro país no va a disparar nada."
+        )
+    elif not pais_conocido:
         motivos.append("pais_nuevo")
     if minutos_desde_otro_pais is not None and minutos_desde_otro_pais < 120:
         # Dos países en dos horas: o hay un avión imposible o hay dos personas.
@@ -764,6 +843,10 @@ def evaluar_riesgo(
     return {
         "exigir_factor": bool(motivos),
         "motivos": motivos,
+        # Lo que NO se ha podido mirar, dicho. Un veredicto que calla sus huecos
+        # se lee como «todo comprobado», y es la diferencia entre un sistema que
+        # protege y uno que lo parece.
+        "senales_sin_medir": sin_medir,
         # El texto que se le enseña, no el código del motivo: quien lo lee es una
         # persona con prisa, no un programa.
         "explicacion": (

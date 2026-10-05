@@ -474,6 +474,19 @@ def emitir_token_acceso(
         "iat": int(ahora.timestamp()),
         "exp": int((ahora + timedelta(minutes=s.access_token_minutos)).timestamp()),
     }
+    # Cuándo fue el último factor fuerte de esta sesión. Va DENTRO del token
+    # porque es lo único que llega a los demás servicios: la tabla de sesiones
+    # es de `identity` y ninguno lee el esquema de otro. Sin esta marca, una
+    # exportación masiva en `party` no puede saber si el segundo factor se
+    # superó hace un minuto o hace ocho horas.
+    #
+    # Se relee al emitir, así que elevar el factor y pedir un token nuevo es lo
+    # que abre la ventana — que es como funciona un step-up de verdad: el que se
+    # apoya en un token emitido antes de verificarse no está comprobando nada.
+    sesion = db.get(Sesion, sesion_id)
+    if sesion is not None and sesion.factor_fuerte_at is not None:
+        carga["af"] = sesion.factor_fuerte_at.isoformat()
+
     if membresia and membresia.business_unit_id:
         carga["bu"] = str(membresia.business_unit_id)
     if actor_real_id:

@@ -132,6 +132,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
     """Construye y firma las cabeceras de identidad interna."""
     from crmcore.http.deps import (
         H_ACTOR_REAL,
+        H_FACTOR_FUERTE,
         H_PERMISOS,
         H_PLATAFORMA,
         H_ROLES,
@@ -156,5 +157,9 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         H_ACTOR_REAL: str(principal.actor_real_id or ""),
         H_PLATAFORMA: "1" if principal.es_admin_plataforma else "",
         H_SESION: str(principal.sesion_id or ""),
+        # Sin esto, una operación sensible de otro servicio no puede saber si el
+        # segundo factor es de hace un minuto o de hace ocho horas, y la única
+        # salida honesta sería no dejar hacerla nunca o dejarla siempre.
+        H_FACTOR_FUERTE: str(getattr(principal, "factor_fuerte_at", "") or ""),
     }
     return firmar_cabeceras_internas(valores, secreto)

@@ -16,6 +16,7 @@ from crmcore.http.deps import (
     exige_permiso,
 )
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -86,6 +87,40 @@ def login(datos: Credenciales, request: Request) -> Any:
         superados: tuple[str, ...] = ("contrasena",)
         if datos.codigo_mfa:
             superados = ("contrasena", "totp")
+
+        # MFA ADAPTATIVA (CRM-00.05.01.21). Estaba escrita entera y no la
+        # llamaba nadie: el producto sabía decidir cuándo pedir el segundo
+        # factor por el contexto y nunca se lo preguntaba a nadie.
+        #
+        # Se pide **sólo si hay factor que pedir**: a quien no tiene ninguno
+        # configurado no se le puede exigir uno aquí, y negarle la entrada por
+        # algo que no puede resolver lo deja fuera sin salida.
+        from services.identity import factores as _fa
+
+        riesgo = _fa.evaluar_riesgo(
+            **_fa.contexto_de_entrada(
+                db,
+                usuario.id,
+                tenant_id,
+                ip=request.client.host if request.client else "",
+                huella=datos.huella_dispositivo or "",
+            )
+        )
+        if riesgo["exigir_factor"] and usuario.mfa_activo and not datos.codigo_mfa:
+            raise NoAutenticado(
+                "El contexto de esta entrada ha cambiado: hace falta el segundo factor.",
+                error_code="auth.factor_requerido_por_riesgo",
+                detalle={
+                    # Con palabras, no con códigos: quien lo lee es una persona
+                    # con prisa. «Por seguridad» no explica nada, y al tercer
+                    # aviso así la gente teclea el código sin mirar — que es la
+                    # costumbre que un atacante necesita.
+                    "explicacion": riesgo["explicacion"],
+                    "motivos": riesgo["motivos"],
+                    "sospechoso": riesgo["sospechoso"],
+                    "que_hacer_si_sospechoso": riesgo["que_hacer_si_sospechoso"],
+                },
+            )
         _sesion, acceso, refresco = svc.crear_sesion(
             db,
             usuario=usuario,
@@ -113,6 +148,11 @@ def login(datos: Credenciales, request: Request) -> Any:
         access_token=acceso,
         refresh_token=refresco,
         expires_in=get_settings().access_token_minutos * 60,
+        # Lo que se ha mirado del contexto y lo que no. Se devuelve aunque no
+        # haya hecho falta el factor: es lo que permite saber si la MFA
+        # adaptativa está midiendo algo de verdad en este despliegue o está
+        # mirando de menos sin decirlo.
+        riesgo=riesgo,
     )
 
 
@@ -487,6 +527,58 @@ def crear_usuario(datos: CrearUsuario, uow: UowDep, principal: AutenticadoDep) -
     )
 
 
+class InvitarExterno(BaseModel):
+    email: EmailStr
+    motivo: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description=(
+            "Para qué. Sin él, la revisión anual consiste en mirar una lista de "
+            "correos y no saber de ninguno si sigue haciendo falta"
+        ),
+    )
+    permisos: list[str] = Field(
+        default_factory=list,
+        description="Los que se le den y nada más: heredar un rol le da lo que ese rol gane después",
+    )
+    dias: int = Field(30, ge=1, le=365)
+    objeto: str = ""
+    objeto_id: UUID | None = None
+
+
+@router_usuarios.post(
+    "/invitar-externo",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("user:write"))],
+    summary="Dar acceso temporal a alguien de fuera",
+    description=(
+        "Un cliente, un partner, un auditor. Tres cosas lo hacen aceptable y "
+        "ninguna es opcional.\n\n"
+        "**Caduca siempre y con tope.** Un invitado sin fecha es un usuario más, "
+        "y el día que alguien revisa la lista de accesos aparecen quince "
+        "personas que nadie recuerda haber invitado.\n\n"
+        "**Los permisos son los que se le den y nada más.** Heredar un rol "
+        "—«como un comercial pero de fuera»— le da acceso a todo lo que ese rol "
+        "gane el mes que viene, y nadie vuelve a mirar la invitación.\n\n"
+        "**Y hace falta decir para qué.** Sin motivo, la revisión anual consiste "
+        "en mirar una lista de correos sin saber de ninguno si sigue haciendo "
+        "falta, y entonces se renuevan todos."
+    ),
+)
+def invitar_externo(datos: InvitarExterno, uow: UowDep, principal: AutenticadoDep) -> Any:
+    return svc.invitar_externo(
+        uow,
+        email=datos.email,
+        motivo=datos.motivo,
+        permisos=datos.permisos,
+        dias=datos.dias,
+        objeto=datos.objeto,
+        objeto_id=datos.objeto_id,
+        por=principal.id,
+    )
+
+
 @router_usuarios.get(
     "",
     response_model=PaginaDeListado,
@@ -660,6 +752,7 @@ def cerrar_sesion(sesion_id: UUID, db: DbDep, principal: AutenticadoDep) -> None
 @router_sesiones.post(
     "/suplantar",
     response_model=Tokens,
+    dependencies=[exige_reverificacion("suplantacion")],
     summary="Abrir sesión como otro usuario (soporte)",
     description=(
         "Solo personal de plataforma, con motivo escrito y caducidad corta. "
@@ -693,7 +786,13 @@ router_claves = APIRouter(prefix="/claves-api", tags=["claves de API"])
     "",
     response_model=ClaveApiCreada,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exige_permiso("apikey:write"))],
+    dependencies=[
+        Depends(exige_permiso("apikey:write")),
+        # Una credencial de máquina sobrevive a la sesión de quien la creó: si
+        # alguien se sienta ante un portátil desbloqueado, es la forma de
+        # llevarse un acceso permanente sin dejar de parecer el dueño.
+        exige_reverificacion("clave_api"),
+    ],
     summary="Crear una clave de API",
     description="El secreto se devuelve **una sola vez**: después solo se guarda su hash.",
 )

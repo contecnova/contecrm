@@ -294,6 +294,14 @@ def crear_router_masivo(recurso: RecursoMasivo) -> APIRouter:
         # obligaría a exigir el permiso más fuerte para todas, y quien solo puede
         # actualizar no podría actualizar en lote.
         principal.exigir(recurso.permiso_de(operacion))
+        # Y el borrado en bloque exige reverificarse. Va aquí dentro y no como
+        # dependencia del router por lo mismo que el permiso: depende de la
+        # operación que traiga el cuerpo, y pedirla para todas obligaría a
+        # teclear el segundo factor para actualizar cien direcciones.
+        if operacion == "borrar":
+            from crmcore.http.reverificacion import comprobar as exigir_reverificacion
+
+            exigir_reverificacion(principal, "borrado_masivo", db=uow.db)
         if not peticion.elementos:
             raise ErrorValidacion("No hay elementos que procesar", error_code="masivo.lote_vacio")
 

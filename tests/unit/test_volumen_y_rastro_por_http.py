@@ -22,7 +22,7 @@ ruta de exportación en absoluto.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -58,6 +58,7 @@ def cliente() -> Any:
 def cabeceras(tenant_id: UUID) -> dict[str, str]:
     from crmcore.config import get_settings
     from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
         H_PERMISOS,
         H_ROLES,
         H_TENANT,
@@ -71,6 +72,11 @@ def cabeceras(tenant_id: UUID) -> dict[str, str]:
             H_USER: str(uuid4()),
             H_PERMISOS: "*:*",
             H_ROLES: "admin",
+            # Segundo factor recién superado. Va firmado con lo demás: las
+            # operaciones sensibles —exportar en masa, borrar en bloque,
+            # restaurar— lo exigen, y sin él una persona de verdad vería un
+            # «vuelve a verificarte» en vez de la respuesta.
+            H_FACTOR_FUERTE: datetime.now(timezone.utc).isoformat(),
         },
         get_settings().secret_key.get_secret_value(),
     )

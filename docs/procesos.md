@@ -209,6 +209,7 @@ stateDiagram-v2
 | `POST /api/v1/sso/oidc/callback` | Vuelta del proveedor OIDC | code*, state* | 200, 422 | `user.org.changed` |
 | `POST /api/v1/sso/saml/acs` | Vuelta del proveedor SAML | tenant_id*, proveedor | 200, 422 | `user.org.changed` |
 | `POST /api/v1/usuarios` | Dar de alta un usuario en el tenant | email*, nombre*, roles, contrasena | 201, 422 | `user.org.changed`, `user.provisioned` |
+| `POST /api/v1/usuarios/invitar-externo` | Dar acceso temporal a alguien de fuera | email*, motivo*, permisos, dias, objeto, objeto_id | 201, 422 | — |
 | `DELETE /api/v1/usuarios/{usuario_id}` | Dar de baja a un usuario del tenant | usuario_id* | 204, 422 | `user.deprovisioned`, `user.org.changed` |
 | `POST /api/v1/usuarios/{usuario_id}/desactivar` | Dar de baja a un usuario | usuario_id*, motivo*, transferir_a | 200, 422 | `user.deprovisioned`, `user.org.changed` |
 

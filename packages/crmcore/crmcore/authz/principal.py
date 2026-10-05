@@ -57,6 +57,14 @@ class Principal:
     # sesión —qué factores se superaron y cuándo— no se podía consultar, y los
     # tres sitios que lo intentaban leían un campo inexistente y devolvían 500.
     sesion_id: UUID | None = None
+    # Cuándo fue el último factor FUERTE de esta sesión, en ISO. Viaja con la
+    # identidad por la misma razón que `sesion_id`: la tabla de sesiones vive en
+    # el esquema de `identity` y ningún servicio lee el de otro, así que sin
+    # propagarlo las operaciones sensibles que ocurren FUERA de identity
+    # —exportar media base, borrar en bloque, restaurar encima de lo actual— no
+    # podían exigir la reverificación. La lista de operaciones sensibles existía
+    # y se publicaba; lo que no existía era quien la aplicara.
+    factor_fuerte_at: str = ""
     # Atributos para las decisiones ABAC (departamento, país, territorio…).
     atributos: dict[str, object] = field(default_factory=dict)
 

@@ -48,6 +48,10 @@ H_ROLES = "x-crm-roles"
 H_SCOPES = "x-crm-scopes"
 H_ACTOR_REAL = "x-crm-actor-real"
 H_SESION = "x-crm-sesion"
+# Cuándo se superó el último factor fuerte. Va firmada con las demás: si fuera
+# una cabecera suelta, cualquiera que llegara a la red interna podría decir que
+# acaba de verificarse y saltarse la reautenticación entera.
+H_FACTOR_FUERTE = "x-crm-factor-fuerte"
 H_PLATAFORMA = "x-crm-plataforma"
 # Qué CLASE de principal es: persona, servicio, automatización, agente. Faltaba,
 # y su ausencia no se notaba mientras todo lo que entraba eran personas. En
@@ -102,6 +106,11 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
             H_ACTOR_REAL,
             H_PLATAFORMA,
             H_SESION,
+            # La marca del factor fuerte va DENTRO de lo firmado. Fuera, sería
+            # una cabecera que pone cualquiera que alcance la red interna, y la
+            # reautenticación reforzada entera dejaría de valer: bastaría con
+            # decir «me acabo de verificar».
+            H_FACTOR_FUERTE,
         )
     }
     esperada = hmac.new(
@@ -251,6 +260,7 @@ def _principal_de_cabeceras(request: Request) -> Principal:
         tenant_id=_uuid(H_TENANT),
         actor_real_id=_uuid(H_ACTOR_REAL),
         sesion_id=_uuid(H_SESION),
+        factor_fuerte_at=request.headers.get(H_FACTOR_FUERTE, ""),
         permisos=frozenset(p for p in request.headers.get(H_PERMISOS, "").split(",") if p),
         roles=frozenset(r for r in request.headers.get(H_ROLES, "").split(",") if r),
         scopes=frozenset(p for p in request.headers.get(H_SCOPES, "").split(",") if p),
@@ -286,6 +296,7 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
             es_admin_plataforma=bool(datos.get("plataforma")),
             actor_real_id=UUID(datos["actor_real"]) if datos.get("actor_real") else None,
             sesion_id=UUID(datos["sid"]) if datos.get("sid") else None,
+            factor_fuerte_at=str(datos.get("af") or ""),
         )
     except (ValueError, KeyError):
         raise NoAutenticado(

@@ -138,16 +138,6 @@ CARPETAS = (
 #                   consentir el entrenamiento, y el modo sin salida de datos.
 #                   Ninguna daba error: el producto se comportaba como si esas
 #                   decisiones no existieran, y todo en verde.
-#   05-10-2026  62  La capa de datos: `crmcore.datos.particionado` resolvía
-#                   entero el volumen —qué tablas crecen, por qué se corta por
-#                   tiempo y no por tenant, qué se puede mover a frío y qué lo
-#                   impide— y NO LO IMPORTABA NADIE. El rastro de agregados
-#                   estaba encendido sin encender: la tabla de hechos se creaba
-#                   en dos servicios, nadie declaraba ningún agregado y por eso
-#                   estaba siempre vacía. Y la exportación de un listado no
-#                   existía, así que `columnas_exportables` —que es lo que hace
-#                   que una exportación traiga los campos del cliente— no tenía
-#                   a quién servir.
 #   05-10-2026  71  Ventas: diez, y dos de ellas no eran «una ruta que falta»
 #                   sino un circuito abierto. La CALIBRACIÓN no podía funcionar
 #                   nunca: la columna `resultado` de una revisión llevaba desde
@@ -159,7 +149,25 @@ CARPETAS = (
 #                   total, y lo que se descubre después es que el producto que
 #                   más se vende pierde dinero en cada unidad. El contrato con
 #                   el proveedor y su alcance no tenían ninguna puerta.
-TOPE = 62
+#   05-10-2026  62  La capa de datos: `crmcore.datos.particionado` resolvía
+#                   entero el volumen —qué tablas crecen, por qué se corta por
+#                   tiempo y no por tenant, qué se puede mover a frío y qué lo
+#                   impide— y NO LO IMPORTABA NADIE. El rastro de agregados
+#                   estaba encendido sin encender: la tabla de hechos se creaba
+#                   en dos servicios, nadie declaraba ningún agregado y por eso
+#                   estaba siempre vacía. Y la exportación de un listado no
+#                   existía, así que `columnas_exportables` —que es lo que hace
+#                   que una exportación traiga los campos del cliente— no tenía
+#                   a quién servir.
+#   05-10-2026  55  Identidad: la lista de operaciones sensibles se publicaba y
+#                   no la aplicaba NADIE fuera de `identity`, porque la marca
+#                   del último factor fuerte vive en su esquema y ningún
+#                   servicio lee el de otro. Exportar media base, borrar en
+#                   bloque y restaurar encima de lo actual no la comprobaban.
+#                   Y la MFA adaptativa estaba entera —seis señales, cada
+#                   motivo explicado con palabras— sin que el login se la
+#                   preguntara nunca.
+TOPE = 55
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -167,6 +175,13 @@ TOPE = 62
 # producción a propósito: si mirara las pruebas, una función usada únicamente
 # por su propia prueba pasaría por enchufada, que es el caso que más engaña.
 NO_CUENTAN: dict[str, str] = {
+    "registrar_localizador": (
+        "Puerto de despliegue, como `registrar_transporte`: quien instale un "
+        "localizador de IP registra el suyo. Aquí no se enchufa ninguno a "
+        "propósito —atar el producto a un proveedor de geolocalización es lo que "
+        "no se hace—, y la ausencia NO se disimula: `evaluar_riesgo` devuelve "
+        "«el país no se ha podido medir» en vez de darlo por conocido."
+    ),
     "es_entorno_de_pruebas": "lo usan las pruebas para no hablar con el mundo",
     "limpiar_medidores": "el registro es del proceso y vive entre casos de prueba",
     "medidores_registrados": "para que una prueba diga qué se está midiendo",

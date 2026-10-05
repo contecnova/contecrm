@@ -172,6 +172,25 @@ def resolver_perfil(clave: str, ajustes: AjustesPerfil, _: AutenticadoDep) -> An
     return sso.perfil_sso(clave, ajustes.model_dump(exclude_none=True))
 
 
+@router_idp.get(
+    "/perfiles-mfa/{clave}",
+    summary="Resolver un perfil de proveedor de segundo factor",
+    description=(
+        "Igual que el de SSO y por lo mismo: lo que cambia entre proveedores de "
+        "MFA es el endpoint, la credencial y cómo llaman a «empujar una "
+        "notificación» o «validar un código». Un módulo por casa sería el mismo "
+        "error repetido en otra capa.\n\n"
+        "La ruta de SSO existía y **la de MFA no**: los perfiles de segundo "
+        "factor estaban declarados y probados, y no los alcanzaba nada. Quien "
+        "configuraba un proveedor de MFA tenía que saberse de memoria cómo llama "
+        "el suyo a cada cosa, y equivocarse ahí no da un error: da un segundo "
+        "factor que no llega nunca."
+    ),
+)
+def resolver_perfil_mfa(clave: str, _: AutenticadoDep) -> Any:
+    return sso.perfil_mfa(clave)
+
+
 class Descubrir(BaseModel):
     issuer_url: str = Field(
         ...,

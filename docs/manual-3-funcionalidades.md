@@ -5450,6 +5450,27 @@ que se vea lo que **no** está cubierto es poder leerla entera de una vez. Hoy:
 exportación masiva, cambio de permisos, borrado en bloque, suplantación, claves
 de máquina, cambio de MFA, restauración y baja del tenant.
 
+Y se aplica **en todas**, también en las que ocurren fuera del servicio de
+identidad. La mitad de esas ocho —exportar, borrar en bloque, restaurar— pasan en
+otro servicio, y la fila que dice cuándo se superó el último factor vive en el
+esquema de identidad, que ningún otro servicio puede leer. Lo que lo resuelve es
+propagar **la marca y no la tabla**: el instante del último factor fuerte viaja
+dentro del token y en las cabeceras firmadas, igual que los permisos. Firmada,
+porque una cabecera suelta la pondría cualquiera que alcanzara la red interna y
+bastaría con decir «me acabo de verificar».
+
+De ahí sale una consecuencia práctica: **al superar el factor se entrega un token
+nuevo**. El que se tenía se emitió antes de verificarse y sigue diciendo que no
+hay factor, así que elevar el nivel sin cambiar de token serviría dentro de
+identidad y no serviría fuera.
+
+Dos excepciones, y las dos deliberadas. **Una credencial de máquina no teclea un
+código**: tratarla como a una persona dejaría los procesos automáticos parados
+para siempre y sin nadie a quien pedirle nada; lo que la protege es la credencial,
+su ámbito y el registro de lo que hace. Y **una marca ilegible no vale como
+verificación**: dejarla pasar convertiría un error de formato en una puerta
+abierta.
+
 Dos detalles que importan en la pantalla: sin sesión **no se deja pasar**
 —dejarlo pasar «porque no se puede comprobar» es como no tener la comprobación—,
 y la respuesta distingue «no tienes factor» de «vuelve a verificarte», porque
@@ -10810,6 +10831,22 @@ El **salto imposible** —dos países en dos horas— va aparte: o hay un avión
 existe o hay dos personas, y eso no se resuelve pidiendo un código. Se pide el
 factor **y** se avisa de que hay que mirar las sesiones abiertas, porque si uno
 de los dos accesos no era la persona, el otro sigue vivo.
+
+Se evalúa **al entrar**, contra lo que ya se sabe de esa persona: desde qué IPs ha
+entrado, desde qué equipos, cuánto hace de la última vez. La primera entrada no es
+sospechosa —no hay con qué comparar, y tratarla como riesgo pediría el factor a
+todo el mundo el día del alta, que es cuando menos configurado lo tiene—. Y el
+factor se pide **solo si hay factor que pedir**: a quien no tiene ninguno no se le
+puede exigir uno ahí, y negarle la entrada por algo que no puede resolver lo deja
+fuera sin salida.
+
+**El país es un puerto, no una dependencia.** Saber de qué país es una IP exige
+una base de datos de geolocalización, y atar el producto a un proveedor concreto
+para esto no se hace: quien lo despliegue enchufa el suyo. Lo importante es lo que
+pasa si no hay ninguno — y es que **se dice**: la respuesta lleva «el país no se
+ha podido medir», en vez de darlo por conocido. Dar por conocido lo que no se ha
+mirado haría que la señal más útil de las seis no saltara jamás, y sin que nadie
+lo supiera.
 
 ### Inscripción, respaldo y cambio de dispositivo (`CRM-00.05.01.19`)
 

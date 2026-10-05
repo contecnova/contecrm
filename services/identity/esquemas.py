@@ -48,6 +48,14 @@ class Tokens(BaseModel):
     refresh_token: str
     token_type: str = "Bearer"
     expires_in: int = Field(..., description="Segundos de validez del token de acceso")
+    riesgo: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Qué ha cambiado del contexto de esta entrada y **qué no se ha "
+            "podido mirar**. Vacío cuando la sesión no nace de un login "
+            "—renovación, suplantación—, donde no hay contexto nuevo que evaluar"
+        ),
+    )
 
 
 class Renovar(BaseModel):

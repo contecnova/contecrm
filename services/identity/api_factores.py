@@ -105,8 +105,29 @@ def comprobar_codigo(datos: ComprobarCodigo, uow: UowDep, principal: Autenticado
         proposito=datos.proposito,
     )
     sesion = uow.db.get(Sesion, principal.sesion_id) if principal.sesion_id else None
+    token = ""
     if sesion is not None:
         factores.anotar_factor(uow.db, sesion, fila.canal)
+        uow.db.flush()
+        # Y se devuelve un token NUEVO. La marca del factor fuerte viaja dentro
+        # del token —es lo único que llega a los demás servicios—, así que el
+        # que se tenía se emitió antes de verificarse y sigue diciendo que no
+        # hay factor. Sin esto, elevar el nivel servía dentro de `identity` y no
+        # servía para nada fuera: la exportación seguía contestando «vuelve a
+        # verificarte» después de haberse verificado, que es la peor forma de
+        # tener la comprobación.
+        from services.identity.modelos import Usuario
+        from services.identity.servicio import emitir_token_acceso
+
+        usuario = uow.db.get(Usuario, principal.id)
+        if usuario is not None and principal.tenant_id is not None:
+            token = emitir_token_acceso(
+                uow.db,
+                usuario=usuario,
+                tenant_id=principal.tenant_id,
+                sesion_id=sesion.id,
+                actor_real_id=principal.actor_real_id,
+            )
     return {
         "verificado": True,
         "canal": fila.canal,
@@ -114,6 +135,8 @@ def comprobar_codigo(datos: ComprobarCodigo, uow: UowDep, principal: Autenticado
         # Se dice si ha quedado anotado: sin sesión que elevar, el código vale
         # pero el step-up seguiría pidiéndolo, y descubrirlo después es peor.
         "sesion_elevada": sesion is not None,
+        "access_token": token,
+        "usar_este_token": bool(token),
     }
 
 
@@ -155,6 +178,81 @@ def nivel_de_sesion(db: DbDep, principal: AutenticadoDep) -> Any:
             sesion.factor_fuerte_at.isoformat() if sesion.factor_fuerte_at else None
         ),
     }
+
+
+@router_factores.get(
+    "/plan-de-inscripcion",
+    summary="Qué me falta para tener el segundo factor en condiciones",
+    description=(
+        "**Un solo factor no es tener MFA: es tener un único punto de fallo.** "
+        "Quien solo tiene el móvil y lo pierde se queda fuera, y entonces "
+        "alguien de soporte lo desbloquea por teléfono — que es la puerta de "
+        "atrás por la que se entra de verdad.\n\n"
+        "Por eso el plan pide siempre un **segundo método de respaldo**, y lo "
+        "dice con esas palabras: «añade otro método» se salta, «si pierdes el "
+        "móvil te quedas fuera» no."
+    ),
+)
+def plan_de_inscripcion(db: DbDep, principal: AutenticadoDep) -> Any:
+    activos = [
+        str(d.get("tipo") or "dispositivo")
+        for d in factores.dispositivos_de(db, principal.id, principal.tenant_id)
+    ]
+    return factores.plan_de_inscripcion(factores_activos=activos)
+
+
+@router_factores.get(
+    "/cambio-de-dispositivo",
+    summary="Si se puede mover el segundo factor a un móvil nuevo",
+    description=(
+        "El caso real es siempre el mismo: la persona cambia de teléfono y el "
+        "factor se queda en el viejo, que ya ha devuelto o formateado. Dos "
+        "caminos, y **ninguno es «llama a soporte»**: con respaldo se hace sola "
+        "—es exactamente para esto que se pide un segundo método al "
+        "inscribirse—, y sin respaldo hace falta desbloqueo con dos "
+        "aprobadores.\n\n"
+        "No es burocracia: sin ese requisito, el desbloqueo por teléfono se "
+        "convierte en la forma más fácil de entrar en una cuenta ajena, y no "
+        "hace falta romper nada."
+    ),
+)
+def cambio_de_dispositivo(
+    principal: AutenticadoDep,
+    tiene_respaldo: bool = Query(False),
+    factor_verificado: bool = Query(False),
+) -> Any:
+    # `GET` y no `POST`: esto **no escribe nada**, contesta qué camino hay. Un
+    # `POST` que no escribe se cuela en el gate de «toda escritura declara
+    # permiso» y obliga a inventarle uno, que es peor que arreglar el verbo.
+    return factores.cambio_de_dispositivo(
+        tiene_respaldo=tiene_respaldo, factor_verificado=factor_verificado
+    )
+
+
+@router_factores.get(
+    "/vale-como-unico",
+    summary="Si este factor vale como método único de entrada",
+    description=(
+        "La entrada sin contraseña solo es más segura con un factor **resistente "
+        "a phishing** —una llave FIDO2 o el biométrico del dispositivo, atados "
+        "al dominio—. Con un código por SMS como método único se quita la "
+        "contraseña y se deja lo más débil de los dos: el SMS se intercepta y se "
+        "pide por teléfono, y detrás ya no queda nada.\n\n"
+        "Y exige respaldo, por lo mismo que el plan de inscripción: un método "
+        "único sin segunda vía es un único punto de fallo con otro nombre."
+    ),
+)
+def vale_como_unico(
+    principal: AutenticadoDep,
+    factor: str = Query(..., min_length=1, examples=["passkey"]),
+    resistente_a_phishing: bool = Query(False),
+    tiene_respaldo: bool = Query(False),
+) -> Any:
+    return factores.puede_entrar_sin_contrasena(
+        factor=factor,
+        resistente_a_phishing=resistente_a_phishing,
+        tiene_respaldo=tiene_respaldo,
+    )
 
 
 @router_factores.get(

@@ -18,6 +18,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -107,7 +108,13 @@ def listar_politicas(
 @router_politicas.put(
     "/{nombre}",
     response_model=dict,
-    dependencies=[Depends(exige_permiso("role:write"))],
+    dependencies=[
+        Depends(exige_permiso("role:write")),
+        # Cambiar quién puede ver qué es la operación con la que se abre
+        # cualquier otra puerta: quien llega a una sesión ajena se da permisos y
+        # a partir de ahí todo lo que haga es legítimo para el sistema.
+        exige_reverificacion("cambio_permisos"),
+    ],
     summary="Crear o cambiar una política",
     description=(
         "Sube la versión y guarda una copia de la anterior. La gramática se "

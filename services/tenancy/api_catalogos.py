@@ -22,6 +22,7 @@ from crmcore.http.deps import (
     exige_permiso,
 )
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -463,7 +464,13 @@ class ExportacionOut(BaseModel):
         "un tenant es la unión de la de cada servicio, porque los permisos de "
         "base de datos impiden —a propósito— que uno lea el esquema de otro."
     ),
-    dependencies=[Depends(exige_permiso("tenant:exportar"))],
+    dependencies=[
+        Depends(exige_permiso("tenant:exportar")),
+        # Es la salida de datos más grande que existe en el producto: todo el
+        # tenant en un fichero. Si alguna exportación exige reverificarse, es
+        # esta.
+        exige_reverificacion("exportacion_masiva"),
+    ],
 )
 def exportar_tenant(
     tenant_id: UUID,
@@ -557,6 +564,7 @@ class CertificadoOut(BaseModel):
 @router_baja.post(
     "/{tenant_id}/destruir-datos",
     response_model=CertificadoOut,
+    dependencies=[exige_reverificacion("baja_tenant")],
     summary="Destruir los datos del tenant y emitir el certificado",
     description=(
         "Irreversible. Exige que el tenant esté en baja, que haya pasado la "
