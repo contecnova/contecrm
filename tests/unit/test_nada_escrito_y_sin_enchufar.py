@@ -75,7 +75,19 @@ CARPETAS = (
 #                   extensión suscrita a un evento no recibía ninguno—. Cerradas
 #                   las nueve, el resto son ayudantes de pruebas y están abajo
 #                   con su motivo.
-TOPE = 0
+#   05-10-2026 143  **El cero de arriba era falso, y lo era por culpa de esta
+#                   misma sonda.** El recorrido usaba `glob("*.py")`, que mira
+#                   los ficheros SUELTOS de una carpeta y no los de dentro.
+#                   Mientras `CARPETAS` nombraba cuatro carpetas hoja funcionaba;
+#                   al ampliarlo a `services` entero pasó a mirar los ficheros
+#                   que hay directamente en `services/` —ninguno— y devolvió
+#                   cero. Un cero que significaba «no se ha mirado», leído como
+#                   «no queda nada», y así se reportó.
+#
+#                   Es exactamente el fallo que este fichero persigue, cometido
+#                   por él: una comprobación que no mira parece verde. Con
+#                   `rglob` el número de verdad es 143, y de ahí se baja.
+TOPE = 143
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -169,7 +181,15 @@ def _sin_llamante() -> list[str]:
     sueltas: list[str] = []
     arboles = _arboles()
     for carpeta in CARPETAS:
-        for fichero in (RAIZ / carpeta).glob("*.py"):
+        # `rglob` y no `glob`. Con `glob` sólo se miraban los ficheros SUELTOS de
+        # la carpeta, no los de dentro. Mientras `CARPETAS` nombraba cuatro
+        # carpetas hoja funcionaba; al ampliarlo a `services` entero, el
+        # recorrido pasó a mirar los ficheros que hay directamente en
+        # `services/` —ninguno— y el resultado fue cero. Un cero que significaba
+        # «no se ha mirado», leído como «no queda nada».
+        for fichero in (RAIZ / carpeta).rglob("*.py"):
+            if "__pycache__" in str(fichero):
+                continue
             arbol = arboles.get(str(fichero))
             if arbol is None:
                 continue
