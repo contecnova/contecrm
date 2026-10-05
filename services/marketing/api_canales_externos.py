@@ -9,7 +9,7 @@ a un hilo público— y eso no se puede deshacer.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -338,6 +338,148 @@ montar_listado(
     ruta="/aprobacion",
     nombre="Aprobaciones de activos",
 )
+
+
+# ── Lo que estaba escrito y no se podía pedir ─────────────────────────────
+#
+# Medido el 05-10-2026: seis decisiones de este módulo no las alcanzaba ninguna
+# ruta. Las dos primeras son las que duelen, porque las dos son promesas hechas
+# a una persona que no es cliente nuestra.
+
+
+class BajasIn(BaseModel):
+    bajas_en_el_crm: list[dict[str, Any]] = Field(default_factory=list)
+    ultimo_envio: datetime | None = None
+
+
+@router_audiencias.post(
+    "/bajas",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Quién se dio de baja y sigue en las audiencias de fuera",
+    description=(
+        "**Es el punto donde todas estas integraciones fallan.** Alguien se da de "
+        "baja en el CRM, la audiencia de la plataforma se actualiza «cuando "
+        "toque», y mientras tanto sigue viendo anuncios. Es exactamente lo que la "
+        "gente denuncia, y tiene razón.\n\n"
+        "Por eso la baja no espera al ciclo normal: sale en su propia lista."
+    ),
+)
+def bajas(cuerpo: BajasIn, principal: AutenticadoDep) -> Any:
+    return aud.bajas_a_propagar(
+        bajas_en_el_crm=cuerpo.bajas_en_el_crm, ultimo_envio=cuerpo.ultimo_envio
+    )
+
+
+class ReglasWebIn(BaseModel):
+    reglas: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_audiencias.post(
+    "/reglas-web/comprobar",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Qué le pasa a este conjunto de reglas de personalización",
+    description=(
+        "Lo que rompe una personalización web no es una regla mal escrita: son "
+        "**dos reglas que encajan a la vez** sin prioridad declarada. Entonces el "
+        "contenido depende del orden en que lleguen de la base, cambia solo, nadie "
+        "puede reproducirlo — y se culpa a la caché.\n\n"
+        "Se puede comprobar antes de guardarlas; servir contenido las comprueba "
+        "también, y devuelve los empates junto al contenido."
+    ),
+)
+def reglas_web(cuerpo: ReglasWebIn, principal: AutenticadoDep) -> Any:
+    return aud.comprobar_reglas_web(reglas=cuerpo.reglas)
+
+
+class ResultadoOfflineIn(BaseModel):
+    envios: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_audiencias.post(
+    "/offline/resultado",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Qué ha pasado con un paso offline, sabiendo lo poco que se puede saber",
+    description=(
+        "Una carta no tiene apertura ni clic. Lo único medible es lo que vuelve: "
+        "una devolución, una llamada al número de la campaña, un código usado. "
+        "**Fingir métricas de digital en un canal que no las tiene** es lo que "
+        "hace que las comparaciones entre canales no valgan nada — y con ellas se "
+        "reparte el presupuesto del año siguiente."
+    ),
+)
+def resultado_offline(cuerpo: ResultadoOfflineIn, principal: AutenticadoDep) -> Any:
+    return aud.resultado_offline(envios=cuerpo.envios)
+
+
+class UsoIn(BaseModel):
+    activo: dict[str, Any] = Field(default_factory=dict)
+    uso: str = Field(..., min_length=1, examples=["campana_email"])
+
+
+@router_activos.post(
+    "/se-puede-usar",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Si este activo se puede usar para esto y hoy",
+    description=(
+        "Las tres respuestas negativas son **distintas** y se distinguen, porque "
+        "llevan a acciones distintas: no está aprobado (falta una firma), ha "
+        "caducado (hay que renovar o rehacer) y no cubre este uso (hay que "
+        "comprar otra licencia o buscar otra pieza).\n\n"
+        "Un «no se puede» sin decir cuál de las tres manda a preguntar a tres "
+        "sitios."
+    ),
+)
+def se_puede_usar(cuerpo: UsoIn, principal: AutenticadoDep) -> Any:
+    return act.se_puede_usar(activo=cuerpo.activo, uso=cuerpo.uso)
+
+
+@router_activos.get(
+    "/aprobaciones/estado",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Si esto se puede publicar ya, y qué falta",
+    description=(
+        "Un rechazo vale **para el conjunto**: seguir pidiendo las firmas "
+        "siguientes cuando uno ya ha dicho que no es hacer trabajar a gente sobre "
+        "algo que va a cambiar."
+    ),
+)
+def estado_aprobacion(
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: str,
+    objeto_id: UUID,
+    version: int = 1,
+) -> Any:
+    return act.estado_de_la_aprobacion(
+        db, principal.tenant_id, objeto=objeto, objeto_id=objeto_id, version=version
+    )
+
+
+class CrisisIn(BaseModel):
+    menciones_por_hora: list[int] = Field(default_factory=list)
+    umbral_multiplicador: float = Field(
+        5.0,
+        gt=0,
+        description=(
+            "Cuántas veces el ritmo normal cuenta como incendio. Se mira el CAMBIO "
+            "de ritmo y no el número absoluto: veinte menciones a la hora pueden "
+            "ser normales para una marca grande y una señal de incendio para una "
+            "pequeña, y un umbral fijo sólo funciona para el tamaño con el que se "
+            "escribió"
+        ),
+    )
+
+
+@router_social.post(
+    "/crisis",
+    dependencies=[Depends(exige_permiso("marketing:read"))],
+    summary="Si esto ha dejado de ser una queja y es otra cosa",
+)
+def crisis(cuerpo: CrisisIn, principal: AutenticadoDep) -> Any:
+    return soc.escalar_crisis(
+        menciones_por_hora=cuerpo.menciones_por_hora,
+        umbral_multiplicador=cuerpo.umbral_multiplicador,
+    )
 
 
 ROUTERS_CANALES_EXTERNOS = [router_audiencias, router_activos, router_social]

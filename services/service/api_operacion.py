@@ -705,7 +705,67 @@ montar_listado(
 )
 
 
+# ── Antes de abrir el caso, y antes de firmar el pliego ───────────────────
+
+
+@router_entitlements.get(
+    "/{entitlement_id}/puede-abrirse",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    summary="Si se puede abrir un caso contra este derecho, y qué decir si no",
+    description=(
+        "Devuelve la **decisión**, no un corte: quien abre el caso decide qué "
+        "hacer según el contrato —bloquear, avisar o facturar el exceso—, y las "
+        "tres son legítimas. Elegir por él significaría cortarle el soporte a "
+        "alguien que pagaba por el exceso.\n\n"
+        "Se mira **antes** de abrirlo. Descubrir que el derecho estaba agotado "
+        "cuando el caso lleva dos días abiertos deja la conversación en el peor "
+        "sitio posible."
+    ),
+)
+def puede_abrirse(entitlement_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    return ent.comprobar_antes_de_abrir(db, principal.tenant_id, entitlement_id)
+
+
+router_sla_proveedores = APIRouter(prefix="/sla-proveedores", tags=["SLA"])
+
+
+class MaximoIn(BaseModel):
+    del_proveedor: dict[str, Any] = Field(default_factory=dict)
+    horas_propias: float = Field(
+        1.0,
+        ge=0,
+        description=(
+            "Lo que tardamos NOSOTROS en lo nuestro: recibir el aviso, "
+            "diagnosticar, escalar al proveedor. Si no se cuenta, el compromiso "
+            "que se firma es el del proveedor y el cliente nos reclama la "
+            "diferencia"
+        ),
+    )
+
+
+@router_sla_proveedores.post(
+    "/maximo-que-se-puede-prometer",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    summary="Lo mejor que se puede firmar con este proveedor detrás",
+    description=(
+        "La conversación **al revés**: en vez de comprobar un pliego ya escrito, "
+        "decirle al comercial qué puede ofrecer antes de escribirlo. Es más barato "
+        "que descubrirlo en la revisión legal, y mucho más que descubrirlo en la "
+        "primera incidencia.\n\n"
+        "Sin el acuerdo del proveedor **no se contesta**: se podría adivinar, que "
+        "es lo que se hace ahora y lo que este módulo existe para evitar."
+    ),
+)
+def maximo_que_se_puede_prometer(cuerpo: MaximoIn, principal: AutenticadoDep) -> Any:
+    from services.service import proveedores_sla as psla
+
+    return psla.maximo_que_se_puede_prometer(
+        del_proveedor=cuerpo.del_proveedor, horas_propias=cuerpo.horas_propias
+    )
+
+
 ROUTERS_OPERACION = [
+    router_sla_proveedores,
     router_colas,
     router_agentes,
     router_escalado,

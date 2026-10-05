@@ -79,3 +79,29 @@ class _ServicioSettings(BaseSettings):
     tarea_reverificaciones_intervalo_s: int = Field(3_600, ge=60, le=86_400)
     tarea_informes_intervalo_s: int = Field(300, ge=30, le=86_400)
     tarea_purgas_intervalo_s: int = Field(3_600, ge=60, le=86_400)
+
+    # ── El programador de integraciones ───────────────────────────────────
+    #
+    # Mismo agujero que arriba, un escalón más abajo: el conector declarativo
+    # estaba completo y **solo lo disparaba una ruta a mano**. Una integración
+    # que hay que ejecutar pulsando un botón no es una integración; es una
+    # pantalla. Y por eso las decisiones que la gobiernan —cuándo avanzar la
+    # marca, cómo reintentar, a qué ritmo traer la primera carga— estaban
+    # escritas, probadas y sin que las llamara nadie.
+    #
+    # Cada cuánto MIRA el programador si hay algo que toca. Lo que decide si
+    # toca es la cadencia de cada operación, que es configuración suya.
+    tarea_integraciones_intervalo_s: int = Field(60, ge=5, le=3_600)
+    # Suelo de la cadencia que puede declarar una operación. Existe porque el
+    # proveedor de enfrente tiene cuota: una operación puesta «cada minuto»
+    # contra una API que admite sesenta llamadas por hora bloquea la aplicación
+    # entera —a todos los clientes, no solo al que se pasó—.
+    integracion_cadencia_minima_minutos: int = Field(5, ge=1, le=1_440)
+    # Cuántas operaciones ejecuta como mucho en una vuelta. Sin tope, un tenant
+    # con doscientas vencidas a la vez monopoliza el relevo y los demás no
+    # corren.
+    integracion_max_por_vuelta: int = Field(20, ge=1, le=500)
+    # Cuánto se guarda un registro recibido que ya se procesó. Lo que entra es
+    # una copia de datos de un sistema ajeno: guardarla para siempre es
+    # acumular datos personales de los que no somos responsables.
+    integracion_registros_retencion_dias: int = Field(30, ge=1, le=3_650)

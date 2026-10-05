@@ -108,6 +108,24 @@ DASHBOARD_ALERT_CLEARED = registrar(
 # casi siempre fuera del CRM. Un evento interno aquí obligaría a sondear la API
 # para enterarse de lo que ya sabemos.
 
+INTEGRATION_RECORDS_RECEIVED = registrar(
+    TipoEvento(
+        tipo="integration.records.received",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "Una operación programada ha traído registros nuevos de un sistema "
+            "externo y han aterrizado. Es público porque el sentido de leer un "
+            "maestro ajeno es que alguien haga algo con él, y quien lo hace casi "
+            "nunca es este servicio: sin evento habría que sondear la API para "
+            "enterarse de lo que ya sabemos. Lleva el recuento de nuevos y de "
+            "repetidos —no los registros— porque una vuelta puede traer diez mil "
+            "y un evento no es un medio de transporte de datos."
+        ),
+        campos=("operacion", "nuevos", "repetidos"),
+    )
+)
+
 ORDER_TRACKED_CREATED = registrar(
     TipoEvento(
         tipo="order.tracked.created",

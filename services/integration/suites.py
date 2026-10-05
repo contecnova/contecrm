@@ -143,6 +143,18 @@ class ConsentimientoSuite(Base, TimestampMixin, SoftDeleteMixin):
     )
     concedido_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revocado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Cuándo deja de valer la credencial que el proveedor entregó, y si hay con
+    # qué renovarla sin molestar a la persona. Las dos cosas se guardan porque
+    # **una credencial sin refresco y con caducidad es una bomba de relojería**:
+    # funciona meses y un martes deja de entrar el correo de veinte personas a
+    # la vez. Sin este par, `estado_credencial` sólo podía contestar «no consta
+    # caducidad», que es verdad y no sirve para nada.
+    credencial_caduca_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    tiene_refresco: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     # Quién lo concedió. Tiene que ser la propia persona: si aquí aparece otro,
     # es que alguien lo hizo por ella, y eso hay que poder verlo.
     concedido_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
@@ -456,6 +468,8 @@ def conceder(
     recursos: list[str],
     alcances: list[str],
     sentido: str = "leer",
+    credencial_caduca_at: datetime | None = None,
+    tiene_refresco: bool = False,
 ) -> dict[str, Any]:
     """La persona autoriza el acceso a sus recursos.
 
@@ -505,6 +519,8 @@ def conceder(
         fila.concedido_at = _ahora()
         fila.revocado_at = None
         fila.concedido_por = quien_concede
+        fila.credencial_caduca_at = credencial_caduca_at
+        fila.tiene_refresco = bool(tiene_refresco)
         concedidos.append(recurso)
 
     uow.db.flush()
@@ -855,3 +871,138 @@ def exigir_sin_conflicto(
             "duplicada.",
             error_code="suite.suscripcion_duplicada",
         )
+
+
+# ── El mantenimiento, que es lo que faltaba ───────────────────────────────
+#
+# `por_renovar` tenía ruta y `caer_a_sondeo` estaba escrita, probada y sin que
+# la llamara nadie. O sea: el sistema sabía decir qué suscripciones se iban a
+# morir, lo enseñaba en una pantalla, y **no hacía nada**. Una suscripción que
+# caduca no da ningún error: deja de llegar lo que llegaba, el CRM se queda
+# quieto, y el usuario lo descubre cuando echa de menos una cita.
+#
+# Esto es lo que lo recorre. La decisión que aplica —caer al sondeo en vez de
+# quedarse mudo— ya estaba tomada en `caer_a_sondeo`; aquí sólo se ejecuta.
+
+
+def mantener_suscripciones(
+    uow: UnidadDeTrabajo, *, ahora: datetime | None = None
+) -> dict[str, Any]:
+    """Cae al sondeo lo que ya ha caducado y avisa de lo que está a punto.
+
+    **Caducadas al sondeo, urgentes avisadas.** No se tratan igual a propósito:
+    una que caducó ya no trae nada y hay que sustituirla por el sondeo ahora
+    mismo; una que caduca en unas horas todavía funciona, y tirarla antes de
+    tiempo convertiría un aviso en una degradación.
+
+    Sondear cada diez minutos no es lo mismo que enterarse al instante, así que
+    la caída se **marca**: el usuario tiene derecho a saber por qué su cita
+    tarda.
+    """
+    momento = ahora or _ahora()
+    estado = por_renovar(uow.db, uow.tenant_id, ahora=momento)
+    caidas: list[dict[str, Any]] = []
+    for fila in (
+        uow.db.execute(
+            select(SuscripcionSuite).where(
+                SuscripcionSuite.tenant_id == uow.tenant_id,
+                SuscripcionSuite.estado == "activa",
+                SuscripcionSuite.caduca_at.is_not(None),
+                SuscripcionSuite.caduca_at <= momento,
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        caidas.append(
+            caer_a_sondeo(
+                uow,
+                suscripcion_id=fila.id,
+                motivo="La suscripción ha caducado y no se ha podido renovar.",
+            )
+        )
+    return {
+        "caidas_a_sondeo": caidas,
+        # Las urgentes se devuelven para que el panel las enseñe: avisar de lo
+        # que va a romperse es la mitad del trabajo, y la que nadie mira es
+        # siempre esta.
+        "por_renovar": estado["por_renovar"],
+        "sin_caducidad_declarada": estado["sin_caducidad_declarada"],
+        "aviso": estado["aviso"],
+    }
+
+
+def salud_de_las_credenciales(
+    db: Session, tenant_id: UUID, *, ahora: datetime | None = None
+) -> dict[str, Any]:
+    """Qué consentimientos van a dejar de funcionar, y cuáles se romperán solos.
+
+    `estado_credencial` estaba escrita, probada y sin llamante: el sistema sabía
+    distinguir «hay que renovar», «hay que avisar» y «esto es una bomba de
+    relojería» —una credencial **sin refresco y con caducidad** funciona meses y
+    un martes deja de entrar el correo de veinte personas a la vez— y no lo
+    miraba nunca.
+    """
+    momento = ahora or _ahora()
+    filas = (
+        db.execute(
+            select(ConsentimientoSuite).where(
+                ConsentimientoSuite.tenant_id == tenant_id,
+                ConsentimientoSuite.revocado_at.is_(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    salida = []
+    for fila in filas:
+        estado = estado_credencial(
+            caduca_at=fila.credencial_caduca_at,
+            tiene_refresco=bool(fila.tiene_refresco),
+            ahora=momento,
+        )
+        # Tres motivos para salir, y el tercero es el que da nombre a esto.
+        #
+        #   1. Pide renovación o aviso: es lo que `estado_credencial` decide, y
+        #      sólo lo dice cuando la fecha está cerca.
+        #   2. No es fiable: de una credencial sin caducidad declarada no se
+        #      sabe que esté bien, se sabe que no está medida.
+        #   3. **Es una bomba de relojería**: tiene caducidad y NO tiene
+        #      refresco. Esa sale aunque queden trescientos días, porque el día
+        #      que llegue dejará de entrar el correo de veinte personas a la vez
+        #      y habrá que pedirles a todas que vuelvan a autorizar. Esperar al
+        #      margen de aviso para decirlo es decirlo tarde: lo que hay que
+        #      hacer —conseguir refresco o planificar la reautorización— no se
+        #      hace en una semana.
+        es_bomba = fila.credencial_caduca_at is not None and not fila.tiene_refresco
+        if estado["renovar"] or estado["avisar"] or not estado["fiable"] or es_bomba:
+            salida.append(
+                {
+                    "consentimiento_id": str(fila.id),
+                    "usuario_id": str(fila.usuario_id),
+                    "perfil": fila.perfil,
+                    "recurso": fila.recurso,
+                    "se_rompera_sola": es_bomba,
+                    **estado,
+                }
+            )
+    return {"revisados": len(filas), "que_piden_algo": salida}
+
+
+def tenants_con_suscripciones() -> list[UUID]:
+    """Los tenants que tienen suscripciones vivas, de **su propia tabla**.
+
+    No se le pide la lista de tenants a `tenancy`: es de otro servicio y no se
+    lee desde aquí. Y la lista buena es más corta.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return [
+            t
+            for (t,) in db.execute(
+                select(SuscripcionSuite.tenant_id)
+                .where(SuscripcionSuite.estado == "activa")
+                .distinct()
+            ).all()
+        ]

@@ -676,7 +676,7 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict
     mitad, alguien se da de baja a mitad, y los dos tienen que dejar de recibir
     en el paso siguiente y no al final.
     """
-    from services.marketing.campanas import comprobar_fatiga
+    from services.marketing.campanas import anotar_envio, comprobar_fatiga
     from services.marketing.segmentos import filtrar_suprimidos
 
     ahora = _ahora()
@@ -736,6 +736,24 @@ def avanzar(uow: UnidadDeTrabajo, tenant_id: UUID, *, limite: int = 500) -> dict
                     ejecutado = False
                     omision = "fatiga"
             if ejecutado:
+                # **Se apunta el envío aquí.** `anotar_envio` estaba escrita,
+                # probada y sin que la llamara nadie, así que `ContactoEnviado`
+                # no se llenaba nunca y `comprobar_fatiga` —que lee esa tabla—
+                # decía «permitido» SIEMPRE. El tope de frecuencia existía, se
+                # podía configurar, salía en la pantalla y no frenaba ni un
+                # correo: quien hubiera entrado en cinco recorridos recibía los
+                # cinco el mismo día.
+                #
+                # Se apunta al emitir y no al confirmar la entrega, y es una
+                # decisión: contar de más cuesta un mensaje que no sale; contar
+                # de menos cuesta que el tope no exista. El segundo error es el
+                # que ya habíamos cometido.
+                anotar_envio(
+                    uow.db,
+                    tenant_id,
+                    objeto_id=fila.objeto_id,
+                    canal="email",
+                )
                 uow.emitir(
                     "journey.action.due",
                     subject=("recorrido", fila.id),

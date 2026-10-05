@@ -93,7 +93,13 @@ def preparar_audiencia(
         if persona.get("baja_publicidad"):
             fuera_bajas.append(correo)
             continue
-        if str(persona.get("base_legal") or "") not in BASES_PUBLICIDAD:
+        try:
+            # La MISMA regla que el camino de uno en uno, y no una copia de su
+            # condición. Dos comprobaciones de lo mismo acaban diciendo cosas
+            # distintas, y la que se queda corta es siempre la del lote — que es
+            # justo la que manda miles de direcciones a una red de anuncios.
+            exigir_base_publicitaria(base=str(persona.get("base_legal") or ""))
+        except Prohibido:
             fuera_sin_base.append(correo)
             continue
         dentro.append({"hash": _trocear(correo)})
@@ -342,6 +348,11 @@ def contenido_para(
             ),
         }
 
+    # Antes de aplicar nada: dos reglas que encajan a la vez sin prioridad
+    # declarada hacen que el contenido dependa del orden en que lleguen de la
+    # base. Cambia solo, nadie puede reproducirlo, y se culpa a la caché.
+    revision = comprobar_reglas_web(reglas=reglas)
+
     for regla in sorted(reglas, key=lambda r: int(r.get("prioridad") or 100)):
         campo = str(regla.get("campo") or "")
         esperado = regla.get("valor")
@@ -355,6 +366,11 @@ def contenido_para(
                     "regla se devuelve para que la respuesta a «¿por qué le salió "
                     "esto?» no sea «lo decide el algoritmo»."
                 ),
+                # Los empates se devuelven CON el contenido, no en otra llamada:
+                # si hay que pedirlos aparte, nadie los pide, y el día que el
+                # contenido cambia solo no hay nada que mirar.
+                "reglas_en_conflicto": revision["problemas"],
+                "empates_de_prioridad": revision["empates_de_prioridad"],
             }
 
     return {

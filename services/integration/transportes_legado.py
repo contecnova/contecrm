@@ -723,3 +723,209 @@ def recoger_de_sftp(
 # Contador de intentos del proceso. Se pierde al reiniciar — está dicho arriba
 # y es justo por lo que `recoger_de_sftp` deja que quien llame traiga el suyo.
 _INTENTOS: dict[str, int] = {}
+
+
+# ── Quién los ejecuta, por fin ────────────────────────────────────────────
+#
+# Medido el 04-10-2026: los cinco transportes estaban registrados y **nadie los
+# ejecutaba nunca**. `_MANEJADORES` sólo se escribía y se listaba. Se dejó
+# escrito que montar el barrido era una decisión de producto —cada cuánto, con
+# qué configuración, dónde van los resultados— y aquí están las tres, tomadas:
+#
+#   * **Cada cuánto**: lo dice la operación (`Operacion.cada_minutos`), con un
+#     suelo configurable. Un fichero que llega a las 3:00 y un stock que cambia
+#     cada cinco minutos no pueden compartir ritmo.
+#   * **Con qué configuración**: la de la conexión, igual que REST. Lo que
+#     cambia entre dos clientes es esa config, no un módulo.
+#   * **Dónde van los resultados**: a `registros_recibidos`, con el
+#     identificador externo como clave. Lo mismo que trae el conector REST, por
+#     la misma puerta, para que quien los consuma no sepa por dónde entraron.
+#
+# Lo que sigue siendo cierto y no se tapa: **`leer_programado` devuelve lo que
+# el transporte dé**. Si un fichero plano no trae una columna que sirva de
+# identificador, el programador lo cuenta aparte en vez de inventarse una clave
+# — y entonces la marca no avanza, que es lo correcto.
+
+
+def _identificar(filas: list[dict[str, Any]], definicion: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pone `id_externo` a cada fila, **si la configuración dice de dónde sale**.
+
+    No se adivina. Coger «el primer campo que parezca un id» funciona el día de
+    la demostración y duplica el maestro de clientes el día que el proveedor
+    añade una columna delante.
+    """
+    campo = str(definicion.get("campo_id") or "")
+    if not campo:
+        return filas
+    return [{**f, "id_externo": str(f.get(campo) or "")} for f in filas]
+
+
+def _leer_ficheros(
+    config: dict[str, Any], definicion: dict[str, Any], ficheros: list[dict[str, Any]], *, edi: bool
+) -> tuple[list[dict[str, Any]], list[str]]:
+    filas: list[dict[str, Any]] = []
+    avisos: list[str] = []
+    for fichero in ficheros:
+        contenido = str(fichero.get("contenido") or "")
+        resultado = leer_edi(contenido, config) if edi else leer_fichero(contenido, config)
+        filas.extend(_identificar(resultado.filas, definicion))
+        avisos.extend(resultado.avisos)
+    return filas, avisos
+
+
+def leer_programado(
+    protocolo: str,
+    config: dict[str, Any],
+    definicion: dict[str, Any],
+    *,
+    intentos: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    """Una vuelta de lectura por un transporte heredado.
+
+    Devuelve lo mismo que el conector REST —`registros`, `paginas`— para que el
+    programador no tenga que saber por dónde entró nada. Un protocolo que este
+    módulo no habla **se dice**: fallar dentro de un proceso nocturno con un
+    `KeyError` es cómo una integración lleva tres semanas sin traer nada y nadie
+    se ha enterado.
+    """
+    clave = str(protocolo or "").lower()
+    if clave not in PROTOCOLOS:
+        raise ErrorValidacion(
+            f"El protocolo «{protocolo}» no lo habla este módulo. Los que sí: "
+            f"{', '.join(PROTOCOLOS)}.",
+            error_code="transportes.protocolo_desconocido",
+            detalle={"protocolos": list(PROTOCOLOS)},
+        )
+
+    if clave == "sftp":
+        # Se baja, se interpreta y **sólo entonces** se archiva. Archivar al
+        # bajar es cómo se pierde un día de pedidos: si el proceso falla
+        # después, el mayorista no lo vuelve a mandar.
+        recogido = recoger_de_sftp(config, intentos=intentos)
+        filas, avisos = _leer_ficheros(
+            config,
+            definicion,
+            recogido["ficheros"],
+            edi=str(definicion.get("formato") or config.get("formato") or "") == "edi",
+        )
+        archivados = []
+        for fichero in recogido["ficheros"]:
+            try:
+                archivados.append(archivar_sftp(config, str(fichero["ruta"])))
+            except Exception as exc:  # noqa: BLE001 — archivar es lo último
+                # Que falle archivar NO invalida lo leído: lo leído ya está, y
+                # lo que pasa si se trata como un fallo es que se vuelve a leer
+                # entero en la pasada siguiente.
+                avisos.append(f"No se ha podido archivar «{fichero['ruta']}»: {str(exc)[:120]}")
+        return {
+            "registros": filas,
+            "paginas": len(recogido["ficheros"]),
+            "avisos": avisos,
+            "archivados": archivados,
+            "esperando": recogido["esperando"],
+        }
+
+    if clave in ("fichero", "edi"):
+        contenido = str(definicion.get("contenido") or config.get("contenido") or "")
+        if not contenido:
+            raise ErrorValidacion(
+                "Este transporte lee de un contenido que hay que entregarle, y no se "
+                "ha entregado ninguno. Para recogerlo de un servidor, la conexión es "
+                "de tipo «sftp».",
+                error_code="transportes.sin_contenido",
+            )
+        resultado = (
+            leer_edi(contenido, config) if clave == "edi" else leer_fichero(contenido, config)
+        )
+        return {
+            "registros": _identificar(resultado.filas, definicion),
+            "paginas": 1,
+            "avisos": list(resultado.avisos),
+        }
+
+    if clave == "soap":
+        respuesta = _llamar_soap(config, definicion)
+        resultado = leer_soap(respuesta, config)
+        return {
+            "registros": _identificar(resultado.filas, definicion),
+            "paginas": 1,
+            "avisos": list(resultado.avisos),
+        }
+
+    import asyncio
+
+    resultado = asyncio.run(consumir_amqp(config, int(definicion.get("limite") or 100)))
+    return {
+        "registros": _identificar(resultado.filas, definicion),
+        "paginas": 1,
+        "avisos": list(resultado.avisos),
+    }
+
+
+def _llamar_soap(config: dict[str, Any], definicion: dict[str, Any]) -> str:
+    """Manda el sobre y devuelve la respuesta en crudo.
+
+    Por `cliente_seguro`, como toda llamada saliente: una URL que llega de una
+    configuración y se pide sin más es por donde se lee la red interna desde
+    fuera. Y el cuerpo lo arma `envolver_soap`, que es donde está decidido cómo
+    se envuelve — escribirlo otra vez aquí serían dos formas de hacer el sobre y
+    una sin mantener.
+    """
+    from crmcore.red import cliente_seguro, exigir
+
+    url = str(config.get("url") or "")
+    if not url:
+        raise ErrorValidacion(
+            "Falta la URL del servicio SOAP.", error_code="transportes.soap_sin_url"
+        )
+    sobre = envolver_soap(str(definicion.get("cuerpo") or ""), config)
+    exigir(url)
+    cabeceras = {
+        "Content-Type": "text/xml; charset=utf-8",
+        # `SOAPAction` vacía no es lo mismo que ausente: hay servidores que
+        # rechazan la petición sin ella y el error que dan no lo dice.
+        "SOAPAction": str(definicion.get("accion") or config.get("accion") or ""),
+    }
+    try:
+        with cliente_seguro(timeout=float(config.get("timeout_s") or 30.0)) as cli:
+            salida = cli.post(url, content=sobre.encode("utf-8"), headers=cabeceras)
+    except Exception as exc:  # noqa: BLE001 — httpx lanza varias clases
+        raise ErrorDependencia(
+            "El servicio SOAP no ha respondido",
+            error_code="transportes.soap_sin_respuesta",
+            detalle={"error": str(exc)[:200]},
+        ) from exc
+    if salida.status_code >= 400:
+        raise ErrorDependencia(
+            f"El servicio SOAP ha contestado {salida.status_code}",
+            error_code="transportes.soap_rechazado",
+            detalle={"codigo": salida.status_code, "cuerpo": salida.text[:500]},
+        )
+    return salida.text
+
+
+def enviar_programado(
+    protocolo: str, config: dict[str, Any], definicion: dict[str, Any], cuerpo: str
+) -> dict[str, Any]:
+    """La otra mitad: mandar algo por un transporte heredado.
+
+    Existe porque `publicar_amqp` y `envolver_soap` estaban escritas, probadas y
+    sin que las llamara nadie: se podía declarar una conexión AMQP y no había
+    forma de publicar en ella. Una integración que sólo sabe leer deja al
+    cliente escribiendo en el ERP a mano, que es la mitad del trabajo que venía
+    a quitar.
+    """
+    clave = str(protocolo or "").lower()
+    if clave == "amqp":
+        import asyncio
+
+        return asyncio.run(publicar_amqp(config, cuerpo))
+    if clave == "soap":
+        respuesta = _llamar_soap(config, {**definicion, "cuerpo": cuerpo})
+        resultado = leer_soap(respuesta, config)
+        return {"enviado": True, "respuesta": resultado.filas, "crudo": resultado.crudo[:2000]}
+    raise ErrorValidacion(
+        f"Por «{protocolo}» no se manda nada desde aquí: es de sólo lectura. "
+        "Los que admiten envío son «amqp» y «soap».",
+        error_code="transportes.protocolo_solo_lectura",
+    )

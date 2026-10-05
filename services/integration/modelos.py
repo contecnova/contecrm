@@ -103,7 +103,104 @@ class Operacion(Base, TimestampMixin):
     definicion: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     activa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    __table_args__ = (UniqueConstraint("conexion_id", "clave", name="uq_operacion_clave"),)
+    # ── Cuándo se ejecuta sola ────────────────────────────────────────────
+    #
+    # Hasta el 05-10-2026 **nunca**: el conector estaba completo y sólo lo
+    # disparaba una ruta a mano. Una integración que hay que ejecutar pulsando
+    # un botón no es una integración, es una pantalla — y por eso las
+    # decisiones que la gobiernan (cuándo avanzar la marca, cómo reintentar, a
+    # qué ritmo traer la primera carga) estaban escritas, probadas y sin que
+    # las llamara nadie.
+    #
+    # La cadencia es **de la operación**, no un valor global: leer el maestro de
+    # clientes una vez al día y consultar el stock cada cinco minutos son la
+    # misma pieza con ritmos distintos. Cero significa «sólo a mano», que es el
+    # comportamiento que tenían todas antes y por tanto el de serie.
+    cada_minutos: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    proxima_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    ultima_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # La marca del incremento, **tal cual la dio el proveedor**. Traducirla a un
+    # formato común sería inventar un estándar que se rompe con el primer
+    # proveedor que cambie de forma.
+    marca: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", server_default=text("''")
+    )
+    # Fallos seguidos y hasta cuándo está en reposo. Lo segundo sale de lo que
+    # diga el proveedor (`Retry-After`): reintentar antes gasta cuota para que
+    # vuelva a decir que no, y de paso parece un ataque.
+    intentos: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    pausada_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ultimo_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Estado que el transporte necesita entre pasadas. Hoy sólo lo usa el SFTP,
+    # para contar cuántas veces ha visto un fichero a medio escribir: ese
+    # contador vivía en memoria del proceso, y **en memoria se pierde al
+    # reiniciar**, así que un fichero atascado desde hace tres días volvía a
+    # empezar de cero y el aviso no saltaba nunca. La propia función lo dejó
+    # dicho; aquí está el sitio donde guardarlo.
+    estado_transporte: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("conexion_id", "clave", name="uq_operacion_clave"),
+        Index("ix_operaciones_programadas", "tenant_id", "activa", "proxima_at"),
+    )
+
+
+class RegistroRecibido(Base):
+    """Un registro que entró por una integración, antes de que nadie decida nada.
+
+    **Es la respuesta a «dónde van los resultados».** Sin un sitio donde
+    aterrizar, una ejecución programada sólo podía dejar un contador en la traza
+    y tirar lo leído, que es la forma más cara de no integrar nada.
+
+    Lo que aterriza ya viene con los nombres de campo de contecrm —el mapeo es
+    parte de la configuración— así que quien lo consuma no sabe nada de la API
+    de origen.
+
+    **La clave es el identificador externo**, y es lo que hace que la
+    sincronización sea idempotente. Es la misma lección que `elementos_buzon`
+    lleva escrita: sin él, una reunión aparece cuatro veces en la ficha porque
+    el calendario reenvía el evento cada vez que alguien lo toca.
+
+    No se queda para siempre: es una copia de datos de un sistema ajeno, y
+    guardarla sin plazo es acumular datos personales de los que no somos
+    responsables (`INTEGRACION_REGISTROS_RETENCION_DIAS`).
+    """
+
+    __tablename__ = "registros_recibidos"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    conexion_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    operacion: Mapped[str] = mapped_column(String(120), nullable=False)
+    externo_id: Mapped[str] = mapped_column(String(300), nullable=False)
+    datos: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    # recibido | procesado | descartado. Lo tercero con su motivo: un registro
+    # que no entra y no dice por qué manda a mirar al sistema de origen, donde
+    # el dato está bien.
+    estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="recibido", server_default=text("'recibido'")
+    )
+    porque: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default=text("''"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "conexion_id", "operacion", "externo_id", name="uq_registro_recibido"
+        ),
+        Index("ix_registros_recibidos", "tenant_id", "estado", "created_at"),
+    )
 
 
 class Ejecucion(Base):

@@ -479,12 +479,28 @@ def remitente_para(clase: str, *, config: dict[str, Any] | None = None) -> dict[
 
 
 def comprobar_envio(
-    db: Session, tenant_id: UUID, *, email: str, plantilla_clave: str, idioma: str = "es"
+    db: Session,
+    tenant_id: UUID,
+    *,
+    email: str,
+    plantilla_clave: str,
+    idioma: str = "es",
+    datos: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Todo lo que hay que mirar antes de mandar, en una llamada.
 
     Una sola comprobación y no cuatro repartidas: la que se olvida es siempre la
     misma —las preferencias— y el resultado es un correo a quien se dio de baja.
+
+    **Y los tokens sin rellenar, que faltaban aquí.** `comprobar_tokens` estaba
+    escrita, probada y sin que la llamara nadie, así que esta función —que se
+    anuncia como «todo lo que hay que mirar»— dejaba pasar el caso más visible
+    de todos: un «Hola {{nombre}}» que sale sin sustituir no es un fallo
+    técnico, es un correo que dice en voz alta que es automático y lo reciben
+    miles de personas a la vez.
+
+    Sin `datos` no se comprueban: no hay con qué, y decir que faltan todos sería
+    un falso rojo que acabaría con la comprobación desactivada.
     """
     composicion = componer(db, tenant_id, plantilla_clave, idioma=idioma)
     permiso = puede_recibir(db, tenant_id, email, composicion["categoria"])
@@ -493,10 +509,17 @@ def comprobar_envio(
         motivos.append("Faltan bloques: " + ", ".join(composicion["bloques_que_faltan"]))
     if not permiso["permitido"]:
         motivos.append(permiso["motivo"])
+    tokens = comprobar_tokens(composicion, datos) if datos is not None else None
+    if tokens and not tokens["listo"]:
+        motivos.append(
+            "Hay tokens sin rellenar: " + ", ".join(tokens["sin_datos"]) + ". Saldrían "
+            "tal cual en el correo."
+        )
     return {
         "se_puede_mandar": not motivos,
         "motivos": motivos,
         "clase": composicion["clase"],
         "categoria": composicion["categoria"],
         "anadidos_por_obligacion": composicion["anadidos_por_obligacion"],
+        "tokens": tokens,
     }

@@ -15,6 +15,7 @@ operación que lo provocó: si esto falla, el evento se reintenta.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -31,11 +32,11 @@ from crmcore.datos.seguimiento import (
     seguir,
 )
 from crmcore.errors import ErrorValidacion
-from crmcore.http.deps import AutenticadoDep, DbDep, UowDep
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso, montar_ficha  # noqa: E402
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from crmcore.logging import get_logger
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -601,6 +602,77 @@ def fijar_preferencia(datos: FijarPreferencia, uow: UowDep, principal: Autentica
 )
 def canales() -> Any:
     return {"canales": list(CANALES), "motivos_seguimiento": MOTIVOS}
+
+
+# ── Lo que el proveedor cuenta DESPUÉS de haber mandado ───────────────────
+#
+# `anotar_suceso` y `estadisticas_de_entrega` estaban escritas, probadas y sin
+# que las llamara nadie: no había por dónde contarle al CRM que un correo
+# rebotó, así que la consecuencia que el módulo declara —«un rebote duro o una
+# queja cierran la dirección»— no ocurría nunca. Se seguía escribiendo a
+# direcciones muertas, que es cómo se hunde la reputación de envío de todo el
+# dominio, facturas incluidas.
+
+
+class SucesoEntregaIn(BaseModel):
+    entrega_id: UUID | None = Field(
+        None, description="La entrega concreta, si el proveedor la identifica"
+    )
+    direccion: str = Field(..., min_length=1)
+    suceso: str = Field(..., examples=["rebote_duro"])
+    detalle: str = ""
+    proveedor: str = ""
+    ocurrido_at: datetime | None = None
+
+
+@router_notificaciones.post(
+    "/entregas/sucesos",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:write"))],
+    summary="Lo que el proveedor cuenta que pasó con un correo ya mandado",
+    description=(
+        "**SMTP no da esto.** Da por entregado lo que aceptó el primer servidor y "
+        "ahí termina lo que sabe: si el buzón rebota media hora después, el CRM "
+        "nunca se entera. Esta vía es opcional —usarla ata la instalación a la API "
+        "de un proveedor concreto, y esa es una decisión del cliente— pero su "
+        "consecuencia no lo es: un rebote duro o una queja **cierran la "
+        "dirección**. Anotarlos y seguir escribiendo sería tener la información y "
+        "no usarla, que es peor que no tenerla."
+    ),
+)
+def suceso_de_entrega(datos: SucesoEntregaIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.notificaciones.entrega import anotar_suceso
+
+    return anotar_suceso(
+        db,
+        tenant_id=principal.tenant_id,
+        entrega_id=datos.entrega_id,
+        direccion=datos.direccion,
+        suceso=datos.suceso,
+        detalle=datos.detalle,
+        proveedor=datos.proveedor,
+        ocurrido_at=datos.ocurrido_at,
+    )
+
+
+@router_notificaciones.get(
+    "/entregas/estadisticas",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Cuántos llegaron, cuántos se abrieron y cuántos rebotaron",
+    description=(
+        "**Lo que no se puede medir se dice.** Si el tenant manda por SMTP, la "
+        "apertura y el rebote no existen: no son cero, es que nadie los cuenta. Un "
+        "panel con un 0 % de apertura hace que alguien concluya que sus correos no "
+        "interesan, cuando lo que pasa es que su transporte no lo mide."
+    ),
+)
+def estadisticas_entrega(
+    db: DbDep, principal: AutenticadoDep, dias: int = Query(30, ge=1, le=365)
+) -> Any:
+    from crmcore.notificaciones.entrega import estadisticas_de_entrega
+
+    return estadisticas_de_entrega(db, principal.tenant_id, dias=dias)
 
 
 ROUTERS_NOTIFICACION = [router_seguimiento, router_notificaciones]

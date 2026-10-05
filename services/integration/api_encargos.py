@@ -433,4 +433,60 @@ def cumplimiento(
     return enc.cumplimiento_proveedor(db, principal.tenant_id, desde=desde, hasta=hasta)
 
 
+class ArchivarDocumento(BaseModel):
+    documento_id: str = Field(..., min_length=1)
+    rol: str = Field("prueba_entrega", examples=["prueba_entrega"])
+    titulo: str = ""
+    tipo: str = ""
+    sistema: str = "contecmind"
+
+
+@router.post(
+    "/{encargo_id}/documentos",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Archivar la prueba de entrega del encargo",
+    description=(
+        "El albarán, el POD, la foto de la entrega. **Por referencia al gestor "
+        "documental**, no copiados: una copia en el CRM sobrevive al borrado en el "
+        "origen, y entonces conservamos un documento que el cliente cree "
+        "eliminado.\n\n"
+        "Hay que hacerlo pronto. Casi todos los transportistas conservan la prueba "
+        "unas semanas y luego la borran: cuando el cliente llame diciendo que no "
+        "le llegó, ya no se la podremos pedir a nadie."
+    ),
+)
+def archivar_documento(
+    encargo_id: UUID, datos: ArchivarDocumento, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    return enc.archivar_documento(
+        uow,
+        encargo_id,
+        documento_id=datos.documento_id,
+        rol=datos.rol,
+        titulo=datos.titulo,
+        tipo=datos.tipo,
+        sistema=datos.sistema,
+        por=principal.id,
+    )
+
+
+@router.get(
+    "/entregados-sin-prueba",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Qué se dio por entregado sin dejar prueba archivada",
+    description=(
+        "Es la lista que hay que mirar **antes** de que el cliente llame diciendo "
+        "que no le llegó. Entonces ya no se puede pedir la prueba al "
+        "transportista: casi todos la conservan unas semanas y luego la borran, y "
+        "lo que queda es la palabra de uno contra la del otro."
+    ),
+)
+def entregados_sin_prueba(
+    db: DbDep, principal: AutenticadoDep, dias: int = Query(30, ge=1, le=365)
+) -> Any:
+    return enc.entregados_sin_prueba(db, principal.tenant_id, dias=dias)
+
+
 ROUTERS_ENCARGOS = [router_proveedores, router]

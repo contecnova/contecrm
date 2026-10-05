@@ -91,9 +91,18 @@ def clasificar(
         tipo = "mencion_neutra"
 
     abre = tipo in ABREN_CASO
+    # Del autor se guarda LO JUSTO, y se decide aquí y no donde se escriba en la
+    # base: `perfil_minimo` estaba escrita, probada y sin que la llamara nadie,
+    # así que clasificar una mención devolvía el perfil tal cual venía de la red
+    # —biografía, foto, historial— y lo que se guardaba era la ficha completa de
+    # alguien que nunca nos dio nada. Esa ficha hay que protegerla, conservarla
+    # y borrarla como cualquier otra.
+    recorte = perfil_minimo(perfil=dict(mencion.get("autor") or {}))
     return {
         "tipo": tipo,
         "abre_caso": abre,
+        "autor": recorte["perfil"],
+        "descartado_del_autor": recorte["descartado"],
         "disparadores_de_crisis": disparadores,
         "minutos_objetivo": MINUTOS_OBJETIVO.get(tipo),
         "porque": (

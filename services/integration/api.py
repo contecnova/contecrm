@@ -8,15 +8,21 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
-from crmcore.errors import Conflicto, CrmError, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
-from crmcore.http.listados import montar_ficha
+from crmcore.errors import Conflicto, CrmError, ErrorValidacion, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.integration import conector
-from services.integration.modelos import Conexion, Credencial, Ejecucion, Operacion
+from services.integration.modelos import (
+    Conexion,
+    Credencial,
+    Ejecucion,
+    Operacion,
+    RegistroRecibido,
+)
 
 
 class CrearConexion(BaseModel):
@@ -390,6 +396,201 @@ def ejecuciones(
     return list(
         db.execute(consulta.order_by(Ejecucion.created_at.desc()).limit(limite)).scalars().all()
     )
+
+
+# ── El programador: lo que se ejecuta solo ────────────────────────────────
+#
+# Hasta el 05-10-2026 **nada**. El conector estaba completo y lo disparaba una
+# ruta a mano, así que una integración exigía que alguien pulsara un botón cada
+# día — y las decisiones que la gobiernan (cuándo avanza la marca, cómo se
+# reintenta, a qué ritmo se trae la primera carga) estaban escritas, probadas y
+# sin que las llamara nadie.
+
+
+class Programacion(BaseModel):
+    cada_minutos: int = Field(
+        0,
+        ge=0,
+        le=43_200,
+        description=(
+            "Cada cuánto se ejecuta sola. Cero: sólo a mano. Hay un suelo "
+            "configurable, porque por debajo el proveedor acaba cortando la cuota "
+            "— y cuando corta lo hace para todos los clientes, no sólo para el "
+            "que se pasó"
+        ),
+    )
+    activa: bool = True
+
+
+@router.put(
+    "/conexiones/{conexion_id}/operaciones/{clave}/programacion",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Cada cuánto se ejecuta sola esta operación",
+    description=(
+        "La cadencia es **de la operación** y no un valor global: leer el maestro "
+        "de clientes una vez al día y consultar el stock cada cinco minutos son la "
+        "misma pieza con ritmos distintos, y un intervalo único obliga al lento a "
+        "correr como el rápido o al revés — y lo que se hace entonces es apagar el "
+        "que molesta.\n\n"
+        "La primera vuelta sale **ya**, no dentro de un ciclo: quien acaba de "
+        "configurarla quiere ver si funciona, no enterarse mañana de que la ruta "
+        "estaba mal escrita."
+    ),
+)
+def programar_operacion(
+    conexion_id: UUID, clave: str, datos: Programacion, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    from services.integration import programador
+
+    conexion = _conexion(uow.db, principal.tenant_id, conexion_id)
+    operacion = uow.db.execute(
+        select(Operacion).where(Operacion.conexion_id == conexion.id, Operacion.clave == clave)
+    ).scalar_one_or_none()
+    if operacion is None:
+        raise NoEncontrado(
+            "La operación no existe", error_code="integracion.operacion_no_encontrada"
+        )
+    return programador.programar(
+        uow, operacion.id, cada_minutos=datos.cada_minutos, activa=datos.activa
+    )
+
+
+@router.get(
+    "/programacion",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Qué se ejecuta solo, cuándo le toca y qué le pasó la última vez",
+    description=(
+        "Con el último error **a la vista**. Una operación que lleva tres semanas "
+        "fallando y no se ve en ninguna pantalla es una integración que «a veces "
+        "no trae datos», y eso se investiga mirando el sistema de enfrente, donde "
+        "está todo bien."
+    ),
+)
+def programacion(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(Operacion)
+            .where(Operacion.tenant_id == principal.tenant_id, Operacion.cada_minutos > 0)
+            .order_by(Operacion.proxima_at)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "operacion": f.clave,
+            "conexion_id": str(f.conexion_id),
+            "cada_minutos": f.cada_minutos,
+            "activa": f.activa,
+            "proxima_at": f.proxima_at.isoformat() if f.proxima_at else None,
+            "ultima_at": f.ultima_at.isoformat() if f.ultima_at else None,
+            "marca": f.marca,
+            "intentos": f.intentos,
+            "pausada_hasta": f.pausada_hasta.isoformat() if f.pausada_hasta else None,
+            "ultimo_error": f.ultimo_error,
+        }
+        for f in filas
+    ]
+
+
+class EstadoRegistro(BaseModel):
+    estado: str = Field(
+        "procesado",
+        description="procesado · descartado. Descartar sin motivo no se admite",
+    )
+    porque: str = ""
+
+
+@router.post(
+    "/registros-recibidos/{registro_id}/estado",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Marcar un registro recibido como procesado o descartado",
+    description=(
+        "**Descartar exige motivo.** Un registro que no entra y no dice por qué "
+        "manda a mirar al sistema de origen, donde el dato está bien, y ahí se "
+        "pierde la tarde.\n\n"
+        "El estado es además lo que hace que la purga tenga algo que purgar: lo "
+        "que entra es una copia de datos de un sistema ajeno, y guardarla sin "
+        "plazo es acumular datos personales de los que no somos responsables."
+    ),
+)
+def estado_registro(
+    registro_id: UUID, datos: EstadoRegistro, uow: UowDep, principal: AutenticadoDep
+) -> Any:
+    fila = uow.db.get(RegistroRecibido, registro_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Ese registro no existe", error_code="integracion.registro_no_existe")
+    if datos.estado not in ("procesado", "descartado"):
+        raise ErrorValidacion(
+            "Un registro recibido se marca «procesado» o «descartado».",
+            error_code="integracion.estado_desconocido",
+        )
+    if datos.estado == "descartado" and not datos.porque.strip():
+        raise ErrorValidacion(
+            "Descartar un registro exige decir por qué: sin motivo, quien lo "
+            "eche de menos irá a mirar al sistema de origen, donde el dato está "
+            "bien.",
+            error_code="integracion.descarte_sin_motivo",
+        )
+    fila.estado = datos.estado
+    fila.porque = datos.porque.strip()
+    uow.db.flush()
+    return {"id": str(fila.id), "estado": fila.estado, "porque": fila.porque}
+
+
+class EnvioLegado(BaseModel):
+    cuerpo: str = Field(..., min_length=1, description="Lo que se manda, tal cual")
+    accion: str = Field(
+        "",
+        description=(
+            "La `SOAPAction`, cuando el servicio la exige. Vacía NO es lo mismo que "
+            "ausente: hay servidores que rechazan la petición sin ella y el error "
+            "que dan no lo dice"
+        ),
+    )
+
+
+@router.post(
+    "/conexiones/{conexion_id}/enviar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("integracion:invocar"))],
+    summary="Mandar algo por un transporte heredado (SOAP o AMQP)",
+    description=(
+        "La otra mitad de los transportes heredados. `publicar_amqp` y "
+        "`envolver_soap` estaban escritas, probadas y **sin que las llamara "
+        "nadie**: se podía declarar una conexión AMQP y no había forma de "
+        "publicar en ella. Una integración que sólo sabe leer deja al cliente "
+        "escribiendo en el ERP a mano, que es la mitad del trabajo que venía a "
+        "quitar.\n\n"
+        "Por un transporte de sólo lectura —sftp, fichero, edi— **se dice que no** "
+        "en vez de aceptar la petición y no mandar nada."
+    ),
+)
+def enviar_por_transporte(
+    conexion_id: UUID, datos: EnvioLegado, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from services.integration import transportes_legado as legado
+
+    conexion = _conexion(db, principal.tenant_id, conexion_id)
+    return legado.enviar_programado(
+        str(conexion.protocolo or ""),
+        dict(conexion.config or {}),
+        {"accion": datos.accion} if datos.accion else {},
+        datos.cuerpo,
+    )
+
+
+montar_listado(
+    router,
+    modelo=RegistroRecibido,
+    objeto="registro_recibido",
+    permiso="integracion:read",
+    ruta="/registros-recibidos",
+    nombre="Registros recibidos",
+)
 
 
 ROUTERS = [router]

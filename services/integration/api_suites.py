@@ -37,6 +37,22 @@ class ConsentimientoIn(BaseModel):
     perfil: str
     recursos: list[str]
     sentido: str = "leer"
+    credencial_caduca_at: datetime | None = Field(
+        None,
+        description=(
+            "Cuándo deja de valer la credencial que entrega el proveedor. Sin esto "
+            "no se puede avisar de nada: lo que pasa entonces es que un martes deja "
+            "de entrar el correo de veinte personas a la vez"
+        ),
+    )
+    tiene_refresco: bool = Field(
+        False,
+        description=(
+            "Si hay con qué renovarla sin volver a molestar a la persona. Una "
+            "credencial **sin refresco y con caducidad** es una bomba de relojería: "
+            "funciona meses y deja de funcionar de golpe"
+        ),
+    )
 
 
 class SuscripcionIn(BaseModel):
@@ -128,6 +144,8 @@ def conceder(cuerpo: ConsentimientoIn, uow: UowDep, principal: AutenticadoDep) -
         recursos=cuerpo.recursos,
         alcances=alcance["alcances"],
         sentido=cuerpo.sentido,
+        credencial_caduca_at=cuerpo.credencial_caduca_at,
+        tiene_refresco=cuerpo.tiene_refresco,
     )
     return {**salida, "no_se_piden": alcance["no_se_piden"]}
 
@@ -596,6 +614,196 @@ def enlace_de_reunion(cuerpo: EnlaceReunionIn, principal: AutenticadoDep) -> Any
     return sur.enlace_para(enlace=cuerpo.enlace, destino=cuerpo.destino)
 
 
+# ── Operar la suite: lo que decide si sigue viva a los seis meses ─────────
+#
+# Casi nada de esto falla: **se degrada en silencio**. Una suscripción que
+# caduca, un proveedor que corta la cuota, un buzón que lleva una semana sin
+# credencial. Nada de eso da un error rojo: el CRM se queda quieto y la gente
+# deja de fiarse sin saber por qué. Estas ocho decisiones estaban escritas,
+# probadas y sin que las llamara nadie.
+
+
+class AntesDeSincronizarIn(BaseModel):
+    usuario_id: UUID
+    perfil: str
+    recurso: str
+    sentido: str = "leer"
+    alcances_concedidos: list[str] = Field(default_factory=list)
+    alcances_necesarios: list[str] = Field(default_factory=list)
+
+
+@router_suites.post(
+    "/antes-de-sincronizar",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Las dos comprobaciones que van antes de cada vuelta",
+    description=(
+        "**Antes de cada sincronización, no al conectar.** Comprobar el "
+        "consentimiento sólo al conectar deja seguir leyendo el buzón de alguien "
+        "que lo revocó ayer, y lo que ve esa persona es que su revocación no "
+        "sirvió de nada.\n\n"
+        "Y los alcances **antes de llamar, no después de fallar**: llamar sin el "
+        "permiso y esperar el 403 gasta una petición de la cuota del tenant para "
+        "averiguar algo que ya se sabía."
+    ),
+)
+def antes_de_sincronizar(cuerpo: AntesDeSincronizarIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    # Los alcances PRIMERO: si faltan, no hace falta ir a la base a mirar el
+    # consentimiento, y el error que interesa es el que dice qué permiso falta.
+    sop.exigir_alcances(
+        concedidos=cuerpo.alcances_concedidos, necesarios=cuerpo.alcances_necesarios
+    )
+    consentimiento = su.exigir_consentimiento(
+        db,
+        principal.tenant_id,
+        usuario_id=cuerpo.usuario_id,
+        perfil_nombre=cuerpo.perfil,
+        recurso=cuerpo.recurso,
+        sentido=cuerpo.sentido,
+    )
+    return {
+        "se_puede": True,
+        "consentimiento_id": str(consentimiento.id),
+        "alcances_concedidos": list(consentimiento.alcances or []),
+        "porque": (
+            "Hay consentimiento vivo para este recurso y este sentido, y los "
+            "alcances necesarios están concedidos."
+        ),
+    }
+
+
+@router_suites.post(
+    "/mantenimiento",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Caer al sondeo lo que ha caducado y avisar de lo que va a caducar",
+    description=(
+        "Una suscripción que caduca **no da ningún error**: deja de llegar lo que "
+        "llegaba, el CRM se queda quieto y el usuario lo descubre cuando echa de "
+        "menos una cita. Caer al sondeo es la decisión que separa una integración "
+        "que se degrada de una que se para — y se marca, porque sondear cada diez "
+        "minutos no es enterarse al instante y el usuario tiene derecho a saber "
+        "por qué su cita tarda.\n\n"
+        "Corre sola cada tanto; esta ruta es para forzarla y para poder verla."
+    ),
+)
+def mantenimiento(uow: UowDep) -> Any:
+    return su.mantener_suscripciones(uow)
+
+
+@router_suites.get(
+    "/credenciales/salud",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué credenciales van a dejar de funcionar, y cuáles se romperán solas",
+    description=(
+        "Una credencial **sin refresco y con caducidad** es una bomba de "
+        "relojería: funciona meses y un martes deja de entrar el correo de veinte "
+        "personas a la vez. Se dice ahora, no el martes.\n\n"
+        "Sale también lo que **no es fiable**: de una credencial de la que no "
+        "consta caducidad no se sabe que esté bien, se sabe que no está medida — y "
+        "tratarla como buena es cómo se llega a ese martes."
+    ),
+)
+def salud_credenciales(db: DbDep, principal: AutenticadoDep) -> Any:
+    return su.salud_de_las_credenciales(db, principal.tenant_id)
+
+
+class ReglasIn(BaseModel):
+    del_tenant: dict[str, Any] = Field(default_factory=dict)
+    del_usuario: dict[str, Any] | None = None
+
+
+@router_suites.post(
+    "/reglas",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué entra de verdad, juntando la política de la empresa y la preferencia de la persona",
+    description=(
+        "**La del usuario sólo puede estrechar, nunca ensanchar.** Si pudiera "
+        "ensancharla, la política de la empresa sería una sugerencia: bastaría con "
+        "que una persona marcara «traerlo todo» para que entrara su buzón entero, "
+        "que es precisamente lo que el tenant había decidido que no.\n\n"
+        "Y lo que nunca entra no entra: privados, carpetas personales y "
+        "borradores. No es una casilla, porque una casilla acaba desmarcada."
+    ),
+)
+def reglas(cuerpo: ReglasIn, principal: AutenticadoDep) -> Any:
+    return sop.combinar_reglas(del_tenant=cuerpo.del_tenant, del_usuario=cuerpo.del_usuario)
+
+
+class ImportacionIn(BaseModel):
+    formato: str = Field(..., examples=["vcard"])
+    filas: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_suites.post(
+    "/importacion/comprobar",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué entraría y qué no de un fichero estándar, antes de importarlo",
+    description=(
+        "Se enseña primero y se importa después. Una importación que se ejecuta y "
+        "luego cuenta lo que hizo obliga a deshacer a mano lo que no debía entrar, "
+        "y **deshacer a mano una importación de diez mil filas no lo hace nadie**: "
+        "se queda."
+    ),
+)
+def comprobar_importacion(cuerpo: ImportacionIn, principal: AutenticadoDep) -> Any:
+    return sop.comprobar_importacion(formato=cuerpo.formato, filas=cuerpo.filas)
+
+
+class CuentaIn(BaseModel):
+    direccion_del_proveedor: str
+    usuarios: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router_suites.post(
+    "/cuenta/resolver",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="A qué usuario del CRM corresponde una cuenta de la suite",
+    description=(
+        "Los **alias** son el fallo típico: la misma persona manda desde `j.perez@` "
+        "y desde `juan.perez@`, y si cada uno se resuelve a un usuario distinto, la "
+        "misma conversación aparece dos veces en la ficha atribuida a dos "
+        "comerciales.\n\n"
+        "Y un **buzón compartido no tiene dueño**: `info@` o `ventas@` es del "
+        "equipo. Atribuirlo a quien lo conectó pone en su nombre correos que no "
+        "escribió, y eso acaba en la comisión de alguien."
+    ),
+)
+def resolver_cuenta(cuerpo: CuentaIn, principal: AutenticadoDep) -> Any:
+    return sop.resolver_cuenta(
+        direccion_del_proveedor=cuerpo.direccion_del_proveedor, usuarios=cuerpo.usuarios
+    )
+
+
+class ConversacionIn(BaseModel):
+    objeto: str
+    objeto_id: UUID
+    proveedor: str
+    referencia: str
+    exportable: bool = False
+    resumen: str = ""
+
+
+@router_suites.post(
+    "/conversaciones/vincular",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Enlazar un hilo de chat a un registro, por referencia",
+    description=(
+        "Un hilo de chat corporativo tiene de todo: la negociación, el precio y el "
+        "comentario que alguien hizo sobre un compañero. **Copiarlo al CRM mete "
+        "todo eso** donde lo ve quien tenga permiso de lectura, que no es la gente "
+        "que estaba en el hilo."
+    ),
+)
+def vincular_conversacion(cuerpo: ConversacionIn, principal: AutenticadoDep) -> Any:
+    return sop.vincular_conversacion(
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        proveedor=cuerpo.proveedor,
+        referencia=cuerpo.referencia,
+        exportable=cuerpo.exportable,
+        resumen=cuerpo.resumen,
+    )
+
+
 router_compensacion = APIRouter(prefix="/compensacion", tags=["compensación"])
 
 
@@ -658,6 +866,70 @@ def conciliar(cuerpo: ConciliarIn, principal: AutenticadoDep) -> Any:
 
     return compensacion.conciliar(
         hechos_enviados=cuerpo.hechos_enviados, calculos_recibidos=cuerpo.calculos_recibidos
+    )
+
+
+class CalculoIn(BaseModel):
+    referencia: str
+    periodo: str
+    lineas: list[dict[str, Any]] = Field(default_factory=list)
+    cerrado: bool = False
+
+
+@router_compensacion.post(
+    "/calculo",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Recoger lo que ha calculado el motor de comisiones, tal cual",
+    description=(
+        "**No se recalcula ni se redondea.** Enseñar en el CRM una comisión "
+        "distinta de la que se va a cobrar es la forma más rápida de que nadie se "
+        "crea ninguna de las dos, y de que el comercial se haga su propia hoja de "
+        "cálculo — que es donde empieza cualquier discusión de comisiones.\n\n"
+        "Un periodo **no cerrado** se enseña como provisional: es lo que evita la "
+        "conversación de «pero si el CRM decía otra cosa» a final de mes."
+    ),
+)
+def recibir_calculo(cuerpo: CalculoIn, principal: AutenticadoDep) -> Any:
+    from services.integration import compensacion
+
+    return compensacion.recibir_calculo(
+        referencia=cuerpo.referencia,
+        lineas=cuerpo.lineas,
+        periodo=cuerpo.periodo,
+        cerrado=cuerpo.cerrado,
+    )
+
+
+class ClawbackIn(BaseModel):
+    referencia: str
+    importe_original: Decimal
+    importe_nuevo: Decimal
+    ya_pagada: bool = False
+    motivo: str = Field(..., min_length=1)
+
+
+@router_compensacion.post(
+    "/clawback",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué hacer cuando un cierre cambia después de pagada la comisión",
+    description=(
+        "Se llama **clawback** y es una conversación, no un ajuste automático. "
+        "Quitarle dinero a alguien de la próxima nómina sin decírselo es lo que "
+        "hace que un equipo comercial deje de fiarse del sistema entero — y "
+        "entonces cada uno lleva su propia cuenta.\n\n"
+        "El motivo es obligatorio por lo mismo: «ajuste» no es una explicación que "
+        "se le pueda dar a quien ve menos dinero en su nómina."
+    ),
+)
+def clawback(cuerpo: ClawbackIn, principal: AutenticadoDep) -> Any:
+    from services.integration import compensacion
+
+    return compensacion.cambio_despues_de_pagar(
+        referencia=cuerpo.referencia,
+        importe_original=cuerpo.importe_original,
+        importe_nuevo=cuerpo.importe_nuevo,
+        ya_pagada=cuerpo.ya_pagada,
+        motivo=cuerpo.motivo,
     )
 
 

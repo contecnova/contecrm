@@ -575,6 +575,65 @@ def colgar(cuerpo: ColgarIn, principal: AutenticadoDep) -> Any:
     )
 
 
+class PoliticaGrabacionIn(BaseModel):
+    grabar: bool
+    avisar: bool
+    dias_conservacion: int = Field(0, ge=0, le=3_650)
+
+
+@router_marcador.post(
+    "/politica-grabacion",
+    dependencies=[Depends(exige_permiso("service:read"))],
+    summary="Comprobar que la política de grabación se sostiene",
+    description=(
+        "**Grabar sin avisar no es una opción que se pueda ofrecer**, ni siquiera "
+        "como ajuste: no es una preferencia del cliente, es un requisito legal.\n\n"
+        "Y una grabación sin plazo de borrado es un archivo de voz que crece para "
+        "siempre — con la voz de gente que no sabe que sigue ahí. Se comprueba al "
+        "configurar, que es cuando todavía no hay nada grabado."
+    ),
+)
+def politica_grabacion(cuerpo: PoliticaGrabacionIn, principal: AutenticadoDep) -> Any:
+    from services.service import marcador
+
+    return marcador.politica_de_grabacion(
+        grabar=cuerpo.grabar,
+        avisar=cuerpo.avisar,
+        dias_conservacion=cuerpo.dias_conservacion,
+    )
+
+
+class RitmoIn(BaseModel):
+    agentes_libres: int = Field(0, ge=0)
+    llamadas_lanzadas: int = Field(0, ge=0)
+    abandonadas: int = Field(0, ge=0)
+    contestadas: int = Field(0, ge=0)
+
+
+@router_marcador.post(
+    "/ritmo",
+    dependencies=[Depends(exige_permiso("service:read"))],
+    summary="Cuántas llamadas se pueden lanzar a la vez sin pasarse",
+    description=(
+        "El marcado automático marca a más gente de la que hay para atender **a "
+        "propósito** —porque muchos no cogen— y ahí está el riesgo: las que sí "
+        "cogen y no tienen agente libre suenan y se cuelgan.\n\n"
+        "Eso es el **abandono**, está regulado, y además es lo que hace que el "
+        "número acabe marcado como spam en el teléfono de todo el mundo — que no "
+        "se arregla pagando una multa."
+    ),
+)
+def ritmo(cuerpo: RitmoIn, principal: AutenticadoDep) -> Any:
+    from services.service import marcador
+
+    return marcador.ritmo_de_marcado(
+        agentes_libres=cuerpo.agentes_libres,
+        llamadas_lanzadas=cuerpo.llamadas_lanzadas,
+        abandonadas=cuerpo.abandonadas,
+        contestadas=cuerpo.contestadas,
+    )
+
+
 # Adjuntos, comentarios y documentos de lo de servicio.
 #
 # No los tenía, y es donde más falta hacen: un caso de soporte sin poder colgar

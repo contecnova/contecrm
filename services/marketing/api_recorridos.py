@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha, montar_listado
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -380,9 +381,33 @@ def comprobar(
     email: str = Query(...),
     plantilla: str = Query(...),
     idioma: str = Query("es"),
+    datos: str = Query(
+        "",
+        description=(
+            "Los datos con los que se rellenaría, en JSON. Con ellos se dice "
+            "además qué tokens quedarían sin sustituir; sin ellos no se "
+            "comprueban, porque no hay con qué"
+        ),
+    ),
 ) -> Any:
+    import json
+
+    valores: dict[str, Any] | None = None
+    if datos:
+        try:
+            valores = dict(json.loads(datos))
+        except (ValueError, TypeError):
+            raise ErrorValidacion(
+                "«datos» tiene que ser un objeto JSON con los valores de los tokens.",
+                error_code="correo.datos_no_son_json",
+            )
     return cor.comprobar_envio(
-        db, principal.tenant_id, email=email, plantilla_clave=plantilla, idioma=idioma
+        db,
+        principal.tenant_id,
+        email=email,
+        plantilla_clave=plantilla,
+        idioma=idioma,
+        datos=valores,
     )
 
 

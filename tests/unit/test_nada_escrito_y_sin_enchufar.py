@@ -66,10 +66,25 @@ CARPETAS = (
 #                   qué canal usa el enlace de una reunión) estaban escritas y
 #                   probadas sin una sola puerta: nadie de fuera podía pedir
 #                   ninguna.
-TOPE = 35
+#   05-10-2026   0  CERO. Lo que faltaba no eran puertas sueltas: era que
+#                   **nada de integración corría en bucle**. El conector
+#                   declarativo estaba completo y lo disparaba una ruta a mano,
+#                   así que las decisiones de una sincronización —cuándo avanza
+#                   la marca, cómo se reintenta cuando el proveedor corta, a
+#                   qué ritmo se trae la primera carga— no tenían dónde
+#                   ocurrir. Con el programador y el mantenimiento de las
+#                   suscripciones, veinte de ellas pasan a ejecutarse; las
+#                   demás son rutas, y cuatro son puntos de aplicación dentro
+#                   de un camino que ya existía y se saltaba la comprobación
+#                   (la base publicitaria, los empates de prioridad, los
+#                   tokens sin sustituir y el apunte del envío que hacía que el
+#                   tope de frecuencia no frenara nada).
+TOPE = 0
 
-# Las que no cuentan, con su motivo. Vacío hoy a propósito: la lista de 47 es
-# deuda reconocida, no exenciones.
+# Las que no cuentan, con su motivo. Vacío, y ahora por un motivo distinto: ya
+# no queda ninguna. El tope está en cero, así que la primera que vuelva a
+# aparecer rompe el gate — que es justo lo que se quiere, porque una función de
+# integración sin llamante no da ningún error: promete algo que no ocurre.
 NO_CUENTAN: dict[str, str] = {}
 
 
