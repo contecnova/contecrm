@@ -81,10 +81,15 @@ def preparar_envio(
             error_code="movil.operacion_sin_id",
             detalle={"posiciones": sin_id[:10]},
         )
+    # `is None` y no `not`: la versión **cero es una versión**, la del registro
+    # que nadie ha tocado todavía. Con la comprobación por falsedad, toda
+    # actualización sobre un registro recién creado se rechazaba diciendo que no
+    # declaraba su versión base — y la declaraba. Se vio al enchufar la ruta,
+    # que es para lo que sirve enchufarla.
     sin_base = [
         op.get("id_cliente")
         for op in operaciones
-        if op.get("tipo") == "actualizar" and not op.get("version_base")
+        if op.get("tipo") == "actualizar" and op.get("version_base") is None
     ]
     if sin_base:
         raise ErrorValidacion(

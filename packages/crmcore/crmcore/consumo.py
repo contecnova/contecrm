@@ -51,8 +51,12 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
     Si un medidor revienta se dice **en su fila** y no se tumba el resto: una
     métrica rota no puede dejar sin panel a las otras cinco.
     """
-    from crmcore.cuotas import tope
+    from crmcore.cuotas import periodo_actual, tope
 
+    # De qué periodo se habla. Un panel de consumo sin decirlo obliga a suponer
+    # que es el mes en curso, y el 1 de mes a la una de la mañana en Madrid la
+    # suposición es falsa.
+    periodo = periodo_actual(db)
     salida: list[dict[str, Any]] = []
     for nombre, medir in sorted(_MEDIDORES.items()):
         try:
@@ -68,6 +72,16 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
             )
             continue
         limite = tope(db, tenant_id, clave)
+        # Y si **se está acercando**. `aviso_de_cercania` estaba escrita, probada
+        # y sin llamante, así que la cuota sólo se notaba al cortar — y avisar
+        # sólo al cortar convierte una cuota en una sorpresa: el cliente se
+        # entera de que tenía un tope el día que deja de poder trabajar.
+        #
+        # El umbral es un ajuste en caliente, no una constante: lo que es «cerca»
+        # para un tenant con mil registros no lo es para uno con un millón.
+        from crmcore.cuotas import aviso_de_cercania
+
+        aviso = aviso_de_cercania(db, tenant_id, clave=clave, metrica=nombre, consumido=consumido)
         salida.append(
             {
                 "metrica": nombre,
@@ -77,6 +91,11 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
                 "sin_limite": limite <= 0,
                 "pct": round(consumido / limite * 100, 1) if limite > 0 else None,
                 "ajuste": clave,
+                # `None` cuando no hay tope o queda lejos: quien lo pinta no
+                # tiene que saber nada de umbrales.
+                "en_aviso": aviso is not None,
+                "aviso": aviso,
+                "periodo": periodo,
             }
         )
     return salida

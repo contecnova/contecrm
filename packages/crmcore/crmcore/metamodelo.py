@@ -574,8 +574,14 @@ def sql_de_indices(tabla: str, tenant_id: UUID, campos: list[dict[str, Any]]) ->
             continue
         nombre = _nombre_indice(tabla, tenant_id, str(definicion.get("nombre")))
         expresion = _expresion_indice(definicion)
+        # DOS pares de paréntesis, y no es cosmético: un índice por EXPRESIÓN
+        # los exige. Con uno solo, Postgres lee `campos` como una columna y se
+        # atasca en el `->>` — «syntax error at or near "->>"». Las sentencias
+        # eran inválidas desde el primer día y nadie se enteró porque **no las
+        # ejecutaba nadie**: `sincronizar_indices` no tenía llamante. Se vio al
+        # enchufarla, que es exactamente para lo que sirve enchufarla.
         salida.append(
-            f"CREATE INDEX IF NOT EXISTS {nombre} ON {tabla} {expresion} "
+            f"CREATE INDEX IF NOT EXISTS {nombre} ON {tabla} ({expresion}) "
             f"WHERE tenant_id = '{tenant_id}'"
         )
     return salida
@@ -691,6 +697,108 @@ def sincronizar_vista(
 # ── Réplica del esquema ───────────────────────────────────────────────────
 
 
+# ── Qué tabla guarda cada objeto, EN ESTE PROCESO ─────────────────────────
+#
+# Hace falta para aplicar el esquema de verdad. `sincronizar_indices` y
+# `sincronizar_vista` estaban escritas, probadas y **sin que las llamara nadie**,
+# así que un campo a medida declarado por un tenant se guardaba y se validaba, y
+# no recibía **ni índice ni vista**:
+#
+#   * filtrar u ordenar por él recorría la tabla entera, y eso no da un error:
+#     da una pantalla que tarda más cada mes;
+#   * y la vista tipada del tenant —`v_oportunidad_01a0cd88…`— no existía,
+#     mientras el motor de informes la nombra como entidad de respaldo cuando no
+#     hay fuente externa registrada. Ese camino moría con «Table with name
+#     v_oportunidad_… does not exist», que es exactamente el fallo que ya se
+#     cazó una vez por el otro lado.
+#
+# El registro es **por proceso** porque cada servicio guarda lo suyo: el evento
+# de esquema llega a los catorce y sólo el dueño de la tabla puede crear su
+# índice. Los demás lo replican para validar y no tocan nada.
+_TABLA_DEL_OBJETO: dict[str, str] = {}
+_MODELO_DEL_OBJETO: dict[str, type] = {}
+
+
+def declarar_tabla(objeto: str, tabla: str, modelo: type | None = None) -> None:
+    """Dice qué tabla —y qué modelo— guarda este objeto en este servicio.
+
+    Lo apuntan solos `montar_listado` y `montar_ficha`, que ya reciben el modelo
+    y el objeto juntos. Declarar dos veces el mismo es inocuo.
+
+    El modelo se guarda además de la tabla porque hay dos cosas que necesitan
+    saber de este objeto y necesitan cosas distintas: el esquema físico necesita
+    el **nombre** de la tabla (acaba en DDL, donde no hay parámetros) y la
+    sincronización del móvil necesita la **clase**, para leer la versión del
+    registro sin escribir SQL a mano.
+    """
+    if objeto and tabla:
+        _TABLA_DEL_OBJETO.setdefault(str(objeto), str(tabla))
+    if objeto and modelo is not None:
+        _MODELO_DEL_OBJETO.setdefault(str(objeto), modelo)
+
+
+def tabla_del_objeto(objeto: str) -> str:
+    """La tabla de este objeto en este proceso, o cadena vacía si no es suyo."""
+    return _TABLA_DEL_OBJETO.get(str(objeto), "")
+
+
+def modelo_del_objeto(objeto: str) -> type | None:
+    """La clase de este objeto en este proceso, o `None` si no es suyo."""
+    return _MODELO_DEL_OBJETO.get(str(objeto))
+
+
+def tablas_declaradas() -> dict[str, str]:
+    return dict(_TABLA_DEL_OBJETO)
+
+
+def aplicar_esquema_fisico(
+    db: Session, *, tenant_id: UUID, objeto: str, campos: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Crea los índices y la vista del tenant para este objeto. **Idempotente.**
+
+    Si este proceso no es el dueño de la tabla, no hace nada y lo dice: no es un
+    fallo, es que ese objeto vive en otro servicio y el esquema le llegó por el
+    bus igual que a todos.
+
+    Un fallo aquí **no tumba la réplica del esquema**: la validación con los
+    campos nuevos es lo urgente —el consultor tiene al cliente delante— y un
+    índice que no se pudo crear se vuelve a intentar en la publicación
+    siguiente. Lo que no se hace es callarlo.
+    """
+    tabla = tabla_del_objeto(objeto)
+    if not tabla:
+        return {"aplicado": False, "porque": "este servicio no guarda ese objeto"}
+
+    anterior = db.execute(
+        select(EsquemaTenant).where(
+            EsquemaTenant.tenant_id == tenant_id, EsquemaTenant.objeto == objeto
+        )
+    ).scalar_one_or_none()
+    nombres = {str(c.get("nombre") or "") for c in campos}
+    retirados = [
+        str(c.get("nombre") or "")
+        for c in list((anterior.campos if anterior else []) or [])
+        if str(c.get("nombre") or "") and str(c.get("nombre")) not in nombres
+    ]
+    try:
+        indices = sincronizar_indices(db, tabla, tenant_id, campos, retirados)
+        sincronizar_vista(db, tabla, objeto, tenant_id, campos)
+    except Exception as exc:  # noqa: BLE001 — el esquema replicado es lo urgente
+        logger.error(
+            "metamodelo.esquema_fisico_fallido",
+            objeto=objeto,
+            tabla=tabla,
+            error=str(exc)[:300],
+        )
+        return {"aplicado": False, "porque": f"{type(exc).__name__}: {str(exc)[:200]}"}
+    return {
+        "aplicado": True,
+        "tabla": tabla,
+        "vista": nombre_de_vista(objeto, tenant_id),
+        **indices,
+    }
+
+
 def aplicar_esquema(
     db: Session,
     *,
@@ -753,13 +861,28 @@ async def consumir_esquema(mensaje: Any) -> None:
     from crmcore.db.uow import unidad_de_trabajo
 
     with unidad_de_trabajo(sistema=True) as uow:
-        aplicar_esquema(
+        campos = list(datos.get("campos") or [])
+        # EL ORDEN IMPORTA: primero el físico, que necesita saber qué campos
+        # había antes para retirar los índices de los que ya no están. Después
+        # la réplica, que pisa `campos` con los nuevos.
+        fisico = aplicar_esquema_fisico(
+            uow.db, tenant_id=UUID(str(tenant)), objeto=objeto, campos=campos
+        )
+        aplicada = aplicar_esquema(
             uow.db,
             tenant_id=UUID(str(tenant)),
             objeto=objeto,
-            campos=list(datos.get("campos") or []),
+            campos=campos,
             version=int(datos.get("version") or 0),
         )
+        if aplicada is not None and fisico.get("aplicado"):
+            logger.info(
+                "metamodelo.esquema_aplicado",
+                objeto=objeto,
+                vista=fisico.get("vista"),
+                indices=fisico.get("creados"),
+                retirados=fisico.get("retirados"),
+            )
 
 
 from crmcore.contratos import Consumo, declarar_consumo  # noqa: E402

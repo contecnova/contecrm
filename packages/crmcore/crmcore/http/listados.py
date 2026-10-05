@@ -134,7 +134,7 @@ def recursos_por_objeto() -> dict[str, str]:
     return salida
 
 
-def declarar_recurso(router: Any, objeto: str) -> None:
+def declarar_recurso(router: Any, objeto: str, modelo: type | None = None) -> None:
     """Declara de qué objeto es un recurso cuyo listado está escrito a mano.
 
     `montar_listado` y `montar_ficha` lo apuntan solos, pero hay recursos con su
@@ -144,13 +144,24 @@ def declarar_recurso(router: Any, objeto: str) -> None:
     declara: sin él, un informe sobre ese objeto no encuentra su tabla y lo que
     se ve es un informe vacío, no un error.
     """
-    _apuntar_recurso(router, objeto)
+    _apuntar_recurso(router, objeto, modelo)
 
 
-def _apuntar_recurso(router: Any, objeto: str) -> None:
+def _apuntar_recurso(router: Any, objeto: str, modelo: type | None = None) -> None:
     prefijo = str(getattr(router, "prefix", "") or "").strip("/")
     if prefijo and objeto:
         _OBJETO_DEL_RECURSO.setdefault(prefijo, objeto)
+    # Y qué TABLA guarda ese objeto en este proceso. Hace falta para aplicar el
+    # esquema de verdad: un campo a medida sin índice ni vista se guarda y se
+    # valida, pero filtrar por él recorre la tabla entera y la vista tipada del
+    # tenant —que el motor de informes nombra como entidad de respaldo— no
+    # existe. Se apunta aquí porque es el único sitio donde el objeto y el
+    # modelo llegan juntos.
+    tabla = str(getattr(modelo, "__tablename__", "") or "") if modelo is not None else ""
+    if objeto and tabla:
+        from crmcore.metamodelo import declarar_tabla
+
+        declarar_tabla(objeto, tabla, modelo)
 
 
 def montar_listado(
@@ -193,7 +204,7 @@ def montar_listado(
     """
     from sqlalchemy import select
 
-    _apuntar_recurso(router, objeto)
+    _apuntar_recurso(router, objeto, modelo)
 
     # El modelo tiene que tener la columna por la que se le va a ordenar, y se
     # comprueba AL MONTAR, no en la primera petición.
@@ -435,7 +446,7 @@ def montar_ficha(
     # escrito a mano y solo pasan por la ficha —oportunidades y leads, entre
     # otros—. Apuntándolo solo en el listado, esos dos se quedaban fuera del
     # registro y sus informes no encontraban su tabla.
-    _apuntar_recurso(router, objeto)
+    _apuntar_recurso(router, objeto, modelo)
 
     from crmcore.errors import NoEncontrado
 

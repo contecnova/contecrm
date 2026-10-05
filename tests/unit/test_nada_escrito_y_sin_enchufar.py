@@ -41,42 +41,15 @@ RAIZ = Path(__file__).resolve().parents[2]
 # está el grueso: 42 de las 51 capacidades que nombran un tercero siguen sin
 # auditar, y esto explica por qué.
 CARPETAS = (
-    "services/integration",
-    "services/marketing",
-    "services/service",
-    "packages/crmcore/crmcore/notificaciones",
+    "services",
+    "packages/crmcore/crmcore",
 )
-
-# PUNTO CIEGO MEDIDO, y escrito aquí para que no se pierda. El 05-10-2026, con
-# el tope ya en cero, se repitió la medida ampliando `CARPETAS` a todo
-# `services` y a todo `crmcore`:
-#
-#   services/*            0   limpio
-#   packages/crmcore      26
-#
-# De esas 26, diecisiete son ayudantes de pruebas o de registro —`limpiar_*`,
-# `*_registrados`, `reset_logging`, `es_entorno_de_pruebas`— que **sí** tienen
-# llamante, pero en `tests/`, y esta sonda sólo mira producción a propósito.
-# Las otras nueve son decisiones de verdad sin puerta, y están sin cerrar:
-#
-#   cuotas.aviso_de_cercania, cuotas.periodo_actual
-#       avisar sólo al cortar convierte una cuota en una sorpresa.
-#   metamodelo.sincronizar_indices, metamodelo.sincronizar_vista
-#       lo gordo: un campo a medida declarado por un tenant **no recibe ni
-#       índice ni vista**, porque nadie aplica el esquema físico.
-#   movil.detectar_conflicto, movil.estado_de_la_cola, movil.preparar_push
-#       el móvil sin conexión no tiene por dónde sincronizar.
-#   sdk.contrato_de_componente, sdk.plan_de_generacion
-#
-# No se amplía `CARPETAS` todavía porque hacerlo deja el gate en rojo con nueve
-# cosas que no se cierran en un rato, y un gate en rojo permanente deja de
-# leerse. Ampliarlo es lo que hay que hacer **al cerrarlas**, y esta nota es
-# para que el número no desaparezca mientras tanto.
 
 # Tope medido. **Baja o se queda, nunca sube**: cada número de más es una
 # función que promete algo que no ocurre.
 #
-#   04-10-2026  47  medición inicial
+#   04-10-2026  47  medición inicial (sólo integration, marketing, service y
+#                   las notificaciones del núcleo)
 #   05-10-2026  46  `portal.exigir_nivel` quitada — no la llamaba nadie, no
 #                   tenía prueba, y solapaba con `exigir_seccion`, que sí se
 #                   usa. Dos comprobaciones de permiso con una sin usar es cómo
@@ -85,33 +58,52 @@ CARPETAS = (
 #                   `registrar_llamada` no tenían ruta, así que la centralita
 #                   no tenía dónde pedir el screen pop ni dónde dar el parte
 #                   de una llamada perdida.
-#   05-10-2026  35  las nueve decisiones de `suites_recursos` (qué contactos
-#                   suben y cuáles entran, qué gana cuando un campo cambia en
-#                   los dos lados, el eco de una tarea, el vínculo y la
-#                   resolución de una nota, el de un fichero y su estado, y
-#                   qué canal usa el enlace de una reunión) estaban escritas y
-#                   probadas sin una sola puerta: nadie de fuera podía pedir
+#   05-10-2026  35  las nueve decisiones de `suites_recursos` estaban escritas
+#                   y probadas sin una sola puerta: nadie de fuera podía pedir
 #                   ninguna.
-#   05-10-2026   0  CERO. Lo que faltaba no eran puertas sueltas: era que
-#                   **nada de integración corría en bucle**. El conector
-#                   declarativo estaba completo y lo disparaba una ruta a mano,
-#                   así que las decisiones de una sincronización —cuándo avanza
-#                   la marca, cómo se reintenta cuando el proveedor corta, a
-#                   qué ritmo se trae la primera carga— no tenían dónde
-#                   ocurrir. Con el programador y el mantenimiento de las
-#                   suscripciones, veinte de ellas pasan a ejecutarse; las
-#                   demás son rutas, y cuatro son puntos de aplicación dentro
-#                   de un camino que ya existía y se saltaba la comprobación
-#                   (la base publicitaria, los empates de prioridad, los
-#                   tokens sin sustituir y el apunte del envío que hacía que el
-#                   tope de frecuencia no frenara nada).
+#   05-10-2026   0  CERO en las cuatro carpetas de entonces. Lo que faltaba no
+#                   eran puertas sueltas: era que **nada de integración corría
+#                   en bucle**, así que las decisiones de una sincronización no
+#                   tenían dónde ocurrir.
+#   05-10-2026   0  Y **el alcance se amplía a todo**: `services` entero y
+#                   `crmcore` entero. Antes se miraban cuatro carpetas de
+#                   veintitantas, así que el cero de arriba era el cero de la
+#                   cuarta parte. Al ampliarlo salieron 26 en el núcleo, de las
+#                   que nueve eran decisiones de verdad sin puerta —entre ellas,
+#                   que un campo a medida no recibía ni índice ni vista, que el
+#                   móvil sin conexión no tenía por dónde sincronizar, y que una
+#                   extensión suscrita a un evento no recibía ninguno—. Cerradas
+#                   las nueve, el resto son ayudantes de pruebas y están abajo
+#                   con su motivo.
 TOPE = 0
 
-# Las que no cuentan, con su motivo. Vacío, y ahora por un motivo distinto: ya
-# no queda ninguna. El tope está en cero, así que la primera que vuelva a
-# aparecer rompe el gate — que es justo lo que se quiere, porque una función de
-# integración sin llamante no da ningún error: promete algo que no ocurre.
-NO_CUENTAN: dict[str, str] = {}
+# Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
+# ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
+# llamante, pero en `tests/` o fuera del repositorio, y esta sonda mira sólo
+# producción a propósito: si mirara las pruebas, una función usada únicamente
+# por su propia prueba pasaría por enchufada, que es el caso que más engaña.
+NO_CUENTAN: dict[str, str] = {
+    "es_entorno_de_pruebas": "lo usan las pruebas para no hablar con el mundo",
+    "limpiar_medidores": "el registro es del proceso y vive entre casos de prueba",
+    "medidores_registrados": "para que una prueba diga qué se está midiendo",
+    "limpiar_tratamientos": "igual: registro de proceso que hay que vaciar entre casos",
+    "contables_declarados": "para comprobar qué cuenta como registro del cliente",
+    "limpiar_declarados": "registro de proceso, se vacía entre casos",
+    "limpiar_hooks": "registro de proceso, se vacía entre casos",
+    "limpiar_estado": "registro de proceso, se vacía entre casos",
+    "reset_logging": "reconfigurar el registro entre casos de prueba",
+    "tablas_declaradas": "para comprobar que cada servicio declara las suyas",
+    "bus_actual": "para que una prueba mire a qué bus se ha conectado el servicio",
+    "hay_cliente": "para saltarse una prueba cuando no hay Redis",
+    "en_solo_lectura": "accesor de una línea; el estado se lee por `estado()`",
+    # Superficie para QUIEN INTEGRA. No la llama el producto por definición: la
+    # llama el código de fuera, y quitarla porque «no la usa nadie» sería
+    # romperle la extensión a un cliente.
+    "registrar_hook": "API de extensiones: la llama la extensión, no el producto",
+    "desde_problema": "API del SDK: reconstruye un error del producto en el cliente",
+    "con_prefijo": "API del SDK: compone un identificador legible",
+    "ahora_utc": "API del SDK y de las pruebas; el producto usa `hoy(db)`",
+}
 
 
 @lru_cache(maxsize=1)

@@ -102,7 +102,7 @@ router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 # arriba porque este módulo importa `listados` más abajo a propósito.
 from crmcore.http.listados import declarar_recurso  # noqa: E402
 
-declarar_recurso(router_cuentas, "cuenta")
+declarar_recurso(router_cuentas, "cuenta", Cuenta)
 
 
 @router_cuentas.post(

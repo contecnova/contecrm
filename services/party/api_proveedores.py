@@ -25,11 +25,14 @@ from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
+from services.party import modelos as mod
 from services.party import proveedores as prv
 from services.party.esquemas import ActualizarCuenta, CrearCuenta, CuentaOut
 
 router_proveedores = APIRouter(prefix="/proveedores", tags=["proveedores"])
-declarar_recurso(router_proveedores, "proveedor")
+# Un proveedor es una CUENTA con rol, así que su tabla es la de cuentas: el
+# campo a medida de un proveedor se indexa donde está la fila.
+declarar_recurso(router_proveedores, "proveedor", mod.Cuenta)
 
 
 class HomologarIn(BaseModel):

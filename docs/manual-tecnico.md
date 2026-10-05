@@ -775,6 +775,75 @@ no un valor por omisión escondido: `enlace` lo calcula con el de quien lo mont�
 —el tope que el enlace ya prometía— y `quien_mira` con el de esa persona, y
 entonces sin sujeto no se sirve.
 
+### 3.6.2 El esquema del tenant, aplicado de verdad
+
+Replicar el esquema sirve para validar. Lo que hace falta además es **el esquema
+físico**, y hasta el 05-10-2026 no lo aplicaba nadie: un campo a medida
+declarado por un cliente se guardaba y se validaba, y no recibía ni índice ni
+vista.
+
+- **Sin índice**, filtrar u ordenar por ese campo recorre la tabla entera. Eso no
+  da un error: da una pantalla que tarda un poco más cada mes, hasta que alguien
+  dice que «el CRM va lento» y nadie sabe por dónde empezar.
+- **Sin vista**, la vista tipada del tenant —`v_oportunidad_01a0cd88…`— no
+  existe, mientras el motor de informes la nombra como entidad de respaldo
+  cuando no hay fuente externa registrada. Ese camino moría con «Table with name
+  v_oportunidad_… does not exist».
+
+Se aplica al publicar el esquema, en el servicio **dueño de la tabla**: el
+evento llega a los catorce y sólo uno puede crear ese índice. Lo resuelve un
+registro objeto → tabla que apuntan solos los montadores de listado y de ficha;
+un recurso con su listado escrito a mano lo declara al lado del router.
+
+Un fallo aquí **no tumba la réplica**: validar con los campos nuevos es lo
+urgente —el consultor tiene al cliente delante— y un índice que no se pudo crear
+se reintenta en la publicación siguiente. Lo que no se hace es callarlo.
+
+### 3.6.3 El móvil sin conexión
+
+`POST /api/v1/<servicio>/movil/sincronizar`. Va por servicio, como la papelera:
+la cola del móvil lleva operaciones sobre objetos de varios, y cada uno las
+resuelve contra sus propios registros.
+
+**Devuelve el plan, no escribe.** Qué se puede aplicar, qué choca y con qué
+campos, y qué se queda esperando. Quien escribe es la ruta de siempre de cada
+objeto, con sus permisos y sus validaciones: una segunda puerta de escritura sin
+las comprobaciones de la primera es como se cuela un dato que la pantalla no
+habría dejado poner.
+
+Lo que el móvil tiene que mandar, y por qué:
+
+| Campo | Para qué |
+|---|---|
+| `id_cliente` | Lo genera **el móvil** antes de mandar nada. Es lo que hace que un reintento tras un corte no cree una visita duplicada: si lo generara el servidor, habría que adivinar si la petición que no contestó llegó, y esa duda no tiene respuesta correcta |
+| `version_base` | Sobre qué versión se hizo el cambio. La **cero es una versión** —la del registro que nadie ha tocado— y tratarla como «sin versión» rechazaba toda actualización sobre un registro recién creado |
+| `campos` | Lo que quiere escribir |
+| `campos_base` | Lo que **leyó** antes de perder la señal. Sin esto no se distingue «el otro cambió este campo» de «yo escribo encima de un valor que nadie tocó», y entonces todo cambio sobre un registro que se movió sale como conflicto — que es la forma de enseñar a pulsar «quedarme con lo mío» sin leer |
+
+Un objeto que no es de ese servicio **se queda en la cola** y se dice; un
+registro borrado no se recrea, porque recrearlo devolvería a la vida algo que
+alguien borró a propósito y sin su historia.
+
+### 3.6.4 El modo solo lectura
+
+Se aplica en la **unidad de trabajo**, que es por donde pasan todas las
+escrituras. Ruta a ruta sería «funciona donde alguien se acordó», y durante un
+incidente la que falta es la que escribe.
+
+Se entra y se sale por `POST /api/v1/estado/solo-lectura` **en el gateway**, y
+eso es el punto: el modo vive en memoria de cada proceso, así que ponerlo en un
+servicio suelto dejaría los otros trece escribiendo. El gateway lo reparte y
+dice **a cuáles no ha llegado**: un servicio mudo sigue escribiendo, y eso hay
+que saberlo ahora, no después.
+
+La **lectura sigue funcionando**. Es lo que separa «no se puede guardar, tus
+datos están ahí» de «el CRM no funciona»: con lectura, el comercial que está
+delante de un cliente sigue viendo su ficha.
+
+El **motivo es obligatorio** al entrar, y no es cortesía: sin él quien no puede
+guardar cree que su cambio tenía algo malo y lo reintenta cambiándolo, que es
+cómo se pierde trabajo durante una incidencia.
+
 ### 3.7 La cola de duplicados
 
 `party/cola_duplicados.py`. El que puntúa es

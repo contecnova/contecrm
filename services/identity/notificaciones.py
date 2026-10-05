@@ -361,7 +361,7 @@ async def consumir_evento(mensaje: Any) -> None:
 
 router_seguimiento = APIRouter(prefix="/seguimientos", tags=["seguimiento"])
 router_notificaciones = APIRouter(prefix="/notificaciones", tags=["notificaciones"])
-declarar_recurso(router_notificaciones, "notificacion")
+declarar_recurso(router_notificaciones, "notificacion", Notificacion)
 
 
 class Seguir(BaseModel):

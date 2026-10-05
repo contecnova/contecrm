@@ -22,7 +22,7 @@ from services.sales.catalogo import ListaPrecio
 from services.sales.presupuestos import Contrato, Pedido, Presupuesto, SuscripcionCliente
 
 router_prod = APIRouter(prefix="/productos", tags=["catálogo"])
-declarar_recurso(router_prod, "producto")
+declarar_recurso(router_prod, "producto", cat.Producto)
 router_precios = APIRouter(prefix="/listas-precio", tags=["catálogo"])
 router_pre = APIRouter(prefix="/presupuestos", tags=["cotización"])
 router_ctr = APIRouter(prefix="/contratos", tags=["contratación"])

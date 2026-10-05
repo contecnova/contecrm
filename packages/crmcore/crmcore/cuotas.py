@@ -37,9 +37,17 @@ from crmcore.logging import get_logger
 logger = get_logger(__name__)
 
 
-def periodo_actual() -> str:
-    """El mes en curso, en el formato que usa la medición: `2026-09`."""
-    return datetime.now(timezone.utc).strftime("%Y-%m")
+def periodo_actual(db: Any = None) -> str:
+    """El mes en curso **donde está el cliente**, como lo nombra la medición.
+
+    Con sesión se resuelve su zona. Sin ella cae a UTC, que es lo que hacía
+    antes: el 1 de mes a la una de la mañana en Madrid, en UTC todavía es el mes
+    anterior — y entonces el panel dice que lleva gastado lo del mes pasado y el
+    cliente no entiende por qué su cuota «no se ha renovado».
+    """
+    from crmcore.fechas import hoy
+
+    return hoy(db).strftime("%Y-%m")
 
 
 def inicio_del_periodo() -> datetime:

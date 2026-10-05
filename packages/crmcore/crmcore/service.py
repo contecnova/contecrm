@@ -239,6 +239,7 @@ def crear_servicio(
                     INVENTARIO_SOLICITADO,
                     consumir_solicitud,
                 )
+                from crmcore.extensiones import consumidor_de_extensiones
                 from crmcore.metamodelo import ESQUEMA_CAMBIADO, consumir_esquema
                 from crmcore.runtime.settings import AJUSTE_CAMBIADO, consumir_ajuste
                 from crmcore.security.byok import CLAVE_CAMBIADA, consumir_clave
@@ -288,6 +289,18 @@ def crear_servicio(
                     # campos de ayer: rechazaría el campo que el consultor acaba
                     # de crear —con el cliente delante— o aceptaría uno retirado.
                     (ESQUEMA_CAMBIADO, consumir_esquema, f"{nombre}-esquema"),
+                    # Y lo que las extensiones del tenant hayan pedido oír
+                    # (CRM-06.03). `consumidor_de_extensiones` estaba escrito,
+                    # probado y **sin que lo registrara nadie**: una extensión
+                    # podía suscribirse a un evento y no recibía ninguno. El
+                    # mecanismo existía entero y no llegaba al bus.
+                    #
+                    # UNA sola suscripción para todas, y no una por extensión:
+                    # cada suscripción es un consumidor durable, y un tenant con
+                    # cincuenta extensiones tendría cincuenta compitiendo por el
+                    # mismo flujo. El patrón es ancho porque el reparto ya filtra
+                    # por tipo, y una extensión rota no para el bus.
+                    ("*", consumidor_de_extensiones(), f"{nombre}-extensiones"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:
@@ -409,6 +422,18 @@ def crear_servicio(
         # la mandaba a una papelera sin pantalla.
         app.include_router(crear_router_papelera(nombre), prefix=s.api_prefix)
         app.include_router(crear_router_cumplimiento(nombre), prefix=s.api_prefix)
+
+        # Y la sincronización del móvil sin conexión. Va por servicio, como la
+        # papelera: la cola del móvil lleva operaciones sobre objetos de varios,
+        # y cada uno resuelve los suyos contra sus propios registros. Un punto
+        # central tendría que leer las tablas de los catorce.
+        #
+        # Montarlo aquí y no en cada `main.py` es lo que impide que un servicio
+        # se quede sin ello sin que nadie lo note — que es como `crmcore.movil`
+        # acabó resolviendo lo difícil sin que lo alcanzara ninguna ruta.
+        from crmcore.http.movil_router import crear_router_movil
+
+        app.include_router(crear_router_movil(nombre), prefix=s.api_prefix)
 
         # Y sus vocabularios, si declara alguno. Solo entonces: en un servicio
         # que no valida contra ninguna lista, estas rutas serían tres pantallas

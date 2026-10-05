@@ -628,6 +628,75 @@ async def solo_lectura_de_la_instalacion(datos: SoloLecturaIn, principal: Plataf
     }
 
 
+# ── Lo que necesita quien integra, antes de escribir una línea ────────────
+#
+# `sdk.plan_de_generacion` y `sdk.contrato_de_componente` estaban escritas,
+# probadas y **sin que las alcanzara ninguna ruta**: el producto sabía decir qué
+# se genera del contrato y qué hay que escribir a mano en cada lenguaje, y qué
+# promete un componente embebible, y no lo decía en ninguna parte. Quien
+# integraba tenía que preguntarlo por correo.
+#
+# Van en el gateway porque son del CRM entero, no de un servicio: el SDK se
+# genera del contrato que publica el gateway, y un componente embebible habla
+# con la API pública, no con `party` ni con `sales`.
+
+
+@router.get(
+    "/sdk/plan",
+    summary="Qué se genera del contrato y qué hay que escribir a mano",
+    description=(
+        "**Un SDK escrito a mano se queda viejo. Siempre.** Alguien lo escribe "
+        "con cariño para tres lenguajes y a los cuatro meses la API tiene dos "
+        "endpoints que el SDK no conoce — y el integrador no se entera de que "
+        "existen. Por eso se genera del contrato.\n\n"
+        "Y por eso esta ruta dice también **lo que no se genera**, que es lo que "
+        "cuesta de verdad: el reintento con espera creciente, la paginación "
+        "resuelta en un iterador y los errores del producto como excepciones con "
+        "nombre. Devolver sólo la lista de lenguajes haría creer que el SDK está "
+        "hecho cuando lo que hay es un cliente HTTP con los nombres de los "
+        "endpoints."
+    ),
+)
+def plan_del_sdk(
+    principal: AutenticadoDep,
+    lenguajes: str = Query(
+        "",
+        description="Separados por comas. Vacío: todos los que se mantienen",
+    ),
+) -> Any:
+    from crmcore import sdk
+    from crmcore.config import get_settings
+
+    pedidos = [x.strip() for x in lenguajes.split(",") if x.strip()] or list(sdk.LENGUAJES)
+    return sdk.plan_de_generacion(
+        lenguajes=pedidos, version_api=str(get_settings().api_prefix).strip("/") or "v1"
+    )
+
+
+@router.get(
+    "/sdk/componentes",
+    summary="Los componentes embebibles y qué promete cada uno",
+    description=(
+        "Un componente que se incrusta en la web de un cliente **no se puede "
+        "cambiar a la ligera**: su contrato es tan público como el de la API, y "
+        "romperlo rompe una página que no es nuestra — y se entera él antes que "
+        "nosotros.\n\n"
+        "Lleva dentro la parte que casi siempre se olvida: **con qué identidad "
+        "habla**. Un componente que usa la sesión del CRM en una web pública deja "
+        "entrar a quien pase por ahí; basta con abrir las herramientas del "
+        "navegador."
+    ),
+)
+def componentes_embebibles(principal: AutenticadoDep, nombre: str = Query("")) -> Any:
+    from crmcore import sdk
+
+    if nombre:
+        return sdk.contrato_de_componente(nombre)
+    return {
+        "componentes": [sdk.contrato_de_componente(c) for c in sdk.COMPONENTES],
+    }
+
+
 @router.get(
     "/superficie",
     summary="Todo lo que sabe hacer el CRM, en una lista",
