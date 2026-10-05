@@ -4542,6 +4542,12 @@ trabajo durante una incidencia.
 
 ### Varias operaciones en una llamada (`CRM-00.02.01.13`)
 
+La sirve **cada servicio**, porque una composición que cruzara servicios no
+podría ser una transacción y prometerlo sería mentir. Cada operación se despacha
+contra la propia aplicación, así que pasa por la autenticación, los permisos, la
+validación y la auditoría igual que si hubiera llegado sola: ejecutarlas por
+dentro habría sido más rápido y habría creado un camino sin controles.
+
 Crear una cuenta, añadirle un contacto y abrirle una oportunidad son tres
 llamadas y tres viajes de red. Desde un móvil con mala cobertura, tres ocasiones
 de quedarse a medias — y quedarse a medias aquí es una cuenta sin contacto que
@@ -4579,6 +4585,10 @@ puede reconstruir. Se puede apagar para quien prefiera el rendimiento y tenga
 consumidores que no dependan del orden.
 
 ### Acceso por IP, dispositivo y horario (`CRM-00.05.01.09`)
+
+Se comprueba **en la puerta y en cada petición**. Las reglas son un ajuste del
+tenant y viajan al gateway con el mismo dato y la misma caché que su
+operatividad: pedirlas aparte sería doblar el tráfico interno por lo mismo.
 
 El ABAC decide por atributos del usuario y del registro; esto añade los del
 **momento**, que son los que cambian entre una sesión legítima y la misma
@@ -4943,6 +4953,11 @@ saltar a lo nuevo. Un cliente que cree haberlo recibido todo y no lo ha recibido
 toma decisiones sobre datos incompletos.
 
 ### Cachear con invalidación por evento (`CRM-00.02.04.05`)
+
+La generación la sube **el propio bus**: cada servicio invalida con cada evento
+que recibe. No se mira antes si alguien cacheaba ese evento — subir una
+generación que nadie consulta cuesta una operación, y no subirla cuando sí la
+consultaban sirve datos viejos. De las dos equivocaciones, esta es la barata.
 
 Cachear es fácil; invalidar es el problema. Con caducidad por tiempo, la
 respuesta vieja se sirve durante todo el plazo que le quede y el usuario que
@@ -11484,6 +11499,15 @@ también **por qué ese**, porque la pregunta que llega a soporte es siempre «�
 qué yo veo otra pantalla?».
 
 ## gRPC y protobuf: el contrato binario (`CRM-00.02.01.03`)
+
+El puerto lo levanta el arranque del servicio cuando `GRPC_ACTIVO` lo pide, y los
+cinco métodos del contrato los sirve **el mismo código que sirve REST**: cada uno
+despacha contra la propia aplicación. Si no fueran los mismos, habría dos sitios
+donde se aplican las reglas de negocio y solo uno al día.
+
+Con el ajuste encendido y sin la librería instalada, el servicio **arranca igual y
+lo dice**: apagar el HTTP de todo el mundo porque falta una dependencia opcional
+convierte una instalación incompleta en una caída.
 
 Para el cliente que mueve millones de filas, HTTP y JSON son caros: el JSON ocupa
 el triple y no hay forma decente de mantener un flujo abierto sin sondear. gRPC

@@ -122,6 +122,21 @@ NUNCA_POR_PLAN = {
 }
 
 
+def reglas_contextuales(tenant_id: UUID | None) -> list[dict[str, Any]]:
+    """Las reglas de acceso contextual del tenant, de la misma caché.
+
+    Se leen de lo que ya trajo `exigir`: son del mismo tenant y de la misma
+    petición, y pedirlas aparte doblaría el tráfico interno por el mismo dato.
+    """
+    if tenant_id is None:
+        return []
+    guardado = _cache.get(str(tenant_id))
+    if guardado is None:
+        return []
+    crudas = guardado[1].get("reglas_contextuales") or []
+    return [r for r in crudas if isinstance(r, dict)]
+
+
 async def exigir_capacidad(
     cliente: Any, url_base: str, tenant_id: UUID | None, servicio: str
 ) -> None:

@@ -15,6 +15,7 @@ from crmcore.http.deps import (
     cookie_rechazada,
     exige_firma_interna,
     exige_permiso,
+    ip_de,
 )
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -1064,6 +1065,35 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
             destino_tenancy.url_base,
             getattr(principal, "tenant_id", None),
             nombre,
+        )
+
+    # ACCESO CONTEXTUAL (CRM-00.05.01.09): desde dónde entra, con qué y a qué
+    # hora. El ABAC ya decide por atributos del usuario y del registro; esto
+    # añade los del **momento**, que son los que cambian entre una sesión
+    # legítima y la misma credencial usada por otro.
+    #
+    # Se comprueba **en cada petición y no al entrar**: comprobarlo solo en el
+    # login deja la sesión abierta cuando las condiciones dejan de cumplirse, y
+    # el caso que se quiere cubrir es exactamente ese. El módulo que lo evalúa
+    # llevaba desde que se escribió sin que lo importara nadie.
+    reglas = operatividad.reglas_contextuales(getattr(principal, "tenant_id", None))
+    if reglas:
+        from datetime import datetime, timezone
+
+        from crmcore.authz import contexto as ctx_mod
+
+        ctx_mod.exigir(
+            [ctx_mod.ReglaContextual(**r) for r in reglas],
+            ctx_mod.Contexto(
+                ip=ip_de(request),
+                dispositivo=request.headers.get("x-crm-dispositivo", ""),
+                # El país no se adivina: si no llega, la regla que dependa de él
+                # no aplica. Una señal ausente no es una señal incumplida —
+                # bloquear por una IP que no llega porque hay un proxy delante
+                # deja fuera a toda la plantilla, y eso es una caída.
+                pais=request.headers.get("x-crm-pais", ""),
+                momento=datetime.now(timezone.utc),
+            ),
         )
 
     # TRÁFICO ANÓMALO (CRM-00.01.06.05). El límite de tasa fijo protege del

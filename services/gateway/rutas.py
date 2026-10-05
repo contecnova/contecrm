@@ -373,6 +373,9 @@ RECURSOS_TRANSVERSALES = {
     # servicio que guarda ese objeto, y la comparación con el estado vivo
     # necesita leer su tabla.
     "rastro",
+    # Varias operaciones en una llamada y en una transacción: va por servicio
+    # porque una composición que cruzara servicios no podría serlo.
+    "compuesto",
 }
 
 # Los nombres de servicio salen de la propia tabla de prefijos en vez de

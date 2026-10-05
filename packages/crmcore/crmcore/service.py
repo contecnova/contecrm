@@ -122,6 +122,149 @@ def _barridos_del_nucleo(servicio: str) -> list[Any]:
     ]
 
 
+def _manejadores_rpc(app: Any) -> dict[str, Any]:
+    """Los cinco métodos del contrato gRPC, servidos por **el mismo código**.
+
+    Cada uno despacha contra la propia aplicación, así que la llamada atraviesa
+    la autenticación, los permisos, la proyección y la auditoría exactamente
+    igual que si hubiera llegado por HTTP. Implementarlos por dentro habría sido
+    más rápido y habría dejado dos sitios donde se aplican las reglas de negocio
+    — y solo uno al día.
+
+    El transporte llevaba desde que se escribió sin nadie que lo levantara:
+    `GRPC_ACTIVO` existía, estaba documentado y **no lo leía nadie**, así que
+    encenderlo no encendía nada. Un ajuste que no hace nada es peor que no
+    tenerlo: quien lo pone cree que ya está.
+    """
+    import httpx
+
+    def _cliente() -> Any:
+        return httpx.Client(
+            transport=httpx.WSGITransport(app=app)  # type: ignore[arg-type]
+            if False
+            else httpx.ASGITransport(app=app),
+            base_url="http://rpc",
+        )
+
+    def _cabeceras(principal: Any) -> dict[str, str]:
+        from crmcore.config import get_settings
+        from crmcore.http.deps import (
+            H_PERMISOS,
+            H_ROLES,
+            H_TENANT,
+            H_TIPO,
+            H_USER,
+            firmar_cabeceras_internas,
+        )
+
+        return firmar_cabeceras_internas(
+            {
+                H_TENANT: str(principal.tenant_id or ""),
+                H_USER: str(principal.id or ""),
+                H_TIPO: str(getattr(principal, "tipo", "usuario") or "usuario"),
+                H_PERMISOS: ",".join(sorted(principal.permisos)),
+                H_ROLES: ",".join(sorted(principal.roles)),
+            },
+            get_settings().secret_key.get_secret_value(),
+        )
+
+    def _pedir(principal: Any, metodo: str, ruta: str, cuerpo: Any = None) -> Any:
+        import anyio
+
+        async def _ir() -> Any:
+            import httpx as _h
+
+            async with _h.AsyncClient(
+                transport=_h.ASGITransport(app=app), base_url="http://rpc"
+            ) as cli:
+                r = await cli.request(metodo, ruta, json=cuerpo, headers=_cabeceras(principal))
+                r.raise_for_status()
+                return r.json()
+
+        return anyio.from_thread.run(_ir) if _en_hilo() else anyio.run(_ir)
+
+    def _en_hilo() -> bool:
+        import sniffio
+
+        try:
+            sniffio.current_async_library()
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
+    def _coleccion(objeto: str) -> str:
+        from crmcore.http.listados import ruta_de_objeto
+
+        return ruta_de_objeto(objeto)
+
+    def _get(principal: Any, objeto: str, peticion: Any) -> Any:
+        return _pedir(principal, "GET", f"{_coleccion(objeto)}/{_id(peticion)}")
+
+    def _list(principal: Any, objeto: str, peticion: Any) -> Any:
+        salida = _pedir(principal, "GET", _coleccion(objeto))
+        return salida.get("datos", salida) if isinstance(salida, dict) else salida
+
+    def _create(principal: Any, objeto: str, peticion: Any) -> Any:
+        return _pedir(principal, "POST", _coleccion(objeto), _cuerpo(peticion))
+
+    def _update(principal: Any, objeto: str, peticion: Any) -> Any:
+        return _pedir(
+            principal, "PATCH", f"{_coleccion(objeto)}/{_id(peticion)}", _cuerpo(peticion)
+        )
+
+    def _watch(principal: Any, objeto: str, peticion: Any) -> Any:
+        # `Watch` no inventa un transporte nuevo: devuelve lo que hay y deja al
+        # cliente seguir por el flujo de eventos del gateway, que es donde vive
+        # el empuje. Un `Watch` que sondea cada segundo contra la base es una
+        # consulta por cliente y por segundo, y eso no lo aguanta nadie.
+        return _list(principal, objeto, peticion)
+
+    def _id(peticion: Any) -> str:
+        if isinstance(peticion, dict):
+            return str(peticion.get("id") or "")
+        return str(getattr(peticion, "id", "") or "")
+
+    def _cuerpo(peticion: Any) -> dict[str, Any]:
+        from crmcore.rpc.mensajes import a_diccionario
+
+        if isinstance(peticion, dict):
+            return dict(peticion)
+        try:
+            return a_diccionario(peticion)
+        except Exception:  # noqa: BLE001 — lo que no se entiende no se inventa
+            return {}
+
+    _ = _cliente  # el cliente síncrono queda para quien lo necesite
+    return {
+        "Get": _get,
+        "List": _list,
+        "Create": _create,
+        "Update": _update,
+        "Watch": _watch,
+    }
+
+
+async def _invalidar_cache(mensaje: Any) -> None:
+    """Sube la generación del evento recibido: lo que dependía deja de valer.
+
+    No se mira si alguien cacheaba ese evento: subir una generación que nadie
+    consulta cuesta una operación y no hacerlo cuando sí la consultaban sirve
+    datos viejos. Entre las dos equivocaciones, esta es la barata.
+    """
+    from uuid import UUID
+
+    from crmcore.cache.respuestas import invalidar_por_evento
+
+    tipo = str(getattr(mensaje, "type", "") or (mensaje or {}).get("type", ""))
+    tenant = getattr(mensaje, "tenant_id", None) or (mensaje or {}).get("tenant_id")
+    if not tipo or not tenant:
+        return
+    try:
+        invalidar_por_evento(tipo, tenant if isinstance(tenant, UUID) else UUID(str(tenant)))
+    except Exception as exc:  # noqa: BLE001 — una caché caída no para el bus
+        logger.warning("cache.invalidacion_fallida", evento=tipo, error=str(exc)[:200])
+
+
 def crear_servicio(
     *,
     nombre: str,
@@ -301,6 +444,18 @@ def crear_servicio(
                     # mismo flujo. El patrón es ancho porque el reparto ya filtra
                     # por tipo, y una extensión rota no para el bus.
                     ("*", consumidor_de_extensiones(), f"{nombre}-extensiones"),
+                    # Y la invalidación de la caché de respuestas
+                    # (CRM-00.02.04.05). Cachear es fácil; invalidar es el
+                    # problema: una caché que solo caduca por tiempo sirve una
+                    # respuesta vieja durante todo el plazo que le quede, y el
+                    # usuario que acaba de cambiar algo ve su propio cambio
+                    # desaparecer — la queja más difícil de reproducir que hay,
+                    # porque a los cinco minutos ya no pasa.
+                    #
+                    # El módulo que lo resuelve llevaba desde que se escribió
+                    # sin que lo importara nadie, así que la generación no subía
+                    # jamás y la invalidación por evento no existía.
+                    ("*", _invalidar_cache, f"{nombre}-cache"),
                     *(consumidores or []),
                 ]
                 for patron, manejador, grupo in suscripciones:
@@ -342,6 +497,32 @@ def crear_servicio(
                 _base.correr(), name=f"{nombre}-barridos-nucleo"
             )
 
+        # EL TRANSPORTE gRPC, si está encendido (CRM-00.02.01.03). `GRPC_ACTIVO`
+        # existía, estaba documentado y **no lo leía nadie**: encenderlo no
+        # encendía nada, que es peor que no tener el ajuste — quien lo pone cree
+        # que ya está, y lo descubre el integrador al no poder conectar.
+        if getattr(s, "grpc_activo", False):
+            from crmcore.rpc import servidor as rpc
+
+            if not rpc.disponible():
+                # No se cae el servicio: se dice. Apagar el HTTP de todo el
+                # mundo porque falta una dependencia opcional convierte una
+                # instalación incompleta en una caída.
+                logger.error(
+                    "grpc.activo_sin_libreria",
+                    extra={"que_hacer": "Instalar el extra `grpc` o apagar GRPC_ACTIVO"},
+                )
+            else:
+                try:
+                    _estado["grpc"] = rpc.crear_servidor(
+                        manejadores=_manejadores_rpc(app),
+                        settings=s,
+                        direccion=getattr(s, "grpc_direccion", "0.0.0.0:50051"),
+                    )
+                    _estado["grpc"].start()
+                except Exception as exc:  # noqa: BLE001 — ver arriba
+                    logger.error("grpc.no_levantado", extra={"error": str(exc)[:200]})
+
         if al_arrancar:
             resultado = al_arrancar()
             if asyncio.iscoroutine(resultado):
@@ -370,6 +551,13 @@ def crear_servicio(
             tarea = _estado.get("relevo")
             if tarea:
                 tarea.cancel()
+            # Y el puerto gRPC, con gracia: cortarlo en seco deja a medias la
+            # llamada que estuviera en curso, y la que está en curso cuando se
+            # despliega es siempre la del cliente que mueve millones de filas.
+            grpc_srv = _estado.get("grpc")
+            if grpc_srv:
+                grpc_srv.stop(grace=5)
+                _estado["grpc"] = None
             bus = _estado.get("bus")
             if bus:
                 await bus.cerrar()
@@ -452,6 +640,15 @@ def crear_servicio(
         from crmcore.http.rastro_router import crear_router_rastro
 
         app.include_router(crear_router_rastro(nombre), prefix=s.api_prefix)
+
+        # Y las peticiones compuestas: varias operaciones en una llamada y en
+        # una transacción. El módulo que resolvía lo difícil —el tope, las
+        # referencias, la validación previa— llevaba desde que se escribió sin
+        # que lo importara nadie, así que un cliente móvil seguía haciendo tres
+        # viajes de red para crear una cuenta con su contacto.
+        from crmcore.http.compuesto_router import crear_router_compuesto
+
+        app.include_router(crear_router_compuesto(nombre), prefix=s.api_prefix)
 
         # Y sus vocabularios, si declara alguno. Solo entonces: en un servicio
         # que no valida contra ninguna lista, estas rutas serían tres pantallas

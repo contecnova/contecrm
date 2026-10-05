@@ -474,7 +474,18 @@ def operatividad_de(tenant_id: UUID) -> Any:
         # llamada: el gateway las necesita en la misma petición y con la misma
         # caché, y pedirlas aparte sería doblar el tráfico interno para el mismo
         # dato del mismo tenant.
-        return {**svc.operatividad(db, tenant_id), "capacidades": svc.capacidades_de(db, tenant_id)}
+        # Y las reglas de acceso contextual (CRM-00.05.01.09), por el mismo
+        # viaje: el gateway las necesita en la misma petición y con la misma
+        # caché. Pedirlas aparte sería doblar el tráfico interno por el mismo
+        # dato del mismo tenant — y el módulo que las evalúa llevaba desde que
+        # se escribió sin que lo importara nadie, así que no se comprobaban.
+        from crmcore.runtime import settings as rt
+
+        return {
+            **svc.operatividad(db, tenant_id),
+            "capacidades": svc.capacidades_de(db, tenant_id),
+            "reglas_contextuales": rt.efectivo("reglas_contextuales", db) or [],
+        }
 
 
 from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402

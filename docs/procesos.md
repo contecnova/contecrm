@@ -107,6 +107,7 @@ stateDiagram-v2
 | `POST /api/v1/suite/provisionar/tenant` | Dar de alta este tenant en las herramientas conectadas | — | 200, 422 | — |
 | `POST /api/v1/suite/provisionar/usuario` | Alta, cambio o baja de un usuario en toda la suite | id*, email*, nombre, roles, unidad, activa, operacion | 200, 422 | — |
 | `POST /api/v1/suite/reconciliar/{herramienta}/reparar` | Reencolar lo divergente | herramienta*, objeto_ids*, forzar | 200, 422 | — |
+| `POST /api/v1/tenancy/compuesto` | Varias operaciones de «tenancy» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/tenancy/movil/sincronizar` | Qué hacer con la cola del móvil para «tenancy» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/tenancy/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/tenancy/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -158,6 +159,7 @@ stateDiagram-v2
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/factores/codigo` | Enviar un código de un solo uso | canal*, proposito, direccion | 202, 422 | — |
 | `POST /api/v1/factores/comprobar` | Validar un código y elevar el nivel de esta sesión | codigo*, proposito | 200, 422 | — |
+| `POST /api/v1/identity/compuesto` | Varias operaciones de «identity» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/identity/movil/sincronizar` | Qué hacer con la cola del móvil para «identity» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/identity/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/identity/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -224,6 +226,7 @@ stateDiagram-v2
 | `POST /api/v1/entornos/{entorno}/simular` | Qué pasaría al promocionar, sin aplicar nada | entorno*, paquete_id*, estado_destino | 200, 422 | — |
 | `POST /api/v1/entornos/{entorno}/volver-atras` | Reaplicar el paquete anterior | entorno*, motivo* | 200, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
+| `POST /api/v1/metadata/compuesto` | Varias operaciones de «metadata» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/metadata/listas/{lista}` | Añadir un valor a una lista maestra | lista*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `DELETE /api/v1/metadata/listas/{lista}/{valor}` | Desactivar un valor de lista | lista*, valor* | 200, 422 | — |
 | `POST /api/v1/metadata/modulos/actualizar` | Actualizar un módulo respetando lo que el cliente ajustó | manifiesto*, aplicar, forzar_fijos | 200, 422 | `module.updated` |
@@ -280,6 +283,7 @@ stateDiagram-v2
 | `POST /api/v1/instancias` | Arrancar un proceso | clave*, variables, origen_tipo, origen_id | 201, 422 | — |
 | `POST /api/v1/instancias/{instancia_id}/reintentar` | Reintentar una instancia fallida | instancia_id* | 200, 422 | — |
 | `PATCH /api/v1/instancias/{instancia_id}/variables` | Corregir las variables de una instancia en marcha | instancia_id*, variables*, motivo* | 200, 422 | — |
+| `POST /api/v1/orchestrator/compuesto` | Varias operaciones de «orchestrator» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/orchestrator/movil/sincronizar` | Qué hacer con la cola del móvil para «orchestrator» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/orchestrator/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/orchestrator/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -309,6 +313,7 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
+| `POST /api/v1/automation/compuesto` | Varias operaciones de «automation» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/automation/movil/sincronizar` | Qué hacer con la cola del móvil para «automation» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/automation/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/automation/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -432,6 +437,7 @@ stateDiagram-v2
 | `POST /api/v1/integraciones/registros-recibidos/{registro_id}/estado` | Marcar un registro recibido como procesado o descartado | registro_id*, estado, porque | 200, 422 | — |
 | `PATCH /api/v1/integraciones/registros-recibidos/{registro_recibido_id}` | Editar registros recibidos | registro_recibido_id*, conexion_id, operacion, datos, estado, porque | 200, 422 | — |
 | `POST /api/v1/integraciones/registros-recibidos/{registro_recibido_id}/archivar` | Archivar registros recibidos | registro_recibido_id* | 200, 422 | — |
+| `POST /api/v1/integration/compuesto` | Varias operaciones de «integration» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/integration/movil/sincronizar` | Qué hacer con la cola del móvil para «integration» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/integration/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/integration/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -501,6 +507,7 @@ stateDiagram-v2
 | `POST /api/v1/cdc/flujos` | Declarar qué sale hacia el lago y cómo | objeto*, campos, destino*, trato_por_defecto | 200, 422 | — |
 | `POST /api/v1/cdc/marca` | Hasta dónde se puede dar por entregado | marca_actual*, confirmados, fallidos | 200, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
+| `POST /api/v1/eventing/compuesto` | Varias operaciones de «eventing» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/eventing/movil/sincronizar` | Qué hacer con la cola del móvil para «eventing» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -615,6 +622,7 @@ stateDiagram-v2
 | `PATCH /api/v1/party-admin/papelera/{entrada_id}` | Editar entradas de la papelera | entrada_id*, objeto, etiqueta, cascada, borrado_por, borrado_at, purgable_at, restaurado_at, restaurado_por, purgado_at | 200, 422 | — |
 | `POST /api/v1/party-admin/papelera/{entrada_id}/restaurar` | Restaurar un registro y lo que se borró con él | entrada_id* | 200, 422 | — |
 | `POST /api/v1/party-admin/transferir-propiedad` | Traspasar todo lo de una persona a otra | de_usuario*, a_usuario*, motivo, simular | 200, 422 | — |
+| `POST /api/v1/party/compuesto` | Varias operaciones de «party» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/party/movil/sincronizar` | Qué hacer con la cola del móvil para «party» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/party/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/party/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -843,6 +851,7 @@ stateDiagram-v2
 | `PATCH /api/v1/registros-oportunidad/{registro_oportunidad_id}` | Editar registros de oportunidad | registro_oportunidad_id*, partner_id, cliente_nombre, nif, dominio, cuenta_id, contacto, importe_estimado, moneda, cierre_estimado, descripcion, estado, protegido_hasta, decidido_por, decidido_at, motivo, conflicto_con, oportunidad_id | 200, 422 | — |
 | `DELETE /api/v1/registros-oportunidad/{registro_oportunidad_id}` | Borrar registros de oportunidad | registro_oportunidad_id* | 204, 422 | — |
 | `POST /api/v1/registros-oportunidad/{registro_oportunidad_id}/archivar` | Archivar registros de oportunidad | registro_oportunidad_id* | 200, 422 | — |
+| `POST /api/v1/sales/compuesto` | Varias operaciones de «sales» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/sales/movil/sincronizar` | Qué hacer con la cola del móvil para «sales» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/sales/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/sales/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -906,6 +915,7 @@ stateDiagram-v2
 | `POST /api/v1/analitica/coste-real/por-proveedor` | Quién se desvía y cuánto, por proveedor | pedidos | 200, 422 | — |
 | `PUT /api/v1/analitica/organizaciones` | Asignar la organización de un tenant | tenant_id*, organizacion* | 200, 422 | — |
 | `POST /api/v1/analitica/token` | Token de usuario final para consultar | — | 200, 422 | — |
+| `POST /api/v1/analytics/compuesto` | Varias operaciones de «analytics» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/analytics/movil/sincronizar` | Qué hacer con la cola del móvil para «analytics» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/analytics/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/analytics/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -1003,6 +1013,7 @@ stateDiagram-v2
 | `POST /api/v1/ia/proveedores/{proveedor_ia_id}/archivar` | Archivar proveedores de ia | proveedor_ia_id* | 200, 422 | — |
 | `POST /api/v1/ia/salud` | Medir la salud de una cuenta (CRM-05.02.01.04) | cuenta_id*, senales, pesos, umbrales | 201, 422 | `account.health.scored` |
 | `POST /api/v1/ia/salud/medir-todas` | Medir la salud de todas las cuentas | — | 202, 422 | — |
+| `POST /api/v1/intelligence/compuesto` | Varias operaciones de «intelligence» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/intelligence/movil/sincronizar` | Qué hacer con la cola del móvil para «intelligence» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/intelligence/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/intelligence/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -1204,6 +1215,7 @@ stateDiagram-v2
 | `PATCH /api/v1/repuestos/{repuesto_id}` | Editar repuestos | repuesto_id*, sku, nombre, unidad, producto_id, coste, activo | 200, 422 | — |
 | `DELETE /api/v1/repuestos/{repuesto_id}` | Borrar repuestos | repuesto_id* | 204, 422 | — |
 | `POST /api/v1/repuestos/{repuesto_id}/archivar` | Archivar repuestos | repuesto_id* | 200, 422 | — |
+| `POST /api/v1/service/compuesto` | Varias operaciones de «service» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/service/movil/sincronizar` | Qué hacer con la cola del móvil para «service» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/service/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/service/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
@@ -1287,6 +1299,7 @@ stateDiagram-v2
 | `PATCH /api/v1/landings/{landing_id}` | Editar landings | landing_id*, clave, titulo, campos, pide_consentimiento, canal_captura, visitas, envios, activa | 200, 422 | — |
 | `DELETE /api/v1/landings/{landing_id}` | Borrar landings | landing_id* | 204, 422 | — |
 | `POST /api/v1/landings/{landing_id}/archivar` | Archivar landings | landing_id* | 200, 422 | — |
+| `POST /api/v1/marketing/compuesto` | Varias operaciones de «marketing» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/marketing/movil/sincronizar` | Qué hacer con la cola del móvil para «marketing» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/marketing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/marketing/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |

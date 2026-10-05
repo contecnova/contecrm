@@ -80,6 +80,18 @@ CLAVES: dict[str, ClaveAjuste] = {
             campo_settings="sso_estado_ttl_s",
             sensible=True,
         ),
+        # Acceso contextual: desde dónde, con qué y a qué hora (CRM-00.05.01.09)
+        _c(
+            "reglas_contextuales",
+            "json",
+            (
+                "Reglas de acceso por IP, país, horario y tipo de dispositivo. "
+                "Vacío: no se comprueba ninguna. Una lista vacía dentro de una "
+                "regla significa «no se comprueba esa señal», no «ninguno vale»"
+            ),
+            campo_settings="reglas_contextuales",
+            sensible=True,
+        ),
         # Máquinas de estado (CRM-00.04.01.07)
         _c(
             "transiciones_prohibidas",

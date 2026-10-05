@@ -23,6 +23,7 @@ import hashlib
 import hmac
 import time
 from collections.abc import Iterator
+from contextvars import ContextVar
 from typing import Annotated, Any, Callable
 from uuid import UUID
 
@@ -236,6 +237,16 @@ async def contexto_autenticado(
     return principal
 
 
+def ip_de(request: Request) -> str:
+    """La IP de quien llama, mirando la cabecera del proxy si la hay.
+
+    Pública porque la necesita el gateway para el acceso contextual: tener dos
+    formas de averiguar la IP acabaría con dos respuestas distintas para la
+    misma petición, y la que decide quién entra sería la peor de las dos.
+    """
+    return _ip(request)
+
+
 def _ip(request: Request) -> str:
     from crmcore.config import get_settings
 
@@ -381,6 +392,26 @@ def exige_plataforma(principal: AutenticadoDep) -> Principal:
 PlataformaDep = Annotated[Principal, Depends(exige_plataforma)]
 
 
+# La sesión que comparte una petición compuesta, si la hay. Es un `ContextVar` y
+# no un atributo de la aplicación porque dos peticiones compuestas simultáneas
+# tienen que ver cada una la suya: un atributo global las mezclaría, y mezclarlas
+# significa escribir en la transacción de otro cliente.
+_sesion_compartida: ContextVar[Session | None] = ContextVar("sesion_compartida", default=None)
+
+
+def compartir_sesion(db: Session | None) -> Any:
+    """Marca esta sesión como la de la petición compuesta en curso.
+
+    Devuelve el testigo para restaurarla: sin restaurar, la siguiente petición
+    de la misma tarea seguiría escribiendo en una sesión ya cerrada.
+    """
+    return _sesion_compartida.set(db)
+
+
+def soltar_sesion(testigo: Any) -> None:
+    _sesion_compartida.reset(testigo)
+
+
 def get_db(principal: PrincipalDep) -> Iterator[Session]:
     """Sesión de base de datos atada al tenant de la petición.
 
@@ -403,6 +434,20 @@ def get_db(principal: PrincipalDep) -> Iterator[Session]:
         # en que alguien escribió la firma no es aceptable, así que se resuelve
         # aquí, que es por donde pasan las dos.
         raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
+
+    # Si hay una sesión COMPARTIDA, se usa esa y no se abre otra. Es lo que hace
+    # que una petición compuesta —varias operaciones en una llamada— sea **una
+    # sola transacción**: cada sub-petición pasa por aquí, y si cada una abriera
+    # la suya, «todo o nada» serían cinco escrituras independientes y quedarse a
+    # medias dejaría una cuenta sin contacto que alguien tendría que limpiar a
+    # mano.
+    #
+    # No se cierra ni se confirma aquí: la abre y la cierra quien la compartió,
+    # que es el único que sabe si el conjunto salió bien.
+    compartida = _sesion_compartida.get()
+    if compartida is not None:
+        yield compartida
+        return
 
     db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
     try:

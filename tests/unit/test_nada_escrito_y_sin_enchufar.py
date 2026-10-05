@@ -32,7 +32,8 @@ producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`�
 para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
 `crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
 nadie**, y la primera medida solo delataba seis. Así que se mira también qué
-módulos de producción no importa ningún otro: cinco.
+módulos de producción no importa ningún otro: **ninguno**. Llegó a ser
+dieciocho.
 """
 
 from __future__ import annotations
@@ -198,7 +199,15 @@ CARPETAS = (
 #                   hacia el lago del cliente, y el coste real frente al
 #                   ofertado, que es como se descubre que un tipo de trabajo
 #                   pierde dinero después de haberlo vendido veinte veces.
-TOPE = 32
+#   05-10-2026  30  Y los últimos módulos del núcleo que no importaba nadie, con
+#                   lo que la segunda medida llega a CERO: las peticiones
+#                   compuestas —tres viajes de red desde un móvil son tres
+#                   ocasiones de quedarse a medias—, el acceso contextual, la
+#                   invalidación de la caché por evento —la que evita que
+#                   alguien vea desaparecer su propio cambio— y el transporte
+#                   gRPC, cuyo ajuste existía, estaba documentado y no lo leía
+#                   nadie: encenderlo no encendía nada.
+TOPE = 30
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -370,7 +379,7 @@ SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
 }
 
 # Medido el 05-10-2026. Baja o se queda, nunca sube.
-TOPE_MODULOS = 5
+TOPE_MODULOS = 0
 
 
 def _modulo_de(fichero: Path) -> str:

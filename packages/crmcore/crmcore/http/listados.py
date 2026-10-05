@@ -165,6 +165,27 @@ def _apuntar_recurso(router: Any, objeto: str, modelo: type | None = None) -> No
         declarar_tabla(objeto, tabla, modelo)
 
 
+def ruta_de_objeto(objeto: str) -> str:
+    """La colección HTTP donde vive este objeto, con el prefijo de la API.
+
+    Sale del mismo registro que ya relaciona recurso y objeto: tener una segunda
+    tabla «objeto → ruta» garantiza que una de las dos se quede atrás, y la que
+    se quede atrás mandará las peticiones a una colección que no es.
+    """
+    from crmcore.config import get_settings
+
+    for recurso, nombre in _OBJETO_DEL_RECURSO.items():
+        if nombre == objeto:
+            return f"{get_settings().api_prefix}/{recurso}"
+    from crmcore.errors import NoEncontrado
+
+    raise NoEncontrado(
+        f"«{objeto}» no es una colección de este servicio",
+        error_code="recurso.desconocido",
+        detalle={"conocidos": sorted(set(_OBJETO_DEL_RECURSO.values()))},
+    )
+
+
 def montar_listado(
     router: Any,
     *,

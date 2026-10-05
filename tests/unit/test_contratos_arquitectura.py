@@ -253,6 +253,12 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "delegar": "ídem: solo puede delegar quien la tiene asignada",
         "suplantar": "la comprobación es «ser personal de plataforma», dentro del servicio",
         "proxy_api": "el gateway reenvía; el permiso lo aplica el servicio destino",
+        # Por lo mismo: una petición compuesta despacha cada operación contra la
+        # propia aplicación, y cada una comprueba el suyo. Exigir uno aquí
+        # obligaría a pedir el más fuerte de todas, y entonces quien solo puede
+        # crear un contacto no podría mandar una composición que solo crea
+        # contactos.
+        "compuesto": "cada operación comprueba su permiso al despacharse",
         # Recuperar el acceso: quien las llama **no ha entrado**, que es todo el
         # problema. Lo que autoriza es el enlace de un solo uso, hasheado y con
         # caducidad, y lo que impide abusar de ellas es que la respuesta sea la
@@ -585,6 +591,13 @@ def test_ningun_cliente_http_crudo_fuera_del_guard() -> None:
     """
     exentos = {
         "gateway/api.py": "reenvía a los servicios internos del propio despliegue",
+        # Estos dos NO salen a la red: despachan contra la propia aplicación
+        # (`ASGITransport`), que es lo que hace que una petición compuesta y una
+        # llamada gRPC pasen por la misma autenticación, los mismos permisos y
+        # la misma auditoría que si hubieran llegado por HTTP. Pasarlas por el
+        # guard de SSRF no protegería de nada: no hay destino que resolver.
+        "http/compuesto_router.py": "despacha contra la propia app, no sale a la red",
+        "crmcore/service.py": "los manejadores gRPC despachan contra la propia app",
     }
 
     crudos: list[str] = []
