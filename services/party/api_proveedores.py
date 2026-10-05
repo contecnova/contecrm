@@ -608,6 +608,40 @@ def actualizar_proveedor(cuenta_id: UUID, datos: ActualizarCuenta, uow: UowDep) 
     )
 
 
+class BajaIn(BaseModel):
+    compromisos_abiertos: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Lo que hay vendido con este proveedor detrás. Es lo que decide, no "
+            "el estado del proveedor"
+        ),
+    )
+    alternativas_homologadas: int = Field(0, ge=0)
+
+
+@router_proveedores.post(
+    "/{cuenta_id}/puede-darse-de-baja",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Si se puede dar de baja, y qué pasa con lo comprometido",
+    description=(
+        "**No se da de baja lo que tiene trabajo comprometido con clientes.** "
+        "Quitarlo del maestro no cancela lo que ya se vendió: lo que hace es que "
+        "el día de la entrega nadie sepa quién tenía que ir.\n\n"
+        "Y si es el **único homologado** para lo suyo, la baja deja un hueco "
+        "desde el primer día. Se dice antes, porque homologar a otro lleva "
+        "semanas y enterarse después no sirve de nada.\n\n"
+        "Es una pregunta, no una acción: la baja se hace por la ruta de "
+        "siempre y esto es lo que hay que mirar antes."
+    ),
+)
+def puede_darse_de_baja(cuerpo: BajaIn, cuenta_id: UUID, uow: UowDep) -> Any:
+    _proveedor(uow.db, cuenta_id, accion="leer")
+    return prv.puede_darse_de_baja(
+        compromisos_abiertos=cuerpo.compromisos_abiertos,
+        alternativas_homologadas=cuerpo.alternativas_homologadas,
+    )
+
+
 @router_proveedores.delete(
     "/{cuenta_id}",
     status_code=status.HTTP_204_NO_CONTENT,

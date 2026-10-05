@@ -744,6 +744,41 @@ def puede_contactar(
 
 # ── Actividades ───────────────────────────────────────────────────────────
 
+
+@router_contactos.get(
+    "/contexto-de-correo",
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Quién es esta gente y qué hay abierto con ellos",
+    description=(
+        "Es lo que el complemento de Outlook o de Gmail enseña al lado del "
+        "correo. El complemento es una pieza del cliente de correo; lo que el "
+        "CRM tiene que dar es esto, y **acotado**: sin una respuesta pequeña y "
+        "rápida, el panel carga medio CRM en trescientos píxeles y la gente lo "
+        "desinstala.\n\n"
+        "Devuelve **también a quién no conoce**. Esa es la lista de contactos "
+        "que faltan por dar de alta, y es lo que hace que el complemento sirva "
+        "para algo más que consultar: registrar el correo de alguien que no está "
+        "en el CRM es justo el caso en que registrar vale la pena."
+    ),
+)
+def contexto_de_correo(
+    db: DbDep,
+    principal: AutenticadoDep,
+    direccion: list[str] = Query(default_factory=list),
+    limite: int = Query(20, ge=1, le=100),
+) -> Any:
+    return svc.contexto_de_direcciones(
+        db, principal.tenant_id, direcciones=direccion, limite=limite
+    )
+
+
+# Y se adelanta. FastAPI casa en orden de declaración y `/contacts/{contacto_id}`
+# está declarada más arriba: sin esto, «contexto-de-correo» encaja en ella y la
+# respuesta es «no es un UUID». Es la tercera vez hoy que muerde lo mismo, así
+# que hay un gate que lo caza (`test_rutas_literales_no_quedan_tapadas`).
+router_contactos.routes.insert(0, router_contactos.routes.pop())
+
+
 router_actividades = APIRouter(prefix="/activities", tags=["actividades"])
 
 

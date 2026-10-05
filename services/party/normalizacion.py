@@ -121,6 +121,28 @@ def normalizar_razon_social(nombre: str | None) -> str:
     return _RE_ESPACIOS.sub(" ", limpio).strip()
 
 
+def forma_juridica_de(nombre: str | None) -> str:
+    """La forma jurídica que lleva el nombre, o vacío si no declara ninguna.
+
+    Hace falta porque la clave canónica **la quita** —y tiene que quitarla, para
+    que «García SL» y «García, S.L.» se reconozcan—, y eso deja indistinguibles
+    dos sociedades distintas del mismo grupo: «García SL» y «García SA» salen
+    con una clave idéntica y, por tanto, como duplicado concluyente.
+
+    Fusionarlas es un error caro y difícil de deshacer: son dos entidades
+    jurídicas, con dos NIF y dos contabilidades.
+    """
+    for palabra in normalizar_razon_social(nombre).lower().split():
+        if palabra in FORMAS_JURIDICAS:
+            return palabra
+    # Las formas escritas con puntos —«S.L.»— quedan como letras sueltas tras
+    # limpiar la puntuación: se vuelven a unir antes de buscarlas.
+    for palabra in _unir_iniciales(normalizar_razon_social(nombre).lower().split()):
+        if palabra in FORMAS_JURIDICAS:
+            return palabra
+    return ""
+
+
 def _unir_iniciales(palabras: list[str]) -> list[str]:
     """Junta secuencias de letras sueltas en una sola palabra.
 

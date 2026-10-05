@@ -161,6 +161,20 @@ def buscar_cuentas_duplicadas(
         parecido = norm.similitud(clave, cuenta.clave_canonica)
         if parecido >= umbral:
             senales.append("nombre")
+        # Dos formas jurídicas distintas son dos entidades distintas. La clave
+        # canónica quita la forma —y tiene que quitarla, para que «García SL» y
+        # «García, S.L.» se reconozcan—, y eso deja «García SL» y «García SA»
+        # con la MISMA clave: salían como duplicado concluyente, y fusionarlas
+        # es un error caro de deshacer porque son dos NIF y dos contabilidades.
+        #
+        # No se descarta el candidato: se baja de concluyente a sugerencia y se
+        # dice por qué. Descartarlo escondería el caso en el que una de las dos
+        # está mal escrita, que también pasa.
+        forma_nueva = norm.forma_juridica_de(nombre)
+        forma_vieja = norm.forma_juridica_de(cuenta.nombre)
+        formas_distintas = bool(forma_nueva and forma_vieja and forma_nueva != forma_vieja)
+        if formas_distintas:
+            senales.append("forma_juridica_distinta")
         if dominio and cuenta.dominio == dominio and a.dedupe_usar_dominio:
             senales.append("dominio")
             # El dominio sube la confianza pero no la lleva a certeza: un grupo
@@ -173,7 +187,7 @@ def buscar_cuentas_duplicadas(
             nombre=cuenta.nombre,
             similitud=parecido,
             senales=tuple(senales),
-            concluyente=parecido >= bloqueo,
+            concluyente=parecido >= bloqueo and not formas_distintas,
         )
 
     return sorted(candidatos.values(), key=lambda c: (-int(c.concluyente), -c.similitud))[:maximo]

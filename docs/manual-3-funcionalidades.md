@@ -393,6 +393,13 @@ prueba**.
 - Solo **el identificador fiscal** (en cuentas) y **el correo** (en contactos)
   bloquean un alta. El resto se propone, con **por qué** se propone: «mismo NIF»
   y «nombre parecido» llevan a decisiones distintas.
+- Y **dos formas jurídicas distintas no son un duplicado concluyente**. La clave
+  de comparación quita la forma jurídica —y tiene que quitarla, para que «García
+  SL» y «García, S.L.» se reconozcan—, lo que deja «García SL» y «García SA» con
+  la misma clave. Son dos entidades, con dos NIF y dos contabilidades, y
+  fusionarlas es caro de deshacer. No se descartan: bajan de bloqueo a
+  sugerencia y se dice por qué, porque también pasa que una de las dos esté mal
+  escrita.
 - **Fusión** (CRM-01.01.04.03) con selección de campo superviviente y
   reparentado de todo lo que colgaba. La ficha absorbida **no se borra**: hay
   documentos y sistemas externos que guardan su identificador. Y se puede
@@ -11917,6 +11924,24 @@ Con eso se puede decir qué valores llevan demasiado sin confirmarse, con el pla
 **por campo** —un NIF no caduca y un cargo caduca en cuanto ascienden a esa
 persona—. Y un campo del que no hay linaje **no cuenta como fresco**: no se ha
 verificado nunca, que es distinto de estar al día.
+
+El linaje **se apunta**, y lo apunta quien integra: el conector que trae el
+maestro, el formulario que recoge un dato, la persona que lo corrige. Y se puede
+**confirmar** sin cambiar nada: es lo que saca un valor de la cola de obsoletos
+cuando alguien ha comprobado que sigue siendo bueno, sin inventarse que ha
+cambiado.
+
+Los plazos de frescura se pueden revisar antes de ponerlos en marcha. Un plazo de
+**cero días** significa «siempre obsoleto», y lo que produce es una cola con todo
+dentro — que nadie mira, que es peor que no tenerla. Y uno de diez años es una
+forma de decir que ese campo no caduca sin escribirlo: se señala para que sea una
+decisión y no un número puesto a ojo.
+
+Del **enriquecimiento** se dice cuándo toca volver a consultar a la fuente
+externa, que no es lo mismo que la antigüedad de la ficha: volver a pagar por un
+dato de hace una semana es tirar presupuesto, y dejar uno de hace tres años es
+trabajar con un cargo que ya no existe. Y si **nunca** se ha consultado se dice
+así, no «hace mucho»: la decisión que se toma con cada uno es distinta.
 
 ## La cola de calidad y el enriquecimiento (`CRM-01.01.04.08`, `CRM-01.01.04.09`, `CRM-01.01.01.08`)
 

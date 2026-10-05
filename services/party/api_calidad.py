@@ -112,6 +112,116 @@ def golden(cuerpo: GoldenIn, principal: AutenticadoDep) -> Any:
     )
 
 
+class LinajeIn(BaseModel):
+    objeto: str = Field(..., min_length=1, examples=["cuenta"])
+    objeto_id: UUID
+    campo: str = Field(..., min_length=1, examples=["telefono"])
+    fuente: str = Field(
+        ...,
+        min_length=1,
+        description="Qué sistema lo dice: el ERP, un formulario, una persona",
+    )
+    valor: Any = None
+    cambiado_at: datetime | None = Field(
+        None,
+        description=(
+            "Cuándo cambió el valor **de verdad**. Sin ella se asume ahora, y un "
+            "maestro que se reenvía cada noche dejaría mil valores con fecha nueva"
+        ),
+    )
+    confianza: int = Field(50, ge=0, le=100)
+    gana: bool = False
+
+
+class ConfirmarIn(BaseModel):
+    objeto: str = Field(..., min_length=1)
+    objeto_id: UUID
+    campo: str = Field(..., min_length=1)
+    fuente: str = Field(..., min_length=1)
+
+
+class CaducidadIn(BaseModel):
+    dias_por_campo: dict[str, int] = Field(default_factory=dict)
+
+
+@router_calidad.post(
+    "/linaje",
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Apuntar de dónde viene un valor",
+    description=(
+        "Es **la mitad que faltaba**. El linaje se podía consultar —«¿por qué "
+        "pone esto aquí?»— y no se podía escribir: la tabla estaba vacía, así "
+        "que la consulta devolvía nada y los valores obsoletos no salían nunca. "
+        "Las dos respuestas eran las mismas que si todo estuviera al día.\n\n"
+        "Lo escribe quien integra: el conector que trae el maestro, el "
+        "formulario que recoge un dato, la persona que lo corrige.\n\n"
+        "Y `cambiado_at` **solo se mueve cuando el valor cambia de verdad**. Es "
+        "la diferencia entre «este teléfono es de hace dos años» y «este "
+        "teléfono lo reenvía el ERP cada noche»: una fuente que repite lo mismo "
+        "no lo hace más fresco."
+    ),
+)
+def apuntar_linaje(cuerpo: LinajeIn, uow: UowDep) -> Any:
+    fila = mdm.anotar_linaje(
+        uow,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        campo=cuerpo.campo,
+        fuente=cuerpo.fuente,
+        valor=cuerpo.valor,
+        cambiado_at=cuerpo.cambiado_at,
+        confianza=cuerpo.confianza,
+        gana=cuerpo.gana,
+    )
+    return {
+        "id": str(fila.id),
+        "campo": fila.campo,
+        "fuente": fila.fuente,
+        "cambiado_at": fila.cambiado_at.isoformat() if fila.cambiado_at else None,
+        "recibido_at": fila.recibido_at.isoformat() if fila.recibido_at else None,
+    }
+
+
+@router_calidad.post(
+    "/linaje/confirmar",
+    dependencies=[Depends(exige_permiso("party:write"))],
+    summary="Alguien ha comprobado que este valor sigue siendo bueno",
+    description=(
+        "Mueve «cuándo se recibió» y **no** «cuándo cambió»: confirmar no es "
+        "cambiar. Mover las dos haría que el dato pareciera recién actualizado "
+        "cuando lo único que ha pasado es que alguien lo miró, y eso falsea "
+        "todos los informes de antigüedad.\n\n"
+        "Es lo que saca un valor de la cola de obsoletos sin inventarse que ha "
+        "cambiado."
+    ),
+)
+def confirmar_linaje(cuerpo: ConfirmarIn, uow: UowDep) -> Any:
+    return mdm.confirmar_frescura(
+        uow,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        campo=cuerpo.campo,
+        fuente=cuerpo.fuente,
+    )
+
+
+@router_calidad.post(
+    "/caducidad/comprobar",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Si los plazos de frescura declarados tienen sentido",
+    description=(
+        "Un plazo de **cero días** significa «siempre obsoleto», y lo que "
+        "produce es una cola de excepciones con todo dentro — que nadie mira, "
+        "que es peor que no tenerla.\n\n"
+        "Y al revés: un plazo de diez años es una forma de decir que ese campo "
+        "no caduca sin escribirlo. Se señala para que sea una decisión y no un "
+        "número puesto a ojo."
+    ),
+)
+def comprobar_caducidad(cuerpo: CaducidadIn, principal: AutenticadoDep) -> Any:
+    return mdm.caducidad_declarada(cuerpo.dias_por_campo)
+
+
 @router_calidad.get(
     "/linaje/{objeto}/{objeto_id}",
     dependencies=[Depends(exige_permiso("party:read"))],
@@ -247,6 +357,29 @@ def planificar(cuerpo: EnriquecerIn, principal: AutenticadoDep) -> Any:
         coste_por_consulta=cuerpo.coste_por_consulta,
         presupuesto=cuerpo.presupuesto,
     )
+
+
+@router_calidad.get(
+    "/enriquecimiento/caducidad",
+    dependencies=[Depends(exige_permiso("party:read"))],
+    summary="Cuándo toca volver a consultar a la fuente externa",
+    description=(
+        "Lo que decide no es la fecha de la ficha: es cuándo se consultó al "
+        "proveedor la última vez. Volver a pagar por un dato de hace una semana "
+        "es tirar presupuesto; dejar uno de hace tres años es trabajar con un "
+        "cargo que ya no existe.\n\n"
+        "Y si **nunca** se ha consultado se dice así, no «hace mucho»: no es lo "
+        "mismo un dato que se comprobó hace un año que uno que no se ha "
+        "comprobado jamás, y la decisión que se toma con cada uno es distinta."
+    ),
+)
+def caducidad_del_enriquecimiento(
+    db: DbDep,
+    principal: AutenticadoDep,
+    ultimo_at: datetime | None = Query(None),
+    dias: int = Query(180, ge=1, le=3650),
+) -> Any:
+    return stw.caducidad_del_enriquecimiento(ultimo_at=ultimo_at, dias=dias)
 
 
 @router_calidad.post(

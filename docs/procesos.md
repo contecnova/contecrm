@@ -542,6 +542,7 @@ stateDiagram-v2
 | `DELETE /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}` | Borrar un adjunto | objeto_tipo*, adjunto_id* | 200, 422 | — |
 | `PATCH /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/carpeta` | Archivar un adjunto en una carpeta | objeto_tipo*, adjunto_id*, carpeta_id | 200, 422 | — |
 | `POST /api/v1/adjuntos/{objeto_tipo}/{adjunto_id}/enlace` | Generar un enlace firmado | objeto_tipo*, adjunto_id* | 200, 422 | — |
+| `POST /api/v1/calidad-dato/caducidad/comprobar` | Si los plazos de frescura declarados tienen sentido | dias_por_campo | 200, 422 | — |
 | `POST /api/v1/calidad-dato/cola/barrido` | Buscar excepciones de calidad y llenar la cola | limite | 200, 422 | — |
 | `PATCH /api/v1/calidad-dato/cola/{excepcion_id}` | Editar calidad del dato | excepcion_id*, objeto, tipo, campo, regla, detalle, prioridad, asignada_a, estado, cierre, nota_de_cierre, cerrada_at, cerrada_por, datos | 200, 422 | — |
 | `POST /api/v1/calidad-dato/cola/{excepcion_id}/archivar` | Archivar calidad del dato | excepcion_id* | 200, 422 | — |
@@ -550,6 +551,8 @@ stateDiagram-v2
 | `POST /api/v1/calidad-dato/enriquecimiento/aplicar` | Aplicar lo del proveedor sin pisar lo que escribió una persona | actuales, del_proveedor, escritos_a_mano | 200, 422 | — |
 | `POST /api/v1/calidad-dato/enriquecimiento/planificar` | Qué se va a enriquecer y cuánto va a costar | candidatas, coste_por_consulta, presupuesto | 200, 422 | — |
 | `POST /api/v1/calidad-dato/golden` | Componer la ficha buena a partir de lo que dice cada sistema | campos, reglas, confianza_por_fuente | 200, 422 | — |
+| `POST /api/v1/calidad-dato/linaje` | Apuntar de dónde viene un valor | objeto*, objeto_id*, campo*, fuente*, valor, cambiado_at, confianza, gana | 200, 422 | — |
+| `POST /api/v1/calidad-dato/linaje/confirmar` | Alguien ha comprobado que este valor sigue siendo bueno | objeto*, objeto_id*, campo*, fuente* | 200, 422 | — |
 | `POST /api/v1/cambios-de-empresa` | Abrir la sospecha de que alguien ha cambiado de empresa | contacto_id*, cuenta_anterior_id, indicio*, detalle | 201, 422 | — |
 | `PATCH /api/v1/cambios-de-empresa/{cambio_de_empresa_id}` | Editar cambios de empresa | cambio_de_empresa_id*, contacto_id, cuenta_anterior_id, indicio, detalle, estado, contacto_nuevo_id, cuenta_nueva_id | 200, 422 | — |
 | `POST /api/v1/cambios-de-empresa/{cambio_de_empresa_id}/archivar` | Archivar cambios de empresa | cambio_de_empresa_id* | 200, 422 | — |
@@ -642,6 +645,7 @@ stateDiagram-v2
 | `POST /api/v1/proveedores/{cuenta_id}/contactos` | A quién se llama y para qué | cuenta_id*, funcion*, nombre, email*, telefono, fuera_de_horario | 201, 422 | — |
 | `POST /api/v1/proveedores/{cuenta_id}/documentos` | Registrar un papel obligatorio con su vigencia | cuenta_id*, clave*, nombre, referencia*, valido_desde, valido_hasta, dias_preaviso, bloquea_al_vencer | 201, 422 | — |
 | `POST /api/v1/proveedores/{cuenta_id}/homologacion` | Homologar para una categoría, con fecha de fin | cuenta_id*, categoria*, requisitos, valida_hasta | 201, 422 | — |
+| `POST /api/v1/proveedores/{cuenta_id}/puede-darse-de-baja` | Si se puede dar de baja, y qué pasa con lo comprometido | cuenta_id*, compromisos_abiertos, alternativas_homologadas | 200, 422 | — |
 | `POST /api/v1/proveedores/{cuenta_id}/rol` | Marcar una cuenta como proveedor | cuenta_id* | 200, 422 | — |
 | `POST /api/v1/recurrencias` | Declarar una actividad que se repite | asunto*, desde*, patron, cada, tipo, cuerpo, objeto, objeto_id, cuenta_id, asignada_a, hasta, repeticiones, una_a_una | 201, 422 | — |
 | `POST /api/v1/recurrencias/generar` | Crear las recurrentes que tocan | — | 200, 422 | — |

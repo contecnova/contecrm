@@ -167,7 +167,13 @@ CARPETAS = (
 #                   Y la MFA adaptativa estaba entera —seis señales, cada
 #                   motivo explicado con palabras— sin que el login se la
 #                   preguntara nunca.
-TOPE = 55
+#   05-10-2026  48  `party`: otro circuito abierto. El LINAJE del dato se podía
+#                   consultar y no se podía escribir —`anotar_linaje` no la
+#                   llamaba nadie—, así que la tabla estaba siempre vacía:
+#                   «¿por qué pone esto aquí?» contestaba nada y «qué valores
+#                   llevan sin confirmarse» contestaba que ninguno. Las dos
+#                   respuestas son las que saldrían si todo estuviera al día.
+TOPE = 48
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
