@@ -104,7 +104,11 @@ stateDiagram-v2
 | `POST /api/v1/tenancy/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/tenancy/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/tenancy/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/tenancy/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/tenancy/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/tenancy/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/tenants` | Dar de alta un tenant | slug*, nombre*, plan, region, aislamiento, tenant_padre_id, idioma, zona_horaria, moneda | 201, 422 | `tenant.provisioned` |
 | `PATCH /api/v1/tenants/{tenant_id}` | Editar un tenant | tenant_id*, nombre, plan, tier, idioma, zona_horaria, moneda, marca | 200, 422 | — |
 | `POST /api/v1/tenants/{tenant_id}/destruir-datos` | Destruir los datos del tenant y emitir el certificado | tenant_id*, exportacion_id*, confirmacion* | 200, 422 | — |
@@ -147,7 +151,11 @@ stateDiagram-v2
 | `POST /api/v1/identity/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/identity/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/identity/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/identity/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/identity/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/identity/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/notificaciones/entregas/sucesos` | Lo que el proveedor cuenta que pasó con un correo ya mandado | entrega_id, direccion*, suceso*, detalle, proveedor, ocurrido_at | 200, 422 | — |
 | `POST /api/v1/notificaciones/leidas` | Marcar como leídas | ids | 200, 422 | — |
 | `PUT /api/v1/notificaciones/preferencias` | Fijar mis preferencias para un tipo de evento | tipo, canales*, agrupar_minutos, silencio_desde, silencio_hasta | 200, 422 | — |
@@ -228,7 +236,11 @@ stateDiagram-v2
 | `POST /api/v1/metadata/relaciones` | Declarar una relación entre objetos | nombre*, etiqueta*, nombre_inverso, descripcion, origen*, destino, destinos, tipo, cardinalidad, al_borrar, obligatoria, via, activa | 201, 422 | — |
 | `POST /api/v1/metadata/relaciones/validar` | Comprobar una relación sin declararla | nombre*, etiqueta*, nombre_inverso, descripcion, origen*, destino, destinos, tipo, cardinalidad, al_borrar, obligatoria, via, activa | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/metadata/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/metadata/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/metadata/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/metadata/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 
 ### orchestrator
 
@@ -249,7 +261,11 @@ stateDiagram-v2
 | `POST /api/v1/orchestrator/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/orchestrator/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/orchestrator/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/orchestrator/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/orchestrator/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/orchestrator/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones` | Guardar una versión de un proceso, como borrador o publicada | clave*, nombre*, descripcion, definicion*, estado, disparadores | 201, 422 | — |
 | `POST /api/v1/procesos/definiciones/simular` | Simular un proceso sin publicarlo (CRM-00.03.05.04) | definicion*, variables, respuestas_humanas | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones/validar` | Validar una definición sin publicarla | clave*, nombre*, descripcion, definicion*, estado, disparadores | 200, 422 | — |
@@ -270,7 +286,11 @@ stateDiagram-v2
 | `POST /api/v1/automation/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/automation/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/automation/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/automation/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/automation/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/automation/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/automation/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/automation/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/automatizaciones` | Crear una automatización | nombre*, descripcion, disparador*, objetivo*, campos_vigilados, programacion, condiciones, combinacion, acciones*, prioridad, momento, activa | 201, 422 | — |
 | `PATCH /api/v1/automatizaciones/{regla_id}` | Editar automatizaciones | regla_id*, nombre, descripcion, disparador, objetivo, campos_vigilados, programacion, condiciones, combinacion, acciones, activa, prioridad, momento, ejecuciones, fallos, ultima_ejecucion_at | 200, 422 | — |
 | `DELETE /api/v1/automatizaciones/{regla_id}` | Borrar automatizaciones | regla_id* | 204, 422 | — |
@@ -377,7 +397,11 @@ stateDiagram-v2
 | `POST /api/v1/integration/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/integration/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/integration/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/integration/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/integration/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/integration/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/integration/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/integration/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/modelo-canonico/adaptadores` | Declarar cómo traduce un sistema externo | objeto*, sistema*, mapeo*, politica, politica_por_campo, direccion, direccion_por_campo, campo_modificado | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/objetos` | Definir un objeto del idioma común | clave*, campos*, nombre, descripcion, claves_negocio | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/traducir` | Traducir un registro externo al idioma común | objeto*, sistema* | 200, 422 | — |
@@ -435,7 +459,11 @@ stateDiagram-v2
 | `POST /api/v1/eventing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/eventing/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/eventing/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/eventing/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/eventing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `PATCH /api/v1/eventos/fallidos/{fallido_id}` | Editar eventos fallidos | fallido_id*, origen, tipo, dedup_key, sobre, intentos, ultimo_error, reenviado_at, reenviado_por | 200, 422 | — |
 | `POST /api/v1/eventos/fallidos/{fallido_id}/reenviar` | Reenviar un evento de la cola de fallidos | fallido_id* | 200, 422 | — |
 | `POST /api/v1/webhooks` | Suscribir un endpoint a eventos | nombre*, url*, eventos*, condiciones, cabeceras | 201, 422 | — |
@@ -538,7 +566,11 @@ stateDiagram-v2
 | `POST /api/v1/party/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/party/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/party/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/party/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/party/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/party/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/party/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/party/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/party/retencion/bloqueos` | Bloquear la eliminación por litigio | motivo*, objeto, objeto_id, referencia | 201, 422 | — |
 | `PATCH /api/v1/party/retencion/bloqueos/{bloqueo_id}` | Editar bloqueos legales | bloqueo_id*, objeto, motivo, referencia, activo, puesto_por, levantado_por, levantado_at, motivo_levantamiento | 200, 422 | — |
 | `POST /api/v1/party/retencion/bloqueos/{bloqueo_id}/archivar` | Archivar bloqueos legales | bloqueo_id* | 200, 422 | — |
@@ -750,7 +782,11 @@ stateDiagram-v2
 | `POST /api/v1/sales/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/sales/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/sales/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/sales/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/sales/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/sales/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/sales/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/sales/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/sales/retencion/bloqueos` | Bloquear la eliminación por litigio | motivo*, objeto, objeto_id, referencia | 201, 422 | — |
 | `PATCH /api/v1/sales/retencion/bloqueos/{bloqueo_id}` | Editar bloqueos legales | bloqueo_id*, objeto, motivo, referencia, activo, puesto_por, levantado_por, levantado_at, motivo_levantamiento | 200, 422 | — |
 | `POST /api/v1/sales/retencion/bloqueos/{bloqueo_id}/archivar` | Archivar bloqueos legales | bloqueo_id* | 200, 422 | — |
@@ -803,7 +839,11 @@ stateDiagram-v2
 | `POST /api/v1/analytics/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/analytics/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/analytics/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/analytics/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/analytics/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/analytics/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/analytics/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/analytics/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/analytics/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
@@ -892,7 +932,11 @@ stateDiagram-v2
 | `POST /api/v1/intelligence/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/intelligence/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/intelligence/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/intelligence/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/intelligence/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/intelligence/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/intelligence/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/intelligence/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
@@ -1078,7 +1122,11 @@ stateDiagram-v2
 | `POST /api/v1/service/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/service/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/service/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/service/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/service/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/service/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/service/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/service/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/service/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/service/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
@@ -1153,7 +1201,11 @@ stateDiagram-v2
 | `POST /api/v1/marketing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/marketing/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/marketing/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
+| `POST /api/v1/marketing/restauracion/efectos-irreversibles` | Qué salió fuera en ese tramo y no se puede deshacer | salidas, desde*, hasta* | 200, 422 | — |
+| `POST /api/v1/marketing/restauracion/plan` | Qué pasa si volvemos a ese momento | momento*, alcance, copia_mas_antigua* | 200, 422 | — |
 | `POST /api/v1/marketing/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/marketing/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
+| `POST /api/v1/marketing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/marketing/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/marketing/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/marketing/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -639,6 +640,221 @@ async def solo_lectura_de_la_instalacion(datos: SoloLecturaIn, principal: Plataf
 # Van en el gateway porque son del CRM entero, no de un servicio: el SDK se
 # genera del contrato que publica el gateway, y un componente embebible habla
 # con la API pública, no con `party` ni con `sales`.
+
+
+@router.get(
+    "/estado/consultas-degradadas",
+    summary="Qué consultas se han vuelto lentas, en toda la instalación",
+    description=(
+        "Comparadas **consigo mismas**, no con un umbral: una consulta que "
+        "siempre tardó 800 ms no es un problema nuevo, y una que pasó de 20 a 90 "
+        "sí lo es aunque siga por debajo de cualquier umbral. Un umbral fijo caza "
+        "las lentas de siempre y se pierde las que se acaban de torcer, que son "
+        "las que tienen arreglo.\n\n"
+        "Se juntan las de **todos** los servicios: cada uno mide las suyas en su "
+        "propio proceso, y mirar sólo las de uno es mirar por la ventana que se "
+        "tiene a mano.\n\n"
+        "Un servicio que no contesta **no cuenta como sano**: se dice que no se "
+        "sabe, que es distinto."
+    ),
+)
+async def consultas_degradadas_de_la_instalacion(principal: AutenticadoDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _preguntar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.get(
+                f"{_destinos[nombre].url_base}/api/v1/estado/consultas-degradadas",
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return {"servicio": nombre, **dict(respuesta.json())}
+        except Exception:  # noqa: BLE001 — un servicio mudo es información
+            return {"servicio": nombre, "legible": False}
+
+    partes = await asyncio.gather(*(_preguntar(n) for n in sorted(_destinos)))
+    mudos = [p["servicio"] for p in partes if p.get("legible") is False]
+    return {
+        "servicios": partes,
+        "sin_respuesta": mudos,
+        "aviso": (
+            ""
+            if not mudos
+            else f"{len(mudos)} servicios no contestan. Un servicio mudo no cuenta "
+            "como sano: suele ser justo el que peor va."
+        ),
+    }
+
+
+# ── Lo que hace falta antes de desplegar o de escalar ─────────────────────
+#
+# Ocho decisiones de observabilidad estaban escritas, probadas y sin que las
+# alcanzara ninguna ruta. Son las que se consultan cuando algo va mal o cuando
+# hay que crecer, y entonces nadie se pone a leer código.
+#
+# Van en el gateway y no en cada servicio porque son del **despliegue entero**:
+# dónde conviene escalar, si una migración se puede deshacer, si el reparto por
+# zonas aguanta perder una. Repartidas por los catorce darían catorce respuestas
+# a la misma pregunta, y la que se mire será la del servicio que se tenga a mano.
+
+
+class EscaladoIn(BaseModel):
+    servicios: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ReplicasIn(BaseModel):
+    servicio: str
+    limite: str = Field(..., examples=["conexiones_bd"])
+    capacidad_del_limite: int = Field(..., ge=1)
+    consumo_por_replica: int = Field(..., ge=1)
+    replicas_actuales: int = Field(..., ge=0)
+
+
+class ReplicableIn(BaseModel):
+    servicio: str
+    declaracion: dict[str, Any] = Field(default_factory=dict)
+
+
+class DespliegueIn(BaseModel):
+    estrategia: str = Field(..., examples=["canario"])
+    puede_volver_atras_en_min: int | None = None
+    migracion_compatible_hacia_atras: bool = True
+    porcentaje_canario: int = Field(0, ge=0, le=100)
+
+
+class AbortarIn(BaseModel):
+    metricas: dict[str, Any] = Field(default_factory=dict)
+    base: dict[str, Any] = Field(default_factory=dict)
+
+
+class ZonasIn(BaseModel):
+    zonas: list[dict[str, Any]] = Field(default_factory=list)
+    ultimo_simulacro: datetime | None = None
+
+
+class CatalogoIn(BaseModel):
+    servicios: dict[str, dict[str, Any]] = Field(default_factory=dict)
+
+
+@router.post(
+    "/escalado/donde",
+    summary="Qué servicio conviene escalar, y por qué",
+)
+def donde_escalar(cuerpo: EscaladoIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.escalado import donde_escalar as calcular
+
+    return calcular(servicios=cuerpo.servicios)
+
+
+@router.post(
+    "/escalado/replicas",
+    summary="Cuántas réplicas sirven de algo antes de topar con el límite",
+    description=(
+        "Añadir réplicas por encima del límite que las estrangula **no "
+        "acelera nada**: lo que hace es consumir más del recurso que ya está "
+        "al tope —conexiones de base, cuota del proveedor— y empeorarlo para "
+        "las que ya había."
+    ),
+)
+def replicas_utiles(cuerpo: ReplicasIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.escalado import replicas_utiles as calcular
+
+    return calcular(**cuerpo.model_dump())
+
+
+@router.post(
+    "/escalado/replicable",
+    summary="Si este servicio se puede replicar de verdad",
+)
+def comprobar_replicable(cuerpo: ReplicableIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.escalado import comprobar_replicable as comprobar
+
+    return comprobar(servicio=cuerpo.servicio, declaracion=cuerpo.declaracion)
+
+
+@router.post(
+    "/despliegue/comprobar",
+    summary="Si este despliegue se puede deshacer, y en cuánto",
+    description=(
+        "**La vuelta atrás es la pregunta, no el despliegue.** Un despliegue "
+        "que no se puede deshacer en minutos obliga a arreglar hacia delante "
+        "con el sistema caído, que es cuando peor se decide. Y una migración "
+        "que no es compatible hacia atrás convierte el «volvemos a la "
+        "anterior» en «no se puede»."
+    ),
+)
+def comprobar_despliegue(cuerpo: DespliegueIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.topologia import comprobar_despliegue as comprobar
+
+    return comprobar(**cuerpo.model_dump())
+
+
+@router.post(
+    "/despliegue/abortar",
+    summary="Si lo que se está midiendo pide abortar el despliegue",
+    description=(
+        "Declararlo **antes** de empezar es lo que lo hace servir: a mitad de "
+        "un despliegue que va mal, la discusión sobre si abortar la gana "
+        "siempre quien tiene más ganas de que funcione."
+    ),
+)
+def senales_para_abortar(cuerpo: AbortarIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.topologia import senales_para_abortar as comprobar
+
+    return comprobar(metricas=cuerpo.metricas, base=cuerpo.base)
+
+
+@router.get(
+    "/despliegue/reintento",
+    summary="Si esta operación se puede reintentar sin duplicar nada",
+    description=(
+        "Reintentar un `POST` no idempotente crea el registro dos veces. Es "
+        "la decisión que toma una pasarela o un cliente, y tenerla escrita en "
+        "un solo sitio evita que cada uno la resuelva a su manera."
+    ),
+)
+def politica_de_reintento(
+    principal: AutenticadoDep, metodo: str = "POST", idempotente: bool = False
+) -> Any:
+    from crmcore.obs.topologia import politica_de_reintento as politica
+
+    return politica(metodo=metodo, idempotente=idempotente)
+
+
+@router.post(
+    "/multi-zona",
+    summary="Si el reparto por zonas aguanta perder una",
+    description=(
+        "Con el **último simulacro** dentro: un plan multi-zona que no se ha "
+        "probado nunca es un diagrama. El día que se cae una zona se descubre "
+        "lo que faltaba, y ese día no hay tiempo."
+    ),
+)
+def plan_multi_zona(cuerpo: ZonasIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.topologia import plan_multi_zona as plan
+
+    return plan(zonas=cuerpo.zonas, ultimo_simulacro=cuerpo.ultimo_simulacro)
+
+
+@router.post(
+    "/topologia/validar",
+    summary="Si el catálogo de servicios se sostiene",
+)
+def validar_catalogo(cuerpo: CatalogoIn, principal: PlataformaDep) -> Any:
+    from crmcore.obs.topologia import validar_catalogo as validar
+
+    return validar(servicios=cuerpo.servicios)
 
 
 @router.get(

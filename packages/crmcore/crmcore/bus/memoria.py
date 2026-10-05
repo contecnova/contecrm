@@ -52,7 +52,17 @@ class BusEnMemoria(Bus):
         # volver de `publicar` ya haya pasado todo, para no tener que dormir.
         for manejador in entregas:
             try:
-                await manejador(evento)
+                from crmcore.obs.metrics import observar_evento_consumido
+
+                try:
+                    await manejador(evento)
+                except Exception:
+                    # Se cuenta el fallo ANTES de propagarlo: un consumidor que revienta
+                    # sin dejar métrica es un flujo que, visto desde el panel, dejó de
+                    # llegar sin motivo.
+                    observar_evento_consumido(evento.tipo, "error")
+                    raise
+                observar_evento_consumido(evento.tipo, "ok")
             except Exception as exc:  # noqa: BLE001 — en pruebas, anotar y seguir
                 logger.warning(
                     "bus_memoria.manejador_fallido",

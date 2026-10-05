@@ -161,6 +161,32 @@ def crear_router_estado(servicio: str) -> APIRouter:
             "solo_lectura": resiliencia.estado(),
         }
 
+    # ── Lo que hace falta ANTES de desplegar o de escalar ─────────────────
+    #
+    # Nueve decisiones de observabilidad estaban escritas, probadas y sin que las
+    # alcanzara ninguna ruta. Son las que se consultan cuando algo va mal o
+    # cuando hay que crecer, y entonces nadie se pone a leer código.
+
+    @router.get(
+        "/consultas-degradadas",
+        summary="Qué consultas se han vuelto lentas respecto a su propia base",
+        description=(
+            "Comparadas **consigo mismas**, no con un umbral: una consulta que "
+            "siempre tardó 800 ms no es un problema nuevo, y una que pasó de 20 a "
+            "90 sí lo es aunque siga por debajo de cualquier umbral. Un umbral "
+            "fijo caza las lentas de siempre y se pierde las que se acaban de "
+            "torcer, que son las que tienen arreglo."
+        ),
+    )
+    def consultas_degradadas(
+        principal: AutenticadoDep,
+        minimo_veces: int = 20,
+        factor: float = 2.0,
+    ) -> Any:
+        from crmcore.obs.consultas import degradadas
+
+        return {"consultas": degradadas(minimo_veces=minimo_veces, factor=factor)}
+
     @router.post(
         "/solo-lectura",
         summary="Entrar o salir del modo solo lectura (plataforma)",

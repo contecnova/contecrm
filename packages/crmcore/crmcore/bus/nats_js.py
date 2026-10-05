@@ -122,7 +122,17 @@ class BusNats(Bus):
                 logger.error("bus_nats.mensaje_ilegible", error=str(exc)[:200])
                 return
             try:
-                await manejador(evento)
+                from crmcore.obs.metrics import observar_evento_consumido
+
+                try:
+                    await manejador(evento)
+                except Exception:
+                    # Se cuenta el fallo ANTES de propagarlo: un consumidor que revienta
+                    # sin dejar métrica es un flujo que, visto desde el panel, dejó de
+                    # llegar sin motivo.
+                    observar_evento_consumido(evento.tipo, "error")
+                    raise
+                observar_evento_consumido(evento.tipo, "ok")
                 await msg.ack()
             except Exception as exc:  # noqa: BLE001 — fallo del manejador: se reintenta
                 await msg.nak()

@@ -92,7 +92,18 @@ CARPETAS = (
 #                   contactos, la comprobación de la evidencia— y las seis de
 #                   recuperación, que son justo las que se consultan el día del
 #                   incidente, y ese día nadie se pone a escribir código.
-TOPE = 126
+#   05-10-2026 115  Observabilidad: ocho decisiones que se consultan cuando
+#                   algo va mal o cuando hay que crecer —dónde escalar, si el
+#                   despliegue se puede deshacer, si el multi-zona aguanta—
+#                   pasan al gateway, que es de quien son: repartidas por los
+#                   catorce darían catorce respuestas a la misma pregunta. Y los
+#                   contadores de eventos publicados y consumidos, que estaban
+#                   escritos y no los llamaba el bus: el panel enseñaba cero con
+#                   el bus trabajando, y un cero se lee como «no pasa nada».
+#                   Y nueve ayudantes de prueba más pasan a `NO_CUENTAN` con su
+#                   motivo: vaciar un registro de proceso entre casos no es una
+#                   decisión de producto sin puerta.
+TOPE = 106
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -110,6 +121,15 @@ NO_CUENTAN: dict[str, str] = {
     "limpiar_estado": "registro de proceso, se vacía entre casos",
     "reset_logging": "reconfigurar el registro entre casos de prueba",
     "tablas_declaradas": "para comprobar que cada servicio declara las suyas",
+    "reset_metricas": "registro de proceso: las métricas se vacían entre casos",
+    "reset_guard": "registro de proceso, se vacía entre casos",
+    "componentes_registrados": "para comprobar qué componentes publica la página de estado",
+    "agregados_declarados": "para comprobar qué agregados se han declarado",
+    "resolutores_registrados": "para comprobar qué resolutores de visibilidad hay",
+    "politicas_sin_invalidacion": "para cazar en pruebas una caché que nadie invalida",
+    "recursos_por_objeto": "para comprobar el mapa recurso → objeto",
+    "limpiar_memoria": "registro de proceso del limitador, se vacía entre casos",
+    "generador_registrado": "para comprobar qué generador se ha enchufado",
     "bus_actual": "para que una prueba mire a qué bus se ha conectado el servicio",
     "hay_cliente": "para saltarse una prueba cuando no hay Redis",
     "en_solo_lectura": "accesor de una línea; el estado se lee por `estado()`",

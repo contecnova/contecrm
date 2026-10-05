@@ -194,6 +194,14 @@ class Relevo:
 
         try:
             await self._bus.publicar(Evento.desde_dict(fila.sobre))
+            # SE CUENTA AQUÍ. `observar_evento_publicado` estaba escrita y no la
+            # llamaba nadie, así que el panel de eventos enseñaba cero publicados
+            # con el bus trabajando. Una métrica a cero no se lee como «no hay
+            # métrica»: se lee como «no pasa nada», y entonces un flujo parado no
+            # se distingue de uno tranquilo.
+            from crmcore.obs.metrics import observar_evento_publicado
+
+            observar_evento_publicado(str(fila.sobre.get("tipo") or ""))
         except Exception as exc:  # noqa: BLE001 — se reintenta o se aparta
             fila.intentos += 1
             fila.ultimo_error = str(exc)[:1000]

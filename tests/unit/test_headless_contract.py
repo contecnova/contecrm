@@ -187,6 +187,9 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # sabe reconstruir después. El gateway lo reparte y dice a cuáles no ha
     # llegado — un servicio mudo sigue escribiendo, y eso hay que saberlo ahora.
     "/api/v1/estado/solo-lectura",
+    # Cada servicio mide SUS consultas en su propio proceso: la lista de uno es
+    # un trozo, y mirar sólo la que se tiene a mano es mirar por una ventana.
+    "/api/v1/estado/consultas-degradadas",
     "/api/v1/superficie",
 }
 
