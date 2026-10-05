@@ -202,6 +202,9 @@ PREFIJOS: dict[str, str] = {
     # El contacto que cambia de empresa: la sospecha, su confirmación y su
     # descarte. Lo lleva `party` porque la ficha es suya.
     "cambios-de-empresa": "party",
+    # Clonar, escindir, fusionar y perfilar un tenant: lo más caro de deshacer
+    # que tiene el producto, y por eso se simula antes.
+    "ciclo-vida": "tenancy",
     # El proveedor es una cuenta con rol (CRM-09.01.01.01); esto es lo que se
     # le añade encima: homologación, papeles y contactos.
     "proveedores": "party",

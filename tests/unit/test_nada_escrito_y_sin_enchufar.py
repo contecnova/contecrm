@@ -103,7 +103,13 @@ CARPETAS = (
 #                   Y nueve ayudantes de prueba más pasan a `NO_CUENTAN` con su
 #                   motivo: vaciar un registro de proceso entre casos no es una
 #                   decisión de producto sin puerta.
-TOPE = 106
+#   05-10-2026  97  El ciclo de vida del tenant —clonar, escindir, fusionar,
+#                   perfilar— era lo más caro de deshacer que tiene el producto
+#                   y la parte que lo hace seguro, la SIMULACIÓN, no se podía
+#                   pedir. Y la modalidad de aislamiento ahora sale del tier
+#                   contratado: aprovisionar con la plantilla de siempre es cómo
+#                   un cliente que paga por base dedicada acaba en la compartida.
+TOPE = 97
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

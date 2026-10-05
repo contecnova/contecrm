@@ -58,7 +58,7 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
-| `POST /api/v1/aislamiento` | Declarar el aislamiento de un tenant | tenant_id*, modalidad*, instancia, base, esquema, pool_computo, infraestructura_del_cliente, notas | 201, 422 | — |
+| `POST /api/v1/aislamiento` | Declarar el aislamiento de un tenant | tenant_id*, modalidad, tier, instancia, base, esquema, pool_computo, infraestructura_del_cliente, notas | 201, 422 | — |
 | `POST /api/v1/aislamiento/migraciones` | Planificar un cambio de modalidad (CRM-00.01.01.04, CRM-00.01.03.10) | tenant_id*, hacia*, ventana_minutos | 201, 422 | — |
 | `PATCH /api/v1/aislamiento/migraciones/{migracion_aislamiento_id}` | Editar migraciones de aislamiento | migracion_aislamiento_id*, desde, hacia, estado, ventana_minutos, solo_lectura_desde, solo_lectura_hasta, recuento_origen, recuento_destino, diferencias, motivo_fin, terminada_at | 200, 422 | — |
 | `POST /api/v1/aislamiento/migraciones/{migracion_aislamiento_id}/archivar` | Archivar migraciones de aislamiento | migracion_aislamiento_id* | 200, 422 | — |
@@ -70,6 +70,14 @@ stateDiagram-v2
 | `PUT /api/v1/ajustes/{clave}` | Fijar un ajuste | clave*, valor*, ambito, ambito_id | 200, 422 | — |
 | `POST /api/v1/calendarios` | Crear un calendario laboral | clave*, nombre*, zona_horaria, pais, horario, por_defecto | 201, 422 | — |
 | `POST /api/v1/calendarios/{calendario_id}/festivos` | Añadir un festivo | calendario_id*, fecha*, nombre*, anual | 201, 422 | — |
+| `POST /api/v1/ciclo-vida/clonado/ejecutar` | Ejecutar el clonado que se simuló | operacion_id*, destino_id*, copiado | 201, 422 | — |
+| `POST /api/v1/ciclo-vida/clonado/simular` | Qué se copiaría y qué no, antes de copiar nada | origen_id*, uso*, bloques, recuentos | 200, 422 | — |
+| `POST /api/v1/ciclo-vida/escision/simular` | Qué pasa si esta empresa se parte en dos | origen_id*, reparto, inventario | 200, 422 | — |
+| `POST /api/v1/ciclo-vida/fusion/simular` | Qué choca si estas dos empresas se juntan | absorbido_id*, superviviente_id*, choques | 200, 422 | — |
+| `POST /api/v1/ciclo-vida/perfiles` | Declarar un perfil de industria | clave*, nombre, descripcion, contenido, no_incluye | 201, 422 | — |
+| `POST /api/v1/ciclo-vida/perfiles/aplicar` | Aplicar el perfil, respetando lo que ya hay | clave*, existentes | 200, 422 | — |
+| `PATCH /api/v1/ciclo-vida/perfiles/{perfil_industria_id}` | Editar perfiles de industria | perfil_industria_id*, clave, nombre, descripcion, contenido, no_incluye, activo | 200, 422 | — |
+| `POST /api/v1/ciclo-vida/perfiles/{perfil_industria_id}/archivar` | Archivar perfiles de industria | perfil_industria_id* | 200, 422 | — |
 | `POST /api/v1/claves-cifrado` | Aportar o rotar la clave del cliente | material_base64*, origen | 201, 422 | — |
 | `POST /api/v1/claves-cifrado/generar` | Generar material de clave, para quien no quiera aportarlo | — | 200, 422 | — |
 | `POST /api/v1/claves-cifrado/revocar` | Revocar la clave: borrado criptográfico irreversible | motivo*, confirmo_que_es_irreversible | 200, 422 | — |

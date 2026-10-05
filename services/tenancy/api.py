@@ -34,6 +34,7 @@ from services.tenancy import servicio as svc
 from services.tenancy.api_aislamiento import ROUTERS_AISLAMIENTO
 from services.tenancy.api_byok import ROUTERS_BYOK
 from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
+from services.tenancy.api_ciclo_vida import ROUTERS_CICLO_VIDA
 from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
 from services.tenancy.api_grc import ROUTERS_GRC
 from services.tenancy.api_sandboxes import ROUTERS_SANDBOXES
@@ -395,6 +396,44 @@ def resolver_slug(slug: str) -> Any:
     return {k: v for k, v in datos.items() if k != "estado"}
 
 
+@router.get(
+    "/{tenant_id}/puede-operar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Si este tenant puede leer y escribir ahora, con el corte aplicado",
+    description=(
+        "La diferencia con `/operatividad` —que es la interna del gateway— es "
+        "que **ésta corta**: devuelve 409 con el motivo si el tenant está "
+        "suspendido o en solo lectura, en vez de un estado para que lo mire "
+        "quien llame.\n\n"
+        "Las dos salen de la misma regla, que vive en `tenancy` y en un solo "
+        "sitio. Lo que cambia es quién decide qué hacer con ella: el gateway la "
+        "cachea y la aplica en cada petición; aquí se pregunta cuando se tiene la "
+        "sesión delante y se quiere el corte con su mensaje.\n\n"
+        "El estado `solo_lectura` es la razón de ser de esto: permite una ventana "
+        "de mantenimiento **sin corte** —quien consulta sigue trabajando y quien "
+        "escribe recibe un 409 que dice qué pasa, no una pantalla que no "
+        "responde—."
+    ),
+)
+def puede_operar(
+    tenant_id: UUID,
+    db: DbDep,
+    principal: AutenticadoDep,
+    escritura: bool = Query(
+        False, description="Si lo que se va a hacer escribe. Lectura y escritura se separan"
+    ),
+) -> Any:
+    tenant = svc.exigir_operativo(db, tenant_id, escritura=escritura)
+    return {
+        "tenant_id": str(tenant.id),
+        "estado": tenant.estado,
+        "puede_leer": tenant.puede_leer,
+        "puede_escribir": tenant.puede_escribir,
+        "motivo": tenant.motivo_estado or "",
+    }
+
+
 @router_interno.get(
     "/{tenant_id}/operatividad",
     response_model=dict,
@@ -444,4 +483,5 @@ ROUTERS = [
     *ROUTERS_SUITE,
     *ROUTERS_AISLAMIENTO,
     *ROUTERS_SANDBOXES,
+    *ROUTERS_CICLO_VIDA,
 ]

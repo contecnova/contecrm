@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
@@ -28,7 +29,22 @@ router_residencia = APIRouter(prefix="/residencia", tags=["aislamiento y residen
 
 class DeclararAislamiento(BaseModel):
     tenant_id: UUID
-    modalidad: str = Field(..., description="compartido · esquema · base · cluster · cliente")
+    modalidad: str = Field(
+        "",
+        description=(
+            "compartido · esquema · base · cluster · cliente. Vacío: la que "
+            "corresponde al tier contratado, que es lo que el cliente ha pagado"
+        ),
+    )
+    tier: str = Field(
+        "",
+        description=(
+            "El plan contratado. Con él, la modalidad sale de lo contratado y no "
+            "de lo que alguien teclee: aprovisionar con la plantilla de siempre a "
+            "un cliente que paga por base dedicada es el fallo que este módulo "
+            "existe para cazar"
+        ),
+    )
     instancia: str = ""
     base: str = ""
     esquema: str = ""
@@ -69,7 +85,22 @@ class Revertir(BaseModel):
     ),
 )
 def declarar(cuerpo: DeclararAislamiento, uow: UowDep) -> Any:
-    fila = ais.declarar(uow, **cuerpo.model_dump())
+    datos = cuerpo.model_dump()
+    tier = str(datos.pop("tier", "") or "")
+    if not datos.get("modalidad"):
+        if not tier:
+            raise ErrorValidacion(
+                "Hay que decir la modalidad, o el tier del que sacarla. Sin "
+                "ninguna de las dos se aprovisionaría con la de siempre, que es "
+                "justo cómo un cliente que paga por base dedicada acaba en la "
+                "compartida.",
+                error_code="aislamiento.sin_modalidad",
+            )
+        # De lo CONTRATADO, no de lo que alguien teclee. `modalidad_de_tier` no
+        # se inventa nada para un tier desconocido: cae a la compartida, que es
+        # la más conservadora.
+        datos["modalidad"] = ais.modalidad_de_tier(tier)
+    fila = ais.declarar(uow, **datos)
     return {
         "tenant_id": str(fila.tenant_id),
         "modalidad": fila.modalidad,
