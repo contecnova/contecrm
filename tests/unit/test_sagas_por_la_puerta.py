@@ -88,10 +88,15 @@ PASOS = [
 ]
 
 
-def _arrancar(cliente: Any, cabeceras: dict[str, str], pasos: Any = None) -> dict[str, Any]:
+def _arrancar(
+    cliente: Any,
+    cabeceras: dict[str, str],
+    pasos: Any = None,
+    clave: str = "alta_de_cliente",
+) -> dict[str, Any]:
     r = cliente.post(
         "/api/v1/sagas",
-        json={"clave": "alta_de_cliente", "pasos": pasos if pasos is not None else PASOS},
+        json={"clave": clave, "pasos": pasos if pasos is not None else PASOS},
         headers=cabeceras,
     )
     assert r.status_code == 201, r.text
@@ -221,6 +226,43 @@ def test_la_ficha_dice_que_quedo_sin_deshacer(cliente: Any, cabeceras: dict[str,
     assert ficha["estado"] == "atascada"
     assert ficha["sin_deshacer"] == [1]
     assert [p["orden"] for p in ficha["pasos"]] == [1, 2]
+
+
+def test_sin_listado_no_se_llega_a_ninguna_ficha(cliente: Any, cabeceras: dict[str, str]) -> None:
+    """Y sin ficha no se llega a lo que hay que arreglar a mano. El gate de
+    acciones alcanzables lo cazó: las rutas `/hecho` y `/fallo` cuelgan de una
+    colección, y una colección sin listado deja la acción fuera de toda
+    pantalla."""
+    _arrancar(cliente, cabeceras)
+    _arrancar(cliente, cabeceras, pasos=[{"nombre": "uno", "compensacion": {"a": 1}}], clave="otra")
+
+    r = cliente.get("/api/v1/sagas?clave=alta_de_cliente", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    datos = r.json()["items"]
+    assert len(datos) == 1
+    assert datos[0]["clave"] == "alta_de_cliente"
+    assert datos[0]["estado"] == "en_curso"
+
+
+def test_las_atascadas_se_pueden_pedir_solas(cliente: Any, cabeceras: dict[str, str]) -> None:
+    """Es la consulta que importa: son las que dejaron trabajo sin deshacer y
+    están esperando a que alguien decida."""
+    _arrancar(cliente, cabeceras)
+    saga_id = _arrancar(
+        cliente,
+        cabeceras,
+        pasos=[
+            {"nombre": "avisar_cliente"},
+            {"nombre": "cobrar", "compensacion": {"accion": "devolver"}},
+        ],
+    )["saga_id"]
+    cliente.post(f"/api/v1/sagas/{saga_id}/hecho", json={"orden": 1}, headers=cabeceras)
+    cliente.post(
+        f"/api/v1/sagas/{saga_id}/fallo", json={"orden": 2, "error": "sin saldo"}, headers=cabeceras
+    )
+
+    datos = cliente.get("/api/v1/sagas?estado=atascada", headers=cabeceras).json()["items"]
+    assert [d["id"] for d in datos] == [saga_id]
 
 
 def test_la_saga_de_otro_tenant_no_existe(cliente: Any, tenant_id: UUID) -> None:

@@ -780,6 +780,53 @@ def clonar_plantilla(cuerpo: ClonarIn, uow: UowDep) -> Any:
     return sagas.clonar_plantilla(uow, clave=cuerpo.clave, nombre_destino=cuerpo.nombre_destino)
 
 
+class SagaOut(BaseModel):
+    """Una saga en el listado: lo justo para encontrar la que se busca."""
+
+    id: UUID
+    clave: str
+    estado: str
+    objeto: str
+    objeto_id: UUID | None = None
+    version_proceso: int
+    motivo_fin: str
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+@router_sagas.get(
+    "",
+    response_model=PaginaDeListado,
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Sagas del tenant",
+    description=(
+        "Sin listado no se llega a ninguna ficha, y sin ficha no se llega a lo "
+        "que hay que arreglar a mano. **`estado=atascada` es la consulta que "
+        "importa**: son las que dejaron trabajo hecho que no se puede deshacer y "
+        "están esperando a que alguien decida."
+    ),
+)
+def listar_sagas(
+    db: DbDep,
+    principal: AutenticadoDep,
+    estado: str = Query(
+        "", description="`en_curso`, `terminada`, `compensando`, `compensada` o `atascada`"
+    ),
+    clave: str = Query("", description="La clave del proceso"),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    consulta = select(sagas.Saga).where(sagas.Saga.tenant_id == principal.tenant_id)
+    if estado:
+        consulta = consulta.where(sagas.Saga.estado == estado)
+    if clave:
+        consulta = consulta.where(sagas.Saga.clave == clave)
+    return paginar_consulta(
+        db, sagas.Saga, consulta, limite=limite, cursor=cursor, modelo_salida=SagaOut
+    )
+
+
 @router_sagas.get(
     "/{saga_id}",
     dependencies=[Depends(exige_permiso("proceso:read"))],

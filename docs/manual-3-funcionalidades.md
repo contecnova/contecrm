@@ -13404,7 +13404,11 @@ propósito, con la lista de lo que hay que resolver a mano. Llamarla «compensad
 cuando se mandó un correo que no vuelve es lo que hace que nadie se fíe de esa
 palabra.
 
-### La ficha
+### El listado y la ficha
+
+`GET /api/v1/sagas` lista las sagas del tenant, filtrables por estado y por
+clave. `estado=atascada` es la consulta que importa: las que dejaron trabajo sin
+deshacer y esperan a que alguien decida.
 
 `GET /api/v1/sagas/{id}` devuelve el estado, los pasos con el suyo, y `sin_deshacer`:
 los pasos que quedaron sin compensar. Eso es trabajo manual pendiente, y una ficha

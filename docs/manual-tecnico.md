@@ -1031,6 +1031,7 @@ compensar hacia atrás cuando uno falla.
 
 | Ruta | Permiso | Para qué |
 |---|---|---|
+| `GET /api/v1/sagas` | `proceso:read` | Listado, filtrable por `estado` y `clave` |
 | `POST /api/v1/sagas` | `proceso:write` | Arrancarla, con **todos** los pasos y su compensación |
 | `POST /api/v1/sagas/{id}/hecho` | `proceso:write` | Anotar que el paso `orden` salió bien |
 | `POST /api/v1/sagas/{id}/fallo` | `proceso:write` | Anotar el fallo y compensar hacia atrás |
@@ -1056,6 +1057,10 @@ Lo que hay que saber para integrar:
   versión de proceso, siempre. `se_pueden_migrar_todas: false` significa que hay
   instancias paradas en un paso que la versión nueva no tiene, y esas hay que
   decidirlas una a una.
+- **`GET /api/v1/sagas?estado=atascada` es la consulta que importa**: son las que
+  esperan una decisión humana. Sin listado no se llega a ninguna ficha, y sin ficha
+  no se llega a lo que hay que arreglar a mano — lo cazó el gate de acciones
+  alcanzables, no una revisión.
 - **El tenant sale de la cabecera firmada**, no del cuerpo. Una saga de otro tenant
   contesta 404, no 403: decir «prohibido» ya confirmaría que ese identificador es
   de alguien.
