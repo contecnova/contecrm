@@ -18,8 +18,10 @@ segundos y nadie tiene que acordarse de etiquetar nada.
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import tempfile
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -88,8 +90,23 @@ def _recoger_servidores_abandonados() -> None:
     huérfano, no está sirviendo a nadie.
     """
     import re
-    import shutil
     import subprocess
+
+    # PRIMERO los directorios huérfanos SIN proceso. Son la mayoría: una tanda
+    # que termina bien para su servidor y deja los datos, y el recolector de
+    # abajo —que mira `ps`— no los ve porque ya no hay proceso que ver. Es el
+    # agujero que dejó 908 directorios y 24 GB en diez días.
+    #
+    # Se borran los de más de una hora: los recientes pueden ser de una tanda
+    # que esté corriendo ahora mismo en otra ventana, y borrarle la base a una
+    # tanda viva es peor que el disco lleno.
+    hace_una_hora = time.time() - 3600
+    for carpeta in Path(tempfile.gettempdir()).glob("contecrm-test-*"):
+        try:
+            if carpeta.stat().st_mtime < hace_una_hora:
+                shutil.rmtree(carpeta, ignore_errors=True)
+        except OSError:
+            continue
 
     raiz = str(Path(__file__).resolve().parent.parent)
     try:
@@ -164,6 +181,16 @@ def postgres_uri() -> Iterator[str]:
     # el de libpq.
     yield uri.replace("postgresql://", "postgresql+psycopg://", 1)
     servidor.cleanup()
+    # Y SE BORRA EL DIRECTORIO. `cleanup()` para el servidor y deja los datos:
+    # medido el 05-10-2026, **908 directorios de 24 GB acumulados desde el 25 de
+    # septiembre**, uno por cada tanda de pruebas de diez días.
+    #
+    # No es solo disco. Spotlight los indexa, y con 24 GB de ficheros de una
+    # base de datos indexándose el disco va al 90 % de ocupación de forma
+    # permanente: la misma tanda que tardaba 59 segundos pasó a tardar 152 con
+    # el mismo trabajo de CPU, esperando al disco. Un recolector que solo mira
+    # los servidores VIVOS no ve esto, porque el servidor ya murió bien.
+    shutil.rmtree(directorio, ignore_errors=True)
 
 
 @pytest.fixture(scope="session")

@@ -267,6 +267,19 @@ GATES: list[Gate] = [
 # tarda en volver al teclado.
 PRESUPUESTO_S = 180.0
 
+# Y el presupuesto de CPU, que es lo que de verdad dice si el preflight ha
+# engordado. El reloj de pared mide lo que espera quien lo lanza —y por eso se
+# sigue enseñando—, pero **no distingue un gate que ha engordado de una máquina
+# ocupada**: medido el 05-10-2026, el mismo gate de aislamiento tardó 59 s y
+# 382 s en la misma hora, con el mismo trabajo de CPU, porque en esta máquina
+# estaban corriendo a la vez el `tsc` de contecmind, dos `vitest` de contecpos y
+# el indexador de Spotlight. Fallar ahí es fallar por el vecino, y eso enseña a
+# ignorar el rojo — que es la forma de perder el guardián entero.
+#
+# El CPU sí es estable: si alguien añade trabajo, sube; si la máquina está
+# cargada, no. Así que el rojo va por CPU y el reloj informa.
+PRESUPUESTO_CPU_S = 300.0
+
 # Lo que cuesta de memoria el gate más gordo, medido: los que recorren los trece
 # servicios construyen las trece aplicaciones FastAPI y se quedan en medio giga.
 COSTE_POR_GATE_MB = 500
@@ -321,6 +334,19 @@ def _paralelos() -> int:
 
 
 PARALELOS = _paralelos()
+
+
+def _carga() -> float:
+    """La carga media del minuto, si el sistema la da.
+
+    Se enseña cuando el reloj se dispara y el CPU no: sin ella, «ha tardado el
+    doble» no dice si el problema es el preflight o la máquina, y esa es
+    justamente la diferencia que hay que poder ver de un vistazo.
+    """
+    try:
+        return os.getloadavg()[0]
+    except (OSError, AttributeError):  # pragma: no cover — sistemas sin carga
+        return 0.0
 
 
 def _correr(gate: Gate) -> tuple[bool, float, str]:
@@ -471,10 +497,15 @@ def main() -> int:
         with turno:
             return _correr(gate)
 
+    import resource
+
     reloj = time.perf_counter()
+    antes = resource.getrusage(resource.RUSAGE_CHILDREN)
     with ThreadPoolExecutor(max_workers=PARALELOS) as pool:
         resultados = list(pool.map(_ejecutar, seleccionados))
     total = time.perf_counter() - reloj
+    despues = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu = (despues.ru_utime - antes.ru_utime) + (despues.ru_stime - antes.ru_stime)
 
     # Se imprime en el orden en que están declarados, no en el que terminaron:
     # el informe tiene que ser el mismo dos veces seguidas para poder compararlo.
@@ -501,22 +532,36 @@ def main() -> int:
             print()
         return 1
 
-    if total > PRESUPUESTO_S:
+    carga = _carga()
+    if cpu > PRESUPUESTO_CPU_S:
         print(
-            f"\nTodo en verde, PERO el preflight tarda {total:.0f}s y el "
-            f"presupuesto son {PRESUPUESTO_S:.0f}s.\n\n"
+            f"\nTodo en verde, PERO el preflight gasta {cpu:.0f}s de CPU y el "
+            f"presupuesto son {PRESUPUESTO_CPU_S:.0f}s "
+            f"(reloj: {total:.0f}s).\n\n"
             "Un preflight que pasa de tres minutos deja de correrse, y un gate "
             "que no se corre no garantiza nada — con lo que el coste se paga\n"
             "entero y el beneficio no llega. Los tiempos de arriba dicen dónde "
-            "se va: se arregla el gate lento, no se quita la comprobación.\n"
-            "(Es tiempo de reloj, con los gates en paralelo: el número de arriba "
-            "de cada uno es lo que tardó él, y suman más.)"
+            "se va: se arregla el gate lento, no se quita la comprobación."
         )
         return 1
 
+    if total > PRESUPUESTO_S:
+        # Lento de reloj pero no de trabajo: la máquina está ocupada. Se dice y
+        # NO se falla. Fallar aquí es fallar por lo que esté compilando otra
+        # ventana, y un rojo que no depende de lo que uno ha hecho se ignora a
+        # la segunda vez.
+        print(
+            f"\nTodo en verde. {total:.0f}s de reloj —más de los {PRESUPUESTO_S:.0f}s "
+            f"de referencia— pero solo {cpu:.0f}s de CPU"
+            + (f", con la máquina a una carga de {carga:.0f}" if carga else "")
+            + ".\nNo ha engordado el preflight: está compartiendo máquina. El "
+            "presupuesto que decide es el de CPU."
+        )
+        return 0
+
     print(
-        f"\nTodo en verde. {total:.0f}s de reloj de {PRESUPUESTO_S:.0f}s de "
-        f"presupuesto, con hasta {PARALELOS} gates a la vez."
+        f"\nTodo en verde. {total:.0f}s de reloj y {cpu:.0f}s de CPU de "
+        f"{PRESUPUESTO_CPU_S:.0f}s de presupuesto, con hasta {PARALELOS} gates a la vez."
     )
     # Y QUÉ NIVEL FUE ÉSTE. Un push con el subconjunto no puede constar como
     # batería completa: si no se dice, «todo en verde» se lee igual en los dos
