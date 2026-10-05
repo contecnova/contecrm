@@ -105,3 +105,9 @@ class _ServicioSettings(BaseSettings):
     # una copia de datos de un sistema ajeno: guardarla para siempre es
     # acumular datos personales de los que no somos responsables.
     integracion_registros_retencion_dias: int = Field(30, ge=1, le=3_650)
+    # Qué operación declarada atiende un pedido que sale hacia el ERP. Es un
+    # ajuste y no una constante porque la clave la pone quien declara la
+    # conexión: en un cliente se llamará «pedido.crear» y en otro «sales_order».
+    # Un nombre fijo en el código obligaría a que todos la llamaran igual, que
+    # es pedirle al cliente que se adapte a nuestro vocabulario interno.
+    integracion_operacion_pedidos: str = Field("pedido.crear", min_length=1, max_length=120)

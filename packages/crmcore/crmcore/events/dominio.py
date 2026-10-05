@@ -817,6 +817,34 @@ QUOTE_ACCEPTED = registrar(
         campos=("presupuesto_id", "numero", "pedido_id", "total"),
     )
 )
+ORDER_ERP_CONFIRMED = registrar(
+    TipoEvento(
+        tipo="order.erp.confirmed",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "El ERP ha aceptado el pedido y ha devuelto su referencia. Vuelve a "
+            "ventas porque el estado del pedido es suyo: dejarlo en una traza de "
+            "integración daría un pedido que figura «enviado» en ventas y "
+            "confirmado en un sitio que nadie mira."
+        ),
+        campos=("pedido_id", "referencia_erp"),
+    )
+)
+ORDER_ERP_REJECTED = registrar(
+    TipoEvento(
+        tipo="order.erp.rejected",
+        version=1,
+        productor="integration",
+        descripcion=(
+            "El ERP ha rechazado el pedido. Es público y vuelve a ventas por lo "
+            "mismo: un traspaso que se cierra al enviar es cómo se descubre en el "
+            "cierre de mes que faltan pedidos."
+        ),
+        campos=("pedido_id", "error"),
+    )
+)
+
 ORDER_SUBMITTED = registrar(
     TipoEvento(
         tipo="order.submitted",

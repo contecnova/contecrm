@@ -13,6 +13,7 @@ from services.integration.api_encargos import ROUTERS_ENCARGOS
 from services.integration.api_firma import ROUTERS_FIRMA
 from services.integration.api_suites import ROUTERS_SUITES
 from services.integration.api_telemetria import ROUTERS_TELEMETRIA
+from services.integration.pedidos_erp import consumir_pedido
 from services.integration.proyeccion import consumir as consumir_modulo
 
 _relevo: Any = None
@@ -222,7 +223,15 @@ app = crear_servicio(
     # proveedores. Llegan por evento porque este servicio no puede leer el
     # esquema de `metadata`, y si no llegaran habría que teclearlos otra vez en
     # esta pantalla: justo el trabajo manual que el módulo existe para quitar.
-    consumidores=[("module.*", consumir_modulo, "integration-modulos")],
+    consumidores=[
+        ("module.*", consumir_modulo, "integration-modulos"),
+        # El pedido que ventas acepta y manda al ERP. `sales.enviar_a_erp` decía
+        # en su propio comentario que «la llamada la hace integration con su
+        # conector declarativo» y **nadie consumía el evento**: el pedido se
+        # marcaba como enviado y no salía de aquí. Se descubre en el cierre de
+        # mes, que es cuando ya no se puede arreglar.
+        ("order.submitted", consumir_pedido, "integration-pedidos"),
+    ],
     al_arrancar=_al_arrancar,
     al_parar=_al_parar,
 )

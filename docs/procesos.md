@@ -1278,6 +1278,8 @@ llamada de nadie.
 | `opportunity.reopened` | sales | oportunidad_id, estado_previo, motivo | `POST /api/v1/opportunities/{oportunidad_id}/reabrir` | — |
 | `opportunity.stage.changed` | sales | oportunidad_id, etapa_desde, etapa_hasta, probabilidad | `POST /api/v1/opportunities/{oportunidad_id}/etapa` | — |
 | `opportunity.won` | sales | oportunidad_id, cuenta_id, importe, moneda | `POST /api/v1/opportunities/{oportunidad_id}/etapa` | — |
+| `order.erp.confirmed` | integration | pedido_id, referencia_erp | un proceso de fondo | — |
+| `order.erp.rejected` | integration | pedido_id, error | un proceso de fondo | — |
 | `order.submitted` | sales | pedido_id, numero, cuenta_id, total | `POST /api/v1/pedidos/{pedido_id}/enviar-erp` | — |
 | `order.tracked.created` | integration | encargo_id, referencia, proveedor | `POST /api/v1/encargos` | — |
 | `order.tracked.incident` | integration | encargo_id, referencia, proveedor | `POST /api/v1/encargos/eventos`, `POST /api/v1/encargos/{encargo_id}/incidencias` | — |

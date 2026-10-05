@@ -10902,6 +10902,47 @@ En SAML no hay nada equivalente que publicar, así que se dice que no es
 comprobable sin una entrada de verdad — y en la primera se dirá qué atributo
 declarado no llegó, con la lista de los que sí.
 
+### El pedido que sale al ERP, y vuelve (`CRM-03.03.02.11`)
+
+Aceptar un presupuesto crea el pedido y lo deja **esperando confirmación**. No
+se da por bueno porque la llamada no diera error: el ERP puede aceptar el
+mensaje y rechazar el pedido después, y un traspaso que se cierra al enviar es
+cómo se descubre en el cierre de mes que faltan pedidos.
+
+La llamada **no la hace ventas**. Ventas emite el pedido y lo manda
+`integration` con el mismo conector declarativo que lee un maestro de clientes:
+un ERP es una API más —endpoints, credencial y mapeo de campos— y un módulo por
+producto convierte cada implantación en una versión del producto. Llamar al ERP
+desde la transacción de ventas ataría aceptar un presupuesto a que el ERP del
+cliente esté en pie.
+
+Qué operación lo atiende **se declara** (`INTEGRACION_OPERACION_PEDIDOS`): la
+clave la pone quien declara la conexión, y en un cliente será `pedido.crear` y
+en otro `sales_order`. Un nombre fijo obligaría a todos a llamarla igual, que es
+pedirle al cliente que se adapte a nuestro vocabulario interno.
+
+Lo que el ERP conteste **vuelve a ventas**, porque el estado del pedido es suyo:
+su referencia —la que el cliente cita por teléfono para reclamar— o su rechazo.
+Si el ERP no devuelve referencia, se deja vacía: una referencia inventada manda
+a buscar algo que no existe.
+
+Un despliegue **sin ERP declarado no es un fallo**. La mayoría no tiene ninguno:
+se anota y se sigue, en vez de llenar el registro de errores por una integración
+que nadie ha pedido — y entonces los errores de verdad no se ven.
+
+### El mantenimiento preventivo sale solo (`CRM-07.04.03.20`)
+
+Un plan mensual existe precisamente para que nadie tenga que acordarse. Si la
+orden sólo saliera cuando alguien entra en la pantalla y pulsa, el plan sería
+una anotación y la máquina se revisaría cuando se rompe.
+
+Y el síntoma sería el peor: **no hay error**. El panel enseña los planes, las
+fechas de vencimiento salen bien calculadas, y no hay órdenes.
+
+**Una por plan a la vez.** Un plan desatendido seis meses generaría seis órdenes
+idénticas, y lo que se hace con seis órdenes idénticas es cerrarlas todas sin
+mirar — incluida la que había que atender.
+
 ### Lo que un aviso por push NO lleva (`CRM-02.03.02.03`)
 
 Un push llega a una **pantalla bloqueada** que ve cualquiera que coja el

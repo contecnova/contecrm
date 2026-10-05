@@ -20,6 +20,7 @@ from services.sales.consumidores import (
     consumir_firma,
     consumir_organigrama,
 )
+from services.sales.respuesta_erp import consumir_respuesta_erp
 
 
 def _al_arrancar() -> None:
@@ -69,5 +70,11 @@ app = crear_servicio(
         # emitía el evento con el registro de origen dentro, y lo que faltaba
         # era que alguien lo escuchara.
         ("signature.envelope.*", consumir_firma, f"{__name__.split('.')[1]}-firma"),
+        # Y lo que el ERP conteste del pedido. `enviar_a_erp` lo deja esperando
+        # confirmación a propósito —el ERP puede aceptar el mensaje y rechazar
+        # el pedido después— y lo que faltaba era quien recoge la respuesta: el
+        # pedido se quedaba en «enviado_erp» para siempre, y eso se descubre en
+        # el cierre de mes.
+        ("order.erp.*", consumir_respuesta_erp, f"{__name__.split('.')[1]}-erp"),
     ],
 )
