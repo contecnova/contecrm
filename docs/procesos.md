@@ -76,8 +76,6 @@ stateDiagram-v2
 | `POST /api/v1/ciclo-vida/fusion/simular` | Qué choca si estas dos empresas se juntan | absorbido_id*, superviviente_id*, choques | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/perfiles` | Declarar un perfil de industria | clave*, nombre, descripcion, contenido, no_incluye | 201, 422 | — |
 | `POST /api/v1/ciclo-vida/perfiles/aplicar` | Aplicar el perfil, respetando lo que ya hay | clave*, existentes | 200, 422 | — |
-| `PATCH /api/v1/ciclo-vida/perfiles/{perfil_industria_id}` | Editar perfiles de industria | perfil_industria_id*, clave, nombre, descripcion, contenido, no_incluye, activo | 200, 422 | — |
-| `POST /api/v1/ciclo-vida/perfiles/{perfil_industria_id}/archivar` | Archivar perfiles de industria | perfil_industria_id* | 200, 422 | — |
 | `POST /api/v1/claves-cifrado` | Aportar o rotar la clave del cliente | material_base64*, origen | 201, 422 | — |
 | `POST /api/v1/claves-cifrado/generar` | Generar material de clave, para quien no quiera aportarlo | — | 200, 422 | — |
 | `POST /api/v1/claves-cifrado/revocar` | Revocar la clave: borrado criptográfico irreversible | motivo*, confirmo_que_es_irreversible | 200, 422 | — |

@@ -186,13 +186,21 @@ class CambioDeEmpresa(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     contacto_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
-    cuenta_anterior_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    # A qué apuntan, declarado: sin esto el formulario de la ficha pide un UUID
+    # de treinta y seis caracteres a mano, y quien lo teclea se equivoca.
+    cuenta_anterior_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "cuenta"}
+    )
     indicio: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     detalle: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # detectado | confirmado | descartado
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="detectado")
-    contacto_nuevo_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
-    cuenta_nueva_id: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    contacto_nuevo_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "contacto"}
+    )
+    cuenta_nueva_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True, info={"referencia": "cuenta"}
+    )
 
     __table_args__ = (Index("ix_cambios_empresa", "tenant_id", "estado"),)
 

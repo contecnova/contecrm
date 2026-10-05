@@ -17,7 +17,6 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
@@ -204,18 +203,37 @@ def aplicar_perfil(cuerpo: AplicarPerfilIn, uow: UowDep, principal: AutenticadoD
     )
 
 
-# El listado de los perfiles. Sin él se podían declarar y no ver: un catálogo de
-# perfiles de industria que no se puede listar obliga a saberse las claves de
-# memoria, y entonces se declara el mismo dos veces con nombres distintos.
-montar_listado(
-    router_ciclo,
-    modelo=PerfilIndustria,
-    objeto="perfil_industria",
-    permiso="tenant:read",
-    permiso_escribir="tenant:write",
-    ruta="/perfiles",
-    nombre="Perfiles de industria",
+@router_ciclo.get(
+    "/perfiles",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Los perfiles de industria declarados",
+    description=(
+        "Listado **de la instalación, no del tenant**: un perfil de industria es "
+        "una preconfiguración de quien opera la plataforma y la misma sirve para "
+        "todos los clientes. Por eso no lleva `tenant_id` y no se monta con el "
+        "listado genérico, que acota por tenant — hacerlo devolvería siempre "
+        "vacío.\n\n"
+        "Sin este listado se podían declarar y no ver: hay que saberse las claves "
+        "de memoria, y entonces se declara el mismo perfil dos veces con nombres "
+        "distintos."
+    ),
 )
+def listar_perfiles(db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    filas = db.execute(select(PerfilIndustria).order_by(PerfilIndustria.clave)).scalars().all()
+    return [
+        {
+            "clave": f.clave,
+            "nombre": f.nombre,
+            "descripcion": f.descripcion,
+            # Lo que NO trae, al lado de lo que trae: un perfil que no dice lo
+            # que le falta se vende como completo.
+            "no_incluye": list(f.no_incluye or []),
+        }
+        for f in filas
+    ]
 
 
 ROUTERS_CICLO_VIDA = [router_ciclo]
