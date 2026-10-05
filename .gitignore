@@ -53,3 +53,6 @@ frontend/dist/
 /frontend/test-results/
 /frontend/playwright-report/
 /frontend/blob-report/
+# Construcción aparte de las pruebas de pantalla: comparte carpeta con nadie
+# para no pisarse con el `vite build` del gate del front.
+/frontend/dist-pantallas/

@@ -385,6 +385,8 @@ stateDiagram-v2
 | `POST /api/v1/suites/reuniones` | Preparar una reunión en línea con el proveedor del tenant | perfil*, asunto*, inicio*, fin*, confirmada, asistentes | 200, 422 | — |
 | `POST /api/v1/suites/suscripciones` | Registrar una suscripción a los cambios del proveedor | perfil*, recurso*, externo_id*, caduca_at | 201, 422 | — |
 | `POST /api/v1/telefonia/identificar` | Quién llama, y con qué confianza | numero*, candidatos | 200, 422 | — |
+| `POST /api/v1/telefonia/llamadas` | Dejar constancia de una llamada, la cojan o no | evento*, resultado*, numero*, duracion_s, espera_s, contacto_id, grabacion_ref | 200, 422 | — |
+| `POST /api/v1/telefonia/pantalla` | Qué se le pone delante al agente antes de descolgar | identificacion, datos_del_ivr, ultimo_caso, ultima_interaccion | 200, 422 | — |
 | `POST /api/v1/telefonia/transferir` | Transferir con el contexto dentro | a*, resumen, contacto_id, caso_id, lo_ya_hablado | 200, 422 | — |
 
 ### eventing

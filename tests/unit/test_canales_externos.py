@@ -588,3 +588,35 @@ def test_una_llamada_que_el_cliente_repite_al_dia_siguiente_no_se_resolvio() -> 
     )
     assert salida["resueltas_de_verdad"] == 1
     assert salida["falsos_resueltos"] == 1
+
+
+def test_la_centralita_tiene_donde_avisar() -> None:
+    """`pantalla_al_sonar` y `registrar_llamada` no tenían ruta
+    (`CRM-04.02.01.05`).
+
+    Estaban escritas y probadas, y la centralita no tenía dónde pedir el screen
+    pop ni dónde dar el parte. Lo segundo es lo que duele: una llamada que nadie
+    cogió es un cliente que lo intentó, y si no consta, **el panel enseña un
+    servicio impecable construido con las llamadas que sí se atendieron**.
+    """
+    import inspect
+
+    from services.integration import api_suites
+
+    fuente = inspect.getsource(api_suites)
+    for funcion, ruta in (
+        ("pantalla_al_sonar(", '"/pantalla"'),
+        ("registrar_llamada(", '"/llamadas"'),
+    ):
+        assert funcion in fuente, f"«{funcion}» no la llama ninguna ruta"
+        assert ruta in fuente, f"falta la ruta {ruta}"
+
+
+def test_los_valores_admitidos_salen_del_modulo_y_no_se_repiten() -> None:
+    """Repetirlos en la API es cómo acaban diciendo cosas distintas la
+    documentación y la validación: el cuerpo anuncia un evento que el módulo
+    rechaza, y quien integra lo descubre con una llamada perdida."""
+    from services.integration import api_suites, telefonia
+
+    assert api_suites.telefonia_eventos() == telefonia.EVENTOS
+    assert api_suites.telefonia_resultados() == telefonia.RESULTADOS

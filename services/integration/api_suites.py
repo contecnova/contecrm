@@ -441,6 +441,20 @@ def conciliar(cuerpo: ConciliarIn, principal: AutenticadoDep) -> Any:
 router_telefonia = APIRouter(prefix="/telefonia", tags=["telefonía"])
 
 
+def telefonia_eventos() -> tuple[str, ...]:
+    """Los eventos admitidos, **del módulo**: repetirlos aquí es cómo acaban
+    diciendo cosas distintas la documentación y la validación."""
+    from services.integration.telefonia import EVENTOS
+
+    return EVENTOS
+
+
+def telefonia_resultados() -> tuple[str, ...]:
+    from services.integration.telefonia import RESULTADOS
+
+    return RESULTADOS
+
+
 class IdentificarIn(BaseModel):
     numero: str
     candidatos: list[dict[str, Any]] = Field(default_factory=list)
@@ -452,6 +466,90 @@ class TransferirIn(BaseModel):
     contacto_id: UUID | None = None
     caso_id: UUID | None = None
     lo_ya_hablado: list[str] = Field(default_factory=list)
+
+
+class PantallaIn(BaseModel):
+    """Lo que la centralita sabe cuando empieza a sonar."""
+
+    identificacion: dict[str, Any] = Field(
+        default_factory=dict, description="Lo que devolvió `/identificar`."
+    )
+    datos_del_ivr: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Lo que el cliente ya tecleó. Volver a pedírselo al descolgar es la "
+            "forma más rápida de que se enfade antes de empezar."
+        ),
+    )
+    ultimo_caso: dict[str, Any] | None = None
+    ultima_interaccion: dict[str, Any] | None = None
+
+
+class LlamadaIn(BaseModel):
+    """El parte de una llamada, la haya cogido alguien o no."""
+
+    evento: str = Field(description=" | ".join(telefonia_eventos()))
+    resultado: str = Field(description=" | ".join(telefonia_resultados()))
+    numero: str
+    duracion_s: int = Field(0, ge=0)
+    espera_s: int = Field(0, ge=0)
+    contacto_id: UUID | None = None
+    grabacion_ref: str = ""
+
+
+@router_telefonia.post(
+    "/pantalla",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué se le pone delante al agente antes de descolgar",
+    description=(
+        "Lo que el cliente **ya tecleó en el IVR viaja con la llamada**: si "
+        "marcó su número de pedido, volver a pedírselo al descolgar es la forma "
+        "más rápida de que se enfade antes de empezar.\n\n"
+        "Y lo que se enseña es **lo último que le pasó**, no su ficha entera: un "
+        "agente tiene cuatro segundos mientras suena, y un panel con veinte "
+        "campos no se lee en cuatro segundos.\n\n"
+        "Esta ruta faltaba: la función estaba escrita y probada, y la centralita "
+        "no tenía dónde pedirla."
+    ),
+)
+def pantalla(cuerpo: PantallaIn, principal: AutenticadoDep) -> Any:
+    from services.integration import telefonia
+
+    return telefonia.pantalla_al_sonar(
+        identificacion=cuerpo.identificacion,
+        datos_del_ivr=cuerpo.datos_del_ivr,
+        ultimo_caso=cuerpo.ultimo_caso,
+        ultima_interaccion=cuerpo.ultima_interaccion,
+    )
+
+
+@router_telefonia.post(
+    "/llamadas",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Dejar constancia de una llamada, la cojan o no",
+    description=(
+        "**Las perdidas y las abandonadas son las que más dicen**: una llamada "
+        "que nadie cogió es un cliente que lo intentó, y si no consta, el panel "
+        "enseña un servicio impecable construido con las llamadas que sí se "
+        "atendieron.\n\n"
+        "Se distinguen **perdida** —sonó y nadie la cogió— de **abandonada** —la "
+        "colgaron en la cola antes de sonar—: confundirlas oculta un problema de "
+        "enrutado detrás de uno de plantilla.\n\n"
+        "Esta ruta faltaba: la centralita no tenía dónde dar el parte."
+    ),
+)
+def registrar_llamada(cuerpo: LlamadaIn, principal: AutenticadoDep) -> Any:
+    from services.integration import telefonia
+
+    return telefonia.registrar_llamada(
+        evento=cuerpo.evento,
+        resultado=cuerpo.resultado,
+        numero=cuerpo.numero,
+        duracion_s=cuerpo.duracion_s,
+        espera_s=cuerpo.espera_s,
+        contacto_id=cuerpo.contacto_id,
+        grabacion_ref=cuerpo.grabacion_ref,
+    )
 
 
 @router_telefonia.post(

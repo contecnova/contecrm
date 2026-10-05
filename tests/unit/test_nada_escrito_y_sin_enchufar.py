@@ -55,7 +55,11 @@ CARPETAS = (
 #                   tenía prueba, y solapaba con `exigir_seccion`, que sí se
 #                   usa. Dos comprobaciones de permiso con una sin usar es cómo
 #                   acaba usándose la floja.
-TOPE = 46
+#   05-10-2026  44  telefonía enchufada: `pantalla_al_sonar` y
+#                   `registrar_llamada` no tenían ruta, así que la centralita
+#                   no tenía dónde pedir el screen pop ni dónde dar el parte
+#                   de una llamada perdida.
+TOPE = 44
 
 # Las que no cuentan, con su motivo. Vacío hoy a propósito: la lista de 47 es
 # deuda reconocida, no exenciones.

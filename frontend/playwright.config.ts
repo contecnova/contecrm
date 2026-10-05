@@ -43,7 +43,14 @@ export default defineConfig({
     // contra `127.0.0.1` no conecta nunca. Playwright se queda esperando los
     // tres minutos y dice «se agotó el tiempo del servidor», que manda a buscar
     // al sitio equivocado.
-    command: "npm run build && npx vite preview --port 4178 --strictPort --host 127.0.0.1",
+    // SU PROPIA CARPETA DE SALIDA, y no es un capricho: el gate `front` del
+    // preflight corre `vite build` sobre `dist/` al mismo tiempo que este, y
+    // dos construcciones escribiendo la misma carpeta dejan una a medias. El
+    // síntoma era este gate fallando en 9 s con `ECONNREFUSED` —el servidor ni
+    // arrancaba— mientras las 24 pruebas pasaban al correrlo solo.
+    command:
+      "npx vite build --outDir dist-pantallas && " +
+      "npx vite preview --outDir dist-pantallas --port 4178 --strictPort --host 127.0.0.1",
     url: "http://127.0.0.1:4178/",
     reuseExistingServer: false,
     timeout: 180_000,
