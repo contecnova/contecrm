@@ -107,10 +107,25 @@ def test_la_exportacion_es_json_lines_legible_sin_este_producto(db: Any, tenant_
         .leer(get_almacen().uri_de(f"{tenant_id}/_exportaciones/{exp.id}/unidades_negocio.jsonl"))
         .decode("utf-8")
     )
-    filas = [json.loads(linea) for linea in crudo.strip().split("\n")]
+    lineas = [json.loads(linea) for linea in crudo.strip().split("\n")]
 
+    # La primera línea es la MARCA DE ORIGEN (CRM-00.05.03.07): cualquier lector
+    # de JSON Lines la procesa sin enterarse, y quien la busque la encuentra sin
+    # abrir el fichero entero. El audit trail dice quién exportó; esto dice de
+    # dónde salió este fichero, que es la pregunta que se hace el día que
+    # aparece en el ordenador de un competidor.
+    assert set(lineas[0]) == {"_marca"}
+    assert lineas[0]["_marca"]["tenant"] == str(tenant_id)
+    # Y el identificador de quien exportó va RESUMIDO, no en claro: el fichero
+    # puede acabar en cualquier mano y eso es un dato de la plantilla.
+    assert len(lineas[0]["_marca"]["traza"]) == 32
+
+    filas = lineas[1:]
     assert len(filas) == 2
     assert {"codigo", "nombre", "tenant_id"} <= set(filas[0])
+    # El manifiesto cuenta REGISTROS, no líneas: si contara la marca no cuadraría
+    # con la tabla de origen, que es justo lo que se comprueba al recibirla.
+    assert exp.manifiesto["unidades_negocio"]["filas"] == 2
 
 
 def test_la_exportacion_trae_un_leeme_que_explica_como_comprobarla(

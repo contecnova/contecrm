@@ -782,11 +782,23 @@ def montar_exportacion(
             limite=limite,
             proyectar=proyectar_para(principal, db, objeto=objeto, modelo=modelo),
         )
+        from crmcore.seguridad import marca as marca_mod
+
+        sello = marca_mod.firma(tenant_id=principal.tenant_id, usuario_id=principal.id)
         return {
             "objeto": objeto,
             "columnas": columnas,
             "filas": filas,
             "cuantas": len(filas),
+            # La marca de origen (CRM-00.05.03.07), y la línea ya compuesta para
+            # ponerla arriba del CSV. El audit trail dice quién exportó; esto
+            # dice **de dónde salió este fichero**, que es otra pregunta y se
+            # hace en otro momento: cuando la hoja con la cartera aparece en el
+            # ordenador de un competidor, el audit trail de quien la perdió no
+            # está disponible. El identificador de quien exporta va resumido:
+            # el fichero puede acabar en cualquier mano.
+            "marca": sello,
+            "cabecera_csv": marca_mod.cabecera_csv(sello),
             # Se dice si se ha llegado al tope. Un fichero cortado en silencio
             # es el que alguien manda creyendo que lleva todo.
             "truncado": len(filas) >= limite,

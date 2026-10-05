@@ -290,17 +290,35 @@ def exportar(
     manifiesto: dict[str, Any] = {}
     total = 0
 
+    # La marca de origen va DENTRO de cada fichero (CRM-00.05.03.07). El audit
+    # trail dice quién exportó; esto dice de dónde salió este fichero, que es
+    # otra pregunta y se hace en otro momento: cuando la hoja con la cartera de
+    # clientes aparece en el ordenador de un competidor, el audit trail de quien
+    # la perdió no está disponible.
+    #
+    # El módulo que la compone llevaba sin llamante desde que se escribió, así
+    # que la salida de datos más grande del producto salía sin marcar.
+    from crmcore.seguridad import marca as marca_mod
+
+    sello = marca_mod.firma(tenant_id=tenant_id, usuario_id=por)
+
     for nombre, modelo in tablas.items():
-        lineas: list[str] = []
+        # Primera línea del JSON Lines: cualquier lector la procesa sin
+        # enterarse, y quien la busque la encuentra sin abrir el fichero entero.
+        lineas: list[str] = [marca_mod.marcar_jsonl(sello).rstrip("\n")]
         filas = db.execute(select(modelo).where(modelo.tenant_id == tenant_id)).scalars().all()
         for fila in filas:
             lineas.append(json.dumps(fila.a_dict(json_seguro=True), ensure_ascii=False))
-        cuerpo = ("\n".join(lineas) + "\n").encode("utf-8") if lineas else b""
+        cuerpo = ("\n".join(lineas) + "\n").encode("utf-8")
         sha = hashlib.sha256(cuerpo).hexdigest()
         clave = f"{tenant_id}/_exportaciones/{exportacion.id}/{nombre}.jsonl"
         almacen.guardar(clave, cuerpo)
-        manifiesto[nombre] = {"filas": len(lineas), "bytes": len(cuerpo), "sha256": sha}
-        total += len(lineas)
+        # `- 1` por la línea de la marca: el manifiesto cuenta REGISTROS, y un
+        # recuento que incluyera la marca no cuadraría con la tabla de origen —
+        # que es justo lo que alguien va a comprobar al recibir la exportación.
+        registros = len(lineas) - 1
+        manifiesto[nombre] = {"filas": registros, "bytes": len(cuerpo), "sha256": sha}
+        total += registros
 
     leeme = _leeme(tenant_id, manifiesto).encode("utf-8")
     almacen.guardar(f"{tenant_id}/_exportaciones/{exportacion.id}/LEEME.md", leeme)

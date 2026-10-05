@@ -60,6 +60,60 @@ def plan(cuerpo: PlanIn, principal: AutenticadoDep) -> Any:
     )
 
 
+class AnonimizarIn(BaseModel):
+    entorno: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "El nombre del entorno destino. De él sale la sal, **distinta por "
+            "entorno**: con la misma en todos, juntar dos copias con campos "
+            "distintos anonimizados reconstruiría el registro entero"
+        ),
+    )
+    filas: list[dict[str, Any]] = Field(default_factory=list)
+    reglas: dict[str, str] = Field(default_factory=dict)
+
+
+@router_sandboxes.post(
+    "/anonimizar",
+    dependencies=[Depends(exige_permiso("tenancy:write"))],
+    summary="Aplicar la anonimización a estas filas",
+    description=(
+        "**Consistente dentro del entorno**: el mismo valor original da siempre "
+        "el mismo valor falso, así que una búsqueda por cliente sigue "
+        "devolviendo sus oportunidades y sus casos. Sin eso el entorno no sirve "
+        "para probar nada que cruce datos, que es casi todo lo que se "
+        "prueba.\n\n"
+        "**Y distinto entre entornos.** La sal sale del nombre del entorno: con "
+        "la misma en todos, juntar dos copias con campos distintos anonimizados "
+        "devolvería el registro entero.\n\n"
+        "El valor falso **conserva la forma** —un correo sigue siendo un correo, "
+        "un teléfono un teléfono—, que es lo que hace que las pantallas con "
+        "validación funcionen en pruebas. Y un campo con regla desconocida **se "
+        "vacía**: por defecto se protege, no se copia."
+    ),
+)
+def anonimizar(cuerpo: AnonimizarIn, principal: AutenticadoDep) -> Any:
+    from crmcore.config import get_settings
+    from crmcore.seguridad.anonimizar import sal_de_entorno
+
+    sal = sal_de_entorno(cuerpo.entorno, get_settings().secret_key.get_secret_value())
+    salidas = [
+        sbx.anonimizar_fila(fila=fila, reglas=cuerpo.reglas, semilla=sal) for fila in cuerpo.filas
+    ]
+    return {
+        "entorno": cuerpo.entorno,
+        "filas": [s["fila"] for s in salidas],
+        # Los avisos, juntos y sin repetir: una regla desconocida sale en todas
+        # las filas y repetirla mil veces esconde las demás.
+        "avisos": sorted({a for s in salidas for a in s["avisos"]}),
+        "porque": (
+            "Mismo valor y mismo entorno, mismo sustituto. Distinto entorno, "
+            "sustituto distinto: cruzar dos copias no reconstruye nada."
+        ),
+    }
+
+
 @router_sandboxes.post(
     "/reglas",
     dependencies=[Depends(exige_permiso("tenancy:read"))],

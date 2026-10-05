@@ -2553,6 +2553,18 @@ reglas, y las dos cambian lo que sale:
 Y si se llega al tope de filas **se dice**: un fichero cortado en silencio es el
 que alguien manda creyendo que lleva todo.
 
+Cada exportación lleva además su **marca de origen** (`CRM-00.05.03.07`), y va
+dentro del fichero —no en el nombre ni en una cabecera HTTP, que se pierden al
+reenviarlo—. El audit trail dice **quién** exportó; la marca dice **de dónde salió
+este fichero**, que es otra pregunta y se hace en otro momento: cuando la hoja con
+la cartera de clientes aparece en el ordenador de un competidor, el audit trail de
+quien la perdió no está disponible. El identificador de quien exporta va
+**resumido**: el fichero puede acabar en cualquier mano y eso es un dato de la
+plantilla del cliente. En la exportación completa de un tenant la marca es la
+primera línea del JSON Lines, que cualquier lector procesa sin enterarse — y el
+manifiesto sigue contando **registros**, no líneas, porque es lo que se compara
+con la tabla de origen al recibirla.
+
 ### Ante la duda, no se enseña
 
 - Sin identidad, la consulta no devuelve nada. Quien llame sin autenticar no
@@ -4349,6 +4361,12 @@ donde los correos son «xxx» no sirve para probar el envío de correos, que es
 justo lo que se prueba ahí. Y el vacío se queda vacío: inventar un correo donde
 no había cambiaría los recuentos de completitud y alguien concluiría que
 preproducción tiene mejores datos que producción.
+
+Las dos cosas —la forma conservada y la sal por entorno— **se pedían por una ruta
+que no existía**: la copia se anonimizaba con un sustituto de dieciséis caracteres
+hexadecimales para todo, así que un correo anonimizado no era un correo y ninguna
+pantalla con validación funcionaba en pruebas. La pieza que conserva la forma
+estaba escrita al lado y no la llamaba nadie.
 
 Qué se anonimiza sale de la **sensibilidad declarada en el modelo**, no de una
 lista: con una lista, el campo nuevo entraría con dato real sin que nadie lo
@@ -11195,6 +11213,17 @@ dentro del alcance de PCI; uno que no las tiene, no.
   decida guardar tarjetas: es un integrador que manda el número en un campo de
   notas. Se comprueba con Luhn para no dar la alarma con cualquier número largo —
   un aviso que salta con todo se ignora a la semana.
+
+Esa última comprobación corre **en el camino de escritura de los campos del
+tenant**, que es por donde pasan todos: hacerlo en cada servicio por su cuenta
+sería «funciona en los que alguien se acordó». Y **no avisa: corta**. Un campo de
+notas con una tarjeta dentro mete al sistema en el alcance igual que una columna
+dedicada, y el día que se descubre lleva meses ahí.
+
+El mensaje cambia según haya bóveda o no, porque lo que tiene que hacer quien lo
+lee es distinto: **con bóveda** es un paso que falta —tokenízalo y guarda la
+referencia—; **sin bóveda** es que ese dato no puede entrar aquí de ninguna forma,
+y va en el sistema de pagos.
 
 ## Rastro completo de agregados críticos (`CRM-00.05.04.06`)
 

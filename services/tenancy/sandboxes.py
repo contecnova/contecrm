@@ -33,7 +33,6 @@ recuerde quién tiene acceso.
 
 from __future__ import annotations
 
-import hashlib
 from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
@@ -81,14 +80,25 @@ def _hoy(db: Any = None) -> date:
     return _hoy_del_cliente(db)
 
 
-def _falsear(valor: str, semilla: str) -> str:
+def _falsear(valor: str, semilla: str, campo: str = "") -> str:
     """Valor falso **estable dentro del entorno y distinto entre entornos**.
 
     Estable, porque si «Ana Pérez» sale distinta en dos tablas el entorno no sirve
     para probar nada que cruce datos. Y distinta entre entornos, porque si fuera
     igual en todos, cruzando dos entornos se podría deshacer la anonimización.
+
+    **Conserva la forma del campo**, y eso es lo que decide si el entorno sirve.
+    Antes devolvía dieciséis caracteres hexadecimales para todo: un correo
+    anonimizado no era un correo, así que ninguna pantalla con validación de
+    correo funcionaba en pruebas y cualquier envío de prueba fallaba por formato.
+    La pieza que lo resuelve —`seudonimo` con la forma adivinada por el nombre
+    del campo— estaba escrita en `crmcore.seguridad.anonimizar` y **no la
+    llamaba nadie**: dos implementaciones de la misma regla, y la que se usaba
+    era la peor.
     """
-    return hashlib.sha256(f"{semilla}:{valor}".encode()).hexdigest()[:16]
+    from crmcore.seguridad import anonimizar as anon
+
+    return str(anon.seudonimo(valor, sal=semilla, forma=anon.forma_de(campo)))
 
 
 def plan_de_copia(
@@ -184,7 +194,7 @@ def anonimizar_fila(
         elif regla == "tal_cual":
             salida[campo] = valor
         else:
-            salida[campo] = _falsear(str(valor), semilla)
+            salida[campo] = _falsear(str(valor), semilla, campo)
 
     return {"fila": salida, "avisos": avisos}
 

@@ -32,7 +32,7 @@ producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`�
 para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
 `crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
 nadie**, y la primera medida solo delataba seis. Así que se mira también qué
-módulos de producción no importa ningún otro: diecisiete.
+módulos de producción no importa ningún otro: catorce.
 """
 
 from __future__ import annotations
@@ -173,7 +173,16 @@ CARPETAS = (
 #                   «¿por qué pone esto aquí?» contestaba nada y «qué valores
 #                   llevan sin confirmarse» contestaba que ninguno. Las dos
 #                   respuestas son las que saldrían si todo estuviera al día.
-TOPE = 48
+#   05-10-2026  44  Seguridad del dato: la MARCA DE ORIGEN no la ponía nadie,
+#                   así que la salida de datos más grande del producto —la
+#                   exportación de un tenant— salía sin marcar. La búsqueda de
+#                   tarjetas coladas por texto libre tampoco corría, y un campo
+#                   de notas con una dentro mete al sistema en el alcance de PCI
+#                   igual que una columna dedicada. Y del anonimizado había DOS
+#                   implementaciones: la que se usaba devolvía hexadecimal para
+#                   todo, así que un correo anonimizado no era un correo y
+#                   ninguna pantalla con validación funcionaba en pruebas.
+TOPE = 44
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -345,7 +354,7 @@ SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
 }
 
 # Medido el 05-10-2026. Baja o se queda, nunca sube.
-TOPE_MODULOS = 17
+TOPE_MODULOS = 14
 
 
 def _modulo_de(fichero: Path) -> str:

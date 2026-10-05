@@ -429,6 +429,41 @@ def validar_y_anotar(
     estadística con huecos lleva a retirar algo que sí se usaba.
     """
     salida = validar(db, tenant_id, objeto, valores, parcial=parcial)
+
+    # Y se mira si viene un número de tarjeta colado sin tokenizar
+    # (CRM-00.05.03.04). El caso real no es que alguien decida guardar tarjetas:
+    # es que un integrador manda el número en un campo de texto libre —«forma de
+    # pago: 4111…»— y ahí se queda. Un campo de notas con una tarjeta dentro
+    # mete al sistema entero en el alcance de PCI igual que una columna
+    # dedicada, y el día que se descubre ya lleva meses dentro.
+    #
+    # Va aquí porque es **el** camino de escritura de los campos del tenant: en
+    # cada servicio por su cuenta sería «funciona en los que alguien se acordó».
+    # La comprobación existía y no la llamaba nadie.
+    from crmcore.security.tokenizacion import comprobar_no_hay_numeros, hay_boveda
+
+    sospechosos = comprobar_no_hay_numeros(salida)
+    if sospechosos:
+        from crmcore.errors import ErrorValidacion
+
+        raise ErrorValidacion(
+            f"Estos campos traen lo que parece un número de tarjeta: "
+            f"{', '.join(sospechosos)}. No se guarda en claro: un campo de texto "
+            "con una tarjeta dentro mete al sistema en el alcance igual que una "
+            "columna dedicada."
+            + (
+                " Hay bóveda configurada: tokenízalo antes de guardarlo."
+                if hay_boveda()
+                # Decirlo cambia qué tiene que hacer quien lo lee: con bóveda es
+                # un paso que falta, sin ella es que el dato no puede entrar
+                # aquí de ninguna forma.
+                else " Este despliegue no tiene bóveda, así que ese dato no puede "
+                "entrar: va en el sistema de pagos, no en el CRM."
+            ),
+            error_code="tokenizacion.numero_en_claro",
+            detalle={"campos": sospechosos, "hay_boveda": hay_boveda()},
+        )
+
     anotar_uso(db, tenant_id, objeto, salida)
     return salida
 

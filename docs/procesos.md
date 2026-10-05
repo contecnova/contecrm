@@ -95,6 +95,7 @@ stateDiagram-v2
 | `POST /api/v1/residencia/subprocesadores/{subprocesador_id}/archivar` | Archivar subprocesadores | subprocesador_id* | 200, 422 | — |
 | `POST /api/v1/residencia/subprocesadores/{tenant_id}/{clave}/comunicado` | Marcar que se le ha comunicado al cliente | tenant_id*, clave* | 200, 422 | — |
 | `POST /api/v1/residencia/transferencias` | Anotar una salida de datos fuera de su región | tenant_id*, tipo_dato, hacia_region*, desde_region, subprocesador, motivo | 201, 422 | — |
+| `POST /api/v1/sandboxes/anonimizar` | Aplicar la anonimización a estas filas | entorno*, filas, reglas | 200, 422 | — |
 | `POST /api/v1/sandboxes/caducados` | Qué entornos hay que refrescar o apagar | sandboxes | 200, 422 | — |
 | `POST /api/v1/sandboxes/plan` | Preparar una copia a un entorno que no es producción | proposito*, porcentaje, anonimizar, motivo_sin_anonimizar | 200, 422 | — |
 | `POST /api/v1/sandboxes/reglas` | Comprobar que toda columna personal tiene decidido su tratamiento | campos_personales, reglas | 200, 422 | — |
