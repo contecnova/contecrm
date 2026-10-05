@@ -725,6 +725,56 @@ filtro es por cuenta y sin ella el portal entra bien y sale vacío, que se lee
 como «no tengo casos» y no como «el acceso está mal dado». La cuenta la pone
 quien crea el acceso porque el contacto vive en otro servicio.
 
+### 3.6.1 El cuadro incrustado fuera, y en nombre de quién se ejecuta
+
+Mismo problema que el portal y misma forma de resolverlo, así que conviene
+leerlos seguidos. La ruta del embebido exigía **sesión del CRM**, de modo que un
+cuadro no se podía incrustar en la aplicación de un cliente sin repartir
+credenciales de empleado entre sus usuarios. Y lo que devolvía era el
+identificador del cuadro: los datos los pedía después quien miraba, con sus
+propios permisos, así que el `actua_como` del enlace no acotaba nada.
+
+**Dos puertas, porque el secreto no puede llegar al navegador.**
+
+1. `POST /api/v1/cuadros-mando/embebidos/abrir` — la llama el **servidor** de la
+   aplicación anfitriona con el secreto del enlace, y recibe un ticket corto. Se
+   resuelve con `sesion(sistema=True)` y busca el enlace por el hash de su
+   secreto **sin tenant**: quien incrusta el cuadro no sabe de qué organización
+   es —averiguarlo es justo lo que está pidiendo—, igual que el canje del enlace
+   de portal y que la validación de una clave de API.
+2. `GET /api/v1/cuadros-mando/embebido` y
+   `POST /api/v1/cuadros-mando/embebido/datos` — las llama la página incrustada
+   con el ticket en `Authorization: Bearer`. El tenant lo fija el mecanismo de
+   siempre, así que estas rutas no montan uno paralelo.
+
+**El ticket**, como el del portal y por lo mismo:
+
+- **No lleva permisos.** Sin ellos no pasa ninguna ruta del CRM, y la puerta se
+  cierra sola en vez de depender de que nadie monte una ruta sin `exige_permiso`.
+- **Los roles van bajo `alcance_roles`, no bajo `roles`.** En `roles` los
+  recogería el principal del CRM y este ticket influiría en cualquier ruta que
+  acote por rol. Solo los lee la dependencia del embebido.
+- **Un token de empleado no vale.** Con él, el embebido se ejecutaría con el
+  alcance de quien lo trajera, que es exactamente el agujero que esto cierra.
+- **Dura lo que diga el enlace** (`minutos_validez`), y se renueva pidiendo otro
+  desde el servidor del anfitrión.
+
+**De dónde sale el alcance.** `analytics` no puede leer la tabla de usuarios —los
+permisos de Postgres se lo impiden— así que lo pregunta:
+`GET /interno/usuarios/{tenant_id}/{usuario_id}/alcance` en `identity`, detrás de
+la firma interna y fuera del contrato público. Devuelve roles y permisos como un
+**dato, nunca un token**: con una credencial, quien pregunta podría hacer mucho
+más que ejecutar un informe acotado, y viajaría por la red interna. Hay la
+variante `.../por-correo/{correo}/alcance` porque el sujeto que afirma el
+anfitrión es un correo: el identificador que esa persona tiene aquí no lo conoce.
+
+**El SSO del anfitrión se federa, no se cree.** El campo `sujeto` dice *quién*
+mira; *qué puede ver* se resuelve aquí contra las membresías. Y con qué alcance
+se calcula el cuadro es una decisión **declarada** en el enlace (`modo_alcance`),
+no un valor por omisión escondido: `enlace` lo calcula con el de quien lo montó
+—el tope que el enlace ya prometía— y `quien_mira` con el de esa persona, y
+entonces sin sujeto no se sirve.
+
 ### 3.7 La cola de duplicados
 
 `party/cola_duplicados.py`. El que puntúa es

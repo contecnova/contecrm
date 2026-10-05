@@ -150,6 +150,7 @@ stateDiagram-v2
 | `PUT /api/v1/politicas-acceso/{nombre}` | Crear o cambiar una política | nombre*, nombre*, objeto*, acciones*, condiciones, combinacion, prioridad, alcance, campos, activa, descripcion | 200, 422 | — |
 | `DELETE /api/v1/politicas-acceso/{nombre}` | Quitar una política | nombre* | 204, 422 | — |
 | `POST /api/v1/proveedores-identidad` | Configurar un proveedor de identidad | nombre*, tipo*, dominio_email, config, mapeo_roles, jit_provisioning, activo | 201, 422 | — |
+| `POST /api/v1/proveedores-identidad/perfiles/descubrir` | Construir el perfil de un proveedor leyéndoselo a él | issuer_url* | 200, 422 | — |
 | `POST /api/v1/proveedores-identidad/perfiles/{clave}/resolver` | Resolver un perfil con los ajustes del cliente encima | clave*, campo_email, campo_nombre, campo_grupos | 200, 422 | — |
 | `PATCH /api/v1/proveedores-identidad/{proveedor_id}` | Editar proveedores de identidad | proveedor_id*, nombre, tipo, activo, dominio_email, config, mapeo_roles, jit_provisioning, dominios, permite_idp_initiated, acr_con_mfa, certificados | 200, 422 | — |
 | `DELETE /api/v1/proveedores-identidad/{proveedor_id}` | Borrar proveedores de identidad | proveedor_id* | 204, 422 | — |
@@ -768,8 +769,10 @@ stateDiagram-v2
 | `POST /api/v1/cuadros-mando/alertas/comprobar` | Ejecutar las alertas activas | — | 200, 422 | `dashboard.alert.cleared`, `dashboard.alert.fired` |
 | `POST /api/v1/cuadros-mando/aplicar-filtros` | Pasar los filtros del cuadro a sus componentes | componentes*, filtros | 200, 422 | — |
 | `POST /api/v1/cuadros-mando/detalle` | A qué lista lleva pulsar un punto | componente*, punto, filtros | 200, 422 | — |
-| `POST /api/v1/cuadros-mando/embebidos` | Habilitar un cuadro para incrustarlo fuera | cuadro_id*, dominios*, nombre, minutos_validez | 201, 422 | — |
-| `PATCH /api/v1/cuadros-mando/embebidos/{enlace_embebido_id}` | Editar enlaces embebidos | enlace_embebido_id*, cuadro_id, nombre, hash_secreto, dominios, actua_como_id, minutos_validez, activo, ultimo_uso_at, usos | 200, 422 | — |
+| `POST /api/v1/cuadros-mando/embebido/datos` | Los datos de un componente del cuadro incrustado | indice, filtros | 200, 422 | — |
+| `POST /api/v1/cuadros-mando/embebidos` | Habilitar un cuadro para incrustarlo fuera | cuadro_id*, dominios*, nombre, minutos_validez, modo_alcance | 201, 422 | — |
+| `POST /api/v1/cuadros-mando/embebidos/abrir` | Cambiar el secreto del enlace por un ticket corto | secreto*, sujeto | 200, 422 | — |
+| `PATCH /api/v1/cuadros-mando/embebidos/{enlace_embebido_id}` | Editar enlaces embebidos | enlace_embebido_id*, cuadro_id, nombre, hash_secreto, dominios, actua_como_id, modo_alcance, minutos_validez, activo, ultimo_uso_at, usos | 200, 422 | — |
 | `DELETE /api/v1/cuadros-mando/embebidos/{enlace_embebido_id}` | Borrar enlaces embebidos | enlace_embebido_id* | 204, 422 | — |
 | `POST /api/v1/cuadros-mando/embebidos/{enlace_embebido_id}/archivar` | Archivar enlaces embebidos | enlace_embebido_id* | 200, 422 | — |
 | `POST /api/v1/cuadros-mando/embebidos/{enlace_id}/revocar` | Revocar un enlace embebido | enlace_id* | 200, 422 | — |

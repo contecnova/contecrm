@@ -1145,6 +1145,64 @@ def licencias(db: DbDep, principal: AutenticadoDep) -> Any:
     }
 
 
+# ── Alcance de una persona, entre servicios ───────────────────────────────
+#
+# Existe para poder ejecutar algo **en nombre de** alguien que no está delante.
+# El caso que lo pide es el cuadro embebido en la intranet del cliente: el
+# enlace dice a quién representa y hasta ahora ese «actúa como» se guardaba, se
+# devolvía y **no lo aplicaba nadie**, porque `analytics` no tenía forma de
+# saber con qué roles mira esa persona. Los servicios no se leen la base entre
+# ellos —los permisos de Postgres se lo impiden—, así que se pregunta.
+
+router_interno_usuarios = APIRouter(prefix="/interno/usuarios", tags=["interno"])
+
+
+@router_interno_usuarios.get(
+    "/{tenant_id}/{usuario_id}/alcance",
+    response_model=dict,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Con qué roles y permisos mira esta persona (interno)",
+)
+def alcance_de(tenant_id: UUID, usuario_id: UUID) -> Any:
+    """Roles y permisos de una persona en un tenant, para otro servicio.
+
+    **No emite sesión ni token.** Devuelve el alcance como un dato, que es lo
+    que necesita quien va a ejecutar una consulta acotada; una credencial
+    permitiría mucho más que eso y viajaría por la red interna.
+
+    Fuera del contrato público y detrás de la firma interna: con ella ya se
+    podría preguntar por cualquiera, así que lo que la protege es el secreto
+    compartido, no un permiso.
+
+    Sesión de sistema porque la pregunta la hace un servicio, no alguien dentro
+    del tenant.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return svc.alcance_de_usuario(db, usuario_id, tenant_id)
+
+
+@router_interno_usuarios.get(
+    "/{tenant_id}/por-correo/{correo}/alcance",
+    response_model=dict,
+    dependencies=[Depends(exige_firma_interna)],
+    include_in_schema=False,
+    summary="Lo mismo, partiendo del correo (interno)",
+)
+def alcance_por_correo_de(tenant_id: UUID, correo: str) -> Any:
+    """Es la forma en que llega un sujeto desde fuera.
+
+    La aplicación anfitriona ya autenticó a esa persona con su propio SSO, y lo
+    que sabe de ella es su correo: el identificador que tiene aquí no lo conoce.
+    """
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return svc.alcance_por_correo(db, correo, tenant_id)
+
+
 from services.identity.api_factores import ROUTERS_FACTORES  # noqa: E402
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
 from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
@@ -1152,6 +1210,7 @@ from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
 
 ROUTERS = [
     router_auth,
+    router_interno_usuarios,
     router_usuarios,
     router_roles,
     router_sesiones,

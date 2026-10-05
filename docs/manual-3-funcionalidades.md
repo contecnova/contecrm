@@ -8128,19 +8128,49 @@ El enlace **declara a qué persona representa** y se dice cuál. El secreto se
 devuelve una vez y en la base queda su hash; revocar no borra, porque el uso
 queda en el histórico.
 
-**Lo que ese «actúa como» hace hoy, y lo que no** (medido el 04-10-2026, porque
-este párrafo prometía más de lo que hay): se guarda y se devuelve al resolver el
-enlace, y **no lo aplica nadie**. La ruta del embebido exige que quien mira
-tenga sesión en el CRM y permiso de lectura de informes, así que no hay fuga —
-nadie ve más de lo que le corresponde—. Lo que no se cumple es el tope: un
-cuadro montado por un comercial y abierto por un director enseña los datos del
-director, no los del comercial. Si lo que se quiere es que el embebido enseñe
-siempre lo mismo a todo el mundo, hace falta ejecutar la consulta **como** esa
-persona, y eso está por decidir.
+**Ese «actúa como» acota de verdad** (cerrado el 05-10-2026; hasta esa fecha
+este párrafo prometía más de lo que había). Lo que el cuadro enseña se calcula
+ejecutando sus informes con el alcance de esa persona, no con el de quien tiene
+el navegador abierto. Antes se guardaba, se devolvía al resolver el enlace y no
+lo aplicaba nadie: un cuadro montado por un comercial y abierto por un director
+enseñaba los datos del director.
 
-Y el enunciado del catálogo dice «con SSO», que tampoco es exactamente esto: el
-embebido **no autentica a quien está delante de la pantalla ajena**. Lo que
-hace es exigir que ya tenga sesión aquí, que es otra cosa.
+**Cómo se incrusta, en dos pasos.** El secreto del enlace **no llega al
+navegador**: si llegara, cualquiera que abriese las herramientas del
+desarrollador se llevaría una credencial de larga vida a ese cuadro.
+
+1. El **servidor** de la aplicación anfitriona llama a
+   `POST /api/v1/cuadros-mando/embebidos/abrir` con el secreto, y recibe un
+   **ticket corto**. No hace falta ninguna sesión del CRM: lo que autentica es
+   el secreto, que se entregó justo para esto.
+2. La **página incrustada** lleva ese ticket en `Authorization: Bearer` y pide
+   lo que pinta a `GET /api/v1/cuadros-mando/embebido` y los datos de cada
+   componente a `POST /api/v1/cuadros-mando/embebido/datos`. El ticket dura
+   minutos, sirve solo para ese cuadro y **no lleva permisos**, así que no vale
+   para ninguna otra ruta del CRM.
+
+Los datos van **componente a componente** y no de golpe: un cuadro de ocho
+servido entero tardaría lo que el más lento, y lo que se vería mientras tanto es
+una página en blanco.
+
+**El «con SSO» del enunciado**: la aplicación anfitriona ya autenticó a su
+usuario con su propio SSO, y lo dice en el campo `sujeto` al pedir el ticket.
+Ese correo **se resuelve aquí** contra las membresías de verdad — lo que el
+anfitrión afirma es *quién* mira, no *qué* puede ver—, y quien no tenga acceso a
+la organización no abre el cuadro aunque el enlace sea válido.
+
+**Con qué alcance se calcula, se declara al crear el enlace** (`modo_alcance`), y
+las dos respuestas son legítimas:
+
+| Modo | Qué enseña | Para qué sirve |
+|---|---|---|
+| `enlace` (de serie) | Lo mismo a todo el que lo abra, con el alcance de quien lo montó | El panel colgado en una intranet. El tope es lo que ve quien lo creó, nunca más |
+| `quien_mira` | Lo que vería esa persona entrando ella | Un cuadro personal dentro de otra aplicación. **Sin sujeto no se sirve**: servirlo con el del enlace sería enseñarle a alguien lo que no le toca por un campo que se olvidaron de mandar |
+
+El consumo del embebido queda marcado como `embebido` en el histórico de
+ejecuciones: sin eso, el de un panel colgado en una intranet se mezcla con el de
+la gente trabajando, y es el primer sitio donde mirar cuando el motor analítico
+se queda corto.
 
 Un secreto inexistente, revocado o de otro dominio dan **el mismo error**:
 distinguirlos le diría a quien prueba si ese cuadro existe y desde dónde se sirve.
@@ -10841,6 +10871,36 @@ Lo que **sí** cambia de verdad, y por eso se declara, es qué campo trae el cor
 y cómo llaman a los grupos: equivocarse ahí no da un error, da un usuario sin
 permisos que nadie entiende. Y un perfil desconocido **no cae al genérico en
 silencio** — caer al genérico produce exactamente ese usuario fantasma.
+
+**Un solo vocabulario, y el perfil gobierna la entrada** (cerrado el
+05-10-2026). Hasta esa fecha había tres nombres para lo mismo: el perfil decía
+`campo_email`, la configuración de SAML leía `attr_email`, y el camino de OIDC
+pedía `email` escrito en el código. O sea que declarar que el correo viene en
+`mail` no cambiaba nada en OIDC, y en SAML solo si además se escribía con el
+otro nombre. Ahora hay uno solo —`campo_email`, `campo_nombre`, `campo_grupos`—
+y el antiguo se sigue leyendo, para que ningún proveedor ya configurado deje de
+entrar el día del despliegue. Cuando falta el correo se dice **qué campo se
+esperaba y cuáles llegaron**, que es la diferencia entre arreglarlo en un minuto
+y pasar una tarde mirando el IdP.
+
+**El perfil de un proveedor concreto se lee, no se pega.** El catálogo pide
+perfiles para los proveedores del mercado por encima del genérico. Pegar aquí
+sus nombres de campo son hechos de productos ajenos que caducan sin avisar, y un
+perfil con el campo equivocado es **peor** que no tenerlo. Así que:
+
+- `POST /api/v1/idp/perfiles/descubrir` construye el perfil leyendo el
+  `/.well-known/openid-configuration` del propio emisor: sus direcciones, sus
+  alcances y los campos que ofrece. Vale para cualquier proveedor, también para
+  uno que no existiera cuando se escribió esto.
+- `GET /api/v1/idp/{id}/comprobar-perfil` contrasta lo declarado con lo que ese
+  proveedor publica de verdad, y dice qué campo declarado **no ofrece**.
+- El campo del que no publique ningún nombre conocido sale **vacío y se dice**.
+  Proponer uno «porque suele ser» es adivinar, y aquí adivinar sale como un
+  usuario que entra sin identidad utilizable o sin permisos.
+
+En SAML no hay nada equivalente que publicar, así que se dice que no es
+comprobable sin una entrada de verdad — y en la primera se dirá qué atributo
+declarado no llegó, con la lista de los que sí.
 
 ## Invitados externos con acceso acotado (`CRM-06.02.01.06`)
 

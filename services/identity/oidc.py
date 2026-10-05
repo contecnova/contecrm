@@ -80,6 +80,12 @@ class Proveedor:
     exigir_email_verificado: bool = True
     jit: bool = True
     mapeo_roles: dict[str, Any] | None = None
+    # Qué campo del token trae el correo, el nombre y los grupos, según el perfil
+    # declarado y lo que el cliente haya ajustado. Antes NO se leía: el camino de
+    # OIDC pedía `email`, `name` y `groups` escritos en el código, así que
+    # declarar que el correo viene en `mail` no cambiaba nada —y el síntoma no
+    # era un error, era un usuario que entra sin identidad utilizable—.
+    campos: dict[str, str] | None = None
 
 
 def desde_modelo(fila: Any) -> Proveedor:
@@ -90,6 +96,9 @@ def desde_modelo(fila: Any) -> Proveedor:
     volcado de proceso.
     """
     from crmcore.security.cifrado import descifrar
+
+    # Local: `sso` importa de aquí, así que a nivel de módulo sería un ciclo.
+    from services.identity import sso
 
     config = dict(fila.config or {})
     # `descifrar` es idempotente: devuelve tal cual lo que no lleva la marca,
@@ -117,6 +126,7 @@ def desde_modelo(fila: Any) -> Proveedor:
         exigir_email_verificado=bool(config.get("exigir_email_verificado", True)),
         jit=bool(fila.jit_provisioning),
         mapeo_roles=dict(fila.mapeo_roles or {}),
+        campos=sso.campos_declarados(config, str(fila.tipo or "oidc")),
     )
 
 
@@ -464,7 +474,100 @@ def verificar_id_token(
     return dict(claims)
 
 
-def grupos_de(claims: dict[str, Any], userinfo: dict[str, Any] | None = None) -> list[str]:
+def descubrir_de(issuer_url: str) -> dict[str, Any]:
+    """Lee el documento de descubrimiento de un emisor **antes de darlo de alta**.
+
+    Sin esto, configurar un proveedor nuevo es copiar cuatro URLs a mano de una
+    documentación ajena, y el primer intento de entrada es donde se descubre
+    cuál se copió mal. Aquí se le pregunta a él.
+
+    Va por `cliente_seguro` y `exigir`, como el resto de las llamadas salientes:
+    una URL que llega de un formulario y se pide sin más es por donde se lee la
+    red interna desde fuera.
+    """
+    from crmcore.red import cliente_seguro, exigir
+
+    url = f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
+    exigir(url)
+    try:
+        with cliente_seguro(timeout=10.0) as cli:
+            respuesta = cli.get(url)
+            respuesta.raise_for_status()
+            documento = dict(respuesta.json())
+    except Exception as exc:  # noqa: BLE001 — httpx lanza varias clases
+        raise ErrorDependencia(
+            "No se ha podido leer la configuración de ese emisor",
+            error_code="oidc.descubrimiento_fallido",
+            detalle={"url": url, "error": str(exc)[:200]},
+        ) from exc
+    if "issuer" not in documento:
+        raise ErrorDependencia(
+            "Eso no es un emisor OIDC: no declara su «issuer»",
+            error_code="oidc.descubrimiento_sin_issuer",
+            detalle={"url": url},
+        )
+    return documento
+
+
+def claims_publicados(proveedor: Proveedor) -> list[str]:
+    """Qué campos dice el proveedor que ofrece, leídos de él.
+
+    De aquí sale la comprobación de un perfil, y no de un manual: `claims_supported`
+    lo publica el propio proveedor en su documento de descubrimiento. Es opcional
+    en la norma, así que una lista vacía quiere decir «no lo publica», no
+    «ninguno».
+    """
+    documento = _descubrir(proveedor)
+    return [str(c) for c in (documento.get("claims_supported") or [])]
+
+
+def identidad_de(
+    proveedor: Proveedor, claims: dict[str, Any], userinfo: dict[str, Any] | None = None
+) -> tuple[str, str, list[str]]:
+    """Correo, nombre y grupos **según los campos declarados** del proveedor.
+
+    Esto era lo que faltaba para que un perfil declarado sirviera de algo. Antes
+    se pedía `email`, `name` y `groups` escritos aquí, de modo que el perfil era
+    un dato que se guardaba y no gobernaba ninguna entrada.
+
+    Se prueban también los nombres habituales **después** del declarado, por lo
+    mismo que en SAML: no hay un nombre único y varios proveedores mandan el
+    correo con otro. Lo declarado manda; lo habitual rescata.
+
+    Si no hay correo se dice **qué campo se esperaba y qué llegó**, que es la
+    diferencia entre arreglarlo en un minuto y pasar una tarde mirando el IdP.
+    """
+    campos = proveedor.campos or {}
+    fuentes = [claims, userinfo or {}]
+
+    def _primero(declarado: str, habituales: tuple[str, ...]) -> str:
+        for nombre in ([declarado] if declarado else []) + list(habituales):
+            for fuente in fuentes:
+                valor = fuente.get(nombre)
+                if valor:
+                    return str(valor)
+        return ""
+
+    correo = _primero(campos.get("campo_email", ""), ("email", "mail", "upn", "preferred_username"))
+    nombre = _primero(campos.get("campo_nombre", ""), ("name", "preferred_username", "given_name"))
+    if not correo:
+        llegaron = sorted({c for fuente in fuentes for c in fuente})
+        raise ErrorValidacion(
+            "El proveedor de identidad no ha devuelto correo, y sin él no se "
+            f"puede saber quién es esta persona. Se esperaba el campo "
+            f"«{campos.get('campo_email') or 'email'}».",
+            error_code="oidc.sin_email",
+            detalle={
+                "campo_declarado": campos.get("campo_email") or "email",
+                "campos_recibidos": llegaron[:30],
+            },
+        )
+    return correo, nombre, grupos_de(claims, userinfo, declarado=campos.get("campo_grupos", ""))
+
+
+def grupos_de(
+    claims: dict[str, Any], userinfo: dict[str, Any] | None = None, *, declarado: str = ""
+) -> list[str]:
     """Grupos del usuario, mirando los nombres de claim que usan los IdP reales.
 
     Se miran varios nombres porque no hay uno estándar: `groups` es lo habitual,
@@ -472,8 +575,9 @@ def grupos_de(claims: dict[str, Any], userinfo: dict[str, Any] | None = None) ->
     no en el token, para no hacerlo crecer.
     """
     salida: list[str] = []
+    habituales = ("groups", "roles", "memberOf")
     for fuente in (claims, userinfo or {}):
-        for nombre in ("groups", "roles", "memberOf"):
+        for nombre in ([declarado] if declarado else []) + list(habituales):
             valor = fuente.get(nombre)
             if isinstance(valor, str):
                 salida.extend(v.strip() for v in valor.split(",") if v.strip())

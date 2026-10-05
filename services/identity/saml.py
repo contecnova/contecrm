@@ -277,27 +277,36 @@ def procesar_respuesta(
         )
 
     atributos = auth.get_attributes() or {}
+    # Un solo vocabulario con el perfil y con OIDC. `attr_*` era el nombre de
+    # aquí y `campo_*` el del perfil, así que un perfil declarado no gobernaba
+    # esta entrada; `campos_declarados` lee los dos y el antiguo sigue valiendo.
+    from services.identity.sso import campos_declarados
+
+    campos = campos_declarados(config, "saml")
     correo = _primero(
         atributos,
-        config.get("attr_email"),
+        campos.get("campo_email"),
         ("email", "mail", "emailAddress", "urn:oid:0.9.2342.19200300.100.1.3"),
     ) or (auth.get_nameid() or "")
     nombre = (
         _primero(
             atributos,
-            config.get("attr_nombre"),
+            campos.get("campo_nombre"),
             ("displayName", "name", "cn", "urn:oid:2.16.840.1.113730.3.1.241"),
         )
         or ""
     )
-    grupos = _lista(atributos, config.get("attr_grupos"), ("groups", "memberOf", "Role"))
+    grupos = _lista(atributos, campos.get("campo_grupos"), ("groups", "memberOf", "Role"))
 
     if not correo or "@" not in correo:
         raise ErrorValidacion(
             "La aserción no trae un correo con el que identificar a la persona. "
-            "Configura qué atributo lo lleva en «attr_email».",
+            f"Se esperaba el atributo «{campos.get('campo_email') or 'email'}».",
             error_code="saml.sin_email",
-            detalle={"atributos_recibidos": sorted(atributos)[:30]},
+            detalle={
+                "campo_declarado": campos.get("campo_email") or "email",
+                "atributos_recibidos": sorted(atributos)[:30],
+            },
         )
     contexto = {
         "session_index": str(auth.get_session_index() or ""),

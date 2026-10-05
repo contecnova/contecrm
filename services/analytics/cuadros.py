@@ -184,6 +184,26 @@ class EnlaceEmbebido(Base, TimestampMixin, SoftDeleteMixin):
     # embebido no autentica a quien está delante de la pantalla ajena, así que se
     # fija a quién representa y se dice.
     actua_como_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    # Con qué alcance se ejecuta lo que el cuadro enseña. **Se declara, no se
+    # adivina**, porque las dos respuestas son legítimas y tienen consecuencias
+    # opuestas:
+    #
+    #   `enlace`      — con el de `actua_como_id`. El cuadro enseña lo mismo a
+    #                   todo el que lo abra, que es lo que se quiere de un panel
+    #                   colgado en una intranet. El tope es lo que ve quien lo
+    #                   montó, nunca más.
+    #   `quien_mira`  — con el de la persona que la aplicación anfitriona dice
+    #                   que está delante. Exige que lo diga; sin sujeto no se
+    #                   sirve. Nadie ve nada que no vería entrando él.
+    #
+    # Por defecto `enlace`, que es el comportamiento que el enlace ya prometía.
+    modo_alcance: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="enlace",
+        server_default=text("'enlace'"),
+        info={"opciones": ("enlace", "quien_mira")},
+    )
     minutos_validez: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     ultimo_uso_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -534,6 +554,7 @@ def crear_embebido(
     dominios: list[str],
     nombre: str = "",
     minutos_validez: int = 10,
+    modo_alcance: str = "enlace",
 ) -> tuple[EnlaceEmbebido, str]:
     """Habilita un cuadro para incrustarlo fuera, y devuelve su secreto una vez.
 
@@ -541,16 +562,25 @@ def crear_embebido(
     significa que no se sirve, porque un cuadro embebible desde cualquier parte es
     un cuadro público, y lo normal es que el cuadro traiga cifras de negocio.
 
-    El enlace **actúa como una persona concreta** y se dice cuál. El embebido no
-    autentica a quien está delante de la pantalla ajena, así que fijar a quién
-    representa es lo que impide que un cuadro incrustado enseñe más de lo que ve
-    quien lo montó.
+    El enlace **actúa como una persona concreta** y se dice cuál. Con
+    `modo_alcance="enlace"` —el de serie— lo que el cuadro enseña se calcula con
+    el alcance de esa persona, y eso es lo que impide que un cuadro incrustado
+    enseñe más de lo que ve quien lo montó. Con `"quien_mira"` se calcula con el
+    de la persona que la aplicación anfitriona diga que está delante, y entonces
+    nadie ve nada que no vería entrando él.
     """
     if not dominios:
         raise ErrorValidacion(
             "Hace falta decir desde qué dominios se puede incrustar: un cuadro "
             "embebible desde cualquier sitio es un cuadro público.",
             error_code="cuadro.embebido_sin_dominios",
+        )
+    if modo_alcance not in MODOS_ALCANCE:
+        raise ErrorValidacion(
+            f"El modo de alcance «{modo_alcance}» no existe. Los que hay son "
+            f"{sorted(MODOS_ALCANCE)}.",
+            error_code="cuadro.embebido_modo_desconocido",
+            detalle={"modos": sorted(MODOS_ALCANCE)},
         )
     secreto = secrets.token_urlsafe(32)
     fila = EnlaceEmbebido(
@@ -561,6 +591,7 @@ def crear_embebido(
         dominios=[d.strip().lower() for d in dominios if d.strip()],
         actua_como_id=actua_como_id,
         minutos_validez=minutos_validez,
+        modo_alcance=modo_alcance,
     )
     uow.db.add(fila)
     uow.db.flush()
@@ -568,24 +599,30 @@ def crear_embebido(
 
 
 def resolver_embebido(
-    db: Session, tenant_id: UUID, secreto: str, *, origen: str = ""
+    db: Session, tenant_id: UUID | None, secreto: str, *, origen: str = ""
 ) -> EnlaceEmbebido:
     """Comprueba el secreto y el dominio desde el que se incrusta.
 
     Un secreto inexistente, desactivado o de otro dominio dan **el mismo error**:
     distinguirlos le diría a quien prueba si ese cuadro existe y desde dónde se
     sirve.
+
+    `tenant_id` puede ser `None`, y entonces el enlace se busca **solo por el
+    hash del secreto**, que es único en toda la instalación. Hace falta para la
+    puerta de entrada: la aplicación que incrusta el cuadro no tiene sesión aquí
+    y no sabe de qué organización es el enlace —averiguarlo es justo lo que está
+    pidiendo—, igual que pasa con el inicio de sesión y con la validación de una
+    clave de API. Quien llama con `None` tiene que abrir sesión de sistema; con
+    una de tenant, la RLS no lo encontraría nunca.
     """
     invalido = NoAutenticado(
         "Ese cuadro no se puede mostrar aquí.",
         error_code="cuadro.embebido_invalido",
     )
-    fila = db.execute(
-        select(EnlaceEmbebido).where(
-            EnlaceEmbebido.tenant_id == tenant_id,
-            EnlaceEmbebido.hash_secreto == _hash(secreto),
-        )
-    ).scalar_one_or_none()
+    condiciones = [EnlaceEmbebido.hash_secreto == _hash(secreto)]
+    if tenant_id is not None:
+        condiciones.append(EnlaceEmbebido.tenant_id == tenant_id)
+    fila = db.execute(select(EnlaceEmbebido).where(*condiciones)).scalar_one_or_none()
     if fila is None or not fila.activo:
         raise invalido
 
@@ -616,6 +653,257 @@ def revocar_embebido(uow: UnidadDeTrabajo, enlace_id: UUID) -> dict[str, Any]:
     fila.activo = False
     uow.db.flush()
     return {"enlace_id": str(fila.id), "usos": fila.usos}
+
+
+# ── Lo que el embebido ejecuta, y en nombre de quién ──────────────────────
+#
+# Esto es lo que faltaba. El enlace guardaba un `actua_como_id`, lo devolvía al
+# cliente y **no lo aplicaba nadie**: la consulta la hacía quien miraba, con sus
+# propios permisos y con su sesión del CRM. Dos consecuencias, y ninguna era la
+# prometida:
+#
+#   * Un cuadro montado por un comercial y abierto por un director enseñaba lo
+#     del director. No había fuga —hacía falta sesión y permiso de lectura— pero
+#     tampoco había tope, y el tope era justo lo que el enlace decía tener.
+#   * Y hacía falta sesión **del CRM**, así que no servía para lo que dice el
+#     enunciado: incrustarlo en una aplicación de fuera. Quien lo intentaba
+#     tenía que repartir credenciales del CRM entre sus usuarios.
+#
+# Se resuelve con dos puertas en vez de una, que es como se hace esto en todas
+# partes y por un motivo: **el secreto del enlace no puede llegar al navegador**.
+#
+#   1. El servidor de la aplicación anfitriona —que ya autenticó a su usuario
+#      con su propio SSO— cambia el secreto por un **ticket corto**, y de paso
+#      dice quién está mirando.
+#   2. La página incrustada lleva el ticket, no el secreto. Dura minutos, sirve
+#      solo para este enlace y no vale para ninguna otra ruta del CRM.
+#
+# El ticket NO lleva permisos, igual que el del portal y por lo mismo: sin
+# permisos no pasa ninguna ruta del CRM, así que la puerta se cierra sola en vez
+# de depender de que nadie monte una ruta sin `exige_permiso`.
+
+MODOS_ALCANCE = ("enlace", "quien_mira")
+
+TIPO_TICKET = "embebido"
+
+
+def _alcance(
+    tenant_id: UUID, *, usuario_id: UUID | None = None, correo: str = ""
+) -> dict[str, Any]:
+    """Con qué roles mira una persona, preguntado a identity.
+
+    No se lee su tabla: los permisos de Postgres no lo permiten, y ese es el
+    punto. Se pregunta por HTTP firmado, como ya hace el gateway para resolver
+    el slug de un tenant.
+    """
+    from crmcore.http.interno import pedir
+
+    cola = f"por-correo/{correo}/alcance" if correo else f"{usuario_id}/alcance"
+    datos = pedir("identity", f"/api/v1/interno/usuarios/{tenant_id}/{cola}")
+    if datos is None:
+        raise NoAutenticado(
+            "Ese cuadro no se puede mostrar aquí.",
+            error_code="cuadro.embebido_invalido",
+        )
+    return datos
+
+
+def abrir_embebido(
+    db: Session, *, secreto: str, origen: str = "", sujeto: str = ""
+) -> dict[str, Any]:
+    """Cambia el secreto del enlace por un ticket corto. **Es la puerta de entrada.**
+
+    La llama el servidor de la aplicación anfitriona, no el navegador: si el
+    secreto llegara al navegador, cualquiera que abriese las herramientas del
+    desarrollador se llevaría una credencial de larga vida a ese cuadro.
+
+    `sujeto` es el correo de quien está mirando, según el SSO de la aplicación
+    anfitriona. Lo que se hace con él depende de cómo se declaró el enlace:
+
+    * `modo_alcance="enlace"`: se comprueba que esa persona tiene acceso a esta
+      organización y se **anota**, pero el cuadro se calcula con el alcance de
+      `actua_como_id`. Es el panel colgado en la intranet: lo mismo para todos,
+      y nunca más de lo que ve quien lo montó. Sin sujeto también sirve.
+    * `modo_alcance="quien_mira"`: el cuadro se calcula con el alcance de esa
+      persona. **Sin sujeto no se sirve**, porque servirlo con el del enlace
+      sería enseñarle a alguien lo que no le toca por un campo que se olvidaron
+      de mandar.
+
+    Lo que esta función **no** hace es creerse al anfitrión sobre los permisos:
+    el sujeto se resuelve aquí contra las membresías de verdad. Lo que el
+    anfitrión afirma es *quién* mira, no *qué* puede ver.
+    """
+    fila = resolver_embebido(db, None, secreto, origen=origen)
+
+    correo = sujeto.strip().lower()
+    if fila.modo_alcance == "quien_mira" and not correo:
+        raise NoAutenticado(
+            "Este cuadro se sirve con el alcance de quien lo mira, y no se ha " "dicho quién mira.",
+            error_code="cuadro.embebido_sin_sujeto",
+        )
+
+    del_enlace = _alcance(fila.tenant_id, usuario_id=fila.actua_como_id)
+    efectivo = del_enlace
+    if correo:
+        # Se resuelve SIEMPRE, incluso en modo `enlace`: un sujeto que no tiene
+        # acceso a esta organización no mira un cuadro suyo, aunque el alcance
+        # con el que se calcule no sea el de él. Y queda anotado, que es lo que
+        # convierte «alguien de la intranet» en una línea de auditoría.
+        del_sujeto = _alcance(fila.tenant_id, correo=correo)
+        if fila.modo_alcance == "quien_mira":
+            efectivo = del_sujeto
+
+    logger.info(
+        "cuadro.embebido_abierto",
+        enlace=str(fila.id),
+        cuadro=str(fila.cuadro_id),
+        modo=fila.modo_alcance,
+        sujeto=correo or "(sin sujeto)",
+        actua_como=str(efectivo["usuario_id"]),
+    )
+    ticket, segundos = _emitir_ticket(fila, efectivo)
+    return {
+        "ticket": ticket,
+        "segundos": segundos,
+        "cuadro_id": str(fila.cuadro_id),
+        "modo_alcance": fila.modo_alcance,
+        "actua_como": str(efectivo["usuario_id"]),
+    }
+
+
+def _emitir_ticket(fila: EnlaceEmbebido, alcance: dict[str, Any]) -> tuple[str, int]:
+    """El ticket con el que la página incrustada pide los datos.
+
+    Lleva el alcance ya resuelto bajo `alcance_roles` y **no bajo `roles`**: en
+    `roles` lo recogería el principal del CRM, y entonces este ticket influiría
+    en cualquier ruta que acote por rol. Aquí solo lo lee la dependencia del
+    embebido, que es la única que tiene que verlo.
+
+    Sin `permisos`, a propósito, como el del portal: un token sin permisos no
+    pasa ninguna ruta del CRM.
+    """
+    import jwt
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    ahora = _ahora()
+    segundos = max(1, int(fila.minutos_validez)) * 60
+    carga = {
+        "sub": str(alcance["usuario_id"]),
+        "tenant": str(fila.tenant_id),
+        "tipo": TIPO_TICKET,
+        "enlace": str(fila.id),
+        "cuadro": str(fila.cuadro_id),
+        "alcance_roles": list(alcance.get("roles") or []),
+        "alcance_plataforma": bool(alcance.get("es_plataforma")),
+        "iat": int(ahora.timestamp()),
+        "exp": int((ahora + timedelta(seconds=segundos)).timestamp()),
+    }
+    return jwt.encode(carga, s.secret_key.get_secret_value(), algorithm=s.jwt_algorithm), segundos
+
+
+def leer_ticket(ticket: str) -> dict[str, Any]:
+    """Valida el ticket y devuelve en nombre de quién se ejecuta.
+
+    Un ticket caducado se distingue de uno inválido: quien lo sabe pide otro y
+    sigue, y quien recibe «no vale» cree que el enlace está roto.
+    """
+    import jwt
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    try:
+        datos = dict(
+            jwt.decode(ticket, s.secret_key.get_secret_value(), algorithms=[s.jwt_algorithm])
+        )
+    except jwt.ExpiredSignatureError:
+        raise NoAutenticado(
+            "La vista del cuadro ha caducado. Vuelve a cargarla.",
+            error_code="cuadro.embebido_ticket_caducado",
+        )
+    except jwt.InvalidTokenError:
+        raise NoAutenticado(
+            "Ese cuadro no se puede mostrar aquí.", error_code="cuadro.embebido_invalido"
+        )
+    if datos.get("tipo") != TIPO_TICKET:
+        # Un token de empleado NO vale aquí, y no es una formalidad: con él, el
+        # embebido se ejecutaría con el alcance de quien lo trajera, que es
+        # exactamente el agujero que esto cierra.
+        raise NoAutenticado(
+            "Ese cuadro no se puede mostrar aquí.", error_code="cuadro.embebido_invalido"
+        )
+    return datos
+
+
+def cuadro_del_embebido(db: Session, ticket: dict[str, Any]) -> dict[str, Any]:
+    """Qué hay que pintar: los componentes del cuadro, sin sus datos todavía.
+
+    Los datos van aparte, componente a componente: un cuadro con ocho
+    componentes que se sirviera entero tardaría lo que el más lento, y lo que se
+    vería mientras tanto es una página en blanco.
+    """
+    from services.analytics.informes import CuadroMando
+
+    cuadro = db.get(CuadroMando, UUID(str(ticket["cuadro"])))
+    if cuadro is None or not cuadro.activo or str(cuadro.tenant_id) != str(ticket["tenant"]):
+        raise NoEncontrado("Ese cuadro no existe", error_code="cuadro.no_encontrado")
+    return {
+        "cuadro_id": str(cuadro.id),
+        "nombre": cuadro.nombre,
+        "descripcion": cuadro.descripcion,
+        "componentes": list(cuadro.componentes or []),
+        "actua_como": str(ticket["sub"]),
+    }
+
+
+def datos_del_embebido(
+    uow: UnidadDeTrabajo,
+    ticket: dict[str, Any],
+    *,
+    indice: int,
+    filtros: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Ejecuta UN componente **con el alcance del ticket**.
+
+    Aquí es donde el «actúa como» deja de ser un campo guardado y pasa a acotar:
+    el informe se ejecuta con los roles de esa persona, no con los de quien
+    tiene el navegador abierto —que además ya no necesita tener sesión aquí—.
+
+    El origen queda marcado como `embebido` en el histórico de ejecuciones. Sin
+    eso, el consumo de un panel colgado en una intranet se mezclaría con el de
+    la gente trabajando, y es el primer sitio donde mirar cuando el motor
+    analítico se queda corto.
+    """
+    from services.analytics import informes as inf
+    from services.analytics.informes import CuadroMando
+
+    cuadro = uow.db.get(CuadroMando, UUID(str(ticket["cuadro"])))
+    if cuadro is None or not cuadro.activo or cuadro.tenant_id != uow.tenant_id:
+        raise NoEncontrado("Ese cuadro no existe", error_code="cuadro.no_encontrado")
+    componentes = list(cuadro.componentes or [])
+    if not 0 <= indice < len(componentes):
+        raise NoEncontrado(
+            "Ese componente no está en el cuadro", error_code="cuadro.componente_no_encontrado"
+        )
+    componente = dict(componentes[indice])
+    informe_id = componente.get("informe_id")
+    if not informe_id:
+        raise ErrorValidacion(
+            "Ese componente no apunta a ningún informe, así que no hay nada que " "ejecutar.",
+            error_code="cuadro.componente_sin_informe",
+        )
+    return {
+        "componente": componente,
+        **inf.ejecutar(
+            uow,
+            UUID(str(informe_id)),
+            roles=frozenset(str(r) for r in (ticket.get("alcance_roles") or [])),
+            es_admin=bool(ticket.get("alcance_plataforma")),
+            usuario_id=UUID(str(ticket["sub"])),
+            filtros=filtros or [],
+            origen="embebido",
+        ),
+    }
 
 
 # ── Suscripción (CRM-05.01.02.05) ─────────────────────────────────────────

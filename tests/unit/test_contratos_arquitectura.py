@@ -283,6 +283,48 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # probado en `test_captura_leads.py`, incluido que un canal de otro
         # tenant no sirve.
         "recibir_lead": "público por diseño; lo autoriza la clave del canal, no un permiso",
+        # Las dos puertas del cuadro incrustado. Exigir sesión del CRM era
+        # justamente el fallo: obligaba a repartir credenciales de empleado
+        # entre los usuarios de la aplicación que incrusta el cuadro.
+        "abrir_embebido": "la autoriza el secreto del enlace; exigir permiso sería circular",
+        # ── Lo que apareció al dejar de mirar solo `api.py` ────────────────
+        # El gate recorría `services/*/api.py` y los routers del núcleo, y los
+        # servicios tienen DIECINUEVE ficheros de rutas más (`api_sso.py`,
+        # `api_cuadros.py`, `api_factores.py`…). Medido el 05-10-2026: 26 rutas
+        # de escritura fuera del alcance del gate. Ninguna resultó ser un
+        # agujero —están abajo con su motivo, y se comprobó una a una— pero eso
+        # no se sabía, y es lo que hace falta que no vuelva a pasar: un gate que
+        # mira la cuarta parte de los ficheros da la misma luz verde que uno que
+        # los mira todos.
+        #
+        # Entrar es entrar: estas rutas son las que reparten identidad, y
+        # exigirles permiso sería tan circular como exigírselo a `login`.
+        "iniciar": "arranca el SSO; a ella se llega sin credencial, es donde se consigue",
+        "callback_oidc": "la vuelta del proveedor de identidad; lo que autoriza es el código",
+        "acs_saml": "la vuelta del proveedor SAML; lo que autoriza es la aserción firmada",
+        "sesion_portal": "el cliente canjea su enlace por su sesión; no tiene otra cosa",
+        # Lo que autoriza no es un permiso sino una credencial que viaja en el
+        # cuerpo, y se comprueba dentro.
+        "entrada": "público por diseño; lo autoriza el secreto del canal, como «recibir_lead»",
+        "entrar": "el token del enlace de portal ES la autorización; se comprueba dentro",
+        "canjear": "el token del partner ES la autorización; se comprueba dentro",
+        "datos_embebido": "la autoriza el ticket que emite «abrir_embebido»; no lleva permisos",
+        # Sobre uno mismo. La identidad de quien llama ES la autorización: pedir
+        # un permiso para que alguien gestione su propio segundo factor o cierre
+        # su propia sesión deja a quien no lo tenga sin poder protegerse.
+        "pedir_codigo": "sobre el propio segundo factor; la identidad es la autorización",
+        "comprobar_codigo": "sobre el propio segundo factor; la identidad es la autorización",
+        "revocar_dispositivo": "uno revoca sus dispositivos de confianza, no los de otro",
+        "revocar_todos": "uno revoca sus dispositivos de confianza, no los de otro",
+        "salir": "uno cierra su sesión; exigir permiso dejaría a alguien sin poder salir",
+        "cierre_unico": "uno cierra su sesión también en el proveedor de identidad",
+        "conceder": "lo concede el dueño del buzón y solo él; un permiso no lo sustituye",
+        "revocar": "uno revoca el acceso a sus propios recursos",
+        "valorar": "uno vota un artículo como uno mismo",
+        "pedir_enlace": "la pide quien atiende, y lo que da es un enlace, no acceso",
+        # No escriben, aunque el método sea POST.
+        "previsualizar": "no escribe: pinta una plantilla con los datos que trae quien pregunta",
+        "resolver_perfil": "no escribe: resuelve un perfil declarado con los ajustes del cuerpo",
     }
 
     # Los routers COMPARTIDOS del núcleo también escriben, y montarlos desde
@@ -291,7 +333,10 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
     # `services/*/api.py` era un punto ciego, y se descubrió al montar los de
     # adjuntos y comentarios: seis rutas de escritura sin permiso que el gate
     # daba por buenas.
-    ficheros = [SERVICIOS_DIR / s / "api.py" for s in SERVICIOS]
+    # TODOS los ficheros de rutas de cada servicio, no solo `api.py`: mirar uno
+    # de los veinte y dar el verde es exactamente lo que este gate existe para
+    # impedir.
+    ficheros = [f for s in SERVICIOS for f in sorted((SERVICIOS_DIR / s).glob("api*.py"))]
     ficheros += sorted((RAIZ / "packages" / "crmcore" / "crmcore" / "http").glob("*_router.py"))
 
     sin_permiso: list[str] = []
@@ -321,8 +366,13 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
                 if "exige_firma_interna" in texto:
                     continue
                 # `PlataformaDep` en los argumentos también es una comprobación
-                # declarada, y más restrictiva que cualquier permiso.
-                if "PlataformaDep" in ast.unparse(nodo.args):
+                # declarada, y más restrictiva que cualquier permiso. `PortalDep`
+                # y `TicketDep` son del mismo tipo: una identidad declarada que
+                # NO es la de un empleado y que no puede llegar a estas rutas sin
+                # haber canjeado antes su credencial. Se reconocen por estructura
+                # y no por nombre de función, por lo mismo que `exige_firma_interna`.
+                argumentos = ast.unparse(nodo.args)
+                if any(d in argumentos for d in ("PlataformaDep", "PortalDep", "TicketDep")):
                     continue
                 sin_permiso.append(f"{etiqueta}::{nodo.name}")
 

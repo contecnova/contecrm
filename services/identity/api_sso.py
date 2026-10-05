@@ -172,6 +172,101 @@ def resolver_perfil(clave: str, ajustes: AjustesPerfil, _: AutenticadoDep) -> An
     return sso.perfil_sso(clave, ajustes.model_dump(exclude_none=True))
 
 
+class Descubrir(BaseModel):
+    issuer_url: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "La URL del emisor, tal cual la da el proveedor. No hay ejemplo con "
+            "nombre de casa a propósito: de él sale lo que haya que leer, y una "
+            "lista de proveedores aquí es el principio de un módulo por cada uno"
+        ),
+    )
+
+
+@router_idp.post(
+    "/perfiles/descubrir",
+    dependencies=[Depends(exige_permiso("identity:write"))],
+    summary="Construir el perfil de un proveedor leyéndoselo a él",
+    description=(
+        "**Un perfil por proveedor, medido y no inventado.** El enunciado pide "
+        "perfiles por encima del genérico para los proveedores concretos del "
+        "mercado. Pegar aquí sus nombres de campo tiene dos problemas: son "
+        "hechos de productos ajenos que caducan sin avisar, y un perfil con el "
+        "campo equivocado es **peor** que no tenerlo — produce justo el usuario "
+        "sin permisos que los perfiles evitan.\n\n"
+        "Así que no se pegan: se leen. De `/.well-known/openid-configuration` "
+        "salen las direcciones, los alcances y los campos que ese proveedor "
+        "ofrece, y de ahí el perfil propuesto. Vale para los cinco de la lista y "
+        "para el que no existía cuando se escribió esto, sin una línea distinta "
+        "para cada uno.\n\n"
+        "Lo que **no** hace es elegir en silencio: el campo del que el proveedor "
+        "no publique ningún nombre conocido sale vacío y se dice cuál es. "
+        "Proponer uno «porque suele ser» es adivinar, y adivinar aquí sale como "
+        "un usuario que entra sin identidad utilizable.\n\n"
+        "No da de alta nada: devuelve lo que se leería, para revisarlo antes."
+    ),
+)
+def descubrir_perfil(datos: Descubrir, principal: AutenticadoDep) -> Any:
+    documento = oidc_cli.descubrir_de(datos.issuer_url)
+    propuesta = sso.proponer_perfil(
+        [str(c) for c in (documento.get("claims_supported") or [])], protocolo="oidc"
+    )
+    return {
+        "issuer": documento.get("issuer"),
+        "endpoints": {
+            clave: documento.get(clave)
+            for clave in (
+                "authorization_endpoint",
+                "token_endpoint",
+                "jwks_uri",
+                "userinfo_endpoint",
+                "end_session_endpoint",
+            )
+            if documento.get(clave)
+        },
+        "alcances": sorted(str(a) for a in (documento.get("scopes_supported") or [])),
+        **propuesta,
+    }
+
+
+@router_idp.get(
+    "/{proveedor_id}/comprobar-perfil",
+    dependencies=[Depends(exige_permiso("identity:read"))],
+    summary="Contrastar el perfil declarado con lo que el proveedor ofrece de verdad",
+    description=(
+        "**Lo pregunta al proveedor, no a un manual.** En OIDC se lee "
+        "`claims_supported` de su documento de descubrimiento, que es lo que él "
+        "mismo publica; en SAML no hay nada equivalente que publicar, así que se "
+        "dice que no es comprobable sin una entrada de verdad — y en la primera "
+        "se dirá qué atributo declarado no llegó.\n\n"
+        "Para qué sirve: declarar que el correo viene en `mail` cuando el "
+        "proveedor lo manda en `email` **no da un error**. Da un usuario que "
+        "entra sin identidad utilizable, o que entra sin grupos y por tanto sin "
+        "permisos, y nadie relaciona eso con un campo mal escrito.\n\n"
+        "Una lista vacía de campos ofrecidos no es un suspenso: publicarlos es "
+        "opcional en la norma, y decir «ninguno coincide» cuando lo que pasa es "
+        "que no hay con qué comparar mandaría a cambiar una configuración que "
+        "estaba bien."
+    ),
+)
+def comprobar_perfil(proveedor_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    fila = db.get(ProveedorIdentidad, proveedor_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Ese proveedor no existe", error_code="sso.proveedor_no_encontrado")
+
+    config = dict(fila.config or {})
+    declarado = sso.campos_declarados(config, str(fila.tipo or ""))
+    ofrecidos: list[str] = []
+    if str(fila.tipo or "").lower() == "oidc":
+        ofrecidos = oidc_cli.claims_publicados(oidc_cli.desde_modelo(fila))
+    return {
+        "proveedor": fila.nombre,
+        "tipo": fila.tipo,
+        **sso.comprobar_perfil(declarado, ofrecidos),
+    }
+
+
 @router_idp.get("", response_model=PaginaDeListado, summary="Proveedores del tenant")
 def listar(
     db: DbDep,
@@ -437,14 +532,19 @@ def _callback_oidc(datos: VueltaOIDC, uow: Any) -> Any:
     tokens = oidc_cli.canjear(proveedor, codigo=datos.code, verificador=estado.verificador)
     claims = oidc_cli.verificar_id_token(proveedor, tokens.id_token, nonce=estado.nonce)
 
+    # Por los campos DECLARADOS del proveedor y no por nombres escritos aquí.
+    # Pedir `email`, `name` y `groups` a pelo hacía que declarar un perfil no
+    # cambiara nada: el perfil se guardaba, se devolvía por su ruta y no
+    # gobernaba ninguna entrada.
+    correo, nombre, grupos = oidc_cli.identidad_de(proveedor, claims)
     usuario = sso.entrar_o_provisionar(
         uow.db,
         tenant_id=estado.tenant_id,
         proveedor=proveedor,
-        email=str(claims.get("email") or ""),
-        nombre=str(claims.get("name") or claims.get("preferred_username") or ""),
+        email=correo,
+        nombre=nombre,
         sujeto_externo=str(claims["sub"]),
-        grupos=oidc_cli.grupos_de(claims),
+        grupos=grupos,
     )
     # El IdP recalcula los roles en CADA entrada, así que el organigrama se
     # vuelve a publicar aquí: si solo se publicara al crear el usuario, quien

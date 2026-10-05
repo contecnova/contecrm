@@ -308,6 +308,60 @@ def permisos_efectivos(db: Session, usuario_id: UUID, tenant_id: UUID) -> frozen
     return frozenset(permisos)
 
 
+def alcance_de_usuario(db: Session, usuario_id: UUID, tenant_id: UUID) -> dict[str, Any]:
+    """Con qué alcance mira esta persona en este tenant, **sin emitirle sesión**.
+
+    Hace falta para ejecutar algo **en nombre de** alguien que no está delante:
+    un cuadro embebido en la intranet del cliente se sirve con el alcance de la
+    persona a la que el enlace representa, no con el de quien tiene el navegador
+    abierto. Hasta ahora no había forma de saber ese alcance desde otro
+    servicio, y por eso el «actúa como» del embebido se guardaba y no lo
+    aplicaba nadie.
+
+    Se devuelven roles **y** permisos resueltos: quien ejecuta un informe
+    necesita los roles (el informe se acota por rol) y quien decide si puede
+    enseñarlo necesita los permisos. Pedirlos en dos llamadas sería dos viajes
+    para el mismo dato de la misma persona.
+
+    Una membresía inactiva o un usuario desactivado dan **no encontrado**, no un
+    alcance vacío: un alcance vacío se leería como «no ve nada» y el cuadro
+    saldría en blanco sin decir por qué, que es justo lo que hace que se culpe a
+    los datos.
+    """
+    usuario = db.get(Usuario, usuario_id)
+    membresia = _membresia(db, usuario_id, tenant_id)
+    if usuario is None or not usuario.activo or membresia is None or not membresia.activa:
+        raise NoEncontrado(
+            "Esa persona no tiene acceso a esta organización",
+            error_code="usuario.sin_membresia_activa",
+        )
+    return {
+        "usuario_id": str(usuario_id),
+        "tenant_id": str(tenant_id),
+        "roles": [str(r) for r in (membresia.roles or [])],
+        "permisos": sorted(permisos_efectivos(db, usuario_id, tenant_id)),
+        "es_plataforma": bool(usuario.es_plataforma),
+    }
+
+
+def alcance_por_correo(db: Session, correo: str, tenant_id: UUID) -> dict[str, Any]:
+    """Lo mismo, partiendo del correo.
+
+    Es la forma en que llega un sujeto desde fuera: la aplicación anfitriona ya
+    autenticó a esa persona con su propio SSO y lo que sabe de ella es su
+    correo, no el identificador que tiene aquí.
+    """
+    usuario = db.execute(
+        select(Usuario).where(Usuario.email == correo.strip().lower())
+    ).scalar_one_or_none()
+    if usuario is None:
+        raise NoEncontrado(
+            "Esa persona no tiene acceso a esta organización",
+            error_code="usuario.sin_membresia_activa",
+        )
+    return alcance_de_usuario(db, usuario.id, tenant_id)
+
+
 # ── Sesiones y tokens ─────────────────────────────────────────────────────
 
 

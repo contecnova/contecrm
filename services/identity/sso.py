@@ -437,6 +437,143 @@ def perfil_sso(clave: str, ajustes: dict[str, Any] | None = None) -> dict[str, A
     }
 
 
+# El perfil por omisión según el protocolo. Existe porque un proveedor dado de
+# alta antes de que hubiera perfiles no tiene ninguno declarado, y lo que
+# necesita es el comportamiento de siempre, no un error en la primera entrada.
+PERFIL_POR_TIPO = {"saml": "saml_generico", "saml2": "saml_generico", "oidc": "oidc_generico"}
+
+# Cómo se llamaba esto antes en la configuración de SAML. Se sigue leyendo para
+# que los proveedores ya configurados no dejen de entrar el día del despliegue;
+# lo que no se hace es escribirlo.
+SINONIMOS_ANTIGUOS = {
+    "campo_email": "attr_email",
+    "campo_nombre": "attr_nombre",
+    "campo_grupos": "attr_grupos",
+}
+
+
+def campos_declarados(config: dict[str, Any], tipo: str = "") -> dict[str, str]:
+    """Qué campo trae el correo, el nombre y los grupos, **según la configuración**.
+
+    Existe porque los perfiles y el inicio de sesión hablaban idiomas distintos
+    y por eso no se hablaban. Medido el 05-10-2026:
+
+    * El perfil decía `campo_email`; la configuración de SAML leía `attr_email`;
+      y el camino de OIDC **no leía ninguno de los dos**: pedía `email`, `name`
+      y `groups` escritos en el código. Declarar que el correo viene en `mail`
+      no cambiaba nada, y el síntoma no era un error sino un usuario que entra
+      sin identidad utilizable.
+    * Así que un perfil declarado era un dato que se guardaba, se devolvía por
+      su ruta y no gobernaba ninguna entrada.
+
+    Un solo vocabulario, y el antiguo se sigue leyendo para que ningún proveedor
+    ya configurado deje de entrar el día del despliegue.
+    """
+    clave = str(config.get("perfil") or PERFIL_POR_TIPO.get(tipo, "oidc_generico"))
+    base = dict(PERFILES_SSO.get(clave) or PERFILES_SSO["oidc_generico"])
+    for campo, antiguo in SINONIMOS_ANTIGUOS.items():
+        valor = config.get(campo) or config.get(antiguo)
+        if valor:
+            base[campo] = str(valor)
+    return {c: str(base[c]) for c in SINONIMOS_ANTIGUOS if base.get(c)}
+
+
+def comprobar_perfil(declarado: dict[str, str], ofrecidos: list[str]) -> dict[str, Any]:
+    """Contrasta lo declarado con lo que el proveedor ofrece de verdad.
+
+    Es la diferencia entre un perfil escrito y un perfil comprobado. `ofrecidos`
+    son los nombres que el proveedor publica —`claims_supported` del documento
+    de descubrimiento en OIDC— o los que llegaron en una aserción de verdad en
+    SAML; de ahí sale la medida, y no de lo que diga un manual.
+
+    **Una lista vacía no es un suspenso.** `claims_supported` es opcional en la
+    norma y hay proveedores que no lo publican; decir «ninguno coincide» cuando
+    lo que pasa es que no hay con qué comparar sería inventarse un fallo, y el
+    siguiente paso de quien lo lea es cambiar una configuración que estaba bien.
+    """
+    if not ofrecidos:
+        return {
+            "comprobable": False,
+            "declarados": dict(declarado),
+            "no_ofrecidos": [],
+            "porque": (
+                "El proveedor no publica qué campos ofrece, así que esto no se "
+                "puede comprobar sin una entrada de verdad. Se comprobará en la "
+                "primera, y entonces se dirá qué campo declarado no llegó."
+            ),
+        }
+    tiene = set(ofrecidos)
+    faltan = sorted(c for c, nombre in declarado.items() if nombre not in tiene)
+    return {
+        "comprobable": True,
+        "declarados": dict(declarado),
+        "ofrecidos": sorted(tiene),
+        "no_ofrecidos": faltan,
+        "porque": (
+            "Lo declarado existe en el proveedor."
+            if not faltan
+            else "Estos campos están declarados y el proveedor no los ofrece. No "
+            "dará un error: dará un usuario que entra sin eso —sin correo no "
+            "encaja con ninguna cuenta, y sin grupos entra sin permisos—."
+        ),
+    }
+
+
+# Los nombres con los que los proveedores reales mandan cada cosa, en el orden
+# en que se prueban. NO es una lista de proveedores —no hay ninguna casa aquí—:
+# son los nombres de campo que existen, y se usan para proponer un perfil a
+# partir de lo que un proveedor concreto publique de sí mismo.
+NOMBRES_HABITUALES = {
+    "campo_email": ("email", "mail", "upn", "preferred_username", "emailAddress"),
+    "campo_nombre": ("name", "displayName", "cn", "given_name", "preferred_username"),
+    "campo_grupos": ("groups", "roles", "memberOf", "wids", "Role"),
+}
+
+
+def proponer_perfil(ofrecidos: list[str], *, protocolo: str = "oidc") -> dict[str, Any]:
+    """Un perfil **medido** a partir de lo que el proveedor publica de sí mismo.
+
+    Esto es lo que resuelve el encargo de tener un perfil por proveedor sin
+    escribir un módulo por casa y sin inventarse sus datos. El enunciado nombra
+    cinco proveedores concretos; sus nombres de campo son hechos de productos de
+    terceros, y pegarlos aquí a mano tiene dos problemas: no los puedo verificar
+    y caducan sin avisar. Un perfil con el campo equivocado es **peor** que no
+    tenerlo, porque produce justo el usuario sin permisos que esto evita.
+
+    Así que no se pegan: se leen. Lo que el proveedor publica en su documento de
+    descubrimiento dice qué campos ofrece, y de ahí sale el perfil propuesto —el
+    de Entra, el de Okta o el de uno que no existía cuando se escribió esto, sin
+    una línea distinta para cada uno—.
+
+    Lo que **no** se hace es elegir en silencio cuando no hay nada publicado: el
+    campo sale vacío y se dice. Proponer `email` «porque suele ser» es adivinar,
+    y adivinar aquí sale como un usuario sin identidad utilizable.
+    """
+    tiene = {str(c) for c in ofrecidos}
+    propuesto: dict[str, str] = {}
+    sin_decidir: list[str] = []
+    for campo, candidatos in NOMBRES_HABITUALES.items():
+        elegido = next((c for c in candidatos if c in tiene), "")
+        if elegido:
+            propuesto[campo] = elegido
+        else:
+            sin_decidir.append(campo)
+    return {
+        "protocolo": protocolo,
+        "propuesto": propuesto,
+        "sin_decidir": sin_decidir,
+        "ofrecidos": sorted(tiene),
+        "porque": (
+            "Cada campo sale de lo que el proveedor publica, no de una lista " "escrita aquí."
+            if not sin_decidir
+            else "De estos campos el proveedor no publica ningún nombre conocido, "
+            "así que hay que decir cuál es. Elegir uno «porque suele ser» es "
+            "adivinar, y aquí adivinar sale como un usuario que entra sin "
+            "identidad utilizable o sin permisos."
+        ),
+    }
+
+
 def perfil_mfa(clave: str) -> dict[str, Any]:
     """Resuelve un perfil de proveedor de segundo factor (CRM-00.05.01.22).
 

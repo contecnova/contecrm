@@ -355,6 +355,212 @@ def test_el_embebido_deja_dicho_a_quien_representa(uow: UnidadDeTrabajo) -> None
     assert fila.actua_como_id == yo
 
 
+# ── Lo que el embebido ejecuta, y en nombre de quién ──────────────────────
+#
+# Hasta el 05-10-2026 el `actua_como` se guardaba, se devolvía y **no lo
+# aplicaba nadie**: la consulta la hacía quien miraba, con sus propios permisos
+# y con su sesión del CRM. Estas pruebas son la diferencia entre un tope escrito
+# y un tope que acota.
+
+
+def _alcance_falso(roles: list[str], usuario_id: UUID | None = None) -> dict[str, Any]:
+    return {
+        "usuario_id": str(usuario_id or uuid4()),
+        "roles": list(roles),
+        "permisos": [],
+        "es_plataforma": False,
+    }
+
+
+def _cuadro_con_informe(uow: UnidadDeTrabajo, informe_id: UUID) -> inf.CuadroMando:
+    cuadro = inf.CuadroMando(
+        tenant_id=uow.tenant_id,
+        clave=f"c{uuid4().hex[:8]}",
+        nombre="Ventas",
+        componentes=[{"tipo": "tabla", "informe_id": str(informe_id)}],
+    )
+    uow.db.add(cuadro)
+    uow.db.flush()
+    return cuadro
+
+
+def test_el_enlace_se_encuentra_sin_saber_de_que_organizacion_es(uow: UnidadDeTrabajo) -> None:
+    """La aplicación que incrusta el cuadro no tiene sesión aquí.
+
+    No sabe de qué organización es el enlace —averiguarlo es justo lo que está
+    pidiendo—, así que el enlace tiene que poder encontrarse por el hash de su
+    secreto, como una clave de API o el inicio de sesión.
+    """
+    fila, secreto = cua.crear_embebido(
+        uow, cuadro_id=uuid4(), actua_como_id=uuid4(), dominios=["x.com"]
+    )
+    encontrado = cua.resolver_embebido(uow.db, None, secreto)
+    assert encontrado.id == fila.id
+
+
+def test_el_cuadro_incrustado_se_ejecuta_con_el_alcance_del_enlace(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """**Esto es lo que faltaba** (`CRM-05.01.02.06`).
+
+    Un cuadro montado por un comercial y abierto por un director enseñaba lo del
+    director. Aquí se comprueba que lo que llega al motor de informes son los
+    roles de la persona a la que el enlace representa, y no los de quien tiene
+    el navegador abierto —que además ya no necesita cuenta aquí—.
+    """
+    montador = uuid4()
+    informe_id = uuid4()
+    cuadro = _cuadro_con_informe(uow, informe_id)
+    _, secreto = cua.crear_embebido(
+        uow, cuadro_id=cuadro.id, actua_como_id=montador, dominios=["intranet.cliente.com"]
+    )
+    monkeypatch.setattr(
+        cua, "_alcance", lambda *a, **k: _alcance_falso(["comercial"], usuario_id=montador)
+    )
+    abierto = cua.abrir_embebido(
+        uow.db, secreto=secreto, origen="https://intranet.cliente.com", sujeto=""
+    )
+
+    visto: dict[str, Any] = {}
+
+    def _espia(uow_: Any, informe_: UUID, **kw: Any) -> dict[str, Any]:
+        visto.update({"informe": informe_, **kw})
+        return {"filas": [], "columnas": []}
+
+    monkeypatch.setattr(inf, "ejecutar", _espia)
+    cua.datos_del_embebido(uow, cua.leer_ticket(abierto["ticket"]), indice=0)
+
+    assert visto["informe"] == informe_id
+    assert visto["roles"] == frozenset({"comercial"})
+    assert visto["usuario_id"] == montador, "la consulta no se hizo en nombre del enlace"
+    assert visto["origen"] == "embebido"
+
+
+def test_el_modo_quien_mira_no_se_sirve_sin_sujeto(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Servirlo con el alcance del enlace sería enseñarle a alguien lo que no le
+    toca por un campo que se olvidaron de mandar."""
+    _, secreto = cua.crear_embebido(
+        uow,
+        cuadro_id=uuid4(),
+        actua_como_id=uuid4(),
+        dominios=["x.com"],
+        modo_alcance="quien_mira",
+    )
+    monkeypatch.setattr(cua, "_alcance", lambda *a, **k: _alcance_falso(["director"]))
+    with pytest.raises(NoAutenticado) as fallo:
+        cua.abrir_embebido(uow.db, secreto=secreto, sujeto="")
+    assert fallo.value.error_code == "cuadro.embebido_sin_sujeto"
+
+
+def test_en_modo_quien_mira_manda_el_alcance_de_quien_mira(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Nadie ve nada que no vería entrando él."""
+    quien_mira = uuid4()
+    _, secreto = cua.crear_embebido(
+        uow,
+        cuadro_id=uuid4(),
+        actua_como_id=uuid4(),
+        dominios=["x.com"],
+        modo_alcance="quien_mira",
+    )
+
+    def _por_quien(tenant_id: UUID, *, usuario_id: UUID | None = None, correo: str = "") -> Any:
+        if correo:
+            return _alcance_falso(["becario"], usuario_id=quien_mira)
+        return _alcance_falso(["director"])
+
+    monkeypatch.setattr(cua, "_alcance", _por_quien)
+    abierto = cua.abrir_embebido(uow.db, secreto=secreto, sujeto="Ana@Cliente.com")
+    ticket = cua.leer_ticket(abierto["ticket"])
+    assert ticket["alcance_roles"] == ["becario"]
+    assert ticket["sub"] == str(quien_mira)
+
+
+def test_el_sujeto_que_no_tiene_acceso_no_abre_el_cuadro(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Se resuelve SIEMPRE, también en modo «enlace».
+
+    Que el cuadro se calcule con el alcance del enlace no quiere decir que lo
+    mire cualquiera: quien la aplicación anfitriona diga que está delante tiene
+    que tener acceso a esta organización.
+    """
+    _, secreto = cua.crear_embebido(
+        uow, cuadro_id=uuid4(), actua_como_id=uuid4(), dominios=["x.com"]
+    )
+
+    def _solo_el_enlace(
+        tenant_id: UUID, *, usuario_id: UUID | None = None, correo: str = ""
+    ) -> Any:
+        if correo:
+            raise NoAutenticado(
+                "Ese cuadro no se puede mostrar aquí.", error_code="cuadro.embebido_invalido"
+            )
+        return _alcance_falso(["comercial"])
+
+    monkeypatch.setattr(cua, "_alcance", _solo_el_enlace)
+    with pytest.raises(NoAutenticado):
+        cua.abrir_embebido(uow.db, secreto=secreto, sujeto="de-fuera@otra.com")
+
+
+def test_el_ticket_no_sirve_para_nada_mas_del_crm(
+    uow: UnidadDeTrabajo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sin permisos y con los roles fuera de donde los lee el principal.
+
+    Lo primero cierra la puerta sola: toda ruta del CRM exige un permiso. Lo
+    segundo evita que este ticket acote consultas en rutas que miran `roles`,
+    que es lo contrario de lo que se quiere de una credencial de un panel
+    colgado en una intranet ajena.
+    """
+    _, secreto = cua.crear_embebido(
+        uow, cuadro_id=uuid4(), actua_como_id=uuid4(), dominios=["x.com"]
+    )
+    monkeypatch.setattr(cua, "_alcance", lambda *a, **k: _alcance_falso(["director"]))
+    abierto = cua.abrir_embebido(uow.db, secreto=secreto)
+    carga = cua.leer_ticket(abierto["ticket"])
+    assert "permisos" not in carga
+    assert "roles" not in carga
+    assert carga["alcance_roles"] == ["director"]
+
+
+def test_un_token_de_empleado_no_vale_como_ticket(uow: UnidadDeTrabajo) -> None:
+    """Con él, el embebido se ejecutaría con el alcance de quien lo trajera.
+
+    Que es exactamente el agujero que esto cierra, así que el `tipo` del token
+    no es una formalidad.
+    """
+    import jwt
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    ajeno = jwt.encode(
+        {"sub": str(uuid4()), "tenant": str(uow.tenant_id), "tipo": "usuario", "roles": ["admin"]},
+        s.secret_key.get_secret_value(),
+        algorithm=s.jwt_algorithm,
+    )
+    with pytest.raises(NoAutenticado) as fallo:
+        cua.leer_ticket(ajeno)
+    assert fallo.value.error_code == "cuadro.embebido_invalido"
+
+
+def test_un_modo_de_alcance_inventado_no_se_guarda(uow: UnidadDeTrabajo) -> None:
+    """Guardarlo dejaría un enlace cuyo comportamiento no está definido en
+    ninguna parte, y lo que pasaría al abrirlo depende del `if` que lo mire."""
+    with pytest.raises(ErrorValidacion) as fallo:
+        cua.crear_embebido(
+            uow,
+            cuadro_id=uuid4(),
+            actua_como_id=uuid4(),
+            dominios=["x.com"],
+            modo_alcance="loquesea",
+        )
+    assert fallo.value.error_code == "cuadro.embebido_modo_desconocido"
+
+
 # ── Suscripción (CRM-05.01.02.05) ─────────────────────────────────────────
 
 

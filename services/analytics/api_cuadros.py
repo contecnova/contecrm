@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
@@ -138,6 +138,17 @@ class CrearEmbebido(BaseModel):
     )
     nombre: str = ""
     minutos_validez: int = Field(10, ge=1, le=1440)
+    modo_alcance: str = Field(
+        "enlace",
+        description=(
+            "Con qué alcance se calcula lo que el cuadro enseña. «enlace»: con el "
+            "de quien lo crea, igual para todo el que lo abra y nunca más de lo "
+            "que ve quien lo montó. «quien_mira»: con el de la persona que la "
+            "aplicación anfitriona diga que está delante, y entonces hace falta "
+            "que lo diga"
+        ),
+        examples=["enlace"],
+    )
 
 
 @router.post(
@@ -147,10 +158,14 @@ class CrearEmbebido(BaseModel):
     summary="Habilitar un cuadro para incrustarlo fuera",
     description=(
         "El secreto se devuelve **una sola vez**; en la base queda su hash.\n\n"
-        "El enlace **actúa como una persona concreta** —quien lo crea— y se dice "
-        "cuál: el embebido no autentica a quien está delante de la pantalla ajena, "
-        "así que fijar a quién representa es lo que impide que un cuadro "
-        "incrustado enseñe más de lo que ve quien lo montó."
+        "El enlace **actúa como una persona concreta** —quien lo crea— y lo que "
+        "el cuadro enseña **se calcula con el alcance de esa persona**, no con el "
+        "de quien tiene el navegador abierto. Eso es lo que impide que un cuadro "
+        "incrustado enseñe más de lo que ve quien lo montó.\n\n"
+        'Con `modo_alcance="quien_mira"` se calcula en cambio con el de la '
+        "persona que la aplicación anfitriona diga que está delante, y entonces "
+        "nadie ve nada que no vería entrando él. Hace falta que lo diga: sin "
+        "sujeto, ese enlace no se sirve."
     ),
 )
 def crear_embebido(datos: CrearEmbebido, uow: UowDep, principal: AutenticadoDep) -> Any:
@@ -161,12 +176,14 @@ def crear_embebido(datos: CrearEmbebido, uow: UowDep, principal: AutenticadoDep)
         dominios=datos.dominios,
         nombre=datos.nombre,
         minutos_validez=datos.minutos_validez,
+        modo_alcance=datos.modo_alcance,
     )
     return {
         "id": str(fila.id),
         "secreto": secreto,
         "actua_como": str(fila.actua_como_id),
         "dominios": list(fila.dominios),
+        "modo_alcance": fila.modo_alcance,
     }
 
 
@@ -211,31 +228,120 @@ def suscribirse(datos: Suscribirse, uow: UowDep, principal: AutenticadoDep) -> A
     }
 
 
-@router.get(
-    "/embebido",
-    dependencies=[Depends(exige_permiso("informe:read"))],
-    summary="Resolver un cuadro incrustado",
+# ── Incrustar fuera: dos puertas, y ninguna pide sesión del CRM ───────────
+#
+# Antes había una sola ruta y exigía sesión **del CRM**, así que un cuadro no se
+# podía incrustar en la aplicación de un cliente sin repartirles credenciales de
+# empleado. Y lo que devolvía era el identificador del cuadro: los datos los
+# pedía después quien miraba, con sus propios permisos, de modo que el
+# `actua_como` del enlace no acotaba nada.
+#
+# Ahora el secreto se queda en el servidor del anfitrión y lo que llega al
+# navegador es un ticket corto que solo vale para este cuadro.
+
+
+class AbrirEmbebido(BaseModel):
+    secreto: str = Field(..., min_length=1)
+    sujeto: str = Field(
+        "",
+        description=(
+            "El correo de quien está mirando, según el SSO de la aplicación "
+            "anfitriona. Se comprueba contra las membresías de verdad: lo que el "
+            "anfitrión afirma es QUIÉN mira, no qué puede ver"
+        ),
+        examples=["ana@cliente.com"],
+    )
+
+
+@router.post(
+    "/embebidos/abrir",
+    summary="Cambiar el secreto del enlace por un ticket corto",
     description=(
+        "**La llama el servidor de la aplicación anfitriona, no el navegador.** "
+        "Si el secreto llegara al navegador, cualquiera que abriese las "
+        "herramientas del desarrollador se llevaría una credencial de larga vida "
+        "a ese cuadro.\n\n"
+        "No hace falta sesión del CRM: lo que autentica es el secreto del enlace, "
+        "y exigir además un permiso sería circular — es la credencial que se "
+        "entregó justo para esto. El ticket que devuelve **no lleva permisos**, "
+        "así que no sirve para ninguna otra ruta del CRM.\n\n"
         "Un secreto inexistente, desactivado o de otro dominio dan **el mismo "
         "error**: distinguirlos le diría a quien prueba si ese cuadro existe y "
-        "desde dónde se sirve.\n\n"
-        "La comprobación del dominio es por coincidencia exacta o de subdominio, "
-        "nunca «contiene»: con «contiene», `micrm.com.ataque.net` pasaría por "
-        "`micrm.com`."
+        "desde dónde se sirve. La comprobación del dominio es por coincidencia "
+        "exacta o de subdominio, nunca «contiene»: con «contiene», "
+        "`micrm.com.ataque.net` pasaría por `micrm.com`."
     ),
 )
-def embebido(
-    secreto: str,
-    db: DbDep,
-    principal: AutenticadoDep,
-    origin: str = Header("", alias="Origin"),
-) -> Any:
-    fila = cua.resolver_embebido(db, principal.tenant_id, secreto, origen=origin)
-    return {
-        "cuadro_id": str(fila.cuadro_id),
-        "actua_como": str(fila.actua_como_id),
-        "usos": fila.usos,
-    }
+def abrir_embebido(datos: AbrirEmbebido, origin: str = Header("", alias="Origin")) -> Any:
+    # Sesión de SISTEMA, y hay que escribirlo: el enlace se busca por el hash de
+    # su secreto sin saber todavía de qué organización es —averiguarlo es lo que
+    # se está pidiendo—, así que con una sesión de tenant la RLS no lo
+    # encontraría nunca. Es la misma forma que tienen el inicio de sesión y la
+    # validación de una clave de API, por la misma razón.
+    from crmcore.db.session import sesion
+
+    with sesion(sistema=True) as db:
+        return cua.abrir_embebido(db, secreto=datos.secreto, origen=origin, sujeto=datos.sujeto)
+
+
+def _ticket(authorization: str = Header("", alias="Authorization")) -> dict[str, Any]:
+    """El ticket del embebido, validado.
+
+    Viaja en `Authorization: Bearer`, como cualquier otra credencial del
+    producto: así el tenant lo fija el mecanismo de siempre y estas rutas no
+    montan uno paralelo. Lo que lo distingue de un token de empleado es el campo
+    `tipo`, y `leer_ticket` lo exige.
+    """
+    from crmcore.errors import NoAutenticado
+
+    if not authorization.lower().startswith("bearer "):
+        raise NoAutenticado(
+            "Hace falta el ticket del cuadro incrustado",
+            error_code="cuadro.embebido_sin_ticket",
+        )
+    return cua.leer_ticket(authorization[7:])
+
+
+TicketDep = Annotated[dict, Depends(_ticket)]
+
+
+@router.get(
+    "/embebido",
+    summary="Qué pinta el cuadro incrustado",
+    description=(
+        "Devuelve los componentes, **sin sus datos**. Los datos van aparte, uno a "
+        "uno: un cuadro de ocho componentes servido entero tardaría lo que el más "
+        "lento, y lo que se vería mientras tanto es una página en blanco."
+    ),
+)
+def embebido(db: DbDep, ticket: TicketDep) -> Any:
+    return cua.cuadro_del_embebido(db, ticket)
+
+
+class DatosEmbebido(BaseModel):
+    indice: int = Field(0, ge=0, description="Qué componente del cuadro se pide")
+    filtros: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router.post(
+    "/embebido/datos",
+    summary="Los datos de un componente del cuadro incrustado",
+    description=(
+        "**Se ejecuta con el alcance del ticket**, que es el del enlace o el de "
+        "quien mira según se declarase el enlace — nunca el de quien tiene el "
+        "navegador abierto, que aquí ni siquiera necesita cuenta.\n\n"
+        "Es un POST porque lleva filtros en el cuerpo, y no exige permiso porque "
+        "el ticket ya es la autorización: lo emitió esta misma API a cambio del "
+        "secreto del enlace, y no lleva permisos para no servir en ningún otro "
+        "sitio.\n\n"
+        "Queda marcado como `embebido` en el histórico de ejecuciones: sin eso, "
+        "el consumo de un panel colgado en una intranet se mezcla con el de la "
+        "gente trabajando, y es el primer sitio donde mirar cuando el motor "
+        "analítico se queda corto."
+    ),
+)
+def datos_embebido(datos: DatosEmbebido, uow: UowDep, ticket: TicketDep) -> Any:
+    return cua.datos_del_embebido(uow, ticket, indice=datos.indice, filtros=datos.filtros)
 
 
 # ── Listados de las sub-colecciones ───────────────────────────────────────
