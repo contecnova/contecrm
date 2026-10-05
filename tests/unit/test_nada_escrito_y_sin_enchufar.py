@@ -25,6 +25,14 @@ nombre en el texto: una mención en un comentario no es un llamante, y
 confundirlo ya dio un falso rojo hoy. Y se mira además si el nombre se pasa
 como valor, porque un manejador registrado —`registrar_transporte("sftp",
 listar_sftp)`— sí tiene quien lo llame aunque no haya un paréntesis detrás.
+
+**Y una segunda medida, porque la primera no lo ve todo.** Contar llamadas por
+nombre deja pasar un módulo entero sin enchufar: basta con que otra parte del
+producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`—
+para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
+`crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
+nadie**, y la primera medida solo delataba seis. Así que se mira también qué
+módulos de producción no importa ningún otro: dieciocho.
 """
 
 from __future__ import annotations
@@ -269,6 +277,140 @@ def _sin_llamante() -> list[str]:
                     continue
                 sueltas.append(f"{fichero.relative_to(RAIZ)}::{nodo.name}")
     return sorted(sueltas)
+
+
+# ── Segunda medida: módulos que no carga nadie ────────────────────────────
+#
+# La de arriba cuenta llamadas **por nombre**, y por eso no ve un módulo entero
+# sin enchufar: basta con que otra parte del producto llame a algo que se llame
+# igual —`archivar`, `conectar`, `registrar`— para que sus funciones parezcan
+# alcanzadas. Medido el 05-10-2026: `crmcore.datos.particionado` tiene nueve
+# funciones públicas, **nadie lo importa**, y la primera medida solo delataba
+# seis.
+#
+# Un módulo que no importa nadie no es «código que todavía no se usa»: es una
+# decisión del producto que el producto no toma. Y como no falla, no se nota.
+
+# Lo que se carga sin que ningún `import` lo diga, con el porqué de cada uno.
+# Es una lista de excepciones y no una lista de los que sí: una lista de los que
+# sí se queda corta el día que alguien añade otra forma de arrancar algo.
+SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
+    "main": (
+        "Es el punto de entrada del proceso: lo levanta uvicorn por nombre, no "
+        "lo importa otro módulo. Si no se cargara, el servicio no arrancaría — "
+        "se nota el primer día."
+    ),
+    "modelos": (
+        "El registro de tablas del servicio. Lo importa `alembic/env.py` por "
+        "nombre construido al migrar, que es cuando hace falta que "
+        "`Base.metadata` esté completa."
+    ),
+    "trabajos_worker": (
+        "Proceso aparte, arrancado por su propio comando. No lo importa nadie "
+        "por lo mismo que no se importa un `main`."
+    ),
+    "reparto_worker": "Ídem: proceso aparte con su propio comando.",
+    "worker": "Ídem: proceso aparte con su propio comando.",
+}
+
+# Medido el 05-10-2026. Baja o se queda, nunca sube.
+TOPE_MODULOS = 18
+
+
+def _modulo_de(fichero: Path) -> str:
+    partes = fichero.relative_to(RAIZ).with_suffix("").parts
+    if partes[0] == "packages":
+        partes = partes[2:]
+    return ".".join(partes)
+
+
+@lru_cache(maxsize=1)
+def _importados() -> set[str]:
+    """Todo lo que algún fichero de producción importa, contado con AST.
+
+    Se recorren también `scripts/` y `alembic/`: desde ahí se cargan cosas que
+    nadie más importa —las políticas de RLS, los registros de tablas— y no
+    mirarlos las habría contado como huérfanas.
+    """
+    salida: set[str] = set()
+    arboles = dict(_arboles())
+    for extra in (RAIZ / "alembic").rglob("*.py"):
+        if "__pycache__" in str(extra):
+            continue
+        try:
+            arboles[str(extra)] = ast.parse(extra.read_text(encoding="utf-8"), str(extra))
+        except SyntaxError:  # pragma: no cover
+            continue
+    for arbol in arboles.values():
+        for nodo in ast.walk(arbol):
+            if isinstance(nodo, ast.Import):
+                for alias in nodo.names:
+                    salida.add(alias.name)
+            elif isinstance(nodo, ast.ImportFrom) and nodo.module:
+                salida.add(nodo.module)
+                for alias in nodo.names:
+                    salida.add(f"{nodo.module}.{alias.name}")
+    return salida
+
+
+def _modulos_sin_cargar() -> list[str]:
+    importados = _importados()
+    sueltos: list[str] = []
+    for carpeta in CARPETAS:
+        for fichero in (RAIZ / carpeta).rglob("*.py"):
+            if "__pycache__" in str(fichero) or fichero.name == "__init__.py":
+                continue
+            if fichero.stem in SE_CARGAN_DE_OTRA_FORMA:
+                continue
+            modulo = _modulo_de(fichero)
+            if modulo not in importados:
+                sueltos.append(modulo)
+    return sorted(sueltos)
+
+
+def test_el_recorrido_de_modulos_mira_de_verdad() -> None:
+    """Si el recorrido se rompe, «ninguno suelto» significa «no se ha mirado».
+
+    Es el fallo que ya costó una medida falsa en este mismo fichero: un cero que
+    se leyó como «no queda nada».
+
+    Se exige el número **y las dos formas de importar**. Solo con el número, una
+    versión que dejara de mirar los `import x` seguía pasando: los `from x
+    import y` bastan para llegar a quinientos, y lo que se cuela por el hueco es
+    justo lo que se importa de la otra forma.
+    """
+    importados = _importados()
+    assert len(importados) > 500, (
+        f"solo se han contado {len(importados)} importaciones en todo el "
+        "producto: el recorrido se ha roto y su resultado no significa nada"
+    )
+    # Un `import x.y` suelto y un `from x import y`, los dos presentes en el
+    # producto. Si falta uno de los dos, el recorrido ha dejado de mirar esa
+    # forma y los módulos que entran por ella salen como huérfanos.
+    assert "asyncio" in importados, "no se están contando los `import x`"
+    assert "crmcore.errors" in importados, "no se están contando los `from x import y`"
+
+
+def test_ningun_modulo_nuevo_se_queda_sin_cargar() -> None:
+    """Un módulo que no importa nadie no se ejecuta nunca, entero.
+
+    No da error: hace que el producto se comporte como si esa decisión no
+    existiera. Y la medida de arriba no lo ve, porque cuenta nombres y basta una
+    coincidencia para que parezca alcanzado.
+    """
+    sueltos = _modulos_sin_cargar()
+    assert len(sueltos) <= TOPE_MODULOS, (
+        f"han subido a {len(sueltos)} los módulos que no carga nadie en "
+        f"producción, y el tope medido eran {TOPE_MODULOS}:\n  "
+        + "\n  ".join(sueltos)
+        + "\n\nO se enchufa, o se quita, o se añade a SE_CARGAN_DE_OTRA_FORMA "
+        "diciendo quién lo carga y cuándo."
+    )
+
+
+def test_las_exenciones_de_carga_dicen_quien_las_carga() -> None:
+    for nombre, motivo in SE_CARGAN_DE_OTRA_FORMA.items():
+        assert motivo.strip(), f"«{nombre}» está exento y no dice quién lo carga"
 
 
 def test_el_recorrido_mira_de_verdad() -> None:
