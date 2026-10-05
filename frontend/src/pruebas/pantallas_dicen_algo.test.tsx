@@ -31,6 +31,7 @@
 import type React from "react";
 
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,20 +52,32 @@ vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
     ...real,
-    llamar: vi.fn(async () => ({ datos: [] })),
+    llamar: vi.fn(async () => ({ datos: [], retenidos: [] })),
     subir: vi.fn(async () => ({ datos: {} })),
     descargar: vi.fn(async () => new Blob()),
   };
 });
 
-vi.mock("@/lib/permisos", () => ({
-  usePuedeOperar: () => () => true,
-  usePermisos: () => ({ puede: () => true, permisos: [] }),
-  // `useSuperficie` lee un contexto que aquí no existe. Sin doblarlo, las
-  // pantallas que lo usan reventaban dentro de la frontera y el barrido las
-  // daba por caídas: el fallo era del andamio, no del producto.
-  useSuperficie: () => ({ superficie: null, tiene: () => true }),
-}));
+// Lo mismo con los permisos: el módulo real, y dobladas sólo las piezas que
+// leen un contexto de React que aquí no existe. Enumerar los exports a mano fue
+// un error que costó dos vueltas: faltaba `usePermitidas` y las pantallas que
+// lo usan reventaban dentro de la frontera, así que el barrido las daba por
+// caídas — el fallo era del andamio, no del producto. Con el módulo real
+// delante, lo que no se dobla sigue funcionando.
+vi.mock("@/lib/permisos", async () => {
+  const real = await vi.importActual<typeof import("@/lib/permisos")>("@/lib/permisos");
+  return {
+    ...real,
+    usePuedeOperar: () => () => true,
+    usePermisos: () => ({ puede: () => true, permisos: [] }),
+    useSuperficie: () => ({ superficie: null, tiene: () => true }),
+    // Devuelve un CONJUNTO de rutas permitidas, no una función. Doblarlo con
+    // lo que uno supone en vez de con lo que el módulo declara es cómo la
+    // sonda acaba diciendo que la pantalla está rota: aquí reventaba con
+    // «Cannot read properties of undefined (reading 'length')».
+    usePermitidas: () => new Set<string>(),
+  };
+});
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -86,6 +99,10 @@ const PROPS = {
     tenant_id: "t1",
     permisos: ["*"],
     roles: ["admin"],
+    // Con plataforma: sin ello, los recursos marcados `solo_plataforma` se
+    // filtran y un módulo entero se queda sin pestañas. La prueba mediría
+    // entonces el filtro, no el listado.
+    es_admin_plataforma: true,
     modulos: [],
   },
   alEntrar: () => undefined,
@@ -369,6 +386,32 @@ describe("con datos, la pantalla los enseña", () => {
       },
       T("ficha"),
     ],
+    Cobertura: [
+      {
+        "/api/v1/superficie": {
+          consultado_at: "2026-10-05T10:00:00Z",
+          servicios: ["party"],
+          servicios_sin_contestar: [],
+          completa: true,
+          total: 1,
+          administracion: 0,
+          operaciones: [
+            {
+              metodo: "GET",
+              // El testigo va en la RUTA porque de ella sale el recurso, que es
+              // lo que esta pantalla pinta: la cobertura se cuenta por recurso,
+              // no por operación suelta.
+              ruta: `/api/v1/${T("recurso")}`,
+              resumen: "Listar",
+              etiquetas: ["party"],
+              permiso: "cuenta:read",
+              administracion: false,
+            },
+          ],
+        },
+      },
+      T("recurso"),
+    ],
   };
 
   beforeEach(() => {
@@ -380,15 +423,24 @@ describe("con datos, la pantalla los enseña", () => {
   // fuera en silencio: una lista incompleta sin explicación se lee como una
   // lista completa.
   //
-  //   Coste       no carga nada al abrir: calcula cuando el usuario pulsa. Su
-  //               contenido se prueba con un clic, no con un render.
+  //   Coste, Alm  no cargan nada al abrir: calculan cuando el usuario pulsa.
+  //               Su contenido se prueba con un CLIC, y el de `Alm` está abajo
+  //               con ese patrón.
+  //   Modulo      es el listado genérico, y tiene el suyo abajo: lo que
+  //               importa de él no es que monte —monta con la tabla vacía—
+  //               sino que lo que trae el servidor llegue a una fila.
   //   Chat        vive de un flujo de eventos abierto, no de una respuesta.
   //   Portal      hay que entrar primero: lo que enseña depende del canje de
   //               un enlace, que es otro escenario.
   //   Procesos    es un editor; lo que pinta es lo que el usuario escribe.
-  //   Alm, Ayuda, Cobertura, Consola, Ficha, Inicio, Modulo, Recorrido
+  //   Consola, Ficha
+  //               piden lo que diga la configuración del módulo o la ruta;
+  //               su contenido depende de qué recurso se abra, así que una
+  //               prueba suya mide un recurso, no la pantalla.
+  //   Ayuda, Entrar, Inicio, Recorrido
   //               no piden nada a la API: componen otras piezas o pintan lo
-  //               que les llega por props.
+  //               que les llega por props, y el barrido de arriba ya comprueba
+  //               que dicen algo.
   //
   // Todas ellas sí pasan por el barrido de arriba, que es el que garantiza que
   // ninguna deja al usuario sin nada que ver.
@@ -400,7 +452,7 @@ describe("con datos, la pantalla los enseña", () => {
         const clave = Object.keys(respuestas)
           .filter((k) => ruta.startsWith(k))
           .sort((a, b) => b.length - a.length)[0];
-        return { datos: clave ? respuestas[clave] : [] };
+        return { datos: clave ? respuestas[clave] : [], retenidos: [] };
       },
     );
 
@@ -421,6 +473,118 @@ describe("con datos, la pantalla los enseña", () => {
       expect(
         (document.body.textContent ?? "").includes(testigo),
         `«${nombre}» no enseña el dato que le ha llegado`,
+      ).toBe(true);
+    });
+  });
+});
+
+/**
+ * Y las que calculan al pulsar.
+ *
+ * `Alm` y `Coste` no piden nada al abrirse: enseñan un formulario y traen el
+ * dato cuando el usuario pulsa. Un barrido que sólo monta pantallas las da por
+ * buenas siempre —no hay nada que cargar— y con ellas se pierde justo lo que
+ * hacen. Aquí se pulsa.
+ */
+describe("las que calculan al pulsar también enseñan lo que les llega", () => {
+  const TESTIGO = "TESTIGO-pulsado";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("Alm enseña el desvío cuando se pide", async () => {
+    const api = await import("@/lib/api");
+    (api.llamar as unknown as { mockImplementation: (f: unknown) => void }).mockImplementation(
+      async () => ({
+        retenidos: [],
+        datos: {
+          hay_desvio: true,
+          medible: true,
+          que_significa: TESTIGO,
+          diferencias: [
+            { tipo: "campo", clave: "cuenta.codigo_erp", que_paso: "sólo en producción" },
+          ],
+        },
+      }),
+    );
+
+    const { Alm } = paginas as unknown as {
+      Alm: React.ComponentType<Record<string, unknown>>;
+    };
+    render(
+      <MemoryRouter>
+        <Frontera clave="x">
+          <Alm {...PROPS} />
+        </Frontera>
+      </MemoryRouter>,
+    );
+
+    // Antes de pulsar no hay dato, y eso es correcto: la pantalla no adivina
+    // qué entorno interesa.
+    expect(document.body.textContent).not.toContain(TESTIGO);
+
+    const boton = screen.getByRole("button", { name: /alm\.verDesvio/i });
+    await userEvent.click(boton);
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes(TESTIGO),
+        "«Alm» no enseña el desvío que le ha llegado",
+      ).toBe(true);
+    });
+  });
+});
+
+/**
+ * Y la pantalla por la que se trabaja todo el día.
+ *
+ * `Modulo` es el listado genérico: la mayoría de los recursos del producto se
+ * ven por ella, y no tenía ninguna prueba de contenido. Que monte no dice nada
+ * —monta con la tabla vacía— y lo que importa es que lo que trae el servidor
+ * **llegue a una fila**.
+ */
+describe("el listado genérico enseña sus filas", () => {
+  const TESTIGO = "TESTIGO-fila";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("Modulo pinta lo que devuelve el recurso de la pestaña", async () => {
+    const api = await import("@/lib/api");
+    (api.llamar as unknown as { mockImplementation: (f: unknown) => void }).mockImplementation(
+      async () => ({
+        retenidos: [],
+        datos: {
+          items: [{ id: "t1", nombre: TESTIGO, slug: "demo", estado: "activo" }],
+          total: 1,
+        },
+      }),
+    );
+
+    const { Modulo } = paginas as unknown as {
+      Modulo: React.ComponentType<Record<string, unknown>>;
+    };
+    render(
+      // `tenants` es un módulo real de `modulos.ts`: con una ruta inventada la
+      // pantalla enseñaría «ese módulo no existe», que es correcto y no es lo
+      // que esta prueba mide.
+      <MemoryRouter initialEntries={["/m/tenants"]}>
+        <Frontera clave="x">
+          <Routes>
+            <Route path="/m/:ruta" element={<Modulo {...PROPS} />} />
+          </Routes>
+        </Frontera>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes(TESTIGO),
+        "«Modulo» no enseña la fila que le ha llegado",
       ).toBe(true);
     });
   });
