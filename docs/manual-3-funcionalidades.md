@@ -10692,6 +10692,12 @@ no depende de la promesa de nadie.
 Si no hay ninguno que cumpla, **no se llama a ninguno**. Usar el de fuera «porque
 es mejor» sería incumplir exactamente lo que se le prometió.
 
+La región sale de la **política del tenant** cuando admite una sola. Si admite
+varias, el sistema **pregunta cuál** en vez de quedarse con la primera: elegir por
+el cliente en qué país se queda su dato es exactamente el supuesto que este modo
+existe para no hacer, y una región por omisión en el código es la que se acaba
+usando el día que nadie mira.
+
 ---
 
 ## Los huecos que este manual declaraba, cerrados
@@ -12145,7 +12151,10 @@ visto perder aprende a decir que sí.
 **Se prueba contra un periodo que no ha visto**, y la separación es por fecha, no
 al azar: repartir aleatoriamente mete casos posteriores en el entrenamiento, el
 modelo ve cómo acabó lo que tiene que predecir y el acierto sale magnífico y
-completamente inútil — en producción no existe el futuro.
+completamente inútil — en producción no existe el futuro. La separación **se pide
+y se devuelve**: qué casos entrenan, cuáles comprueban y por qué fecha se cortó.
+Un caso **sin fecha de cierre la para** y se dice cuántos son, porque sin fecha no
+hay más remedio que repartir al azar, que es justo lo que se está evitando.
 
 **Y se compara con la regla tonta.** Si solo se gana el 15 %, decir «todos
 pierden» acierta el 85 % de las veces: un modelo con un 86 % suena bien y no
@@ -12265,7 +12274,10 @@ semántica trae sus propios problemas:
   permiso ni siquiera dice de qué iba — decir «hay un caso parecido que no puedes
   ver» ya filtra información sobre otro cliente.
 - **Y al modelo no se le manda el nombre de quien tiene el problema**: para
-  encontrar casos parecidos hace falta el problema, no la ficha.
+  encontrar casos parecidos hace falta el problema, no la ficha. El recorte lo
+  hace el servidor y no la pantalla que llama —si lo decidiera cada pantalla,
+  bastaría con que una lo decidiera mal—, y la respuesta lleva **lo que salió y
+  contra qué se comparó**, para que no haya que creérselo.
 
 Nada de esto funciona si los campos del tenant no significan nada. Un tenant crea
 `cmp_2`, de tipo lista, con valores `A`, `B` y `C`: para el CRM es perfecto y para
@@ -12625,7 +12637,12 @@ minutos sienta francamente mal—, y **avisar de que se graba no es consentimien
 para entrenar**: son dos permisos distintos y confundirlos es lo más frecuente en
 cualquier proyecto de voz. El traspaso a una persona lleva todo lo hablado, porque
 si el asistente estuvo tres minutos preguntando y la persona empieza de cero, lo
-que hizo fue perder tres minutos del cliente. Y se mide por lo que importa:
+que hizo fue perder tres minutos del cliente; y viaja **en la misma respuesta**
+que dice que hay que pasar la llamada, no en una segunda petición que la
+implantación con prisa se salta. Los dos permisos —grabar y entrenar— se
+contestan también juntos, que es donde se confunden: se lee que avisar de la
+grabación no habilita a entrenar antes de que el audio esté dentro de un modelo
+del que ya no se puede sacar. Y se mide por lo que importa:
 **resueltas sin persona y sin que el cliente vuelva a llamar en 48 horas** — una
 llamada que el asistente «resolvió» y que el cliente repite al día siguiente no se
 resolvió, se aplazó, y encima con el cliente ya molesto.

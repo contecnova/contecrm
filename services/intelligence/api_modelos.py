@@ -8,6 +8,7 @@ cuenta: lo que sale son propuestas que confirma una persona.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -78,7 +79,79 @@ class AprobarIn(BaseModel):
 
 class SugerirIn(BaseModel):
     resultados: list[dict[str, Any]] = Field(default_factory=list)
-    contexto_del_caso: dict[str, Any] = Field(default_factory=dict)
+    caso: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "La ficha del caso tal cual está. Qué parte de ella se le manda al "
+            "modelo **lo decide el servidor**: recibir el contexto ya compuesto "
+            "deja en cada pantalla la decisión de qué datos personales salen "
+            "hacia un proveedor de inferencia, y esa decisión se toma en un "
+            "sitio o se toma en catorce"
+        ),
+    )
+    incluir_datos_personales: bool = Field(
+        False,
+        description=(
+            "Por defecto no sale nada personal: para encontrar casos parecidos "
+            "hace falta el problema, no el nombre de quien lo tiene"
+        ),
+    )
+
+
+class IndexarIn(BaseModel):
+    """Lo que se quiere meter en el índice semántico, antes de meterlo."""
+
+    elementos: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Cada uno con su `objeto` y el `permiso` que hace falta para verlo. "
+            "Sin permiso declarado no entra"
+        ),
+    )
+
+
+class UsoDeSugerenciasIn(BaseModel):
+    sugerencias: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Cada una con `abierta` y `usada`: se mide por lo que se usa",
+    )
+
+
+class ParticionIn(BaseModel):
+    casos: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Cada uno con su `cerrado_el` en ISO: sin fecha no se puede partir",
+    )
+    # El porcentaje por omisión es el del módulo. Repetir aquí el número
+    # significa que el día que se cambie allí, esta puerta sigue partiendo como
+    # antes y no lo nota nadie.
+    pct_validacion: int = Field(ent.PCT_VALIDACION, ge=5, le=50)
+
+
+class CosteTranscribirIn(BaseModel):
+    minutos_totales: int = Field(..., ge=0)
+    coste_por_minuto: float = Field(..., ge=0)
+    presupuesto: float | None = None
+
+
+class CalidadExtraccionIn(BaseModel):
+    confirmadas: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Cada una con `hubo_correccion`: lo que hubo que tocar a mano",
+    )
+
+
+class RamasIn(BaseModel):
+    ramas: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Cada rama con su `texto`, sus `enviados` y sus `respuestas`",
+    )
+
+
+class AprobacionesIn(BaseModel):
+    aprobaciones: list[dict[str, Any]] = Field(
+        default_factory=list, description="Cada una con `hubo_reescritura`"
+    )
 
 
 @router_modelos.post(
@@ -154,6 +227,40 @@ def segmento(cuerpo: SegmentoIn, principal: AutenticadoDep) -> Any:
     )
 
 
+@router_modelos.post(
+    "/particion",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Cómo se parte el histórico para entrenar y para comprobar",
+    description=(
+        "**Por fecha, no al azar.** Repartir aleatoriamente mete casos "
+        "posteriores en el entrenamiento, y entonces el modelo ha visto cómo "
+        "acabó lo que tiene que predecir: el acierto sale magnífico y no "
+        "significa nada, porque en producción no existe el futuro.\n\n"
+        "Es el error que no se ve en ninguna gráfica —todas salen bien— y que "
+        "aparece el primer mes, cuando el modelo que acertaba el 92 % en la "
+        "presentación acierta la mitad con casos de verdad.\n\n"
+        "Un caso sin fecha de cierre **para la partición**: sin ella no se puede "
+        "separar por tiempo, y separar al azar es exactamente lo que se evita."
+    ),
+)
+def particion(cuerpo: ParticionIn, principal: AutenticadoDep) -> Any:
+    # Las fechas llegan como texto ISO porque esto entra por JSON. Lo que no se
+    # puede leer se deja tal cual **a propósito**: así falla la comprobación de
+    # `particion_temporal`, que dice cuántos casos no tienen fecha, en vez de
+    # fallar aquí con un error de formato que no explica por qué importa.
+    casos: list[dict[str, Any]] = []
+    for caso in cuerpo.casos:
+        copia = dict(caso)
+        crudo = copia.get("cerrado_el")
+        if isinstance(crudo, str):
+            try:
+                copia["cerrado_el"] = date.fromisoformat(crudo[:10])
+            except ValueError:
+                pass
+        casos.append(copia)
+    return ent.particion_temporal(casos=casos, pct_validacion=cuerpo.pct_validacion)
+
+
 @router_transcripcion.post(
     "",
     dependencies=[Depends(exige_permiso("intelligence:write"))],
@@ -205,6 +312,44 @@ def compromisos(cuerpo: ExtraerIn, principal: AutenticadoDep) -> Any:
     )
 
 
+@router_transcripcion.post(
+    "/coste",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Cuánto cuesta transcribir esto, antes de hacerlo",
+    description=(
+        "Una biblioteca de tres años de llamadas es una **factura**, no un "
+        "botón. Y la factura llega al mes siguiente, cuando ya no hay nada que "
+        "decidir.\n\n"
+        "No ejecuta nada: devuelve el importe para que alguien lo confirme. Si "
+        "no cabe en el presupuesto lo dice antes, que es cuando todavía se puede "
+        "elegir **qué** se transcribe en vez de empezar y quedarse a medias."
+    ),
+)
+def coste_transcripcion(cuerpo: CosteTranscribirIn, principal: AutenticadoDep) -> Any:
+    return trs.coste_de_transcribir(
+        minutos_totales=cuerpo.minutos_totales,
+        coste_por_minuto=cuerpo.coste_por_minuto,
+        presupuesto=cuerpo.presupuesto,
+    )
+
+
+@router_transcripcion.post(
+    "/calidad",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Cuánto hay que corregir de lo que propone el modelo",
+    description=(
+        "Es el número que decide si esto se sigue usando. Si hay que corregir la "
+        "mitad **no ahorra tiempo**: lo cambia de sitio —de escribir a revisar, "
+        "que cansa más— y eso se nota en que la gente deja de abrirlo sin decir "
+        "nada.\n\n"
+        "Sin confirmaciones no se dice que funcione: se dice que no se ha usado, "
+        "que es una respuesta distinta y la que toca."
+    ),
+)
+def calidad_extraccion(cuerpo: CalidadExtraccionIn, principal: AutenticadoDep) -> Any:
+    return trs.calidad_de_la_extraccion(confirmadas=cuerpo.confirmadas)
+
+
 @router_variantes.post(
     "",
     dependencies=[Depends(exige_permiso("intelligence:write"))],
@@ -240,6 +385,86 @@ def aprobar(cuerpo: AprobarIn, principal: AutenticadoDep) -> Any:
     )
 
 
+@router_variantes.post(
+    "/ganadora",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Qué variante gana, o que todavía no se sabe",
+    description=(
+        "Con doscientos envíos por rama, la diferencia entre un 4,1 % y un 4,4 % "
+        "**es ruido**. Declararla ganadora convierte el azar en una decisión de "
+        "marca que luego se repite durante dos años porque «los datos lo "
+        "decían».\n\n"
+        "Así que hay dos respuestas posibles y la segunda es «todavía no»: se "
+        "dice cuántos envíos tiene la rama más pequeña y cuántos harían falta, "
+        "en vez de enseñar un ganador que no lo es."
+    ),
+)
+def ganadora(cuerpo: RamasIn, principal: AutenticadoDep) -> Any:
+    return var.elegir_ganadora(ramas=cuerpo.ramas)
+
+
+@router_variantes.post(
+    "/rendimiento",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Cuánto se reescribe de lo que propone el modelo",
+    description=(
+        "Es el número que dice si esto ahorra tiempo de verdad. Si se reescribe "
+        "casi todo, lo que hace el modelo es **dar un punto de partida** —que "
+        "también vale— pero no es lo que se vendió, y conviene no confundirlo al "
+        "contarlo.\n\n"
+        "Sale del par que se guarda al aprobar: lo que propuso el modelo y lo "
+        "que salió. Sin ese par esto no se puede medir, solo opinar."
+    ),
+)
+def rendimiento_generacion(cuerpo: AprobacionesIn, principal: AutenticadoDep) -> Any:
+    return var.rendimiento_de_la_generacion(aprobaciones=cuerpo.aprobaciones)
+
+
+@router_sugerencias.post(
+    "/indexables",
+    dependencies=[Depends(exige_permiso("intelligence:write"))],
+    summary="Qué puede entrar en el índice semántico",
+    description=(
+        "**Los permisos se aplican antes de indexar, no después.** Indexar "
+        "primero y filtrar al buscar ya ha metido el contenido en un sitio del "
+        "que sale por otros caminos: basta con que un fragmento aparezca en un "
+        "resumen para que un agente lea el caso de un cliente que no le toca, y "
+        "entonces el resultado descartado ya se ha leído.\n\n"
+        "Por eso nada entra sin declarar **qué permiso hace falta para verlo**. "
+        "Se comprueba aquí, antes de que el texto salga hacia el índice, y lo "
+        "que no lo declara no se indexa: se dice cuál es y se para."
+    ),
+)
+def indexables(cuerpo: IndexarIn, principal: AutenticadoDep) -> Any:
+    for elemento in cuerpo.elementos:
+        sem.exigir_permiso_de_indexacion(
+            objeto=str(elemento.get("objeto") or ""), permiso=elemento.get("permiso")
+        )
+    return {
+        "indexables": len(cuerpo.elementos),
+        "porque": (
+            "Todos declaran con qué permiso se ven. Lo que entra en el índice sale "
+            "por los caminos del índice, así que el permiso viaja con el contenido."
+        ),
+    }
+
+
+@router_sugerencias.post(
+    "/aprovechamiento",
+    dependencies=[Depends(exige_permiso("intelligence:read"))],
+    summary="Si esto le sirve al agente o solo ocupa sitio en la pantalla",
+    description=(
+        "Se mide por **lo que usa**, no por lo que abre: abrir una sugerencia es "
+        "mirar si sirve, y casi nunca sirve.\n\n"
+        "Y si no se usa casi nada el problema **no es del agente**: o el índice "
+        "no tiene lo que hace falta, o el umbral de parecido está dejando pasar "
+        "ruido. Las dos se arreglan aquí, no insistiendo en que lo miren."
+    ),
+)
+def aprovechamiento(cuerpo: UsoDeSugerenciasIn, principal: AutenticadoDep) -> Any:
+    return sem.aprender_de_lo_usado(sugerencias=cuerpo.sugerencias)
+
+
 @router_sugerencias.post(
     "/{caso_id}",
     dependencies=[Depends(exige_permiso("intelligence:read"))],
@@ -252,16 +477,32 @@ def aprobar(cuerpo: AprobarIn, principal: AutenticadoDep) -> Any:
         "y ser de productos o versiones distintas, así que se enseña en qué "
         "coinciden y en qué no.\n\n"
         "Y **no se sugiere lo que no se ha resuelto**: un caso parecido que sigue "
-        "abierto no es una solución, es otro que tiene el mismo problema."
+        "abierto no es una solución, es otro que tiene el mismo problema.\n\n"
+        "**Lo que sale hacia el modelo lo recorta el servidor.** Se manda el "
+        "problema —asunto, descripción, producto, versión, categoría— y no la "
+        "ficha entera: para encontrar casos parecidos no hace falta el nombre de "
+        "quien lo tiene, y mandarlo manda datos personales a un proveedor de "
+        "inferencia sin ninguna ganancia. La respuesta lleva **exactamente lo "
+        "que salió**, para que se pueda mirar."
     ),
 )
 def sugerir(caso_id: UUID, cuerpo: SugerirIn, principal: AutenticadoDep) -> Any:
+    # El contexto se compone AQUÍ y no llega compuesto. Dejar que lo componga
+    # quien llama convierte «qué datos personales salen» en una decisión de cada
+    # pantalla, y basta con que una la tome mal.
+    recorte = sem.contexto_para_el_modelo(
+        caso=cuerpo.caso, incluir_datos_personales=cuerpo.incluir_datos_personales
+    )
     salida = sem.buscar(
         resultados=cuerpo.resultados,
-        contexto_del_caso=cuerpo.contexto_del_caso,
+        contexto_del_caso=recorte["contexto"],
         permisos_del_agente=set(principal.permisos),
     )
-    return {**sem.sugerir_para(caso_id=caso_id, sugerencias=salida["sugerencias"]), **salida}
+    return {
+        **sem.sugerir_para(caso_id=caso_id, sugerencias=salida["sugerencias"]),
+        **salida,
+        "lo_que_se_manda": recorte,
+    }
 
 
 # ── Voz y asistentes conversacionales (CRM-04.02.01.08) ───────────────────
@@ -273,12 +514,31 @@ class EntenderIn(BaseModel):
     texto: str = ""
     confianza: float = 0.0
     intento: int = 0
+    lo_ya_dicho: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Lo que ya se habló en esta llamada. Viaja con el traspaso: si la "
+            "persona empieza de cero, lo que hizo el asistente fue perder tres "
+            "minutos del cliente"
+        ),
+    )
+    datos_recogidos: dict[str, Any] = Field(
+        default_factory=dict, description="Lo que el asistente ya consiguió que le dijeran"
+    )
 
 
 class AperturaIn(BaseModel):
     nombre_asistente: str
     es_maquina: bool = True
     graba: bool = False
+    consentimiento_entrenamiento: bool = Field(
+        False,
+        description=(
+            "Consentimiento **explícito** para usar esta voz en el entrenamiento "
+            "del modelo. No es el aviso de grabación: son dos permisos distintos "
+            "y por defecto este no está dado"
+        ),
+    )
 
 
 class RendimientoVozIn(BaseModel):
@@ -300,7 +560,21 @@ class RendimientoVozIn(BaseModel):
     ),
 )
 def entender(cuerpo: EntenderIn, principal: AutenticadoDep) -> Any:
-    return voz.entender(texto=cuerpo.texto, confianza=cuerpo.confianza, intento=cuerpo.intento)
+    salida = voz.entender(texto=cuerpo.texto, confianza=cuerpo.confianza, intento=cuerpo.intento)
+    if not salida.get("pasar_a_persona"):
+        return salida
+    # El traspaso se arma AQUÍ, en la misma respuesta. Dejarlo para otra llamada
+    # significa que la primera implantación con prisa no la hace, y entonces la
+    # persona coge el teléfono sin saber qué se habló: el cliente lo cuenta todo
+    # otra vez y los tres minutos del asistente fueron tiempo perdido suyo.
+    return {
+        **salida,
+        "traspaso": voz.traspaso_a_persona(
+            motivo=str(salida.get("porque") or "El reconocimiento no da para seguir"),
+            lo_ya_dicho=cuerpo.lo_ya_dicho,
+            datos_recogidos=cuerpo.datos_recogidos,
+        ),
+    }
 
 
 @router_voz.get(
@@ -335,11 +609,21 @@ def puede_hacerse(accion: str, principal: AutenticadoDep) -> Any:
     ),
 )
 def apertura(cuerpo: AperturaIn, principal: AutenticadoDep) -> Any:
-    return voz.guion_de_apertura(
+    guion = voz.guion_de_apertura(
         nombre_asistente=cuerpo.nombre_asistente,
         es_maquina=cuerpo.es_maquina,
         graba=cuerpo.graba,
     )
+    # Los dos permisos se contestan JUNTOS, que es donde se confunden. Quien
+    # monta la llamada lee aquí que avisar de la grabación no le habilita a
+    # entrenar con esa voz, en vez de descubrirlo cuando el audio ya está dentro
+    # de un modelo del que no se puede sacar.
+    return {
+        **guion,
+        "entrenar_con_este_audio": voz.usar_audio_para_entrenar(
+            consentimiento_explicito=cuerpo.consentimiento_entrenamiento
+        ),
+    }
 
 
 @router_voz.post(

@@ -117,7 +117,20 @@ CARPETAS = (
 #                   error: da una tabla con cuatrocientas columnas y consultas
 #                   que se arrastran, y cuando se nota ya no se pueden quitar
 #                   porque alguien las usa.
-TOPE = 92
+#   05-10-2026  81  La IA aplicada: once decisiones escritas y sin puerta. La
+#                   partición del histórico por FECHA —repartir al azar mete
+#                   casos posteriores en el entrenamiento y el modelo ha visto
+#                   cómo acabó lo que tiene que predecir: el acierto sale
+#                   magnífico y no significa nada—, el recorte de lo que sale
+#                   hacia el proveedor de inferencia —la ruta recibía el
+#                   contexto ya compuesto, así que qué datos personales salían
+#                   lo decidía cada pantalla—, el permiso que hay que declarar
+#                   antes de indexar, el traspaso de la llamada con lo ya
+#                   hablado, la diferencia entre avisar de que se graba y
+#                   consentir el entrenamiento, y el modo sin salida de datos.
+#                   Ninguna daba error: el producto se comportaba como si esas
+#                   decisiones no existieran, y todo en verde.
+TOPE = 81
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
@@ -178,6 +179,50 @@ def fijar_politica(datos: FijarPolitica, uow: UowDep) -> Any:
 )
 def eleccion(db: DbDep, principal: AutenticadoDep, uso: str = Query("redaccion")) -> Any:
     return rut.elegir(db, principal.tenant_id, uso=uso)
+
+
+@router.get(
+    "/eleccion-sin-salida",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Qué modelo atendería esto sin que el dato salga de la región",
+    description=(
+        "Es el modo que piden los clientes que **no pueden mandar nada fuera**: "
+        "sector público, sanidad, banca. Lo que ofrecen casi todos los productos "
+        "es una casilla «no usar IA», que no es lo mismo: el cliente quiere la "
+        "función, lo que no quiere es la salida.\n\n"
+        "Tres condiciones y las tres tienen que cumplirse. **El proveedor está "
+        "en la región del tenant**, no en «una región europea»: un modelo "
+        "alojado en otro país de la UE sigue siendo una transferencia dentro del "
+        "EEE, que es legal y no es lo que se pidió. **Garantiza que no entrena "
+        "con lo que se le manda**, porque un modelo en la región que aprende de "
+        "los datos los saca igual: no por la red, por el peso. **O es del propio "
+        "cliente**, que es la única forma de que esto no dependa de la promesa "
+        "de nadie — y por eso se prefiere cuando está.\n\n"
+        "La región sale de la política del tenant cuando admite una sola. Si "
+        "admite varias hay que decir cuál, porque elegir por él una de las dos "
+        "es justo el supuesto que este modo existe para no hacer."
+    ),
+)
+def eleccion_sin_salida(
+    db: DbDep,
+    principal: AutenticadoDep,
+    uso: str = Query("redaccion"),
+    region: str = Query("", description="Vacío: la única región que admita la política"),
+) -> Any:
+    ficha = rut.politica(db, principal.tenant_id)
+    admitidas = [str(r) for r in ((ficha.regiones_admitidas if ficha else None) or [])]
+    # Nada por omisión: una región por defecto en el código es la que se queda
+    # el día que el cliente admite dos y nadie mira cuál se usó.
+    region_elegida = region or (admitidas[0] if len(admitidas) == 1 else "")
+    if not region_elegida:
+        raise ErrorValidacion(
+            "No se sabe en qué región tiene que quedarse el dato: la política "
+            f"admite {len(admitidas)}. Hay que decirla, porque elegir una por el "
+            "cliente es el supuesto que este modo existe para no hacer.",
+            error_code="ia.region_del_tenant_sin_decidir",
+            detalle={"regiones_admitidas": admitidas},
+        )
+    return rut.exigir_sin_salida(db, principal.tenant_id, uso=uso, region_del_tenant=region_elegida)
 
 
 @router.post(

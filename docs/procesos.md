@@ -952,15 +952,22 @@ stateDiagram-v2
 | `DELETE /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/modelos/evaluar` | Qué tal acierta, comparado con no tener modelo | predicciones, umbral | 200, 422 | — |
 | `POST /api/v1/modelos/factores` | Por qué puntúa lo que puntúa | contribuciones, cuantos | 200, 422 | — |
+| `POST /api/v1/modelos/particion` | Cómo se parte el histórico para entrenar y para comprobar | casos, pct_validacion | 200, 422 | — |
 | `POST /api/v1/modelos/se-puede-entrenar` | Si hay histórico suficiente, y qué sesgo trae el que hay | casos, variables | 200, 422 | — |
 | `POST /api/v1/modelos/segmento` | Un segmento por propensión en vez de por filtros | candidatos, minimo_puntuacion, tope | 200, 422 | — |
-| `POST /api/v1/sugerencias-caso/{caso_id}` | Qué ponerle delante al agente con este caso abierto | caso_id*, resultados, contexto_del_caso | 200, 422 | — |
+| `POST /api/v1/sugerencias-caso/aprovechamiento` | Si esto le sirve al agente o solo ocupa sitio en la pantalla | sugerencias | 200, 422 | — |
+| `POST /api/v1/sugerencias-caso/indexables` | Qué puede entrar en el índice semántico | elementos | 200, 422 | — |
+| `POST /api/v1/sugerencias-caso/{caso_id}` | Qué ponerle delante al agente con este caso abierto | caso_id*, resultados, caso, incluir_datos_personales | 200, 422 | — |
 | `POST /api/v1/transcripciones` | Registrar una transcripción, con permiso y con su confianza | referencia*, texto*, confianza*, idioma, minutos, hablantes, base_para_grabar*, participantes_avisados, participantes_externos | 200, 422 | — |
+| `POST /api/v1/transcripciones/calidad` | Cuánto hay que corregir de lo que propone el modelo | confirmadas | 200, 422 | — |
 | `POST /api/v1/transcripciones/compromisos` | Los compromisos y próximos pasos, como propuestas | elementos, confianza_transcripcion* | 200, 422 | — |
+| `POST /api/v1/transcripciones/coste` | Cuánto cuesta transcribir esto, antes de hacerlo | minutos_totales*, coste_por_minuto*, presupuesto | 200, 422 | — |
 | `POST /api/v1/variantes` | Registrar variantes de texto como propuestas | base*, textos, canal | 200, 422 | — |
 | `POST /api/v1/variantes/aprobar` | Aprobar o reescribir una variante | texto_propuesto*, texto_final* | 200, 422 | — |
-| `POST /api/v1/voz/apertura` | Lo que se dice al empezar la llamada | nombre_asistente*, es_maquina, graba | 200, 422 | — |
-| `POST /api/v1/voz/entender` | Qué hacer con lo que ha entendido el reconocedor | texto, confianza, intento | 200, 422 | — |
+| `POST /api/v1/variantes/ganadora` | Qué variante gana, o que todavía no se sabe | ramas | 200, 422 | — |
+| `POST /api/v1/variantes/rendimiento` | Cuánto se reescribe de lo que propone el modelo | aprobaciones | 200, 422 | — |
+| `POST /api/v1/voz/apertura` | Lo que se dice al empezar la llamada | nombre_asistente*, es_maquina, graba, consentimiento_entrenamiento | 200, 422 | — |
+| `POST /api/v1/voz/entender` | Qué hacer con lo que ha entendido el reconocedor | texto, confianza, intento, lo_ya_dicho, datos_recogidos | 200, 422 | — |
 | `POST /api/v1/voz/rendimiento` | Si el asistente sirve, medido como se mide de verdad | conversaciones | 200, 422 | — |
 
 ### service

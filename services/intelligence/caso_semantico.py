@@ -117,6 +117,10 @@ def buscar(
     admitidos.sort(key=lambda r: -r["parecido"])
     return {
         "sugerencias": admitidos[:tope],
+        # Contra qué se comparó, literal. Es lo único que deja comprobar desde
+        # fuera que salió el recorte y no la ficha entera: las dos respuestas se
+        # parecen mucho y sólo una manda el nombre del cliente a un tercero.
+        "contexto_usado": dict(contexto_del_caso),
         "descartadas": len(descartados),
         "motivos_de_descarte": descartados[:10],
         "hay": bool(admitidos),
@@ -226,6 +230,12 @@ def contexto_para_el_modelo(
         "producto": caso.get("producto"),
         "version": caso.get("version"),
         "categoria": caso.get("categoria"),
+        # Los dos que faltaban. `_en_que_se_parece` compara producto, versión,
+        # tipo de contrato y canal: recortarlos dejaba dos de los cuatro avisos
+        # de «se parece, pero no es lo mismo» sin poder salir, y ninguno de los
+        # dos es un dato personal.
+        "tipo_contrato": caso.get("tipo_contrato"),
+        "canal": caso.get("canal"),
     }
     if incluir_datos_personales:
         salida["contacto"] = caso.get("contacto")
