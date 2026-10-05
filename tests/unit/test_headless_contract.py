@@ -181,6 +181,12 @@ _AGREGADAS_EN_EL_GATEWAY = {
     # gateway pregunta a todos y suma, diciendo cuáles no ha podido leer. Llegar
     # al de un servicio suelto daría un número que parece el total y no lo es.
     "/api/v1/estado/consumo",
+    # Entrar en modo solo lectura **tiene que llegar a los catorce**: el modo
+    # vive en memoria de cada proceso, así que ponerlo en uno dejaría los otros
+    # trece escribiendo, y un modo degradado a medias deja un estado que nadie
+    # sabe reconstruir después. El gateway lo reparte y dice a cuáles no ha
+    # llegado — un servicio mudo sigue escribiendo, y eso hay que saberlo ahora.
+    "/api/v1/estado/solo-lectura",
     "/api/v1/superficie",
 }
 

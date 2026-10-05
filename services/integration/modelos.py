@@ -180,6 +180,10 @@ class RegistroRecibido(Base):
     tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     conexion_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
     operacion: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Lo pone el sistema copiándolo del origen, nunca una persona: por eso va
+    # marcado como no editable. Un formulario que lo pidiera a mano invitaría a
+    # inventarse una clave, y la clave es justo lo que hace que el mismo pedido
+    # no entre cuatro veces.
     externo_id: Mapped[str] = mapped_column(String(300), nullable=False)
     datos: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")

@@ -38,6 +38,7 @@ def _tareas() -> list[Any]:
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tareas import Tarea, por_tenant
 
+    from services.integration.firma import Sobre, caducar_vencidos
     from services.integration.programador import (
         purgar_registros,
         tenants_con_programacion,
@@ -52,6 +53,16 @@ def _tareas() -> list[Any]:
             return {
                 "borrados": purgar_registros(db, dias=int(s.integracion_registros_retencion_dias))
             }
+
+    def _tenants_con_sobres() -> list[Any]:
+        from sqlalchemy import select
+
+        with sesion(sistema=True) as db:
+            return [t for (t,) in db.execute(select(Sobre.tenant_id).distinct()).all()]
+
+    def _caducar(tenant_id: Any) -> dict[str, Any]:
+        with unidad_de_trabajo(tenant_id, sistema=True) as uow:
+            return dict(caducar_vencidos(uow, tenant_id))
 
     def _mantener(tenant_id: Any) -> dict[str, Any]:
         with unidad_de_trabajo(tenant_id, sistema=True) as uow:
@@ -78,6 +89,16 @@ def _tareas() -> list[Any]:
         # da ningún error**: deja de llegar lo que llegaba. `caer_a_sondeo`
         # estaba escrita, probada y sin llamante, así que el sistema sabía decir
         # cuáles se iban a morir, lo enseñaba en una pantalla y no hacía nada.
+        # Un sobre de firma vencido **no da ningún error**: se queda en el panel
+        # como negocio vivo esperando una firma que ya no va a llegar, y con él
+        # se queda la previsión. `caducar_vencidos` tenía ruta y sólo corría si
+        # alguien pulsaba un botón, que es como no correr.
+        Tarea(
+            "integration.sobres_vencidos",
+            int(s.tarea_purgas_intervalo_s),
+            por_tenant(_tenants_con_sobres, _caducar),
+            al_arrancar=False,
+        ),
         Tarea(
             "integration.suscripciones_suite",
             int(s.tarea_integraciones_intervalo_s),

@@ -318,6 +318,11 @@ NO_EDITABLES = frozenset(
         "fusionada_en_id",
         "duplicado_de_id",
         "registro_id",
+        # El identificador que trae el registro en el sistema de origen. Lo
+        # copia el programador de integraciones, nunca una persona: pedirlo en
+        # un formulario invita a inventarse una clave, y la clave es justo lo
+        # que impide que el mismo pedido entre cuatro veces.
+        "externo_id",
         "vinculo_id",
         "instancia_id",
         "caso_origen_id",

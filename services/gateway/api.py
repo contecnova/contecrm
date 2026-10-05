@@ -6,11 +6,12 @@ from typing import Any
 
 import httpx
 from crmcore.config import get_settings
-from crmcore.errors import NoDisponible, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, PrincipalDep, cookie_rechazada
+from crmcore.errors import ErrorValidacion, NoDisponible, NoEncontrado
+from crmcore.http.deps import AutenticadoDep, PlataformaDep, PrincipalDep, cookie_rechazada
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from services.gateway import operatividad, proxy, rutas
@@ -547,6 +548,82 @@ async def presion_de_la_instalacion(principal: AutenticadoDep) -> Any:
             if not mudos
             else f"{len(mudos)} servicios no contestan. Un servicio mudo no cuenta como "
             "tranquilo: es justo el que suele estar peor."
+        ),
+    }
+
+
+class SoloLecturaIn(BaseModel):
+    activo: bool
+    motivo: str = Field(
+        "",
+        description=(
+            "Qué está pasando, en una frase que se le pueda enseñar a quien no "
+            "puede guardar. Obligatorio al entrar"
+        ),
+    )
+
+
+@router.post(
+    "/estado/solo-lectura",
+    summary="Poner la instalación entera en solo lectura, o sacarla",
+    description=(
+        "**Va por aquí y no a un servicio suelto**, y es el punto: el modo vive "
+        "en memoria de cada proceso, así que ponerlo en uno dejaría los otros "
+        "trece escribiendo. Un modo degradado a medias es peor que ninguno — la "
+        "mitad de las operaciones guardan y la otra mitad no, y lo que queda "
+        "después es un estado que nadie sabe reconstruir.\n\n"
+        "Se dice **a cuáles ha llegado y a cuáles no**: un servicio que no "
+        "contesta sigue escribiendo, y eso hay que saberlo ahora, no después.\n\n"
+        "La lectura sigue funcionando en todos. Es lo que separa «no se puede "
+        "guardar, tus datos están ahí» de «el CRM no funciona»."
+    ),
+)
+async def solo_lectura_de_la_instalacion(datos: SoloLecturaIn, principal: PlataformaDep) -> Any:
+    import asyncio
+
+    from crmcore.config import get_settings
+
+    if _cliente is None:
+        raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
+    if datos.activo and not datos.motivo.strip():
+        raise ErrorValidacion(
+            "Entrar en modo solo lectura exige decir por qué: es lo que se le "
+            "enseña a quien no puede guardar.",
+            error_code="resiliencia.solo_lectura_sin_motivo",
+        )
+
+    cabeceras = proxy.cabeceras_de_identidad(
+        principal, get_settings().secret_key.get_secret_value()
+    )
+
+    async def _avisar(nombre: str) -> dict[str, Any]:
+        try:
+            respuesta = await _cliente.post(
+                f"{_destinos[nombre].url_base}/api/v1/estado/solo-lectura",
+                json=datos.model_dump(),
+                headers=cabeceras,
+                timeout=5.0,
+            )
+            if respuesta.status_code != 200:
+                raise RuntimeError(f"respondió {respuesta.status_code}")
+            return {"servicio": nombre, "aplicado": True}
+        except Exception as exc:  # noqa: BLE001 — un servicio mudo es información
+            return {"servicio": nombre, "aplicado": False, "error": str(exc)[:200]}
+
+    partes = await asyncio.gather(*(_avisar(n) for n in sorted(_destinos)))
+    sin_aplicar = [p["servicio"] for p in partes if not p["aplicado"]]
+    return {
+        "activo": datos.activo,
+        "motivo": datos.motivo,
+        "servicios": partes,
+        "sin_aplicar": sin_aplicar,
+        "completo": not sin_aplicar,
+        "aviso": (
+            ""
+            if not sin_aplicar
+            else f"{len(sin_aplicar)} servicios no lo han aplicado y siguen "
+            "escribiendo. Un modo degradado a medias deja un estado que nadie "
+            "sabe reconstruir después."
         ),
     }
 

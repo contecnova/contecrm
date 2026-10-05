@@ -805,7 +805,7 @@ puede decir que algo está hecho si no lo está.
 |---|---|:-:|:-:|---|:-:|---|
 | `CRM-04.02.01.01` | Email-to-case con threading, análisis de cabeceras y anti-bucle | C | 3 | service | ✅ | contecmind:app/services/email.py + contecweb:app/services/email.py |
 | `CRM-04.02.01.02` | Formulario web y portal de cliente | C | 3 | service | ✅ | contecflow-PSA:app/models/client_portal.py + app/services/client_portal_service.py |
-| `CRM-04.02.01.03` | Chat en vivo y co-browsing | A | 3 | service | ✅ | contecflow-PSA:app/services/ws_manager.py + portal_conversation_service.py |
+| `CRM-04.02.01.03` | Chat en vivo con transferencia y escalado a humano | A | 3 | service | ✅ | contecflow-PSA:app/services/ws_manager.py + portal_conversation_service.py |
 | `CRM-04.02.01.04` | WhatsApp, Messenger, Telegram y mensajería social | A | 3 | service | ✅ | contecpos:services/notificaciones (WhatsApp) |
 | `CRM-04.02.01.05` | Telefonía/CTI: screen pop, transferencia con contexto, IVR conectado | A | 3 | integration | ✅ | — |
 | `CRM-04.02.01.06` | Redes sociales: escucha, respuesta y conversión a caso | A | 4 | marketing | ✅ | — |

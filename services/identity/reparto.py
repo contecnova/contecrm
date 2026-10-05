@@ -166,6 +166,36 @@ def _mensaje(db: Session, notificacion: Any, canal: str) -> Mensaje:
         cuerpo = f"{titulo}. {cuerpo}".strip()[:160]
         titulo = ""
 
+    if canal == "push":
+        # EL PUSH NO LLEVA EL DATO DENTRO. Llega a una pantalla bloqueada que ve
+        # cualquiera que coja el teléfono, y se queda por el camino en los
+        # servidores de push de un tercero.
+        #
+        # `movil.preparar_push` decidía esto y **no la llamaba nadie**: los
+        # avisos salían por push con el cuerpo entero y con `datos`, o sea con
+        # el nombre del cliente y el importe en la pantalla de bloqueo. Lo que
+        # va es qué ha pasado y dónde mirarlo; el dato lo enseña la aplicación
+        # después de identificar a quien la abre.
+        from crmcore.movil import preparar_push
+
+        compuesto_push = preparar_push(
+            tipo=notificacion.tipo,
+            objeto=notificacion.objeto_tipo or "notificacion",
+            objeto_id=notificacion.objeto_id or notificacion.id,
+            # El título se corta a 60: más llega truncado a media palabra.
+            titulo_corto=(titulo or cuerpo)[:60],
+        )
+        return Mensaje(
+            titulo=str(compuesto_push["titulo"]),
+            # Sin cuerpo a propósito: es lo que se leería desde fuera.
+            cuerpo="",
+            tipo=notificacion.tipo,
+            prioridad=notificacion.prioridad,
+            objeto_tipo=notificacion.objeto_tipo or "",
+            objeto_id=str(notificacion.objeto_id) if notificacion.objeto_id else "",
+            datos=dict(compuesto_push["referencia"]),
+        )
+
     return Mensaje(
         titulo=titulo,
         cuerpo=cuerpo,

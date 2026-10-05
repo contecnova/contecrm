@@ -10902,6 +10902,43 @@ En SAML no hay nada equivalente que publicar, así que se dice que no es
 comprobable sin una entrada de verdad — y en la primera se dirá qué atributo
 declarado no llegó, con la lista de los que sí.
 
+### Lo que un aviso por push NO lleva (`CRM-02.03.02.03`)
+
+Un push llega a una **pantalla bloqueada** que ve cualquiera que coja el
+teléfono, y pasa por los servidores de push de un tercero por el camino. Así que
+lleva **qué ha pasado y dónde mirarlo**, nunca el dato: ni el nombre del
+cliente, ni el importe, ni el asunto completo. El dato lo enseña la aplicación
+después de identificar a quien la abre.
+
+Hasta el 05-10-2026 esto estaba decidido y no ocurría: la función que compone el
+push sin datos dentro no la llamaba nadie, y los avisos salían con el cuerpo
+entero. El título se corta a 60 caracteres, que es lo que cabe sin truncarse a
+media palabra.
+
+Por los demás canales el aviso sigue llevando lo suyo: vaciar el cuerpo en el
+correo dejaría avisos en blanco, que es el fallo contrario.
+
+### De una queja en redes a un caso (`CRM-04.02.01.06`)
+
+Clasificar una mención decide **si abre caso**, y lo que no hace es convertir
+cada mención en uno: un «gracias por el envío rápido» no necesita un expediente
+con SLA, y meterlo en la cola hace que el agente aprenda a cerrar sin leer.
+
+Lo que sí abre caso **lo abre de verdad**, por una orden al servicio dueño de
+los casos. Antes esa decisión era un campo en la respuesta y nadie la ejecutaba:
+una queja pública clasificada como caso y sin caso detrás es peor que no
+clasificarla, porque el panel dice que se detectó y la cola de soporte no la
+tiene.
+
+Y la **severidad sale del tipo**: una crisis no entra en la cola como una queja
+más. Meterlas igual es lo que hace que la crisis espere su turno.
+
+Del autor de la mención se guarda **lo justo** para poder contestarle y
+encontrar el hilo. Un perfil público sigue siendo dato personal: traerse su
+biografía, su foto y su historial «por contexto» crea la ficha de alguien que
+nunca nos dio nada, y esa ficha hay que protegerla, conservarla y borrarla como
+cualquier otra.
+
 ## Invitados externos con acceso acotado (`CRM-06.02.01.06`)
 
 Un cliente, un partner o un auditor que necesita entrar un mes. Tres cosas lo

@@ -88,6 +88,9 @@ PREFIJOS: dict[str, str] = {
     "consola-agente": "service",
     "conocimiento": "service",
     "portal": "service",
+    # El compromiso que se puede firmar con un proveedor detrás: lo calcula
+    # `service`, que es quien conoce los SLA y las colas.
+    "sla-proveedores": "service",
     "comunidad": "service",
     "segmentos": "marketing",
     "supresiones": "marketing",
@@ -305,6 +308,30 @@ RUTAS_DE_SESION = frozenset(
     }
 )
 
+# El portal es **un solo espacio de direcciones** y lo sirven varios servicios.
+#
+# `/api/v1/portal/mi/<seccion>`: los casos, el conocimiento, la comunidad y los
+# activos los sirve `service`, que es quien tiene la tabla de accesos; los
+# contratos y los pedidos son de `sales` y los contactos de `party`. Traerlos
+# todos a `service` obligaría a copiar sus tablas, y la copia es siempre la que
+# se queda vieja.
+#
+# Va por sección y no por un prefijo distinto para cada servicio porque quien
+# monta el portal no tiene por qué saber de qué servicio es cada cosa: eso es
+# justo lo que el gateway existe para esconder.
+#
+# Lo que NO lleva sección —`/portal/entrar`, `/portal/mi/resumen`— lo sigue
+# atendiendo `service` por la tabla de prefijos.
+SECCIONES_PORTAL = {
+    "casos": "service",
+    "conocimiento": "service",
+    "comunidad": "service",
+    "activos": "service",
+    "contratos": "sales",
+    "pedidos": "sales",
+    "contactos": "party",
+}
+
 RECURSOS_TRANSVERSALES = {
     # Los vocabularios de negocio: los publica cada servicio en su prefijo, como
     # la papelera, y por lo mismo — los valida él, en su esquema.
@@ -374,6 +401,12 @@ def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | Non
         if len(partes) >= 4 and partes[3] in RECURSOS_TRANSVERSALES:
             if partes[2] in conocidos:
                 return partes[2]
+        if partes[2] == "portal" and len(partes) >= 5 and partes[3] == "mi":
+            # La sección decide el servicio. Una desconocida cae a `service`,
+            # que es el dueño del portal y contesta qué secciones hay — mejor
+            # error que el 404 del gateway, que no dice si te equivocaste de
+            # sección o si el portal no existe.
+            return SECCIONES_PORTAL.get(partes[4], "service")
         if partes[2] == "comentarios":
             return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":

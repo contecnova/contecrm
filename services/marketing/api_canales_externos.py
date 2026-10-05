@@ -283,8 +283,40 @@ def decidir(aprobacion_id: UUID, cuerpo: DecisionIn, uow: UowDep, principal: Aut
         "problema distinto."
     ),
 )
-def clasificar(cuerpo: MencionIn, principal: AutenticadoDep) -> Any:
-    return soc.clasificar(mencion=cuerpo.mencion, palabras_de_crisis=cuerpo.palabras_de_crisis)
+def clasificar(cuerpo: MencionIn, uow: UowDep, principal: AutenticadoDep) -> Any:
+    salida = soc.clasificar(mencion=cuerpo.mencion, palabras_de_crisis=cuerpo.palabras_de_crisis)
+    # LA CONVERSIÓN A CASO OCURRE. Hasta el 05-10-2026 la clasificación decía
+    # `abre_caso: true` y **no lo abría nadie**: el enunciado prometía «escucha,
+    # respuesta y conversión a caso» y lo tercero era un booleano en una
+    # respuesta JSON. Una queja clasificada como caso y sin caso es peor que no
+    # clasificarla: el panel dice que se atendió.
+    #
+    # Va por COMANDO y no escribiendo el caso aquí: los casos son de `service` y
+    # ningún servicio escribe en el esquema de otro. Y por la tabla de salida,
+    # así que si esta transacción se deshace la orden no sale.
+    if salida.get("abre_caso"):
+        from crmcore.bus.comandos import Comando, emitir
+
+        emitir(
+            uow,
+            Comando(
+                accion="crear",
+                objeto="caso",
+                tenant_id=uow.tenant_id,
+                datos={
+                    "asunto": str(cuerpo.mencion.get("texto") or "")[:200],
+                    "descripcion": str(cuerpo.mencion.get("texto") or ""),
+                    "origen": "social",
+                    # La severidad sale del tipo que decidió `clasificar`, no de
+                    # un valor fijo: una crisis y una queja no entran igual en la
+                    # cola, y meterlas igual es lo que hace que la crisis espere.
+                    "severidad": "critica" if salida["tipo"] == "crisis" else "normal",
+                },
+                origen="social",
+                origen_id=str(cuerpo.mencion.get("id") or ""),
+            ),
+        )
+    return {**salida, "caso_pedido": bool(salida.get("abre_caso"))}
 
 
 @router_social.post(

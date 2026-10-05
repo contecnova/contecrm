@@ -73,6 +73,7 @@ stateDiagram-v2
 | `POST /api/v1/claves-cifrado` | Aportar o rotar la clave del cliente | material_base64*, origen | 201, 422 | — |
 | `POST /api/v1/claves-cifrado/generar` | Generar material de clave, para quien no quiera aportarlo | — | 200, 422 | — |
 | `POST /api/v1/claves-cifrado/revocar` | Revocar la clave: borrado criptográfico irreversible | motivo*, confirmo_que_es_irreversible | 200, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `PUT /api/v1/flags/{clave}` | Fijar un flag para el tenant | clave*, activo, porcentaje, descripcion | 200, 422 | — |
 | `PUT /api/v1/grc/controles/{codigo}` | Crear o actualizar un control | codigo*, nombre*, descripcion, tipo, automatico, frecuencia, responsable_id, activo, capacidades, riesgos, marcos, fuente_evidencia | 200, 422 | — |
 | `POST /api/v1/grc/controles/{codigo}/evaluaciones` | Evaluar un control | codigo*, resultado*, fecha, observaciones, plan_accion, evidencia | 201, 422 | — |
@@ -138,12 +139,14 @@ stateDiagram-v2
 | `DELETE /api/v1/claves-api/{clave_id}` | Revocar una clave | clave_id* | 204, 422 | — |
 | `POST /api/v1/dispositivos-confianza/revocar-todos` | He perdido el portátil | — | 200, 422 | — |
 | `DELETE /api/v1/dispositivos-confianza/{dispositivo_id}` | Dejar de confiar en un equipo | dispositivo_id* | 204, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/factores/codigo` | Enviar un código de un solo uso | canal*, proposito, direccion | 202, 422 | — |
 | `POST /api/v1/factores/comprobar` | Validar un código y elevar el nivel de esta sesión | codigo*, proposito | 200, 422 | — |
 | `POST /api/v1/identity/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/identity/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
+| `POST /api/v1/notificaciones/entregas/sucesos` | Lo que el proveedor cuenta que pasó con un correo ya mandado | entrega_id, direccion*, suceso*, detalle, proveedor, ocurrido_at | 200, 422 | — |
 | `POST /api/v1/notificaciones/leidas` | Marcar como leídas | ids | 200, 422 | — |
 | `PUT /api/v1/notificaciones/preferencias` | Fijar mis preferencias para un tipo de evento | tipo, canales*, agrupar_minutos, silencio_desde, silencio_hasta | 200, 422 | — |
 | `POST /api/v1/politicas-acceso/simular` | Qué vería esta persona, antes de activar nada | usuario_id*, objeto*, accion*, registro, politica | 200, 422 | — |
@@ -194,6 +197,7 @@ stateDiagram-v2
 | `POST /api/v1/entornos/{entorno}/drift` | Qué se ha tocado fuera del pipeline | entorno*, estado_actual | 200, 422 | — |
 | `POST /api/v1/entornos/{entorno}/simular` | Qué pasaría al promocionar, sin aplicar nada | entorno*, paquete_id*, estado_destino | 200, 422 | — |
 | `POST /api/v1/entornos/{entorno}/volver-atras` | Reaplicar el paquete anterior | entorno*, motivo* | 200, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/metadata/listas/{lista}` | Añadir un valor a una lista maestra | lista*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `DELETE /api/v1/metadata/listas/{lista}/{valor}` | Desactivar un valor de lista | lista*, valor* | 200, 422 | — |
 | `POST /api/v1/metadata/modulos/actualizar` | Actualizar un módulo respetando lo que el cliente ajustó | manifiesto*, aplicar, forzar_fijos | 200, 422 | `module.updated` |
@@ -234,6 +238,7 @@ stateDiagram-v2
 | `POST /api/v1/aprobaciones/revisar-plazos` | Avisar a los que van tarde y escalar a los que ya se pasaron | — | 200, 422 | `approval.due.soon`, `approval.escalated` |
 | `POST /api/v1/aprobaciones/{aprobacion_id}/comprobar-vigencia` | ¿Lo aprobado sigue siendo lo que se aprobó? | aprobacion_id*, datos_actuales* | 200, 422 | `approval.reopened` |
 | `POST /api/v1/aprobaciones/{aprobacion_id}/decidir` | Decidir sobre una aprobación | aprobacion_id*, decision*, comentario | 200, 422 | `approval.decided`, `approval.stage.opened` |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/instancias` | Arrancar un proceso | clave*, variables, origen_tipo, origen_id | 201, 422 | — |
 | `POST /api/v1/instancias/{instancia_id}/reintentar` | Reintentar una instancia fallida | instancia_id* | 200, 422 | — |
 | `PATCH /api/v1/instancias/{instancia_id}/variables` | Corregir las variables de una instancia en marcha | instancia_id*, variables*, motivo* | 200, 422 | — |
@@ -267,6 +272,7 @@ stateDiagram-v2
 | `POST /api/v1/automatizaciones/{regla_id}/activar` | Activar o desactivar una regla | regla_id*, activa* | 200, 422 | — |
 | `POST /api/v1/automatizaciones/{regla_id}/archivar` | Archivar automatizaciones | regla_id* | 200, 422 | — |
 | `POST /api/v1/automatizaciones/{regla_id}/probar` | Probar una regla sin ejecutarla | regla_id*, valores* | 200, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 
 ### integration
 
@@ -301,6 +307,8 @@ stateDiagram-v2
 | `PATCH /api/v1/canales-entrada/{canal_entrada_id}` | Editar canales de entrada | canal_entrada_id*, clave, canal, nombre, destino, produce, guardar_contenido, activo | 200, 422 | — |
 | `DELETE /api/v1/canales-entrada/{canal_entrada_id}` | Borrar canales de entrada | canal_entrada_id* | 204, 422 | — |
 | `POST /api/v1/canales-entrada/{canal_entrada_id}/archivar` | Archivar canales de entrada | canal_entrada_id* | 200, 422 | — |
+| `POST /api/v1/compensacion/calculo` | Recoger lo que ha calculado el motor de comisiones, tal cual | referencia*, periodo*, lineas, cerrado | 200, 422 | — |
+| `POST /api/v1/compensacion/clawback` | Qué hacer cuando un cierre cambia después de pagada la comisión | referencia*, importe_original*, importe_nuevo*, ya_pagada, motivo* | 200, 422 | — |
 | `POST /api/v1/compensacion/conciliar` | Qué se mandó y no ha vuelto calculado | hechos_enviados, calculos_recibidos | 200, 422 | — |
 | `POST /api/v1/compensacion/hecho` | Componer el hecho que se manda al motor de comisiones | tipo*, referencia*, fecha*, importe*, moneda, reparto, datos | 200, 422 | — |
 | `POST /api/v1/conectores` | Publicar una versión de conector en el catálogo | clave*, nombre*, version*, operaciones*, categoria, descripcion, protocolo, credenciales, dominios, config_defecto, notas_version | 201, 422 | — |
@@ -322,7 +330,9 @@ stateDiagram-v2
 | `POST /api/v1/encargos/eventos` | Ingerir un evento del proveedor (webhook o sondeo) | proveedor*, referencia_externa, referencia_propia, estado_proveedor*, ocurrio_at, id_externo, descripcion, lugar, crudo | 200, 422 | `order.tracked.incident`, `order.tracked.updated` |
 | `POST /api/v1/encargos/incidencias/{incidencia_id}/resolver` | Cerrar una incidencia | incidencia_id*, responsable, coste_asumido | 200, 422 | — |
 | `POST /api/v1/encargos/revisar-silencios` | Marcar los encargos de los que el proveedor no dice nada | — | 200, 422 | `order.tracked.silent` |
+| `POST /api/v1/encargos/{encargo_id}/documentos` | Archivar la prueba de entrega del encargo | encargo_id*, documento_id*, rol, titulo, tipo, sistema | 200, 422 | — |
 | `POST /api/v1/encargos/{encargo_id}/incidencias` | Abrir una incidencia sobre el encargo | encargo_id*, tipo*, descripcion, responsable, caso_id | 201, 422 | `order.tracked.incident` |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/federacion/embebidos` | Declarar dónde puede vivir el CRM embebido | clave*, anfitrion, origenes*, bloques*, contexto, nombre | 201, 422 | — |
 | `POST /api/v1/federacion/embebidos/contexto` | Traducir el contexto que manda el anfitrión | clave*, origen*, parametros | 200, 422 | — |
 | `POST /api/v1/federacion/vistas` | Declarar un bloque de datos externos sin replicar | clave*, objeto*, campos*, nombre, instalacion_clave, operacion, clave_registro, conexion_id, timeout_ms, cache_s | 201, 422 | — |
@@ -350,9 +360,14 @@ stateDiagram-v2
 | `DELETE /api/v1/integraciones/conexiones/{conexion_id}` | Borrar conexiones | conexion_id* | 204, 422 | — |
 | `POST /api/v1/integraciones/conexiones/{conexion_id}/archivar` | Archivar conexiones | conexion_id* | 200, 422 | — |
 | `PUT /api/v1/integraciones/conexiones/{conexion_id}/credenciales` | Fijar o rotar las credenciales de una conexión | conexion_id*, valores*, caduca_at | 200, 422 | — |
+| `POST /api/v1/integraciones/conexiones/{conexion_id}/enviar` | Mandar algo por un transporte heredado (SOAP o AMQP) | conexion_id*, cuerpo*, accion | 200, 422 | — |
 | `POST /api/v1/integraciones/conexiones/{conexion_id}/operaciones` | Declarar una operación | conexion_id*, clave*, nombre*, definicion* | 201, 422 | — |
 | `POST /api/v1/integraciones/conexiones/{conexion_id}/operaciones/{clave}/invocar` | Invocar una operación | conexion_id*, clave*, parametros, solo_probar | 200, 422 | — |
+| `PUT /api/v1/integraciones/conexiones/{conexion_id}/operaciones/{clave}/programacion` | Cada cuánto se ejecuta sola esta operación | conexion_id*, clave*, cada_minutos, activa | 200, 422 | — |
 | `POST /api/v1/integraciones/conexiones/{conexion_id}/probar` | Probar la conectividad de una conexión | conexion_id* | 200, 422 | — |
+| `POST /api/v1/integraciones/registros-recibidos/{registro_id}/estado` | Marcar un registro recibido como procesado o descartado | registro_id*, estado, porque | 200, 422 | — |
+| `PATCH /api/v1/integraciones/registros-recibidos/{registro_recibido_id}` | Editar registros recibidos | registro_recibido_id*, conexion_id, operacion, datos, estado, porque | 200, 422 | — |
+| `POST /api/v1/integraciones/registros-recibidos/{registro_recibido_id}/archivar` | Archivar registros recibidos | registro_recibido_id* | 200, 422 | — |
 | `POST /api/v1/integration/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/integration/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/integration/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
@@ -373,16 +388,21 @@ stateDiagram-v2
 | `PATCH /api/v1/sincronizacion/conflictos/{conflicto_id}` | Editar conflictos de sincronización | conflicto_id*, campo, valor_nuestro, valor_suyo, politica, porque, resuelto_con, resuelto_por, resuelto_at, intentos | 200, 422 | — |
 | `POST /api/v1/sincronizacion/conflictos/{conflicto_id}/resolver` | Elegir un lado | conflicto_id*, gana* | 200, 422 | — |
 | `POST /api/v1/sincronizacion/vinculos` | Emparejar un registro nuestro con uno suyo | objeto*, sistema*, registro_id*, id_externo* | 201, 422 | — |
-| `POST /api/v1/suites/consentimiento` | Autorizar el acceso a los propios recursos | perfil*, recursos*, sentido | 201, 422 | — |
+| `POST /api/v1/suites/antes-de-sincronizar` | Las dos comprobaciones que van antes de cada vuelta | usuario_id*, perfil*, recurso*, sentido, alcances_concedidos, alcances_necesarios | 200, 422 | — |
+| `POST /api/v1/suites/consentimiento` | Autorizar el acceso a los propios recursos | perfil*, recursos*, sentido, credencial_caduca_at, tiene_refresco | 201, 422 | — |
 | `DELETE /api/v1/suites/consentimiento/{perfil}` | Retirar el permiso | perfil* | 200, 422 | — |
 | `POST /api/v1/suites/contactos/campo` | Qué valor gana cuando los dos lados discrepan | campo*, valor_crm, valor_proveedor, origen*, mas_reciente | 200, 422 | — |
 | `POST /api/v1/suites/contactos/que-entran` | Qué contactos de la agenda entran al CRM | contactos_del_proveedor, correos_conocidos | 200, 422 | — |
 | `POST /api/v1/suites/contactos/que-suben` | Qué contactos del CRM van a la agenda del usuario | contactos_del_crm, solo_relacionados | 200, 422 | — |
+| `POST /api/v1/suites/conversaciones/vincular` | Enlazar un hilo de chat a un registro, por referencia | objeto*, objeto_id*, proveedor*, referencia*, exportable, resumen | 200, 422 | — |
+| `POST /api/v1/suites/cuenta/resolver` | A qué usuario del CRM corresponde una cuenta de la suite | direccion_del_proveedor*, usuarios | 200, 422 | — |
 | `POST /api/v1/suites/diagnostico` | Qué falla exactamente, no «error de autenticación» | codigo, alcances_concedidos, alcances_necesarios, mensaje_del_proveedor | 200, 422 | — |
 | `POST /api/v1/suites/disponibilidad` | Huecos reales leídos del calendario | ocupado, desde*, hasta*, minutos, calendario_legible | 200, 422 | — |
 | `POST /api/v1/suites/exportacion` | Preparar una salida en formato estándar, sin pasar por ninguna suite | formato*, objetos, referencias | 200, 422 | — |
 | `POST /api/v1/suites/ficheros/estado` | Qué enseñar de un fichero enlazado | existe*, tiene_acceso*, nombre* | 200, 422 | — |
 | `POST /api/v1/suites/ficheros/vincular` | Enlazar un fichero del proveedor a un registro | objeto*, objeto_id*, proveedor*, referencia*, nombre*, tamano_bytes | 200, 422 | — |
+| `POST /api/v1/suites/importacion/comprobar` | Qué entraría y qué no de un fichero estándar, antes de importarlo | formato*, filas | 200, 422 | — |
+| `POST /api/v1/suites/mantenimiento` | Caer al sondeo lo que ha caducado y avisar de lo que va a caducar | — | 200, 422 | — |
 | `POST /api/v1/suites/notas/resolver` | Qué enseñar de una nota enlazada | referencia*, tiene_acceso*, existe* | 200, 422 | — |
 | `POST /api/v1/suites/notas/vincular` | Enlazar una nota del proveedor a un registro | objeto*, objeto_id*, proveedor*, referencia*, titulo*, copiar_contenido | 200, 422 | — |
 | `POST /api/v1/suites/perfiles` | Declarar un proveedor de productividad como configuración | nombre*, sistema, config | 201, 422 | — |
@@ -390,6 +410,7 @@ stateDiagram-v2
 | `PATCH /api/v1/suites/perfiles/{perfil_suite_id}` | Editar perfiles de suite | perfil_suite_id*, nombre, sistema, descripcion, protocolo, config, activa, probada_at, prueba_ok, prueba_detalle | 200, 422 | — |
 | `DELETE /api/v1/suites/perfiles/{perfil_suite_id}` | Borrar perfiles de suite | perfil_suite_id* | 204, 422 | — |
 | `POST /api/v1/suites/perfiles/{perfil_suite_id}/archivar` | Archivar perfiles de suite | perfil_suite_id* | 200, 422 | — |
+| `POST /api/v1/suites/reglas` | Qué entra de verdad, juntando la política de la empresa y la preferencia de la persona | del_tenant, del_usuario | 200, 422 | — |
 | `POST /api/v1/suites/reuniones` | Preparar una reunión en línea con el proveedor del tenant | perfil*, asunto*, inicio*, fin*, confirmada, asistentes | 200, 422 | — |
 | `POST /api/v1/suites/reuniones/enlace` | Si este enlace de reunión puede ir por ese canal | enlace*, destino* | 200, 422 | — |
 | `POST /api/v1/suites/suscripciones` | Registrar una suscripción a los cambios del proveedor | perfil*, recurso*, externo_id*, caduca_at | 201, 422 | — |
@@ -403,6 +424,7 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
@@ -488,6 +510,7 @@ stateDiagram-v2
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
 | `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/mapa-personas` | Anotar cómo se relacionan dos personas de la cuenta | origen_id*, destino_id*, tipo*, motivo | 201, 422 | — |
 | `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, origen_id, destino_id, tipo, motivo, anotada_por_id | 200, 422 | — |
 | `DELETE /api/v1/mapa-personas/{relacion_persona_id}` | Borrar mapa de personas | relacion_persona_id* | 204, 422 | — |
@@ -589,6 +612,7 @@ stateDiagram-v2
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
 | `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `PUT /api/v1/forecast/oportunidades/{oportunidad_id}/categoria` | Poner una oportunidad en una categoría de previsión | oportunidad_id*, categoria* | 200, 422 | — |
 | `POST /api/v1/forecast/periodos` | Abrir un periodo de previsión | clave*, desde*, hasta*, nombre | 201, 422 | — |
 | `POST /api/v1/forecast/periodos/{clave}/ajustes` | Ajustar el número calculado | clave*, categoria, importe_ajustado*, importe_bruto*, motivo*, ambito, ambito_id, moneda | 200, 422 | — |
@@ -777,6 +801,7 @@ stateDiagram-v2
 | `POST /api/v1/cuadros-mando/embebidos/{enlace_embebido_id}/archivar` | Archivar enlaces embebidos | enlace_embebido_id* | 200, 422 | — |
 | `POST /api/v1/cuadros-mando/embebidos/{enlace_id}/revocar` | Revocar un enlace embebido | enlace_id* | 200, 422 | — |
 | `POST /api/v1/cuadros-mando/suscripciones` | Que el cuadro llegue solo | cuadro_id*, periodicidad, hora | 201, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/explotacion/preguntas` | Guardar una pregunta | clave*, titulo*, pregunta*, publicada, roles | 201, 422 | — |
 | `POST /api/v1/explotacion/preguntas/{pregunta_id}/publicar` | Convertir la pregunta en un informe del tenant | pregunta_id*, definicion* | 200, 422 | — |
 | `POST /api/v1/explotacion/registrar-fuente` | Publicar la descripción del CRM en contecintelligence | forzar | 202, 422 | — |
@@ -800,6 +825,7 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos` | Declarar un agente con sus herramientas y sus límites | clave*, tipo*, descripcion, permisos, herramientas, principal_id, max_acciones, presupuesto_tokens_dia, aprobacion_por_riesgo, aprobacion_desde_importe | 201, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/avanzar` | Ejecutar el siguiente paso, uno solo | ejecucion_id* | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/revertir` | Deshacer lo que el agente hizo (CRM-05.02.03.05) | ejecucion_id* | 200, 422 | — |
@@ -970,6 +996,7 @@ stateDiagram-v2
 | `PATCH /api/v1/escalado/reglas/{regla_escalado_id}` | Editar reglas de escalado | regla_escalado_id*, nombre, prioridad, activa, consumido_pct, severidad_minima, solo_vip, al_incumplir, subir_nivel, asignar_a, cola_destino, avisar_a, subir_prioridad | 200, 422 | — |
 | `DELETE /api/v1/escalado/reglas/{regla_escalado_id}` | Borrar reglas de escalado | regla_escalado_id* | 204, 422 | — |
 | `POST /api/v1/escalado/reglas/{regla_escalado_id}/archivar` | Archivar reglas de escalado | regla_escalado_id* | 200, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/expedientes` | Abrir un expediente de reclamación | asunto*, entrada_at*, plazo_dias, plazo_habiles, tipo, via, organismo, referencia_externa, descripcion, cuenta_id, contacto_id, caso_id, devolucion_id, calendario | 201, 422 | `complaint.opened` |
 | `PATCH /api/v1/expedientes/{expediente_id}` | Editar expedientes | expediente_id*, codigo, cuenta_id, contacto_id, caso_id, devolucion_id, tipo, via, organismo, referencia_externa, asunto, descripcion, entrada_at, registrada_at, acuse_at, plazo_dias, plazo_habiles, vence_at, suspendido_seg, suspendido_desde, motivo_suspension, estado, respondido_at, respuesta, resultado, hitos | 200, 422 | — |
 | `DELETE /api/v1/expedientes/{expediente_id}` | Borrar expedientes | expediente_id* | 204, 422 | — |
@@ -985,6 +1012,8 @@ stateDiagram-v2
 | `POST /api/v1/macros/{macro_id}/archivar` | Archivar macros | macro_id* | 200, 422 | — |
 | `POST /api/v1/marcador/colgar` | Registrar la llamada al colgar | contacto_id*, duracion_s, resultado*, nota, grabacion_ref, proxima_fecha | 200, 422 | — |
 | `POST /api/v1/marcador/llamar` | Comprobar lo que hay que comprobar antes de que suene | contacto_id*, numero*, consiente_grabacion, grabar_por_politica, en_lista_de_exclusion | 200, 422 | — |
+| `POST /api/v1/marcador/politica-grabacion` | Comprobar que la política de grabación se sostiene | grabar*, avisar*, dias_conservacion | 200, 422 | — |
+| `POST /api/v1/marcador/ritmo` | Cuántas llamadas se pueden lanzar a la vez sin pasarse | agentes_libres, llamadas_lanzadas, abandonadas, contestadas | 200, 422 | — |
 | `POST /api/v1/ordenes-trabajo` | Crear una orden de trabajo | titulo*, tipo, descripcion, caso_id, activo_id, cuenta_id, direccion, latitud, longitud, zona, prioridad, competencias, duracion_estimada_min, ventana_desde, ventana_hasta | 201, 422 | `workorder.created` |
 | `PATCH /api/v1/ordenes-trabajo/{orden_id}` | Editar órdenes de trabajo | orden_id*, codigo, tipo, titulo, descripcion, caso_id, activo_id, cuenta_id, plan_id, direccion, latitud, longitud, zona, estado, prioridad, competencias, duracion_estimada_min, ventana_desde, ventana_hasta, tecnico_id, cita_desde, cita_hasta, motivo_asignacion, iniciada_at, completada_at, cerrada_at, motivo_estado, firmado_por, firma_huella, firmado_at, conforme, motivo_no_conforme | 200, 422 | — |
 | `DELETE /api/v1/ordenes-trabajo/{orden_id}` | Borrar órdenes de trabajo | orden_id* | 204, 422 | — |
@@ -1007,6 +1036,7 @@ stateDiagram-v2
 | `POST /api/v1/portal/enlace` | Pedir un enlace de acceso | email* | 200, 422 | — |
 | `POST /api/v1/portal/entrar` | Canjear el enlace y entrar | token* | 200, 422 | — |
 | `POST /api/v1/portal/mi/casos` | Abrir una petición | asunto*, descripcion | 201, 422 | `case.created` |
+| `POST /api/v1/portal/mi/comunidad` | Abrir un hilo en la comunidad | titulo*, cuerpo, categoria | 201, 422 | — |
 | `POST /api/v1/portal/mi/conversacion` | Escribir a quien me atiende | texto*, asunto | 201, 422 | `case.created`, `case.message.received` |
 | `POST /api/v1/portal/sesion` | Entrar en el portal con el enlace recibido | token* | 200, 422 | — |
 | `POST /api/v1/problemas` | Abrir un problema | titulo*, descripcion, severidad, categoria_id, producto_id, responsable_id, caso_maestro_id, casos | 201, 422 | `problem.opened` |
@@ -1032,6 +1062,7 @@ stateDiagram-v2
 | `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/sincronizacion-campo` | Volcar el trabajo hecho sin red | dispositivo*, cambios* | 200, 422 | `workorder.completed` |
 | `POST /api/v1/sla` | Publicar una definición de SLA | clave*, nombre*, prioridad, tier_cliente, cuenta_id, horas_primera_respuesta, horas_resolucion, horas_actualizacion, calendario, aviso_pct | 201, 422 | — |
+| `POST /api/v1/sla-proveedores/maximo-que-se-puede-prometer` | Lo mejor que se puede firmar con este proveedor detrás | del_proveedor, horas_propias | 200, 422 | — |
 | `POST /api/v1/tecnicos-campo` | Dar de alta un técnico de campo | usuario_id*, nombre, zonas, competencias, base_latitud, base_longitud, minutos_jornada | 201, 422 | — |
 | `PATCH /api/v1/tecnicos-campo/{tecnico_id}` | Editar técnicos de campo | tecnico_id*, usuario_id, nombre, zonas, competencias, base_latitud, base_longitud, minutos_jornada, activo | 200, 422 | — |
 | `DELETE /api/v1/tecnicos-campo/{tecnico_id}` | Borrar técnicos de campo | tecnico_id* | 204, 422 | — |
@@ -1044,12 +1075,16 @@ stateDiagram-v2
 | `POST /api/v1/activos-marketing` | Dar de alta un activo con sus derechos y su vigencia | clave*, nombre*, referencia*, usos_permitidos, licencia, licencia_hasta, vigente_hasta, tipo, idioma, etiquetas | 201, 422 | — |
 | `POST /api/v1/activos-marketing/aprobacion` | Abrir la revisión de un contenido o una campaña | objeto*, objeto_id*, version, pasos | 201, 422 | — |
 | `POST /api/v1/activos-marketing/aprobacion/{aprobacion_id}` | Aprobar o rechazar un paso | aprobacion_id*, resultado*, comentario, vio_los_cambios | 200, 422 | — |
+| `POST /api/v1/activos-marketing/se-puede-usar` | Si este activo se puede usar para esto y hoy | activo, uso* | 200, 422 | — |
 | `PATCH /api/v1/activos-marketing/{activo_marketing_id}` | Editar activos de marketing | activo_marketing_id*, clave, nombre, tipo, referencia, estado, usos_permitidos, licencia, licencia_hasta, vigente_hasta, idioma, etiquetas, sustituido_por_id | 200, 422 | — |
 | `DELETE /api/v1/activos-marketing/{activo_marketing_id}` | Borrar activos de marketing | activo_marketing_id* | 204, 422 | — |
 | `POST /api/v1/activos-marketing/{activo_marketing_id}/archivar` | Archivar activos de marketing | activo_marketing_id* | 200, 422 | — |
 | `POST /api/v1/audiencias-externas` | Preparar una audiencia para una plataforma publicitaria | personas, plataforma*, finalidad* | 200, 422 | — |
+| `POST /api/v1/audiencias-externas/bajas` | Quién se dio de baja y sigue en las audiencias de fuera | bajas_en_el_crm, ultimo_envio | 200, 422 | — |
 | `POST /api/v1/audiencias-externas/contenido-web` | Qué contenido servir a este visitante | visitante, reglas, anonimo_por_defecto | 200, 422 | — |
 | `POST /api/v1/audiencias-externas/offline` | Preparar un paso de correo postal o telemarketing | canal*, destinatarios, coste_unitario, fecha_lanzamiento* | 200, 422 | — |
+| `POST /api/v1/audiencias-externas/offline/resultado` | Qué ha pasado con un paso offline, sabiendo lo poco que se puede saber | envios | 200, 422 | — |
+| `POST /api/v1/audiencias-externas/reglas-web/comprobar` | Qué le pasa a este conjunto de reglas de personalización | reglas | 200, 422 | — |
 | `POST /api/v1/audiencias-externas/retargeting` | Audiencia de retargeting a partir de comportamiento | visitas, excluir_clientes | 200, 422 | — |
 | `POST /api/v1/campanas` | Crear un programa, una campaña o una táctica | clave*, nombre*, nivel, padre_id, tipo, canal, desde, hasta, presupuesto, moneda, objetivos, segmento_id, lugar, aforo | 201, 422 | — |
 | `PATCH /api/v1/campanas/{campana_id}` | Editar campañas | campana_id*, padre_id, nivel, clave, nombre, descripcion, tipo, canal, desde, hasta, estado, presupuesto, gasto, moneda, objetivos, segmento_id, responsable_id, lugar, aforo | 200, 422 | — |
@@ -1082,6 +1117,7 @@ stateDiagram-v2
 | `POST /api/v1/dominios-envio` | Declarar un dominio de envío | dominio*, uso, spf, dkim, dmarc, bimi, ip_dedicada | 201, 422 | — |
 | `PATCH /api/v1/dominios-envio/{dominio_id}` | Editar dominios de envío | dominio_id*, dominio, uso, spf, dkim, dmarc, bimi, ip_dedicada, calentamiento_desde, comprobado_at | 200, 422 | — |
 | `DELETE /api/v1/dominios-envio/{dominio_id}` | Borrar dominios de envío | dominio_id* | 204, 422 | — |
+| `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/fondos-mdf` | Abrir un fondo de marketing para un partner | partner_id*, desde*, hasta*, asignado*, nombre, moneda | 201, 422 | — |
 | `PATCH /api/v1/fondos-mdf/{fondo_id}` | Editar fondos de marketing | fondo_id*, partner_id, nombre, desde, hasta, asignado, moneda, cerrado | 200, 422 | — |
 | `DELETE /api/v1/fondos-mdf/{fondo_id}` | Borrar fondos de marketing | fondo_id* | 204, 422 | — |
@@ -1138,6 +1174,7 @@ stateDiagram-v2
 | `POST /api/v1/segmentos/{segmento_id}/archivar` | Archivar segmentos | segmento_id* | 200, 422 | — |
 | `POST /api/v1/segmentos/{segmento_id}/congelar` | Congelar el segmento en una lista fija | segmento_id* | 200, 422 | — |
 | `POST /api/v1/social/clasificar` | Qué es esta mención y si abre caso | mencion, palabras_de_crisis | 200, 422 | — |
+| `POST /api/v1/social/crisis` | Si esto ha dejado de ser una queja y es otra cosa | menciones_por_hora, umbral_multiplicador | 200, 422 | — |
 | `POST /api/v1/social/respuesta` | Comprobar una respuesta antes de publicarla | tipo*, en_publico, texto, escrito_por_persona, pide_datos_personales | 200, 422 | — |
 | `POST /api/v1/solicitudes-mdf/caducar` | Liberar lo aprobado que nadie justificó en plazo | — | 200, 422 | — |
 | `POST /api/v1/solicitudes-mdf/justificaciones/{justificacion_id}/revisar` | Aceptar o rechazar la justificación | justificacion_id*, aceptar*, motivo | 200, 422 | — |
@@ -1209,6 +1246,7 @@ llamada de nadie.
 | `dashboard.alert.fired` | analytics | alerta_id, nombre, valor, umbral | `POST /api/v1/cuadros-mando/alertas/comprobar` | — |
 | `device.alert` | integration | dispositivo_id, regla, severidad | `POST /api/v1/dispositivos/lecturas` | — |
 | `identity.linked` | party | principal_id, secundario_id, modo | un proceso de fondo | — |
+| `integration.records.received` | integration | operacion, nuevos, repetidos | un proceso de fondo | — |
 | `interaction.recorded` | integration | interaccion_id, canal, atribuida | `POST /api/v1/canales-entrada/interacciones` | — |
 | `journey.action.due` | marketing | en_recorrido_id, recorrido, nodo, objeto_id | `POST /api/v1/recorridos/avanzar` | — |
 | `journey.entered` | marketing | recorrido, en_recorrido_id, objeto_id | `POST /api/v1/recorridos/{recorrido_id}/entrar` | — |
