@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterator
 from uuid import UUID
 
-from crmcore.errors import NoDisponible
+from crmcore.errors import ErrorValidacion, NoDisponible
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -288,7 +288,18 @@ def entrar_en_solo_lectura(motivo: str) -> None:
     Es lo que convierte una avería de la base primaria en «no se puede guardar»
     en vez de en «el CRM no funciona». La diferencia importa: con lectura, el
     comercial que está delante de un cliente sigue viendo su ficha.
+
+    **El motivo es obligatorio.** Sin él, quien no puede guardar cree que su
+    cambio tenía algo malo y lo reintenta cambiándolo, que es cómo se pierde
+    trabajo durante una incidencia — y además el mensaje que ve dice «el sistema
+    está en modo solo lectura: », que es peor que no decir nada.
     """
+    if not str(motivo).strip():
+        raise ErrorValidacion(
+            "Entrar en modo solo lectura exige decir por qué: es lo que se le "
+            "enseña a quien no puede guardar.",
+            error_code="resiliencia.solo_lectura_sin_motivo",
+        )
     _solo_lectura["activo"] = True
     _solo_lectura["motivo"] = motivo
     logger.error("resiliencia.solo_lectura", motivo=motivo)

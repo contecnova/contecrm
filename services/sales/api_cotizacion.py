@@ -11,6 +11,7 @@ from uuid import UUID
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso, montar_listado
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -673,7 +674,110 @@ montar_listado(
 )
 
 
+# ── Lo que el cliente ve de lo suyo, desde su portal ──────────────────────
+#
+# El portal anunciaba «contratos» y «pedidos» y no había ruta para ninguno: el
+# cliente pintaba botones que no llevaban a ninguna parte. Se sirven **desde
+# aquí** y no desde `service`, que es quien tiene la tabla de accesos, porque
+# traer contratos y pedidos allí obligaría a copiarlos — y la copia es siempre
+# la que se queda vieja.
+#
+# Lo que hace posible servirlos sin leer la tabla de accesos es que la sesión
+# del portal lleva su empresa y sus secciones **firmadas** en el token.
+
+router_portal_cliente = APIRouter(prefix="/portal", tags=["portal del cliente"])
+
+
+@router_portal_cliente.get(
+    "/mi/contratos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_seccion_portal("contratos"))],
+    summary="Mis contratos",
+    description=(
+        "**Por empresa, y sólo los firmados.** Un borrador de contrato es una "
+        "negociación en curso: enseñárselo al cliente antes de tiempo es "
+        "enseñarle condiciones que todavía se están discutiendo internamente.\n\n"
+        "Van con su fecha de fin y su preaviso: el día del vencimiento ya es "
+        "tarde para no renovar, y esa es justo la fecha que el cliente necesita "
+        "saber."
+    ),
+)
+def mis_contratos(db: DbDep, sesion: PortalDep, limite: int = Query(100, ge=1, le=500)) -> Any:
+    filas = (
+        db.execute(
+            select(Contrato)
+            .where(
+                Contrato.tenant_id == sesion.tenant_id,
+                Contrato.cuenta_id == sesion.exigir_cuenta(),
+                Contrato.estado != "borrador",
+            )
+            .order_by(Contrato.inicio.desc())
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "numero": f.numero,
+            "titulo": f.titulo,
+            "estado": f.estado,
+            "inicio": f.inicio.isoformat() if f.inicio else None,
+            "fin": f.fin.isoformat() if f.fin else None,
+            "renovacion_automatica": f.renovacion_automatica,
+            "preaviso_dias": f.preaviso_dias,
+            "importe": str(f.importe),
+            "moneda": f.moneda,
+        }
+        for f in filas
+    ]
+
+
+@router_portal_cliente.get(
+    "/mi/pedidos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_seccion_portal("pedidos"))],
+    summary="Mis pedidos",
+    description=(
+        "Con la **referencia del ERP** y si el traspaso terminó. Es lo primero "
+        "que pregunta quien llama: no «en qué estado está en vuestro CRM», sino "
+        "«qué número tengo para reclamar».\n\n"
+        "El error del ERP **no se le enseña al cliente**: es un detalle interno "
+        "de nuestro traspaso y lo único que consigue es que nos llame para "
+        "contárnoslo. Lo que ve es que todavía no está confirmado."
+    ),
+)
+def mis_pedidos(db: DbDep, sesion: PortalDep, limite: int = Query(100, ge=1, le=500)) -> Any:
+    filas = (
+        db.execute(
+            select(Pedido)
+            .where(
+                Pedido.tenant_id == sesion.tenant_id,
+                Pedido.cuenta_id == sesion.exigir_cuenta(),
+            )
+            .order_by(Pedido.created_at.desc())
+            .limit(limite)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "numero": f.numero,
+            "estado": f.estado,
+            "total": str(f.total),
+            "moneda": f.moneda,
+            "referencia_erp": f.referencia_erp,
+            "confirmado": f.confirmado_at is not None,
+        }
+        for f in filas
+    ]
+
+
 ROUTERS_COTIZACION = [
+    router_portal_cliente,
     router_prod,
     router_precios,
     router_pre,

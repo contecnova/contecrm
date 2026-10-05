@@ -21,7 +21,7 @@ from crmcore.http.deps import (
 )
 from crmcore.http.listados import declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
-from crmcore.http.portal_deps import PortalDep
+from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
@@ -624,4 +624,58 @@ def borrar_proveedor(cuenta_id: UUID, uow: UowDep, principal: AutenticadoDep) ->
     papelera.borrar(uow.db, cuenta, objeto="cuenta", etiqueta=cuenta.nombre, por=principal.id)
 
 
-ROUTERS_PROVEEDORES = [router_proveedores]
+# ── Los contactos de mi empresa, desde el portal ──────────────────────────
+#
+# El portal anunciaba «contactos» y no había ruta: el administrador del cliente
+# veía un botón que no llevaba a ninguna parte. Se sirve **desde aquí** y no
+# desde `service`, que es quien tiene la tabla de accesos, porque traer los
+# contactos allí obligaría a copiarlos — y la copia es siempre la que se queda
+# vieja.
+
+router_portal_contactos = APIRouter(prefix="/portal", tags=["portal del cliente"])
+
+
+@router_portal_contactos.get(
+    "/mi/contactos",
+    response_model=list[dict],
+    dependencies=[Depends(exige_seccion_portal("contactos"))],
+    summary="Quién de mi empresa está dado de alta",
+    description=(
+        "**Sólo los vínculos vivos.** Cuando alguien cambia de empresa el vínculo "
+        "no se borra, se cierra: enseñar los cerrados haría que el administrador "
+        "viera en su lista a quien ya no trabaja ahí, y lo primero que haría es "
+        "intentar darlo de baja otra vez.\n\n"
+        "Es una sección de **nivel administrador** del portal: la lista de quién "
+        "está dado de alta no se le enseña a cualquier contacto, que es cómo se "
+        "reparte el directorio de una empresa sin que ella lo decida."
+    ),
+)
+def mis_contactos(db: DbDep, sesion: PortalDep, limite: int = Query(200, ge=1, le=500)) -> Any:
+    from sqlalchemy import select
+
+    from services.party.modelos import Contacto, RelacionContactoCuenta
+
+    cuenta_id = sesion.exigir_cuenta()
+    filas = db.execute(
+        select(Contacto, RelacionContactoCuenta.rol)
+        .join(RelacionContactoCuenta, RelacionContactoCuenta.contacto_id == Contacto.id)
+        .where(
+            Contacto.tenant_id == sesion.tenant_id,
+            RelacionContactoCuenta.cuenta_id == cuenta_id,
+            RelacionContactoCuenta.hasta.is_(None),
+        )
+        .order_by(Contacto.nombre_completo)
+        .limit(limite)
+    ).all()
+    return [
+        {
+            "id": str(c.id),
+            "nombre": c.nombre_completo,
+            "rol": rol,
+            "es_quien_mira": c.id == sesion.acceso_id,
+        }
+        for c, rol in filas
+    ]
+
+
+ROUTERS_PROVEEDORES = [router_proveedores, router_portal_contactos]

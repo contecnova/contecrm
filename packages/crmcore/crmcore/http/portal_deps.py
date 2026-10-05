@@ -47,7 +47,12 @@ TIPO = "portal"
 
 
 def emitir_token_portal(
-    *, acceso_id: UUID, tenant_id: UUID, nivel: str, cuenta_id: UUID | None = None
+    *,
+    acceso_id: UUID,
+    tenant_id: UUID,
+    nivel: str,
+    cuenta_id: UUID | None = None,
+    secciones: list[str] | None = None,
 ) -> tuple[str, int]:
     """El token con el que el cliente llama al portal. Devuelve también cuánto dura."""
     import jwt
@@ -67,6 +72,14 @@ def emitir_token_portal(
         # entre sí—. Yendo firmada aquí, cada servicio sirve lo suyo sin
         # consultar a nadie y sin fiarse de lo que diga el cliente.
         "cuenta": str(cuenta_id) if cuenta_id else "",
+        # Qué puede abrir, FIRMADO. Va en el token por lo mismo que la cuenta: el
+        # portal lo sirven varios servicios —los contratos y los pedidos son de
+        # `sales`, los contactos de `party`— y ninguno puede leer la tabla de
+        # accesos, que es de `service`. Sin esto, la comprobación de sección sólo
+        # podía hacerse en el servicio dueño del acceso, y en los demás no se
+        # hacía: el portal quedaba filtrado en el cliente, que es un filtro de
+        # pantalla, no un control.
+        "secciones": sorted(set(secciones or [])),
         # Sin `permisos` y sin `roles` **a propósito**: es lo que impide que este
         # token sirva para nada del CRM.
         "iat": int(ahora.timestamp()),
@@ -147,21 +160,49 @@ def contexto_portal(
         tenant_id=tenant_id,
         nivel=str(carga.get("nivel", "")),
         cuenta_id=UUID(cuenta) if cuenta else None,
+        secciones=[str(s) for s in (carga.get("secciones") or [])],
     )
 
 
 class SesionPortal:
     """Quién llama al portal: su acceso, su empresa y su nivel."""
 
-    __slots__ = ("acceso_id", "tenant_id", "nivel", "cuenta_id")
+    __slots__ = ("acceso_id", "tenant_id", "nivel", "cuenta_id", "secciones")
 
     def __init__(
-        self, *, acceso_id: UUID, tenant_id: UUID, nivel: str, cuenta_id: UUID | None = None
+        self,
+        *,
+        acceso_id: UUID,
+        tenant_id: UUID,
+        nivel: str,
+        cuenta_id: UUID | None = None,
+        secciones: list[str] | None = None,
     ) -> None:
         self.acceso_id = acceso_id
         self.tenant_id = tenant_id
         self.nivel = nivel
         self.cuenta_id = cuenta_id
+        self.secciones = list(secciones or [])
+
+    def exigir_seccion(self, seccion: str) -> None:
+        """Corta si este acceso no tiene esa sección. **En el servidor.**
+
+        `secciones_de` se le cuenta al cliente «para que no pinte botones», y
+        filtrar en el cliente funciona hasta que alguien mira la respuesta de la
+        API — y entonces el portal deja de ser un portal para ser una copia del
+        CRM con un filtro de pantalla.
+
+        Vive aquí y no en el servicio dueño del acceso porque el portal lo
+        sirven varios: los contratos y los pedidos son de `sales`, los contactos
+        de `party`, y ninguno puede leer la tabla de accesos. Dos
+        implementaciones de «¿puede ver esto?» divergen, y la que se queda corta
+        es siempre la del servicio que no es el dueño.
+        """
+        if seccion not in self.secciones:
+            raise NoAutenticado(
+                "Este acceso no incluye esa sección del portal",
+                error_code="portal.seccion_no_incluida",
+            )
 
     def exigir_cuenta(self) -> UUID:
         """La empresa de quien llama, o un error claro.
@@ -179,3 +220,20 @@ class SesionPortal:
 
 
 PortalDep = Annotated[SesionPortal, Depends(contexto_portal)]
+
+
+def exige_seccion_portal(seccion: str) -> Any:
+    """Guarda **declarada en la ruta** para una sección del portal.
+
+        @router.get("/mi/activos", dependencies=[Depends(exige_seccion_portal("activos"))])
+
+    Declarada y no escrita dentro, por lo mismo que `exige_permiso`: una
+    comprobación en el cuerpo de la función no se ve al leer la ruta, no la
+    encuentra ningún gate, y la que se olvida no avisa de nada — simplemente
+    sirve datos a quien no tenía esa sección.
+    """
+
+    def _guarda(sesion: PortalDep) -> None:
+        sesion.exigir_seccion(seccion)
+
+    return _guarda

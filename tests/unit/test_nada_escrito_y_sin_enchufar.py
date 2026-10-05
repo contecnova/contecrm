@@ -47,6 +47,32 @@ CARPETAS = (
     "packages/crmcore/crmcore/notificaciones",
 )
 
+# PUNTO CIEGO MEDIDO, y escrito aquí para que no se pierda. El 05-10-2026, con
+# el tope ya en cero, se repitió la medida ampliando `CARPETAS` a todo
+# `services` y a todo `crmcore`:
+#
+#   services/*            0   limpio
+#   packages/crmcore      26
+#
+# De esas 26, diecisiete son ayudantes de pruebas o de registro —`limpiar_*`,
+# `*_registrados`, `reset_logging`, `es_entorno_de_pruebas`— que **sí** tienen
+# llamante, pero en `tests/`, y esta sonda sólo mira producción a propósito.
+# Las otras nueve son decisiones de verdad sin puerta, y están sin cerrar:
+#
+#   cuotas.aviso_de_cercania, cuotas.periodo_actual
+#       avisar sólo al cortar convierte una cuota en una sorpresa.
+#   metamodelo.sincronizar_indices, metamodelo.sincronizar_vista
+#       lo gordo: un campo a medida declarado por un tenant **no recibe ni
+#       índice ni vista**, porque nadie aplica el esquema físico.
+#   movil.detectar_conflicto, movil.estado_de_la_cola, movil.preparar_push
+#       el móvil sin conexión no tiene por dónde sincronizar.
+#   sdk.contrato_de_componente, sdk.plan_de_generacion
+#
+# No se amplía `CARPETAS` todavía porque hacerlo deja el gate en rojo con nueve
+# cosas que no se cierran en un rato, y un gate en rojo permanente deja de
+# leerse. Ampliarlo es lo que hay que hacer **al cerrarlas**, y esta nota es
+# para que el número no desaparezca mientras tanto.
+
 # Tope medido. **Baja o se queda, nunca sube**: cada número de más es una
 # función que promete algo que no ocurre.
 #

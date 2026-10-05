@@ -262,15 +262,29 @@ def test_el_portal_no_anuncia_lo_que_no_sirve() -> None:
     es deliberado: una sección anunciada y sin servir es una promesa que el
     cliente descubre pulsando.
     """
-    import inspect
+    from pathlib import Path
 
-    from services.service import api_conocimiento, portal
+    from services.service import portal
 
-    rutas = inspect.getsource(api_conocimiento)
+    # Se mira en TODOS los servicios, no sólo en el dueño del acceso. Contratos
+    # y pedidos los sirve `sales` y los contactos `party`, porque traerlos a
+    # `service` obligaría a copiar sus tablas — y la copia es siempre la que se
+    # queda vieja. Mirando sólo aquí, el gate habría dado verde con tres de las
+    # siete sin servir.
+    raiz = Path(__file__).resolve().parents[2] / "services"
+    rutas = "\n".join(f.read_text(encoding="utf-8") for f in raiz.rglob("api*.py"))
     sin_ruta = [s for s in portal.SECCIONES_SERVIDAS if f'"/mi/{s}"' not in rutas]
     assert not sin_ruta, (
         f"estas secciones se anuncian y no tienen ruta: {sin_ruta}. O se sirve, "
         "o se quita de SECCIONES_SERVIDAS."
+    )
+    # Y al revés: una ruta `/mi/<algo>` que sirva una sección que nadie anuncia
+    # es una sección a la que no llega ningún acceso, o sea código muerto con
+    # aspecto de función.
+    anunciadas = {s for ss in portal.SECCIONES_POR_NIVEL.values() for s in ss}
+    assert set(portal.SECCIONES_SERVIDAS) <= anunciadas, (
+        "hay secciones servidas que ningún nivel anuncia: "
+        f"{sorted(set(portal.SECCIONES_SERVIDAS) - anunciadas)}"
     )
 
 
@@ -281,13 +295,43 @@ def test_la_seccion_se_comprueba_en_el_servidor() -> None:
     API, y entonces el portal deja de ser un portal para ser una copia del CRM
     con un filtro de pantalla. `exigir_seccion` no la llamaba nadie.
     """
-    import inspect
+    import ast
+    from pathlib import Path
 
-    from services.service import api_conocimiento
+    from services.service import portal
 
-    assert "exigir_seccion(" in inspect.getsource(
-        api_conocimiento.mis_casos
-    ), "la ruta de casos del portal no comprueba la sección en el servidor"
+    # TODA ruta `/mi/<seccion>` de cualquier servicio tiene que llevar la guarda
+    # declarada. Antes se comprobaba una sola función por su nombre, y eso daba
+    # verde con seis rutas nuevas sin comprobar nada.
+    raiz = Path(__file__).resolve().parents[2] / "services"
+    sin_guarda: list[str] = []
+    recorridas = 0
+    for fichero in sorted(raiz.rglob("api*.py")):
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for deco in nodo.decorator_list:
+                if not isinstance(deco, ast.Call) or not deco.args:
+                    continue
+                camino = getattr(deco.args[0], "value", "")
+                if not isinstance(camino, str) or not camino.startswith("/mi/"):
+                    continue
+                seccion = camino.split("/")[2]
+                if seccion not in portal.SECCIONES_SERVIDAS:
+                    continue
+                recorridas += 1
+                if "exige_seccion_portal(" not in ast.unparse(deco):
+                    sin_guarda.append(f"{fichero.name}::{nodo.name}")
+    assert recorridas >= len(portal.SECCIONES_SERVIDAS), (
+        f"sólo se han recorrido {recorridas} rutas de portal para "
+        f"{len(portal.SECCIONES_SERVIDAS)} secciones servidas: la comprobación no "
+        "está mirando donde cree"
+    )
+    assert not sin_guarda, (
+        "estas rutas del portal no declaran la guarda de sección, así que la "
+        f"comprobación se queda en el cliente: {sorted(sin_guarda)}"
+    )
 
 
 def test_un_acceso_sin_la_seccion_no_entra() -> None:
@@ -317,13 +361,18 @@ def test_un_acceso_con_la_seccion_si_entra() -> None:
     prt.exigir_seccion(_Acceso(), "casos")  # no lanza
 
 
-def test_el_nivel_mas_alto_tampoco_ve_secciones_que_no_existen() -> None:
+def test_el_cruce_con_lo_servido_se_aplica_de_verdad(monkeypatch) -> None:
     """La mitad que faltaba, y sin ella la de arriba no significaba nada.
 
-    Un acceso de nivel `admin` tiene ocho secciones por nivel y solo una está
-    servida. Comprobar que `SECCIONES_SERVIDAS` cuadra con las rutas no basta:
-    hay que comprobar que `secciones_de` **la usa**. Sin esto, quitar el cruce
-    pasaba en verde y el portal volvía a anunciar siete botones muertos.
+    Comprobar que `SECCIONES_SERVIDAS` cuadra con las rutas no basta: hay que
+    comprobar que `secciones_de` **la usa**. Sin esto, quitar el cruce pasaba en
+    verde y el portal volvía a anunciar botones muertos.
+
+    Antes esto se medía con la resta `por_nivel - anunciadas`, que valía mientras
+    hubiera alguna sección anunciada y sin servir. El 05-10-2026 se sirvieron
+    todas y la resta quedó vacía: la prueba habría seguido en verde con el cruce
+    quitado, que es exactamente el fallo que vigila. Ahora se **planta** una
+    sección sin servir, que es una medida que no depende de cuántas falten.
     """
     from services.service import portal as prt
 
@@ -331,14 +380,20 @@ def test_el_nivel_mas_alto_tampoco_ve_secciones_que_no_existen() -> None:
         nivel = "admin"
         secciones: list[str] = []
 
+    # Se añade al nivel una sección que NO está servida. Si el cruce se aplica,
+    # no sale; si alguien lo quita, sale — y el portal pinta un botón muerto.
+    monkeypatch.setitem(
+        prt.SECCIONES_POR_NIVEL, "admin", (*prt.SECCIONES_POR_NIVEL["admin"], "inventada")
+    )
     anunciadas = set(prt.secciones_de(_Admin()))
-    por_nivel = set(prt.SECCIONES_POR_NIVEL["admin"])
-
+    assert "inventada" not in anunciadas, (
+        "se anuncia una sección que no está servida: el cruce con "
+        "SECCIONES_SERVIDAS no se está aplicando"
+    )
     assert anunciadas <= set(
         prt.SECCIONES_SERVIDAS
     ), f"se anuncian secciones sin ruta detrás: {sorted(anunciadas - set(prt.SECCIONES_SERVIDAS))}"
-    assert por_nivel - anunciadas, (
-        "este nivel ve todas las secciones declaradas, así que la prueba no "
-        "distingue nada: o se han servido todas —y entonces hay que quitarla— "
-        "o el cruce no se está aplicando"
+    assert anunciadas, (
+        "el nivel más alto no ve ninguna sección: o se ha vaciado "
+        "SECCIONES_SERVIDAS o el cruce está tirando de más"
     )

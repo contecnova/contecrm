@@ -297,8 +297,17 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 def _redondear(valor: Decimal) -> Decimal:
@@ -424,7 +433,7 @@ def dentro_de_ventana(
     Tomarlo por fuera de plazo rechaza devoluciones legítimas por un dato que
     falta en nuestro sistema, no en el del cliente.
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     dias = int(rt.efectivo("devolucion_ventana_dias", db) or 30)
     if devolucion.comprado_el is None:
         return {

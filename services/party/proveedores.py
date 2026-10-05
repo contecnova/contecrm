@@ -36,7 +36,7 @@ que ya están.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -91,8 +91,17 @@ DIAS_PREAVISO = 30
 FUNCIONES_CONTACTO = ("comercial", "tecnico", "facturacion", "escalado", "calidad")
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 class Homologacion(Base, TimestampMixin):
@@ -276,7 +285,7 @@ def homologar(
             "años nadie sabe si esa empresa sigue teniendo los medios que tenía.",
             error_code="proveedor.homologacion_sin_fin",
         )
-    if valida_hasta <= _hoy():
+    if valida_hasta <= _hoy(uow.db):
         raise ErrorValidacion(
             "La fecha de fin ya ha pasado", error_code="proveedor.homologacion_caducada"
         )
@@ -318,7 +327,7 @@ def esta_homologado(
     exige empezar el proceso y la segunda solo papel nuevo, y confundirlas hace
     que se descarte a un proveedor que valdría mañana.
     """
-    momento = hoy or _hoy()
+    momento = hoy or _hoy(db)
     fila = db.execute(
         select(Homologacion).where(
             Homologacion.tenant_id == tenant_id,
@@ -422,7 +431,7 @@ def estado_documental(
     Y se avisa **antes**, con el plazo de cada documento: renovar un seguro lleva
     semanas, así que avisar el mismo día que vence es no avisar.
     """
-    momento = hoy or _hoy()
+    momento = hoy or _hoy(db)
     filas = list(
         db.execute(
             select(DocumentoProveedor).where(
@@ -508,7 +517,7 @@ def documentos_que_vencen(
     Ordenada por lo que vence antes, y con lo que **ya venció** primero: eso no es
     un aviso, es un problema que está pasando ahora.
     """
-    momento = hoy or _hoy()
+    momento = hoy or _hoy(db)
     limite = momento + timedelta(days=dias)
     filas = list(
         db.execute(

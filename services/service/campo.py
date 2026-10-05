@@ -412,8 +412,17 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 def _redondear(valor: Decimal) -> Decimal:
@@ -1396,9 +1405,9 @@ def crear_plan(
         competencias=list(competencias or []),
         checklist=list(checklist or []),
         antelacion_dias=antelacion_dias,
-        ultima_ejecucion=desde or _hoy(),
+        ultima_ejecucion=desde or _hoy(uow.db),
         ultimo_contador=activo.contador,
-        proxima_fecha=((desde or _hoy()) + timedelta(days=cada_dias)) if cada_dias else None,
+        proxima_fecha=((desde or _hoy(uow.db)) + timedelta(days=cada_dias)) if cada_dias else None,
     )
     uow.db.add(fila)
     uow.db.flush()
@@ -1412,7 +1421,7 @@ def vencimientos(db: Session, tenant_id: UUID, *, en_fecha: date | None = None) 
     cliente: una es «toca la revisión anual» y la otra es «esta máquina ha
     trabajado el doble de lo previsto».
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(db)
     planes = (
         db.execute(
             select(PlanPreventivo).where(
@@ -1478,7 +1487,7 @@ def generar_preventivas(uow: UnidadDeTrabajo, *, en_fecha: date | None = None) -
     otra: un plan mensual desatendido seis meses generaría seis órdenes idénticas,
     y lo que se hace entonces es cerrarlas todas sin mirar.
     """
-    hoy = en_fecha or _hoy()
+    hoy = en_fecha or _hoy(uow.db)
     estado = vencimientos(uow.db, uow.tenant_id, en_fecha=hoy)
     creadas: list[str] = []
     saltadas: list[dict[str, Any]] = []

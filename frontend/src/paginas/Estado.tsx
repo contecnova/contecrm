@@ -122,7 +122,15 @@ export function Estado() {
         ))}
       </Rejilla>
 
-      {compromisos ? (
+      {/*
+        `compromisos?.compromisos?.length` y no solo `compromisos`: la petición
+        se protege de FALLAR —su error no tumba la página, que es lo correcto—
+        y no de **responder con otra forma**. Con una respuesta sin la lista,
+        esta pantalla reventaba al pintar y la frontera se llevaba la página
+        entera... que es justo la página de estado, la que se mira cuando algo
+        va mal. Medido el 05-10-2026 con la prueba de contenido de pantallas.
+      */}
+      {compromisos?.compromisos?.length ? (
         <>
           <h2 className="mt-8 text-sm font-medium text-ink">
             {t("estado.compromisos")} · {compromisos.tier}

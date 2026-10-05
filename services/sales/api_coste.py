@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import fechas
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -169,12 +170,16 @@ def comparar(cuerpo: CompararIn, principal: AutenticadoDep) -> Any:
         "ya ha decidido, y el precio que se le dio se puso a ojo."
     ),
 )
-def peticion(cuerpo: PeticionIn, principal: AutenticadoDep) -> Any:
+def peticion(cuerpo: PeticionIn, db: DbDep, principal: AutenticadoDep) -> Any:
     return cst.preparar_peticion(
         proveedores=cuerpo.proveedores,
         lineas=cuerpo.lineas,
         fecha_limite=cuerpo.fecha_limite,
         oportunidad_id=cuerpo.oportunidad_id,
+        # Una fecha límite «de hoy» calculada en UTC adelanta el plazo un día
+        # para media Europa de madrugada, y el plazo de una petición de oferta
+        # es lo que decide si la respuesta llega a tiempo.
+        hoy=fechas.hoy(db),
     )
 
 
@@ -215,12 +220,15 @@ def capacidad(
     ),
 )
 def fecha_prometible(
+    db: DbDep,
     principal: AutenticadoDep,
     plazo_proveedor_dias: int | None = Query(None),
     dias_propios: int = Query(2),
 ) -> Any:
     return cst.fecha_que_se_puede_prometer(
-        plazo_proveedor_dias=plazo_proveedor_dias, dias_propios=dias_propios
+        plazo_proveedor_dias=plazo_proveedor_dias,
+        dias_propios=dias_propios,
+        desde=fechas.hoy(db),
     )
 
 

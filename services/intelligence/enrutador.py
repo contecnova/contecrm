@@ -187,8 +187,17 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 def registrar_proveedor(
@@ -433,7 +442,7 @@ def anotar_gasto(
     dia: date | None = None,
 ) -> GastoIA:
     """Suma lo gastado hoy."""
-    cuando = dia or _hoy()
+    cuando = dia or _hoy(uow.db)
     fila = uow.db.execute(
         select(GastoIA).where(
             GastoIA.tenant_id == uow.tenant_id,
@@ -481,7 +490,7 @@ def presupuesto(db: Session, tenant_id: UUID, *, hoy: date | None = None) -> dic
     Se comprueba **antes** de llamar: comprobarlo después es descubrir que ya se
     gastó, y la factura llega igual.
     """
-    cuando = hoy or _hoy()
+    cuando = hoy or _hoy(db)
     desde = cuando.replace(day=1)
     gastado = (
         db.execute(

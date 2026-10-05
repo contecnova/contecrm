@@ -71,8 +71,17 @@ ESTADOS = ("borrador", "en_revision", "aprobado", "rechazado", "caducado", "reti
 DIAS_PREAVISO = 30
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 class Activo(Base, TimestampMixin, SoftDeleteMixin):
@@ -281,7 +290,7 @@ def revisar_biblioteca(db: Session, tenant_id: UUID, *, hoy: date | None = None)
     Y lo que **no tiene vigencia declarada**, que es lo más peligroso: nunca va a
     aparecer en ninguna lista de caducados y por eso se queda ahí para siempre.
     """
-    momento = hoy or _hoy()
+    momento = hoy or _hoy(db)
     filas = list(
         db.execute(
             select(Activo).where(

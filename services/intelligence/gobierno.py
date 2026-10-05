@@ -175,8 +175,17 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _hoy() -> date:
-    return datetime.now(timezone.utc).date()
+def _hoy(db: Any = None) -> date:
+    """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
+
+    Sin sesión cae a UTC, que es lo que hacía antes: no empeora nada y deja
+    claro dónde falta el dato. Quien la tenga a mano está obligado a pasarla —
+    hay un gate que lo mira—, porque entre medianoche y las dos de la mañana en
+    Madrid la respuesta sin sesión es **la de ayer**.
+    """
+    from crmcore.fechas import hoy as _hoy_del_cliente
+
+    return _hoy_del_cliente(db)
 
 
 def _con_tz(valor: datetime | None) -> datetime | None:
@@ -470,7 +479,7 @@ def estado_modelos(db: Session, tenant_id: UUID, *, hoy: date | None = None) -> 
     que alguien se queja de una puntuación, y para entonces llevan meses
     equivocándose.
     """
-    momento = hoy or _hoy()
+    momento = hoy or _hoy(db)
     filas = db.execute(select(ModeloML).where(ModeloML.tenant_id == tenant_id)).scalars().all()
     salida = []
     for fila in filas:

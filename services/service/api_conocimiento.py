@@ -10,7 +10,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha, montar_listado
-from crmcore.http.portal_deps import PortalDep
+from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
@@ -492,17 +492,24 @@ def sesion_portal(datos: Canjear, request: Request) -> Any:
         acceso = prt.canjear_enlace(
             uow, datos.token, ip=request.client.host if request.client else ""
         )
+        # Las secciones viajan FIRMADAS en el token, no sólo en la respuesta.
+        # El portal lo sirven varios servicios —contratos y pedidos son de
+        # `sales`, contactos de `party`— y ninguno puede leer esta tabla. Sin
+        # esto, la comprobación de sección sólo se hacía en el servicio dueño
+        # del acceso, y en los demás no se hacía.
+        suyas = prt.secciones_de(acceso)
         token, dura_s = emitir_token_portal(
             acceso_id=acceso.id,
             tenant_id=acceso.tenant_id,
             nivel=acceso.nivel,
             cuenta_id=acceso.cuenta_id,
+            secciones=suyas,
         )
         salida = {
             "token": token,
             "caduca_en_s": dura_s,
             "nivel": acceso.nivel,
-            "secciones": prt.secciones_de(acceso),
+            "secciones": suyas,
         }
     return salida
 
@@ -522,6 +529,7 @@ def mi_resumen(db: DbDep, sesion: PortalDep) -> Any:
 
 @router_portal.get(
     "/mi/casos",
+    dependencies=[Depends(exige_seccion_portal("casos"))],
     summary="Mis casos",
     description=(
         "El filtro va **por el nivel del acceso y en el servidor**: el técnico "
@@ -531,10 +539,17 @@ def mi_resumen(db: DbDep, sesion: PortalDep) -> Any:
 )
 def mis_casos(db: DbDep, sesion: PortalDep, limite: int = Query(50, ge=1, le=200)) -> Any:
     acceso = _mi_acceso(db, sesion)
-    # LA SECCIÓN SE COMPRUEBA EN EL SERVIDOR. `secciones_de` solo se le contaba
-    # al cliente «para que no pinte botones», y el propio módulo avisa de que
-    # filtrar en el cliente funciona hasta que alguien mira la respuesta de la
-    # API. `exigir_seccion` no la llamaba nadie.
+    # DOS COMPROBACIONES, y no es duplicar: contestan a cosas distintas.
+    #
+    # La declarada en la ruta mira lo que el token lleva **firmado**, y es la
+    # única posible en los servicios que no son dueños del acceso —`sales` y
+    # `party` sirven contratos, pedidos y contactos sin poder leer esta tabla—.
+    # Es el suelo, y está en la ruta para que se vea al leerla.
+    #
+    # Ésta mira el acceso **ahora**. El token dura una hora, así que quitarle
+    # una sección a alguien no surtiría efecto hasta que caducara; aquí, donde
+    # la tabla está a mano, se revalida. Manda la de aquí, y sólo puede
+    # estrechar.
     prt.exigir_seccion(acceso, "casos")
     return prt.mis_casos(db, acceso, limite=limite)
 
@@ -553,6 +568,7 @@ class AbrirPeticion(BaseModel):
 
 @router_portal.post(
     "/mi/casos",
+    dependencies=[Depends(exige_seccion_portal("casos"))],
     status_code=status.HTTP_201_CREATED,
     summary="Abrir una petición",
     description=(
@@ -563,6 +579,7 @@ class AbrirPeticion(BaseModel):
 )
 def abrir_mi_caso(datos: AbrirPeticion, uow: UowDep, sesion: PortalDep) -> Any:
     acceso = _mi_acceso(uow.db, sesion)
+    prt.exigir_seccion(acceso, "casos")
     caso = prt.abrir_caso_desde_portal(
         uow, acceso, asunto=datos.asunto, descripcion=datos.descripcion
     )
@@ -590,6 +607,106 @@ class MensajePortal(BaseModel):
 
     texto: str = Field(..., min_length=1, max_length=10_000)
     asunto: str = Field("", max_length=300)
+
+
+@router_portal.get(
+    "/mi/conocimiento",
+    dependencies=[Depends(exige_seccion_portal("conocimiento"))],
+    summary="Los artículos que puedo leer",
+    description=(
+        "**La audiencia manda y se aplica en el servidor.** Un artículo interno "
+        "—el que explica cómo escalar al fabricante, con el teléfono del comercial "
+        "de zona— no se le enseña a un cliente, y filtrarlo en el front funciona "
+        "hasta que alguien mira la respuesta de la API.\n\n"
+        "Se exige además que el artículo declare el canal `portal`: publicado para "
+        "el chatbot no es publicado para el portal, y tratarlos igual publica en "
+        "el sitio equivocado sin que nadie lo decida."
+    ),
+)
+def mi_conocimiento(
+    db: DbDep,
+    sesion: PortalDep,
+    busqueda: str = Query(""),
+    limite: int = Query(50, ge=1, le=200),
+) -> Any:
+    acceso = _mi_acceso(db, sesion)
+    # Revalidada contra el acceso de ahora, no contra lo que el token
+    # firmó hace una hora: quitarle una sección a alguien tiene que
+    # surtir efecto al quitársela.
+    prt.exigir_seccion(acceso, "conocimiento")
+    return prt.mi_conocimiento(db, acceso, busqueda=busqueda, limite=limite)
+
+
+@router_portal.get(
+    "/mi/comunidad",
+    dependencies=[Depends(exige_seccion_portal("comunidad"))],
+    summary="Los hilos de la comunidad",
+    description=(
+        "**Los que están en moderación no salen**, ni siquiera los propios. Un "
+        "foro que enseña lo que todavía no ha pasado por moderación es un foro "
+        "moderado a toro pasado: lo que escriba alguien se lee antes de que nadie "
+        "lo mire."
+    ),
+)
+def mi_comunidad(db: DbDep, sesion: PortalDep, limite: int = Query(50, ge=1, le=200)) -> Any:
+    acceso = _mi_acceso(db, sesion)
+    # Revalidada contra el acceso de ahora, no contra lo que el token
+    # firmó hace una hora: quitarle una sección a alguien tiene que
+    # surtir efecto al quitársela.
+    prt.exigir_seccion(acceso, "comunidad")
+    return prt.mis_hilos(db, acceso, limite=limite)
+
+
+class HiloPortal(BaseModel):
+    titulo: str = Field(..., min_length=1, max_length=300)
+    cuerpo: str = Field("", max_length=20_000)
+    categoria: str = "general"
+
+
+@router_portal.post(
+    "/mi/comunidad",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_seccion_portal("comunidad"))],
+    summary="Abrir un hilo en la comunidad",
+    description=(
+        "Nace **en moderación**, y no es desconfianza: un foro de clientes donde "
+        "lo primero que publica alguien sale directo es un foro que acaba cerrado "
+        "después del primer incidente, y entonces se pierde también lo bueno."
+    ),
+)
+def abrir_hilo_portal(datos: HiloPortal, uow: UowDep, sesion: PortalDep) -> Any:
+    acceso = _mi_acceso(uow.db, sesion)
+    prt.exigir_seccion(acceso, "comunidad")
+    hilo = prt.abrir_hilo(
+        uow,
+        titulo=datos.titulo,
+        cuerpo=datos.cuerpo,
+        categoria=datos.categoria,
+        autor_contacto_id=acceso.contacto_id,
+    )
+    return {"id": str(hilo.id), "estado": hilo.estado}
+
+
+@router_portal.get(
+    "/mi/activos",
+    dependencies=[Depends(exige_seccion_portal("activos"))],
+    summary="Lo que mi empresa tiene instalado",
+    description=(
+        "**Por cuenta, nunca por contacto.** Un equipo instalado es de la empresa, "
+        "no de quien abrió el caso: atarlo al contacto haría que al irse esa "
+        "persona su sucesor no viera la máquina que tiene delante.\n\n"
+        "Sin empresa asociada no se devuelve una lista vacía: se dice. Una lista "
+        "vacía se lee como «no tenéis nada instalado», y lo que pasa es que el "
+        "acceso está mal dado."
+    ),
+)
+def mis_activos(db: DbDep, sesion: PortalDep, limite: int = Query(100, ge=1, le=500)) -> Any:
+    acceso = _mi_acceso(db, sesion)
+    # Revalidada contra el acceso de ahora, no contra lo que el token
+    # firmó hace una hora: quitarle una sección a alguien tiene que
+    # surtir efecto al quitársela.
+    prt.exigir_seccion(acceso, "activos")
+    return prt.mis_activos(db, acceso, limite=limite)
 
 
 @router_portal.post(

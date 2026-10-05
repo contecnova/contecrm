@@ -479,6 +479,12 @@ def resumen(db: Session, acceso: AccesoPortal) -> dict[str, Any]:
     }
 
 
+# `facturas` NO está, y se retira a propósito (05-10-2026). El producto no tiene
+# facturas: no hay entidad, ni tabla, ni servicio que las guarde — la facturación
+# vive en el ERP del cliente. Anunciar una sección para la que no hay datos es
+# una promesa que no puede cumplir nadie, y el cliente la descubre pulsando.
+# Quien quiera verlas en su portal lo que necesita es una integración con su
+# ERP, que es otra cosa y se declara como tal.
 SECCIONES_POR_NIVEL = {
     "propio": ("casos", "conocimiento", "comunidad"),
     "cuenta": ("casos", "conocimiento", "comunidad", "contratos", "activos", "pedidos"),
@@ -489,7 +495,6 @@ SECCIONES_POR_NIVEL = {
         "contratos",
         "activos",
         "pedidos",
-        "facturas",
         "contactos",
     ),
 }
@@ -622,7 +627,20 @@ def escribir_desde_portal(
 # Añadir una sección aquí sin su ruta hace fallar
 # `test_el_portal_no_anuncia_lo_que_no_sirve`. Es deliberado: una sección
 # anunciada y sin servir es una promesa que el cliente descubre pulsando.
-SECCIONES_SERVIDAS = ("casos",)
+#
+# 05-10-2026: siete. Tres las sirve este servicio y cuatro los suyos —contratos
+# y pedidos `sales`, contactos `party`—, porque traerlas aquí obligaría a copiar
+# sus tablas y la copia es siempre la que se queda vieja. La comprobación de
+# sección viaja firmada en el token del portal para que puedan hacerla todos.
+SECCIONES_SERVIDAS = (
+    "casos",
+    "conocimiento",
+    "comunidad",
+    "activos",
+    "contratos",
+    "pedidos",
+    "contactos",
+)
 
 
 def secciones_de(acceso: AccesoPortal) -> list[str]:
@@ -849,3 +867,140 @@ def convertir_en_articulo(
     hilo.articulo_id = articulo.id
     del audiencia  # se publica aparte, con su aprobación
     return articulo
+
+
+# ── Las secciones que se anunciaban y no se servían ───────────────────────
+#
+# Medido el 04-10-2026: el portal anunciaba ocho secciones y servía una. El
+# 05-10-2026 se sirven siete; la octava —`facturas`— se retira del anuncio, y
+# eso también está abajo con su motivo.
+#
+# Las tres de aquí son las que viven en este servicio. Contratos y pedidos los
+# sirve `sales` y los contactos `party`, cada uno lo suyo: traerlos aquí
+# obligaría a copiar sus tablas, y la copia es siempre la que se queda vieja.
+
+
+def mi_conocimiento(
+    db: Session, acceso: AccesoPortal, *, busqueda: str = "", limite: int = 50
+) -> list[dict[str, Any]]:
+    """Los artículos que este contacto puede leer.
+
+    **La audiencia manda y se aplica aquí, no en la pantalla.** Un artículo
+    interno —el que explica cómo escalar al fabricante, con el teléfono del
+    comercial de zona— no se le enseña a un cliente, y filtrarlo en el front
+    funciona hasta que alguien mira la respuesta de la API.
+
+    Se exige además que el artículo declare el canal `portal`: publicado para el
+    chatbot no es publicado para el portal, y tratarlos igual publica en el sitio
+    equivocado sin que nadie lo decida.
+    """
+    from services.service.conocimiento import ORDEN_AUDIENCIA, Articulo
+
+    # «cliente» y lo de debajo de él: público. Nunca partner ni interno. Se
+    # calcula del orden declarado y no con una lista escrita aquí, para que
+    # añadir una audiencia nueva no deje este filtro desfasado en silencio.
+    tope = ORDEN_AUDIENCIA["cliente"]
+    permitidas = [a for a, i in ORDEN_AUDIENCIA.items() if i >= tope]
+
+    consulta = select(Articulo).where(
+        Articulo.tenant_id == acceso.tenant_id,
+        Articulo.estado == "publicado",
+        Articulo.audiencia.in_(permitidas),
+    )
+    if busqueda.strip():
+        consulta = consulta.where(Articulo.clave.ilike(f"%{busqueda.strip()}%"))
+    filas = db.execute(consulta.limit(max(1, min(limite, 200)))).scalars().all()
+    return [
+        {
+            "id": str(f.id),
+            "clave": f.clave,
+            "idioma": f.idioma,
+            "etiquetas": list(f.etiquetas or []),
+            "version_publicada": f.version_publicada,
+        }
+        for f in filas
+        if "portal" in [str(c) for c in (f.canales or [])]
+    ]
+
+
+def mis_hilos(db: Session, acceso: AccesoPortal, *, limite: int = 50) -> list[dict[str, Any]]:
+    """Los hilos de la comunidad que este contacto puede ver.
+
+    **Los que están en moderación no salen**, ni siquiera los suyos. Un foro que
+    enseña lo que todavía no ha pasado por moderación es un foro moderado a
+    toro pasado: lo que haya escrito alguien se lee antes de que nadie lo mire.
+    """
+    filas = (
+        db.execute(
+            select(HiloComunidad)
+            .where(
+                HiloComunidad.tenant_id == acceso.tenant_id,
+                HiloComunidad.estado != "moderacion",
+            )
+            .order_by(HiloComunidad.created_at.desc())
+            .limit(max(1, min(limite, 200)))
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "titulo": f.titulo,
+            "categoria": f.categoria,
+            "estado": f.estado,
+            "vistas": f.vistas,
+            "resuelto": f.respuesta_aceptada_id is not None,
+            "es_mio": f.autor_contacto_id == acceso.contacto_id,
+        }
+        for f in filas
+    ]
+
+
+def mis_activos(db: Session, acceso: AccesoPortal, *, limite: int = 100) -> list[dict[str, Any]]:
+    """Lo que esta empresa tiene instalado.
+
+    **Por cuenta, nunca por contacto.** Un equipo instalado es de la empresa, no
+    de quien abrió el caso; atarlo al contacto haría que al irse esa persona su
+    sucesor no viera la máquina que tiene delante.
+
+    Sin cuenta no se devuelve una lista vacía: se dice. Una lista vacía se lee
+    como «no tenéis nada instalado», y lo que pasa es que el acceso está mal
+    dado.
+    """
+    from services.service.activos import ActivoInstalado
+
+    if acceso.cuenta_id is None:
+        raise ErrorValidacion(
+            "Este acceso no está asociado a ninguna empresa, así que no se puede "
+            "decir qué tiene instalada. Una lista vacía se leería como «no tenéis "
+            "nada», que es otra cosa.",
+            error_code="portal.acceso_sin_empresa",
+        )
+    filas = (
+        db.execute(
+            select(ActivoInstalado)
+            .where(
+                ActivoInstalado.tenant_id == acceso.tenant_id,
+                ActivoInstalado.cuenta_id == acceso.cuenta_id,
+            )
+            .order_by(ActivoInstalado.created_at.desc())
+            .limit(max(1, min(limite, 500)))
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "codigo": f.codigo,
+            "nombre": f.nombre,
+            "modelo": f.modelo,
+            "fabricante": f.fabricante,
+            "numero_serie": f.numero_serie,
+            "ubicacion": f.ubicacion,
+            "estado": f.estado,
+            "instalado_el": f.instalado_el.isoformat() if f.instalado_el else None,
+        }
+        for f in filas
+    ]

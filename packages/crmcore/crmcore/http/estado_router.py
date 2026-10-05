@@ -13,8 +13,21 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field
 
-from crmcore.http.deps import AutenticadoDep, DbDep
+from crmcore.http.deps import AutenticadoDep, DbDep, PlataformaDep
+
+
+class SoloLectura(BaseModel):
+    activo: bool
+    motivo: str = Field(
+        "",
+        description=(
+            "Qué está pasando, en una frase que se le pueda enseñar al usuario. "
+            "Obligatorio al entrar: sin él, quien no puede guardar cree que su "
+            "cambio tenía algo malo y lo reintenta cambiándolo"
+        ),
+    )
 
 
 def crear_router_estado(servicio: str) -> APIRouter:
@@ -141,6 +154,36 @@ def crear_router_estado(servicio: str) -> APIRouter:
         return {
             "servicio": servicio,
             **que_se_esta_aplazando(resiliencia.presion()),
+            # El modo solo lectura sale AQUÍ y no en otra ruta: durante un
+            # incidente, quien mira la página de estado es quien tiene que
+            # enterarse de que no se puede guardar, y mandarle a otro sitio es
+            # pedirle que lo adivine.
+            "solo_lectura": resiliencia.estado(),
         }
+
+    @router.post(
+        "/solo-lectura",
+        summary="Entrar o salir del modo solo lectura (plataforma)",
+        description=(
+            "**Lo aplica la unidad de trabajo**, que es por donde pasan todas las "
+            "escrituras. Hasta el 05-10-2026 esto no existía en el sistema: se "
+            "podía entrar en modo degradado y las escrituras seguían pasando, "
+            "porque la comprobación estaba escrita, probada y sin que la llamara "
+            "nadie. El modo existía en la página de estado y no existía.\n\n"
+            "El motivo es obligatorio al entrar, y no es cortesía: sin él el "
+            "usuario cree que su cambio tenía algo malo y lo reintenta "
+            "cambiándolo, que es cómo se pierde trabajo durante una incidencia.\n\n"
+            "Es de **plataforma**: afecta a todos los tenants de este proceso, "
+            "así que no lo decide nadie desde dentro de uno."
+        ),
+    )
+    def solo_lectura(datos: SoloLectura, principal: PlataformaDep) -> Any:
+        from crmcore import resiliencia
+
+        if datos.activo:
+            resiliencia.entrar_en_solo_lectura(datos.motivo)
+        else:
+            resiliencia.salir_de_solo_lectura()
+        return {"servicio": servicio, **resiliencia.estado()}
 
     return router

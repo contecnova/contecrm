@@ -427,6 +427,18 @@ def get_uow(principal: PrincipalDep) -> Iterator[Any]:
         # que ya pasó con el orden de los parámetros.
         raise NoAutenticado("Esta operación exige autenticación", error_code="auth.requerida")
 
+    # EL MODO SOLO LECTURA SE APLICA AQUÍ. `exigir_escritura` estaba escrita,
+    # probada y **sin que la llamara nadie**: se podía entrar en modo degradado
+    # y las escrituras seguían pasando. O sea, el modo existía en la página de
+    # estado y no existía en el sistema.
+    #
+    # Va en la unidad de trabajo y no en cada ruta porque es por donde pasan
+    # todas las escrituras: ponerlo ruta a ruta es «funciona donde alguien se
+    # acordó», y durante una incidencia el que falta es el que escribe.
+    from crmcore.resiliencia import exigir_escritura
+
+    exigir_escritura()
+
     db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
     uow = UnidadDeTrabajo(db=db, tenant_id=db.info.get("tenant_id"))
     try:

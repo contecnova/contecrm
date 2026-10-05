@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore import fechas
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, Query, status
@@ -22,15 +23,19 @@ from services.sales import plan_conjunto as pc
 from services.sales.plan_conjunto import PlanConjuntoCliente
 
 
-def _trimestre_en_curso() -> tuple[date, date]:
+def _trimestre_en_curso(db: Any = None) -> tuple[date, date]:
     """El trimestre natural de hoy.
 
     Un informe de periodo que exige fechas contesta 422 a quien solo abre la
     pantalla, y «faltan desde y hasta» no es una respuesta útil a «enséñame la
     consecución». Sin fechas se entiende lo que entendería cualquiera: este
     trimestre.
+
+    Con sesión, el trimestre en curso es el de **donde está el cliente**: el 1 de
+    enero a la una de la mañana en Madrid, en UTC todavía es diciembre, y el
+    informe que se abre solo sale con el trimestre anterior.
     """
-    hoy = date.today()
+    hoy = fechas.hoy(db)
     primer_mes = 3 * ((hoy.month - 1) // 3) + 1
     desde = date(hoy.year, primer_mes, 1)
     siguiente = date(hoy.year + (primer_mes + 3 > 12), (primer_mes + 3 - 1) % 12 + 1, 1)
@@ -147,7 +152,10 @@ def previsto(
     desde: date | None = Query(None, description="Por defecto, el trimestre en curso"),
     hasta: date | None = Query(None, description="Por defecto, el trimestre en curso"),
 ) -> Any:
-    por_defecto = _trimestre_en_curso()
+    # Con la sesión: el trimestre «en curso» es el de donde está el cliente. El
+    # 1 de enero a la una de la mañana en Madrid, sin ella, el por defecto es el
+    # último trimestre del año anterior.
+    por_defecto = _trimestre_en_curso(db)
     desde, hasta = desde or por_defecto[0], hasta or por_defecto[1]
     return ing.previsto_por_periodo(db, principal.tenant_id, desde=desde, hasta=hasta)
 
@@ -306,7 +314,12 @@ def sin_revisar(db: DbDep, principal: AutenticadoDep, dias: int = Query(30)) -> 
         .all()
     )
     return pc.sin_revisar(
-        oportunidades=[{"id": f.id, "importe": f.importe} for f in filas], dias=dias
+        oportunidades=[{"id": f.id, "importe": f.importe} for f in filas],
+        dias=dias,
+        # El día lo pone quien tiene la sesión. `sin_revisar` es pura a
+        # propósito; alimentarla con UTC desde aquí sería dejar el fallo intacto
+        # un nivel más arriba.
+        hoy=fechas.hoy(db),
     )
 
 

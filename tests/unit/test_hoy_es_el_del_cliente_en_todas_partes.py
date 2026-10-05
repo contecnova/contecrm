@@ -35,33 +35,78 @@ RAIZ = pathlib.Path(__file__).resolve().parents[2]
 # Los dos que ignoran la zona del tenant.
 PATRONES = ("datetime.now(timezone.utc).date()", "date.today()")
 
-# Cuántos pueden quedar sin sesión. Medido el 04-10-2026: 19. El suelo impide
-# que el número crezca sin que nadie lo decida, y no se baja a cero porque
-# bajarlo exige llevar la sesión hasta funciones que hoy no la tienen, y eso es
-# un cambio de firma en cadena que se decide, no se cuela.
-MAXIMO_SIN_SESION = 19
+# Cuántos pueden quedar sin sesión.
+#
+#   04-10-2026  19  medición inicial
+#   05-10-2026  15  los `_hoy()` locales aceptan sesión y la reciben de los
+#                   trece sitios que la tenían a mano, y el trimestre «en curso»
+#                   de ingresos y de territorios se resuelve en la zona del
+#                   cliente — el 1 de enero a la una de la mañana en Madrid, en
+#                   UTC todavía es diciembre y el informe que se abre solo salía
+#                   con el trimestre anterior.
+#
+# Los quince que quedan son funciones **puras** con parámetro `hoy`: no calculan
+# la fecha, la reciben, y quien las llama con sesión ya se la pasa. Bajar de ahí
+# no es arreglar nada: es quitarles la pureza.
+MAXIMO_SIN_SESION = 15
+
+
+# Ayudantes locales que resuelven «hoy». Llamarlos **sin sesión** teniéndola a
+# mano es la misma falta que escribir el patrón crudo, y durante un rato fue
+# peor: al pasar los `_hoy()` locales a `crmcore.fechas.hoy(db)`, el patrón
+# crudo desapareció de trece ficheros y este gate se habría quedado contento
+# aunque ningún llamante pasara la sesión. O sea, la medida habría bajado sin
+# que la zona del cliente se resolviera en ningún sitio.
+AYUDANTES = ("_hoy", "_ahora_fecha")
 
 
 def _calculos_de_hoy() -> tuple[int, list[str]]:
-    """Cada sitio donde se calcula el día, y si tenía sesión a mano."""
+    """Cada sitio donde se calcula el día, y si tenía sesión a mano.
+
+    Se cuentan dos cosas, y las dos hacen falta:
+
+      * el patrón crudo (`date.today()`, `datetime.now(timezone.utc).date()`), y
+      * la llamada a un ayudante local de fecha **sin pasarle la sesión**.
+
+    Lo segundo se añadió el 05-10-2026 y es lo que impide que el arreglo sea
+    cosmético: mover el UTC un nivel más abajo, a un `_hoy()` que nadie alimenta,
+    deja el mismo día de ayer con otro aspecto.
+    """
     sin_sesion: list[str] = []
     total = 0
     for fichero in [*(RAIZ / "services").rglob("*.py"), *(RAIZ / "packages").rglob("*.py")]:
         if "__pycache__" in str(fichero) or fichero.name == "fechas.py":
             continue
         texto = fichero.read_text(encoding="utf-8")
-        if not any(p in texto for p in PATRONES):
-            continue
         try:
             arbol = ast.parse(texto, str(fichero))
         except SyntaxError:  # pragma: no cover
             continue
+        # Sólo los ayudantes DEFINIDOS en este fichero: un `_hoy` de otro módulo
+        # no se sabe si acepta sesión, y contarlo sería inventarse un hallazgo.
+        locales = {
+            n.name
+            for n in ast.walk(arbol)
+            if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name in AYUDANTES
+        }
         lineas = texto.splitlines()
         for nodo in ast.walk(arbol):
             if not isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
+            if nodo.name in AYUDANTES:
+                # El ayudante mismo no cuenta: su trabajo ES resolver la fecha, y
+                # lo hace con la sesión que le den.
+                continue
             cuerpo = "\n".join(lineas[nodo.lineno - 1 : nodo.end_lineno or nodo.lineno])
             cuantos = sum(cuerpo.count(p) for p in PATRONES)
+            cuantos += sum(
+                1
+                for sub in ast.walk(nodo)
+                if isinstance(sub, ast.Call)
+                and getattr(sub.func, "id", "") in locales
+                and not sub.args
+                and not sub.keywords
+            )
             if not cuantos:
                 continue
             total += cuantos
