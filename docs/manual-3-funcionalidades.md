@@ -10902,6 +10902,27 @@ En SAML no hay nada equivalente que publicar, así que se dice que no es
 comprobable sin una entrada de verdad — y en la primera se dirá qué atributo
 declarado no llegó, con la lista de los que sí.
 
+### El calentamiento de una IP frena de verdad (`CRM-02.03.01.03`)
+
+Una IP de envío nueva no puede mandar cien mil correos el primer día: se quema.
+Y quemarla cuesta **semanas** en las que no llega nada por ese dominio — ni las
+campañas ni las facturas, que comparten reputación.
+
+El tope del día se calcula con la progresión del calentamiento y **se aplica
+antes de mandar**, no sólo se enseña. Hasta el 05-10-2026 salía en la pantalla
+con su aviso y no frenaba ni un correo.
+
+- Un dominio que **no está calentando** no frena nada: el tope es de la IP
+  nueva, y aplicarlo a una asentada pararía campañas que llevan años saliendo.
+- **Sin decir el dominio no se inventa un tope**: suponerlo frenaría envíos por
+  una IP que no es la que se va a usar.
+- Y se devuelve cuánto queda, no sólo si se puede: avisar al cortar convierte el
+  tope en una sorpresa a mitad de campaña.
+
+Lo mismo con la autenticación del dominio. Uno sin SPF, sin DKIM o sin DMARC
+**no rebota**: llega a la carpeta de basura, y eso no aparece en el informe de
+rebotes. Por eso se comprueba y se dice qué le falta a cada uno.
+
 ### El pedido que sale al ERP, y vuelve (`CRM-03.03.02.11`)
 
 Aceptar un presupuesto crea el pedido y lo deja **esperando confirmación**. No

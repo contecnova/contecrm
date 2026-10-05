@@ -147,12 +147,17 @@ def entrante(datos: Entrante, uow: UowDep) -> Any:
     dependencies=[Depends(exige_permiso("campana:read"))],
     summary="¿Se puede mandar esto, ahora, a esta persona?",
     description=(
-        "Cinco comprobaciones en una llamada: canal activo, consentimiento **de "
-        "ese canal**, hora de silencio, ventana de WhatsApp y plantilla aprobada. "
+        "Seis comprobaciones en una llamada: canal activo, consentimiento **de "
+        "ese canal**, hora de silencio, ventana de WhatsApp, plantilla aprobada "
+        "y el **tope de calentamiento** del dominio. "
         "Repartidas por el código, la que se olvida es siempre la del "
         "consentimiento.\n\n"
         "Una plantilla no aprobada **no da error**: el proveedor la descarta y el "
-        "mensaje no llega nunca, que es peor porque nadie se entera."
+        "mensaje no llega nunca, que es peor porque nadie se entera.\n\n"
+        "Y el tope de calentamiento se calculaba, salía en la pantalla con su "
+        "aviso y **no lo aplicaba nadie**. Una IP nueva que manda cien mil el "
+        "primer día se quema, y quemarla cuesta semanas en las que no llega "
+        "nada — ni las campañas ni las facturas."
     ),
 )
 def comprobar(
@@ -161,9 +166,34 @@ def comprobar(
     canal: str = Query(...),
     destino: str = Query(...),
     plantilla: str = Query(""),
+    dominio: str = Query(
+        "",
+        description=(
+            "El dominio por el que sale. Con él se aplica el tope de "
+            "calentamiento de la IP; sin él no se puede, y se dice"
+        ),
+    ),
+    enviados_hoy: int = Query(
+        0,
+        ge=0,
+        description=(
+            "Cuántos van ya hoy por ese dominio. Lo lleva quien manda, que es "
+            "quien conoce la tanda"
+        ),
+    ),
 ) -> Any:
     return can.comprobar_envio(
-        db, principal.tenant_id, canal_clave=canal, destino=destino, plantilla=plantilla
+        db,
+        principal.tenant_id,
+        canal_clave=canal,
+        destino=destino,
+        plantilla=plantilla,
+        # El dominio y lo que se lleva mandado hoy: con ellos se aplica el tope
+        # de calentamiento, que se calculaba, salía en la pantalla con su aviso
+        # y no lo miraba nadie. Una IP nueva que manda cien mil el primer día se
+        # quema, y quemarla cuesta semanas en las que no llega nada.
+        dominio=dominio,
+        enviados_hoy=enviados_hoy,
     )
 
 

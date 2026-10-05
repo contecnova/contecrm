@@ -370,13 +370,24 @@ def comprobar_envio(
     destino: str,
     plantilla: str = "",
     ahora: datetime | None = None,
+    dominio: str = "",
+    enviados_hoy: int = 0,
 ) -> dict[str, Any]:
     """Todo lo que hay que mirar antes de mandar por un canal, en una llamada.
 
-    Cinco comprobaciones y ninguna opcional: el canal activo, el consentimiento
-    **de ese canal**, la hora de silencio, la ventana de WhatsApp y la plantilla
-    aprobada. Repartidas por el código, la que se olvida es siempre la del
-    consentimiento.
+    Seis comprobaciones y ninguna opcional: el canal activo, el consentimiento
+    **de ese canal**, la hora de silencio, la ventana de WhatsApp, la plantilla
+    aprobada y **el tope de calentamiento del dominio**. Repartidas por el
+    código, la que se olvida es siempre la del consentimiento.
+
+    La sexta se añadió el 05-10-2026 al auditar la entregabilidad: el tope diario
+    de una IP en calentamiento se calculaba, salía en la pantalla con su aviso
+    —«hoy como mucho N envíos»— y **no lo aplicaba nadie**. Una IP nueva que
+    manda cien mil el primer día se quema, y quemarla cuesta semanas en las que
+    no llega nada, ni las campañas ni las facturas.
+
+    `enviados_hoy` lo pone quien manda, porque es quien lleva la cuenta de la
+    tanda. Cero —el valor de serie— significa que empieza ahora.
     """
     momento = _con_tz(ahora) or _ahora()
     canal = db.execute(
@@ -447,6 +458,25 @@ def comprobar_envio(
                 "la descartaría sin avisar y el mensaje no llegaría."
             )
 
+    # EL TOPE DE CALENTAMIENTO. Se mira al final porque es el único que depende
+    # de cuánto se lleva mandado hoy, no de quién recibe.
+    calentamiento: dict[str, Any] | None = None
+    if dominio:
+        estado = estado_dominio(db, tenant_id, dominio)
+        if estado.get("calentando"):
+            calentamiento = {
+                "dia": estado["dia_de_calentamiento"],
+                "tope_hoy": estado["tope_hoy"],
+                "enviados_hoy": enviados_hoy,
+            }
+            if enviados_hoy >= int(estado["tope_hoy"] or 0):
+                motivos.append(
+                    f"La IP está en calentamiento: hoy el tope son "
+                    f"{estado['tope_hoy']} envíos y ya van {enviados_hoy}. Pasarse "
+                    "quema la IP, y quemarla cuesta semanas en las que no llega "
+                    "nada — ni las campañas ni las facturas."
+                )
+
     return {
         "se_puede_mandar": not motivos,
         "motivos": motivos,
@@ -454,6 +484,9 @@ def comprobar_envio(
         "necesita_plantilla": necesita_plantilla,
         "ventana_abierta": ventana_abierta(consentimiento),
         "como_se_da_de_baja": BAJAS_POR_CANAL.get(canal.tipo, ""),
+        # `None` cuando el dominio no está calentando o no se ha dicho cuál es:
+        # quien lo pinta no tiene que saber nada de la progresión.
+        "calentamiento": calentamiento,
     }
 
 
