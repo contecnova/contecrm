@@ -162,3 +162,99 @@ declarar_consumo(
         ),
     )
 )
+
+
+async def consumir_territorio(mensaje: Any) -> None:
+    """Replica el mapa de territorios cuando se publica (CRM-00.05.02.07).
+
+    Es el otro medio circuito que estaba abierto. `visibilidad.py` de este
+    servicio resuelve el acceso por territorio contra `TerritorioReplicado`, y
+    **esa tabla no la escribía nadie**: `territory.published` lo emitía `sales` y
+    no lo consumía ningún servicio. Resultado, la vía por territorio devolvía
+    siempre el conjunto vacío — un comercial cuyo acceso venía de su territorio
+    no veía nada por ahí, sin error y sin que la pantalla lo dijera.
+
+    Se aplica el mapa **entero**: los que están y, por diferencia, los que ya no.
+    Replicar solo las altas dejaría a quien deja un territorio viendo su cartera
+    para siempre, que es la mitad que de verdad importa.
+    """
+    from uuid import UUID
+
+    from crmcore.authz.jerarquia import TerritorioReplicado, aplicar_territorio, quitar_territorio
+    from crmcore.db.uow import unidad_de_trabajo
+    from sqlalchemy import select
+
+    tipo = getattr(mensaje, "tipo", None) or (
+        mensaje.get("tipo") if isinstance(mensaje, dict) else None
+    )
+    if str(tipo or "") != "territory.published":
+        return
+
+    bruto = getattr(mensaje, "tenant_id", None) or (
+        mensaje.get("tenant_id") if isinstance(mensaje, dict) else None
+    )
+    datos = (
+        getattr(mensaje, "data", None)
+        or (mensaje.get("data") if isinstance(mensaje, dict) else {})
+        or {}
+    )
+    territorio = str(datos.get("territorio_id") or "")
+    if not bruto or not territorio:
+        # Sin identificador no se puede replicar nada, y adivinar por la clave
+        # mezclaría dos territorios que se llamen parecido.
+        logger.warning("%s.territorio_sin_identificador", __name__.split(".")[1])
+        return
+
+    tenant_id = UUID(str(bruto))
+    territorio_id = UUID(territorio)
+    padre = str(datos.get("padre_id") or "")
+    deben = {UUID(str(u)) for u in (datos.get("usuarios") or [])}
+
+    with unidad_de_trabajo(tenant_id) as uow:
+        estan = set(
+            uow.db.execute(
+                select(TerritorioReplicado.usuario_id).where(
+                    TerritorioReplicado.tenant_id == tenant_id,
+                    TerritorioReplicado.territorio_id == territorio_id,
+                    TerritorioReplicado.usuario_id.is_not(None),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        # El territorio en sí, con su padre: hace falta aunque no tenga a nadie,
+        # porque de él cuelgan los de abajo.
+        aplicar_territorio(
+            uow.db,
+            tenant_id=tenant_id,
+            territorio_id=territorio_id,
+            padre_id=UUID(padre) if padre else None,
+            clave=str(datos.get("territorio") or ""),
+        )
+        for usuario in deben:
+            aplicar_territorio(
+                uow.db,
+                tenant_id=tenant_id,
+                territorio_id=territorio_id,
+                padre_id=UUID(padre) if padre else None,
+                usuario_id=usuario,
+                clave=str(datos.get("territorio") or ""),
+            )
+        for usuario in estan - deben:
+            quitar_territorio(
+                uow.db, tenant_id=tenant_id, territorio_id=territorio_id, usuario_id=usuario
+            )
+
+
+declarar_consumo(
+    Consumo(
+        consumidor="party",
+        evento="territory.published",
+        campos=("territorio_id", "padre_id", "usuarios"),
+        obligatorio=True,
+        motivo=(
+            "Replicar el mapa de territorios para que el acceso por territorio "
+            "aplique en los listados de este servicio, sin leer el esquema de sales"
+        ),
+    )
+)

@@ -641,6 +641,21 @@ def crear_clave_api(
 ) -> tuple[ClaveApi, str]:
     """Crea una clave y devuelve (fila, secreto en claro). El secreto no se
     vuelve a poder leer."""
+    # LA LISTA DE IP SE COMPRUEBA AL GUARDARLA, no al usarla. Una red mal
+    # escrita descubierta en la primera llamada deja la integración caída y a
+    # nadie mirando, porque quien la configuró ya se fue. La comprobación
+    # existía y no la llamaba nadie: se podía guardar «10.0.0.300/8» y el fallo
+    # salía semanas después, al conectar.
+    from crmcore.authz.credenciales import validar_lista
+
+    problemas = validar_lista(list(ips_permitidas or []))
+    if problemas:
+        raise ErrorValidacion(
+            "La lista de direcciones de la clave no vale: " + "; ".join(problemas),
+            error_code="clave_api.ips_invalidas",
+            detalle={"problemas": problemas},
+        )
+
     s = get_settings()
     secreto = PREFIJO_CLAVE + secrets.token_urlsafe(s.api_key_bytes)
     dias = s.api_key_caducidad_dias if dias is None else dias

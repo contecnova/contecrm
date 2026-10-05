@@ -8736,6 +8736,29 @@ Un territorio nace **en borrador** y no asigna nada hasta publicarse. Es lo que
 permite montar el mapa entero —con sus solapes y sus huecos— antes de que mueva
 una sola cuenta.
 
+### Quién lo trabaja, y por qué se vuelve a publicar al cambiarlo
+
+Un territorio tiene un **responsable** y puede tener **miembros**, y los dos
+cuentan a la hora de ver sus cuentas: tener al responsable fuera de esa lista
+obligaría a cada pantalla a acordarse de sumarlo, que es la clase de cosa que una
+de ellas olvida.
+
+Lo que no es obvio: **añadir o quitar a alguien vuelve a publicar el mapa**. El
+acceso por territorio no lo resuelve el servicio que guarda el territorio, sino
+cada servicio contra **su propia copia replicada** —igual que la jerarquía de
+mando y los ajustes en caliente—, y esa copia solo cambia cuando llega el evento.
+Añadir un miembro sin republicar lo dejaría apuntado en el maestro y sin efecto en
+ninguna pantalla: peor que no poder añadirlo, porque parece hecho.
+
+Y se publica **también al quitar**, que es la mitad que más importa: quien deja un
+territorio tiene que dejar de ver sus cuentas ese día. Un alta que se propaga y
+una baja que no es la forma más silenciosa de que alguien siga viendo la cartera
+de la que ya no se ocupa.
+
+Si el territorio sigue en borrador no se emite nada: publicarlo es una decisión
+que se toma una vez, y adelantarla al añadir un miembro haría que un mapa a medio
+montar empezara a asignar cuentas.
+
 ### Las excepciones son parte del modelo (`CRM-03.02.02.02`)
 
 Siempre hay una cuenta nominal que lleva el director aunque esté en la zona de

@@ -604,6 +604,27 @@ Una consecuencia operativa: **al superar el factor se entrega un token nuevo**. 
 tu integración guarda el token y no lo refresca al verificarse, seguirá recibiendo
 «vuelve a verificarte» después de haberse verificado.
 
+### 3.2.3 Lo que cada servicio replica, y de qué evento
+
+Ningún servicio lee el esquema de otro — es el aislamiento funcionando—, así que
+lo que necesita de fuera lo tiene **replicado**: los ajustes en caliente, la clave
+del tenant, la jerarquía de mando y el **mapa de territorios**.
+
+Esa última llegó a estar a medias y conviene conocer la forma, porque es la misma
+para todas: hay un productor que emite (`territory.published` desde `sales`), un
+consumidor por servicio que aplica, y una tabla local contra la que se resuelve la
+visibilidad. Si falta cualquiera de las tres piezas **no hay error**: la vía
+simplemente devuelve el conjunto vacío y nadie ve nada por ella.
+
+Dos cosas que hay que respetar al tocar esto:
+
+- **El evento tiene que llevar con qué replicar.** El de territorios llevaba la
+  clave y la versión, y con eso no se puede: ni el identificador, ni de quién
+  cuelga, ni quién lo trabaja. Lo que un consumidor necesita va en el contrato
+  del evento (`declarar_consumo`), y el gate de contratos lo comprueba.
+- **Se aplica el mapa entero, no las altas.** Replicar solo lo que se añade deja a
+  quien sale de un territorio viendo su cartera para siempre.
+
 ### 3.3 Ajustes por tenant
 
 Lo que cambia por cliente y no por despliegue: umbrales de calidad, plazos de

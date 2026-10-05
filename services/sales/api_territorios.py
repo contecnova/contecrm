@@ -149,6 +149,54 @@ def publicar(territorio_id: UUID, uow: UowDep) -> Any:
     return ter.publicar(uow, territorio_id)
 
 
+class MiembroIn(BaseModel):
+    usuario_id: UUID
+    solo_lectura: bool = Field(
+        False,
+        description=("Si solo mira o además es dueño de las cuentas del territorio"),
+    )
+
+
+@router.post(
+    "/{territorio_id}/miembros",
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Sumar a alguien al territorio",
+    description=(
+        "Y **vuelve a publicar el mapa**, que es lo que hace que sirva de algo: "
+        "la visibilidad por territorio la resuelve cada servicio contra su copia "
+        "replicada, y esa copia solo cambia cuando llega el evento. Añadir un "
+        "miembro sin republicar lo deja apuntado en el maestro y sin efecto en "
+        "ninguna pantalla — que es peor que no poder añadirlo, porque parece "
+        "hecho.\n\n"
+        "Si el territorio todavía no está publicado **no se emite nada**: "
+        "publicarlo es una decisión que se toma una vez, y adelantarla aquí haría "
+        "que un mapa a medio montar empezara a asignar cuentas."
+    ),
+)
+def anadir_miembro(territorio_id: UUID, cuerpo: MiembroIn, uow: UowDep) -> Any:
+    return ter.anadir_miembro(
+        uow,
+        territorio_id=territorio_id,
+        usuario_id=cuerpo.usuario_id,
+        solo_lectura=cuerpo.solo_lectura,
+    )
+
+
+@router.delete(
+    "/{territorio_id}/miembros/{usuario_id}",
+    dependencies=[Depends(exige_permiso("opportunity:write"))],
+    summary="Sacar a alguien del territorio",
+    description=(
+        "Se republica también al quitar, y es la mitad que más importa: quien "
+        "deja un territorio tiene que dejar de ver sus cuentas **ese día**. Un "
+        "alta que se propaga y una baja que no es la forma más silenciosa de que "
+        "alguien siga viendo la cartera de la que ya no se ocupa."
+    ),
+)
+def quitar_miembro(territorio_id: UUID, usuario_id: UUID, uow: UowDep) -> Any:
+    return ter.quitar_miembro(uow, territorio_id=territorio_id, usuario_id=usuario_id)
+
+
 @router.post(
     "/aplicar",
     dependencies=[Depends(exige_permiso("opportunity:write"))],

@@ -51,6 +51,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    delete,
     func,
     select,
     text,
@@ -453,6 +454,123 @@ def simular(db: Session, tenant_id: UUID, cuentas: list[dict[str, Any]]) -> dict
     }
 
 
+def miembros_de(db: Session, tenant_id: UUID, territorio_id: UUID) -> list[UUID]:
+    """Quién trabaja este territorio: el responsable y los miembros.
+
+    El responsable va dentro **a propósito**: es quien lo trabaja por definición,
+    y tenerlo fuera obligaría a cada lector a acordarse de sumarlo — que es la
+    clase de cosa que uno de los lectores olvida.
+    """
+    fila = db.get(Territorio, territorio_id)
+    gente: list[UUID] = [fila.responsable_id] if fila is not None and fila.responsable_id else []
+    gente.extend(
+        db.execute(
+            select(MiembroTerritorio.usuario_id).where(
+                MiembroTerritorio.tenant_id == tenant_id,
+                MiembroTerritorio.territorio_id == territorio_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return sorted(set(gente))
+
+
+def anadir_miembro(
+    uow: UnidadDeTrabajo, *, territorio_id: UUID, usuario_id: UUID, solo_lectura: bool = False
+) -> dict[str, Any]:
+    """Suma a alguien al territorio y **vuelve a publicarlo**.
+
+    Lo segundo es lo que hace que sirva de algo: la visibilidad por territorio la
+    resuelve cada servicio contra su copia replicada, y esa copia solo cambia
+    cuando llega el evento. Añadir un miembro sin volver a publicar lo deja
+    apuntado en el maestro y sin efecto en ninguna pantalla — que es peor que no
+    poder añadirlo, porque parece hecho.
+    """
+    fila = uow.db.get(Territorio, territorio_id)
+    if fila is None or fila.tenant_id != uow.tenant_id:
+        raise NoEncontrado("El territorio no existe", error_code="territorio.no_encontrado")
+    ya = uow.db.execute(
+        select(MiembroTerritorio).where(
+            MiembroTerritorio.tenant_id == uow.tenant_id,
+            MiembroTerritorio.territorio_id == territorio_id,
+            MiembroTerritorio.usuario_id == usuario_id,
+        )
+    ).scalar_one_or_none()
+    if ya is None:
+        uow.db.add(
+            MiembroTerritorio(
+                tenant_id=uow.tenant_id,
+                territorio_id=territorio_id,
+                usuario_id=usuario_id,
+                solo_lectura=solo_lectura,
+            )
+        )
+    else:
+        ya.solo_lectura = solo_lectura
+    uow.db.flush()
+    return {"territorio": fila.clave, **_republicar(uow, fila)}
+
+
+def quitar_miembro(
+    uow: UnidadDeTrabajo, *, territorio_id: UUID, usuario_id: UUID
+) -> dict[str, Any]:
+    """Saca a alguien y vuelve a publicar.
+
+    Se publica también al quitar, y es la mitad que más importa: quien deja un
+    territorio tiene que dejar de ver sus cuentas **ese día**. Un alta que se
+    propaga y una baja que no es la forma más silenciosa de que alguien siga
+    viendo la cartera de la que ya no se ocupa.
+    """
+    fila = uow.db.get(Territorio, territorio_id)
+    if fila is None or fila.tenant_id != uow.tenant_id:
+        raise NoEncontrado("El territorio no existe", error_code="territorio.no_encontrado")
+    quitados = uow.db.execute(
+        delete(MiembroTerritorio).where(
+            MiembroTerritorio.tenant_id == uow.tenant_id,
+            MiembroTerritorio.territorio_id == territorio_id,
+            MiembroTerritorio.usuario_id == usuario_id,
+        )
+    ).rowcount
+    uow.db.flush()
+    return {"territorio": fila.clave, "quitados": int(quitados or 0), **_republicar(uow, fila)}
+
+
+def _republicar(uow: UnidadDeTrabajo, fila: Territorio) -> dict[str, Any]:
+    """Emite el mapa del territorio tal como queda, si ya estaba publicado.
+
+    Si todavía no se ha publicado no se emite nada: publicarlo es una decisión
+    que se toma una vez, y adelantarla al añadir un miembro haría que un mapa a
+    medio montar empezara a asignar cuentas.
+    """
+    if fila.estado != "publicado":
+        return {"publicado": False, "porque": "El territorio todavía no está publicado."}
+    return {"publicado": True, **_emitir_mapa(uow, fila)}
+
+
+def _emitir_mapa(uow: UnidadDeTrabajo, fila: Territorio) -> dict[str, Any]:
+    """El evento con lo que una copia replicada necesita.
+
+    Llevaba solo la clave y la versión, y con eso **no se puede replicar nada**:
+    quien lo recibiera no sabría ni el identificador, ni de quién cuelga, ni
+    quién lo trabaja. El evento existía, no lo consumía nadie y, de haberlo
+    consumido, no le habría servido.
+    """
+    gente = miembros_de(uow.db, uow.tenant_id, fila.id)
+    uow.emitir(
+        "territory.published",
+        subject=("territorio", fila.id),
+        data={
+            "territorio": fila.clave,
+            "version": fila.version,
+            "territorio_id": str(fila.id),
+            "padre_id": str(fila.padre_id) if fila.padre_id else "",
+            "usuarios": [str(u) for u in gente],
+        },
+    )
+    return {"version": fila.version, "usuarios": len(gente)}
+
+
 def publicar(uow: UnidadDeTrabajo, territorio_id: UUID) -> dict[str, Any]:
     """Publica un territorio. A partir de aquí asigna."""
     fila = uow.db.get(Territorio, territorio_id)
@@ -463,12 +581,7 @@ def publicar(uow: UnidadDeTrabajo, territorio_id: UUID) -> dict[str, Any]:
         fila.version += 1
     fila.estado = "publicado"
     uow.db.flush()
-    uow.emitir(
-        "territory.published",
-        subject=("territorio", fila.id),
-        data={"territorio": fila.clave, "version": fila.version},
-    )
-    return {"territorio": fila.clave, "version": fila.version}
+    return {"territorio": fila.clave, **_emitir_mapa(uow, fila)}
 
 
 def declarar_excepcion(

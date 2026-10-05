@@ -207,7 +207,17 @@ CARPETAS = (
 #                   alguien vea desaparecer su propio cambio— y el transporte
 #                   gRPC, cuyo ajuste existía, estaba documentado y no lo leía
 #                   nadie: encenderlo no encendía nada.
-TOPE = 30
+#   05-10-2026  25  El mapa de territorios estaba abierto por los dos extremos:
+#                   `visibilidad.py` resolvía el acceso contra una tabla
+#                   replicada que NO ESCRIBÍA NADIE —el evento lo emitía ventas
+#                   y no lo consumía ningún servicio—, así que esa vía devolvía
+#                   siempre vacío; y aunque alguien lo hubiera consumido, el
+#                   evento llevaba la clave y la versión, con lo que no se puede
+#                   replicar nada. Faltaba además la puerta para añadir o quitar
+#                   miembros. Con ellos, la lista de IP de una clave de API —que
+#                   se comprobaba al usarla y no al guardarla—, la política por
+#                   dimensión y la excepción por campo.
+TOPE = 25
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

@@ -20,6 +20,7 @@ from services.sales.consumidores import (
     consumir_comando,
     consumir_firma,
     consumir_organigrama,
+    consumir_territorio,
 )
 from services.sales.respuesta_erp import consumir_respuesta_erp
 
@@ -68,6 +69,11 @@ app = crear_servicio(
         # jerarquía aplique en los listados (CRM-00.05.02.12): `superior_id` vive
         # en la membresía de identity y este servicio no lee su esquema.
         ("user.org.changed", consumir_organigrama, f"{__name__.split('.')[1]}-organigrama"),
+        # Y el mapa de territorios (CRM-00.05.02.07). `visibilidad.py`
+        # resolvía el acceso por territorio contra una tabla replicada que
+        # **no escribía nadie**: el evento lo emitía `sales` y no lo
+        # consumía ningún servicio, así que esa vía devolvía siempre vacío.
+        ("territory.published", consumir_territorio, f"{__name__.split('.')[1]}-territorios"),
         # El sobre firmado mueve la oportunidad (CRM-03.03.02.07): el motor ya
         # emitía el evento con el registro de origen dentro, y lo que faltaba
         # era que alguien lo escuchara.

@@ -176,6 +176,8 @@ stateDiagram-v2
 | `POST /api/v1/notificaciones/entregas/sucesos` | Lo que el proveedor cuenta que pasó con un correo ya mandado | entrega_id, direccion*, suceso*, detalle, proveedor, ocurrido_at | 200, 422 | — |
 | `POST /api/v1/notificaciones/leidas` | Marcar como leídas | ids | 200, 422 | — |
 | `PUT /api/v1/notificaciones/preferencias` | Fijar mis preferencias para un tipo de evento | tipo, canales*, agrupar_minutos, silencio_desde, silencio_hasta | 200, 422 | — |
+| `POST /api/v1/politicas-acceso/campos` | Declarar una excepción para un campo concreto | objeto*, campo*, nivel*, rol | 200, 422 | — |
+| `POST /api/v1/politicas-acceso/dimension/{dimension}` | Montar la política de una dimensión, lista para guardar | dimension*, objeto*, acciones, alcance, campos | 200, 422 | — |
 | `POST /api/v1/politicas-acceso/simular` | Qué vería esta persona, antes de activar nada | usuario_id*, objeto*, accion*, registro, politica | 200, 422 | — |
 | `PUT /api/v1/politicas-acceso/{nombre}` | Crear o cambiar una política | nombre*, nombre*, objeto*, acciones*, condiciones, combinacion, prioridad, alcance, campos, activa, descripcion | 200, 422 | — |
 | `DELETE /api/v1/politicas-acceso/{nombre}` | Quitar una política | nombre* | 204, 422 | — |
@@ -888,6 +890,8 @@ stateDiagram-v2
 | `PATCH /api/v1/territorios/{territorio_id}` | Editar territorios | territorio_id*, clave, nombre, descripcion, padre_id, criterios, prioridad, responsable_id, estado, activo | 200, 422 | — |
 | `DELETE /api/v1/territorios/{territorio_id}` | Borrar territorios | territorio_id* | 204, 422 | — |
 | `POST /api/v1/territorios/{territorio_id}/archivar` | Archivar territorios | territorio_id* | 200, 422 | — |
+| `POST /api/v1/territorios/{territorio_id}/miembros` | Sumar a alguien al territorio | territorio_id*, usuario_id*, solo_lectura | 200, 422 | — |
+| `DELETE /api/v1/territorios/{territorio_id}/miembros/{usuario_id}` | Sacar a alguien del territorio | territorio_id*, usuario_id* | 200, 422 | — |
 | `POST /api/v1/territorios/{territorio_id}/publicar` | Publicar un territorio | territorio_id* | 200, 422 | `territory.published` |
 
 ### analytics

@@ -16,6 +16,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.authz.politicas import politica_por_dimension
+from crmcore.authz.proyeccion import fijar_politica_campo
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
@@ -103,6 +105,78 @@ def listar_politicas(
         orden="prioridad",
         fila_a_dict=a_dict,
     )
+
+
+class DimensionIn(BaseModel):
+    objeto: str = Field(..., min_length=1, examples=["cuenta"])
+    acciones: list[str] = Field(default_factory=lambda: ["read", "write"])
+    alcance: str = Field(
+        "registro", description="registro: esconde la fila · campos: la deja y tapa campos"
+    )
+    campos: list[str] = Field(default_factory=list)
+
+
+@router_politicas.post(
+    "/dimension/{dimension}",
+    dependencies=[Depends(exige_permiso("role:read"))],
+    summary="Montar la política de una dimensión, lista para guardar",
+    description=(
+        "Las cuatro restricciones que piden todos los clientes grandes —unidad "
+        "de negocio, marca, país y canal— escritas siempre igual. Montarlas a "
+        "mano cada vez es lo que hace que una diga `=` y otra `en`, y que dos "
+        "clientes con la misma regla tengan comportamientos distintos.\n\n"
+        "**Devuelve la política y no la guarda.** Quién la activa y con qué "
+        "alcance —esconder el registro o dejarlo y tapar campos— es una decisión "
+        "de negocio, y darla por hecha es cómo se deja a media plantilla sin ver "
+        "su propia cartera un lunes por la mañana."
+    ),
+)
+def politica_de_dimension(dimension: str, cuerpo: DimensionIn, principal: AutenticadoDep) -> Any:
+    return politica_por_dimension(
+        dimension,
+        objeto=cuerpo.objeto,
+        acciones=cuerpo.acciones,
+        alcance=cuerpo.alcance,
+        campos=cuerpo.campos,
+    )
+
+
+class PoliticaCampoIn(BaseModel):
+    objeto: str = Field(..., min_length=1)
+    campo: str = Field(..., min_length=1)
+    nivel: str = Field(..., description="claro · enmascarado · oculto")
+    rol: str = Field("*", description="`*` para todos los roles")
+
+
+@router_politicas.post(
+    "/campos",
+    dependencies=[Depends(exige_permiso("role:write"))],
+    summary="Declarar una excepción para un campo concreto",
+    description=(
+        "La sensibilidad de un campo sale de su clasificación, y eso cubre el "
+        "caso normal. Esto es para el que no: «el móvil del contacto lo ve "
+        "soporte en claro aunque sea un dato personal», «el margen lo tapamos "
+        "también para dirección».\n\n"
+        "Se declara **por campo y por rol**, y queda escrito: una excepción que "
+        "vive en la cabeza de quien la pidió es la que nadie revisa al año "
+        "siguiente."
+    ),
+)
+def politica_de_campo(cuerpo: PoliticaCampoIn, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = fijar_politica_campo(
+        uow.db,
+        tenant_id=principal.tenant_id,
+        objeto=cuerpo.objeto,
+        campo=cuerpo.campo,
+        nivel=cuerpo.nivel,
+        rol=cuerpo.rol,
+    )
+    return {
+        "objeto": fila.objeto,
+        "campo": fila.campo,
+        "nivel": fila.nivel,
+        "rol": fila.rol,
+    }
 
 
 @router_politicas.put(

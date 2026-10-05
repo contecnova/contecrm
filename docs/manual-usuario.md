@@ -397,6 +397,12 @@ Una oportunidad es una venta en marcha. Lo que el CRM te va a pedir y por qué:
   ampliación, venta cruzada o sustitución. Una renovación **no cuenta como ingreso
   nuevo**, y contarla así duplicaría el crecimiento del trimestre.
 
+**Lo que ves por tu territorio.** Además de lo tuyo y de lo que te compartan, ves
+las cuentas de los territorios que trabajas — como responsable o como miembro. Dos
+cosas que conviene saber: si te acaban de añadir a un territorio, lo verás en
+cuanto el mapa se vuelva a publicar, que ocurre solo al añadirte; y si te sacan,
+dejas de verlo **ese mismo día**, no cuando alguien se acuerde de revisarlo.
+
 ---
 
 ## Previsión y objetivos (sección 3.2)
