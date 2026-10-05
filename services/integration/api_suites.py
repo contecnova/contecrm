@@ -371,6 +371,231 @@ def baja(motivo: str, principal: AutenticadoDep) -> Any:
 
 # ── Motor externo de compensación (CRM-03.02.03.04) ───────────────────────
 
+# ── Contactos, tareas, notas, ficheros y enlaces de reunión ──────────────
+#
+# Nueve decisiones que estaban escritas, probadas y **sin una sola puerta**.
+# Son funciones puras —reciben lo que hay en los dos lados y dicen qué hacer—
+# y por eso se exponen como se expone `/telefonia/identificar`: quien integra
+# pregunta «¿qué harías?» y se queda con la respuesta y con su motivo.
+#
+# Lo que estas rutas NO hacen, y conviene que quede dicho: no sincronizan. No
+# hay todavía ningún motor que las llame en bucle; eso es una decisión —cada
+# cuánto, con qué configuración y dónde van los resultados— y no se inventa
+# aquí. Lo que sí hay es que la decisión deja de estar encerrada en el módulo.
+
+
+class ContactosQueSubenIn(BaseModel):
+    contactos_del_crm: list[dict[str, Any]] = Field(default_factory=list)
+    solo_relacionados: bool = Field(
+        True,
+        description=(
+            "Subirle los cuarenta mil del CRM llena su agenda de gente que no "
+            "conoce, y lo primero que hace cualquiera entonces es desconectar "
+            "la integración — con lo que se pierde también lo que sí servía."
+        ),
+    )
+
+
+class ContactosQueEntranIn(BaseModel):
+    contactos_del_proveedor: list[dict[str, Any]] = Field(default_factory=list)
+    correos_conocidos: list[str] = Field(default_factory=list)
+
+
+class CampoIn(BaseModel):
+    campo: str
+    valor_crm: Any = None
+    valor_proveedor: Any = None
+    origen: str
+    mas_reciente: str = "crm"
+
+
+class TareaIn(BaseModel):
+    en_el_crm: dict[str, Any] | None = None
+    en_el_proveedor: dict[str, Any] | None = None
+    ultima_sincronizacion: datetime | None = None
+
+
+class NotaIn(BaseModel):
+    objeto: str
+    objeto_id: UUID
+    proveedor: str
+    referencia: str
+    titulo: str
+    copiar_contenido: bool = Field(
+        False,
+        description=(
+            "Copiar la página de un cuaderno al CRM duplica el dato y queda " "vieja el mismo día."
+        ),
+    )
+
+
+class ResolverNotaIn(BaseModel):
+    referencia: str
+    tiene_acceso: bool
+    existe: bool
+
+
+class FicheroIn(BaseModel):
+    objeto: str
+    objeto_id: UUID
+    proveedor: str
+    referencia: str
+    nombre: str
+    tamano_bytes: int | None = None
+
+
+class EstadoEnlaceIn(BaseModel):
+    existe: bool
+    tiene_acceso: bool
+    nombre: str
+
+
+class EnlaceReunionIn(BaseModel):
+    enlace: str
+    destino: str
+
+
+@router_suites.post(
+    "/contactos/que-suben",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué contactos del CRM van a la agenda del usuario",
+)
+def contactos_que_suben(cuerpo: ContactosQueSubenIn, principal: AutenticadoDep) -> Any:
+    return sur.que_contactos_suben(
+        contactos_del_crm=cuerpo.contactos_del_crm,
+        solo_relacionados=cuerpo.solo_relacionados,
+    )
+
+
+@router_suites.post(
+    "/contactos/que-entran",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué contactos de la agenda entran al CRM",
+    description=(
+        "La agenda de un comercial tiene a su médico, a su hermana y a tres "
+        "antiguos compañeros. Volcarla es meter datos personales de gente que "
+        "no es ni cliente ni usuaria, sin base legal y sin que nadie se lo haya "
+        "preguntado."
+    ),
+)
+def contactos_que_entran(cuerpo: ContactosQueEntranIn, principal: AutenticadoDep) -> Any:
+    return sur.que_contactos_entran(
+        contactos_del_proveedor=cuerpo.contactos_del_proveedor,
+        correos_conocidos=cuerpo.correos_conocidos,
+    )
+
+
+@router_suites.post(
+    "/contactos/campo",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué valor gana cuando los dos lados discrepan",
+)
+def resolver_campo(cuerpo: CampoIn, principal: AutenticadoDep) -> Any:
+    return sur.resolver_campo(
+        campo=cuerpo.campo,
+        valor_crm=cuerpo.valor_crm,
+        valor_proveedor=cuerpo.valor_proveedor,
+        origen=cuerpo.origen,
+        mas_reciente=cuerpo.mas_reciente,
+    )
+
+
+@router_suites.post(
+    "/tareas/sincronizar",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué hacer con una tarea que está en los dos sitios",
+    description=(
+        "Lo que la gente espera es que cerrarla en un sitio la cierre en el "
+        "otro. Lo que **no** espera es que borrarla en su móvil borre la "
+        "actividad del CRM que otros han comentado: un borrado en el proveedor "
+        "no borra aquí."
+    ),
+)
+def sincronizar_tarea(cuerpo: TareaIn, principal: AutenticadoDep) -> Any:
+    return sur.sincronizar_tarea(
+        en_el_crm=cuerpo.en_el_crm,
+        en_el_proveedor=cuerpo.en_el_proveedor,
+        ultima_sincronizacion=cuerpo.ultima_sincronizacion,
+    )
+
+
+@router_suites.post(
+    "/notas/vincular",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Enlazar una nota del proveedor a un registro",
+    description=(
+        "Va **por referencia**: el permiso lo resuelve el proveedor con la "
+        "identidad de quien mira, así que quien no tiene acceso ve que no lo "
+        "tiene, no el contenido."
+    ),
+)
+def vincular_nota(cuerpo: NotaIn, principal: AutenticadoDep) -> Any:
+    return sur.vincular_nota(
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        proveedor=cuerpo.proveedor,
+        referencia=cuerpo.referencia,
+        titulo=cuerpo.titulo,
+        copiar_contenido=cuerpo.copiar_contenido,
+    )
+
+
+@router_suites.post(
+    "/notas/resolver",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué enseñar de una nota enlazada",
+)
+def resolver_nota(cuerpo: ResolverNotaIn, principal: AutenticadoDep) -> Any:
+    return sur.resolver_nota(
+        referencia=cuerpo.referencia, tiene_acceso=cuerpo.tiene_acceso, existe=cuerpo.existe
+    )
+
+
+@router_suites.post(
+    "/ficheros/vincular",
+    dependencies=[Depends(exige_permiso("integration:write"))],
+    summary="Enlazar un fichero del proveedor a un registro",
+    description=(
+        "Por referencia y no copiando: copiar rompe la promesa de «bórralo y "
+        "desaparece». Si el cliente borra el documento en su Drive y el CRM "
+        "tiene una copia, sigue ahí."
+    ),
+)
+def vincular_fichero(cuerpo: FicheroIn, principal: AutenticadoDep) -> Any:
+    return sur.vincular_fichero(
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        proveedor=cuerpo.proveedor,
+        referencia=cuerpo.referencia,
+        nombre=cuerpo.nombre,
+        tamano_bytes=cuerpo.tamano_bytes,
+    )
+
+
+@router_suites.post(
+    "/ficheros/estado",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Qué enseñar de un fichero enlazado",
+)
+def estado_del_enlace(cuerpo: EstadoEnlaceIn, principal: AutenticadoDep) -> Any:
+    return sur.estado_del_enlace(
+        existe=cuerpo.existe, tiene_acceso=cuerpo.tiene_acceso, nombre=cuerpo.nombre
+    )
+
+
+@router_suites.post(
+    "/reuniones/enlace",
+    dependencies=[Depends(exige_permiso("integration:read"))],
+    summary="Si este enlace de reunión puede ir por ese canal",
+    description=(
+        "El enlace de una reunión **es una credencial**: quien lo tiene entra. "
+        "No viaja en una notificación push ni en una página pública."
+    ),
+)
+def enlace_de_reunion(cuerpo: EnlaceReunionIn, principal: AutenticadoDep) -> Any:
+    return sur.enlace_para(enlace=cuerpo.enlace, destino=cuerpo.destino)
+
+
 router_compensacion = APIRouter(prefix="/compensacion", tags=["compensación"])
 
 

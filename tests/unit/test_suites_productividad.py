@@ -600,3 +600,97 @@ def test_el_perfil_valido_se_guarda_como_una_conexion_mas(
     assert fila.protocolo == "rest"
     guardado = su.perfil(uow.db, uow.tenant_id, "m365")
     assert guardado["clase"] == "suite_productividad"
+
+
+# --- Que exista la decisión no es que alguien pueda pedirla ---------------
+#
+# Las nueve de arriba estaban escritas y probadas, y **ninguna tenía puerta**:
+# el proveedor no podía preguntar qué contactos suben, ni el front enseñar por
+# qué una nota no se ve. Una regla que nadie puede invocar no protege a nadie;
+# protege en la prueba. Esto lo mide contra el contrato publicado del servicio,
+# que es lo que ve quien integra, y no contra el texto del fichero.
+
+NUEVE = {
+    "que_contactos_suben": "/suites/contactos/que-suben",
+    "que_contactos_entran": "/suites/contactos/que-entran",
+    "resolver_campo": "/suites/contactos/campo",
+    "sincronizar_tarea": "/suites/tareas/sincronizar",
+    "vincular_nota": "/suites/notas/vincular",
+    "resolver_nota": "/suites/notas/resolver",
+    "vincular_fichero": "/suites/ficheros/vincular",
+    "estado_del_enlace": "/suites/ficheros/estado",
+    "enlace_para": "/suites/reuniones/enlace",
+}
+
+
+def _llamadas_de_las_rutas() -> set[str]:
+    """Qué funciones de `suites_recursos` llama de verdad un manejador de ruta.
+
+    Por AST y no por `in fuente`: una mención en un comentario o en un `import`
+    daba verde con la ruta sin escribir, que es exactamente el fallo que esta
+    prueba persigue.
+    """
+    import ast
+    import inspect
+
+    from services.integration import api_suites
+
+    arbol = ast.parse(inspect.getsource(api_suites))
+    llamadas: set[str] = set()
+    for nodo in arbol.body:
+        if not isinstance(nodo, ast.FunctionDef) or not nodo.decorator_list:
+            continue
+        for hijo in ast.walk(nodo):
+            if (
+                isinstance(hijo, ast.Call)
+                and isinstance(hijo.func, ast.Attribute)
+                and isinstance(hijo.func.value, ast.Name)
+                and hijo.func.value.id == "sur"
+            ):
+                llamadas.add(hijo.func.attr)
+    return llamadas
+
+
+def test_las_nueve_decisiones_las_puede_pedir_alguien() -> None:
+    """`CRM-06.01.03.06` a `.10`."""
+    llamadas = _llamadas_de_las_rutas()
+    sin_puerta = sorted(set(NUEVE) - llamadas)
+    assert not sin_puerta, f"escritas y sin una sola ruta que las llame: {sin_puerta}"
+
+
+def test_las_nueve_salen_en_el_contrato_con_su_formulario() -> None:
+    """Publicadas y **con cuerpo declarado**.
+
+    Sin esquema de entrada, la consola que se construye sola enseña un botón sin
+    formulario y quien integra tiene que adivinar los campos: la ruta existe y
+    sigue sin poder usarse.
+    """
+    import importlib
+    import os
+
+    from crmcore.config import limpiar_cache_settings
+
+    previo = os.environ.get("SERVICE_NAME")
+    os.environ["SERVICE_NAME"] = "integration"
+    limpiar_cache_settings()
+    try:
+        app = importlib.import_module("services.integration.main").app
+        caminos = app.openapi().get("paths") or {}
+    finally:
+        if previo is None:
+            os.environ.pop("SERVICE_NAME", None)
+        else:
+            os.environ["SERVICE_NAME"] = previo
+        limpiar_cache_settings()
+
+    publicadas = {c for c in caminos if c.endswith(tuple(NUEVE.values()))}
+    faltan = sorted(r for r in NUEVE.values() if not any(c.endswith(r) for c in publicadas))
+    assert not faltan, f"no están en el contrato publicado: {faltan}"
+
+    sin_formulario = []
+    for ruta in NUEVE.values():
+        camino = next(c for c in caminos if c.endswith(ruta))
+        operacion = caminos[camino].get("post") or {}
+        if not (operacion.get("requestBody") or {}).get("content"):
+            sin_formulario.append(ruta)
+    assert not sin_formulario, f"sin cuerpo declarado: {sin_formulario}"

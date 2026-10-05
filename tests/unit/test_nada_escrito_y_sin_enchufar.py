@@ -59,7 +59,14 @@ CARPETAS = (
 #                   `registrar_llamada` no tenían ruta, así que la centralita
 #                   no tenía dónde pedir el screen pop ni dónde dar el parte
 #                   de una llamada perdida.
-TOPE = 44
+#   05-10-2026  35  las nueve decisiones de `suites_recursos` (qué contactos
+#                   suben y cuáles entran, qué gana cuando un campo cambia en
+#                   los dos lados, el eco de una tarea, el vínculo y la
+#                   resolución de una nota, el de un fichero y su estado, y
+#                   qué canal usa el enlace de una reunión) estaban escritas y
+#                   probadas sin una sola puerta: nadie de fuera podía pedir
+#                   ninguna.
+TOPE = 35
 
 # Las que no cuentan, con su motivo. Vacío hoy a propósito: la lista de 47 es
 # deuda reconocida, no exenciones.

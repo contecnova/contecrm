@@ -374,16 +374,25 @@ stateDiagram-v2
 | `POST /api/v1/sincronizacion/vinculos` | Emparejar un registro nuestro con uno suyo | objeto*, sistema*, registro_id*, id_externo* | 201, 422 | — |
 | `POST /api/v1/suites/consentimiento` | Autorizar el acceso a los propios recursos | perfil*, recursos*, sentido | 201, 422 | — |
 | `DELETE /api/v1/suites/consentimiento/{perfil}` | Retirar el permiso | perfil* | 200, 422 | — |
+| `POST /api/v1/suites/contactos/campo` | Qué valor gana cuando los dos lados discrepan | campo*, valor_crm, valor_proveedor, origen*, mas_reciente | 200, 422 | — |
+| `POST /api/v1/suites/contactos/que-entran` | Qué contactos de la agenda entran al CRM | contactos_del_proveedor, correos_conocidos | 200, 422 | — |
+| `POST /api/v1/suites/contactos/que-suben` | Qué contactos del CRM van a la agenda del usuario | contactos_del_crm, solo_relacionados | 200, 422 | — |
 | `POST /api/v1/suites/diagnostico` | Qué falla exactamente, no «error de autenticación» | codigo, alcances_concedidos, alcances_necesarios, mensaje_del_proveedor | 200, 422 | — |
 | `POST /api/v1/suites/disponibilidad` | Huecos reales leídos del calendario | ocupado, desde*, hasta*, minutos, calendario_legible | 200, 422 | — |
 | `POST /api/v1/suites/exportacion` | Preparar una salida en formato estándar, sin pasar por ninguna suite | formato*, objetos, referencias | 200, 422 | — |
+| `POST /api/v1/suites/ficheros/estado` | Qué enseñar de un fichero enlazado | existe*, tiene_acceso*, nombre* | 200, 422 | — |
+| `POST /api/v1/suites/ficheros/vincular` | Enlazar un fichero del proveedor a un registro | objeto*, objeto_id*, proveedor*, referencia*, nombre*, tamano_bytes | 200, 422 | — |
+| `POST /api/v1/suites/notas/resolver` | Qué enseñar de una nota enlazada | referencia*, tiene_acceso*, existe* | 200, 422 | — |
+| `POST /api/v1/suites/notas/vincular` | Enlazar una nota del proveedor a un registro | objeto*, objeto_id*, proveedor*, referencia*, titulo*, copiar_contenido | 200, 422 | — |
 | `POST /api/v1/suites/perfiles` | Declarar un proveedor de productividad como configuración | nombre*, sistema, config | 201, 422 | — |
 | `POST /api/v1/suites/perfiles/comprobar` | Qué le falta a este perfil, sin guardarlo | nombre*, sistema, config | 200, 422 | — |
 | `PATCH /api/v1/suites/perfiles/{perfil_suite_id}` | Editar perfiles de suite | perfil_suite_id*, nombre, sistema, descripcion, protocolo, config, activa, probada_at, prueba_ok, prueba_detalle | 200, 422 | — |
 | `DELETE /api/v1/suites/perfiles/{perfil_suite_id}` | Borrar perfiles de suite | perfil_suite_id* | 204, 422 | — |
 | `POST /api/v1/suites/perfiles/{perfil_suite_id}/archivar` | Archivar perfiles de suite | perfil_suite_id* | 200, 422 | — |
 | `POST /api/v1/suites/reuniones` | Preparar una reunión en línea con el proveedor del tenant | perfil*, asunto*, inicio*, fin*, confirmada, asistentes | 200, 422 | — |
+| `POST /api/v1/suites/reuniones/enlace` | Si este enlace de reunión puede ir por ese canal | enlace*, destino* | 200, 422 | — |
 | `POST /api/v1/suites/suscripciones` | Registrar una suscripción a los cambios del proveedor | perfil*, recurso*, externo_id*, caduca_at | 201, 422 | — |
+| `POST /api/v1/suites/tareas/sincronizar` | Qué hacer con una tarea que está en los dos sitios | en_el_crm, en_el_proveedor, ultima_sincronizacion | 200, 422 | — |
 | `POST /api/v1/telefonia/identificar` | Quién llama, y con qué confianza | numero*, candidatos | 200, 422 | — |
 | `POST /api/v1/telefonia/llamadas` | Dejar constancia de una llamada, la cojan o no | evento*, resultado*, numero*, duracion_s, espera_s, contacto_id, grabacion_ref | 200, 422 | — |
 | `POST /api/v1/telefonia/pantalla` | Qué se le pone delante al agente antes de descolgar | identificacion, datos_del_ivr, ultimo_caso, ultima_interaccion | 200, 422 | — |
