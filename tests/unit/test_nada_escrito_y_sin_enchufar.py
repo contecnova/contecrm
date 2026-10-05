@@ -32,7 +32,7 @@ producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`�
 para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
 `crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
 nadie**, y la primera medida solo delataba seis. Así que se mira también qué
-módulos de producción no importa ningún otro: catorce.
+módulos de producción no importa ningún otro: doce.
 """
 
 from __future__ import annotations
@@ -354,7 +354,7 @@ SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
 }
 
 # Medido el 05-10-2026. Baja o se queda, nunca sube.
-TOPE_MODULOS = 14
+TOPE_MODULOS = 12
 
 
 def _modulo_de(fichero: Path) -> str:

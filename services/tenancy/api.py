@@ -18,7 +18,9 @@ from crmcore.http.deps import (
     UowDep,
     exige_firma_interna,
     exige_permiso,
+    proyectar_para,
 )
+from crmcore.http.listados import proyectar_con_esquema
 from crmcore.http.pagination import (
     PaginaDeListado,
     ParametrosPagina,
@@ -115,7 +117,7 @@ def editar_tenant(tenant_id: UUID, datos: EditarTenant, uow: UowDep, _: Platafor
 @router.get("", response_model=PaginaDeListado, summary="Listar tenants")
 def listar_tenants(
     db: DbDep,
-    _: PlataformaDep,
+    principal: PlataformaDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
     estado: str = Query("", description="Filtra por estado"),
@@ -143,7 +145,14 @@ def listar_tenants(
     # sabe si hay página siguiente sin un `count` que recorra la tabla.
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
-    return pagina.a_dict(lambda t: TenantOut.model_validate(t).model_dump(mode="json"))
+    # Por la proyección, igual que la ficha: un listado que serializa con el
+    # esquema de salida se salta el enmascaramiento por rol, y entonces enseña
+    # lo que la ficha de la misma fila tapa.
+    return pagina.a_dict(
+        proyectar_con_esquema(
+            proyectar_para(principal, db, objeto="tenant", modelo=Tenant), TenantOut
+        )
+    )
 
 
 @router.get("/{tenant_id}", response_model=TenantOut, summary="Ficha del tenant")

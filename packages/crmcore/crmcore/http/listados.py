@@ -32,6 +32,7 @@ from typing import Any
 
 from fastapi import Depends, Query, Request
 
+from crmcore.datos import rollups as rollups_mod
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
 from crmcore.http.pagination import (
     PaginaDeListado,
@@ -268,7 +269,14 @@ def montar_listado(
         filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
         pagina = construir_pagina(filas, params, campos_orden=[orden])
         proyecta = proyectar_para(principal, db, objeto=objeto, modelo=modelo)
-        return pagina.a_dict(proyecta)
+
+        # Los agregados sobre los hijos (CRM-00.04.01.04), calculados **de
+        # golpe** para toda la página: pedirlos por fila sería una consulta por
+        # registro y por rollup, que es el patrón N+1 con otro nombre. El módulo
+        # que los resuelve estaba escrito, probado y sin que lo importara nadie,
+        # así que «número de contactos activos» o «importe total de las líneas»
+        # no los calculaba nada.
+        return pagina.a_dict(con_rollups(db, objeto, filas, proyecta))
 
     montar_exportacion(
         router,
@@ -698,6 +706,49 @@ def _tipo_de(columna: Any) -> Any:
     except (NotImplementedError, AttributeError):
         return Any
     return tipo if tipo in (str, int, float, bool) else Any
+
+
+def con_rollups(db: Any, objeto: str, filas: list[Any], proyecta: Any) -> Any:
+    """Envuelve la proyección para añadir los agregados de los hijos.
+
+    Se calculan **de golpe para toda la página**: pedirlos por fila sería una
+    consulta por registro y por rollup, que es el patrón N+1 con otro nombre.
+    Con esto, doscientas cuentas con tres agregados son tres consultas.
+
+    Va aquí y no dentro de la proyección porque la proyección es por fila y esto
+    es por lote: meterlo allí convertiría cada listado en N consultas sin que
+    nadie lo viera venir.
+    """
+    declarados = rollups_mod.declarados(objeto)
+    if not declarados:
+        return proyecta
+    valores = rollups_mod.calcular(db, declarados, [f.id for f in filas if getattr(f, "id", None)])
+
+    def _con(fila: Any) -> dict[str, Any]:
+        return rollups_mod.aplicar(proyecta(fila), valores.get(fila.id) or {})
+
+    return _con
+
+
+def proyectar_con_esquema(proyecta: Any, esquema: type) -> Callable[[Any], dict[str, Any]]:
+    """La proyección del producto, recortada a los campos de un esquema de salida.
+
+    Existe porque tres listados escritos a mano —leads, cuentas y contactos—
+    serializaban con `Out.model_validate(fila)` **sin pasar por la proyección**,
+    mientras su ficha sí pasaba. Resultado: un rol que no puede ver datos
+    personales los veía en el listado y no en la ficha de la misma fila. No daba
+    ningún error; enseñaba el teléfono.
+
+    Recorta a los campos del esquema para no cambiar lo que publica la API: lo
+    que se arregla es qué se enmascara, no qué columnas salen.
+    """
+    campos = set(getattr(esquema, "model_fields", {}))
+
+    def _proyecta(fila: Any) -> dict[str, Any]:
+        visto = proyecta(fila)
+        return {k: v for k, v in visto.items() if k in campos}
+
+    return _proyecta
 
 
 def montar_exportacion(

@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit.chain import registrar
-from crmcore.errors import Conflicto, NoEncontrado
+from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_ficha
 from crmcore.rpc.esquema import CAMPOS_QUE_NO_SALEN
@@ -193,6 +193,33 @@ def crear_campo(nombre: str, datos: CrearCampo, db: DbDep, principal: Autenticad
     from services.metadata.gobierno import exigir_hueco
 
     exigir_hueco(db, principal.tenant_id, objeto.id)
+
+    # Y si es un campo CALCULADO, la fórmula se valida **al guardarla**
+    # (CRM-00.04.01.04). No al leer el primer registro: una fórmula rota
+    # descubierta al leer es una ficha que no se puede abrir, y quien la escribió
+    # ya no está delante.
+    #
+    # El tipo «formula» se podía declarar desde el primer día y no se validaba
+    # ni se evaluaba nada: el campo existía, la persona escribía su fórmula y el
+    # registro no enseñaba ningún valor. Sin error.
+    if datos.tipo == "formula":
+        from crmcore.datos.formulas import validar as validar_formula
+
+        texto = str((datos.restricciones or {}).get("formula") or "")
+        if not texto.strip():
+            raise ErrorValidacion(
+                "Un campo de tipo fórmula tiene que traer la fórmula en "
+                "`restricciones.formula`. Sin ella el campo existe y no calcula nada.",
+                error_code="metadata.formula_ausente",
+            )
+        problemas = validar_formula(texto)
+        if problemas:
+            raise ErrorValidacion(
+                "La fórmula no es válida: " + "; ".join(problemas),
+                error_code="metadata.formula_invalida",
+                detalle={"problemas": problemas},
+            )
+
     campo = CampoDefinido(tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump())
     db.add(campo)
     db.flush()

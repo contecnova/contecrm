@@ -2525,6 +2525,13 @@ se detecta mirándolo.
 
 ### El listado y la ficha tienen que decir lo mismo
 
+Y no solo en **qué filas** se ven: también en **qué campos**. Cinco listados
+escritos a mano —leads, cuentas, contactos, oportunidades y tenants— serializaban
+con su esquema de salida sin pasar por la proyección, mientras su ficha sí pasaba:
+un rol que no puede ver datos personales los veía en el listado y no en la ficha
+de la misma fila. No daba ningún error. Enseñaba el teléfono. Hay un guardián que
+lo mira: un listado que construye su página tiene que pasar por la proyección.
+
 Son dos implementaciones de la misma regla —una en SQL para el listado, otra en
 Python para la ficha— y divergen el día que alguien toca una. Cuando eso pasa,
 el listado enseña un registro que la ficha luego niega, y el usuario deja de
@@ -4185,7 +4192,15 @@ Tres decisiones sobre qué pasa cuando algo falta o falla:
   convertiría una fórmula mal escrita en una ficha que no se puede abrir.
 
 Y se valida **al guardar el campo**, no al leer el primer registro: descubrirla
-rota al leer es una ficha inaccesible con la persona que la escribió ya lejos.
+rota al leer es una ficha inaccesible con la persona que la escribió ya lejos. Un
+campo de tipo fórmula que no trae fórmula **no se guarda**: el campo existiría y
+no calcularía nada, que es la peor de las tres situaciones posibles.
+
+Se evalúa en **todas las lecturas** —el listado, la ficha y la exportación— y en
+el mismo sitio, que es lo que impide que una de las tres lo enseñe y las otras no.
+Y lo calculado **pisa** cualquier valor que hubiera guardado con ese nombre: un
+campo calculado no se escribe, se calcula, y un valor viejo ahí dentro sería el
+que se enseñara sin que nadie supiera de dónde salió.
 
 ### El rollup se calcula en SQL y no se guarda
 

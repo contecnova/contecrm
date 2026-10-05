@@ -723,6 +723,7 @@ from crmcore.authz.jerarquia import (  # noqa: E402,F401
     MandoReplicado,
     TerritorioReplicado,
 )
+from crmcore.datos import rollups as _rollups  # noqa: E402
 
 from services.party import tratamientos  # noqa: E402,F401
 from services.party.actividades_extra import (  # noqa: E402,F401
@@ -762,3 +763,29 @@ from services.party.proveedores import (  # noqa: E402,F401
 # Salud de la cuenta replicada desde `intelligence` (CRM-01.01.05.07).
 from services.party.salud_replicada import SaludCuentaReplicada  # noqa: E402,F401
 from services.party.stewardship import ExcepcionCalidad  # noqa: E402,F401
+
+# Los agregados de una cuenta (CRM-00.04.01.04). Se declaran aquí, donde está el
+# modelo hijo: el único que sabe qué significa «abierta» para una actividad es
+# quien tiene ese modelo delante, y pasar el filtro como texto desde la
+# configuración sería dejar entrar SQL con otro nombre.
+#
+# El módulo que los resuelve estaba escrito, probado y sin que lo importara
+# nadie, así que «cuántas cosas hay abiertas con este cliente» —la pregunta que
+# se hace al abrir una cuenta— no la calculaba nada.
+_rollups.declarar(
+    "cuenta",
+    _rollups.Rollup(
+        nombre="actividades_abiertas",
+        modelo_hijo=Actividad,
+        campo_padre="cuenta_id",
+        funcion="cuenta",
+        filtro=Actividad.estado.in_(("pendiente", "en_curso")),
+    ),
+    _rollups.Rollup(
+        nombre="ultima_actividad_at",
+        modelo_hijo=Actividad,
+        campo_padre="cuenta_id",
+        funcion="maximo",
+        campo="created_at",
+    ),
+)

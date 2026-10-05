@@ -126,7 +126,9 @@ def listar_leads(
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
-    return pagina.a_dict(lambda lead: LeadOut.model_validate(lead).model_dump(mode="json"))
+    return pagina.a_dict(
+        proyectar_con_esquema(proyectar_para(principal, db, objeto="lead", modelo=Lead), LeadOut)
+    )
 
 
 @router_leads.post(
@@ -414,16 +416,26 @@ def listar_oportunidades(
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
     nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, filas)
-    return pagina.a_dict(
-        lambda o: OportunidadOut.model_validate(
-            {
-                **o.__dict__,
-                "importe_ponderado": o.importe_ponderado,
-                "pipeline": nombres_pipeline.get(o.pipeline_id),
-                "etapa": nombres_etapa.get(o.etapa_id),
-            }
-        ).model_dump(mode="json")
-    )
+    # POR LA PROYECCIÓN, igual que la ficha. Serializar con el esquema de salida
+    # se saltaba el enmascaramiento por rol: la ficha tapaba el importe y el
+    # listado de la misma fila lo enseñaba.
+    proyecta = proyectar_para(principal, db, objeto="oportunidad", modelo=Oportunidad)
+
+    def _fila(o: Any) -> dict[str, Any]:
+        visto = proyecta(o)
+        # Lo añadido —el importe ponderado y los nombres de embudo y etapa— sale
+        # de campos ya proyectados o de catálogos, no de columnas sensibles.
+        # Si el importe viene tapado, el ponderado no se calcula: enseñar el
+        # derivado de un dato tapado es enseñar el dato.
+        extra: dict[str, Any] = {
+            "pipeline": nombres_pipeline.get(o.pipeline_id),
+            "etapa": nombres_etapa.get(o.etapa_id),
+        }
+        if "importe" in visto:
+            extra["importe_ponderado"] = o.importe_ponderado
+        return {k: v for k, v in {**visto, **extra}.items() if k in OportunidadOut.model_fields}
+
+    return pagina.a_dict(_fila)
 
 
 @router_oportunidades.get(
@@ -1061,6 +1073,7 @@ from crmcore.http.listados import (  # noqa: E402
     montar_exportacion,
     montar_ficha,
     montar_listado,
+    proyectar_con_esquema,  # noqa: E402
 )
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402

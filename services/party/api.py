@@ -100,7 +100,11 @@ router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 # El listado de cuentas está escrito a mano, así que el montador no puede
 # apuntarlo: se declara aquí, junto al router. El import va en esta línea y no
 # arriba porque este módulo importa `listados` más abajo a propósito.
-from crmcore.http.listados import declarar_recurso  # noqa: E402
+from crmcore.http.listados import (  # noqa: E402
+    con_rollups,
+    declarar_recurso,
+    proyectar_con_esquema,
+)
 
 declarar_recurso(router_cuentas, "cuenta", Cuenta)
 
@@ -185,7 +189,19 @@ def listar_cuentas(
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=[orden])
-    return pagina.a_dict(lambda c: CuentaOut.model_validate(c).model_dump(mode="json"))
+    # POR LA PROYECCIÓN. Serializar con el esquema de salida se saltaba el
+    # enmascaramiento por rol: la ficha tapaba el teléfono y el listado de la
+    # misma fila lo enseñaba. No daba ningún error — enseñaba el dato.
+    return pagina.a_dict(
+        con_rollups(
+            db,
+            "cuenta",
+            filas,
+            proyectar_con_esquema(
+                proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta), CuentaOut
+            ),
+        )
+    )
 
 
 @router_cuentas.get(
@@ -631,7 +647,11 @@ def listar_contactos(
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
     pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
-    return pagina.a_dict(lambda c: ContactoOut.model_validate(c).model_dump(mode="json"))
+    return pagina.a_dict(
+        proyectar_con_esquema(
+            proyectar_para(principal, db, objeto="contacto", modelo=Contacto), ContactoOut
+        )
+    )
 
 
 @router_contactos.get(

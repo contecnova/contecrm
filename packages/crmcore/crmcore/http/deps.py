@@ -501,12 +501,45 @@ def proyectar_para(
     activo = bool(get_settings().masking_enabled)
     politica = _politica_por_rol(db) if activo else {}
     excepciones = _excepciones(db, principal.tenant_id, objeto) if activo else {}
+
+    # Los campos CALCULADOS del tenant (CRM-00.04.01.04), resueltos una vez
+    # igual que la política: leer el esquema por fila haría una consulta por
+    # registro de un listado de doscientos.
+    #
+    # Se evalúan aquí porque aquí pasan **todas** las lecturas —listado, ficha y
+    # exportación—: el tipo de campo «fórmula» se podía declarar desde el primer
+    # día y no lo evaluaba nadie, así que el campo existía, la persona escribía
+    # su fórmula y el registro no enseñaba ningún valor. Sin error.
+    formulas: list[tuple[str, str]] = []
+    try:
+        from crmcore.metamodelo import campos_de
+
+        formulas = [
+            (str(c.get("nombre")), str((c.get("restricciones") or {}).get("formula") or ""))
+            for c in campos_de(db, principal.tenant_id, objeto)
+            if c.get("tipo") == "formula" and c.get("activo", True)
+        ]
+    except Exception:  # pragma: no cover — sin esquema replicado no hay fórmulas
+        formulas = []
     roles = frozenset(principal.roles) | (
         {"admin"} if principal.es_admin_plataforma else frozenset()
     )
 
     def _proyecta(fila: Any) -> dict[str, Any]:
         datos = fila.a_dict() if hasattr(fila, "a_dict") else dict(fila)
+        if formulas:
+            from crmcore.datos.formulas import evaluar
+
+            # Dentro de `campos`, que es donde viven los del tenant. Y el
+            # calculado **pisa** lo que hubiera guardado con ese nombre: un
+            # campo calculado no se escribe, se calcula, y un valor viejo
+            # guardado ahí sería el que se enseñara.
+            propios = dict(datos.get("campos") or {})
+            contexto = {**datos, **propios}
+            for nombre_formula, texto in formulas:
+                if texto:
+                    propios[nombre_formula] = evaluar(texto, contexto)
+            datos = {**datos, "campos": propios}
         # Las políticas ABAC de alcance «campos» (CRM-00.05.02.20) se evalúan
         # POR REGISTRO, no una vez: dependen de la fila —«el margen de las
         # oportunidades de otra unidad de negocio»—, así que no se pueden

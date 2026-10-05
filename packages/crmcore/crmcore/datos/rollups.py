@@ -77,6 +77,23 @@ class Rollup:
             )
 
 
+# Los rollups declarados, por objeto. Un registro y no una lista escrita a mano
+# en el listado: los declara el servicio dueño del modelo hijo —el único que sabe
+# qué significa «activo» para un contacto— y los consume el camino de lectura,
+# que es común. Sin registro, cada listado tendría que conocer los agregados de
+# su objeto y el que se olvidara saldría sin ellos y sin decirlo.
+_DECLARADOS: dict[str, list["Rollup"]] = {}
+
+
+def declarar(objeto: str, *rollups: "Rollup") -> None:
+    """Declara los agregados de un objeto. Se llama al importar el servicio."""
+    _DECLARADOS.setdefault(objeto, []).extend(rollups)
+
+
+def declarados(objeto: str) -> list["Rollup"]:
+    return list(_DECLARADOS.get(objeto) or [])
+
+
 def calcular(db: Session, rollups: list[Rollup], padres: list[UUID]) -> dict[UUID, dict[str, Any]]:
     """Calcula todos los rollups de una lista de padres, de golpe.
 
