@@ -14,7 +14,8 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from services.automation import motor
+from services.automation import entornos_auto as entornos
+from services.automation import extensiones, motor
 from services.automation.modelos import Automatizacion, EjecucionAutomatizacion
 
 
@@ -272,7 +273,245 @@ def por_registro(objeto: str, registro_id: str, db: DbDep, principal: Autenticad
     )
 
 
-ROUTERS = [router]
+# ── Probar y promocionar, y plantillas por industria ──────────────────────
+# (CRM-00.03.03.08, CRM-00.03.03.09)
+#
+# Una automatización se escribe en producción porque es donde están los datos de
+# verdad, y se prueba **activándola**. Eso funciona hasta el día en que la regla
+# toca cuatro mil registros. El módulo que permite probarla sin tocar nada
+# estaba escrito, probado y no lo importaba nadie.
+
+
+class ProbarEnSecoIn(BaseModel):
+    nombre: str = Field(..., min_length=1)
+    afectados: list[dict[str, Any]] = Field(default_factory=list)
+    acciones: list[dict[str, Any]] = Field(default_factory=list)
+    limite_muestra: int = Field(20, ge=1, le=200)
+
+
+class PromocionarIn(BaseModel):
+    definicion: dict[str, Any] = Field(default_factory=dict)
+    desde: str = Field("pruebas", min_length=1)
+    hacia: str = Field("produccion", min_length=1)
+    probada_en_seco: bool = False
+    afectados_en_pruebas: int = Field(0, ge=0)
+
+
+class PlantillaIn(BaseModel):
+    plantilla: dict[str, Any] = Field(default_factory=dict)
+    existentes: list[str] = Field(default_factory=list)
+
+
+@router.post(
+    "/probar-en-seco",
+    dependencies=[Depends(exige_permiso("automatizacion:read"))],
+    summary="Qué haría esta automatización, sin hacer nada",
+    description=(
+        "**A cuántos toca y qué les haría**, con una muestra de los registros "
+        "concretos. Probarla activándola funciona hasta el día en que la regla "
+        "toca cuatro mil, y entonces lo que hay que deshacer son cuatro mil "
+        "correos ya enviados.\n\n"
+        "La muestra va **acotada**: una lista de cuatro mil no se mira, y lo que "
+        "se quiere ver es si los que caen son los que uno tenía en la cabeza."
+    ),
+)
+def probar_en_seco(cuerpo: ProbarEnSecoIn, principal: AutenticadoDep) -> Any:
+    return entornos.probar_en_seco(
+        nombre=cuerpo.nombre,
+        afectados=cuerpo.afectados,
+        acciones=cuerpo.acciones,
+        limite_muestra=cuerpo.limite_muestra,
+    )
+
+
+@router.post(
+    "/promocionar",
+    dependencies=[Depends(exige_permiso("automatizacion:write"))],
+    summary="Llevar una automatización de pruebas a producción",
+    description=(
+        "**Sin pasar antes por la prueba en seco, no se promociona.** No es "
+        "burocracia: lo que se promociona toca datos de clientes de verdad, y la "
+        "única diferencia entre una regla buena y una que manda cuatro mil "
+        "correos es haber mirado a cuántos toca."
+    ),
+)
+def promocionar(cuerpo: PromocionarIn, principal: AutenticadoDep) -> Any:
+    return entornos.promocionar(
+        definicion=cuerpo.definicion,
+        desde=cuerpo.desde,
+        hacia=cuerpo.hacia,
+        probada_en_seco=cuerpo.probada_en_seco,
+        afectados_en_pruebas=cuerpo.afectados_en_pruebas,
+    )
+
+
+@router.post(
+    "/plantillas/instalar",
+    dependencies=[Depends(exige_permiso("automatizacion:write"))],
+    summary="Instalar una plantilla de automatizaciones por industria",
+    description=(
+        "Lo que se instala **no se activa solo**: una plantilla que se enciende "
+        "al instalarse manda correos a clientes reales con textos que nadie ha "
+        "leído.\n\n"
+        "Y lo que ya existe **no se pisa**: si el tenant ya tiene una regla con "
+        "ese nombre, se dice y se deja la suya. Sobrescribirla es perder trabajo "
+        "de alguien sin preguntar."
+    ),
+)
+def instalar_plantilla(cuerpo: PlantillaIn, principal: AutenticadoDep) -> Any:
+    return entornos.instalar_plantilla(plantilla=cuerpo.plantilla, existentes=cuerpo.existentes)
+
+
+# ── Código del tenant: sandbox, versiones, firma y observabilidad ─────────
+# (CRM-00.04.02.01, .05, .06, .07)
+#
+# Dejar que un cliente ejecute su código dentro del CRM es la diferencia entre
+# un producto configurable y uno programable, y también la forma más rápida de
+# que una instalación se caiga por algo que no escribimos nosotros. Todo lo que
+# lo hace aceptable estaba escrito, probado y sin que lo importara nadie.
+
+router_extensiones = APIRouter(prefix="/extensiones", tags=["código del tenant"])
+
+
+class LimitesIn(BaseModel):
+    consumo: dict[str, Any] = Field(default_factory=dict)
+
+
+class CapacidadesIn(BaseModel):
+    capacidades: list[str] = Field(default_factory=list)
+
+
+class PublicarVersionIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    codigo_base64: str = Field(..., min_length=1)
+    version: int = Field(..., ge=1)
+    dependencias: dict[str, str] = Field(default_factory=dict)
+    capacidades: list[str] = Field(default_factory=list)
+    versiones_vivas: list[int] = Field(default_factory=list)
+
+
+class FirmaIn(BaseModel):
+    codigo_base64: str = Field(..., min_length=1)
+    huella_firmada: str = ""
+    firmante: str = ""
+    firmantes_de_confianza: list[str] = Field(default_factory=list)
+
+
+class ObservabilidadIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    ejecuciones: list[dict[str, Any]] = Field(default_factory=list)
+    coste_por_segundo: float = Field(0.0, ge=0)
+
+
+def _codigo(base64_: str) -> bytes:
+    import base64 as _b64
+
+    from crmcore.errors import ErrorValidacion
+
+    try:
+        return _b64.b64decode(base64_, validate=True)
+    except Exception as exc:  # noqa: BLE001
+        raise ErrorValidacion(
+            "El código no viene en base64 válido. Mandarlo como texto plano "
+            "rompería con cualquier byte que no sea ASCII, que es el primer "
+            "fichero con un acento dentro.",
+            error_code="extension.codigo_ilegible",
+        ) from exc
+
+
+@router_extensiones.post(
+    "/limites",
+    dependencies=[Depends(exige_permiso("automatizacion:read"))],
+    summary="Si este consumo se pasa de lo que puede gastar una extensión",
+    description=(
+        "Tiempo, memoria y llamadas salientes. Los tres, porque con solo el "
+        "tiempo un bucle que no hace nada pasa, y con solo la memoria uno que "
+        "llama mil veces a un tercero también.\n\n"
+        "Y se dice **cuál** se pasó: «la extensión ha fallado» no deja arreglar "
+        "nada."
+    ),
+)
+def limites_de_extension(cuerpo: LimitesIn, principal: AutenticadoDep) -> Any:
+    return extensiones.comprobar_limites(consumo=cuerpo.consumo)
+
+
+@router_extensiones.post(
+    "/capacidades",
+    dependencies=[Depends(exige_permiso("automatizacion:read"))],
+    summary="Si lo que pide esta extensión se le puede dar",
+    description=(
+        "La lista es **de lo que se permite**, no de lo que se prohíbe: una "
+        "lista de prohibiciones nunca está completa, porque nadie piensa en lo "
+        "que todavía no ha pasado."
+    ),
+)
+def capacidades_de_extension(cuerpo: CapacidadesIn, principal: AutenticadoDep) -> Any:
+    extensiones.exigir_permitido(capacidades=cuerpo.capacidades)
+    return {"permitido": True, "capacidades": sorted(set(cuerpo.capacidades))}
+
+
+@router_extensiones.post(
+    "/versiones",
+    dependencies=[Depends(exige_permiso("automatizacion:write"))],
+    summary="Publicar una versión de una extensión",
+    description=(
+        "Con su huella, sus dependencias declaradas y las versiones que siguen "
+        "vivas: una extensión que se actualiza en caliente deja a medias las "
+        "ejecuciones en curso, y lo que estaba a medias es lo que nadie "
+        "reclama."
+    ),
+)
+def publicar_version(cuerpo: PublicarVersionIn, principal: AutenticadoDep) -> Any:
+    return extensiones.publicar_version(
+        clave=cuerpo.clave,
+        codigo=_codigo(cuerpo.codigo_base64),
+        version=cuerpo.version,
+        dependencias=cuerpo.dependencias,
+        capacidades=cuerpo.capacidades,
+        versiones_vivas=cuerpo.versiones_vivas,
+    )
+
+
+@router_extensiones.post(
+    "/firma",
+    dependencies=[Depends(exige_permiso("automatizacion:write"))],
+    summary="Revisar la firma del código antes de ejecutarlo",
+    description=(
+        "Se comprueba la **huella del código**, no quién dice ser el firmante: "
+        "un código firmado por alguien de confianza que no coincide con su "
+        "huella es un código cambiado después de firmarlo."
+    ),
+)
+def revisar_firma(cuerpo: FirmaIn, principal: AutenticadoDep) -> Any:
+    return extensiones.revisar_firma(
+        codigo=_codigo(cuerpo.codigo_base64),
+        huella_firmada=cuerpo.huella_firmada,
+        firmante=cuerpo.firmante,
+        firmantes_de_confianza=cuerpo.firmantes_de_confianza,
+        revisada_por=principal.id,
+    )
+
+
+@router_extensiones.post(
+    "/observabilidad",
+    dependencies=[Depends(exige_permiso("automatizacion:read"))],
+    summary="Cómo se está portando una extensión",
+    description=(
+        "Lo que hace falta para decidir si se deja puesta: cuánto tarda, cuánto "
+        "falla y cuánto cuesta. Sin esto, el código del cliente es una caja "
+        "negra dentro del producto y lo que se mira cuando algo va lento es "
+        "todo menos la extensión."
+    ),
+)
+def observabilidad_de_extension(cuerpo: ObservabilidadIn, principal: AutenticadoDep) -> Any:
+    return extensiones.observabilidad(
+        clave=cuerpo.clave,
+        ejecuciones=cuerpo.ejecuciones,
+        coste_por_segundo=cuerpo.coste_por_segundo,
+    )
+
+
+ROUTERS = [router, router_extensiones]
 
 
 # ── La ficha del registro ─────────────────────────────────────────────────

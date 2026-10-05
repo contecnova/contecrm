@@ -29,9 +29,14 @@ PREFIJOS: dict[str, str] = {
     "instancias": "orchestrator",
     "tareas": "orchestrator",
     "automatizaciones": "automation",
+    # El código que escribe el propio tenant: sandbox, versiones, firma y
+    # observabilidad (CRM-00.04.02).
+    "extensiones": "automation",
     "integraciones": "integration",
     "webhooks": "eventing",
     "eventos": "eventing",
+    # Los cambios que salen hacia el lago del cliente (CRM-00.02.02.06).
+    "cdc": "eventing",
     # Fase 1 — núcleo de datos de cliente y ventas
     "accounts": "party",
     "contacts": "party",

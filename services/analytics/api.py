@@ -25,6 +25,8 @@ from services.analytics.modelos import ConsultaAnalitica, OrganizacionExterna
 
 logger = get_logger(__name__)
 
+from services.analytics import coste_real  # noqa: E402
+
 router = APIRouter(prefix="/analitica", tags=["explotación"])
 
 
@@ -281,3 +283,55 @@ def modelo_semantico(
     from services.analytics import modelo_semantico as sem
 
     return sem.modelo_de(db, principal.tenant_id, list(objeto) or None)
+
+
+# ── Coste real frente a ofertado (CRM-09.02.01.10) ────────────────────────
+#
+# El margen de una oferta es una previsión; el de verdad se sabe cuando llega la
+# factura del proveedor, y casi nadie vuelve a mirarlo. Por eso las empresas
+# descubren que un tipo de trabajo pierde dinero **después de haberlo vendido
+# veinte veces**.
+#
+# El módulo que lo compara estaba escrito, probado y no lo importaba nadie.
+
+
+class PedidosIn(BaseModel):
+    pedidos: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Cada uno con lo ofertado y lo facturado. Lo que decide es el par, "
+            "no el importe: un pedido sin factura todavía no se puede comparar"
+        ),
+    )
+
+
+@router.post(
+    "/coste-real/desviacion",
+    dependencies=[Depends(exige_permiso("analitica:read"))],
+    summary="Qué se ofertó y qué costó de verdad",
+    description=(
+        "El margen de una oferta es una previsión. El de verdad se sabe cuando "
+        "llega la factura, y es el que dice si ese tipo de trabajo gana dinero. "
+        "Sin esta comparación se descubre después de haberlo vendido veinte "
+        "veces.\n\n"
+        "Lo que **todavía no se puede comparar** se dice aparte: un pedido sin "
+        "factura no es un pedido con desviación cero, y meterlo en la media la "
+        "aplana justo donde hace falta que se note."
+    ),
+)
+def desviacion_de_coste(cuerpo: PedidosIn, principal: AutenticadoDep) -> Any:
+    return coste_real.desviacion(pedidos=cuerpo.pedidos)
+
+
+@router.post(
+    "/coste-real/por-proveedor",
+    dependencies=[Depends(exige_permiso("analitica:read"))],
+    summary="Quién se desvía y cuánto, por proveedor",
+    description=(
+        "Es la lectura que cambia a quién se le pide la próxima oferta. Un "
+        "proveedor que siempre factura un 20 % por encima de lo que ofertó no es "
+        "más caro: es que su oferta no vale, y eso solo se ve acumulando."
+    ),
+)
+def coste_por_proveedor(cuerpo: PedidosIn, principal: AutenticadoDep) -> Any:
+    return coste_real.por_proveedor(pedidos=cuerpo.pedidos)

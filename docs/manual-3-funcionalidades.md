@@ -11332,6 +11332,11 @@ avisar.
 
 ## Probar y promocionar automatizaciones (`CRM-00.03.03.08`, `CRM-00.03.03.09`)
 
+Se piden por ruta: la prueba en seco, la promoción y la instalación de una
+plantilla por industria. Durante un tiempo estuvieron escritas y sin puerta, que
+es como no tenerlas — y mientras tanto la única forma de probar una regla seguía
+siendo activarla.
+
 Una automatización se escribe en producción porque es donde están los datos de
 verdad, y se prueba **activándola**. Eso funciona hasta el día en que la regla que
 debía avisar a una persona manda cuatro mil correos.
@@ -11575,6 +11580,11 @@ pantallas que trae hechas. Nada más.
 
 ## Código del tenant: sandbox, versiones y firma (`CRM-00.04.02.01`, `CRM-00.04.02.05`, `CRM-00.04.02.06`, `CRM-00.04.02.07`)
 
+Las cuatro comprobaciones —límites, capacidades, versión y firma— y la
+observabilidad se piden por ruta. Estaban escritas y no las alcanzaba nada: el
+producto tenía todo lo que hace aceptable ejecutar código ajeno, sin forma de
+usarlo.
+
 Dejar que un cliente ejecute su código dentro del CRM es la diferencia entre un
 producto configurable y uno programable, y también la forma más rápida de que una
 implantación tumbe a las demás: **el bucle infinito de un cliente no es un
@@ -11660,6 +11670,10 @@ dos horas y con lo que otra persona cambió mientras tanto.
   abre.
 
 ## Change Data Capture hacia el lago del cliente (`CRM-00.02.02.06`)
+
+Declarar el flujo, componer un cambio y avanzar la marca se piden por ruta. Lo
+que antes estaba resuelto y sin puerta era precisamente lo que impide los tres
+fallos de siempre.
 
 Un cliente grande quiere sus datos del CRM en su propio lago para cruzarlos con
 los del ERP y con los de producción. Lo que pide suena simple —«mándanos los

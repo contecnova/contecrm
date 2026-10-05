@@ -278,6 +278,8 @@ def replay(suscripcion_id: UUID, datos: PedirReplay, db: DbDep, principal: Auten
 
 # ── Catálogo de eventos ───────────────────────────────────────────────────
 
+from services.eventing import cdc  # noqa: E402
+
 router_catalogo = APIRouter(prefix="/eventos", tags=["catálogo de eventos"])
 
 
@@ -416,7 +418,110 @@ def reenviar(fallido_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
     return {"reencolado": True, "tipo": nuevo.tipo}
 
 
-ROUTERS = [router, router_catalogo, router_dlq]
+# ── CDC hacia el lago del cliente (CRM-00.02.02.06) ───────────────────────
+#
+# Un cliente grande quiere sus datos del CRM en su propio lago para cruzarlos
+# con los del ERP. Lo que pide suena simple —«mándanos los cambios»— y el módulo
+# que lo resuelve estaba escrito, probado y **sin que lo importara nadie**.
+
+router_cdc = APIRouter(prefix="/cdc", tags=["cambios hacia el lago"])
+
+
+class FlujoIn(BaseModel):
+    objeto: str = Field(..., min_length=1)
+    campos: list[dict[str, Any]] = Field(default_factory=list)
+    destino: str = Field(..., min_length=1)
+    trato_por_defecto: str = Field(
+        "omitido",
+        description=(
+            "Qué se hace con un campo que nadie ha decidido. Por omisión **no "
+            "sale**: lo contrario manda al lago el campo nuevo que alguien creó "
+            "ayer sin que nadie lo revisara"
+        ),
+    )
+
+
+class CambioIn(BaseModel):
+    objeto: str = Field(..., min_length=1)
+    registro_id: UUID
+    tipo: str = Field(..., description="alta · cambio · baja")
+    antes: dict[str, Any] | None = None
+    despues: dict[str, Any] | None = None
+    campos_permitidos: list[str] = Field(default_factory=list)
+    secuencia: int = Field(..., ge=0)
+
+
+class MarcaIn(BaseModel):
+    marca_actual: int = Field(..., ge=0)
+    confirmados: list[int] = Field(default_factory=list)
+    fallidos: list[int] = Field(default_factory=list)
+
+
+@router_cdc.post(
+    "/flujos",
+    dependencies=[Depends(exige_permiso("webhook:write"))],
+    summary="Declarar qué sale hacia el lago y cómo",
+    description=(
+        "Campo a campo, y lo que nadie ha decidido **no sale**. Un flujo que "
+        "manda la tabla entera por omisión acaba llevándose al lago el campo "
+        "que alguien creó ayer para una prueba, con datos personales dentro y "
+        "sin que nadie lo haya revisado — y de un lago no se borra nada, se "
+        "reprocesa."
+    ),
+)
+def declarar_flujo(cuerpo: FlujoIn, principal: AutenticadoDep) -> Any:
+    return cdc.declarar_flujo(
+        objeto=cuerpo.objeto,
+        campos=cuerpo.campos,
+        destino=cuerpo.destino,
+        trato_por_defecto=cuerpo.trato_por_defecto,
+    )
+
+
+@router_cdc.post(
+    "/cambios",
+    dependencies=[Depends(exige_permiso("webhook:write"))],
+    summary="Componer un cambio con lo que sí puede salir",
+    description=(
+        "Con el **antes y el después**, que es lo que un lago necesita para "
+        "reconstruir: solo con el después no se puede saber qué cambió, y "
+        "cualquier cálculo de evolución sale mal.\n\n"
+        "Y con **número de secuencia**: sin él, dos cambios del mismo "
+        "milisegundo se reordenan al llegar y el lago se queda con el valor "
+        "viejo creyendo que es el nuevo."
+    ),
+)
+def componer_cambio(cuerpo: CambioIn, principal: AutenticadoDep) -> Any:
+    return cdc.componer_cambio(
+        objeto=cuerpo.objeto,
+        registro_id=cuerpo.registro_id,
+        tipo=cuerpo.tipo,
+        antes=cuerpo.antes,
+        despues=cuerpo.despues,
+        campos_permitidos=cuerpo.campos_permitidos,
+        secuencia=cuerpo.secuencia,
+    )
+
+
+@router_cdc.post(
+    "/marca",
+    dependencies=[Depends(exige_permiso("webhook:write"))],
+    summary="Hasta dónde se puede dar por entregado",
+    description=(
+        "La marca avanza **hasta el primer fallo y no más**. Saltárselo deja un "
+        "hueco permanente que nadie vuelve a mirar: el lago parece completo y le "
+        "falta un tramo, y eso no se nota hasta que alguien cruza un total."
+    ),
+)
+def avanzar_marca(cuerpo: MarcaIn, principal: AutenticadoDep) -> Any:
+    return cdc.avanzar_marca(
+        marca_actual=cuerpo.marca_actual,
+        confirmados=cuerpo.confirmados,
+        fallidos=cuerpo.fallidos,
+    )
+
+
+ROUTERS = [router, router_catalogo, router_dlq, router_cdc]
 
 
 # ── La ficha del registro ─────────────────────────────────────────────────

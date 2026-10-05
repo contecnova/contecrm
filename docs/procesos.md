@@ -323,12 +323,20 @@ stateDiagram-v2
 | `POST /api/v1/automation/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
 | `POST /api/v1/automation/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/automatizaciones` | Crear una automatización | nombre*, descripcion, disparador*, objetivo*, campos_vigilados, programacion, condiciones, combinacion, acciones*, prioridad, momento, activa | 201, 422 | — |
+| `POST /api/v1/automatizaciones/plantillas/instalar` | Instalar una plantilla de automatizaciones por industria | plantilla, existentes | 200, 422 | — |
+| `POST /api/v1/automatizaciones/probar-en-seco` | Qué haría esta automatización, sin hacer nada | nombre*, afectados, acciones, limite_muestra | 200, 422 | — |
+| `POST /api/v1/automatizaciones/promocionar` | Llevar una automatización de pruebas a producción | definicion, desde, hacia, probada_en_seco, afectados_en_pruebas | 200, 422 | — |
 | `PATCH /api/v1/automatizaciones/{regla_id}` | Editar automatizaciones | regla_id*, nombre, descripcion, disparador, objetivo, campos_vigilados, programacion, condiciones, combinacion, acciones, activa, prioridad, momento, ejecuciones, fallos, ultima_ejecucion_at | 200, 422 | — |
 | `DELETE /api/v1/automatizaciones/{regla_id}` | Borrar automatizaciones | regla_id* | 204, 422 | — |
 | `POST /api/v1/automatizaciones/{regla_id}/activar` | Activar o desactivar una regla | regla_id*, activa* | 200, 422 | — |
 | `POST /api/v1/automatizaciones/{regla_id}/archivar` | Archivar automatizaciones | regla_id* | 200, 422 | — |
 | `POST /api/v1/automatizaciones/{regla_id}/probar` | Probar una regla sin ejecutarla | regla_id*, valores* | 200, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
+| `POST /api/v1/extensiones/capacidades` | Si lo que pide esta extensión se le puede dar | capacidades | 200, 422 | — |
+| `POST /api/v1/extensiones/firma` | Revisar la firma del código antes de ejecutarlo | codigo_base64*, huella_firmada, firmante, firmantes_de_confianza | 200, 422 | — |
+| `POST /api/v1/extensiones/limites` | Si este consumo se pasa de lo que puede gastar una extensión | consumo | 200, 422 | — |
+| `POST /api/v1/extensiones/observabilidad` | Cómo se está portando una extensión | clave*, ejecuciones, coste_por_segundo | 200, 422 | — |
+| `POST /api/v1/extensiones/versiones` | Publicar una versión de una extensión | clave*, codigo_base64*, version*, dependencias, capacidades, versiones_vivas | 200, 422 | — |
 
 ### integration
 
@@ -489,6 +497,9 @@ stateDiagram-v2
 
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
+| `POST /api/v1/cdc/cambios` | Componer un cambio con lo que sí puede salir | objeto*, registro_id*, tipo*, antes, despues, campos_permitidos, secuencia* | 200, 422 | — |
+| `POST /api/v1/cdc/flujos` | Declarar qué sale hacia el lago y cómo | objeto*, campos, destino*, trato_por_defecto | 200, 422 | — |
+| `POST /api/v1/cdc/marca` | Hasta dónde se puede dar por entregado | marca_actual*, confirmados, fallidos | 200, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/eventing/movil/sincronizar` | Qué hacer con la cola del móvil para «eventing» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/eventing/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
@@ -891,6 +902,8 @@ stateDiagram-v2
 | `POST /api/v1/analisis/contexto` | Preguntar sobre el registro que se está mirando | pregunta*, objeto*, registro_id*, etiqueta | 200, 422 | — |
 | `POST /api/v1/analisis/embudo` | Conversión y tiempos entre etapas | etapas*, recorridos | 200, 422 | — |
 | `POST /api/v1/analitica/consultas` | Anotar una consulta analítica | pregunta*, fuente, filas_devueltas, duracion_ms, error, contexto | 201, 422 | — |
+| `POST /api/v1/analitica/coste-real/desviacion` | Qué se ofertó y qué costó de verdad | pedidos | 200, 422 | — |
+| `POST /api/v1/analitica/coste-real/por-proveedor` | Quién se desvía y cuánto, por proveedor | pedidos | 200, 422 | — |
 | `PUT /api/v1/analitica/organizaciones` | Asignar la organización de un tenant | tenant_id*, organizacion* | 200, 422 | — |
 | `POST /api/v1/analitica/token` | Token de usuario final para consultar | — | 200, 422 | — |
 | `POST /api/v1/analytics/movil/sincronizar` | Qué hacer con la cola del móvil para «analytics» | operaciones, estrategia | 200, 422 | — |
