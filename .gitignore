@@ -15,6 +15,17 @@ __pycache__/
 .env.local
 .env.*.local
 
+# Y los TEMPORALES del editor sobre ese fichero. No es teoría: el 02-10-2026 se
+# commiteó un `.env.swp` —el fichero de intercambio de vim—, que lleva dentro el
+# contenido del buffer, o sea trozos del `.env` de verdad. Ignorar `.env` y no
+# ignorar `.env.swp` es dejar la puerta de al lado abierta: el que edita no ve
+# el temporal, y `git add -A` sí.
+*.swp
+*.swo
+*.swn
+*~
+.*.swp
+
 # Datos y salidas locales
 data/
 # El almacén local de adjuntos (STORAGE_LOCAL_PATH por defecto: ./datos/adjuntos).
