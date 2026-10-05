@@ -13363,3 +13363,74 @@ comunicaciones, no un CRM, y hacerlo a medias sería peor que no hacerlo: la
 mitad de una videollamada es una videollamada que no funciona. Quien necesite
 eso seguirá teniendo su herramienta, y lo que aporta contecrm —la conversación
 pegada al registro— no se lo da ninguna.
+
+## Sagas con compensación, alcanzables (`CRM-00.03.02.03`, `CRM-00.03.02.05`, `CRM-00.03.02.13`, `CRM-00.03.05.15`, `CRM-03.03.02.12`)
+
+Un proceso que cruza servicios —reservar el stock, cobrar, avisar al cliente— no
+se puede meter en una transacción: cada paso lo ejecuta un servicio distinto, con
+su propia base de datos. Lo que se hace en su lugar es declarar, **antes de
+empezar**, cómo se deshace cada paso. Si el tercero falla, se deshacen el segundo
+y el primero, en ese orden.
+
+Esto estaba entero y escrito, y **no lo alcanzaba ninguna ruta**: el motor de
+procesos anunciaba en su propia descripción «sagas con compensación» y no había
+forma de arrancar una. Ahora hay seis puertas, todas bajo `/api/v1/sagas`.
+
+### Arrancar una saga
+
+`POST /api/v1/sagas` con la clave del proceso y **todos los pasos declarados de
+antemano**, cada uno con su compensación. Un paso sin compensación se acepta, pero
+se marca como irreversible — y si no es el último, la respuesta lo avisa:
+
+> Los pasos [2] no se pueden deshacer y no son los últimos: si algo falla después,
+> la saga se compensará entera menos eso. Lo irreversible va al final, cuando ya
+> no puede fallar nada detrás.
+
+Ese es el accidente que evita: un correo al cliente en el paso dos deja una saga
+que, al compensarse, ha avisado a alguien de algo que al final no ha pasado.
+
+### Avanzar y fallar
+
+`POST /api/v1/sagas/{id}/hecho` anota que un paso salió bien. Sin esa llamada los
+pasos se quedan pendientes para siempre y la compensación no sabría hasta dónde
+deshacer.
+
+`POST /api/v1/sagas/{id}/fallo` anota el fallo y **compensa hacia atrás, y solo lo
+que se hizo**. Compensar un paso que no llegó a ejecutarse es deshacer algo que no
+pasó: una devolución de un cobro que nunca se hizo sale del banco igual.
+
+Lo que no se puede deshacer **se dice y se deja**. La saga queda en `atascada`, a
+propósito, con la lista de lo que hay que resolver a mano. Llamarla «compensada»
+cuando se mandó un correo que no vuelve es lo que hace que nadie se fíe de esa
+palabra.
+
+### La ficha
+
+`GET /api/v1/sagas/{id}` devuelve el estado, los pasos con el suyo, y `sin_deshacer`:
+los pasos que quedaron sin compensar. Eso es trabajo manual pendiente, y una ficha
+que no lo destaca lo deja sin reclamar.
+
+### Publicar una versión nueva con cosas en vuelo
+
+`POST /api/v1/sagas/migracion/simular` **no ejecuta nada**: dice cuántas instancias
+hay en vuelo, de qué versión, y cuáles están en un paso que la versión nueva ya no
+tiene. Una saga de alta de cliente puede durar semanas; publicar sin mirar es
+cambiarle los pasos a procesos que ya están a mitad, y lo que estaba a mitad es lo
+que nadie reclama.
+
+Las que están corriendo **terminan con su versión**. La nueva se aplica a las que
+empiecen a partir de ahora.
+
+### Plantillas de flujo
+
+`POST /api/v1/sagas/plantillas/clonar` copia una plantilla por sector para que el
+cliente la modifique. **Se copia y no se hereda**: si heredara, mejorar la
+plantilla cambiaría los procesos que ya corren en otros veinte clientes — incluido
+uno que la ajustó hace seis meses. Y la respuesta trae `no_resuelve`: lo que la
+plantilla deja fuera, dicho antes de empezar y no en producción.
+
+### Lo que hace falta para llamarlas
+
+Todas piden permiso: `proceso:write` las cuatro que escriben, `proceso:read` la
+ficha y la simulación. Una saga mueve dinero y stock en varios servicios; la ruta
+que se quedara sin permiso sería la que nadie mira.

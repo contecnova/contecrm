@@ -8,7 +8,7 @@ from uuid import UUID
 
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
+from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import montar_exportacion, montar_ficha
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from services.orchestrator import motor as mtr
+from services.orchestrator import sagas
 from services.orchestrator.esquemas import (
     ArrancarProceso,
     CambioDeEstado,
@@ -642,7 +643,188 @@ def validar_tabla(cuerpo: TablaEditada) -> Any:
     }
 
 
-ROUTERS = [router_def, router_inst, router_tareas, router_tablas]
+# ── Sagas con compensación (CRM-00.03.02) ─────────────────────────────────
+#
+# El servicio anuncia en su propia descripción «sagas con compensación», y el
+# módulo que las resuelve **no lo alcanzaba ninguna ruta**: no se podía arrancar
+# una, ni marcar un paso, ni fallarlo, ni mirar qué pasaría al publicar una
+# versión nueva. Estaba entero, probado y sin puerta.
+
+router_sagas = APIRouter(prefix="/sagas", tags=["sagas con compensación"])
+
+
+class IniciarSagaIn(BaseModel):
+    clave: str = Field(..., min_length=1, examples=["alta_de_cliente"])
+    pasos: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Todos los pasos, **declarados de antemano**, cada uno con su "
+            "compensación. Descubrirlos sobre la marcha deja una saga que no "
+            "sabe deshacerse"
+        ),
+    )
+    objeto: str = ""
+    objeto_id: UUID | None = None
+    contexto: dict[str, Any] = Field(default_factory=dict)
+    version_proceso: int = Field(1, ge=1)
+
+
+class PasoHechoIn(BaseModel):
+    orden: int = Field(..., ge=1)
+    datos: dict[str, Any] = Field(default_factory=dict)
+
+
+class PasoFallidoIn(BaseModel):
+    orden: int = Field(..., ge=1)
+    error: str = Field(..., min_length=1)
+
+
+class MigracionIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    version_nueva: int = Field(..., ge=1)
+    pasos_nuevos: list[str] = Field(default_factory=list)
+
+
+class ClonarIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    nombre_destino: str = Field(..., min_length=1)
+
+
+@router_sagas.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Arrancar una saga",
+    description=(
+        "Con **todos los pasos declarados de antemano** y cada uno con su "
+        "compensación. Una saga que descubre sus pasos sobre la marcha no sabe "
+        "deshacerse: el día que falla el cuarto, nadie sabe qué hay que revertir "
+        "de los tres anteriores."
+    ),
+)
+def iniciar_saga(cuerpo: IniciarSagaIn, uow: UowDep) -> Any:
+    return sagas.iniciar(
+        uow,
+        clave=cuerpo.clave,
+        pasos=cuerpo.pasos,
+        objeto=cuerpo.objeto,
+        objeto_id=cuerpo.objeto_id,
+        contexto=cuerpo.contexto,
+        version_proceso=cuerpo.version_proceso,
+    )
+
+
+@router_sagas.post(
+    "/{saga_id}/hecho",
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Anotar que un paso salió bien",
+    description=(
+        "Es lo que hace avanzar la saga. Sin esta llamada los pasos se quedan "
+        "pendientes para siempre y la compensación nunca sabría hasta dónde "
+        "deshacer."
+    ),
+)
+def paso_hecho(saga_id: UUID, cuerpo: PasoHechoIn, uow: UowDep) -> Any:
+    return sagas.marcar_hecho(uow, saga_id=saga_id, orden=cuerpo.orden, datos=cuerpo.datos)
+
+
+@router_sagas.post(
+    "/{saga_id}/fallo",
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Anotar que un paso falló, y compensar hacia atrás",
+    description=(
+        "**Hacia atrás y solo lo que se hizo.** Compensar un paso que no llegó a "
+        "ejecutarse es deshacer algo que no pasó, y eso rompe más de lo que "
+        "arregla: una devolución de un cobro que nunca se hizo sale del banco "
+        "igual."
+    ),
+)
+def paso_fallido(saga_id: UUID, cuerpo: PasoFallidoIn, uow: UowDep) -> Any:
+    return sagas.fallar(uow, saga_id=saga_id, orden=cuerpo.orden, error=cuerpo.error)
+
+
+@router_sagas.post(
+    "/migracion/simular",
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Qué pasaría con lo que está en vuelo al publicar otra versión",
+    description=(
+        "Una saga de alta de cliente puede durar semanas. Publicar una versión "
+        "nueva sin mirar qué hay dentro es cambiarle los pasos a procesos que ya "
+        "están a mitad — y lo que estaba a mitad es lo que nadie reclama.\n\n"
+        "No ejecuta nada: dice cuántas instancias hay en vuelo y cuáles se "
+        "quedarían con un paso que ya no existe."
+    ),
+)
+def simular_migracion(cuerpo: MigracionIn, db: DbDep, principal: AutenticadoDep) -> Any:
+    return sagas.plan_de_migracion(
+        db,
+        principal.tenant_id,
+        clave=cuerpo.clave,
+        version_nueva=cuerpo.version_nueva,
+        pasos_nuevos=cuerpo.pasos_nuevos,
+    )
+
+
+@router_sagas.post(
+    "/plantillas/clonar",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exige_permiso("proceso:write"))],
+    summary="Copiar una plantilla de flujo para modificarla",
+    description=(
+        "Se **copia** y no se edita la original: una plantilla que el producto "
+        "actualiza y el cliente ha tocado es la que se queda sin actualizar o "
+        "pierde los cambios, y las dos cosas se descubren tarde."
+    ),
+)
+def clonar_plantilla(cuerpo: ClonarIn, uow: UowDep) -> Any:
+    return sagas.clonar_plantilla(uow, clave=cuerpo.clave, nombre_destino=cuerpo.nombre_destino)
+
+
+@router_sagas.get(
+    "/{saga_id}",
+    dependencies=[Depends(exige_permiso("proceso:read"))],
+    summary="Ver una saga y en qué paso va",
+    description=(
+        "Qué pasos se hicieron, cuál falló, cuáles se compensaron y **cuáles no "
+        "se podían compensar**. Lo último es lo que hay que arreglar a mano, y "
+        "una saga que no lo dice deja ese trabajo sin reclamar."
+    ),
+)
+def ver_saga(saga_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    fila = db.get(sagas.Saga, saga_id)
+    if fila is None or fila.tenant_id != principal.tenant_id:
+        raise NoEncontrado("Esa saga no existe", error_code="saga.no_encontrada")
+    pasos = sagas.pasos_de(db, principal.tenant_id, saga_id)
+    return {
+        "saga_id": str(fila.id),
+        "clave": fila.clave,
+        "estado": fila.estado,
+        "version_proceso": fila.version_proceso,
+        "objeto": fila.objeto,
+        "objeto_id": str(fila.objeto_id) if fila.objeto_id else None,
+        "motivo_fin": fila.motivo_fin,
+        "pasos": [
+            {
+                "orden": p.orden,
+                "nombre": p.nombre,
+                "servicio": p.servicio,
+                "estado": p.estado,
+                "compensable": p.compensable,
+                "error": p.error,
+            }
+            for p in pasos
+        ],
+        # Lo que queda por hacer a mano. Sumarlo aquí evita que haya que
+        # recorrer los pasos uno a uno para encontrarlo.
+        "sin_deshacer": [p.orden for p in pasos if p.estado == "no_compensable"],
+    }
+
+
+# Las rutas literales van declaradas antes que `/{saga_id}`; FastAPI resuelve por
+# orden y `/sagas/migracion/simular` casaría con la parametrizada si fuera al
+# revés. Van en métodos distintos, pero el orden se mantiene igual: el día que
+# alguien añada un GET literal, el error ya no sería suyo.
+ROUTERS = [router_def, router_inst, router_tareas, router_tablas, router_sagas]
 
 
 # ── La ficha del registro ─────────────────────────────────────────────────

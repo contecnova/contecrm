@@ -193,6 +193,7 @@ PREFIJOS: dict[str, str] = {
     "grc": "tenancy",
     "compromisos": "tenancy",
     "tablas-decision": "orchestrator",
+    "sagas": "orchestrator",
     # Los recursos masivos publican el nombre del recurso en español mientras
     # el CRUD usa el inglés (`/cuentas/masivo` junto a `/accounts`). La
     # incoherencia está anotada; mientras exista, las dos formas se enrutan,

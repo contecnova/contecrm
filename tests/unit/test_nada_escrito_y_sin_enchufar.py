@@ -217,7 +217,16 @@ CARPETAS = (
 #                   miembros. Con ellos, la lista de IP de una clave de API —que
 #                   se comprobaba al usarla y no al guardarla—, la política por
 #                   dimensión y la excepción por campo.
-TOPE = 25
+#   05-10-2026  22  Las sagas con compensación: el servicio anuncia en su propia
+#                   descripción «sagas con compensación» y el módulo que las
+#                   resuelve NO LO ALCANZABA NINGUNA RUTA. Cinco funciones
+#                   públicas, enteras y probadas por dentro, y ni un camino desde
+#                   fuera: ni arrancar una, ni marcar un paso, ni fallarlo, ni
+#                   mirar qué pasaría al publicar una versión nueva sobre lo que
+#                   está en vuelo. La sonda solo delataba tres de las cinco,
+#                   porque `iniciar` y `fallar` se llaman igual que funciones de
+#                   otros módulos y contar por nombre no distingue una de otra.
+TOPE = 22
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

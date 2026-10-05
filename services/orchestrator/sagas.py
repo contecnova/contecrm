@@ -235,7 +235,7 @@ def marcar_hecho(
     paso.ejecutado_at = _ahora()
     uow.db.flush()
 
-    pendientes = _pasos(uow.db, uow.tenant_id, saga_id)
+    pendientes = pasos_de(uow.db, uow.tenant_id, saga_id)
     if all(p.estado == "hecho" for p in pendientes):
         saga = uow.db.get(Saga, saga_id)
         saga.estado = "terminada"
@@ -270,7 +270,7 @@ def fallar(uow: UnidadDeTrabajo, *, saga_id: UUID, orden: int, error: str) -> di
     for anterior in sorted(
         (
             p
-            for p in _pasos(uow.db, uow.tenant_id, saga_id)
+            for p in pasos_de(uow.db, uow.tenant_id, saga_id)
             if p.orden < orden and p.estado == "hecho"
         ),
         key=lambda p: -p.orden,
@@ -357,7 +357,7 @@ def plan_de_migracion(
         actual = next(
             (
                 p.nombre
-                for p in sorted(_pasos(db, tenant_id, saga.id), key=lambda p: p.orden)
+                for p in sorted(pasos_de(db, tenant_id, saga.id), key=lambda p: p.orden)
                 if p.estado == "pendiente"
             ),
             "",
@@ -440,7 +440,13 @@ def clonar_plantilla(uow: UnidadDeTrabajo, *, clave: str, nombre_destino: str) -
     }
 
 
-def _pasos(db: Session, tenant_id: UUID, saga_id: UUID) -> list[PasoSaga]:
+def pasos_de(db: Session, tenant_id: UUID, saga_id: UUID) -> list[PasoSaga]:
+    """Los pasos de una saga, en orden.
+
+    Es pública porque la ficha la necesita: mirarlos desde fuera no es tocar por
+    dentro, y obligar a la API a hacerse su propia consulta es cómo acaban dos
+    sitios filtrando distinto por el tenant.
+    """
     return list(
         db.execute(
             select(PasoSaga)

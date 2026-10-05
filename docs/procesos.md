@@ -303,6 +303,11 @@ stateDiagram-v2
 | `POST /api/v1/procesos/definiciones/simular` | Simular un proceso sin publicarlo (CRM-00.03.05.04) | definicion*, variables, respuestas_humanas | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones/validar` | Validar una definición sin publicarla | clave*, nombre*, descripcion, definicion*, estado, disparadores | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones/{clave}/{version}/estado` | Publicar o archivar una versión (CRM-00.03.05.05) | clave*, version*, estado* | 200, 422 | — |
+| `POST /api/v1/sagas` | Arrancar una saga | clave*, pasos, objeto, objeto_id, contexto, version_proceso | 201, 422 | — |
+| `POST /api/v1/sagas/migracion/simular` | Qué pasaría con lo que está en vuelo al publicar otra versión | clave*, version_nueva*, pasos_nuevos | 200, 422 | — |
+| `POST /api/v1/sagas/plantillas/clonar` | Copiar una plantilla de flujo para modificarla | clave*, nombre_destino* | 201, 422 | — |
+| `POST /api/v1/sagas/{saga_id}/fallo` | Anotar que un paso falló, y compensar hacia atrás | saga_id*, orden*, error* | 200, 422 | — |
+| `POST /api/v1/sagas/{saga_id}/hecho` | Anotar que un paso salió bien | saga_id*, orden*, datos | 200, 422 | — |
 | `POST /api/v1/tablas-decision/validar` | Validar y analizar una tabla sin guardarla | nombre, politica, entradas, salidas, reglas, activa | 200, 422 | — |
 | `PUT /api/v1/tablas-decision/{clave}` | Crear o reemplazar una tabla de decisión | clave*, nombre, politica, entradas, salidas, reglas, activa | 200, 422 | — |
 | `POST /api/v1/tablas-decision/{clave}/evaluar` | Evaluar la tabla con unas variables y ver por qué sale lo que sale | clave* | 200, 422 | — |

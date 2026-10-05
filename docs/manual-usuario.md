@@ -956,6 +956,27 @@ Abre una cuenta de la demo que venga del ERP y mira el linaje de su dirección:
 qué sistema la trajo, cuándo cambió de verdad y cuándo se confirmó por última vez.
 Si hay dos sistemas que dicen cosas distintas, los dos aparecen.
 
+### Ejemplo 7 — Un alta que se cae a mitad
+
+Algunos procesos del CRM tocan varias cosas a la vez: reservan el material,
+cobran la señal y avisan al cliente. Cuando uno de esos pasos falla —el banco
+rechaza la tarjeta—, el CRM **deshace hacia atrás lo que ya había hecho**: libera
+el material que había reservado. No deshace lo que no llegó a hacer.
+
+Lo que verás en la ficha del proceso:
+
+- **Deshecho**: lo que se ha podido revertir solo. No tienes que hacer nada.
+- **Sin deshacer**: lo que ya no vuelve. Si el correo al cliente salió antes de
+  que fallara el cobro, el correo no se puede «desenviar». El proceso se queda
+  marcado como **atascado a propósito**, con esa lista, para que alguien decida
+  qué hacer: normalmente llamar al cliente y explicarlo.
+
+Esa lista es la parte importante. Un proceso que dijera «todo revertido» cuando
+el cliente ya ha recibido un aviso te deja quedando mal sin saberlo.
+
+Y por eso, cuando alguien configura uno de estos procesos, el CRM avisa si algo
+que no se puede deshacer está colocado en medio en vez de al final.
+
 ---
 
 ## Qué hacer cuando algo no sale

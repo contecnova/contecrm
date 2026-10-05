@@ -1020,6 +1020,50 @@ Lo que hay que saber para integrar:
   hueco que nadie nota hasta semanas después.
 - Hay **tope** de operaciones por llamada; por encima, el camino masivo.
 
+### 4.4.1 Sagas: lo que cruza servicios y hay que poder deshacer
+
+Para el técnico que integra un proceso que toca varios módulos. Base:
+`/api/v1/sagas`.
+
+Una transacción no cruza servicios: cada uno tiene su base de datos. Lo que se
+hace en su lugar es declarar **antes de empezar** cómo se deshace cada paso, y
+compensar hacia atrás cuando uno falla.
+
+| Ruta | Permiso | Para qué |
+|---|---|---|
+| `POST /api/v1/sagas` | `proceso:write` | Arrancarla, con **todos** los pasos y su compensación |
+| `POST /api/v1/sagas/{id}/hecho` | `proceso:write` | Anotar que el paso `orden` salió bien |
+| `POST /api/v1/sagas/{id}/fallo` | `proceso:write` | Anotar el fallo y compensar hacia atrás |
+| `GET /api/v1/sagas/{id}` | `proceso:read` | Estado, pasos y lo que quedó sin deshacer |
+| `POST /api/v1/sagas/migracion/simular` | `proceso:read` | Qué pasa con lo que está en vuelo al publicar otra versión |
+| `POST /api/v1/sagas/plantillas/clonar` | `proceso:write` | Copiar una plantilla de flujo por sector |
+
+Lo que hay que saber para integrar:
+
+- **Los pasos se declaran enteros al arrancar.** Descubrirlos sobre la marcha deja
+  una saga que no sabe deshacerse: el día que falla el cuarto, nadie sabe qué hay
+  que revertir de los tres anteriores.
+- **Un paso sin `compensacion` es irreversible**, y se acepta. Lo que no se acepta
+  en silencio es que esté en medio: la respuesta trae `irreversibles_antes_del_final`
+  y un `aviso`. Colócalo el último.
+- **Se compensa hacia atrás y solo lo `hecho`.** Un paso pendiente no se compensa:
+  deshacer algo que no pasó rompe más de lo que arregla.
+- **`atascada` es un estado a propósito**, no un error. Significa que quedó trabajo
+  hecho que no se puede deshacer; está en `sin_compensar` de la respuesta y en
+  `sin_deshacer` de la ficha. Es trabajo manual pendiente: enganchad ahí vuestra
+  alerta, no en el código HTTP.
+- **La migración no migra**: simula. Las instancias en vuelo terminan con SU
+  versión de proceso, siempre. `se_pueden_migrar_todas: false` significa que hay
+  instancias paradas en un paso que la versión nueva no tiene, y esas hay que
+  decidirlas una a una.
+- **El tenant sale de la cabecera firmada**, no del cuerpo. Una saga de otro tenant
+  contesta 404, no 403: decir «prohibido» ya confirmaría que ese identificador es
+  de alguien.
+
+Cómo se ve desde fuera: la puerta de entrada encamina `/api/v1/sagas` al
+`orchestrator`. Si una ruta existe en el servicio y falta ese encaminamiento,
+devuelve 404 y el módulo sigue incomunicado — es exactamente lo que pasaba.
+
 ### 4.5 Eventos
 
 - **Sobre común** para todos: `id`, `type`, `version`, `tenant_id`, `occurred_at`,
