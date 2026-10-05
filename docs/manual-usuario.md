@@ -37,6 +37,19 @@ Cuando cambias de dispositivo o alguien cierra tu sesión desde administración,
 sesión se corta en todas partes. Es lo esperado: una sesión que sigue viva en un
 portátil perdido es el problema que esa función existe para evitar.
 
+**Y a veces te pedirá el código aunque ya hayas entrado.** Pasa en dos
+situaciones y las dos tienen explicación en pantalla:
+
+- **Ha cambiado el contexto**: entras desde un sitio nuevo, desde un equipo que
+  no habías usado o después de mucho tiempo sin aparecer. No es que sospeche de
+  ti: es que la forma más común de entrar en una cuenta ajena es con una sesión
+  que sigue viva, y el segundo factor es lo único que lo nota. Si te dice que ha
+  visto dos países en dos horas, **avisa**: eso no se arregla tecleando el código.
+- **Vas a hacer algo delicado**: exportar en masa, borrar en bloque, cambiar
+  permisos, restaurar datos encima de los actuales, crear una credencial de
+  máquina o entrar como otra persona. El código vale un rato para todas; no te lo
+  pedirá en cada una.
+
 **Qué puedes ver.** Lo que ves no es «todo el CRM»: es lo tuyo y lo que se
 comparte contigo. Hay cuatro formas de que algo llegue a tu pantalla —que seas el
 propietario, que esté compartido con tu equipo, que te llegue por la jerarquía
@@ -136,6 +149,49 @@ Lo importante para el día a día:
 - **Y un cambio de tipo de campo con datos dentro no se aplica solo**: primero
   enseña a cuántos registros afecta y qué se perdería.
 
+### Campos que se calculan solos
+
+Hay dos clases y conviene no confundirlas:
+
+- Un **campo calculado** mira la propia ficha: «el importe con IVA», «los días
+  desde el alta». Se escribe una fórmula al crear el campo —sumar, redondear,
+  concatenar, decidir entre dos valores, días entre fechas— y el valor aparece en
+  el listado, en la ficha y en la exportación, siempre el mismo.
+- Un **agregado** mira lo que cuelga de la ficha: «cuántas cosas hay abiertas con
+  este cliente», «cuándo fue la última actividad».
+
+Tres cosas que notarás:
+
+- **No se rellenan a mano.** Un campo calculado no se escribe: si alguien había
+  guardado algo con ese nombre, lo que se ve es el cálculo.
+- **Un campo vacío da vacío, no cero.** Tratarlo como cero haría que una media
+  contara los registros que no tienen el dato, y esa es otra respuesta.
+- **Si la fórmula está mal, el campo sale en blanco y la ficha se abre igual.** No
+  se queda nadie sin poder trabajar porque una fórmula tenga una errata; quien la
+  escribió lo ve al guardarla, porque entonces sí se rechaza.
+
+---
+
+### Exportar un listado
+
+Cualquier lista se puede bajar a una hoja de cálculo, con los filtros que tengas
+puestos en ese momento. Tres cosas que importan:
+
+- **Salen también vuestros campos propios**, no solo los que trae el producto. Lo
+  que ves en la ficha es lo que llevará el fichero.
+- **No sale lo que la pantalla te tapa.** Si tu perfil ve un teléfono con puntos,
+  el fichero lo lleva con puntos. Una exportación no es una puerta de atrás.
+- **Te puede pedir el código del segundo factor otra vez.** Exportar en masa está
+  en la lista de operaciones delicadas: no es desconfianza, es que llevarse media
+  base de clientes es lo que hace alguien que ya está dentro, y ahí el permiso no
+  distingue. Si acabas de verificarte, no te lo vuelve a pedir.
+- **Si la lista es muy larga, el fichero se corta y te lo dice.** Un fichero
+  cortado en silencio es el que alguien manda creyendo que lleva todo.
+
+Cada fichero lleva además una **marca de origen** con el día y una referencia:
+sirve para saber de dónde salió si aparece donde no debe. No lleva tu nombre en
+claro.
+
 ---
 
 ## Usar el CRM desde fuera del CRM (sección 0.2)
@@ -198,6 +254,19 @@ dice, la ficha te lo contesta: de qué sistema vino, cuándo cambió de verdad y
 cuándo se confirmó por última vez. Y cuando dos sistemas dicen cosas distintas,
 eso no se tira: aparece como discrepancia, porque normalmente significa que el
 cliente se mudó y solo uno se enteró.
+
+Esa respuesta depende de que alguien lo haya apuntado: la integración que trae el
+maestro, el formulario que recoge el dato o la persona que lo corrige. Si de un
+campo no hay nada apuntado, la ficha dice **eso** —que nadie puede explicar de
+dónde sale— y no que esté al día. Y hay una acción aparte para **confirmar** que
+un valor sigue siendo bueno sin cambiarlo: mueve la fecha de la última
+comprobación y no la del cambio, porque confirmar no es cambiar y mezclar las dos
+falsearía todos los informes de antigüedad.
+
+**Lo que hay abierto con este cliente.** En el listado de cuentas verás cuántas
+cosas siguen pendientes con cada una y cuándo fue la última actividad. Lo de «sin
+actividad» no se cuenta como cero: no existe, y por eso no se cuela arriba cuando
+ordenas por lo más reciente.
 
 **Cuentas de particulares.** Un cliente que es una persona física se lleva en la
 misma ficha con una marca. Los campos de empresa dejan de tener sentido y no se

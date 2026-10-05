@@ -563,6 +563,47 @@ código**. Aquí van solo los que más se tocan y qué pasa si te equivocas.
 | `CORS_ORIGINS` | Quién puede llamar desde un navegador | Con un solo origen, atas la API a una interfaz concreta |
 | `STORAGE_BACKEND` | Dónde van los adjuntos | `local` en producción hace que cada réplica vea solo los suyos |
 
+### 3.2.1 El `.env`, y los temporales de tu editor
+
+El `.env` lleva los secretos reales del despliegue y **no se versiona**: lo que se
+versiona es `.env.example`, que documenta cada clave con valores de ejemplo.
+
+Lo que casi nadie vigila es el fichero de al lado. Editar el `.env` con `vim` deja
+un `.env.swp` en la misma carpeta, y ese fichero **lleva dentro el contenido del
+buffer**. Aquí pasó: el 02-10-2026 se subió uno a un commit. Lo que expuso fue la
+mitad de arriba del fichero —comentarios, puertos locales, el nombre de la
+máquina— y ningún secreto, pero el mecanismo es el mismo que habría expuesto la
+clave de firma si el fichero hubiera sido más grande o el swap más tardío.
+
+Dos reglas para quien edita la configuración de un despliegue:
+
+- **Ignora los temporales del editor**, no solo el `.env`. En este repositorio
+  están en `.gitignore` desde entonces (`*.swp`, `*.swo`, `*~`); si copias el
+  esquema a otro sitio, cópialo entero.
+- **Si un secreto llega a un repositorio, no basta con borrarlo del commit
+  siguiente**: sigue en la historia. Lo que de verdad lo cierra es **rotar la
+  clave**, y por eso `SECRET_KEY` y `ENCRYPTION_KEY` admiten rotación sin
+  reiniciar el servicio.
+
+### 3.2.2 Acceso contextual y reautenticación
+
+Dos ajustes que gobiernan quién entra y cuándo se le vuelve a pedir el factor:
+
+| Ajuste | Qué hace | Si lo tocas mal |
+| --- | --- | --- |
+| `reglas_contextuales` | Desde qué redes, países, dispositivos y franja horaria se puede entrar. Es por tenant y en caliente | Una lista **vacía** dentro de una regla significa «no se comprueba esa señal», no «ninguno vale». Y si no hay localizador de IP configurado, la señal del país **no se mide** y la respuesta lo dice: darla por buena haría que la señal más útil no saltara nunca |
+| `stepup_validez_minutos` | Cuánto vale el segundo factor antes de volver a pedirlo para una operación delicada | Demasiado alto convierte el step-up en decorativo: una sesión de ocho horas valdría para exportar la base entera a las seis de la tarde con el factor de las nueve |
+
+Las operaciones que lo exigen son una **tabla de datos**, no condiciones
+repartidas por el código: exportación masiva, cambio de permisos, borrado en
+bloque, suplantación, credenciales de máquina, cambio de MFA, restauración y baja
+del tenant. Se consultan por API, y lo que no está en la tabla no se protege — así
+que añadir una operación nueva es añadirla ahí.
+
+Una consecuencia operativa: **al superar el factor se entrega un token nuevo**. Si
+tu integración guarda el token y no lo refresca al verificarse, seguirá recibiendo
+«vuelve a verificarte» después de haberse verificado.
+
 ### 3.3 Ajustes por tenant
 
 Lo que cambia por cliente y no por despliegue: umbrales de calidad, plazos de
@@ -922,9 +963,43 @@ esquema.
 
 La identidad se valida con **el mismo código que HTTP**. Es la decisión más
 importante de esa superficie: dos implementaciones de «¿este token vale?» divergen
-siempre.
+siempre. Y los cinco métodos del contrato —`Get`, `List`, `Create`, `Update`,
+`Watch`— los sirve **el mismo código que sirve REST**: cada llamada se despacha
+contra la propia aplicación, así que pasa por la autenticación, los permisos y la
+auditoría de siempre.
 
-### 4.4 Eventos
+Dos cosas al encenderlo:
+
+- **Con `GRPC_ACTIVO=true` y sin la librería instalada, el servicio arranca igual
+  y lo escribe en el log** (`grpc.activo_sin_libreria`). Apagar el HTTP de todo el
+  mundo porque falta una dependencia opcional convierte una instalación incompleta
+  en una caída.
+- El puerto se cierra **con gracia** al parar (`stop(grace=5)`): cortarlo en seco
+  deja a medias la llamada en curso, que es siempre la del cliente que mueve
+  millones de filas.
+
+### 4.4 Peticiones compuestas
+
+Varias operaciones en una llamada y **en una transacción**, en
+`POST /api/v1/<servicio>/compuesto`. Es lo que evita que un cliente móvil haga
+tres viajes de red para crear una cuenta con su contacto y su oportunidad — y que
+se quede a medias en el segundo.
+
+Lo que hay que saber para integrar:
+
+- **Va por servicio.** Una composición que cruzara servicios no podría ser una
+  transacción, y prometerlo sería mentir.
+- **Todo o nada.** Si una operación falla se deshacen todas, y la respuesta dice
+  **cuál** falló y con qué código.
+- **Las referencias van hacia atrás**: `$1.id` usa lo que devolvió la primera. A
+  una posterior no se puede, y a sí misma es un ciclo; las dos se rechazan **antes**
+  de ejecutar nada.
+- Un campo que no vino en el resultado **se deja tal cual** en lugar de poner
+  vacío, para que falle la validación del recurso y no se cree la fila con un
+  hueco que nadie nota hasta semanas después.
+- Hay **tope** de operaciones por llamada; por encima, el camino masivo.
+
+### 4.5 Eventos
 
 - **Sobre común** para todos: `id`, `type`, `version`, `tenant_id`, `occurred_at`,
   `actor`, `subject`, `data`, `trace_id`, `dedup_key`.
@@ -937,7 +1012,7 @@ siempre.
   producción de quien los lee.
 - **Webhooks** con reintentos, backoff, firma y buzón de fallidos.
 
-### 4.5 Conectores
+### 4.6 Conectores
 
 Un conector es **configuración, no código**: endpoints, mapeo de campos,
 paginación, marcadores de vacío, OAuth2 con token cacheado. Sobre ese mismo
@@ -948,7 +1023,7 @@ publicitarias.
 Escribir un módulo por proveedor convierte cada implantación en una versión del
 producto; por eso no hay ninguno.
 
-### 4.6 CDC hacia el lago del cliente
+### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
 que el receptor sepa si le falta algo. Los datos personales no salen por defecto y
@@ -1009,7 +1084,7 @@ Tres cosas que conviene saber antes de que pasen:
 ### 5.5 El preflight
 
 No hay CI, y eso es deliberado. En su lugar hay **dieciocho gates locales** que
-corren en menos de tres minutos, en paralelo —hasta seis a la vez— salvo los dos
+corren en paralelo —hasta seis a la vez— salvo los dos
 que levantan un Postgres embebido, que se turnan:
 
 ```bash
@@ -1023,10 +1098,25 @@ lee el esquema de otro, que toda ruta publicada es alcanzable por el gateway, qu
 nada declarado «hecho» carece de cita en el código y en el manual, y que las
 migraciones están al día.
 
-**Si el preflight tarda más de tres minutos, lo que se arregla es el gate lento —
-nunca se quita la comprobación.** Un preflight que no se corre no garantiza nada,
-y el coste se paga igual. Lo que se compara con los tres minutos es el **reloj de
-pared**: sumar los gates mide trabajo hecho y no tiempo esperado.
+**Si el preflight engorda, lo que se arregla es el gate lento — nunca se quita la
+comprobación.** Un preflight que no se corre no garantiza nada, y el coste se paga
+igual.
+
+Lo que decide el rojo es el **tiempo de CPU**, no el reloj. La razón está medida:
+el mismo gate de aislamiento tardó 59 s y 382 s en la misma hora, con el mismo
+trabajo, porque en esa máquina estaban corriendo a la vez las pruebas de otros dos
+repositorios y el indexador del sistema. Fallar ahí es fallar por el vecino, y un
+rojo que no depende de lo que uno ha hecho se aprende a ignorar — que es cómo se
+pierde el guardián entero. El reloj se sigue enseñando, porque es lo que uno
+espera sentado; cuando se dispara sin que suba el CPU, el informe lo dice con la
+carga de la máquina al lado.
+
+Y un aviso para quien monte un entorno de pruebas: **el Postgres embebido deja su
+directorio de datos al terminar**. Aquí se midió el efecto el 05-10-2026 —908
+directorios y 24 GB acumulados en diez días, con Spotlight indexándolos— y por eso
+la suite borra el suyo al acabar y barre los huérfanos de más de una hora al
+arrancar. Si copias este esquema a otro repositorio, cópialo entero: un recolector
+que solo mira los procesos vivos no ve el directorio cuyo servidor murió bien.
 
 ### 5.6 Rendimiento
 
@@ -1035,6 +1125,50 @@ pared**: sumar los gates mide trabajo hecho y no tiempo esperado.
 - Particionado y archivado para los objetos de alto volumen.
 - Volumetría declarada: cuántos registros por objeto, cuántos usuarios concurrentes
   y cuántos eventos por segundo se sostienen — medido, no prometido.
+
+#### Volumen y archivo frío, en la práctica
+
+Cada servicio publica `/<servicio>/volumen/*`, y **nada de eso escribe en la
+base**: devuelve el plan, y quien ejecuta el corte es la migración del servicio,
+con su revisión y su ventana. Una ruta que particionara en caliente bloquearía la
+tabla durante la petición de un usuario.
+
+Lo que se pregunta ahí, y por qué:
+
+- **Qué tabla va camino de dar problemas.** No por tamaño: por **ritmo**. Una de
+  cien millones de filas estable no molesta; una de diez que dobla cada trimestre
+  es un incidente dentro de nueve meses — y esos nueve meses son el tiempo que
+  hace falta para arreglarlo con calma. Sin datos de volumen **no dice que todo
+  esté bien**: dice que no se puede anticipar nada.
+- **Si ya falta la partición de este mes**, que no es un aviso sino un incidente
+  ocurriendo. Las particiones se crean **por delante**: crearlas cuando llega la
+  primera fila del mes es crearlas a las 00:00 del día 1, dentro de la transacción
+  de un usuario y con un bloqueo de tabla.
+- **Qué se puede mover a frío y qué lo impide.** Lo que está bajo obligación
+  legal, en litigio, con una solicitud de acceso pendiente o en una investigación
+  **no se toca**: moverlo sería cumplir el plazo de retención por accidente y
+  romper otra obligación a la vez.
+- **Si estas filas se pueden borrar de la tabla viva.** Mover a frío sin borrar no
+  quita volumen; el borrado es el paso que no tiene vuelta atrás, y se comprueba
+  antes y aparte.
+
+Y una regla operativa que conviene conocer: **las purgas que no distinguen por
+registro se abstienen enteras mientras haya un bloqueo legal activo** — la del
+rastro de auditoría y la de los bytes de adjuntos. Conservar de más cuesta disco;
+borrar la prueba equivocada no tiene arreglo.
+
+#### La caché de respuestas
+
+La invalidación va **por evento, no por tiempo**. Cada servicio sube la generación
+del evento que recibe, y lo que dependía de él deja de encontrarse sin tocar
+ninguna entrada. Importa porque una caché que solo caduca sirve una respuesta
+vieja todo el plazo que le quede, y el usuario que acaba de cambiar algo ve su
+propio cambio desaparecer: la queja más difícil de reproducir que existe, porque a
+los cinco minutos ya no pasa.
+
+Las políticas que **solo** caducan por tiempo se pueden listar, y conviene
+mirarlas: una que se creyó invalidada por evento y no lo está es la que sirve
+datos viejos sin que nadie lo sepa.
 
 ---
 
