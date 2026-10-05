@@ -87,7 +87,12 @@ CARPETAS = (
 #                   Es exactamente el fallo que este fichero persigue, cometido
 #                   por él: una comprobación que no mira parece verde. Con
 #                   `rglob` el número de verdad es 143, y de ahí se baja.
-TOPE = 143
+#   05-10-2026 126  Cerradas las de `party` —el plan de cuenta que no era un
+#                   plan, el contacto que cambia de empresa, la fusión de
+#                   contactos, la comprobación de la evidencia— y las seis de
+#                   recuperación, que son justo las que se consultan el día del
+#                   incidente, y ese día nadie se pone a escribir código.
+TOPE = 126
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

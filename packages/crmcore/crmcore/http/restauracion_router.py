@@ -71,6 +71,32 @@ def objetos_restaurables() -> dict[str, type]:
     return salida
 
 
+class PlanIn(BaseModel):
+    momento: datetime = Field(..., description="A qué instante se quiere volver")
+    alcance: str = Field("tenant", description="tenant · objeto")
+    copia_mas_antigua: datetime = Field(
+        ..., description="La copia más antigua que queda, de la política de retención"
+    )
+
+
+class EfectosIn(BaseModel):
+    salidas: list[dict[str, Any]] = Field(default_factory=list)
+    desde: datetime
+    hasta: datetime
+
+
+class PruebaIn(BaseModel):
+    inicio: datetime
+    fin: datetime
+    filas_comprobadas: int = Field(0, ge=0)
+    diferencias: list[str] = Field(default_factory=list)
+    rto_comprometido_min: int = Field(..., ge=1)
+
+
+class EstadoPruebasIn(BaseModel):
+    pruebas: list[dict[str, Any]] = Field(default_factory=list)
+
+
 def crear_router_restauracion(servicio: str) -> APIRouter:
     # Cuelga del nombre del servicio, como la retención y los trabajos: todos
     # publican la misma ruta, y sin el segmento del servicio el gateway no
@@ -126,6 +152,128 @@ def crear_router_restauracion(servicio: str) -> APIRouter:
             "no_estan_en_la_exportacion": [i for i in cuerpo.ids if i not in encontrados],
             "modificados_despues": [d.id for d in diferencias if d.modificado_despues],
         }
+
+    # ── Volver atrás un tenant, y lo que eso no deshace ───────────────────
+    #
+    # Seis decisiones del módulo de recuperación estaban escritas, probadas y
+    # **sin que las alcanzara ninguna ruta**. Es el peor sitio donde dejarlas:
+    # son las que se consultan el día del incidente, y ese día nadie se pone a
+    # escribir código.
+
+    @router.post(
+        "/plan",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Qué pasa si volvemos a ese momento",
+        description=(
+            "**Se restaura sobre una copia, no encima.** Se levanta el estado de "
+            "ese momento en paralelo, alguien lo mira y entonces se decide qué se "
+            "trae: restaurar directamente sobre lo vivo convierte un error en "
+            "dos.\n\n"
+            "Y el plan dice **qué no se puede deshacer**. Restaurar las tablas a "
+            "las 10:00 no deshace los eventos que salieron entre las 10:00 y "
+            "ahora: el webhook ya llegó al ERP del cliente, el correo ya se mandó "
+            "y la audiencia ya se subió a la plataforma de anuncios. Una "
+            "restauración que no lo dice deja al CRM diciendo una cosa y al mundo "
+            "otra."
+        ),
+    )
+    def plan_de_restauracion(cuerpo: PlanIn, principal: AutenticadoDep) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.plan_de_restauracion(
+            tenant_id=principal.tenant_id,
+            momento=cuerpo.momento,
+            alcance=cuerpo.alcance,
+            copia_mas_antigua=cuerpo.copia_mas_antigua,
+        )
+
+    @router.post(
+        "/efectos-irreversibles",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Qué salió fuera en ese tramo y no se puede deshacer",
+        description=(
+            "Eventos publicados, correos enviados, documentos firmados. **Nada de "
+            "eso se puede deshacer** y, si no se dice, nadie lo tiene en cuenta: "
+            "se restaura, se da por resuelto, y el ERP del cliente sigue con el "
+            "pedido que aquí ya no existe."
+        ),
+    )
+    def efectos_irreversibles(cuerpo: EfectosIn, principal: AutenticadoDep) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.efectos_irreversibles(
+            salidas=cuerpo.salidas, desde=cuerpo.desde, hasta=cuerpo.hasta
+        )
+
+    @router.post(
+        "/pruebas",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Anotar una prueba de restauración",
+        description=(
+            "Una copia que no se ha restaurado nunca **no es una copia**: es un "
+            "fichero del que se supone que serviría. Lo que convierte lo segundo "
+            "en lo primero es haberlo probado, con su fecha y su resultado."
+        ),
+    )
+    def registrar_prueba(cuerpo: PruebaIn, principal: AutenticadoDep) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.registrar_prueba(
+            tenant_id=principal.tenant_id,
+            inicio=cuerpo.inicio,
+            fin=cuerpo.fin,
+            filas_comprobadas=cuerpo.filas_comprobadas,
+            diferencias=cuerpo.diferencias,
+            rto_comprometido_min=cuerpo.rto_comprometido_min,
+        )
+
+    @router.post(
+        "/pruebas/estado",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Si las pruebas de restauración están al día",
+    )
+    def estado_de_las_pruebas(cuerpo: EstadoPruebasIn, principal: AutenticadoDep) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.estado_de_las_pruebas(pruebas=cuerpo.pruebas)
+
+    @router.get(
+        "/rpo",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Cuánto se perdería ahora mismo, frente a lo comprometido",
+        description=(
+            "El RPO **real**, no el del contrato. La diferencia entre los dos es "
+            "lo único que se puede enseñar en una auditoría, y el día del "
+            "incidente es lo primero que se pregunta."
+        ),
+    )
+    def rpo_real(
+        principal: AutenticadoDep,
+        ultima_copia: datetime | None = None,
+        rpo_comprometido_min: int = 60,
+    ) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.rpo_real(ultima_copia=ultima_copia, rpo_comprometido_min=rpo_comprometido_min)
+
+    @router.get(
+        "/ventana",
+        dependencies=[Depends(exige_permiso("datos:restaurar"))],
+        summary="Si se puede volver tan atrás como se pide",
+        description=(
+            "Pedir volver a hace noventa días cuando la retención son treinta no "
+            "es un error de quien lo pide: es una expectativa que alguien le dio. "
+            "Decirlo antes de intentarlo evita la conversación en el peor momento."
+        ),
+    )
+    def ventana_de_retencion(
+        principal: AutenticadoDep,
+        dias_retencion: int = 30,
+        dias_pedidos: int = 7,
+    ) -> Any:
+        from crmcore.datos import recuperacion as rec
+
+        return rec.ventana_de_retencion(dias_retencion=dias_retencion, dias_pedidos=dias_pedidos)
 
     @router.post(
         "",
