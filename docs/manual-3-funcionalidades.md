@@ -2527,6 +2527,25 @@ Hay una prueba que las compara sobre los mismos datos, con las cinco vías a la
 vez: propia, compartida a mano, de equipo, por regla y ninguna. Si alguna vez
 divergen, falla ahí y no en producción.
 
+### Y toda colección se puede exportar
+
+A una hoja de cálculo, con **los mismos filtros de la URL** que el listado. Dos
+reglas, y las dos cambian lo que sale:
+
+- **Las columnas incluyen los campos propios del tenant.** Sin eso la exportación
+  trae lo que traía el producto de fábrica y no lo que el cliente ve en su ficha:
+  una diferencia que solo nota quien conoce el dato, y la nota cuando ya ha
+  mandado el fichero. Un campo dado de baja no sale: la columna existiría vacía y
+  se leería como «no hay dato» en vez de «ya no se usa».
+- **No sale en claro lo que la pantalla no enseña.** Pasa por la misma proyección
+  que el listado —la sensibilidad por rol, las excepciones y las políticas que
+  dependen de la propia fila—, y lo que la proyección quita no aparece en el
+  fichero. Un CSV que enseña el teléfono que la ficha tapa es la vía más fácil de
+  saltarse la protección, y la más silenciosa.
+
+Y si se llega al tope de filas **se dice**: un fichero cortado en silencio es el
+que alguien manda creyendo que lleva todo.
+
 ### Ante la duda, no se enseña
 
 - Sin identidad, la consulta no devuelve nada. Quien llame sin autenticar no
@@ -11153,6 +11172,21 @@ por medio.
   un arreglo a mano un viernes. A partir de ahí el rastro deja de ser una prueba, y
   en silencio.
 
+Se pregunta **por servicio**, igual que la papelera: los hechos de un objeto viven
+en el esquema del servicio que lo guarda. Y lo primero que contesta es **qué
+agregados lo tienen encendido**, con el motivo de cada uno — sin esa lista nadie
+sabe de qué puede preguntar. Preguntar por uno apagado **se dice**: un rastro vacío
+contestaría lo mismo que si todo fuera bien y nadie hubiera tocado ese registro,
+que es la respuesta que más confunde de las tres.
+
+Hoy está encendido en la **oportunidad**, que es el objeto por el que se pregunta
+cómo estaba en una fecha concreta: lo piden la revisión de previsión, una auditoría
+de comisiones y cualquier discusión sobre por qué se cerró así. Cada cambio de
+estado deja su hecho, y lo deja **la propia transición**: anotarlo en cada sitio
+donde se cambia un estado es dejarlo fuera del que se olvide, y una reconstrucción
+a la que le falta un hecho no es una prueba de nada — es peor que no tenerla,
+porque lo parece.
+
 ---
 
 ## Configuración como código: paquetes, promoción, drift y vuelta atrás (`CRM-07.02.01`)
@@ -12832,7 +12866,29 @@ nadie haya cambiado nada.
 El aviso útil sobre el volumen no es «esta tabla es grande»: es **a qué ritmo
 crece**. Una de cien millones de filas estable no molesta a nadie; una de diez que
 dobla cada trimestre es un incidente dentro de nueve meses, y esos nueve meses son
-justo el tiempo que hace falta para arreglarlo con calma.
+justo el tiempo que hace falta para arreglarlo con calma. Y sin datos de volumen
+**no se dice que todo esté bien**: se dice que no se puede anticipar nada, que es
+una respuesta distinta.
+
+Todo esto se consulta **por servicio** —las tablas que crecen están repartidas por
+catorce esquemas y cada uno sabe de las suyas— y **nada de ello escribe en la
+base**: devuelve el plan, y quien ejecuta el corte es la migración del servicio,
+con su revisión y su ventana. Una ruta que particionara en caliente bloquearía la
+tabla durante la petición de un usuario, que es justo el incidente que esto existe
+para evitar.
+
+Dos cosas más que se preguntan aquí. **Si falta ya la partición del mes en curso**,
+que no es un aviso sino un incidente ocurriendo. Y **si estas filas se pueden
+borrar de la tabla viva**: mover a frío sin borrar no quita volumen, el borrado es
+el paso que no tiene vuelta atrás, y se comprueba antes y aparte — el proceso de
+limpieza corre de noche, y lo que borra por error se descubre semanas después,
+cuando alguien lo pide para un juicio. Por lo mismo, **las purgas que no distinguen
+por registro se abstienen enteras** mientras haya un bloqueo legal activo:
+conservar de más cuesta disco y borrar la prueba equivocada no tiene arreglo.
+
+Y lo archivado **se puede devolver a la tabla viva**: el archivo se consulta pero
+no se trabaja, y cuando una cuenta que se fue vuelve, lo que se quiere no es leer
+su historia sino poder seguir escribiendo en ella.
 
 **Del escalado horizontal**, dos cosas. La primera: cada servicio tiene un límite
 que **no es la CPU** —el gateway lo tiene en las conexiones salientes, los de datos

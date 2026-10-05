@@ -98,12 +98,33 @@ def purgar(
     en vez de un hueco.
     """
     from crmcore.audit import registrar
+    from crmcore.datos.retencion import hay_algun_bloqueo
 
     if dias_retencion < 1:
         raise Conflicto(
             "Una retención de menos de un día borraría el rastro del propio día",
             error_code="siem.retencion_invalida",
         )
+
+    # Con un bloqueo legal activo esta purga **se abstiene entera**. Es el caso
+    # que `hay_algun_bloqueo` existía para resolver y no lo preguntaba nadie:
+    # una purga que corre de noche y borra el rastro de auditoría durante un
+    # litigio no da ningún error, y lo que se descubre semanas después es que la
+    # prueba que pedía el juzgado la borró un proceso automático.
+    #
+    # No se afina cuál de los apuntes cubre el bloqueo: averiguarlo cuesta más
+    # que esperar a que se levante, y conservar de más no rompe nada.
+    if hay_algun_bloqueo(db, tenant_id):
+        return {
+            "borrados": 0,
+            "hasta_secuencia": None,
+            "abstenida": True,
+            "porque": (
+                "Hay un bloqueo legal activo en este tenant. Se conserva todo: "
+                "afinar qué apuntes cubre el bloqueo cuesta más que esperar a que "
+                "se levante, y borrar la prueba equivocada no tiene arreglo."
+            ),
+        }
 
     corte = datetime.now(timezone.utc) - timedelta(days=dias_retencion)
     ultimo = db.execute(

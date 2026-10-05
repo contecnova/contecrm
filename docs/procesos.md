@@ -115,6 +115,10 @@ stateDiagram-v2
 | `POST /api/v1/tenancy/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/tenancy/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/tenancy/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/tenancy/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/tenancy/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/tenants` | Dar de alta un tenant | slug*, nombre*, plan, region, aislamiento, tenant_padre_id, idioma, zona_horaria, moneda | 201, 422 | `tenant.provisioned` |
 | `PATCH /api/v1/tenants/{tenant_id}` | Editar un tenant | tenant_id*, nombre, plan, tier, idioma, zona_horaria, moneda, marca | 200, 422 | — |
 | `POST /api/v1/tenants/{tenant_id}/destruir-datos` | Destruir los datos del tenant y emitir el certificado | tenant_id*, exportacion_id*, confirmacion* | 200, 422 | — |
@@ -162,6 +166,10 @@ stateDiagram-v2
 | `POST /api/v1/identity/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/identity/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/identity/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/identity/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/identity/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/notificaciones/entregas/sucesos` | Lo que el proveedor cuenta que pasó con un correo ya mandado | entrega_id, direccion*, suceso*, detalle, proveedor, ocurrido_at | 200, 422 | — |
 | `POST /api/v1/notificaciones/leidas` | Marcar como leídas | ids | 200, 422 | — |
 | `PUT /api/v1/notificaciones/preferencias` | Fijar mis preferencias para un tipo de evento | tipo, canales*, agrupar_minutos, silencio_desde, silencio_hasta | 200, 422 | — |
@@ -250,6 +258,10 @@ stateDiagram-v2
 | `POST /api/v1/metadata/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/metadata/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/metadata/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/metadata/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/metadata/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 
 ### orchestrator
 
@@ -275,6 +287,10 @@ stateDiagram-v2
 | `POST /api/v1/orchestrator/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/orchestrator/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/orchestrator/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/orchestrator/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/orchestrator/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones` | Guardar una versión de un proceso, como borrador o publicada | clave*, nombre*, descripcion, definicion*, estado, disparadores | 201, 422 | — |
 | `POST /api/v1/procesos/definiciones/simular` | Simular un proceso sin publicarlo (CRM-00.03.05.04) | definicion*, variables, respuestas_humanas | 200, 422 | — |
 | `POST /api/v1/procesos/definiciones/validar` | Validar una definición sin publicarla | clave*, nombre*, descripcion, definicion*, estado, disparadores | 200, 422 | — |
@@ -300,6 +316,10 @@ stateDiagram-v2
 | `POST /api/v1/automation/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/automation/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/automation/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/automation/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/automation/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/automation/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/automation/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/automatizaciones` | Crear una automatización | nombre*, descripcion, disparador*, objetivo*, campos_vigilados, programacion, condiciones, combinacion, acciones*, prioridad, momento, activa | 201, 422 | — |
 | `PATCH /api/v1/automatizaciones/{regla_id}` | Editar automatizaciones | regla_id*, nombre, descripcion, disparador, objetivo, campos_vigilados, programacion, condiciones, combinacion, acciones, activa, prioridad, momento, ejecuciones, fallos, ultima_ejecucion_at | 200, 422 | — |
 | `DELETE /api/v1/automatizaciones/{regla_id}` | Borrar automatizaciones | regla_id* | 204, 422 | — |
@@ -411,6 +431,10 @@ stateDiagram-v2
 | `POST /api/v1/integration/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/integration/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/integration/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/integration/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/integration/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/integration/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/integration/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/modelo-canonico/adaptadores` | Declarar cómo traduce un sistema externo | objeto*, sistema*, mapeo*, politica, politica_por_campo, direccion, direccion_por_campo, campo_modificado | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/objetos` | Definir un objeto del idioma común | clave*, campos*, nombre, descripcion, claves_negocio | 201, 422 | — |
 | `POST /api/v1/modelo-canonico/traducir` | Traducir un registro externo al idioma común | objeto*, sistema* | 200, 422 | — |
@@ -473,6 +497,10 @@ stateDiagram-v2
 | `POST /api/v1/eventing/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/eventing/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/eventing/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/eventing/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/eventing/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `PATCH /api/v1/eventos/fallidos/{fallido_id}` | Editar eventos fallidos | fallido_id*, origen, tipo, dedup_key, sobre, intentos, ultimo_error, reenviado_at, reenviado_por | 200, 422 | — |
 | `POST /api/v1/eventos/fallidos/{fallido_id}/reenviar` | Reenviar un evento de la cola de fallidos | fallido_id* | 200, 422 | — |
 | `POST /api/v1/webhooks` | Suscribir un endpoint a eventos | nombre*, url*, eventos*, condiciones, cabeceras | 201, 422 | — |
@@ -587,6 +615,10 @@ stateDiagram-v2
 | `PUT /api/v1/party/retencion/politicas` | Fijar cuánto se conserva una clase de dato | clase*, dias*, motivo, activa | 200, 422 | — |
 | `POST /api/v1/party/retencion/purgar` | Aplicar la retención | clase, simular | 200, 422 | — |
 | `POST /api/v1/party/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
+| `POST /api/v1/party/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/party/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/party/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/party/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/planes-cuenta` | Guardar el plan de una cuenta | cuenta_id*, periodo*, objetivos, riesgos, hueco, objetivo_importe | 201, 422 | — |
 | `POST /api/v1/planes-cuenta/cuenta-personal/validar` | Si esta cuenta de persona está completa para poder usarse | nombre, sector_codigo, empleados, facturacion_anual | 200, 422 | — |
 | `POST /api/v1/planes-cuenta/financiero` | Replicar el estado financiero que dice el ERP | cuenta_id*, estado*, origen*, vigente_at*, limite_credito, credito_dispuesto, deuda_vencida, bloqueado, motivo_bloqueo | 200, 422 | — |
@@ -813,6 +845,10 @@ stateDiagram-v2
 | `POST /api/v1/sales/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/sales/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/sales/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
+| `POST /api/v1/sales/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/sales/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/sales/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/sales/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/suscripciones` | Alta de suscripción | cuenta_id*, plan*, importe_periodo*, inicio*, periodicidad, contrato_id, producto_id, cantidad, moneda | 201, 422 | `subscription.changed` |
 | `POST /api/v1/suscripciones/{suscripcion_cliente_id}/cambios` | Cambiar una suscripción, con su prorrateo | suscripcion_id*, tipo*, efectivo_el, plan, cantidad, importe_periodo, motivo | 200, 422 | `subscription.changed` |
 | `PATCH /api/v1/suscripciones/{suscripcion_id}` | Editar suscripciones | suscripcion_id*, contrato_id, cuenta_id, producto_id, plan, cantidad, importe_periodo, moneda, periodicidad, inicio, fin, estado, proxima_factura, created_by, updated_by, created_origen, updated_origen | 200, 422 | — |
@@ -864,6 +900,10 @@ stateDiagram-v2
 | `POST /api/v1/analytics/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/analytics/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/analytics/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
+| `POST /api/v1/analytics/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/analytics/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/analytics/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/analytics/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/cuadros-mando` | Crear un cuadro de mando | clave*, nombre*, descripcion, componentes, roles, equipos, por_defecto_para | 201, 422 | — |
 | `POST /api/v1/cuadros-mando/alertas` | Avisar cuando una métrica cruza una línea | nombre*, informe_id*, metrica, comparacion, umbral, histeresis, silencio_horas, destinatarios* | 201, 422 | — |
 | `POST /api/v1/cuadros-mando/alertas/comprobar` | Ejecutar las alertas activas | — | 200, 422 | `dashboard.alert.cleared`, `dashboard.alert.fired` |
@@ -957,6 +997,10 @@ stateDiagram-v2
 | `POST /api/v1/intelligence/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
+| `POST /api/v1/intelligence/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/intelligence/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/intelligence/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/intelligence/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/modelos/evaluar` | Qué tal acierta, comparado con no tener modelo | predicciones, umbral | 200, 422 | — |
 | `POST /api/v1/modelos/factores` | Por qué puntúa lo que puntúa | contribuciones, cuantos | 200, 422 | — |
 | `POST /api/v1/modelos/particion` | Cómo se parte el histórico para entrenar y para comprobar | casos, pct_validacion | 200, 422 | — |
@@ -1153,6 +1197,10 @@ stateDiagram-v2
 | `POST /api/v1/service/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/service/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
+| `POST /api/v1/service/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/service/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/service/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/service/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/sincronizacion-campo` | Volcar el trabajo hecho sin red | dispositivo*, cambios* | 200, 422 | `workorder.completed` |
 | `POST /api/v1/sla` | Publicar una definición de SLA | clave*, nombre*, prioridad, tier_cliente, cuenta_id, horas_primera_respuesta, horas_resolucion, horas_actualizacion, calendario, aviso_pct | 201, 422 | — |
 | `POST /api/v1/sla-proveedores/maximo-que-se-puede-prometer` | Lo mejor que se puede firmar con este proveedor detrás | del_proveedor, horas_propias | 200, 422 | — |
@@ -1232,6 +1280,10 @@ stateDiagram-v2
 | `POST /api/v1/marketing/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/marketing/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/marketing/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
+| `POST /api/v1/marketing/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
+| `POST /api/v1/marketing/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
+| `POST /api/v1/marketing/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
+| `POST /api/v1/marketing/volumen/salud` | Qué tabla va camino de dar problemas, antes de darlos | tablas, umbral_filas | 200, 422 | — |
 | `POST /api/v1/momento/canal` | Por dónde contesta y por dónde no se le puede escribir | interacciones, prohibidos | 200, 422 | — |
 | `POST /api/v1/momento/comparar` | Si personalizar la hora ha servido de algo | con_optimizacion, sin_optimizacion | 200, 422 | — |
 | `POST /api/v1/momento/franja` | A qué hora contesta esta persona, si es que se puede saber | interacciones, huso | 200, 422 | — |

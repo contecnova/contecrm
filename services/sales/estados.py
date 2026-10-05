@@ -10,6 +10,7 @@ estados que ningún `if` de aquí sabría manejar.
 from __future__ import annotations
 
 from crmcore.datos.estados import Maquina, registrar_maquina
+from crmcore.datos.event_sourcing import declarar_agregado
 
 # Un lead no vuelve de «convertido»: ya existe una cuenta y una oportunidad
 # apuntando a él, y devolverlo al circuito crearía un duplicado del cliente que
@@ -48,6 +49,22 @@ LEAD = registrar_maquina(
 # pasa de verdad —el cliente vuelve, el pedido se recupera— y prohibirlo obliga
 # a crear una oportunidad nueva que rompe el histórico. Lo que sí exige es
 # motivo, porque sus números ya están en un informe que alguien miró.
+# El rastro completo de la oportunidad (CRM-00.05.04.06). Se enciende aquí
+# porque aquí está declarada la máquina: cada transición anota su hecho, y de la
+# suma sale la respuesta a «¿cómo estaba esto el 3 de marzo?» — que el historial
+# de campos no contesta, porque dice qué cambió y no cómo era el conjunto.
+#
+# La tabla de hechos se creaba en este servicio desde el primer día y estaba
+# **siempre vacía**: `declarar_agregado` no la llamaba nadie, así que `anotar`
+# rechazaba cualquier hecho por agregado no declarado.
+declarar_agregado(
+    "oportunidad",
+    "Es el objeto por el que se pregunta cómo estaba en una fecha concreta: lo "
+    "piden la revisión de previsión, una auditoría de comisiones y cualquier "
+    "discusión sobre por qué se cerró así. Reconstruirlo encadenando cambios de "
+    "campo a mano sale mal en cuanto hay una fusión o un borrado por medio.",
+)
+
 OPORTUNIDAD = registrar_maquina(
     Maquina(
         objeto="oportunidad",

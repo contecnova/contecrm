@@ -435,6 +435,24 @@ def crear_servicio(
 
         app.include_router(crear_router_movil(nombre), prefix=s.api_prefix)
 
+        # Y el volumen: qué tabla va camino de dar problemas, cómo se particiona
+        # y qué se puede mover a frío. También por servicio, porque las tablas
+        # que crecen están repartidas por catorce esquemas y cada uno sabe de
+        # las suyas. Montarlo aquí es lo que impide que un servicio se quede sin
+        # ello — que es exactamente como `crmcore.datos.particionado` acabó
+        # resolviéndolo entero sin que lo importara nadie.
+        from crmcore.http.volumen_router import crear_router_volumen
+
+        app.include_router(crear_router_volumen(nombre), prefix=s.api_prefix)
+
+        # Y el rastro completo de los agregados que lo tengan encendido. Estaba
+        # entero y apagado: la tabla de hechos se creaba en dos servicios y
+        # nadie declaraba ningún agregado, así que estaba siempre vacía — y un
+        # rastro vacío contesta lo mismo que si todo fuera bien.
+        from crmcore.http.rastro_router import crear_router_rastro
+
+        app.include_router(crear_router_rastro(nombre), prefix=s.api_prefix)
+
         # Y sus vocabularios, si declara alguno. Solo entonces: en un servicio
         # que no valida contra ninguna lista, estas rutas serían tres pantallas
         # vacías más en la superficie.

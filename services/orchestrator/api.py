@@ -9,7 +9,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
-from crmcore.http.listados import montar_ficha
+from crmcore.http.listados import montar_exportacion, montar_ficha
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -656,4 +656,16 @@ montar_ficha(
     permiso_escribir="proceso:write",
     nombre="Tareas",
     parametro="tarea_id",
+)
+
+
+from services.orchestrator.modelos import TablaDecision  # noqa: E402
+
+# Y la tabla de decisión, que también tiene listado propio.
+montar_exportacion(
+    router_tablas,
+    modelo=TablaDecision,
+    objeto="tabla_decision",
+    permiso="proceso:read",
+    nombre="Tablas de decisión",
 )

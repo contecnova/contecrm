@@ -1057,7 +1057,11 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/sales/buscar")
 # proceso.
 from crmcore.authz.decision import exigir  # noqa: E402
 from crmcore.http.deps import proyectar_para  # noqa: E402
-from crmcore.http.listados import montar_ficha, montar_listado  # noqa: E402
+from crmcore.http.listados import (  # noqa: E402
+    montar_exportacion,
+    montar_ficha,
+    montar_listado,
+)
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
@@ -1352,4 +1356,26 @@ montar_ficha(
     permiso_escribir="pipeline:write",
     nombre="Procesos de venta",
     parametro="pipeline_id",
+)
+
+
+# La exportación de las colecciones con listado escrito a mano. `montar_listado`
+# la monta sola; estas no se montan con él, y son justo las que alguien quiere
+# exportar de verdad: dejarlas fuera habría dado un producto con exportación en
+# las sesenta colecciones secundarias y sin ella en las cinco principales.
+montar_exportacion(router_leads, modelo=Lead, objeto="lead", permiso="lead:read", nombre="Leads")
+montar_exportacion(
+    router_oportunidades,
+    modelo=Oportunidad,
+    objeto="oportunidad",
+    permiso="opportunity:read",
+    nombre="Oportunidades",
+)
+montar_exportacion(
+    router_enrutamiento,
+    modelo=enr.ReglaEnrutamiento,
+    objeto="regla_enrutamiento",
+    permiso="lead:read",
+    nombre="Reglas de enrutamiento",
+    ruta="/reglas",
 )

@@ -360,6 +360,14 @@ RECURSOS_TRANSVERSALES = {
     # esquema, que es lo que impide que un servicio lea las tablas de otro.
     "papelera",
     "cumplimiento",
+    # Volumen, particionado y archivo frío: también por servicio, porque las
+    # tablas que crecen están repartidas por catorce esquemas y cada uno sabe
+    # de las suyas.
+    "volumen",
+    # El rastro completo de un agregado: los hechos viven en el esquema del
+    # servicio que guarda ese objeto, y la comparación con el estado vivo
+    # necesita leer su tabla.
+    "rastro",
 }
 
 # Los nombres de servicio salen de la propia tabla de prefijos en vez de

@@ -32,7 +32,7 @@ producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`�
 para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
 `crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
 nadie**, y la primera medida solo delataba seis. Así que se mira también qué
-módulos de producción no importa ningún otro: dieciocho.
+módulos de producción no importa ningún otro: diecisiete.
 """
 
 from __future__ import annotations
@@ -138,6 +138,16 @@ CARPETAS = (
 #                   consentir el entrenamiento, y el modo sin salida de datos.
 #                   Ninguna daba error: el producto se comportaba como si esas
 #                   decisiones no existieran, y todo en verde.
+#   05-10-2026  62  La capa de datos: `crmcore.datos.particionado` resolvía
+#                   entero el volumen —qué tablas crecen, por qué se corta por
+#                   tiempo y no por tenant, qué se puede mover a frío y qué lo
+#                   impide— y NO LO IMPORTABA NADIE. El rastro de agregados
+#                   estaba encendido sin encender: la tabla de hechos se creaba
+#                   en dos servicios, nadie declaraba ningún agregado y por eso
+#                   estaba siempre vacía. Y la exportación de un listado no
+#                   existía, así que `columnas_exportables` —que es lo que hace
+#                   que una exportación traiga los campos del cliente— no tenía
+#                   a quién servir.
 #   05-10-2026  71  Ventas: diez, y dos de ellas no eran «una ruta que falta»
 #                   sino un circuito abierto. La CALIBRACIÓN no podía funcionar
 #                   nunca: la columna `resultado` de una revisión llevaba desde
@@ -149,7 +159,7 @@ CARPETAS = (
 #                   total, y lo que se descubre después es que el producto que
 #                   más se vende pierde dinero en cada unidad. El contrato con
 #                   el proveedor y su alcance no tenían ninguna puerta.
-TOPE = 71
+TOPE = 62
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -314,7 +324,7 @@ SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
 }
 
 # Medido el 05-10-2026. Baja o se queda, nunca sube.
-TOPE_MODULOS = 18
+TOPE_MODULOS = 17
 
 
 def _modulo_de(fichero: Path) -> str:

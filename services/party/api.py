@@ -1611,7 +1611,7 @@ router_busqueda = crear_router_busqueda(_OBJETOS_BUSCABLES, "/party/buscar")
 # `trabajos_worker.py` importa esto mismo y no se fía de que la API lo haya
 # hecho, que en el worker no ha pasado.
 from crmcore.datos.papelera import EntradaPapelera  # noqa: E402
-from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.listados import montar_exportacion, montar_ficha  # noqa: E402
 from crmcore.http.masivo_router import crear_router_masivo  # noqa: E402
 from crmcore.http.trabajos_router import crear_router_trabajos  # noqa: E402
 
@@ -1707,4 +1707,25 @@ montar_ficha(
     nombre="Entradas de la papelera",
     ruta="/papelera",
     parametro="entrada_id",
+)
+
+
+# Ídem para las tres colecciones principales de `party`: tienen listado escrito
+# a mano con sus filtros, así que `montar_listado` no les monta la exportación.
+montar_exportacion(
+    router_cuentas, modelo=Cuenta, objeto="cuenta", permiso="account:read", nombre="Cuentas"
+)
+montar_exportacion(
+    router_contactos,
+    modelo=Contacto,
+    objeto="contacto",
+    permiso="contact:read",
+    nombre="Contactos",
+)
+montar_exportacion(
+    router_actividades,
+    modelo=Actividad,
+    objeto="actividad",
+    permiso="activity:read",
+    nombre="Actividades",
 )

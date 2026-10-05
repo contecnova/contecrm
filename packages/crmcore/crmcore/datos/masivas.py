@@ -324,16 +324,43 @@ def exportar(
     columnas: list[str],
     limite: int,
     enmascarar: Callable[[str, Any], Any] | None = None,
+    proyectar: Callable[[Any], dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Exporta el resultado de una consulta a filas planas.
 
     `enmascarar` permite aplicar la política de enmascaramiento por rol
     (CRM-00.05.03.03): una exportación no puede sacar en claro lo que la API no
     enseña, porque sería la vía más fácil de saltarse la protección.
+
+    `proyectar` es la forma **completa** de lo mismo y la que usa la ruta de
+    exportación: la proyección del producto resuelve la sensibilidad por rol,
+    las excepciones y las políticas ABAC que dependen de la propia fila —«el
+    margen de las oportunidades de otra unidad»—, y eso no cabe en una función
+    que solo ve el nombre del campo y su valor. Lo que la proyección quita no
+    aparece en el fichero: una columna que la pantalla no enseña y el CSV sí es
+    la vía más fácil de saltarse la protección, y además la más silenciosa.
     """
     filas = db.execute(consulta.limit(limite)).scalars().all()
     salida: list[dict[str, Any]] = []
     for fila in filas:
+        if proyectar is not None:
+            visto = proyectar(fila)
+            propios_visibles = visto.get("campos") if isinstance(visto.get("campos"), dict) else {}
+            salida.append(
+                {
+                    columna: (
+                        visto[columna]
+                        if columna in visto
+                        else (propios_visibles or {}).get(columna)
+                    )
+                    for columna in columnas
+                    # Lo que la proyección no devolvió no se exporta vacío: se
+                    # omite. Una columna en blanco se lee como «no hay dato»
+                    # cuando lo que pasa es que esa persona no puede verlo.
+                    if columna in visto or columna in (propios_visibles or {})
+                }
+            )
+            continue
         registro: dict[str, Any] = {}
         for columna in columnas:
             # Campos propios del tenant (CRM-00.04.03.08). Se piden por su

@@ -205,5 +205,35 @@ def aplicar(
         motivo=motivo or None,
         tenant_id=getattr(fila, "tenant_id", None),
     )
+    # Y el rastro completo, si este objeto lo tiene encendido. Va AQUÍ por lo
+    # mismo que la auditoría: un hecho anotado en cada sitio donde se cambia un
+    # estado es un hecho que falta en el sitio que se olvidó, y la
+    # reconstrucción de un agregado al que le falta un hecho no es una prueba
+    # de nada — es peor que no tenerla, porque parece una.
+    #
+    # `anotar` existía, `declarar_agregado` existía, y no los llamaba nadie: la
+    # tabla de hechos se creaba en dos servicios y estaba siempre vacía.
+    from crmcore.datos.event_sourcing import agregados_declarados, anotar
+
+    if objeto in agregados_declarados():
+        anotar(
+            db,
+            tenant_id=getattr(fila, "tenant_id", None),
+            objeto=objeto,
+            objeto_id=getattr(fila, "id", None),
+            tipo=f"{objeto}.estado_cambiado",
+            # Solo el campo del agregado. `reconstruir` FUSIONA `datos` sobre el
+            # estado, así que meter aquí el estado anterior o el motivo los
+            # convertiría en campos del agregado: la reconstrucción tendría un
+            # «estado_anterior» que la tabla viva no tiene, y la comparación con
+            # lo vivo saldría en rojo siempre — la señal que importa, ahogada en
+            # una diferencia que no significa nada.
+            #
+            # El porqué no se pierde: va en el apunte de auditoría de aquí
+            # arriba, que es donde se pregunta.
+            datos={campo: nuevo},
+            por=por,
+        )
+
     logger.info("estados.transicion", objeto=objeto, desde=anterior, hasta=nuevo)
     return anterior

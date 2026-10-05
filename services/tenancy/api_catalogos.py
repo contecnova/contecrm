@@ -662,3 +662,24 @@ ROUTERS_CATALOGOS = [
     router_baja,
     router_localizacion,
 ]
+
+
+from crmcore.http.listados import montar_exportacion  # noqa: E402
+
+# Las dos colecciones de este módulo con listado escrito a mano. Igual que en
+# ventas y en party: `montar_listado` monta la exportación sola, y lo que no se
+# monta con él se queda sin ella sin que nadie lo note.
+montar_exportacion(
+    router_plantillas,
+    modelo=Plantilla,
+    objeto="plantilla",
+    permiso="tenant:read",
+    nombre="Plantillas",
+)
+montar_exportacion(
+    router_calendarios,
+    modelo=CalendarioLaboral,
+    objeto="calendario_laboral",
+    permiso="tenant:read",
+    nombre="Calendarios",
+)

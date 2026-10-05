@@ -138,16 +138,26 @@ def particiones_a_crear(
     """
     momento = hoy or _hoy()
     objetivo = momento + timedelta(days=31 * meses_por_delante)
+    este_mes = date(momento.year, momento.month, 1)
     faltan: list[str] = []
     cursor = date(ultima_existente.year, ultima_existente.month, 1)
     while cursor < objetivo:
         cursor = date(cursor.year + (cursor.month // 12), (cursor.month % 12) + 1, 1)
-        if cursor > date(momento.year, momento.month, 1):
+        # `>=` y no `>`. Con `>` el mes EN CURSO nunca entraba en la lista, así
+        # que «urgente» —que preguntaba si el primero que falta es el mes en
+        # curso— no podía saltar jamás: la condición era inalcanzable y el aviso
+        # que existe para que no te pille el día 1 no existía. Salió al darle
+        # puerta; mientras no la tuvo, nadie pudo verlo.
+        if cursor >= este_mes:
             faltan.append(cursor.isoformat()[:7])
 
+    # Urgente si falta la del mes en curso o la del siguiente: la del mes en
+    # curso es un incidente ocurriendo, y la del siguiente es uno con fecha.
+    siguiente = date(este_mes.year + (este_mes.month // 12), (este_mes.month % 12) + 1, 1)
     return {
         "faltan": faltan,
-        "urgente": bool(faltan) and faltan[0][:7] == momento.isoformat()[:7],
+        "urgente": bool(faltan) and faltan[0] <= siguiente.isoformat()[:7],
+        "ya_falta_la_de_este_mes": bool(faltan) and faltan[0] == este_mes.isoformat()[:7],
         "porque": (
             "Se crean por delante. Crear la partición cuando llega la primera fila del "
             "mes significa crearla a las 00:00 del día 1, dentro de la transacción de un "

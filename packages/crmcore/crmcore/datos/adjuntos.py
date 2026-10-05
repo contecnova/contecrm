@@ -424,6 +424,17 @@ def purgar_huerfanos(db: Session, tenant_id: UUID) -> int:
     dueño. Hacerlo en el borrado exigiría contar referencias en caliente.
     """
     from crmcore.datos.guard_borrados import con_borrados
+    from crmcore.datos.retencion import hay_algun_bloqueo
+
+    # Con un bloqueo legal activo no se tocan los bytes. Un adjunto borrado
+    # lógicamente sigue siendo recuperable mientras su contenido esté en el
+    # almacén; en cuanto esta purga pasa, deja de serlo. Y esta purga no
+    # distingue por registro, así que ante un bloqueo se abstiene entera:
+    # conservar de más cuesta disco y borrar la prueba equivocada no tiene
+    # arreglo.
+    if hay_algun_bloqueo(db, tenant_id):
+        logger.info("adjuntos.purga_abstenida", tenant_id=str(tenant_id))
+        return 0
 
     # Aquí hay que ver las dos mitades: los adjuntos vivos y los borrados. El
     # guard esconde los segundos, y sin ellos la lista de bytes huérfanos sale

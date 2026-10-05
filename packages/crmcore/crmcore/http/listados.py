@@ -270,6 +270,16 @@ def montar_listado(
         proyecta = proyectar_para(principal, db, objeto=objeto, modelo=modelo)
         return pagina.a_dict(proyecta)
 
+    montar_exportacion(
+        router,
+        modelo=modelo,
+        objeto=objeto,
+        permiso=permiso,
+        nombre=nombre,
+        ruta=ruta,
+        filtro=filtro,
+    )
+
     # El nombre de la función es lo que FastAPI usa como `operationId`, y dos
     # operaciones con el mismo id hacen que un generador de clientes produzca
     # métodos que se pisan.
@@ -688,3 +698,94 @@ def _tipo_de(columna: Any) -> Any:
     except (NotImplementedError, AttributeError):
         return Any
     return tipo if tipo in (str, int, float, bool) else Any
+
+
+def montar_exportacion(
+    router: Any,
+    *,
+    modelo: type,
+    objeto: str,
+    permiso: str,
+    nombre: str,
+    ruta: str = "",
+    filtro: Callable[[Any], Any] | None = None,
+) -> None:
+    """Monta `GET <ruta>/exportar` para esta colección.
+
+    Va aparte de `montar_listado` porque **once colecciones no se montan con
+    él**: las que más se exportan —cuentas, contactos, oportunidades, leads,
+    actividades— tienen su listado escrito a mano, con sus filtros propios. Si
+    la exportación viviera solo dentro de `montar_listado`, el producto habría
+    quedado con exportación en las sesenta colecciones secundarias y sin ella en
+    las cinco que alguien quiere exportar de verdad.
+
+    `filtro` acota la consulta igual que en el listado: sin él, exportar una
+    colección que comparte tabla con otra sacaría también las filas de la otra.
+    """
+    from sqlalchemy import select
+
+    tiene_borrado = hasattr(modelo, "deleted_at")
+
+    @router.get(
+        f"{ruta}/exportar",
+        dependencies=[Depends(exige_permiso(permiso))],
+        summary=f"Exportar {nombre.lower()}",
+        description=(
+            "El mismo listado, con los mismos filtros de la URL, en filas "
+            "planas para una hoja de cálculo.\n\n"
+            "**Las columnas incluyen los campos propios del tenant.** Sin eso, "
+            "la exportación trae lo que traía el producto de fábrica y no lo que "
+            "el cliente ve en su ficha: una diferencia que solo nota quien "
+            "conoce el dato, y la nota tarde — cuando ya ha mandado el "
+            "fichero.\n\n"
+            "**Y no saca en claro lo que la pantalla no enseña.** Pasa por la "
+            "misma proyección que el listado: la sensibilidad por rol, las "
+            "excepciones y las políticas que dependen de la propia fila. Un CSV "
+            "que enseña el teléfono que la ficha tapa es la vía más fácil de "
+            "saltarse la protección, y la más silenciosa."
+        ),
+    )
+    def exportar_listado(
+        request: Request,
+        db: DbDep,
+        principal: AutenticadoDep,
+        limite: int = Query(5_000, ge=1, le=50_000),
+    ) -> Any:
+        from crmcore.datos.masivas import columnas_exportables, exportar
+
+        consulta = select(modelo)
+        if filtro is not None:
+            consulta = filtro(consulta)
+        consulta = _filtros_de_la_url(
+            request, modelo, consulta, principal=principal, db=db, objeto=objeto
+        )
+        if tiene_borrado:
+            consulta = consulta.where(modelo.deleted_at.is_(None))
+        # Las de serie del modelo, más las que el tenant haya añadido.
+        base = [c.name for c in modelo.__table__.columns if c.name != "campos"]
+        columnas = columnas_exportables(db, principal.tenant_id, objeto, base)
+        filas = exportar(
+            db,
+            consulta,
+            columnas=columnas,
+            limite=limite,
+            proyectar=proyectar_para(principal, db, objeto=objeto, modelo=modelo),
+        )
+        return {
+            "objeto": objeto,
+            "columnas": columnas,
+            "filas": filas,
+            "cuantas": len(filas),
+            # Se dice si se ha llegado al tope. Un fichero cortado en silencio
+            # es el que alguien manda creyendo que lleva todo.
+            "truncado": len(filas) >= limite,
+        }
+
+    exportar_listado.__name__ = f"exportar_{objeto.replace('-', '_').replace('.', '_')}"
+
+    # Y se adelanta, SIEMPRE. Es una ruta literal y FastAPI casa en orden de
+    # declaración: con una ficha `/{id}` escrita a mano más arriba, «exportar»
+    # encaja en ella y la respuesta es «"exportar" no es un UUID». El mismo
+    # error que ya costó depurar en los listados, y aquí habría vuelto por una
+    # ruta distinta.
+    router.routes.insert(0, router.routes.pop())
