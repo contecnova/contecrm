@@ -7,15 +7,23 @@ from typing import Any
 
 import httpx
 from crmcore.config import get_settings
-from crmcore.errors import ErrorValidacion, NoDisponible, NoEncontrado
-from crmcore.http.deps import AutenticadoDep, PlataformaDep, PrincipalDep, cookie_rechazada
+from crmcore.errors import ErrorValidacion, LimiteExcedido, NoDisponible, NoEncontrado
+from crmcore.http.deps import (
+    AutenticadoDep,
+    PlataformaDep,
+    PrincipalDep,
+    cookie_rechazada,
+    exige_firma_interna,
+    exige_permiso,
+)
 from crmcore.logging import get_logger
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from services.gateway import operatividad, proxy, rutas
+from services.gateway import anomalias, empuje, operatividad, proxy, rutas
+from services.gateway import superficie_api as superficie
 from services.gateway.sesion import crear_router_sesion
 
 logger = get_logger(__name__)
@@ -1058,6 +1066,32 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
             nombre,
         )
 
+    # TRÁFICO ANÓMALO (CRM-00.01.06.05). El límite de tasa fijo protege del
+    # abuso y no protege de lo que de verdad tumba un multi-tenant: **un cliente
+    # que hace lo de siempre, pero diez veces más**. Su importación nocturna se
+    # vuelve diurna, o alguien monta un bucle en su integración, y el resto
+    # empieza a esperar sin que nadie haya pasado ningún límite.
+    #
+    # El módulo que lo mide y lo frena estaba escrito, probado y **no lo
+    # importaba nadie**, así que nada de esto ocurría. Va aquí porque este es el
+    # único paso obligado de toda la API pública.
+    tenant = getattr(principal, "tenant_id", None)
+    if tenant is not None:
+        anomalias.anotar(tenant, 1)
+        freno = anomalias.estado(tenant)
+        if freno["frenado"]:
+            raise LimiteExcedido(
+                freno.get("motivo") or "Estás haciendo muchas más peticiones de lo habitual.",
+                error_code="gateway.tenant_frenado",
+                detalle=freno,
+            )
+        veredicto = anomalias.evaluar(tenant)
+        if veredicto["anomalo"]:
+            # Se frena y **se deja pasar esta**: cortar la petición que destapa
+            # la anomalía castiga a quien la hizo por llegar primero. La
+            # siguiente ya encuentra el freno puesto.
+            anomalias.frenar(tenant, motivo=veredicto["porque"])
+
     s = get_settings()
     respuesta = await proxy.reenviar(
         _cliente,
@@ -1179,6 +1213,229 @@ def _piezas() -> tuple[Any, dict[str, rutas.Destino], float]:
     if _cliente is None:
         raise NoDisponible("El gateway aún no ha arrancado", error_code="gateway.arrancando")
     return _cliente, _destinos, get_settings().http_interno_timeout_s
+
+
+# ── Superficie para integradores (CRM-00.02.01.02, .15, CRM-00.02.03.03,
+# CRM-00.02.04.03, .06, CRM-00.04.02.04) ──────────────────────────────────
+#
+# Todo lo de aquí estaba escrito, probado y sin que lo importara nadie: la
+# lectura compuesta, el sandbox con datos sintéticos, el mTLS por integración,
+# el panel del integrador y el endpoint con nombre del tenant. Seis funciones,
+# cero puertas.
+
+
+class ComposicionIn(BaseModel):
+    nombre: str = Field(..., min_length=1)
+    partes: list[dict[str, Any]] = Field(default_factory=list)
+    perfil: str = Field("web", description="web · movil")
+
+
+class SandboxIn(BaseModel):
+    objetos: list[str] = Field(default_factory=list)
+    filas_por_objeto: int = Field(25, ge=1, le=500)
+
+
+class MtlsIn(BaseModel):
+    huella_declarada: str = ""
+    huella_presentada: str = ""
+    obligatorio: bool = False
+
+
+class PanelIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    llamadas: list[dict[str, Any]] = Field(default_factory=list)
+    cuota_mes: int = Field(0, ge=0)
+    scopes: list[str] = Field(default_factory=list)
+
+
+class EndpointPropioIn(BaseModel):
+    ruta: str = Field(..., min_length=1)
+    composicion: str = Field(..., min_length=1)
+    permiso: str = Field(..., min_length=1)
+
+
+@router.post(
+    "/integracion/composicion/validar",
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Comprobar una lectura compuesta antes de ejecutarla",
+    description=(
+        "**Los permisos se comprueban parte a parte.** Una composición no puede "
+        "enseñar lo que sus partes no enseñarían: si alguien puede leer cuentas "
+        "y no oportunidades, la composición no le trae las oportunidades — y eso "
+        "se decide aquí, no al pintarlo.\n\n"
+        "Y tiene **coste**: una composición es tantas consultas como partes, "
+        "así que se mide antes. Una pantalla que pide quince cosas en una "
+        "llamada no es una llamada barata, es quince con menos viajes de red."
+    ),
+)
+async def validar_composicion(cuerpo: ComposicionIn, principal: AutenticadoDep) -> Any:
+    return superficie.validar_composicion(
+        nombre=cuerpo.nombre,
+        partes=cuerpo.partes,
+        permisos_del_llamante=frozenset(principal.permisos),
+        perfil=cuerpo.perfil,
+    )
+
+
+@router.post(
+    "/integracion/sandbox",
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Un entorno de pruebas con datos sintéticos",
+    description=(
+        "**Generados y no copiados.** Copiar datos de producción a un entorno de "
+        "pruebas es cómo se filtra una base de clientes entera por un sitio que "
+        "no tiene las mismas protecciones, y es lo que hace todo el mundo porque "
+        "es lo cómodo."
+    ),
+)
+async def sandbox(cuerpo: SandboxIn, principal: AutenticadoDep) -> Any:
+    return superficie.crear_sandbox(
+        tenant_id=principal.tenant_id,
+        objetos=cuerpo.objetos,
+        filas_por_objeto=cuerpo.filas_por_objeto,
+    )
+
+
+@router.post(
+    "/integracion/mtls",
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Comprobar el certificado de cliente de una integración",
+    description=(
+        "**Por integración y no globalmente.** Obligarlo a todos deja fuera a "
+        "quien se integra con un script de cuatro líneas; no ofrecerlo deja sin "
+        "nada a quien mueve dinero por esa API. Son dos clientes distintos y "
+        "necesitan dos respuestas distintas."
+    ),
+)
+async def mtls(cuerpo: MtlsIn, principal: AutenticadoDep) -> Any:
+    superficie.exigir_mtls(
+        huella_declarada=cuerpo.huella_declarada,
+        huella_presentada=cuerpo.huella_presentada,
+        obligatorio=cuerpo.obligatorio,
+    )
+    return {"valido": True}
+
+
+@router.post(
+    "/integracion/panel",
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Lo que ve un integrador de su propia clave",
+    description=(
+        "**Lo que de verdad pasó, no lo que el contrato promete.** Un portal que "
+        "solo documenta es una web bonita que no resuelve la llamada de las tres "
+        "de la mañana; lo que la resuelve es ver el último error, con su cuerpo "
+        "y su hora."
+    ),
+)
+async def panel_de_integrador(cuerpo: PanelIn, principal: AutenticadoDep) -> Any:
+    return superficie.panel_de_integrador(
+        clave=cuerpo.clave,
+        llamadas=cuerpo.llamadas,
+        cuota_mes=cuerpo.cuota_mes,
+        scopes=cuerpo.scopes,
+    )
+
+
+@router.post(
+    "/integracion/endpoint-propio",
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Un endpoint con nombre del tenant, sobre el mismo gateway",
+    description=(
+        "Es una **composición con nombre suyo**, no una puerta aparte: los "
+        "permisos, los límites de tasa y la auditoría son los mismos. Si fuera "
+        "una puerta aparte, sería la puerta por la que se salta todo lo "
+        "anterior."
+    ),
+)
+async def endpoint_propio(cuerpo: EndpointPropioIn, principal: AutenticadoDep) -> Any:
+    return superficie.declarar_endpoint_propio(
+        ruta=cuerpo.ruta,
+        composicion=cuerpo.composicion,
+        permiso=cuerpo.permiso,
+        tenant_id=principal.tenant_id,
+    )
+
+
+# ── Empuje de eventos al cliente (CRM-00.02.02.10) ────────────────────────
+#
+# Los webhooks exigen que quien escucha tenga una dirección pública y estable, y
+# eso deja fuera a media integración real: un navegador, una aplicación móvil,
+# un servicio dentro de una red cerrada. Todos pueden **llamar** al CRM y
+# ninguno puede recibir una llamada.
+#
+# El módulo que lo resuelve estaba escrito, probado y sin que lo importara
+# nadie: la cola, el flujo reanudable, el aviso de hueco y el latido. Nada de
+# eso ocurría.
+
+
+@router.get(
+    "/eventos/flujo",
+    summary="Recibir eventos sin exponer un endpoint",
+    description=(
+        "Un flujo `text/event-stream` con lo que pasa en este tenant.\n\n"
+        "**Reanudable**: con `desde` se retoma donde se cortó. Y si lo que se "
+        "pide ya se ha caído de la cola, el primer mensaje lo **dice** en vez de "
+        "ir directamente a lo nuevo: un cliente que cree haberlo recibido todo y "
+        "no lo ha recibido toma decisiones sobre datos incompletos, y sabiendo "
+        "que hay hueco puede recargar el estado entero.\n\n"
+        "Lleva **latido** cada veinte segundos: sin él, un intermediario cierra "
+        "el flujo por inactividad y el cliente cree que el servidor se ha caído."
+    ),
+)
+async def flujo_de_eventos(principal: AutenticadoDep, desde: int = Query(0, ge=0)) -> Any:
+    from fastapi.responses import StreamingResponse
+
+    return StreamingResponse(
+        empuje.flujo(principal.tenant_id, desde=desde),
+        media_type="text/event-stream",
+        # Sin esto, un proxy intermedio acumula la respuesta y el «tiempo real»
+        # llega en bloques de treinta segundos.
+        headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
+    )
+
+
+@router.post(
+    "/interno/empuje",
+    # Firma interna y no permiso: la llama otro servicio, no una persona. Es más
+    # cerrada que cualquier permiso — no la pasa un token de usuario.
+    dependencies=[Depends(exige_firma_interna)],
+    summary="Dejar un evento disponible para quien esté escuchando",
+    description=(
+        "La llama **otro servicio**, con la identidad firmada de siempre: el "
+        "que ya recibe todos los eventos para repartirlos por webhook es el que "
+        "sabe cuándo pasa algo, y el flujo vive aquí porque el gateway es la "
+        "única puerta pública — que es justo el punto de esta capacidad.\n\n"
+        "No está en el portal público: cuelga de `/interno`, que solo alcanza "
+        "quien lleva la firma interna."
+    ),
+)
+async def empujar_evento(request: Request, principal: AutenticadoDep) -> Any:
+    cuerpo = await request.json()
+    tenant = principal.tenant_id or cuerpo.get("tenant_id")
+    if tenant is None:
+        raise ErrorValidacion(
+            "El evento no dice de qué tenant es, así que no hay a quién " "empujárselo.",
+            error_code="empuje.sin_tenant",
+        )
+    from uuid import UUID as _UUID
+
+    identificador = empuje.publicar(
+        tenant if isinstance(tenant, _UUID) else _UUID(str(tenant)), dict(cuerpo)
+    )
+    return {"id": identificador, "colas": empuje.estado()}
+
+
+@router.get(
+    "/eventos/estado",
+    summary="Cuántos escuchan y qué hay en cola",
+    description=(
+        "Para saber si el empuje está sirviendo a alguien. Una cola que crece "
+        "sin oyentes es memoria gastada, y un oyente que no recibe nada suele "
+        "ser una integración que se quedó conectada y nadie mira."
+    ),
+)
+async def estado_del_empuje(principal: AutenticadoDep) -> Any:
+    return empuje.estado()
 
 
 ROUTERS = [router, crear_router_sesion(_piezas)]

@@ -4930,6 +4930,12 @@ túnel— pierde los eventos de ese hueco y el cliente no sabe cuántos ni cuál
 intermediario por inactividad y el cliente cree que el servidor se ha caído
 cuando lo que pasa es que no pasa nada.
 
+El flujo vive **en el gateway**, que es la única puerta pública, y lo alimenta el
+mismo servicio que ya reparte los eventos por webhook: son el mismo evento por
+dos transportes, y separarlos haría que uno de los dos se quedara atrás. El aviso
+al gateway **no rompe el reparto**: si no está declarado en la configuración o no
+contesta, lo que no puede pasar es que se caiga la entrega que sí importa.
+
 Y lo que **no** es: la garantía de entrega. Eso son el bus y su tabla de salida.
 Esto es un puente para que una reconexión corta no pierda nada, con cola acotada
 — y cuando lo pedido ya se ha caído de la cola, **se avisa del hueco** en vez de
@@ -10674,6 +10680,11 @@ nadie haya pasado de su límite.
 - **Y se le dice al frenado que está frenado**, con qué cuota y hasta cuándo. Un
   `429` sin explicación hace que la integración reintente más fuerte, que es
   exactamente lo contrario de lo que hace falta.
+
+Se mide **en la puerta**, que es el único paso obligado de toda la API pública:
+repartirlo por los servicios garantiza que al catorceavo se olvide. Y la petición
+que destapa la anomalía **pasa**: cortarla castiga a quien llegó primero, y la
+siguiente ya encuentra el freno puesto.
 
 ## La jerarquía de mando, replicada (`CRM-00.05.02.12`, `CRM-00.05.02.07`)
 

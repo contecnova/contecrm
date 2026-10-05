@@ -79,6 +79,30 @@ async def consumir_evento(mensaje: Any) -> None:
         return
 
     tenant_id = UUID(str(evento.tenant_id))
+
+    # EMPUJE A QUIEN NO TIENE DIRECCIÓN (CRM-00.02.02.10). Un webhook exige que
+    # quien escucha tenga una dirección pública y estable, y eso deja fuera a
+    # media integración real: un navegador, una aplicación móvil, un servicio
+    # dentro de una red cerrada. Todos pueden llamar al CRM y ninguno puede
+    # recibir una llamada.
+    #
+    # Se avisa al gateway, que es la única puerta pública y donde está el flujo.
+    # Va **antes** del reparto por webhook y con un aviso que no rompe: si el
+    # gateway no está declarado en la configuración o no contesta, lo que no
+    # puede pasar es que se caiga la entrega que sí importa.
+    from crmcore.http.interno import avisar
+
+    avisar(
+        "gateway",
+        "/api/v1/interno/empuje",
+        {
+            "tenant_id": str(tenant_id),
+            "tipo": evento.type,
+            "id": str(evento.id),
+            "datos": evento.data,
+        },
+    )
+
     with (
         con_contexto(tenant_id=tenant_id, origen="webhooks"),
         unidad_de_trabajo(tenant_id) as uow,

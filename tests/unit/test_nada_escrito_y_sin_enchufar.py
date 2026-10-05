@@ -32,7 +32,7 @@ producto llame a algo que se llame igual —`archivar`, `conectar`, `registrar`�
 para que sus funciones parezcan alcanzadas. Medido el 05-10-2026:
 `crmcore.datos.particionado` tiene nueve funciones públicas, **no lo importa
 nadie**, y la primera medida solo delataba seis. Así que se mira también qué
-módulos de producción no importa ningún otro: doce.
+módulos de producción no importa ningún otro: nueve.
 """
 
 from __future__ import annotations
@@ -182,7 +182,16 @@ CARPETAS = (
 #                   implementaciones: la que se usaba devolvía hexadecimal para
 #                   todo, así que un correo anonimizado no era un correo y
 #                   ninguna pantalla con validación funcionaba en pruebas.
-TOPE = 44
+#   05-10-2026  39  El gateway: tres módulos completos sin importar. El
+#                   TRÁFICO ANÓMALO —el límite fijo no protege del cliente que
+#                   hace lo de siempre diez veces más— estaba medido, escalonado
+#                   y explicado, y no corría. El EMPUJE SIN ENDPOINT dejaba
+#                   fuera a media integración real —un navegador, un móvil, una
+#                   red cerrada— y tenía cola, flujo reanudable, aviso de hueco
+#                   y latido sin que los alcanzara nada. Y la superficie del
+#                   integrador: composición, sandbox, mTLS, panel y endpoint
+#                   propio. Seis funciones, cero puertas.
+TOPE = 39
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -354,7 +363,7 @@ SE_CARGAN_DE_OTRA_FORMA: dict[str, str] = {
 }
 
 # Medido el 05-10-2026. Baja o se queda, nunca sube.
-TOPE_MODULOS = 12
+TOPE_MODULOS = 9
 
 
 def _modulo_de(fichero: Path) -> str:

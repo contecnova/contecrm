@@ -90,6 +90,35 @@ def pedir(servicio: str, ruta: str, *, timeout_s: float = 5.0) -> dict[str, Any]
     return dict(salida.json())
 
 
+def avisar(servicio: str, ruta: str, datos: dict[str, Any], *, timeout_s: float = 3.0) -> bool:
+    """POST firmado a otro servicio, **sin romper al que llama**.
+
+    Devuelve si llegó. Es para avisos que no son el trabajo principal de quien
+    llama —empujar un evento a los clientes conectados, por ejemplo—: si el
+    destino no está configurado o no responde, lo que no puede pasar es que se
+    caiga la entrega que sí importa. Se registra y se sigue.
+
+    Es lo contrario de `pedir`, y a propósito: allí no poder preguntar cambia la
+    respuesta al usuario, y aquí no.
+    """
+    import httpx
+
+    base = direccion_de(servicio)
+    if not base:
+        return False
+    try:
+        salida = httpx.post(
+            f"{base}{ruta}", json=datos, headers=cabeceras_firmadas(), timeout=timeout_s
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("interno.aviso_sin_respuesta", servicio=servicio, error=str(exc)[:200])
+        return False
+    if salida.status_code >= 400:
+        logger.warning("interno.aviso_rechazado", servicio=servicio, estado=salida.status_code)
+        return False
+    return True
+
+
 def resolver_tenant(valor: str) -> Any:
     """Traduce el identificador o el slug del tenant a UUID.
 
