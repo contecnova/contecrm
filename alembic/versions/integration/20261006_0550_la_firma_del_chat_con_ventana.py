@@ -1,7 +1,7 @@
 """la cabecera del instante, para que la firma del chat caduque
 
 Revision ID: a1c0f6e2b713
-Revises: 25dbe63a3940
+Revises: 8c961a68a491
 Servicio: integration
 Fecha: 2026-10-06 05:50:00.000000+00:00
 
@@ -22,7 +22,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "a1c0f6e2b713"
-down_revision = "25dbe63a3940"
+down_revision = "8c961a68a491"
 branch_labels = None
 depends_on = None
 
