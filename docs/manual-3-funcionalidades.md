@@ -13438,3 +13438,64 @@ plantilla deja fuera, dicho antes de empezar y no en producción.
 Todas piden permiso: `proceso:write` las cuatro que escriben, `proceso:read` la
 ficha y la simulación. Una saga mueve dinero y stock en varios servicios; la ruta
 que se quedara sin permiso sería la que nadie mira.
+
+## El tipo de registro y el gobierno de los módulos, enchufados (`CRM-00.04.01.05`, `CRM-00.04.04.03`, `CRM-00.04.04.10`)
+
+Tres piezas que estaban escritas, probadas y que **no llamaba nadie**. Las tres
+contestaban exactamente lo mismo que contestarían si estuvieran bien, que es lo
+que las hacía difíciles de ver.
+
+### El mismo objeto con caras distintas
+
+Un tipo de registro es la misma cuenta con otra cara: una pública y una privada
+no comparten campos ni listas, pero sí comparten tabla e informes — modelarlas
+como dos objetos distintos rompe «cuántos clientes tengo».
+
+Eso estaba resuelto y **la descripción del objeto no lo aplicaba**: el formulario
+de «cuenta pública» se pintaba con los campos de la privada y con la lista de
+opciones entera. El usuario elegía un valor que su tipo no admite y lo descubría
+al guardar, si es que lo descubría.
+
+Ahora `GET /api/v1/metadata/objetos/{nombre}/describe?tipo=publica` devuelve el
+objeto **tal como lo ve ese tipo**: sin los campos que no usa y con sus listas
+recortadas. Y una clave que no existe da error en vez de caerse a describirlo
+todo: devolver el objeto entero ante una clave mal escrita pinta un formulario
+con campos de más y nadie se entera.
+
+### Lo que el cliente toca no se pisa al actualizar
+
+Un módulo se actualiza, y el cliente ha ajustado cosas suyas por el camino. Para
+eso existía la marca «modificado por el cliente»: lo tocado se respeta, o al
+menos sale como conflicto antes de pisarlo.
+
+**Nadie ponía esa marca.** Con lo cual no había conflictos, no había nada
+respetado, y una actualización pisaba el trabajo del cliente — con el informe de
+la actualización saliendo limpio, que es lo peor de todo.
+
+Ahora se marca **al editar**, desde todas las vías que tocan un objeto o una
+lista del módulo: añadir un campo, deprecarlo, crear una regla, guardar un tipo
+de registro, renombrar un campo, retirarlo, y añadir o desactivar un valor de
+lista. Enganchar una sola habría dicho la verdad en un camino y mentido en los
+otros seis.
+
+Se marca al editar y **no se adivina al actualizar**: adivinarlo obligaría a
+comparar estructuras enteras y a acertar con qué cuenta como cambio, y el día que
+se fallara se pisaría el trabajo de alguien.
+
+### Qué del módulo se usa de verdad
+
+La telemetría responde a «¿sobra la mitad de este módulo?». Contaba **cero usos
+siempre**, así que todo salía en «sin usar» y la respuesta era siempre la misma, y
+siempre equivocada. Ahora cada vez que se describe o se edita un elemento del
+módulo se cuenta.
+
+Un módulo recién instalado con todo sin usar no está inflado, está recién puesto:
+por eso la respuesta sigue diciendo cuándo el dato **todavía no es concluyente**.
+
+### El prefijo no se le enseña a nadie
+
+Todo lo que trae un módulo va prefijado con su clave para que dos módulos no se
+pisen. Ese prefijo es técnico: una entrada de menú que pone
+«facturacion__envios» lo deja asomando por donde no debe. La superficie de
+pantallas y la telemetría devuelven ahora también el nombre corto, sin quitar la
+clave larga, que es la que identifica.

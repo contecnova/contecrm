@@ -190,6 +190,10 @@ class DescribeOut(BaseModel):
     """Lo que necesita un frontend headless para renderizar sin saber del CRM."""
 
     objeto: ObjetoOut
+    # Qué tipo de registro se ha aplicado, vacío si se describió el objeto
+    # entero. Va en la respuesta y no solo en la petición: un frontend que
+    # cachea descripciones necesita saber cuál tiene guardada.
+    tipo_registro: str = ""
     campos: list[CampoOut]
     reglas: list[ReglaOut]
     layouts: list[dict[str, Any]]

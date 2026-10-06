@@ -133,7 +133,15 @@ def _mensaje(tenant_id: UUID, datos: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _consumir(tenant_id: UUID, datos: dict[str, Any]) -> None:
-    from services.sales.consumidores import consumir_territorio
+    """Por el consumidor de `party`, que es quien lo recibe por el bus.
+
+    `sales` ya no se consume a sí mismo: escribe su copia en la misma
+    transacción en la que publica. Un servicio que se manda un mensaje para
+    enterarse de lo que acaba de hacer añade un viaje por el bus, una ventana en
+    la que su propia pantalla contesta con el mapa viejo, y la posibilidad de que
+    el mapa quede publicado y la copia no.
+    """
+    from services.party.consumidores import consumir_territorio
 
     await consumir_territorio(_mensaje(tenant_id, datos))
 
@@ -188,6 +196,42 @@ async def test_un_evento_sin_identificador_no_adivina(db: Any, tenant_id: UUID) 
     antes = db.execute(select(func.count()).select_from(TerritorioReplicado)).scalar_one()
     await _consumir(tenant_id, {"territorio": "norte", "version": 1, "usuarios": [str(uuid4())]})
     assert db.execute(select(func.count()).select_from(TerritorioReplicado)).scalar_one() == antes
+
+
+@pytest.mark.asyncio
+async def test_publicar_deja_escrita_la_copia_del_propio_servicio(uow: Any) -> None:
+    """Sin esto, `sales` tenía que consumir su propio evento para enterarse de lo
+    que acababa de hacer: un viaje por el bus, una ventana en la que su propia
+    pantalla contesta con el mapa viejo, y dos transacciones donde debería haber
+    una."""
+    from crmcore.authz.jerarquia import territorios_de
+
+    from services.sales import territorios as ter
+
+    jefe = uuid4()
+    norte = _territorio(uow, "norte", responsable=jefe)
+    assert territorios_de(uow.db, uow.tenant_id, jefe) == set()
+
+    ter.publicar(uow, norte.id)
+    assert territorios_de(uow.db, uow.tenant_id, jefe) == {norte.id}
+
+
+def test_quien_sale_tambien_desaparece_de_la_copia_local(uow: Any) -> None:
+    """Replicar solo las altas dejaría a quien deja un territorio viendo su
+    cartera para siempre, y en el propio servicio que lo publica igual."""
+    from crmcore.authz.jerarquia import territorios_de
+
+    from services.sales import territorios as ter
+
+    jefe, comercial = uuid4(), uuid4()
+    norte = _territorio(uow, "norte", responsable=jefe)
+    ter.publicar(uow, norte.id)
+    ter.anadir_miembro(uow, territorio_id=norte.id, usuario_id=comercial)
+    assert territorios_de(uow.db, uow.tenant_id, comercial) == {norte.id}
+
+    ter.quitar_miembro(uow, territorio_id=norte.id, usuario_id=comercial)
+    assert territorios_de(uow.db, uow.tenant_id, comercial) == set()
+    assert territorios_de(uow.db, uow.tenant_id, jefe) == {norte.id}
 
 
 # ── La lista de direcciones de una clave de API (CRM-00.05.01.09) ─────────

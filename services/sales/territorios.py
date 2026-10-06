@@ -557,6 +557,22 @@ def _emitir_mapa(uow: UnidadDeTrabajo, fila: Territorio) -> dict[str, Any]:
     consumido, no le habría servido.
     """
     gente = miembros_de(uow.db, uow.tenant_id, fila.id)
+    # La copia de ESTE servicio se escribe aquí, en la misma transacción. Antes
+    # se hacía consumiendo el propio evento, que es un servicio mandándose un
+    # mensaje a sí mismo para enterarse de lo que acaba de hacer: añade un viaje
+    # por el bus, una ventana en la que su propia pantalla contesta con el mapa
+    # viejo, y la posibilidad de que el mapa quede publicado y la copia no — dos
+    # transacciones distintas.
+    from crmcore.authz.jerarquia import aplicar_mapa
+
+    aplicar_mapa(
+        uow.db,
+        tenant_id=uow.tenant_id,
+        territorio_id=fila.id,
+        padre_id=fila.padre_id,
+        clave=fila.clave,
+        usuarios=set(gente),
+    )
     uow.emitir(
         "territory.published",
         subject=("territorio", fila.id),

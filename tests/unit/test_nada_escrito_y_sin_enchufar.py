@@ -226,7 +226,17 @@ CARPETAS = (
 #                   está en vuelo. La sonda solo delataba tres de las cinco,
 #                   porque `iniciar` y `fallar` se llaman igual que funciones de
 #                   otros módulos y contar por nombre no distingue una de otra.
-TOPE = 22
+#   06-10-2026  19  El gobierno de los módulos y el tipo de registro, tres
+#                   circuitos abiertos en el mismo servicio: el `describe` no
+#                   aplicaba el tipo de registro —el formulario de «cuenta
+#                   pública» se pintaba con los campos de la privada y la lista
+#                   entera—; NADIE ponía la marca «modificado por el cliente»,
+#                   con lo que toda la lógica de no pisar su trabajo al
+#                   actualizar un módulo era inalcanzable y el informe de la
+#                   actualización salía limpio; y la telemetría contaba cero
+#                   usos siempre, así que «¿sobra la mitad de este módulo?»
+#                   tenía siempre la misma respuesta equivocada.
+TOPE = 19
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

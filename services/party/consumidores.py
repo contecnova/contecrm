@@ -180,9 +180,8 @@ async def consumir_territorio(mensaje: Any) -> None:
     """
     from uuid import UUID
 
-    from crmcore.authz.jerarquia import TerritorioReplicado, aplicar_territorio, quitar_territorio
+    from crmcore.authz.jerarquia import aplicar_mapa
     from crmcore.db.uow import unidad_de_trabajo
-    from sqlalchemy import select
 
     tipo = getattr(mensaje, "tipo", None) or (
         mensaje.get("tipo") if isinstance(mensaje, dict) else None
@@ -206,44 +205,17 @@ async def consumir_territorio(mensaje: Any) -> None:
         return
 
     tenant_id = UUID(str(bruto))
-    territorio_id = UUID(territorio)
     padre = str(datos.get("padre_id") or "")
-    deben = {UUID(str(u)) for u in (datos.get("usuarios") or [])}
 
     with unidad_de_trabajo(tenant_id) as uow:
-        estan = set(
-            uow.db.execute(
-                select(TerritorioReplicado.usuario_id).where(
-                    TerritorioReplicado.tenant_id == tenant_id,
-                    TerritorioReplicado.territorio_id == territorio_id,
-                    TerritorioReplicado.usuario_id.is_not(None),
-                )
-            )
-            .scalars()
-            .all()
-        )
-        # El territorio en sí, con su padre: hace falta aunque no tenga a nadie,
-        # porque de él cuelgan los de abajo.
-        aplicar_territorio(
+        aplicar_mapa(
             uow.db,
             tenant_id=tenant_id,
-            territorio_id=territorio_id,
+            territorio_id=UUID(territorio),
             padre_id=UUID(padre) if padre else None,
             clave=str(datos.get("territorio") or ""),
+            usuarios={UUID(str(u)) for u in (datos.get("usuarios") or [])},
         )
-        for usuario in deben:
-            aplicar_territorio(
-                uow.db,
-                tenant_id=tenant_id,
-                territorio_id=territorio_id,
-                padre_id=UUID(padre) if padre else None,
-                usuario_id=usuario,
-                clave=str(datos.get("territorio") or ""),
-            )
-        for usuario in estan - deben:
-            quitar_territorio(
-                uow.db, tenant_id=tenant_id, territorio_id=territorio_id, usuario_id=usuario
-            )
 
 
 declarar_consumo(

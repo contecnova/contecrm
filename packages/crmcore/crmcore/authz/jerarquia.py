@@ -205,6 +205,60 @@ def quitar_territorio(
     return len(filas)
 
 
+def aplicar_mapa(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    territorio_id: UUID,
+    padre_id: UUID | None,
+    clave: str,
+    usuarios: set[UUID],
+) -> dict[str, int]:
+    """Deja la copia de un territorio exactamente como dice el mapa publicado.
+
+    Se aplica el mapa **entero**: los que están y, por diferencia, los que ya no.
+    Replicar solo las altas dejaría a quien deja un territorio viendo su cartera
+    para siempre, que es la mitad que de verdad importa.
+
+    Está aquí y no en el consumidor de cada servicio porque la escriben dos
+    sitios: el servicio que publica, en la misma transacción —no va a mandarse un
+    evento a sí mismo para enterarse de lo que acaba de hacer—, y el que la
+    recibe por el bus. Dos copias de este recorrido es cómo acaban dos servicios
+    resolviendo el acceso de forma distinta.
+    """
+    estan = set(
+        db.execute(
+            select(TerritorioReplicado.usuario_id).where(
+                TerritorioReplicado.tenant_id == tenant_id,
+                TerritorioReplicado.territorio_id == territorio_id,
+                TerritorioReplicado.usuario_id.is_not(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # El territorio en sí, con su padre: hace falta aunque no tenga a nadie,
+    # porque de él cuelgan los de abajo.
+    aplicar_territorio(
+        db, tenant_id=tenant_id, territorio_id=territorio_id, padre_id=padre_id, clave=clave
+    )
+    for usuario in usuarios:
+        aplicar_territorio(
+            db,
+            tenant_id=tenant_id,
+            territorio_id=territorio_id,
+            padre_id=padre_id,
+            usuario_id=usuario,
+            clave=clave,
+        )
+    quitados = 0
+    for usuario in estan - usuarios:
+        quitados += quitar_territorio(
+            db, tenant_id=tenant_id, territorio_id=territorio_id, usuario_id=usuario
+        )
+    return {"con_acceso": len(usuarios), "quitados": quitados}
+
+
 def subordinados_de(db: Session, tenant_id: UUID, usuario_id: UUID) -> set[UUID]:
     """Quién depende de este usuario, directa o indirectamente.
 

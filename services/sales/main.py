@@ -20,7 +20,6 @@ from services.sales.consumidores import (
     consumir_comando,
     consumir_firma,
     consumir_organigrama,
-    consumir_territorio,
 )
 from services.sales.respuesta_erp import consumir_respuesta_erp
 
@@ -73,7 +72,6 @@ app = crear_servicio(
         # resolvía el acceso por territorio contra una tabla replicada que
         # **no escribía nadie**: el evento lo emitía `sales` y no lo
         # consumía ningún servicio, así que esa vía devolvía siempre vacío.
-        ("territory.published", consumir_territorio, f"{__name__.split('.')[1]}-territorios"),
         # El sobre firmado mueve la oportunidad (CRM-03.03.02.07): el motor ya
         # emitía el evento con el registro de origen dentro, y lo que faltaba
         # era que alguien lo escuchara.

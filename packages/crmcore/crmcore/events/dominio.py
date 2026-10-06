@@ -1261,7 +1261,11 @@ TERRITORY_PUBLISHED = registrar(
         version=1,
         productor="sales",
         descripcion="Se ha publicado una versión nueva del mapa de territorios",
-        campos=("territorio", "version"),
+        # Con la clave y la versión NO SE PUEDE REPLICAR NADA: quien lo recibe no
+        # sabe ni el identificador, ni de quién cuelga, ni quién lo trabaja. El
+        # evento se amplió y esta declaración se quedó atrás, con lo que el
+        # contrato decía que `party` pedía tres campos que nadie publicaba.
+        campos=("territorio", "version", "territorio_id", "padre_id", "usuarios"),
     )
 )
 MODULE_INSTALLED = registrar(

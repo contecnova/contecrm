@@ -977,6 +977,21 @@ el cliente ya ha recibido un aviso te deja quedando mal sin saberlo.
 Y por eso, cuando alguien configura uno de estos procesos, el CRM avisa si algo
 que no se puede deshacer está colocado en medio en vez de al final.
 
+### Ejemplo 8 — La misma pantalla con dos caras
+
+Si tu organización ha configurado **tipos de registro**, una cuenta pública y una
+privada no se rellenan igual: la pública no enseña los campos que no le aplican, y
+las listas que compartes con el resto vienen recortadas a lo que tu tipo admite.
+
+Abre una cuenta de cada tipo y compara el formulario. Si ves un campo que no tiene
+sentido para ese tipo, no es que falte configuración: es que ese campo no se ha
+declarado como oculto para él, y quien administra el CRM puede hacerlo sin tocar
+nada más.
+
+Si tu empresa tiene **módulos instalados** (paquetes que añaden pantallas y
+listas), lo que tú ajustes de ellos queda marcado como tuyo: la próxima
+actualización del módulo no te lo pisa sin avisar.
+
 ---
 
 ## Qué hacer cuando algo no sale

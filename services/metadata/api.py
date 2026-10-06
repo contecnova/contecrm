@@ -29,6 +29,7 @@ from services.metadata.esquemas import (
     ValidarRegistro,
     ValorListaOut,
 )
+from services.metadata.gobierno import describe_para_tipo
 from services.metadata.modelos import (
     CampoDefinido,
     Layout,
@@ -52,6 +53,45 @@ def _objeto(db: Any, tenant_id: UUID, nombre: str) -> ObjetoDefinido:
             f"El objeto «{nombre}» no existe", error_code="metadata.objeto_no_encontrado"
         )
     return objeto
+
+
+def _toque(db: Any, tenant_id: UUID, *, seccion: str, nombre: str, edicion: bool = False) -> None:
+    """Un elemento que vino de un módulo lo acaban de usar o editar.
+
+    Se llama desde TODAS las vías que tocan un objeto o una lista, no desde la
+    que uno recuerde: con una sola enganchada, el contador de usos y la marca de
+    «modificado por el cliente» dirían la verdad en un camino y mentirían en los
+    otros seis, que es peor que no tenerlos — porque entonces parecen medidos.
+    """
+    from services.metadata import modulos
+
+    modulos.anotar_toque(db, tenant_id, seccion=seccion, nombre=nombre, edicion=edicion)
+
+
+def _tipo_de_registro(db: Any, tenant_id: UUID, objeto_id: UUID, clave: str) -> Any:
+    """El tipo de registro por su clave, o se dice que no existe.
+
+    **No se cae a «el objeto entero»** cuando la clave no existe: devolver la
+    descripción completa ante una clave mal escrita pinta un formulario con
+    campos que ese tipo no usa, y nadie se entera — ni el que integra ni el que
+    lo rellena.
+    """
+    from services.metadata.gobierno import TipoRegistro
+
+    fila = db.execute(
+        select(TipoRegistro).where(
+            TipoRegistro.tenant_id == tenant_id,
+            TipoRegistro.objeto_id == objeto_id,
+            TipoRegistro.clave == clave,
+            TipoRegistro.activo.is_(True),
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado(
+            f"El objeto no tiene un tipo de registro «{clave}»",
+            error_code="metadata.tipo_registro_no_encontrado",
+        )
+    return fila
 
 
 # ── Objetos ───────────────────────────────────────────────────────────────
@@ -126,7 +166,19 @@ def listar_objetos(db: DbDep, principal: AutenticadoDep) -> Any:
         "listas sin saber nada del CRM ni duplicar reglas."
     ),
 )
-def describe(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
+def describe(
+    nombre: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    tipo: str = Query(
+        "",
+        description=(
+            "Clave del tipo de registro. Sin ella se describe el objeto entero; "
+            "con ella, **tal como lo ve ese tipo**: sin los campos que no usa y "
+            "con sus listas recortadas"
+        ),
+    ),
+) -> Any:
     objeto = _objeto(db, principal.tenant_id, nombre)
     campos = list(
         db.execute(
@@ -147,9 +199,31 @@ def describe(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any:
         .all()
     )
     layouts = list(db.execute(select(Layout).where(Layout.objeto_id == objeto.id)).scalars().all())
+
+    # El objeto tal como lo ve el tipo de registro. Sin esto, un formulario de
+    # «cuenta pública» se pintaba con los campos de la privada y con la lista de
+    # opciones entera: el usuario elegía un valor que su tipo no admite y lo
+    # descubría al guardar, si es que lo descubría.
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre)
+    fila_tipo = _tipo_de_registro(db, principal.tenant_id, objeto.id, tipo) if tipo else None
+    vista = {v["nombre"]: v for v in describe_para_tipo(campos, fila_tipo)}
+    salida: list[CampoOut] = []
+    for c in campos:
+        v = vista.get(c.nombre) or {}
+        if v.get("oculto"):
+            continue
+        fuera = CampoOut.model_validate(c)
+        recorte = v.get("opciones")
+        if recorte is not None:
+            # Las del tipo mandan sobre las del campo: es para lo que existe el
+            # tipo. Se copia el diccionario para no tocar la fila de la sesión.
+            fuera.restricciones = {**dict(fuera.restricciones or {}), "opciones": list(recorte)}
+        salida.append(fuera)
+
     return DescribeOut(
         objeto=ObjetoOut.model_validate(objeto),
-        campos=[CampoOut.model_validate(c) for c in campos],
+        tipo_registro=fila_tipo.clave if fila_tipo is not None else "",
+        campos=salida,
         reglas=[ReglaOut.model_validate(r) for r in reglas],
         layouts=[
             {"nombre": layout.nombre, "rol": layout.rol, "secciones": layout.secciones}
@@ -223,6 +297,7 @@ def crear_campo(nombre: str, datos: CrearCampo, db: DbDep, principal: Autenticad
     campo = CampoDefinido(tenant_id=principal.tenant_id, objeto_id=objeto.id, **datos.model_dump())
     db.add(campo)
     db.flush()
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     registrar(
         db,
         accion="metadata.campo_creado",
@@ -255,6 +330,7 @@ def deprecar_campo(nombre: str, campo: str, db: DbDep, principal: AutenticadoDep
         raise NoEncontrado("El campo no existe", error_code="metadata.campo_no_encontrado")
     fila.deprecado = True
     fila.solo_lectura = True
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     registrar(
         db,
         accion="metadata.campo_deprecado",
@@ -395,6 +471,7 @@ def crear_regla(nombre: str, datos: CrearRegla, db: DbDep, principal: Autenticad
     )
     db.add(regla)
     db.flush()
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     return regla
 
 
@@ -433,6 +510,7 @@ def crear_valor(lista: str, datos: CrearValorLista, db: DbDep, principal: Autent
     fila = ValorLista(tenant_id=principal.tenant_id, lista=lista, **datos.model_dump())
     db.add(fila)
     db.flush()
+    _toque(db, principal.tenant_id, seccion="taxonomias", nombre=lista, edicion=True)
     return fila
 
 
@@ -458,6 +536,7 @@ def desactivar_valor(lista: str, valor: str, db: DbDep, principal: AutenticadoDe
     if fila is None:
         raise NoEncontrado("El valor no existe", error_code="metadata.valor_no_encontrado")
     fila.activo = False
+    _toque(db, principal.tenant_id, seccion="taxonomias", nombre=lista, edicion=True)
     return fila
 
 
@@ -729,6 +808,7 @@ def guardar_tipo_registro(
         campos_ocultos=cuerpo.campos_ocultos,
         por_defecto=cuerpo.por_defecto,
     )
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     return {"clave": fila.clave, "nombre": fila.nombre, "por_defecto": fila.por_defecto}
 
 
@@ -755,6 +835,7 @@ def renombrar_campo(
         desde=cuerpo.desde,
         hasta=cuerpo.hasta,
     )
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     return {"desde": cambio.campo_origen, "hasta": cambio.campo_destino, "estado": cambio.estado}
 
 
@@ -781,6 +862,7 @@ def retirar_campo_viejo(
         desde=cuerpo.desde,
         dias_sin_uso=cuerpo.dias_sin_uso,
     )
+    _toque(db, principal.tenant_id, seccion="objetos", nombre=nombre, edicion=True)
     return {"desde": cambio.campo_origen, "estado": cambio.estado, "usos": cambio.usos_del_viejo}
 
 

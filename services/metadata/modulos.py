@@ -226,7 +226,56 @@ def prefijar(modulo: str, nombre: str) -> str:
 
 
 def desprefijar(modulo: str, nombre: str) -> str:
+    """El nombre tal como lo escribió quien hizo el módulo.
+
+    El prefijo existe para que dos módulos no se pisen, **no para que lo lea una
+    persona**. Una entrada de menú que pone «facturacion__envios» es el prefijo
+    asomando por donde no debe.
+    """
     return nombre[len(modulo) + 2 :] if nombre.startswith(f"{modulo}__") else nombre
+
+
+def de_que_modulo(nombre: str) -> tuple[str, str]:
+    """De qué módulo es un elemento, deducido de su prefijo, y su nombre corto.
+
+    Devuelve `("", nombre)` para lo que no viene de ningún módulo, que es la
+    mayoría: los objetos y las listas que creó el cliente a mano no llevan
+    prefijo y aquí no tienen nada que hacer.
+    """
+    if "__" not in nombre:
+        return "", nombre
+    modulo = nombre.split("__", 1)[0]
+    return modulo, desprefijar(modulo, nombre)
+
+
+def anotar_toque(
+    db: Session, tenant_id: UUID, *, seccion: str, nombre: str, edicion: bool = False
+) -> None:
+    """Alguien ha usado —o editado— un elemento que vino de un módulo.
+
+    Es el enganche que faltaba. `anotar_uso` y `marcar_modificado` estaban
+    escritas y **no las llamaba nadie**, y sin ellas dos cosas se comportaban
+    como si no existieran:
+
+    - La telemetría contaba cero usos siempre, así que *todo* salía en «sin
+      usar» y la pregunta que responde —¿sobra la mitad de este módulo?— tenía
+      siempre la misma respuesta equivocada.
+    - `modificado_por_cliente` no lo ponía nunca nadie, con lo que **toda la
+      lógica de respetar el trabajo del cliente al actualizar era inalcanzable**:
+      no había conflictos, no había nada «respetado», y una actualización pisaba
+      los cambios del cliente sin decir ni avisar. Lo peor es que el informe de
+      la actualización salía limpio.
+
+    Se marca **al editar y no se adivina al actualizar**: adivinarlo obligaría a
+    comparar estructuras enteras y a acertar con qué cuenta como cambio, y el día
+    que se fallara se pisaría el trabajo de alguien.
+    """
+    modulo, _ = de_que_modulo(nombre)
+    if not modulo:
+        return
+    if edicion:
+        marcar_modificado(db, tenant_id, modulo=modulo, seccion=seccion, clave=nombre)
+    anotar_uso(db, tenant_id, modulo=modulo, seccion=seccion, clave=nombre)
 
 
 def _comparar_versiones(a: str, b: str) -> int:
@@ -992,6 +1041,11 @@ def superficie_de_modulos(db: Session, tenant_id: UUID) -> dict[str, Any]:
             {
                 "modulo": e.modulo,
                 "clave": e.clave,
+                # El prefijo es para que dos módulos no se pisen, no para
+                # enseñarlo: un menú que pone «facturacion__envios» lo deja
+                # asomando por donde no debe. La clave larga sigue estando,
+                # porque es la que identifica.
+                "nombre": desprefijar(e.modulo, e.clave),
                 **{k: v for k, v in (e.definicion or {}).items() if k != "clave"},
             }
             for e in sorted(elementos, key=lambda e: (e.modulo, e.clave))
@@ -1063,9 +1117,14 @@ def telemetria(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any]:
         "instalado_hace_dias": dias,
         "elementos": len(elementos),
         "usados": len(elementos) - len(sin_usar),
-        "sin_usar": [{"seccion": e.seccion, "clave": e.clave} for e in sin_usar],
+        "sin_usar": [
+            {"seccion": e.seccion, "clave": e.clave, "nombre": desprefijar(clave, e.clave)}
+            for e in sin_usar
+        ],
         "modificados_por_el_cliente": [
-            {"seccion": e.seccion, "clave": e.clave} for e in elementos if e.modificado_por_cliente
+            {"seccion": e.seccion, "clave": e.clave, "nombre": desprefijar(clave, e.clave)}
+            for e in elementos
+            if e.modificado_por_cliente
         ],
         "mas_usados": [
             {"clave": e.clave, "usos": e.usos}

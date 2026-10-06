@@ -624,6 +624,14 @@ Dos cosas que hay que respetar al tocar esto:
   del evento (`declarar_consumo`), y el gate de contratos lo comprueba.
 - **Se aplica el mapa entero, no las altas.** Replicar solo lo que se añade deja a
   quien sale de un territorio viendo su cartera para siempre.
+- **El servicio que publica escribe su propia copia en la misma transacción**, no
+  consumiendo su propio evento. Un servicio que se manda un mensaje para enterarse
+  de lo que acaba de hacer añade un viaje por el bus, una ventana en la que su
+  propia pantalla contesta con el mapa viejo, y la posibilidad de que el mapa quede
+  publicado y la copia no — son dos transacciones distintas. El recorrido que
+  aplica el mapa es **uno solo** (`crmcore.authz.jerarquia.aplicar_mapa`), usado por
+  el que publica y por el que recibe: dos copias de ese recorrido es cómo acaban
+  dos servicios resolviendo el acceso de forma distinta.
 
 ### 3.3 Ajustes por tenant
 
@@ -1068,6 +1076,23 @@ Lo que hay que saber para integrar:
 Cómo se ve desde fuera: la puerta de entrada encamina `/api/v1/sagas` al
 `orchestrator`. Si una ruta existe en el servicio y falta ese encaminamiento,
 devuelve 404 y el módulo sigue incomunicado — es exactamente lo que pasaba.
+
+### 4.4.2 Describir un objeto por tipo de registro
+
+`GET /api/v1/metadata/objetos/{nombre}/describe` admite `?tipo=<clave>`.
+
+- **Sin `tipo`** se describe el objeto entero, y la respuesta trae
+  `tipo_registro: ""`.
+- **Con `tipo`** vienen solo los campos que ese tipo usa, y las listas recortadas
+  a los valores que admite. La respuesta repite qué tipo se aplicó, para que un
+  cliente que cachea descripciones sepa cuál tiene guardada.
+- **Una clave que no existe da 404** (`metadata.tipo_registro_no_encontrado`), no
+  la descripción completa: caerse a «todo» ante una clave mal escrita pinta un
+  formulario con campos que ese tipo no usa y nadie se entera.
+
+Si integras un frontend propio, pide la descripción **por tipo** siempre que el
+registro tenga uno. Pintar el formulario con la descripción general y filtrar en
+el cliente es reimplementar la regla, y es como acaba divergiendo del servidor.
 
 ### 4.5 Eventos
 
