@@ -37,10 +37,30 @@ demás tampoco.
 
 ---
 
-## El presupuesto: tres minutos, y es un gate más
+## El presupuesto: uno por nivel, y es un gate más
 
-El preflight entero tiene **180 segundos**. Si se pasa, falla — aunque todo lo
-demás esté en verde.
+El preflight tiene un tope de CPU **por cada uno de sus tres niveles**. Si se
+pasa, falla — aunque todo lo demás esté en verde.
+
+| nivel | cuándo | coste medido (CPU / reloj) | tope de CPU |
+|---|---|---|---|
+| `rapido` | en cada commit | 22 s / 14 s | 40 s |
+| `push` (`--tests`) | antes de empujar | 139 s / 72 s | 200 s |
+| `completo` (`--todo`) | al cerrar un bloque | 354 s / 216 s | 500 s |
+
+Medido el 06-10-2026 con la máquina libre. El margen es de alrededor de 1,4×:
+lo justo para que no salte por el ruido de una ejecución, y lo bastante apretado
+para que saltar signifique que alguien ha añadido trabajo.
+
+**Antes había un solo número —300 segundos— para los tres niveles**, y eso
+rompía las dos puntas a la vez. El nivel rápido gastaba 22 segundos contra un
+tope de 300: catorce veces de margen, o sea el guardián del crecimiento dormido
+justo en el nivel que más se corre. Y el nivel completo gastaba 354, por encima
+de su propio tope, así que **no podía salir en verde nunca**. Eso no era sólo un
+rojo visible: el apunte de «aquí pasó la batería entera» se escribe *detrás* del
+verde, así que no se escribía ni pasando los veinte gates, y el aviso de «van N
+commits sin un pase completo» no bajaba de N por mucho que se corriera. Un aviso
+que no baja nunca se aprende a ignorar, que es como se pierde el apunte entero.
 
 No es una preferencia de estilo. Un preflight que tarda más deja de correrse: se
 pospone «para luego», y luego se empuja sin él. Entonces el coste se paga entero
@@ -69,7 +89,7 @@ con base y la comprobación de migraciones levantan cada una un Postgres
 embebido, y dos a la vez se quedan esperándose sin terminar nunca. El resto corre
 en paralelo entre sí y con el exclusivo de turno. Por eso el informe sigue
 enseñando el tiempo de cada gate —que es donde se mira cuál engorda— junto al
-tiempo de reloj, que es el que se compara con los 180 segundos.
+tiempo de reloj, que es el que se compara con la referencia del nivel.
 
 **Cuántos a la vez lo decide la memoria libre, no los núcleos.** Con seis en
 paralelo cada gate pasó de 14 a 112 segundos, y no era la CPU: son diez núcleos y

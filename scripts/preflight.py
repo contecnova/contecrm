@@ -265,8 +265,7 @@ GATES: list[Gate] = [
 # paralelo, sumar decía tres minutos y medio donde quien lo lanzaba esperaba
 # minuto y medio. Lo que hace que un preflight deje de correrse es lo que se
 # tarda en volver al teclado.
-PRESUPUESTO_S = 180.0
-
+#
 # Y el presupuesto de CPU, que es lo que de verdad dice si el preflight ha
 # engordado. El reloj de pared mide lo que espera quien lo lanza —y por eso se
 # sigue enseñando—, pero **no distingue un gate que ha engordado de una máquina
@@ -278,7 +277,42 @@ PRESUPUESTO_S = 180.0
 #
 # El CPU sí es estable: si alguien añade trabajo, sube; si la máquina está
 # cargada, no. Así que el rojo va por CPU y el reloj informa.
-PRESUPUESTO_CPU_S = 300.0
+#
+# Y UNO POR NIVEL, porque son tres cosas distintas y un solo número las trata
+# igual. Con el número único en 300 s pasaban las dos cosas malas a la vez:
+#
+#   · el nivel rápido gasta 22 s y tenía 300 de margen, o sea el guardián del
+#     crecimiento dormido justo en el nivel que más se corre;
+#   · el nivel completo gasta 354 s y por tanto **no podía salir en verde
+#     nunca**, con lo que `_apuntar_pase_completo` era inalcanzable: el apunte
+#     de «aquí pasó la batería entera» no se escribía ni pasando los 20 gates.
+#     El aviso de «van N commits sin un pase completo» no bajaba de N, y eso
+#     enseña a ignorarlo, que es como se pierde el apunte entero.
+#
+# Medido el 06-10-2026 en esta máquina y con la máquina libre, CPU / reloj:
+#     rápido   22 s / 14 s   (tres pases, idénticos)
+#     push    139 s / 72 s
+#     completo 354 s / 216 s
+#
+# El margen es de ~1,4×: lo justo para que no salte por el ruido de una
+# ejecución y lo bastante apretado para que saltar signifique que alguien ha
+# añadido trabajo. Si salta, se arregla el gate lento; no se sube el número.
+PRESUPUESTOS: dict[str, tuple[float, float]] = {
+    # nivel: (reloj de referencia, tope de CPU)
+    "rapido": (35.0, 40.0),
+    "push": (120.0, 200.0),
+    "completo": (330.0, 500.0),
+}
+
+
+def _presupuesto(tiers: set[str]) -> tuple[str, float, float]:
+    """Qué nivel es éste y qué se le permite."""
+    if "suite" in tiers:
+        return "completo", *PRESUPUESTOS["completo"]
+    if "tests" in tiers:
+        return "push", *PRESUPUESTOS["push"]
+    return "rapido", *PRESUPUESTOS["rapido"]
+
 
 # Lo que cuesta de memoria el gate más gordo, medido: los que recorren los trece
 # servicios construyen las trece aplicaciones FastAPI y se quedan en medio giga.
@@ -533,10 +567,11 @@ def main() -> int:
         return 1
 
     carga = _carga()
-    if cpu > PRESUPUESTO_CPU_S:
+    nivel, presupuesto_reloj, presupuesto_cpu = _presupuesto(tiers)
+    if cpu > presupuesto_cpu:
         print(
-            f"\nTodo en verde, PERO el preflight gasta {cpu:.0f}s de CPU y el "
-            f"presupuesto son {PRESUPUESTO_CPU_S:.0f}s "
+            f"\nTodo en verde, PERO el nivel «{nivel}» gasta {cpu:.0f}s de CPU "
+            f"y su presupuesto son {presupuesto_cpu:.0f}s "
             f"(reloj: {total:.0f}s).\n\n"
             "Un preflight que pasa de tres minutos deja de correrse, y un gate "
             "que no se corre no garantiza nada — con lo que el coste se paga\n"
@@ -545,13 +580,13 @@ def main() -> int:
         )
         return 1
 
-    if total > PRESUPUESTO_S:
+    if total > presupuesto_reloj:
         # Lento de reloj pero no de trabajo: la máquina está ocupada. Se dice y
         # NO se falla. Fallar aquí es fallar por lo que esté compilando otra
         # ventana, y un rojo que no depende de lo que uno ha hecho se ignora a
         # la segunda vez.
         print(
-            f"\nTodo en verde. {total:.0f}s de reloj —más de los {PRESUPUESTO_S:.0f}s "
+            f"\nTodo en verde. {total:.0f}s de reloj —más de los {presupuesto_reloj:.0f}s "
             f"de referencia— pero solo {cpu:.0f}s de CPU"
             + (f", con la máquina a una carga de {carga:.0f}" if carga else "")
             + ".\nNo ha engordado el preflight: está compartiendo máquina. El "
@@ -560,8 +595,8 @@ def main() -> int:
         return 0
 
     print(
-        f"\nTodo en verde. {total:.0f}s de reloj y {cpu:.0f}s de CPU de "
-        f"{PRESUPUESTO_CPU_S:.0f}s de presupuesto, con hasta {PARALELOS} gates a la vez."
+        f"\nTodo en verde. {total:.0f}s de reloj y {cpu:.0f}s de CPU de los "
+        f"{presupuesto_cpu:.0f}s del nivel «{nivel}», con hasta {PARALELOS} gates a la vez."
     )
     # Y QUÉ NIVEL FUE ÉSTE. Un push con el subconjunto no puede constar como
     # batería completa: si no se dice, «todo en verde» se lee igual en los dos
