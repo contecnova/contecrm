@@ -12,7 +12,7 @@ error por intento es una conversación de cinco viajes con el servidor.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from crmcore.errors import ErrorValidacion
@@ -88,9 +88,34 @@ def _fecha(valor: Any, r: dict[str, Any]) -> str:
     except ValueError:
         raise _Invalido("no es una fecha válida (usa ISO-8601)")
     texto = parseada.isoformat()
-    if r.get("no_pasado") and str(texto) < datetime.now().isoformat():
+    if r.get("no_pasado") and _esta_en_el_pasado(parseada):
         raise _Invalido("no puede estar en el pasado")
     return texto
+
+
+def _esta_en_el_pasado(parseada: date | datetime, ahora: datetime | None = None) -> bool:
+    """Si esta fecha ya pasó, comparando **instantes y no textos**.
+
+    Comparaba `isoformat()` contra `isoformat()`, que es comparar cadenas: dos
+    instantes iguales escritos con husos distintos —`…T00:00:00+02:00` y
+    `…T22:00:00Z`— se ordenan por el carácter, no por el momento. Y el reloj iba
+    sin huso, así que la mitad de las comparaciones mezclaba una hora local con
+    una marca con desplazamiento. Una fecha del futuro podía salir «en el
+    pasado», y al revés — en un campo que existe justamente para impedir lo
+    segundo.
+
+    `ahora` se recibe para poder fijarlo en una prueba, igual que `hoy` en las
+    funciones puras del producto. Sin él, el instante actual en UTC.
+    """
+    momento = ahora or datetime.now(timezone.utc)
+    if isinstance(parseada, datetime):
+        # Una fecha sin huso se interpreta en UTC y no en la hora de la máquina:
+        # el servidor puede estar en cualquier sitio, y eso no puede cambiar si
+        # una fecha se acepta.
+        con_huso = parseada if parseada.tzinfo else parseada.replace(tzinfo=timezone.utc)
+        return con_huso < momento
+    # Una fecha sin hora sólo está en el pasado si el día entero quedó atrás.
+    return parseada < momento.date()
 
 
 def _lista(valor: Any, r: dict[str, Any]) -> str:

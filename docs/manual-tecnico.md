@@ -633,6 +633,45 @@ Dos cosas que hay que respetar al tocar esto:
   el que publica y por el que recibe: dos copias de ese recorrido es cómo acaban
   dos servicios resolviendo el acceso de forma distinta.
 
+### 3.2.4 De dónde sale «hoy»
+
+Para quien escriba código nuevo. Hay una regla y tiene guardián.
+
+**El día de hoy se recibe, no se busca.** Veintidós funciones del producto llevan
+un parámetro `hoy`, y eso es una decisión, no un descuido: una función que mira el
+reloj por dentro no se puede probar sin mover el reloj de la máquina, y entonces
+lo que se prueba es el reloj. Con `hoy` recibido, una prueba fija el día y
+comprueba el cálculo.
+
+Las dos mitades de esa regla:
+
+- **Al calcular**: recibe `hoy: date | None = None` y no llames a `date.today()`.
+- **Al llamar**: pásale `fechas.hoy(db)`. Eso es el día **donde está el cliente**,
+  no donde está el servidor.
+
+Por qué importa el segundo punto: entre las 00:00 y las 02:00 en España, la fecha
+en UTC es la del día anterior. Un «últimos siete días» calculado con el reloj de
+la máquina se come el último día, y nadie lo nota salvo quien echa de menos un
+registro. Ya costó veinticinco sitios en una revisión, y al escribir el guardián
+quedaban tres más.
+
+**Lo que el guardián no deja pasar** (`test_el_reloj_no_se_mira_a_escondidas.py`):
+
+- `date.today()` y `datetime.utcnow()` en `services/` o en el núcleo. La única
+  excepción es `crmcore/fechas.py`, que es quien resuelve la hora del tenant.
+- Una función que reciba `hoy` y aun así mire el reloj por dentro: en el caso en
+  que no se lo pasan sigue siendo imposible de fijar desde fuera.
+- Que este apartado desaparezca del manual.
+
+**Instantes, no textos.** Para comparar fechas, compáralas como `datetime`, nunca
+sus `isoformat()`: dos instantes iguales escritos con husos distintos se ordenan
+por el carácter y no por el momento. `…T21:00:00+02:00` parece mayor que
+`…T20:00:00Z` y es dos horas anterior. Lo tenía la validación de «no puede estar
+en el pasado», que es el campo que existe justamente para eso.
+
+Y una fecha sin huso se interpreta **en UTC**, no en la hora de la máquina: dónde
+esté el servidor no puede decidir si un dato se acepta.
+
 ### 3.3 Ajustes por tenant
 
 Lo que cambia por cliente y no por despliegue: umbrales de calidad, plazos de

@@ -29,6 +29,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore import fechas
 from crmcore.audit import registrar
 from crmcore.authz.abac import Condicion, a_sql
 from crmcore.db.uow import UnidadDeTrabajo
@@ -57,8 +58,8 @@ PROFUNDIDAD_MAXIMA = 7
 # dice. Guardar la fecha calculada haría que «leads recientes» devolviera siempre
 # los mismos.
 TEMPORALES = {
-    "hace_menos_de_dias": lambda valor: date.today() - timedelta(days=int(valor)),
-    "hace_mas_de_dias": lambda valor: date.today() - timedelta(days=int(valor)),
+    "hace_menos_de_dias": lambda valor, hoy: hoy - timedelta(days=int(valor)),
+    "hace_mas_de_dias": lambda valor, hoy: hoy - timedelta(days=int(valor)),
 }
 
 
@@ -120,12 +121,21 @@ def validar(definicion: dict[str, Any], *, profundidad: int = 0) -> None:
 # ── Evaluación en memoria (CRM-02.01.01.01) ───────────────────────────────
 
 
-def _valor_temporal(operador: str, valor: Any) -> Any:
+def _valor_temporal(operador: str, valor: Any, hoy: date | None = None) -> Any:
+    """El límite de un operador temporal, contado desde el día del cliente.
+
+    `hoy` **se recibe**, no se mira el reloj aquí. Con `date.today()` el corte se
+    calculaba en UTC: un segmento «leads de los últimos siete días» consultado a
+    las 00:30 en Madrid contaba desde el día anterior, y el lead de ayer por la
+    noche se quedaba fuera sin que nadie entendiera por qué. Es el mismo motivo
+    por el que las funciones puras del producto reciben `hoy` en vez de
+    buscárselo.
+    """
     fn = TEMPORALES.get(operador)
-    return fn(valor) if fn else valor
+    return fn(valor, hoy or fechas.hoy()) if fn else valor
 
 
-def evalua(definicion: dict[str, Any], ambito: dict[str, Any]) -> bool:
+def evalua(definicion: dict[str, Any], ambito: dict[str, Any], hoy: date | None = None) -> bool:
     """¿Este registro está en el segmento?
 
     Se usa para decidir sobre uno concreto —«¿este lead entra en el recorrido?»—
@@ -137,15 +147,15 @@ def evalua(definicion: dict[str, Any], ambito: dict[str, Any]) -> bool:
         op = definicion["op"]
         hijos = definicion.get("hijos") or []
         if op == "y":
-            return all(evalua(h, ambito) for h in hijos)
+            return all(evalua(h, ambito, hoy) for h in hijos)
         if op == "o":
-            return any(evalua(h, ambito) for h in hijos)
-        return not evalua(hijos[0], ambito)
+            return any(evalua(h, ambito, hoy) for h in hijos)
+        return not evalua(hijos[0], ambito, hoy)
 
     operador = str(definicion.get("operador", "="))
     valor = definicion.get("valor")
     if operador in TEMPORALES:
-        limite = _valor_temporal(operador, valor)
+        limite = _valor_temporal(operador, valor, hoy)
         condicion = Condicion(
             atributo=str(definicion["atributo"]),
             operador=">=" if operador == "hace_menos_de_dias" else "<",
@@ -160,7 +170,9 @@ def evalua(definicion: dict[str, Any], ambito: dict[str, Any]) -> bool:
 # ── Traducción a SQL (CRM-02.01.01.01, .04) ───────────────────────────────
 
 
-def a_condicion_sql(definicion: dict[str, Any], columnas: dict[str, Any]) -> Any:
+def a_condicion_sql(
+    definicion: dict[str, Any], columnas: dict[str, Any], hoy: date | None = None
+) -> Any:
     """Traduce el árbol a un `WHERE`. Lanza si alguna parte no se puede.
 
     **Lanza en vez de omitir la condición que no sabe traducir.** Omitirla daría
@@ -170,7 +182,7 @@ def a_condicion_sql(definicion: dict[str, Any], columnas: dict[str, Any]) -> Any
     """
     if "op" in definicion:
         op = definicion["op"]
-        hijos = [a_condicion_sql(h, columnas) for h in (definicion.get("hijos") or [])]
+        hijos = [a_condicion_sql(h, columnas, hoy) for h in (definicion.get("hijos") or [])]
         if op == "y":
             return and_(*hijos)
         if op == "o":
@@ -189,7 +201,7 @@ def a_condicion_sql(definicion: dict[str, Any], columnas: dict[str, Any]) -> Any
     operador = str(definicion.get("operador", "="))
     valor = definicion.get("valor")
     if operador in TEMPORALES:
-        limite = _valor_temporal(operador, valor)
+        limite = _valor_temporal(operador, valor, hoy)
         return columna >= limite if operador == "hace_menos_de_dias" else columna < limite
 
     traducida = a_sql(columna, operador, valor)
