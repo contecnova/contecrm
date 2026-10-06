@@ -1495,7 +1495,7 @@ llamada de nadie.
 | `tenant.provisioned` | tenancy | tenant_id, slug, plan, region | `POST /api/v1/tenants` | — |
 | `tenant.reactivated` | tenancy | tenant_id | `POST /api/v1/tenants/{tenant_id}/estado` | — |
 | `tenant.suspended` | tenancy | tenant_id, motivo | `POST /api/v1/tenants/{tenant_id}/estado` | — |
-| `territory.published` | sales | territorio, version | `POST /api/v1/territorios/{territorio_id}/publicar` | — |
+| `territory.published` | sales | territorio, version, territorio_id, padre_id, usuarios | `POST /api/v1/territorios/{territorio_id}/publicar` | — |
 | `user.deprovisioned` | identity | user_id, via | `DELETE /api/v1/scim/v2/Users/{usuario_id}`, `DELETE /api/v1/usuarios/{usuario_id}`, `POST /api/v1/usuarios/{usuario_id}/desactivar` | — |
 | `user.org.changed` | identity | user_id, roles, superior_id, unidad_id, activa | `DELETE /api/v1/usuarios/{usuario_id}`, `PATCH /api/v1/scim/v2/Users/{usuario_id}`, `POST /api/v1/sso/oidc/callback` (+4) | — |
 | `user.passkey.registered` | identity | usuario_id, passkey_id, nombre | `POST /api/v1/auth/passkeys/confirmar` | — |

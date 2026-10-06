@@ -143,6 +143,77 @@ def limites(settings: Any) -> dict[str, int]:
     }
 
 
+def clase_del_objeto_replicado(db: Any, tenant_id: Any, objeto: str, *, version: int = 1) -> Any:
+    """La clase de mensaje de este objeto PARA ESTE TENANT.
+
+    Los campos y los números salen de la copia replicada del esquema, que es la
+    misma de la que se generó el `.proto` que tiene el integrador. Si se
+    construyera con los campos de otro sitio —o recalculando los números—, el
+    fichero que se entregó y lo que el servidor entiende dirían cosas distintas,
+    y eso no da error: el mensaje se decodifica y el valor entra en el campo
+    equivocado.
+    """
+    from crmcore.metamodelo import campos_de, numeros_rpc_de
+    from crmcore.rpc.esquema import CAMPOS_QUE_NO_SALEN
+    from crmcore.rpc.mensajes import clase_de_objeto
+
+    campos = [
+        {
+            "clave": str(c.get("nombre") or ""),
+            "tipo": str(c.get("tipo") or ""),
+            "obligatorio": bool(c.get("obligatorio")),
+        }
+        for c in campos_de(db, tenant_id, objeto)
+        if str(c.get("tipo") or "") not in CAMPOS_QUE_NO_SALEN
+    ]
+    if not campos:
+        raise PeticionMalFormada(
+            f"«{objeto}» no tiene contrato publicado en este tenant. Un gRPC que "
+            "contesta con un mensaje vacío al objeto que no conoce hace creer al "
+            "que integra que el registro no tiene datos.",
+            error_code="rpc.objeto_sin_contrato",
+        )
+    return clase_de_objeto(
+        objeto=objeto,
+        campos=campos,
+        asignados=numeros_rpc_de(db, tenant_id, objeto),
+        version=version,
+    )
+
+
+def descodificar(clase: Any, peticion: bytes) -> dict[str, Any]:
+    """Los bytes de la petición, en diccionario.
+
+    Protobuf descarta lo desconocido al leer y eso aquí **se queda así**: es lo
+    que permite que un cliente viejo sobreviva a un campo nuevo. Lo que no se
+    tolera es al revés, y de eso se encarga `a_mensaje` al contestar.
+    """
+    from crmcore.rpc.mensajes import a_diccionario
+
+    mensaje = clase()
+    mensaje.ParseFromString(bytes(peticion or b""))
+    return a_diccionario(mensaje)
+
+
+def codificar(clase: Any, datos: dict[str, Any]) -> bytes:
+    """El diccionario de la respuesta, en bytes del contrato.
+
+    Lo que el CRM devuelve y el contrato no publica **se queda fuera**: los
+    identificadores internos, las marcas de tiempo del sistema y los campos
+    cifrados —que no salen por aquí a propósito— no están en el mensaje, y
+    metérselos a la fuerza rompería la serialización entera por un campo que
+    nadie pidió. El filtro va en esta dirección y no en la de entrada: al leer,
+    lo desconocido es un cliente de otra versión; al escribir, un campo que el
+    contrato no tiene no lo puede entender nadie.
+    """
+    from crmcore.rpc.mensajes import a_mensaje
+
+    publicables = {campo.name for campo in clase.DESCRIPTOR.fields}
+    return a_mensaje(
+        clase, {k: v for k, v in (datos or {}).items() if k in publicables}
+    ).SerializeToString()
+
+
 def crear_servidor(
     *,
     manejadores: dict[str, Any],
@@ -176,9 +247,36 @@ def crear_servidor(
         )
 
     def _despachar(peticion: bytes, contexto: Any, ruta: str) -> Any:
+        """Bytes de entrada → diccionario → manejador → bytes de salida.
+
+        **Esto es lo que faltaba.** El servidor pasaba los bytes tal cual al
+        manejador y declaraba `bytes` como serializador: el manejador recibía
+        `bytes` donde esperaba un mensaje y se quedaba con el cuerpo vacío —un
+        `Create` por gRPC creaba un registro sin datos— y la respuesta ni
+        siquiera llegaba a serializarse. El transporte estaba montado, encendido
+        y no funcionaba en ninguna de las dos direcciones.
+        """
+        from crmcore.db.session import nueva_sesion
+
         partes = resolver_metodo(ruta)
         principal = principal_de_metadatos(list(contexto.invocation_metadata()))
-        return manejadores[partes["metodo"]](principal, partes["objeto"], peticion)
+        objeto = partes["objeto"]
+
+        db = nueva_sesion(getattr(principal, "tenant_id", None))
+        try:
+            clase = clase_del_objeto_replicado(
+                db, principal.tenant_id, objeto, version=int(partes["version"])
+            )
+        finally:
+            db.close()
+
+        salida = manejadores[partes["metodo"]](principal, objeto, descodificar(clase, peticion))
+        if partes["metodo"] in ("List", "Watch"):
+            # En flujo: cada elemento es un mensaje. Mandar la lista entera en
+            # uno solo haría que el tope de tamaño de mensaje decidiera cuántos
+            # registros puede tener un cliente.
+            return (codificar(clase, fila) for fila in (salida or []))
+        return codificar(clase, salida or {})
 
     class _Generico(grpc.GenericRpcHandler):
         def service(self, detalles: Any) -> Any:
@@ -190,10 +288,15 @@ def crear_servidor(
                 if en_flujo
                 else (grpc.unary_unary_rpc_method_handler)
             )
+            # Sin (de)serializador: los bytes entran y salen tal cual, y la
+            # conversión al contrato del tenant la hace `_despachar`, que es el
+            # único sitio donde se sabe de qué tenant es la petición. Declarar
+            # `bytes` aquí —que es lo que había— no era «sin conversión»: era
+            # `bytes(diccionario)`, que revienta.
             return manejador(
                 lambda peticion, contexto, _r=ruta: _despachar(peticion, contexto, _r),
-                request_deserializer=bytes,
-                response_serializer=bytes,
+                request_deserializer=None,
+                response_serializer=None,
             )
 
     servidor = grpc.server(

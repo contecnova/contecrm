@@ -202,7 +202,17 @@ def _manejadores_rpc(app: Any) -> dict[str, Any]:
 
     def _list(principal: Any, objeto: str, peticion: Any) -> Any:
         salida = _pedir(principal, "GET", _coleccion(objeto))
-        return salida.get("datos", salida) if isinstance(salida, dict) else salida
+        # `items`, que es como se llama en `PaginaDeListado`. Buscaba «datos»,
+        # que no existe en ninguna respuesta del CRM, así que devolvía el sobre
+        # entero —con su cursor y su total— en vez de la lista: por gRPC, un
+        # `List` contestaba un elemento con forma de página en lugar de N
+        # registros.
+        if not isinstance(salida, dict):
+            return salida
+        for clave in ("items", "datos"):
+            if isinstance(salida.get(clave), list):
+                return salida[clave]
+        return salida
 
     def _create(principal: Any, objeto: str, peticion: Any) -> Any:
         return _pedir(principal, "POST", _coleccion(objeto), _cuerpo(peticion))

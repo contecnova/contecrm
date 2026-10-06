@@ -834,6 +834,47 @@ def aplicar_esquema_fisico(
     }
 
 
+def numeros_rpc_de(db: Session, tenant_id: UUID, objeto: str) -> dict[str, int]:
+    """Los números del contrato protobuf de este objeto, tal como se publicaron.
+
+    Van guardados y **no se recalculan al servir**: recalcularlos daría números
+    distintos según el orden en que vinieran los campos, y un número reutilizado
+    no rompe nada visible — el mensaje se decodifica, el valor entra en el campo
+    equivocado y nadie se entera hasta que alguien pregunta por qué ese cliente
+    tiene una zona que no existe.
+
+    Vacío significa que ese objeto no tiene contrato publicado todavía, que no es
+    lo mismo que «no tiene campos».
+    """
+    salida: dict[str, int] = {}
+    for campo in campos_de(db, tenant_id, objeto):
+        numero = campo.get("numero_rpc")
+        if isinstance(numero, int) and numero > 0:
+            salida[str(campo.get("nombre") or "")] = numero
+    salida.pop("", None)
+    return salida
+
+
+def _con_numeros(campos: list[dict[str, Any]], numeros: dict[str, Any]) -> list[dict[str, Any]]:
+    """Mete el número del contrato dentro de cada campo replicado.
+
+    Dentro del campo y no en una columna aparte a propósito: así viaja con él en
+    la misma escritura, y no puede quedarse un esquema nuevo con los números del
+    anterior — que es la forma silenciosa de que el contrato diga una cosa y el
+    servidor hable otra.
+    """
+    if not numeros:
+        return campos
+    salida = []
+    for campo in campos:
+        copia = dict(campo)
+        numero = numeros.get(str(copia.get("nombre") or ""))
+        if isinstance(numero, int) and numero > 0:
+            copia["numero_rpc"] = numero
+        salida.append(copia)
+    return salida
+
+
 def aplicar_esquema(
     db: Session,
     *,
@@ -841,6 +882,7 @@ def aplicar_esquema(
     objeto: str,
     campos: list[dict[str, Any]],
     version: int,
+    numeros_rpc: dict[str, Any] | None = None,
 ) -> EsquemaTenant | None:
     """Escribe el esquema replicado, descartando lo que llega tarde.
 
@@ -849,6 +891,7 @@ def aplicar_esquema(
     había quitado. Comparar la versión es lo que lo impide, y por eso la versión
     la pone el productor y no el reloj.
     """
+    campos = _con_numeros(campos, dict(numeros_rpc or {}))
     fila = db.execute(
         select(EsquemaTenant).where(
             EsquemaTenant.tenant_id == tenant_id, EsquemaTenant.objeto == objeto
@@ -909,6 +952,7 @@ async def consumir_esquema(mensaje: Any) -> None:
             objeto=objeto,
             campos=campos,
             version=int(datos.get("version") or 0),
+            numeros_rpc=dict(datos.get("numeros_rpc") or {}),
         )
         if aplicada is not None and fisico.get("aplicado"):
             logger.info(

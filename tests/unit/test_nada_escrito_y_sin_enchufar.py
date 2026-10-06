@@ -236,7 +236,17 @@ CARPETAS = (
 #                   actualización salía limpio; y la telemetría contaba cero
 #                   usos siempre, así que «¿sobra la mitad de este módulo?»
 #                   tenía siempre la misma respuesta equivocada.
-TOPE = 19
+#   06-10-2026  17  El transporte gRPC estaba ENCENDIDO Y NO FUNCIONABA en
+#                   ninguna de las dos direcciones: declaraba `bytes` como
+#                   (de)serializador, así que el manejador recibía bytes crudos
+#                   donde esperaba un mensaje —se quedaba con el cuerpo vacío, y
+#                   un `Create` por gRPC creaba un registro sin datos— y la
+#                   respuesta ni llegaba a serializarse, porque `bytes(dict)`
+#                   revienta. Las dos piezas que faltaban, `clase_de_objeto` y
+#                   `a_mensaje`, estaban escritas y sin llamante. De paso: los
+#                   números del contrato no viajaban con el esquema, y el `List`
+#                   buscaba una clave que no existe en ninguna respuesta.
+TOPE = 17
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

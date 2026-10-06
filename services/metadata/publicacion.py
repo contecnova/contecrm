@@ -178,6 +178,14 @@ def publicar(
             "cambio": "publicacion",
             "campos": campos,
             "version": version,
+            # Los números del contrato protobuf VAN CON EL ESQUEMA. Sin ellos,
+            # cada servicio los recalcularía al servir por gRPC y le saldrían
+            # otros: un número reutilizado no rompe nada visible —el mensaje se
+            # decodifica y el valor entra en el campo equivocado—, y nadie se
+            # entera hasta que alguien pregunta por qué ese cliente tiene una
+            # zona que no existe. El número es el contrato; el orden es
+            # cosmético.
+            "numeros_rpc": contrato.get("numeros") or {},
         },
         dedup_key=f"esquema:{tenant_id}:{objeto}:{version}",
     )

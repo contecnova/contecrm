@@ -1007,6 +1007,30 @@ Dos cosas al encenderlo:
   deja a medias la llamada en curso, que es siempre la del cliente que mueve
   millones de filas.
 
+Y cómo viajan los datos, que es lo que hay que saber para integrar:
+
+- **La clase del mensaje se construye por tenant**, desde la copia replicada del
+  esquema y con los números que se publicaron — los mismos del `.proto` que se te
+  entregó. No se recalculan al servir: recalcularlos daría números distintos según
+  el orden de los campos, y un número reutilizado no da error, mete el valor en el
+  campo equivocado.
+- **Al leer, lo desconocido se descarta** (es protobuf, y es lo que permite que un
+  cliente desplegado hace seis meses sobreviva a un campo nuevo). **Al escribir, un
+  campo que no existe en el contrato se rechaza** con `rpc.campo_desconocido`: quien
+  manda `descuneto` cree que puso un descuento, y lo que recibiría es un «todo bien»
+  con la ficha sin él.
+- **Un campo que no viene no vuelve a cero.** Los campos opcionales llevan presencia
+  explícita; sin ella, un `Update` de dos campos pondría a cero los otros veinte.
+- **Lo que el CRM devuelve y el contrato no publica se queda fuera** de la respuesta:
+  identificadores internos, marcas de tiempo del sistema y los campos cifrados, que
+  no salen por aquí a propósito.
+- **`List` y `Watch` van en flujo, un mensaje por registro.** Mandar la página entera
+  en uno solo haría que el tope de tamaño de mensaje decidiera cuántos registros
+  puede tener un cliente.
+- **Un objeto sin contrato publicado en ese tenant contesta
+  `rpc.objeto_sin_contrato`**, no un mensaje vacío: un mensaje vacío hace creer al
+  que integra que el registro no tiene datos.
+
 ### 4.4 Peticiones compuestas
 
 Varias operaciones en una llamada y **en una transacción**, en

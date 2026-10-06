@@ -992,6 +992,16 @@ Si tu empresa tiene **módulos instalados** (paquetes que añaden pantallas y
 listas), lo que tú ajustes de ellos queda marcado como tuyo: la próxima
 actualización del módulo no te lo pisa sin avisar.
 
+### Si tu empresa conecta el CRM con otro programa
+
+Hay dos formas de conectarlo: la normal, que vale para casi todo, y una segunda vía
+más rápida para quien mueve muchísimos datos (millones de filas). Esa segunda vía
+hay que encenderla a propósito y la configura quien administra el CRM.
+
+Lo único que te afecta a ti: si tu empresa la usa, los datos que se mandan desde el
+otro programa pasan **por los mismos permisos y las mismas validaciones** que si los
+escribieras tú en pantalla. No hay una puerta de atrás con menos comprobaciones.
+
 ---
 
 ## Qué hacer cuando algo no sale

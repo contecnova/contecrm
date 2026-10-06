@@ -13499,3 +13499,35 @@ pisen. Ese prefijo es técnico: una entrada de menú que pone
 «facturacion__envios» lo deja asomando por donde no debe. La superficie de
 pantallas y la telemetría devuelven ahora también el nombre corto, sin quitar la
 clave larga, que es la que identifica.
+
+## El transporte gRPC, que estaba encendido y no funcionaba (`CRM-00.02.01.03`)
+
+El ajuste se leía, el servidor se levantaba, el contrato `.proto` se generaba y se
+le entregaba al integrador. Lo que no había era **la conversión entre los bytes
+del protocolo y el CRM**, en ninguna de las dos direcciones.
+
+El servidor declaraba `bytes` como lector y como escritor de mensajes. Eso no es
+«sin conversión»: es que el manejador recibía bytes crudos donde esperaba un
+mensaje —se quedaba con el cuerpo vacío, y **un alta por gRPC creaba un registro
+sin datos**— y la respuesta ni siquiera llegaba a serializarse.
+
+Las dos piezas que faltaban llevaban tiempo escritas y probadas, sin que las
+llamara nadie: la que construye la clase del mensaje desde el mismo esquema del
+que sale el `.proto`, y la que lo rellena.
+
+### Los números del contrato ahora viajan con el esquema
+
+Un contrato protobuf no se identifica por el nombre de sus campos sino por su
+**número**. Esos números se asignan al publicar el esquema y se guardan, pero no
+salían con el evento que replica el esquema a los demás servicios: cada uno los
+habría recalculado al servir, y le habrían salido otros.
+
+Eso no da error. El mensaje se decodifica igual, el valor entra en el campo
+equivocado, y nadie se entera hasta que alguien pregunta por qué ese cliente tiene
+una zona que no existe.
+
+### Y un listado devolvía el sobre, no las cartas
+
+El manejador de `List` buscaba una clave que no existe en ninguna respuesta del
+CRM, así que devolvía la página entera —con su cursor y su total— como si fuera un
+único registro, en vez de los N que contiene.
