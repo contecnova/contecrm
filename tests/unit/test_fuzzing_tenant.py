@@ -411,18 +411,29 @@ def _cliente(nombre: str) -> Iterator[tuple[Any, Any]]:
     #
     # Va por configuración y no tocando el módulo, porque es exactamente para lo
     # que existe `OUTBOX_ENABLED`.
-    previo = os.environ.get("OUTBOX_ENABLED")
+    # Y LAS PUERTAS OPCIONALES, ABIERTAS. SSO, SCIM y el segundo factor vienen
+    # apagados de fábrica, y apagados contestan 403 a todo — que es justo el
+    # código que esta prueba trata como sospechoso, porque un 403 puede estar
+    # tapando un aislamiento roto. Con ellas abiertas sus rutas se recorren de
+    # verdad: 13 de SCIM y 12 del segundo factor que si no se quedarían sin
+    # probar contra fugas entre tenants, que es como se quedaron hasta hoy.
+    opcionales = ("SCIM_ENABLED", "MFA_ENABLED", "SAML_ENABLED", "OIDC_ENABLED")
+
+    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", *opcionales)}
     os.environ["OUTBOX_ENABLED"] = "false"
+    for clave in opcionales:
+        os.environ[clave] = "true"
     get_settings.cache_clear()
     try:
         app = importlib.import_module(f"services.{nombre}.main").app
         with TestClient(app) as cliente:
             yield app, cliente
     finally:
-        if previo is None:
-            os.environ.pop("OUTBOX_ENABLED", None)
-        else:
-            os.environ["OUTBOX_ENABLED"] = previo
+        for clave, valor in previo.items():
+            if valor is None:
+                os.environ.pop(clave, None)
+            else:
+                os.environ[clave] = valor
         get_settings.cache_clear()
 
 
