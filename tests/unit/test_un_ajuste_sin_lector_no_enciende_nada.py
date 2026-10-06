@@ -65,16 +65,15 @@ DONDE_BUSCAR: tuple[tuple[str, tuple[str, ...]], ...] = (
 #                   readiness dice cuando están apagados—, LOG_REQUEST_BODY con
 #                   el cuerpo censurado por dentro, y AUDIT_SIEM_URL quitado
 #                   porque la exportación es por descarga, no por empuje
+#   06-10-2026  19  resiliencia y arranque: CIRCUIT_BREAKER_ENABLED (que además
+#                   cierra los circuitos ya abiertos), DEGRADACION_ENABLED,
+#                   INBOX_ENABLED y DB_MIGRATE_ON_BOOT con cerrojo de aviso
 SIN_LECTOR_HOY = {
     "bus_tls",
     "cache_tls",
-    "circuit_breaker_enabled",
-    "db_migrate_on_boot",
-    "degradacion_enabled",
     "disponibilidad_enterprise",
     "disponibilidad_estandar",
     "disponibilidad_premium",
-    "inbox_enabled",
     "latencia_p95_ms_enterprise",
     "latencia_p95_ms_estandar",
     "latencia_p95_ms_premium",

@@ -135,7 +135,19 @@ _circuitos: dict[str, _Circuito] = defaultdict(_Circuito)
 
 
 def circuito_abierto(recurso: str) -> bool:
-    """Si este recurso está descansando por haber fallado demasiado."""
+    """Si este recurso está descansando por haber fallado demasiado.
+
+    `CIRCUIT_BREAKER_ENABLED` existía, estaba documentado y **no lo leía nadie**
+    (medido el 06-10-2026): apagarlo no apagaba nada. Se comprueba AQUÍ y no
+    sólo al anotar el fallo, porque apagarlo tiene que cerrar los circuitos que
+    ya estuvieran abiertos — si no, apagar el interruptor dejaría al recurso
+    cortado hasta que venciera su descanso, que es justo lo contrario de lo que
+    pide quien lo apaga para salir de un corte.
+    """
+    from crmcore.config import get_settings
+
+    if not get_settings().circuit_breaker_enabled:
+        return False
     circuito = _circuitos[recurso]
     if circuito.abierto_hasta and time.monotonic() < circuito.abierto_hasta:
         return True
@@ -159,11 +171,20 @@ def anotar_fallo(
     otro trato —un proveedor de inferencia caro no se reintenta como una caché—
     y eso se decide en la llamada, no en un ajuste global.
     """
+    from crmcore.config import get_settings
+
+    # Con el interruptor apagado se sigue CONTANDO el fallo, pero no se abre
+    # nada. Contar importa al volver a encenderlo: si se hubiera dejado de
+    # contar, encenderlo en mitad de un incidente obligaría a fallar el umbral
+    # entero otra vez antes de proteger — cinco veces el mismo timeout para
+    # todos los que pasen por ahí.
+    abre = get_settings().circuit_breaker_enabled
+
     circuito = _circuitos[recurso]
     circuito.umbral = _umbral_configurado() if umbral is None else umbral
     circuito.descanso_s = _descanso_configurado() if descanso_s is None else descanso_s
     circuito.fallos += 1
-    if circuito.fallos >= circuito.umbral:
+    if abre and circuito.fallos >= circuito.umbral:
         circuito.abierto_hasta = time.monotonic() + circuito.descanso_s
         circuito.aperturas += 1
         logger.error(
@@ -250,6 +271,12 @@ def admite(prioridad: str) -> bool:
     if prioridad == CRITICA:
         return True
     s = get_settings()
+    # `DEGRADACION_ENABLED` existía, estaba documentado y **no lo leía nadie**:
+    # apagarlo no apagaba la degradación. Apagada, todo pasa — que es lo que
+    # pide quien la apaga, normalmente porque prefiere que el sistema se ahogue
+    # a que rechace trabajo mientras investiga.
+    if not s.degradacion_enabled:
+        return True
     if prioridad == NORMAL:
         return _presion.valor < float(s.degradacion_umbral_normal)
     # Los dos umbrales estaban escritos aquí —0.9 y 0.6— mientras

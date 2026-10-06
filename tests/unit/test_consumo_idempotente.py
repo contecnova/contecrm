@@ -313,3 +313,75 @@ def test_la_invalidacion_entiende_las_dos_formas_del_mensaje() -> None:
 
     asyncio.run(consumir_invalidacion({"tipo": "account.updated", "tenant_id": str(tenant)}))
     assert clave(politica, tenant_id=tenant, usuario_id=None, partes={"p": 1}) != antes
+
+
+# ── El interruptor ────────────────────────────────────────────────────────
+
+
+def test_apagado_el_hecho_se_procesa_las_dos_veces(db: Any, tenant_id: UUID) -> None:
+    """`INBOX_ENABLED` existía, estaba documentado como «lo que convierte la
+    entrega at-least-once en efecto exactly-once» y **no lo leía nadie** (medido
+    el 06-10-2026): apagarlo no quitaba la deduplicación.
+
+    Apagado se procesa igual, que es lo que se pide al apagarlo. Lo que se
+    pierde es la protección, no el hecho.
+    """
+    import asyncio
+    import os
+
+    from crmcore.bus.inbox import idempotente
+    from crmcore.config import limpiar_cache_settings
+
+    previo = os.environ.get("INBOX_ENABLED")
+    os.environ["INBOX_ENABLED"] = "false"
+    limpiar_cache_settings()
+    try:
+        veces: list[str] = []
+
+        async def manejador(mensaje: Any) -> None:
+            veces.append(mensaje.type)
+
+        envuelto = idempotente(manejador, consumidor="pruebas-apagado")
+        evento = _evento(tenant_id)
+        asyncio.run(envuelto(evento))
+        asyncio.run(envuelto(evento))
+        assert len(veces) == 2, "sigue deduplicando con el interruptor apagado"
+    finally:
+        if previo is None:
+            os.environ.pop("INBOX_ENABLED", None)
+        else:
+            os.environ["INBOX_ENABLED"] = previo
+        limpiar_cache_settings()
+
+
+def test_apagado_no_deja_la_marca_puesta(db: Any, tenant_id: UUID) -> None:
+    """**Marcar sin deduplicar sería lo peor de los dos mundos**: la tabla crece
+    y, al volver a encender, hay claves de hechos que nunca se comprobaron
+    contra ellas — así que esos hechos quedarían descartados para siempre."""
+    import asyncio
+    import os
+
+    from crmcore.bus.inbox import EventoEntrante, idempotente
+    from crmcore.config import limpiar_cache_settings
+    from sqlalchemy import func, select
+
+    def _cuantas() -> int:
+        return int(db.execute(select(func.count()).select_from(EventoEntrante)).scalar_one())
+
+    previo = os.environ.get("INBOX_ENABLED")
+    os.environ["INBOX_ENABLED"] = "false"
+    limpiar_cache_settings()
+    try:
+        antes = _cuantas()
+
+        async def manejador(_mensaje: Any) -> None:
+            return None
+
+        asyncio.run(idempotente(manejador, consumidor="pruebas-sin-marca")(_evento(tenant_id)))
+        assert _cuantas() == antes
+    finally:
+        if previo is None:
+            os.environ.pop("INBOX_ENABLED", None)
+        else:
+            os.environ["INBOX_ENABLED"] = previo
+        limpiar_cache_settings()

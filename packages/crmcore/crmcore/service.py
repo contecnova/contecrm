@@ -317,6 +317,22 @@ def crear_servicio(
 
         trazas.configurar(nombre, version)
 
+        # LAS MIGRACIONES, LO PRIMERO que toca la base. `DB_MIGRATE_ON_BOOT`
+        # existía, estaba documentado y **no lo leía nadie** (medido el
+        # 06-10-2026): encenderlo no migraba nada, así que quien lo encendía
+        # arrancaba contra un esquema viejo y lo descubría en la primera
+        # consulta, como un «relation does not exist» sin contexto.
+        #
+        # Antes de los guardianes, de las suscripciones y de los barridos: los
+        # tres tocan tablas, y arrancarlos durante la migración sería hacerlo
+        # contra el esquema de antes. Un fallo aquí tumba el arranque, y así
+        # tiene que ser: un servicio contra un esquema que no es el que su
+        # código espera no es un servicio degradado, es uno que contesta mal.
+        if necesita_db and s.db_migrate_on_boot:
+            from crmcore.db.migraciones import migrar_al_arrancar
+
+            await asyncio.to_thread(migrar_al_arrancar, nombre)
+
         if necesita_db:
             from crmcore.datos.guard_borrados import instalar_guard_borrados
             from crmcore.db.session import get_engine, verificar_rol_sin_bypass

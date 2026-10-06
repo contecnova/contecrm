@@ -448,6 +448,46 @@ consultan.
 > empujaría los apuntes, y el producto no empuja; además, no lo leía nadie, así
 > que escribir una URL ahí no mandaba nada a ningún sitio.
 
+### Los interruptores que se tocan durante un incidente
+
+Tres ajustes que se apagan con el sistema ardiendo, y por eso importa que
+apaguen de verdad: quien los pone a `false`, reinicia y no ve ningún cambio
+acaba buscando la avería donde no está.
+
+| Ajuste | De fábrica | Qué hace al apagarlo |
+|---|---|---|
+| `CIRCUIT_BREAKER_ENABLED` | `true` | Ningún recurso se corta por fallar, **y se cierran los que ya estuvieran abiertos** |
+| `DEGRADACION_ENABLED` | `true` | Nada se rechaza por presión: pasa todo, incluido lo diferible |
+| `INBOX_ENABLED` | `true` | Se deja de deduplicar: el mismo hecho puede procesarse dos veces |
+
+Apagar el cortacircuitos **cierra los circuitos abiertos**, no sólo impide abrir
+nuevos: se apaga para *salir* de un corte, no para prevenir el siguiente. Los
+fallos se siguen contando, de modo que si vuelve a encenderlo en mitad del
+incidente el circuito protege otra vez enseguida en vez de tener que fallar el
+umbral entero de nuevo.
+
+`INBOX_ENABLED=false` procesa el hecho y **no deja la marca**. Es a propósito:
+marcar sin deduplicar sería lo peor de los dos mundos, porque al volver a
+encenderlo habría claves de hechos que nunca se comprobaron contra ellas y esos
+hechos quedarían descartados para siempre.
+
+### Migrar al arrancar
+
+`DB_MIGRATE_ON_BOOT` viene **apagado** y en producción se deja así: las
+migraciones las aplica un paso aparte (`entrypoint.sh migrar <servicio>`).
+
+Encendido, cada servicio aplica las suyas al arrancar, **antes de instalar sus
+guardianes, suscribirse al bus o lanzar sus barridos** —los tres tocan tablas— y
+bajo un **cerrojo de aviso de Postgres**: si otra réplica está migrando, ésta la
+espera y luego no encuentra nada pendiente, en vez de las dos corriendo el mismo
+`CREATE TABLE`. Un fallo al migrar **no arranca el servicio**: uno que corre
+contra un esquema que no es el que su código espera no está degradado, contesta
+mal.
+
+> Hasta el 6 de octubre de 2026 este ajuste no lo leía nadie: encenderlo no
+> migraba nada, y el servicio arrancaba contra el esquema viejo. Se notaba en la
+> primera consulta, como un «relation does not exist» sin contexto.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

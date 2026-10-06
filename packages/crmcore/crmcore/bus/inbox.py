@@ -128,7 +128,21 @@ def idempotente(manejador: Any, *, consumidor: str) -> Any:
     """
 
     async def _envuelto(mensaje: Any) -> None:
+        from crmcore.config import get_settings
         from crmcore.db.uow import compartir, soltar, unidad_de_trabajo
+
+        # `INBOX_ENABLED` existía, estaba documentado como «lo que convierte la
+        # entrega at-least-once en efecto exactly-once» y **no lo leía nadie**
+        # (medido el 06-10-2026): apagarlo no quitaba la deduplicación.
+        #
+        # Apagado, el hecho se procesa igual y SIN marcar: lo que se pierde es
+        # la protección, no el evento. Marcar sin deduplicar sería lo peor de
+        # los dos mundos — la tabla crece y al volver a encender habría claves
+        # de hechos que nunca se comprobaron contra ellas.
+        if not get_settings().inbox_enabled:
+            logger.warning("inbox.desactivado", consumidor=consumidor)
+            await manejador(mensaje)
+            return
 
         evento = _evento_de(mensaje)
         if evento is None:

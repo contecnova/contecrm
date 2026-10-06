@@ -22,7 +22,6 @@ despliegue independiente (CRM-00.03.01.06): ninguno espera al de otro.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -54,18 +53,16 @@ SERVICIOS = _servicios_con_modelos()
 
 
 def _config(servicio: str):  # noqa: ANN202 — alembic.config.Config, import perezoso
-    from alembic.config import Config
+    """La del núcleo, no una copia.
 
-    versiones = RAIZ / "alembic" / "versions" / servicio
-    versiones.mkdir(parents=True, exist_ok=True)
+    El arranque del servicio la necesita igual cuando `DB_MIGRATE_ON_BOOT` está
+    encendido, y dos armados divergen: el que menos se mire acabará migrando el
+    esquema equivocado, que es el error que más caro sale con un esquema por
+    servicio.
+    """
+    from crmcore.db.migraciones import config
 
-    config = Config(str(RAIZ / "alembic.ini"))
-    config.set_main_option("script_location", str(RAIZ / "alembic"))
-    config.set_main_option("version_locations", str(versiones))
-    config.set_main_option("servicio", servicio)
-    config.cmd_opts = argparse.Namespace(x=[f"servicio={servicio}"])  # lo lee env.py
-    os.environ["SERVICE_NAME"] = servicio
-    return config
+    return config(servicio)
 
 
 def ejecutar(servicio: str, comando: str, argumento: str, mensaje: str) -> int:
