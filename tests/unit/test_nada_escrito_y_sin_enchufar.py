@@ -285,7 +285,24 @@ CARPETAS = (
 #                   dejaba. Con ella, el análisis de una rama del corpus: escrito,
 #                   con su plazo en minutos y una nota que dice que solo se llama
 #                   desde un trabajo de fondo, sin trabajo de fondo y sin ruta.
-TOPE = 6
+#   06-10-2026   1  LAS CUOTAS DEL PLAN NO ACOTABAN NADA: lo que corta de
+#                   verdad lee los ajustes, y los ajustes no sabían del plan, así
+#                   que un plan vendido con 5.000 correos al mes dejaba pasar
+#                   cincuenta mil. El único resolutor que miraba el plan lo
+#                   usaban dos pantallas y ninguna corta. Con ello: el panel de
+#                   consumo enseñaba CERO DE TODO —leía una tabla de contadores
+#                   que sólo escribía una función sin llamantes— y el componente
+#                   de estado no podía avisar de una cuota agotada ni queriendo;
+#                   la MARCA BLANCA no tenía ni una ruta, no era que faltara una
+#                   pieza; y la firma del chat entrante no caducaba, siendo una
+#                   tercera copia del mismo HMAC — un mensaje capturado valía
+#                   para siempre.
+#
+# Queda UNA, y no se tapa: `validar_destino` comprueba que una referencia
+# polimórfica apunta a un tipo admitido, y aplicarla donde se escriben esos
+# valores exige replicar las relaciones definidas al servicio que las escribe.
+# Eso es un bloque con su migración, no una línea; se hace, no se exime.
+TOPE = 1
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

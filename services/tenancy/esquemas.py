@@ -131,3 +131,9 @@ class ConsumoOut(BaseModel):
     # Se devuelve el aviso resuelto y no solo el porcentaje para que el cliente
     # no tenga que reimplementar el umbral —y equivocarse— en cada frontend.
     en_aviso: bool
+    # Si esta métrica se ha podido medir. Una que falla se dice en su fila y no
+    # tumba el panel entero: una métrica rota no puede dejar sin consumo a las
+    # otras cinco. Y «no se ha podido medir» no es «cero», que es exactamente la
+    # confusión que este panel tenía cuando leía una tabla vacía.
+    medido: bool = True
+    porque: str = ""

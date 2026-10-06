@@ -84,6 +84,9 @@ stateDiagram-v2
 | `PUT /api/v1/grc/controles/{codigo}` | Crear o actualizar un control | codigo*, nombre*, descripcion, tipo, automatico, frecuencia, responsable_id, activo, capacidades, riesgos, marcos, fuente_evidencia | 200, 422 | — |
 | `POST /api/v1/grc/controles/{codigo}/evaluaciones` | Evaluar un control | codigo*, resultado*, fecha, observaciones, plan_accion, evidencia | 201, 422 | — |
 | `PUT /api/v1/grc/riesgos/{codigo}` | Registrar o actualizar un riesgo | codigo*, titulo*, descripcion, categoria, probabilidad, impacto, propietario_id, tratamiento, estado, residual_probabilidad, residual_impacto, revision_at | 200, 422 | — |
+| `PUT /api/v1/marca` | Configurar la marca, sin activarla | nombre_producto, logo_url, favicon_url, color_principal, color_texto, color_fondo, dominio_propio, dominio_envio, remitente, pie_correo | 200, 422 | — |
+| `POST /api/v1/marca/activar` | Encender la marca blanca | — | 200, 422 | — |
+| `POST /api/v1/marca/dominio/verificacion` | Anotar el resultado de comprobar un dominio | cual*, verificado*, detalle | 200, 422 | — |
 | `PUT /api/v1/monedas/cambios` | Fijar un tipo de cambio para una fecha | desde*, hasta*, tasa*, fecha, origen | 200, 422 | — |
 | `POST /api/v1/plantillas` | Crear una plantilla | clave*, nombre*, tipo, idioma, asunto, cuerpo, variables | 201, 422 | — |
 | `PATCH /api/v1/plantillas/{plantilla_id}` | Editar una plantilla | plantilla_id*, nombre, asunto, cuerpo, variables, activa, bloqueada | 200, 422 | — |
@@ -355,6 +358,7 @@ stateDiagram-v2
 | `POST /api/v1/automatizaciones/{regla_id}/probar` | Probar una regla sin ejecutarla | regla_id*, valores* | 200, 422 | — |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/extensiones/capacidades` | Si lo que pide esta extensión se le puede dar | capacidades | 200, 422 | — |
+| `POST /api/v1/extensiones/ejecucion` | El apunte de una ejecución, con sus límites ya mirados | clave*, version, entrada, consumo | 200, 422 | — |
 | `POST /api/v1/extensiones/firma` | Revisar la firma del código antes de ejecutarlo | codigo_base64*, huella_firmada, firmante, firmantes_de_confianza | 200, 422 | — |
 | `POST /api/v1/extensiones/limites` | Si este consumo se pasa de lo que puede gastar una extensión | consumo | 200, 422 | — |
 | `POST /api/v1/extensiones/observabilidad` | Cómo se está portando una extensión | clave*, ejecuciones, coste_por_segundo | 200, 422 | — |
@@ -381,8 +385,8 @@ stateDiagram-v2
 | `POST /api/v1/buzones/{buzon_id}/autorizado` | La persona ha autorizado el acceso | buzon_id* | 200, 422 | — |
 | `POST /api/v1/buzones/{buzon_id}/pausar` | Dejar de sincronizar sin perder lo registrado | buzon_id*, motivo* | 200, 422 | — |
 | `POST /api/v1/buzones/{buzon_id}/sincronizar` | Procesar lo que ha traído el proveedor (CRM-06.01.01.01, .04) | buzon_id*, elementos, marca_nueva, direcciones_conocidas | 200, 422 | — |
-| `POST /api/v1/canales-chat` | Conectar un espacio de chat | clave*, url_entrante*, secreto*, perfil, cabecera_firma, ordenes | 201, 422 | — |
-| `PATCH /api/v1/canales-chat/{canal_chat_id}` | Editar canales de chat | canal_chat_id*, clave, perfil, url_entrante, secreto, cabecera_firma, ordenes, activo | 200, 422 | — |
+| `POST /api/v1/canales-chat` | Conectar un espacio de chat | clave*, url_entrante*, secreto*, perfil, cabecera_firma, cabecera_momento, ordenes | 201, 422 | — |
+| `PATCH /api/v1/canales-chat/{canal_chat_id}` | Editar canales de chat | canal_chat_id*, clave, perfil, url_entrante, secreto, cabecera_firma, cabecera_momento, ordenes, activo | 200, 422 | — |
 | `DELETE /api/v1/canales-chat/{canal_chat_id}` | Borrar canales de chat | canal_chat_id* | 204, 422 | — |
 | `POST /api/v1/canales-chat/{canal_chat_id}/archivar` | Archivar canales de chat | canal_chat_id* | 200, 422 | — |
 | `POST /api/v1/canales-chat/{clave}/orden` | Atender una orden que llega del chat | clave*, orden*, objeto, objeto_id, texto, usuario_externo | 200, 422 | — |

@@ -75,6 +75,12 @@ class CanalChat(Base, TimestampMixin, SoftDeleteMixin):
     # nada: «actuar desde el chat» sin firma es «actuar desde internet».
     secreto: Mapped[str] = mapped_column(Text, nullable=False, default="", info={"secreto": True})
     cabecera_firma: Mapped[str] = mapped_column(String(80), nullable=False, default="x-signature")
+    # La cabecera con el instante de la firma, si el proveedor la manda. Vacía
+    # significa **canal reproducible**: su firma no caduca, así que un mensaje
+    # capturado vale para siempre. Se guarda vacía en vez de inventarse un valor
+    # por defecto porque cada plataforma la llama de una forma, y adivinar haría
+    # que la comprobación fallara siempre o no se hiciera nunca.
+    cabecera_momento: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     # Qué órdenes admite ESTE canal. El canal de dirección no tiene por qué poder
     # cambiar estados, y el de un equipo no tiene por qué poder consultar todo.
     ordenes: Mapped[list[Any]] = mapped_column(
@@ -96,6 +102,7 @@ def declarar_canal(
     secreto: str,
     perfil: str = "generico",
     cabecera_firma: str = "x-signature",
+    cabecera_momento: str = "",
     ordenes: list[str] | None = None,
 ) -> CanalChat:
     """Conecta un espacio de chat.
@@ -132,6 +139,7 @@ def declarar_canal(
     fila.url_entrante = url_entrante
     fila.secreto = secreto
     fila.cabecera_firma = cabecera_firma
+    fila.cabecera_momento = cabecera_momento
     # Vacío significa **solo consultar**: es lo menos que puede hacer un canal, y
     # lo que menos daño hace si alguien se equivoca al declararlo.
     fila.ordenes = list(ordenes or ["consultar"])
@@ -140,17 +148,76 @@ def declarar_canal(
     return fila
 
 
-def comprobar_firma(canal: CanalChat, *, cuerpo: bytes, firma: str) -> None:
-    """Verifica que el mensaje viene de quien dice.
+def canal_por_clave(db: Any, tenant_id: UUID, clave: str) -> CanalChat:
+    """El canal, o se dice que no existe.
+
+    Se saca aparte porque la ruta lo necesita **antes** de leer las cabeceras:
+    cuáles son las cabeceras lo decide el canal, no el producto. Fijarlas en la
+    ruta ataría la instalación a una plataforma concreta.
+    """
+    fila = (
+        db.execute(
+            select(CanalChat).where(CanalChat.tenant_id == tenant_id, CanalChat.clave == clave)
+        )
+        .scalars()
+        .first()
+    )
+    if fila is None or not fila.activo:
+        raise NoEncontrado(
+            "Ese canal de chat no existe o está desactivado", error_code="chat.no_encontrado"
+        )
+    return fila
+
+
+def comprobar_firma(
+    canal: CanalChat, *, cuerpo: bytes, firma: str, momento: str | int | None = None
+) -> None:
+    """Verifica que el mensaje viene de quien dice, **y que no es uno viejo**.
 
     Se compara en tiempo constante: una comparación normal filtra el secreto byte
     a byte a quien sepa medir, y eso convierte la firma en decoración.
+
+    **Y con ventana anti-reenvío cuando el canal manda el instante.** Esto era
+    una tercera implementación del mismo HMAC —el núcleo ya tenía la suya, usada
+    para firmar lo que sale— y la que menos se mira es la que se quedó corta:
+    ésta no miraba el instante, así que un mensaje capturado una vez valía para
+    siempre. Quien pueda repetir una orden de chat puede repetirla mil veces, y
+    lo que hay al otro lado son cambios en el CRM.
+
+    El instante **no se exige**: lo manda el proveedor de chat con su nombre de
+    cabecera, y hay plataformas que no lo mandan. Cuando no viene, se comprueba
+    la firma sin ventana y el canal queda marcado como reproducible en su ficha
+    —eso es un dato que quien lo configura debe ver, no un silencio—.
     """
     if not firma:
         raise NoAutenticado("El mensaje llega sin firma", error_code="chat.sin_firma")
-    esperada = hmac.new(canal.secreto.encode(), cuerpo, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(esperada, firma.strip().lower()):
-        raise NoAutenticado("La firma del mensaje no cuadra", error_code="chat.firma_invalida")
+
+    limpia = firma.strip().lower()
+    if momento in (None, ""):
+        esperada = hmac.new(canal.secreto.encode(), cuerpo, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(esperada, limpia):
+            raise NoAutenticado("La firma del mensaje no cuadra", error_code="chat.firma_invalida")
+        return
+
+    # Con instante: se usa la verificación del núcleo, que es la que ya está
+    # escrita, probada y publicada en el manual del integrador. Tres copias de un
+    # HMAC divergen, y la que diverge es la que deja pasar algo.
+    from crmcore.security.firma import verificar_firma
+
+    try:
+        instante = int(momento)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        raise NoAutenticado(
+            "El instante de la firma no es un número de segundos",
+            error_code="chat.momento_invalido",
+        ) from None
+
+    if not verificar_firma(cuerpo, canal.secreto, limpia, instante):
+        raise NoAutenticado(
+            "La firma no cuadra o el mensaje es demasiado viejo: un mensaje "
+            "capturado no se puede reenviar pasada la ventana.",
+            error_code="chat.firma_invalida",
+        )
 
 
 def atender(
@@ -159,6 +226,7 @@ def atender(
     clave: str,
     cuerpo: bytes,
     firma: str,
+    momento: str | int | None = None,
     orden: str,
     objeto: str = "",
     objeto_id: UUID | None = None,
@@ -183,7 +251,7 @@ def atender(
             "Ese canal de chat no existe o está desactivado", error_code="chat.no_encontrado"
         )
 
-    comprobar_firma(canal, cuerpo=cuerpo, firma=firma)
+    comprobar_firma(canal, cuerpo=cuerpo, firma=firma, momento=momento)
 
     if orden not in (canal.ordenes or []):
         # No es un error del que escribe: es que este canal no puede hacer eso, y

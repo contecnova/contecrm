@@ -16,35 +16,39 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.datos.estado import registrar_componente
-from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from services.tenancy.modelos import Consumo
-from services.tenancy.servicio import limite_de
 
 
 @registrar_componente
 def cuotas(db: Session, tenant_id: UUID) -> dict[str, Any] | None:
-    filas = db.execute(select(Consumo).where(Consumo.tenant_id == tenant_id)).scalars().all()
+    """Si este tenant está cerca de alguno de sus topes, o ya se pasó.
+
+    **Esto no podía decir que nadie se hubiera pasado.** Leía una tabla de
+    contadores que sólo escribía una función sin llamantes: estaba siempre vacía,
+    así que el componente devolvía `None` —«no hay nada que contar»— en todos los
+    despliegues y a todas horas. La página de estado de la plataforma no podía
+    avisar de una cuota agotada ni queriendo.
+
+    Ahora sale de los medidores registrados, que es de donde sale la cuota que de
+    verdad corta.
+    """
+    from crmcore.consumo import medido_aqui
+
+    filas = [f for f in medido_aqui(db, tenant_id) if f.get("legible")]
     if not filas:
         return None
 
     cerca: list[str] = []
     pasados: list[str] = []
     for fila in filas:
-        # El tope no está en la fila de consumo: sale del plan contratado. Es lo
-        # correcto —un cambio de plan cambia el tope sin reescribir el
-        # histórico— y obliga a resolverlo aquí.
-        tope = limite_de(db, tenant_id, fila.metrica)
-        usado = int(fila.valor or 0)
-        if tope <= 0:
+        if fila.get("sin_limite"):
             # Sin límite contratado para esa métrica: se mide, no se acota.
             continue
-        proporcion = usado / tope
+        proporcion = float(fila.get("pct") or 0.0) / 100
         if proporcion >= 1:
-            pasados.append(fila.metrica)
+            pasados.append(fila["metrica"])
         elif proporcion >= 0.9:
-            cerca.append(fila.metrica)
+            cerca.append(fila["metrica"])
 
     if pasados:
         estado, detalle = "caido", f"Límite superado en: {', '.join(sorted(pasados))}"

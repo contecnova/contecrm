@@ -155,10 +155,8 @@ async def contexto_autenticado(
     Es la dependencia que usan casi todos los endpoints. No decide permisos: eso
     es de `exige_permiso`. Solo establece quién es.
     """
-    from dataclasses import replace
-
     from crmcore.config import get_settings
-    from crmcore.tenancy.context import contexto_actual, fijar_contexto
+    from crmcore.http.middleware import fijar_identidad_en_contexto
 
     s = get_settings()
     secreto = s.secret_key.get_secret_value()
@@ -216,23 +214,23 @@ async def contexto_autenticado(
     else:
         principal = ANONIMO
 
-    ctx = contexto_actual()
-    fijar_contexto(
-        replace(
-            ctx,
-            tenant_id=principal.tenant_id,
-            user_id=principal.id,
-            business_unit_id=principal.business_unit_id,
-            scopes=principal.scopes,
-            es_admin_plataforma=principal.es_admin_plataforma,
-            actor_real_id=principal.actor_real_id,
-            extra={
-                **ctx.extra,
-                "principal": principal,
-                "ip": _ip(request),
-                "cookie_rechazada": cookie_rechazada,
-            },
-        )
+    # Una sola forma de construir el contexto de identidad. Esto estaba escrito
+    # aquí en línea y además existía `fijar_identidad_en_contexto`, que decía en
+    # su documentación que la llamaba esta dependencia y no la llamaba nadie: dos
+    # maneras de montar lo mismo, y la que menos se mira es la que se queda
+    # corta —a aquélla le faltaban dos campos—.
+    fijar_identidad_en_contexto(
+        tenant_id=principal.tenant_id,
+        user_id=principal.id,
+        business_unit_id=principal.business_unit_id,
+        scopes=principal.scopes,
+        es_admin_plataforma=principal.es_admin_plataforma,
+        actor_real_id=principal.actor_real_id,
+        extra={
+            "principal": principal,
+            "ip": _ip(request),
+            "cookie_rechazada": cookie_rechazada,
+        },
     )
     return principal
 

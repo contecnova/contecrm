@@ -492,6 +492,47 @@ def revisar_firma(cuerpo: FirmaIn, principal: AutenticadoDep) -> Any:
     )
 
 
+class EjecucionIn(BaseModel):
+    clave: str = Field(..., min_length=1)
+    version: int = Field(1, ge=1)
+    entrada: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Con qué se ejecutó. **Va dentro a propósito**: una extensión que "
+            "falla con un registro concreto y no guarda cuál obliga a "
+            "reproducirlo a ciegas, y eso son horas"
+        ),
+    )
+    consumo: dict[str, Any] = Field(
+        default_factory=dict,
+        description="`milisegundos`, `memoria_mb`, `llamadas_salientes`",
+    )
+
+
+@router_extensiones.post(
+    "/ejecucion",
+    dependencies=[Depends(exige_permiso("automatizacion:read"))],
+    summary="El apunte de una ejecución, con sus límites ya mirados",
+    description=(
+        "Lo que queda anotado de cada vuelta del código del cliente: con qué se "
+        "ejecutó, cuánto consumió y **si se pasó de algún límite, de cuál**. "
+        "«La extensión ha fallado» no deja arreglar nada.\n\n"
+        "**La salida no se guarda.** Puede llevar el registro entero, y "
+        "duplicarlo en una tabla de apuntes es multiplicar lo que hay que "
+        "proteger.\n\n"
+        "Es el apunte que después alimenta `/extensiones/observabilidad`, que es "
+        "donde se decide si una extensión se deja puesta."
+    ),
+)
+def apuntar_ejecucion(cuerpo: EjecucionIn, principal: AutenticadoDep) -> Any:
+    return extensiones.resumen_de_ejecucion(
+        clave=cuerpo.clave,
+        version=cuerpo.version,
+        entrada=cuerpo.entrada,
+        consumo=cuerpo.consumo,
+    )
+
+
 @router_extensiones.post(
     "/observabilidad",
     dependencies=[Depends(exige_permiso("automatizacion:read"))],

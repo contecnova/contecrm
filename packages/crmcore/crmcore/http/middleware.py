@@ -528,25 +528,40 @@ def fijar_identidad_en_contexto(
     scopes: frozenset[str],
     es_admin_plataforma: bool = False,
     actor_real_id: UUID | None = None,
+    business_unit_id: UUID | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """Completa el contexto con la identidad ya verificada.
 
     Lo llama la dependencia de autenticación, no el middleware: el middleware
     corre antes de que se sepa quién es nadie. Se reemplaza el contexto entero
     (es inmutable) en vez de mutarlo.
+
+    Decía exactamente eso —«lo llama la dependencia de autenticación»— y **no la
+    llamaba**: la dependencia lo hacía en línea, con dos campos más, y esto era
+    un duplicado más estrecho que nadie ejecutaba. Dos formas de construir el
+    contexto de identidad es cómo acaban dos caminos poniendo cosas distintas en
+    él, y el que menos se mira es el que se queda corto. Ahora hay una.
+
+    `extra` se **mezcla** con lo que ya hubiera en el contexto, no lo sustituye:
+    por ahí viajan el principal, la IP y el motivo por el que una cookie no
+    valía, y perder cualquiera de los tres deja a quien lo lee sin saber por qué.
     """
     from dataclasses import replace
 
     from crmcore.tenancy.context import contexto_actual, fijar_contexto
 
+    ctx = contexto_actual()
     fijar_contexto(
         replace(
-            contexto_actual(),
+            ctx,
             tenant_id=tenant_id,
             user_id=user_id,
+            business_unit_id=business_unit_id,
             scopes=scopes,
             es_admin_plataforma=es_admin_plataforma,
             actor_real_id=actor_real_id,
+            extra={**ctx.extra, **(extra or {})},
         )
     )
 

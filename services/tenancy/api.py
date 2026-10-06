@@ -39,6 +39,7 @@ from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.api_ciclo_vida import ROUTERS_CICLO_VIDA
 from services.tenancy.api_compromisos import ROUTERS_COMPROMISOS
 from services.tenancy.api_grc import ROUTERS_GRC
+from services.tenancy.api_marca import ROUTERS_MARCA
 from services.tenancy.api_sandboxes import ROUTERS_SANDBOXES
 from services.tenancy.esquemas import (
     CambiarEstado,
@@ -326,29 +327,46 @@ def fijar_ajuste(clave: str, datos: FijarAjuste, db: DbDep, principal: Autentica
     ),
 )
 def consumo(tenant_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
-    umbral = int(rt.efectivo("quota_aviso_pct", db) or 80)
+    """El consumo **medido**, no el apuntado en una tabla que nadie escribía.
+
+    Esto leía una tabla de contadores (`consumos`) que sólo escribía una función
+    sin llamantes, así que el panel enseñaba **cero de todo, siempre** — con los
+    topes bien puestos al lado, que es lo que lo hacía creíble. «Has usado 0 de
+    5.000 correos» el mes que mandaste cuatro mil.
+
+    Ahora sale de los medidores registrados, que es de donde sale la cuota que de
+    verdad corta: se cuentan las filas. Un contador aparte se desincroniza el
+    primer día que algo se borra por otra vía —una purga, una fusión, una baja— y
+    entonces el cliente ve una cuota agotada que no se corresponde con lo que
+    tiene.
+    """
+    from crmcore.consumo import medido_aqui
+
     salida = []
-    # Pares (métrica medida, clave de la cuota que la limita). Se declaran aquí
-    # y no se derivan por nombre porque no siempre coinciden: la métrica es lo
-    # que se cuenta y la cuota es lo que se contrata.
-    for metrica, clave in (
-        ("api_calls", "quota_api_calls_por_minuto"),
-        ("registros", "quota_registros"),
-        ("almacenamiento_mb", "quota_almacenamiento_mb"),
-        ("correos", "quota_correos_por_dia"),
-        ("tokens_ia", "quota_tokens_ia_por_dia"),
-    ):
-        consumido = svc.consumo_actual(db, tenant_id, metrica)
-        limite = svc.limite_de(db, tenant_id, clave)
-        pct = round(consumido / limite * 100, 1) if limite > 0 else 0.0
+    for fila in medido_aqui(db, tenant_id):
+        if not fila.get("legible"):
+            # Un medidor roto se dice en su fila y no tumba el panel.
+            salida.append(
+                ConsumoOut(
+                    metrica=fila["metrica"],
+                    periodo="actual",
+                    consumido=0,
+                    limite=0,
+                    pct=0.0,
+                    en_aviso=False,
+                    medido=False,
+                    porque=str(fila.get("porque") or ""),
+                )
+            )
+            continue
         salida.append(
             ConsumoOut(
-                metrica=metrica,
-                periodo="actual",
-                consumido=consumido,
-                limite=limite,
-                pct=pct,
-                en_aviso=limite > 0 and pct >= umbral,
+                metrica=fila["metrica"],
+                periodo=str(fila.get("periodo") or "actual"),
+                consumido=int(fila["consumido"]),
+                limite=int(fila["limite"]),
+                pct=float(fila.get("pct") or 0.0),
+                en_aviso=bool(fila.get("en_aviso")),
             )
         )
     return salida
@@ -492,6 +510,7 @@ from services.tenancy.api_suite import ROUTERS_SUITE  # noqa: E402
 
 ROUTERS = [
     router,
+    *ROUTERS_MARCA,
     router_interno,
     router_planes,
     router_flags,

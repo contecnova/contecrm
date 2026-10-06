@@ -20,11 +20,10 @@ from crmcore.datos.estados import comprobar as comprobar_estado
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.logging import get_logger
-from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from services.tenancy.modelos import Consumo, FeatureFlag, Plan, Tenant, UnidadNegocio
+from services.tenancy.modelos import FeatureFlag, Plan, Tenant, UnidadNegocio
 
 logger = get_logger(__name__)
 
@@ -126,6 +125,17 @@ def crear_tenant(
     # `flush` para tener el id antes de emitir el evento: el sobre lo lleva como
     # sujeto, y sin id el consumidor no sabría de qué tenant habla.
     uow.db.flush()
+
+    # Las cuotas que vende el plan, puestas como ajustes del tenant. **Sin esto
+    # el plan no acota nada**: lo que corta de verdad (`crmcore.cuotas.tope`) lee
+    # los ajustes, y los ajustes no sabían del plan — así que un plan con 5.000
+    # correos al mes dejaba pasar cincuenta mil. Medido: la única función que
+    # miraba el plan sólo la usaban dos pantallas, y ninguna cortaba nada.
+    #
+    # Se materializan en vez de que cada lector consulte el plan: el plan vive en
+    # el esquema de tenancy y los trece servicios no lo leen —ni deben—, mientras
+    # que los ajustes ya se replican a todos.
+    aplicar_cuotas_del_plan(uow.db, tenant.id, plan_codigo=plan)
 
     registrar(
         uow.db,
@@ -372,117 +382,104 @@ def _resuelve_flag(flag: FeatureFlag, tenant_id: UUID | None, user_id: UUID | No
 # ── Cuotas y medición ─────────────────────────────────────────────────────
 
 
-def _periodo(granularidad: str = "mes") -> str:
-    ahora = datetime.now(timezone.utc)
-    return ahora.strftime("%Y-%m") if granularidad == "mes" else ahora.strftime("%Y-%m-%d")
+# ── Lo que se quitó aquí, y por qué ───────────────────────────────────────
+#
+# Vivían aquí `medir`, `consumo_actual` y `comprobar_cuota`: una segunda forma de
+# llevar las cuotas, por contadores en la tabla `consumos`. **No la llamaba
+# nadie**, así que la tabla estaba siempre vacía — y sus dos únicos lectores, el
+# panel de consumo del cliente y el componente de estado de la plataforma,
+# enseñaban cero de todo con los topes bien puestos al lado. «Has usado 0 de
+# 5.000 correos» el mes que mandaste cuatro mil, y una página de estado que no
+# podía avisar de una cuota agotada ni queriendo.
+#
+# La forma que SÍ funciona —y la que corta de verdad— cuenta las filas
+# (`crmcore.cuotas.exigir` con su `contar`, y los medidores de
+# `crmcore.consumo`). Es mejor por un motivo concreto: un contador aparte se
+# desincroniza el primer día que algo se borra por otra vía —una purga, una
+# fusión, una baja— y entonces el cliente ve una cuota agotada que no se
+# corresponde con lo que tiene.
+#
+# Dos implementaciones de la misma regla es lo que este repositorio se dedica a
+# quitar, así que se queda una. La tabla `consumos` no se borra aquí: eso es una
+# migración y va aparte; vacía no molesta a nadie.
 
 
-def medir(
-    db: Session,
-    tenant_id: UUID,
-    metrica: str,
-    cantidad: int = 1,
-    *,
-    granularidad: str = "mes",
-) -> int:
-    """Suma consumo y devuelve el acumulado del periodo (CRM-00.01.06.07).
-
-    `ON CONFLICT DO UPDATE` en una sola sentencia: leer-y-luego-escribir perdería
-    incrementos concurrentes, y con la medición de consumo eso significa facturar
-    de menos sin enterarse.
-    """
-    periodo = _periodo(granularidad)
-    fila = db.execute(
-        pg_insert(Consumo)
-        .values(tenant_id=tenant_id, metrica=metrica, periodo=periodo, valor=cantidad)
-        .on_conflict_do_update(
-            index_elements=["tenant_id", "metrica", "periodo"],
-            set_={"valor": Consumo.__table__.c.valor + cantidad, "updated_at": func.now()},
-        )
-        .returning(Consumo.valor)
-    ).scalar_one()
-    return int(fila)
-
-
-def consumo_actual(db: Session, tenant_id: UUID, metrica: str, *, granularidad: str = "mes") -> int:
-    valor = db.execute(
-        select(Consumo.valor).where(
-            Consumo.tenant_id == tenant_id,
-            Consumo.metrica == metrica,
-            Consumo.periodo == _periodo(granularidad),
-        )
-    ).scalar_one_or_none()
-    return int(valor or 0)
-
-
-def limite_de(db: Session, tenant_id: UUID, clave_cuota: str) -> int:
-    """Tope efectivo de una cuota: ajuste del tenant > plan > entorno."""
-    from crmcore.runtime import settings as rt
-
-    valor = rt.efectivo(clave_cuota, db)
-    if valor is not None:
-        return int(valor)
-    tenant = db.get(Tenant, tenant_id)
-    if tenant:
-        plan = db.execute(select(Plan).where(Plan.codigo == tenant.plan)).scalar_one_or_none()
-        if plan and clave_cuota in plan.cuotas:
-            return int(plan.cuotas[clave_cuota])
-    return 0
-
-
-def comprobar_cuota(
-    uow: UnidadDeTrabajo,
-    tenant_id: UUID,
-    *,
-    metrica: str,
-    clave_cuota: str,
-    incremento: int = 1,
+def aplicar_cuotas_del_plan(
+    db: Session, tenant_id: UUID, *, plan_codigo: str, por: UUID | None = None
 ) -> dict[str, Any]:
-    """Comprueba la cuota, mide el consumo y avisa al acercarse al tope.
+    """Escribe las cuotas del plan como ajustes de este tenant.
 
-    Mide siempre, incluso cuando no hay tope (0 = sin límite): la medición sirve
-    para facturar y para dimensionar, no solo para bloquear. Un despliegue
-    on-premise sin cuotas igualmente quiere saber cuánto se usa.
+    **Lo que ya tenga puesto a mano NO se pisa.** Un cliente al que se le subió
+    el tope por una negociación no puede perderlo porque alguien le reasigne el
+    mismo plan: el ajuste del tenant manda sobre el plan, y aquí se respeta ese
+    orden en vez de confiar en que nadie vuelva a pulsar el botón.
     """
-    from crmcore.errors import CuotaAgotada
+    from crmcore.tenancy.context import con_contexto, contexto_actual
+
+    plan = db.execute(select(Plan).where(Plan.codigo == plan_codigo)).scalar_one_or_none()
+    if plan is None:
+        return {"plan": plan_codigo, "aplicadas": [], "porque": "ese plan no existe"}
+
+    # **En el contexto del tenant al que se le aplican.** Provisionar ocurre
+    # fuera de cualquier tenant —todavía no existe cuando empieza—, y fijar un
+    # ajuste deja un apunte de auditoría que exige saber de quién es. Sin esto,
+    # `fijar` escribía la fila y REVENTABA después, dejando el ajuste puesto, la
+    # caché sin invalidar y a quien llamaba creyendo que no se había aplicado
+    # nada: medido, salían cero cuotas aplicadas con las filas ya en la base.
+    #
+    # Y el apunte queda donde tiene que quedar: en el tenant cuyo tope cambia.
+    if contexto_actual().tenant_id == tenant_id:
+        return _aplicar_cuotas(db, plan, tenant_id, por)
+    with con_contexto(tenant_id=tenant_id, origen="provisionado"):
+        return _aplicar_cuotas(db, plan, tenant_id, por)
+
+
+def _aplicar_cuotas(db: Session, plan: Plan, tenant_id: UUID, por: UUID | None) -> dict[str, Any]:
     from crmcore.runtime import settings as rt
 
-    limite = limite_de(uow.db, tenant_id, clave_cuota)
-    consumido = medir(uow.db, tenant_id, metrica, incremento)
+    plan_codigo = plan.codigo
 
-    if limite <= 0:
-        return {"limite": 0, "consumido": consumido, "pct": 0.0}
+    # Lo que este tenant ya tenga puesto **en su propio ámbito**. No vale
+    # preguntar por el valor efectivo: ése cae al valor de serie del despliegue y
+    # siempre devuelve algo, así que la guarda no habría respetado nada — habría
+    # saltado todas las cuotas y el plan no se habría aplicado nunca. Medido: con
+    # `efectivo` no se aplicaba ni una.
+    propios = rt._valores_de_ambito(db, "tenant", str(tenant_id))
 
-    pct = consumido / limite * 100
-    if consumido > limite:
-        raise CuotaAgotada(
-            f"Se ha agotado la cuota de {metrica} ({consumido}/{limite})",
-            error_code=f"cuota.{metrica}",
-            detalle={"metrica": metrica, "consumido": consumido, "limite": limite},
-        )
+    puestas: list[str] = []
+    respetadas: list[str] = []
+    for clave, valor in (plan.cuotas or {}).items():
+        if clave in propios:
+            respetadas.append(clave)
+            continue
+        try:
+            rt.fijar(db, clave, int(valor), ambito="tenant", ambito_id=str(tenant_id), por=por)
+        except Exception as exc:  # noqa: BLE001 — una cuota mal declarada no impide el alta
+            logger.warning(
+                "tenant.cuota_del_plan_no_aplicada",
+                plan=plan_codigo,
+                clave=clave,
+                error=str(exc)[:200],
+            )
+            continue
+        puestas.append(clave)
 
-    umbral = int(rt.efectivo("quota_aviso_pct", uow.db) or 80)
-    # El aviso se emite solo al CRUZAR el umbral, no en cada petición por encima
-    # de él: si no, un tenant al 85 % generaría un evento por llamada y el aviso
-    # dejaría de significar nada.
-    anterior_pct = (consumido - incremento) / limite * 100
-    if anterior_pct < umbral <= pct:
-        uow.emitir(
-            "quota.threshold.reached",
-            subject=("tenant", tenant_id),
-            data={
-                "tenant_id": str(tenant_id),
-                "cuota": metrica,
-                "consumido": consumido,
-                "limite": limite,
-                "pct": round(pct, 1),
-            },
-        )
-        logger.warning("cuota.umbral_alcanzado", metrica=metrica, pct=round(pct, 1), limite=limite)
-    return {"limite": limite, "consumido": consumido, "pct": round(pct, 1)}
+    logger.info("tenant.cuotas_del_plan", plan=plan_codigo, puestas=len(puestas))
+    return {
+        "plan": plan_codigo,
+        "aplicadas": sorted(puestas),
+        # Las que ya tenían valor propio y no se tocan, dichas: si no, quien
+        # reasigna el plan cree que ha dejado al cliente con los topes del plan.
+        "respetadas": sorted(respetadas),
+    }
 
 
-# ── Unidades de negocio ───────────────────────────────────────────────────
+# `limite_de` vivía aquí: resolvía el tope mirando el ajuste del tenant y, si no
+# había, el plan contratado. Se ha quedado redundante por el arreglo de arriba —
+# las cuotas del plan se materializan como ajustes al provisionar, así que
+# `rt.efectivo` ya las incluye y no hace falta un segundo resolutor que consulte
+# el plan. Tener dos era, además, lo que escondía el agujero: el que miraba el
+# plan sólo lo usaban dos pantallas, y el que corta de verdad no lo miraba.
 
 
 def crear_unidad(

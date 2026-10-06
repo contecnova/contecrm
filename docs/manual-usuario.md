@@ -1080,6 +1080,17 @@ saber tú.
 Solo verás resumido lo que ya podrías abrir: se consulta con tu identidad, no con
 la del sistema.
 
+### Lo que te dice el panel de consumo
+
+Si tu plan incluye límites —correos al mes, registros, almacenamiento—, el panel
+te dice cuánto llevas gastado de cada cosa y te avisa **antes** de llegar al tope,
+no el día que dejas de poder trabajar.
+
+Lo que ves ahí se cuenta de verdad sobre tus datos, no de un contador aparte: si
+borras registros, el número baja. Y si alguna métrica no se puede medir en ese
+momento, te lo dice en esa línea en lugar de enseñarte un cero, que es muy
+distinto.
+
 ---
 
 ## Qué hacer cuando algo no sale

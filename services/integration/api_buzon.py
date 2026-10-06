@@ -136,6 +136,15 @@ class DeclararCanalChat(BaseModel):
     secreto: str = Field(..., min_length=8)
     perfil: str = "generico"
     cabecera_firma: str = "x-signature"
+    cabecera_momento: str = Field(
+        "",
+        max_length=80,
+        description=(
+            "La cabecera con el instante de la firma, si tu plataforma la manda. "
+            "**Sin ella el canal es reproducible**: su firma no caduca, así que "
+            "un mensaje capturado vale para siempre"
+        ),
+    )
     ordenes: list[str] | None = None
 
 
@@ -162,7 +171,22 @@ class OrdenChat(BaseModel):
 )
 def declarar_canal_chat(cuerpo: DeclararCanalChat, uow: UowDep) -> Any:
     fila = colab.declarar_canal(uow, **cuerpo.model_dump())
-    return {"id": str(fila.id), "clave": fila.clave, "ordenes": fila.ordenes}
+    return {
+        "id": str(fila.id),
+        "clave": fila.clave,
+        "ordenes": fila.ordenes,
+        # Si este canal admite reenvíos, **se dice al declararlo**. Es el momento
+        # en que alguien puede hacer algo al respecto; descubrirlo después exige
+        # que a alguien se le ocurra preguntarlo.
+        "reproducible": not fila.cabecera_momento,
+        "aviso": (
+            ""
+            if fila.cabecera_momento
+            else "Este canal no manda el instante de la firma, así que un mensaje "
+            "capturado se puede reenviar siempre. Si tu plataforma manda una "
+            "cabecera con la marca de tiempo, decláralá en «cabecera_momento»."
+        ),
+    }
 
 
 @router_chat.post(
@@ -177,12 +201,17 @@ def declarar_canal_chat(cuerpo: DeclararCanalChat, uow: UowDep) -> Any:
 )
 async def orden_chat(clave: str, cuerpo: OrdenChat, request: Request, uow: UowDep) -> Any:
     crudo = await request.body()
-    firma = request.headers.get("x-signature", "")
+    # Las cabeceras que ESTE canal declaró, no unas fijas: cada plataforma las
+    # llama de una forma, y fijarlas aquí ataría el producto a una.
+    canal = colab.canal_por_clave(uow.db, uow.tenant_id, clave)
+    firma = request.headers.get(canal.cabecera_firma or "x-signature", "")
+    momento = request.headers.get(canal.cabecera_momento, "") if canal.cabecera_momento else ""
     return colab.atender(
         uow,
         clave=clave,
         cuerpo=crudo,
         firma=firma,
+        momento=momento,
         orden=cuerpo.orden,
         objeto=cuerpo.objeto,
         objeto_id=cuerpo.objeto_id,

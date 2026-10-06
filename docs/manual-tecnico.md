@@ -1242,6 +1242,24 @@ pone el despliegue.
   importa: si lo registras solo dentro de una ruta, el **worker** no lo tiene y el
   trabajo se queda encolado para siempre sin nadie que lo coja.
 
+### 4.5.5 Cuotas, marca blanca y la firma que llega de fuera
+
+- **Las cuotas del plan se materializan como ajustes del cliente** al darlo de
+  alta. Si cambias un plan de sitio o lo editas, vuelve a aplicarlo: lo que ya
+  esté puesto a mano en ese cliente **no se pisa**, y la respuesta dice qué
+  cuotas se aplicaron y cuáles se respetaron.
+- **El consumo se mide contando**, no con un contador incremental. Si añades una
+  métrica nueva, regístrala con `crmcore.consumo.registrar_medidor` y aparece en
+  el panel y en la página de estado sin tocar nada más.
+- **Marca blanca**: `GET /api/v1/marca` dice qué falta y por qué; `PUT` configura
+  sin activar; `POST /marca/dominio/verificacion` anota el resultado de tu
+  comprobación de DNS (el detalle se guarda); `POST /marca/activar` enciende y
+  contesta 409 con la lista si falta algo.
+- **Chat entrante**: declara `cabecera_firma` y, si tu plataforma la manda,
+  `cabecera_momento`. Con la segunda, la firma caduca según
+  `WEBHOOK_FIRMA_VENTANA_S` y un mensaje capturado deja de valer. **Sin ella el
+  canal es reproducible**, y la declaración te lo dice al crearlo.
+
 ### 4.6 Conectores
 
 Un conector es **configuración, no código**: endpoints, mapeo de campos,

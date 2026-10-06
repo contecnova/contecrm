@@ -17,6 +17,9 @@ logger = get_logger(__name__)
 PREFIJOS: dict[str, str] = {
     "tenants": "tenancy",
     "planes": "tenancy",
+    # La marca blanca del cliente: la configura y la activa el dueño del tenant,
+    # y vive donde vive el tenant.
+    "marca": "tenancy",
     "flags": "tenancy",
     "ajustes": "tenancy",
     "auth": "identity",

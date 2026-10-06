@@ -13771,3 +13771,74 @@ Tres decisiones que importan:
 
 Lo resuelve el gestor **con un token del usuario**, así que cada uno analiza lo
 que vería entrando al gestor, no el corpus entero del cliente.
+
+## El plan no acotaba nada, y el panel enseñaba ceros (`CRM-00.01.04.05`, `CRM-00.01.06.07`)
+
+Un plan comercial declara sus topes en datos: 5.000 correos al mes, 10.000
+registros. **Y no los aplicaba nadie.** Lo que corta de verdad lee los ajustes
+del cliente, y los ajustes no sabían del plan; el único resolutor que sí lo
+miraba lo usaban dos pantallas, y ninguna de las dos corta nada. Se podía vender
+un plan con límites y no se cumplía ninguno.
+
+Ahora, al dar de alta al cliente, **las cuotas del plan se escriben como ajustes
+suyos**. Se materializan en vez de que cada lector consulte el plan porque el
+plan vive en un solo servicio y los trece no lo leen —ni deben—, mientras que los
+ajustes ya se replican a todos.
+
+**Lo negociado a mano no se pisa.** Un cliente al que se le subió el tope por una
+negociación no puede perderlo porque alguien le reasigne el mismo plan: el ajuste
+propio manda, y eso se respeta aquí en vez de confiar en que nadie vuelva a
+pulsar el botón. Las que se respetan se dicen, para que quien reasigna no crea
+que ha dejado al cliente con los topes del plan.
+
+### El panel de consumo
+
+Enseñaba **cero de todo, siempre**, con los topes bien puestos al lado — que es
+lo que lo hacía creíble: «has usado 0 de 5.000 correos» el mes que mandaste
+cuatro mil. Leía una tabla de contadores que sólo escribía una función sin
+llamantes.
+
+Ahora sale de lo que se mide de verdad, que es de donde sale la cuota que corta:
+se cuentan las filas. Un contador aparte se desincroniza el primer día que algo
+se borra por otra vía —una purga, una fusión, una baja— y entonces el cliente ve
+una cuota agotada que no se corresponde con lo que tiene.
+
+Una métrica que no se puede medir **se dice en su fila** y no tumba el panel. Y
+«no se ha podido medir» no es «cero», que es justo la confusión que había.
+
+Lo mismo con el componente de estado de la plataforma: leía esa misma tabla, así
+que **no podía avisar de una cuota agotada ni queriendo**.
+
+## La marca blanca no tenía ni una ruta (`CRM-00.01.04.06`)
+
+Poner un logo es fácil; lo que cuesta es que no se escape la marca del fabricante
+por ningún sitio. Se escapa siempre por los mismos cuatro: el remitente de los
+correos, el dominio de los enlaces, el pie de las plantillas y el título de la
+pestaña. Con uno solo mal, el cliente descubre a su proveedor delante de su
+propio cliente.
+
+Todo eso estaba resuelto —incluido el contraste de los colores, porque una paleta
+corporativa preciosa con texto gris sobre blanco deja media aplicación ilegible—
+y **era inalcanzable desde fuera**. No faltaba una pieza: faltaban todas las
+puertas.
+
+Ahora, en `/api/v1/marca`: ver qué falta y por qué, configurar (**sin activar**,
+porque se configura por partes y activar a medias es lo que hace que el primer
+correo salga con el dominio del fabricante), anotar la verificación del dominio
+—la comprobación de DNS la hace quien sabe hacerla; aquí se guarda el resultado y
+el detalle, porque «lo verificamos en su momento» no es una respuesta cuando un
+año después los correos rebotan— y activar, solo si está completa.
+
+## La firma del chat entrante no caducaba (`CRM-06.01.01.03`)
+
+Una orden que llega de un espacio de chat viene firmada, y se comprobaba con un
+HMAC propio: una **tercera** implementación del mismo cálculo. La que menos se
+mira es la que se queda corta, y ésta no miraba el instante — así que un mensaje
+capturado una vez valía para siempre. Quien pudiera repetir una orden podía
+repetirla mil veces, y lo que hay al otro lado son cambios en el CRM.
+
+Ahora se usa la verificación del núcleo, que tiene ventana anti-reenvío y es la
+que se publica en el manual del integrador. El instante **no se exige**: cada
+plataforma manda su cabecera con otro nombre y hay quien no la manda. Cuando no
+viene, el canal queda marcado como **reproducible al declararlo** — que es el
+momento en que alguien puede hacer algo, no un silencio que se descubre tarde.
