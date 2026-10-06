@@ -55,6 +55,9 @@ OPERACIONES_SENSIBLES: dict[str, str] = {
     "cambio_mfa": "Desactivar o reconfigurar el segundo factor",
     "restauracion": "Restaurar datos sobre los actuales",
     "baja_tenant": "Dar de baja el tenant",
+    # Recuperar un número de tarjeta o una cuenta bancaria de la bóveda. Es la
+    # única operación del CRM que devuelve un dato que el CRM no guarda.
+    "destokenizacion": "Recuperar un dato que se sacó del CRM (tarjeta, cuenta, NIF)",
 }
 
 # Cuánto vale un factor fuerte, si nadie lo ha configurado. Quince minutos: lo

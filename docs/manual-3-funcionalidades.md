@@ -13595,3 +13595,72 @@ Había dos recorridos para lo mismo: el del módulo de la caché, que no llamaba
 nadie, y una copia suelta en el arranque del servicio que leía el tipo del evento
 de otra forma. Dos copias es cómo acaban dos sitios resolviendo distinto lo
 mismo. Se queda la del módulo, que es la que entiende las dos formas.
+
+## Tokenizar, y marcar lo que sale (`CRM-00.05.03.04`, `CRM-00.05.03.07`, `CRM-00.05.04.04`)
+
+Tres capacidades de seguridad resueltas por dentro y sin puerta por fuera.
+
+### Sacar de la base lo que no debe estar dentro
+
+Cifrar un número de tarjeta lo protege de quien lea la base. **Tokenizarlo lo
+saca de la base**, que es otra cosa: lo que queda en el CRM es una referencia sin
+valor, y el número vive donde sabe guardarlo quien tiene el certificado para
+hacerlo. La diferencia importa el día de la auditoría — un sistema que cifra
+tarjetas sigue dentro del alcance de PCI; uno que no las tiene, no.
+
+El módulo estaba entero —tipos admitidos, pista que se conserva de cada uno,
+rechazo a tokenizar en falso sin bóveda, rastro al recuperar— y **no había forma
+de pedirlo**. Lo único que llegaba a ejecutarse era el detector de números
+colados por texto libre, que avisa de que este despliegue no tiene bóveda: un
+aviso sobre una capacidad que, además, no se podía usar.
+
+Ahora, en `/api/v1/<servicio>/tokenizacion`:
+
+- **Se pregunta antes de ofrecer el campo.** Una pantalla que ofrece guardar la
+  tarjeta en un despliegue sin bóveda promete algo que va a fallar al guardar, con
+  el cliente delante.
+- **Sin bóveda no se tokeniza en falso.** Guardar el número «hasta que haya
+  bóveda» mete el sistema en el alcance de PCI sin que nadie lo haya decidido.
+- **Queda una pista**: los cuatro últimos de una tarjeta, nada de un identificador
+  fiscal —con la letra y dos dígitos se adivina el resto—. Es para que una persona
+  reconozca lo suyo, no para operar.
+- **Recuperar es una operación sensible**: permiso propio, segundo factor
+  reciente, motivo obligatorio y rastro en la auditoría con quién y para qué. Si
+  fuera transparente, el número volvería a estar en todas partes y tokenizarlo no
+  habría servido de nada. Tiene que costar pedirlo.
+
+La bóveda la enchufa el despliegue. Aquí no se enchufa ninguna a propósito: atar
+el producto a un proveedor concreto es justo lo que no se hace, y el dato no vive
+aquí.
+
+### La marca de lo que sale, puesta y no encargada
+
+Una exportación lleva una marca de origen: de dónde salió ese fichero y quién lo
+pidió. No es el audit trail —que dice quién exportó—, es otra pregunta y se hace
+en otro momento: cuando la hoja con la cartera aparece en el ordenador de un
+competidor.
+
+La exportación devolvía las filas y la cabecera de la marca **por separado**, y
+ponerla quedaba de parte de quien escribiera el cliente. Pedirle a cada uno que se
+acuerde es pedirle al próximo que se olvide — y el que se olvida produce un
+fichero idéntico al bueno salvo en lo único que importa.
+
+Con `?formato=csv`, la exportación devuelve **el fichero ya montado y ya
+marcado**, con la marca arriba y abajo: recortar las primeras líneas al pegar un
+fragmento en un correo es lo más habitual, y recortar el final también. Y se monta
+con el módulo estándar, no a mano: a mano, el primer nombre de empresa con una
+coma dentro desplaza todo lo que viene detrás, el fichero se abre igual y los
+datos están cambiados de sitio.
+
+### El volcado al SIEM
+
+Quien tiene un SIEM quiere los eventos de seguridad en él, no en otra pantalla
+más. El volcado estaba escrito —formato neutro, en flujo para que un año de audit
+trail no se cargue entero en memoria— y **sin ruta**.
+
+`GET /api/v1/grc/auditoria/volcado.jsonl` lo sirve en JSON Lines, con la marca de
+origen como primera línea y, en cada apunte, su **secuencia y su hash**: es lo que
+permite a quien lo recibe comprobar que no falta nada por el camino.
+
+Llevarse el audit trail entero cuenta como exportación masiva y exige segundo
+factor. Que lo pida un SIEM no lo hace menos sensible: lo hace más frecuente.

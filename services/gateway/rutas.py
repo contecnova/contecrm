@@ -374,6 +374,9 @@ RECURSOS_TRANSVERSALES = {
     # servicio que guarda ese objeto, y la comparación con el estado vivo
     # necesita leer su tabla.
     "rastro",
+    # Tokenizar y recuperar: lo que se tokeniza son datos de registros que viven
+    # en el esquema de cada servicio, así que la puerta es la de cada uno.
+    "tokenizacion",
     # Varias operaciones en una llamada y en una transacción: va por servicio
     # porque una composición que cruzara servicios no podría serlo.
     "compuesto",

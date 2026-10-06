@@ -42,7 +42,10 @@ from crmcore.http.pagination import (
 )
 
 # Lo que NO es un filtro: el resto de la query se interpreta como columna.
-_NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "total"})
+# Los que gobiernan la FORMA de la respuesta, no qué filas salen. Un parámetro
+# que no está aquí y no es columna se rechaza con un 422 a propósito: un filtro
+# que no filtra devuelve filas de más y parece correcto.
+_NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "total", "formato"})
 
 
 def _filtros_de_la_url(
@@ -772,6 +775,25 @@ def proyectar_con_esquema(proyecta: Any, esquema: type) -> Callable[[Any], dict[
     return _proyecta
 
 
+def _a_csv(columnas: list[str], filas: list[dict[str, Any]]) -> str:
+    """Las filas en CSV, con el módulo estándar y no a mano.
+
+    A mano, el primer valor con una coma o un salto de línea —un nombre de
+    empresa con «S.L., Sociedad…», una dirección en dos líneas— rompe la columna
+    y desplaza todo lo que viene detrás. El fichero se abre igual y los datos
+    están cambiados de sitio, que es peor que no abrirse.
+    """
+    import csv
+    import io
+
+    salida = io.StringIO()
+    escritor = csv.DictWriter(salida, fieldnames=list(columnas), extrasaction="ignore")
+    escritor.writeheader()
+    for fila in filas:
+        escritor.writerow({c: fila.get(c, "") for c in columnas})
+    return salida.getvalue()
+
+
 def montar_exportacion(
     router: Any,
     *,
@@ -833,6 +855,15 @@ def montar_exportacion(
         db: DbDep,
         principal: AutenticadoDep,
         limite: int = Query(5_000, ge=1, le=50_000),
+        formato: str = Query(
+            "json",
+            pattern="^(json|csv)$",
+            description=(
+                "`csv` devuelve el fichero **ya montado y ya marcado**. Con `json` "
+                "vienen las filas y la cabecera aparte, y ponerla queda de parte de "
+                "quien lo escriba"
+            ),
+        ),
     ) -> Any:
         from crmcore.datos.masivas import columnas_exportables, exportar
 
@@ -857,6 +888,33 @@ def montar_exportacion(
         from crmcore.seguridad import marca as marca_mod
 
         sello = marca_mod.firma(tenant_id=principal.tenant_id, usuario_id=principal.id)
+
+        if formato == "csv":
+            # **Montado aquí y marcado aquí.** Devolver las filas y la cabecera
+            # por separado deja la marca a cargo de quien escriba el cliente, y
+            # pedirle a cada uno que se acuerde es pedirle al próximo que se
+            # olvide — con el agravante de que el que se olvida produce un
+            # fichero idéntico al bueno salvo en lo único que importa cuando la
+            # hoja aparece donde no debe.
+            #
+            # La marca va **arriba y abajo**: recortar las primeras líneas al
+            # pegar un fragmento en un correo es lo más habitual, y recortar el
+            # final también. No lo hace irrompible; lo hace más caro de romper
+            # sin querer.
+            from fastapi.responses import PlainTextResponse
+
+            cuerpo = _a_csv(columnas, filas)
+            return PlainTextResponse(
+                marca_mod.marcar_texto(cuerpo, sello),
+                media_type="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{objeto}.csv"',
+                    # Que no se quede en ninguna caché intermedia: lleva datos de
+                    # clientes y una marca que identifica a quien lo pidió.
+                    "Cache-Control": "no-store",
+                },
+            )
+
         return {
             "objeto": objeto,
             "columnas": columnas,

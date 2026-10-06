@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.reverificacion import exige_reverificacion
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -330,6 +333,62 @@ def anomalias(
     from crmcore.seguridad.dlp import anomalias as leer_anomalias
 
     return leer_anomalias(db, principal.tenant_id, dias=dias)
+
+
+@router_grc.get(
+    "/auditoria/volcado.jsonl",
+    dependencies=[
+        Depends(exige_permiso("tenant:read")),
+        # Llevarse el audit trail entero es exportación masiva: es el registro
+        # de todo lo que ha hecho todo el mundo. Que lo pida un SIEM no lo hace
+        # menos sensible — lo hace más frecuente.
+        Depends(exige_reverificacion("exportacion_masiva")),
+    ],
+    summary="Volcar el audit trail a un SIEM (CRM-00.05.04.04)",
+    response_class=StreamingResponse,
+    description=(
+        "**JSON Lines, una línea por apunte, en formato neutro.** Escribir el "
+        "formato de un producto concreto ata la instalación a ese producto; el "
+        "adaptador de cualquier SIEM a JSON Lines son veinte líneas.\n\n"
+        "**Va en flujo, no en una lista.** Un año de audit trail de un cliente "
+        "activo no cabe cómodamente en memoria, y cargarlo entero para volcarlo "
+        "es justo el patrón que tumba el proceso.\n\n"
+        "Cada línea lleva su **secuencia y su hash**, que es lo que permite a "
+        "quien lo recibe comprobar que no falta nada por el camino. Y la primera "
+        "línea es la marca de origen: de dónde salió este fichero y quién lo "
+        "pidió."
+    ),
+)
+def volcado_siem(
+    db: DbDep,
+    principal: AutenticadoDep,
+    desde: datetime = Query(..., description="Inicio del periodo, inclusive"),
+    hasta: datetime = Query(..., description="Fin del periodo, exclusivo"),
+) -> Any:
+    from crmcore.seguridad import marca as marca_mod
+    from crmcore.seguridad.siem import a_jsonl
+
+    if hasta <= desde:
+        raise ErrorValidacion(
+            "El periodo termina antes de empezar.", error_code="siem.periodo_invalido"
+        )
+
+    sello = marca_mod.firma(tenant_id=principal.tenant_id, usuario_id=principal.id)
+
+    def _lineas() -> Any:
+        # La marca primero, como una línea más del propio formato: un JSONL con
+        # una cabecera que no es JSON no lo lee ningún SIEM.
+        yield marca_mod.marcar_jsonl(sello)
+        yield from a_jsonl(db, principal.tenant_id, desde=desde, hasta=hasta)
+
+    return StreamingResponse(
+        _lineas(),
+        media_type="application/x-ndjson",
+        headers={
+            "Content-Disposition": 'attachment; filename="auditoria.jsonl"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router_grc.get(

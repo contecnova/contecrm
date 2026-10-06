@@ -1162,6 +1162,38 @@ Lo que hay que saber:
   clave y cuándo. Si un evento «no ha llegado», mira ahí antes que en el bus — es
   posible que llegara y se descartara por repetido.
 
+### 4.5.2 Tokenización: enchufar la bóveda
+
+Para el técnico que monta la instalación. **El CRM no guarda tarjetas**: las saca
+y guarda una referencia. Quien las guarda de verdad es la bóveda, y la bóveda la
+pone el despliegue.
+
+- **Sin bóveda registrada, el CRM se niega a guardar esos datos**, también
+  tokenizados en falso. No es un fallo: es la decisión. Guardar el número «hasta
+  que haya bóveda» mete la instalación en el alcance de PCI sin que nadie lo haya
+  decidido.
+- Para saber en qué estado está esta instalación:
+  `GET /api/v1/<servicio>/tokenizacion` responde `hay_boveda` y los tipos
+  admitidos. **Pregúntalo desde el front antes de ofrecer el campo.**
+- El enchufe es `crmcore.security.tokenizacion.registrar_boveda(guardar,
+  recuperar)`, con dos funciones: una que entrega el valor y devuelve un token, y
+  otra que devuelve el valor a partir del token. Se registra en el arranque de la
+  instalación, no en el producto: aquí no se enchufa ninguna a propósito, porque
+  atarlo a un proveedor concreto es lo que no se hace.
+- **Recuperar exige segundo factor reciente y motivo**, y queda en la auditoría.
+  Si tu integración necesita el número a menudo, probablemente lo que necesita es
+  no tenerlo: pásale el token al sistema de pagos.
+
+### 4.5.3 Lo que sale marcado
+
+- **Exportación**: `?formato=csv` devuelve el fichero montado y marcado arriba y
+  abajo. Con `formato=json` (el de siempre) vienen las filas y la cabecera aparte,
+  y ponerla queda de tu parte — si escribes un cliente propio, usa `csv`.
+- **Audit trail a un SIEM**: `GET /api/v1/grc/auditoria/volcado.jsonl?desde=…&hasta=…`,
+  JSON Lines en formato neutro, en flujo. Cada apunte lleva `sequence` y `hash`
+  para que verifiques la cadena en destino; si falta una secuencia, falta un
+  apunte. La primera línea es la marca de origen. Exige segundo factor.
+
 ### 4.6 Conectores
 
 Un conector es **configuración, no código**: endpoints, mapeo de campos,

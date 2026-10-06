@@ -117,6 +117,8 @@ stateDiagram-v2
 | `POST /api/v1/tenancy/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/tenancy/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/tenancy/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/tenancy/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/tenancy/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/tenancy/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/tenancy/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -169,6 +171,8 @@ stateDiagram-v2
 | `POST /api/v1/identity/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/identity/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/identity/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/identity/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/identity/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/identity/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -265,6 +269,8 @@ stateDiagram-v2
 | `POST /api/v1/metadata/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/metadata/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/metadata/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/metadata/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/metadata/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/metadata/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/metadata/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -295,6 +301,8 @@ stateDiagram-v2
 | `POST /api/v1/orchestrator/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/orchestrator/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/orchestrator/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/orchestrator/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/orchestrator/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/orchestrator/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/orchestrator/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -330,6 +338,8 @@ stateDiagram-v2
 | `POST /api/v1/automation/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/automation/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/automation/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/automation/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/automation/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/automation/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/automation/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/automation/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -454,6 +464,8 @@ stateDiagram-v2
 | `POST /api/v1/integration/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/integration/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/integration/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/integration/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/integration/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/integration/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/integration/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/integration/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -524,6 +536,8 @@ stateDiagram-v2
 | `POST /api/v1/eventing/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/eventing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/eventing/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/eventing/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/eventing/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/eventing/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/eventing/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -645,6 +659,8 @@ stateDiagram-v2
 | `POST /api/v1/party/retencion/bloqueos/{bloqueo_id}/levantar` | Levantar un bloqueo | bloqueo_id*, motivo* | 200, 422 | — |
 | `PUT /api/v1/party/retencion/politicas` | Fijar cuánto se conserva una clase de dato | clase*, dias*, motivo, activa | 200, 422 | — |
 | `POST /api/v1/party/retencion/purgar` | Aplicar la retención | clase, simular | 200, 422 | — |
+| `POST /api/v1/party/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/party/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/party/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/party/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/party/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
@@ -874,6 +890,8 @@ stateDiagram-v2
 | `POST /api/v1/sales/retencion/bloqueos/{bloqueo_id}/levantar` | Levantar un bloqueo | bloqueo_id*, motivo* | 200, 422 | — |
 | `PUT /api/v1/sales/retencion/politicas` | Fijar cuánto se conserva una clase de dato | clase*, dias*, motivo, activa | 200, 422 | — |
 | `POST /api/v1/sales/retencion/purgar` | Aplicar la retención | clase, simular | 200, 422 | — |
+| `POST /api/v1/sales/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/sales/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/sales/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/sales/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/sales/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
@@ -934,6 +952,8 @@ stateDiagram-v2
 | `POST /api/v1/analytics/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/analytics/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/analytics/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/analytics/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/analytics/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/analytics/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/analytics/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
@@ -1032,6 +1052,8 @@ stateDiagram-v2
 | `POST /api/v1/intelligence/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/intelligence/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/intelligence/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/intelligence/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/intelligence/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
 | `POST /api/v1/intelligence/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
@@ -1234,6 +1256,8 @@ stateDiagram-v2
 | `POST /api/v1/service/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/service/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/service/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/service/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/service/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/service/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/service/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
@@ -1318,6 +1342,8 @@ stateDiagram-v2
 | `POST /api/v1/marketing/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/marketing/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/marketing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/marketing/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
+| `POST /api/v1/marketing/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/marketing/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
 | `PATCH /api/v1/marketing/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
 | `DELETE /api/v1/marketing/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |

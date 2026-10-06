@@ -1017,6 +1017,26 @@ descarta la repetición.
 Si alguna vez ves algo duplicado de verdad, no es esto: avisa a quien administra el
 CRM con la fecha y la hora, que ahí queda registrado.
 
+### Si exportas datos, el fichero lleva tu nombre dentro
+
+Cuando exportas en CSV, el fichero sale con dos líneas de marca —una arriba y otra
+abajo— que dicen de dónde salió y quién lo pidió. No es para vigilarte: es para
+que, si esa hoja aparece donde no debía, se pueda saber de qué exportación vino en
+lugar de sospechar de todo el mundo.
+
+No las borres si vas a mandarlo a alguien de fuera. Si lo abres con una hoja de
+cálculo, esas dos líneas aparecen como filas sueltas al principio y al final.
+
+### Y si tu empresa guarda tarjetas, el CRM no las tiene
+
+Los números de tarjeta, las cuentas bancarias y los identificadores fiscales **no
+se guardan en el CRM**: se guardan en un sistema aparte preparado para eso, y aquí
+queda una referencia y los cuatro últimos dígitos para que reconozcas cuál es.
+
+Si necesitas ver el número completo, el CRM te lo pedirá dos cosas: volver a
+identificarte y decir para qué. Las dos quedan registradas. No es desconfianza: es
+lo que hace que guardar esos datos así tenga sentido.
+
 ---
 
 ## Qué hacer cuando algo no sale

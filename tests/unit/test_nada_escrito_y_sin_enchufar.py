@@ -257,7 +257,16 @@ CARPETAS = (
 #                   que escribe en ella no la llamaba nadie. Y además estaba mal:
 #                   miraba `rowcount`, que en ese INSERT vale -1, y `bool(-1)` es
 #                   `True`, así que decía «es nuevo» también ante un duplicado.
-TOPE = 14
+#   06-10-2026  10  Tres capacidades de seguridad resueltas por dentro y sin
+#                   puerta: TOKENIZAR —sacar de la base la tarjeta, la cuenta y
+#                   el NIF, que es lo que deja el sistema fuera del alcance de
+#                   PCI—, de la que solo llegaba a ejecutarse el detector de
+#                   números colados por texto libre, avisando de que no hay
+#                   bóveda para una capacidad que encima no se podía usar; la
+#                   MARCA de lo que sale, que la exportación devolvía aparte
+#                   dejando a cada cliente la tarea de acordarse de ponerla; y el
+#                   VOLCADO al SIEM, escrito, en flujo y sin ruta.
+TOPE = 10
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
@@ -271,6 +280,16 @@ NO_CUENTAN: dict[str, str] = {
         "propósito —atar el producto a un proveedor de geolocalización es lo que "
         "no se hace—, y la ausencia NO se disimula: `evaluar_riesgo` devuelve "
         "«el país no se ha podido medir» en vez de darlo por conocido."
+    ),
+    "registrar_boveda": (
+        "El otro puerto de despliegue: quien instale una bóveda de tokenización "
+        "—la que guarda de verdad el número de tarjeta— registra la suya. Aquí "
+        "no se enchufa ninguna a propósito, porque el dato NO vive aquí: lo "
+        "guarda quien tiene el certificado para hacerlo. Y la ausencia no se "
+        "disimula por partida doble: `tokenizar` se niega a guardar el número "
+        "«mientras tanto» —eso metería el sistema en el alcance de PCI sin que "
+        "nadie lo decidiera— y la ruta de estado lo dice antes de que una "
+        "pantalla ofrezca el campo."
     ),
     "es_entorno_de_pruebas": "lo usan las pruebas para no hablar con el mundo",
     "limpiar_medidores": "el registro es del proceso y vive entre casos de prueba",

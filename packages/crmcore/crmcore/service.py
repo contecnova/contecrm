@@ -658,6 +658,19 @@ def crear_servicio(
 
         app.include_router(crear_router_compuesto(nombre), prefix=s.api_prefix)
 
+        # Y la tokenización: sacar del CRM lo que no debe estar dentro —tarjeta,
+        # cuenta bancaria, identificador fiscal— y poder recuperarlo con motivo
+        # y rastro. El módulo estaba entero y **no había forma de pedirlo**: lo
+        # único que llegaba a ejecutarse era el detector de números colados por
+        # texto libre, que avisa de que este despliegue no tiene bóveda — un
+        # aviso sobre una capacidad que encima no se podía usar.
+        #
+        # Va por servicio porque lo que se tokeniza son datos de registros que
+        # viven en el esquema de cada uno.
+        from crmcore.http.tokenizacion_router import crear_router_tokenizacion
+
+        app.include_router(crear_router_tokenizacion(nombre), prefix=s.api_prefix)
+
         # Y sus vocabularios, si declara alguno. Solo entonces: en un servicio
         # que no valida contra ninguna lista, estas rutas serían tres pantallas
         # vacías más en la superficie.
