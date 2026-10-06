@@ -554,6 +554,28 @@ un tenant no puede crear otros y no existe alta pública.
 > abrir— sino hacer creer que el alta pública estaba disponible y que apagarla
 > era lo que la cerraba. Lo que la cierra es que no existe.
 
+### La zona horaria de un tenant nuevo
+
+Al dar de alta un tenant, su zona horaria, su idioma y su moneda se llevan a los
+ajustes en el mismo momento. Hace falta porque los cálculos de fecha leen el
+**ajuste** (`rt.efectivo("zona_horaria")`), no la ficha del tenant: el ajuste
+tiene su propia cadena —usuario → unidad → tenant → global— y un usuario puede
+tener el suyo.
+
+> Hasta el 7 de octubre de 2026 esa propagación la hacía **sólo la pantalla de
+> editar**. Un tenant recién creado tenía su zona en la ficha y no en los
+> ajustes, así que sus fechas se calculaban en UTC hasta que alguien abriera el
+> perfil y guardara — algo que en la mayoría de las implantaciones no pasa nunca.
+>
+> Lo que eso cambia no es cosmético. En Madrid, entre medianoche y las dos de la
+> mañana, «hoy» era ayer: un presupuesto caducaba un día antes de lo que decía la
+> pantalla, una compartición dejaba de dar acceso un día antes y una pertenencia
+> a un equipo también. En Auckland eran trece horas al día.
+>
+> **Si viene de una versión anterior**, revise los tenants creados antes de esa
+> fecha: abrir su perfil y guardar propaga la zona. Se nota en que las fechas del
+> sistema coinciden con las del cliente a primera hora de la mañana.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

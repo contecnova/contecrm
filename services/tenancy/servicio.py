@@ -156,6 +156,25 @@ def crear_tenant(
     # que los ajustes ya se replican a todos.
     aplicar_cuotas_del_plan(uow.db, tenant.id, plan_codigo=plan)
 
+    # LA LOCALIZACIÓN, TAMBIÉN AL CREAR. `propagar_localizacion` existía y la
+    # llamaba **sólo la ruta de editar**: un tenant recién dado de alta tenía su
+    # zona horaria en la ficha y no en los ajustes, que es de donde se lee, así
+    # que `rt.efectivo("zona_horaria")` caía a UTC hasta que alguien abriera el
+    # perfil y guardara.
+    #
+    # Entre medias, «hoy» era el día de UTC. De madrugada en Madrid eso es ayer,
+    # y entonces un presupuesto caduca un día antes, una compartición deja de dar
+    # acceso un día antes y una pertenencia a un equipo también. Medido el
+    # 07-10-2026 a la 01:24: doce pruebas de vigencia en rojo, todas por esto.
+    #
+    # Es el arreglo de ayer al que le faltaba una vía: se tapó la de editar y la
+    # de crear se quedó abierta, que es por donde pasan TODOS los tenants.
+    propagar_localizacion(
+        uow.db,
+        tenant,
+        {"zona_horaria": zona_horaria, "idioma": idioma, "moneda": moneda},
+    )
+
     registrar(
         uow.db,
         accion="tenant.provisionado",
@@ -262,15 +281,30 @@ def propagar_localizacion(db: Session, tenant: Tenant, cambios: dict[str, Any]) 
     respetar.
     """
     from crmcore.runtime import settings as rt
+    from crmcore.tenancy.context import con_contexto, contexto_actual
 
-    for campo, clave in (
-        ("zona_horaria", "zona_horaria"),
-        ("idioma", "idioma"),
-        ("moneda", "moneda_funcional"),
-    ):
-        if campo not in cambios or not cambios[campo]:
-            continue
-        rt.fijar(db, clave, cambios[campo], ambito="tenant", ambito_id=str(tenant.id))
+    def _fijar() -> None:
+        for campo, clave in (
+            ("zona_horaria", "zona_horaria"),
+            ("idioma", "idioma"),
+            ("moneda", "moneda_funcional"),
+        ):
+            if campo not in cambios or not cambios[campo]:
+                continue
+            rt.fijar(db, clave, cambios[campo], ambito="tenant", ambito_id=str(tenant.id))
+
+    # **En el contexto del tenant al que se le aplican**, igual que las cuotas
+    # del plan y por lo mismo: provisionar ocurre fuera de cualquier tenant —no
+    # existe cuando empieza— y `rt.fijar` deja un apunte de auditoría que exige
+    # saber de quién es. Sin esto, la llamada desde el alta ESCRIBE el ajuste y
+    # después lanza, con lo que quien llama cree que no se ha aplicado nada
+    # mientras las filas ya están puestas. Es la misma trampa que ya mordió una
+    # vez con `aplicar_cuotas_del_plan`.
+    if contexto_actual().tenant_id == tenant.id:
+        _fijar()
+        return
+    with con_contexto(tenant_id=tenant.id, origen="provisionado"):
+        _fijar()
 
 
 def operatividad(db: Session, tenant_id: UUID) -> dict[str, Any]:
