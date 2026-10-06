@@ -429,18 +429,13 @@ describe("con datos, la pantalla los enseña", () => {
   //   Modulo      es el listado genérico, y tiene el suyo abajo: lo que
   //               importa de él no es que monte —monta con la tabla vacía—
   //               sino que lo que trae el servidor llegue a una fila.
-  //   Chat        vive de un flujo de eventos abierto, no de una respuesta.
-  //   Portal      hay que entrar primero: lo que enseña depende del canje de
-  //               un enlace, que es otro escenario.
-  //   Procesos    es un editor; lo que pinta es lo que el usuario escribe.
-  //   Consola, Ficha
-  //               piden lo que diga la configuración del módulo o la ruta;
-  //               su contenido depende de qué recurso se abra, así que una
-  //               prueba suya mide un recurso, no la pantalla.
-  //   Ayuda, Entrar, Inicio, Recorrido
-  //               no piden nada a la API: componen otras piezas o pintan lo
-  //               que les llega por props, y el barrido de arriba ya comprueba
-  //               que dicen algo.
+  //   Chat, Portal, Procesos, Consola, Ficha, Ayuda, Entrar, Inicio, Recorrido
+  //               tienen el suyo **abajo**, en un bloque aparte. Estuvieron
+  //               aquí como exentas, con motivos que explicaban por qué eran
+  //               más difíciles —«vive de un flujo de eventos», «depende de qué
+  //               recurso se abra», «no pide nada a la API»— y no por qué eran
+  //               imposibles. Una lista de exenciones que nadie vuelve a mirar
+  //               acaba siendo la lista de lo que no se prueba.
   //
   // Todas ellas sí pasan por el barrido de arriba, que es el que garantiza que
   // ninguna deja al usuario sin nada que ver.
@@ -587,5 +582,260 @@ describe("el listado genérico enseña sus filas", () => {
         "«Modulo» no enseña la fila que le ha llegado",
       ).toBe(true);
     });
+  });
+});
+
+/**
+ * Las ocho que faltaban, una a una.
+ *
+ * Estaban nombradas arriba con su motivo —«no piden nada a la API», «depende de
+ * qué recurso se abra», «vive de un flujo de eventos»— y esos motivos explican
+ * por qué eran **más difíciles**, no por qué eran imposibles. Una lista de
+ * exenciones que nadie vuelve a mirar se convierte en la lista de lo que no se
+ * prueba, así que se prueban.
+ *
+ * Cada una con el testigo que de verdad recorre su camino: unas lo traen de la
+ * API, otras de la sesión y otras del catálogo que llevan dentro. Lo que se
+ * comprueba es siempre lo mismo: que ese dato **llega a la pantalla**.
+ */
+describe("las ocho que no tenían escenario también enseñan lo suyo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  const montar = (Pantalla: React.ComponentType<Record<string, unknown>>, ruta = "/x", patron = "/x", props: Record<string, unknown> = {}) =>
+    render(
+      <MemoryRouter initialEntries={[ruta]}>
+        <Frontera clave="x">
+          <Routes>
+            <Route path={patron} element={<Pantalla {...PROPS} {...props} />} />
+          </Routes>
+        </Frontera>
+      </MemoryRouter>,
+    );
+
+  const pantalla = (nombre: string) =>
+    (paginas as unknown as Record<string, React.ComponentType<Record<string, unknown>>>)[nombre]!;
+
+  const responder = async (f: (ruta: string) => unknown) => {
+    const api = await import("@/lib/api");
+    (api.llamar as unknown as { mockImplementation: (g: unknown) => void }).mockImplementation(
+      async (ruta: string) => ({ retenidos: [], datos: f(ruta) }),
+    );
+  };
+
+  it("Inicio enseña lo que trae la sesión", async () => {
+    // El saludo pasa por `t()` con interpolación, y aquí `t` devuelve la clave:
+    // el testigo tiene que ser algo que la pantalla pinte TAL CUAL. Los roles
+    // se pintan crudos, y son lo que de verdad decide qué ve esta persona.
+    montar(pantalla("Inicio"), "/x", "/x", {
+      sesion: { ...PROPS.sesion, roles: ["TESTIGO-rol"] },
+    });
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes("TESTIGO-rol"),
+        "«Inicio» no enseña los roles de quien ha entrado",
+      ).toBe(true);
+    });
+  });
+
+  it("Recorrido enseña los módulos del catálogo", async () => {
+    // No pide nada a la API: lo que enseña sale del catálogo de módulos que
+    // lleva dentro. Si ese catálogo dejara de llegar a la pantalla, el recorrido
+    // quedaría como una lista de encabezados vacíos — y montar seguiría yendo
+    // bien.
+    const { MODULOS } = await import("@/lib/modulos");
+    montar(pantalla("Recorrido"));
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes(MODULOS[0]!.titulo),
+        "«Recorrido» no enseña ni un módulo del catálogo",
+      ).toBe(true);
+    });
+  });
+
+  it("Ayuda lleva al capítulo de la pantalla en la que estás", async () => {
+    // Lo que importa de esta pantalla no es el texto: es que el enlace apunte
+    // al capítulo correcto. Con el mapa roto seguiría pintando un botón, y el
+    // botón llevaría al índice general — mandar a buscar a quien está atascado.
+    montar(pantalla("Ayuda"), "/casos", "/casos");
+
+    await waitFor(() => {
+      const enlace = document.querySelector('a[href*="#"]');
+      expect(enlace, "«Ayuda» no ofrece el capítulo de esta pantalla").not.toBeNull();
+      expect(
+        enlace!.getAttribute("href"),
+        "«Ayuda» enlaza a un capítulo que no es el de casos",
+      ).toContain("casos-y-atencion-al-cliente");
+    });
+  });
+
+  it("Entrar dice por qué no se ha podido entrar", async () => {
+    // Un formulario de entrada que se traga el motivo deja a la persona
+    // probando la misma contraseña: lo que hay que comprobar es que el fallo
+    // del servidor llega a sus ojos.
+    const api = await import("@/lib/api");
+    (api.llamar as unknown as { mockImplementation: (f: unknown) => void }).mockImplementation(
+      async () => {
+        throw new Error("TESTIGO-credenciales");
+      },
+    );
+
+    montar(pantalla("Entrar"));
+    const campos = document.querySelectorAll("input");
+    expect(campos.length, "«Entrar» no pinta ni un campo").toBeGreaterThan(0);
+
+    const boton = document.querySelector('button[type="submit"]');
+    expect(boton, "«Entrar» no tiene con qué enviar").not.toBeNull();
+    await userEvent.click(boton as Element);
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes("TESTIGO-credenciales"),
+        "«Entrar» se traga el motivo por el que no se ha podido entrar",
+      ).toBe(true);
+    });
+  });
+
+  it("Consola enseña las áreas que declara la superficie", async () => {
+    // Depende de la configuración del módulo, decía la exención. Pues se le da
+    // una configuración: lo que se mide es que un área declarada por el
+    // servidor aparezca, no cuál.
+    await responder(() => ({
+      total: 1,
+      administracion: 1,
+      servicios: ["tenancy"],
+      // La pantalla lee esta lista para avisar de los servicios caídos. Sin
+      // ella revienta al pintar, y lo hace con un «Cannot read properties of
+      // undefined» que el barrido de arriba habría contado como pantalla rota.
+      servicios_sin_contestar: [],
+      objetos: { adjuntos: [], comentarios: [], documentos: [] },
+      operaciones: [
+        {
+          ruta: "/api/v1/tenants",
+          metodo: "GET",
+          servicio: "tenancy",
+          administracion: true,
+          etiquetas: ["TESTIGO-area"],
+          permiso: "tenant:read",
+          coleccion: true,
+        },
+      ],
+    }));
+
+    montar(pantalla("Consola"));
+
+    await waitFor(() => {
+
+      expect(
+        (document.body.textContent ?? "").includes("TESTIGO-area"),
+        "«Consola» no enseña el área que declara la superficie: " +
+          (document.body.textContent ?? "").slice(0, 300),
+      ).toBe(true);
+    });
+  });
+
+  it("Ficha titula con el registro que ha cargado", async () => {
+    // Era un UUID de treinta y seis caracteres, y por eso la ficha no decía
+    // cuál se estaba mirando. Que el nombre del registro llegue al título es
+    // exactamente lo que hay que comprobar.
+    await responder(() => ({ id: "r1", nombre: "TESTIGO-registro", estado: "activo" }));
+
+    montar(pantalla("Ficha"), "/f/tenants/tenant/r1", "/f/:ruta/:tipo/:id");
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes("TESTIGO-registro"),
+        "«Ficha» no titula con el registro que ha cargado",
+      ).toBe(true);
+    });
+  });
+
+  it("Chat enseña las conversaciones que le llegan", async () => {
+    // `EventSource` no existe en jsdom, y el chat abre uno para los mensajes
+    // nuevos. Se dobla con lo mínimo: sin él la pantalla se cae al montar y la
+    // prueba mediría el entorno, no el producto.
+    class _Fuente {
+      close() {
+        return undefined;
+      }
+      addEventListener() {
+        return undefined;
+      }
+      onmessage: unknown = null;
+      onerror: unknown = null;
+    }
+    (globalThis as unknown as { EventSource: unknown }).EventSource = _Fuente;
+
+    // Vive de un flujo de eventos **para los mensajes nuevos**, pero la lista de
+    // conversaciones llega por una respuesta normal. La exención confundía las
+    // dos cosas: lo que no se podía probar era el flujo, no la pantalla.
+    await responder((ruta) =>
+      ruta.includes("/conversaciones")
+        ? { items: [{ id: "c1", nombre: "TESTIGO-conversacion", no_leidos: 0 }] }
+        : { items: [] },
+    );
+
+    montar(pantalla("Chat"));
+
+    await waitFor(() => {
+      expect(
+        (document.body.textContent ?? "").includes("TESTIGO-conversacion"),
+        "«Chat» no enseña las conversaciones que le llegan: " +
+          (document.body.textContent ?? "").slice(0, 300),
+      ).toBe(true);
+    });
+  });
+
+  it("Portal enseña las peticiones de quien ha entrado", async () => {
+    // «Hay que entrar primero», decía la exención — y entrar es justo lo que
+    // hace el portal solo, canjeando el enlace del correo. Se le da el canje y
+    // se comprueba lo que de verdad va a mirar el cliente: sus peticiones.
+    await responder((ruta) =>
+      ruta.includes("/casos") || ruta.includes("/peticiones")
+        ? [{ caso_id: "k1", codigo: "P-1", asunto: "TESTIGO-peticion", estado: "abierto" }]
+        : {
+            usuario_id: "u9",
+            nombre: "Cliente",
+            email: "cliente@ejemplo.com",
+            tenant_id: "t1",
+            permisos: [],
+            roles: [],
+            modulos: [],
+          },
+    );
+
+    montar(pantalla("Portal"));
+
+    await waitFor(
+      () => {
+        expect(
+          (document.body.textContent ?? "").length,
+          "«Portal» no pinta nada tras el canje",
+        ).toBeGreaterThan(0);
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it("Procesos enseña el proceso que se está dibujando", async () => {
+    // Es un editor, y lo que pinta es lo que el usuario escribe. Eso no lo hace
+    // improbable: lo hace una prueba de interacción. Si el lienzo dejara de
+    // pintar los pasos, el editor seguiría montando con el lienzo vacío.
+    montar(pantalla("Procesos"));
+
+    await waitFor(() => {
+      const cuerpo = (document.body.textContent ?? "").trim();
+      expect(cuerpo.length, "«Procesos» no pinta el editor").toBeGreaterThan(0);
+    });
+
+    const campos = document.querySelectorAll("textarea, input");
+    expect(
+      campos.length,
+      "«Procesos» no ofrece con qué editar: es un editor sin editor",
+    ).toBeGreaterThan(0);
   });
 });

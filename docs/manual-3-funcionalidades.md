@@ -13842,3 +13842,38 @@ que se publica en el manual del integrador. El instante **no se exige**: cada
 plataforma manda su cabecera con otro nombre y hay quien no la manda. Cuando no
 viene, el canal queda marcado como **reproducible al declararlo** — que es el
 momento en que alguien puede hacer algo, no un silencio que se descubre tarde.
+
+## Las ocho pantallas que no tenían prueba de contenido (`CRM-07.04.03`)
+
+Que una pantalla **monte** no dice nada: monta igual con la tabla vacía. Lo que
+importa es que lo que trae el servidor llegue a una fila, y eso no se ve mirando
+el código — se ve cuando alguien abre la pantalla.
+
+De veintisiete, diecinueve ya lo comprobaban. Las ocho restantes estaban
+nombradas como exentas, cada una con su motivo: «vive de un flujo de eventos»,
+«depende de qué recurso se abra», «no pide nada a la API». Esos motivos explican
+por qué eran **más difíciles**, no por qué eran imposibles — y una lista de
+exenciones que nadie vuelve a mirar acaba siendo la lista de lo que no se prueba.
+
+Ahora las nueve tienen su escenario, cada una con el testigo que de verdad
+recorre su camino:
+
+- **Inicio** enseña los roles de quien ha entrado: son los que deciden qué ve.
+- **Recorrido** enseña los módulos del catálogo que lleva dentro; si dejara de
+  llegar a la pantalla, quedaría una lista de encabezados vacíos.
+- **Ayuda** lleva **al capítulo de la pantalla en la que estás**. Con el mapa
+  roto seguiría pintando un botón, y el botón llevaría al índice general: mandar
+  a buscar a quien está atascado.
+- **Entrar** dice por qué no se ha podido entrar. Un formulario que se traga el
+  motivo deja a la persona probando la misma contraseña.
+- **Consola** enseña las áreas que declara la superficie del servidor.
+- **Ficha** titula con el registro que ha cargado. Antes era un identificador de
+  treinta y seis caracteres, y la ficha no decía cuál se estaba mirando.
+- **Chat** enseña las conversaciones que le llegan. La exención confundía dos
+  cosas: lo que no se puede probar fácil es el flujo de mensajes nuevos, no la
+  pantalla.
+- **Portal** pinta tras el canje del enlace del correo.
+- **Procesos** ofrece con qué editar: un editor sin editor monta igual.
+
+Las cuatro mutaciones plantadas —quitar los roles, quitar los módulos, mandar al
+índice en vez de al capítulo, dejar las áreas sin nombre— las caza su escenario.
