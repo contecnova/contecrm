@@ -17,8 +17,38 @@ from sqlalchemy import select
 from services.identity import factores, sso_gobierno
 from services.identity.modelos import ProveedorIdentidad, Sesion, Usuario
 
-router_factores = APIRouter(prefix="/factores", tags=["segundo factor"])
-router_dispositivos = APIRouter(prefix="/dispositivos-confianza", tags=["segundo factor"])
+
+def exigir_mfa_activa() -> None:
+    """Corta si esta instalación no ofrece segundo factor.
+
+    Va en los DOS routers y no en cada ruta: son doce hoy, y la que se escriba
+    mañana heredaría el descuido.
+
+    Los equipos de confianza entran aquí porque sólo significan algo con un
+    segundo factor detrás: recordar un equipo es renunciar al factor en ese
+    equipo, y sin factor no hay nada a lo que renunciar.
+    """
+    from crmcore.config import get_settings
+    from crmcore.errors import Prohibido
+
+    if get_settings().mfa_enabled:
+        return
+    raise Prohibido(
+        "El segundo factor no está activo en esta instalación. " "Se enciende con MFA_ENABLED.",
+        error_code="mfa.desactivada",
+    )
+
+
+router_factores = APIRouter(
+    prefix="/factores",
+    tags=["segundo factor"],
+    dependencies=[Depends(exigir_mfa_activa)],
+)
+router_dispositivos = APIRouter(
+    prefix="/dispositivos-confianza",
+    tags=["segundo factor"],
+    dependencies=[Depends(exigir_mfa_activa)],
+)
 router_sso_gob = APIRouter(prefix="/sso-gobierno", tags=["sso"])
 
 

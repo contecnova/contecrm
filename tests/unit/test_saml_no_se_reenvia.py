@@ -470,9 +470,39 @@ def tenant_confirmado() -> Any:
     )
 
 
+@pytest.fixture
+def saml_encendido() -> Any:
+    """SAML encendido a propósito en las pruebas que van por la ruta real.
+
+    Viene **apagado de fábrica** —así está declarado y así lo manda
+    `.env.example`—, y hasta el 06-10-2026 el interruptor no lo leía nadie: la
+    ruta contestaba igual con él encendido o apagado.
+
+    Sin esto, las dos pruebas de abajo seguirían en verde **por el motivo
+    equivocado**: la del reenvío fallaría de frente, pero la de la petición que
+    nunca emitimos afirma «no entra» y un 403 por protocolo apagado también es
+    «no entra». Pasaría sin haber comprobado nunca lo que dice comprobar.
+    """
+    import os
+
+    from crmcore.config import limpiar_cache_settings
+
+    previo = os.environ.get("SAML_ENABLED")
+    os.environ["SAML_ENABLED"] = "true"
+    limpiar_cache_settings()
+    try:
+        yield
+    finally:
+        if previo is None:
+            os.environ.pop("SAML_ENABLED", None)
+        else:
+            os.environ["SAML_ENABLED"] = previo
+        limpiar_cache_settings()
+
+
 @saml_instalado
 def test_por_la_ruta_real_la_misma_asercion_no_abre_dos_sesiones(
-    identity_arrancado: Any, tenant_confirmado: UUID
+    identity_arrancado: Any, tenant_confirmado: UUID, saml_encendido: Any
 ) -> None:
     """La avería tal cual: capturar la respuesta y reenviarla.
 
@@ -484,6 +514,7 @@ def test_por_la_ruta_real_la_misma_asercion_no_abre_dos_sesiones(
     deshace al acabar, y la aplicación abre su propia conexión, así que no
     vería el proveedor. Se escribe con una sesión propia que confirma, y se
     limpia al final.
+
     """
     from crmcore.db.session import sesion
     from crmcore.tenancy.context import con_contexto
@@ -520,7 +551,7 @@ def test_por_la_ruta_real_la_misma_asercion_no_abre_dos_sesiones(
 
 @saml_instalado
 def test_una_respuesta_que_cita_una_peticion_que_no_hicimos_no_entra(
-    identity_arrancado: Any, tenant_confirmado: UUID
+    identity_arrancado: Any, tenant_confirmado: UUID, saml_encendido: Any
 ) -> None:
     """La otra mitad del mismo agujero, por la ruta real.
 

@@ -323,6 +323,11 @@ def crear(datos: CrearProveedor, uow: UowDep, principal: AutenticadoDep) -> Any:
             error_code="idp.nombre_duplicado",
         )
 
+    # EL PROTOCOLO, ANTES QUE LA CONFIGURACIÓN. Dejar configurar un proveedor de
+    # un protocolo apagado deja la puerta montada esperando a que alguien
+    # encienda el interruptor sin saber que ya había proveedores dentro.
+    sso.exigir_protocolo_activo(datos.tipo)
+
     config = dict(datos.config)
     if datos.tipo == "saml":
         problemas = saml_sp.problemas_de_configuracion(config)
@@ -485,6 +490,11 @@ def iniciar(datos: Iniciar) -> Any:
 def _iniciar(datos: Iniciar, uow: Any) -> Any:
     fila = sso.proveedor_para(uow.db, datos.tenant_id, email=datos.email, nombre=datos.proveedor)
 
+    # Un proveedor configurado ANTES de apagar el protocolo sigue en la tabla:
+    # el interruptor tiene que decidir aquí también, o apagarlo no cierra la
+    # puerta a quien ya estaba configurado — que son todos los que importan.
+    sso.exigir_protocolo_activo(fila.tipo)
+
     if fila.tipo == "saml":
         inicio = saml_sp.url_de_inicio(fila.config or {}, volver_a=datos.volver_a)
         # SE GUARDA, igual que el `state` de OIDC y por lo mismo: es lo que ata
@@ -539,6 +549,10 @@ def callback_oidc(datos: VueltaOIDC) -> Any:
 
 
 def _callback_oidc(datos: VueltaOIDC, uow: Any) -> Any:
+    # También en la VUELTA. Un flujo empezado antes de apagar el interruptor
+    # sigue vivo unos minutos, y dejarlo entrar significa que apagar OIDC no
+    # cierra las sesiones que ya venían de camino.
+    sso.exigir_protocolo_activo("oidc")
     estado = sso.consumir_estado(uow.db, datos.state)
     fila = uow.db.get(ProveedorIdentidad, estado.proveedor_id)
     if fila is None or not fila.activo:
@@ -606,6 +620,10 @@ async def acs_saml(
 
 
 def _acs_saml(formulario: dict[str, Any], uow: Any, tenant_id: UUID, proveedor: str | None) -> Any:
+    # Igual que la vuelta de OIDC: el IdP puede mandar una aserción minutos
+    # después de haberse apagado el interruptor, y entrarla sería que apagar
+    # SAML no apaga SAML.
+    sso.exigir_protocolo_activo("saml")
     fila = sso.proveedor_para(uow.db, tenant_id, nombre=proveedor)
     if fila.tipo != "saml":
         raise ErrorValidacion("Ese proveedor no es SAML", error_code="saml.proveedor_no_es_saml")

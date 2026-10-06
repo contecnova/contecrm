@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**218 ajustes** en total, de los cuales **81** son editables en caliente por tenant.
+**217 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -122,7 +122,6 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `API_KEY_BYTES` | — | *(secreto)* | 16–128 | Longitud en bytes del secreto generado (se muestra en base64url una sola vez). 32 bytes = 256 bits. |
 | `SUPLANTACION_ENABLED` | 🔥 `suplantacion_enabled` | `True` |  | El soporte puede entrar como un usuario del tenant, pero: con motivo escrito, con caducidad corta y dejando rastro en la auditoría. Sin las tres cosas, es un agujero con buena intención. |
 | `SUPLANTACION_MAX_MINUTOS` | 🔥 `suplantacion_max_minutos` | `60` | 5–1440 |  |
-| `SUPLANTACION_EXIGE_MOTIVO` | — | `True` |  |  |
 | `OIDC_CACHE_TTL_S` | 🔥 `oidc_cache_ttl_s` | `300` | 10–86400 | Cuánto se cachean el documento de descubrimiento y las claves de un proveedor. Cinco minutos: lo bastante para no consultar al IdP en cada inicio de sesión, y lo bastante poco para que una rotación de claves se recoja sola sin tocar nada. |
 | `SSO_MARGEN_RELOJ_S` | — | `60` | 0–600 | Margen de reloj admitido al validar la vigencia de un token. Los relojes del IdP y del servidor no van sincronizados al milisegundo, y sin margen un token recién emitido puede parecer futuro. |
 | `SSO_ESTADO_TTL_S` | 🔥 `sso_estado_ttl_s` | `300` | 60–3600 | Cuánto vive un inicio de sesión a medias —el estado entre que se manda al usuario al IdP y vuelve—. Cinco minutos basta para escribir una contraseña y pasar el segundo factor; más deja la ventana abierta. |

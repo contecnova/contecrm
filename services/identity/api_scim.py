@@ -79,7 +79,36 @@ class RutaScim(APIRoute):
         return manejar
 
 
-router_scim = APIRouter(prefix="/scim/v2", tags=["SCIM"], route_class=RutaScim)
+def exigir_scim_activo() -> None:
+    """Corta si esta instalación no ofrece SCIM.
+
+    `SCIM_ENABLED` existía, estaba en `.env.example` y estaba en el manual de
+    referencia, y **no lo leía nadie**: la provisión automática de usuarios
+    quedaba abierta aunque el cliente la hubiera apagado. Eso es una puerta por
+    la que un IdP crea y borra cuentas, y quien pone el interruptor a `false`
+    cree que la ha cerrado.
+
+    Va en el ROUTER y no en cada ruta: son trece hoy, y la que se escriba mañana
+    heredaría el descuido. Una comprobación que hay que acordarse de repetir es
+    una comprobación que a la tercera ruta falta.
+    """
+    from crmcore.config import get_settings
+    from crmcore.errors import Prohibido
+
+    if get_settings().scim_enabled:
+        return
+    raise Prohibido(
+        "SCIM no está activo en esta instalación. Se enciende con SCIM_ENABLED.",
+        error_code="scim.desactivado",
+    )
+
+
+router_scim = APIRouter(
+    prefix="/scim/v2",
+    tags=["SCIM"],
+    route_class=RutaScim,
+    dependencies=[Depends(exigir_scim_activo)],
+)
 
 
 def _base(request: Request) -> str:

@@ -38,6 +38,55 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 logger = get_logger(__name__)
 
 
+# ── Qué protocolos tiene encendidos ESTA instalación ──────────────────────
+#
+# `SAML_ENABLED` y `OIDC_ENABLED` existían, estaban en `.env.example` y estaban
+# en el manual de referencia, y **no los leía nadie**. Poner `SAML_ENABLED=false`
+# no apagaba nada: se seguía pudiendo configurar un proveedor SAML y se seguía
+# pudiendo entrar por él. Quien lo pone cree que ha cerrado esa puerta, y es la
+# peor clase de error de seguridad: el que deja al administrador tranquilo.
+#
+# Va por PROTOCOLO y no por proveedor, que es como está planteado el producto
+# entero: un interruptor por casa convertiría cada implantación en una versión.
+PROTOCOLOS = ("saml", "oidc")
+
+
+def protocolo_activo(tipo: str) -> bool:
+    """Si este protocolo está encendido en esta instalación.
+
+    Lo que no se reconoce **no se da por bueno en silencio**: un tipo nuevo que
+    nadie enchufó aquí volvería a ser un protocolo sin interruptor, que es
+    exactamente lo que esto viene a cerrar.
+    """
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    return {"saml": s.saml_enabled, "oidc": s.oidc_enabled}.get(str(tipo), False)
+
+
+def exigir_protocolo_activo(tipo: str) -> None:
+    """Corta si el protocolo está apagado, diciendo cuál y con qué se enciende.
+
+    403 y no 404: esconder que el protocolo existe obligaría a quien administra
+    a adivinar si se ha equivocado de dirección o si está apagado, y son dos
+    arreglos distintos.
+    """
+    if protocolo_activo(tipo):
+        return
+    from crmcore.errors import Prohibido
+
+    conocido = str(tipo) in PROTOCOLOS
+    raise Prohibido(
+        f"«{tipo}» no está activo en esta instalación."
+        + (
+            f" Se enciende con {str(tipo).upper()}_ENABLED."
+            if conocido
+            else f" Los protocolos que admite son: {', '.join(PROTOCOLOS)}."
+        ),
+        error_code="sso.protocolo_desactivado",
+    )
+
+
 class EstadoSSO(Base):
     """Un inicio de sesión a medias.
 

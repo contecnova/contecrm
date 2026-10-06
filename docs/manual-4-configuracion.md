@@ -354,6 +354,54 @@ Tres cosas que **no** hace el software y tiene que garantizar el despliegue:
 3. **Cifrado de disco** en la base y en las copias. El cifrado de campo protege
    frente a quien lee la base; no frente a quien tiene el disco.
 
+### Las puertas de entrada se encienden una a una (CRM-00.05.01.01, .02, .06)
+
+De fábrica, **esta instalación no ofrece SSO ni provisión automática**. Son
+cuatro interruptores del fichero de entorno, y cada uno abre una puerta
+distinta:
+
+| Ajuste | De fábrica | Qué abre |
+|---|---|---|
+| `OIDC_ENABLED` | `false` | Configurar proveedores OIDC y entrar por ellos |
+| `SAML_ENABLED` | `false` | Lo mismo con SAML |
+| `SCIM_ENABLED` | `false` | Que un proveedor de identidad cree, modifique y **borre** usuarios solo |
+| `MFA_ENABLED` | `true` | El segundo factor: inscripción, códigos y equipos recordados |
+
+Cada interruptor cierra **todas** las puertas de lo suyo, no la primera. Con
+`SAML_ENABLED=false` no se puede configurar un proveedor SAML, no se puede
+empezar un inicio de sesión con uno que ya estuviera configurado —apagarlo no
+borra los que ya había, que son los que importan— y tampoco entra una respuesta
+del proveedor que venga de camino: un flujo empezado minutos antes se rechaza.
+
+Qué se ve al tocarlo: `403` con `sso.protocolo_desactivado`, `scim.desactivado`
+o `mfa.desactivada`, y el mensaje dice **con qué ajuste se enciende**. No es un
+`404`: esconder que la puerta existe obliga a quien administra a adivinar si se
+ha equivocado de dirección o si está apagada, y son dos arreglos distintos.
+
+**Apagar el segundo factor no deja fuera a quien ya lo tenía.** Con
+`MFA_ENABLED=false`, a un usuario que ya tuviera su factor configurado no se le
+pide el código — pedírselo sería mandarlo a una pantalla que ese mismo
+interruptor acaba de apagar. Apagar un segundo factor es renunciar a él, no
+cerrarle la puerta a quien se molestó en ponerlo.
+
+> **Hasta el 6 de octubre de 2026 estos cuatro ajustes no los leía nadie.**
+> Estaban en el fichero de entorno y en el manual de referencia, y de ahí no
+> pasaban: `SAML_ENABLED=false` no apagaba SAML. Si viene de una versión
+> anterior, **revise los cuatro**: lo que creía apagado estaba abierto, y lo que
+> dé por sentado que funciona puede estar ahora apagado de fábrica.
+
+### Lo que se quitó: `SUPLANTACION_EXIGE_MOTIVO`
+
+Ese ajuste ya no existe. El motivo escrito se exige **siempre** al suplantar, y
+no es negociable: sin él no hay forma de revisar después si el acceso estaba
+justificado, que es la mitad de lo que hace que la suplantación no sea una
+puerta trasera.
+
+Tampoco lo leía nadie, así que ponerlo a `false` no quitaba nada — mentía en los
+dos sentidos. Enchufarlo habría sido ofrecer apagar una garantía de auditoría;
+se quitó, que es lo que dice la verdad. Para desactivar la suplantación entera
+está `suplantacion_enabled`, por tenant, que sí se aplica.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

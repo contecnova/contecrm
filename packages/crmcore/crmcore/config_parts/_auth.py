@@ -107,7 +107,19 @@ class _AuthSettings(BaseSettings):
     # tres cosas, es un agujero con buena intención.
     suplantacion_enabled: bool = True
     suplantacion_max_minutos: int = Field(60, ge=5, le=1440)
-    suplantacion_exige_motivo: bool = True
+    # `SUPLANTACION_EXIGE_MOTIVO` estuvo aquí y SE QUITA (06-10-2026). El motivo
+    # se exige **siempre** en `servicio.suplantar`, por la razón escrita arriba:
+    # sin motivo no hay forma de revisar después si el acceso estaba
+    # justificado. Es decir, el único valor honesto del interruptor era `true`.
+    #
+    # Y no lo leía nadie, así que ponerlo a `false` no quitaba nada: quien lo
+    # pusiera creería haber relajado una comprobación que seguía ahí. Un ajuste
+    # que miente en los dos sentidos —no enciende y no apaga— no se arregla
+    # enchufándolo: enchufarlo habría sido ofrecer apagar una garantía de
+    # auditoría. Se quita, que es lo que dice la verdad.
+    #
+    # El interruptor de verdad es `suplantacion_enabled`, por tenant, que sí se
+    # lee: apaga la suplantación entera en vez de vaciarla por dentro.
 
     # ── SSO por proveedor externo (CRM-00.05.01.01, .02) ──────────────────
     # Cuánto se cachean el documento de descubrimiento y las claves de un

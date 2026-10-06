@@ -159,7 +159,15 @@ def autenticar(
 
     from crmcore.runtime import settings as rt
 
-    exige_mfa = usuario.mfa_activo or bool(rt.efectivo("mfa_obligatoria", db))
+    # `MFA_ENABLED` manda sobre las dos formas de exigirla, y es lo que impedía
+    # que apagarla dejara a todo el mundo fuera: un usuario con `mfa_activo` ya
+    # puesto seguiría necesitando un código, y las rutas para conseguirlo
+    # estarían apagadas por el mismo interruptor. Apagar un segundo factor no
+    # puede ser una forma de cerrar la puerta a quien ya lo tenía.
+    #
+    # El ajuste existía, estaba en `.env.example`, estaba en el manual y **no lo
+    # leía nadie** (medido el 06-10-2026).
+    exige_mfa = s.mfa_enabled and (usuario.mfa_activo or bool(rt.efectivo("mfa_obligatoria", db)))
     # Un dispositivo de confianza vivo salta el segundo factor (CRM-00.05.01.20).
     # No salta la contraseña: recordar el equipo ahorra el factor, no la
     # credencial, y confundir las dos cosas convierte un portátil robado en una
