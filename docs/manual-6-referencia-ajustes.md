@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**217 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
+**216 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -217,7 +217,6 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `AUDIT_ENABLED` | — | `True` |  |  |
 | `AUDIT_HASH_CHAIN` | — | `True` |  | Encadenar cada apunte con el hash del anterior. Convierte el log en verificable: si alguien borra o edita una fila, la cadena se rompe y se puede demostrar. Cuesta un hash por apunte. |
 | `AUDIT_RETENCION_DIAS` | 🔥 `audit_retencion_dias` | `2190` | 30–36500 | Retención antes de archivar o purgar (CRM-00.05.04.04). Seis años cubre los plazos mercantiles habituales en España. |
-| `AUDIT_SIEM_URL` | — | *(vacío)* |  | Exportación a SIEM: destino syslog/HTTP. Vacío = no se exporta. |
 | `SMTP_HOST` | — | *(vacío)* |  | SMTP y no la API de un proveedor: lo hablan todos —SendGrid, SES, Mailgun— y también el servidor corporativo del cliente que no quiere que su correo salga de su red. Cambiar de proveedor es cambiar estas líneas, no desplegar código. Vacío = no hay correo. Los avisos se quedan en la cola con su… |
 | `SMTP_PUERTO` | — | `587` | 1–65535 |  |
 | `SMTP_USUARIO` | — | *(vacío)* |  |  |

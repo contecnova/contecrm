@@ -61,10 +61,11 @@ DONDE_BUSCAR: tuple[tuple[str, tuple[str, ...]], ...] = (
 #   06-10-2026  27  MFA_ENABLED manda sobre las dos formas de exigirla, y
 #                   SUPLANTACION_EXIGE_MOTIVO se QUITA: el motivo se exige
 #                   siempre y el único valor honesto del ajuste era `true`
+#   06-10-2026  23  auditoría: AUDIT_ENABLED y AUDIT_HASH_CHAIN enchufados —y el
+#                   readiness dice cuando están apagados—, LOG_REQUEST_BODY con
+#                   el cuerpo censurado por dentro, y AUDIT_SIEM_URL quitado
+#                   porque la exportación es por descarga, no por empuje
 SIN_LECTOR_HOY = {
-    "audit_enabled",
-    "audit_hash_chain",
-    "audit_siem_url",
     "bus_tls",
     "cache_tls",
     "circuit_breaker_enabled",
@@ -77,7 +78,6 @@ SIN_LECTOR_HOY = {
     "latencia_p95_ms_enterprise",
     "latencia_p95_ms_estandar",
     "latencia_p95_ms_premium",
-    "log_request_body",
     "onboarding_enabled",
     "rpo_minutos_enterprise",
     "rpo_minutos_estandar",

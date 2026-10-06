@@ -818,6 +818,21 @@ def _montar_salud(app: FastAPI, nombre: str, version: str) -> None:
             # arreglaría nada y dejaría al cliente sin servicio.
             comprobaciones["bus"] = "no conectado (los eventos esperan en la tabla de salida)"
 
+        # LAS GARANTÍAS APAGADAS SE DICEN, aunque el servicio esté perfectamente
+        # vivo. `AUDIT_ENABLED=false` no es una avería y por eso no marca «no
+        # listo»; lo que no puede ser es invisible. Una instalación sin
+        # auditoría tiene que ser una decisión que alguien ve en el panel, no
+        # algo que se descubre el día que hay que demostrar quién tocó qué.
+        if not s.audit_enabled:
+            comprobaciones["auditoria"] = (
+                "DESACTIVADA (AUDIT_ENABLED=false): no se anota quién hace qué"
+            )
+        elif not s.audit_hash_chain:
+            comprobaciones["auditoria"] = (
+                "sin cadena (AUDIT_HASH_CHAIN=false): se anota, pero no se puede "
+                "demostrar que un apunte no se haya modificado"
+            )
+
         if not _estado["listo"]:
             ok = False
             comprobaciones["arranque"] = "en curso"

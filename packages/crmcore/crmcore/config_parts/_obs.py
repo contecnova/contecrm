@@ -57,8 +57,21 @@ class _ObsSettings(BaseSettings):
     # Retención antes de archivar o purgar (CRM-00.05.04.04). Seis años cubre
     # los plazos mercantiles habituales en España.
     audit_retencion_dias: int = Field(2190, ge=30, le=36_500)
-    # Exportación a SIEM: destino syslog/HTTP. Vacío = no se exporta.
-    audit_siem_url: str = ""
+    # `AUDIT_SIEM_URL` estuvo aquí y SE QUITA (06-10-2026). Prometía un destino
+    # syslog/HTTP al que el producto EMPUJARÍA los apuntes, y el producto no
+    # empuja: exporta por DESCARGA, en `GET /grc/siem/volcado`, que devuelve el
+    # periodo pedido en JSON Lines con su marca de integridad. Es la decisión que
+    # el propio módulo explica —formato neutro, no el de un producto concreto— y
+    # es como la mayoría de los SIEM recogen: ellos consultan.
+    #
+    # Y no lo leía nadie, así que escribir una URL ahí no mandaba nada a ningún
+    # sitio. Un ajuste así no se arregla enchufándolo —eso sería construir un
+    # mecanismo de entrega entero por la puerta de atrás, sin puntero de lo ya
+    # enviado y por tanto perdiendo apuntes en silencio, que en un audit trail es
+    # lo peor que puede pasar—. Se quita, que es lo que dice la verdad.
+    #
+    # Si hace falta el empuje, es una capacidad con su nombre y su trabajo:
+    # puntero por tenant, reintento, y el guardián de URL contra SSRF.
 
     # ── Notificaciones salientes (CRM-06.02.01.02) ────────────────────────
     # SMTP y no la API de un proveedor: lo hablan todos —SendGrid, SES,

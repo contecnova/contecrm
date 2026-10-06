@@ -104,6 +104,39 @@ def _censurar(_logger: Any, _metodo: str, evento: dict[str, Any]) -> dict[str, A
     return evento
 
 
+def redactar_estructura(dato: Any) -> Any:
+    """Censura por clave **dentro** de una estructura, no solo en la raíz.
+
+    El procesador de arriba mira las claves del apunte de log, así que un valor
+    anidado —el cuerpo de una petición, por ejemplo— pasaría entero y en claro:
+    la contraseña de un intento de inicio de sesión fallido, o el correo de
+    quien se acaba de dar de alta.
+
+    Se recorre entero y se aplica la MISMA lista: dos listas de claves
+    sensibles divergen, y la que menos se mira es la que se queda corta.
+    """
+    if isinstance(dato, dict):
+        salida: dict[str, Any] = {}
+        try:
+            from crmcore.config import get_settings
+
+            redactar_pii = get_settings().redactar_pii_resuelto
+        except Exception:  # noqa: BLE001 — sin configuración, lo estricto
+            redactar_pii = True
+        for clave, valor in dato.items():
+            minuscula = str(clave).lower()
+            if minuscula in _CLAVES_SECRETAS:
+                salida[clave] = "***"
+            elif redactar_pii and minuscula in _CLAVES_PII and valor is not None:
+                salida[clave] = _hash_pii(valor)
+            else:
+                salida[clave] = redactar_estructura(valor)
+        return salida
+    if isinstance(dato, list):
+        return [redactar_estructura(v) for v in dato]
+    return dato
+
+
 def _contexto_peticion(_logger: Any, _metodo: str, evento: dict[str, Any]) -> dict[str, Any]:
     """Añade servicio, tenant, traza y usuario desde el contexto en curso.
 

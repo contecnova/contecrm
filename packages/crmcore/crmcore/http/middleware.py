@@ -224,6 +224,60 @@ def _es_https(scope: Scope, s: Any) -> bool:
     return False
 
 
+# Tope de lo que se copia del cuerpo. Un adjunto de veinte megas no se guarda
+# en un log, y un cuerpo de CRM que no quepa en cuatro kilos tampoco se lee.
+TOPE_CUERPO_LOG = 4096
+
+
+def _settings_obs() -> Any:
+    from crmcore.config import get_settings
+
+    return get_settings()
+
+
+def _receive_que_copia(receive: Receive, destino: list[bytes]) -> Receive:
+    """Deja pasar el cuerpo intacto y se queda una copia acotada.
+
+    Intacto es la palabra: el `receive` de ASGI se consume una sola vez, así que
+    quedarse el cuerpo sin devolverlo dejaría a la aplicación sin él — un 422 en
+    todas las escrituras en cuanto alguien encendiera el ajuste para depurar.
+    """
+    copiados = {"n": 0}
+
+    async def envuelto() -> Message:
+        mensaje = await receive()
+        if mensaje.get("type") == "http.request":
+            trozo = mensaje.get("body") or b""
+            if trozo and copiados["n"] < TOPE_CUERPO_LOG:
+                destino.append(trozo[: TOPE_CUERPO_LOG - copiados["n"]])
+                copiados["n"] += len(trozo)
+        return mensaje
+
+    return envuelto
+
+
+def _cuerpo_para_el_log(crudo: bytes) -> Any:
+    """El cuerpo, censurado por clave y acotado.
+
+    **Solo si es JSON que se puede leer.** Un cuerpo que no se puede analizar
+    no se puede censurar, y soltarlo tal cual sacaría al log la contraseña de un
+    inicio de sesión fallido o el correo de quien se acaba de dar de alta — que
+    es exactamente lo que el ajuste advierte en su propio comentario. De lo que
+    no se entiende se dice el tamaño, que para perseguir un 500 es casi todo lo
+    que hacía falta.
+    """
+    import json
+
+    from crmcore.logging import redactar_estructura
+
+    cortado = len(crudo) >= TOPE_CUERPO_LOG
+    try:
+        dato = json.loads(crudo.decode("utf-8"))
+    except Exception:  # noqa: BLE001 — binario, formulario, o cortado por el tope
+        return {"ilegible": True, "bytes": len(crudo), "cortado": cortado}
+    return {"json": redactar_estructura(dato), "cortado": cortado}
+
+
 class TiemposMiddleware:
     """Mide, registra y publica la duración de cada petición.
 
@@ -256,6 +310,20 @@ class TiemposMiddleware:
                 estado["status"] = message["status"]
             await send(message)
 
+        # EL CUERPO, SOLO SI SE HA PEDIDO. `LOG_REQUEST_BODY` existía, estaba
+        # documentado y **no lo leía nadie** (medido el 06-10-2026): encenderlo
+        # no registraba ningún cuerpo, así que quien lo encendía para perseguir
+        # un 500 seguía sin el dato y no sabía por qué.
+        #
+        # Va apagado de fábrica y se queda apagado: es la vía más rápida de
+        # llevar datos personales a un sistema de logs que no está pensado para
+        # guardarlos. Encendido, el cuerpo solo sale en el apunte de la petición
+        # LENTA O FALLIDA, que es para lo que sirve; uno por petición sería el
+        # ruido que hace que nadie mire los logs, además del volcado.
+        cuerpo: list[bytes] = []
+        if _settings_obs().log_request_body:
+            receive = _receive_que_copia(receive, cuerpo)
+
         try:
             await self.app(scope, receive, send_midiendo)
         finally:
@@ -273,12 +341,16 @@ class TiemposMiddleware:
                 duracion_s=duracion,
             )
             if duracion >= self._umbral or estado["status"] >= 500:
+                extra: dict[str, Any] = {}
+                if cuerpo:
+                    extra["cuerpo"] = _cuerpo_para_el_log(b"".join(cuerpo))
                 logger.warning(
                     "http.peticion_lenta" if estado["status"] < 500 else "http.peticion_fallida",
                     metodo=scope.get("method", ""),
                     ruta=ruta,
                     status=estado["status"],
                     duracion_ms=round(duracion * 1000, 1),
+                    **extra,
                 )
             await self._anotar_slo(estado["status"], duracion)
             self._medir_presion(duracion)

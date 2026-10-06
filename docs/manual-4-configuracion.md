@@ -402,6 +402,52 @@ dos sentidos. Enchufarlo habría sido ofrecer apagar una garantía de auditoría
 se quitó, que es lo que dice la verdad. Para desactivar la suplantación entera
 está `suplantacion_enabled`, por tenant, que sí se aplica.
 
+### La auditoría se puede apagar, pero no a escondidas (CRM-00.05.04)
+
+| Ajuste | De fábrica | Qué hace al apagarlo |
+|---|---|---|
+| `AUDIT_ENABLED` | `true` | **No se anota nada.** Ni quién entró, ni quién cambió qué |
+| `AUDIT_HASH_CHAIN` | `true` | Se anota, pero sin encadenar: ahorra un hash por apunte |
+
+Apagar cualquiera de los dos **sale en el readiness del servicio**
+(`GET /health/ready`, apartado `auditoria`). No marca el servicio como «no
+listo» —no es una avería— pero no puede ser invisible: una instalación sin
+auditoría tiene que ser una decisión que alguien ve en el panel, no algo que se
+descubre el día que hay que demostrar quién tocó qué.
+
+**Sin cadena no es lo mismo que rota.** La verificación
+(`GET /grc/auditoria/verificar`) distingue las dos cosas y devuelve
+`sin_cadena: N`: de esos apuntes se demuestra que **no falta ninguno** —el hueco
+en la secuencia sigue cazando un borrado— pero no que no se hayan modificado en
+su sitio. «Intacta» con tramos sin encadenar no es la misma afirmación que
+«intacta» entera, y quien audita lo ve sin preguntar.
+
+### El cuerpo de las peticiones en el log
+
+`LOG_REQUEST_BODY` viene **apagado** y conviene dejarlo así: es la vía más
+rápida de llevar datos personales a un sistema de logs que no está pensado para
+guardarlos. Encendido, el cuerpo sale solo en el apunte de las peticiones
+**lentas o fallidas**, que es para lo que sirve.
+
+Lo que sale va censurado por dentro, con la misma lista que el resto del log:
+las contraseñas y los secretos se tapan **siempre**, también en desarrollo; los
+datos personales se sustituyen por un hash estable cuando `LOG_REDACT_PII` está
+activo, que es el valor por defecto fuera de desarrollo. Un cuerpo que no se
+puede analizar —binario, un formulario, uno cortado por el tope de 4 KB— **no se
+suelta**: se registra su tamaño. Lo que no se puede censurar no se puede
+publicar.
+
+### Exportación del audit trail a un SIEM
+
+Se hace **por descarga**, no por empuje: `GET /grc/siem/volcado` devuelve el
+periodo pedido en JSON Lines con su marca de integridad, en formato neutro y no
+en el de un producto concreto. Es como la mayoría de los SIEM recogen — ellos
+consultan.
+
+> `AUDIT_SIEM_URL` ya no existe. Prometía un destino al que el producto
+> empujaría los apuntes, y el producto no empuja; además, no lo leía nadie, así
+> que escribir una URL ahí no mandaba nada a ningún sitio.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

@@ -37,6 +37,12 @@ logger = get_logger(__name__)
 # Hash del apunte cero: el ancla de la cadena de cada tenant.
 HASH_GENESIS = "0" * 64
 
+# Lo que se guarda en el hueco del hash cuando la cadena está apagada
+# (`AUDIT_HASH_CHAIN=false`). Un valor reconocible y no un vacío: con cadena
+# vacía, `verificar` no podría distinguir «aquí no se encadenó a propósito» de
+# «aquí alguien borró el hash», y la segunda lectura es una acusación.
+SIN_CADENA = "sin-cadena".ljust(64, "-")
+
 # Acciones que exigen justificación escrita. La lista es corta a propósito: si
 # todo exigiera motivo, el campo se rellenaría con «.» y dejaría de significar
 # nada.
@@ -85,15 +91,28 @@ def registrar(
     datos: dict[str, Any] | None = None,
     motivo: str | None = None,
     tenant_id: UUID | None = None,
-) -> ApunteAuditoria:
-    """Añade un apunte a la cadena del tenant.
+) -> ApunteAuditoria | None:
+    """Añade un apunte a la cadena del tenant, o nada si está apagada.
 
     Se llama DENTRO de la transacción del cambio: si la operación se revierte,
     el apunte también. Un log que registra lo que no llegó a pasar es peor que
     no tenerlo, porque lleva a conclusiones falsas durante una investigación.
     """
+    from crmcore.config import get_settings
     from crmcore.errors import ErrorValidacion
     from crmcore.tenancy.context import contexto_actual
+
+    # `AUDIT_ENABLED` existía, estaba documentado y **no lo leía nadie**
+    # (medido el 06-10-2026): ponerlo a `false` no apagaba nada. Ahora apaga, y
+    # que esté apagado NO es invisible: el readiness del servicio lo dice, que
+    # es lo único que convierte «sin auditoría» en una decisión y no en un
+    # descubrimiento a los seis meses.
+    #
+    # Devuelve `None`, y se puede: ninguno de los 313 sitios que llaman aquí usa
+    # el apunte que esto devolvía. Medido antes de cambiar la firma.
+    s = get_settings()
+    if not s.audit_enabled:
+        return None
 
     ctx = contexto_actual()
     tenant_id = tenant_id or ctx.tenant_id
@@ -155,7 +174,13 @@ def registrar(
         datos=datos or {},
         motivo=motivo,
         hash_previo=hash_previo,
-        hash=_hash_apunte(contenido, hash_previo),
+        # Con `AUDIT_HASH_CHAIN=false` se guarda el apunte pero no se encadena.
+        # Lo que NO se quita es el `FOR UPDATE` ni la secuencia: sin el cerrojo,
+        # dos apuntes simultáneos del mismo tenant tomarían la misma secuencia y
+        # reventaría el índice único. Lo que ahorra el interruptor es un hash por
+        # apunte, que es exactamente lo que dice que cuesta — y la secuencia
+        # sigue cazando un borrado, que es la segunda red.
+        hash=_hash_apunte(contenido, hash_previo) if s.audit_hash_chain else SIN_CADENA,
         # El MISMO instante que entró en el hash. Antes el hash llevaba un
         # `momento` que no se guardaba en ninguna parte —la columna la rellenaba
         # `now()` del servidor, con otro valor—, así que el contenido de un
@@ -282,16 +307,18 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
         .all()
     )
     if not apuntes:
-        return {"intacta": True, "apuntes": 0, "rota_en": None}
+        return {"intacta": True, "apuntes": 0, "rota_en": None, "sin_cadena": 0}
 
     esperado_previo = HASH_GENESIS if desde == 1 else apuntes[0].hash_previo
     esperada_secuencia = apuntes[0].secuencia
+    sin_cadena = 0
 
     for apunte in apuntes:
         if apunte.secuencia != esperada_secuencia:
             return {
                 "intacta": False,
                 "apuntes": len(apuntes),
+                "sin_cadena": sin_cadena,
                 "rota_en": apunte.secuencia,
                 "motivo": (f"falta el apunte {esperada_secuencia}: se ha borrado una fila"),
             }
@@ -299,6 +326,7 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
             return {
                 "intacta": False,
                 "apuntes": len(apuntes),
+                "sin_cadena": sin_cadena,
                 "rota_en": apunte.secuencia,
                 "motivo": "el enlace con el apunte anterior no coincide",
             }
@@ -310,10 +338,24 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
         # existe justo para lo que el trigger no alcanza —un acceso directo a la
         # base, una copia de seguridad manipulada—, y sin esta comprobación no
         # servía para eso.
+        # Un tramo escrito con la cadena apagada no es una cadena rota: no hay
+        # hash que recalcular porque nunca se calculó. Se cuenta y se sigue —el
+        # informe lo dice— porque decir «manipulado» de lo que sólo está sin
+        # encadenar es una acusación falsa, y quien audita no tiene forma de
+        # distinguirlas desde fuera.
+        #
+        # Lo que NO se afloja es la secuencia: un borrado dentro del tramo sin
+        # cadena lo sigue cazando la comprobación de arriba.
+        if apunte.hash == SIN_CADENA:
+            sin_cadena += 1
+            esperado_previo = apunte.hash
+            esperada_secuencia += 1
+            continue
         if _hash_apunte(_contenido_de(apunte), apunte.hash_previo) != apunte.hash:
             return {
                 "intacta": False,
                 "apuntes": len(apuntes),
+                "sin_cadena": sin_cadena,
                 "rota_en": apunte.secuencia,
                 "motivo": "el contenido del apunte no corresponde a su hash: se ha alterado",
             }
@@ -324,6 +366,11 @@ def verificar(db: Session, tenant_id: UUID, *, desde: int = 1) -> dict[str, Any]
         "intacta": True,
         "apuntes": len(apuntes),
         "rota_en": None,
+        # «Intacta» con tramos sin encadenar NO es la misma afirmación que
+        # «intacta» entera, y quien audita necesita verlo sin preguntar: de esos
+        # apuntes se demuestra que no falta ninguno, pero no que no se hayan
+        # modificado en su sitio.
+        "sin_cadena": sin_cadena,
         "ultimo_hash": apuntes[-1].hash,
         "ultima_secuencia": apuntes[-1].secuencia,
     }
