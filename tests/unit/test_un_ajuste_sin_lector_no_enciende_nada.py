@@ -68,9 +68,10 @@ DONDE_BUSCAR: tuple[tuple[str, tuple[str, ...]], ...] = (
 #   06-10-2026  19  resiliencia y arranque: CIRCUIT_BREAKER_ENABLED (que además
 #                   cierra los circuitos ya abiertos), DEGRADACION_ENABLED,
 #                   INBOX_ENABLED y DB_MIGRATE_ON_BOOT con cerrojo de aviso
+#   06-10-2026  15  cifrado y secretos: BUS_TLS y CACHE_TLS pasan a EXIGIR (no
+#                   reescriben la URL), SECRETOS_BACKEND corta si se configura
+#                   un almacén que no existe, y SECRETOS_VAULT_URL se quita
 SIN_LECTOR_HOY = {
-    "bus_tls",
-    "cache_tls",
     "disponibilidad_enterprise",
     "disponibilidad_estandar",
     "disponibilidad_premium",
@@ -84,8 +85,6 @@ SIN_LECTOR_HOY = {
     "rto_minutos_enterprise",
     "rto_minutos_estandar",
     "rto_minutos_premium",
-    "secretos_backend",
-    "secretos_vault_url",
     "tenant_default_isolation",
     "tenant_default_region",
 }

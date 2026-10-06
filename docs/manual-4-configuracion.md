@@ -488,6 +488,44 @@ mal.
 > migraba nada, y el servicio arrancaba contra el esquema viejo. Se notaba en la
 > primera consulta, como un «relation does not exist» sin contexto.
 
+### Cifrado hacia el bus y la caché
+
+| Ajuste | De fábrica | Qué hace |
+|---|---|---|
+| `BUS_TLS` | `false` | Exige que la URL del bus use un esquema cifrado |
+| `CACHE_TLS` | `false` | Lo mismo con la de la caché |
+
+**No reescriben la URL**: la conexión la sigue decidiendo ella. Lo que hacen es
+exigir. Si declara `BUS_TLS=true` y la URL empieza por `redis://`, el arranque
+se niega, y el mensaje dice las dos salidas: cambiar la URL a un esquema cifrado
+(`rediss://`, `tls://`, `amqps://`…) o poner el ajuste a `false` si ese tramo va
+en claro a propósito — el bus en la misma red privada es una decisión legítima.
+
+Se comprueba en los **dos transportes del bus**, Redis y NATS: cerrar sólo uno
+dejaría el otro abierto con el ajuste puesto, que es peor porque parecería
+hecho. Y en la caché se comprueba **antes** de su caída a memoria: una URL en
+claro cuando se ha exigido cifrado no es una caché caída, es una configuración
+que miente.
+
+Un esquema que no se reconozca **no se da por cifrado**. Dar por bueno lo que no
+se reconoce es cómo una comprobación de seguridad deja de comprobar.
+
+### Dónde se guardan los secretos de las integraciones
+
+`SECRETOS_BACKEND` sólo admite **`db`**: los secretos se guardan cifrados en la
+base, con la clave maestra y la del tenant. Configurar cualquier otro valor
+**corta** al cifrar o descifrar, con el nombre del que ha puesto y la lista de
+los que hay.
+
+Corta, y no cae a `db` avisando, porque la diferencia importa: hasta el 6 de
+octubre de 2026 poner `vault` guardaba los secretos en la base igualmente, y
+quien lo pusiera creería que las credenciales de sus integraciones están en su
+gestor externo cuando están aquí. Eso no es un ajuste decorativo: es una
+creencia falsa sobre dónde están los secretos del cliente.
+
+> `SECRETOS_VAULT_URL` ya no existe: sólo tenía sentido con un backend que no
+> está. Cuando lo esté, su URL vuelve con él.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

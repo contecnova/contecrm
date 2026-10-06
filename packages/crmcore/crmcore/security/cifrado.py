@@ -166,6 +166,43 @@ def descifrar(valor: str, *, proposito: str = "general", db: Any = None) -> str:
             )
 
 
+# Almacenes de secretos que este producto sabe usar. `db` guarda los secretos
+# cifrados en la base, con la clave maestra y la del tenant.
+BACKENDS_DE_SECRETOS = frozenset({"db"})
+
+
+def comprobar_backend_de_secretos() -> None:
+    """Corta si se ha configurado un almacén de secretos que no existe.
+
+    `SECRETOS_BACKEND` existía, estaba en `.env.example`, estaba en el manual de
+    referencia y **no lo leía nadie** (medido el 06-10-2026). Poner `vault`
+    guardaba los secretos en la base igual, y quien lo pusiera creería que las
+    credenciales de sus integraciones están en su gestor externo cuando están
+    aquí. No es un ajuste decorativo: es una creencia falsa sobre **dónde están
+    los secretos del cliente**, que es de las pocas cosas que hay que saber con
+    certeza.
+
+    Corta aquí y no solo en producción: configurarlo mal en desarrollo y que
+    pase sin decir nada es exactamente cómo llega a producción.
+
+    Lo que NO se hace es caer a `db` avisando. Un aviso en el log lo lee quien
+    mira el log; el operador que escribió `vault` seguiría creyendo lo que creía.
+    """
+    from crmcore.config import get_settings
+    from crmcore.errors import ErrorValidacion
+
+    backend = str(get_settings().secretos_backend or "db").strip().lower()
+    if backend in BACKENDS_DE_SECRETOS:
+        return
+    raise ErrorValidacion(
+        f"SECRETOS_BACKEND={backend} no está implementado, así que los secretos "
+        f"se guardarían en la base y no donde usted cree. Los que hay son: "
+        f"{', '.join(sorted(BACKENDS_DE_SECRETOS))}.",
+        error_code="secretos.backend_desconocido",
+        detalle={"configurado": backend, "disponibles": sorted(BACKENDS_DE_SECRETOS)},
+    )
+
+
 def cifrar_dict(valores: dict[str, Any], *, proposito: str = "credenciales") -> dict[str, Any]:
     """Cifra los valores de un diccionario. Las CLAVES quedan en claro.
 
@@ -173,10 +210,15 @@ def cifrar_dict(valores: dict[str, Any], *, proposito: str = "credenciales") -> 
     es un secreto, y dejarlo legible permite validar la forma de la
     configuración sin descifrar nada.
     """
+    comprobar_backend_de_secretos()
     return {k: cifrar(str(v), proposito=proposito) for k, v in valores.items()}
 
 
 def descifrar_dict(valores: dict[str, Any], *, proposito: str = "credenciales") -> dict[str, str]:
+    # También al LEER: si alguien cambia el ajuste a `vault` con secretos ya
+    # guardados aquí, seguir sirviéndolos de la base confirmaría la creencia
+    # falsa — «funciona, luego está en Vault».
+    comprobar_backend_de_secretos()
     return {k: descifrar(str(v), proposito=proposito) for k, v in valores.items()}
 
 

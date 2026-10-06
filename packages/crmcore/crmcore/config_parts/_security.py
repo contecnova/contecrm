@@ -27,7 +27,11 @@ class _SecuritySettings(BaseSettings):
     # la base; `vault` delega en un gestor externo. Genérico a propósito: la
     # configuración decide, no el código.
     secretos_backend: str = "db"
-    secretos_vault_url: str = ""
+    # `SECRETOS_VAULT_URL` estuvo aquí y SE QUITA (06-10-2026): sólo tenía
+    # sentido con un backend `vault` que no existe, y no lo leía nadie. Un
+    # ajuste que apunta a un gestor externo al que el producto no habla es la
+    # peor clase de ajuste: hace creer que los secretos están allí. Cuando el
+    # backend `vault` exista, su URL vuelve con él.
 
     # ── Enmascaramiento (CRM-00.05.03.03) ─────────────────────────────────
     # Aplicar máscara por rol en las respuestas de API y en las exportaciones.

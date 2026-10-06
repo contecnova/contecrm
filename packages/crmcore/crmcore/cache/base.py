@@ -253,6 +253,14 @@ def get_cache() -> Cache:
 
         s = get_settings()
         if s.cache_backend == "redis" and s.cache_url:
+            # ANTES del `try`: una URL en claro cuando se ha exigido cifrado no
+            # es una caché caída, es una configuración que miente, y caer a la
+            # caché en memoria la dejaría pasar en silencio.
+            from crmcore.red import tls_exigido
+
+            tls_exigido.exigir(
+                s.cache_url, tramo="la caché", ajuste="CACHE_TLS", exigido=s.cache_tls
+            )
             try:
                 _cache = CacheRedis(s.cache_url, ttl_generacion_s=s.cache_ttl_generacion_s)
                 logger.info("cache.lista", backend="redis")

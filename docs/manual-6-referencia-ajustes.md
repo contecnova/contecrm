@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**216 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
+**215 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -238,7 +238,6 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `ENCRYPTION_KEY_PREVIA` | — | *(secreto)* |  | Clave anterior, para poder descifrar lo escrito antes de una rotación. Mantenerla mientras dura el recifrado es lo que hace la rotación posible sin ventana de caída. |
 | `BYOK_ENABLED` | — | `False` |  | BYOK/CMEK (CRM-00.01.04.09): cuando está activo, la clave la aporta el tenant y se guarda cifrada con la maestra. Revocarla deja sus datos ilegibles a propósito, que es justo lo que el cliente compra. |
 | `SECRETOS_BACKEND` | — | *(secreto)* |  | Backend del almacén de secretos por tenant. `db` los guarda cifrados en la base; `vault` delega en un gestor externo. Genérico a propósito: la configuración decide, no el código. |
-| `SECRETOS_VAULT_URL` | — | *(vacío)* |  |  |
 | `MASKING_ENABLED` | 🔥 `masking_enabled` | `True` |  | Aplicar máscara por rol en las respuestas de API y en las exportaciones. Se hace en la serialización, no en la consulta, para que el mismo dato se vea completo o enmascarado según quién pregunte sin duplicar consultas. |
 | `DLP_ENABLED` | — | `True` |  |  |
 | `DLP_EXPORT_FILAS_AVISO` | 🔥 `dlp_export_filas_aviso` | `5000` | 1–10000000 | Filas a partir de las cuales una exportación se considera masiva: se audita siempre y, según política, se bloquea o pide aprobación. |

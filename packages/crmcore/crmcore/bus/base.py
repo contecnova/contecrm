@@ -96,13 +96,17 @@ async def crear_bus(nombre_servicio: str = "") -> Bus:
         return BusEnMemoria()
     if s.bus_backend == "redis":
         from crmcore.bus.redis_streams import BusRedis
+        from crmcore.red import tls_exigido
 
+        tls_exigido.exigir(s.redis_url, tramo="el bus", ajuste="BUS_TLS", exigido=s.bus_tls)
         bus = BusRedis(s.redis_url, prefijo=s.bus_prefix, servicio=nombre_servicio)
         await bus.conectar()
         return bus
 
     from crmcore.bus.nats_js import BusNats
+    from crmcore.red import tls_exigido
 
+    tls_exigido.exigir(s.nats_url, tramo="el bus", ajuste="BUS_TLS", exigido=s.bus_tls)
     bus = BusNats(s.nats_url, prefijo=s.bus_prefix, servicio=nombre_servicio)
     await bus.conectar()
     return bus
