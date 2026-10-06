@@ -8,7 +8,7 @@ de descarte normalizados).
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -16,6 +16,7 @@ from uuid import UUID
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.sales import servicio as svc
 from services.sales.modelos import CambioEtapa, Etapa, LineaOportunidad, Pipeline
@@ -112,7 +113,7 @@ def test_el_codigo_es_correlativo_por_tenant_y_ano(db: Any, tenant_id: UUID, uow
     _pipeline(db, tenant_id)
     a = svc.crear_oportunidad_nueva(uow, nombre="Una")
     b = svc.crear_oportunidad_nueva(uow, nombre="Otra")
-    anio = date.today().year
+    anio = hoy(db).year
     assert a.codigo == f"OPP-{anio}-00001"
     assert b.codigo == f"OPP-{anio}-00002"
 
@@ -147,7 +148,7 @@ def test_no_se_avanza_sin_cumplir_los_criterios(db: Any, tenant_id: UUID, uow: A
 def test_con_los_criterios_cumplidos_se_avanza(db: Any, tenant_id: UUID, uow: Any) -> None:
     pipeline = _pipeline(db, tenant_id)
     oportunidad = svc.crear_oportunidad_nueva(
-        uow, nombre="Completa", importe=Decimal("5000"), fecha_cierre=date.today()
+        uow, nombre="Completa", importe=Decimal("5000"), fecha_cierre=hoy(db)
     )
     svc.cambiar_etapa(uow, oportunidad.id, etapa_id=_etapa(db, pipeline, "negociacion").id)
 
@@ -219,7 +220,7 @@ def test_llegar_a_una_etapa_ganadora_cierra_la_oportunidad(
 
     assert oportunidad.estado == "ganada"
     assert oportunidad.probabilidad == 100
-    assert oportunidad.fecha_cierre_real == date.today()
+    assert oportunidad.fecha_cierre_real == hoy(db)
     assert oportunidad.bloqueada is True
     # Y se emite el evento que dispara el order-to-cash.
     assert any(e["tipo"] == "opportunity.won" for e in uow._pendientes)

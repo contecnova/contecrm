@@ -340,3 +340,53 @@ def test_el_criterio_esta_escrito_para_quien_venga_detras() -> None:
     siguiente no sigue."""
     manual = (RAIZ / "docs" / "manual-tecnico.md").read_text(encoding="utf-8")
     assert "fechas.hoy(db)" in manual, "el manual técnico no dice de dónde sale el día de hoy"
+
+
+# ── Y las propias pruebas ─────────────────────────────────────────────────
+
+
+# Ficheros donde `date.today()` puede aparecer. Sólo éste, y porque es el que
+# vigila: su texto nombra la llamada para poder buscarla.
+PUEDEN_NOMBRARLO = {"test_hoy_es_el_del_cliente_en_todas_partes.py"}
+
+
+def test_ninguna_prueba_le_pregunta_la_fecha_a_la_maquina() -> None:
+    """Una prueba que calcula «hoy» con el reloj de la máquina compara **dos
+    relojes**: el suyo y el del producto, que es el del cliente.
+
+    Coinciden casi siempre, y por eso aguanta. Dejan de coincidir entre
+    medianoche y las dos de la mañana en Madrid, y durante trece horas en
+    Auckland — y entonces fallan pruebas que no tienen nada roto, lo cual es la
+    forma más rápida de que alguien empiece a reejecutar la suite hasta que sale
+    verde.
+
+    Medido el 07-10-2026 a la 01:24, con el pase completo: **doce** en rojo a la
+    vez. Once eran esto; la otra destapó un fallo de producto de verdad.
+
+    Lo que se usa en su lugar es `crmcore.fechas.hoy(db)` —el día del cliente,
+    el mismo que mira el producto— o `hoy()` cuando no hay sesión a mano.
+    """
+    import pathlib
+
+    raiz = pathlib.Path(__file__).resolve().parents[2]
+    culpables = []
+    for fichero in sorted((raiz / "tests").rglob("*.py")):
+        if fichero.name in PUEDEN_NOMBRARLO or "__pycache__" in str(fichero):
+            continue
+        texto = fichero.read_text(encoding="utf-8", errors="ignore")
+        if "date.today()" in texto:
+            culpables.append(f"{fichero.relative_to(raiz)} ({texto.count('date.today()')})")
+
+    assert not culpables, (
+        "Pruebas que le preguntan la fecha a la máquina en vez de al producto. "
+        "Usa `hoy(db)`, o `hoy()` si no hay sesión:\n  " + "\n  ".join(culpables)
+    )
+
+
+def test_el_recorrido_de_las_pruebas_mira_de_verdad() -> None:
+    """Un recorrido que no encuentra ficheros pasa siempre."""
+    import pathlib
+
+    raiz = pathlib.Path(__file__).resolve().parents[2]
+    cuantos = sum(1 for _ in (raiz / "tests").rglob("*.py"))
+    assert cuantos >= 200, f"solo se ven {cuantos} ficheros de prueba"

@@ -9,7 +9,7 @@ cuánta gente contestó.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.service import entitlements as ent
 from services.service import operacion as ope
@@ -24,7 +25,7 @@ from services.service import servicio as svc
 from services.service.modelos import DefinicionSLA
 from services.service.operacion import ColaCasos, ReglaAsignacion, ReglaEscalada
 
-HOY = date.today()
+HOY = hoy()
 
 
 @pytest.fixture

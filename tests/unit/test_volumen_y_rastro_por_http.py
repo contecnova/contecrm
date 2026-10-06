@@ -22,11 +22,12 @@ ruta de exportación en absoluto.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.fechas import hoy
 from starlette.testclient import TestClient
 
 pytestmark = pytest.mark.db
@@ -144,7 +145,7 @@ def test_las_particiones_se_crean_por_delante(
 ) -> None:
     """Crearla cuando llega la primera fila del mes es crearla a las 00:00 del
     día 1, dentro de la transacción de un usuario y con un bloqueo de tabla."""
-    atrasada = (date.today().replace(day=1) - timedelta(days=90)).isoformat()
+    atrasada = (hoy(db).replace(day=1) - timedelta(days=90)).isoformat()
     r = cliente.get(
         f"/api/v1/sales/volumen/particiones-a-crear?ultima_existente={atrasada}"
         "&meses_por_delante=3",
@@ -157,7 +158,7 @@ def test_las_particiones_se_crean_por_delante(
     # creada hace tres meses, la de hoy no existe: no es un aviso, es un
     # incidente ocurriendo. La versión anterior no podía decirlo —excluía el mes
     # en curso del recorrido, así que «urgente» era inalcanzable—.
-    assert salida["faltan"][0] == date.today().isoformat()[:7]
+    assert salida["faltan"][0] == hoy(db).isoformat()[:7]
     assert salida["ya_falta_la_de_este_mes"] is True
     assert salida["urgente"] is True
 
@@ -209,7 +210,7 @@ def test_lo_que_esta_en_litigio_no_se_mueve_a_frio(
 ) -> None:
     """Moverlo sería cumplir el plazo de retención por accidente y romper otra
     obligación a la vez — y la que se rompe suele ser la cara."""
-    vieja = (date.today() - timedelta(days=5 * 365)).isoformat()
+    vieja = (hoy(db) - timedelta(days=5 * 365)).isoformat()
     r = cliente.post(
         "/api/v1/sales/volumen/archivar",
         headers=cabeceras,

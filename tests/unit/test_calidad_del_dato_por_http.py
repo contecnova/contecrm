@@ -154,10 +154,17 @@ def test_confirmar_no_es_cambiar(cliente: Any, cabeceras: dict[str, str], db: An
         f"/api/v1/calidad-dato/linaje/cuenta/{objeto_id}", headers=cabeceras
     ).json()
     fuente = linaje["campos"]["cargo"][0]
-    # La fecha del cambio sigue siendo la de hace más de un año...
-    assert fuente["cambio_el_valor"][:10] == cambiado[:10]
-    # ...y la del último mensaje es de hoy.
-    assert fuente["ultimo_mensaje"][:10] == datetime.now(timezone.utc).date().isoformat()
+    # Se comparan INSTANTES, no los diez primeros caracteres de su forma de
+    # texto. Lo que se guarda es un instante y lo que se devuelve va en la zona
+    # del cliente, así que recortar la cadena compara dos días distintos: medido
+    # el 07-10-2026 a las 01:24, con 400 días hacia atrás, uno daba 2025-09-01 y
+    # el otro 2025-09-02. Lo que esta prueba dice —que confirmar no mueve la
+    # fecha del cambio— es cierto en los dos, y no tiene nada que ver con la
+    # hora a la que se ejecute.
+    assert datetime.fromisoformat(fuente["cambio_el_valor"]) == datetime.fromisoformat(cambiado)
+    # ...y la del último mensaje es de ahora, no de hace 400 días.
+    distancia = abs(datetime.fromisoformat(fuente["ultimo_mensaje"]) - datetime.now(timezone.utc))
+    assert distancia < timedelta(minutes=5), fuente["ultimo_mensaje"]
 
 
 def test_un_plazo_de_cero_dias_deja_todo_obsoleto(cliente: Any, cabeceras: dict[str, str]) -> None:

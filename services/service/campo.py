@@ -412,6 +412,20 @@ def _ahora() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _dia_del_cliente(momento: datetime, db: Any = None) -> date:
+    """De qué día es este instante **donde está el cliente**.
+
+    No es lo mismo que `momento.date()`: eso lo resuelve en la zona que traiga
+    el instante, y lo que vuelve de un `timestamptz` viene en la de la conexión.
+    Un instante es absoluto; de qué día forma parte, no.
+    """
+    from crmcore.fechas import zona_del_tenant
+
+    if momento.tzinfo is None:
+        momento = momento.replace(tzinfo=timezone.utc)
+    return momento.astimezone(zona_del_tenant(db)).date()
+
+
 def _hoy(db: Any = None) -> date:
     """El día de hoy **donde está el cliente**, si hay sesión con la que saberlo.
 
@@ -1546,7 +1560,16 @@ def registrar_preventivo_hecho(uow: UnidadDeTrabajo, orden_id: UUID) -> PlanPrev
     plan = uow.db.get(PlanPreventivo, orden.plan_id)
     if plan is None or plan.tenant_id != uow.tenant_id:
         return None
-    hecho = (orden.completada_at or _ahora()).date()
+    # EL DÍA EN LA ZONA DEL CLIENTE, no el que salga del instante tal cual.
+    # `completada_at` es un `timestamptz`: el instante es correcto, pero `.date()`
+    # lo toma en la zona que devuelva la conexión —ni UTC ni la del tenant: la
+    # del servidor—, que es un tercer reloj. Medido el 07-10-2026 a las 02:20:
+    # una revisión completada daba la siguiente un día corrida.
+    #
+    # Para un plan de mantenimiento «el día en que se hizo» es el del cliente: es
+    # el que ve el técnico en el parte y el que el cliente cuenta para el
+    # siguiente aviso.
+    hecho = _dia_del_cliente(orden.completada_at or _ahora(), uow.db)
     plan.ultima_ejecucion = hecho
     if plan.cada_dias:
         plan.proxima_fecha = hecho + timedelta(days=plan.cada_dias)

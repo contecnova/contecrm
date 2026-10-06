@@ -12,7 +12,7 @@ que el comercial cree que vendió.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.integration import compensacion as cmp
 from services.party import metricas_embebidas as met
@@ -33,7 +34,7 @@ from services.sales import plan_conjunto as pc
 # a pedirla con una fecha ya pasada, y el producto —con razón— las rechaza. Una
 # fecha fija en una prueba es una bomba de relojería: funciona hasta que no, y
 # el día que revienta no hay ningún cambio que lo explique.
-HOY = date.today()
+HOY = hoy()
 AHORA = datetime.combine(HOY, time(12, 0), tzinfo=timezone.utc)
 
 

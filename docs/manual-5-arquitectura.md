@@ -308,6 +308,19 @@ tests/integration/            aislamiento real contra Postgres
   el que se olvide se queda con el dueño en blanco, que es justo el valor que lo
   hace pasar por propio. Lo escondía la prueba: pasaba **por orden de carga**, y
   salía verde sin haber recorrido nunca la rama que decía cubrir.
+- **Una prueba le pregunta el día al producto, no a la máquina.** `date.today()`
+  en una prueba compara dos relojes —el de quien ejecuta y el del cliente, que es
+  el que mira el producto—, y coinciden casi siempre: dejan de coincidir entre
+  medianoche y las dos de la mañana en Madrid y durante trece horas en Auckland.
+  Entonces fallan pruebas que no tienen nada roto, que es la forma más rápida de
+  que alguien empiece a reejecutar la suite hasta que sale verde. Medido el
+  07-10-2026 a la 01:24: doce en rojo a la vez, once por esto. Hay guardián.
+- **De qué día es un instante no se pregunta al instante.** `momento.date()` lo
+  resuelve en la zona que traiga, y lo que vuelve de un `timestamptz` viene en la
+  de la conexión — ni UTC ni la del tenant: la del servidor, que es un tercer
+  reloj. Un instante es absoluto; de qué día forma parte, no. Pasó con los planes
+  de mantenimiento: una revisión completada reprogramaba la siguiente un día
+  corrido.
 - **Un cálculo relativo recibe el día, no lo busca.** `hace_menos_de_dias` y los
   demás operadores temporales de los segmentos y de la puntuación reciben el día
   del cliente (`crmcore.fechas.hoy(db)`). No tienen valor por defecto a propósito:

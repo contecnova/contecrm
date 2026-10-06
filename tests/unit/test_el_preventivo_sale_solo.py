@@ -19,6 +19,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
+from crmcore.fechas import hoy
 
 from services.service import campo
 
@@ -56,7 +57,7 @@ def _plan(uow: UnidadDeTrabajo, *, vence: date) -> Any:
 
 
 def test_lo_vencido_genera_su_orden(uow: UnidadDeTrabajo) -> None:
-    _plan(uow, vence=date.today() - timedelta(days=1))
+    _plan(uow, vence=hoy(uow.db) - timedelta(days=1))
     salida = campo.generar_preventivas(uow)
     assert salida["creadas"], "el plan venció y no ha salido ninguna orden"
 
@@ -64,7 +65,7 @@ def test_lo_vencido_genera_su_orden(uow: UnidadDeTrabajo) -> None:
 def test_un_plan_desatendido_no_genera_seis_ordenes_iguales(uow: UnidadDeTrabajo) -> None:
     """Lo que se hace con seis órdenes idénticas es cerrarlas todas sin mirar,
     y entonces se cierra también la que había que atender."""
-    _plan(uow, vence=date.today() - timedelta(days=180))
+    _plan(uow, vence=hoy(uow.db) - timedelta(days=180))
     primera = campo.generar_preventivas(uow)
     segunda = campo.generar_preventivas(uow)
     assert len(primera["creadas"]) == 1

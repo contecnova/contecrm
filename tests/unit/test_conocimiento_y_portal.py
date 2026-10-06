@@ -8,19 +8,20 @@ de esas dos cosas.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado, Prohibido
+from crmcore.fechas import hoy
 
 from services.service import conocimiento as kb
 from services.service import portal as prt
 from services.service import servicio as svc
 
-HOY = date.today()
+HOY = hoy()
 
 
 @pytest.fixture

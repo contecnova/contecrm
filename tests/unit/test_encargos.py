@@ -11,7 +11,7 @@ seguimiento en producción, y que no aparecen en una demostración:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -19,6 +19,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.integration import encargos as enc
 from services.integration import proyeccion as proy
@@ -459,9 +460,9 @@ def test_el_cumplimiento_solo_cuenta_lo_que_es_del_proveedor(
     enc.abrir_incidencia(uow, tarde.id, tipo="retraso", responsable="proveedor")
     enc.abrir_incidencia(uow, a_tiempo.id, tipo="direccion_mala", responsable="cliente")
 
-    hoy = date.today()
+    dia = hoy(uow.db)
     fila = enc.cumplimiento_proveedor(
-        uow.db, uow.tenant_id, desde=hoy - timedelta(days=1), hasta=hoy + timedelta(days=1)
+        uow.db, uow.tenant_id, desde=dia - timedelta(days=1), hasta=dia + timedelta(days=1)
     )[0]
     assert fila["cumplimiento_pct"] == 50.0
     assert fila["incidencias_suyas"] == 1
@@ -473,9 +474,9 @@ def test_un_proveedor_recien_contratado_no_cumple_el_cien_por_cien(
     """Todavía no ha demostrado nada, y un 100 % de cero envíos es el número con
     el que se firma un contrato que después no se cumple."""
     enc.crear(uow, proveedor="gls")
-    hoy = date.today()
+    dia = hoy(uow.db)
     fila = enc.cumplimiento_proveedor(
-        uow.db, uow.tenant_id, desde=hoy - timedelta(days=1), hasta=hoy + timedelta(days=1)
+        uow.db, uow.tenant_id, desde=dia - timedelta(days=1), hasta=dia + timedelta(days=1)
     )[0]
     assert fila["cumplimiento_pct"] is None
     assert fila["medible"] is False

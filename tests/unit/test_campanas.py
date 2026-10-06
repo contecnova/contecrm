@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,11 +12,12 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.marketing import campanas as cmp
 from services.marketing import segmentos as seg
 
-HOY = date.today()
+HOY = hoy()
 
 
 @pytest.fixture

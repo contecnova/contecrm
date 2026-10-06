@@ -9,13 +9,14 @@ se firma sin comparar con el de quien va a ir.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.party import proveedores as prv
 from services.party.modelos import Cuenta
@@ -29,7 +30,7 @@ from services.service import proveedores_sla as psla
 # a pedirla con una fecha ya pasada, y el producto —con razón— las rechaza. Una
 # fecha fija en una prueba es una bomba de relojería: funciona hasta que no, y
 # el día que revienta no hay ningún cambio que lo explique.
-HOY = date.today()
+HOY = hoy()
 
 
 @pytest.fixture

@@ -17,12 +17,13 @@ import pytest
 from crmcore.datos.cambio import fijar_tipo_cambio
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.sales import forecast
 from services.sales import servicio as svc
 from services.sales.modelos import Etapa, Oportunidad, Pipeline
 
-HOY = date.today()
+HOY = hoy()
 DESDE = HOY - timedelta(days=30)
 HASTA = HOY + timedelta(days=30)
 

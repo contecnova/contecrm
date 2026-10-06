@@ -23,6 +23,7 @@ import pytest
 from crmcore.authz.principal import Principal
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorDependencia, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.intelligence import anomalias as ano
 from services.intelligence import conversacion as conv
@@ -132,7 +133,7 @@ def test_un_modelo_caducado_deja_de_puntuar(uow: UnidadDeTrabajo) -> None:
     modelo = _modelo(uow, vigencia_dias=30)
     gob.activar(uow, tipo="scoring_lead", version=modelo.version)
     assert gob.activo(uow.db, uow.tenant_id, "scoring_lead") is not None
-    futuro = date.today() + timedelta(days=45)
+    futuro = hoy(uow.db) + timedelta(days=45)
     assert gob.activo(uow.db, uow.tenant_id, "scoring_lead", hoy=futuro) is None
 
 
@@ -147,8 +148,8 @@ def test_la_deriva_con_pocas_muestras_no_es_concluyente(uow: UnidadDeTrabajo) ->
         metrica="auc",
         valor=0.55,
         muestras=30,
-        desde=date.today() - timedelta(days=30),
-        hasta=date.today(),
+        desde=hoy(uow.db) - timedelta(days=30),
+        hasta=hoy(uow.db),
     )
     assert salida["concluyente"] is False
 

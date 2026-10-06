@@ -29,6 +29,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from crmcore.fechas import hoy
 from starlette.testclient import TestClient
 
 pytestmark = pytest.mark.db
@@ -369,7 +370,7 @@ def test_el_contrato_avisa_por_lo_vendido_y_no_por_su_fecha(
 ) -> None:
     """Los compromisos más allá del fin del contrato son los que se quedan sin
     nadie detrás."""
-    fin = date.today() + timedelta(days=60)
+    fin = hoy(db) + timedelta(days=60)
     r = cliente.post(
         "/api/v1/proveedores-comerciales/contrato",
         headers=cabeceras,

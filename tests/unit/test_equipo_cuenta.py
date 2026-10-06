@@ -19,6 +19,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.authz.comparticion import visibilidad_de
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.party import servicio as svc
 from services.party.modelos import Cuenta, MiembroEquipoCuenta
@@ -149,7 +150,7 @@ def test_una_pertenencia_caducada_deja_de_dar_visibilidad(
         cuenta_id=cuenta.id,
         usuario_id=quien,
         rol="tecnico",
-        hasta=date.today() - timedelta(days=1),
+        hasta=hoy(db) - timedelta(days=1),
     )
     db.flush()
 
@@ -175,7 +176,7 @@ def test_una_pertenencia_futura_todavia_no_da_visibilidad(
         cuenta_id=cuenta.id,
         usuario_id=quien,
         rol="kam",
-        desde=date.today() + timedelta(days=30),
+        desde=hoy(db) + timedelta(days=30),
     )
     db.flush()
 
@@ -196,7 +197,7 @@ def test_el_listado_del_equipo_enseña_los_no_vigentes_salvo_que_se_pida(
         cuenta_id=cuenta.id,
         usuario_id=uuid4(),
         rol="tecnico",
-        hasta=date.today() - timedelta(days=1),
+        hasta=hoy(db) - timedelta(days=1),
     )
     db.flush()
 

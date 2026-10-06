@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.party import actividades_extra as ax
 
@@ -71,7 +72,7 @@ def test_los_desfases_cuentan_desde_el_arranque(uow: UnidadDeTrabajo) -> None:
             {"asunto": "Plan", "dias": 5, "asignada_a": str(uuid4())},
         ],
     )
-    arranque = date.today() + timedelta(days=30)
+    arranque = hoy(uow.db) + timedelta(days=30)
     salida = ax.aplicar_plantilla(
         uow, "implantacion", objeto="cuenta", objeto_id=uuid4(), desde=arranque
     )

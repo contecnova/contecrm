@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.sales import catalogo as cat
 from services.sales import presupuestos as pre
@@ -140,7 +141,7 @@ def test_el_escalado_por_volumen_solo_vale_desde_su_cantidad(
 
 
 def test_una_lista_caducada_no_se_aplica(db: Any, tenant_id: UUID, caja: Any) -> None:
-    lista = _lista(db, tenant_id, hasta=date.today() - timedelta(days=1))
+    lista = _lista(db, tenant_id, hasta=hoy(db) - timedelta(days=1))
     _regla(db, tenant_id, lista, valor=Decimal(50))
     assert cat.calcular_precio(db, tenant_id, producto_id=caja.id)["precio"] == "100.00"
 
@@ -410,7 +411,7 @@ def test_un_presupuesto_caducado_no_se_acepta(uow: UnidadDeTrabajo, caja: Any) -
     descubrimiento llega con la factura."""
     fila = pre.crear(uow, lineas=[{"producto_id": str(caja.id)}], cuenta_id=uuid4())
     pre.enviar(uow, fila.id)
-    fila.valido_hasta = date.today() - timedelta(days=1)
+    fila.valido_hasta = hoy(uow.db) - timedelta(days=1)
     uow.db.flush()
     with pytest.raises(Conflicto) as e:
         pre.aceptar(uow, fila.id)
@@ -422,7 +423,7 @@ def test_los_vencidos_se_marcan_para_que_no_cuenten_como_pipeline(
 ) -> None:
     fila = pre.crear(uow, lineas=[{"producto_id": str(caja.id)}])
     pre.enviar(uow, fila.id)
-    fila.valido_hasta = date.today() - timedelta(days=1)
+    fila.valido_hasta = hoy(uow.db) - timedelta(days=1)
     uow.db.flush()
     salida = pre.caducar_vencidos(uow, uow.tenant_id)
     assert salida["caducados"] == [fila.numero]
@@ -460,7 +461,7 @@ def test_el_documento_no_enseña_descuentos_a_cero(uow: UnidadDeTrabajo, caja: A
 def test_un_contrato_que_se_renueva_solo_necesita_fin(uow: UnidadDeTrabajo) -> None:
     """Sin fecha de fin no hay nada que renovar ni cuándo avisar."""
     with pytest.raises(ErrorValidacion):
-        pre.crear_contrato(uow, cuenta_id=uuid4(), inicio=date.today(), renovacion_automatica=True)
+        pre.crear_contrato(uow, cuenta_id=uuid4(), inicio=hoy(uow.db), renovacion_automatica=True)
 
 
 def test_el_preaviso_avisa_antes_de_vencer(uow: UnidadDeTrabajo) -> None:
@@ -469,8 +470,8 @@ def test_el_preaviso_avisa_antes_de_vencer(uow: UnidadDeTrabajo) -> None:
     pre.crear_contrato(
         uow,
         cuenta_id=uuid4(),
-        inicio=date.today() - timedelta(days=300),
-        fin=date.today() + timedelta(days=20),
+        inicio=hoy(uow.db) - timedelta(days=300),
+        fin=hoy(uow.db) + timedelta(days=20),
         preaviso_dias=30,
     )
     salida = pre.revisar_renovaciones(uow, uow.tenant_id)
@@ -484,8 +485,8 @@ def test_no_se_avisa_dos_veces(uow: UnidadDeTrabajo) -> None:
     pre.crear_contrato(
         uow,
         cuenta_id=uuid4(),
-        inicio=date.today() - timedelta(days=300),
-        fin=date.today() + timedelta(days=20),
+        inicio=hoy(uow.db) - timedelta(days=300),
+        fin=hoy(uow.db) + timedelta(days=20),
     )
     pre.revisar_renovaciones(uow, uow.tenant_id)
     assert pre.revisar_renovaciones(uow, uow.tenant_id)["avisados"] == []
@@ -497,8 +498,8 @@ def test_lo_renovado_no_cuenta_como_baja(uow: UnidadDeTrabajo) -> None:
     viejo = pre.crear_contrato(
         uow,
         cuenta_id=uuid4(),
-        inicio=date.today() - timedelta(days=400),
-        fin=date.today() - timedelta(days=1),
+        inicio=hoy(uow.db) - timedelta(days=400),
+        fin=hoy(uow.db) - timedelta(days=1),
         renovacion_automatica=True,
         meses_renovacion=12,
     )
@@ -523,7 +524,7 @@ def test_el_cambio_de_plan_prorratea(uow: UnidadDeTrabajo) -> None:
         cuenta_id=uuid4(),
         plan="basico",
         importe_periodo=Decimal(100),
-        inicio=date.today(),
+        inicio=hoy(uow.db),
     )
     salida = pre.cambiar_suscripcion(
         uow,
@@ -540,7 +541,7 @@ def test_el_historico_de_la_suscripcion_no_se_pisa(uow: UnidadDeTrabajo, db: Any
     """Sin él, responder «¿desde cuándo paga esto?» exige mirar facturas, y el
     ARR de hace seis meses no se puede reconstruir."""
     fila = pre.alta_suscripcion(
-        uow, cuenta_id=uuid4(), plan="basico", importe_periodo=Decimal(100), inicio=date.today()
+        uow, cuenta_id=uuid4(), plan="basico", importe_periodo=Decimal(100), inicio=hoy(db)
     )
     pre.cambiar_suscripcion(
         uow, fila.id, tipo="cambio_plan", plan="pro", importe_periodo=Decimal(160)
@@ -562,7 +563,7 @@ def test_el_historico_de_la_suscripcion_no_se_pisa(uow: UnidadDeTrabajo, db: Any
 
 def test_una_suscripcion_cancelada_no_se_cambia(uow: UnidadDeTrabajo) -> None:
     fila = pre.alta_suscripcion(
-        uow, cuenta_id=uuid4(), plan="basico", importe_periodo=Decimal(100), inicio=date.today()
+        uow, cuenta_id=uuid4(), plan="basico", importe_periodo=Decimal(100), inicio=hoy(uow.db)
     )
     pre.cambiar_suscripcion(uow, fila.id, tipo="baja")
     with pytest.raises(Conflicto):
@@ -576,14 +577,14 @@ def test_lo_pausado_no_cuenta_como_recurrente(uow: UnidadDeTrabajo) -> None:
         cuenta_id=uuid4(),
         plan="a",
         importe_periodo=Decimal(100),
-        inicio=date.today() - timedelta(days=1),
+        inicio=hoy(uow.db) - timedelta(days=1),
     )
     pausada = pre.alta_suscripcion(
         uow,
         cuenta_id=uuid4(),
         plan="b",
         importe_periodo=Decimal(50),
-        inicio=date.today() - timedelta(days=1),
+        inicio=hoy(uow.db) - timedelta(days=1),
     )
     pre.cambiar_suscripcion(uow, pausada.id, tipo="pausa")
     salida = pre.ingreso_recurrente(uow.db, uow.tenant_id)
@@ -598,7 +599,7 @@ def test_el_arr_anual_se_normaliza_a_mensual(uow: UnidadDeTrabajo) -> None:
         cuenta_id=uuid4(),
         plan="anual",
         importe_periodo=Decimal(1200),
-        inicio=date.today() - timedelta(days=1),
+        inicio=hoy(uow.db) - timedelta(days=1),
         periodicidad="anual",
     )
     salida = pre.ingreso_recurrente(uow.db, uow.tenant_id)

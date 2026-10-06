@@ -30,6 +30,7 @@ from crmcore.authz.comparticion import (
 )
 from crmcore.authz.principal import Principal
 from crmcore.authz.visibilidad import aplicar_visibilidad
+from crmcore.fechas import hoy
 from sqlalchemy import select
 
 from services.party.modelos import Cuenta, MiembroEquipoCuenta
@@ -132,7 +133,7 @@ def test_una_comparticion_caducada_deja_de_verse(
 ) -> None:
     """La caducidad es la mitad del valor de compartir a mano: sin ella, cada
     sustitución de vacaciones deja un acceso permanente que nadie revisa."""
-    from datetime import date, timedelta
+    from datetime import timedelta
 
     yo = uuid4()
     ajena = _cuenta(db, tenant_id, "Ajena", owner_id=uuid4())
@@ -144,7 +145,7 @@ def test_una_comparticion_caducada_deja_de_verse(
             registro_id=ajena.id,
             usuario_id=yo,
             acceso="lectura",
-            hasta=date.today() - timedelta(days=1),
+            hasta=hoy(db) - timedelta(days=1),
         )
     )
     db.flush()

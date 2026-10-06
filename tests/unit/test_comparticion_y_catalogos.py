@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.authz import comparticion as comp
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.tenancy import catalogos as cat
 
@@ -98,7 +99,7 @@ def test_una_comparticion_caducada_deja_de_dar_acceso(db: Any, tenant_id: UUID) 
         objeto="cuenta",
         registro_id=registro,
         usuario_id=usuario,
-        hasta=date.today() - timedelta(days=1),
+        hasta=hoy(db) - timedelta(days=1),
     )
     db.flush()
 

@@ -13,7 +13,7 @@ razón en una devolución:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.service import activos as act
 from services.service import postventa as pv
@@ -32,7 +33,7 @@ def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
 
 
 def _devolucion(uow: UnidadDeTrabajo, **kw: Any) -> pv.Devolucion:
-    base: dict[str, Any] = {"motivo": "llego_roto", "comprado_el": date.today()}
+    base: dict[str, Any] = {"motivo": "llego_roto", "comprado_el": hoy(uow.db)}
     base.update(kw)
     fila, _ = pv.solicitar(uow, **base)
     return fila
@@ -74,7 +75,7 @@ def test_sin_fecha_de_compra_el_plazo_no_concluye(uow: UnidadDeTrabajo) -> None:
 def test_fuera_de_ventana_hace_falta_forzar_con_motivo(uow: UnidadDeTrabajo) -> None:
     """Si pasa en silencio, la ventana no significa nada y nadie puede medir
     cuánto se está regalando."""
-    fila = _devolucion(uow, comprado_el=date.today() - timedelta(days=400))
+    fila = _devolucion(uow, comprado_el=hoy(uow.db) - timedelta(days=400))
     with pytest.raises(Conflicto):
         pv.autorizar(uow, fila.id)
     with pytest.raises(ErrorValidacion):
@@ -92,7 +93,7 @@ def test_una_serie_que_no_consta_instalada_avisa(uow: UnidadDeTrabajo) -> None:
     _, avisos = pv.solicitar(
         uow,
         motivo="averia",
-        comprado_el=date.today(),
+        comprado_el=hoy(uow.db),
         lineas=[{"concepto": "Bomba", "numero_serie": "SN-DESCONOCIDA"}],
     )
     assert any("no consta como activo instalado" in a for a in avisos)

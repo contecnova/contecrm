@@ -8,7 +8,7 @@ incumplimiento y no después.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -16,11 +16,12 @@ import pytest
 from crmcore.datos.calendario import CalendarioLaboral, Festivo
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.service import servicio as svc
 from services.service.modelos import CategoriaCaso, DefinicionSLA, EventoCaso
 
-HOY = date.today()
+HOY = hoy()
 
 
 @pytest.fixture

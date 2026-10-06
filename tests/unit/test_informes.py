@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.fechas import hoy
 
 from services.analytics import informes as inf
 
@@ -494,7 +495,7 @@ def test_con_un_solo_punto_no_hay_tendencia(uow: UnidadDeTrabajo) -> None:
 def test_con_dos_puntos_si(uow: UnidadDeTrabajo) -> None:
     inf.registrar_ejecutor(_ejecutor([{"total": 1}]))
     fila = _informe(uow)
-    inf.tomar_instantanea(uow, fila.id, el_dia=date.today() - timedelta(days=1))
+    inf.tomar_instantanea(uow, fila.id, el_dia=hoy(uow.db) - timedelta(days=1))
     inf.tomar_instantanea(uow, fila.id)
     assert inf.tendencia(uow.db, uow.tenant_id, fila.id)["hay_tendencia"] is True
 

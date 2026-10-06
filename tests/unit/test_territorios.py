@@ -22,6 +22,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy
 
 from services.sales import territorios as ter
 
@@ -151,7 +152,7 @@ def test_una_excepcion_caducada_deja_de_mandar(uow: UnidadDeTrabajo) -> None:
         cuenta_id=cuenta,
         territorio_id=sur.id,
         motivo="temporal",
-        hasta=date.today() - timedelta(days=1),
+        hasta=hoy(uow.db) - timedelta(days=1),
     )
     salida = ter.resolver(uow.db, uow.tenant_id, {"provincia": "B"}, cuenta_id=cuenta)
     assert salida["territorio"] == "norte"

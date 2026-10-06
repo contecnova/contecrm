@@ -23,6 +23,7 @@ from uuid import UUID, uuid4
 import pytest
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
+from crmcore.fechas import hoy
 
 from services.service import activos as act
 from services.service import campo
@@ -190,8 +191,8 @@ def test_la_linea_dice_si_lo_paga_el_cliente_al_apuntarla(uow: UnidadDeTrabajo) 
     act.registrar_garantia(
         uow,
         activo.id,
-        desde=date.today() - timedelta(days=10),
-        hasta=date.today() + timedelta(days=300),
+        desde=hoy(uow.db) - timedelta(days=10),
+        hasta=hoy(uow.db) + timedelta(days=300),
         cobertura=["piezas"],
     )
     orden = _orden(uow, activo_id=activo.id)
@@ -498,7 +499,7 @@ def test_no_se_generan_dos_ordenes_del_mismo_plan(uow: UnidadDeTrabajo) -> None:
         nombre="Revisión mensual",
         activo_id=activo.id,
         cada_dias=30,
-        desde=date.today() - timedelta(days=60),
+        desde=hoy(uow.db) - timedelta(days=60),
     )
     primera = campo.generar_preventivas(uow)
     segunda = campo.generar_preventivas(uow)
@@ -516,14 +517,14 @@ def test_el_preventivo_se_reprograma_desde_que_se_hizo(uow: UnidadDeTrabajo) -> 
         nombre="Revisión mensual",
         activo_id=activo.id,
         cada_dias=30,
-        desde=date.today() - timedelta(days=60),
+        desde=hoy(uow.db) - timedelta(days=60),
     )
     creada = campo.generar_preventivas(uow)["creadas"][0]
     orden_id = UUID(creada)
     campo.completar(uow, orden_id, resumen="Revisión hecha")
     plan = campo.registrar_preventivo_hecho(uow, orden_id)
     assert plan is not None
-    assert plan.proxima_fecha == date.today() + timedelta(days=30)
+    assert plan.proxima_fecha == hoy(uow.db) + timedelta(days=30)
 
 
 def test_un_plan_de_un_activo_retirado_no_vence(uow: UnidadDeTrabajo) -> None:
@@ -533,7 +534,7 @@ def test_un_plan_de_un_activo_retirado_no_vence(uow: UnidadDeTrabajo) -> None:
         nombre="Revisión",
         activo_id=activo.id,
         cada_dias=30,
-        desde=date.today() - timedelta(days=60),
+        desde=hoy(uow.db) - timedelta(days=60),
     )
     act.cambiar_estado(uow, activo.id, estado="retirado", motivo="Baja")
     assert campo.vencimientos(uow.db, uow.tenant_id)["vencimientos"] == []
