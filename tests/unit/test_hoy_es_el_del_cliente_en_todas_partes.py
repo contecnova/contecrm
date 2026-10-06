@@ -60,6 +60,30 @@ MAXIMO_SIN_SESION = 15
 AYUDANTES = ("_hoy", "_ahora_fecha")
 
 
+def _mira_el_reloj(nodo: ast.AST) -> bool:
+    """Si este nodo calcula el día ignorando la zona del cliente.
+
+    Los dos de siempre —`date.today()` y `datetime.now(timezone.utc).date()`— y
+    además `utcnow()`, que da un instante **sin huso**: comparar eso con una
+    marca que sí lo lleva ordena por el carácter y no por el momento.
+
+    Se mira el nombre del método y no el del módulo: basta un
+    `from datetime import date as _d` para que una comparación por módulo deje
+    de ver nada, y quien lo escribe no lo hace para esquivar el guardián — lo
+    hace importando como siempre ha importado.
+    """
+    if not isinstance(nodo, ast.Call) or not isinstance(nodo.func, ast.Attribute):
+        return False
+    metodo = nodo.func.attr
+    if metodo in ("today", "utcnow"):
+        return True
+    # `…now(timezone.utc).date()`: el día de UTC, que no es el del cliente.
+    if metodo == "date" and isinstance(nodo.func.value, ast.Call):
+        interior = nodo.func.value.func
+        return isinstance(interior, ast.Attribute) and interior.attr == "now"
+    return False
+
+
 def _calculos_de_hoy() -> tuple[int, list[str]]:
     """Cada sitio donde se calcula el día, y si tenía sesión a mano.
 
@@ -89,7 +113,6 @@ def _calculos_de_hoy() -> tuple[int, list[str]]:
             for n in ast.walk(arbol)
             if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name in AYUDANTES
         }
-        lineas = texto.splitlines()
         for nodo in ast.walk(arbol):
             if not isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
@@ -97,8 +120,14 @@ def _calculos_de_hoy() -> tuple[int, list[str]]:
                 # El ayudante mismo no cuenta: su trabajo ES resolver la fecha, y
                 # lo hace con la sesión que le den.
                 continue
-            cuerpo = "\n".join(lineas[nodo.lineno - 1 : nodo.end_lineno or nodo.lineno])
-            cuantos = sum(cuerpo.count(p) for p in PATRONES)
+            # **Por el árbol y no por el texto.** Contaba las apariciones de
+            # `date.today()` en el cuerpo tal cual, así que un comentario que
+            # explicara por qué NO hay que usarlo contaba como si lo usara: pasó
+            # el 06-10-2026, y el aviso señalaba una función que acababa de
+            # dejar de mirar el reloj. Un guardián que se dispara con la prosa
+            # enseña a no escribir el motivo, que es lo contrario de lo que
+            # queremos — y se calla si alguien borra el comentario.
+            cuantos = sum(1 for sub in ast.walk(nodo) if _mira_el_reloj(sub))
             cuantos += sum(
                 1
                 for sub in ast.walk(nodo)
@@ -184,3 +213,130 @@ def test_con_la_zona_del_cliente_el_dia_cambia(
         0,
         1,
     ), f"diferencia inesperada entre {del_cliente} y {en_utc}"
+
+
+# ── Lo que se le añadió el 06-10-2026 ─────────────────────────────────────
+#
+# Venía de un fichero aparte, y tenerlo aparte era el mismo error que este
+# repositorio se dedica a quitar: DOS guardianes de la misma regla divergen, y
+# el que menos se mira es el que se queda corto. Se funden en éste.
+
+
+# Las que reciben `hoy` y, si no se lo pasan, caen al día de UTC. Van nombradas
+# una a una: una lista cerrada que solo puede ENCOGER, no un tope con hueco.
+#
+# Las tres son puras y sus rutas no llevan sesión —`/cohortes` y `/embudo` reciben
+# los datos enteros en el cuerpo—, así que hoy no hay de dónde sacar la zona del
+# cliente. Para quitarlas hay que darle sesión a esas rutas, que es un cambio de
+# su contrato y no se hace de pasada.
+#
+#   06-10-2026  3  medición inicial, al fundir aquí el guardián que estaba aparte
+CAEN_A_UTC_SIN_DIA = [
+    "services/analytics/cohortes.py::cohortes",
+    "services/analytics/cohortes.py::embudo",
+    "packages/crmcore/crmcore/obs/slo.py::periodo",
+]
+
+
+def test_una_funcion_que_recibe_hoy_no_lo_busca_dentro() -> None:
+    """La mitad que de verdad sostiene la decisión de pasar `hoy`.
+
+    Veintidós funciones lo reciben para que una prueba pueda fijar el día. Si
+    además miraran el reloj cuando no se lo pasan, en ese caso —que es el de
+    producción— seguirían siendo imposibles de fijar desde fuera.
+    """
+    sospechosas: list[str] = []
+    con_hoy = 0
+
+    for fichero in [*(RAIZ / "services").rglob("*.py"), *(RAIZ / "packages").rglob("*.py")]:
+        if "__pycache__" in str(fichero) or fichero.name == "fechas.py":
+            continue
+        try:
+            arbol = ast.parse(fichero.read_text(encoding="utf-8"), str(fichero))
+        except SyntaxError:  # pragma: no cover
+            continue
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            args = {a.arg for a in nodo.args.args} | {a.arg for a in nodo.args.kwonlyargs}
+            if "hoy" not in args:
+                continue
+            con_hoy += 1
+            if {"db", "uow", "session"} & args:
+                # Con sesión a mano, resolverlo dentro es lo correcto: lo cubre
+                # el primer recorrido de este fichero.
+                continue
+            if any(_mira_el_reloj(sub) for sub in ast.walk(nodo)):
+                sospechosas.append(f"{fichero.relative_to(RAIZ)}::{nodo.name}")
+
+    assert con_hoy >= 15, f"solo se ven {con_hoy} funciones con `hoy`: el recorrido no mira"
+    assert sorted(sospechosas) == sorted(CAEN_A_UTC_SIN_DIA), (
+        "Ha cambiado la lista de funciones que reciben `hoy` y aun así miran el "
+        "reloj cuando no se lo pasan. Si ha subido, en ese caso —que es el de "
+        "producción— no hay forma de fijar el día desde fuera.\n"
+        f"  ahora:  {sorted(sospechosas)}\n"
+        f"  medido: {sorted(CAEN_A_UTC_SIN_DIA)}"
+    )
+
+
+def test_una_fecha_no_se_compara_como_texto() -> None:
+    """Dos instantes iguales escritos con husos distintos se ordenan por el
+    carácter y no por el momento.
+
+    Lo tenía la validación de «no puede estar en el pasado», que es el campo que
+    existe justamente para eso: `…T21:00:00+02:00` es mayor como texto que
+    `…T20:00:00Z` y es dos horas anterior.
+    """
+    from datetime import timedelta
+
+    from services.metadata.validacion import _esta_en_el_pasado
+
+    ahora = datetime(2026, 10, 6, 20, 0, tzinfo=timezone.utc)
+
+    ya_paso = datetime(2026, 10, 6, 21, 0, tzinfo=timezone(timedelta(hours=2)))
+    assert (
+        _esta_en_el_pasado(ya_paso, ahora) is True
+    ), "las 21:00 en +02:00 son las 19:00 UTC: ya han pasado"
+    aun_no = datetime(2026, 10, 6, 23, 30, tzinfo=timezone(timedelta(hours=2)))
+    assert _esta_en_el_pasado(aun_no, ahora) is False
+
+    # Una fecha sin huso se lee en UTC y no en la hora de la máquina: dónde esté
+    # el servidor no puede decidir si un dato se acepta.
+    assert _esta_en_el_pasado(datetime(2026, 10, 6, 21, 0), ahora) is False
+    assert _esta_en_el_pasado(datetime(2026, 10, 6, 19, 0), ahora) is True
+
+
+def test_una_fecha_sin_hora_solo_pasa_cuando_acaba_el_dia() -> None:
+    """Rechazar «hoy» en un campo que pide una fecha futura obligaría a poner
+    mañana para decir hoy."""
+    from datetime import date
+
+    from services.metadata.validacion import _esta_en_el_pasado
+
+    ahora = datetime(2026, 10, 6, 20, 0, tzinfo=timezone.utc)
+    assert _esta_en_el_pasado(date(2026, 10, 6), ahora) is False
+    assert _esta_en_el_pasado(date(2026, 10, 5), ahora) is True
+
+
+def test_un_segmento_sin_el_dia_del_cliente_no_se_inventa_uno() -> None:
+    """Caer a UTC en silencio sería el mismo fallo con otro nombre: el corte
+    saldría del reloj del servidor y, de madrugada, un día antes."""
+    from datetime import date
+
+    from crmcore.errors import ErrorValidacion
+
+    from services.marketing.segmentos import _valor_temporal
+
+    hoy_del_cliente = date(2026, 10, 6)
+    assert _valor_temporal("hace_menos_de_dias", 7, hoy_del_cliente) == date(2026, 9, 29)
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        _valor_temporal("hace_menos_de_dias", 7)
+    assert fallo.value.error_code == "marketing.segmento_sin_dia"
+
+
+def test_el_criterio_esta_escrito_para_quien_venga_detras() -> None:
+    """Una convención que vive en la cabeza de quien la puso es la que el
+    siguiente no sigue."""
+    manual = (RAIZ / "docs" / "manual-tecnico.md").read_text(encoding="utf-8")
+    assert "fechas.hoy(db)" in manual, "el manual técnico no dice de dónde sale el día de hoy"

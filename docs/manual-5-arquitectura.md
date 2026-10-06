@@ -293,6 +293,30 @@ tests/integration/            aislamiento real contra Postgres
   cuanto el modelo está en la lista, y no lo caza si no está: por eso la regla es
   dónde se declara, no acordarse de migrar.
 
+- **«Está cargado» no es «es mío».** El registro de objetos
+  (`crmcore.metamodelo`) es del **proceso**, y en producción cada servicio es un
+  proceso, así que durante mucho tiempo las dos preguntas dieron lo mismo. En la
+  suite caben los catorce dentro, y entonces el registro es la unión de todos:
+  quien pregunte «¿guardo yo este objeto?» mirando si la clase está cargada
+  recibe que sí para todos. Lo pagaban dos sitios —la cola del móvil planificaba
+  aplicar una oportunidad de `sales` contra los registros de `party`, y el cuadre
+  del rastro comparaba lo vivo de un servicio contra los hechos de otro, que da
+  diferencia en cada campo y en esa ruta significa «alguien escribió a mano»—. La
+  pregunta correcta es `es_de_este_servicio(objeto, servicio)`, que mira el dueño;
+  el dueño se deriva del módulo donde está escrito el modelo y no se pide como
+  parámetro, porque un parámetro más son ciento y pico sitios que ponerlo bien y
+  el que se olvide se queda con el dueño en blanco, que es justo el valor que lo
+  hace pasar por propio. Lo escondía la prueba: pasaba **por orden de carga**, y
+  salía verde sin haber recorrido nunca la rama que decía cubrir.
+- **Un cálculo relativo recibe el día, no lo busca.** `hace_menos_de_dias` y los
+  demás operadores temporales de los segmentos y de la puntuación reciben el día
+  del cliente (`crmcore.fechas.hoy(db)`). No tienen valor por defecto a propósito:
+  caer al día de UTC acierta casi siempre y falla en el borde —las 00:30 en
+  Madrid son todavía ayer en UTC—, que es exactamente donde se decide si alguien
+  entra en el segmento. Hay guardián en
+  `tests/unit/test_hoy_es_el_del_cliente_en_todas_partes.py`, con la lista cerrada
+  de las que todavía caen a UTC y por qué.
+
 ## Lo que sabemos que falta
 
 No está escondido: las 15 capacidades a medias están listadas con su detalle al

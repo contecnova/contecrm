@@ -117,7 +117,7 @@ def crear_router_movil(servicio: str) -> APIRouter:
     )
     def sincronizar(datos: Sincronizar, db: DbDep, principal: AutenticadoDep) -> Any:
         from crmcore import movil
-        from crmcore.metamodelo import modelo_del_objeto
+        from crmcore.metamodelo import es_de_este_servicio, modelo_del_objeto
 
         operaciones = [op.model_dump() for op in datos.operaciones]
         # Las dos comprobaciones de forma van ANTES de tocar la base: una cola
@@ -126,7 +126,11 @@ def crear_router_movil(servicio: str) -> APIRouter:
 
         plan: list[dict[str, Any]] = []
         for op in operaciones:
-            modelo = modelo_del_objeto(str(op.get("objeto") or ""))
+            objeto = str(op.get("objeto") or "")
+            # Se pregunta por el DUEÑO, no por si la clase está cargada: con
+            # varios servicios en un proceso lo segundo contesta que sí a todo
+            # y esta rama no se recorre nunca.
+            modelo = modelo_del_objeto(objeto) if es_de_este_servicio(objeto, servicio) else None
             if modelo is None:
                 # No es de este servicio: se dice y se queda en la cola del
                 # móvil para mandarla a quien sea. Descartarla sería perderla.

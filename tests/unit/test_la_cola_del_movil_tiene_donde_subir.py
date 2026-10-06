@@ -180,8 +180,17 @@ def test_tocar_el_mismo_campo_si_lo_es_y_se_devuelven_los_dos(uow: UnidadDeTraba
 
 def test_un_objeto_de_otro_servicio_se_queda_en_la_cola(uow: UnidadDeTrabajo) -> None:
     """Descartarlo sería perderlo: una cola que tira lo que no sabe resolver
-    convierte un problema de sincronización en una pérdida de datos."""
+    convierte un problema de sincronización en una pérdida de datos.
+
+    **Se carga a propósito el servicio que SÍ guarda `oportunidad`.** Sin eso
+    esta prueba pasaba por no haberlo cargado nadie todavía: el registro de
+    objetos es del proceso, y en la suite caben los catorce servicios. Medido
+    el 06-10-2026 ejecutándola detrás de `test_ventas_por_http`: el plan decía
+    «aplicar», y la ruta de `party` se disponía a resolver una oportunidad de
+    `sales` contra sus propios registros.
+    """
     from services.party.main import app  # noqa: F401
+    from services.sales import api  # noqa: F401
 
     salida = _sincronizar(
         uow.db,

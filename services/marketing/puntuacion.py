@@ -21,10 +21,11 @@ activos o directores que no han mostrado ningún interés.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore import fechas
 from crmcore.audit import registrar
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
@@ -122,15 +123,22 @@ def crear_modelo(
 
 
 def _aplicar(
-    reglas: list[Any], ambito: dict[str, Any], eje: str
+    reglas: list[Any], ambito: dict[str, Any], eje: str, hoy: date | None = None
 ) -> tuple[int, list[dict[str, Any]]]:
+    """Suma los puntos de las reglas que cumple este lead.
+
+    `hoy` se recibe y se pasa a la condición: las reglas pueden llevar un
+    operador temporal —«visitó la web hace menos de siete días»— y ese corte hay
+    que contarlo desde el día del CLIENTE. Calculado en UTC, de madrugada se
+    cuenta desde el día anterior y el lead de ayer por la noche deja de puntuar.
+    """
     total = 0
     desglose: list[dict[str, Any]] = []
     for regla in reglas or []:
         if not isinstance(regla, dict):
             continue
         try:
-            cumple = evalua(regla.get("condicion") or {}, ambito)
+            cumple = evalua(regla.get("condicion") or {}, ambito, hoy)
         except Exception:  # noqa: BLE001 — una regla rota no puede tumbar el cálculo
             logger.warning("marketing.regla_rota", eje=eje, regla=regla.get("nombre"))
             continue
@@ -262,8 +270,9 @@ def puntuar(
         **(ambito_extra or {}),
     }
 
-    interes_bruto, desglose_i = _aplicar(modelo.reglas_interes, ambito, "interes")
-    encaje, desglose_e = _aplicar(modelo.reglas_encaje, ambito, "encaje")
+    hoy_del_cliente = fechas.hoy(uow.db)
+    interes_bruto, desglose_i = _aplicar(modelo.reglas_interes, ambito, "interes", hoy_del_cliente)
+    encaje, desglose_e = _aplicar(modelo.reglas_encaje, ambito, "encaje", hoy_del_cliente)
     ultima = _con_tz(getattr(lead, "ultima_actividad_at", None))
     interes, decaido = _decaimiento(modelo, interes_bruto, ultima)
     grado = _grado(encaje, modelo.grados)

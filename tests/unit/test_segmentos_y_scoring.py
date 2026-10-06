@@ -7,7 +7,7 @@ en el mismo saco a un estudiante muy activo y a un director de compras.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -85,11 +85,27 @@ def test_la_logica_booleana_anidada_se_evalua() -> None:
 
 def test_los_operadores_temporales_son_relativos() -> None:
     """Guardada la fecha calculada, «leads recientes» seguiría devolviendo los
-    mismos de hace medio año."""
+    mismos de hace medio año.
+
+    El día se **pasa**, no se busca dentro: en producción es el del cliente, que
+    a las 00:30 en Madrid no es el de UTC, y un segmento que se evalúa de
+    madrugada metería o sacaría a quien está justo en el borde.
+    """
     hoy = datetime.now(timezone.utc).date()
     definicion = {"atributo": "c.alta", "operador": "hace_menos_de_dias", "valor": 30}
-    assert seg.evalua(definicion, {"c": {"alta": hoy - timedelta(days=5)}}) is True
-    assert seg.evalua(definicion, {"c": {"alta": hoy - timedelta(days=90)}}) is False
+    assert seg.evalua(definicion, {"c": {"alta": hoy - timedelta(days=5)}}, hoy=hoy) is True
+    assert seg.evalua(definicion, {"c": {"alta": hoy - timedelta(days=90)}}, hoy=hoy) is False
+
+
+def test_un_operador_temporal_sin_dia_no_se_calla() -> None:
+    """Caer al día de UTC acertaría casi siempre, y fallaría en el borde: justo
+    donde se decide si alguien entra en el segmento o no."""
+    from crmcore.errors import ErrorValidacion
+
+    definicion = {"atributo": "c.alta", "operador": "hace_menos_de_dias", "valor": 30}
+    with pytest.raises(ErrorValidacion) as fallo:
+        seg.evalua(definicion, {"c": {"alta": date(2026, 1, 1)}})
+    assert fallo.value.error_code == "marketing.segmento_sin_dia"
 
 
 # ── Segmentos sobre la proyección (CRM-02.01.01.01, .03, .04) ─────────────
@@ -113,6 +129,31 @@ def test_un_segmento_dinamico_se_recalcula(
 
     _perfil(db, tenant_id, email="b@x.com", pais="ES")
     assert len(seg.miembros(db, tenant_id, segmento.id)) == 2
+
+
+@pytest.mark.db
+def test_un_segmento_con_operador_temporal_se_puede_crear(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Crear valida que la definición se **traduce**, y para traducir un operador
+    temporal hay que saber qué día es. Si el día no llega hasta ahí, «altas de
+    los últimos 30 días» no se puede ni guardar: el error sale al crearlo, que
+    es el sitio donde nadie espera un problema de calendario."""
+    segmento = seg.crear(
+        uow,
+        clave="recientes",
+        nombre="Altas recientes",
+        objeto="contacto",
+        definicion={
+            "atributo": "contacto.alta_at",
+            "operador": "hace_menos_de_dias",
+            "valor": 30,
+        },
+    )
+    db.flush()
+    # Y se calcula, que es la otra mitad: traducir al crear y no saber el día al
+    # usarlo dejaría el fallo para el día del envío.
+    assert seg.miembros(db, tenant_id, segmento.id) == []
 
 
 @pytest.mark.db

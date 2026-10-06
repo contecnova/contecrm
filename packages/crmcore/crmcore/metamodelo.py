@@ -811,6 +811,7 @@ def sincronizar_vista(
 # índice. Los demás lo replican para validar y no tocan nada.
 _TABLA_DEL_OBJETO: dict[str, str] = {}
 _MODELO_DEL_OBJETO: dict[str, type] = {}
+_SERVICIO_DEL_OBJETO: dict[str, str] = {}
 
 
 def declarar_tabla(objeto: str, tabla: str, modelo: type | None = None) -> None:
@@ -829,16 +830,71 @@ def declarar_tabla(objeto: str, tabla: str, modelo: type | None = None) -> None:
         _TABLA_DEL_OBJETO.setdefault(str(objeto), str(tabla))
     if objeto and modelo is not None:
         _MODELO_DEL_OBJETO.setdefault(str(objeto), modelo)
+        _SERVICIO_DEL_OBJETO.setdefault(str(objeto), _servicio_del_modelo(modelo))
 
 
 def tabla_del_objeto(objeto: str) -> str:
-    """La tabla de este objeto en este proceso, o cadena vacía si no es suyo."""
+    """La tabla de este objeto en este proceso, o cadena vacía si no es suyo.
+
+    Del proceso, igual que `modelo_del_objeto`, y aquí **se deja así a
+    propósito**: su único uso es `aplicar_esquema_fisico`, que con varios
+    servicios dentro crearía el índice de otro. Es el índice correcto sobre la
+    tabla correcta y la operación es idempotente, así que el coste es repetir
+    trabajo, no equivocarlo. Donde sí importaba quién es el dueño —la cola del
+    móvil y el cuadre del rastro— se pregunta con `es_de_este_servicio`.
+    """
     return _TABLA_DEL_OBJETO.get(str(objeto), "")
 
 
 def modelo_del_objeto(objeto: str) -> type | None:
-    """La clase de este objeto en este proceso, o `None` si no es suyo."""
+    """La clase de este objeto en este proceso, o `None` si no es suyo.
+
+    **Del proceso, no del servicio**, y los dos no son lo mismo. Cuando varios
+    servicios comparten proceso —la suite entera, o un despliegue de una sola
+    pieza— este registro es la unión de todos, y quien pregunte «¿es mío?»
+    recibe que sí para objetos que no lo son. Para esa pregunta está
+    `es_de_este_servicio`.
+    """
     return _MODELO_DEL_OBJETO.get(str(objeto))
+
+
+def _servicio_del_modelo(modelo: type) -> str:
+    """De qué servicio es esta clase, leído de dónde está escrita.
+
+    Se deriva del módulo y no se pide como parámetro porque un parámetro más en
+    `montar_listado` son ciento y pico sitios que ponerlo bien, y el que se
+    olvide se queda con el dueño en blanco, que es justo el valor que lo hace
+    pasar por propio.
+
+    Un modelo de `crmcore` no es de nadie en particular —la papelera, el rastro
+    de eventos, la retención— y lo monta cada servicio con sus propias filas;
+    devuelve cadena vacía, que `es_de_este_servicio` lee como «de quien
+    pregunte».
+    """
+    partes = str(getattr(modelo, "__module__", "") or "").split(".")
+    if len(partes) >= 2 and partes[0] == "services":
+        return partes[1]
+    return ""
+
+
+def servicio_del_objeto(objeto: str) -> str:
+    """Qué servicio guarda este objeto, o cadena vacía si es del núcleo."""
+    return _SERVICIO_DEL_OBJETO.get(str(objeto), "")
+
+
+def es_de_este_servicio(objeto: str, servicio: str) -> bool:
+    """Si este servicio es el dueño de ese objeto.
+
+    Es la pregunta que querían hacer la cola del móvil y el cuadre del rastro,
+    y las dos preguntaban en su lugar si el objeto estaba en el registro del
+    proceso. Con un servicio por proceso las dos preguntas dan lo mismo; con
+    catorce dentro —la suite— la segunda contesta que sí a todo, y entonces la
+    comprobación de «esto no es mío» parece verde sin haber mirado nunca.
+    """
+    if modelo_del_objeto(objeto) is None:
+        return False
+    dueno = servicio_del_objeto(objeto)
+    return not dueno or dueno == str(servicio)
 
 
 def tablas_declaradas() -> dict[str, str]:

@@ -29,11 +29,11 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from crmcore import fechas
 from crmcore.audit import registrar
 from crmcore.authz.abac import Condicion, a_sql
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.fechas import hoy as hoy_del_cliente
 from crmcore.logging import get_logger
 from sqlalchemy import and_, not_, or_, select
 from sqlalchemy.orm import Session
@@ -132,7 +132,21 @@ def _valor_temporal(operador: str, valor: Any, hoy: date | None = None) -> Any:
     buscárselo.
     """
     fn = TEMPORALES.get(operador)
-    return fn(valor, hoy or fechas.hoy()) if fn else valor
+    if fn is None:
+        return valor
+    if hoy is None:
+        # **No se cae a UTC en silencio.** Caer sería volver al fallo con otro
+        # nombre: el corte saldría del reloj del servidor y, de madrugada, un
+        # día antes. Quien evalúa un segmento tiene la sesión a mano —viene de
+        # una petición o de un trabajo con tenant—, así que esto es un olvido
+        # de programación y se dice como tal.
+        raise ErrorValidacion(
+            f"El operador «{operador}» necesita saber qué día es hoy para el "
+            "cliente. Pásalo con `fechas.hoy(db)`: calculado en UTC, de "
+            "madrugada el corte se va un día atrás.",
+            error_code="marketing.segmento_sin_dia",
+        )
+    return fn(valor, hoy)
 
 
 def evalua(definicion: dict[str, Any], ambito: dict[str, Any], hoy: date | None = None) -> bool:
@@ -273,7 +287,14 @@ def crear(
     validar(definicion)
     # Se comprueba que se puede traducir **al crear**, no al usar: descubrir que
     # un segmento no se puede calcular el día del envío es descubrirlo tarde.
-    a_condicion_sql(definicion, columnas_de(uow.db, uow.tenant_id, objeto))
+    # El día no cambia si se traduce o no, pero se pasa el de verdad igualmente:
+    # dejarlo en blanco aquí obligaría a que el traductor tuviera un modo «me da
+    # igual el día», y ese modo acabaría usándose donde sí importa.
+    a_condicion_sql(
+        definicion,
+        columnas_de(uow.db, uow.tenant_id, objeto),
+        hoy_del_cliente(uow.db),
+    )
 
     if uow.db.execute(
         select(Segmento.id).where(Segmento.tenant_id == uow.tenant_id, Segmento.clave == clave)
@@ -309,7 +330,10 @@ def _segmento(db: Session, tenant_id: UUID, segmento_id: UUID) -> Segmento:
 def _consulta_de(db: Session, segmento: Segmento) -> Any:
     columnas = columnas_de(db, segmento.tenant_id, segmento.objeto)
     modelo = columnas.pop("_modelo")
-    condicion = a_condicion_sql(segmento.definicion, columnas)
+    # El día es el del CLIENTE: «altas de los últimos 30 días» calculado en UTC
+    # a las 00:30 de Madrid corta por el día de ayer, y quien entró anoche no
+    # recibe el envío.
+    condicion = a_condicion_sql(segmento.definicion, columnas, hoy_del_cliente(db))
     # Se devuelve el identificador del objeto de origen y no el del perfil: quien
     # consume el segmento quiere el contacto, no nuestra copia de él.
     return select(modelo.objeto_id).where(

@@ -110,10 +110,12 @@ def crear_router_rastro(servicio: str) -> APIRouter:
         ),
     )
     def cuadra(objeto: str, objeto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-        from crmcore.metamodelo import modelo_del_objeto
+        from crmcore.metamodelo import es_de_este_servicio, modelo_del_objeto
 
         _exigir_declarado(objeto)
-        modelo = modelo_del_objeto(objeto)
+        # Por el DUEÑO: ver `es_de_este_servicio`. Comparar lo vivo de otro
+        # servicio contra el rastro de este da diferencias en cada campo.
+        modelo = modelo_del_objeto(objeto) if es_de_este_servicio(objeto, servicio) else None
         if modelo is None:
             raise NoEncontrado(
                 f"«{objeto}» no lo guarda «{servicio}», así que aquí no hay tabla viva "
