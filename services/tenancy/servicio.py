@@ -77,14 +77,33 @@ def crear_tenant(
     slug: str,
     nombre: str,
     plan: str = "base",
-    region: str = "eu",
-    aislamiento: str = "pool",
+    region: str | None = None,
+    aislamiento: str | None = None,
     tenant_padre_id: UUID | None = None,
     idioma: str = "es",
     zona_horaria: str = "Europe/Madrid",
     moneda: str = "EUR",
 ) -> Tenant:
-    """Da de alta un tenant (CRM-00.01.03.01)."""
+    """Da de alta un tenant (CRM-00.01.03.01).
+
+    **La región y el aislamiento no se escriben aquí: salen de la
+    configuración.** Estaban a fuego en TRES sitios —el esquema de la API, esta
+    firma y la columna del modelo— mientras `TENANT_DEFAULT_REGION` y
+    `TENANT_DEFAULT_ISOLATION` existían, estaban documentados y no los leía
+    nadie (medido el 06-10-2026).
+
+    En el aislamiento eso era un ajuste decorativo; en la región es peor: el
+    valor se guarda en el tenant **para poder auditar dónde vive cada dato**, y
+    una instalación en otra región daba de alta a todos sus clientes diciendo
+    que sus datos están en Europa. El dato de residencia no es un valor por
+    defecto cualquiera: es el que se enseña cuando alguien pregunta.
+    """
+    from crmcore.config import get_settings
+
+    s = get_settings()
+    region = region or s.tenant_default_region
+    aislamiento = aislamiento or s.tenant_default_isolation
+
     slug = slug.strip().lower()
     if not RE_SLUG.match(slug):
         raise ErrorValidacion(

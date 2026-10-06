@@ -60,4 +60,17 @@ class _TenancySettings(BaseSettings):
     # Alta autoservicio. Apagada por defecto: un despliegue empresarial da de
     # alta a sus tenants por API o por consola, y dejar abierto el alta pública
     # en una instalación privada es una superficie regalada.
-    onboarding_enabled: bool = False
+    # `ONBOARDING_ENABLED` estuvo aquí y SE QUITA (06-10-2026). Prometía abrir
+    # el alta **autoservicio**, y en este producto el alta de un tenant es una
+    # operación de plataforma: `POST /tenants` exige administrador de la
+    # plataforma y no hay ninguna otra vía. Medido: ningún sitio crea un tenant
+    # sin esa puerta.
+    #
+    # Ponerlo a `true` no abría nada, así que tampoco era peligroso — era peor
+    # que eso: hacía creer que el alta pública estaba disponible y que apagarla
+    # era lo que la cerraba. Lo que la cierra es que no existe.
+    #
+    # El autoservicio es la mitad que falta de CRM-00.01.03.01 («API +
+    # autoservicio»). Cuando se construya, su interruptor vuelve con él, y con
+    # lo que un alta pública necesita además: límite por IP, verificación del
+    # correo y qué pasa con un slug ocupado.

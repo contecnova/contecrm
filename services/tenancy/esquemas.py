@@ -26,12 +26,21 @@ class CrearTenant(BaseModel):
     )
     nombre: str = Field(..., min_length=1, max_length=200, examples=["ACME Industrial, S.A."])
     plan: str = Field("base", examples=["base", "profesional", "corporativo"])
-    region: str = Field("eu", description="Región donde residen los datos", examples=["eu"])
-    aislamiento: Literal["pool", "schema", "silo"] = Field(
-        "pool",
+    region: str | None = Field(
+        None,
+        description=(
+            "Región donde residen los datos. Sin valor, el de la instalación "
+            "(`TENANT_DEFAULT_REGION`): escribir aquí un valor por defecto haría "
+            "que el ajuste no sirviera para nada, que es como estaba"
+        ),
+        examples=["eu"],
+    )
+    aislamiento: Literal["pool", "schema", "silo"] | None = Field(
+        None,
         description=(
             "pool = esquema compartido con discriminador; schema = un esquema "
-            "por tenant; silo = base o clúster dedicado"
+            "por tenant; silo = base o clúster dedicado. Sin valor, el de la "
+            "instalación (`TENANT_DEFAULT_ISOLATION`)"
         ),
     )
     tenant_padre_id: UUID | None = Field(

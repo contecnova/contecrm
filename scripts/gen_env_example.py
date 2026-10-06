@@ -86,6 +86,28 @@ def _comentarios_previos(lineas: list[str], linea_campo: int) -> list[str]:
 # a arrancar por un número mal puesto.
 TIPOS_NO_SECRETOS = {"int", "float", "bool"}
 
+# Y qué nombre es el de un secreto. Se mira el ÚLTIMO SEGMENTO del nombre, no si
+# la palabra aparece dentro: `secretos_backend` lleva «secret» y es el nombre del
+# almacén, no un secreto; `passkey_rp_id` lleva «key» y es un identificador
+# público que va en cada petición del navegador.
+#
+# No es teórico: los cuatro salían como `CAMBIAME` en `.env.example` y en el
+# `.env` de esta máquina. El de los secretos se llevó por delante el alta de
+# herramientas de suite —el servicio rechazaba guardar credenciales con
+# «SECRETOS_BACKEND=CAMBIAME no está implementado»— en cuanto ese ajuste empezó
+# a leerse de verdad, el 06-10-2026. Un marcador de sustitución en un ajuste que
+# no lo necesita es una avería esperando a que alguien enchufe el ajuste.
+PALABRAS_DE_SECRETO = {"secret", "secreto", "password", "key", "clave", "token"}
+
+# Y la red de verdad: lo declarado. `SecretStr` no es una suposición sobre el
+# nombre, es lo que puso quien escribió el ajuste — y caza lo que el último
+# segmento no ve, como `encryption_key_previa`, que acaba en «previa».
+#
+# Se usan las DOS. Sólo el tipo dejaría fuera un ajuste que alguien declaró
+# `str` por descuido; sólo el nombre deja fuera los que llevan un calificativo
+# detrás. Aquí equivocarse de menos saca un secreto al fichero de ejemplo.
+TIPOS_DE_SECRETO = {"SecretStr"}
+
 
 def _tipo_de(nodo: ast.AnnAssign) -> str:
     anotacion = nodo.annotation
@@ -157,7 +179,9 @@ def _alias_de(nodo: ast.AnnAssign) -> str:
 
 def _valor_ejemplo(nodo: ast.AnnAssign, nombre: str) -> str:
     """Valor de ejemplo. Nunca un secreto real, ni siquiera de desarrollo."""
-    es_secreto = any(p in nombre for p in ("secret", "password", "key", "token"))
+    es_secreto = (
+        nombre.rsplit("_", 1)[-1] in PALABRAS_DE_SECRETO or _tipo_de(nodo) in TIPOS_DE_SECRETO
+    )
     if es_secreto and _tipo_de(nodo) not in TIPOS_NO_SECRETOS:
         if "url" in nombre:
             return ""

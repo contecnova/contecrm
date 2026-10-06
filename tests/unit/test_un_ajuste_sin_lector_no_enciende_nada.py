@@ -10,7 +10,8 @@ existía, estaba documentado y no lo leía nadie; `GRPC_ACTIVO` lo mismo —
 encenderlo no encendía nada. Dos hallazgos iguales separados por semanas son una
 familia, y una familia se barre, no se busca.
 
-Medido el 06-10-2026: **32 de 307 ajustes no los lee nadie en el producto.**
+Medidos el 06-10-2026: **20 de 307 ajustes no los leía nadie en el producto.**
+Hoy son **cero**, y la lista de abajo está vacía: lo que entre, entra en rojo.
 Están en `.env.example`, están en el manual de referencia, y de ahí no pasan.
 
 Qué cuenta como leerlo: que el nombre aparezca en el código del producto, en el
@@ -21,9 +22,15 @@ motivo:
     generan desde esta misma declaración**. Contarlos haría que todo ajuste
     tuviera lector por el hecho de existir: un guardián mirando su reflejo.
   · **Las pruebas.** Que una prueba nombre un ajuste no dice nada de si el
-    producto lo usa; es justo el caso que hay que cazar. Medido: con las
-    pruebas dentro, `RPO_MINUTOS_ESTANDAR` salía con lector y el producto no lo
-    mira en ningún sitio.
+    producto lo usa; es justo el caso que hay que cazar.
+
+**Y el nombre no siempre está escrito.** Un ajuste leído con
+`getattr(s, f"rpo_minutos_{tier}")` no aparece nunca como literal, así que la
+primera versión de este recorrido marcó como muertos los **doce** compromisos de
+servicio —RPO, RTO, disponibilidad y latencia por tier—, que se leen todos. Un
+recorrido que acusa de más es tan inútil como uno que no mira: a la segunda
+tanda de falsos positivos nadie vuelve a mirar la lista. Así que se recogen
+también los prefijos construidos y se da por leído lo que empiece por uno.
 """
 
 from __future__ import annotations
@@ -55,7 +62,10 @@ DONDE_BUSCAR: tuple[tuple[str, tuple[str, ...]], ...] = (
 # numérico deja sitio para que entre uno nuevo cada vez que se arregla otro, y
 # entonces el número baja mientras el problema se queda igual.
 #
-#   06-10-2026  32  medición inicial
+#   06-10-2026  32  medición inicial — DOCE eran falsos positivos: los
+#                   compromisos de servicio se leen con `getattr` y un nombre
+#                   construido, así que su literal no aparece nunca
+#   06-10-2026  20  medición buena, con los prefijos construidos recogidos
 #   06-10-2026  30  SAML_ENABLED y OIDC_ENABLED: cuatro puertas cada uno
 #   06-10-2026  29  SCIM_ENABLED: en el router, para que no se olvide ninguna ruta
 #   06-10-2026  27  MFA_ENABLED manda sobre las dos formas de exigirla, y
@@ -71,23 +81,10 @@ DONDE_BUSCAR: tuple[tuple[str, tuple[str, ...]], ...] = (
 #   06-10-2026  15  cifrado y secretos: BUS_TLS y CACHE_TLS pasan a EXIGIR (no
 #                   reescriben la URL), SECRETOS_BACKEND corta si se configura
 #                   un almacén que no existe, y SECRETOS_VAULT_URL se quita
-SIN_LECTOR_HOY = {
-    "disponibilidad_enterprise",
-    "disponibilidad_estandar",
-    "disponibilidad_premium",
-    "latencia_p95_ms_enterprise",
-    "latencia_p95_ms_estandar",
-    "latencia_p95_ms_premium",
-    "onboarding_enabled",
-    "rpo_minutos_enterprise",
-    "rpo_minutos_estandar",
-    "rpo_minutos_premium",
-    "rto_minutos_enterprise",
-    "rto_minutos_estandar",
-    "rto_minutos_premium",
-    "tenant_default_isolation",
-    "tenant_default_region",
-}
+#   06-10-2026   0  TENANT_DEFAULT_REGION y TENANT_DEFAULT_ISOLATION pasan a
+#                   decidir el alta —estaban a fuego en tres sitios— y
+#                   ONBOARDING_ENABLED se quita: el alta autoservicio no existe
+SIN_LECTOR_HOY: set[str] = set()
 
 
 @functools.cache
@@ -117,6 +114,23 @@ def _corpus() -> str:
     return "\n".join(trozos)
 
 
+# Un nombre de ajuste construido: `getattr(s, f"rpo_minutos_{tier}")`. De ahí
+# sale el prefijo `rpo_minutos_`, y todo ajuste que empiece así está leído.
+RE_PREFIJO = re.compile(r'f"([a-z_][a-z0-9_]*_)\{')
+
+
+@functools.cache
+def _prefijos_construidos() -> frozenset[str]:
+    """Los prefijos con los que el producto arma nombres de ajuste.
+
+    Se exige que el prefijo tenga algo de cuerpo: `f"{x}"` o `f"a_{x}"` darían
+    un prefijo tan corto que casaría con medio fichero de ajustes, y entonces el
+    recorrido dejaría de ver los muertos de verdad — que es la otra forma de
+    romperlo.
+    """
+    return frozenset(p for p in RE_PREFIJO.findall(_corpus()) if len(p) >= 4)
+
+
 @functools.cache
 def _palabras() -> frozenset[str]:
     """El corpus partido en palabras, una vez.
@@ -132,7 +146,12 @@ def _palabras() -> frozenset[str]:
 @functools.cache
 def _sin_lector() -> frozenset[str]:
     palabras = _palabras()
-    return frozenset(c for c in _declarados() if c not in palabras and c.upper() not in palabras)
+    prefijos = tuple(_prefijos_construidos())
+    return frozenset(
+        c
+        for c in _declarados()
+        if c not in palabras and c.upper() not in palabras and not c.startswith(prefijos)
+    )
 
 
 def test_el_recorrido_mira_de_verdad() -> None:

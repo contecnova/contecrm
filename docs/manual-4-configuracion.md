@@ -526,6 +526,34 @@ creencia falsa sobre dónde están los secretos del cliente.
 > `SECRETOS_VAULT_URL` ya no existe: sólo tenía sentido con un backend que no
 > está. Cuando lo esté, su URL vuelve con él.
 
+### Región y aislamiento de los tenants nuevos
+
+| Ajuste | De fábrica | Qué decide |
+|---|---|---|
+| `TENANT_DEFAULT_REGION` | `eu` | Dónde constan los datos de los tenants que se den de alta |
+| `TENANT_DEFAULT_ISOLATION` | `pool` | `pool` (esquema compartido), `schema` (uno por tenant) o `silo` (base dedicada) |
+
+Son valores **por defecto**, no un techo: el alta puede pedir otros, que es de lo
+que trata el modelo híbrido por tiers.
+
+> Hasta el 6 de octubre de 2026 estos dos no los leía nadie, y los valores
+> estaban escritos a fuego en tres sitios. En el aislamiento eso era un ajuste
+> decorativo; en la región, no: el valor se guarda en el tenant **para poder
+> auditar dónde vive cada dato**, así que una instalación fuera de Europa daba de
+> alta a todos sus clientes diciendo que sus datos están en Europa. **Si viene de
+> una versión anterior, revise la región de los tenants ya creados**: lo que
+> consta puede no ser donde están.
+
+### El alta de un tenant es de plataforma
+
+`POST /tenants` exige administrador de la plataforma y no hay ninguna otra vía:
+un tenant no puede crear otros y no existe alta pública.
+
+> `ONBOARDING_ENABLED` ya no existe. Prometía abrir el alta autoservicio y
+> ponerlo a `true` no abría nada. Lo malo no era el riesgo —no había puerta que
+> abrir— sino hacer creer que el alta pública estaba disponible y que apagarla
+> era lo que la cerraba. Lo que la cierra es que no existe.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

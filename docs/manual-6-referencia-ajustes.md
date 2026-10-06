@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**215 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
+**214 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -60,7 +60,6 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `QUOTA_TOKENS_IA_POR_DIA` | 🔥 `quota_tokens_ia_por_dia` | `0` | ≥ 0 |  |
 | `LICENCIAS_MAXIMAS` | — | `0` | 0–1000000 | Usuarios activos que admite el plan. 0 = sin límite, que es lo razonable en un despliegue on-premise de un solo cliente. |
 | `QUOTA_AVISO_PCT` | 🔥 `quota_aviso_pct` | `80` | 1–100 | Porcentaje de consumo a partir del cual se avisa al tenant de que se acerca al límite (CRM-00.01.06.06). Avisar al 100 % es avisar tarde. |
-| `ONBOARDING_ENABLED` | — | `False` |  | Alta autoservicio. Apagada por defecto: un despliegue empresarial da de alta a sus tenants por API o por consola, y dejar abierto el alta pública en una instalación privada es una superficie regalada. |
 
 ## Bus de eventos, outbox y webhooks
 
