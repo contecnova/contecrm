@@ -42,9 +42,15 @@ def _preflight() -> Any:
     return modulo
 
 
-# Lo medido el 06-10-2026 con la máquina libre, en segundos de CPU. Si alguien
-# añade trabajo esto sube y el preflight lo dice; aquí sirve para lo contrario:
-# comprobar que el tope de cada nivel está POR ENCIMA de lo que ese nivel cuesta.
+# Lo medido el 06-10-2026 **con la máquina libre**, en segundos de CPU. Si
+# alguien añade trabajo esto sube y el preflight lo dice; aquí sirve para lo
+# contrario: comprobar que el tope de cada nivel está POR ENCIMA de lo que ese
+# nivel cuesta.
+#
+# «Con la máquina libre» no es un detalle. Medido el 07-10-2026, el mismo commit
+# y el mismo nivel «push»: 146 s de CPU con carga 7 y 252 s con carga 61. El CPU
+# aguanta la contención mucho mejor que el reloj, pero no es inmune, y el
+# preflight decía que sí lo era.
 COSTE_MEDIDO_CPU = {"rapido": 22.0, "push": 139.0, "completo": 354.0}
 
 
@@ -92,3 +98,27 @@ def test_el_apunte_del_pase_va_detras_del_verde_y_no_antes() -> None:
     fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
     cuerpo = fuente.split("def main(")[1]
     assert cuerpo.index("if fallos:") < cuerpo.index("_decir_que_falta_por_correr(")
+
+
+def test_con_la_maquina_apretada_no_cuenta_ni_como_pase_ni_como_rojo() -> None:
+    """El CPU no es inmune a la contención, y aquí se decía que sí.
+
+    Medido el 07-10-2026 con el mismo commit: 146 s de CPU con carga 7 y 252 s
+    con carga 61 — un 1,7× sin haber añadido una línea. Fallar ahí sería fallar
+    por lo que esté compilando otra ventana, que es como se enseña a ignorar el
+    rojo; y apuntarlo como pase sería peor todavía.
+    """
+    fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
+    cuerpo = fuente.split("def main(")[1]
+    assert "apretada" in cuerpo
+    # Y la rama apretada va ANTES de la que falla: después no se alcanzaría.
+    assert cuerpo.index("and apretada") < cuerpo.index("PERO el nivel")
+
+
+def test_la_nota_del_presupuesto_ya_no_dice_que_el_cpu_sea_inmune() -> None:
+    """Esa frase era la que justificaba fallar por CPU, y estaba medida al
+    revés. Una nota que afirma más de lo que se ha medido es la que decide mal
+    el día que alguien la lee para arreglar un rojo."""
+    fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
+    assert "si la máquina está\n# cargada, no" not in fuente
+    assert "no es inmune" in fuente

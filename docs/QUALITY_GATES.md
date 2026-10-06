@@ -48,9 +48,26 @@ pasa, falla — aunque todo lo demás esté en verde.
 | `push` (`--tests`) | antes de empujar | 139 s / 72 s | 200 s |
 | `completo` (`--todo`) | al cerrar un bloque | 354 s / 216 s | 500 s |
 
-Medido el 06-10-2026 con la máquina libre. El margen es de alrededor de 1,4×:
-lo justo para que no salte por el ruido de una ejecución, y lo bastante apretado
-para que saltar signifique que alguien ha añadido trabajo.
+Medido el 06-10-2026 **con la máquina libre**. El margen es de alrededor de
+1,4×: lo justo para que no salte por el ruido de una ejecución, y lo bastante
+apretado para que saltar signifique que alguien ha añadido trabajo.
+
+**«Con la máquina libre» no es un detalle.** El tope va por CPU y no por reloj
+porque el CPU aguanta mucho mejor que otra ventana esté compilando — pero no es
+inmune, y hasta el 7 de octubre de 2026 aquí ponía que sí. Medido ese día, el
+mismo commit y el mismo nivel `push`:
+
+| carga de la máquina | CPU | reloj |
+|---|--:|--:|
+| 7 | 146 s | 78 s |
+| 61 | 252 s | 243 s |
+
+Un 1,7 × sin haber añadido una línea: con contención suben los cambios de
+contexto y se pierde la caché, y ese trabajo también se contabiliza. Así que
+cuando la carga pasa del número de núcleos, el preflight **dice el número y la
+carga y no falla**, y pide repetirlo con la máquina libre. Tampoco lo cuenta
+como pase: un `--todo` bajo carga no apunta nada. Fallar ahí seguiría siendo
+fallar por el vecino, sólo que con otra unidad.
 
 **Antes había un solo número —300 segundos— para los tres niveles**, y eso
 rompía las dos puntas a la vez. El nivel rápido gastaba 22 segundos contra un

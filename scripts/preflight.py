@@ -266,17 +266,29 @@ GATES: list[Gate] = [
 # minuto y medio. Lo que hace que un preflight deje de correrse es lo que se
 # tarda en volver al teclado.
 #
-# Y el presupuesto de CPU, que es lo que de verdad dice si el preflight ha
-# engordado. El reloj de pared mide lo que espera quien lo lanza —y por eso se
-# sigue enseñando—, pero **no distingue un gate que ha engordado de una máquina
+# Y el presupuesto de CPU, que es lo que MEJOR dice si el preflight ha engordado.
+# El reloj de pared mide lo que espera quien lo lanza —y por eso se sigue
+# enseñando—, pero **no distingue un gate que ha engordado de una máquina
 # ocupada**: medido el 05-10-2026, el mismo gate de aislamiento tardó 59 s y
 # 382 s en la misma hora, con el mismo trabajo de CPU, porque en esta máquina
 # estaban corriendo a la vez el `tsc` de contecmind, dos `vitest` de contecpos y
 # el indexador de Spotlight. Fallar ahí es fallar por el vecino, y eso enseña a
 # ignorar el rojo — que es la forma de perder el guardián entero.
 #
-# El CPU sí es estable: si alguien añade trabajo, sube; si la máquina está
-# cargada, no. Así que el rojo va por CPU y el reloj informa.
+# **El CPU aguanta mucho mejor, pero no es inmune, y aquí ponía que sí.** Hasta
+# el 07-10-2026 esta nota decía «si la máquina está cargada, no sube», y eso era
+# lo que justificaba fallar por CPU. Medido ese día, el mismo commit y el mismo
+# nivel «push»:
+#
+#     carga  7  →  146 s de CPU   (78 s de reloj)
+#     carga 61  →  252 s de CPU  (243 s de reloj)
+#
+# Un 1,7× sin haber añadido una línea. Con contención suben los cambios de
+# contexto y se pierde la caché, y ese trabajo también se contabiliza. Así que
+# el rojo sigue yendo por CPU —es la mejor señal que hay— pero **no se falla
+# cuando la máquina está por encima de sus núcleos**: se dice el número, se dice
+# la carga y se pide repetirlo con la máquina libre. Fallar ahí seguiría siendo
+# fallar por el vecino, sólo que con otra unidad.
 #
 # Y UNO POR NIVEL, porque son tres cosas distintas y un solo número las trata
 # igual. Con el número único en 300 s pasaban las dos cosas malas a la vez:
@@ -568,6 +580,21 @@ def main() -> int:
 
     carga = _carga()
     nivel, presupuesto_reloj, presupuesto_cpu = _presupuesto(tiers)
+    # Por encima de sus núcleos la máquina está peleándose consigo misma, y el
+    # CPU medido deja de ser el trabajo del preflight: ver la nota de los
+    # presupuestos, con los dos pases que lo miden.
+    apretada = carga > (os.cpu_count() or 4)
+    if cpu > presupuesto_cpu and apretada:
+        print(
+            f"\nTodo en verde. {cpu:.0f}s de CPU, más de los "
+            f"{presupuesto_cpu:.0f}s del nivel «{nivel}», pero la máquina está a "
+            f"una carga de {carga:.0f} con {os.cpu_count()} núcleos.\n"
+            "Con contención el CPU medido sube sin que nadie haya añadido "
+            "trabajo —1,7× medido el 07-10-2026—, así que esto NO cuenta como "
+            "pase ni como rojo.\nRepítelo con la máquina libre antes de "
+            "creértelo en cualquiera de los dos sentidos."
+        )
+        return 0
     if cpu > presupuesto_cpu:
         print(
             f"\nTodo en verde, PERO el nivel «{nivel}» gasta {cpu:.0f}s de CPU "
