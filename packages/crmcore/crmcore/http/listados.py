@@ -30,10 +30,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import Depends, Query, Request
+from fastapi import Depends, Header, Query, Request
+from fastapi.responses import Response
 
 from crmcore.datos import rollups as rollups_mod
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
+from crmcore.http.etag import comprobar_if_match, comprobar_if_none_match
 from crmcore.http.pagination import (
     PaginaDeListado,
     ParametrosPagina,
@@ -533,8 +535,24 @@ def montar_ficha(
             )
         return fila
 
-    def ver(registro_id: Any, db: DbDep, principal: AutenticadoDep) -> Any:
+    def ver(
+        registro_id: Any,
+        db: DbDep,
+        principal: AutenticadoDep,
+        if_none_match: str | None = Header(None, alias="If-None-Match"),
+    ) -> Any:
         fila = _buscar(db, registro_id)
+        # **El ETag que emitimos, honrado.** Se emitía en cada respuesta
+        # versionada y no lo miraba nadie: el cliente lo devolvía
+        # obedientemente y recibía el cuerpo entero otra vez. Una vista 360 con
+        # cincuenta campos y sus relaciones no es poca cosa, y se repite cada
+        # vez que alguien vuelve a la pestaña.
+        #
+        # Se comprueba **antes** de proyectar, que es donde está el trabajo:
+        # hacerlo en el middleware ahorraría el tráfico pero no el enmascarado
+        # ni las consultas de la proyección.
+        if comprobar_if_none_match(fila, if_none_match):
+            return Response(status_code=304)
         return proyectar_para(principal, db, objeto=objeto, modelo=modelo)(fila)
 
     ver.__name__ = f"ver_{objeto.replace('-', '_').replace('.', '_')}"
@@ -547,8 +565,26 @@ def montar_ficha(
             summary=f"Ver un registro de {nombre.lower()}",
         )(_con_parametro(ver, parametro))
 
-    def editar(registro_id: Any, datos: Any, db: DbDep, principal: AutenticadoDep) -> Any:
+    def editar(
+        registro_id: Any,
+        datos: Any,
+        db: DbDep,
+        principal: AutenticadoDep,
+        if_match: str | None = Header(None, alias="If-Match"),
+    ) -> Any:
         fila = _buscar(db, registro_id)
+        # **La otra mitad del control de concurrencia**, que no la aplicaba
+        # nadie. El ETag salía en cada lectura, la comprobación estaba escrita y
+        # probada, y ninguna ruta la llamaba: dos personas abrían la misma ficha
+        # y la segunda en guardar pisaba el cambio de la primera **sin que
+        # ninguna de las dos se enterara**. El cambio perdido no da error, no
+        # deja rastro y se descubre semanas después, cuando alguien pregunta por
+        # qué el dato que escribió no está.
+        #
+        # Es opcional y no obligatorio: exigirlo rompería a todo el que ya
+        # integra sin mandarlo. Quien lo manda queda protegido; quien no, se
+        # comporta como hasta ahora, y eso es visible en el contrato.
+        comprobar_if_match(fila, if_match)
         # `exclude_unset`: distingue «no lo toco» de «déjalo vacío». Sin esto,
         # editar el nombre borraría todos los demás campos del registro.
         for campo, valor in datos.model_dump(exclude_unset=True).items():
@@ -569,7 +605,11 @@ def montar_ficha(
         summary=f"Editar {nombre.lower()}",
         description=(
             "Se cambia **solo lo que se envía**. Lo que no aparece en el cuerpo "
-            "se queda como está, que es distinto de mandarlo vacío."
+            "se queda como está, que es distinto de mandarlo vacío.\n\n"
+            "**Manda `If-Match` con el ETag que te dio la lectura.** Si alguien ha "
+            "cambiado el registro entre medias, contesta 409 en vez de pisarlo: dos "
+            "personas con la misma ficha abierta y sin esto, la segunda en guardar "
+            "borra lo de la primera y ninguna se entera."
         ),
     )(_con_parametro(editar, parametro, Parche))
 

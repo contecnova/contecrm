@@ -30,7 +30,7 @@ from uuid import UUID
 from sqlalchemy import DateTime, MetaData, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 from crmcore.ids import nuevo_id
 
@@ -189,13 +189,37 @@ class VersionMixin:
 
     version: Mapped[int] = mapped_column(nullable=False, default=1, server_default=text("1"))
 
-    __mapper_args__ = {"version_id_col": None}  # lo activa cada modelo (ver nota)
-    # Nota: SQLAlchemy exige que `version_id_col` apunte a la columna del propio
-    # mapper, y desde un mixin no se puede referenciar todavía. Cada modelo que
-    # quiera el bloqueo automático declara:
-    #     __mapper_args__ = {"version_id_col": version}
-    # Los que no lo declaren siguen teniendo la columna (y el ETag funciona),
-    # pero sin la comprobación automática en el flush.
+    # Lo que el `version` de ESTE modelo significa, cuando no es la revisión de
+    # la fila. Son las excepciones, con su motivo, y no una lista de los que sí:
+    # una lista de los que sí se queda corta al primer modelo nuevo, y el que
+    # falte se queda sin bloqueo sin que nadie lo note.
+    VERSION_ES_DE_NEGOCIO: bool = False
+
+    @declared_attr.directive
+    def __mapper_args__(cls) -> dict[str, Any]:  # noqa: N805
+        """Enciende el bloqueo optimista de verdad.
+
+        **Estaba apagado.** Este mixin decía, y dice, que el `ETag` sale de aquí
+        y que «si entretanto otro escribió, la actualización afecta a cero filas
+        y se responde 409». La nota de debajo decía que cada modelo lo activaba
+        declarando `version_id_col`, y **no lo declaraba ninguno**: el contador
+        se quedaba en 1 toda la vida del registro —medido—, así que el ETag era
+        constante, el `If-Match` del cliente cuadraba siempre y la protección
+        contra el cambio perdido era decorativa. Peor que no tenerla: parecía
+        puesta.
+
+        Desde un mixin no se puede referenciar la columna «a secas» —por eso
+        estaba así—, pero `declared_attr` sí: se evalúa cuando la clase ya
+        existe.
+
+        Los modelos cuyo `version` significa otra cosa —la versión del
+        presupuesto que se envía al cliente, la del fichero que se vuelve a
+        subir— lo dicen con `VERSION_ES_DE_NEGOCIO = True` y se quedan fuera:
+        incrementárselo en cada edición cambiaría un dato del negocio.
+        """
+        if getattr(cls, "VERSION_ES_DE_NEGOCIO", False):
+            return {}
+        return {"version_id_col": cls.__dict__.get("version", VersionMixin.version)}
 
 
 class SoftDeleteMixin:

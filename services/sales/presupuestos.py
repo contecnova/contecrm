@@ -81,6 +81,12 @@ class Presupuesto(EntidadBase, SoftDeleteMixin):
     __tablename__ = "presupuestos"
 
     numero: Mapped[str] = mapped_column(String(60), nullable=False)
+    # El `version` de este modelo es **de negocio**, no la revisión de la
+    # fila: lo lee el cliente. Por eso se queda fuera del bloqueo optimista
+    # automático — incrementárselo en cada edición cambiaría un dato que
+    # alguien de fuera entiende.
+    VERSION_ES_DE_NEGOCIO = True
+
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # La versión anterior, si la hay. La cadena completa es lo que permite
     # enseñar qué cambió entre la 1 y la 3 sin guardar diferencias a mano.

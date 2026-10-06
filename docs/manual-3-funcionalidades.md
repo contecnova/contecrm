@@ -13664,3 +13664,59 @@ permite a quien lo recibe comprobar que no falta nada por el camino.
 
 Llevarse el audit trail entero cuenta como exportación masiva y exige segundo
 factor. Que lo pida un SIEM no lo hace menos sensible: lo hace más frecuente.
+
+## El cambio perdido: el ETag se emitía y no lo miraba nadie (`CRM-00.02.01.09`)
+
+Dos personas abren la misma ficha. Las dos editan. La segunda en guardar **pisa
+el cambio de la primera, y ninguna de las dos se entera**. No da error, no deja
+rastro, y se descubre semanas después cuando alguien pregunta por qué el dato que
+escribió no está.
+
+El producto tenía las tres piezas para evitarlo y ninguna encajaba con la
+siguiente:
+
+- El **ETag** salía en cada respuesta versionada. Bien hecho y con sus pruebas.
+- La **comprobación** del `If-Match` estaba escrita y probada… y no la llamaba
+  ninguna ruta.
+- El **contador de versión** existía como columna en todas las entidades, con su
+  documentación explicando que es lo que hay detrás del ETag — y **se quedaba en 1
+  toda la vida del registro**, porque la línea que lo activa no la declaraba
+  ningún modelo.
+
+Lo tercero es lo que hacía inútiles a las otras dos: con el contador parado, el
+ETag de un registro es constante, así que el `If-Match` del cliente habría
+cuadrado siempre y la protección habría sido decorativa. Peor que no tenerla,
+porque parecía puesta.
+
+Y la documentación del middleware afirmaba que existía un guardián que exigía
+usar la comprobación. **No existía.** Una referencia a un guardián que no está
+hace que el siguiente que la lea dé por cubierto lo que no lo está.
+
+### Lo que hace ahora
+
+- El contador **sube de verdad** en cada edición, y es la base de datos la que lo
+  comprueba: si otro escribió entre medias, la actualización no toca ninguna fila
+  y se contesta **409**, con un mensaje que dice qué hacer — releer, mirar qué
+  cambió y decidir, no reintentar.
+- La ficha genérica **aplica las dos mitades**: `If-Match` al editar e
+  `If-None-Match` al leer.
+- Mandar `If-Match` es **opcional**: exigirlo rompería a todo el que ya integra
+  sin mandarlo. Quien lo manda queda protegido; quien no, se comporta como hasta
+  ahora, y eso está en el contrato publicado.
+
+### Los que se quedan fuera, y por qué
+
+Hay modelos cuyo `version` **no es la revisión de la fila**: la versión del
+presupuesto que se le manda al cliente, la del fichero que se vuelve a subir. Ésos
+se declaran como tales y se quedan fuera del contador automático — incrementarlo
+en cada edición cambiaría un dato que alguien de fuera entiende. Van como
+excepciones con su motivo, no como una lista de los que sí: una lista de los que
+sí se queda corta al primer modelo nuevo, y el que falte se queda sin protección
+sin que nadie lo note.
+
+### Y de paso, el cuerpo que no hacía falta
+
+`If-None-Match` ahorra la ficha entera en las lecturas repetidas: cincuenta campos
+y sus relaciones, cada vez que alguien vuelve a la pestaña. Se comprueba **antes**
+de proyectar, que es donde está el trabajo — hacerlo solo al final ahorraría el
+tráfico pero no el enmascarado ni las consultas.

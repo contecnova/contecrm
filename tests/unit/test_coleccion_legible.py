@@ -55,6 +55,11 @@ ACCIONES: dict[str, str] = {
     # Se verificaron una a una antes de escribirlas aquí: de siete que marcó el
     # gate al extenderlo, seis tenían puerta. Una candidata es una hipótesis.
     "/accounts/{cuenta_id}/direcciones": "las devuelve `GET /accounts/{id}/360`",
+    "/calidad-dato/linaje": (
+        "lo lee `GET /calidad-dato/linaje/{objeto}/{objeto_id}`, que es como se "
+        "pregunta: «¿de dónde sale ESTE dato?». Un listado de todo el linaje del "
+        "tenant son millones de filas que nadie mira"
+    ),
     "/contacts/{contacto_id}/cuentas": (
         "se leen desde el otro lado, en `GET /accounts/{id}/relaciones`; la "
         "asimetría es real pero el dato se alcanza"

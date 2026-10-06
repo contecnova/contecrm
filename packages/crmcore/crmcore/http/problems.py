@@ -201,6 +201,29 @@ async def manejar_integridad(request: Request, exc: Exception) -> JSONResponse:
     return _respuesta(err.a_problema(instancia=str(request.url.path), request_id=rid), 409)
 
 
+async def manejar_version_caducada(request: Request, exc: Exception) -> Any:
+    """La fila cambió entre que el cliente la leyó y la quiso escribir.
+
+    Lo levanta SQLAlchemy cuando el `UPDATE` con la versión leída no toca
+    ninguna fila, que es exactamente el caso del cambio perdido. Sin este
+    manejador saldría como un 500: «error interno» para algo que el usuario
+    resuelve releyendo — y un 500 además hace que la pantalla ofrezca
+    «reintentar», que es justo lo que no hay que hacer antes de mirar qué
+    cambió.
+    """
+    rid = _request_id(request)
+    logger.warning("http.version_caducada", ruta=str(request.url.path), request_id=rid)
+
+    from crmcore.errors import ConflictoDeVersion
+
+    err = ConflictoDeVersion(
+        "Alguien ha cambiado este registro mientras lo tenías abierto. Vuelve a "
+        "cargarlo, mira qué cambió y decide: guardar encima borraría su trabajo.",
+        error_code="conflicto.version_caducada",
+    )
+    return _respuesta(err.a_problema(instancia=str(request.url.path), request_id=rid), 409)
+
+
 def registrar_manejadores(app: FastAPI) -> None:
     """Engancha los manejadores. Lo llama la factoría de servicio."""
     from crmcore.http.idempotency import RespuestaRepetida
@@ -214,4 +237,9 @@ def registrar_manejadores(app: FastAPI) -> None:
     from sqlalchemy.exc import IntegrityError
 
     app.add_exception_handler(IntegrityError, manejar_integridad)  # type: ignore[arg-type]
+    # El cambio perdido, cazado por el bloqueo optimista. Sin esto sale como un
+    # 500 y la pantalla ofrece reintentar, que es lo contrario de lo que toca.
+    from sqlalchemy.orm.exc import StaleDataError
+
+    app.add_exception_handler(StaleDataError, manejar_version_caducada)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, manejar_no_previsto)

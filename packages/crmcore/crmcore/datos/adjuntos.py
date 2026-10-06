@@ -79,6 +79,12 @@ class Adjunto(EntidadBase, SoftDeleteMixin):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     uri: Mapped[str] = mapped_column(String(1000), nullable=False)
 
+    # El `version` de este modelo es **de negocio**, no la revisión de la
+    # fila: lo lee el cliente. Por eso se queda fuera del bloqueo optimista
+    # automático — incrementárselo en cada edición cambiaría un dato que
+    # alguien de fuera entiende.
+    VERSION_ES_DE_NEGOCIO = True
+
     version: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default=text("1")
     )

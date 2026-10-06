@@ -142,7 +142,15 @@ def test_un_nombre_parecido_se_propone_pero_no_bloquea(db: Any, tenant_id: UUID)
         db, tenant_id=tenant_id, nombre="Construcciones Garcia SA"
     )
     assert candidatos, "debería proponerse como candidato"
-    assert candidatos[0].senales == ("nombre",)
+    # Dos señales, no una: el parecido del nombre **y** que las formas jurídicas
+    # son distintas. La segunda se añadió después de escribir esta prueba y la
+    # expectativa se quedó vieja — pedía exactamente `("nombre",)`, así que
+    # fallaba por la mejora. Se pide más que antes, no menos.
+    assert set(candidatos[0].senales) == {"nombre", "forma_juridica_distinta"}
+    # Y lo que de verdad comprueba esta prueba: que se propone **y no bloquea**.
+    # «S.L.» y «S.A.» son dos NIF y dos contabilidades, y fusionarlas es caro de
+    # deshacer.
+    assert candidatos[0].concluyente is False
 
 
 def test_no_se_propone_una_cuenta_sin_parecido(db: Any, tenant_id: UUID) -> None:

@@ -266,7 +266,17 @@ CARPETAS = (
 #                   MARCA de lo que sale, que la exportación devolvía aparte
 #                   dejando a cada cliente la tarea de acordarse de ponerla; y el
 #                   VOLCADO al SIEM, escrito, en flujo y sin ruta.
-TOPE = 10
+#   06-10-2026   9  El ETAG SE EMITÍA Y NO LO MIRABA NADIE. Tres piezas y
+#                   ninguna encajaba con la siguiente: la cabecera salía bien, la
+#                   comprobación del `If-Match` estaba escrita y sin aplicar, y el
+#                   CONTADOR DE VERSIÓN NO SUBÍA —medido: se queda en 1 toda la
+#                   vida del registro—, con lo que aunque las otras dos hubieran
+#                   estado enchufadas la protección habría sido decorativa: ETag
+#                   constante y `If-Match` que cuadra siempre. Resultado: dos
+#                   personas editando la misma ficha, la segunda borraba el
+#                   trabajo de la primera sin que ninguna se enterara. Y el
+#                   middleware decía apoyarse en un gate que NO EXISTÍA.
+TOPE = 9
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

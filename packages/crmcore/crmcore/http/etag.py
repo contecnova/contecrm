@@ -106,9 +106,16 @@ class ETagMiddleware:
 
     La otra mitad —comprobar el `If-Match` que llega— **no** puede vivir aquí:
     hace falta el objeto cargado para saber su versión actual, y eso solo lo
-    sabe el endpoint. Esa parte se llama con `comprobar_if_match`, y hay un gate
-    (`test_contratos_arquitectura.py`) que falla si una ruta de actualización
-    sobre un recurso versionado no la usa.
+    sabe el endpoint. Esa parte la aplica la ficha genérica (`montar_ficha`), y
+    hay un gate (`test_etag_de_ida_y_vuelta.py`) que falla si deja de aplicarla.
+
+    Este párrafo decía otra cosa: que el gate estaba en
+    `test_contratos_arquitectura.py`. **No existía**, y la comprobación no la
+    llamaba ninguna ruta — estaba escrita, probada por su propia prueba y sin
+    aplicar. O sea que el CRM emitía ETags, el cliente los devolvía, y dos
+    personas editando la misma ficha seguían pisándose sin enterarse. Una
+    referencia a un guardián que no existe es peor que no mencionarlo: hace que
+    el siguiente que lea esto dé por cubierto lo que no lo está.
     """
 
     METODOS = frozenset({"GET", "POST", "PUT", "PATCH"})

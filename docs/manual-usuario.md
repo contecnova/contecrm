@@ -1037,6 +1037,22 @@ Si necesitas ver el número completo, el CRM te lo pedirá dos cosas: volver a
 identificarte y decir para qué. Las dos quedan registradas. No es desconfianza: es
 lo que hace que guardar esos datos así tenga sentido.
 
+### Si dos personas editáis la misma ficha
+
+Puede pasarte: abres un contrato, te vas a comer, vuelves y guardas. Mientras
+tanto, un compañero lo ha cambiado.
+
+Antes, tu guardado borraba el suyo y ninguno de los dos se enteraba. Ahora el CRM
+te para y te dice que alguien lo ha cambiado mientras lo tenías abierto. Lo que
+tienes que hacer:
+
+1. **Vuelve a cargar la ficha.** No le des a guardar otra vez sin más.
+2. **Mira qué cambió tu compañero.**
+3. **Decide**: si lo tuyo sigue teniendo sentido, vuelve a escribirlo sobre lo
+   nuevo; si no, deja lo suyo.
+
+Es un segundo de molestia a cambio de no perder el trabajo de alguien sin saberlo.
+
 ---
 
 ## Qué hacer cuando algo no sale

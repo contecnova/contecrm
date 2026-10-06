@@ -9,7 +9,7 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_exportacion, montar_ficha
+from crmcore.http.listados import declarar_recurso, montar_exportacion, montar_ficha
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -651,6 +651,9 @@ def validar_tabla(cuerpo: TablaEditada) -> Any:
 # versión nueva. Estaba entero, probado y sin puerta.
 
 router_sagas = APIRouter(prefix="/sagas", tags=["sagas con compensación"])
+# De qué objeto es este listado. Sin declararlo, un informe sobre sagas no
+# encuentra su tabla y lo que se ve es un informe vacío, no un error.
+declarar_recurso(router_sagas, "saga", sagas.Saga)
 
 
 class IniciarSagaIn(BaseModel):

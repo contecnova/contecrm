@@ -1118,6 +1118,32 @@ Si integras un frontend propio, pide la descripción **por tipo** siempre que el
 registro tenga uno. Pintar el formulario con la descripción general y filtrar en
 el cliente es reimplementar la regla, y es como acaba divergiendo del servidor.
 
+### 4.4.3 Concurrencia: no pisar el cambio de otro
+
+Para el técnico que integra escrituras. **Manda `If-Match`.**
+
+1. Lee el registro. La respuesta trae `ETag`.
+2. Edita con el verbo de modificación parcial y la cabecera `If-Match: <ese ETag>`.
+3. Si contesta **409**, alguien lo cambió entre medias: relee, mira qué cambió y
+   decide. **No reintentes a ciegas** — reintentar es exactamente pisar el cambio
+   ajeno, que es lo que esto evita.
+
+Detalles que importan:
+
+- **Es opcional.** Sin `If-Match` la edición pasa como siempre: exigirlo rompería
+  a quien ya integra. Pero sin él no tienes protección ninguna.
+- **`If-Match: *`** vale «solo si el registro existe». Es lo que quiere quien
+  actualiza algo que acaba de leer sin haberse quedado la versión.
+- **El contador lo lleva la base de datos.** No lo mandes tú en el cuerpo ni lo
+  calcules: sube solo en cada escritura, y es la comprobación de la propia base la
+  que decide el 409.
+- **Ojo con los modelos cuyo `version` es de negocio** —presupuesto, adjunto—: ahí
+  `version` es la versión del documento, no la de la fila, y no sirve para
+  concurrencia. Están declarados como tales.
+- **Lectura**: manda `If-None-Match` con el ETag que ya tengas. Si no ha cambiado,
+  contesta **304 sin cuerpo**. En una vista 360 eso es la diferencia entre
+  cincuenta campos con sus relaciones y nada.
+
 ### 4.5 Eventos
 
 - **Sobre común** para todos: `id`, `type`, `version`, `tenant_id`, `occurred_at`,

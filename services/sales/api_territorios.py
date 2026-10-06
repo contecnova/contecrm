@@ -157,6 +157,28 @@ class MiembroIn(BaseModel):
     )
 
 
+@router.get(
+    "/{territorio_id}/miembros",
+    dependencies=[Depends(exige_permiso("opportunity:read"))],
+    summary="Quién trabaja este territorio",
+    description=(
+        "El responsable **y** los miembros. El responsable va dentro a propósito: "
+        "es quien lo trabaja por definición, y dejarlo fuera obligaría a cada "
+        "pantalla a acordarse de sumarlo.\n\n"
+        "Se podía añadir gente y quitarla, y no se podía mirar quién había: para "
+        "saber a quién afectaba un cambio de territorio había que quitarlo y ver "
+        "quién se quejaba."
+    ),
+)
+def miembros(territorio_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    gente = ter.miembros_de(db, principal.tenant_id, territorio_id)
+    return {
+        "territorio_id": str(territorio_id),
+        "usuarios": [str(u) for u in gente],
+        "cuantos": len(gente),
+    }
+
+
 @router.post(
     "/{territorio_id}/miembros",
     dependencies=[Depends(exige_permiso("opportunity:write"))],
