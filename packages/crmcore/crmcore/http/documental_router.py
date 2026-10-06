@@ -23,8 +23,34 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, Query, status
 from pydantic import BaseModel, Field
 
+import crmcore.documental.trabajos_analisis  # noqa: F401 — registra el ejecutor
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+
+# El `import` de arriba no es decorativo: el ejecutor del análisis se registra al
+# importar su módulo, y hacerlo DENTRO de la ruta lo dejaría registrado solo en
+# el proceso web. El worker, que es quien lo ejecuta, no lo tendría — y `encolar`
+# rechazaría el tipo o, peor, el trabajo quedaría encolado para siempre sin nadie
+# que lo coja. Es el mismo error que ya se pagó con otros ejecutores.
+
+
+class AnalisisDeRamaIn(BaseModel):
+    """Qué ramas analizar y qué se le pide a cada una."""
+
+    carpetas: list[str] = Field(
+        ..., min_length=1, description="Identificadores de carpeta en el gestor documental"
+    )
+    que: str = Field(
+        "resumen",
+        pattern="^(resumen|conceptos)$",
+        description="«resumen» de la rama, o los «conceptos» que aparecen en ella",
+    )
+    pregunta: str = Field(
+        "",
+        max_length=500,
+        description="Para acotar el resumen a algo concreto. Vacío, resume la rama entera",
+    )
+    con_subcarpetas: bool = True
 
 
 class EnlaceEntrada(BaseModel):
@@ -335,6 +361,59 @@ def crear_router_documental(objetos: set[str]) -> APIRouter:
             rol=cliente.rol_para(principal.permisos, principal.es_admin_plataforma),
         )
         return {"resultados": cliente.buscar(q, token_usuario=token.token, limite=limite)}
+
+    @router.post(
+        "/analisis-de-rama",
+        # Escribe —encola un trabajo que consume modelo— y por eso pide permiso.
+        # El gate de arquitectura lo cazó: una ruta de escritura sin permiso es
+        # la que cualquiera con sesión puede disparar, y aquí cada disparo son
+        # minutos de GPU del cliente.
+        dependencies=[Depends(exige_permiso("documento:leer"))],
+        summary="Pedir el resumen (o los conceptos) de una rama del corpus",
+        description=(
+            "**Se encola y devuelve la ficha del trabajo**, no el resumen. Pasa "
+            "por el modelo de lenguaje, y el de embeddings puede tardar minutos "
+            "en cargar en frío: hacerlo dentro de la petición da un 504 con el "
+            "trabajo hecho y tirado — y encima funcionaría en pruebas, con el "
+            "modelo caliente, para fallar el lunes por la mañana.\n\n"
+            "El resultado trae las **citas agrupadas por documento**. Las del "
+            "gestor son de fragmento, y varias salen del mismo fichero: pintarlas "
+            "tal cual da una lista con el mismo documento cuatro veces, que "
+            "parece un fallo y no lo es. Las huérfanas —cuyo documento ya no "
+            "está— se marcan y no se esconden: un resumen apoyado en algo que ha "
+            "desaparecido es información, no ruido.\n\n"
+            "Lo resuelve el gestor **con un token del usuario**, así que cada uno "
+            "analiza lo que vería entrando al gestor."
+        ),
+    )
+    def analizar_rama_documental(
+        cuerpo: AnalisisDeRamaIn, uow: UowDep, principal: AutenticadoDep
+    ) -> Any:
+        from crmcore.documental import cliente, organizacion_de
+        from crmcore.documental.trabajos_analisis import encolar_analisis
+
+        organizacion = organizacion_de(uow.db, principal.tenant_id)
+        token = cliente.canjear_token(
+            organizacion=organizacion,
+            sujeto=str(principal.id),
+            rol=cliente.rol_para(principal.permisos, principal.es_admin_plataforma),
+        )
+        trabajo = encolar_analisis(
+            uow.db,
+            tenant_id=principal.tenant_id,
+            carpetas=cuerpo.carpetas,
+            token_usuario=token.token,
+            que=cuerpo.que,
+            pregunta=cuerpo.pregunta,
+            con_subcarpetas=cuerpo.con_subcarpetas,
+            pedido_por=principal.id,
+        )
+        return {
+            "trabajo_id": str(trabajo.id),
+            "estado": trabajo.estado,
+            "ramas": len(cuerpo.carpetas),
+            "donde_se_mira": "GET /api/v1/trabajos/{trabajo_id}",
+        }
 
     @router.get(
         "/organizacion",

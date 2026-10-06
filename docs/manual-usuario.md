@@ -1053,6 +1053,33 @@ tienes que hacer:
 
 Es un segundo de molestia a cambio de no perder el trabajo de alguien sin saberlo.
 
+### Si una plantilla sale con un error
+
+Pongamos que descubres que el contrato que mandáis llevaba una cláusula mal
+redactada. La pregunta inmediata es a cuántos clientes se la habéis mandado.
+
+El CRM lo apunta: cada documento que se compone deja registrado de qué plantilla
+salió y **de qué versión**. Quien administra el CRM puede preguntar por esa
+versión concreta y obtener la lista. Si el documento se archivó en el gestor
+documental, aparece también su enlace.
+
+Lo apunta aunque el documento no se archive — porque los que se mandan por correo
+sin guardar son justo los que después nadie encuentra.
+
+### Resumir una carpeta entera de documentos
+
+Puedes pedirle al CRM que resuma una carpeta del gestor documental, o que te diga
+qué conceptos aparecen en ella. Tarda, así que **no se queda esperando**: te
+devuelve un número de trabajo y lo consultas cuando esté.
+
+El resumen viene con las fuentes: qué documentos se usaron y cuántos trozos de
+cada uno. Si alguno de esos documentos ya no existe, se te dice en vez de
+callarlo — el resumen se apoyó en algo que ha desaparecido, y eso lo tienes que
+saber tú.
+
+Solo verás resumido lo que ya podrías abrir: se consulta con tu identidad, no con
+la del sistema.
+
 ---
 
 ## Qué hacer cuando algo no sale

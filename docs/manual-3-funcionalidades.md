@@ -13720,3 +13720,54 @@ sin que nadie lo note.
 y sus relaciones, cada vez que alguien vuelve a la pestaña. Se comprueba **antes**
 de proyectar, que es donde está el trabajo — hacerlo solo al final ahorraría el
 tráfico pero no el enmascarado ni las consultas.
+
+## «¿A quién le mandamos la cláusula mala?» (`CRM-06.01.01.05`, `CRM-06.01.01.06`)
+
+Es la pregunta que se hace el día que alguien descubre que una cláusula de una
+plantilla estaba mal. El producto tenía la respuesta montada: una tabla con qué
+documento se generó, de qué plantilla y **de qué versión**, y una consulta que la
+lee por versión — porque la cláusula mala está en una versión concreta y lo que
+hay que saber es quién recibió ésa.
+
+Lo que no tenía era **quien escribiera en la tabla**. La función que compone el
+documento decía en su primera línea que dejaba constancia, y no la dejaba: la
+única que escribe ahí no la llamaba nadie. Así que la tabla estaba siempre vacía
+y la consulta contestaba «a nadie» con toda tranquilidad. Un registro vacío no da
+error: contesta exactamente lo mismo que si de verdad no se hubiera mandado a
+nadie.
+
+La constancia se deja **al generar y no al archivar**. Hay documentos que se
+componen y acaban en un correo sin pasar nunca por el gestor documental, y son
+justo los que después nadie puede rastrear. Si el documento se archiva, su
+identificador se apunta también; si no, el hueco es un dato, no una falta.
+
+## El análisis de una rama del corpus (`CRM-06.01.01.05`)
+
+Resumir una carpeta entera del gestor documental —o sacar los conceptos que
+aparecen en ella— estaba escrito, con su plazo propio medido en minutos, porque
+pasa por el modelo de lenguaje y el de embeddings puede tardar en cargar en frío.
+Tenía hasta una nota diciendo que **solo se llama desde un trabajo de fondo**.
+
+No había trabajo de fondo. Ni ruta. Era una capacidad que no se podía pedir de
+ninguna forma.
+
+Ahora `POST /api/v1/documentos/analisis-de-rama` **encola** el análisis y
+devuelve la ficha del trabajo. Hacerlo dentro de la petición daría un 504 con el
+trabajo hecho y tirado — y lo peor es que funcionaría en pruebas, con el modelo
+caliente, para fallar el lunes por la mañana.
+
+Tres decisiones que importan:
+
+- **Una rama por tanda.** Cada análisis puede tardar minutos; una tanda que se
+  come veinte es un commit de media hora que, si el worker se cae, se repite
+  entero.
+- **Las citas vuelven agrupadas por documento.** Las del gestor son de
+  *fragmento*: varias salen del mismo fichero, y pintarlas tal cual da una lista
+  con el mismo documento repetido cuatro veces, que parece un fallo y no lo es.
+  Las huérfanas —cuyo documento ya no está— se marcan y no se esconden: un
+  resumen apoyado en algo que ha desaparecido es información.
+- **Una rama que falla no para las demás**, y se consume igual: si no, el trabajo
+  se quedaría reintentando la misma eternamente.
+
+Lo resuelve el gestor **con un token del usuario**, así que cada uno analiza lo
+que vería entrando al gestor, no el corpus entero del cliente.

@@ -1220,6 +1220,28 @@ pone el despliegue.
   para que verifiques la cadena en destino; si falta una secuencia, falta un
   apunte. La primera línea es la marca de origen. Exige segundo factor.
 
+### 4.5.4 Gestión documental: lo que queda apuntado y lo que va en diferido
+
+- **Todo documento compuesto de una plantilla deja constancia** de la plantilla y
+  la versión con la que se hizo, en el momento de componerlo. Se consulta con
+  `GET /api/v1/plantillas-doc/{clave}/version/{version}/destinatarios`, que es la
+  pregunta real: «esta cláusula está mal, ¿a quién se la mandamos?».
+  Si al generar le pasas `documento_id`, queda enlazado al fichero del gestor; si
+  no, la constancia existe igual — los que se mandan por correo sin archivar son
+  justo los que después nadie rastrea.
+- **El análisis de una rama va por trabajo**, nunca dentro de la petición:
+  `POST /api/v1/documentos/analisis-de-rama` encola y devuelve `trabajo_id`; el
+  estado se mira en `GET /api/v1/trabajos/{id}`. Pasa por el modelo de lenguaje y
+  el de embeddings puede tardar minutos en cargar en frío — en caliente iría bien
+  y daría 504 el lunes.
+- **El resultado trae las citas agrupadas por documento**, con cuántos fragmentos
+  salieron de cada uno y cuáles son huérfanos. Ordenadas por `relevance` y no por
+  `score`: `score` cambia de significado a lo largo del recorrido de búsqueda y el
+  único comparable entre resultados es el primero.
+- El ejecutor del trabajo se registra al importar su módulo, y el router lo
+  importa: si lo registras solo dentro de una ruta, el **worker** no lo tiene y el
+  trabajo se queda encolado para siempre sin nadie que lo coja.
+
 ### 4.6 Conectores
 
 Un conector es **configuración, no código**: endpoints, mapeo de campos,

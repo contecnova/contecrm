@@ -208,6 +208,7 @@ def generar(
     objeto_id: UUID | None = None,
     por: UUID | None = None,
     permitir_incompleto: bool = False,
+    documento_id: str = "",
 ) -> dict[str, Any]:
     """Compone el documento y deja constancia de con qué se hizo.
 
@@ -250,6 +251,29 @@ def generar(
             error_code="plantilla.clausula_perdida",
             detalle={"perdidas": perdidas},
         )
+
+    # **Y aquí se deja la constancia**, que es la mitad que faltaba. Esta función
+    # decía en su primera línea que la dejaba y no la dejaba: `anotar_generado`
+    # era la única que escribe en esa tabla y no la llamaba nadie, así que la
+    # tabla estaba siempre vacía — y `quien_recibio`, que es LA pregunta que se
+    # hace cuando una cláusula resulta estar mal, contestaba «a nadie» con toda
+    # tranquilidad. Un registro vacío no da error: contesta lo mismo que si de
+    # verdad no se hubiera mandado a nadie.
+    #
+    # Se apunta al generar y no al subirlo al corpus: hay documentos que se
+    # generan y acaban en un correo sin pasar por el gestor, y ésos son
+    # exactamente los que después nadie puede rastrear. `documento_id` va vacío
+    # mientras no esté archivado, y eso es un dato, no un hueco.
+    anotar_generado(
+        db,
+        tenant_id=tenant_id,
+        clave=clave,
+        version=plantilla.version,
+        documento_id=documento_id,
+        objeto=objeto,
+        objeto_id=objeto_id,
+        por=por,
+    )
 
     logger.info("documental.generado", plantilla=clave, version=plantilla.version, objeto=objeto)
     return {

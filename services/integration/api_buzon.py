@@ -209,6 +209,15 @@ class GenerarDocumento(BaseModel):
     objeto: str = ""
     objeto_id: UUID | None = None
     permitir_incompleto: bool = False
+    documento_id: str = Field(
+        "",
+        max_length=200,
+        description=(
+            "El identificador en el gestor documental, si ya está archivado. "
+            "Vacío si no: hay documentos que se generan y acaban en un correo sin "
+            "pasar por el gestor, y ésos son justo los que después nadie rastrea"
+        ),
+    )
 
 
 @router_plantillas.post(
@@ -266,6 +275,7 @@ def generar_documento(cuerpo: GenerarDocumento, uow: UowDep, principal: Autentic
         objeto_id=cuerpo.objeto_id,
         por=principal.id,
         permitir_incompleto=cuerpo.permitir_incompleto,
+        documento_id=cuerpo.documento_id,
     )
 
 

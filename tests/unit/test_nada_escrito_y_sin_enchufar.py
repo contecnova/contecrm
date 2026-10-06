@@ -276,7 +276,16 @@ CARPETAS = (
 #                   personas editando la misma ficha, la segunda borraba el
 #                   trabajo de la primera sin que ninguna se enterara. Y el
 #                   middleware decía apoyarse en un gate que NO EXISTÍA.
-TOPE = 9
+#   06-10-2026   6  «¿A quién le mandamos la cláusula mala?» contestaba «a
+#                   nadie», y era mentira: la tabla con qué se generó y de qué
+#                   versión existía, la consulta que la lee existía, y la única
+#                   función que ESCRIBE en ella no la llamaba nadie — así que
+#                   estaba siempre vacía. La función que compone el documento
+#                   decía en su primera línea que dejaba constancia y no la
+#                   dejaba. Con ella, el análisis de una rama del corpus: escrito,
+#                   con su plazo en minutos y una nota que dice que solo se llama
+#                   desde un trabajo de fondo, sin trabajo de fondo y sin ruta.
+TOPE = 6
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
