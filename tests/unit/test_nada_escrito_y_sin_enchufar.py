@@ -302,7 +302,18 @@ CARPETAS = (
 # polimórfica apunta a un tipo admitido, y aplicarla donde se escriben esos
 # valores exige replicar las relaciones definidas al servicio que las escribe.
 # Eso es un bloque con su migración, no una línea; se hace, no se exime.
-TOPE = 1
+#   06-10-2026   0  **CERO.** La última era `validar_destino`, y su motivo era
+#                   estructural, que es por lo que aguantó a las otras noventa y
+#                   una: vivía en el servicio que DECLARA las relaciones, y
+#                   quien ESCRIBE los valores son los otros doce, que no leen
+#                   ese esquema. Una regla que vive donde se declara y no donde
+#                   se aplica es una regla apagada. La regla sube al núcleo y
+#                   las relaciones viajan replicadas con el esquema del objeto,
+#                   por el mismo camino que sus campos propios.
+#
+# Que el tope esté en cero no quiere decir que la sonda sobre: quiere decir que
+# a partir de aquí cualquier función nueva sin llamante se caza el mismo día.
+TOPE = 0
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen

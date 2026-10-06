@@ -310,25 +310,24 @@ def plan_de_borrado(db: Session, *, tenant_id: UUID, objeto: str) -> list[PasoBo
 def validar_destino(relacion: RelacionDefinida, objeto_destino: str) -> None:
     """Comprueba que el tipo de destino es uno de los admitidos.
 
-    Solo tiene sentido en las polimórficas, y ahí es imprescindible: sin esta
-    comprobación, una actividad puede acabar apuntando a un tipo que nadie
-    previó, y el día que alguien recorra esas referencias se encontrará con un
-    identificador que no resuelve a nada.
+    **La regla vive en el núcleo** (`crmcore.relaciones`), y esto es el adaptador
+    que la aplica sobre la definición de aquí. No al revés: quien escribe los
+    valores de una referencia son los otros doce servicios, y ninguno puede leer
+    este esquema — por eso esta comprobación llevaba desde que se escribió sin
+    que la llamara nadie. Una regla que vive donde se declara y no donde se
+    aplica es una regla apagada.
     """
-    if relacion.tipo != "polimorfica":
-        if relacion.destino and objeto_destino != relacion.destino:
-            raise ErrorValidacion(
-                f"La relación «{relacion.nombre}» apunta a «{relacion.destino}», "
-                f"no a «{objeto_destino}»",
-                error_code="metadata.destino_no_admitido",
-            )
-        return
-    if objeto_destino not in (relacion.destinos or []):
-        raise ErrorValidacion(
-            f"«{objeto_destino}» no está entre los destinos admitidos de " f"«{relacion.nombre}»",
-            error_code="metadata.destino_no_admitido",
-            detalle={"admitidos": list(relacion.destinos or [])},
-        )
+    from crmcore.relaciones import validar_destino as comprobar
+
+    comprobar(
+        {
+            "nombre": relacion.nombre,
+            "tipo": relacion.tipo,
+            "destino": relacion.destino or "",
+            "destinos": list(relacion.destinos or []),
+        },
+        objeto_destino,
+    )
 
 
 def grafo(db: Session, tenant_id: UUID) -> dict[str, Any]:

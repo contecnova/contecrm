@@ -13877,3 +13877,43 @@ recorre su camino:
 
 Las cuatro mutaciones plantadas —quitar los roles, quitar los módulos, mandar al
 índice en vez de al capítulo, dejar las áreas sin nombre— las caza su escenario.
+
+## A qué puede apuntar una referencia (`CRM-00.04.01.03`)
+
+Una relación polimórfica dice que una actividad puede colgar de una cuenta, de un
+contacto o de una oportunidad. Lo que **no** puede es colgar de cualquier cosa.
+
+Sin esa comprobación, una referencia acaba apuntando a un tipo que nadie previó.
+Y no falla al escribir —el valor cabe— sino meses después, cuando alguien recorre
+esas referencias y se encuentra un identificador que no resuelve a nada.
+
+La regla estaba escrita y **no la llamaba nadie**: fue la última de las noventa y
+dos funciones que la sonda llegó a marcar, y aguantó más que ninguna porque su
+motivo era estructural. Vivía en el servicio que **declara** las relaciones, y
+quien **escribe** los valores son los otros doce, que no leen ese esquema. Una
+regla que vive donde se declara y no donde se aplica es una regla apagada.
+
+Ahora:
+
+- La regla vive en el núcleo, que es por donde pasan todas las escrituras de
+  campos propios.
+- Las relaciones del objeto **viajan replicadas con su esquema**, por el mismo
+  camino que sus campos: un diccionario por relación con lo justo para decidir
+  —cómo se llama, de qué tipo es y a qué admite apuntar—. Mandar el resto sería
+  replicar decisiones que sólo sabe aplicar quien las declara.
+- El servicio que declara las relaciones sigue comprobándolas, usando **la misma**
+  regla. Dos implementaciones divergen, y la que menos se mira es la que se queda
+  corta.
+
+Dos decisiones que importan:
+
+- **Sin destino declarado se admite cualquiera.** Vacío es «sin acotar», no «no
+  admite ninguno»: obligar a enumerar los destinos antes de saberlos haría que
+  nadie declarara una relación.
+- **La relación de un campo no se adivina por parecido.** Dos relaciones hacia el
+  mismo objeto son dos cosas distintas —«cuenta que lo paga» y «cuenta que lo
+  usa»— y elegir la que coincida acertaría casi siempre, que es la peor clase de
+  casi.
+
+Y el error dice **a qué sí podía apuntar**: «destino no admitido» a secas obliga a
+ir a buscar la definición para saber qué poner.

@@ -128,6 +128,38 @@ def ultima_publicacion(db: Session, tenant_id: UUID, objeto: str) -> Publicacion
     ).scalar_one_or_none()
 
 
+def _relaciones_del_objeto(db: Session, tenant_id: UUID, objeto: str) -> list[dict[str, Any]]:
+    """Lo justo para que otro servicio decida a qué puede apuntar una referencia.
+
+    No va la definición entera: lo que el otro lado necesita es el nombre, el
+    tipo y los destinos admitidos. Mandar el resto —cardinalidad, qué pasa al
+    borrar, el objeto intermedio— sería replicar decisiones que sólo sabe
+    aplicar quien las declara.
+    """
+    from services.metadata.relaciones import RelacionDefinida
+
+    filas = (
+        db.execute(
+            select(RelacionDefinida).where(
+                RelacionDefinida.tenant_id == tenant_id,
+                RelacionDefinida.origen == objeto,
+                RelacionDefinida.activa.is_(True),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "nombre": f.nombre,
+            "tipo": f.tipo,
+            "destino": f.destino or "",
+            "destinos": list(f.destinos or []),
+        }
+        for f in filas
+    ]
+
+
 def publicar(
     db: Session, tenant_id: UUID, objeto: str, *, por: UUID | None = None, nota: str = ""
 ) -> dict[str, Any]:
@@ -186,6 +218,11 @@ def publicar(
             # zona que no existe. El número es el contrato; el orden es
             # cosmético.
             "numeros_rpc": contrato.get("numeros") or {},
+            # Y las relaciones que SALEN de este objeto. Sin ellas, el servicio
+            # que escribe los valores no puede comprobar a qué apuntan: la
+            # regla estaba escrita aquí —donde se declaran— y no la llamaba
+            # nadie, porque quien escribe es otro y no lee este esquema.
+            "relaciones": _relaciones_del_objeto(db, tenant_id, objeto),
         },
         dedup_key=f"esquema:{tenant_id}:{objeto}:{version}",
     )

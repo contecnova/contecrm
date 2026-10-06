@@ -79,6 +79,16 @@ class EsquemaTenant(Base):
     campos: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # Las relaciones que SALEN de este objeto, replicadas con él.
+    #
+    # Van aquí y no en una tabla aparte porque se leen con los campos y en el
+    # mismo momento: al validar una escritura. Y van replicadas porque quien
+    # escribe los valores son los otros servicios, y ninguno puede leer el
+    # esquema de `metadata` — que es exactamente por lo que la comprobación de
+    # destino estaba escrita y no la llamaba nadie.
+    relaciones: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     actualizado_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -105,6 +115,24 @@ def campos_de(db: Session, tenant_id: UUID, objeto: str) -> list[dict[str, Any]]
     if fila is None:
         return []
     return [c for c in (fila.campos or []) if isinstance(c, dict)]
+
+
+def relaciones_de(db: Session, tenant_id: UUID, objeto: str) -> list[dict[str, Any]]:
+    """Las relaciones que salen de este objeto en este tenant.
+
+    Lista vacía si no hay esquema replicado, igual que con los campos: un tenant
+    que no ha declarado ninguna relación es el caso normal. Lo que sería un
+    error es tratar «no hay relaciones» como «vale cualquier destino», y por eso
+    la comprobación distingue los dos casos.
+    """
+    fila = db.execute(
+        select(EsquemaTenant).where(
+            EsquemaTenant.tenant_id == tenant_id, EsquemaTenant.objeto == objeto
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        return []
+    return [r for r in (fila.relaciones or []) if isinstance(r, dict)]
 
 
 def campo(db: Session, tenant_id: UUID, objeto: str, nombre: str) -> dict[str, Any] | None:
@@ -271,6 +299,10 @@ def validar(
     """
     valores = dict(valores or {})
     definiciones = {str(c.get("nombre")): c for c in campos_de(db, tenant_id, objeto)}
+    # Las relaciones de este objeto, para comprobar a qué apunta cada campo de
+    # referencia. Se leen UNA vez y no por campo: la mayoría de los objetos no
+    # tiene ninguna, y en los que la tienen son dos o tres.
+    relaciones = relaciones_de(db, tenant_id, objeto)
 
     fallos: list[dict[str, Any]] = []
     salida: dict[str, Any] = {}
@@ -331,6 +363,33 @@ def validar(
             fallos.extend(exc.errores or [])
             continue
         fallos.extend(_comprobar_restricciones(definicion, valor))
+
+        # Y a QUÉ apunta, si es una referencia. Es la comprobación que convierte
+        # una relación polimórfica en una promesa: sin ella, una actividad puede
+        # acabar colgando de un tipo que nadie previó, y eso no falla al
+        # escribir — falla meses después, cuando alguien recorre esas
+        # referencias y se encuentra un identificador que no resuelve a nada.
+        if relaciones:
+            from crmcore.relaciones import relacion_de_campo, validar_destino
+
+            relacion = relacion_de_campo(relaciones, definicion)
+            destino = str((valores.get(f"{nombre}__objeto") or "")) or str(
+                (definicion.get("restricciones") or {}).get("objeto") or ""
+            )
+            if relacion is not None and destino:
+                try:
+                    validar_destino(relacion, destino)
+                except ErrorValidacion as exc:
+                    fallos.append(
+                        {
+                            "campo": nombre,
+                            "motivo": "destino_no_admitido",
+                            "mensaje": str(exc),
+                            **(exc.detalle or {}),
+                        }
+                    )
+                    continue
+
         salida[nombre] = valor
 
     if fallos:
@@ -883,6 +942,7 @@ def aplicar_esquema(
     campos: list[dict[str, Any]],
     version: int,
     numeros_rpc: dict[str, Any] | None = None,
+    relaciones: list[dict[str, Any]] | None = None,
 ) -> EsquemaTenant | None:
     """Escribe el esquema replicado, descartando lo que llega tarde.
 
@@ -898,7 +958,13 @@ def aplicar_esquema(
         )
     ).scalar_one_or_none()
     if fila is None:
-        fila = EsquemaTenant(tenant_id=tenant_id, objeto=objeto, version=version, campos=campos)
+        fila = EsquemaTenant(
+            tenant_id=tenant_id,
+            objeto=objeto,
+            version=version,
+            campos=campos,
+            relaciones=list(relaciones or []),
+        )
         db.add(fila)
         db.flush()
         return fila
@@ -912,6 +978,7 @@ def aplicar_esquema(
         return None
     fila.version = version
     fila.campos = campos
+    fila.relaciones = list(relaciones or [])
     fila.actualizado_at = datetime.now(tz=None).astimezone()
     return fila
 
@@ -953,6 +1020,7 @@ async def consumir_esquema(mensaje: Any) -> None:
             campos=campos,
             version=int(datos.get("version") or 0),
             numeros_rpc=dict(datos.get("numeros_rpc") or {}),
+            relaciones=[r for r in (datos.get("relaciones") or []) if isinstance(r, dict)],
         )
         if aplicada is not None and fisico.get("aplicado"):
             logger.info(

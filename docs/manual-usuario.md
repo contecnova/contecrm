@@ -1091,6 +1091,20 @@ borras registros, el número baja. Y si alguna métrica no se puede medir en ese
 momento, te lo dice en esa línea en lugar de enseñarte un cero, que es muy
 distinto.
 
+### Si el CRM te dice que algo «no puede apuntar ahí»
+
+Algunos registros se enlazan con otros: una actividad cuelga de una cuenta, de un
+contacto o de una oportunidad. Quien configura el CRM decide de qué cosas puede
+colgar cada una.
+
+Si intentas enlazar con algo que no está en esa lista, el CRM te lo dice **y te
+enumera con qué sí puedes enlazarlo**. No es una limitación arbitraria: un enlace
+hacia algo que no estaba previsto no da error ese día, lo da meses después,
+cuando alguien abre esa ficha y el enlace no lleva a ninguna parte.
+
+Si lo que necesitas enlazar debería estar permitido, es cosa de quien administra
+el CRM: se añade a la lista y vuelve a funcionar.
+
 ---
 
 ## Qué hacer cuando algo no sale

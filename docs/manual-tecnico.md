@@ -1144,6 +1144,23 @@ Detalles que importan:
   contesta **304 sin cuerpo**. En una vista 360 eso es la diferencia entre
   cincuenta campos con sus relaciones y nada.
 
+### 4.4.4 Referencias: a qué puede apuntar cada una
+
+Si declaras una relación polimórfica, enumera sus destinos. A partir de ahí, una
+escritura que apunte a un tipo que no esté en la lista se rechaza con
+`metadata.destino_no_admitido`, y el error dice cuáles eran los admitidos.
+
+- **La comprobación se hace donde se escribe**, no donde se declara: las
+  relaciones viajan replicadas con el esquema del objeto, igual que sus campos.
+- **Sin destinos declarados no se acota nada.** Es deliberado: si exigiera
+  enumerarlos antes de saberlos, nadie declararía una relación.
+- **El campo dice de qué relación es** en `restricciones.relacion`. Sin eso no se
+  comprueba, y no se adivina: dos relaciones hacia el mismo objeto son dos cosas
+  distintas.
+- Si cambias los destinos admitidos, **vuelve a publicar el esquema**: la copia
+  de cada servicio se actualiza con esa publicación, y hasta entonces sigue
+  aceptando lo de antes.
+
 ### 4.5 Eventos
 
 - **Sobre común** para todos: `id`, `type`, `version`, `tenant_id`, `occurred_at`,
