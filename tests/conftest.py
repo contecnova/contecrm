@@ -472,3 +472,25 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.db)
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
+
+
+async def esperar_a(condicion: Any, timeout_s: float = 2.0) -> bool:
+    """Espera a que una condición se cumpla, sondeando.
+
+    Existe para que ninguna prueba use `asyncio.sleep(0.5)` a ojo: una espera
+    fija o es lenta de más o falla en una máquina cargada — y esta máquina se
+    carga, porque conviven varias suites.
+
+    Vivía en `crmcore.bus.memoria`, que es código de producción, y no la usaba
+    nadie. Un ayudante de pruebas en producción es código que nadie ejecuta en
+    producción y que ningún recorrido de pruebas cubre: aquí sí tiene llamantes
+    y aquí es donde se mira si deja de hacer falta.
+    """
+    import asyncio
+
+    limite = asyncio.get_event_loop().time() + timeout_s
+    while asyncio.get_event_loop().time() < limite:
+        if condicion():
+            return True
+        await asyncio.sleep(0.01)
+    return False

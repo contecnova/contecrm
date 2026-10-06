@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -113,12 +114,50 @@ class UnidadDeTrabajo:
             encolar(self.db, tenant_id=self.tenant_id, **ev)
 
 
+# La unidad de trabajo del entorno, si alguien de fuera ya abrió una y quiere que
+# lo de dentro vaya EN LA MISMA TRANSACCIÓN.
+#
+# Lo usa la deduplicación del consumo: la marca de «este evento ya lo procesé»
+# tiene que escribirse con el efecto o no escribirse. Si fuera antes, un fallo
+# posterior dejaría el evento marcado sin haberlo procesado y el reintento lo
+# descartaría — el hecho se perdería para siempre. Y si fuera después, dos
+# réplicas pueden estar procesando el mismo mensaje a la vez: el bus reclama lo
+# que lleva mucho sin confirmar, así que la segunda entrega llega mientras la
+# primera sigue dentro, y las dos harían el efecto.
+_ambiente: ContextVar[UnidadDeTrabajo | None] = ContextVar("uow_ambiente", default=None)
+
+
+def compartir(uow: UnidadDeTrabajo) -> Any:
+    """Hace que lo de dentro use ESTA transacción. Devuelve el testigo."""
+    return _ambiente.set(uow)
+
+
+def soltar(testigo: Any) -> None:
+    """Deja de compartirla.
+
+    Siempre en un `finally`: sin restaurar, la siguiente tarea de este mismo
+    hilo seguiría escribiendo en una sesión ya cerrada.
+    """
+    _ambiente.reset(testigo)
+
+
 @contextmanager
 def unidad_de_trabajo(
     tenant_id: UUID | None = None, *, sistema: bool = False
 ) -> Iterator[UnidadDeTrabajo]:
-    """Abre transacción, vuelca los eventos y hace commit. Rollback si falla."""
+    """Abre transacción, vuelca los eventos y hace commit. Rollback si falla.
+
+    **Si hay una unidad de trabajo del entorno, se usa esa y no se abre otra.**
+    Ni commit, ni cierre, ni despertar al relevo: manda quien la abrió, que es el
+    único que sabe si el conjunto salió bien. Es lo que permite que la marca de
+    deduplicación y el efecto del evento sean una sola transacción.
+    """
     from crmcore.db.session import nueva_sesion
+
+    compartida = _ambiente.get()
+    if compartida is not None:
+        yield compartida
+        return
 
     db = nueva_sesion(tenant_id, sistema=sistema)
     uow = UnidadDeTrabajo(db=db, tenant_id=db.info.get("tenant_id"))

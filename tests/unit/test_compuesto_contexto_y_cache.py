@@ -191,10 +191,18 @@ def test_el_servicio_invalida_con_cada_evento_que_recibe() -> None:
     """Sin esto la generación no sube jamás y la invalidación por evento no
     existe, aunque el módulo esté entero."""
     fuente = (RAIZ / "packages" / "crmcore" / "crmcore" / "service.py").read_text(encoding="utf-8")
-    assert '("*", _invalidar_cache,' in fuente
-    arbol = ast.parse(fuente)
+    # Hubo DOS copias de este recorrido: la del módulo de la caché, que no
+    # llamaba nadie, y una suelta aquí que leía `type` y no `tipo`. Se quedó la
+    # del módulo, y esto apunta a ella.
+    assert '("*", consumir_invalidacion,' in fuente
+    assert "_invalidar_cache" not in fuente, "ha vuelto la copia suelta"
+
+    cache = (RAIZ / "packages" / "crmcore" / "crmcore" / "cache" / "respuestas.py").read_text(
+        encoding="utf-8"
+    )
+    arbol = ast.parse(cache)
     for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.AsyncFunctionDef) and nodo.name == "_invalidar_cache":
+        if isinstance(nodo, ast.AsyncFunctionDef) and nodo.name == "consumir_invalidacion":
             llamadas = {
                 getattr(n.func, "id", None) or getattr(n.func, "attr", None)
                 for n in ast.walk(nodo)

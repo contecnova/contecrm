@@ -92,7 +92,7 @@ class Subject:
         return {"tipo": self.tipo, "id": self.id}
 
 
-def _acotar(clave: str) -> str:
+def acotar_clave(clave: str) -> str:
     """Mete una clave larga en el ancho de la columna sin perder su identidad.
 
     Se hace aquí, en el sobre, y no en cada sitio que compone una clave. Hay una
@@ -134,7 +134,7 @@ class Evento:
         if not self.dedup_key:
             object.__setattr__(self, "dedup_key", self._clave_derivada())
         elif len(self.dedup_key) > TOPE_DEDUP:
-            object.__setattr__(self, "dedup_key", _acotar(self.dedup_key))
+            object.__setattr__(self, "dedup_key", acotar_clave(self.dedup_key))
 
     def _clave_derivada(self) -> str:
         """Clave estable a partir de lo que identifica el HECHO.

@@ -1131,6 +1131,37 @@ el cliente es reimplementar la regla, y es como acaba divergiendo del servidor.
   producción de quien los lee.
 - **Webhooks** con reintentos, backoff, firma y buzón de fallidos.
 
+### 4.5.1 Deduplicación en el consumo
+
+Para el técnico que escribe un consumidor o que depura un evento repetido.
+
+La entrega es **at-least-once**: el mismo hecho llega dos veces de serie, y eso no
+es un fallo del bus, es su contrato. Lo que lo convierte en efecto único es el
+buzón de entrada (`eventos_entrantes`).
+
+Lo que hay que saber:
+
+- **No hay que hacer nada en el consumidor.** La deduplicación se aplica al
+  suscribir, en el arranque del servicio, a **todas** las suscripciones. Un
+  consumidor que la montara por su cuenta la estaría haciendo dos veces.
+- **La marca y el efecto son la misma transacción.** Si tu consumidor abre una
+  unidad de trabajo, recibe la que ya hay abierta en vez de abrir otra: eso es lo
+  que hace que «o las dos cosas o ninguna» sea verdad. No hagas `commit()` por tu
+  cuenta dentro de un consumidor.
+- **Si tu consumidor lanza una excepción, el hecho NO queda marcado** y el bus lo
+  reintenta. Es lo correcto: tragarse el error dejaría el hecho por procesado sin
+  procesarlo.
+- **La clave la pone quien produce** (`dedup_key`). Si la escribes a mano, que
+  lleve un identificador único — no `pedido:42`. La marca se guarda acotada al
+  cliente, así que un choque entre dos clientes no puede pasar, pero dos hechos
+  del mismo cliente con la misma clave sí se pisan, y eso sí es cosa tuya.
+- **Retención**: `INBOX_RETENCION_DIAS`. El plazo tiene que cubrir de sobra la
+  ventana de reintentos del productor: si se olvida una clave antes de que el
+  productor deje de reintentarla, el reintento tardío pasaría como nuevo.
+- **Para depurar**: la tabla `eventos_entrantes` dice qué consumidor procesó qué
+  clave y cuándo. Si un evento «no ha llegado», mira ahí antes que en el bus — es
+  posible que llegara y se descartara por repetido.
+
 ### 4.6 Conectores
 
 Un conector es **configuración, no código**: endpoints, mapeo de campos,

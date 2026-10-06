@@ -18,10 +18,8 @@ infraestructura.
 
 from __future__ import annotations
 
-import asyncio
 import fnmatch
 from collections import defaultdict
-from typing import Any
 
 from crmcore.bus.base import Bus, Manejador, Suscripcion
 from crmcore.events.envelope import Evento, subject_patron
@@ -124,17 +122,3 @@ def limpiar() -> None:
     """Borra suscriptores y publicados. Lo llama el fixture entre pruebas."""
     _suscriptores.clear()
     _publicados.clear()
-
-
-async def esperar_a(condicion: Any, timeout_s: float = 2.0) -> bool:
-    """Espera a que una condición se cumpla, sondeando.
-
-    Existe para que ninguna prueba use `asyncio.sleep(0.5)` a ojo: una espera
-    fija o es lenta de más o falla en una máquina cargada.
-    """
-    limite = asyncio.get_event_loop().time() + timeout_s
-    while asyncio.get_event_loop().time() < limite:
-        if condicion():
-            return True
-        await asyncio.sleep(0.01)
-    return False

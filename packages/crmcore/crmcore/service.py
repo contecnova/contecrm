@@ -254,27 +254,6 @@ def _manejadores_rpc(app: Any) -> dict[str, Any]:
     }
 
 
-async def _invalidar_cache(mensaje: Any) -> None:
-    """Sube la generación del evento recibido: lo que dependía deja de valer.
-
-    No se mira si alguien cacheaba ese evento: subir una generación que nadie
-    consulta cuesta una operación y no hacerlo cuando sí la consultaban sirve
-    datos viejos. Entre las dos equivocaciones, esta es la barata.
-    """
-    from uuid import UUID
-
-    from crmcore.cache.respuestas import invalidar_por_evento
-
-    tipo = str(getattr(mensaje, "type", "") or (mensaje or {}).get("type", ""))
-    tenant = getattr(mensaje, "tenant_id", None) or (mensaje or {}).get("tenant_id")
-    if not tipo or not tenant:
-        return
-    try:
-        invalidar_por_evento(tipo, tenant if isinstance(tenant, UUID) else UUID(str(tenant)))
-    except Exception as exc:  # noqa: BLE001 — una caché caída no para el bus
-        logger.warning("cache.invalidacion_fallida", evento=tipo, error=str(exc)[:200])
-
-
 def crear_servicio(
     *,
     nombre: str,
@@ -376,6 +355,7 @@ def crear_servicio(
                     POLITICA_CAMBIADA,
                     consumir_politica,
                 )
+                from crmcore.cache.respuestas import consumir_invalidacion
                 from crmcore.datos.calendario import (
                     CALENDARIO_CAMBIADO,
                     consumir_calendario,
@@ -465,11 +445,29 @@ def crear_servicio(
                     # El módulo que lo resuelve llevaba desde que se escribió
                     # sin que lo importara nadie, así que la generación no subía
                     # jamás y la invalidación por evento no existía.
-                    ("*", _invalidar_cache, f"{nombre}-cache"),
+                    #
+                    # Y había DOS copias de este recorrido: la del módulo de la
+                    # caché, que no llamaba nadie, y una suelta aquí que leía
+                    # `type` y no `tipo`. Dos copias es cómo acaban dos sitios
+                    # resolviendo distinto lo mismo; se queda la del módulo, que
+                    # es donde vive la caché y la que entiende las dos formas.
+                    ("*", consumir_invalidacion, f"{nombre}-cache"),
                     *(consumidores or []),
                 ]
+                # TODAS pasan por la deduplicación, y por eso se envuelve
+                # aquí y no en cada consumidor: son catorce sitios donde
+                # acordarse, y «funciona donde alguien se acordó» no es una
+                # garantía. La entrega del bus es at-least-once —el mismo hecho
+                # llega dos veces de serie— y hasta ahora NINGÚN consumidor
+                # deduplicaba: la tabla estaba, el barrido que la purga estaba
+                # —barriendo una tabla siempre vacía, que es por lo que nadie lo
+                # notó— y la función que la escribe no la llamaba nadie.
+                from crmcore.bus.inbox import idempotente
+
                 for patron, manejador, grupo in suscripciones:
-                    await bus.suscribir(patron, manejador, grupo=grupo)
+                    await bus.suscribir(
+                        patron, idempotente(manejador, consumidor=grupo), grupo=grupo
+                    )
 
                 if s.outbox_enabled:
                     from crmcore.bus.outbox import Relevo

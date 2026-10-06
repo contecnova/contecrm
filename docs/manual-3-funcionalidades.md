@@ -13531,3 +13531,67 @@ una zona que no existe.
 El manejador de `List` buscaba una clave que no existe en ninguna respuesta del
 CRM, así que devolvía la página entera —con su cursor y su total— como si fuera un
 único registro, en vez de los N que contiene.
+
+## Ningún consumidor deduplicaba (`CRM-00.03.01.06`, `CRM-00.02.02.04`)
+
+El producto lo promete por escrito en dos sitios. La unidad de trabajo, en su
+primera página: «el precio es entrega **at-least-once**, y por eso todo consumidor
+deduplica». El buzón de entrada, en la suya: «si el consumidor no deduplica, un
+reintento del productor crea la cuenta dos veces, suma el importe dos veces o
+manda el correo dos veces — y esos tres fallos son visibles para el cliente
+final».
+
+**Y no deduplicaba ninguno.** La tabla estaba creada, el barrido que la purga
+estaba registrado en los catorce servicios —barriendo una tabla **siempre
+vacía**, que es por lo que nadie lo notó— y la única función que escribe en ella
+no la llamaba nadie. La garantía estaba documentada dos veces y no existía
+ninguna.
+
+Y había un segundo defecto debajo del primero: esa función miraba `rowcount` para
+saber si había insertado, y en ese `INSERT ... ON CONFLICT DO NOTHING` **vale -1
+tanto si insertó como si no**. Como `bool(-1)` es verdadero, decía «es nuevo»
+siempre, también ante un duplicado. Aunque alguien la hubiera llamado, no habría
+deduplicado nada.
+
+### Por qué la marca va en la misma transacción que el efecto
+
+Las dos alternativas fáciles están mal, y cada una por un motivo distinto:
+
+- **Marcar antes, por separado**: si algo falla después, el evento queda marcado
+  sin haberse procesado y el reintento lo descarta. El hecho se pierde para
+  siempre y nadie lo reclama.
+- **Marcar después, por separado**: no cubre el caso real. El bus reclama lo que
+  lleva mucho sin confirmar, así que la segunda entrega entra mientras la primera
+  todavía está dentro — y las dos hacen el efecto.
+
+Así que el guardián y el consumidor **comparten transacción**: o se escriben las
+dos cosas, o no se escribe ninguna.
+
+### Se envuelve una vez, no catorce
+
+La deduplicación se aplica al suscribir, en el arranque del servicio, y no dentro
+de cada consumidor. Son catorce sitios donde acordarse, y «funciona donde alguien
+se acordó» no es una garantía. Hay un recorrido que comprueba que **toda**
+suscripción pasa por ahí.
+
+### La marca va acotada al cliente
+
+La clave de deduplicación la pone quien produce el evento. Las automáticas ya
+llevan el cliente dentro, y las escritas a mano llevan hoy todas un identificador
+único —comprobado una a una—, así que el choque entre dos clientes no es
+alcanzable ahora mismo. Pero es una trampa puesta: el primero que escriba
+`pedido:42`, que es la forma natural de escribirla, haría que el alta de un
+cliente descartara la del otro, en silencio. La marca se guarda con el cliente
+delante para que eso no pueda pasar.
+
+### Un mensaje sin sobre reconocible se procesa igual
+
+Y se deja dicho en el registro. Dejar de procesarlo convertiría un problema de
+formato en un hecho perdido, que es mucho peor que procesarlo dos veces.
+
+### Una sola copia de la invalidación de caché
+
+Había dos recorridos para lo mismo: el del módulo de la caché, que no llamaba
+nadie, y una copia suelta en el arranque del servicio que leía el tipo del evento
+de otra forma. Dos copias es cómo acaban dos sitios resolviendo distinto lo
+mismo. Se queda la del módulo, que es la que entiende las dos formas.

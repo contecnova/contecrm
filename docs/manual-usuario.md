@@ -1002,6 +1002,21 @@ Lo único que te afecta a ti: si tu empresa la usa, los datos que se mandan desd
 otro programa pasan **por los mismos permisos y las mismas validaciones** que si los
 escribieras tú en pantalla. No hay una puerta de atrás con menos comprobaciones.
 
+### Por qué no te llegan los avisos por duplicado
+
+Dentro, el CRM se avisa a sí mismo de todo lo que pasa: que se ha creado una
+cuenta, que una oportunidad se ha ganado, que un caso lleva dos días sin
+respuesta. Esos avisos internos pueden llegar dos veces —es normal en este tipo de
+sistemas, y es el precio de que no se pierda ninguno—.
+
+Lo que no puede pasar es que el efecto ocurra dos veces: que se te cree el cliente
+por duplicado, que se sume el importe dos veces o que al cliente le llegue el
+mismo correo dos veces. El CRM lleva la cuenta de lo que ya ha procesado y
+descarta la repetición.
+
+Si alguna vez ves algo duplicado de verdad, no es esto: avisa a quien administra el
+CRM con la fecha y la hora, que ahí queda registrado.
+
 ---
 
 ## Qué hacer cuando algo no sale

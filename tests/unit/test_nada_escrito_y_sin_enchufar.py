@@ -246,7 +246,18 @@ CARPETAS = (
 #                   `a_mensaje`, estaban escritas y sin llamante. De paso: los
 #                   números del contrato no viajaban con el esquema, y el `List`
 #                   buscaba una clave que no existe en ninguna respuesta.
-TOPE = 17
+#   06-10-2026  14  NINGÚN CONSUMIDOR DEDUPLICABA. La unidad de trabajo lo dice
+#                   en su primera página —«el precio es entrega at-least-once, y
+#                   por eso todo consumidor deduplica»— y el buzón de entrada en
+#                   la suya: sin deduplicar, un reintento del productor crea la
+#                   cuenta dos veces, suma el importe dos veces o manda el correo
+#                   dos veces. La tabla estaba, el barrido que la purga estaba
+#                   registrado en los catorce servicios —barriendo una tabla
+#                   SIEMPRE VACÍA, que es por lo que nadie lo notó— y la función
+#                   que escribe en ella no la llamaba nadie. Y además estaba mal:
+#                   miraba `rowcount`, que en ese INSERT vale -1, y `bool(-1)` es
+#                   `True`, así que decía «es nuevo» también ante un duplicado.
+TOPE = 14
 
 # Las que no cuentan, con su motivo. Ninguna es una decisión de producto: son
 # ayudantes del andamio —de pruebas, de registro o de SDK— que **sí** tienen
