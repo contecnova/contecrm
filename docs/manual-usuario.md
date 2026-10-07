@@ -96,6 +96,15 @@ Lo que te afecta como usuario:
 - **El idioma, el formato de fecha, la moneda y el huso horario** son los de tu
   espacio, y pueden ajustarse por persona. Si ves las fechas al revés de como las
   escribes, eso se cambia sin tocar nada más.
+- **«Hoy» es hoy donde estás tú**, no donde esté el servidor. Importa más de lo
+  que parece: todo lo que caduca —un presupuesto, el acceso que alguien te
+  compartió, tu pertenencia a un equipo de cuenta— se mide contra ese día. Si el
+  sistema usara el huso del servidor, a primera hora de la mañana todavía sería
+  ayer y las cosas caducarían un día antes de lo que dice la pantalla.
+
+  Si su empresa viene de una versión anterior a octubre de 2026 y nota fechas
+  corridas un día a primera hora, dígaselo a quien administre el CRM: se arregla
+  abriendo el perfil del espacio y guardando el huso horario.
 - **La marca**: logo, colores y dominio propio. Si tu empresa lo ha configurado,
   los correos que salen del CRM van con su imagen y desde su dominio.
 - **Los límites**: hay topes de almacenamiento, de registros y de llamadas a la
@@ -517,6 +526,11 @@ Cuatro cosas que notarás:
   quede sin asignar por un dato que falta.
 - **La garantía dice qué cubre y qué no** — casi ninguna cubre el desplazamiento, y
   esa es la conversación incómoda que conviene tener antes de ir.
+- **El siguiente mantenimiento se cuenta desde el día en que se hizo**, no desde
+  el día en que tocaba. Si una revisión mensual se atrasa dos semanas, la
+  siguiente es un mes después de la que se hizo — si se contara desde la fecha
+  prevista, nacería ya vencida y el plan arrastraría el retraso para siempre.
+  Ese día es el del cliente, no el del servidor.
 - Y el histórico del equipo instalado viaja con él aunque cambie de cliente.
 
 ---
