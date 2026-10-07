@@ -34,6 +34,7 @@ from sqlalchemy import select
 
 from services.tenancy import servicio as svc
 from services.tenancy.api_aislamiento import ROUTERS_AISLAMIENTO
+from services.tenancy.api_alta import ROUTERS_ALTA
 from services.tenancy.api_byok import ROUTERS_BYOK
 from services.tenancy.api_catalogos import ROUTERS_CATALOGOS
 from services.tenancy.api_ciclo_vida import ROUTERS_CICLO_VIDA
@@ -523,4 +524,5 @@ ROUTERS = [
     *ROUTERS_AISLAMIENTO,
     *ROUTERS_SANDBOXES,
     *ROUTERS_CICLO_VIDA,
+    *ROUTERS_ALTA,
 ]

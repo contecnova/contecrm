@@ -106,6 +106,14 @@ SIN_TENANT_JUSTIFICADAS: dict[str, str] = {
         "quien acota es `membresias`, y las consultas de usuarios unen por ella"
     ),
     "planes": "catálogo comercial común a todos los tenants",
+    "altas_pendientes": (
+        "una solicitud de alta autoservicio es DE ANTES de que exista el tenant "
+        "—justamente es lo que se está pidiendo crear—, así que no hay ninguno "
+        "al que atribuirla. Lo que queda apuntado es `tenant_creado_id`, que no "
+        "es el discriminador de la fila sino a qué tenant acabó dando lugar. "
+        "Lo que la protege no es el filtro por tenant sino que la busca sólo el "
+        "token hasheado del enlace, de un solo uso y con caducidad"
+    ),
     "plantillas_flujo": (
         "catálogo de procesos de ejemplo DE LA INSTALACIÓN, como `perfiles_industria`. "
         "Se CLONAN a cada tenant y el clon sí es suyo: si la plantilla llevara "
@@ -265,6 +273,18 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         # misma exista o no el correo. Probado en `test_restablecer_contrasena.py`.
         "pedir_restablecer": "la pide quien no puede entrar; autoriza el enlace, no un permiso",
         "confirmar_restablecer": "ídem: la credencial es el token del enlace",
+        # El alta autoservicio (CRM-00.01.03.01): quien la usa **todavía no es
+        # cliente**, así que no hay permiso que pueda tener. Exigir uno sería
+        # tan circular como exigirlo en `login`.
+        #
+        # Lo que las cierra no es un permiso sino cuatro cosas, y las cuatro
+        # están probadas en `test_el_alta_autoservicio.py`: el interruptor
+        # `ONBOARDING_ENABLED`, apagado de fábrica; el enlace de un solo uso,
+        # hasheado y con caducidad; que la respuesta sea la misma esté el
+        # identificador libre o cogido; y un tope por IP mucho más estrecho que
+        # el general, porque esto crea tenants.
+        "pedir_alta": "la pide quien aún no es cliente; lo que autoriza es el enlace",
+        "confirmar_alta": "ídem: la credencial es el token del correo",
         # Entrar con passkey es entrar: exigir permiso sería tan circular como
         # exigirlo en `login`. Lo que autoriza es la firma del dispositivo.
         "empezar_passkey": "es parte de la entrada; exigir permiso sería circular",

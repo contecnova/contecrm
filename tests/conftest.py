@@ -37,6 +37,23 @@ os.environ.setdefault("BUS_BACKEND", "memoria")
 os.environ.setdefault("SECRET_KEY", "clave-de-pruebas-no-vale-para-nada-mas")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("METRICS_POR_TENANT", "false")
+# LOS RELEVOS DE TAREAS, APAGADOS EN TODA LA SUITE.
+#
+# Aquí y no en cada prueba porque el motivo es de la suite entera: el arnés ata
+# todas las sesiones a UNA conexión (ver `db`, más abajo), y un relevo abre la
+# suya cada segundo. Sus `RELEASE SAVEPOINT` se cruzan con los de la transacción
+# de la prueba en curso y revientan la consulta siguiente con «savepoint
+# sa_savepoint_N does not exist» — normalmente en OTRA prueba, varios ficheros
+# más allá, que es lo que lo hacía parecer aleatorio.
+#
+# Medido el 06-10-2026: `pytest` a secas daba 5 fallos, los cinco en
+# `test_fuzzing_tenant`, y sólo al correr la suite entera en un proceso. El
+# preflight no los veía porque la parte en dos mitades.
+#
+# Esto no deja sin probar los relevos: sus pruebas llaman a `una_vuelta()`, que
+# es el trabajo, y no a `correr()`, que es el bucle. Lo que se apaga es el
+# bucle.
+os.environ.setdefault("TAREAS_RELEVO_ENABLED", "false")
 
 
 # Cuánto puede llevar vivo un Postgres de pruebas antes de darlo por abandonado.

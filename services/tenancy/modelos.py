@@ -243,10 +243,21 @@ from crmcore.documental.enlaces import DocumentoEnlazado, OrganizacionDocumental
 from crmcore.runtime.versiones import VersionAjuste  # noqa: E402
 from crmcore.security.byok import ClaveTenant  # noqa: E402
 
+# Y su actividad de tratamiento: la tabla guarda un correo y una IP, y el gate
+# de arquitectura exige que toda tabla con dato personal diga para qué, con qué
+# base legal y hasta cuándo. Son decisiones, no datos técnicos.
+from services.tenancy import tratamientos  # noqa: E402,F401
 from services.tenancy.aislamiento import (  # noqa: E402,F401
     AislamientoTenant,
     MigracionAislamiento,
 )
+
+# La tabla del alta autoservicio se declara AQUÍ aunque viva en `alta.py`:
+# `alembic/env.py` importa `services.<servicio>.modelos` y nada más, así que un
+# modelo que no pase por este fichero no existe para las migraciones. Es la
+# avería que ya ha pasado cuatro veces, siempre igual y siempre con el mismo
+# síntoma: «relation ... does not exist» en una pantalla cualquiera.
+from services.tenancy.alta import AltaPendiente  # noqa: E402,F401
 from services.tenancy.baja import (  # noqa: E402
     CertificadoDestruccion,
     Exportacion,

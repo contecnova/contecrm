@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from crmcore.events.dominio import ALTA_CONFIRMADA
 from crmcore.service import crear_servicio
 
+from services.identity.alta_consumidor import consumir_alta_confirmada
 from services.identity.api import ROUTERS
 from services.identity.notificaciones import consumir_evento
 
@@ -91,5 +93,12 @@ app = crear_servicio(
     # tenerlo es lo que garantiza la propiedad exclusiva del dato. El patrón es
     # ancho a propósito —la tabla `AVISOS` filtra— para que añadir un aviso no
     # obligue a redesplegar con una suscripción nueva.
-    consumidores=[("*", consumir_evento, "identity-notificaciones")],
+    consumidores=[
+        ("*", consumir_evento, "identity-notificaciones"),
+        # El primer administrador de una empresa dada de alta sola. Va por
+        # evento y no por llamada: los usuarios son de aquí, y atar el alta a
+        # que este servicio esté en pie en ese segundo sería el peor momento
+        # para que falle — la persona está mirando la pantalla.
+        (ALTA_CONFIRMADA, consumir_alta_confirmada, "identity-alta-autoservicio"),
+    ],
 )

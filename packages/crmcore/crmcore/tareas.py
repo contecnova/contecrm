@@ -149,6 +149,18 @@ class RelevoDeTareas:
     async def correr(self) -> None:
         if not self.tareas:
             return
+        # EL INTERRUPTOR VA AQUÍ y no en los siete sitios que arrancan un
+        # relevo: una comprobación que hay que acordarse de repetir es una
+        # comprobación que a la tercera falta. Ya pasó con el del outbox — se
+        # apagó el suyo y estos siete siguieron corriendo.
+        from crmcore.config import get_settings
+
+        if not get_settings().tareas_relevo_enabled:
+            logger.info(
+                "tareas.relevo_apagado",
+                tareas=[t.nombre for t in self.tareas],
+            )
+            return
         # El componente de salud se engancha aquí y no al importar: un servicio
         # sin tareas no tiene por qué enseñar el apartado.
         registrar_componente_de_salud()

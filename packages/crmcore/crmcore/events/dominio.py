@@ -23,6 +23,29 @@ from __future__ import annotations
 
 from crmcore.events.catalogo import TipoEvento, registrar
 
+# ──────────────────────────────── tenancy ─────────────────────────────────
+# El alta autoservicio (CRM-00.01.03.01). Va aparte de `tenant.provisioned`
+# —que significa «existe un tenant»— porque «créale un administrador a éste» es
+# otra cosa, y sólo pasa cuando la empresa se ha dado de alta sola. Mezclarlos
+# haría que cada tenant creado por API se llevara también un administrador que
+# nadie pidió.
+
+ALTA_CONFIRMADA = registrar(
+    TipoEvento(
+        tipo="tenant.alta_confirmada",
+        version=1,
+        productor="tenancy",
+        descripcion=(
+            "Alguien ha dado de alta su empresa por autoservicio y ha "
+            "confirmado que el correo es suyo. Lo recoge `identity` para crear "
+            "al primer administrador y mandarle el enlace con el que pone su "
+            "contraseña: la contraseña no se inventa ni se manda por correo"
+        ),
+        campos=("tenant_id", "slug", "email", "nombre"),
+    )
+)
+
+
 # ─────────────────────────────── analytics ────────────────────────────────
 # Eventos de informes (Anexo B del catálogo).
 #

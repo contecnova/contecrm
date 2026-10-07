@@ -60,17 +60,25 @@ class _TenancySettings(BaseSettings):
     # Alta autoservicio. Apagada por defecto: un despliegue empresarial da de
     # alta a sus tenants por API o por consola, y dejar abierto el alta pública
     # en una instalación privada es una superficie regalada.
-    # `ONBOARDING_ENABLED` estuvo aquí y SE QUITA (06-10-2026). Prometía abrir
-    # el alta **autoservicio**, y en este producto el alta de un tenant es una
-    # operación de plataforma: `POST /tenants` exige administrador de la
-    # plataforma y no hay ninguna otra vía. Medido: ningún sitio crea un tenant
-    # sin esa puerta.
+    # ── Alta autoservicio (CRM-00.01.03.01) ───────────────────────────────
     #
-    # Ponerlo a `true` no abría nada, así que tampoco era peligroso — era peor
-    # que eso: hacía creer que el alta pública estaba disponible y que apagarla
-    # era lo que la cerraba. Lo que la cierra es que no existe.
+    # Apagada de fábrica: un despliegue empresarial da de alta a sus clientes por
+    # API o por consola, y dejar abierta un alta pública en una instalación
+    # privada es una superficie regalada.
     #
-    # El autoservicio es la mitad que falta de CRM-00.01.03.01 («API +
-    # autoservicio»). Cuando se construya, su interruptor vuelve con él, y con
-    # lo que un alta pública necesita además: límite por IP, verificación del
-    # correo y qué pasa con un slug ocupado.
+    # Este ajuste estuvo QUITADO entre el 06 y el 07-10-2026, y con razón: hasta
+    # entonces prometía abrir una puerta que no existía —ponerlo a `true` no
+    # abría nada— y eso hacía creer que apagarlo era lo que la cerraba. Vuelve
+    # ahora con la puerta construida, que es lo que decía su propia nota al
+    # quitarlo.
+    onboarding_enabled: bool = False
+    # Cuánto vale el enlace de confirmación. Pocas horas: es una credencial en
+    # el buzón de alguien, y quien da de alta su empresa lo hace en el momento.
+    onboarding_enlace_horas: int = Field(24, ge=1, le=168)
+    # Altas que admite una misma IP por hora. Muy por debajo del límite general
+    # de la API porque esto crea tenants: dejarlo en el de una lectura cualquiera
+    # permitiría llenar el sistema de empresas inventadas desde un portátil.
+    onboarding_altas_por_ip_hora: int = Field(5, ge=1, le=100)
+    # Días antes de olvidar una solicitud, usada o no. Son correos de gente que
+    # nunca llegó a ser cliente: dato personal que no hay motivo para guardar.
+    onboarding_retencion_dias: int = Field(30, ge=1, le=365)

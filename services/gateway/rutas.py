@@ -16,6 +16,11 @@ logger = get_logger(__name__)
 # acoplamiento del sistema, y por eso está aquí y no repartida.
 PREFIJOS: dict[str, str] = {
     "tenants": "tenancy",
+    # El alta autoservicio (CRM-00.01.03.01). Va SIN autenticar: quien la usa
+    # todavía no es cliente, así que no hay identidad que el gateway pueda
+    # propagar. Lo que la cierra está en el servicio —interruptor apagado de
+    # fábrica, enlace de un solo uso y tope por IP— y no en esta tabla.
+    "alta": "tenancy",
     "planes": "tenancy",
     # La marca blanca del cliente: la configura y la activa el dueño del tenant,
     # y vive donde vive el tenant.

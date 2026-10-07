@@ -544,15 +544,63 @@ que trata el modelo híbrido por tiers.
 > una versión anterior, revise la región de los tenants ya creados**: lo que
 > consta puede no ser donde están.
 
-### El alta de un tenant es de plataforma
+### El alta de un tenant: por API o por autoservicio (CRM-00.01.03.01)
 
-`POST /tenants` exige administrador de la plataforma y no hay ninguna otra vía:
-un tenant no puede crear otros y no existe alta pública.
+`POST /tenants` exige administrador de la plataforma. Es la vía normal en un
+despliegue empresarial, donde los clientes se dan de alta desde la consola.
 
-> `ONBOARDING_ENABLED` ya no existe. Prometía abrir el alta autoservicio y
-> ponerlo a `true` no abría nada. Lo malo no era el riesgo —no había puerta que
-> abrir— sino hacer creer que el alta pública estaba disponible y que apagarla
-> era lo que la cerraba. Lo que la cierra es que no existe.
+**El alta autoservicio va apagada de fábrica** y se enciende con
+`ONBOARDING_ENABLED`. Encendida, abre dos rutas **sin autenticar** —quien da de
+alta su empresa todavía no tiene cuenta aquí—:
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /alta` | Guarda la solicitud y devuelve el token del enlace de confirmación. **No crea nada** |
+| `POST /alta/confirmar` | Gasta el token, crea la empresa y emite el hecho con el que se crea su primer administrador |
+
+Cómo está cerrada, punto por punto:
+
+- **Nada existe hasta que alguien demuestra que ese buzón es suyo.** Pedir el
+  alta no crea la empresa: crear primero dejaría el sistema lleno de empresas a
+  medias con los identificadores buenos cogidos, y un identificador es
+  permanente — va en subdominios y en URLs.
+- **La respuesta no dice si el identificador estaba libre.** Si lo dijera, esa
+  pantalla sería un comprobador de qué empresas son clientes: se prueba un
+  nombre, se mira la respuesta y ya se sabe. El choque se anota en el log, para
+  quien vigila la instalación. La *forma* del identificador sí se dice, porque
+  no depende de lo que haya en la base y callarla deja a alguien escribiendo
+  mayúsculas sin saber por qué no le llega nunca el correo.
+- **El enlace vale una vez y caduca** (`ONBOARDING_ENLACE_HORAS`, 24 h por
+  defecto). Uno que valiera siempre sería una credencial permanente en un buzón.
+  El token se guarda **hasheado**: quien lea la base no puede confirmar un alta
+  ajena.
+- **El identificador se vuelve a comprobar al confirmar.** Entre pedir y
+  confirmar pasan horas y puede habérselo llevado otro; fiarse de lo anotado
+  daría dos empresas con el mismo subdominio.
+- **Tope por IP** (`ONBOARDING_ALTAS_POR_IP_HORA`, 5 por defecto), muy por
+  debajo del límite general de la API: esto crea tenants, y con el número de una
+  lectura cualquiera se llenaría el sistema de empresas inventadas desde un
+  portátil. Es una barrera contra el abuso casual; contra un ataque distribuido
+  está el balanceador.
+- **Las solicitudes se olvidan** a los `ONBOARDING_RETENCION_DIAS` (30), usadas
+  o no: son correos de gente que nunca llegó a ser cliente, y eso es dato
+  personal que no hay motivo para guardar.
+
+**El primer administrador no se crea en esa llamada.** Los usuarios son del
+servicio de identidad y los servicios no se llaman entre sí: al confirmar se
+emite `tenant.alta_confirmada` y él lo recoge. Atar el alta a que el otro
+servicio esté en pie en ese segundo exacto es el peor momento para que falle —
+la persona está mirando la pantalla.
+
+Y **no se le inventa una contraseña**: se crea la cuenta sin ninguna y se emite
+un enlace de los de siempre para que la ponga él. Mandar una generada por correo
+es ponerla en un buzón y en los registros del servidor de correo, y además nadie
+la cambia después.
+
+> El token de confirmación **se devuelve en la respuesta**, igual que en el
+> restablecimiento de contraseña: lo manda quien integre el correo. Nunca se le
+> enseña a quien pide el alta — el enlace es precisamente la prueba de que el
+> buzón es suyo.
 
 ### La zona horaria de un tenant nuevo
 

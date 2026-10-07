@@ -80,6 +80,21 @@ class _ServicioSettings(BaseSettings):
     tarea_informes_intervalo_s: int = Field(300, ge=30, le=86_400)
     tarea_purgas_intervalo_s: int = Field(3_600, ge=60, le=86_400)
 
+    # Y el interruptor de TODOS los relevos de tareas, no de uno. Encendido en
+    # producción, que es donde las tareas tienen que correr.
+    #
+    # Existe por las pruebas, y no es una concesión: un relevo abre su propia
+    # sesión cada segundo, y en una prueba esa sesión comparte la conexión con
+    # la de la prueba. Sus `RELEASE SAVEPOINT` se cruzan con los de la
+    # transacción del test y revientan la siguiente consulta con «savepoint
+    # sa_savepoint_N does not exist» — en otra prueba, varios ficheros más
+    # allá, que es lo que lo hacía parecer aleatorio.
+    #
+    # Lo mismo que ya se resolvió con `OUTBOX_ENABLED` para el relevo del
+    # outbox. Aquello tapó una vía y dejó la otra abierta: hay SIETE sitios que
+    # arrancan un `RelevoDeTareas`, y ninguno lo miraba.
+    tareas_relevo_enabled: bool = True
+
     # ── El programador de integraciones ───────────────────────────────────
     #
     # Mismo agujero que arriba, un escalón más abajo: el conector declarativo
