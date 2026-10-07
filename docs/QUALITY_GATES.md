@@ -69,6 +69,13 @@ carga y no falla**, y pide repetirlo con la máquina libre. Tampoco lo cuenta
 como pase: un `--todo` bajo carga no apunta nada. Fallar ahí seguiría siendo
 fallar por el vecino, sólo que con otra unidad.
 
+**La carga se mira en las tres medias**, no sólo en la del minuto. Se consulta
+al terminar, y un nivel completo dura diez minutos: la del minuto describe el
+último tramo, no el pase. Pasó el 7 de octubre de 2026 a las 03:06 — un `--todo`
+con los veinte gates en verde y todos sus tiempos inflados 3×, que es firma de
+contención, salió marcado en rojo porque al acabar la del minuto había bajado de
+10 mientras la de quince seguía en 19.
+
 **Antes había un solo número —300 segundos— para los tres niveles**, y eso
 rompía las dos puntas a la vez. El nivel rápido gastaba 22 segundos contra un
 tope de 300: catorce veces de margen, o sea el guardián del crecimiento dormido

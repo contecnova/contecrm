@@ -383,14 +383,22 @@ PARALELOS = _paralelos()
 
 
 def _carga() -> float:
-    """La carga media del minuto, si el sistema la da.
+    """Cuánta cola ha tenido esta máquina, mirando las TRES medias.
 
     Se enseña cuando el reloj se dispara y el CPU no: sin ella, «ha tardado el
     doble» no dice si el problema es el preflight o la máquina, y esa es
     justamente la diferencia que hay que poder ver de un vistazo.
+
+    **La del minuto no vale sola, y aquí era la única que se miraba.** Se
+    consulta al TERMINAR, y un nivel completo dura diez minutos: la del minuto
+    describe el último tramo, no el pase. Medido el 07-10-2026 a las 03:06, un
+    `--todo` con los veinte gates en verde y todos sus tiempos inflados 3× —
+    señal de contención— salió marcado como rojo de presupuesto porque al acabar
+    la del minuto había bajado de 10, mientras la de quince seguía en 19.
+    Se toma la mayor de las tres, que es la que cubre el pase entero.
     """
     try:
-        return os.getloadavg()[0]
+        return max(os.getloadavg())
     except (OSError, AttributeError):  # pragma: no cover — sistemas sin carga
         return 0.0
 
@@ -582,7 +590,8 @@ def main() -> int:
     nivel, presupuesto_reloj, presupuesto_cpu = _presupuesto(tiers)
     # Por encima de sus núcleos la máquina está peleándose consigo misma, y el
     # CPU medido deja de ser el trabajo del preflight: ver la nota de los
-    # presupuestos, con los dos pases que lo miden.
+    # presupuestos, con los pases que lo miden. `_carga()` mira las tres medias
+    # —no sólo la del minuto— porque un nivel completo dura diez.
     apretada = carga > (os.cpu_count() or 4)
     if cpu > presupuesto_cpu and apretada:
         print(

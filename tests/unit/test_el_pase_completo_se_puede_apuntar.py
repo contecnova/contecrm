@@ -122,3 +122,18 @@ def test_la_nota_del_presupuesto_ya_no_dice_que_el_cpu_sea_inmune() -> None:
     fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
     assert "si la máquina está\n# cargada, no" not in fuente
     assert "no es inmune" in fuente
+
+
+def test_la_carga_se_mira_en_las_tres_medias_y_no_solo_en_el_minuto() -> None:
+    """Se consulta al TERMINAR, y un nivel completo dura diez minutos: la del
+    minuto describe el último tramo, no el pase.
+
+    Medido el 07-10-2026 a las 03:06: un `--todo` con los veinte gates en verde
+    y todos sus tiempos inflados 3× —firma de contención— salió marcado como
+    rojo de presupuesto porque al acabar la del minuto había bajado de 10
+    mientras la de quince seguía en 19.
+    """
+    fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
+    cuerpo = fuente.split("def _carga(")[1].split("\ndef ")[0]
+    assert "max(os.getloadavg())" in cuerpo
+    assert "os.getloadavg()[0]" not in cuerpo
