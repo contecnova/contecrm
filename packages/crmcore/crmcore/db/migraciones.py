@@ -23,8 +23,9 @@ from crmcore.logging import get_logger
 logger = get_logger(__name__)
 
 # La raíz del proyecto: cuatro niveles por encima de este fichero
-# (crmcore/db/migraciones.py → crmcore → crmcore → packages → raíz).
-RAIZ = Path(__file__).resolve().parents[4]
+# (crmcore/db/migraciones.py → crmcore → crmcore → packages → raíz). Instalado en
+# site-packages (la imagen) esa cuenta apunta fuera del proyecto: ahí manda CRM_RAIZ.
+RAIZ = Path(os.environ.get("CRM_RAIZ") or Path(__file__).resolve().parents[4])
 
 # Clave del cerrojo de aviso de Postgres. Un número fijo y uno derivado del
 # servicio: así dos réplicas del MISMO servicio se turnan, y dos servicios

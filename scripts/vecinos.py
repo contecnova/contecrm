@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import shutil
+import socket
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -112,6 +113,9 @@ class Vecino:
     # Servicios que hay que reiniciar después, porque cachean algo del que se
     # acaba de recrear.
     reiniciar: tuple[str, ...] = ()
+    # Orden de shell, desde su repo, que libera lo que su pila Docker necesita y un
+    # arranque local suyo puede haber dejado ocupado. Se ignora si falla.
+    liberar: str = ""
 
     def nombre_proyecto(self) -> str:
         return self.proyecto or self.nombre
@@ -149,6 +153,12 @@ VECINOS: tuple[Vecino, ...] = (
         ajuste_alcances="CI_SCOPES",
         # Su compose se engancha a la red de contecrm y necesita saber cuál es.
         entorno={"CONTECRM_NETWORK": ""},
+        # Su modo `dev` deja backend y web como procesos locales en los mismos
+        # puertos que publica su compose.
+        liberar=(
+            "for f in /tmp/conteci-backend.pid /tmp/conteci-frontend.pid; do "
+            '[ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null; rm -f "$f"; done; sleep 2'
+        ),
     ),
     Vecino(
         nombre="contecmind",
@@ -174,6 +184,8 @@ VECINOS: tuple[Vecino, ...] = (
         # API sin reiniciarlo da 502 con los dos contenedores «healthy», que es
         # de los diagnósticos que más tiempo comen.
         reiniciar=("web",),
+        # Su Postgres de tests (pgserver) usa el mismo puerto que el del compose.
+        liberar="[ -x .venv/bin/python ] && .venv/bin/python scripts/local_postgres.py stop",
     ),
 )
 
@@ -195,11 +207,18 @@ def _compose(vecino: Vecino, *args: str) -> list[str]:
     return orden + list(args)
 
 
-def _correr(orden: list[str], *, cwd: Path | None = None, entorno: dict[str, str] | None = None):
+def _correr(
+    orden: list[str],
+    *,
+    cwd: Path | None = None,
+    entorno: dict[str, str] | None = None,
+    mostrar: bool = False,
+):
+    # `mostrar` deja la salida en pantalla: una construcción larga capturada parece un cuelgue.
     return subprocess.run(
         orden,
         cwd=cwd,
-        capture_output=True,
+        capture_output=not mostrar,
         text=True,
         env={**os.environ, **(entorno or {})},
         timeout=1800,
@@ -287,6 +306,50 @@ def _alcanzable(vecino: Vecino, red: str) -> bool:
     return salida.returncode == 0
 
 
+def _liberar(vecino: Vecino) -> None:
+    if not vecino.liberar:
+        return
+    try:
+        _correr(["sh", "-c", vecino.liberar], cwd=vecino.ruta())
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def _crear_volumenes_externos(vecino: Vecino, entorno: dict[str, str]) -> bool:
+    """Crea los volúmenes `external` que declara el compose del vecino.
+
+    Compose no los crea (esa es su protección frente a `down -v`) y falla con
+    «external volume ... not found». Cada vecino los crea en su propio `setup.sh`,
+    pero aquí se levanta con `compose up` directo, así que se hace por él.
+    `docker volume create` es idempotente.
+    """
+    salida = _correr(
+        _compose(vecino, "config", "--format", "json"),
+        cwd=vecino.fichero_compose().parent,
+        entorno=entorno,
+    )
+    if salida.returncode:
+        return True
+    try:
+        volumenes = json.loads(salida.stdout).get("volumes") or {}
+    except ValueError:
+        return True
+    for clave, definicion in volumenes.items():
+        if not (definicion or {}).get("external"):
+            continue
+        nombre = definicion.get("name") or clave
+        if _correr(["docker", "volume", "inspect", nombre]).returncode == 0:
+            continue
+        creado = _correr(["docker", "volume", "create", nombre])
+        if creado.returncode:
+            malo(
+                f"{vecino.nombre}: no se pudo crear el volumen «{nombre}» — {creado.stderr.strip()[:200]}"
+            )
+            return False
+        ok(f"volumen de datos «{nombre}» creado")
+    return True
+
+
 def _puertos_que_pide(vecino: Vecino, entorno: dict[str, str]):
     """Qué puertos del equipo va a reservar ese compose, resueltos por él mismo.
 
@@ -343,16 +406,31 @@ def _publicados(puertos: str) -> set[int]:
     return salida
 
 
-def _quien_tiene(puerto: int, contenedores_propios: set[str]) -> str:
+def _quien_tiene(puerto: int, contenedores_propios: set[str], ip: str = "127.0.0.1") -> str:
     """Quién ocupa ese puerto, si lo ocupa alguien que no sea el vecino mismo."""
     salida = _correr(["docker", "ps", "--format", "{{.Names}}\t{{.Ports}}"])
+    propios_publicados: set[int] = set()
     for linea in salida.stdout.splitlines():
         nombre, _, puertos = linea.partition("\t")
         if nombre in contenedores_propios:
+            propios_publicados |= _publicados(puertos)
             continue
         if puerto in _publicados(puertos):
             return nombre
+    # Ningún contenedor ajeno: puede tenerlo un proceso del equipo (p. ej. el
+    # Postgres embebido de un arranque local), que `docker ps` no ve.
+    if puerto not in propios_publicados and _ocupado_en_el_equipo(puerto, ip):
+        return f"un proceso del equipo (mira `lsof -nP -iTCP:{puerto} -sTCP:LISTEN`)"
     return ""
+
+
+def _ocupado_en_el_equipo(puerto: int, ip: str) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((ip if ip not in ("", "::") else "0.0.0.0", puerto))
+        except OSError:
+            return True
+    return False
 
 
 def _contenedores_de(vecino: Vecino) -> set[str]:
@@ -373,10 +451,10 @@ def _puertos_libres(vecino: Vecino, entorno: dict[str, str]) -> list[str]:
     """
     propios = _contenedores_de(vecino)
     choques: list[str] = []
-    for servicio, _ip, puerto in _puertos_que_pide(vecino, entorno):
-        dueno = _quien_tiene(puerto, propios)
+    for servicio, ip, puerto in _puertos_que_pide(vecino, entorno):
+        dueno = _quien_tiene(puerto, propios, ip)
         if dueno:
-            choques.append(f"{servicio} pide el puerto {puerto} y lo tiene «{dueno}»")
+            choques.append(f"{servicio} pide el puerto {puerto} y lo tiene {dueno}")
     return choques
 
 
@@ -410,6 +488,7 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
 
         entorno = {k: (v or red) for k, v in vecino.entorno.items()}
 
+        _liberar(vecino)
         choques = _puertos_libres(vecino, entorno)
         if choques:
             malo(f"{vecino.nombre} no se levanta: hay puertos ocupados por otros")
@@ -424,9 +503,14 @@ def levantar(vecinos: tuple[Vecino, ...]) -> int:
             fallos += 1
             continue
 
-        salida = _correr(_compose(vecino, "up", "-d"), cwd=compose.parent, entorno=entorno)
+        if not _crear_volumenes_externos(vecino, entorno):
+            fallos += 1
+            continue
+        salida = _correr(
+            _compose(vecino, "up", "-d"), cwd=compose.parent, entorno=entorno, mostrar=True
+        )
         if salida.returncode:
-            malo(f"no ha levantado — {(salida.stderr or salida.stdout).strip()[-400:]}")
+            malo(f"no ha levantado (código {salida.returncode}); el detalle está arriba")
             fallos += 1
             continue
         ok("levantado")

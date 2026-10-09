@@ -56,7 +56,7 @@ class _AppSettings(BaseSettings):
     # URL base pública del sistema, usada para componer enlaces absolutos
     # (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los
     # enlaces salen relativos y rotos en el correo.
-    public_base_url: str = "http://localhost:8080"
+    public_base_url: str = "http://localhost:18080"
 
     # ── Orígenes permitidos (CORS) ────────────────────────────────────────
     # Lista separada por comas. Vacío = ningún origen de navegador permitido,

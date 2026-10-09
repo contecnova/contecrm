@@ -378,7 +378,7 @@ def main() -> int:
         f"  usuario     {EMAIL_ADMIN}\n"
         f"  contraseña  {CONTRASENA}\n\n"
         "Entrar:\n"
-        "  curl -sX POST http://localhost:8080/api/v1/auth/login \\\n"
+        "  curl -sX POST http://localhost:18080/api/v1/auth/login \\\n"
         '    -H "Content-Type: application/json" \\\n'
         f'    -d \'{{"email":"{EMAIL_ADMIN}","contrasena":"{CONTRASENA}",'
         f'"tenant":"{tenant_id}"}}\''

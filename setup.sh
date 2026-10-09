@@ -91,7 +91,7 @@ puerto_de() {
     service)      echo 8011 ;;
     marketing)    echo 8012 ;;
     intelligence) echo 8013 ;;
-    gateway)      echo "${GATEWAY_PORT:-8080}" ;;
+    gateway)      echo "${GATEWAY_PORT:-18080}" ;;
     *)            echo 0 ;;
   esac
 }
@@ -173,8 +173,67 @@ postgres_local_uri() {
 }
 
 # ── arrancar ─────────────────────────────────────────────────────────────────
+
+# Lee un ajuste del .env sin cargarlo entero (el fichero no es un script de shell).
+valor_env() {
+  local v
+  v=$(grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- || true)
+  v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+  printf '%s' "$v"
+}
+
+# La cuenta con la que se entra tras arrancar: es la del .env, que se aplica en cada arranque.
+mostrar_acceso() {
+  local email pass tenant
+  email=$(valor_env SUPERADMIN_EMAIL)
+  pass=$(valor_env SUPERADMIN_PASSWORD)
+  tenant=$(valor_env SUPERADMIN_TENANT)
+  [[ -n "$email" ]] || return 0
+  titulo "Acceso"
+  info "Usuario:    $email"
+  info "Contraseña: $pass"
+  info "Empresa:    ${tenant:-plataforma}"
+}
+# Deja el daemon de Docker accesible: si está apagado intenta encenderlo según
+# el sistema (Docker Desktop, OrbStack, Colima, systemd) y espera a que responda.
+asegurar_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    malo "Docker no está instalado. macOS: brew install --cask docker · Linux: https://docs.docker.com/get-docker/"
+    exit 1
+  fi
+  docker info >/dev/null 2>&1 && return 0
+
+  aviso "El daemon de Docker no responde; intentando arrancarlo..."
+  case "$(uname -s)" in
+    Darwin)
+      if [[ -d "/Applications/Docker.app" || -d "$HOME/Applications/Docker.app" ]]; then
+        open -ga Docker
+      elif [[ -d "/Applications/OrbStack.app" ]]; then
+        open -ga OrbStack
+      elif command -v colima >/dev/null 2>&1; then
+        colima start
+      fi ;;
+    Linux)
+      if command -v systemctl >/dev/null 2>&1; then
+        systemctl start docker 2>/dev/null || sudo systemctl start docker
+      fi ;;
+  esac
+
+  local esperado=0
+  while ! docker info >/dev/null 2>&1; do
+    if (( esperado >= 180 )); then
+      malo "Docker no ha arrancado en 3 minutos. Ábrelo a mano y repite el comando."
+      exit 1
+    fi
+    sleep 3; esperado=$((esperado + 3))
+    (( esperado % 15 == 0 )) && info "Esperando al daemon de Docker (${esperado}s)..."
+  done
+  ok "Docker listo"
+}
+
 arrancar_docker() {
   titulo "Arrancando con Docker"
+  asegurar_docker
   if ! docker compose version >/dev/null 2>&1; then
     malo "Docker Compose no está disponible."
     exit 1
@@ -185,7 +244,7 @@ arrancar_docker() {
   for volumen in contecrm_datos_postgres contecrm_datos_nats; do
     if ! docker volume inspect "$volumen" >/dev/null 2>&1; then
       docker volume create "$volumen" >/dev/null
-      ok "Volumen de datos «$volumen» creado"
+      ok "Volumen de datos «${volumen}» creado"
     fi
   done
 
@@ -204,17 +263,22 @@ arrancar_docker() {
   else
     titulo "Servicios de la casa de los que depende"
     $PY scripts/vecinos.py levantar || aviso "Algún vecino no ha subido; mira arriba qué falta"
+    # Una base nueva de contecintelligence no conoce a contecrm: se le da de alta.
+    titulo "Explotación (contecrm ↔ contecintelligence)"
+    python3 scripts/alta_explotacion.py \
+      || aviso "La explotación no quedó enlazada; repite: python3 scripts/alta_explotacion.py"
   fi
 
   arrancar_front
 
   echo
   info "Front:      http://localhost:${FRONT_PORT:-15173}   (desarrollo, recarga al guardar)"
-  info "Consola:    http://localhost:${CONSOLA_PORT:-3000}   (la del contenedor)"
-  info "Gateway:    http://localhost:${GATEWAY_PORT:-8080}/api/v1/docs"
+  info "Consola:    http://localhost:${CONSOLA_PORT:-13000}   (la del contenedor)"
+  info "Gateway:    http://localhost:${GATEWAY_PORT:-18080}/api/v1/docs"
   info "Logs:       docker compose logs -f gateway"
   info "Vecinos:    ./setup.sh vecinos"
   info "Parar:      ./setup.sh parar --docker"
+  mostrar_acceso
 }
 
 arrancar_local() {
@@ -270,12 +334,27 @@ arrancar_local() {
 
   echo
   info "Esperando a que respondan…"
-  sleep 3
-  estado
+  # Un `sleep` fijo daba falsos «no responde» en servicios que tardan en subir.
+  local intentos=0 salida_estado
+  while :; do
+    salida_estado=$(estado 2>&1)
+    if ! grep -qE '✗|!' <<<"$salida_estado" || (( intentos >= 30 )); then break; fi
+    sleep 3; intentos=$((intentos + 1))
+  done
+  echo "$salida_estado"
   echo
+
+  # En Docker lo hace el entrypoint; en local no lo hacía nadie y el usuario del
+  # .env no existía, así que el acceso impreso no funcionaba.
+  if [[ -n "$(valor_env SUPERADMIN_EMAIL)" ]]; then
+    $PY scripts/cuenta_de_arranque.py >/dev/null 2>"$VAR/log/cuenta_de_arranque.log" \
+      && ok "Cuenta de acceso lista" \
+      || aviso "No se pudo dejar la cuenta de acceso: mira $VAR/log/cuenta_de_arranque.log"
+  fi
   info "Gateway:    http://localhost:$(puerto_de gateway)/api/v1/docs"
   info "Logs:       tail -f $VAR/log/<servicio>.log"
   info "Parar:      ./setup.sh parar"
+  mostrar_acceso
 }
 
 # ── front de desarrollo ──────────────────────────────────────────────────────
@@ -290,7 +369,7 @@ arrancar_front() {
   [[ -d frontend/node_modules ]] || { aviso "Faltan dependencias del front: npm --prefix frontend install"; return 0; }
 
   local puerto
-  puerto=$(grep -E "^FRONT_PORT=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"')
+  puerto=$(grep -E "^FRONT_PORT=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)
   puerto="${puerto:-15173}"
   if lsof -nP -iTCP:"$puerto" -sTCP:LISTEN >/dev/null 2>&1; then
     ok "El front ya está en :$puerto"
@@ -306,7 +385,7 @@ arrancar_front() {
   # venía detrás.
   local valor
   for clave in FRONT_PORT GATEWAY_PORT GATEWAY_URL; do
-    valor=$(grep -E "^${clave}=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"')
+    valor=$(grep -E "^${clave}=" .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)
     [[ -n "$valor" ]] && export "$clave=$valor"
   done
   nohup npm --prefix frontend run dev > "$VAR/log/front.log" 2>&1 &
@@ -412,7 +491,7 @@ case "${1:-ayuda}" in
   instalar) instalar ;;
   arrancar)
     if [[ "${2:-}" == "--docker" ]]; then arrancar_docker; else arrancar_local; fi ;;
-  parar)    parar "${2:-}" ;;
+  parar)    shift; parar "$@" ;;
   estado)   titulo "Estado"; estado ;;
   migrar)   migrar ;;
   gates)    shift; gates "$@" ;;
@@ -426,7 +505,7 @@ case "${1:-ayuda}" in
   # escribe el del repositorio anterior. Aceptarlos cuesta una línea y ahorra
   # el rato de mirar por qué no pasa nada.
   start|up|dev)    shift; if [[ "${1:-}" == "--docker" ]]; then arrancar_docker; else arrancar_local; fi ;;
-  stop|down)       parar "${2:-}" ;;
+  stop|down)       shift; parar "$@" ;;
   status)          titulo "Estado"; estado ;;
 
   ayuda|-h|--help|help|"")

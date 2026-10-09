@@ -102,7 +102,7 @@ services:
     ports:
       # Al loopback y no a 0.0.0.0: publicarlo en todas las interfaces expone la
       # base a la red del sitio en el que estés trabajando.
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
     volumes:
       - datos_postgres:/var/lib/postgresql/data
       # El MISMO script que en producción, a propósito: si el esquema de
@@ -122,8 +122,8 @@ services:
     # pierden, y eso convierte el outbox en inútil justo cuando hace falta.
     command: ["-js", "-sd", "/data", "-m", "8222"]
     ports:
-      - "127.0.0.1:${NATS_PORT:-4222}:4222"
-      - "127.0.0.1:${NATS_MONITOR_PORT:-8222}:8222"
+      - "127.0.0.1:${NATS_PORT:-14222}:4222"
+      - "127.0.0.1:${NATS_MONITOR_PORT:-18222}:8222"
     volumes:
       - datos_nats:/data
 
@@ -135,7 +135,7 @@ services:
     # ventana entera de peticiones.
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-56379}:6379"
     volumes:
       - datos_redis:/data
     healthcheck:
@@ -457,7 +457,7 @@ services:
       # y no hay proxy delante.
       API_BASE: ${CONSOLA_API_BASE:-}
       APP_NAME: ${APP_NAME:-contecrm}
-    ports: ["127.0.0.1:${CONSOLA_PORT:-3000}:80"]
+    ports: ["127.0.0.1:${CONSOLA_PORT:-13000}:80"]
     depends_on:
       gateway: { condition: service_started }
 
@@ -475,7 +475,7 @@ services:
       # sirve para saber quién existe, no solo para enrutar.
       RUTAS_SERVICIOS: *rutas
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
-    ports: ["127.0.0.1:${GATEWAY_PORT:-8080}:8000"]
+    ports: ["127.0.0.1:${GATEWAY_PORT:-18080}:8000"]
 
   # ── Observabilidad ───────────────────────────────────────────────────────
   prometheus:
@@ -489,7 +489,7 @@ services:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./ops/prometheus/alertas.yml:/etc/prometheus/alertas.yml:ro
       - datos_prometheus:/prometheus
-    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-19090}:9090"]
 
   # Colector y almacén de trazas (CRM-00.06.01.03). Perfil `ops`, como
   # Prometheus: una instalación que ya tiene colector apunta `OTEL_ENDPOINT` al
@@ -523,7 +523,7 @@ services:
     volumes:
       - datos_grafana:/var/lib/grafana
       - ./ops/grafana:/etc/grafana/provisioning:ro
-    ports: ["127.0.0.1:3000:3000"]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-13001}:3000"]
     depends_on: [prometheus, tempo]
 
 volumes:
