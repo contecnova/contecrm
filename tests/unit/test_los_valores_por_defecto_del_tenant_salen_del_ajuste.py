@@ -92,17 +92,27 @@ def test_el_esquema_de_la_api_no_impone_un_valor_por_defecto() -> None:
     assert datos.aislamiento is None
 
 
-def test_el_alta_autoservicio_no_existe_y_su_interruptor_tampoco() -> None:
-    """Un interruptor para algo que no hay hace creer que apagarlo es lo que lo
-    cierra. Lo que lo cierra es que no existe."""
+def test_el_alta_por_api_sigue_siendo_de_plataforma() -> None:
+    """Haber construido el alta autoservicio no puede haber aflojado la otra.
+
+    **Esta prueba decía lo contrario hasta el 11-10-2026**: afirmaba que el alta
+    autoservicio no existía y que `ONBOARDING_ENABLED` tampoco, que era cierto
+    el día que se escribió. Cinco días después se construyó la puerta y nadie la
+    actualizó — se quedó afirmando la ausencia de algo que ya estaba, y siguió
+    en verde hasta que la suite entera se corrió en un proceso.
+
+    Lo que vale la pena comprobar ahora es que las dos puertas siguen siendo
+    distintas: la de la API exige administrador de plataforma, y la pública está
+    detrás de su interruptor. Lo suyo se prueba en
+    `test_el_alta_autoservicio.py`.
+    """
     import pathlib
 
     raiz = pathlib.Path(__file__).resolve().parents[2]
-    ajustes = (raiz / "packages/crmcore/crmcore/config_parts/_tenancy.py").read_text(
-        encoding="utf-8"
-    )
-    assert "onboarding_enabled: bool" not in ajustes
-    # Y la única puerta de alta sigue siendo de plataforma.
     api = (raiz / "services/tenancy/api.py").read_text(encoding="utf-8")
     cabecera = api.split("def crear_tenant(")[1].split(")")[0]
-    assert "PlataformaDep" in cabecera
+    assert "PlataformaDep" in cabecera, "el alta por API ha dejado de exigir plataforma"
+
+    # Y la pública no se cuela por aquí: es otro router, con su propio gate.
+    alta = (raiz / "services/tenancy/api_alta.py").read_text(encoding="utf-8")
+    assert "_exigir_activo" in alta or "alta.solicitar" in alta
