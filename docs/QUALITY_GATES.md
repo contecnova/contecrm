@@ -37,6 +37,47 @@ demás tampoco.
 
 ---
 
+## El push corre lo que toca lo que ha cambiado
+
+El nivel del push había llegado a **2 min 47 s** —medido el 11 de octubre de
+2026, con la máquina a media carga— cuando la nota del propio fichero decía que
+debía costar unos 37 segundos. De esos 167, **117 eran el recorrido de
+aislamiento**, que construye las catorce aplicaciones y recorre sus rutas aunque
+el commit sólo toque un manual.
+
+Lo que pasa cuando un push tarda tres minutos no es que se espere: es que se
+empuja con `--no-verify`, y entonces no hay red ninguna.
+
+Así que cada gate caro declara **qué tiene que haber cambiado para que aporte
+algo**, y en el nivel del push se omite lo que no mira nada de lo que cambió.
+Medido, mismo commit:
+
+| Lo que cambia el push | Antes | Ahora |
+|---|--:|--:|
+| Sólo manuales o scripts | 167 s | **5 s** |
+| Un servicio | 167 s | **43 s** |
+| El núcleo (`packages/`) | 167 s | 167 s |
+
+El recorrido de aislamiento se acota además **a los servicios que cambiaron**,
+porque está parametrizado por servicio: de 54-117 s a 14.
+
+**Esto no quita ninguna comprobación.** El nivel completo las corre todas y es
+el que cierra cada bloque; lo que cambia es cuándo. Y las dos reglas son
+conservadoras a propósito:
+
+- un gate se omite sólo si **nada** de lo que cambió está dentro de lo que mira;
+- y el aislamiento se acota sólo si **todo** lo que cambió vive dentro de
+  `services/<x>/`. Un cambio en `packages/` lo heredan los catorce, y acotarlo
+  dejaría trece sin comprobar que no dejan ver lo de otro cliente.
+
+Si no se sabe qué cambió —sin rama remota, recién clonado, `git` que falla— **no
+se omite nada**. Una optimización que se equivoca callando es peor que no
+tenerla.
+
+Y lo omitido **se dice**, con el motivo y con dónde sí se corre. Un gate que no
+corre en silencio da una falsa sensación de cobertura, que es peor que no tener
+el gate.
+
 ## De la capacidad al código sí; a la prueba, todavía no
 
 El gate del catálogo exige que toda capacidad declarada `hecho` esté **citada**

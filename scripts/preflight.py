@@ -37,7 +37,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,6 +59,25 @@ class Gate:
     # Postgres embebido, y dos a la vez se cuelgan esperándose. Los demás sí
     # corren en paralelo entre ellos y con el exclusivo de turno.
     exclusivo: bool = False
+    # Qué tiene que haber cambiado para que este gate aporte algo. Vacío = mira
+    # siempre.
+    #
+    # **Sólo se aplica al nivel del push**, y existe porque un push que tarda
+    # tres minutos deja de correrse. El 11-10-2026 costaba 2 min 47 s —la nota
+    # de abajo decía 37 s— y 117 de ellos eran el recorrido de aislamiento, que
+    # construye las catorce aplicaciones aunque el commit sólo toque un manual.
+    #
+    # Lo que NO es esto: quitar comprobaciones. El nivel completo las corre
+    # todas, siempre, y es el que cierra cada bloque. Lo que cambia es que un
+    # commit que no toca el front no espere a que el front compile.
+    #
+    # Y lo omitido SE DICE, con lo que no cambió: un gate que no corre en
+    # silencio da una falsa sensación de cobertura, que es peor que no tenerlo.
+    toca: tuple[str, ...] = ()
+    # Si este gate está parametrizado por servicio y se le puede pasar un `-k`
+    # con los que cambiaron. Ver `_acotar_a_los_servicios_que_cambiaron`: sólo
+    # se acota cuando no hay NADA fuera de `services/<x>/`.
+    por_servicio: bool = False
 
 
 GATES: list[Gate] = [
@@ -115,6 +134,8 @@ GATES: list[Gate] = [
         [PY, "scripts/comprobar_atributos.py"],
         "tests",
         "nadie lee un campo que no existe (lo que en ejecución es un 500)",
+        # No aporta nada si no cambió el código: recorre el front contra los esquemas de los catorce servicios.
+        toca=("services/", "packages/", "frontend/src/"),
     ),
     Gate(
         "acciones",
@@ -130,6 +151,8 @@ GATES: list[Gate] = [
         ],
         "tests",
         "lo que la API deja hacer se alcanza desde el front, y lo que emite se puede recibir",
+        # No aporta nada si no cambió el código: cruza lo que la API ofrece con lo que el front alcanza.
+        toca=("services/", "packages/", "frontend/src/"),
     ),
     Gate(
         "trazabilidad",
@@ -148,6 +171,8 @@ GATES: list[Gate] = [
         [PY, "-m", "pytest", "tests/unit/test_headless_contract.py", "-q", "--no-header"],
         "fast",
         "todo servicio publica su contrato y toda ruta está documentada",
+        # No aporta nada si no cambió el código: construye los catorce contratos OpenAPI.
+        toca=("services/", "packages/"),
     ),
     Gate(
         "pruebas-sin-bd",
@@ -188,6 +213,14 @@ GATES: list[Gate] = [
         "tests",
         "ninguna ruta deja ver lo de otro tenant, y ninguna deja de responder",
         exclusivo=True,
+        # No aporta nada si no cambió el código: construye las catorce
+        # aplicaciones y recorre sus rutas; 117 s de los 167 que costaba el push.
+        toca=("services/", "packages/"),
+        # Y se puede acotar a los servicios que cambiaron, porque está
+        # parametrizado por servicio. Sólo cuando TODO lo que cambió vive dentro
+        # de `services/<x>/`: un cambio en `packages/` toca a los catorce y
+        # acotarlo sería dejar trece sin mirar.
+        por_servicio=True,
     ),
     Gate(
         "pruebas-con-bd",
@@ -202,6 +235,8 @@ GATES: list[Gate] = [
         "tests",
         "ningún modelo cambiado se ha quedado sin su migración",
         exclusivo=True,
+        # No aporta nada si no cambió el código: levanta un Postgres y aplica todas las migraciones desde cero.
+        toca=("services/", "packages/", "alembic/"),
     ),
     Gate(
         "front",
@@ -213,6 +248,8 @@ GATES: list[Gate] = [
         # ciclo rápido en una instalación obligatoria. Si Node está, el gate
         # corre y falla como cualquier otro.
         opcional=True,
+        # No aporta nada si no cambió el código: compila el front entero.
+        toca=("frontend/",),
     ),
     Gate(
         "pantallas",
@@ -403,6 +440,81 @@ def _carga() -> float:
         return 0.0
 
 
+def _cambios_del_push() -> list[str] | None:
+    """Qué ficheros lleva este push respecto de lo ya publicado.
+
+    `None` significa **no se sabe**, y entonces no se omite nada: sin rama
+    remota, en un repositorio recién clonado o si `git` falla, el comportamiento
+    seguro es correrlo todo. Una optimización que se equivoca callando es peor
+    que no tenerla.
+    """
+    for referencia in ("@{upstream}", "origin/main"):
+        try:
+            r = subprocess.run(
+                ["git", "diff", "--name-only", f"{referencia}...HEAD"],
+                cwd=RAIZ,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except Exception:  # noqa: BLE001 — sin git se corre todo
+            return None
+        if r.returncode == 0:
+            # Y lo que está sin confirmar: alguien puede estar corriendo el
+            # preflight antes de commitear, y lo que tiene delante cuenta.
+            sucio = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=RAIZ,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            ficheros = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+            ficheros += [ln[3:].strip() for ln in sucio.stdout.splitlines() if len(ln) > 3]
+            return ficheros
+    return None
+
+
+def _aporta_algo(gate: Gate, cambios: list[str] | None) -> bool:
+    """Si este gate puede decir algo distinto con lo que ha cambiado.
+
+    Sin `toca` declarado, siempre. Sin saber qué cambió, también: ver arriba.
+    """
+    if not gate.toca or cambios is None:
+        return True
+    return any(f.startswith(prefijo) for f in cambios for prefijo in gate.toca)
+
+
+def _acotar_a_los_servicios_que_cambiaron(gate: Gate, cambios: list[str] | None) -> Gate:
+    """Añade un `-k` con los servicios tocados, si se puede acotar sin riesgo.
+
+    **Sólo cuando TODO lo que cambió vive dentro de `services/<x>/`.** Un cambio
+    en `packages/` es del núcleo y lo heredan los catorce: acotarlo dejaría trece
+    sin mirar, y esto comprueba que ninguna ruta deja ver lo de otro cliente —
+    de lo que no se puede dejar trece sin mirar.
+
+    Ante cualquier duda se devuelve el gate tal cual. Una optimización que se
+    equivoca callando es peor que no tenerla.
+    """
+    if not gate.por_servicio or not cambios:
+        return gate
+
+    # Lo que no es código no cuenta para decidir: un manual o una prueba no
+    # cambian qué servicios hay que recorrer.
+    codigo = [f for f in cambios if f.startswith(("services/", "packages/"))]
+    if not codigo or any(f.startswith("packages/") for f in codigo):
+        return gate
+
+    servicios = {f.split("/")[1] for f in codigo if len(f.split("/")) > 2}
+    # Sin servicios identificables —un fichero suelto en `services/`— no se
+    # acota: no se sabe de quién es.
+    if not servicios or len(servicios) > 6:
+        return gate
+
+    expresion = " or ".join(sorted(servicios))
+    return replace(gate, comando=[*gate.comando, "-k", expresion])
+
+
 def _correr(gate: Gate) -> tuple[bool, float, str]:
     inicio = time.perf_counter()
     try:
@@ -532,6 +644,26 @@ def main() -> int:
     seleccionados = [
         g for g in GATES if (g.nombre == args.solo) or (not args.solo and g.tier in tiers)
     ]
+
+    # ── Lo que toca lo que ha cambiado, y SÓLO en el nivel del push ──────
+    #
+    # El nivel completo los corre todos siempre: es el que cierra cada bloque y
+    # el que tiene que poder decir «pasó entero». El rápido no tiene gates caros
+    # que recortar. El del push sí, y es el que se corre veinte veces al día:
+    # el 11-10-2026 costaba 2 min 47 s con la máquina a media carga, de los que
+    # 117 s eran el recorrido de aislamiento — que construye las catorce
+    # aplicaciones aunque el commit sólo toque un manual.
+    #
+    # Un push de tres minutos deja de correrse, y entonces se empuja con
+    # `--no-verify`, que es como se pierde la red entera. Esto no quita ninguna
+    # comprobación: cambia cuándo.
+    fuera_de_alcance: list[Gate] = []
+    if "tests" in tiers and "suite" not in tiers and not args.solo:
+        cambios = _cambios_del_push()
+        if cambios is not None:
+            dentro = [g for g in seleccionados if _aporta_algo(g, cambios)]
+            fuera_de_alcance = [g for g in seleccionados if g not in dentro]
+            seleccionados = [_acotar_a_los_servicios_que_cambiaron(g, cambios) for g in dentro]
     if not seleccionados:
         print(f"No hay ningún gate llamado «{args.solo}»", file=sys.stderr)
         return 2
@@ -572,6 +704,14 @@ def main() -> int:
         print(f"  {marca} {gate.nombre:22} {duracion:5.1f}s  {gate.garantiza}")
         if not ok:
             fallos.append((gate, salida))
+
+    if fuera_de_alcance:
+        # Se dice cuáles y POR QUÉ. Un gate que no corre en silencio da una
+        # falsa sensación de cobertura, que es peor que no tener el gate — y el
+        # nivel completo los corre todos, así que esto es «ahora no», no «nunca».
+        nombres = ", ".join(g.nombre for g in fuera_de_alcance)
+        print(f"\nFuera de alcance de este push ({nombres}): no cambió lo que miran.")
+        print("El nivel completo los corre igual: «python scripts/preflight.py --todo».")
 
     if omitidos:
         # Se dice qué NO se ha comprobado. Un gate omitido en silencio da una

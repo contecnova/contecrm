@@ -90,6 +90,13 @@ repos:
       # hay CI que lo recoja después: si eso no se hace, un commit roto llega a
       # main y habremos cambiado seguridad por tiempo.
       #
+      # 11-10-2026: aun así había llegado a 2 min 47 s, porque los gates que
+      # quedaron crecieron — 117 s sólo el de aislamiento, que construye las
+      # catorce aplicaciones aunque el commit toque un manual. Ahora cada gate
+      # caro declara qué tiene que haber cambiado para aportar algo, y aquí se
+      # omite lo que no mira nada de lo que cambió: un push de manuales cuesta
+      # 5 s y uno de un servicio 43. El nivel completo los corre todos igual.
+      #
       # Se sale de aquí lo que son SUITES y nada más. Migraciones se queda —hoy
       # mismo cazó un índice sin CONCURRENTLY que habría parado el servicio de
       # un cliente— y los guardianes propios también: suman menos de 8 s entre
