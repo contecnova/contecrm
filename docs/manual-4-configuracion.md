@@ -624,6 +624,33 @@ tener el suyo.
 > fecha: abrir su perfil y guardar propaga la zona. Se nota en que las fechas del
 > sistema coinciden con las del cliente a primera hora de la mañana.
 
+### El aviso de que un tenant se acerca a un tope
+
+Lo emite el barrido del núcleo —en todos los servicios, cada
+`TAREA_PURGAS_INTERVALO_S`— como el evento **`quota.threshold.reached`**, que
+estaba en el contrato publicado desde el principio. Lleva el tope del que habla,
+lo consumido, el límite, el porcentaje y el periodo.
+
+El umbral es `QUOTA_AVISO_PCT` (80 % de fábrica) y se puede cambiar en caliente
+por tenant: lo que es «cerca» para uno con mil registros no lo es para uno con
+un millón.
+
+**Una vez por métrica y periodo.** El barrido vuelve a ver al tenant por encima
+del umbral en cada vuelta, pero la clave de deduplicación lleva el periodo, así
+que el consumidor descarta las repeticiones. Se paga en filas de la tabla de
+salida y se gana no tener otra tabla con a quién se avisó ya, que es un sitio más
+donde quedarse desincronizado.
+
+Cada servicio emite lo que **él** mide: los medidores de consumo se registran por
+proceso y cada uno mide sobre su propio esquema. Un emisor central tendría que
+leer las tablas de los catorce.
+
+> Hasta el 11 de octubre de 2026 este evento no lo emitía nadie. El cálculo
+> existía —`aviso_de_cercania`— y viajaba como un campo más del panel de
+> consumo, así que el aviso sólo existía si alguien abría la pantalla; y quien se
+> hubiera suscrito al evento no recibía nada. **Si tiene integraciones escuchando
+> cuotas, revíselas**: ahora empezarán a recibir.
+
 ## Copias de seguridad
 
 Lo que hay que copiar, y por qué:

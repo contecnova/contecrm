@@ -185,9 +185,17 @@ QUOTA_THRESHOLD_REACHED = registrar(
     TipoEvento(
         tipo="quota.threshold.reached",
         version=1,
-        productor="tenancy",
-        descripcion="Un tenant ha alcanzado el umbral de aviso de una cuota",
-        campos=("tenant_id", "cuota", "consumido", "limite", "pct"),
+        # Lo emite CUALQUIER servicio, no `tenancy`: los medidores de consumo se
+        # registran por proceso y cada servicio mide lo suyo sobre su propio
+        # esquema. Un emisor central tendría que leer las tablas de los catorce.
+        productor="core",
+        descripcion=(
+            "Un tenant ha alcanzado el umbral de aviso de una cuota. Lo emite el "
+            "barrido del núcleo, una vez por métrica y periodo — la clave de "
+            "deduplicación lleva el periodo, así que seguir por encima del umbral "
+            "no repite el aviso"
+        ),
+        campos=("tenant_id", "cuota", "consumido", "limite", "pct", "metrica", "periodo"),
     )
 )
 USER_PROVISIONED = registrar(

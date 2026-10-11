@@ -29,9 +29,15 @@ import pytest
 pytestmark = pytest.mark.db
 
 
-def test_todo_servicio_arranca_con_los_tres_barridos() -> None:
-    """Los tres, con el nombre del servicio delante para poder distinguirlos en
-    el registro cuando uno falle."""
+def test_todo_servicio_arranca_con_sus_barridos_del_nucleo() -> None:
+    """Cada uno con el nombre del servicio delante, para poder distinguirlos en
+    el registro cuando uno falle.
+
+    Se comparan los NOMBRES y no el número: «son tres» obliga a tocar esta
+    prueba cada vez que se añade uno, y lo que hay que comprobar es que no
+    desaparezca ninguno — que es el fallo que importa, porque un barrido que deja
+    de arrancar no se nota hasta que su tabla ha crecido meses.
+    """
     from crmcore.service import _barridos_del_nucleo
 
     nombres = {t.nombre for t in _barridos_del_nucleo("pruebas")}
@@ -40,6 +46,9 @@ def test_todo_servicio_arranca_con_los_tres_barridos() -> None:
         "pruebas.inbox",
         "pruebas.outbox",
         "pruebas.adjuntos_huerfanos",
+        # El aviso de que un tenant se acerca a un tope. Estaba calculado y sólo
+        # se veía abriendo el panel de consumo (11-10-2026).
+        "pruebas.aviso_de_cuotas",
     }, nombres
 
 

@@ -98,6 +98,41 @@ def _barridos_del_nucleo(servicio: str) -> list[Any]:
         with sesion(sistema=True) as db:
             return {"borrados": adjuntos.purgar_huerfanos(db, tenant_id)}
 
+    def _tenants_con_cuota() -> list[Any]:
+        """Los tenants a los que se les ha fijado algún tope, de SU propia tabla.
+
+        No se le pide la lista a `tenancy`: es de otro servicio y no se lee
+        desde aquí. Y la buena es más corta — un tenant sin ninguna cuota fijada
+        no puede acercarse a ningún tope.
+        """
+        from sqlalchemy import select
+
+        from crmcore.runtime.settings import AjusteRuntime
+
+        with sesion(sistema=True) as db:
+            filas = db.execute(
+                select(AjusteRuntime.ambito_id)
+                .where(
+                    AjusteRuntime.ambito == "tenant",
+                    AjusteRuntime.clave.like("quota_%"),
+                )
+                .distinct()
+            ).all()
+        return [t for (t,) in filas if t]
+
+    def _avisar_a(tenant_id: Any) -> dict[str, Any]:
+        from uuid import UUID
+
+        from crmcore.consumo import avisar_de_los_que_se_acercan
+        from crmcore.db.uow import unidad_de_trabajo
+        from crmcore.tenancy.context import con_contexto
+
+        tid = tenant_id if isinstance(tenant_id, UUID) else UUID(str(tenant_id))
+        # En el contexto del tenant: medir lee sus tablas y emitir deja un
+        # evento que necesita saber de quién es.
+        with con_contexto(tenant_id=tid, origen="barrido"), unidad_de_trabajo(tid) as uow:
+            return avisar_de_los_que_se_acercan(uow)
+
     return [
         Tarea(
             f"{servicio}.inbox",
@@ -113,6 +148,17 @@ def _barridos_del_nucleo(servicio: str) -> list[Any]:
         ),
         # Por tenant, y aislando cada uno: un fallo en el tenant 40 no puede
         # parar a los 200 siguientes.
+        # El aviso de que un tenant se acerca a un tope. Estaba calculado y sólo
+        # se veía abriendo el panel de consumo: un aviso que depende de que
+        # alguien abra una pantalla no es un aviso. El evento que lo lleva está
+        # en el contrato publicado desde el principio, así que quien se
+        # suscribiera no recibía nada.
+        Tarea(
+            f"{servicio}.aviso_de_cuotas",
+            cada,
+            por_tenant(_tenants_con_cuota, _avisar_a),
+            al_arrancar=False,
+        ),
         Tarea(
             f"{servicio}.adjuntos_huerfanos",
             cada,

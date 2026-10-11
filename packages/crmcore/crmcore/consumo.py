@@ -99,3 +99,57 @@ def medido_aqui(db: Any, tenant_id: UUID) -> list[dict[str, Any]]:
             }
         )
     return salida
+
+
+def avisar_de_los_que_se_acercan(uow: Any) -> dict[str, Any]:
+    """Emite `quota.threshold.reached` por cada métrica que ha cruzado el umbral.
+
+    **El aviso existía y sólo se veía abriendo el panel.** `aviso_de_cercania`
+    calcula desde hace tiempo si un tenant se está acercando a un tope, y su
+    resultado viajaba como un campo más de `medido_aqui`: aparecía si alguien
+    entraba a mirar. El manual de usuario promete otra cosa —«cuando te acercas
+    a uno se avisa antes, no cuando ya no cabe nada»— y el evento que lo llevaría
+    está **declarado en el contrato publicado** desde el principio, de modo que
+    un integrador podía suscribirse a él y no recibir nada jamás.
+
+    Un aviso que depende de que alguien abra una pantalla no es un aviso: es un
+    dato en una pantalla.
+
+    **Se emite desde cada servicio y no desde uno central.** Los medidores se
+    registran por proceso y cada servicio mide lo suyo sobre su propio esquema;
+    un emisor central tendría que leer las tablas de los catorce, que es
+    exactamente lo que la arquitectura no permite.
+
+    **La misma métrica del mismo periodo no se procesa dos veces**, aunque este
+    barrido la vuelva a ver cada hora mientras siga por encima del umbral: la
+    clave de deduplicación lleva el periodo, así que el consumidor la descarta.
+    Se paga en filas de la tabla de salida —acotadas por tenants × métricas ×
+    vueltas— y se gana no tener que guardar en ninguna parte a quién se avisó
+    ya, que sería otra tabla y otro sitio donde quedarse desincronizado.
+    """
+    from crmcore.cuotas import periodo_actual
+
+    periodo = periodo_actual(uow.db)
+    avisadas = 0
+    for fila in medido_aqui(uow.db, uow.tenant_id):
+        if not fila.get("en_aviso"):
+            continue
+        aviso = fila["aviso"]
+        uow.emitir(
+            "quota.threshold.reached",
+            subject=("tenant", uow.tenant_id),
+            data={
+                "tenant_id": str(uow.tenant_id),
+                "cuota": aviso["ajuste"],
+                "consumido": aviso["consumido"],
+                "limite": aviso["limite"],
+                "pct": aviso["pct"],
+                "metrica": aviso["metrica"],
+                "periodo": periodo,
+            },
+            # Tenant + métrica + periodo: lo que hace que avisar sea una vez por
+            # periodo y no una por vuelta del barrido.
+            dedup_key=f"cuota:{uow.tenant_id}:{aviso['metrica']}:{periodo}",
+        )
+        avisadas += 1
+    return {"avisadas": avisadas}

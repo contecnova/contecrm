@@ -111,6 +111,14 @@ Lo que te afecta como usuario:
   API. Cuando te acercas a uno **se avisa antes**, no cuando ya no cabe nada. Si
   algo se bloquea por cuota, el mensaje dice cuál y cuánto queda.
 
+  El aviso **sale solo**: no hay que entrar a mirarlo. Salta una vez por tope y
+  por periodo cuando se cruza el umbral —de fábrica, el 80 %— y lleva de qué
+  tope habla, cuánto se lleva gastado y cuánto queda, para que se pueda decidir
+  sin abrir nada.
+
+  > Hasta el 11 de octubre de 2026 ese aviso se calculaba pero sólo aparecía
+  > dentro del panel de consumo, así que había que acordarse de ir a mirar.
+
 ---
 
 ## Lo que el CRM puede hacer sin ti (sección 0.3)
