@@ -389,7 +389,13 @@ class CrearEntitlement(BaseModel):
 @router_entitlements.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exige_permiso("case:write"))],
+    # `entitlement:write` y no `case:write`. Dar de alta un derecho de servicio
+    # es gestión del contrato, no trabajo de caso: fija a qué tiene derecho el
+    # cliente y durante cuánto. Con `case:write` lo podía hacer **cualquier
+    # agente**, y el catálogo de roles dice por escrito que de los derechos se
+    # encarga `responsable_soporte` — la separación estaba prometida y no
+    # existía (medido el 11-10-2026).
+    dependencies=[Depends(exige_permiso("entitlement:write"))],
     summary="Dar de alta un derecho de servicio",
     description=(
         "Gana el **más específico**: contrato sobre producto, producto sobre "
@@ -410,7 +416,7 @@ def crear_entitlement(datos: CrearEntitlement, uow: UowDep, principal: Autentica
 
 @router_entitlements.get(
     "/aplicable",
-    dependencies=[Depends(exige_permiso("case:read"))],
+    dependencies=[Depends(exige_permiso("entitlement:read"))],
     summary="Qué derecho aplica a este cliente",
 )
 def aplicable(
@@ -449,6 +455,12 @@ class Imputar(BaseModel):
 @router_entitlements.post(
     "/{entitlement_id}/consumo",
     status_code=status.HTTP_201_CREATED,
+    # Éste SÍ se queda en `case:write`, y es una decisión: imputar consumo es lo
+    # que hace quien atiende el caso —apunta las horas que ha gastado— y
+    # exigirle el permiso de gestionar derechos obligaría a que un responsable
+    # cerrara cada caso. Lo que no puede hacer un agente es CREAR el derecho ni
+    # cambiar a qué tiene derecho el cliente; gastar lo que ya tiene concedido
+    # es su trabajo.
     dependencies=[Depends(exige_permiso("case:write"))],
     summary="Imputar consumo contra el derecho",
     description=(
@@ -475,7 +487,7 @@ def imputar(entitlement_id: UUID, datos: Imputar, uow: UowDep, principal: Autent
 
 @router_entitlements.get(
     "/{entitlement_id}/saldo",
-    dependencies=[Depends(exige_permiso("case:read"))],
+    dependencies=[Depends(exige_permiso("entitlement:read"))],
     summary="Cuánto queda del derecho",
     description=(
         "Se devuelven las **dos bolsas** —casos y horas— aunque solo una esté "
@@ -710,7 +722,7 @@ montar_listado(
 
 @router_entitlements.get(
     "/{entitlement_id}/puede-abrirse",
-    dependencies=[Depends(exige_permiso("case:read"))],
+    dependencies=[Depends(exige_permiso("entitlement:read"))],
     summary="Si se puede abrir un caso contra este derecho, y qué decir si no",
     description=(
         "Devuelve la **decisión**, no un corte: quien abre el caso decide qué "

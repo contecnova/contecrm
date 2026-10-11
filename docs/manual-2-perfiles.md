@@ -52,7 +52,15 @@ Hereda del comercial y añade:
 
 - Casos, con su cola, su prioridad y sus relojes de SLA.
 - Base de conocimiento, en lectura.
-- Consulta de los derechos de servicio del cliente.
+- **Consulta** de los derechos de servicio del cliente, e imputar contra ellos
+  el consumo de los casos que atiende. Lo que no puede es **darlos de alta ni
+  cambiarlos**: eso fija a qué tiene derecho el cliente y durante cuánto, y es
+  del responsable de soporte.
+
+  > Hasta el 11 de octubre de 2026 esa separación estaba escrita en el catálogo
+  > de roles y **no la aplicaba el código**: las rutas de derechos pedían el
+  > permiso de escribir casos, que tiene cualquier agente. Si venía de una
+  > versión anterior, revise quién ha dado de alta derechos de servicio.
 
 ## Administrador del tenant
 

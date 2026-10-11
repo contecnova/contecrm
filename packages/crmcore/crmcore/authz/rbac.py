@@ -130,8 +130,14 @@ ROLES_BASE: dict[str, Rol] = {
                 "contact:read",
                 "activity:read",
                 "activity:write",
-                "note:read",
-                "note:write",
+                # `note:read` y `note:write` estuvieron aquí y SE QUITAN
+                # (11-10-2026): **no los exigía ninguna ruta**. Las notas de una
+                # ficha son los comentarios, y los gobiernan los tres permisos
+                # de abajo, que sí se exigen.
+                #
+                # Un rol que enumera un permiso que no gobierna nada engaña a
+                # quien lo lee: el administrador que se lo quitara a alguien
+                # creería haberle cerrado las notas, y no le habría cerrado nada.
                 # Comentar y adjuntar es lo que hace cualquiera que trabaje una
                 # ficha; negárselo al rol básico convierte la colaboración en un
                 # privilegio y la conversación se vuelve al correo.
@@ -222,7 +228,10 @@ ROLES_BASE: dict[str, Rol] = {
                 # distribuye a cien personas es una cifra equivocada repetida
                 # cien veces.
                 "informe:write",
-                "opportunity:approve",
+                # `opportunity:approve` estuvo aquí y SE QUITA (11-10-2026):
+                # tampoco lo exigía nadie. Las aprobaciones son genéricas y las
+                # gobierna `aprobacion:decidir`, que este rol ya tiene — así que
+                # quitarlo no le cambia nada a nadie.
                 # Decidir va separado de pedir a propósito: si fueran el mismo
                 # permiso, cualquiera que pueda pedir una aprobación podría
                 # firmarla, y la cadena entera dejaría de significar nada.
@@ -267,13 +276,44 @@ ROLES_BASE: dict[str, Rol] = {
     ),
     "solo_lectura": Rol(
         nombre="solo_lectura",
-        permisos=frozenset({"*:read"}),
+        # LOS TRES VERBOS DE LECTURA, no sólo `read`. El vocabulario de permisos
+        # está mezclado —461 rutas dicen `read`, diez dicen `leer` o
+        # `consultar`— y con sólo `*:read` este rol NO consultaba todo: se
+        # quedaba fuera de `cumplimiento:leer`, que es exactamente lo que un
+        # auditor viene a mirar, y de las seis de analítica.
+        #
+        # Medido el 11-10-2026. No se renombran los permisos porque un tenant
+        # puede tener roles propios que los citen: cambiarlos les quitaría
+        # accesos sin avisar. Lo que sí hay es un guardián
+        # (`test_los_verbos_de_permiso_son_un_vocabulario_cerrado.py`) que
+        # impide que aparezca un cuarto verbo de lectura sin pasar por aquí.
+        permisos=frozenset({"*:read", "*:leer", "*:consultar"}),
         descripcion="Consulta todo, no modifica nada. Auditores y dirección",
         es_sistema=True,
     ),
     "integracion": Rol(
         nombre="integracion",
-        permisos=frozenset({"*:read", "*:write"}),
+        # Lo mismo con la escritura, y por el mismo motivo: con sólo `*:write`
+        # una integración no podía subir un adjunto (`adjunto:subir`) ni escribir
+        # un comentario (`comentario:escribir`), que son dos de las cosas que más
+        # hace una integración.
+        #
+        # `administrar` y `admin` NO entran: la descripción de abajo dice que
+        # esta cuenta no administra configuración ni usuarios, y ésa es la razón
+        # de ser del rol.
+        permisos=frozenset(
+            {
+                "*:read",
+                "*:leer",
+                "*:consultar",
+                "*:write",
+                "*:escribir",
+                "*:editar",
+                "*:crear",
+                "*:borrar",
+                "*:subir",
+            }
+        ),
         descripcion=(
             "Cuenta de servicio para integraciones. No administra configuración "
             "ni usuarios, a propósito: una credencial de máquina filtrada no "

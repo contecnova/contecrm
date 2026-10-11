@@ -308,6 +308,22 @@ tests/integration/            aislamiento real contra Postgres
   el que se olvide se queda con el dueño en blanco, que es justo el valor que lo
   hace pasar por propio. Lo escondía la prueba: pasaba **por orden de carga**, y
   salía verde sin haber recorrido nunca la rama que decía cubrir.
+- **El verbo de un permiso decide quién lo alcanza por comodín.** El vocabulario
+  está mezclado —461 rutas exigen `:read` y diez dicen `:leer` o `:consultar`—
+  y dos roles de serie se apoyan en comodines: `solo_lectura` lleva `*:read` y
+  dice de sí mismo «consulta todo». No lo consultaba: se quedaba fuera de
+  `cumplimiento:leer`, que es justo lo que un auditor viene a mirar. Los
+  permisos **no se renombran** —un tenant puede tener roles propios que los
+  citen, y cambiarlos le quitaría accesos sin avisar—: lo que se hace es que los
+  comodines cubran el vocabulario entero y que el vocabulario sea **cerrado**,
+  con un guardián que clasifica cada verbo como lectura, escritura o
+  privilegiado. Un verbo nuevo entra por ahí o no entra.
+- **Un rol que concede un permiso que nadie exige engaña a quien lo lee.** El
+  catálogo de roles es la promesa que lee quien administra: si un rol dice
+  «gestiona derechos de servicio» y ninguna ruta exige ese permiso, el
+  administrador que lo asigne cree haber separado una responsabilidad que sigue
+  abierta. Hay guardián, y de los 53 permisos concedidos encontró 6 así — uno de
+  ellos un agujero de privilegios de verdad.
 - **Una prueba le pregunta el día al producto, no a la máquina.** `date.today()`
   en una prueba compara dos relojes —el de quien ejecuta y el del cliente, que es
   el que mira el producto—, y coinciden casi siempre: dejan de coincidir entre
