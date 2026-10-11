@@ -37,6 +37,27 @@ demás tampoco.
 
 ---
 
+## De la capacidad al código sí; a la prueba, todavía no
+
+El gate del catálogo exige que toda capacidad declarada `hecho` esté **citada**
+por su identificador y **documentada** en un manual. Eso hace trazable el camino
+del catálogo al código. De ahí a una prueba no hay camino: la cita vale esté
+donde esté, y **227 de 752** capacidades no las nombra ninguna prueba.
+
+**Eso no dice que estén sin probar.** Comprobadas a mano dos al azar —el
+aislamiento estanco por partner y el opt-out de entrenamiento— tienen pruebas de
+sobra; lo que no tienen es el identificador escrito en ellas. Falta el último
+tramo de la cadena, no la red.
+
+Lo que cuesta es en una auditoría, donde la pregunta no es «¿está probado?» sino
+«enséñame la prueba de **esto**». Sin el identificador en la prueba hay que
+saberse el código para contestar, y quien audita no se lo sabe.
+
+Por eso es un **tope** y no una exigencia: reescribir doscientos ficheros de
+prueba de golpe sería un commit que nadie puede revisar, y la mitad de las citas
+saldrían puestas a ojo. Lo que no puede es crecer — una capacidad nueva nace con
+su prueba citada, y las viejas se citan cuando se las toque.
+
 ## El presupuesto: uno por nivel, y es un gate más
 
 El preflight tiene un tope de CPU **por cada uno de sus tres niveles**. Si se
