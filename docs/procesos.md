@@ -68,6 +68,8 @@ stateDiagram-v2
 | `POST /api/v1/aislamiento/migraciones/{migracion_id}/verificar` | Comparar lo que había con lo que hay, tabla a tabla | migracion_id*, recuento_origen, recuento_destino | 200, 422 | — |
 | `POST /api/v1/aislamiento/{tenant_id}/comprobar` | Comprobar que el tenant está donde se declaró (CRM-00.01.01.02, .03) | tenant_id* | 200, 422 | — |
 | `PUT /api/v1/ajustes/{clave}` | Fijar un ajuste | clave*, valor*, ambito, ambito_id | 200, 422 | — |
+| `POST /api/v1/alta` | Pedir el alta de una empresa | slug*, nombre_empresa*, email*, nombre* | 200, 422 | — |
+| `POST /api/v1/alta/confirmar` | Confirmar el alta con el token del correo | token* | 200, 422 | — |
 | `POST /api/v1/calendarios` | Crear un calendario laboral | clave*, nombre*, zona_horaria, pais, horario, por_defecto | 201, 422 | — |
 | `POST /api/v1/calendarios/{calendario_id}/festivos` | Añadir un festivo | calendario_id*, fecha*, nombre*, anual | 201, 422 | — |
 | `POST /api/v1/ciclo-vida/clonado/ejecutar` | Ejecutar el clonado que se simuló | operacion_id*, destino_id*, copiado | 201, 422 | — |
@@ -1504,7 +1506,7 @@ llamada de nadie.
 | `problem.communicated` | service | problema_id, tipo, casos_alcanzados | `POST /api/v1/problemas/{problema_id}/comunicaciones` | — |
 | `problem.opened` | service | problema_id, severidad | `POST /api/v1/problemas` | — |
 | `problem.resolved` | service | problema_id, casos_cerrados | `POST /api/v1/problemas/{problema_id}/resolver` | — |
-| `quota.threshold.reached` | tenancy | tenant_id, cuota, consumido, limite, pct | un proceso de fondo | — |
+| `quota.threshold.reached` | core | tenant_id, cuota, consumido, limite, pct, metrica, periodo | un proceso de fondo | — |
 | `quote.accepted` | sales | presupuesto_id, numero, pedido_id, total | `POST /api/v1/presupuestos/{presupuesto_id}/aceptar` | — |
 | `quote.approval.needed` | sales | presupuesto_id, numero, total, motivos | `POST /api/v1/presupuestos/{presupuesto_id}/enviar` | — |
 | `quote.created` | sales | presupuesto_id, numero, version, total | `POST /api/v1/presupuestos` | — |
@@ -1525,6 +1527,7 @@ llamada de nadie.
 | `signature.envelope.sent` | integration | sobre_id, referencia, proveedor, nivel | `POST /api/v1/firma/sobres/{sobre_id}/enviar` | — |
 | `signature.reminder.sent` | integration | sobre_id, referencia, destinatarios | `POST /api/v1/firma/sobres/{sobre_id}/recordar` | — |
 | `subscription.changed` | sales | suscripcion_id, cuenta_id, tipo, plan, importe | `POST /api/v1/suscripciones`, `POST /api/v1/suscripciones/{suscripcion_cliente_id}/cambios` | — |
+| `tenant.alta_confirmada` | tenancy | tenant_id, slug, email, nombre | un proceso de fondo | — |
 | `tenant.provisioned` | tenancy | tenant_id, slug, plan, region | `POST /api/v1/tenants` | — |
 | `tenant.reactivated` | tenancy | tenant_id | `POST /api/v1/tenants/{tenant_id}/estado` | — |
 | `tenant.suspended` | tenancy | tenant_id, motivo | `POST /api/v1/tenants/{tenant_id}/estado` | — |
