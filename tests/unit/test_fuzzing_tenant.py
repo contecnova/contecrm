@@ -505,8 +505,20 @@ def test_ninguna_ruta_deja_ver_un_registro_de_otro_tenant(
                 continue
 
             # La fila es del tenant A…
+            #
+            # `flush` y no `commit`, y no es un detalle de estilo. El arnés ata
+            # todas las sesiones a UNA conexión, así que la aplicación ve la
+            # fila sin confirmar — y confirmar aquí suelta el savepoint de esta
+            # vuelta. Son unas doscientas rutas: doscientos savepoints creados y
+            # soltados mientras la aplicación abre los suyos en la misma
+            # conexión, y basta con que uno se suelte fuera de orden para que
+            # reviente la vuelta siguiente con «savepoint sa_savepoint_N does
+            # not exist».
+            #
+            # Medido el 12-10-2026: era el último fallo que quedaba al correr la
+            # suite entera en un proceso.
             fila = _crear_fila(db, modelo, tenant_id)
-            db.commit()
+            db.flush()
             ruta = plantilla.replace(f"{{{parametro}}}", str(fila.id))
 
             # …y quien pregunta es el B.
