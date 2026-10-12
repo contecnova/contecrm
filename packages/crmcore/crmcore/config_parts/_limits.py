@@ -192,6 +192,22 @@ class _LimitsSettings(BaseSettings):
     # modelo; al 100 % el aviso llega cuando ya no se puede añadir nada.
     metadata_aviso_pct: int = Field(80, ge=10, le=100)
 
+    # ── Plazos de negocio que estaban escritos en el código ───────────────
+    #
+    # Los cuatro se leían con `rt.efectivo(...) or <número>` y su clave no
+    # estaba declarada en ninguna parte: leerla devolvía `None`, así que
+    # mandaba el número de al lado, y fijarla se rechazaba. El valor por
+    # defecto de cada uno es EXACTAMENTE el que usaba el código, para que
+    # enchufar la configuración no cambie ningún comportamiento.
+    devolucion_ventana_dias: int = Field(30, ge=1, le=3_650)
+    expediente_plazo_dias: int = Field(30, ge=1, le=3_650)
+    telemetria_silencio_min: int = Field(120, ge=1, le=10_080)
+    # Guardar el cuerpo de lo que entra por los canales. Apagado: es dato
+    # personal, y acumularlo sin finalidad declarada no se defiende.
+    canal_guardar_contenido: bool = False
+    # 0 = sin tope, que es lo que había.
+    licencias_maximas: int = Field(0, ge=0, le=1_000_000)
+
     # ── Casos (CRM-04.01.01.10) ───────────────────────────────────────────
     # Días durante los que un caso cerrado se puede reabrir. Pasado el plazo se
     # abre uno nuevo enlazado: reabrir un caso de hace ocho meses falsea todos

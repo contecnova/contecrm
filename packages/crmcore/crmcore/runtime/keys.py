@@ -715,6 +715,77 @@ CLAVES: dict[str, ClaveAjuste] = {
             "json",
             "Finalidad, base legal, plazo y responsable propios de este tenant, por objeto",
         ),
+        # ── Las que el código LEÍA y nadie había declarado ────────────────
+        #
+        # Medido el 12-10-2026: 28 claves se leían con `rt.efectivo(...)` sin
+        # figurar en ningún catálogo. Eso hace dos cosas a la vez y las dos
+        # malas: leerlas devuelve `None` —así que gana el número escrito al
+        # lado— y fijarlas se RECHAZA con «no se puede fijar por tenant». Es la
+        # peor forma de un valor a fuego: el código aparenta que se configura y
+        # nadie puede hacerlo.
+        #
+        # Veinte estaban declaradas en el `ajustes.py` de su servicio y no se
+        # registraban porque **nadie importaba ese módulo al arrancar**; eso se
+        # arregla donde vive. Las de aquí abajo son las que no tenían dueño:
+        # su campo de respaldo ya existe en el núcleo.
+        _c(
+            "metadata_max_campos",
+            "int",
+            "Tope de campos propios por objeto",
+            minimo=10,
+            maximo=1_000,
+            campo_settings="metadata_max_campos",
+        ),
+        _c(
+            "metadata_aviso_pct",
+            "int",
+            "Porcentaje del tope de campos a partir del cual se avisa",
+            minimo=10,
+            maximo=100,
+            campo_settings="metadata_aviso_pct",
+        ),
+        _c(
+            "devolucion_ventana_dias",
+            "int",
+            "Días desde la compra en los que se admite una devolución",
+            minimo=1,
+            maximo=3_650,
+            campo_settings="devolucion_ventana_dias",
+        ),
+        _c(
+            "expediente_plazo_dias",
+            "int",
+            "Días de plazo de un expediente de postventa antes de escalarlo",
+            minimo=1,
+            maximo=3_650,
+            campo_settings="expediente_plazo_dias",
+        ),
+        _c(
+            "telemetria_silencio_min",
+            "int",
+            "Minutos de silencio antes de dar un equipo por desconectado",
+            minimo=1,
+            maximo=10_080,
+            campo_settings="telemetria_silencio_min",
+        ),
+        _c(
+            "canal_guardar_contenido",
+            "bool",
+            "Guardar el contenido de los mensajes que entran por los canales",
+            campo_settings="canal_guardar_contenido",
+            # Es el cuerpo de mensajes de personas: guardarlo «por si acaso» es
+            # dato personal acumulado sin finalidad declarada.
+            sensible=True,
+        ),
+        _c(
+            "licencias_maximas",
+            "int",
+            "Tope de licencias del tenant (0 = sin tope)",
+            minimo=0,
+            maximo=1_000_000,
+            campo_settings="licencias_maximas",
+            sensible=True,
+        ),
     )
 }
 

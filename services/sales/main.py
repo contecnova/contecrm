@@ -5,6 +5,7 @@ from __future__ import annotations
 from crmcore.service import crear_servicio
 
 from services.sales import (
+    ajustes,  # noqa: F401 — registra los ajustes de negocio de este servicio
     visibilidad,  # noqa: F401 — registra los resolutores
 )
 from services.sales.api import ROUTERS, ROUTERS_SIN_PREFIJO

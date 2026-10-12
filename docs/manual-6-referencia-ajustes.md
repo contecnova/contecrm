@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**218 ajustes** en total, de los cuales **82** son editables en caliente por tenant.
+**223 ajustes** en total, de los cuales **89** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -22,7 +22,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `SERVICE_HOST` | — | `127.0.0.1` |  | Puerto en el que escucha este servicio. Lo leen uvicorn (arranque), el healthcheck de compose y el gateway (enrutado). Boot-only: cambiarlo en caliente no reabre el socket. |
 | `SERVICE_PORT` | — | `8000` | 1–65535 |  |
 | `RUTAS_SERVICIOS` | — | *(vacío)* |  | Los servicios DE ESTE DESPLIEGUE, como `nombre=url` separados por comas: `tenancy=http://tenancy:8000,party=http://party:8000`. Lo lee el gateway para enrutar —un servicio que no esté aquí no es alcanzable y responde 503 diciendo cuál falta, que es mejor que un 404 genérico— y lo lee `tenancy`… |
-| `PUBLIC_BASE_URL` | — | `http://localhost:8080` |  | URL base pública del sistema, usada para componer enlaces absolutos (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los enlaces salen relativos y rotos en el correo. |
+| `PUBLIC_BASE_URL` | — | `http://localhost:18080` |  | URL base pública del sistema, usada para componer enlaces absolutos (callbacks de OAuth, enlaces de correo, URLs firmadas). Sin esto los enlaces salen relativos y rotos en el correo. |
 | `CORS_ORIGINS` | — | *(vacío)* |  | Lista separada por comas. Vacío = ningún origen de navegador permitido, que es lo correcto para un servicio interno: solo el gateway habla con él. |
 | `API_PREFIX` | — | `/api/v1` |  | Prefijo de versión de la API pública. El versionado es explícito y por URI (CRM-00.02.01.05): un cambio rompedor estrena `v2` y `v1` sigue sirviéndose hasta su fecha de retirada. |
 | `API_SUNSET_DATE` | — | *(vacío)* |  | Fecha de retirada de ESTA versión mayor, en ISO-8601, o vacío si no hay una anunciada. Cuando está puesta, toda respuesta lleva las cabeceras `Sunset` y `Deprecation` (CRM-00.02.01.07) para que los consumidores se enteren por el canal que ya están leyendo, sin depender de una circular. |
@@ -58,7 +58,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `QUOTA_CORREOS_POR_DIA` | 🔥 `quota_correos_por_dia` | `0` | ≥ 0 |  |
 | `QUOTA_WORKFLOWS_CONCURRENTES` | 🔥 `quota_workflows_concurrentes` | `100` | 0–1000000 |  |
 | `QUOTA_TOKENS_IA_POR_DIA` | 🔥 `quota_tokens_ia_por_dia` | `0` | ≥ 0 |  |
-| `LICENCIAS_MAXIMAS` | — | `0` | 0–1000000 | Usuarios activos que admite el plan. 0 = sin límite, que es lo razonable en un despliegue on-premise de un solo cliente. |
+| `LICENCIAS_MAXIMAS` | 🔥 `licencias_maximas` | `0` | 0–1000000 | Usuarios activos que admite el plan. 0 = sin límite, que es lo razonable en un despliegue on-premise de un solo cliente. |
 | `QUOTA_AVISO_PCT` | 🔥 `quota_aviso_pct` | `80` | 1–100 | Porcentaje de consumo a partir del cual se avisa al tenant de que se acerca al límite (CRM-00.01.06.06). Avisar al 100 % es avisar tarde. |
 | `ONBOARDING_ENABLED` | — | `False` |  | Alta autoservicio. Apagada por defecto: un despliegue empresarial da de alta a sus tenants por API o por consola, y dejar abierto el alta pública en una instalación privada es una superficie regalada. Apagada de fábrica: un despliegue empresarial da de alta a sus clientes por API o por consola,… |
 | `ONBOARDING_ENLACE_HORAS` | — | `24` | 1–168 | Cuánto vale el enlace de confirmación. Pocas horas: es una credencial en el buzón de alguien, y quien da de alta su empresa lo hace en el momento. |
@@ -185,8 +185,13 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `TRANSICIONES_PROHIBIDAS` | 🔥 `transiciones_prohibidas` |  |  | Transiciones que este tenant QUITA de las que el código admite. Solo quita: añadir un estado que el código no conoce dejaría el registro en un limbo que ningún `if` sabe manejar. {"oportunidad": {"perdida": ["abierta"]}} significa «aquí una oportunidad perdida no se reabre». Vacío por defecto:… |
 | `AUTOMATIZACION_MAX_VUELTAS` | — | `200` | 1–10000 | Vueltas máximas de un `para_cada`. Una automatización que recorre una colección no puede colgar la petición que la disparó: guardar una oportunidad con seiscientas líneas dispararía seiscientas acciones y el usuario vería un formulario congelado sin saber por qué. Cuando se corta se DICE en la… |
 | `AUTOMATIZACION_MAX_ANIDAMIENTO` | — | `3` | 1–10 | Anidamiento máximo de ramas y bucles. Tres niveles cubren todo lo que alguien construye en una interfaz; más que eso es un proceso, y para eso está el motor de procesos, que sabe reanudar y compensar. |
-| `METADATA_MAX_CAMPOS` | — | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
-| `METADATA_AVISO_PCT` | — | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |
+| `METADATA_MAX_CAMPOS` | 🔥 `metadata_max_campos` | `150` | 10–1000 | Campos activos por objeto. Ciento cincuenta es mucho más de lo que necesita cualquier objeto bien modelado y bastante menos de donde empieza a doler: a partir de doscientos, la ficha, el listado, la exportación y las migraciones se degradan a la vez. El techo no está para fastidiar: está para… |
+| `METADATA_AVISO_PCT` | 🔥 `metadata_aviso_pct` | `80` | 10–100 | Desde qué porcentaje se avisa. Al 80 % queda margen para replantear el modelo; al 100 % el aviso llega cuando ya no se puede añadir nada. |
+| `DEVOLUCION_VENTANA_DIAS` | 🔥 `devolucion_ventana_dias` | `30` | 1–3650 | Los cuatro se leían con `rt.efectivo(...) or <número>` y su clave no estaba declarada en ninguna parte: leerla devolvía `None`, así que mandaba el número de al lado, y fijarla se rechazaba. El valor por defecto de cada uno es EXACTAMENTE el que usaba el código, para que enchufar la configuración… |
+| `EXPEDIENTE_PLAZO_DIAS` | 🔥 `expediente_plazo_dias` | `30` | 1–3650 |  |
+| `TELEMETRIA_SILENCIO_MIN` | 🔥 `telemetria_silencio_min` | `120` | 1–10080 |  |
+| `CANAL_GUARDAR_CONTENIDO` | 🔥 `canal_guardar_contenido` | `False` |  | Guardar el cuerpo de lo que entra por los canales. Apagado: es dato personal, y acumularlo sin finalidad declarada no se defiende. |
+| `LICENCIAS_MAXIMAS` | 🔥 `licencias_maximas` | `0` | 0–1000000 | 0 = sin tope, que es lo que había. |
 | `CASO_REAPERTURA_DIAS` | 🔥 `caso_reapertura_dias` | `30` | 0–3650 | Días durante los que un caso cerrado se puede reabrir. Pasado el plazo se abre uno nuevo enlazado: reabrir un caso de hace ocho meses falsea todos los indicadores del periodo en que se cerró, y esos números ya están en un informe que alguien miró. 0 = sin límite, que se desaconseja. |
 | `CAMPO_VELOCIDAD_MEDIA_KMH` | 🔥 `campo_velocidad_media_kmh` | `35` | 5–130 | Velocidad media con la que se estima el tiempo de viaje entre visitas. Es un ajuste porque en ciudad son 20 y en carretera comarcal 70, y una constante haría que la jornada de un equipo cupiera y la del otro no. |
 | `GARANTIA_PREAVISO_DIAS` | 🔥 `garantia_preaviso_dias` | `90` | 1–730 | Con cuánta antelación se avisa de una garantía que vence. Es la lista con la que se vende la extensión, y sobre todo la que evita la llamada en la que se descubre que venció hace un mes. |

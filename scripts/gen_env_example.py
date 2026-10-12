@@ -39,6 +39,9 @@ SALIDA = RAIZ / ".env.example"
 ORDEN = ["_app", "_db", "_tenancy", "_bus", "_auth", "_limits", "_obs", "_security"]
 
 TITULOS = {
+    "servicio party": "Negocio: cuentas, contactos y deduplicación",
+    "servicio sales": "Negocio: leads, oportunidades y presupuestos",
+    "servicio marketing": "Negocio: campañas, dominios de envío y fondos",
     "_app": "Identidad del servicio y red",
     "_db": "Base de datos y aislamiento en el motor",
     "_tenancy": "Multi-tenancy, cuotas y residencia",
@@ -60,6 +63,23 @@ def _modulos() -> list[str]:
     """Todos los grupos de configuración, en el orden preferente y sin perder ninguno."""
     presentes = sorted(r.stem for r in MIXINS.glob("_*.py") if r.stem != "__init__")
     return [m for m in ORDEN if m in presentes] + [m for m in presentes if m not in ORDEN]
+
+
+def _ajustes_de_servicio() -> list[tuple[str, Path]]:
+    """Los `ajustes.py` que declara cada servicio, con su nombre.
+
+    **No salían aquí, y es medio producto de configuración.** Un servicio puede
+    declarar los suyos heredando de `Settings` —`party`, `sales` y `marketing`
+    lo hacen— y este generador sólo miraba `config_parts/`. Resultado medido el
+    12-10-2026: ni el umbral de deduplicación, ni los días de reciclaje de un
+    lead, ni el descuento libre aparecían en `.env.example`. Existían, se podían
+    poner por entorno, y quien desplegaba no tenía forma de saberlo.
+
+    Es el mismo fallo que ya tuvo este fichero con cuatro grupos del núcleo: lo
+    que el generador no mira, el gate tampoco — porque compara el fichero con lo
+    que el generador produce, así que los dos omiten lo mismo y salen en verde.
+    """
+    return sorted((ruta.parent.name, ruta) for ruta in (RAIZ / "services").glob("*/ajustes.py"))
 
 
 def _comentarios_previos(lineas: list[str], linea_campo: int) -> list[str]:
@@ -226,8 +246,14 @@ def generar() -> str:
         "",
     ]
 
-    for modulo in _modulos():
-        ruta = MIXINS / f"{modulo}.py"
+    bloques: list[tuple[str, Path]] = [
+        (m, MIXINS / f"{m}.py") for m in _modulos() if (MIXINS / f"{m}.py").exists()
+    ]
+    # Y los de cada servicio, detrás: son reglas de negocio, y quien configura
+    # un despliegue las toca después de lo transversal.
+    bloques += [(f"servicio {nombre}", ruta) for nombre, ruta in _ajustes_de_servicio()]
+
+    for modulo, ruta in bloques:
         if not ruta.exists():
             continue
         fuente = ruta.read_text(encoding="utf-8")

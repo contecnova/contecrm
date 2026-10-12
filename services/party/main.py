@@ -7,6 +7,7 @@ from typing import Any
 from crmcore.service import crear_servicio
 
 from services.party import (
+    ajustes,  # noqa: F401 — registra los ajustes de negocio de este servicio
     visibilidad,  # noqa: F401 — registra el resolutor de equipos
 )
 from services.party.api import ROUTERS

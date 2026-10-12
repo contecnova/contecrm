@@ -66,9 +66,40 @@ class AjustesParty(Settings):
     # Avisar el día del vencimiento es avisar tarde.
     derechos_aviso_dias_antes: int = Field(7, ge=0, le=90)
 
+    # ── Resolución de identidad (CRM-01.01.02) ────────────────────────────
+    # Puntuación a partir de la cual se PROPONE una fusión de identidades.
+    # Estaba escrita en `identidad.py` como `UMBRAL_PROPUESTA = 80`, y el
+    # código ya leía `identidad_umbral` de los ajustes — una clave que no
+    # estaba declarada, así que leerla devolvía `None` y fijarla se rechazaba.
+    identidad_umbral: int = Field(80, ge=0, le=1_000)
+    # Y la que haría falta para fusionar SOLA. Pide más que lo manual porque
+    # una persona que une dos fichas está mirando las dos y un proceso nocturno
+    # no mira nada. Estaba a fuego (`UMBRAL_AUTOMATICO = 150`) y **sin ninguna
+    # forma de cambiarla**, mientras su hermana sí se leía de los ajustes: se
+    # podía afinar cuándo se propone y no cuándo se fusiona, que es la
+    # destructiva.
+    identidad_umbral_automatico: int = Field(150, ge=0, le=1_000)
+
 
 registrar_claves(
     [
+        ClaveAjuste(
+            clave="identidad_umbral",
+            tipo="int",
+            descripcion="Puntuación a partir de la cual se propone una fusión de identidades",
+            minimo=0,
+            maximo=1_000,
+            campo_settings="identidad_umbral",
+        ),
+        ClaveAjuste(
+            clave="identidad_umbral_automatico",
+            tipo="int",
+            descripcion="Puntuación a partir de la cual dos fichas se fusionarían solas",
+            minimo=0,
+            maximo=1_000,
+            campo_settings="identidad_umbral_automatico",
+            sensible=True,
+        ),
         ClaveAjuste(
             clave="dedupe_umbral_sugerencia",
             tipo="float",

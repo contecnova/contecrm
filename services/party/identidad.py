@@ -391,7 +391,14 @@ def proponer_uniones(
         "cuantas": len(propuestas),
         # Las que además pasan el listón automático: se señalan, pero **tampoco se
         # unen solas**. Es una lista de revisión rápida, no una cola de ejecución.
-        "muy_probables": len([p for p in propuestas if p["puntuacion"] >= UMBRAL_AUTOMATICO]),
+        "muy_probables": len(
+            [
+                p
+                for p in propuestas
+                if p["puntuacion"]
+                >= int(rt.efectivo("identidad_umbral_automatico", db) or UMBRAL_AUTOMATICO)
+            ]
+        ),
         "medible": bool(filas),
     }
 
@@ -417,13 +424,18 @@ def unir(
         raise ErrorValidacion(
             "Un contacto no se une consigo mismo.", error_code="identidad.union_de_si_mismo"
         )
-    if modo == "automatica" and puntuacion < UMBRAL_AUTOMATICO:
+    # DE LOS AJUSTES, no de la constante. Su hermano —el de proponer— ya se leía
+    # de los ajustes y éste no, así que se podía afinar cuándo se PROPONE una
+    # fusión y no cuándo se EJECUTA sola, que es la destructiva. Medido el
+    # 12-10-2026.
+    automatico = int(rt.efectivo("identidad_umbral_automatico", uow.db) or UMBRAL_AUTOMATICO)
+    if modo == "automatica" and puntuacion < automatico:
         raise Conflicto(
             "Una unión automática necesita una puntuación mucho más alta que una "
             "manual: quien une a mano está mirando las dos fichas, y un proceso "
             "nocturno no mira nada.",
             error_code="identidad.puntuacion_insuficiente",
-            detalle={"puntuacion": puntuacion, "umbral_automatico": UMBRAL_AUTOMATICO},
+            detalle={"puntuacion": puntuacion, "umbral_automatico": automatico},
         )
     ya = uow.db.execute(
         select(Union).where(
