@@ -32,6 +32,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from crmcore.events.catalogo import TipoEvento
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -47,7 +48,7 @@ class UnidadDeTrabajo:
 
     def emitir(
         self,
-        tipo: str,
+        tipo: str | TipoEvento,
         *,
         subject: tuple[str, Any],
         data: dict[str, Any] | None = None,
@@ -65,6 +66,12 @@ class UnidadDeTrabajo:
         # el error la deshace y no queda un cambio hecho con un evento que
         # nadie podrá interpretar. Comprobarlo en el relevo llegaría tarde.
         from crmcore.contratos import comprobar_emision
+        from crmcore.events.catalogo import clave
+
+        # Se admite la constante declarada además de la cadena, y se normaliza
+        # ANTES de comprobar el contrato: con el objeto, la comprobación no
+        # encontraba el tipo en el registro y daba por bueno cualquier `data`.
+        tipo = clave(tipo)
 
         faltan = comprobar_emision(tipo, data or {})
         if faltan:

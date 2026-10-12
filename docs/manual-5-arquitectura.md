@@ -169,6 +169,46 @@ bueno.
 El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
 oportunidad ganada en la base y nadie enterado.
 
+### Un hecho se nombra de dos formas y las dos valen
+
+Un evento se puede emitir con su cadena —`uow.emitir("tenant.alta_confirmada",
+…)`— o con la constante que lo declara en el catálogo —`uow.emitir(
+ALTA_CONFIRMADA, …)`—. **La segunda es la buena**: ata la emisión a su
+declaración, no se escribe mal y es lo que hace que un recorrido de «declarado y
+sin emisor» dé el arreglo por bueno.
+
+Y hasta el 12-10-2026 **sólo funcionaba la primera**, de dos maneras a la vez:
+
+- al volcar el evento, la constante llegaba entera a una columna de texto y
+  reventaba —`expected str instance, TipoEvento found`—. La transacción del
+  cambio se deshacía con ella: en el alta autoservicio, eso es la empresa que no
+  se crea con la persona delante de la pantalla;
+- y antes de reventar, la comprobación de contrato buscaba el tipo en un
+  registro indexado por cadena, no lo encontraba y devolvía «no falta ningún
+  campo». **El contrato dejaba de comprobarse justo en las emisiones escritas de
+  la forma más cuidadosa.**
+
+Lo mismo pasaba al suscribirse: `identity` escucha el alta con la constante, así
+que comparaba un objeto contra una cadena y no le llegaba nada — la empresa se
+creaba sin su primer administrador.
+
+Ahora se normaliza **en la puerta** (`crmcore.events.catalogo.clave`), en los dos
+sitios por los que entra un tipo: `UnidadDeTrabajo.emitir` y la suscripción del
+arranque. En la puerta y no en cada sitio porque los sitios son catorce, y
+«funciona donde alguien se acordó» no es una garantía.
+
+> **Lo que lo tapó durante meses merece leerse aparte.** Las pruebas de los
+> cuatro sitios comprobaban `uow._pendientes` —la lista en memoria, donde el
+> objeto entra y sale igual— y construían el sobre del consumidor con la misma
+> constante. Las dos mitades hablaban un idioma que no existe fuera de la
+> prueba, y las dos daban verde. Ahora se comprueba la **fila escrita en la
+> tabla de salida**, que es lo único que el relevo puede publicar.
+
+El generador de este manual estaba ciego del mismo ojo: `scripts/gen_procesos.py`
+sólo entendía cadenas literales, así que los cuatro sitios salían en el mapa de
+eventos como «un proceso de fondo» —es decir, «no lo dispara ninguna operación»—.
+El alta autoservicio aparecía documentada sin la llamada que la provoca.
+
 ## Las preguntas de verificación, respondidas
 
 El catálogo funcional trae un anexo de preguntas para distinguir un CRM

@@ -49,6 +49,29 @@ class TipoEvento:
 _REGISTRO: dict[str, TipoEvento] = {}
 
 
+def clave(tipo: str | TipoEvento) -> str:
+    """El nombre del tipo, venga como cadena o como la constante declarada.
+
+    **Las dos formas se usan y las dos tienen que valer**, y hasta hoy sólo
+    valía una. Medido el 12-10-2026 con la sonda: emitir con la constante
+    —`uow.emitir(ALTA_CONFIRMADA, ...)`, que es justo lo que hace que un
+    recorrido de «declarado y sin emisor» dé el arreglo por bueno— llegaba
+    entera a la tabla de salida y reventaba al escribirla:
+
+        TypeError: sequence item 0: expected str instance, TipoEvento found
+
+    Y antes de reventar hacía algo peor y callado: `comprobar_emision` busca el
+    tipo en este registro, que está indexado por cadena, así que con la
+    constante no encontraba nada y **devolvía que no falta ningún campo**. El
+    contrato dejaba de comprobarse precisamente en las emisiones escritas de la
+    forma más cuidadosa.
+
+    Se normaliza en la puerta y no en cada sitio: los sitios son catorce y
+    «funciona donde alguien se acordó» no es una garantía.
+    """
+    return tipo.tipo if isinstance(tipo, TipoEvento) else str(tipo)
+
+
 def registrar(tipo: TipoEvento) -> TipoEvento:
     """Da de alta un tipo. Rechaza duplicados con productor distinto."""
     existente = _REGISTRO.get(tipo.tipo)

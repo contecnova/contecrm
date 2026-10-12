@@ -9859,6 +9859,42 @@ el número con el que se decide si esto sirve. El consumo enseña las tres cifra
 juntas —coste, descarte y bloqueos—, porque enseñar solo el coste hace que se
 discuta el precio de algo cuyo valor nadie ha medido.
 
+### El aviso de que se acabó el presupuesto, y el de que hay un borrador
+
+**Para el usuario.** Cuando el gasto de IA del mes llega al tope que tiene puesto
+su empresa, la IA deja de responder. Hasta ahora eso era todo lo que se veía: la
+función desaparecía sin explicación, normalmente a mitad de mes y a mitad de
+trabajo. Ahora el sistema **lo anuncia en el momento en que se cruza el tope**,
+para que quien administra pueda subirlo o avisar antes de que nadie se choque
+contra la pared.
+
+Y cada borrador que deja la IA se anuncia igual, para que llegue a quien lo tiene
+que revisar en vez de quedarse esperando a que alguien entre a mirar si hay algo
+nuevo.
+
+**Para quien administra.** El tope mensual se pone en la política de IA del
+tenant (`presupuesto_mes`). Dos cosas que conviene saber:
+
+- **Un tope de cero significa cero**, es decir, la IA queda parada. Antes se
+  leía como «este tenant no tiene tope» y la IA seguía gastando sin límite:
+  exactamente lo contrario de lo que se acababa de pedir. Para no tener tope, se
+  deja **vacío**, que es cosa distinta de poner un 0.
+- **El aviso sale una vez por mes, no una por llamada.** Una vez agotado, todas
+  las llamadas siguientes siguen por encima del tope; repetir el aviso en cada
+  una es cómo se deja de leer los avisos. El mes va dentro de la clave de
+  deduplicación, así que el mes siguiente vuelve a avisar.
+
+**Para mantenimiento.** Son `ai.budget.exhausted` y `ai.proposal.created`,
+declarados en el Anexo B desde el principio. **No los emitía nadie**: quien se
+suscribiera no recibía nada y lo habría descubierto esperando.
+
+El de presupuesto se emite en `anotar_gasto`, donde se apunta el gasto, y **no**
+en `exigir_presupuesto`, que es donde se nota. Ése lanza, y lo que se escriba
+justo antes se deshace con la transacción: el aviso se perdería justo en el
+momento en que hace falta. El de la propuesta lleva el identificador y la tarea,
+**no el texto**: un borrador sobre la ficha de un cliente no tiene por qué viajar
+por el bus hasta los catorce servicios para que uno lo muestre.
+
 ### El puerto hacia el modelo
 
 Todo lo anterior funciona **sin saber que existe HTTP**. Lo único que habla con un

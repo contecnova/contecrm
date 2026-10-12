@@ -252,8 +252,16 @@ def test_al_confirmar_se_emite_el_hecho_para_identity(
 ) -> None:
     """El administrador lo crea `identity`. Por evento y no por llamada: atar el
     alta a que el otro servicio esté en pie en ese segundo es el peor momento
-    para que falle — la persona está mirando la pantalla."""
-    from crmcore.events.dominio import ALTA_CONFIRMADA
+    para que falle — la persona está mirando la pantalla.
+
+    **Se comprueba la tabla de salida, no la lista en memoria.** La versión
+    anterior miraba `uow._pendientes` y comparaba contra la constante, que es
+    exactamente lo que entra y sale igual: daba verde mientras el volcado
+    reventaba con `expected str instance, TipoEvento found` y el alta entera se
+    deshacía. El hecho no existe hasta que está escrito donde lo lee el relevo.
+    """
+    from crmcore.bus.outbox import EventoSaliente
+    from sqlalchemy import select
 
     from services.tenancy import alta
 
@@ -261,9 +269,14 @@ def test_al_confirmar_se_emite_el_hecho_para_identity(
     token = _pedir(db, tenant_id)
     db.flush()
     alta.confirmar(uow, token)
+    uow.volcar()
+    db.flush()
 
-    tipos = [e.get("tipo") if isinstance(e, dict) else e.type for e in uow._pendientes]
-    assert ALTA_CONFIRMADA in tipos, tipos
+    tipos = [f.tipo for f in db.execute(select(EventoSaliente)).scalars().all()]
+    assert "tenant.alta_confirmada" in tipos, tipos
+    # Y de la clase que la columna admite: un objeto aquí no es un detalle de
+    # estilo, es la fila que no se escribe.
+    assert all(isinstance(x, str) for x in tipos), tipos
 
 
 # ── Que no crezca sin techo ───────────────────────────────────────────────
@@ -313,7 +326,10 @@ def _hecho(tenant: UUID, email: str = "ana@acme.example", nombre: str = "Ana Pé
     from crmcore.events.envelope import Evento
 
     return Evento(
-        type=ALTA_CONFIRMADA,
+        # La CADENA, que es lo que lleva el sobre que viaja por el bus. Con la
+        # constante, esta prueba comprobaba una forma del hecho que no existe
+        # fuera de ella.
+        type=ALTA_CONFIRMADA.tipo,
         tenant_id=tenant,
         subject=("tenant", tenant),
         data={"tenant_id": str(tenant), "slug": "acme-nueva", "email": email, "nombre": nombre},

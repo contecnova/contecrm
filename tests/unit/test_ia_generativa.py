@@ -796,3 +796,152 @@ def test_un_error_del_proveedor_tambien_se_registra(uow: UnidadDeTrabajo) -> Non
         )
     salida = med.consumo(uow.db, uow.tenant_id)
     assert salida["errores"] == 1
+
+
+# ── Los dos hechos que se declaraban y no emitía nadie ────────────────────
+#
+# Estaban los dos en el contrato publicado desde el principio, con su
+# descripción y sus campos, y no los emitía ninguna línea del producto: quien
+# se suscribiera no recibía nada y lo descubriría esperando.
+
+
+def _tipos(uow: UnidadDeTrabajo) -> list[str]:
+    return [e["tipo"] for e in uow._pendientes]
+
+
+def _hecho(uow: UnidadDeTrabajo, tipo: str) -> dict[str, Any]:
+    return next(e for e in uow._pendientes if e["tipo"] == tipo)
+
+
+def test_el_presupuesto_agotado_se_anuncia_al_cruzarlo(uow: UnidadDeTrabajo) -> None:
+    """**Al cruzarlo, no al rechazar la llamada siguiente.**
+
+    Lo evidente habría sido emitirlo donde se nota, en `exigir_presupuesto`.
+    Pero ése lanza, y lo que se escriba justo antes se deshace con la
+    transacción: el aviso se perdería exactamente en el momento en que hace
+    falta. Se emite donde se anota el gasto, que es donde el hecho ocurre y
+    donde la transacción sí se confirma.
+    """
+    _proveedor(uow)
+    rut.fijar_politica(uow, presupuesto_mes=Decimal("1.00"))
+    rut.anotar_gasto(
+        uow, proveedor="modelo-ue", tokens_entrada=0, tokens_salida=0, coste=Decimal("1.50")
+    )
+
+    assert "ai.budget.exhausted" in _tipos(uow), _tipos(uow)
+    datos = _hecho(uow, "ai.budget.exhausted")["data"]
+    assert datos["tenant"] == str(uow.tenant_id)
+    assert Decimal(datos["gastado"]) == Decimal("1.50")
+
+
+def test_por_debajo_del_tope_no_se_avisa(uow: UnidadDeTrabajo) -> None:
+    """Avisar de lo que va holgado es cómo se deja de leer los avisos."""
+    _proveedor(uow)
+    rut.fijar_politica(uow, presupuesto_mes=Decimal("10.00"))
+    rut.anotar_gasto(
+        uow, proveedor="modelo-ue", tokens_entrada=0, tokens_salida=0, coste=Decimal("1.00")
+    )
+    assert "ai.budget.exhausted" not in _tipos(uow)
+
+
+def test_sin_tope_declarado_no_se_avisa_jamas(uow: UnidadDeTrabajo) -> None:
+    """Sin presupuesto no hay nada que agotar. Emitirlo aquí sería un aviso
+    permanente para todo tenant que no haya puesto tope — que son casi todos."""
+    _proveedor(uow)
+    rut.anotar_gasto(
+        uow, proveedor="modelo-ue", tokens_entrada=0, tokens_salida=0, coste=Decimal("999.00")
+    )
+    assert "ai.budget.exhausted" not in _tipos(uow)
+
+
+def test_el_aviso_del_presupuesto_es_uno_por_mes(uow: UnidadDeTrabajo) -> None:
+    """Una vez agotado, TODAS las llamadas siguientes siguen por encima del
+    tope. Sin el mes en la clave de deduplicación, el aviso saldría en cada
+    una."""
+    _proveedor(uow)
+    rut.fijar_politica(uow, presupuesto_mes=Decimal("1.00"))
+    for _ in range(3):
+        rut.anotar_gasto(
+            uow, proveedor="modelo-ue", tokens_entrada=0, tokens_salida=0, coste=Decimal("1.00")
+        )
+
+    claves = {e["dedup_key"] for e in uow._pendientes if e["tipo"] == "ai.budget.exhausted"}
+    assert len(claves) == 1, claves
+    clave = claves.pop()
+    assert str(uow.tenant_id) in clave
+    # El día 1 del mes en curso: el mes entero comparte clave y el siguiente no.
+    assert rut.presupuesto(uow.db, uow.tenant_id)["mes_desde"] in clave, clave
+
+
+def test_la_propuesta_creada_se_anuncia(uow: UnidadDeTrabajo) -> None:
+    """Es lo que permite que alguien la revise sin tener que entrar a mirar si
+    hay algo nuevo."""
+    _proveedor(uow)
+    _plantilla(uow)
+    salida = gen.generar(
+        uow, plantilla="correo-visita", datos={"cliente": "Acme"}, principal=_principal("*:*")
+    )
+
+    assert "ai.proposal.created" in _tipos(uow), _tipos(uow)
+    datos = _hecho(uow, "ai.proposal.created")["data"]
+    assert datos["propuesta_id"] == salida["propuesta_id"]
+    assert datos["tarea"] == "redaccion"
+
+
+def test_el_borrador_no_viaja_dentro_del_hecho(uow: UnidadDeTrabajo) -> None:
+    """Va el identificador, no el texto. Un borrador sobre la ficha de un
+    cliente no tiene por qué llegar a los catorce servicios para que uno lo
+    muestre: quien lo quiera, lo pide."""
+    _proveedor(uow)
+    _plantilla(uow)
+    salida = gen.generar(
+        uow, plantilla="correo-visita", datos={"cliente": "Acme"}, principal=_principal("*:*")
+    )
+
+    datos = _hecho(uow, "ai.proposal.created")["data"]
+    assert salida["texto"] not in str(datos)
+    assert set(datos) == {"propuesta_id", "tarea"}
+
+
+def test_los_dos_hechos_llegan_a_la_tabla_de_salida(uow: UnidadDeTrabajo) -> None:
+    """Y llegan **escritos**, no sólo encolados en memoria.
+
+    Es la comprobación que faltaba en el resto de la casa: la lista de
+    pendientes admite cualquier cosa, y el fallo aparece al volcarla.
+    """
+    from crmcore.bus.outbox import EventoSaliente
+    from sqlalchemy import select
+
+    _proveedor(uow)
+    _plantilla(uow)
+    rut.fijar_politica(uow, presupuesto_mes=Decimal("0.50"))
+    # Primero el borrador —con el presupuesto aún holgado, que si no la llamada
+    # ni se intenta— y después el gasto que cruza el tope.
+    gen.generar(
+        uow, plantilla="correo-visita", datos={"cliente": "Acme"}, principal=_principal("*:*")
+    )
+    rut.anotar_gasto(
+        uow, proveedor="modelo-ue", tokens_entrada=0, tokens_salida=0, coste=Decimal("1.00")
+    )
+    uow.volcar()
+    uow.db.flush()
+
+    escritos = {f.tipo for f in uow.db.execute(select(EventoSaliente)).scalars().all()}
+    assert {"ai.proposal.created", "ai.budget.exhausted"} <= escritos, escritos
+
+
+def test_un_presupuesto_de_cero_para_la_ia(uow: UnidadDeTrabajo) -> None:
+    """Poner el tope a cero es como un administrador corta el gasto de IA sin
+    desconectar proveedores ni tocar interruptores.
+
+    Se leía con la verdad del valor —`if ficha.presupuesto_mes`—, así que cero
+    salía como «este tenant no tiene tope» y la IA seguía gastando sin límite.
+    El caso en el que más se nota es exactamente el que dice lo contrario.
+    """
+    _proveedor(uow)
+    rut.fijar_politica(uow, presupuesto_mes=Decimal("0"))
+    estado = rut.presupuesto(uow.db, uow.tenant_id)
+    assert estado["con_tope"] is True
+    assert estado["agotado"] is True
+    with pytest.raises(Conflicto):
+        rut.exigir_disponible(uow.db, uow.tenant_id, uso="redaccion")

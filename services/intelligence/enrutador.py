@@ -41,6 +41,7 @@ from uuid import UUID
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
+from crmcore.events.dominio import AI_BUDGET_EXHAUSTED
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -469,6 +470,29 @@ def anotar_gasto(
     fila.coste = Decimal(fila.coste) + Decimal(coste or 0)
     fila.llamadas += 1
     uow.db.flush()
+
+    # ── Y si con esto se ha agotado el mes, se dice ───────────────────────
+    #
+    # `ai.budget.exhausted` estaba DECLARADO en el contrato publicado desde el
+    # principio y no lo emitía nadie: quien se suscribiera no recibía nada, y la
+    # descripción del propio evento dice para qué sirve — «lo escucha quien
+    # avisa, porque el usuario sólo ve que la función dejó de estar».
+    #
+    # Se emite AQUÍ, al cruzar el tope, y no en `exigir_presupuesto`, que es
+    # donde se nota. Ése lanza, y lo que se escriba justo antes se deshace con
+    # la transacción: el aviso se perdería exactamente en el momento en que
+    # hace falta.
+    #
+    # Una vez por mes: la clave de deduplicación lleva el mes, así que las
+    # llamadas siguientes —que también cruzan el tope— no repiten el aviso.
+    estado = presupuesto(uow.db, uow.tenant_id, hoy=cuando)
+    if estado["agotado"]:
+        uow.emitir(
+            AI_BUDGET_EXHAUSTED,
+            subject=("tenant", uow.tenant_id),
+            data={"tenant": str(uow.tenant_id), "gastado": estado["gastado"]},
+            dedup_key=f"ia:presupuesto:{uow.tenant_id}:{estado['mes_desde']}",
+        )
     return fila
 
 
@@ -500,7 +524,11 @@ def presupuesto(db: Session, tenant_id: UUID, *, hoy: date | None = None) -> dic
         )
     ).scalar_one()
     ficha = politica(db, tenant_id)
-    tope = Decimal(ficha.presupuesto_mes) if ficha and ficha.presupuesto_mes else None
+    # `is not None` y no la verdad del valor: con `if ficha.presupuesto_mes`, un
+    # tope de **cero** —que es como un administrador para el gasto de IA sin
+    # desconectar nada— se leía como «no hay tope» y dejaba la IA corriendo sin
+    # límite. Justo lo contrario de lo que acababa de pedir.
+    tope = Decimal(ficha.presupuesto_mes) if ficha and ficha.presupuesto_mes is not None else None
     return {
         "mes_desde": str(desde),
         "gastado": str(Decimal(gastado or 0)),

@@ -70,6 +70,21 @@ def _app(servicio: str) -> Any:
     return importlib.import_module(f"services.{servicio}.main").app
 
 
+def _constantes_de_evento() -> dict[str, str]:
+    """NOMBRE de la constante → tipo, leído del propio catálogo."""
+    from crmcore.events import dominio
+    from crmcore.events.catalogo import TipoEvento
+
+    return {
+        nombre: valor.tipo
+        for nombre, valor in vars(dominio).items()
+        if isinstance(valor, TipoEvento)
+    }
+
+
+_CONSTANTES = _constantes_de_evento()
+
+
 class _Analisis(ast.NodeVisitor):
     """Qué emite cada función y a quién llama, en un fichero."""
 
@@ -123,6 +138,13 @@ def _literales(nodo: ast.expr) -> set[str]:
         return {nodo.value} if isinstance(nodo.value, str) else set()
     if isinstance(nodo, ast.IfExp):
         return _literales(nodo.body) | _literales(nodo.orelse)
+    # Y la CONSTANTE declarada: `uow.emitir(ALTA_CONFIRMADA, ...)`. Emitir así
+    # es lo recomendable —ata la emisión a su declaración— y este recorrido no
+    # lo entendía: los cuatro sitios que lo hacen salían en el documento como
+    # «un proceso de fondo», o sea, «esto no lo dispara ninguna operación». El
+    # alta autoservicio aparecía sin la llamada que la provoca.
+    if isinstance(nodo, ast.Name):
+        return {_CONSTANTES[nodo.id]} if nodo.id in _CONSTANTES else set()
     return set()
 
 

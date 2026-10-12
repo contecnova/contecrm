@@ -35,6 +35,7 @@ from uuid import UUID
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
+from crmcore.events.dominio import AI_PROPOSAL_CREATED
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -414,6 +415,17 @@ def generar(
     )
     uow.db.add(propuesta)
     uow.db.flush()
+
+    # `ai.proposal.created` estaba declarado en el contrato y no lo emitía
+    # nadie. Lo que lleva es lo justo para que quien escuche vaya a buscarla:
+    # el identificador y la tarea. **El texto no**, y es a propósito — un
+    # borrador de la IA sobre la ficha de un cliente no tiene por qué viajar
+    # por el bus hasta los catorce servicios para que uno lo muestre.
+    uow.emitir(
+        AI_PROPOSAL_CREATED,
+        subject=("propuesta", propuesta.id),
+        data={"propuesta_id": str(propuesta.id), "tarea": ficha.tarea},
+    )
 
     return {
         "generado": True,

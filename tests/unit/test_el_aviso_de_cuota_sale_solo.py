@@ -37,14 +37,12 @@ DECLARAN = {"dominio.py", "catalogo.py"}
 #
 #   11-10-2026  3  medición inicial
 #   11-10-2026  2  `quota.threshold.reached` pasa a emitirse desde el barrido
-SIN_EMISOR_HOY = {
-    # Los dos de IA. Se dejan apuntados y NO se enchufan a ciegas: el presupuesto
-    # de IA y las propuestas del asistente son suyos, y emitir un hecho desde
-    # aquí sin entender cuándo se agota de verdad un presupuesto sería inventarse
-    # el disparo. Van con nombre para que se vean, no para que se olviden.
-    "ai.budget.exhausted",
-    "ai.proposal.created",
-}
+#   12-10-2026  0  los dos de IA se emiten desde donde el hecho ocurre
+#
+# Está VACÍA, y vaciarla no es el final: el recorrido sigue puesto, y lo que
+# vuelva a declararse sin emisor cae en `test_ningun_evento_nuevo...` sin que
+# nadie tenga que acordarse.
+SIN_EMISOR_HOY: set[str] = set()
 
 
 def _declarados() -> dict[str, tuple[str, str]]:

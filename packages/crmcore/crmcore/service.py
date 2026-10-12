@@ -526,9 +526,17 @@ def crear_servicio(
                 # notó— y la función que la escribe no la llamaba nadie.
                 from crmcore.bus.inbox import idempotente
 
+                # El patrón se normaliza igual que en la emisión: un servicio
+                # que se suscribe con la constante declarada —`ALTA_CONFIRMADA`
+                # en vez de `"tenant.alta_confirmada"`— se quedaba comparando un
+                # objeto contra una cadena, y no le llegaba nunca nada.
+                from crmcore.events.catalogo import clave as _clave_de_tipo
+
                 for patron, manejador, grupo in suscripciones:
                     await bus.suscribir(
-                        patron, idempotente(manejador, consumidor=grupo), grupo=grupo
+                        _clave_de_tipo(patron),
+                        idempotente(manejador, consumidor=grupo),
+                        grupo=grupo,
                     )
 
                 if s.outbox_enabled:

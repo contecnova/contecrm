@@ -69,7 +69,7 @@ stateDiagram-v2
 | `POST /api/v1/aislamiento/{tenant_id}/comprobar` | Comprobar que el tenant está donde se declaró (CRM-00.01.01.02, .03) | tenant_id* | 200, 422 | — |
 | `PUT /api/v1/ajustes/{clave}` | Fijar un ajuste | clave*, valor*, ambito, ambito_id | 200, 422 | — |
 | `POST /api/v1/alta` | Pedir el alta de una empresa | slug*, nombre_empresa*, email*, nombre* | 200, 422 | — |
-| `POST /api/v1/alta/confirmar` | Confirmar el alta con el token del correo | token* | 200, 422 | — |
+| `POST /api/v1/alta/confirmar` | Confirmar el alta con el token del correo | token* | 200, 422 | `tenant.alta_confirmada` |
 | `POST /api/v1/calendarios` | Crear un calendario laboral | clave*, nombre*, zona_horaria, pais, horario, por_defecto | 201, 422 | — |
 | `POST /api/v1/calendarios/{calendario_id}/festivos` | Añadir un festivo | calendario_id*, fecha*, nombre*, anual | 201, 422 | — |
 | `POST /api/v1/ciclo-vida/clonado/ejecutar` | Ejecutar el clonado que se simuló | operacion_id*, destino_id*, copiado | 201, 422 | — |
@@ -1025,12 +1025,12 @@ stateDiagram-v2
 | `POST /api/v1/ia/asistencia/conversar` | Asistente con conocimiento y acciones (CRM-04.03.02.02) | conversacion_id*, pregunta*, fragmentos, acciones_posibles | 200, 422 | — |
 | `POST /api/v1/ia/asistencia/proximos-pasos` | Qué hacer ahora con esta oportunidad (CRM-03.01.02.04) | senales, contenido_disponible | 200, 422 | — |
 | `POST /api/v1/ia/asistencia/respuesta-soporte` | Proponer respuesta y artículos al agente de soporte (CRM-04.02.02.05) | caso_id*, pregunta*, fragmentos | 200, 422 | — |
-| `POST /api/v1/ia/asistencia/resumen-cuenta` | Resumen de cuenta con puntos clave y riesgos (CRM-01.01.05.05) | cuenta_id*, hechos | 200, 422 | — |
+| `POST /api/v1/ia/asistencia/resumen-cuenta` | Resumen de cuenta con puntos clave y riesgos (CRM-01.01.05.05) | cuenta_id*, hechos | 200, 422 | `ai.proposal.created` |
 | `POST /api/v1/ia/conversacion/resumen` | Resumir al cerrar o al transferir (CRM-04.02.02.06) | conversacion_id*, mensajes, momento, caso_id, mensajes_totales | 201, 422 | — |
 | `POST /api/v1/ia/conversacion/senal` | Sentimiento e intención (CRM-04.02.02.07) | conversacion_id*, texto*, umbral_confianza, umbral_escalado | 200, 422 | — |
-| `POST /api/v1/ia/extraer` | Sacar campos de un texto | texto*, campos*, objeto*, objeto_id, valores_actuales, origen, origen_id | 200, 422 | — |
+| `POST /api/v1/ia/extraer` | Sacar campos de un texto | texto*, campos*, objeto*, objeto_id, valores_actuales, origen, origen_id | 200, 422 | `ai.budget.exhausted` |
 | `POST /api/v1/ia/extraidos/{campo_id}` | Aceptar o rechazar un campo extraído | campo_id*, aceptar* | 200, 422 | — |
-| `POST /api/v1/ia/generar` | Redactar, resumir o traducir | plantilla*, datos, contexto, objeto, objeto_id, idioma | 200, 422 | — |
+| `POST /api/v1/ia/generar` | Redactar, resumir o traducir | plantilla*, datos, contexto, objeto, objeto_id, idioma | 200, 422 | `ai.budget.exhausted`, `ai.proposal.created` |
 | `POST /api/v1/ia/guardias` | Qué puede salir hacia el modelo | clave, sensibilidades_permitidas, patrones_a_tapar, cortar_si_aparece, max_caracteres | 200, 422 | — |
 | `POST /api/v1/ia/modelos` | Registrar una versión de modelo entrenada con datos del tenant | tipo*, variables, pesos, metricas, datos_desde, datos_hasta, ejemplos, vigencia_dias, notas | 201, 422 | — |
 | `POST /api/v1/ia/modelos/deriva` | Anotar una medición de deriva | tipo*, metrica*, valor*, muestras*, desde*, hasta* | 200, 422 | — |
@@ -1041,8 +1041,8 @@ stateDiagram-v2
 | `POST /api/v1/ia/prediccion/forecast` | Forecast predictivo al lado del humano | oportunidades, forecast_humano | 200, 422 | — |
 | `POST /api/v1/ia/prediccion/real` | Anotar lo que pasó de verdad | tipo*, objeto_id*, real* | 200, 422 | — |
 | `PATCH /api/v1/ia/prediccion/{prediccion_id}` | Editar predicciones | prediccion_id*, tipo, objeto, version_modelo, valor, minimo, maximo, factores, caduca_at, real, real_at | 200, 422 | — |
-| `POST /api/v1/ia/preguntar` | Responder con el contexto dado, citando | pregunta*, fragmentos, objeto, objeto_id | 200, 422 | — |
-| `POST /api/v1/ia/preguntar-datos` | Traducir una pregunta a un plan de consulta | pregunta*, modelo_datos | 200, 422 | — |
+| `POST /api/v1/ia/preguntar` | Responder con el contexto dado, citando | pregunta*, fragmentos, objeto, objeto_id | 200, 422 | `ai.budget.exhausted` |
+| `POST /api/v1/ia/preguntar-datos` | Traducir una pregunta a un plan de consulta | pregunta*, modelo_datos | 200, 422 | `ai.budget.exhausted` |
 | `POST /api/v1/ia/propuestas/{propuesta_id}` | Decir qué se hizo con el borrador | propuesta_id*, estado*, texto_final | 200, 422 | — |
 | `POST /api/v1/ia/proveedores` | Declarar un proveedor de IA | clave*, base_url*, region*, nombre, formato, admite_opt_out, modelos, coste_entrada_millon, coste_salida_millon, config, solo_este_tenant | 201, 422 | — |
 | `PATCH /api/v1/ia/proveedores/{proveedor_ia_id}` | Editar proveedores de ia | proveedor_ia_id*, clave, nombre, propio, base_url, formato, region, admite_opt_out, coste_entrada_millon, coste_salida_millon, modelos, config, activo | 200, 422 | — |
@@ -1434,8 +1434,8 @@ llamada de nadie.
 | `activity.overdue` | party | actividad_id, asunto, asignada_a, delegada_por, vence_at | un proceso de fondo | — |
 | `activity.reminder` | party | actividad_id, asunto, asignada_a, vence_at | un proceso de fondo | — |
 | `activity.rescheduled` | party | actividad_id, asunto, asignada_a, vencia_at, vence_at, veces | un proceso de fondo | — |
-| `ai.budget.exhausted` | intelligence | tenant, gastado | un proceso de fondo | — |
-| `ai.proposal.created` | intelligence | propuesta_id, tarea | un proceso de fondo | — |
+| `ai.budget.exhausted` | intelligence | tenant, gastado | `POST /api/v1/ia/extraer`, `POST /api/v1/ia/generar`, `POST /api/v1/ia/preguntar` (+1) | — |
+| `ai.proposal.created` | intelligence | propuesta_id, tarea | `POST /api/v1/ia/asistencia/resumen-cuenta`, `POST /api/v1/ia/generar` | — |
 | `analytics.source.registered` | analytics | organizacion, objetos, campos | un proceso de fondo | — |
 | `approval.decided` | orchestrator | solicitud_id, objeto, objeto_id, estado | `POST /api/v1/aprobaciones`, `POST /api/v1/aprobaciones/{aprobacion_id}/decidir` | — |
 | `approval.due.soon` | orchestrator | solicitud_id, etapa, vence_at | `POST /api/v1/aprobaciones/revisar-plazos` | — |
@@ -1527,7 +1527,7 @@ llamada de nadie.
 | `signature.envelope.sent` | integration | sobre_id, referencia, proveedor, nivel | `POST /api/v1/firma/sobres/{sobre_id}/enviar` | — |
 | `signature.reminder.sent` | integration | sobre_id, referencia, destinatarios | `POST /api/v1/firma/sobres/{sobre_id}/recordar` | — |
 | `subscription.changed` | sales | suscripcion_id, cuenta_id, tipo, plan, importe | `POST /api/v1/suscripciones`, `POST /api/v1/suscripciones/{suscripcion_cliente_id}/cambios` | — |
-| `tenant.alta_confirmada` | tenancy | tenant_id, slug, email, nombre | un proceso de fondo | — |
+| `tenant.alta_confirmada` | tenancy | tenant_id, slug, email, nombre | `POST /api/v1/alta/confirmar` | — |
 | `tenant.provisioned` | tenancy | tenant_id, slug, plan, region | `POST /api/v1/tenants` | — |
 | `tenant.reactivated` | tenancy | tenant_id | `POST /api/v1/tenants/{tenant_id}/estado` | — |
 | `tenant.suspended` | tenancy | tenant_id, motivo | `POST /api/v1/tenants/{tenant_id}/estado` | — |
