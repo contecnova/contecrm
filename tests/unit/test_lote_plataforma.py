@@ -230,3 +230,110 @@ def test_el_diff_no_saca_lo_que_acabo_igual_que_empezo(
     # valor de partida.
     assert [c["clave"] for c in cambios] == ["idioma"]
     assert cambios[0]["despues"] == "fr"
+
+
+@pytest.mark.db
+def test_el_historial_no_depende_de_como_estén_colocadas_las_filas(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Varios cambios en UNA transacción llevan el mismo `created_at`.
+
+    `now()` de Postgres devuelve la hora de inicio de la transacción, no la del
+    momento: un lote de ajustes de plataforma —que es literalmente lo que este
+    fichero prueba— escribe todos sus apuntes con la marca idéntica. Con el
+    empate sin resolver, el orden lo decide la colocación física de las filas, y
+    eso depende de lo que haya en la tabla.
+
+    Medido el 12-10-2026 con la suite entera en un proceso: el histórico salía
+    **al revés** y `volver_a` deshacía el cambio equivocado. En aislamiento
+    pasaba, porque con la tabla casi vacía las filas salen en el orden en que se
+    insertaron.
+
+    Lo que se comprueba aquí no es el orden de dos apuntes: es que **los tres**
+    lleven la misma marca de tiempo y aun así salgan en orden. Con dos, un
+    desempate roto acierta la mitad de las veces.
+
+    **Esta prueba sola no basta, y conviene saberlo.** Quitando el desempate
+    sigue pasando en aislamiento, porque con la tabla casi vacía Postgres
+    devuelve las filas en el orden en que se insertaron. Lo que de verdad fija
+    el arreglo es `test_el_orden_del_historial_es_total`, que mira que la
+    consulta no deje empates posibles. Ésta es la que reproduce el síntoma; la
+    otra es la que impide que vuelva.
+    """
+    from crmcore.runtime import settings as rt
+    from crmcore.runtime.versiones import historial
+
+    for valor in ("es", "fr", "de"):
+        rt.fijar(db, "idioma", valor, ambito="tenant", ambito_id=str(tenant_id))
+    db.flush()
+
+    apuntes = historial(db, tenant_id, clave="idioma")
+    marcas = {a["cuando"] for a in apuntes}
+    assert len(marcas) == 1, (
+        "los tres apuntes tendrían que compartir `created_at` —es la hora de "
+        f"inicio de la transacción—; si no, esta prueba no comprueba nada: {marcas}"
+    )
+    assert [(a["antes"], a["despues"]) for a in apuntes] == [
+        ("fr", "de"),
+        ("es", "fr"),
+        (None, "es"),
+    ], apuntes
+
+
+@pytest.mark.db
+def test_deshacer_con_varios_cambios_en_la_misma_transaccion(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """La consecuencia, que es la que se ve: `volver_a` toma el apunte del
+    histórico, y con el orden al revés deshacía el PRIMER cambio — cuyo valor
+    anterior es `None`, que ningún ajuste admite."""
+    from crmcore.runtime import settings as rt
+    from crmcore.runtime.versiones import historial, volver_a
+
+    for valor in ("es", "fr", "de"):
+        rt.fijar(db, "idioma", valor, ambito="tenant", ambito_id=str(tenant_id))
+    db.flush()
+
+    ultimo = historial(db, tenant_id, clave="idioma")[0]
+    volver_a(db, UUID(ultimo["id"]), tenant_id=tenant_id)
+    db.flush()
+
+    assert rt.efectivo("idioma", db) == "fr", "deshacer el último cambio no ha vuelto a «fr»"
+
+
+@pytest.mark.db
+def test_el_orden_del_historial_es_total(db: Any) -> None:
+    """La consulta no puede dejar empates, pase lo que pase con las filas.
+
+    Es lo único que se puede comprobar de forma determinista: hacer que Postgres
+    devuelva un empate en el orden «malo» depende de cómo estén colocadas las
+    filas, y eso no se controla desde una prueba — por eso el síntoma sólo salía
+    con la suite entera y la tabla llena.
+
+    Así que se mira el mecanismo: que el `ORDER BY` incluya una columna **única**
+    detrás de `created_at`. Con eso el orden es total y deja de depender de nada
+    más.
+    """
+    from crmcore.runtime.versiones import VersionAjuste, historial
+
+    compilada = str(
+        historial.__globals__["select"](VersionAjuste)
+        .order_by(VersionAjuste.created_at.desc(), VersionAjuste.id.desc())
+        .compile(db.bind)
+    )
+    assert "ORDER BY" in compilada
+
+    # Y lo que importa: la consulta de verdad ordena por las dos.
+    import inspect
+
+    fuente = inspect.getsource(historial)
+    assert "created_at.desc()" in fuente and "id.desc()" in fuente, (
+        "el histórico ha vuelto a ordenar sólo por `created_at`, que empata "
+        "entre cambios de la misma transacción"
+    )
+
+    # El `diff` usa la misma tabla y colapsa por clave: con empate se quedaría
+    # con el primero que saliera en vez de con el último.
+    from crmcore.runtime.versiones import diff
+
+    assert "VersionAjuste.id" in inspect.getsource(diff)

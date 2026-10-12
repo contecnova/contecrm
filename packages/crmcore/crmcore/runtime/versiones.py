@@ -103,12 +103,33 @@ def anotar(
 def historial(
     db: Session, tenant_id: UUID, *, clave: str = "", limite: int = 100
 ) -> list[dict[str, Any]]:
-    """Los cambios, del más reciente al más antiguo."""
+    """Los cambios, del más reciente al más antiguo.
+
+    **Se desempata por `id`, y no es cosmético.** `created_at` lo rellena
+    `now()` de Postgres, que devuelve LA HORA DE INICIO DE LA TRANSACCIÓN: dos
+    cambios hechos en la misma —un lote de ajustes de plataforma es justo eso—
+    llevan la marca idéntica. Con el empate sin resolver, el orden lo decide la
+    colocación física de las filas, que depende de lo que haya en la tabla.
+
+    Medido el 12-10-2026 con la suite entera en un proceso: el histórico salía
+    AL REVÉS, el apunte más reciente era el último, y `volver_a` deshacía el
+    cambio equivocado — intentaba fijar el valor anterior del PRIMER cambio, que
+    es `None`, y la validación lo rechazaba.
+
+    El `id` es un UUIDv7: lleva el instante dentro, así que ordena por tiempo y
+    con la resolución que a `created_at` le falta. No hace falta columna nueva.
+    """
     consulta = select(VersionAjuste).where(VersionAjuste.tenant_id == tenant_id)
     if clave:
         consulta = consulta.where(VersionAjuste.clave == clave)
     filas = (
-        db.execute(consulta.order_by(VersionAjuste.created_at.desc()).limit(limite)).scalars().all()
+        db.execute(
+            consulta.order_by(VersionAjuste.created_at.desc(), VersionAjuste.id.desc()).limit(
+                limite
+            )
+        )
+        .scalars()
+        .all()
     )
     return [_a_dict(f) for f in filas]
 
@@ -131,7 +152,11 @@ def diff(
                 VersionAjuste.created_at >= desde,
                 VersionAjuste.created_at <= limite,
             )
-            .order_by(VersionAjuste.created_at)
+            # Mismo desempate que en `historial`, y por el mismo motivo: con
+            # varios cambios en una transacción, `created_at` empata y el
+            # colapso por clave se quedaría con el primero que saliera en vez
+            # de con el último.
+            .order_by(VersionAjuste.created_at, VersionAjuste.id)
         )
         .scalars()
         .all()

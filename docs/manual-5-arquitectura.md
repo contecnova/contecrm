@@ -308,6 +308,14 @@ tests/integration/            aislamiento real contra Postgres
   el que se olvide se queda con el dueño en blanco, que es justo el valor que lo
   hace pasar por propio. Lo escondía la prueba: pasaba **por orden de carga**, y
   salía verde sin haber recorrido nunca la rama que decía cubrir.
+- **`now()` de Postgres es la hora de inicio de la TRANSACCIÓN.** No la del
+  momento, así que varias filas escritas en la misma llevan la marca idéntica.
+  Un `ORDER BY` sobre esa columna empata, y el empate lo resuelve la colocación
+  física de las filas — que depende de lo que haya en la tabla. Un orden que
+  acierta con la tabla vacía y falla con la tabla llena. Pasó con el histórico
+  de ajustes: un lote de cambios de plataforma salía **al revés** y deshacer
+  revertía el cambio equivocado. **Todo orden que importe lleva detrás una
+  columna única**; el `id` vale, que es un UUIDv7 y ordena por tiempo.
 - **El verbo de un permiso decide quién lo alcanza por comodín.** El vocabulario
   está mezclado —461 rutas exigen `:read` y diez dicen `:leer` o `:consultar`—
   y dos roles de serie se apoyan en comodines: `solo_lectura` lleva `*:read` y
