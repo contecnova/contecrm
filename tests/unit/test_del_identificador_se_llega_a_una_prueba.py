@@ -133,7 +133,21 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            un hueco, y que el proposito segmenta de verdad el
 #                            almacen de secretos: la clave de las integraciones
 #                            no abre los campos de cliente
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 121
+#   26-10-2026  111 de 752  el aislamiento entre empresas y la puerta por la
+#                            que se entra (CRM-00.01.01, CRM-00.01.02,
+#                            CRM-00.02.04) mas la propiedad de datos por
+#                            servicio, que ya la fijaba el gate de
+#                            arquitectura y ahora la cita. Nada roto. Lo mas
+#                            util que se fija: que las cabeceras de identidad
+#                            que llegan de FUERA no pasan al servicio de
+#                            detras —el gateway pone las suyas firmadas— y que
+#                            una pista de tenant que contradice al token se
+#                            rechaza, que es la via mas barata que existe para
+#                            saltarse el aislamiento. QUEDA UN HUECO: los pools
+#                            de computo dedicados (CRM-00.01.01.06) se
+#                            declaran, se guardan y nadie los lee. Sin prueba
+#                            que lo cite, a proposito, y avisado en su nota
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 111
 
 
 @functools.cache

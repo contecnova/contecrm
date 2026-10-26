@@ -857,6 +857,79 @@ que trata el modelo híbrido por tiers.
 > una versión anterior, revise la región de los tenants ya creados**: lo que
 > consta puede no ser donde están.
 
+#### Declarar el aislamiento no es tenerlo: hay que comprobarlo
+
+Un CRM multi-tenant se vende con una frase —«sus datos están aislados»— y lo que
+pasa siempre es esto: se vende una base dedicada a un cliente grande, alguien
+aprovisiona con la plantilla de siempre y el tenant acaba en el pool compartido.
+**Funcionar funciona igual.** Se nota el día de la auditoría, o el día de la
+incidencia, y entonces ya no hay forma de explicarlo.
+
+Por eso hay dos pasos y no uno:
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /api/v1/aislamiento` | **Declara** la modalidad del tenant |
+| `POST /api/v1/aislamiento/{tenant_id}/comprobar` | **Contrasta** lo declarado con la conexión real |
+| `GET /api/v1/aislamiento/sin-comprobar` | Los que nadie ha contrastado últimamente |
+
+Las modalidades, de menos a más: `compartido` (filas del mismo esquema,
+separadas por RLS y por el guard del ORM), `esquema`, `base`, `cluster` y
+`cliente` (la base la pone él, en su infraestructura). Las cinco son legítimas y
+cada una tiene su coste. **Lo que no es legítimo es cobrar una y dar otra.**
+
+Lo que la declaración obliga a decir:
+
+- `base`, `cluster` y `cliente` exigen **en qué base**. Sin ese dato no se puede
+  comprobar después si el tenant está donde se vendió.
+- `esquema` exige cuál.
+- `cliente` exige marcar `infraestructura_del_cliente`. Marcarlo cambia **de
+  quién es la copia de seguridad y a quién se le pide el acceso** cuando hay una
+  incidencia: una base del cliente sin marcar es una base que creemos nuestra el
+  día que hay que restaurarla.
+
+Y dos cosas que la comprobación hace y conviene saber:
+
+- **Comprueba también que el aislamiento de abajo sigue puesto.** Si aparece una
+  tabla con `tenant_id` y sin RLS, lo dice. Quitar RLS «porque ya está aislado»
+  deja la protección dependiendo de que el aprovisionamiento no falle nunca.
+- **Cambiar la declaración invalida la comprobación anterior.** Una comprobación
+  que sobrevive al cambio de lo comprobado sigue diciendo que sí, en verde,
+  sobre una declaración que ya no es la misma, y quien la mire se quedará
+  tranquilo.
+
+Un tier desconocido cae a `compartido`, que es lo que de verdad tiene:
+inventarle `base` sería prometer por defecto lo que más cuesta.
+
+#### Las cabeceras de identidad son del gateway, no del que llama
+
+Entre el gateway y los servicios la identidad viaja en cabeceras `x-crm-*`
+**firmadas**. Quien llama desde fuera puede mandarlas —nada se lo impide—, y no
+le sirven de nada: el gateway **no reenvía** las que entran y pone las suyas
+encima. Comprobado el 26-10-2026 mandando `x-crm-tenant` de otra empresa,
+`x-crm-permisos: *` y `x-crm-plataforma: 1`: lo que llega al servicio de detrás
+es lo que el gateway resolvió.
+
+La contrapartida, dicha en claro y ya escrita arriba: **los servicios internos no
+pueden ser alcanzables desde fuera**. La firma lo impide sin el secreto, pero el
+despliegue tiene que mantenerlos en red interna. No es opcional.
+
+Y la resolución del tenant tiene dos clases de vía que conviene no confundir:
+
+| Vía | Qué es |
+|---|---|
+| `tenant` dentro del JWT | **Autoritativa**: va firmada |
+| La clave de API | **Autoritativa**: pertenece a un tenant concreto en la base |
+| La cabecera `X-Tenant` | Pista de enrutado, **no concede nada** |
+| El subdominio | Pista de enrutado, **no concede nada** |
+
+Si llega una pista y además hay identidad autoritativa, tienen que coincidir. Sin
+esa comprobación bastaría cambiar una cabecera para operar sobre otro tenant con
+un token legítimo, que es la vía más barata que existe para saltarse el
+aislamiento: no hace falta robar nada, sólo escribir otro nombre. El rechazo es
+escueto a propósito — decir «ese tenant existe pero no es el tuyo» ya es decir de
+más.
+
 ### El alta de un tenant: por API o por autoservicio (CRM-00.01.03.01)
 
 `POST /tenants` exige administrador de la plataforma. Es la vía normal en un

@@ -33,7 +33,7 @@ def _modulos(directorio: Path) -> list[Path]:
 
 
 def test_ningun_servicio_importa_modulos_de_otro() -> None:
-    """Un servicio no puede importar código de otro servicio.
+    """Un servicio no puede importar código de otro servicio (CRM-00.03.01.02).
 
     Si pudiera, la separación sería decorativa: desplegar uno obligaría a
     desplegar el otro, y la «propiedad exclusiva de datos» se saltaría por la

@@ -1,0 +1,544 @@
+"""Auditoría del aislamiento entre empresas y de la puerta por la que se entra.
+
+Nueve capacidades sin ninguna prueba que las nombre, de cuatro familias que en
+realidad cuentan una sola cosa: **dónde viven los datos de cada cliente, qué
+impide que se crucen, y por dónde se entra**.
+
+  · **el aislamiento declarado y comprobado** (CRM-00.01.01.03, .05): un CRM
+    multi-tenant se vende con la frase «sus datos están aislados». Lo que pasa
+    siempre es que se vende una base dedicada, alguien aprovisiona con la
+    plantilla de siempre y el cliente acaba en el pool compartido. Funcionar
+    funciona igual, y se descubre el día de la auditoría;
+  · **la prohibición estructural** (CRM-00.01.02.03): el filtro de tenant no se
+    escribe a mano en cada consulta. Si dependiera de acordarse, el aislamiento
+    sería tan bueno como el peor despiste;
+  · **el acceso de soporte** (CRM-00.01.02.06): entrar en los datos de un
+    cliente es legítimo y tiene que doler un poco — motivo escrito, caducidad
+    corta y constancia **en la auditoría del cliente**, no en la nuestra;
+  · **los identificadores opacos** (CRM-00.01.02.07): con ids secuenciales, el
+    aislamiento depende por entero de que la comprobación de permisos sea
+    perfecta en todos y cada uno de los endpoints;
+  · **la puerta** (CRM-00.02.04.01, .02, .07): el gateway resuelve el tenant,
+    firma la identidad y propaga la traza. Lo que se mide aquí es lo que pasa
+    cuando alguien manda a mano las cabeceras que el gateway usa por dentro;
+  · y **la propiedad de los datos por servicio** (CRM-00.03.01.02).
+
+Queda fuera, medido y sin construir: **CRM-00.01.01.06**, los pools de cómputo
+dedicados. Ver la nota de catálogo de esa capacidad.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from uuid import UUID, uuid4
+
+import pytest
+
+pytestmark = pytest.mark.db
+
+
+@pytest.fixture
+def uow(db: Any, tenant_id: UUID) -> Any:
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    return UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+
+
+# ── CRM-00.01.01.03 · Aislamiento físico, declarado y contrastado ─────────
+
+
+def test_una_base_dedicada_sin_decir_cual_no_se_declara_crm_00_01_01_03(
+    uow: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Declarar no es tener, pero una declaración que ni siquiera dice **dónde**
+    no se puede contrastar nunca. Y una declaración que nadie contrasta es una
+    promesa comercial dentro de una tabla."""
+    from crmcore.errors import ErrorValidacion
+
+    from services.tenancy import aislamiento as ais
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        ais.declarar(uow, tenant_id=tenant_id, modalidad="base")
+    assert fallo.value.error_code == "aislamiento.sin_base"
+
+    with pytest.raises(ErrorValidacion):
+        ais.declarar(uow, tenant_id=tenant_id, modalidad="esquema")
+
+
+def test_lo_declarado_se_contrasta_con_la_conexion_real_crm_00_01_01_03(
+    uow: Any, db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """**Es la función que justifica el módulo entero.** Se le pregunta a la
+    propia conexión a qué base está atada y se contrasta con lo declarado. Sin
+    esto, «tiene base dedicada» es lo que alguien escribió en una tabla el día
+    del alta, y nadie ha vuelto a mirarlo.
+    """
+    from services.tenancy import aislamiento as ais
+
+    ais.declarar(uow, tenant_id=tenant_id, modalidad="base", base="la-que-no-es")
+    db.flush()
+
+    salida = ais.comprobar(uow, tenant_id=tenant_id)
+    assert salida["cuadra"] is False, salida
+    assert salida["base_declarada"] == "la-que-no-es"
+    assert salida["base_real"] and salida["base_real"] != "la-que-no-es"
+    assert any("la-que-no-es" in p for p in salida["problemas"]), salida["problemas"]
+    # Y dice qué significa, que es lo que convierte el informe en una decisión:
+    # esto no se arregla cambiando la declaración.
+    assert "NO es lo que hay" in salida["que_significa"]
+
+
+def test_declarar_de_nuevo_invalida_la_comprobacion_anterior_crm_00_01_01_03(
+    uow: Any, db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """**Una comprobación que sobrevive al cambio de lo comprobado es peor que
+    ninguna**: sigue diciendo «sí» en verde sobre una declaración que ya no es
+    la misma, y quien la mire se quedará tranquilo."""
+    from services.tenancy import aislamiento as ais
+
+    fila = ais.declarar(uow, tenant_id=tenant_id, modalidad="compartido")
+    db.flush()
+    ais.comprobar(uow, tenant_id=tenant_id)
+    assert fila.comprobado_at is not None
+
+    ais.declarar(uow, tenant_id=tenant_id, modalidad="base", base="otra")
+    db.flush()
+    assert fila.comprobado_at is None
+    assert fila.comprobado_ok is None
+
+
+def test_un_tenant_sin_declarar_no_se_da_por_bueno_crm_00_01_01_03(
+    uow: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """No se puede comprobar si está donde tenía que estar porque nadie ha dicho
+    dónde era. Contestar «cuadra» ahí sería dar por buena la ausencia de
+    declaración, que es justo el caso del cliente que se aprovisionó con la
+    plantilla de siempre."""
+    from crmcore.errors import NoEncontrado
+
+    from services.tenancy import aislamiento as ais
+
+    with pytest.raises(NoEncontrado) as fallo:
+        ais.comprobar(uow, tenant_id=tenant_id)
+    assert fallo.value.error_code == "aislamiento.no_declarado"
+
+
+# ── CRM-00.01.01.05 · La base la pone el cliente ──────────────────────────
+
+
+def test_la_base_del_cliente_hay_que_marcarla_crm_00_01_01_05(
+    uow: Any, db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Marcarlo **cambia de quién es la copia de seguridad y a quién se le pide
+    el acceso cuando hay una incidencia**. Una base del cliente sin marcar es
+    una base que creemos nuestra el día que hay que restaurarla."""
+    from crmcore.errors import ErrorValidacion
+
+    from services.tenancy import aislamiento as ais
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        ais.declarar(uow, tenant_id=tenant_id, modalidad="cliente", base="la-suya")
+    assert fallo.value.error_code == "aislamiento.cliente_sin_marcar"
+
+    fila = ais.declarar(
+        uow,
+        tenant_id=tenant_id,
+        modalidad="cliente",
+        base="la-suya",
+        infraestructura_del_cliente=True,
+    )
+    db.flush()
+    assert fila.infraestructura_del_cliente is True
+
+
+def test_el_tier_no_inventa_modalidad_para_uno_desconocido_crm_00_01_01_05() -> None:
+    """Un plan que no está en la tabla cae a «compartido», que es lo que de
+    verdad tiene: inventarle «base» a un tier desconocido sería prometer por
+    defecto lo que más cuesta."""
+    from services.tenancy import aislamiento as ais
+
+    assert ais.modalidad_de_tier("enterprise") == "base"
+    assert ais.modalidad_de_tier("un-plan-que-no-existe") == "compartido"
+
+
+# ── CRM-00.01.02.03 · Nada de consultas sin predicado de tenant ───────────
+
+
+def test_el_filtro_de_tenant_no_se_escribe_a_mano_crm_00_01_02_03(
+    db: Any, tenant_id: UUID, otro_tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """La consulta de abajo **no lleva ningún `where tenant_id`** y aun así no
+    ve lo del vecino: lo inyecta el guard del ORM. Si dependiera de acordarse,
+    el aislamiento sería tan bueno como el peor despiste de la peor tarde.
+    """
+    from crmcore.tenancy.guard import instalar_guard
+    from sqlalchemy import select
+
+    from services.metadata.modelos import ObjetoDefinido
+
+    # Lo instala la factoría de servicio al arrancar cada proceso; aquí se llama
+    # a mano porque esta prueba no levanta ninguno. Es idempotente.
+    instalar_guard()
+
+    db.add(ObjetoDefinido(tenant_id=otro_tenant_id, nombre="suyo", etiqueta="Suyo"))
+    db.add(ObjetoDefinido(tenant_id=tenant_id, nombre="mio", etiqueta="Mio"))
+    db.flush()
+    db.expire_all()
+
+    # El tenant de la sesión es lo que mira el guard, y lo pone `nueva_sesion`
+    # al abrirla. Aquí se pone a mano —y se quita la marca de sistema, que la
+    # sesión del arnés lleva puesta— porque lo que se mide es el guard, no
+    # quién le da el dato.
+    db.info["sistema"] = False
+    db.info["tenant_id"] = tenant_id
+    try:
+        nombres = {o.nombre for o in db.execute(select(ObjetoDefinido)).scalars().all()}
+    finally:
+        db.info["sistema"] = True
+        db.info["tenant_id"] = None
+    assert nombres == {"mio"}, nombres
+
+    # Y el camino de sistema sigue abierto, porque alguna consulta cross-tenant
+    # legítima hay —una purga, un informe de plataforma—: lo que cambia es que
+    # hay que **escribirlo**, y entonces se ve en la revisión.
+    todos = {o.nombre for o in db.execute(select(ObjetoDefinido)).scalars().all()}
+    assert todos == {"mio", "suyo"}, todos
+
+
+def test_toda_tabla_con_tenant_queda_dentro_de_la_red_crm_00_01_02_03() -> None:
+    """La red sólo vale si no tiene punto ciego. Cada exención es un agujero que
+    alguien tendrá que recordar dentro de dos años, así que son una lista
+    cerrada y con motivo — y hoy es **una**, el propio tenant, que no se puede
+    filtrar por sí mismo sin dejar de poder resolverlo."""
+    from crmcore.tenancy.guard import MODELOS_EXENTOS
+
+    assert MODELOS_EXENTOS == frozenset({"Tenant"}), sorted(MODELOS_EXENTOS)
+
+
+# ── CRM-00.01.02.06 · El acceso de soporte a los datos de un cliente ──────
+
+
+@pytest.fixture
+def soporte_y_cliente(db: Any, tenant_id: UUID, contexto_tenant: UUID) -> Any:
+    """Alguien de plataforma y alguien del cliente, los dos en la base."""
+    from services.identity.modelos import Usuario
+
+    soporte = Usuario(
+        email="soporte@plataforma.example",
+        nombre="Soporte",
+        es_plataforma=True,
+        activo=True,
+    )
+    cliente = Usuario(
+        email="comercial@cliente.example",
+        nombre="Comercial",
+        activo=True,
+    )
+    db.add_all([soporte, cliente])
+    db.flush()
+    return soporte, cliente
+
+
+def test_soporte_no_entra_sin_motivo_escrito_crm_00_01_02_06(
+    db: Any, tenant_id: UUID, soporte_y_cliente: Any, contexto_tenant: UUID
+) -> None:
+    """**Sin motivo no hay nada que revisar después.** Las tres condiciones
+    —motivo, caducidad corta y auditoría— sostienen esto juntas: quitar
+    cualquiera lo convierte en una puerta trasera con buena intención."""
+    from crmcore.errors import ErrorValidacion, Prohibido
+
+    from services.identity import servicio as svc
+
+    soporte, cliente = soporte_y_cliente
+
+    with pytest.raises(ErrorValidacion) as fallo:
+        svc.suplantar(db, soporte=soporte, usuario_id=cliente.id, tenant_id=tenant_id, motivo="  ")
+    assert fallo.value.error_code == "auth.suplantacion_sin_motivo"
+
+    # Y no es cosa de cualquier administrador del cliente: sólo personal de
+    # plataforma. Un administrador del tenant que pudiera suplantar tendría una
+    # forma de leer el correo de su propio equipo sin dejar rastro de persona.
+    soporte.es_plataforma = False
+    db.flush()
+    with pytest.raises(Prohibido):
+        svc.suplantar(
+            db, soporte=soporte, usuario_id=cliente.id, tenant_id=tenant_id, motivo="ticket 42"
+        )
+
+
+def test_el_acceso_de_soporte_consta_en_la_auditoria_del_cliente_crm_00_01_02_06(
+    db: Any, tenant_id: UUID, soporte_y_cliente: Any, contexto_tenant: UUID
+) -> None:
+    """**En la del cliente, no en la nuestra.** Si constara sólo de nuestro lado,
+    el cliente no podría saber quién entró en sus datos, que es exactamente lo
+    que hace falta poder contestar cuando lo pregunta."""
+    from crmcore.audit.modelos import ApunteAuditoria
+    from sqlalchemy import select
+
+    from services.identity import servicio as svc
+
+    soporte, cliente = soporte_y_cliente
+    svc.suplantar(
+        db,
+        soporte=soporte,
+        usuario_id=cliente.id,
+        tenant_id=tenant_id,
+        motivo="incidencia 4711: no le cargan las oportunidades",
+    )
+    db.flush()
+
+    entradas = (
+        db.execute(
+            select(ApunteAuditoria).where(
+                ApunteAuditoria.tenant_id == tenant_id,
+                ApunteAuditoria.accion == "soporte.acceso_tenant",
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(entradas) == 1, "el acceso de soporte no queda en la auditoría del cliente"
+    assert "4711" in (entradas[0].motivo or ""), entradas[0].motivo
+    assert str(soporte.id) in str(entradas[0].datos), entradas[0].datos
+
+
+# ── CRM-00.01.02.07 · Identificadores opacos ──────────────────────────────
+
+
+def test_los_identificadores_no_se_pueden_adivinar_crm_00_01_02_07() -> None:
+    """**Quien ve `/accounts/1043` prueba `1044`.** Con un id secuencial, el
+    aislamiento entre tenants depende por entero de que la comprobación de
+    permisos sea perfecta en todos y cada uno de los endpoints; con uno opaco,
+    la comprobación pasa a ser la segunda red en vez de la única.
+    """
+    from crmcore.ids import nuevo_id
+
+    ids = [nuevo_id() for _ in range(200)]
+    assert all(i.version == 7 for i in ids), "hay identificadores que no son UUIDv7"
+    assert len(set(ids)) == 200
+
+    # Lo que importa no es que sean distintos —dos enteros seguidos también lo
+    # son— sino que del uno no se llegue al siguiente. Entre dos consecutivos
+    # hay que recorrer un espacio enorme.
+    saltos = [abs(int(b) - int(a)) for a, b in zip(ids, ids[1:], strict=False)]
+    assert min(saltos) > 2**40, min(saltos)
+
+
+def test_el_identificador_ordena_por_antiguedad_crm_00_01_02_07() -> None:
+    """La otra mitad, y la razón de v7 en vez de v4: la marca de tiempo va en
+    los bits altos, así que ordenan por antigüedad y no fragmentan los índices.
+    Un identificador opaco **y** desordenado se paga en cada escritura."""
+    import time
+
+    from crmcore.ids import nuevo_id
+
+    antes = nuevo_id()
+    time.sleep(0.01)
+    despues = nuevo_id()
+    assert int(antes) < int(despues)
+
+
+# ── CRM-00.02.04.02 · Por qué vía se resuelve el tenant ───────────────────
+
+
+def test_una_pista_que_contradice_al_token_se_rechaza_crm_00_02_04_02() -> None:
+    """**Sin esta comprobación bastaría cambiar una cabecera para operar sobre
+    otro tenant con un token legítimo.** Es la vía más barata que existe para
+    saltarse el aislamiento: no hace falta robar nada, sólo escribir otro
+    nombre."""
+    from crmcore.errors import Prohibido
+    from crmcore.tenancy.resolver import conciliar
+
+    mio, suyo = uuid4(), uuid4()
+    with pytest.raises(Prohibido) as fallo:
+        conciliar(
+            del_token=mio,
+            de_api_key=None,
+            pista_slug="la-de-al-lado",
+            resolver_slug=lambda _s: suyo,
+        )
+    assert fallo.value.error_code == "tenancy.pista_contradictoria"
+    # Y la respuesta no confirma que ese tenant exista: decir «ese tenant existe
+    # pero no es el tuyo» ya es decir de más.
+    assert str(suyo) not in str(fallo.value)
+
+
+def test_una_pista_sola_no_concede_acceso_crm_00_02_04_02() -> None:
+    """La cabecera y el subdominio son **enrutado**, no identidad: sirven para
+    elegir la marca de la pantalla de entrada o saber a qué proveedor mandar a
+    quien aún no se ha autenticado. Si bastaran por sí solas, entrar en
+    cualquier tenant sería escribir su nombre."""
+    from crmcore.tenancy.resolver import conciliar
+
+    suyo = uuid4()
+    salida = conciliar(
+        del_token=None, de_api_key=None, pista_slug="acme", resolver_slug=lambda _s: suyo
+    )
+    assert salida.tenant_id == suyo
+    assert salida.via == "cabecera"
+    assert salida.es_autoritativa is False
+
+    # El token y la clave de API sí, porque van firmadas o pertenecen a un
+    # tenant concreto en la base.
+    for kw in ({"del_token": suyo}, {"de_api_key": suyo}):
+        base = {"del_token": None, "de_api_key": None, **kw}
+        assert conciliar(**base, pista_slug="", resolver_slug=lambda _s: None).es_autoritativa
+
+
+def test_el_subdominio_no_se_deduce_de_un_host_cualquiera_crm_00_02_04_02() -> None:
+    """Sin dominio raíz configurado no se deduce nada: deducir un tenant de un
+    `Host` arbitrario convertiría **cualquier cabecera `Host`** en una vía de
+    enrutado no prevista. Y `www`, `api` y `app` no son tenants."""
+    from crmcore.tenancy.resolver import pista_por_host
+
+    assert pista_por_host("acme.contecrm.app", "contecrm.app") == "acme"
+    assert pista_por_host("acme.contecrm.app:8443", "contecrm.app") == "acme"
+    assert pista_por_host("acme.contecrm.app", "") == ""
+    assert pista_por_host("acme.otra-cosa.example", "contecrm.app") == ""
+    for servicio in ("www", "api", "app"):
+        assert pista_por_host(f"{servicio}.contecrm.app", "contecrm.app") == ""
+
+
+# ── CRM-00.02.04.01 · La puerta: identidad firmada, no reenviada ──────────
+
+
+def _captura(destino: list[dict[str, str]]) -> Any:
+    """Cliente HTTP que no sale a ninguna parte y anota lo que se le pidió."""
+    import httpx
+
+    def _responder(peticion: httpx.Request) -> httpx.Response:
+        destino.append({k.lower(): v for k, v in peticion.headers.items()})
+        return httpx.Response(200, json={})
+
+    return httpx.AsyncClient(transport=httpx.MockTransport(_responder))
+
+
+def test_las_cabeceras_de_identidad_que_llegan_de_fuera_no_pasan_crm_00_02_04_01() -> None:
+    """**Es el agujero que la firma viene a cerrar.** Quien llama manda
+    `x-crm-tenant` con el identificador de otra empresa y `x-crm-permisos` con
+    todos los permisos del mundo; lo que llega al servicio de detrás tiene que
+    ser lo que el gateway resolvió, no lo que pidió el cliente.
+    """
+    import asyncio
+    from types import SimpleNamespace
+
+    from services.gateway import proxy
+
+    mio, suyo = uuid4(), uuid4()
+    principal = SimpleNamespace(
+        tenant_id=mio,
+        id=uuid4(),
+        tipo="persona",
+        permisos={"cuentas:read"},
+        roles={"comercial"},
+        scopes=set(),
+        actor_real_id=None,
+        es_admin_plataforma=False,
+        sesion_id=uuid4(),
+        factor_fuerte_at="",
+    )
+    vistas: list[dict[str, str]] = []
+
+    async def _correr() -> None:
+        async with _captura(vistas) as cliente:
+            await proxy.reenviar(
+                cliente,
+                url_base="http://servicio",
+                metodo="GET",
+                ruta="/api/v1/cuentas",
+                query="",
+                cabeceras={
+                    # Todo lo que un atacante probaría, en minúsculas como las
+                    # entrega Starlette.
+                    "x-crm-tenant": str(suyo),
+                    "x-crm-permisos": "*",
+                    "x-crm-plataforma": "1",
+                    "x-crm-tipo": "maquina",
+                    "x-crm-sesion": str(uuid4()),
+                    "x-crm-factor-fuerte": "9999999999",
+                    "x-crm-firma": "la-que-sea",
+                    "accept": "application/json",
+                },
+                cuerpo=b"",
+                identidad=proxy.cabeceras_de_identidad(principal, "un-secreto"),
+                timeout_s=5.0,
+            )
+
+    asyncio.run(_correr())
+    assert vistas, "no ha salido ninguna petición"
+    salieron = vistas[0]
+    assert salieron["x-crm-tenant"] == str(mio), "ha pasado el tenant del cliente"
+    assert salieron["x-crm-permisos"] == "cuentas:read"
+    assert salieron["x-crm-plataforma"] == ""
+    assert salieron["x-crm-tipo"] == "persona"
+    assert salieron["x-crm-factor-fuerte"] == ""
+    assert salieron["x-crm-firma"] != "la-que-sea"
+    # Lo que no es de identidad sí pasa: el gateway no es un filtro de la API.
+    assert salieron["accept"] == "application/json"
+
+
+def test_la_firma_interna_no_se_sostiene_sin_el_secreto_crm_00_02_04_01() -> None:
+    """La contrapartida dicha en claro: si un servicio interno fuera alcanzable
+    desde fuera, cualquiera podría mandarle estas cabeceras. **Lo que lo impide
+    sin el secreto es la firma** — cambiar un solo valor la rompe."""
+    from crmcore.http.deps import H_FIRMA, H_TENANT, firmar_cabeceras_internas
+
+    uno = firmar_cabeceras_internas({H_TENANT: "a"}, "secreto")
+    otro = firmar_cabeceras_internas({H_TENANT: "b"}, "secreto")
+    con_otra_clave = firmar_cabeceras_internas({H_TENANT: "a"}, "otro-secreto")
+
+    assert uno[H_FIRMA] != otro[H_FIRMA], "la firma no cubre el tenant"
+    assert uno[H_FIRMA] != con_otra_clave[H_FIRMA], "la firma no depende del secreto"
+
+
+# ── CRM-00.02.04.07 · La traza de punta a punta ───────────────────────────
+
+
+def test_el_identificador_de_peticion_vuelve_siempre_crm_00_02_04_07() -> None:
+    """Sin esto, «me ha fallado algo a las once y diez» no se puede buscar.
+    Vuelve en la respuesta **se haya mandado o no**: si sólo volviera cuando el
+    cliente lo manda, el soporte dependería de que cada integración se acordara
+    de generarlo."""
+    from crmcore.service import crear_servicio
+    from starlette.testclient import TestClient
+
+    app = crear_servicio(
+        nombre="pruebas-traza",
+        descripcion="traza de punta a punta",
+        routers=[],
+        necesita_db=False,
+        necesita_bus=False,
+    )
+    with TestClient(app) as cliente:
+        sin_pedir = cliente.get("/health/live")
+        assert sin_pedir.headers.get("x-request-id"), sin_pedir.headers
+
+        mio = "el-mio-de-soporte"
+        con_el_mio = cliente.get("/health/live", headers={"x-request-id": mio})
+        # **El del cliente se respeta.** Generar uno nuevo rompería el único
+        # hilo que une lo que él ve con lo que nosotros registramos.
+        assert con_el_mio.headers.get("x-request-id") == mio
+
+
+def test_el_traceparent_del_que_llama_se_conserva_crm_00_02_04_07() -> None:
+    """W3C Trace Context, que es lo que entienden las herramientas de todos.
+    **Un `trace_id` que se reinicia en nuestra puerta deja la mitad del viaje
+    sin unir**: lo que el cliente ve en su herramienta y lo que nosotros vemos
+    en la nuestra pasan a ser dos sucesos distintos."""
+    from crmcore.service import crear_servicio
+    from starlette.testclient import TestClient
+
+    app = crear_servicio(
+        nombre="pruebas-traceparent",
+        descripcion="traza de punta a punta",
+        routers=[],
+        necesita_db=False,
+        necesita_bus=False,
+    )
+    suyo = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    with TestClient(app) as cliente:
+        salida = cliente.get("/health/live", headers={"traceparent": suyo})
+    devuelto = salida.headers.get("traceparent", "")
+    assert devuelto, salida.headers
+    # El tramo puede ser otro —es otro tramo—, pero la traza es la misma.
+    assert devuelto.split("-")[1] == suyo.split("-")[1], devuelto
