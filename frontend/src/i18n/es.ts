@@ -645,6 +645,7 @@ export default {
     entorno: "Entorno",
     verDesvio: "Ver desvío",
     sinPaquete: "No hay ningún paquete desplegado",
+    noComparado: "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",
     tipo: "Tipo",
     clave: "Clave",
     quePaso: "Qué pasó",

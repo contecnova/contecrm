@@ -15,7 +15,7 @@ from uuid import UUID
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from services.metadata import entornos as ent
@@ -179,16 +179,64 @@ def drift(entorno: str, cuerpo: DriftIn, db: DbDep, principal: AutenticadoDep) -
         "para comparar contra un estado externo está la versión POST."
     ),
 )
-def drift_rapido(entorno: str, db: DbDep, principal: AutenticadoDep) -> Any:
+def drift_rapido(
+    entorno: str,
+    db: DbDep,
+    principal: AutenticadoDep,
+    objeto: str = Query("cuenta", description="De qué objeto se leen los campos para comparar"),
+) -> Any:
+    """La vista rápida: compara **solo los campos** de un objeto.
+
+    Tres cosas estaban mal:
+
+      · leía `clave` de la definición publicada de cada campo, que trae
+        `nombre`. Un `KeyError` — o sea, **un 500** en cuanto el objeto tenía un
+        campo. La ruta solo respondía cuando no había nada que comparar, que es
+        justo cuando no sirve;
+      · el estado se montaba como un diccionario `{clave: {...}}` y la
+        comparación espera una **lista** de entradas con su `clave`. Al
+        recorrer un diccionario salen cadenas, ninguna es un `dict` y el estado
+        actual quedaba vacío: todo lo que traía el paquete aparecía como
+        desaparecido. Un entorno recién desplegado y sin tocar salía como
+        desviado entero;
+      · y se comparaban los ocho tipos de contenido contra un estado que solo
+        sabía de campos, así que vistas, pipelines, plantillas y ajustes se
+        daban por borrados también.
+
+    Ahora se compara lo que se puede leer y se dice qué queda fuera. Para
+    comparar contra un estado externo completo está la versión POST.
+    """
+    from crmcore.errors import NoEncontrado
+
     from services.metadata.publicacion import esquema_actual
 
-    estado = {
-        "campos": {
-            f"cuenta.{c['clave']}": {"tipo": c.get("tipo")}
-            for c in esquema_actual(db, principal.tenant_id, "cuenta")
+    try:
+        campos = esquema_actual(db, principal.tenant_id, objeto)
+    except NoEncontrado:
+        # No es un 404 de la ruta: la ruta existe y ha respondido. Lo que no hay
+        # es contra qué comparar, y eso es un «no se sabe», no un «no existe».
+        return {
+            "entorno": entorno,
+            "medible": False,
+            "porque": (
+                f"No hay ningún objeto «{objeto}» en esta implantación, así que no "
+                "se puede leer su estado para compararlo. Eso no significa que no "
+                "se haya tocado nada — significa que no se sabe."
+            ),
         }
-    }
-    return ent.medir_drift(db, principal.tenant_id, entorno=entorno, estado_actual=estado)
+
+    # `clave` y no `nombre`: así es como se llama en un paquete. La versión
+    # anterior leía `c["clave"]` de la definición publicada, que trae `nombre`,
+    # así que esta ruta era un KeyError —un 500— en cuanto el objeto tenía un
+    # solo campo. Solo respondía en el caso en que no había nada que comparar.
+    estado = {"campos": [{"clave": c["nombre"], "tipo": c.get("tipo")} for c in campos]}
+    return ent.medir_drift(
+        db,
+        principal.tenant_id,
+        entorno=entorno,
+        estado_actual=estado,
+        tipos=("campos",),
+    )
 
 
 @router_entornos.post(

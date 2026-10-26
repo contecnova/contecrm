@@ -369,6 +369,7 @@ def medir_drift(
     *,
     entorno: str,
     estado_actual: dict[str, Any],
+    tipos: tuple[str, ...] = CONTENIDOS,
 ) -> dict[str, Any]:
     """Qué se ha tocado fuera del pipeline (CRM-07.02.01.06).
 
@@ -379,7 +380,21 @@ def medir_drift(
 
     Y no se juzga: tocar producción un viernes a veces es lo correcto. Lo que no
     puede pasar es que no conste.
+
+    `tipos` acota **qué se compara**, y lo que queda fuera se dice en
+    `no_comparado` en vez de darse por desaparecido. Quien llama con un estado
+    parcial —la vista rápida, que solo sabe leer los campos de un objeto— no
+    declara que el resto se haya borrado: declara que no lo ha mirado. Dar lo
+    no mirado por desaparecido llenaba el informe de desvíos inventados, que es
+    la forma más rápida de que se deje de mirar.
     """
+    desconocidos = sorted(set(tipos) - set(CONTENIDOS))
+    if desconocidos:
+        raise ErrorValidacion(
+            f"No se sabe comparar: {desconocidos}",
+            error_code="entornos.contenido_desconocido",
+            detalle={"admitidos": list(CONTENIDOS)},
+        )
     vigente = _vigente(db, tenant_id, entorno)
     if vigente is None:
         return {
@@ -397,7 +412,7 @@ def medir_drift(
     fuera: list[dict[str, Any]] = []
     faltan: list[str] = []
 
-    for tipo in CONTENIDOS:
+    for tipo in tipos:
         declarados = {
             str(e.get("clave")): e for e in (esperado.get(tipo) or []) if isinstance(e, dict)
         }
@@ -438,8 +453,17 @@ def medir_drift(
         # igual aunque no lo parezca.
         "desaparecido": sorted(faltan),
         "limpio": not fuera and not faltan,
+        "comparado": list(tipos),
+        # De esto no se dice nada, ni bueno ni malo. Un «limpio» que tapa seis
+        # tipos sin mirar es peor que no medir.
+        "no_comparado": [t for t in CONTENIDOS if t not in tipos],
         "que_significa": (
-            "Lo que hay es exactamente lo que se desplegó."
+            (
+                "Lo que hay es exactamente lo que se desplegó."
+                if len(tipos) == len(CONTENIDOS)
+                else "De lo comparado, todo coincide con lo desplegado. Lo que no se "
+                "ha comparado no entra: ni va bien ni va mal, no se ha mirado."
+            )
             if not fuera and not faltan
             else "Hay configuración tocada fuera del pipeline. No es necesariamente "
             "un error —a veces tocar producción es lo correcto— pero tiene que "

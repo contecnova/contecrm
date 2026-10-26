@@ -73,19 +73,19 @@ RE_LLAMAR = re.compile(r'llamar<([A-Za-z0-9_\[\]{}<> ,|]+)>\(\s*[`"\']([^`"\']+)
 #               recorrido se leía a SÍ MISMO, y esta lista, al nombrar las
 #               rutas, las daba por recorridas. El trinquete se justificaba
 #               solo. Por eso el fichero se excluye del barrido.
-SIN_RECORRER_HOY = {
-    "/api/v1/chat/conversaciones",
-    "/api/v1/chat/conversaciones/{}/mensajes",
-    "/api/v1/compromisos",
-    "/api/v1/coste/capacidad",
-    "/api/v1/cuadros-mando",
-    "/api/v1/entornos/{}/drift",
-    "/api/v1/explotacion/diagnostico",
-    "/api/v1/explotacion/preguntas",
-    "/api/v1/informes",
-    "/api/v1/informes/{}/ejecutar",
-    "/api/v1/suites/salud",
-}
+#   26-10-2026  0 de 23. Las once se recorren en
+#               `test_los_once_contratos_que_nadie_recorria.py`, cada una
+#               pidiendo la ruta de verdad y comprobando los campos que su
+#               pantalla lee. Diez estaban bien; la undécima —el desvío de un
+#               entorno— era un 500, y además la pantalla leía dos campos que
+#               el servidor no manda: uno dejaba el aviso siempre en verde y el
+#               otro la tumbaba entera.
+#
+#               La lista vacía NO significa que los contratos estén fijados:
+#               significa que ninguna pantalla le pide una forma a una ruta que
+#               nadie toca. Fijar los campos es lo que hacen las pruebas por
+#               contrato, y es lo que de verdad impide que esto vuelva.
+SIN_RECORRER_HOY: set[str] = set()
 
 
 def _rutas_que_piden_un_tipo() -> dict[str, set[str]]:

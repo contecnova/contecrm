@@ -11404,6 +11404,20 @@ Y no se juzga el drift: tocar producción un viernes a veces es lo correcto. Lo 
 no puede pasar es que no conste, porque el siguiente despliegue lo pisará sin
 avisar.
 
+**Y lo que no se ha comparado se dice.** Hay dos formas de pedir el desvío: la
+completa (`POST`), donde quien pregunta manda el estado actual de los ocho tipos
+de contenido, y la rápida (`GET`), que lee lo que el propio CRM tiene guardado y
+**solo sabe leer los campos de un objeto**. La rápida devuelve `comparado` y
+`no_comparado`, y de lo segundo no dice nada: ni que está bien ni que está mal.
+
+Hasta el 26-10-2026 decía que estaba borrado. La vista rápida comparaba los ocho
+tipos contra un estado que solo tenía campos, así que una vista o una plantilla
+del paquete salían como desaparecidas en un entorno que nadie había tocado — y
+encima montaba ese estado con una forma que la comparación no sabe leer, con lo
+que **también los campos** salían como desaparecidos. Un «limpio» que tapa siete
+tipos sin mirar es peor que no medir, y un informe lleno de desvíos inventados es
+la forma más rápida de que se deje de mirar.
+
 ## Probar y promocionar automatizaciones (`CRM-00.03.03.08`, `CRM-00.03.03.09`)
 
 Se piden por ruta: la prueba en seco, la promoción y la instalación de una
