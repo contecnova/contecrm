@@ -79,6 +79,13 @@ export default {
         // crudo de la paleta, que no sigue el tema. Exponerlas cierra ese
         // desvío en el origen.
         viz: {
+          1: "rgb(var(--viz-1) / <alpha-value>)",
+          2: "rgb(var(--viz-2) / <alpha-value>)",
+          3: "rgb(var(--viz-3) / <alpha-value>)",
+          4: "rgb(var(--viz-4) / <alpha-value>)",
+          5: "rgb(var(--viz-5) / <alpha-value>)",
+          otros: "rgb(var(--viz-otros) / <alpha-value>)",
+          grid: "rgb(var(--viz-grid) / <alpha-value>)",
           violet:  "rgb(var(--viz-violet) / <alpha-value>)",
           neutral: "rgb(var(--viz-neutral) / <alpha-value>)",
         },

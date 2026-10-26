@@ -231,6 +231,40 @@
   --celda-texto: 0.6875rem;
   --hueco-bloque: 1.25rem;
 
+  /* ── Paleta categórica de gráficas ──────────────────────────────────
+     Cinco series, **en este orden y nunca cicladas**. El color sigue a la
+     entidad: la serie 3 es la serie 3 aunque un filtro deje de enseñar la 1,
+     porque si no, filtrar repinta lo que queda y lo que uno recordaba en azul
+     aparece en teal.
+
+     No están elegidas a ojo: salen de validar la paleta con el comprobador del
+     método —banda de luminosidad, suelo de croma, separación bajo daltonismo,
+     suelo de visión normal y contraste contra la superficie— en los DOS temas.
+     El oscuro lleva pasos propios y no es un volteo automático del claro: con
+     los mismos valores, el magenta se quedaba en 2,88:1 contra el panel
+     oscuro.
+
+     **No se usan el verde, el ámbar ni el rojo.** Están reservados para el
+     estado —ganada, en riesgo, perdida— y en un CRM eso no es un matiz: una
+     serie pintada de rojo se lee como un problema aunque sea «Cataluña».
+
+     Queda un aviso conocido y aceptado: magenta y teal se separan ΔE 6,6 bajo
+     deuteranopía, dentro de la banda 6–8 que el método admite **sólo con
+     codificación secundaria**. Por eso la leyenda no es opcional, las series
+     llevan etiqueta directa hasta cuatro y los rellenos van separados por 2px
+     de superficie. Si alguien quita eso, la paleta deja de ser válida. */
+  --viz-1: 23 113 232;    /* #1771e8 — el azul de la casa */
+  --viz-2: 190 24 93;     /* #be185d */
+  --viz-3: 13 148 136;    /* #0d9488 */
+  --viz-4: 124 58 237;    /* #7c3aed */
+  --viz-5: 8 145 178;     /* #0891b2 */
+  /* La cola: a partir de la sexta serie NO se inventa un color. Un sexto tono
+     generado es indistinguible de otro bajo daltonismo y rompe todas las
+     comprobaciones. Lo que sobra se pliega aquí, con su nombre. */
+  --viz-otros: 107 114 128;  /* #6b7280 */
+  /* Rejilla y ejes: recesivos. Una rejilla que compite con los datos es ruido
+     con aspecto de precisión. */
+  --viz-grid: 218 220 224;
   --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
   --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
 }
@@ -334,6 +368,14 @@
   --shadow-accent: 0 0 0 1px rgba(79,142,247,0.55), 0 0 20px rgba(79,142,247,0.12);
 
   /* Categóricos de visualización (#36) — más luminosos para el lienzo oscuro. */
+  /* Los pasos propios del oscuro. Mismo orden de entidad que en claro. */
+  --viz-1: 66 133 244;    /* #4285f4 */
+  --viz-2: 219 39 119;    /* #db2777 */
+  --viz-3: 42 168 154;    /* #2aa89a */
+  --viz-4: 139 92 246;    /* #8b5cf6 */
+  --viz-5: 23 162 201;    /* #17a2c9 */
+  --viz-otros: 156 163 175;
+  --viz-grid: 50 52 66;
   --viz-violet:   167 139 250;   /* #a78bfa */
   --viz-neutral:  156 163 175;   /* #9ca3af */
 }

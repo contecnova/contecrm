@@ -169,6 +169,43 @@ bueno.
 El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
 oportunidad ganada en la base y nadie enterado.
 
+### La paleta de gráficas no se elige a ojo
+
+Cinco series, en orden fijo y **nunca cicladas**: el color sigue a la entidad,
+así que la serie 3 es la serie 3 aunque un filtro deje de enseñar la 1. Si el
+color saliera del orden de llegada, filtrar repintaría lo que queda y lo que
+alguien recordaba en azul aparecería en teal.
+
+Los valores salen de **validar la paleta con el comprobador del método** —banda
+de luminosidad, suelo de croma, separación bajo daltonismo, suelo de visión
+normal y contraste contra la superficie— en los dos temas. El oscuro lleva pasos
+propios y no es un volteo del claro: medido, con los valores del claro el
+magenta se quedaba en 2,88:1 contra el panel oscuro.
+
+**Verde, ámbar y rojo no se usan como serie.** Están reservados para el estado
+—ganada, en riesgo, perdida— y en un CRM eso no es un matiz: una serie pintada
+de rojo se lee como un problema aunque sea «Cataluña».
+
+Queda un aviso conocido y aceptado: magenta y teal se separan ΔE 6,6 bajo
+deuteranopía, dentro de la banda 6–8 que el método admite **sólo con
+codificación secundaria**. Por eso, y no por gusto, la leyenda no es opcional con
+dos o más series, los tramos apilados van separados por 2px de superficie y el
+embudo lleva su valor al lado. Quitar cualquiera de las tres invalida la paleta.
+Lo vigila `src/pruebas/graficas.test.ts`, que mide el contraste de los diez
+tokens contra su superficie y comprueba que ningún tono de estado se cuele.
+
+A partir de la sexta serie **no se genera un tono**: la cola se pliega en
+«otras N». Un sexto color generado es indistinguible de otro bajo daltonismo y
+rompe todas las comprobaciones a la vez.
+
+> **Dos fallos que sólo aparecieron al mirar el dibujo**, y que ningún
+> validador de color caza: un área de tres series mezclaba los rellenos en un
+> barro —ahora el área es sólo para una serie y con más se degrada a líneas— y
+> el embudo traía un eje de valor de 0 a 1,5 k que no medía nada de lo que se
+> veía, con los nombres de etapa en el eje de abajo, donde «Contactado» caía
+> bajo la barra de «Ganada». Por eso el procedimiento termina en «renderízalo y
+> míralo» y no en «el validador dice que pasa».
+
 ### Un hecho se nombra de dos formas y las dos valen
 
 Un evento se puede emitir con su cadena —`uow.emitir("tenant.alta_confirmada",

@@ -5,7 +5,11 @@
  * gráficas, sus ejes y series. Aquí se convierte en algo que se lee:
  *
  *   kpi_card                     → el número, grande
- *   bar/line/area/pie/funnel…    → barras, con su valor al lado
+ *   bar/column                   → barras
+ *   line/timeseries/combo        → líneas
+ *   area                         → área
+ *   pie/donut/stacked            → barra APILADA, no tarta (ver `Grafica`)
+ *   funnel                       → embudo
  *   table y todo lo demás        → tabla
  *
  * **Nunca se enseña el JSON.** Es la regla que ordena este fichero: un objeto
@@ -21,6 +25,8 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { FORMA_DE_TIPO, Grafica, type Forma } from "@/componentes/graficas/Grafica";
+
 export interface Payload {
   type: string;
   title: string;
@@ -32,16 +38,11 @@ export interface Payload {
   meta?: { verification?: Array<{ title: string; status: string; detail?: string }> } | null;
 }
 
-/** Los tipos que se dibujan como barras. El resto cae a tabla, a propósito. */
-const DE_BARRAS = new Set([
-  "bar_chart",
-  "line_chart",
-  "timeseries_line",
-  "area_chart",
-  "pie_chart",
-  "funnel_chart",
-  "combo_chart",
-]);
+/* Qué tipo se dibuja de qué forma sale de `FORMA_DE_TIPO`, en las gráficas.
+   Aquí había una lista propia —`DE_BARRAS`— que metía los siete tipos en el
+   mismo saco y los pintaba todos como barras: una serie temporal, un embudo y
+   un reparto salían iguales. Lo que no esté en el mapa sigue cayendo a TABLA,
+   que siempre se entiende, y nunca a un volcado de JSON. */
 
 function formatear(valor: unknown, unidad?: string | null): string {
   if (valor === null || valor === undefined) return "—";
@@ -74,8 +75,8 @@ export function RespuestaAnalitica({ payload, texto }: { payload: Payload; texto
 
       {payload.type === "kpi_card" ? (
         <Numero payload={payload} columnas={columnas} />
-      ) : DE_BARRAS.has(payload.type) ? (
-        <Barras payload={payload} columnas={columnas} />
+      ) : FORMA_DE_TIPO[payload.type] ? (
+        <Dibujo payload={payload} columnas={columnas} />
       ) : (
         <Tabla columnas={columnas} filas={payload.data || []} />
       )}
@@ -117,46 +118,44 @@ function clave_en(fila: Record<string, unknown>, clave: string): boolean {
   return Object.prototype.hasOwnProperty.call(fila, clave);
 }
 
-function Barras({ payload, columnas }: { payload: Payload; columnas: string[] }) {
+/**
+ * El puente entre el contrato de la respuesta y la gráfica.
+ *
+ * Vive aquí y no dentro de `Grafica` para que la gráfica no sepa nada del
+ * contrato de contecintelligence: lo que se dibuja son series y categorías, y
+ * la próxima fuente que haya traerá las suyas con otros nombres.
+ */
+function Dibujo({ payload, columnas }: { payload: Payload; columnas: string[] }) {
   const filas = payload.data || [];
-  const etiquetaClave = payload.xAxis?.key && columnas.includes(payload.xAxis.key) ? payload.xAxis.key : columnas[0];
-  const valorClave =
-    payload.series?.find((s) => columnas.includes(s.key))?.key ??
-    columnas.find((c) => c !== etiquetaClave && filas.some((f) => typeof f[c] === "number")) ??
-    columnas[1];
+  const ejeX =
+    payload.xAxis?.key && columnas.includes(payload.xAxis.key) ? payload.xAxis.key : columnas[0];
+  // Las series declaradas que existen de verdad en los datos. Si no declara
+  // ninguna, se toman las columnas numéricas que no sean el eje: un informe
+  // que se dejó el `series` sin poner se sigue dibujando.
+  const declaradas = (payload.series || []).filter((s) => columnas.includes(s.key));
+  const series =
+    declaradas.length > 0
+      ? declaradas.map((s) => ({ clave: s.key, rotulo: s.label || s.key }))
+      : columnas
+          .filter((c) => c !== ejeX && filas.some((f) => typeof f[c] === "number"))
+          .map((c) => ({ clave: c, rotulo: c }));
 
-  if (!valorClave || !etiquetaClave) return <Tabla columnas={columnas} filas={filas} />;
-  const clave = valorClave;
-  const maximo = Math.max(
-    ...filas.map((f) => (typeof f[clave] === "number" ? (f[clave] as number) : 0)),
-    0,
-  );
-  if (maximo <= 0) return <Tabla columnas={columnas} filas={filas} />;
+  if (!ejeX || series.length === 0) return <Tabla columnas={columnas} filas={filas} />;
 
   return (
-    <ul className="mt-3 flex flex-col gap-1.5">
-      {filas.map((f, i) => {
-        const valor = typeof f[clave] === "number" ? (f[clave] as number) : 0;
-        return (
-          <li key={i} className="flex items-center gap-2">
-            <span className="w-40 shrink-0 truncate text-2xs text-ink-muted" title={String(f[etiquetaClave] ?? "")}>
-              {formatear(f[etiquetaClave])}
-            </span>
-            {/* La barra lleva su valor al lado y no dentro: dentro, una barra
-                corta esconde su propio número. */}
-            <span className="h-3 flex-1 overflow-hidden rounded-sm bg-paper-sunk" aria-hidden>
-              <span
-                className="block h-full rounded-sm bg-accent"
-                style={{ width: `${Math.max(2, (valor / maximo) * 100)}%` }}
-              />
-            </span>
-            <span className="w-28 shrink-0 text-right text-2xs tabular-nums text-ink">
-              {formatear(valor, payload.unit)}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="mt-3">
+      <Grafica
+        forma={FORMA_DE_TIPO[payload.type] as Forma}
+        titulo={payload.title || ""}
+        datos={{
+          filas,
+          ejeX,
+          rotuloX: payload.xAxis?.label,
+          series,
+          unidad: payload.unit,
+        }}
+      />
+    </div>
   );
 }
 

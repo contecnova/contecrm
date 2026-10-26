@@ -13,6 +13,12 @@ export default {
     densidadComoda: "Ver con más aire (cómoda)",
     saltarAlContenido: "Saltar al contenido",
   },
+  grafica: {
+    verTabla: "Ver como tabla",
+    verDibujo: "Ver como gráfica",
+    sinDatos: "No hay datos que dibujar",
+    otras: "Otras {{count}}",
+  },
   formulario: {
     buscarRegistro: "Busca un {{recurso}} por su nombre",
     sinCoincidencias: "Nada coincide",

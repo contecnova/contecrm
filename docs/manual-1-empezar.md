@@ -193,6 +193,41 @@ Automatización, que es de administrar, y se enseñan en Trabajar. Aprobar un
 descuento no es configurar nada, y esconderlo detrás de «Administrar» es
 garantizar que se quede esperando.
 
+## Las gráficas
+
+Una respuesta analítica se dibuja según lo que **tiene que hacer quien la lee**,
+y no según el nombre del tipo que trae el informe:
+
+| El informe pide | Se dibuja | Por qué |
+|---|---|---|
+| `bar_chart`, `column_chart` | Barras | Comparar magnitudes |
+| `line_chart`, `timeseries_line` | Líneas | Tendencia en el tiempo |
+| `area_chart` | Área con **una** serie, líneas con más | Con tres, los rellenos se superponen y no se saca ninguna de las tres |
+| `pie_chart`, `donut_chart` | Barra **apilada** | Ver abajo |
+| `funnel_chart` | Embudo, con la caída en % | La caída entre etapas es el dato |
+| `combo_chart` | Líneas | Ver abajo |
+| cualquier otro | Tabla | Siempre se entiende |
+
+Tres cosas que se hacen a propósito y conviene saber:
+
+**Lo que se pide como tarta sale apilado.** Comparar ángulos es medir mal: dos
+porciones parecidas sólo se distinguen leyendo los números, y si hay que leer
+los números la tarta no estaba aportando nada. La barra apilada es lo mismo,
+mejor leído.
+
+**Nunca hay dos ejes verticales.** Dos magnitudes de escalas distintas van en
+dos gráficas, o indexadas a una base común. Un eje doble deja que quien lo
+dibuja elija dónde se cruzan las líneas, y entonces la gráfica dice lo que
+quiera.
+
+**Un hueco es un hueco.** Un mes sin medir no se pinta como cero: el trazo se
+parte. Una línea recta sobre un mes sin dato inventa una tendencia que nadie
+midió, y es el error más caro de una serie temporal.
+
+Toda gráfica tiene al lado **«Ver como tabla»**, siempre. Es lo que la hace
+legible con un lector de pantalla, lo que permite copiar un número exacto y lo
+único que funciona si alguien no distingue dos colores.
+
 ## Cuánto quieres ver en pantalla
 
 Al lado del interruptor de tema, en la barra superior, hay otro de **densidad**:
