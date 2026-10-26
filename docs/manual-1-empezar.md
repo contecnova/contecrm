@@ -262,6 +262,13 @@ están pensados para rellenarlos de verdad:
 
 - **Dos columnas** cuando hay sitio. Lo que necesita el ancho entero —un texto
   largo, una lista de líneas, un objeto— lo ocupa.
+- **Área de texto sólo donde hay texto de verdad.** Lo decide el modelo, no el
+  tamaño: una columna sin tope —notas, una descripción, un cuerpo— se edita en
+  un área, y una con tope se edita en una línea por grande que sea el tope.
+  Hasta el 26-10-2026 era al revés y `web` salía como un cuadro de cinco líneas
+  mientras `teléfono` y `email`, al lado, eran una línea: la columna es de 500
+  caracteres y el umbral estaba en 400. De los trece campos del producto con
+  tope mayor que 400, once son de una línea.
 - **Lo imprescindible delante** y lo opcional plegado. Un alta de cuarenta
   campos, toda a la vista, no la rellena nadie.
 - **La ayuda encima del campo**, que es donde sirve: «el nombre comercial con el

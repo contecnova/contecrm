@@ -277,9 +277,24 @@ function tipoDe(esquema: Esquema, elemento?: Esquema): CampoEsquema["tipo"] {
       return "objeto";
     default:
       if (esquema.format === "date" || esquema.format === "date-time") return "fecha";
-      // Un campo sin tope de longitud suele ser una descripción o unas notas:
-      // en una línea de una sola altura no se ve lo que se escribe.
-      return esquema.maxLength && esquema.maxLength > 400 ? "texto_largo" : "texto";
+      // **Sin tope de longitud: área. Con tope: una línea.**
+      //
+      // Estaba al revés —área cuando el tope pasaba de 400— y eso convertía
+      // `web` en un cuadro de cinco líneas, porque la columna es `String(500)`.
+      // Medido el 26-10-2026 sobre el modelo: de los trece campos con tope
+      // mayor que 400, **once son de una línea** (web, uri, base_url,
+      // callback_url, ruta, credencial_id…) y el criterio acertaba en dos.
+      //
+      // La señal buena es la contraria, y sale del propio modelo: una columna
+      // `Text` —sin tope— es una descripción, unas notas, un cuerpo; hay 233 y
+      // llegan al contrato **sin `maxLength`**. Una `String(n)` es un dato de
+      // una línea por grande que sea n, porque alguien decidió acotarlo.
+      //
+      // Lo que empeora con esto, dicho: un `String(500)` que sí sea una
+      // descripción se edita en una línea. Son dos en todo el producto, y lo
+      // que corresponde entonces es declararlos `Text` en el modelo —que es lo
+      // que son— en vez de adivinarlo por el tamaño.
+      return esquema.maxLength === undefined ? "texto_largo" : "texto";
   }
 }
 

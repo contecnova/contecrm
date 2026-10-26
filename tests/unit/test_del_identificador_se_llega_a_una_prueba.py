@@ -86,7 +86,10 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            CUALES, y rendimiento decia que el sistema estaba
 #                            bajo presion sin decir de quien ni quien no habia
 #                            contestado
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 153
+#   26-10-2026  150 de 752  tres pantallas de servicio, pintadas con el
+#                            contrato real: la consola de agente, conocimiento
+#                            e inteligencia
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 150
 
 
 @functools.cache
