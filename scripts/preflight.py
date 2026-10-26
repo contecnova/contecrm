@@ -123,6 +123,20 @@ GATES: list[Gate] = [
         "todo",
         "el documento de procesos dice lo que el código hace de verdad",
     ),
+    # En el nivel de push —`tests`— y no en el completo, a propósito: lo que protege es
+    # que no desaparezca una operación publicada, y eso hay que cazarlo en el
+    # push que la borra — no en el pase completo de dentro de veinte commits,
+    # cuando ya está en producción y el cliente de otro lleva días con un 404.
+    #
+    # Y no basta con que la prueba exista en `tests/unit`: la selección del
+    # push corre las pruebas de lo que cambia, y una ruta borrada en `party` no
+    # arrastra un fichero que no se llama «de party».
+    Gate(
+        "contrato-sellado",
+        [PY, "scripts/sellar_contrato.py"],
+        "tests",
+        "no ha desaparecido ninguna operación publicada (compatibilidad hacia atrás)",
+    ),
     Gate(
         "arquitectura",
         [PY, "-m", "pytest", "tests/unit/test_contratos_arquitectura.py", "-q", "--no-header"],
