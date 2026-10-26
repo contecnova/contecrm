@@ -1349,13 +1349,26 @@ def alcance_por_correo_de(tenant_id: UUID, correo: str) -> Any:
         return svc.alcance_por_correo(db, correo, tenant_id)
 
 
+from crmcore.http.retencion_router import crear_router_retencion  # noqa: E402
+
+# Retención y bloqueos legales de lo que guarda este servicio. No estaba, y por
+# eso la papelera del chat no tenía quién la vaciara: el modelo llevaba las
+# columnas de borrado y nadie las purgaba nunca. Importar el módulo es lo que
+# registra las clases, así que el import no es decorativo.
+from services.identity import retencion as _retencion_identity  # noqa: E402,F401
 from services.identity.api_factores import ROUTERS_FACTORES  # noqa: E402
 from services.identity.api_politicas import ROUTERS_POLITICAS  # noqa: E402
 from services.identity.api_scim import ROUTERS_SCIM  # noqa: E402
 from services.identity.api_sod import ROUTERS_SOD  # noqa: E402
 
+# Con el nombre del servicio delante, como en `party` y en `sales`: el gateway
+# enruta por el primer tramo, y `/retencion` a secas no dice a quién va.
+router_retencion = crear_router_retencion("/identity/retencion")
+
+
 ROUTERS = [
     router_auth,
+    router_retencion,
     router_interno_usuarios,
     router_usuarios,
     router_roles,

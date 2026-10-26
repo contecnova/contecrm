@@ -44,7 +44,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            codigo y gates de calidad— ya la tienen, y
 #                            mirandolas salio un agujero de verdad: la
 #                            referencia de Git se escribia y no se leia
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 224
+#   26-10-2026  215 de 752  auditado el chat interno (CRM-06.02.02), las nueve
+#                            capacidades recorridas por HTTP. Ocho estaban; la
+#                            papelera NO EXISTIA —ni ruta de borrado, ni de
+#                            recuperacion, ni retencion declarada en identity—
+#                            y estaba contada como hecha
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 215
 
 
 @functools.cache

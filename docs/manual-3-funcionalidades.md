@@ -13420,11 +13420,38 @@ con su prueba (`tests/unit/test_respuesta_en_flujo.py` y
 sale el primer byte, no solo qué acaba llegando: el contenido llegaba entero al
 final, así que una prueba de contenido las habría dado por buenas.
 
-### Borrado y retención
+### Borrado y retención (`CRM-06.02.02.09`)
 
-Los mensajes y las conversaciones tienen papelera (`CRM-06.02.02.09`): se
-borran a la papelera del servicio, como cualquier otro registro, y de ahí se
-restauran o se purgan cuando cumplen el plazo.
+Un mensaje se manda a la papelera con `DELETE /chat/mensajes/{id}` y se saca de
+ella con `POST /chat/mensajes/{id}/recuperar`. Lo hace **quien lo escribió o
+quien administra la conversación**: lo primero es evidente, y lo segundo hace
+falta porque el caso que justifica todo esto es que alguien pegue en un canal
+algo que no debía estar ahí —una credencial, el dato personal de un cliente— y
+entonces no se puede esperar a que el autor se conecte.
+
+**Deja lápida.** El mensaje no desaparece del hilo: se queda su hueco, sin
+cuerpo y sin adjuntos. Uno que se esfuma deja su respuesta colgando de nada, y
+quien lee la conversación una semana después no entiende el hilo ni sabe que
+falta algo. Lo que se va es lo que se quería quitar.
+
+Y se cierran las **dos puertas de atrás**: la búsqueda no encuentra un mensaje
+borrado por su texto, y el histórico de ediciones de un borrado no se enseña. Sin
+eso, la papelera no serviría de nada justo en el caso que la justifica.
+
+El plazo lo fija la empresa en `/identity/retencion/politicas`, y pasado el
+plazo la purga lo borra **de la tabla**: una papelera que guarda para siempre no
+es una papelera. La purga **simula por defecto** —lo que se va a llevar por
+delante hay que poder verlo antes, no después— y se abstiene entera si hay un
+bloqueo legal activo.
+
+> **Esto no existía hasta el 26-10-2026, y este manual decía que sí.** El modelo
+> del mensaje llevaba las columnas de borrado desde el principio y su propio
+> comentario apuntaba a la capacidad, pero no había ruta que borrara, ninguna
+> que recuperara, `identity` no declaraba ninguna clase de retención ni
+> publicaba el router, y las tablas de política y de bloqueo legal ya estaban
+> creadas en su esquema esperando a que alguien las usara. Escrito y sin
+> enchufar, contado como hecho y documentado como hecho. Salió auditando la
+> familia entera y recorriendo sus rutas, no leyendo el código.
 
 ### Lo que no hay, dicho claro
 

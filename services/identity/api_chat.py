@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Any, AsyncIterator
 from uuid import UUID
 
+from crmcore.datos.guard_borrados import con_borrados
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, Query, status
@@ -274,14 +275,21 @@ def _mensaje_out(db: Any, fila: chat.MensajeChat) -> dict[str, Any]:
         select(chat.ReaccionMensaje).where(chat.ReaccionMensaje.mensaje_id == fila.id)
     ).scalars():
         reacciones.setdefault(r.emoji, []).append(str(r.usuario_id))
+    # Un mensaje borrado **sigue en el hilo**, sin cuerpo y sin adjuntos
+    # (CRM-06.02.02.09). Que se esfume deja las respuestas colgando de nada y
+    # quien lee la conversacion una semana despues no entiende el hilo ni sabe
+    # que falta algo. Lo que se quita es lo que se queria quitar.
+    borrado = fila.deleted_at is not None
     return {
         "id": str(fila.id),
         "conversacion_id": str(fila.conversacion_id),
         "autor_id": str(fila.autor_id),
-        "cuerpo": fila.cuerpo,
+        "cuerpo": "" if borrado else fila.cuerpo,
+        "borrado": borrado,
+        "borrado_at": fila.deleted_at.isoformat() if fila.deleted_at else None,
         "responde_a_id": str(fila.responde_a_id) if fila.responde_a_id else None,
         "menciones": fila.menciones,
-        "adjuntos": fila.adjuntos,
+        "adjuntos": [] if borrado else fila.adjuntos,
         "editado_at": fila.editado_at.isoformat() if fila.editado_at else None,
         # Cuántas veces se corrigió, no el texto anterior: el histórico está
         # guardado y se enseña a quien abre la edición, no a todo el mundo en
@@ -313,7 +321,21 @@ def listar_mensajes(
     consulta = select(chat.MensajeChat).where(chat.MensajeChat.conversacion_id == conversacion_id)
     if desde is not None:
         consulta = consulta.where(chat.MensajeChat.created_at > desde)
-    filas = db.execute(consulta.order_by(chat.MensajeChat.created_at).limit(limite)).scalars().all()
+    # **Mirando la papelera a propósito** (CRM-06.02.02.09). El guard de
+    # borrados esconde por construcción lo que tiene `deleted_at`, y aquí hace
+    # falta lo contrario: un mensaje borrado deja su hueco en el hilo, sin
+    # cuerpo. Si desapareciera, su respuesta se quedaría sin padre y el front la
+    # subiría al nivel de arriba en silencio — una conversación que se lee mal y
+    # no dice que falta nada.
+    #
+    # El cuerpo y los adjuntos los vacía `_mensaje_out`, así que mirar dentro no
+    # enseña lo que se quiso quitar.
+    with con_borrados(db) as sesion:
+        filas = (
+            sesion.execute(consulta.order_by(chat.MensajeChat.created_at).limit(limite))
+            .scalars()
+            .all()
+        )
     return [_mensaje_out(db, f) for f in filas]
 
 
@@ -357,6 +379,44 @@ def editar_mensaje(
     return _mensaje_out(uow.db, fila)
 
 
+@router_chat.delete(
+    "/mensajes/{mensaje_id}",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Mandar un mensaje a la papelera",
+    description=(
+        "Lo borra quien lo escribió **o quien administra la conversación**: el "
+        "caso que justifica esto es que alguien pegue en un canal algo que no "
+        "debía estar ahí, y entonces no se puede esperar a que el autor se "
+        "conecte.\n\n"
+        "No desaparece del hilo: queda la marca y se van el cuerpo y los "
+        "adjuntos. Un mensaje que se esfuma deja las respuestas colgando de "
+        "nada.\n\n"
+        "Y es recuperable mientras la retención no lo haya purgado, que es la "
+        "diferencia entre una papelera y un borrado."
+    ),
+)
+def borrar_mensaje(mensaje_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = chat.borrar(uow.db, mensaje_id=mensaje_id, por=principal.id)
+    return _mensaje_out(uow.db, fila)
+
+
+@router_chat.post(
+    "/mensajes/{mensaje_id}/recuperar",
+    response_model=dict,
+    dependencies=[Depends(exige_permiso("user:read"))],
+    summary="Sacarlo de la papelera",
+    description=(
+        "Mientras la retención no lo haya purgado. Un borrado por error se "
+        "deshace; uno a propósito acaba siendo definitivo solo cuando pasa el "
+        "plazo que fijó la empresa."
+    ),
+)
+def recuperar_mensaje(mensaje_id: UUID, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = chat.recuperar(uow.db, mensaje_id=mensaje_id, por=principal.id)
+    return _mensaje_out(uow.db, fila)
+
+
 @router_chat.get(
     "/mensajes/{mensaje_id}/versiones",
     response_model=list[dict],
@@ -364,10 +424,20 @@ def editar_mensaje(
     summary="Qué decía antes este mensaje",
 )
 def versiones(mensaje_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
-    fila = db.get(chat.MensajeChat, mensaje_id)
+    # Se busca también en la papelera para que la comprobación de abajo esté
+    # VIVA: dependiendo del guard, sería código muerto hoy y una fuga el día que
+    # alguien abriera esta ruta a lo borrado.
+    with con_borrados(db) as sesion:
+        fila = sesion.get(chat.MensajeChat, mensaje_id)
     if fila is None:
         raise NoEncontrado("Ese mensaje no existe", error_code="chat.mensaje_no_existe")
     chat.exigir_miembro(db, fila.conversacion_id, principal.id)
+    if fila.deleted_at is not None:
+        # Si no, borrar un mensaje lo quitaria de la conversacion y dejaria su
+        # texto anterior a un clic de distancia: la papelera no serviria de nada
+        # justo en el caso que la justifica, que es haber pegado algo que no
+        # debia estar ahi.
+        return []
     return list(fila.versiones or [])
 
 
@@ -422,6 +492,9 @@ def buscar(
             .where(
                 chat.MensajeChat.conversacion_id.in_(mias),
                 chat.MensajeChat.cuerpo.ilike(f"%{texto}%"),
+                # Lo borrado no se busca: encontrarlo por su texto devolveria el
+                # cuerpo que se queria quitar, por la puerta de atras.
+                chat.MensajeChat.deleted_at.is_(None),
             )
             .order_by(chat.MensajeChat.created_at.desc())
             .limit(limite)

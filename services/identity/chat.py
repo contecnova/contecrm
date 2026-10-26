@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from crmcore.datos.guard_borrados import con_borrados
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.ids import nuevo_id
@@ -462,6 +463,78 @@ def editar(db: Session, *, mensaje_id: UUID, autor_id: UUID, cuerpo: str) -> Men
     ]
     fila.cuerpo = cuerpo
     fila.editado_at = _ahora()
+    db.flush()
+    return fila
+
+
+def borrar(db: Session, *, mensaje_id: UUID, por: UUID) -> MensajeChat:
+    """Manda un mensaje a la papelera (CRM-06.02.02.09).
+
+    **Lo borra quien lo escribió o quien administra la conversación.** Lo
+    primero es evidente; lo segundo hace falta porque el caso que justifica esta
+    capacidad es que alguien pegue en un canal algo que no debía estar ahí —una
+    credencial, el dato personal de un cliente— y entonces no se puede esperar a
+    que el autor se conecte.
+
+    No desaparece de la conversación: **queda la marca**. Un mensaje que se
+    esfuma deja las respuestas colgando de nada, y quien lee el hilo una semana
+    después no entiende la conversación y no sabe que falta algo. Lo que
+    desaparece es el cuerpo y los adjuntos, que es lo que se quería quitar.
+
+    Hasta el 26-10-2026 esto no existía. El modelo llevaba las columnas de la
+    papelera desde el principio y su propio comentario apuntaba a la capacidad,
+    pero no había ninguna ruta que borrara, ninguna que recuperara, ninguna
+    clase de retencion declarada y ningun purgador. Escrito y sin enchufar.
+    """
+    # Igual que al recuperar: sin ver la papelera, borrar dos veces daría un 404
+    # en vez de lo mismo dos veces.
+    with con_borrados(db) as sesion:
+        fila = sesion.get(MensajeChat, mensaje_id)
+    if fila is None:
+        raise NoEncontrado("Ese mensaje no existe", error_code="chat.mensaje_no_existe")
+    if fila.deleted_at is not None:
+        # No es un error: pedir dos veces lo mismo tiene que dar lo mismo. Lo
+        # que no puede es pisar quién lo borró y cuándo, que es lo que se mira
+        # cuando alguien pregunta qué pasó con ese mensaje.
+        return fila
+    miembro = exigir_miembro(db, fila.conversacion_id, por)
+    if fila.autor_id != por and miembro.rol != "admin":
+        raise Prohibido(
+            "Un mensaje lo borra quien lo escribió, o quien administra la " "conversación.",
+            error_code="chat.borrado_ajeno",
+        )
+    fila.deleted_at = _ahora()
+    fila.deleted_by = por
+    db.flush()
+    return fila
+
+
+def recuperar(db: Session, *, mensaje_id: UUID, por: UUID) -> MensajeChat:
+    """Lo saca de la papelera (CRM-06.02.02.09).
+
+    Mientras no lo haya purgado la retención, que es la diferencia entre una
+    papelera y un borrado: un borrado por error se deshace, y un borrado a
+    propósito acaba siendo definitivo solo cuando pasa el plazo que fijó la
+    empresa.
+
+    Lo recupera quien puede borrarlo, por la misma razón.
+    """
+    # Mirando TAMBIÉN la papelera: el guard de borrados esconde por construcción
+    # lo que tiene `deleted_at`, así que sin esto recuperar un mensaje daría
+    # «no existe» — que es exactamente lo que pasaba al probarlo. Restaurar es
+    # uno de los tres casos que el guard contempla para mirar dentro.
+    with con_borrados(db) as sesion:
+        fila = sesion.get(MensajeChat, mensaje_id)
+    if fila is None:
+        raise NoEncontrado("Ese mensaje no existe", error_code="chat.mensaje_no_existe")
+    miembro = exigir_miembro(db, fila.conversacion_id, por)
+    if fila.autor_id != por and miembro.rol != "admin":
+        raise Prohibido(
+            "Un mensaje lo recupera quien lo escribió, o quien administra la " "conversación.",
+            error_code="chat.borrado_ajeno",
+        )
+    fila.deleted_at = None
+    fila.deleted_by = None
     db.flush()
     return fila
 

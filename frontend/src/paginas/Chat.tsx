@@ -59,6 +59,14 @@ interface Mensaje {
   ediciones: number;
   reacciones: Record<string, string[]>;
   created_at: string;
+  /**
+   * Está en la papelera (CRM-06.02.02.09).
+   *
+   * Sigue en el hilo y sin cuerpo: un mensaje que se esfuma deja las respuestas
+   * colgando de nada, y quien lee la conversación una semana después no
+   * entiende el hilo ni sabe que falta algo.
+   */
+  borrado?: boolean;
 }
 
 interface Usuario {
@@ -201,10 +209,34 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
         metodo: "POST",
         cuerpo: { emoji },
       });
-      const r = await llamar<unknown>(
-        `/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`,
+      await recargarMensajes();
+    } catch (error) {
+      setFallo(error);
+    }
+  }
+
+  /** Recarga los mensajes de la conversación abierta. */
+  async function recargarMensajes() {
+    const r = await llamar<unknown>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`);
+    setMensajes(filas<Mensaje>(r.datos));
+  }
+
+  /**
+   * Manda un mensaje a la papelera, o lo saca de ella (CRM-06.02.02.09).
+   *
+   * La ruta existía en el servidor y **no tenía botón**: se podía borrar con
+   * `curl` y desde la pantalla no. Un endpoint sin botón es una capacidad que
+   * nadie usa.
+   */
+  async function papelera(mensajeId: string, borrado: boolean) {
+    try {
+      await llamar(
+        borrado
+          ? `/api/v1/chat/mensajes/${mensajeId}/recuperar`
+          : `/api/v1/chat/mensajes/${mensajeId}`,
+        { metodo: borrado ? "POST" : "DELETE" },
       );
-      setMensajes(filas<Mensaje>(r.datos));
+      await recargarMensajes();
     } catch (error) {
       setFallo(error);
     }
@@ -262,7 +294,11 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               </span>
             ) : null}
           </p>
-          <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{mensaje.cuerpo}</p>
+          {mensaje.borrado ? (
+            <p className="mt-1 text-xs italic text-ink-faint">{t("chat.borrado")}</p>
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{mensaje.cuerpo}</p>
+          )}
 
           <div className="mt-1 flex flex-wrap items-center gap-1">
             {Object.entries(mensaje.reacciones).map(([emoji, quienes]) => (
@@ -290,13 +326,24 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 </button>
               ))}
             </span>
-            {!dentro ? (
+            {!dentro && !mensaje.borrado ? (
               <button
                 type="button"
                 onClick={() => setHilo(mensaje.id)}
                 className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper group-hover:block"
               >
                 {t("chat.responder")}
+              </button>
+            ) : null}
+            {/* Solo sobre lo propio: el servidor deja además a quien administra
+                la conversación, y esta pantalla no sabe todavía quién lo es. */}
+            {mio ? (
+              <button
+                type="button"
+                onClick={() => void papelera(mensaje.id, Boolean(mensaje.borrado))}
+                className="ml-1 hidden rounded-lg px-1.5 py-0.5 text-3xs text-ink-muted hover:bg-paper group-hover:block"
+              >
+                {mensaje.borrado ? t("chat.recuperar") : t("chat.borrar")}
               </button>
             ) : null}
           </div>
