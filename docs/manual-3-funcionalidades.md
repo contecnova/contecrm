@@ -3627,6 +3627,18 @@ fuera cierto, que es cambiar una regla por otra sin decirlo.
 
 ## 41. GRC: el que se mide sobre el producto, no sobre un documento
 
+> **Auditado entero el 26-10-2026**, las diez capacidades recorridas por HTTP, y
+> **sin un solo hallazgo**. Conviene que conste: es la primera familia que sale
+> entera limpia, y una auditoría que siempre encuentra algo acaba no
+> significando nada. Lo que se le preguntó es lo que pregunta un auditor —
+> enséñame el registro, los controles, la última evaluación, qué no está
+> cubierto, quién puede hacer qué— y lo que se comprobó es la respuesta que sale
+> por HTTP, no lo que dice el código.
+>
+> Dos de las reglas se validaron **plantando el caso malo**: quitando la
+> obligación del residual al aceptar un riesgo, y quitando la detección de
+> controles que apuntan a capacidades retiradas. Cae una prueba cada vez.
+
 El registro de riesgos con su tratamiento y su residual (`CRM-07.03.02.01`), el
 catálogo de controles con tipo, frecuencia y responsable (`CRM-07.03.02.02`) y
 la evaluación periódica con resultado, evidencia y plan de acción

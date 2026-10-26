@@ -49,7 +49,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            papelera NO EXISTIA —ni ruta de borrado, ni de
 #                            recuperacion, ni retencion declarada en identity—
 #                            y estaba contada como hecha
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 215
+#   26-10-2026  208 de 752  auditada la familia de GRC (CRM-07.03.02), las diez
+#                            capacidades recorridas por HTTP. La primera familia
+#                            que sale entera SIN un hallazgo, y conviene que
+#                            conste: una auditoria que siempre encuentra algo
+#                            deja de significar nada
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 208
 
 
 @functools.cache
