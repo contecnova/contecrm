@@ -14,6 +14,17 @@ Lo que ya ha costado:
     perfil_sso               los perfiles de IdP no los veía nadie
     consumir_tenant_provisionado  los tenants nacían sin organización
     seis barridos periódicos sin relevo que los ejecutara
+    firma.enviar              marcaba el sobre como enviado y NO llamaba al
+                              proveedor: el cliente no recibía nada y el CRM
+                              decía que se había mandado (26-10-2026)
+
+**Una variante que este gate NO caza, y conviene saberlo.** La de `firma.enviar`
+no era una función sin llamantes: el puerto del proveedor tenía uno
+—`probar_conexion`—, así que el recuento lo daba por enchufado. Lo que faltaba
+era que el **camino principal** pasara por él. Contar llamantes no distingue
+«lo llama alguien» de «lo llama quien tiene que llamarlo», y generalizar eso
+sin falsos positivos no sale barato. Lo que lo cazó fue recorrer la familia
+entera, y lo que impide que vuelva es la prueba de su propio bloque.
 
 Medido el 04-10-2026 en los módulos de integración con terceros: **47
 funciones públicas sin un solo llamante de producción**. Eso no se arregla en

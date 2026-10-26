@@ -7812,6 +7812,27 @@ que pide quien redacta contratos. Sin orden, les llega a todos a la vez.
 
 Un sobre que solo lleva copias no se manda: no lo firmaría nadie.
 
+**Y mandar manda de verdad.** Hasta el 26-10-2026 no: `enviar` marcaba el sobre
+como «enviado», emitía el evento y **no llamaba al proveedor**. El puerto del
+proveedor sólo lo usaba la prueba de credenciales, así que al proveedor no le
+llegaba nada: el cliente no recibía ningún correo y el CRM decía que estaba
+mandado. No fallaba nada — el sobre se quedaba en «enviado» esperando a un
+firmante que nunca supo que tenía algo que firmar.
+
+Ahora el envío llama al proveedor con los firmantes, el documento y el nivel, y:
+
+- **guarda el identificador que devuelve el proveedor**. Sin él, consultar el
+  estado, descargar lo firmado o cancelarlo no tienen a qué referirse;
+- **anota la llamada**, salga bien o mal, con su duración;
+- y si el proveedor no lo acepta, el sobre **se queda en borrador** con el motivo
+  anotado. Marcar como enviado lo que nunca salió es exactamente el fallo que se
+  estaba arreglando.
+
+> Lo cazó recorrer la familia entera. El gate de «escrito y sin enchufar» no lo
+> veía, y conviene saber por qué: el puerto **sí** tenía un llamante —la prueba
+> de conexión—, así que el recuento lo daba por enchufado. Contar llamantes no
+> distingue «lo llama alguien» de «lo llama quien tiene que llamarlo».
+
 ### Plantillas con anclajes (`CRM-06.01.02.06`)
 
 Dónde va cada firma y qué rellena cada uno, de dos formas: por página y

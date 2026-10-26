@@ -702,6 +702,75 @@ def enviar(uow: UnidadDeTrabajo, sobre_id: UUID) -> dict[str, Any]:
             error_code="firma.sin_firmantes_reales",
         )
 
+    # **LA LLAMADA AL PROVEEDOR.** No estaba: este método marcaba el sobre como
+    # enviado y emitía el evento, y `_puerto_llamada` sólo lo usaba la prueba de
+    # conexión. O sea que el sobre quedaba en «enviado», el evento salía, y al
+    # proveedor **no le llegaba nada**: el cliente no recibía ningún correo y el
+    # CRM decía que se había mandado. Medido el 26-10-2026 auditando la familia.
+    #
+    # Y si el proveedor no lo acepta, el sobre **se queda en borrador**: marcar
+    # como enviado lo que nunca salió es exactamente el fallo que se está
+    # arreglando.
+    proveedor = _proveedor(uow.db, tenant_id, sobre.proveedor)
+    inicio = _ahora()
+    try:
+        respuesta = _puerto_llamada(
+            uow.db,
+            proveedor,
+            operacion="crear_sobre",
+            parametros={
+                "referencia": sobre.referencia,
+                "asunto": sobre.asunto,
+                "mensaje": sobre.mensaje,
+                "documento_id": sobre.documento_id,
+                "nivel": sobre.nivel,
+                "plantilla": sobre.plantilla or "",
+                "orden_estricto": sobre.orden_estricto,
+                "caduca_at": sobre.caduca_at.isoformat() if sobre.caduca_at else "",
+                "firmantes": [
+                    {
+                        "nombre": f.nombre,
+                        "email": f.email,
+                        "telefono": f.telefono or "",
+                        "orden": f.orden,
+                        "papel": f.papel,
+                        "identificacion": f.identificacion,
+                    }
+                    for f in firmantes
+                ],
+            },
+        )
+    except Exception as exc:
+        anotar_llamada(
+            uow.db,
+            tenant_id=tenant_id,
+            proveedor=sobre.proveedor,
+            operacion="crear_sobre",
+            ok=False,
+            duracion_ms=int((_ahora() - inicio).total_seconds() * 1000),
+            error=str(exc)[:400],
+            sobre_id=sobre.id,
+        )
+        _anotar(uow.db, sobre, "envio_fallido", descripcion=str(exc)[:400])
+        raise
+
+    anotar_llamada(
+        uow.db,
+        tenant_id=tenant_id,
+        proveedor=sobre.proveedor,
+        operacion="crear_sobre",
+        ok=True,
+        duracion_ms=int((_ahora() - inicio).total_seconds() * 1000),
+        sobre_id=sobre.id,
+    )
+    # El identificador que devuelve el proveedor es con lo que se le vuelve a
+    # preguntar por este sobre. Sin guardarlo, consultar el estado, descargar lo
+    # firmado o cancelarlo no tienen a qué referirse. Se aceptan los dos nombres
+    # habituales porque el mapeo de campos es del conector, no de aquí.
+    externa = str((respuesta or {}).get("id") or (respuesta or {}).get("id_externo") or "")
+    if externa:
+        sobre.referencia_externa = externa
+
     sobre.estado = "enviado"
     sobre.enviado_at = _ahora()
     sobre.ultima_novedad_at = _ahora()
@@ -1399,7 +1468,11 @@ def probar_conexion(uow: UnidadDeTrabajo, *, clave: str, en_vacio: bool = True) 
                 operacion="crear_sobre",
                 parametros={"prueba": True, "asunto": "Prueba de conexión"},
             )
-            referencia = str((creado or {}).get("id") or "")
+            # Los dos nombres, igual que al enviar: leyendo sólo «id», un
+            # conector que devuelva «id_externo» dejaba el sobre de prueba sin
+            # cancelar en el proveedor, cada vez que alguien probaba las
+            # credenciales.
+            referencia = str((creado or {}).get("id") or (creado or {}).get("id_externo") or "")
             if referencia:
                 _puerto_llamada(
                     uow.db,

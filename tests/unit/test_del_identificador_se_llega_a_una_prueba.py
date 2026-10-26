@@ -71,7 +71,11 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            la firma sin instante, el reenvio de algo viejo, el
 #                            endpoint caido que sigue recibiendo y el replay sin
 #                            tope
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 185
+#   26-10-2026  179 de 752  auditada la firma electronica (CRM-06.01.02).
+#                            HALLAZGO GORDO: `enviar` marcaba el sobre como
+#                            enviado y NO llamaba al proveedor — el cliente no
+#                            recibia nada y el CRM decia que estaba mandado
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 179
 
 
 @functools.cache
