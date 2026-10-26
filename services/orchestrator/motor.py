@@ -211,9 +211,24 @@ def validar_definicion(definicion: dict[str, Any]) -> list[str]:
             destino = cond.get("entonces")
             if destino and destino not in destinos_validos:
                 problemas.append(f"«{nombre}» decide ir a «{destino}», que no existe")
-            op = (cond.get("si") or {}).get("op")
+            si = cond.get("si") or {}
+            op = si.get("op")
             if op and op not in OPERADORES:
                 problemas.append(f"«{nombre}» usa el operador «{op}», que no existe")
+            # Una condición sin atributo **se tomaba siempre**. Medido el
+            # 26-10-2026: sin `si`, o con `si` y sin `atributo`, el motor
+            # comparaba `None` con `None` y el `=` daba cierto, así que la
+            # decisión se iba SIEMPRE por la primera rama — sin error, sin traza
+            # y con el `si_no` que su autor escribió ahí mismo sin usarse nunca.
+            #
+            # Se rechaza al validar y no se adivina al ejecutar, que es la otra
+            # mitad: `_cumple` devuelve falso ante una condición así, para que
+            # las definiciones ya guardadas dejen de tomar la rama a ciegas.
+            if not str(si.get("atributo") or "").strip():
+                problemas.append(
+                    f"«{nombre}» tiene una condición sin atributo: se tomaría "
+                    "siempre, y el «si_no» de al lado no se usaría nunca"
+                )
 
         if tipo == "servicio" and not paso.get("operacion"):
             problemas.append(f"«{nombre}» es de tipo servicio y no declara operación")
@@ -694,7 +709,16 @@ class Motor:
         op = OPERADORES.get(str(condicion.get("op", "=")))
         if op is None:
             return False
-        izquierda = resolver(f"@{condicion.get('atributo', '')}", variables)
+        atributo = str(condicion.get("atributo") or "").strip()
+        if not atributo:
+            # Sin atributo no hay nada que comparar, y hasta el 26-10-2026 esto
+            # devolvía CIERTO: `resolver("@", …)` da `None`, el valor por
+            # defecto también, y `None == None` es cierto. Resultado: una
+            # decisión con la condición mal escrita se iba siempre por la
+            # primera rama. Falso es lo correcto porque el autor ya ha escrito
+            # a dónde ir cuando la condición no se cumple — es el `si_no`.
+            return False
+        izquierda = resolver(f"@{atributo}", variables)
         derecha = resolver(condicion.get("valor"), variables)
         try:
             return op(izquierda, derecha)

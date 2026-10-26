@@ -60,7 +60,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            la propiedad que justifica el subsistema entero:
 #                            que el listado y la ficha digan LO MISMO, por dos
 #                            caminos distintos —SQL y Python—
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 199
+#   26-10-2026  191 de 752  auditado el motor de procesos (CRM-00.03.02). DOS
+#                            hallazgos: una condicion sin atributo se tomaba
+#                            SIEMPRE —el motor comparaba None con None y el «=»
+#                            daba cierto—, y el enlace de un subproceso con su
+#                            padre estaba en la fila y no salia por la API
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 191
 
 
 @functools.cache

@@ -4116,6 +4116,23 @@ Tres decisiones del editor:
 - **Un paso inalcanzable se dibuja igual.** Esconderlo haría imposible arreglarlo
   desde el propio editor, que es donde se está cuando se descubre.
 
+> **Y una condición mal escrita ya no se toma siempre.** Hasta el 26-10-2026, una
+> condición de decisión sin `atributo` —o escrita con las claves cambiadas, que
+> es la errata que se comete de memoria— se evaluaba a **cierto**: el motor
+> resolvía `@` a nulo, el valor por defecto también era nulo, y el `=` daba
+> cierto. Resultado: la decisión se iba **siempre por la primera rama**, sin
+> error, sin traza, y con el `si_no` que su autor escribió al lado sin usarse
+> jamás. El validador lo daba por bueno.
+>
+> Arreglado por las dos mitades, que es lo que hace falta aquí: el validador lo
+> **rechaza** diciendo por qué, y el motor devuelve falso ante una condición así
+> —para que las definiciones **ya guardadas** dejen de tomar la rama a ciegas—.
+> Falso es lo correcto porque el autor ya ha escrito a dónde ir cuando la
+> condición no se cumple: es el `si_no`.
+>
+> Salió escribiendo la prueba de la familia con la forma equivocada de la
+> condición, y viendo que un importe de diez se iba por la rama de «grande».
+
 Las salidas de un paso se leen con la **misma lista de enlaces** que usa el
 validador del servidor. Si aquí faltara una, el diagrama enseñaría un proceso con
 menos caminos de los que tiene — y el que falta sería justo el que nadie revisa.

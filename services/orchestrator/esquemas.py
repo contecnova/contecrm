@@ -63,6 +63,13 @@ class InstanciaOut(BaseModel):
     paso_actual: str | None = None
     variables: dict[str, Any] = {}
     pasos_ejecutados: int
+    # De quién cuelga, cuando es un subproceso (CRM-00.03.02.08). La fila lo
+    # guardaba desde el principio y **la respuesta no lo decía**: una instancia
+    # fallida aparecía suelta y no había forma de llegar al proceso de negocio
+    # al que pertenece, que es justo para lo que sirve poder encadenarlos.
+    # Medido el 26-10-2026 recorriendo la familia.
+    padre_id: UUID | None = None
+    profundidad: int = 0
     despertar_at: datetime | None = None
     error: str | None = None
     created_at: datetime
