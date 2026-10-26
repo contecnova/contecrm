@@ -44,3 +44,50 @@ export async function aplicarLocalizacion(): Promise<string> {
     return "";
   }
 }
+
+/**
+ * La marca del tenant, aplicada encima de la del despliegue (CRM-07.04.01.04).
+ *
+ * `config.json` da la marca del **despliegue**, y sirve para la pantalla de
+ * entrada: ahí todavía no se sabe de qué tenant es quien mira. Pero la marca es
+ * **por tenant** —el catálogo lo dice así— y el servidor la guarda: nombre,
+ * logotipo, favicon y colores.
+ *
+ * El front no la leía: dos tenants en la misma instalación compartían la marca
+ * del fichero de despliegue. Medido el 26-10-2026.
+ *
+ * Se aplica **sólo cuando está activa**, que es lo que decide el servidor: una
+ * marca a medias pisando la del despliegue es justo lo que el diagnóstico de
+ * esa misma ruta existe para evitar — si se anuncia y el correo sale con el
+ * dominio del fabricante, la conversación que sigue no es sobre el correo.
+ */
+export async function aplicarMarcaDelTenant(): Promise<boolean> {
+  try {
+    const { datos } = await llamar<{ aplicable?: Record<string, string> }>("/api/v1/marca");
+    const marca = datos?.aplicable ?? {};
+    if (!marca.nombre_producto && !marca.color_principal && !marca.logo_url) return false;
+
+    if (marca.nombre_producto) document.title = marca.nombre_producto;
+    // El acento se escribe sobre la MISMA variable del sistema de diseño, igual
+    // que la del despliegue: así llega a todo lo que ya usa `bg-accent` sin
+    // repasar la aplicación.
+    const rgb = aRgb(marca.color_principal ?? "");
+    if (rgb) {
+      document.documentElement.style.setProperty("--accent", rgb);
+      document.documentElement.style.setProperty("--accent-text", rgb);
+    }
+    return true;
+  } catch {
+    // Sin marca del tenant se queda la del despliegue. Una pantalla sin color
+    // de acento es peor que una con el color de la casa.
+    return false;
+  }
+}
+
+/** `#1b6ef3` → `27 110 243`, que es como lo quieren las variables CSS. */
+function aRgb(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex || "").trim());
+  if (!m) return "";
+  const n = parseInt(m[1] ?? "0", 16);
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+}

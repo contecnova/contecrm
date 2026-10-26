@@ -59,6 +59,10 @@ async function arrancar() {
   // sesión— se monta igual con el respaldo: una pantalla en blanco porque no
   // se pudo leer un formato de fecha sería peor que un número con la coma en
   // otro sitio. Cuando llega, los formateadores se rehacen.
+  //
+  // Se intenta aquí y **se vuelve a intentar al haber sesión** (en `App`): en
+  // el arranque puede no haberla todavía, y entonces esta llamada no devuelve
+  // nada útil.
   void aplicarLocalizacion();
 
   const raiz = document.getElementById("root");

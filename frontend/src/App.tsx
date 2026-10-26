@@ -20,6 +20,7 @@ import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
 import { llamar } from "@/lib/api";
 import { aplicarDensidad, densidadDelPerfil } from "@/lib/densidad";
+import { aplicarLocalizacion, aplicarMarcaDelTenant } from "@/lib/localizacion";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
 
 /**
@@ -115,6 +116,15 @@ export function App() {
     void densidadDelPerfil().then((d) => {
       if (vivo) aplicarDensidad(d);
     });
+    // Y la marca y los formatos del TENANT, por lo mismo y en el mismo sitio:
+    // hasta que no se sabe quién entra no hay a quién preguntárselos, y
+    // pedirlos sin credencial devuelve un 401 que deja la interfaz con los del
+    // despliegue para toda la visita.
+    //
+    // `config.json` sigue sirviendo para la pantalla de entrada, donde todavía
+    // no se sabe de qué tenant es quien mira; esto se aplica encima.
+    void aplicarMarcaDelTenant();
+    void aplicarLocalizacion();
     return () => {
       vivo = false;
     };

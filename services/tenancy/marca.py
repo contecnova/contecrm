@@ -269,6 +269,28 @@ def comprobar(db: Session, tenant_id: UUID) -> dict[str, Any]:
         "faltan": faltan,
         "se_puede_activar": not faltan,
         "aviso_contraste": aviso_contraste,
+        # **Lo que la interfaz tiene que pintar**, y no sólo el diagnóstico.
+        #
+        # Esta respuesta decía qué FALTA para poder activar la marca y no decía
+        # cuál es, así que el front no tenía de dónde leerla: sacaba el nombre,
+        # el color y el logotipo de `config.json`, que es del DESPLIEGUE. Dos
+        # tenants en la misma instalación compartían marca, y la capacidad dice
+        # «por tenant». Medido el 26-10-2026.
+        #
+        # Sólo cuando está ACTIVA: una marca a medias pisando la del despliegue
+        # es exactamente lo que esta misma función existe para evitar.
+        "aplicable": (
+            {
+                "nombre_producto": fila.nombre_producto,
+                "logo_url": fila.logo_url,
+                "favicon_url": fila.favicon_url,
+                "color_principal": fila.color_principal,
+                "color_texto": fila.color_texto,
+                "color_fondo": fila.color_fondo,
+            }
+            if fila.activa
+            else {}
+        ),
         "que_significa": (
             "No se escapa la marca del fabricante por ninguno de los cuatro puntos."
             if not faltan

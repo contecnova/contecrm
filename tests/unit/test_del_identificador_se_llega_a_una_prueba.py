@@ -99,7 +99,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            front no la leia — «es-ES» a mano en 16 sitios de
 #                            5 ficheros, y los formateadores construidos al
 #                            importar, o sea imposibles de cambiar
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 145
+#   26-10-2026  144 de 752  la marca por tenant (CRM-07.04.01.04). HALLAZGO
+#                            del mismo tipo que la localizacion: el servidor la
+#                            guarda y la ruta solo devolvia el DIAGNOSTICO, asi
+#                            que el front sacaba nombre, color y logotipo de
+#                            config.json —que es del despliegue— y dos tenants
+#                            de la misma instalacion compartian marca
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 144
 
 
 @functools.cache

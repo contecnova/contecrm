@@ -3966,6 +3966,23 @@ aplicación. Se valida la forma antes de escribirla: una variable CSS con un
 valor inventado no falla, simplemente deja de aplicarse y el acento desaparece
 sin decir por qué.
 
+**Y es por tenant, no por despliegue.** `config.json` da la marca de la
+instalación y sirve para la pantalla de entrada, donde todavía no se sabe de
+qué tenant es quien mira. En cuanto hay sesión, encima se aplica la del tenant:
+nombre, logotipo, favicon y colores, que es como los guarda el servidor.
+
+> Hasta el 26-10-2026 no se aplicaba. El servidor la tenía guardada y la ruta
+> devolvía sólo el **diagnóstico** —qué falta para poder activarla, el aviso de
+> contraste— y no los valores, así que el front no tenía de dónde leerla: dos
+> tenants en la misma instalación compartían la marca del fichero de
+> despliegue. Es el mismo circuito abierto que la localización, encontrado el
+> mismo día: la mitad del servidor existe y la del cliente no la lee.
+>
+> Los valores se mandan **sólo cuando la marca está activa**. Una marca a medias
+> pisando la del despliegue es justo lo que ese diagnóstico existe para evitar:
+> si se anuncia y el correo sale con el dominio del fabricante, la conversación
+> que sigue no es sobre el correo.
+
 ### La sesión se renueva sola (`CRM-07.04.02.02`)
 
 El token de acceso dura quince minutos a propósito: su tiempo de vida **es** la
