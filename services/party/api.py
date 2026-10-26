@@ -28,7 +28,7 @@ from crmcore.http.pagination import (
     paginar_consulta,
 )
 from crmcore.http.retencion_router import crear_router_retencion
-from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -101,6 +101,7 @@ router_cuentas = APIRouter(prefix="/accounts", tags=["cuentas"])
 # apuntarlo: se declara aquí, junto al router. El import va en esta línea y no
 # arriba porque este módulo importa `listados` más abajo a propósito.
 from crmcore.http.listados import (  # noqa: E402
+    aplicar_filtros_de_la_url,
     con_rollups,
     declarar_recurso,
     proyectar_con_esquema,
@@ -140,6 +141,7 @@ def crear_cuenta(datos: CrearCuenta, uow: UowDep) -> Any:
     description="Paginación por cursor: estable aunque se creen o borren filas entre páginas.",
 )
 def listar_cuentas(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -178,6 +180,15 @@ def listar_cuentas(
     if owner_id:
         consulta = consulta.where(Cuenta.owner_id == owner_id)
 
+    # Los filtros comunes, con sus rangos: `?created_at__desde=2026-01-01`.
+    #
+    # Este listado está escrito a mano porque tiene filtros propios que la
+    # fábrica no sabe expresar. Eso no es motivo para que además le falten los
+    # comunes: si no, el mismo producto admite rangos o no según cómo montó
+    # cada listado quien lo escribió, y eso lo descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
+    )
     consulta = aplicar_orden_y_cursor(
         consulta,
         Cuenta,
@@ -608,6 +619,7 @@ def crear_contacto(datos: CrearContacto, uow: UowDep) -> Any:
     summary="Listar contactos",
 )
 def listar_contactos(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -636,6 +648,15 @@ def listar_contactos(
             RelacionContactoCuenta.cuenta_id == cuenta_id,
             RelacionContactoCuenta.hasta.is_(None),
         )
+    # Los filtros comunes, con sus rangos: `?created_at__desde=2026-01-01`.
+    #
+    # Este listado está escrito a mano porque tiene filtros propios que la
+    # fábrica no sabe expresar. Eso no es motivo para que además le falten los
+    # comunes: si no, el mismo producto admite rangos o no según cómo montó
+    # cada listado quien lo escribió, y eso lo descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Contacto, consulta, principal=principal, db=db, objeto="contacto"
+    )
     consulta = aplicar_orden_y_cursor(
         consulta,
         Contacto,
@@ -824,6 +845,7 @@ def crear_actividad(datos: CrearActividad, uow: UowDep) -> Any:
     summary="Listar actividades",
 )
 def listar_actividades(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query(""),
@@ -856,6 +878,17 @@ def listar_actividades(
             Actividad.vence_at < datetime.now(timezone.utc),
             Actividad.estado.in_(("pendiente", "en_curso")),
         )
+    # Y los filtros comunes, con sus rangos: `?vence_at__hasta=…` para «lo que
+    # vence antes del viernes», `?prioridad__en=alta,urgente`…
+    #
+    # Este listado está escrito a mano porque tiene filtros propios —`mias`,
+    # `vencidas`— que la fábrica no sabe expresar. Eso no es motivo para que
+    # además le falten los comunes: el mismo producto admitiría rangos o no
+    # según cómo montó cada listado quien lo escribió, y eso lo descubre el
+    # integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Actividad, consulta, principal=principal, db=db, objeto="actividad"
+    )
     # Por vencimiento: una lista de actividades ordenada por fecha de creación
     # esconde al final la que vence hoy, que es la que hay que hacer.
     return paginar_consulta(

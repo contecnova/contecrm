@@ -169,6 +169,37 @@ bueno.
 El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
 oportunidad ganada en la base y nadie enterado.
 
+### El guard de tenant se quedaba con los modelos de ayer
+
+El aislamiento entre clientes tiene dos capas: la RLS de Postgres y un guard del
+ORM que inyecta `tenant_id` en cada consulta. El guard descubre **una sola vez**
+qué modelos llevan `tenant_id`, y su propio código avisaba de la consecuencia:
+«un modelo que se mapeara perezosamente DESPUÉS del primer SELECT quedaría fuera
+del filtro para siempre, y sería una red silenciosamente incompleta».
+
+No era una hipótesis. Medido el 26-10-2026: el barrido de aislamiento denunciaba
+que `DELETE /api/v1/casos/{id}` devolvía **204 sobre el registro de otro
+tenant**, y lo mismo en segmentos, conexiones, objetos de metadatos, sesiones y
+una docena más. Eran modelos mapeados al importar su servicio, después de que el
+guard se diera por descubierto: el primero que arrancaba quedaba cubierto y los
+demás no.
+
+En producción cada proceso importa su servicio antes de instalar el guard, así
+que el caso es más difícil de alcanzar — pero no imposible: basta un módulo de
+modelos que se importe en caliente. Y lo que estaría en juego es una fuga entre
+clientes.
+
+**El arreglo** es que el guard se entere: se engancha a `after_configured`, el
+aviso que SQLAlchemy lanza al terminar de configurar mapeadores, y **olvida** lo
+descubierto. El siguiente SELECT lo rehace. Se olvida en vez de recalcular
+porque recalcular dentro de ese escuchador dispararía el descubrimiento en mitad
+de la configuración, que es justo cuando la lista está a medias.
+
+Lo vigila `test_el_guard_no_se_queda_con_los_modelos_de_ayer.py`, que mapea un
+modelo nuevo a propósito y comprueba que entra solo. La prueba directa es la que
+manda: el barrido de aislamiento también lo detecta, pero sólo según qué corra
+antes, y un detector que depende del orden no es un guardián.
+
 ### «Todo o nada» sólo lo cumplía media aplicación
 
 Una petición compuesta —varias operaciones en una llamada— promete una cosa: o

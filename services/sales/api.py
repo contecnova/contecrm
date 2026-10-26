@@ -15,6 +15,7 @@ from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.documental_router import crear_router_documental
+from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import (
     PaginaDeListado,
     ParametrosPagina,
@@ -86,6 +87,7 @@ def crear_lead(datos: CrearLead, uow: UowDep) -> Any:
     summary="Listar leads",
 )
 def listar_leads(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -115,6 +117,15 @@ def listar_leads(
             Lead.sla_primera_respuesta_at < datetime.now(timezone.utc),
             Lead.estado.notin_(("convertido", "descartado")),
         )
+    # Los filtros comunes, con sus rangos: `?created_at__desde=2026-10-01`.
+    #
+    # Este listado está escrito a mano porque tiene filtros propios que la
+    # fábrica no sabe expresar. Eso no es motivo para que además le falten los
+    # comunes: si no, el mismo producto admite rangos o no según cómo montó
+    # cada listado quien lo escribió, y eso lo descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Lead, consulta, principal=principal, db=db, objeto="lead"
+    )
     consulta = aplicar_orden_y_cursor(
         consulta,
         Lead,
@@ -381,6 +392,7 @@ def _nombres_de_etapa(db: Any, filas: list[Any]) -> tuple[dict, dict]:
     summary="Listar oportunidades",
 )
 def listar_oportunidades(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -404,6 +416,15 @@ def listar_oportunidades(
         consulta = consulta.where(Oportunidad.cuenta_id == cuenta_id)
     if mias:
         consulta = consulta.where(Oportunidad.owner_id == principal.id)
+    # Los filtros comunes, con sus rangos: `?cierre_previsto__hasta=2026-11-02`.
+    #
+    # Este listado está escrito a mano porque tiene filtros propios que la
+    # fábrica no sabe expresar. Eso no es motivo para que además le falten los
+    # comunes: si no, el mismo producto admite rangos o no según cómo montó
+    # cada listado quien lo escribió, y eso lo descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Oportunidad, consulta, principal=principal, db=db, objeto="oportunidad"
+    )
     consulta = aplicar_orden_y_cursor(
         consulta,
         Oportunidad,

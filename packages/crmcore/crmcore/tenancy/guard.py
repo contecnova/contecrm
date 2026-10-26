@@ -34,7 +34,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import event
-from sqlalchemy.orm import Session, with_loader_criteria
+from sqlalchemy.orm import Mapper, Session, with_loader_criteria
 
 from crmcore.logging import get_logger
 
@@ -97,6 +97,40 @@ def _descubrir_modelos() -> list[type]:
             modelos=sorted(c.__name__ for c in encontrados),
         )
         return _modelos_ambito
+
+
+def _olvidar_lo_descubierto(*_args: Any) -> None:
+    """Tira el descubrimiento cuando SQLAlchemy mapea algo nuevo.
+
+    **Es la mitad que faltaba del aviso que ya estaba escrito ahí arriba**: el
+    descubrimiento se memoriza una vez, así que un modelo mapeado DESPUÉS
+    quedaba fuera del filtro para siempre. La red silenciosamente incompleta
+    que el comentario de `_descubrir_modelos` advertía no era una hipótesis:
+    estaba pasando.
+
+    Medido el 26-10-2026: en una sola ejecución de la suite, el barrido de
+    aislamiento denunciaba que `DELETE /api/v1/casos/{id}` devolvía 204 sobre
+    el registro de OTRO tenant —y lo mismo en segmentos, conexiones, objetos de
+    metadatos, sesiones y una docena más—. No era una fuga del producto: eran
+    modelos que se habían mapeado al importar su servicio, después de que el
+    guard se diera por descubierto, y a los que por tanto no se les inyectaba
+    ningún filtro. El servicio que corriera primero quedaba cubierto y los
+    demás no.
+
+    En producción cada proceso importa su servicio antes de instalar el guard,
+    así que el caso es más difícil de alcanzar — pero no imposible: basta un
+    módulo de modelos que se importe en caliente. Y la consecuencia sería una
+    fuga entre clientes, que es lo más caro que puede pasar aquí.
+
+    `after_configured` lo dispara SQLAlchemy al terminar de configurar los
+    mapeadores, que es exactamente cuando la lista pudo quedarse corta. No se
+    recalcula aquí: se olvida, y el siguiente SELECT lo rehace.
+    """
+    global _modelos_ambito
+    _modelos_ambito = None
+
+
+event.listen(Mapper, "after_configured", _olvidar_lo_descubierto)
 
 
 def _guard_activo() -> bool:

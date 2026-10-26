@@ -153,10 +153,17 @@ _CIERTOS = frozenset({"1", "true", "si", "sí", "verdadero"})
 _FALSOS = frozenset({"0", "false", "no", "falso"})
 
 
-def _filtros_de_la_url(
+def aplicar_filtros_de_la_url(
     request: Any, modelo: type, consulta: Any, *, principal: Any, db: Any, objeto: str
 ) -> Any:
     """Aplica los filtros de la query, y **rechaza los que no existen**.
+
+    Es pública porque la fábrica monta 61 listados y hay otros escritos a mano
+    —los que tienen filtros propios que la fábrica no sabe expresar—. Ésos
+    pueden llamarla igual: si no, el mismo producto admite rangos o no según
+    cómo montó cada listado quien lo escribió, y eso lo descubre el integrador
+    probando.
+
 
     Antes no se aplicaba ninguno: el listado declaraba `limite` y `cursor`, y
     FastAPI se come en silencio cualquier otro parámetro. O sea que
@@ -412,7 +419,7 @@ def montar_listado(
         consulta = select(modelo)
         if filtro is not None:
             consulta = filtro(consulta)
-        consulta = _filtros_de_la_url(
+        consulta = aplicar_filtros_de_la_url(
             request, modelo, consulta, principal=principal, db=db, objeto=objeto
         )
         if tiene_borrado:
@@ -447,7 +454,7 @@ def montar_listado(
     # misma —y mejor, porque además mira si este principal ve ese campo en
     # claro—, así que la comprobación global se aparta aquí y sólo aquí.
     admite_parametros_abiertos(
-        listar, "los filtros son las columnas del modelo; las valida `_filtros_de_la_url`"
+        listar, "los filtros son las columnas del modelo; las valida `aplicar_filtros_de_la_url`"
     )
 
     montar_exportacion(
@@ -1056,7 +1063,7 @@ def montar_exportacion(
         consulta = select(modelo)
         if filtro is not None:
             consulta = filtro(consulta)
-        consulta = _filtros_de_la_url(
+        consulta = aplicar_filtros_de_la_url(
             request, modelo, consulta, principal=principal, db=db, objeto=objeto
         )
         if tiene_borrado:
