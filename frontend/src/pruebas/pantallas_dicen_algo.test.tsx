@@ -287,6 +287,21 @@ describe("con datos, la pantalla los enseña", () => {
       {
         "/api/v1/consola-agente": {
           agente: { presencia: "disponible" },
+          // La cola la ordena el SERVIDOR y es lo que pinta la pantalla. Las
+          // dos listas siguen viajando —el contrato está publicado y quitarle
+          // un campo rompe a quien ya lo usa—, pero no son lo que se dibuja.
+          cola: [
+            {
+              tipo: "caso",
+              id: "k1",
+              canal: "caso",
+              asunto: `${T("caso-agente")} · Algo pasa`,
+              estado: "abierto",
+              minutos_restantes: 30,
+              espera_min: null,
+              vencido: false,
+            },
+          ],
           mis_casos: [
             {
               caso_id: "k1",

@@ -267,6 +267,13 @@ export default {
     vencidoHace: "vencido hace {{tiempo}}",
   },
   consolaAgente: {
+    // Dos relojes distintos, rotulados distinto: un caso tiene plazo y una
+    // conversación sólo antigüedad. «5 min» para los dos haría creer que
+    // significan lo mismo.
+    venceEn: "vence en {{minutos}} min",
+    vencidoHace: "vencido hace {{minutos}} min",
+    esperando: "esperando {{minutos}} min",
+    sinReloj: "sin plazo",
     titulo: "Consola de agente",
     entradilla:
       "Una sola cola con todos los canales. Con una bandeja por canal, el correo " +
@@ -274,7 +281,6 @@ export default {
     vacia: "No hay nada esperando",
     vaciaDetalle: "Cuando entre una conversación aparecerá aquí.",
     sinAsunto: "(sin asunto)",
-    esperando: "{{minutos}} min esperando",
   },
   conocimiento: {
     titulo: "Conocimiento",

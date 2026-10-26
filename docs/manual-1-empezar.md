@@ -275,6 +275,35 @@ igual. Y que recargar no la pierde.
 hay muchas filas: el listado trae páginas, y filtrar en el navegador recortaría
 sólo la página que ya se había traído — diría «3 resultados» donde hay cuarenta.
 
+## La consola de agente
+
+Una sola cola con todos los canales. El canal es una **etiqueta, no una
+pestaña**: con una bandeja por canal, el correo se mira dos veces al día y el
+chat todo el rato, y quien escribe por correo espera el doble sin que nadie lo
+haya decidido.
+
+**El orden lo decide el servidor**, no la pantalla, y son dos grupos:
+
+1. **Lo que tiene plazo**, por lo que le queda. Lo vencido primero.
+2. **Lo demás**, por lo que lleva esperando. Lo más viejo delante.
+
+No se mezclan en un solo número a propósito. Un caso tiene minutos para vencer
+y una conversación suelta no tiene plazo, sólo tiempo esperando: convertir una
+cosa en la otra sería elegir un cambio de moneda a ojo y presentarlo como una
+prioridad. Por eso también el reloj se rotula distinto —«vence en 20 min» frente
+a «esperando 20 min»—: son un compromiso y una antigüedad, y enseñarlos igual
+haría creer que significan lo mismo.
+
+> Antes la pantalla mezclaba las dos listas pero daba a **todas** las
+> conversaciones la misma urgencia, así que siempre iban al final y entre ellas
+> quedaban por orden de llegada: la que llevaba tres días esperando podía salir
+> detrás de la de hace cinco minutos. Y ordenar en la pantalla tenía otro
+> problema: esto se publica para empotrarse, así que dos agentes con dos
+> consolas distintas atendían en orden distinto.
+
+Se entra pulsando la fila entera. Una consola de la que no se puede entrar a
+trabajar es un informe.
+
 ## Cuadros de mando
 
 Cada componente de un cuadro ejecuta su informe y se pinta. Dos cosas que

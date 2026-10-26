@@ -933,6 +933,68 @@ def aplicar_macro(
 # ── Consola embebible (CRM-04.02.02.08) ───────────────────────────────────
 
 
+def _cola_unica(casos: Any, conversaciones: Any, ahora: Any) -> list[dict[str, Any]]:
+    """Casos y conversaciones en una sola cola, ordenada por urgencia real.
+
+    El canal es una etiqueta, no una pestaña: con una bandeja por canal, el
+    correo se mira dos veces al día y el chat todo el rato, y quien escribe por
+    correo espera el doble sin que nadie lo haya decidido.
+    """
+    filas: list[dict[str, Any]] = []
+
+    for c in casos:
+        vence = c.vence_resolucion_at
+        if vence is not None and vence.tzinfo is None:
+            vence = vence.replace(tzinfo=timezone.utc)
+        restan = int((vence - ahora).total_seconds() // 60) if vence else None
+        filas.append(
+            {
+                "tipo": "caso",
+                "id": str(c.id),
+                "canal": "caso",
+                "asunto": f"{c.codigo or ''} · {c.asunto}".strip(" ·"),
+                "estado": c.estado,
+                "minutos_restantes": restan,
+                "espera_min": None,
+                # Lo que ya venció se marca: es lo que distingue «atiéndelo
+                # ahora» de «atiéndelo pronto», y son dos trabajos distintos.
+                "vencido": restan is not None and restan < 0,
+            }
+        )
+
+    for c in conversaciones:
+        ultimo = c.ultimo_mensaje_at
+        if ultimo is not None and ultimo.tzinfo is None:
+            ultimo = ultimo.replace(tzinfo=timezone.utc)
+        espera = int((ahora - ultimo).total_seconds() // 60) if ultimo else None
+        filas.append(
+            {
+                "tipo": "conversacion",
+                "id": str(c.id),
+                "canal": c.canal_actual,
+                "asunto": c.asunto,
+                "estado": c.estado,
+                "minutos_restantes": None,
+                "espera_min": espera,
+                "vencido": False,
+            }
+        )
+
+    def _orden(f: dict[str, Any]) -> tuple[int, float]:
+        if f["minutos_restantes"] is not None:
+            # Grupo 0: con plazo. Lo que menos queda, delante; lo vencido sale
+            # en negativo y por tanto el primero de todos.
+            return (0, float(f["minutos_restantes"]))
+        # Grupo 1: sin plazo, por lo que lleva esperando. Lo más viejo delante,
+        # así que la espera va en negativo. Lo que no sabemos cuánto espera va
+        # al final: no es urgente, es desconocido, y colarlo arriba taparía lo
+        # que sí sabemos que corre.
+        espera = f["espera_min"]
+        return (1, -float(espera) if espera is not None else 0.0)
+
+    return sorted(filas, key=_orden)
+
+
 def consola(db: Session, tenant_id: UUID, agente_id: UUID) -> dict[str, Any]:
     """Todo lo que necesita una consola de agente, en una llamada.
 
@@ -1038,6 +1100,31 @@ def consola(db: Session, tenant_id: UUID, agente_id: UUID) -> dict[str, Any]:
             }
             for c in mias
         ],
+        # ── La cola, YA ORDENADA ──────────────────────────────────────────
+        #
+        # Se ordena aquí y no en la pantalla por dos motivos. El primero es que
+        # esto se publica para empotrarlo —«devuelve datos y no pantallas»—, y
+        # si cada consola ordena por su cuenta, dos agentes con dos consolas
+        # atienden en orden distinto. El segundo es que la pantalla no tiene
+        # los datos: ordenaba las conversaciones con una constante, así que
+        # **siempre iban al final y entre ellas por orden de llegada**, mientras
+        # su propio comentario decía que lo que lleva más esperando se atiende
+        # antes.
+        #
+        # NO se inventa una unidad común. Un caso con SLA tiene minutos para
+        # vencer; una conversación suelta no tiene plazo, sólo tiempo
+        # esperando. Convertir una cosa en la otra sería elegir un cambio de
+        # moneda a ojo y presentarlo como una prioridad.
+        #
+        # Así que son dos grupos, cada uno con un orden de verdad:
+        #
+        #   1. lo que tiene plazo, por lo que le queda —lo vencido primero,
+        #      porque sale en negativo—;
+        #   2. lo demás, por lo que lleva esperando, lo más viejo delante.
+        #
+        # Es el mismo reparto que la bandeja de casos, y eso importa: dos
+        # pantallas que enseñan lo mismo tienen que colocarlo igual.
+        "cola": _cola_unica(casos, mias, ahora),
         "macros": [{"clave": m.clave, "nombre": m.nombre, "canales": m.canales} for m in macros],
         # Las macros van ordenadas por uso: la que se usa cuarenta veces al día
         # tiene que estar la primera, y ordenarlas alfabéticamente obliga a
