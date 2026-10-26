@@ -291,6 +291,17 @@ def test_toda_ruta_de_escritura_exige_permiso() -> None:
         "entrar_con_passkey": "ídem: lo que autoriza es la firma de la llave",
         # Y registrar o quitar una llave propia solo exige tener sesión: son
         # `AutenticadoDep` y la comprobación de que la llave es suya va dentro.
+        # Su propia preferencia: idioma, zona horaria, formato de fecha,
+        # densidad de la interfaz. No hay permiso que pedir porque no se está
+        # tocando nada de nadie — y exigir `tenant:write`, que es lo que pasaba
+        # antes de que esta ruta existiera, deja la preferencia personal en
+        # manos de un administrador, o sea, sin usar.
+        #
+        # Lo que la cierra no es un permiso sino dos cosas, probadas en
+        # `test_mis_preferencias_las_fija_su_dueno.py`: **el ámbito lo pone el
+        # servidor** —el de quien llama, nunca el del cuerpo— y sólo admite las
+        # claves que la declaración marca como personales.
+        "fijar_mi_preferencia": "es su propia preferencia; el ámbito lo pone el servidor",
         "empezar_registro_passkey": "el usuario registra su propia llave",
         "confirmar_registro_passkey": "ídem",
         "quitar_passkey": "quita una llave propia; que sea suya se comprueba dentro",

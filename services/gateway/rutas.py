@@ -27,6 +27,11 @@ PREFIJOS: dict[str, str] = {
     "marca": "tenancy",
     "flags": "tenancy",
     "ajustes": "tenancy",
+    # Las preferencias de cada persona van al mismo sitio que los ajustes:
+    # salen de la misma jerarquía, sólo que resueltas y escritas en el ámbito
+    # de quien llama. Prefijo aparte y no `ajustes/mias` porque lo que las
+    # distingue no es dónde viven, es quién puede tocarlas.
+    "mis-preferencias": "tenancy",
     "auth": "identity",
     "usuarios": "identity",
     "roles": "identity",

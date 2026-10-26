@@ -80,3 +80,17 @@ class _AppSettings(BaseSettings):
     # sistema headless sin documentación navegable es mucho peor que uno que
     # enseña su contrato.
     api_docs_enabled: bool = True
+
+    # ── Interfaz ──────────────────────────────────────────────────────────
+    # Densidad por defecto de la interfaz.
+    #
+    # «compacta» cabe mucho más en pantalla y es lo que quiere quien trabaja
+    # aquí ocho horas: catorce filas de una lista en vez de cuatro. «comoda» da
+    # aire y se lee de lejos, que es lo que hace falta en una demostración o en
+    # una pantalla compartida.
+    #
+    # Esto es el DEFECTO DEL DESPLIEGUE, no la preferencia de nadie: cada
+    # persona puede fijar la suya y la suya manda. Está aquí, y no a fuego en
+    # el front, para que una instalación entera pueda arrancar en cómoda sin
+    # tocar código ni reconstruir la imagen.
+    ui_densidad: Literal["compacta", "comoda"] = "compacta"

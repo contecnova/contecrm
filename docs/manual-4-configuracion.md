@@ -267,6 +267,57 @@ inadvertidamente, en producción está impedido.
 
 ## Operación diaria
 
+### Lo que ajusta la instalación y lo que ajusta cada persona
+
+Hay dos niveles de configuración y conviene no mezclarlos, porque el segundo no
+existía hasta el 26-10-2026 y eso tenía una consecuencia práctica.
+
+**Las palancas de la instalación** se fijan desde la consola y exigen
+`tenant:write`: topes, plazos, umbrales, interruptores. Van por
+`PUT /api/v1/ajustes/{clave}` y se auditan.
+
+**Las preferencias de cada persona** las cambia su dueño, sin permiso de
+administración, por `PUT /api/v1/mis-preferencias/{clave}`. Hoy son cinco:
+
+| Clave | Qué es | Defecto del despliegue |
+|---|---|---|
+| `idioma` | Idioma de la interfaz y los correos | — |
+| `zona_horaria` | Zona para fechas y calendarios | — |
+| `formato_fecha` | `dd/mm/aaaa`, `mm/dd/aaaa` o `aaaa-mm-dd` | — |
+| `primer_dia_semana` | 0 = lunes | — |
+| `ui_densidad` | `compacta` o `comoda` | `UI_DENSIDAD` |
+
+> **Por qué hacía falta.** Las cinco estaban declaradas hasta el ámbito de
+> usuario desde el principio —la jerarquía de ajustes termina en «usuario»
+> precisamente para esto—, pero la única ruta que fijaba un ajuste exigía
+> `tenant:write`. La cadena se cortaba un escalón antes del final: un comercial
+> no va a abrir un ticket para que le cambien el formato de fecha, así que en la
+> práctica la preferencia personal no existía.
+
+**Qué cuenta como preferencia personal no es una lista escrita a mano**: es toda
+clave declarada con `minimo_ambito="usuario"` y sin marcar `sensible`. Si mañana
+hace falta un ajuste por usuario que deba poner un administrador —una exención,
+un permiso ampliado—, se marca `sensible=True` y se queda en la consola. Una
+lista de las que sí se habría quedado corta en cuanto alguien declarase la
+siguiente, y además en silencio: la preferencia simplemente no se podría
+guardar y nadie sabría por qué.
+
+**El ámbito lo pone el servidor, nunca el cuerpo de la petición.** Es lo que
+impide que cualquiera con una cuenta normal cambie el idioma —o la densidad— de
+todo el tenant mandando `ambito: "tenant"`.
+
+#### `UI_DENSIDAD`: el defecto de toda la instalación
+
+`compacta` por defecto. Cabe mucho más en pantalla —unas catorce filas de una
+lista donde en cómoda caben cuatro— y es lo que quiere quien trabaja aquí ocho
+horas. Ponerlo a `comoda` tiene sentido en una instalación de demostración o
+donde se usa en pantallas grandes y de lejos.
+
+Es el **defecto**, no una imposición: quien quiera la otra se la pone y la suya
+manda. Y el front **no guarda el defecto al arrancar**, a propósito: hacerlo le
+daría a cada persona un valor propio idéntico al defecto desde el primer día, y
+el día que cambiaras `UI_DENSIDAD` no le cambiaría a nadie.
+
 ### Salud
 
 Cada servicio expone dos endpoints que **no son lo mismo**, y confundirlos sale

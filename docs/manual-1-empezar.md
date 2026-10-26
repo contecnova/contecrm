@@ -165,6 +165,63 @@ La cuarta llamada es la que enseña de qué va esto: el sistema responde **qué
 está mal y por qué**, con los mismos errores que daría al guardar, para que
 cualquier frontend pueda enseñarlos sin reimplementar las reglas.
 
+## Las dos entradas: trabajar y administrar
+
+Arriba del todo del panel izquierdo hay dos pestañas, y es la primera decisión
+que se toma al entrar:
+
+**Trabajar** es el día a día: clientes, ventas, marketing, servicio y análisis,
+más los accesos de cabecera —inicio, tu puesto, el chat—. Es lo que abre un
+comercial o alguien de soporte, y es donde se entra por defecto.
+
+**Administrar** es lo que se ajusta de tarde en tarde: automatizaciones,
+procesos, integraciones, el modelo de datos, permisos, la consola. Es lo que
+abre quien configura la instalación.
+
+> **No son dos aplicaciones.** Es la misma sesión y los mismos permisos; lo
+> único que cambia es qué se pone delante. Si no administras nada, la pestaña
+> de Administrar **no aparece**: ofrecer un sitio vacío sólo sirve para que
+> alguien lo pulse y descubra que no hay nada.
+
+Antes las dos cosas colgaban del mismo menú, a la misma altura y con el mismo
+peso: «Cuentas» y «Modelo de datos» una debajo de la otra. Un comercial no
+configura objetos y un consultor no llama a clientes, así que los dos tenían
+que leer el menú entero cada vez para encontrar lo suyo.
+
+Una sola excepción, y está contada: **las aprobaciones** viven en
+Automatización, que es de administrar, y se enseñan en Trabajar. Aprobar un
+descuento no es configurar nada, y esconderlo detrás de «Administrar» es
+garantizar que se quede esperando.
+
+## Cuánto quieres ver en pantalla
+
+Al lado del interruptor de tema, en la barra superior, hay otro de **densidad**:
+
+- **Compacta**, que es como viene de fábrica: unas catorce filas de una lista
+  donde en cómoda caben cuatro. Es lo que quiere quien está aquí ocho horas.
+- **Cómoda**: más aire, letra mayor, se lee de lejos. Es lo que hace falta en
+  una demostración o en una pantalla compartida.
+
+**Tu elección viaja contigo, no con el navegador.** Si la cambias en tu portátil
+la tienes igual en el ordenador del cliente y en el del compañero cuando entras
+con tu cuenta. El tema claro/oscuro sí se queda en cada navegador, y la
+diferencia no es un capricho: el tema depende de la pantalla y de la luz de la
+sala, la densidad depende de tu vista y de tu trabajo.
+
+Lo mismo vale para el idioma, la zona horaria, el formato de fecha y el primer
+día de la semana: son **tuyos**, los cambias tú y no hace falta que te los
+cambie un administrador. Por API:
+
+```bash
+# Las que puedes cambiarte, con el valor que te aplica y de dónde sale
+curl -s http://localhost:8080/api/v1/mis-preferencias -H "Authorization: Bearer $TOKEN"
+
+# Cambiar una
+curl -sX PUT http://localhost:8080/api/v1/mis-preferencias/ui_densidad \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"valor":"comoda"}'
+```
+
 ## Otros comandos
 
 | Comando | Qué hace |

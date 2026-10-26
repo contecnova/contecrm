@@ -37,6 +37,15 @@ export interface Entrada {
   /** Solo para quien opera la plataforma, no para una empresa. */
   solo_plataforma?: boolean;
   /**
+   * Entrada que NO va en el ámbito de su área.
+   *
+   * Es una excepción y lleva su motivo escrito al lado, porque una excepción
+   * sin motivo se copia. Hoy sólo hay una: las aprobaciones viven en
+   * Automatización —que es de administrar— y son trabajo diario de cualquier
+   * responsable, no algo que se configure.
+   */
+  ambito?: IdAmbito;
+  /**
    * Recursos de la API que esta pantalla enseña.
    *
    * Solo lo declaran las pantallas escritas a mano: las de los módulos ya se
@@ -74,17 +83,45 @@ export interface Entrada {
  * Los módulos del catálogo se reparten por su grupo (`AREA_DE_GRUPO`), así que
  * añadir un módulo no exige tocar esta lista: aparece solo en su área.
  */
+/**
+ * Las dos entradas del producto.
+ *
+ * **Es el corte que faltaba.** Las siete áreas estaban bien pensadas y en una
+ * sola taxonomía, pero colgaban todas del mismo menú: quien entraba a trabajar
+ * veía, a la misma altura y con el mismo peso, «Cuentas» y «Modelo de datos».
+ * Un comercial no configura objetos y un consultor no llama a clientes, y
+ * ponerles las dos cosas delante obliga a los dos a leer el menú entero cada
+ * vez para encontrar lo suyo.
+ *
+ * No son dos aplicaciones: es la **misma sesión y los mismos permisos**. Lo
+ * único que cambia es qué se pone delante, que es de lo que iba el problema.
+ */
+export const AMBITOS = [
+  { id: "trabajar", clave: "nav.ambitoTrabajar", icono: "work" },
+  { id: "administrar", clave: "nav.ambitoAdministrar", icono: "settings" },
+] as const;
+
+export type IdAmbito = (typeof AMBITOS)[number]["id"];
+
 export const AREAS = [
-  { id: "clientes", clave: "nav.areaClientes", icono: "groups" },
-  { id: "ventas", clave: "nav.areaVentas", icono: "trending_up" },
-  { id: "marketing", clave: "nav.areaMarketing", icono: "campaign" },
-  { id: "servicio", clave: "nav.areaServicio", icono: "support_agent" },
-  { id: "analisis", clave: "nav.areaAnalisis", icono: "insights" },
-  { id: "automatizacion", clave: "nav.areaAutomatizacion", icono: "bolt" },
-  { id: "configuracion", clave: "nav.areaConfiguracion", icono: "settings" },
+  { id: "clientes", clave: "nav.areaClientes", icono: "groups", ambito: "trabajar" },
+  { id: "ventas", clave: "nav.areaVentas", icono: "trending_up", ambito: "trabajar" },
+  { id: "marketing", clave: "nav.areaMarketing", icono: "campaign", ambito: "trabajar" },
+  { id: "servicio", clave: "nav.areaServicio", icono: "support_agent", ambito: "trabajar" },
+  { id: "analisis", clave: "nav.areaAnalisis", icono: "insights", ambito: "trabajar" },
+  // Automatización y configuración son lo que se ajusta de tarde en tarde: se
+  // diseña una vez y se revisa cuando algo cambia. Es trabajo, pero no es el
+  // trabajo del día.
+  { id: "automatizacion", clave: "nav.areaAutomatizacion", icono: "bolt", ambito: "administrar" },
+  { id: "configuracion", clave: "nav.areaConfiguracion", icono: "settings", ambito: "administrar" },
 ] as const;
 
 export type IdArea = (typeof AREAS)[number]["id"];
+
+/** El ámbito de un área. */
+export function ambitoDelArea(id: IdArea): IdAmbito {
+  return (AREAS.find((a) => a.id === id)?.ambito ?? "trabajar") as IdAmbito;
+}
 
 /**
  * A qué área va cada grupo del catálogo.
@@ -144,7 +181,11 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar" , recursos: ["agentes-ia", "ia", "modelos", "sugerencias-caso", "transcripciones", "variantes", "voz"] },
 
   { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read" , recursos: ["aprobaciones"] },
-  { area: "automatizacion", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["aprobaciones-documentales"] },
+  // La única excepción de ámbito del producto: vive en Automatización, que es
+  // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
+  // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
+  // garantizar que las aprobaciones se queden esperando.
+  { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["aprobaciones-documentales"] },
   { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["compensacion", "encargos", "firma", "firma-presencial", "plantillas-documento", "suite", "suites"] },
 
   { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" , recursos: ["aislamiento", "residencia", "entornos", "sso-gobierno", "factores", "notificaciones", "scim"] },
@@ -207,9 +248,34 @@ export interface AreaPintada {
   entradas: Entrada[];
 }
 
+/**
+ * El ámbito en el que se enseña una entrada: el suyo si lo declara, si no el
+ * de su área.
+ */
+export function ambitoDe(entrada: Entrada, area: IdArea): IdAmbito {
+  return entrada.ambito ?? ambitoDelArea(area);
+}
+
+/**
+ * A qué ámbito pertenece un camino, para saber qué pestaña marcar.
+ *
+ * Se deriva del camino y **no se guarda en un estado**: si fuera estado, abrir
+ * un enlace directo a una pantalla de configuración dejaría marcada la pestaña
+ * de trabajar, y quien lo viera pensaría que el menú está roto. Lo desconocido
+ * cae en «trabajar», que es donde está casi todo y donde se entra.
+ */
+export function ambitoDelCamino(camino: string): IdAmbito {
+  const entrada = TRANSVERSALES.filter((e) => camino.startsWith(e.a)).sort(
+    (a, b) => b.a.length - a.a.length,
+  )[0];
+  if (entrada) return ambitoDe(entrada, entrada.area);
+  return "trabajar";
+}
+
 export function menuDe(
   modulosPorGrupo: Map<string, { ruta: string; titulo: string; grupo: string }[]>,
   visible: (entrada: Entrada) => boolean,
+  ambito?: IdAmbito,
 ): AreaPintada[] {
   const porArea = new Map<IdArea, Entrada[]>();
   for (const [grupo, modulos] of modulosPorGrupo) {
@@ -231,6 +297,11 @@ export function menuDe(
     id: a.id,
     clave: a.clave,
     icono: a.icono,
-    entradas: porArea.get(a.id) ?? [],
+    // El filtro va por ENTRADA y no por área: si fuera por área, la excepción
+    // de las aprobaciones no existiría —se iría entera con Automatización— y
+    // el campo `ambito` de `Entrada` sería decorativo.
+    entradas: (porArea.get(a.id) ?? []).filter(
+      (e) => !ambito || ambitoDe(e, a.id) === ambito,
+    ),
   })).filter((a) => a.entradas.length > 0);
 }

@@ -89,6 +89,7 @@ stateDiagram-v2
 | `PUT /api/v1/marca` | Configurar la marca, sin activarla | nombre_producto, logo_url, favicon_url, color_principal, color_texto, color_fondo, dominio_propio, dominio_envio, remitente, pie_correo | 200, 422 | — |
 | `POST /api/v1/marca/activar` | Encender la marca blanca | — | 200, 422 | — |
 | `POST /api/v1/marca/dominio/verificacion` | Anotar el resultado de comprobar un dominio | cual*, verificado*, detalle | 200, 422 | — |
+| `PUT /api/v1/mis-preferencias/{clave}` | Cambiar una preferencia mía | clave*, valor* | 200, 422 | — |
 | `PUT /api/v1/monedas/cambios` | Fijar un tipo de cambio para una fecha | desde*, hasta*, tasa*, fecha, origen | 200, 422 | — |
 | `POST /api/v1/plantillas` | Crear una plantilla | clave*, nombre*, tipo, idioma, asunto, cuerpo, variables | 201, 422 | — |
 | `PATCH /api/v1/plantillas/{plantilla_id}` | Editar una plantilla | plantilla_id*, nombre, asunto, cuerpo, variables, activa, bloqueada | 200, 422 | — |

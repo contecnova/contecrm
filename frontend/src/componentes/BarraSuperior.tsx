@@ -27,6 +27,7 @@ import { todasLasEntradas } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
 import type { Sesion } from "@/lib/sesion";
 import { puede } from "@/lib/sesion";
+import { elegirDensidad, type Densidad } from "@/lib/densidad";
 import { aplicarTema, temaActual, type Tema } from "@/lib/tema";
 import { cn, teclaAtajo } from "@/lib/utiles";
 
@@ -50,6 +51,9 @@ export function BarraSuperior({
   const migas = derivarMigas(ubicacion.pathname, t);
 
   const [tema, setTema] = useState<Tema>(() => temaActual());
+  const [densidad, setDensidad] = useState<Densidad>(
+    () => (document.documentElement.dataset.densidad as Densidad) || "compacta",
+  );
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [crearAbierto, setCrearAbierto] = useState(false);
   const crearRef = useRef<HTMLDivElement>(null);
@@ -102,6 +106,20 @@ export function BarraSuperior({
       window.removeEventListener("keydown", tecla);
     };
   }, [crearAbierto]);
+
+  // La densidad se lee del documento y no de un estado propio: quien la fija al
+  // arrancar es `App`, con lo que dice el perfil. Un `useState` con su propio
+  // valor inicial pintaría el botón diciendo «compacta» mientras la página ya
+  // está en cómoda, que es el desajuste clásico de tener la verdad en dos
+  // sitios.
+  function cambiarDensidad() {
+    const siguiente: Densidad = densidad === "comoda" ? "compacta" : "comoda";
+    setDensidad(siguiente);
+    // Se pinta ya y se guarda después: esperar a la red para mover la interfaz
+    // hace que el botón parezca roto en una conexión lenta. Si el guardado
+    // falla, lo que se pierde es que no sobreviva a la recarga — no la sesión.
+    void elegirDensidad(siguiente).catch(() => undefined);
+  }
 
   function cambiarTema() {
     const siguiente: Tema = tema === "oscuro" ? "claro" : "oscuro";
@@ -221,6 +239,21 @@ export function BarraSuperior({
         ) : null}
 
         <AvisoDeChat />
+
+        {/* Densidad. Al lado del tema porque son la misma clase de cosa para
+            quien mira —cómo se ve esto—, aunque por dentro una viva en el
+            navegador y la otra en el perfil. Separarlas en dos sitios obligaría
+            a explicar esa diferencia, que no le importa a nadie. */}
+        <button
+          type="button"
+          onClick={cambiarDensidad}
+          className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
+          aria-label={t("app.densidad")}
+          title={t(densidad === "comoda" ? "app.densidadCompacta" : "app.densidadComoda")}
+          aria-pressed={densidad === "compacta"}
+        >
+          <Icono nombre={densidad === "comoda" ? "density_large" : "density_small"} />
+        </button>
 
         <button
           type="button"

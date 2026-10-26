@@ -19,6 +19,7 @@ import { Procesos } from "@/paginas/Procesos";
 import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
 import { llamar } from "@/lib/api";
+import { aplicarDensidad, densidadDelPerfil } from "@/lib/densidad";
 import { cargarSesion, type Sesion } from "@/lib/sesion";
 
 /**
@@ -98,6 +99,26 @@ export function App() {
   }, []);
 
   useEffect(refrescar, [refrescar]);
+
+  // La densidad de quien ha entrado, **en cuanto se sabe quién es**.
+  //
+  // Después de la sesión y no en el arranque: antes de saber quién entra no hay
+  // a quién preguntarle, y pedirla sin credencial devuelve un 401 que deja la
+  // interfaz en el defecto para toda la visita.
+  //
+  // No se guarda nada aquí. Escribir el defecto «para tenerlo ya» le daría a
+  // cada persona un valor propio idéntico al defecto, y el día que la empresa
+  // cambiara el suyo no le cambiaría a nadie.
+  useEffect(() => {
+    if (!sesion) return;
+    let vivo = true;
+    void densidadDelPerfil().then((d) => {
+      if (vivo) aplicarDensidad(d);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [sesion]);
 
   // Renovación silenciosa (CRM-07.04.02.02). Se pide ANTES de que caduque, no
   // después: descubrirlo con un 401 en mitad de un formulario pierde lo que se

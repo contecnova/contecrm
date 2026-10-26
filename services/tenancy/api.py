@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from crmcore.errors import NoEncontrado
+from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import (
     AutenticadoDep,
     DbDep,
@@ -28,6 +28,7 @@ from crmcore.http.pagination import (
     paginar_consulta,
 )
 from crmcore.runtime import settings as rt
+from crmcore.runtime.keys import es_preferencia_personal, preferencias_personales
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -49,6 +50,7 @@ from services.tenancy.esquemas import (
     CrearUnidad,
     FijarAjuste,
     FijarFlag,
+    FijarMiPreferencia,
     PlanOut,
     TenantOut,
     UnidadOut,
@@ -316,6 +318,91 @@ def fijar_ajuste(clave: str, datos: FijarAjuste, db: DbDep, principal: Autentica
     return {"clave": clave, "valor": valor, "ambito": datos.ambito}
 
 
+# ── Mis preferencias ──────────────────────────────────────────────────────
+#
+# Fijar un ajuste exige `tenant:write`, y con razón: son las palancas de la
+# instalación. Pero eso dejaba SIN SITIO a la preferencia de cada persona —su
+# idioma, su formato de fecha, la densidad con la que quiere ver las listas—,
+# que son ajustes declarados hasta el ámbito de usuario y que nadie salvo un
+# administrador podía tocar. En la práctica no las tocaba nadie: un comercial no
+# va a abrir un ticket para que le cambien el formato de fecha.
+#
+# De ahí estas dos rutas. Son estrechas a propósito: sólo las claves que la
+# declaración marca como personales, y siempre en el ámbito de quien llama.
+
+router_preferencias = APIRouter(prefix="/mis-preferencias", tags=["ajustes"])
+
+
+@router_preferencias.get(
+    "",
+    response_model=dict,
+    summary="Mis preferencias, con su valor efectivo",
+    description=(
+        "Las preferencias que cada persona puede cambiarse, con el valor que "
+        "le aplica **y de dónde sale**: suyo, de su unidad, de su empresa o el "
+        "del despliegue. Sin la procedencia, quien ve un valor que no ha puesto "
+        "no sabe si es un defecto o algo que le han fijado."
+    ),
+)
+def mis_preferencias(db: DbDep, principal: AutenticadoDep) -> Any:
+    efectivos = rt.valores_efectivos(db)
+    return {
+        c.clave: {
+            **efectivos.get(c.clave, {}),
+            "descripcion": c.descripcion,
+            "tipo": c.tipo,
+            "opciones": list(c.opciones),
+        }
+        for c in preferencias_personales()
+    }
+
+
+@router_preferencias.put(
+    "/{clave}",
+    response_model=dict,
+    summary="Cambiar una preferencia mía",
+    description=(
+        "Fija el valor **en el ámbito de quien llama**, nunca en otro. No exige "
+        "permiso de administración: es su propia preferencia."
+    ),
+)
+def fijar_mi_preferencia(
+    clave: str,
+    datos: FijarMiPreferencia,
+    db: DbDep,
+    principal: AutenticadoDep,
+) -> Any:
+    # Primero la puerta, y con el porqué dentro del mensaje: «no se puede fijar»
+    # a secas manda a mirar los permisos cuando el problema es que esa clave no
+    # es de nadie en particular.
+    if not es_preferencia_personal(clave):
+        raise ErrorValidacion(
+            f"«{clave}» no es una preferencia personal: la fija quien administra "
+            "la instalación, desde la consola de ajustes.",
+            error_code="ajustes.no_es_personal",
+        )
+    # Sin identidad no hay ámbito donde guardarlo. Pasa con un token de servicio
+    # o de automatización: no son personas y no tienen preferencias.
+    if principal.id is None:
+        raise ErrorValidacion(
+            "Esta llamada no la hace una persona, así que no tiene preferencias "
+            "propias que fijar.",
+            error_code="ajustes.sin_usuario",
+        )
+    # **El ámbito lo pone el servidor.** Viene de quien llama y no del cuerpo:
+    # si el cuerpo pudiera decirlo, cualquiera cambiaría el ajuste de todo el
+    # tenant desde una cuenta normal.
+    valor = rt.fijar(
+        db,
+        clave,
+        datos.valor,
+        ambito="usuario",
+        ambito_id=str(principal.id),
+        por=principal.id,
+    )
+    return {"clave": clave, "valor": valor, "ambito": "usuario"}
+
+
 # ── Consumo y cuotas ──────────────────────────────────────────────────────
 
 
@@ -516,6 +603,7 @@ ROUTERS = [
     router_planes,
     router_flags,
     router_ajustes,
+    router_preferencias,
     *ROUTERS_CATALOGOS,
     *ROUTERS_BYOK,
     *ROUTERS_GRC,

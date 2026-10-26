@@ -131,6 +131,18 @@ class FijarAjuste(BaseModel):
     ambito_id: str = Field("", description="Vacío en el ámbito global")
 
 
+class FijarMiPreferencia(BaseModel):
+    """Lo que manda quien cambia SU preferencia: el valor y nada más.
+
+    **No lleva ámbito, y es la pieza que hace que esto sea seguro.** Si el
+    cuerpo pudiera decir el ámbito, cualquiera con una cuenta normal cambiaría
+    el idioma —o la densidad— de todo el tenant mandando `ambito: "tenant"`.
+    El ámbito lo pone el servidor: el de quien llama, siempre.
+    """
+
+    valor: Any = Field(..., description="Se valida contra el tipo y las opciones declaradas")
+
+
 class ConsumoOut(BaseModel):
     metrica: str
     periodo: str

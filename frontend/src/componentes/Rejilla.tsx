@@ -34,6 +34,9 @@ export function Rejilla({
    *
    * Está aquí y no suelto porque **ya divergía**: dos de las cuatro copias
    * usaban `text-2xs` y las otras dos `text-xs`, sin que nadie lo decidiera.
+   *
+   * Es una distinción RELATIVA a la densidad de quien mira, no un tamaño: se
+   * calcula desde el token en `.celda-rejilla--apoyo`.
    */
   compacta?: boolean;
 }) {
@@ -41,9 +44,11 @@ export function Rejilla({
     <div
       className={`overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
     >
-      <table
-        className={`w-full text-left ${compacta ? "text-2xs" : "text-xs"}`}
-      >
+      {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
+          no de una clase fija: con la densidad por persona, una tabla con
+          `text-xs` clavado se queda igual de apretada cuando alguien pide el
+          modo cómodo — y entonces el interruptor parece que no hace nada. */}
+      <table className={`w-full text-left ${compacta ? "es-apoyo" : ""}`}>
         {titulo ? <caption className="sr-only">{titulo}</caption> : null}
         <thead className="border-b border-ink-dim/30 bg-paper-light">
           <tr>
@@ -51,7 +56,7 @@ export function Rejilla({
               <th
                 key={i}
                 scope="col"
-                className="whitespace-nowrap px-3 py-2 font-medium text-ink-muted"
+                className="celda-rejilla whitespace-nowrap font-medium text-ink-muted"
               >
                 {c}
               </th>
@@ -83,7 +88,7 @@ export function Casilla({
 }) {
   return (
     <td
-      className={`px-3 py-2 align-top ${enUnaLinea ? "whitespace-nowrap" : ""} ${
+      className={`celda-rejilla align-top ${enUnaLinea ? "whitespace-nowrap" : ""} ${
         className || "text-ink"
       }`}
     >

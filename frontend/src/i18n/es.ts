@@ -5,6 +5,12 @@ export default {
     cerrarSesion: "Cerrar sesión",
     suplantado: "Estás viendo esto en nombre de otra persona",
     tema: "Cambiar tema",
+    densidad: "Densidad de la interfaz",
+    // Dos textos y no uno: el botón dice A DÓNDE va, no dónde está. «Densidad
+    // compacta» con la interfaz ya compacta no se sabe si es el estado o la
+    // acción, y es el error más repetido en los interruptores.
+    densidadCompacta: "Ver más en pantalla (compacta)",
+    densidadComoda: "Ver con más aire (cómoda)",
     saltarAlContenido: "Saltar al contenido",
   },
   formulario: {
@@ -66,6 +72,12 @@ export default {
     suite: "Suite",
     ayuda: "Ayuda",
     accesos: "Accesos",
+    // «Trabajar» y «Administrar», en infinitivo: nombran lo que se va a hacer,
+    // no un sitio. «Operación» y «Configuración» nombrarían el sitio, y hay
+    // que traducirlos mentalmente a lo que uno viene a hacer.
+    ambitos: "A qué vienes",
+    ambitoTrabajar: "Trabajar",
+    ambitoAdministrar: "Administrar",
     grupoModulos: "Módulos",
     grupoTrabajo: "Trabajo",
     grupoAnalisis: "Análisis",

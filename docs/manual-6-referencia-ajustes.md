@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**223 ajustes** en total, de los cuales **89** son editables en caliente por tenant.
+**224 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -27,6 +27,7 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `API_PREFIX` | — | `/api/v1` |  | Prefijo de versión de la API pública. El versionado es explícito y por URI (CRM-00.02.01.05): un cambio rompedor estrena `v2` y `v1` sigue sirviéndose hasta su fecha de retirada. |
 | `API_SUNSET_DATE` | — | *(vacío)* |  | Fecha de retirada de ESTA versión mayor, en ISO-8601, o vacío si no hay una anunciada. Cuando está puesta, toda respuesta lleva las cabeceras `Sunset` y `Deprecation` (CRM-00.02.01.07) para que los consumidores se enteren por el canal que ya están leyendo, sin depender de una circular. |
 | `API_DOCS_ENABLED` | — | `True` |  | Documentación interactiva. Se puede apagar en producción si el operador prefiere no publicar el esquema, aunque por defecto va encendida: un sistema headless sin documentación navegable es mucho peor que uno que enseña su contrato. |
+| `UI_DENSIDAD` | 🔥 `ui_densidad` | `compacta` |  | Densidad por defecto de la interfaz. «compacta» cabe mucho más en pantalla y es lo que quiere quien trabaja aquí ocho horas: catorce filas de una lista en vez de cuatro. «comoda» da aire y se lee de lejos, que es lo que hace falta en una demostración o en una pantalla compartida. Esto es el… |
 
 ## Base de datos y aislamiento
 

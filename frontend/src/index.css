@@ -211,6 +211,26 @@
   --panel-plegar:    1280px;
   --barra-h:     48px;
 
+  /* ── Densidad ────────────────────────────────────────────────────────
+     Cuánto cabe en pantalla. Lo elige cada persona y viaja en su perfil, no
+     en el navegador: quien la cambia en su portátil la quiere igual en el del
+     cliente. El tema claro/oscuro sí se queda en el navegador, y la
+     diferencia no es un capricho — el tema depende de la pantalla y de la luz
+     de la sala, la densidad depende de la vista y del trabajo de quien mira.
+
+     Estos valores son los COMPACTOS, que son el defecto: catorce filas de una
+     lista en vez de cuatro. `[data-densidad="comoda"]`, más abajo, los
+     ensancha.
+
+     Son cuatro tokens y no veinte a propósito. La densidad de verdad se juega
+     en dos sitios —el relleno de la página y el de la celda de una tabla— y
+     un sistema con veinte palancas de espaciado acaba con veinte valores que
+     nadie sabe cuál manda. */
+  --celda-pad-y: 0.375rem;
+  --celda-pad-x: 0.625rem;
+  --celda-texto: 0.6875rem;
+  --hueco-bloque: 1.25rem;
+
   --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
   --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
 }
@@ -389,6 +409,23 @@
   }
 }
 
+/* ── El modo cómodo ───────────────────────────────────────────────────────
+   Aire. Se lee de lejos, que es lo que hace falta en una demostración o en una
+   pantalla compartida, y se trabaja peor en listas largas — por eso no es el
+   defecto.
+
+   Va por `data-densidad` en el `<html>` y no por una clase, para no competir
+   con `.dark`, que ya usa la clase. Los dos ejes son independientes: hay quien
+   quiere oscuro y compacto, y quien quiere claro y cómodo. */
+:root[data-densidad="comoda"] {
+  --page-pad-x:  40px;
+  --page-pad-y:  40px;
+  --celda-pad-y: 0.75rem;
+  --celda-pad-x: 1rem;
+  --celda-texto: 0.8125rem;
+  --hueco-bloque: 2rem;
+}
+
 @layer components {
   /* El contenido de una página: el padding y el ancho máximo de contecflow
      (`--page-pad-*`, `--page-max-w`), en un sitio y no repetidos pantalla a
@@ -398,6 +435,34 @@
      Por debajo de 600px —el corte de contecflow— el padding baja a 16px: 32 a
      cada lado en un móvil de 360 deja 296px de contenido, que no es una
      columna, es una tira. */
+  /* La celda de una rejilla. Estaba como `px-3 py-2` escrito en el primitivo,
+     que es un sitio solo —bien— pero un literal: con la densidad por persona
+     tiene que salir de un token, porque si no, el modo cómodo ensancha la
+     página y deja las tablas igual de apretadas, que es lo peor de los dos. */
+  .celda-rejilla {
+    padding: var(--celda-pad-y) var(--celda-pad-x);
+    font-size: var(--celda-texto);
+  }
+
+  /* Una tabla de apoyo dentro de otra pantalla: un punto por debajo de la
+     principal. Es una distinción RELATIVA —«más pequeña que la de al lado»— y
+     por eso se calcula desde el token en vez de clavar un tamaño: con un
+     tamaño fijo, en modo cómodo la tabla de apoyo saldría más grande que la
+     principal en compacto, que es exactamente al revés de lo que quiere
+     decir. */
+  .celda-rejilla--apoyo {
+    font-size: calc(var(--celda-texto) - 0.0625rem);
+    padding: calc(var(--celda-pad-y) * 0.75) var(--celda-pad-x);
+  }
+
+  /* Se marca la TABLA y heredan sus celdas. Marcar celda a celda obliga a
+     acordarse en cada `<Casilla>`, y basta con que una se olvide para que la
+     fila salga desalineada. */
+  .es-apoyo .celda-rejilla {
+    font-size: calc(var(--celda-texto) - 0.0625rem);
+    padding: calc(var(--celda-pad-y) * 0.75) var(--celda-pad-x);
+  }
+
   .contenido-pagina {
     padding: var(--page-pad-y) var(--page-pad-x);
     max-width: var(--page-max-w);

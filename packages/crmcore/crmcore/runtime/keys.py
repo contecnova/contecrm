@@ -58,6 +58,39 @@ def _c(*args: Any, **kwargs: Any) -> ClaveAjuste:
     return ClaveAjuste(*args, **kwargs)
 
 
+def es_preferencia_personal(clave: str) -> bool:
+    """¿Puede cada persona fijarse ESTA por su cuenta, sin ser administrador?
+
+    El criterio **no es una lista de claves**: sale de lo que la propia clave ya
+    declara. Es personal la que tiene sentido hasta el ámbito de usuario y no
+    está marcada como sensible.
+
+    Las dos condiciones hacen falta y cada una tapa un caso distinto:
+
+    - `minimo_ambito == "usuario"` deja fuera los topes y los interruptores de
+      la instalación: un tope de cuota «por usuario» no significa nada, y
+      `fijar` ya lo rechazaría de todos modos.
+    - `not sensible` es la salida de emergencia para lo que un día tenga sentido
+      por usuario pero deba ponerlo un administrador —una exención, un permiso
+      ampliado—. Marcarla sensible la saca de aquí y la deja en la consola, que
+      es donde se audita.
+
+    Una lista de las que SÍ se queda corta en cuanto alguien añade la siguiente,
+    y la que se queda corta no avisa: la preferencia simplemente no se puede
+    guardar y nadie sabe por qué.
+    """
+    decl = CLAVES.get(clave)
+    return bool(decl and decl.minimo_ambito == "usuario" and not decl.sensible)
+
+
+def preferencias_personales() -> list[ClaveAjuste]:
+    """Las que alguien puede cambiarse, en orden estable."""
+    return sorted(
+        (c for c in CLAVES.values() if es_preferencia_personal(c.clave)),
+        key=lambda c: c.clave,
+    )
+
+
 # ── Catálogo ──────────────────────────────────────────────────────────────
 CLAVES: dict[str, ClaveAjuste] = {
     c.clave: c
@@ -704,6 +737,19 @@ CLAVES: dict[str, ClaveAjuste] = {
             minimo=0,
             maximo=6,
             minimo_ambito="usuario",
+        ),
+        # La densidad es una preferencia de quien mira, igual que el idioma, y
+        # por eso vive en la misma familia y no en el navegador: quien la cambia
+        # en su portátil la quiere igual en el del cliente. El tema claro/oscuro
+        # sí se queda en el navegador, porque depende de la pantalla y de la luz
+        # de la sala, no de la persona.
+        _c(
+            "ui_densidad",
+            "str",
+            "Densidad de la interfaz: cuánto cabe en pantalla",
+            minimo_ambito="usuario",
+            opciones=("compacta", "comoda"),
+            campo_settings="ui_densidad",
         ),
         # Registro de tratamiento (CRM-07.03.01.04). Una sola clave JSON y no
         # cuatro por cada objeto: con veinticinco objetos serían cien palancas en

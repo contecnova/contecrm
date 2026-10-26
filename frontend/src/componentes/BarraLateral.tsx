@@ -19,14 +19,16 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
 import { porGrupoVisible } from "@/lib/modulos";
 import {
   ACCESOS,
+  AMBITOS,
   AREAS,
+  ambitoDelCamino,
   entradaVisible,
   menuDe,
   type AreaPintada,
@@ -148,13 +150,36 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
   // Una sola lista: los módulos del catálogo y las pantallas transversales
   // repartidos por dominio de negocio. Antes eran dos taxonomías en paralelo y
   // seis pantallas aparecían dos veces con el mismo nombre.
+  const ubicacion = useLocation();
+  // El ámbito activo sale del CAMINO, no de un estado. Si fuera estado, abrir
+  // un enlace directo a una pantalla de configuración dejaría marcada la
+  // pestaña de trabajar y el menú parecería estropeado.
+  const ambito = ambitoDelCamino(ubicacion.pathname);
   const areas = useMemo(
-    () => menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e)),
-    [sesion, permitidas],
+    () => menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e), ambito),
+    [sesion, permitidas, ambito],
   );
+  // Y el destino de cada pestaña: la primera pantalla que esa persona puede
+  // ver en ese ámbito. Un enlace fijo mandaría a quien no tiene el permiso a
+  // una pantalla vacía, que es la peor bienvenida posible.
+  const destinoDe = useMemo(() => {
+    const porAmbito = new Map<string, string>();
+    for (const a of AMBITOS) {
+      const suyas = menuDe(
+        porGrupoVisible(sesion, permitidas),
+        (e) => entradaVisible(sesion, e),
+        a.id,
+      );
+      const primera = suyas[0]?.entradas[0]?.a;
+      if (primera) porAmbito.set(a.id, a.id === "trabajar" ? "/" : primera);
+    }
+    return porAmbito;
+  }, [sesion, permitidas]);
+  // Los accesos rápidos —inicio, puesto, chat— son del trabajo diario. En
+  // «Administrar» no pintan nada: son justo lo que se viene a dejar de lado.
   const accesos = useMemo(
-    () => ACCESOS.filter((e) => entradaVisible(sesion, e)),
-    [sesion],
+    () => (ambito === "trabajar" ? ACCESOS.filter((e) => entradaVisible(sesion, e)) : []),
+    [sesion, ambito],
   );
 
   return (
@@ -239,6 +264,39 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
             <Icono nombre="close" tamano="sm" />
           </button>
         </div>
+
+        {/* ── Las dos entradas ─────────────────────────────────────────── */}
+        {/* Trabajar y Administrar. No son dos aplicaciones: es la misma sesión
+            y los mismos permisos, y lo único que cambia es qué se pone
+            delante. Van arriba del todo porque es la primera decisión —a qué
+            vengo— y todo lo de abajo depende de ella.
+
+            Un ámbito sin ninguna pantalla visible NO se enseña: ofrecer
+            «Administrar» a quien no administra nada le hace pulsarlo para
+            descubrir que está vacío. */}
+        {destinoDe.size > 1 ? (
+          <div className={cn("shrink-0", plegado ? "px-1.5 pt-2 md:px-1" : "px-3 pt-2")}>
+            <nav aria-label={t("nav.ambitos")} className="flex gap-1">
+              {AMBITOS.filter((a) => destinoDe.has(a.id)).map((a) => (
+                <Link
+                  key={a.id}
+                  to={destinoDe.get(a.id) as string}
+                  aria-current={ambito === a.id ? "page" : undefined}
+                  title={t(a.clave)}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-2xs font-medium transition-colors",
+                    ambito === a.id
+                      ? "bg-accent/12 text-accent"
+                      : "text-ink-muted hover:bg-paper-light hover:text-ink",
+                  )}
+                >
+                  <Icono nombre={a.icono} tamano="sm" />
+                  {plegado ? null : <span className="truncate">{t(a.clave)}</span>}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        ) : null}
 
         {/* ── Accesos rápidos ──────────────────────────────────────────── */}
         {/* Plegado pierden el rótulo pero no el sitio: son las cuatro pantallas
