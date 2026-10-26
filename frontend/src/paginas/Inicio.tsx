@@ -26,11 +26,10 @@
  * ha cargado».
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Grafica } from "@/componentes/graficas/Grafica";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
@@ -58,6 +57,19 @@ interface Etapa {
   nombre: string;
   orden?: number | null;
 }
+
+/**
+ * La gráfica se carga aparte.
+ *
+ * El gate del tamaño del paquete lo pidió —130 kB contra un tope de 128— y
+ * tiene razón: la portada es la primera pantalla, así que todo lo que importe
+ * se descarga antes de ver nada. El embudo no hace falta para pintarla: los
+ * datos con los que se dibuja llegan después de la primera petición, así que
+ * diferirlo no retrasa nada que se vea.
+ */
+const Grafica = lazy(() =>
+  import("@/componentes/graficas/Grafica").then((m) => ({ default: m.Grafica })),
+);
 
 /** El final del día de hoy, en ISO, para pedir «lo que vence antes de medianoche». */
 function finDeHoy(): string {
@@ -235,6 +247,10 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
               {/* El embudo, dibujado. Era una de las pantallas que enseñaba
                   barras de `div` con el número al lado para todo. */}
               {porEtapa.length > 0 ? (
+                // Sin `fallback` visible: el hueco dura lo que tarda un
+                // fichero pequeño ya en caché, y un «cargando…» que parpadea
+                // molesta más de lo que informa.
+                <Suspense fallback={null}>
                 <Grafica
                   forma="embudo"
                   titulo={t("inicio.miEmbudo")}
@@ -245,6 +261,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
                     series: [{ clave: "importe", rotulo: t("inicio.importe") }],
                   }}
                 />
+                </Suspense>
               ) : null}
             </>
           ) : null}

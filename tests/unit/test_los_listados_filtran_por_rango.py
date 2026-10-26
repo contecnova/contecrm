@@ -329,3 +329,82 @@ def test_un_desfase_que_llega_como_espacio_tambien(
         "/api/v1/visitas?entrada_at__hasta=2026-10-27T09:00:00 00:00", headers=cabeceras
     )
     assert _notas(r) == {"vieja", "hoy"}
+
+
+# ── Lo que la ruta declara es de la ruta ──────────────────────────────────
+
+
+@pytest.fixture
+def cliente_ventas(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        with TestClient(importlib.import_module("services.sales.main").app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+def test_un_parametro_propio_y_vacio_no_se_convierte_en_filtro(
+    cliente_ventas: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """**La regresión que trajo el filtro genérico.**
+
+    Los listados escritos a mano declaran sus propios parámetros, y el front
+    manda `?estado=` para decir «todos los estados». Sin excluir lo que la ruta
+    declara, eso se reinterpretaba como filtro: `WHERE estado = ''` —cero
+    resultados— o un 422 «no se puede filtrar por estado» sobre un parámetro
+    que la propia operación documenta.
+
+    La ficha de cliente pedía exactamente así sus oportunidades.
+    """
+    from services.sales.modelos import Lead
+
+    db.add(Lead(tenant_id=tenant_id, nombre="Uno", estado="nuevo"))
+    db.flush()
+
+    sin = cliente_ventas.get("/api/v1/leads", headers=cabeceras)
+    con = cliente_ventas.get("/api/v1/leads?estado=", headers=cabeceras)
+    assert sin.status_code == 200, sin.text
+    assert con.status_code == 200, con.text
+    assert len(con.json()["items"]) == len(sin.json()["items"]) == 1
+
+
+def test_un_parametro_propio_CON_valor_sigue_filtrando_una_sola_vez(
+    cliente_ventas: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Y no se desactiva: lo que la ruta declara lo aplica la ruta."""
+    from services.sales.modelos import Lead
+
+    db.add(Lead(tenant_id=tenant_id, nombre="Uno", estado="nuevo"))
+    db.add(Lead(tenant_id=tenant_id, nombre="Dos", estado="descartado"))
+    db.flush()
+
+    r = cliente_ventas.get("/api/v1/leads?estado=nuevo", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert [f["nombre"] for f in r.json()["items"]] == ["Uno"]
+
+
+def test_los_rangos_siguen_funcionando_al_lado_de_los_propios(
+    cliente_ventas: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Es la combinación real: la pantalla manda los suyos y además un rango."""
+    from services.sales.modelos import Lead
+
+    db.add(Lead(tenant_id=tenant_id, nombre="Uno", estado="nuevo", puntuacion=10))
+    db.add(Lead(tenant_id=tenant_id, nombre="Dos", estado="nuevo", puntuacion=90))
+    db.flush()
+
+    r = cliente_ventas.get("/api/v1/leads?estado=nuevo&puntuacion__mayor=50", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert [f["nombre"] for f in r.json()["items"]] == ["Dos"]

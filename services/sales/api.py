@@ -23,6 +23,7 @@ from crmcore.http.pagination import (
     construir_pagina,
     paginar_consulta,
 )
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.retencion_router import crear_router_retencion
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from pydantic import BaseModel, Field
@@ -1414,4 +1415,22 @@ montar_exportacion(
     permiso="lead:read",
     nombre="Reglas de enrutamiento",
     ruta="/reglas",
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar_leads, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar_oportunidades, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

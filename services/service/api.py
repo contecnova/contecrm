@@ -9,6 +9,7 @@ from uuid import UUID
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, select
@@ -796,4 +797,13 @@ montar_ficha(
     nombre="Casos",
     parametro="caso_id",
     con_lectura=False,
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

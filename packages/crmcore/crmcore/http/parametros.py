@@ -72,6 +72,19 @@ def _declarados(dependant: Any, vistos: set[int] | None = None) -> set[str]:
     return nombres
 
 
+def declarados_de_la_ruta(request: Any) -> set[str]:
+    """Los parámetros de query que la ruta de esta petición sí mira.
+
+    Lo usa también el filtro genérico de listados: lo que la ruta declara es
+    suyo y lo aplica ella, así que reinterpretarlo como filtro lo aplicaría dos
+    veces — y uno declarado y **vacío**, que es como se pide «todos», se
+    convertiría en `= ''`.
+    """
+    ruta = request.scope.get("route")
+    dependant = getattr(ruta, "dependant", None)
+    return _declarados(dependant) if dependant is not None else set()
+
+
 async def dep_parametros_conocidos(request: Request) -> None:
     """Rechaza lo que la ruta no mira. 422, nunca en silencio."""
     ruta = request.scope.get("route")

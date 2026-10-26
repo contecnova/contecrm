@@ -193,7 +193,20 @@ def aplicar_filtros_de_la_url(
     from crmcore.authz.proyeccion import columnas_usables
     from crmcore.errors import ErrorValidacion
 
-    crudos = {k: v for k, v in request.query_params.items() if k not in _NO_SON_FILTROS}
+    # Lo que la RUTA ya declara no es un filtro genérico: es suyo y lo aplica
+    # ella. Los listados escritos a mano declaran los propios —`estado`,
+    # `prioridad`, `cuenta_id`, `mias`, `vencidas`— y sin esta línea se
+    # aplicaban DOS veces; peor aún, uno declarado y vacío —`?estado=`, que es
+    # como el front pide «todos los estados»— se convertía en
+    # `WHERE estado = ''` o, si la columna no es filtrable, en un 422
+    # «no se puede filtrar por estado» sobre un parámetro que la propia
+    # operación documenta.
+    from crmcore.http.parametros import SIEMPRE_ADMITIDOS, declarados_de_la_ruta
+
+    suyos = declarados_de_la_ruta(request) | SIEMPRE_ADMITIDOS
+    crudos = {
+        k: v for k, v in request.query_params.items() if k not in _NO_SON_FILTROS and k not in suyos
+    }
     if not crudos:
         return consulta
 

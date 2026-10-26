@@ -56,6 +56,23 @@ SIN_FILTROS_COMUNES_HOY = {
 }
 
 
+def _marcados_abiertos() -> set[str]:
+    """Funciones marcadas con `admite_parametros_abiertos`, por fichero."""
+    salida: set[str] = set()
+    for fichero in sorted(RAIZ.glob("services/*/api*.py")):
+        arbol = ast.parse(fichero.read_text(encoding="utf-8"))
+        for nodo in ast.walk(arbol):
+            if (
+                isinstance(nodo, ast.Call)
+                and getattr(nodo.func, "id", "") == "admite_parametros_abiertos"
+                and nodo.args
+            ):
+                nombre = getattr(nodo.args[0], "id", "")
+                if nombre:
+                    salida.add(f"{fichero.relative_to(RAIZ)}::{nombre}")
+    return salida
+
+
 def _listados_a_mano() -> dict[str, bool]:
     """Ruta::función → si llama al filtro común.
 
@@ -121,3 +138,39 @@ def test_los_apuntados_existen() -> None:
     todos = _listados_a_mano()
     fantasmas = sorted(k for k in SIN_FILTROS_COMUNES_HOY if k not in todos)
     assert not fantasmas, "Apuntados y ya no existen:\n  " + "\n  ".join(fantasmas)
+
+
+def test_quien_llama_al_filtro_comun_se_declara_abierto() -> None:
+    """**Las dos mitades van juntas o no funciona ninguna.**
+
+    La comprobación global de parámetros rechaza lo que una ruta no declara, y
+    los filtros comunes son nombres de columna: no se pueden declarar. Un
+    listado que llama a `aplicar_filtros_de_la_url` y no se marca abierto
+    contesta 422 a sus propios filtros — «esta operación no mira
+    «importe__mayor»» sobre un filtro que la pantalla acaba de ofrecer.
+
+    Medido el 26-10-2026: pasó en los seis listados del día a día en cuanto se
+    les dio el filtro, y lo cazó una prueba de rango, no una de parámetros.
+    """
+    abiertos = _marcados_abiertos()
+    sin_marcar = sorted(
+        nombre for nombre, llama in _listados_a_mano().items() if llama and nombre not in abiertos
+    )
+    assert not sin_marcar, (
+        "Listados que aplican los filtros comunes y NO están marcados como "
+        "abiertos: responderán 422 a sus propios filtros.\n  " + "\n  ".join(sin_marcar)
+    )
+
+
+def test_nadie_se_declara_abierto_sin_necesitarlo() -> None:
+    """La marca apaga una comprobación de seguridad —que ningún parámetro se
+    ignore en silencio—, así que no puede ponerse «por si acaso». Si una ruta
+    la lleva sin llamar al filtro común, o bien le falta el filtro o bien le
+    sobra la marca; las dos cosas hay que mirarlas."""
+    listados = _listados_a_mano()
+    de_mas = sorted(
+        nombre for nombre in _marcados_abiertos() if nombre in listados and not listados[nombre]
+    )
+    assert not de_mas, "Marcados como abiertos sin aplicar los filtros comunes:\n  " + "\n  ".join(
+        de_mas
+    )

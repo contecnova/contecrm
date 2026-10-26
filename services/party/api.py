@@ -106,6 +106,7 @@ from crmcore.http.listados import (  # noqa: E402
     declarar_recurso,
     proyectar_con_esquema,
 )
+from crmcore.http.parametros import admite_parametros_abiertos  # noqa: E402
 
 declarar_recurso(router_cuentas, "cuenta", Cuenta)
 
@@ -1816,4 +1817,31 @@ montar_exportacion(
     objeto="actividad",
     permiso="activity:read",
     nombre="Actividades",
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar_cuentas, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar_contactos, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# Esta ruta acepta además los filtros comunes, cuyos nombres son columnas del
+# modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro.
+admite_parametros_abiertos(
+    listar_actividades, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )
