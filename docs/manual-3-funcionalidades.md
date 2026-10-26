@@ -11140,6 +11140,12 @@ declararlos cuando el front y la API están en dominios distintos.
 
 ### Recuperar el acceso (`CRM-00.05.01.26`)
 
+> **Auditada entera el 26-10-2026** —esta y el resto de la familia de
+> autenticación: credenciales de máquina, sesiones, segundo factor y
+> federación— recorriendo el código que decide, y **sin hallazgos**. Las cinco
+> reglas de abajo están comprobadas una a una, y la del uso único validada
+> plantando el caso malo: quitando el consumo del enlace, cae la prueba.
+
 Olvidar la contraseña era un billete de ida: la única salida era que alguien de
 dentro la cambiara a mano, y eso produce contraseñas dictadas por teléfono y
 administradores que acaban poniendo la misma para todos.

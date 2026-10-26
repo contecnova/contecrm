@@ -105,7 +105,10 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            que el front sacaba nombre, color y logotipo de
 #                            config.json —que es del despliegue— y dos tenants
 #                            de la misma instalacion compartian marca
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 144
+#   26-10-2026  139 de 752  autenticacion (CRM-00.05.01): volver a entrar, las
+#                            credenciales de maquina, las sesiones, el segundo
+#                            factor y la federacion. Nada roto
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 139
 
 
 @functools.cache
