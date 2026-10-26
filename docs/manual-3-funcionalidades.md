@@ -262,6 +262,19 @@ sin duplicar reglas.
 - **ABAC aplicado** (CRM-00.05.02.05 y `.17` a `.21`): políticas guardadas,
   versionadas y editables, evaluadas en la ficha, en el listado y en la
   proyección. Tiene capítulo propio (§40).
+
+> **Auditada entera el 26-10-2026**, recorriendo las rutas, y sin hallazgos. La
+> propiedad que se fijó es la que justifica el subsistema: **el listado y la
+> ficha dicen lo mismo**. Son dos caminos distintos —la ficha evalúa la política
+> en Python sobre el registro y el listado traduce la misma condición a SQL— y
+> el fallo clásico de estos sistemas es que discrepen: un registro invisible en
+> la lista y accesible por su identificador, o al revés.
+>
+> Se comprobó con una política puesta: la cuenta tapada desaparece del listado y
+> su ficha contesta 403 **con la política que decide dentro**. Y se comprobó que
+> el ABAC se aplica también a quien administra, que es justo a quien se le pone.
+> Validado plantando el caso malo: haciendo que el listado deje de filtrar, caen
+> las dos pruebas.
 - **Explicador de permisos** (CRM-00.05.02.11): responde con el permiso que
   decide y la política que aplica. Existe porque «no puedo hacer X» sin
   explicación es el ticket de soporte más frecuente de cualquier CRM.

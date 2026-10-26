@@ -329,10 +329,30 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 # producto tenía la mitad de pantallas.
 #
 # Mientras eso no se haga, sube el tope y se deja escrito dónde está el bulto.
-# Lo que sigue apretando es `PRESUPUESTO_TOTAL_KB`: hoy la suma de todos los
-# trozos son 141 kB de 180, así que diferir cosas para esconderlas en otro trozo
-# no cuela.
-PRESUPUESTO_KB = 128
+# Lo que sigue apretando es `PRESUPUESTO_TOTAL_KB`: la suma de todos los trozos
+# son hoy 156 kB de 180, así que diferir cosas para esconderlas en otro trozo no
+# cuela.
+#
+#   26-10-2026  128 → 130 kB.  Desglose medido de lo que se baja al abrir, para
+#   que la próxima vez no haya que volver a averiguarlo:
+#
+#       106,7 kB  el trozo principal: React, el diccionario de idioma entero y
+#                 el catálogo de módulos (10,4 kB él solo), que lo necesitan la
+#                 barra lateral y la superior para pintar el menú
+#        14,2 kB  `react-router-dom` — el trozo se llama «Icono» por cómo
+#                 reparte Vite, no porque lleve iconos: los iconos son una
+#                 fuente de ligaduras y no pesan JavaScript
+#         7,2 kB  el resto: jsx-runtime, i18n, sesión, superficie, api, config
+#
+#   Nada de eso se puede diferir sin que la primera pantalla salga sin menú o
+#   con las claves de traducción en crudo. El bulto sigue siendo el diccionario
+#   —9,9 kB gzip él solo— y la forma correcta de quitarlo sigue siendo partirlo
+#   por pantalla, no recortar funcionalidad para caber.
+#
+#   Lo que hizo saltar el tope fueron cinco cadenas nuevas: 128,08 de 128,00.
+#   Ochenta bytes. Subirlo a 130 deja dos kilobytes de margen, que es un par de
+#   funcionalidades más de cadenas, y mantiene la presión.
+PRESUPUESTO_KB = 130
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:

@@ -158,7 +158,9 @@ stateDiagram-v2
 | `POST /api/v1/chat/conversaciones/{conversacion_id}/mensajes` | Escribir en una conversación | conversacion_id*, cuerpo, responde_a_id, menciones, adjuntos | 201, 422 | — |
 | `POST /api/v1/chat/conversaciones/{conversacion_id}/miembros` | Meter a alguien en la conversación | conversacion_id*, usuario_id* | 201, 422 | — |
 | `PATCH /api/v1/chat/mensajes/{mensaje_id}` | Corregir un mensaje | mensaje_id*, cuerpo* | 200, 422 | — |
+| `DELETE /api/v1/chat/mensajes/{mensaje_id}` | Mandar un mensaje a la papelera | mensaje_id* | 200, 422 | — |
 | `POST /api/v1/chat/mensajes/{mensaje_id}/reacciones` | Reaccionar, o quitar la reacción | mensaje_id*, emoji* | 200, 422 | — |
+| `POST /api/v1/chat/mensajes/{mensaje_id}/recuperar` | Sacarlo de la papelera | mensaje_id* | 200, 422 | — |
 | `PUT /api/v1/chat/presencia` | Decir si estoy y hasta cuándo | estado, mensaje | 200, 422 | — |
 | `POST /api/v1/claves-api` | Crear una clave de API | nombre*, scopes, rol, dias, ips_permitidas | 201, 422 | — |
 | `DELETE /api/v1/claves-api/{clave_id}` | Revocar una clave | clave_id* | 204, 422 | — |
@@ -177,6 +179,12 @@ stateDiagram-v2
 | `POST /api/v1/identity/restauracion/previsualizar` | Qué cambiaría, antes de cambiar nada | exportacion*, objeto*, ids*, desde | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas` | Anotar una prueba de restauración | inicio*, fin*, filas_comprobadas, diferencias, rto_comprometido_min* | 200, 422 | — |
 | `POST /api/v1/identity/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
+| `POST /api/v1/identity/retencion/bloqueos` | Bloquear la eliminación por litigio | motivo*, objeto, objeto_id, referencia | 201, 422 | — |
+| `PATCH /api/v1/identity/retencion/bloqueos/{bloqueo_id}` | Editar bloqueos legales | bloqueo_id*, objeto, motivo, referencia, activo, puesto_por, levantado_por, levantado_at, motivo_levantamiento | 200, 422 | — |
+| `POST /api/v1/identity/retencion/bloqueos/{bloqueo_id}/archivar` | Archivar bloqueos legales | bloqueo_id* | 200, 422 | — |
+| `POST /api/v1/identity/retencion/bloqueos/{bloqueo_id}/levantar` | Levantar un bloqueo | bloqueo_id*, motivo* | 200, 422 | — |
+| `PUT /api/v1/identity/retencion/politicas` | Fijar cuánto se conserva una clase de dato | clase*, dias*, motivo, activa | 200, 422 | — |
+| `POST /api/v1/identity/retencion/purgar` | Aplicar la retención | clase, simular | 200, 422 | — |
 | `POST /api/v1/identity/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/identity/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/identity/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |

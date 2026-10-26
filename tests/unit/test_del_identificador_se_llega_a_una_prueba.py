@@ -54,7 +54,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            que sale entera SIN un hallazgo, y conviene que
 #                            conste: una auditoria que siempre encuentra algo
 #                            deja de significar nada
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 208
+#   26-10-2026  199 de 752  auditada la familia de autorizacion
+#                            (CRM-00.05.02): las nueve sin citar, mas la
+#                            jerarquia replicada. Nada roto. Lo que se fija es
+#                            la propiedad que justifica el subsistema entero:
+#                            que el listado y la ficha digan LO MISMO, por dos
+#                            caminos distintos —SQL y Python—
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 199
 
 
 @functools.cache
