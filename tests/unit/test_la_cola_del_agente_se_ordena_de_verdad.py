@@ -151,3 +151,89 @@ def test_las_dos_listas_de_siempre_siguen_estando(db: Any, tenant_id: UUID, agen
     db.flush()
     salida = omnicanal.consola(db, tenant_id, agente)
     assert "mis_casos" in salida and "mis_conversaciones" in salida and "cola" in salida
+
+
+# ── Y por la ruta de verdad ───────────────────────────────────────────────
+
+
+@pytest.fixture
+def cliente(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        from starlette.testclient import TestClient
+
+        with TestClient(importlib.import_module("services.service.main").app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+def test_la_consola_devuelve_por_http_lo_que_la_pantalla_lee(
+    cliente: Any, db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """**Fija el contrato por el camino real**, serialización incluida.
+
+    Probar sólo la función deja fuera justo donde se rompen estas cosas: un
+    campo que se calcula bien y no se serializa llega `undefined` al navegador,
+    y entonces la pantalla no falla — se queda vacía, que es peor.
+    """
+    from datetime import datetime as _dt
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    agente = uuid4()
+    _caso(db, tenant_id, agente, "uno", horas=3)
+    _conversacion(db, tenant_id, agente, "dos", horas_espera=5)
+    db.flush()
+
+    cabeceras = firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(agente),
+            H_PERMISOS: "*:*",
+            H_ROLES: "agente",
+            H_FACTOR_FUERTE: _dt.now(timezone.utc).isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+
+    r = cliente.get("/api/v1/consola-agente", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+
+    assert {"agente", "cola", "mis_casos", "mis_conversaciones"} <= set(cuerpo)
+    assert "presencia" in cuerpo["agente"]
+    # Y cada fila de la cola, con lo que la pantalla necesita para pintarla y
+    # para poder entrar.
+    for fila in cuerpo["cola"]:
+        for campo in (
+            "tipo",
+            "id",
+            "canal",
+            "asunto",
+            "estado",
+            "minutos_restantes",
+            "espera_min",
+            "vencido",
+        ):
+            assert campo in fila, f"falta «{campo}»: {sorted(fila)}"
+    assert {f["tipo"] for f in cuerpo["cola"]} == {"caso", "conversacion"}

@@ -169,6 +169,46 @@ bueno.
 El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
 oportunidad ganada en la base y nadie enterado.
 
+### Una pantalla que lee un campo inexistente no falla: se queda vacía
+
+Es el fallo más caro de los encontrados, porque **no se nota**. No hay error, no
+hay traza, no hay 500: el campo llega `undefined`, la lista sale vacía, el reloj
+dice «sin plazo» y la pantalla parece que funciona. Y como el escenario de su
+prueba se escribe con la forma que la pantalla **se imagina** —no con la que
+manda el servidor—, la prueba confirma la ficción.
+
+Dos casos reales, medidos el 26-10-2026:
+
+- La **bandeja de casos** leía `numero`, `vence_at`, `cola` y `escalado`; la API
+  devuelve `codigo` y `vence_resolucion_at`. Todos los casos caían en «con
+  margen», el reloj decía siempre «sin plazo» y el número salía en blanco.
+- La pantalla de **inteligencia** pintaba «lo que suma» y «lo que resta» desde
+  `salud.detalle`, que el servidor nunca envía. Los dos paneles salían vacíos,
+  con sus rótulos puestos, en la pantalla que existe para explicar la
+  puntuación. Y no era un olvido del servidor: la salud se calcula en
+  inteligencia y en `party` vive una **copia** que guarda lo justo a propósito,
+  porque una copia con retraso que dispara acciones manda correos de retención a
+  quien renovó ayer. La pantalla enseña ahora lo que hay y dice dónde está el
+  detalle.
+
+**Lo que no sirve, medido antes de construirlo.** Un barrido que compruebe si el
+nombre del campo existe «en algún sitio» del backend no caza nada: `vence_at`,
+`numero`, `cola` y `escalado` aparecen los cuatro en el producto, y los cuatro
+dentro del mismo servicio. Tiene que ser por endpoint, y resolver «ruta →
+función → claves que devuelve» atravesando las delegaciones es un proyecto
+aparte.
+
+**Lo que sí protege** son pruebas por contrato: recorrer el endpoint por HTTP y
+afirmar campo a campo lo que sale, serialización incluida. Hay cinco, las de las
+pantallas que más duelen. Y un trinquete de suelo que vigila que ninguna
+pantalla le pida una forma a una ruta que **nadie** toca.
+
+> **Ese trinquete nació mintiendo.** Su primera medición dijo «0 de 23
+> sin recorrer», y era falso: el barrido lee los ficheros de prueba buscando
+> rutas, y se leía **a sí mismo** — su propia lista, al nombrar las rutas, las
+> daba por recorridas. Se justificaba solo. Excluyéndose, la cifra real es 11
+> de 23.
+
 ### El guard de tenant se quedaba con los modelos de ayer
 
 El aislamiento entre clientes tiene dos capas: la RLS de Postgres y un guard del

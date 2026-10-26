@@ -620,15 +620,15 @@ export default {
     cargando: "Cargando cuentas…",
     sinMedir: "Esta cuenta no tiene salud medida",
     queHacer: "Qué haría falta:",
+    // La medida lleva su fecha: un 42 en rojo de hace tres meses no es una
+    // alerta, es un recuerdo.
+    medidaHace: "medida hace {{dias}} días",
+    porQue: "Por qué",
     pocoFiable: "medida poco fiable",
-    nadaSuma: "Nada empuja hacia arriba.",
     titulo: "Inteligencia artificial",
     intro: "Lo que propone, siempre con el porqué.",
     contribuciones: "Contribuciones del modelo",
     explicar: "Explicar la puntuación",
-    suman: "Lo que empuja hacia arriba",
-    restan: "Lo que empuja hacia abajo",
-    nadaResta: "Nada resta.",
     noMedible: "No se puede explicar",
   },
   puesto: {
