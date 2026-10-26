@@ -533,6 +533,30 @@ manda. Y el front **no guarda el defecto al arrancar**, a propósito: hacerlo le
 daría a cada persona un valor propio idéntico al defecto desde el primer día, y
 el día que cambiaras `UI_DENSIDAD` no le cambiaría a nadie.
 
+#### Restablecer devuelve el de arriba; no apaga el ajuste
+
+Quitar un ajuste de un ámbito **destapa el del ámbito de encima**, no deja un
+hueco. Quitar el del tenant devuelve el global; quitar también el global
+devuelve el del `.env`. Es lo que espera quien pulsa «restablecer», y es lo
+contrario de lo que haría un ajuste quitado que se quedara en nulo: eso apagaría
+la funcionalidad en vez de devolverla al valor de la casa.
+
+Medido el 26-10-2026 recorriendo la escalera entera con `ui_densidad` —hacia
+abajo y hacia arriba—, que es la única forma de comprobarlo con una clave de
+verdad y no con una inventada para la ocasión.
+
+#### Una clave no se puede fijar por debajo de su ámbito
+
+De las 90 claves en caliente, **83 paran en el tenant**, 5 llegan al usuario y 2
+son de la instalación entera. Intentar fijar una del tenant por usuario se
+rechaza, y el error dice cuál es su ámbito más específico —un «no» sin decir qué
+sí se puede deja al operador probando.
+
+No es burocracia: el tope de tamaño de un adjunto protege el almacenamiento de
+la instalación. Si cada persona pudiera levantárselo, la pantalla de Admin
+seguiría enseñando el límite de la empresa mientras el disco se llena por otro
+lado.
+
 ### Salud
 
 Cada servicio expone dos endpoints que **no son lo mismo**, y confundirlos sale
@@ -791,6 +815,29 @@ creencia falsa sobre dónde están los secretos del cliente.
 
 > `SECRETOS_VAULT_URL` ya no existe: sólo tenía sentido con un backend que no
 > está. Cuando lo esté, su URL vuelve con él.
+
+#### Qué quiere decir «vault segmentado»
+
+No es una palabra del catálogo: es que **la clave que cifra las credenciales de
+integración no abre los campos de cliente**, aunque las dos salgan de la misma
+maestra. Cada propósito deriva la suya, y el propósito viaja además como dato
+autenticado del cifrado. Comprobado el 26-10-2026 descifrando a propósito con la
+clave equivocada: falla, no devuelve otra cosa.
+
+La consecuencia práctica es la que importa el día malo: si se filtran las
+credenciales de un conector —el subsistema más expuesto, porque sale a
+internet—, eso **no** da acceso a los campos sensibles de los clientes.
+
+Dos cosas más que se miden y que no se ven mirando la tabla:
+
+- **El mismo secreto cifrado dos veces sale distinto.** Hay un nonce por valor,
+  guardado con él. Si no lo hubiera, dos filas idénticas delatarían que la
+  contraseña es la misma sin descifrar nada: quién comparte credencial con
+  quién, y quién la cambió cuando se pidió y quién no.
+- **Un byte alterado falla.** Se usa GCM y no CBC porque autentica. Sin
+  autenticación, quien pueda escribir en la tabla cambia un valor cifrado por
+  otro y el sistema se conecta a donde le digan: no da error, hace algo
+  distinto, y eso no aparece en ningún registro.
 
 ### Región y aislamiento de los tenants nuevos
 

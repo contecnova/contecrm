@@ -123,7 +123,17 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            validacion en el mapeo— NO ESTA: el mapeo copia
 #                            valores por ruta y nada mas. Queda avisado y sin
 #                            construir, que es funcionalidad nueva
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 125
+#   26-10-2026  121 de 752  configuracion y metadatos por tenant
+#                            (CRM-00.01.04): la jerarquia de ajustes, el
+#                            modelo extensible, los feature flags y los
+#                            secretos. Nada roto. Lo que se fija aqui es que
+#                            `ui_densidad` —una de las cinco claves que llegan
+#                            al usuario— recorre la escalera entera, que quitar
+#                            el de arriba destapa el de abajo en vez de dejar
+#                            un hueco, y que el proposito segmenta de verdad el
+#                            almacen de secretos: la clave de las integraciones
+#                            no abre los campos de cliente
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 121
 
 
 @functools.cache
