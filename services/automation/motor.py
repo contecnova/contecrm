@@ -129,13 +129,18 @@ def _evaluar_lista(
     for condicion in condiciones:
         if not isinstance(condicion, dict):
             continue
-        atributo = str(condicion.get("atributo", ""))
+        atributo = str(condicion.get("atributo", "")).strip()
         op_nombre = str(condicion.get("op", "="))
         op = OPERADORES.get(op_nombre)
         izquierda = resolver(f"@{atributo}", valores)
         derecha = resolver(condicion.get("valor"), valores)
         try:
-            cumple = bool(op(izquierda, derecha)) if op else False
+            # Sin atributo **no se cumple**, igual que en el motor de procesos y
+            # en los webhooks. `resolver("@", …)` da nulo, el valor por defecto
+            # también, y el `=` los daba por iguales: una regla con la condición
+            # mal escrita se disparaba con TODO, que en una automatización es
+            # mandar correos o cambiar registros que nadie pidió tocar.
+            cumple = bool(op(izquierda, derecha)) if (op and atributo) else False
         except TypeError:
             cumple = False
         resultados.append(cumple)

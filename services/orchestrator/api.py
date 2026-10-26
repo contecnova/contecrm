@@ -250,10 +250,13 @@ def simular(datos: SimularProceso, db: DbDep, principal: AutenticadoDep) -> Any:
         elif tipo == "decision":
             destino = None
             for condicion in paso.get("condiciones") or []:
-                izq = mtr.resolver(f"@{condicion.get('si', {}).get('atributo', '')}", variables)
-                op = mtr.OPERADORES.get(str(condicion.get("si", {}).get("op", "=")))
-                der = mtr.resolver(condicion.get("si", {}).get("valor"), variables)
-                if op and op(izq, der):
+                # **El mismo evaluador que el motor**, no una copia. Lo estaba:
+                # eran dos implementaciones de lo mismo, y al arreglar el caso
+                # de la condición sin atributo sólo se arregló una — así que el
+                # simulador habría enseñado una rama y el motor habría tomado
+                # la otra. Un simulador que no decide igual que el motor es peor
+                # que no tener simulador.
+                if mtr.cumple_condicion(condicion.get("si") or {}, variables):
                     destino = condicion.get("entonces")
                     break
             actual = destino or paso.get("si_no") or paso.get("siguiente")

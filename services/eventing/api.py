@@ -125,6 +125,27 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
             detalle={"desconocidos": desconocidos, "disponibles": sorted(conocidos)[:50]},
         )
 
+    # Y las condiciones, por lo mismo que los tipos: una condición mal escrita
+    # no falla nunca. Sin atributo o con un operador que no existe, la entrega
+    # **no la hace encajar** —ese es el suelo, para lo ya guardado—, así que la
+    # suscripción recibiría CERO eventos sin decir por qué. Rechazarla aquí
+    # pone el error delante de quien la está configurando.
+    from services.orchestrator.motor import OPERADORES as _OPERADORES
+
+    malas = [
+        c
+        for c in datos.condiciones
+        if not str(c.get("atributo") or "").strip() or str(c.get("op", "=")) not in _OPERADORES
+    ]
+    if malas:
+        raise ErrorValidacion(
+            "Hay condiciones que no se pueden evaluar: sin atributo, o con un "
+            "operador que no existe. Una suscripción así no recibiría nada y no "
+            "diría por qué",
+            error_code="webhook.condiciones_invalidas",
+            detalle={"condiciones": malas, "operadores": sorted(_OPERADORES)},
+        )
+
     # Se comprueba ya al darla de alta, además de en cada entrega: así el error
     # sale delante de quien está configurando el webhook y no en un log de
     # entregas fallidas. En la entrega se vuelve a comprobar porque el DNS de un

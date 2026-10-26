@@ -55,10 +55,20 @@ def coincide(suscripcion: Suscripcion, evento: Evento) -> bool:
         return False
 
     for condicion in suscripcion.condiciones or []:
+        # **Una condición que no se puede evaluar NO encaja.** Es la misma
+        # trampa que tenía el motor de procesos y se arregló el mismo día: un
+        # operador desconocido se saltaba la condición —`continue`— y una sin
+        # atributo comparaba nulo con nulo, que da cierto. Las dos hacían que
+        # una suscripción con la condición mal escrita recibiera **todo**, que
+        # en un webhook es mandarle al integrador datos que no pidió.
+        #
+        # Se rechaza también al darla de alta, así que esto es el suelo: cubre
+        # las suscripciones guardadas antes de que existiera esa comprobación.
         op = OPERADORES.get(str(condicion.get("op", "=")))
-        if op is None:
-            continue
-        izquierda = resolver(f"@{condicion.get('atributo', '')}", evento.data)
+        atributo = str(condicion.get("atributo") or "").strip()
+        if op is None or not atributo:
+            return False
+        izquierda = resolver(f"@{atributo}", evento.data)
         derecha = resolver(condicion.get("valor"), evento.data)
         try:
             if not op(izquierda, derecha):

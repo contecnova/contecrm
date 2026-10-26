@@ -285,9 +285,16 @@ def _regla_incumplida(regla: Any, valores: dict[str, Any]) -> bool:
     resultados = []
     for condicion in regla.condiciones or []:
         op = OPERADORES.get(str(condicion.get("op", "=")))
-        if op is None:
+        atributo = str(condicion.get("atributo") or "").strip()
+        if op is None or not atributo:
+            # **No se salta: cuenta como que NO se cumple.** Saltarla dejaba que
+            # el resto de condiciones decidieran solas, y una sin atributo
+            # comparaba nulo con nulo —cierto—, así que una regla mal escrita
+            # saltaba con cualquier registro. Es la misma trampa que tenían el
+            # motor de procesos, los webhooks y las automatizaciones.
+            resultados.append(False)
             continue
-        izquierda = resolver(f"@{condicion.get('atributo', '')}", valores)
+        izquierda = resolver(f"@{atributo}", valores)
         derecha = resolver(condicion.get("valor"), valores)
         try:
             resultados.append(op(izquierda, derecha))

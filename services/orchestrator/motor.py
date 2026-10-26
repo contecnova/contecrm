@@ -316,6 +316,35 @@ def _alcanzables(pasos: dict[str, Any], inicio: str) -> set[str]:
 # ── Ejecución ─────────────────────────────────────────────────────────────
 
 
+def cumple_condicion(condicion: dict[str, Any], variables: dict[str, Any]) -> bool:
+    """Si una condición de decisión se cumple. **Una sola implementación.**
+
+    Estaba escrita dos veces —aquí y en el simulador de la API— y eso es
+    exactamente lo que no puede estar duplicado: un simulador que no decide
+    igual que el motor es peor que no tener simulador, porque enseña un camino
+    que luego no se recorre. Al arreglar el caso de la condición sin atributo
+    quedó a la vista, porque sólo se arregló una de las dos copias.
+    """
+    op = OPERADORES.get(str(condicion.get("op", "=")))
+    if op is None:
+        return False
+    atributo = str(condicion.get("atributo") or "").strip()
+    if not atributo:
+        # Sin atributo no hay nada que comparar, y hasta el 26-10-2026 esto
+        # devolvía CIERTO: `resolver("@", …)` da `None`, el valor por defecto
+        # también, y `None == None` es cierto. Resultado: una decisión con la
+        # condición mal escrita se iba siempre por la primera rama. Falso es lo
+        # correcto porque el autor ya ha escrito a dónde ir cuando la condición
+        # no se cumple — es el `si_no`.
+        return False
+    izquierda = resolver(f"@{atributo}", variables)
+    derecha = resolver(condicion.get("valor"), variables)
+    try:
+        return op(izquierda, derecha)
+    except TypeError:
+        return False
+
+
 class Motor:
     """Ejecuta instancias de proceso.
 
@@ -706,24 +735,7 @@ class Motor:
         )
 
     def _cumple(self, condicion: dict[str, Any], variables: dict[str, Any]) -> bool:
-        op = OPERADORES.get(str(condicion.get("op", "=")))
-        if op is None:
-            return False
-        atributo = str(condicion.get("atributo") or "").strip()
-        if not atributo:
-            # Sin atributo no hay nada que comparar, y hasta el 26-10-2026 esto
-            # devolvía CIERTO: `resolver("@", …)` da `None`, el valor por
-            # defecto también, y `None == None` es cierto. Resultado: una
-            # decisión con la condición mal escrita se iba siempre por la
-            # primera rama. Falso es lo correcto porque el autor ya ha escrito
-            # a dónde ir cuando la condición no se cumple — es el `si_no`.
-            return False
-        izquierda = resolver(f"@{atributo}", variables)
-        derecha = resolver(condicion.get("valor"), variables)
-        try:
-            return op(izquierda, derecha)
-        except TypeError:
-            return False
+        return cumple_condicion(condicion, variables)
 
     # ── Fallos y compensación ────────────────────────────────────────────
 

@@ -4132,6 +4132,27 @@ Tres decisiones del editor:
 >
 > Salió escribiendo la prueba de la familia con la forma equivocada de la
 > condición, y viendo que un importe de diez se iba por la rama de «grande».
+>
+> **Y no estaba en un sitio: estaba en cuatro.** Las cuatro vías que evalúan
+> condiciones escritas por el cliente comparten la misma tabla de operadores y
+> el mismo resolvedor, así que compartían el agujero:
+>
+> | Dónde | Qué hacía una condición mal escrita |
+> |---|---|
+> | Motor de procesos | ir siempre por la primera rama |
+> | Webhooks | entregar **todo** a quien pidió filtrar |
+> | Automatizaciones | dispararse con cualquier registro |
+> | Reglas de validación | saltar con cualquier cosa, o saltarse y dejar decidir a las demás |
+>
+> Ninguna falla: las cuatro devuelven algo plausible. Arregladas las cuatro, y
+> con un gate que recorre el árbol buscando el patrón —resolver un `@atributo` y
+> compararlo con la tabla de operadores— para que una quinta vía no nazca con
+> lo mismo.
+>
+> De paso apareció que el **simulador tenía su propia copia** de la evaluación:
+> al arreglar el motor, sólo se arregló una de las dos, y un simulador que no
+> decide igual que el motor es peor que no tener simulador. Ahora hay una sola
+> implementación y el gate lo vigila.
 
 Las salidas de un paso se leen con la **misma lista de enlaces** que usa el
 validador del servidor. Si aquí faltara una, el diagrama enseñaría un proceso con
