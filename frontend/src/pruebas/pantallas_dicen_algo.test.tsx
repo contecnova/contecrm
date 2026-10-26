@@ -189,19 +189,37 @@ describe("con datos, la pantalla los enseña", () => {
   const ESCENARIOS: Record<string, [Record<string, unknown>, string]> = {
     Casos: [
       {
-        "/api/v1/casos": [
-          {
-            id: "c1",
-            numero: "C-1",
-            asunto: T("caso"),
-            estado: "abierto",
-            prioridad: "alta",
-            vence_at: null,
-            cuenta_id: null,
-            cola: null,
-            escalado: false,
+        // El contrato REAL de `/casos/bandeja`, no el que la pantalla se
+        // imaginaba. El escenario anterior usaba `numero`, `vence_at`, `cola`
+        // y `escalado` —cuatro campos que la API nunca ha devuelto— y la
+        // prueba confirmaba una ficción: en producción todos los casos caían
+        // en «con margen» y el reloj decía siempre «sin plazo».
+        //
+        // Lo que de verdad manda el servidor está fijado en
+        // `test_la_bandeja_de_casos_reparte_de_verdad.py`.
+        "/api/v1/casos/bandeja": {
+          riesgo_horas: 4,
+          ahora: "2026-10-26T09:00:00Z",
+          incumplidos: {
+            total: 1,
+            casos: [
+              {
+                id: "c1",
+                codigo: "C-1",
+                asunto: T("caso"),
+                estado: "nuevo",
+                prioridad: "alta",
+                severidad: "media",
+                cuenta_id: null,
+                equipo: null,
+                vence_resolucion_at: "2026-10-26T08:00:00Z",
+                incumplio_resolucion: true,
+              },
+            ],
           },
-        ],
+          en_riesgo: { total: 0, casos: [] },
+          resto: { total: 0, casos: [] },
+        },
       },
       T("caso"),
     ],

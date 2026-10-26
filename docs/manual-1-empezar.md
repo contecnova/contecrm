@@ -225,6 +225,30 @@ Automatización, que es de administrar, y se enseñan en Trabajar. Aprobar un
 descuento no es configurar nada, y esconderlo detrás de «Administrar» es
 garantizar que se quede esperando.
 
+## La bandeja de casos
+
+Los casos abiertos en tres montones, por lo que hay que hacer con ellos:
+
+- **Fuera de plazo** — ya incumplió. Esto se explica, no se salva.
+- **A punto de vencer** — todavía se puede salvar. Es el único montón que
+  depende de que alguien lo toque ahora.
+- **Con margen** — el resto, incluidos los que **no tienen plazo**. Esos no se
+  esconden: un caso sin SLA no es tranquilo, es un caso que nadie ha
+  clasificado, y esconderlo lo deja sin atender para siempre.
+
+El corte entre «a punto de vencer» y «con margen» es un ajuste del tenant
+(`SLA_RIESGO_HORAS`, 4 h de fábrica) y la pantalla dice con cuánta antelación
+avisa, porque si no, ver un caso en un montón y otro parecido en el otro no
+tiene explicación. En un soporte con SLA de cuatro horas conviene bajarlo; en
+uno de cinco días, subirlo a un día o dos.
+
+**El número de cada montón es el de todos, no el de los que caben en pantalla**,
+y debajo se dice cuántos quedan fuera. Antes se contaba sobre la página traída:
+decía «3 fuera de plazo» habiendo cincuenta.
+
+Se entra al caso pulsando su fila entera. Una bandeja de la que no se puede
+entrar a trabajar es un informe.
+
 ## Filtrar una lista
 
 Encima de cualquier listado hay un botón **Filtrar**. Se elige un campo, una

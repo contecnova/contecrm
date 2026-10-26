@@ -1,121 +1,172 @@
 /**
- * Casos: bandeja, SLA con reloj y escalado (CRM-07.04.03.17).
- *
- * Dos decisiones que se ven al usarla:
- *
- * **El reloj del SLA se pinta aquí y se calcula en el servidor.** La pantalla
- * recibe el vencimiento y lo cuenta; no decide cuándo vence. Si lo decidiera,
- * dos navegadores con la hora mal darían dos incumplimientos distintos del mismo
- * caso, y el que manda es el del servidor.
+ * Casos: la bandeja de quien atiende, con el reloj del SLA (CRM-07.04.03.17).
  *
  * **Lo que va a incumplir se separa de lo que ya incumplió.** Son dos trabajos
  * distintos: lo primero se puede salvar y lo segundo hay que explicarlo. Una
  * bandeja que los mezcla hace que se atienda por orden de llegada, que es el
  * único orden que garantiza incumplir los dos.
+ *
+ * **El reparto lo hace el servidor.** Antes se hacía aquí, y traía tres cosas
+ * mal a la vez: el corte entre «en riesgo» y el resto eran cuatro horas
+ * escritas en una expresión —iguales para todos los clientes del despliegue—;
+ * los totales se contaban sobre la página traída, así que decía «3
+ * incumplidos» habiendo cincuenta; y leía campos que la API no devuelve
+ * —`vence_at`, `numero`, `escalado`—, con lo que **todos los casos caían en
+ * «el resto»** y el reloj decía siempre «sin SLA».
+ *
+ * **El reloj se pinta aquí y el vencimiento lo da el servidor.** La pantalla
+ * cuenta; no decide cuándo vence. Si lo decidiera, dos navegadores con la hora
+ * mal darían dos incumplimientos distintos del mismo caso.
+ *
+ * **Y desde aquí se abre el caso.** Una bandeja de la que no se puede entrar a
+ * trabajar es un informe.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { ErrorApi, llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 
 interface Caso {
   id: string;
-  numero: string;
+  codigo: string | null;
   asunto: string;
   estado: string;
   prioridad: string;
-  vence_at: string | null;
+  severidad: string;
   cuenta_id: string | null;
-  cola: string | null;
-  escalado: boolean;
+  equipo: string | null;
+  vence_resolucion_at: string | null;
+  incumplio_resolucion: boolean;
+}
+
+interface Monton {
+  total: number;
+  casos: Caso[];
+}
+
+interface Bandeja {
+  riesgo_horas: number;
+  ahora: string;
+  incumplidos: Monton;
+  en_riesgo: Monton;
+  resto: Monton;
 }
 
 export function Casos() {
   const { t } = useTranslation();
-  const [casos, setCasos] = useState<Caso[] | null>(null);
+  const [bandeja, setBandeja] = useState<Bandeja | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
 
-  const cargar = useCallback(() => {
+  useEffect(() => {
     const control = new AbortController();
-    llamar<Caso[]>("/api/v1/casos", { signal: control.signal })
-      .then((r) => setCasos(r.datos))
-      .catch((e: unknown) => {
-        if (e instanceof ErrorApi) setFallo(e);
-      });
+    llamar<Bandeja>("/api/v1/casos/bandeja", { signal: control.signal })
+      .then((r) => setBandeja(r.datos))
+      .catch(salvoCancelacion((e) => setFallo(e as ErrorApi)));
     return () => control.abort();
   }, []);
 
-  useEffect(cargar, [cargar]);
+  if (fallo) return <Fallo error={fallo} />;
+  if (!bandeja) return <Cargando />;
 
-  if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
-  if (!casos) return <Cargando />;
-
-  const ahora = Date.now();
-  const vencidos = casos.filter((c) => c.vence_at && Date.parse(c.vence_at) < ahora);
-  const enRiesgo = casos.filter(
-    (c) =>
-      c.vence_at &&
-      Date.parse(c.vence_at) >= ahora &&
-      Date.parse(c.vence_at) - ahora < 4 * 3600_000,
-  );
-  const resto = casos.filter((c) => !vencidos.includes(c) && !enRiesgo.includes(c));
+  const vacia =
+    bandeja.incumplidos.total + bandeja.en_riesgo.total + bandeja.resto.total === 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <CabeceraPagina
         titulo={t("casos.titulo")}
-        entradilla={t("casos.entradilla")}
+        // Se dice con qué antelación avisa, porque si no, ver un caso en «en
+        // riesgo» y otro parecido fuera no tiene explicación posible.
+        entradilla={t("casos.entradillaConUmbral", { horas: bandeja.riesgo_horas })}
         icono="confirmation_number"
       />
 
-      <Bloque titulo={t("casos.incumplidos")} casos={vencidos} tono="danger" />
-      <Bloque titulo={t("casos.enRiesgo")} casos={enRiesgo} tono="warning" />
-      <Bloque titulo={t("casos.resto")} casos={resto} tono="normal" />
+      {vacia ? (
+        <Vacio titulo={t("casos.ninguno")} detalle={t("casos.ningunoDetalle")} />
+      ) : (
+        <>
+          <Monton
+            titulo={t("casos.incumplidos")}
+            monton={bandeja.incumplidos}
+            tono="danger"
+            vacio={t("casos.ningunoIncumplido")}
+          />
+          <Monton
+            titulo={t("casos.enRiesgo")}
+            monton={bandeja.en_riesgo}
+            tono="warning"
+            vacio={t("casos.ningunoEnRiesgo")}
+          />
+          <Monton titulo={t("casos.resto")} monton={bandeja.resto} tono="normal" vacio="" />
+        </>
+      )}
     </div>
   );
 }
 
-function Bloque({
+function Monton({
   titulo,
-  casos,
+  monton,
   tono,
+  vacio,
 }: {
   titulo: string;
-  casos: Caso[];
+  monton: Monton;
   tono: "danger" | "warning" | "normal";
+  vacio: string;
 }) {
   const { t } = useTranslation();
   const color =
     tono === "danger" ? "text-danger" : tono === "warning" ? "text-warning" : "text-ink";
+  const escondidos = monton.total - monton.casos.length;
+
   return (
     <section>
       <h2 className={`text-sm font-medium ${color}`}>
-        {titulo} <span className="text-ink-faint">({casos.length})</span>
+        {titulo}{" "}
+        {/* El total es el de TODO, no el de lo que cabe en pantalla. */}
+        <span className="text-ink-faint">({monton.total})</span>
       </h2>
-      {casos.length === 0 ? (
-        <Vacio titulo={t("casos.ninguno")} detalle="" />
+
+      {monton.total === 0 ? (
+        vacio ? (
+          <p className="mt-1 text-3xs text-ink-faint">{vacio}</p>
+        ) : null
       ) : (
-        <ul className="mt-2 flex flex-col gap-2">
-          {casos.map((c) => (
-            <li
-              key={c.id}
-              className="flex flex-wrap items-baseline gap-2 rounded-lg border border-ink-dim/40 bg-paper-light p-3"
-            >
-              <span className="font-mono text-2xs text-ink-faint">{c.numero}</span>
-              <span className="flex-1 text-sm text-ink">{c.asunto}</span>
-              <span className="text-2xs text-ink-muted">{c.estado}</span>
-              {c.escalado ? (
-                <span className="rounded bg-warning/10 px-1.5 py-0.5 text-3xs uppercase text-warning">
-                  {t("casos.escalado")}
-                </span>
-              ) : null}
-              <Reloj vence={c.vence_at} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="mt-2 divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
+            {monton.casos.map((c) => (
+              <li key={c.id}>
+                {/* La fila ENTERA es el enlace: en una bandeja se entra a
+                    trabajar, y obligar a acertarle a un enlace de dos palabras
+                    es trabajo de puntería que nadie pidió. */}
+                <Link
+                  to={`/m/casos/caso/${c.id}`}
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 hover:bg-paper-light"
+                >
+                  <span className="font-mono text-3xs text-ink-faint">{c.codigo || "—"}</span>
+                  <span className="min-w-0 flex-1 truncate text-2xs text-ink">{c.asunto}</span>
+                  <span className="text-3xs text-ink-muted">{c.estado}</span>
+                  {c.prioridad === "alta" || c.prioridad === "urgente" ? (
+                    <span className="badge badge-warning">{c.prioridad}</span>
+                  ) : null}
+                  <Reloj vence={c.vence_resolucion_at} incumplio={c.incumplio_resolucion} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {escondidos > 0 ? (
+            // Decir cuántos quedan fuera, y no dejar que la lista parezca
+            // completa: es la diferencia entre recortar y mentir.
+            <p className="mt-1 text-3xs text-ink-faint">
+              {t("casos.yMas", { count: escondidos })}
+            </p>
+          ) : null}
+        </>
       )}
     </section>
   );
@@ -128,7 +179,7 @@ function Bloque({
  * calculara, dos navegadores con la hora mal darían dos incumplimientos
  * distintos del mismo caso.
  */
-function Reloj({ vence }: { vence: string | null }) {
+function Reloj({ vence, incumplio }: { vence: string | null; incumplio: boolean }) {
   const { t } = useTranslation();
   const [ahora, setAhora] = useState(() => Date.now());
 
@@ -137,13 +188,20 @@ function Reloj({ vence }: { vence: string | null }) {
     return () => window.clearInterval(reloj);
   }, []);
 
-  if (!vence) return <span className="text-2xs text-ink-faint">{t("casos.sinSla")}</span>;
+  // Marcado por el motor de SLA: ya incumplió, aunque su fecha se haya movido
+  // después. Enseñar «vence en 48 h» sobre un caso incumplido sería negar el
+  // incumplimiento.
+  if (incumplio) {
+    return <span className="font-mono text-3xs text-danger">{t("casos.incumplido")}</span>;
+  }
+  if (!vence) return <span className="text-3xs text-ink-faint">{t("casos.sinSla")}</span>;
+
   const restan = Date.parse(vence) - ahora;
   const horas = Math.floor(Math.abs(restan) / 3600_000);
   const minutos = Math.floor((Math.abs(restan) % 3600_000) / 60_000);
   const texto = `${horas}h ${minutos}m`;
   return (
-    <span className={`font-mono text-2xs ${restan < 0 ? "text-danger" : "text-ink-muted"}`}>
+    <span className={`font-mono text-3xs ${restan < 0 ? "text-danger" : "text-ink-muted"}`}>
       {restan < 0 ? t("casos.vencidoHace", { tiempo: texto }) : t("casos.vence", { tiempo: texto })}
     </span>
   );

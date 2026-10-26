@@ -244,8 +244,19 @@ export default {
     incumplidos: "Fuera de plazo",
     enRiesgo: "A punto de vencer",
     resto: "Con margen",
+    // Se dice con qué antelación avisa: si no, ver un caso en «a punto de
+    // vencer» y otro parecido fuera no tiene explicación posible.
+    entradillaConUmbral:
+      "Lo que va a incumplir se separa de lo que ya incumplió: lo primero se " +
+      "puede salvar y lo segundo hay que explicarlo. Avisamos con {{horas}} h " +
+      "de antelación.",
     ninguno: "Ninguno aquí",
+    ningunoDetalle: "No hay casos abiertos. Nada que atender ahora mismo.",
+    ningunoIncumplido: "Nada fuera de plazo.",
+    ningunoEnRiesgo: "Nada a punto de vencer.",
+    yMas: "y {{count}} más",
     escalado: "Escalado",
+    incumplido: "incumplido",
     sinSla: "Sin plazo",
     vence: "vence en {{tiempo}}",
     vencidoHace: "vencido hace {{tiempo}}",

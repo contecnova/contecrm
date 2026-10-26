@@ -17,6 +17,8 @@ aquí, en el mismo commit—.
     26-10-2026  28  medición inicial
     26-10-2026  24  actividades, cuentas, contactos, leads y oportunidades —el
                     núcleo del CRM, y lo que necesita la portada nueva
+    26-10-2026  23  casos, que es lo que necesita la bandeja para repartir por
+                    plazo sin contar sobre una página
 """
 
 from __future__ import annotations
@@ -47,7 +49,6 @@ SIN_FILTROS_COMUNES_HOY = {
     "services/party/api_proveedores.py::listar_proveedores",
     "services/sales/api.py::listar_pipelines",
     "services/sales/api_cotizacion.py::listar_productos",
-    "services/service/api.py::listar",
     "services/tenancy/api.py::listar_planes",
     "services/tenancy/api.py::listar_tenants",
     "services/tenancy/api_catalogos.py::listar_calendarios",

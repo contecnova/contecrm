@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from services.service import servicio as svc
+from services.service.ajustes import ajustes
 from services.service.modelos import Caso, CategoriaCaso, DefinicionSLA, EventoCaso
 
 router_casos = APIRouter(prefix="/casos", tags=["casos"])
@@ -255,6 +257,7 @@ def abrir(datos: AbrirCaso, uow: UowDep, principal: AutenticadoDep) -> Any:
     ),
 )
 def listar(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query("", max_length=30),
@@ -270,6 +273,14 @@ def listar(
         consulta = consulta.where(Caso.prioridad == prioridad)
     if cuenta_id:
         consulta = consulta.where(Caso.cuenta_id == cuenta_id)
+    # Los filtros comunes, con sus rangos. Aquí hacen falta de verdad: la
+    # bandeja separa lo que YA incumplió de lo que va a incumplir, y eso es
+    # `vence_at__hasta=<ahora>` y `vence_at__desde=<ahora>&__hasta=<ahora+N>`.
+    # Sin ellos, la pantalla se traía una página y contaba sobre ella: decía
+    # «3 incumplidos» cuando había cincuenta.
+    consulta = aplicar_filtros_de_la_url(
+        request, Caso, consulta, principal=principal, db=db, objeto="caso"
+    )
     return paginar_consulta(
         db,
         Caso,
@@ -289,6 +300,113 @@ def listar(
             "incumplio_resolucion": f.incumplio_resolucion,
         },
     )
+
+
+@router_casos.get(
+    "/bandeja",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    summary="La bandeja repartida por urgencia de SLA",
+    description=(
+        "Los casos abiertos en tres montones: **incumplidos**, **en riesgo** y "
+        "el resto, con el total de cada uno.\n\n"
+        "El reparto se hace aquí y no en la pantalla por dos motivos. El "
+        "primero es que el corte entre «en riesgo» y «el resto» es un ajuste "
+        "del tenant (`sla_riesgo_horas`), no una constante: cuatro horas de "
+        "antelación en un soporte con SLA de cuatro horas pone la bandeja "
+        "entera en rojo, y en uno de cinco días avisa cuando ya no da tiempo. "
+        "El segundo es que los totales tienen que ser de TODO, no de la página "
+        "que se haya traído: una bandeja que dice «3 incumplidos» habiendo "
+        "cincuenta se mira una vez."
+    ),
+)
+def bandeja(
+    db: DbDep,
+    principal: AutenticadoDep,
+    por_monton: int = Query(25, ge=1, le=100, description="Cuántos se devuelven de cada montón"),
+) -> Any:
+    from datetime import datetime, timezone
+
+    from crmcore.runtime import settings as rt
+    from sqlalchemy import func
+
+    horas = float(rt.efectivo("sla_riesgo_horas", db) or ajustes().sla_riesgo_horas)
+    ahora = datetime.now(timezone.utc)
+    corte = ahora + timedelta(hours=horas)
+
+    # Abiertos: lo cerrado y lo resuelto no es trabajo pendiente, y meterlo
+    # aquí hace que la bandeja crezca para siempre y deje de abrirse.
+    base = select(Caso).where(
+        Caso.tenant_id == principal.tenant_id,
+        Caso.deleted_at.is_(None),
+        Caso.estado.not_in(("resuelto", "cerrado")),
+    )
+
+    montones = {
+        # Lo que YA incumplió. Incluye lo marcado por el motor de SLA aunque su
+        # fecha se haya movido después: el incumplimiento ya ocurrió.
+        "incumplidos": base.where(
+            or_(
+                Caso.incumplio_resolucion.is_(True),
+                and_(
+                    Caso.vence_resolucion_at.is_not(None),
+                    Caso.vence_resolucion_at < ahora,
+                ),
+            )
+        ),
+        # Lo que va a incumplir si nadie lo toca. Es el único montón que se
+        # puede salvar, y por eso va separado del anterior: son dos trabajos
+        # distintos —uno se atiende, el otro se explica—.
+        "en_riesgo": base.where(
+            Caso.incumplio_resolucion.is_(False),
+            Caso.vence_resolucion_at.is_not(None),
+            Caso.vence_resolucion_at >= ahora,
+            Caso.vence_resolucion_at < corte,
+        ),
+        # Lo demás, incluido lo que no tiene SLA. «Sin plazo» no es «urgente»
+        # ni «tranquilo»: es un caso que nadie ha clasificado, y esconderlo lo
+        # deja sin atender para siempre.
+        "resto": base.where(
+            Caso.incumplio_resolucion.is_(False),
+            or_(
+                Caso.vence_resolucion_at.is_(None),
+                Caso.vence_resolucion_at >= corte,
+            ),
+        ),
+    }
+
+    def _fila(c: Caso) -> dict[str, Any]:
+        return {
+            "id": str(c.id),
+            "codigo": c.codigo,
+            "asunto": c.asunto,
+            "estado": c.estado,
+            "prioridad": c.prioridad,
+            "severidad": c.severidad,
+            "cuenta_id": str(c.cuenta_id) if c.cuenta_id else None,
+            "equipo": c.equipo,
+            "vence_resolucion_at": (
+                c.vence_resolucion_at.isoformat() if c.vence_resolucion_at else None
+            ),
+            "incumplio_resolucion": c.incumplio_resolucion,
+        }
+
+    salida: dict[str, Any] = {"riesgo_horas": horas, "ahora": ahora.isoformat()}
+    for nombre, consulta in montones.items():
+        # El total va aparte de las filas: devolver sólo las primeras y dejar
+        # que la pantalla las cuente es exactamente el error que esto viene a
+        # arreglar.
+        total = db.execute(select(func.count()).select_from(consulta.subquery())).scalar_one()
+        filas = (
+            db.execute(
+                consulta.order_by(Caso.vence_resolucion_at.asc().nulls_last(), Caso.id).limit(
+                    por_monton
+                )
+            )
+            .scalars()
+            .all()
+        )
+        salida[nombre] = {"total": int(total), "casos": [_fila(c) for c in filas]}
+    return salida
 
 
 @router_casos.get(
