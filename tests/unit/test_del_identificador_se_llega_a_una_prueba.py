@@ -118,7 +118,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            de `decisiones`, que es una LISTA, asi que toda
 #                            regla que SI cumplia sus condiciones reventaba con
 #                            «list object is not a mapping»
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 129
+#   26-10-2026  125 de 752  integracion y conectividad (CRM-00.03.04), cuatro
+#                            de cinco. La quinta —funciones de transformacion y
+#                            validacion en el mapeo— NO ESTA: el mapeo copia
+#                            valores por ruta y nada mas. Queda avisado y sin
+#                            construir, que es funcionalidad nueva
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 125
 
 
 @functools.cache
