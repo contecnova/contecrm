@@ -147,7 +147,21 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            de computo dedicados (CRM-00.01.01.06) se
 #                            declaran, se guardan y nadie los lee. Sin prueba
 #                            que lo cite, a proposito, y avisado en su nota
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 111
+#   26-10-2026  102 de 752  extender el modelo sin escribir codigo
+#                            (CRM-00.04.01, CRM-00.04.03) y lo que ve quien lo
+#                            pinta (CRM-00.02.03). Nueve de diez. Nada roto.
+#                            Lo que se fija: los 19 tipos de campo tienen quien
+#                            los valide y rechazan lo malo, las validaciones en
+#                            los TRES niveles —campo, registro y transicion—,
+#                            el describe trae tipo, obligatorio, restricciones
+#                            y los permisos de quien pregunta, el ensayo no
+#                            escribe, la previsualizacion avisa del cambio de
+#                            tipo y dice cuando NO ha podido contar, e
+#                            instalar un paquete SIMULA por defecto. QUEDA UN
+#                            HUECO: los componentes embebibles
+#                            (CRM-00.02.03.05) son un contrato declarado sin
+#                            componente que lo cumpla. Avisado en su nota
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 102
 
 
 @functools.cache

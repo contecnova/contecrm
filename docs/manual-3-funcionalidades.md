@@ -248,6 +248,52 @@ El **describe** (CRM-00.04.01.08) devuelve campos, reglas, layouts y los
 permisos de quien pregunta, que es lo que permite a cualquier frontend renderizar
 sin duplicar reglas.
 
+#### Llevar la configuración de un entorno a otro (CRM-00.04.03.10)
+
+`GET /api/v1/metadata/paquete` exporta el esquema; `POST .../paquete/instalar`
+lo instala en otro. Tres cosas que conviene saber antes de usarlo:
+
+- **Lleva configuración y nunca datos.** Un paquete que arrastrara registros
+  convertiría una promoción a producción en una fuga: los datos de pruebas
+  suelen ser copias anonimizadas a medias de clientes reales.
+- **Simula por defecto.** Instalar de verdad hay que pedirlo (`simular: false`).
+  Un paquete es un cambio de modelo de datos en producción, y el error más caro
+  de quien lo maneja es pulsar el botón creyendo que todavía estaba mirando.
+- **Lo que ya existe con otro tipo no se pisa**: se informa y se deja fuera.
+  Sobrescribir lo que alguien ajustó en producción con lo de un entorno de
+  pruebas es la forma habitual de perder dos semanas de trabajo de un consultor.
+
+Instalar **no publica**: el cambio queda puesto y no llega al resto de servicios
+hasta que alguien lo decide.
+
+#### Antes de publicar, qué se rompe (CRM-00.04.03.09)
+
+`POST /api/v1/metadata/objetos/{nombre}/previsualizar` compara el esquema de
+ahora con **la última publicación** y dice qué se añade, qué se retira y qué
+cambia. Lo que de verdad evita una tarde mala:
+
+- cuántos registros se quedan **sin rellenar** un campo que pasa a obligatorio;
+- qué campo **cambia de tipo** — los valores ya guardados no se convierten, así
+  que dejan de validar, y eso no falla al publicar: falla la próxima vez que
+  alguien guarda un registro viejo;
+- y cuándo **no ha podido contar**. «No se ha podido contar» y «no afecta a
+  nadie» son cosas distintas, y la diferencia es justo la que importa aquí.
+
+#### Cuándo un campo a medida merece una columna de verdad (CRM-00.04.03.11)
+
+`GET /api/v1/metadata/objetos/{nombre}/candidatos-columna` dice qué campos lo justifican, con su
+número de escrituras y el umbral aplicado. **Se decide con una medida y no con
+una intuición**: sin número, cada cliente que note su lista lenta pediría
+columna, y acabaríamos con el `ALTER TABLE` de siempre disfrazado de
+optimización — y un `ALTER TABLE` en una tabla compartida por mil tenants los
+bloquea a todos.
+
+El camino normal es el JSONB con índice de expresión; esto es la excepción. La
+respuesta lleva dentro el orden en que se hace: se añade la columna nullable (no
+bloquea), se rellena por lotes desde el JSONB, se crea el índice y **sólo
+entonces** se empieza a leer de ella. Al revés, la columna se lee vacía mientras
+se rellena y las listas salen incompletas sin que falle nada.
+
 ---
 
 ## 5. Identidad, permisos y auditoría
