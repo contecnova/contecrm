@@ -32,6 +32,7 @@ import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { cn } from "@/lib/utiles";
 import type { Sesion } from "@/lib/sesion";
+import { localizacion } from "@/lib/formato";
 
 /** Las reacciones que admite el servicio. Lista corta y cerrada a propósito. */
 const REACCIONES = ["👍", "👎", "✅", "❓", "🎉", "👀"];
@@ -281,7 +282,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               {autor?.nombre || autor?.email || t("chat.alguien")}
             </span>
             <time dateTime={mensaje.created_at}>
-              {new Date(mensaje.created_at).toLocaleString("es-ES", {
+              {new Date(mensaje.created_at).toLocaleString(localizacion(), {
                 day: "2-digit",
                 month: "short",
                 hour: "2-digit",

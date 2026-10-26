@@ -38,6 +38,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "@/App";
 import { iniciarI18n } from "@/i18n";
 import { aplicarMarca, cargarConfig } from "@/lib/config";
+import { aplicarLocalizacion } from "@/lib/localizacion";
 
 async function arrancar() {
   // La configuración se lee ANTES de montar nada: si la aplicación se monta
@@ -46,6 +47,19 @@ async function arrancar() {
   const config = await cargarConfig();
   aplicarMarca(config);
   await iniciarI18n(navigator.language?.slice(0, 2) || config.idioma);
+
+  // La localización del TENANT, resuelta por el servidor (CRM-07.04.01.05).
+  //
+  // `GET /api/v1/localizacion` resuelve la jerarquía global → tier → tenant →
+  // unidad → usuario y existe desde hace tiempo; el front no la leía y tenía
+  // `"es-ES"` escrito a mano en dieciséis sitios, así que un tenant en
+  // Portugal o en México veía sus números escritos como en España.
+  //
+  // **No bloquea el arranque.** Si la petición falla —o todavía no hay
+  // sesión— se monta igual con el respaldo: una pantalla en blanco porque no
+  // se pudo leer un formato de fecha sería peor que un número con la coma en
+  // otro sitio. Cuando llega, los formateadores se rehacen.
+  void aplicarLocalizacion();
 
   const raiz = document.getElementById("root");
   if (!raiz) throw new Error("Falta el elemento #root");

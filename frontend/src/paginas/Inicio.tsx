@@ -35,6 +35,7 @@ import { CabeceraPagina } from "@/componentes/Pagina";
 import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { ALTAS } from "@/lib/altas";
 import { puede, type Sesion } from "@/lib/sesion";
+import { localizacion } from "@/lib/formato";
 
 interface Actividad {
   id: string;
@@ -238,7 +239,7 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
                       {o.nombre}
                     </Link>
                     <span className="shrink-0 font-mono text-3xs text-ink-muted">
-                      {Number(o.importe || 0).toLocaleString("es-ES")}
+                      {Number(o.importe || 0).toLocaleString(localizacion())}
                     </span>
                   </li>
                 ))}
@@ -334,9 +335,9 @@ function FilaActividad({ actividad, atrasada }: { actividad: Actividad; atrasada
       {cuando ? (
         <span
           className={`shrink-0 text-3xs ${atrasada ? "text-danger" : "text-ink-muted"}`}
-          title={cuando.toLocaleString("es-ES")}
+          title={cuando.toLocaleString(localizacion())}
         >
-          {cuando.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+          {cuando.toLocaleDateString(localizacion(), { day: "numeric", month: "short" })}
         </span>
       ) : null}
     </li>

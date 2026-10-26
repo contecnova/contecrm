@@ -10,12 +10,66 @@
  * las fechas en ISO, que son para máquinas.
  */
 
-/** Separadores de miles y coma decimal, en español. */
-const NUMERO = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
-const DINERO = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 });
+/**
+ * La localización del tenant, **resuelta por el servidor** (CRM-07.04.01.05).
+ *
+ * Estaba escrita a mano: `"es-ES"` en dieciséis sitios de cinco ficheros, y
+ * los formateadores creados como constantes de módulo — o sea que no podían
+ * cambiar ni aunque alguien quisiera, porque se construyen al importar.
+ *
+ * Mientras tanto `GET /api/v1/localizacion` existe, resuelve la jerarquía
+ * global → tier → tenant → unidad → usuario y devuelve **ejemplos como
+ * contrato**, para que un cliente pueda comprobar que formatea igual que el
+ * servidor sin reimplementar la jerarquía. Nadie lo leía. Un tenant en
+ * Portugal o en México veía sus números escritos como en España.
+ *
+ * Aquí se guarda lo que diga el servidor y se reconstruyen los formateadores.
+ * El castellano es el **respaldo hasta que llegue la respuesta**, no un valor
+ * guardado: guardarlo al arrancar es como el ajuste del servidor se queda sin
+ * usar para siempre.
+ */
+let LOCALE = "es-ES";
+let NUMERO = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 });
+let DINERO = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
+let FECHA = new Intl.DateTimeFormat(LOCALE, { dateStyle: "short" });
+let FECHA_HORA = new Intl.DateTimeFormat(LOCALE, { dateStyle: "short", timeStyle: "short" });
 const MONEDAS = new Map<string, Intl.NumberFormat>();
-const FECHA = new Intl.DateTimeFormat("es-ES", { dateStyle: "short" });
-const FECHA_HORA = new Intl.DateTimeFormat("es-ES", { dateStyle: "short", timeStyle: "short" });
+
+/** La localización que se está usando ahora mismo. */
+export function localizacion(): string {
+  return LOCALE;
+}
+
+/**
+ * Fija la localización del tenant. La llama el arranque con lo que responde
+ * `GET /api/v1/localizacion`.
+ *
+ * Una localización que `Intl` no conoce **no deja los números sin pintar**: se
+ * queda la anterior. Un formateador que revienta vacía la pantalla entera, y
+ * el precio de equivocarse en un código de idioma no puede ser ese.
+ */
+export function fijarLocalizacion(locale: string): void {
+  const limpio = (locale || "").trim();
+  if (!limpio || limpio === LOCALE) return;
+  try {
+    const numero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 2 });
+    const dinero = new Intl.NumberFormat(limpio, { maximumFractionDigits: 0 });
+    const fecha = new Intl.DateTimeFormat(limpio, { dateStyle: "short" });
+    const fechaHora = new Intl.DateTimeFormat(limpio, {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+    LOCALE = limpio;
+    NUMERO = numero;
+    DINERO = dinero;
+    FECHA = fecha;
+    FECHA_HORA = fechaHora;
+    // Las monedas ya construidas llevaban la localización vieja dentro.
+    MONEDAS.clear();
+  } catch {
+    // Se queda la que había.
+  }
+}
 
 const ISO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_MOMENTO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
@@ -120,7 +174,7 @@ export function importe(valor: unknown, moneda = "EUR"): string {
   let formato = MONEDAS.get(moneda);
   if (!formato) {
     try {
-      formato = new Intl.NumberFormat("es-ES", {
+      formato = new Intl.NumberFormat(LOCALE, {
         style: "currency",
         currency: moneda,
         maximumFractionDigits: 0,

@@ -94,7 +94,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            la sesion en cookie, el Problem Details con su
 #                            explicacion, los comodines de permiso entendidos
 #                            igual que en el servidor y la CSP sin eval
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 146
+#   26-10-2026  145 de 752  la localizacion del tenant (CRM-07.04.01.05).
+#                            HALLAZGO: la ruta que la resuelve existia y el
+#                            front no la leia — «es-ES» a mano en 16 sitios de
+#                            5 ficheros, y los formateadores construidos al
+#                            importar, o sea imposibles de cambiar
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 145
 
 
 @functools.cache

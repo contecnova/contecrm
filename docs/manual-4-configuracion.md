@@ -331,6 +331,35 @@ cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.
 > subir `IA_CONFIANZA_EXTRACCION` antes de dejar que una extracción pise lo que
 > escribió una persona.
 
+### Los formatos los pone el tenant, no el código (`CRM-07.04.01.05`)
+
+`GET /api/v1/localizacion` devuelve las preferencias **ya resueltas** por la
+jerarquía global → tier → tenant → unidad → usuario: idioma, zona horaria,
+formato de fecha, moneda funcional y primer día de la semana. Y con **un
+ejemplo de cada una**, que no es decorativo — es el contrato: un cliente puede
+comprobar que su formateo coincide con el del servidor sin implementar la
+jerarquía.
+
+Existe porque el CRM es headless. Si cada frontend resolviera los ajustes por
+su cuenta, la web y el móvil acabarían escribiendo la misma fecha de dos
+maneras.
+
+> **Y hasta el 26-10-2026 el front no la leía.** Tenía `"es-ES"` escrito a mano
+> en **dieciséis sitios de cinco ficheros**, con los formateadores creados como
+> constantes de módulo: se construyen al importar, así que no podían cambiar ni
+> aunque alguien quisiera. Un tenant en Portugal o en México veía sus números
+> escritos como en España.
+>
+> Arreglado con una sola fuente que se fija con lo que dice el servidor al
+> arrancar. No bloquea el arranque: si la petición falla, se monta con el
+> respaldo —una pantalla en blanco por no poder leer un formato de fecha sería
+> peor que una coma en otro sitio—. Y hay un guardián que recorre el árbol y
+> falla si la localización vuelve a aparecer escrita a mano.
+>
+> Sobre la **paridad entre idiomas** que pide la misma capacidad: hoy sólo hay
+> castellano, así que no hay con qué compararla. Queda dicho en vez de darse
+> por comprobada.
+
 ### Filtrar un listado por rango (`CRM-00.02.01.10`)
 
 Los filtros de la URL eran **igualdad y nada más**, así que no había forma de

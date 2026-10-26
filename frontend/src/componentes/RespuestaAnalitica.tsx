@@ -26,6 +26,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { FORMA_DE_TIPO, Grafica, type Forma } from "@/componentes/graficas/Grafica";
+import { localizacion } from "@/lib/formato";
 
 export interface Payload {
   type: string;
@@ -50,8 +51,8 @@ function formatear(valor: unknown, unidad?: string | null): string {
     // Sin decimales cuando es entero: «3» se lee mejor que «3,00», y con miles
     // separados, que es la diferencia entre leer un número y contar sus cifras.
     const texto = Number.isInteger(valor)
-      ? valor.toLocaleString("es-ES")
-      : valor.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+      ? valor.toLocaleString(localizacion())
+      : valor.toLocaleString(localizacion(), { maximumFractionDigits: 2 });
     return unidad ? `${texto} ${unidad}` : texto;
   }
   if (typeof valor === "boolean") return valor ? "sí" : "no";

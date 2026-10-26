@@ -7,6 +7,8 @@
  * probar sin montar un SVG.
  */
 
+import { localizacion } from "@/lib/formato";
+
 /** Un valor del eje, ya resuelto a número. `null` es «no hay dato». */
 export type Dato = number | null;
 
@@ -52,17 +54,17 @@ export function techo(valores: Dato[]): number {
  */
 export function corto(valor: number): string {
   const abs = Math.abs(valor);
-  if (abs >= 1_000_000) return `${(valor / 1_000_000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} M`;
-  if (abs >= 1_000) return `${(valor / 1_000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} k`;
-  return valor.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+  if (abs >= 1_000_000) return `${(valor / 1_000_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} M`;
+  if (abs >= 1_000) return `${(valor / 1_000).toLocaleString(localizacion(), { maximumFractionDigits: 1 })} k`;
+  return valor.toLocaleString(localizacion(), { maximumFractionDigits: 2 });
 }
 
 /** El valor entero, con separador de miles y su unidad si la tiene. */
 export function exacto(valor: Dato, unidad?: string | null): string {
   if (valor === null) return "—";
   const texto = Number.isInteger(valor)
-    ? valor.toLocaleString("es-ES")
-    : valor.toLocaleString("es-ES", { maximumFractionDigits: 2 });
+    ? valor.toLocaleString(localizacion())
+    : valor.toLocaleString(localizacion(), { maximumFractionDigits: 2 });
   return unidad ? `${texto} ${unidad}` : texto;
 }
 
