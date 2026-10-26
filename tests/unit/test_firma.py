@@ -34,11 +34,43 @@ def uow(db: Any, tenant_id: UUID) -> UnidadDeTrabajo:
 
 
 @pytest.fixture
-def proveedor(db: Any, tenant_id: UUID) -> fir.ProveedorFirma:
+def operador_de_firma() -> Any:
+    """Quien habla con el proveedor, doblado.
+
+    **Hasta el 26-10-2026 no hacía falta, y eso era el problema**: `enviar` no
+    llamaba al proveedor —marcaba el sobre como enviado y ya—, así que estas
+    dieciocho pruebas pasaban con un proveedor sin conexión y sin nadie al otro
+    lado. La suite confirmaba que mandar funcionaba, y mandar no mandaba nada.
+
+    Se dobla sólo el transporte, que es lo que no se puede tener en una prueba.
+    Lo que se mide sigue siendo del producto: qué se le pide al proveedor y qué
+    se hace con lo que devuelve.
+    """
+    import pytest as _pytest  # noqa: F401 — claridad del origen del fixture
+
+    llamadas: list[tuple[str, dict[str, Any]]] = []
+
+    def operador(*, conexion_id: UUID, operacion: str, parametros: dict[str, Any]) -> dict:
+        llamadas.append((operacion, parametros))
+        return {"id": f"ext-{len(llamadas)}"}
+
+    previo = fir._operador
+    fir.registrar_operador(operador)
+    try:
+        yield llamadas
+    finally:
+        fir._operador = previo
+
+
+@pytest.fixture
+def proveedor(db: Any, tenant_id: UUID, operador_de_firma: Any) -> fir.ProveedorFirma:
     fila = fir.ProveedorFirma(
         tenant_id=tenant_id,
         clave="firmafacil",
         nombre="FirmaFácil",
+        # Con conexión declarada: sin ella se puede configurar pero no llamar, y
+        # un sobre que no sale no es un sobre enviado.
+        conexion_id=uuid4(),
         niveles=["simple", "avanzada"],
         identificaciones=["correo", "sms", "certificado"],
         mapa_estados={
@@ -625,3 +657,20 @@ def test_lo_terminado_no_sale_en_el_panel(uow: UnidadDeTrabajo, proveedor: Any) 
     fir.enviar(uow, sobre.id)
     fir.cancelar(uow, sobre.id, motivo="ya no hace falta")
     assert fir.panel(uow.db, uow.tenant_id)["sobres"] == []
+
+
+def test_mandar_llama_al_proveedor_crm_06_01_02_11(
+    uow: UnidadDeTrabajo, proveedor: Any, operador_de_firma: list[Any]
+) -> None:
+    """**Por qué este fichero necesitó un operador doblado el 26-10-2026.**
+
+    Hasta ese día, `enviar` no llamaba al proveedor: marcaba el sobre como
+    «enviado» y emitía el evento. Las dieciocho pruebas de aquí que mandan
+    sobres pasaban con un proveedor sin conexión y sin nadie al otro lado — o
+    sea, la suite confirmaba que mandar funcionaba, y mandar no mandaba nada.
+
+    Esto lo deja fijado desde el fichero que lo tapaba.
+    """
+    sobre = _sobre(uow)
+    fir.enviar(uow, sobre.id)
+    assert [o for o, _ in operador_de_firma] == ["crear_sobre"], operador_de_firma
