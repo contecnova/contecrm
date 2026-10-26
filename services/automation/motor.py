@@ -236,7 +236,10 @@ def ejecutar(
     # Las variables que quedaron, en la traza: sin ellas, «¿por qué entró por
     # esta rama?» no se puede contestar, y contestarlo es la única razón de que
     # este motor deje traza de todo.
-    traza.decisiones = {**(traza.decisiones or {}), "variables": _serializable(ambito)}
+    # En su propia columna: `decisiones` es una lista —una entrada por
+    # condición— y tratarla como diccionario reventaba aquí con «'list' object
+    # is not a mapping», justo cuando la regla SÍ se disparaba.
+    traza.variables = _serializable(ambito)
     traza.duracion_ms = int((time.perf_counter() - inicio) * 1000)
     regla.ejecuciones += 1
     from datetime import datetime, timezone

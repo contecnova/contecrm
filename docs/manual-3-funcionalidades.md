@@ -198,7 +198,18 @@ más allá del tope configurado.
 
 Y un **depurador** (CRM-00.03.03.07) que registra también las veces que la regla
 **no** se disparó y por qué condición. Sin eso, «¿por qué no se ha asignado este
-lead?» no tiene respuesta, y es la pregunta que más se hace.
+lead?» no tiene respuesta, y es la pregunta que más se hace. La traza guarda
+además **con qué variables acabó** la ejecución, en su propia columna.
+
+> **Hasta el 26-10-2026, una regla que SÍ cumplía sus condiciones no llegaba a
+> terminar.** Las variables finales se metían dentro de `decisiones` —que es
+> una lista, una entrada por condición— con un desempaquetado de diccionario, y
+> eso revienta con «'list' object is not a mapping». O sea que sólo pasaban las
+> ejecuciones que **no** se disparaban; en cuanto una condición se cumplía, la
+> automatización fallaba al final.
+>
+> Salió al escribir la prueba de que una regla por debajo del tope de cascada
+> sí se ejecuta. Arreglado con una columna propia y su migración.
 
 ### Integraciones
 

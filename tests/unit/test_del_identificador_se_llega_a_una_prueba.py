@@ -113,7 +113,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            la compatibilidad hacia atras no se rompa en
 #                            silencio: no se rompe con un error, se rompe y se
 #                            entera el cliente de otro el dia del despliegue
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 134
+#   26-10-2026  129 de 752  la automatizacion low-code (CRM-00.03.03).
+#                            HALLAZGO: las variables finales se metian dentro
+#                            de `decisiones`, que es una LISTA, asi que toda
+#                            regla que SI cumplia sus condiciones reventaba con
+#                            «list object is not a mapping»
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 129
 
 
 @functools.cache

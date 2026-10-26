@@ -107,6 +107,15 @@ class EjecucionAutomatizacion(Base):
     acciones_ejecutadas: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # Las variables con las que acabó la ejecución. Van en su propia columna y
+    # no dentro de `decisiones`, que es una LISTA —una entrada por condición—:
+    # meterlas ahí con `{**decisiones, "variables": …}` reventaba con
+    # «'list' object is not a mapping» en cuanto una regla cumplía sus
+    # condiciones. O sea que ninguna automatización que se disparara de verdad
+    # llegaba a terminar. Medido el 26-10-2026 auditando la familia.
+    variables: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     profundidad_cascada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     duracion_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
