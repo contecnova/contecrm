@@ -9,10 +9,11 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import declarar_recurso, montar_listado
+from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso, montar_listado
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -90,6 +91,7 @@ def crear_producto(datos: CrearProducto, db: DbDep, principal: AutenticadoDep) -
     summary="Catálogo del tenant",
 )
 def listar_productos(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     familia: str = Query(""),
@@ -102,6 +104,13 @@ def listar_productos(
         consulta = consulta.where(cat.Producto.familia == familia)
     if solo_activos:
         consulta = consulta.where(cat.Producto.activo.is_(True))
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, cat.Producto, consulta, principal=principal, db=db, objeto="producto"
+    )
     return paginar_consulta(
         db,
         cat.Producto,
@@ -785,3 +794,13 @@ ROUTERS_COTIZACION = [
     router_sus,
     router_ped,
 ]
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_productos, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)

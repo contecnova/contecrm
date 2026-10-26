@@ -376,13 +376,35 @@ una relación— y el traductor devuelve «no sé» a propósito en vez de inven
 una traducción aproximada. Un filtro «casi igual» produce un listado que casi
 acierta, y eso no se detecta mirándolo.
 
+**Y valen en todos los listados.** Esto no era así hasta el 26-10-2026: la
+fábrica monta 61 listados y les da los filtros comunes gratis, pero hay otros
+**escritos a mano** —los que tienen filtros propios que la fábrica no sabe
+expresar: «sólo las mías», «sólo las vencidas», «las de esta cuenta»—, y ésos se
+quedaban sin los comunes. El resultado era que `?vence_at__hasta=…` funcionaba
+en unos sitios y devolvía 422 en otros, y quien integra lo descubría probando:
+el mismo producto admitía rangos o no según quién había escrito cada listado,
+que no es un contrato.
+
+Tener filtros propios es legítimo; quedarse sin los comunes no. Los veintiocho
+listados a mano que hay los admiten ahora todos. La única excepción es el de
+entornos, y no es deuda: devuelve una lista **cerrada** escrita en el código
+—las cuatro etapas por las que pasa la configuración hasta producción— y no una
+tabla, así que no hay columnas por las que filtrar.
+
+Lo vigilan dos pruebas que van juntas a propósito: una lee el código —que cada
+listado llame al filtro común y se declare de parámetros abiertos— y la otra
+**recorre las rutas** y le pide a cada una un filtro inventado, esperando el
+422. La primera sola no basta porque las dos mitades se separan con facilidad:
+con el filtro y sin la marca, la ruta contesta 422 a los filtros que ella misma
+acaba de ofrecer.
+
 ### Un parámetro que no se mira es un filtro que no filtra
 
 FastAPI **se come en silencio** cualquier parámetro de query que la función no
 declare. Eso ya costó caro: `/activities?cuenta_id=X` devolvía todas las filas
 del tenant como si el filtro existiera. Se arregló en la fábrica de listados,
 que monta 61 — y quedaban **29 escritos a mano** con el mismo agujero: usuarios,
-roles, políticas, encargos, entornos.
+roles, políticas, encargos, entornos. Ya no queda ninguno (ver arriba).
 
 Ahora la comprobación va en la aplicación entera, igual que la idempotencia:
 engancharla ruta a ruta significa que funciona en las que alguien se acordó, y

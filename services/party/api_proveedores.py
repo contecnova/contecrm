@@ -19,10 +19,11 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
-from crmcore.http.listados import declarar_recurso
+from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 
 from services.party import modelos as mod
@@ -486,6 +487,7 @@ def evaluacion(cuerpo: EvaluarIn, principal: AutenticadoDep) -> Any:
     ),
 )
 def listar_proveedores(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -504,6 +506,13 @@ def listar_proveedores(
     consulta = select(Cuenta).where(
         Cuenta.deleted_at.is_(None),
         Cuenta.roles.contains(["proveedor"]),
+    )
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
     )
     consulta = aplicar_orden_y_cursor(
         consulta,
@@ -725,3 +734,13 @@ def mis_contactos(db: DbDep, sesion: PortalDep, limite: int = Query(200, ge=1, l
 
 
 ROUTERS_PROVEEDORES = [router_proveedores, router_portal_contactos]
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_proveedores, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)

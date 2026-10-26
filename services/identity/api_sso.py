@@ -13,8 +13,9 @@ from uuid import UUID
 
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha  # noqa: E402
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import Response
@@ -288,15 +289,29 @@ def comprobar_perfil(proveedor_id: UUID, db: DbDep, principal: AutenticadoDep) -
 
 @router_idp.get("", response_model=PaginaDeListado, summary="Proveedores del tenant")
 def listar(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
+    consulta = select(ProveedorIdentidad)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request,
+        ProveedorIdentidad,
+        consulta,
+        principal=principal,
+        db=db,
+        objeto="proveedor_identidad",
+    )
     return paginar_consulta(
         db,
         ProveedorIdentidad,
-        select(ProveedorIdentidad),
+        consulta,
         limite=limite,
         cursor=cursor,
         orden="nombre",
@@ -839,4 +854,14 @@ montar_ficha(
     permiso_escribir="idp:configurar",
     nombre="Proveedores de identidad",
     parametro="proveedor_id",
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

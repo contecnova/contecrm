@@ -8,9 +8,10 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import declarar_recurso
+from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
-from fastapi import APIRouter, Depends, Query, status
+from crmcore.http.parametros import admite_parametros_abiertos
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -91,12 +92,20 @@ def crear_proveedor(datos: CrearProveedor, db: DbDep, principal: AutenticadoDep)
     summary="Proveedores configurados",
 )
 def listar_proveedores(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
     consulta = select(enc.Proveedor).where(enc.Proveedor.tenant_id == principal.tenant_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, enc.Proveedor, consulta, principal=principal, db=db, objeto="proveedor_servicio"
+    )
     return paginar_consulta(
         db,
         enc.Proveedor,
@@ -226,6 +235,7 @@ def crear(datos: CrearEncargo, uow: UowDep) -> Any:
     summary="Encargos en seguimiento",
 )
 def listar(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query(""),
@@ -241,6 +251,13 @@ def listar(
         consulta = consulta.where(enc.Encargo.proveedor == proveedor)
     if solo_mudos:
         consulta = consulta.where(enc.Encargo.mudo.is_(True))
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, enc.Encargo, consulta, principal=principal, db=db, objeto="encargo"
+    )
     return paginar_consulta(
         db, enc.Encargo, consulta, limite=limite, cursor=cursor, modelo_salida=EncargoOut
     )
@@ -490,3 +507,16 @@ def entregados_sin_prueba(
 
 
 ROUTERS_ENCARGOS = [router_proveedores, router]
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_proveedores, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)

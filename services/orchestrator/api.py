@@ -9,9 +9,15 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from crmcore.http.listados import declarar_recurso, montar_exportacion, montar_ficha
+from crmcore.http.listados import (
+    aplicar_filtros_de_la_url,
+    declarar_recurso,
+    montar_exportacion,
+    montar_ficha,
+)
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
-from fastapi import APIRouter, Depends, Query, status
+from crmcore.http.parametros import admite_parametros_abiertos
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -313,6 +319,7 @@ def arrancar(datos: ArrancarProceso, db: DbDep, principal: AutenticadoDep) -> An
     summary="Instancias, filtrables por estado y por origen",
 )
 def listar_instancias(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query("", description="ejecutando, esperando_humano, fallida…"),
@@ -328,6 +335,13 @@ def listar_instancias(
         consulta = consulta.where(InstanciaProceso.clave == clave)
     if origen_id:
         consulta = consulta.where(InstanciaProceso.origen_id == origen_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, InstanciaProceso, consulta, principal=principal, db=db, objeto="instancia_proceso"
+    )
     return paginar_consulta(
         db, InstanciaProceso, consulta, limite=limite, cursor=cursor, modelo_salida=InstanciaOut
     )
@@ -445,6 +459,7 @@ router_tareas = APIRouter(prefix="/tareas", tags=["tareas humanas"])
     ),
 )
 def bandeja(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query("pendiente"),
@@ -463,6 +478,13 @@ def bandeja(
     )
     # Por vencimiento: una bandeja de tareas ordenada por fecha de creación
     # esconde al final la que vence hoy.
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, TareaHumana, consulta, principal=principal, db=db, objeto="tarea_humana"
+    )
     return paginar_consulta(
         db,
         TareaHumana,
@@ -811,6 +833,7 @@ class SagaOut(BaseModel):
     ),
 )
 def listar_sagas(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     estado: str = Query(
@@ -825,6 +848,13 @@ def listar_sagas(
         consulta = consulta.where(sagas.Saga.estado == estado)
     if clave:
         consulta = consulta.where(sagas.Saga.clave == clave)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, sagas.Saga, consulta, principal=principal, db=db, objeto="saga"
+    )
     return paginar_consulta(
         db, sagas.Saga, consulta, limite=limite, cursor=cursor, modelo_salida=SagaOut
     )
@@ -900,4 +930,20 @@ montar_exportacion(
     objeto="tabla_decision",
     permiso="proceso:read",
     nombre="Tablas de decisión",
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_instancias, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    bandeja, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_sagas, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

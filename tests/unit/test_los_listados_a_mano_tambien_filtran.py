@@ -19,6 +19,10 @@ aquí, en el mismo commit—.
                     núcleo del CRM, y lo que necesita la portada nueva
     26-10-2026  23  casos, que es lo que necesita la bandeja para repartir por
                     plazo sin contar sobre una página
+    26-10-2026   0  los veintidós restantes, de una vez. El veintitrés
+                    —`listar_entornos`— no es deuda: devuelve una lista cerrada
+                    escrita en el código, así que no hay columnas que filtrar.
+                    Pasa a `NO_TIENEN_COLUMNAS`, con su motivo.
 """
 
 from __future__ import annotations
@@ -29,30 +33,27 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 
 # ── Los que todavía no llaman al filtro común ─────────────────────────────
-SIN_FILTROS_COMUNES_HOY = {
-    "services/automation/api.py::listar",
-    "services/eventing/api.py::listar",
-    "services/identity/api.py::listar_usuarios",
-    "services/identity/api.py::listar_roles",
-    "services/identity/api.py::mis_sesiones",
-    "services/identity/api.py::listar_claves",
-    "services/identity/api.py::listar_reglas_comparticion",
-    "services/identity/api_politicas.py::listar_politicas",
-    "services/identity/api_sso.py::listar",
-    "services/integration/api_encargos.py::listar_proveedores",
-    "services/integration/api_encargos.py::listar",
-    "services/metadata/api_entornos.py::listar_entornos",
-    "services/orchestrator/api.py::bandeja",
-    "services/orchestrator/api.py::listar_instancias",
-    "services/orchestrator/api.py::listar_sagas",
-    "services/party/api.py::listar_solicitudes",
-    "services/party/api_proveedores.py::listar_proveedores",
-    "services/sales/api.py::listar_pipelines",
-    "services/sales/api_cotizacion.py::listar_productos",
-    "services/tenancy/api.py::listar_planes",
-    "services/tenancy/api.py::listar_tenants",
-    "services/tenancy/api_catalogos.py::listar_calendarios",
-    "services/tenancy/api_catalogos.py::listar_plantillas",
+#
+# Vacío desde el 26-10-2026. No significa que no queden listados a mano:
+# significa que todos los que hay admiten los filtros comunes además de los
+# suyos.
+SIN_FILTROS_COMUNES_HOY: set[str] = set()
+
+# ── Y los que no tienen columnas que filtrar ──────────────────────────────
+#
+# Esto no es deuda, es una excepción con su motivo. Un listado que no lee una
+# tabla no tiene columnas por las que filtrar, así que `aplicar_filtros_de_la_url`
+# no tendría contra qué validar: le pasaríamos un modelo inventado para que
+# rechazara todo, que es una comprobación que finge.
+#
+# Cada entrada dice por qué. Sin el motivo, la lista se convierte en el sitio
+# donde se mete lo que da guerra.
+NO_TIENEN_COLUMNAS = {
+    "services/metadata/api_entornos.py::listar_entornos": (
+        "devuelve una lista CERRADA escrita en el código —las cuatro etapas por "
+        "las que pasa la configuración— y no una tabla: no hay columnas por las "
+        "que filtrar, y crear entornos no se puede"
+    ),
 }
 
 
@@ -118,7 +119,7 @@ def test_el_recorrido_mira_de_verdad() -> None:
 
 def test_ningun_listado_nuevo_nace_sin_los_filtros_comunes() -> None:
     nuevos = sorted(k for k, llama in _listados_a_mano().items() if not llama)
-    sobran = [k for k in nuevos if k not in SIN_FILTROS_COMUNES_HOY]
+    sobran = [k for k in nuevos if k not in SIN_FILTROS_COMUNES_HOY and k not in NO_TIENEN_COLUMNAS]
     assert not sobran, (
         "Listados escritos a mano que no llaman a `aplicar_filtros_de_la_url`, "
         "así que no admiten los filtros comunes ni los rangos:\n  " + "\n  ".join(sobran)
@@ -174,3 +175,19 @@ def test_nadie_se_declara_abierto_sin_necesitarlo() -> None:
     assert not de_mas, "Marcados como abiertos sin aplicar los filtros comunes:\n  " + "\n  ".join(
         de_mas
     )
+
+
+def test_las_excepciones_siguen_existiendo_y_dicen_por_qué() -> None:
+    """Una excepción sin motivo se copia a la siguiente ruta que dé guerra, y
+    entonces la comprobación deja de comprobar. Y una que ya no existe deja la
+    lista grande para siempre."""
+    todos = _listados_a_mano()
+    fantasmas = sorted(k for k in NO_TIENEN_COLUMNAS if k not in todos)
+    assert not fantasmas, "Exceptuados y ya no existen:\n  " + "\n  ".join(fantasmas)
+    sin_motivo = sorted(k for k, motivo in NO_TIENEN_COLUMNAS.items() if len(motivo) < 40)
+    assert not sin_motivo, "Exceptuados sin un motivo que se pueda leer:\n  " + "\n  ".join(
+        sin_motivo
+    )
+    # Y si alguno acabara llamando al filtro común, sobra de aquí.
+    ya_filtran = sorted(k for k in NO_TIENEN_COLUMNAS if todos.get(k) is True)
+    assert not ya_filtran, "Exceptuados que ya filtran:\n  " + "\n  ".join(ya_filtran)

@@ -960,8 +960,9 @@ def crear_solicitud(datos: SolicitudDerechosEntrada, db: DbDep, principal: Auten
     description="Ordenadas por vencimiento: lo que antes vence, primero.",
 )
 def listar_solicitudes(
+    request: Request,
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     estado: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
@@ -971,6 +972,18 @@ def listar_solicitudes(
         consulta = consulta.where(SolicitudDerechos.estado == estado)
     # Por vencimiento: son solicitudes con plazo legal, y la que vence antes es
     # la que hay que atender, no la más reciente.
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request,
+        SolicitudDerechos,
+        consulta,
+        principal=principal,
+        db=db,
+        objeto="solicitud_derechos",
+    )
     return paginar_consulta(
         db,
         SolicitudDerechos,
@@ -1844,4 +1857,14 @@ admite_parametros_abiertos(
 # principal no ve en claro.
 admite_parametros_abiertos(
     listar_actividades, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_solicitudes, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

@@ -272,6 +272,7 @@ def crear_pipeline(datos: CrearPipeline, db: DbDep, principal: AutenticadoDep) -
     summary="Pipelines con sus etapas",
 )
 def listar_pipelines(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -298,6 +299,13 @@ def listar_pipelines(
         ).model_dump()
 
     consulta = select(Pipeline).where(Pipeline.tenant_id == principal.tenant_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Pipeline, consulta, principal=principal, db=db, objeto="pipeline"
+    )
     return paginar_consulta(
         db,
         Pipeline,
@@ -1433,4 +1441,14 @@ admite_parametros_abiertos(
 # principal no ve en claro.
 admite_parametros_abiertos(
     listar_oportunidades, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_pipelines, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

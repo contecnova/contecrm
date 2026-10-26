@@ -19,9 +19,11 @@ from uuid import UUID
 from crmcore.authz.politicas import politica_por_dimension
 from crmcore.authz.proyeccion import fijar_politica_campo
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -86,6 +88,7 @@ class SimulacionEntrada(BaseModel):
     ),
 )
 def listar_politicas(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -96,6 +99,13 @@ def listar_politicas(
     consulta = select(PoliticaAbac).where(PoliticaAbac.tenant_id == principal.tenant_id)
     # Por prioridad, que es el orden en que se APLICAN: verlas en otro orden hace
     # difícil entender cuál gana.
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, PoliticaAbac, consulta, principal=principal, db=db, objeto="politica_abac"
+    )
     return paginar_consulta(
         db,
         PoliticaAbac,
@@ -382,3 +392,13 @@ def publicar_politica(db: DbDep, principal: AutenticadoDep) -> Any:
     from crmcore.authz.politicas import cargar
 
     return publicar(cargar(db, principal.tenant_id), tenant=str(principal.tenant_id))
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_politicas, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)

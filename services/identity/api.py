@@ -15,7 +15,9 @@ from crmcore.http.deps import (
     exige_firma_interna,
     exige_permiso,
 )
+from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
@@ -591,6 +593,7 @@ def invitar_externo(datos: InvitarExterno, uow: UowDep, principal: AutenticadoDe
     ),
 )
 def listar_usuarios(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -606,6 +609,13 @@ def listar_usuarios(
     )
     # Por correo y no por fecha: es el orden con el que se busca a una persona en
     # una lista, y el cursor tiene que ir por la misma columna que el orden.
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Usuario, consulta, principal=principal, db=db, objeto="usuario"
+    )
     return paginar_consulta(
         db, Usuario, consulta, limite=limite, cursor=cursor, orden="email", modelo_salida=UsuarioOut
     )
@@ -628,12 +638,20 @@ router_roles = APIRouter(prefix="/roles", tags=["roles y permisos"])
 
 @router_roles.get("", response_model=PaginaDeListado, summary="Roles del tenant")
 def listar_roles(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
     consulta = select(RolTenant).where(RolTenant.tenant_id == principal.tenant_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, RolTenant, consulta, principal=principal, db=db, objeto="rol"
+    )
     return paginar_consulta(
         db, RolTenant, consulta, limite=limite, cursor=cursor, orden="nombre", modelo_salida=RolOut
     )
@@ -717,6 +735,7 @@ router_sesiones = APIRouter(prefix="/sesiones", tags=["sesiones"])
 
 @router_sesiones.get("", response_model=PaginaDeListado, summary="Mis sesiones activas")
 def mis_sesiones(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
@@ -726,6 +745,13 @@ def mis_sesiones(
         Sesion.usuario_id == principal.id,
         Sesion.revocada_at.is_(None),
         Sesion.expira_at > datetime.now(timezone.utc),
+    )
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Sesion, consulta, principal=principal, db=db, objeto="sesion"
     )
     return paginar_consulta(
         db,
@@ -824,12 +850,20 @@ def crear_clave(datos: CrearClaveApi, db: DbDep, principal: AutenticadoDep) -> A
     summary="Claves de API del tenant",
 )
 def listar_claves(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
     consulta = select(ClaveApi).where(ClaveApi.tenant_id == principal.tenant_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, ClaveApi, consulta, principal=principal, db=db, objeto="clave_api"
+    )
     return paginar_consulta(
         db, ClaveApi, consulta, limite=limite, cursor=cursor, modelo_salida=ClaveApiOut
     )
@@ -1082,6 +1116,7 @@ def crear_regla_comparticion(
     summary="Reglas de compartición del tenant",
 )
 def listar_reglas_comparticion(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     objeto: str = Query(""),
@@ -1093,6 +1128,18 @@ def listar_reglas_comparticion(
     consulta = select(ReglaComparticion).where(ReglaComparticion.tenant_id == principal.tenant_id)
     if objeto:
         consulta = consulta.where(ReglaComparticion.objeto == objeto)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request,
+        ReglaComparticion,
+        consulta,
+        principal=principal,
+        db=db,
+        objeto="regla_comparticion",
+    )
     return paginar_consulta(
         db,
         ReglaComparticion,
@@ -1324,3 +1371,26 @@ ROUTERS = [
     *ROUTERS_FACTORES,
     *ROUTERS_CHAT,
 ]
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_usuarios, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_roles, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    mis_sesiones, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_claves, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_reglas_comparticion,
+    "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna",
+)

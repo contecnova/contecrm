@@ -20,16 +20,17 @@ from crmcore.http.deps import (
     exige_permiso,
     proyectar_para,
 )
-from crmcore.http.listados import proyectar_con_esquema
+from crmcore.http.listados import aplicar_filtros_de_la_url, proyectar_con_esquema
 from crmcore.http.pagination import (
     PaginaDeListado,
     ParametrosPagina,
     construir_pagina,
     paginar_consulta,
 )
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.runtime import settings as rt
 from crmcore.runtime.keys import es_preferencia_personal, preferencias_personales
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -120,6 +121,7 @@ def editar_tenant(tenant_id: UUID, datos: EditarTenant, uow: UowDep, _: Platafor
 
 @router.get("", response_model=PaginaDeListado, summary="Listar tenants")
 def listar_tenants(
+    request: Request,
     db: DbDep,
     principal: PlataformaDep,
     limite: int = Query(50, ge=1, le=200),
@@ -142,6 +144,13 @@ def listar_tenants(
         consulta = consulta.where(Tenant.nombre.ilike(f"%{q}%"))
     from crmcore.http.pagination import aplicar_orden_y_cursor
 
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Tenant, consulta, principal=principal, db=db, objeto="tenant"
+    )
     consulta = aplicar_orden_y_cursor(
         consulta, Tenant, params, columnas_permitidas={"created_at", "slug", "nombre"}
     )
@@ -220,12 +229,20 @@ router_planes = APIRouter(prefix="/planes", tags=["planes"])
 
 @router_planes.get("", response_model=PaginaDeListado, summary="Planes disponibles")
 def listar_planes(
+    request: Request,
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
     consulta = select(Plan).where(Plan.activo.is_(True))
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Plan, consulta, principal=principal, db=db, objeto="plan"
+    )
     return paginar_consulta(
         db, Plan, consulta, limite=limite, cursor=cursor, orden="codigo", modelo_salida=PlanOut
     )
@@ -614,3 +631,16 @@ ROUTERS = [
     *ROUTERS_CICLO_VIDA,
     *ROUTERS_ALTA,
 ]
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_tenants, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_planes, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)

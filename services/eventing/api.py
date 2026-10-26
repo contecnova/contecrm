@@ -10,10 +10,11 @@ from uuid import UUID
 from crmcore.audit.chain import registrar
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
-from crmcore.http.listados import montar_ficha  # noqa: E402
+from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha  # noqa: E402
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.red import exigir
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -157,12 +158,20 @@ def crear(datos: CrearSuscripcion, db: DbDep, principal: AutenticadoDep) -> Any:
     summary="Suscripciones del tenant",
 )
 def listar(
+    request: Request,
     db: DbDep,
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
     consulta = select(Suscripcion).where(Suscripcion.tenant_id == principal.tenant_id)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Suscripcion, consulta, principal=principal, db=db, objeto="suscripcion"
+    )
     return paginar_consulta(
         db,
         Suscripcion,
@@ -553,4 +562,14 @@ montar_ficha(
     permiso_escribir="event:write",
     nombre="Eventos fallidos",
     parametro="fallido_id",
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )

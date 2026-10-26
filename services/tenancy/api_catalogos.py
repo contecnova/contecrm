@@ -22,8 +22,9 @@ from crmcore.http.deps import (
     exige_permiso,
 )
 from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -82,8 +83,9 @@ class PlantillaOut(BaseModel):
 
 @router_plantillas.get("", response_model=PaginaDeListado, summary="Listar plantillas")
 def listar_plantillas(
+    request: Request,
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     tipo: str | None = Query(None, description="correo | documento | notificacion | sms"),
     idioma: str | None = Query(None),
     limite: int = Query(50, ge=1, le=200),
@@ -94,6 +96,13 @@ def listar_plantillas(
         consulta = consulta.where(Plantilla.tipo == tipo)
     if idioma:
         consulta = consulta.where(Plantilla.idioma == idioma)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request, Plantilla, consulta, principal=principal, db=db, objeto="plantilla"
+    )
     return paginar_consulta(
         db,
         Plantilla,
@@ -223,15 +232,29 @@ class FestivoOut(BaseModel):
 
 @router_calendarios.get("", response_model=PaginaDeListado, summary="Listar calendarios")
 def listar_calendarios(
+    request: Request,
     db: DbDep,
-    _: AutenticadoDep,
+    principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
 ) -> Any:
+    consulta = select(CalendarioLaboral)
+    # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
+    # para quedarse sin ellos: entonces el mismo producto admite
+    # `?vence_at__hasta=…` o no según quién escribió cada listado, y eso lo
+    # descubre el integrador probando.
+    consulta = aplicar_filtros_de_la_url(
+        request,
+        CalendarioLaboral,
+        consulta,
+        principal=principal,
+        db=db,
+        objeto="calendario_laboral",
+    )
     return paginar_consulta(
         db,
         CalendarioLaboral,
-        select(CalendarioLaboral),
+        consulta,
         limite=limite,
         cursor=cursor,
         orden="clave",
@@ -672,7 +695,7 @@ ROUTERS_CATALOGOS = [
 ]
 
 
-from crmcore.http.listados import montar_exportacion  # noqa: E402
+from crmcore.http.listados import aplicar_filtros_de_la_url, montar_exportacion  # noqa: E402
 
 # Las dos colecciones de este módulo con listado escrito a mano. Igual que en
 # ventas y en party: `montar_listado` monta la exportación sola, y lo que no se
@@ -690,4 +713,17 @@ montar_exportacion(
     objeto="calendario_laboral",
     permiso="tenant:read",
     nombre="Calendarios",
+)
+
+
+# Estas rutas aceptan además los filtros comunes, cuyos nombres son columnas
+# del modelo y cambian con él: no se pueden declarar. Los valida
+# `aplicar_filtros_de_la_url`, que rechaza lo que no es columna o lo que este
+# principal no ve en claro. Las dos mitades van juntas: con el filtro y sin la
+# marca, la ruta contesta 422 a sus propios filtros.
+admite_parametros_abiertos(
+    listar_plantillas, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+admite_parametros_abiertos(
+    listar_calendarios, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
 )
