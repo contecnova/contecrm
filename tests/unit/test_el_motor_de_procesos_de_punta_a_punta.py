@@ -30,7 +30,13 @@ from uuid import UUID, uuid4
 import pytest
 from starlette.testclient import TestClient
 
-pytestmark = pytest.mark.db
+# Con la marca de despliegue, y por un motivo concreto: aquí se comprueba que un
+# tenant **no pueda arrancar** el proceso de otro, y eso el fuzzing de
+# aislamiento no lo ve. El fuzzing recorre las rutas que llevan un identificador
+# EN EL CAMINO; arrancar un proceso ajeno es un `POST /instancias` con la clave
+# en el cuerpo, así que la red ancha pasa por encima. Lo que no cubre la red
+# ancha no puede esperar al bloque.
+pytestmark = [pytest.mark.db, pytest.mark.despliegue]
 
 
 @pytest.fixture
