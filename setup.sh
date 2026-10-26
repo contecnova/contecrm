@@ -351,7 +351,18 @@ arrancar_local() {
       && ok "Cuenta de acceso lista" \
       || aviso "No se pudo dejar la cuenta de acceso: mira $VAR/log/cuenta_de_arranque.log"
   fi
-  info "Gateway:    http://localhost:$(puerto_de gateway)/api/v1/docs"
+  # LA INTERFAZ. Esto faltaba, y dejaba el arranque local a medias: se
+  # levantaban los catorce servicios, se imprimía la URL de la documentación y
+  # se acababa. Quien lo ejecutaba se quedaba con una API en pie y **sin
+  # pantalla**, sin que nada se lo dijera — y la línea del gateway, que lleva
+  # «/api/v1/docs», se lee como «aquí está el producto» cuando es el contrato.
+  #
+  # La llamada estaba escrita y sólo la hacía `arrancar_docker`.
+  arrancar_front
+
+  echo
+  info "Interfaz:   http://localhost:${FRONT_PORT:-15173}   ← empieza por aquí"
+  info "Gateway:    http://localhost:$(puerto_de gateway)/api/v1/docs   (el contrato de la API)"
   info "Logs:       tail -f $VAR/log/<servicio>.log"
   info "Parar:      ./setup.sh parar"
   mostrar_acceso
@@ -390,7 +401,22 @@ arrancar_front() {
   done
   nohup npm --prefix frontend run dev > "$VAR/log/front.log" 2>&1 &
   echo $! > "$VAR/pid/front.pid"
-  ok "Front de desarrollo en :$puerto"
+
+  # Se ESPERA a que escuche, y si no, se dice. Antes se imprimía «Front en
+  # :15173» en cuanto se lanzaba el proceso: con un fallo de compilación o un
+  # puerto ocupado, el mensaje decía que estaba y no estaba, que es peor que no
+  # decir nada — se va a la URL, no carga, y se busca el problema en el sitio
+  # equivocado.
+  local intentos=0
+  while (( intentos < 30 )); do
+    if lsof -nP -iTCP:"$puerto" -sTCP:LISTEN >/dev/null 2>&1; then
+      ok "Interfaz en http://localhost:$puerto"
+      return 0
+    fi
+    sleep 1; intentos=$((intentos + 1))
+  done
+  malo "La interfaz no ha llegado a escuchar en :$puerto — mira $VAR/log/front.log"
+  return 0
 }
 
 # ── parar ────────────────────────────────────────────────────────────────────

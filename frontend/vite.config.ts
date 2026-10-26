@@ -20,6 +20,18 @@ export default defineConfig({
     // el único que funcionaba era el que alguien había arrancado a mano con las
     // variables puestas en su terminal. Al reiniciar la máquina, eso se pierde.
     port: Number(process.env.FRONT_PORT ?? 15173),
+    // Si el puerto está ocupado, FALLAR en vez de moverse a otro.
+    //
+    // Por defecto Vite se cambia al siguiente libre y lo dice en una línea de
+    // su registro. El arranque imprime el puerto del `.env`, así que lo que se
+    // anuncia y lo que escucha dejan de coincidir: se va a la URL, no carga, y
+    // se busca el problema en el sitio equivocado. Medido el 26-10-2026 con
+    // dos instancias a la vez: la segunda se fue al 15174 y el arranque seguía
+    // diciendo 15173.
+    //
+    // Fallando se ve lo que pasa de verdad —que ya hay algo en ese puerto— y
+    // se arregla en diez segundos.
+    strictPort: true,
     proxy: {
       "/api": {
         target:

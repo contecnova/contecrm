@@ -138,6 +138,36 @@ si un alta está rota, el sembrado se para y lo dice.
 que el sistema no deja aprobar a quien las crea: publicar un artículo de
 conocimiento hacia el cliente, por ejemplo.
 
+## A qué URL ir
+
+Al terminar `./setup.sh arrancar`, el guion las imprime. Son dos y no una, y
+conviene no confundirlas:
+
+| Qué | Dónde | Para qué |
+|---|---|---|
+| **La interfaz** | `http://localhost:15173` (local) · `http://localhost:13000` (Docker) | **Empieza por aquí** |
+| La API | `http://localhost:18080/api/v1/docs` | El contrato, para integrar |
+
+`http://localhost:18080/` a secas devuelve **404 a propósito**: el gateway es la
+puerta de la API, no sirve la web.
+
+> **Esto estuvo roto.** En local se levantaban los catorce servicios, se
+> imprimía sólo la URL del gateway y se acababa: quien arrancaba se quedaba con
+> la API en pie y **ninguna pantalla**, sin que nada se lo dijera. Y esa línea,
+> que lleva `/api/v1/docs`, se lee como «aquí está el producto» cuando lo que
+> enseña es el contrato. La llamada que levanta la interfaz estaba escrita y
+> sólo la hacía el camino de Docker.
+>
+> De paso se arreglaron otras dos: el arranque decía «Front en :15173» en
+> cuanto lanzaba el proceso, sin comprobar que llegara a escuchar —con un error
+> de compilación el mensaje mentía—, y Vite se cambiaba de puerto en silencio
+> si el suyo estaba ocupado, así que la URL anunciada no era la que funcionaba.
+> Ahora espera a que responda, y si el puerto está cogido **falla y lo dice**.
+
+Los puertos salen del `.env` (`FRONT_PORT`, `GATEWAY_PORT`, `CONSOLA_PORT`) y
+todo escucha en `127.0.0.1`: desde fuera de la máquina no se llega sin un proxy
+delante, a propósito.
+
 ## Primer recorrido
 
 ```bash
