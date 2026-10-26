@@ -80,7 +80,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            contestan; el barrido queda porque lo caro es la
 #                            pestana que se rompe el dia que alguien cambia un
 #                            permiso, no mantener quince segundos de prueba
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 160
+#   26-10-2026  153 de 752  cinco pantallas de operacion, pintadas con el
+#                            contrato real. DOS hallazgos pequenos: el puesto
+#                            decia cuantas conexiones estaban sin medir y no
+#                            CUALES, y rendimiento decia que el sistema estaba
+#                            bajo presion sin decir de quien ni quien no habia
+#                            contestado
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 153
 
 
 @functools.cache
