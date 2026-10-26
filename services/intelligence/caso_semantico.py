@@ -39,13 +39,33 @@ logger = get_logger(__name__)
 # mide distinto, y «lo que sea parecido» acaba enseñando el caso de otro cliente.
 FUENTES = ("caso_resuelto", "articulo", "documento", "conversacion")
 
+
 # Parecido mínimo para enseñar algo. Por debajo, lo que se sugiere es ruido con
 # aspecto de ayuda — y el agente deja de mirar el panel después de dos veces.
-PARECIDO_MINIMO = 0.7
+def _ia_parecido_caso() -> float:
+    """Parecido mínimo para proponer un caso como ya resuelto antes.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_parecido_caso
+
 
 # Cuántas sugerencias como mucho. Cinco caben en la pantalla al lado del caso;
 # veinte son otra búsqueda que hacer.
-TOPE = 5
+def _ia_casos_sugeridos() -> float:
+    """Cuántos casos parecidos se sugieren. Más de un puñado no se miran.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_casos_sugeridos
 
 
 def buscar(
@@ -53,7 +73,7 @@ def buscar(
     resultados: list[dict[str, Any]],
     contexto_del_caso: dict[str, Any],
     permisos_del_agente: set[str] | frozenset[str],
-    tope: int = TOPE,
+    tope: int | None = None,
 ) -> dict[str, Any]:
     """Filtra y ordena lo que se le pone delante al agente.
 
@@ -61,6 +81,11 @@ def buscar(
     inteligencia—, y aquí se decide **qué se enseña y con qué advertencia**, que
     es donde están los errores que importan.
     """
+    # Dentro y no en la firma: un valor por defecto se evalúa al IMPORTAR, así
+    # que congelaría el ajuste para toda la vida del proceso — se podría
+    # cambiar en el `.env` y no cambiaría nada.
+    if tope is None:
+        tope = _ia_casos_sugeridos()
     admitidos: list[dict[str, Any]] = []
     descartados: list[dict[str, str]] = []
 
@@ -77,7 +102,7 @@ def buscar(
             # puedes ver» ya filtra información sobre otro cliente.
             descartados.append({"ref": "(oculto)", "porque": "sin permiso"})
             continue
-        if float(resultado.get("parecido") or 0) < PARECIDO_MINIMO:
+        if float(resultado.get("parecido") or 0) < _ia_parecido_caso():
             descartados.append({"ref": str(resultado.get("referencia")), "porque": "poco parecido"})
             continue
         if fuente == "caso_resuelto" and not resultado.get("resuelto"):
@@ -254,7 +279,7 @@ def sugerir_para(*, caso_id: UUID, sugerencias: list[dict[str, Any]]) -> dict[st
     """Empaqueta lo que se enseña al lado del caso."""
     return {
         "caso_id": str(caso_id),
-        "sugerencias": sugerencias[:TOPE],
+        "sugerencias": sugerencias[: _ia_casos_sugeridos()],
         "como_leerlo": (
             "Cada una con su cita: si no se puede abrir la fuente, no se responde con " "ella."
         ),

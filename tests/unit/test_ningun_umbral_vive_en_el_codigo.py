@@ -21,6 +21,9 @@ configurables no da libertad: da la posibilidad de romperlo.
     26-10-2026  80  los cinco umbrales de negocio de `party`: vigencia de la
                     salud, frescura del dato maestro, preaviso de proveedor,
                     descartes para sospechar y validez del veredicto fiscal
+    26-10-2026  68  los doce de `intelligence`: confianzas de extracción,
+                    transcripción y voz, parecido de caso, mínimos para
+                    entrenar y para dar una prueba A/B por concluyente
 """
 
 from __future__ import annotations
@@ -98,18 +101,6 @@ EN_EL_CODIGO_HOY = {
     "services/identity/scim.py::MAXIMO_POR_PAGINA",
     "services/identity/servicio.py::MAX_DIAS_INVITADO",
     "services/integration/telefonia.py::MINIMO_DIGITOS",
-    "services/intelligence/asistencia.py::MINIMO_SENALES",
-    "services/intelligence/caso_semantico.py::PARECIDO_MINIMO",
-    "services/intelligence/caso_semantico.py::TOPE",
-    "services/intelligence/entrenamiento.py::MINIMO_CASOS",
-    "services/intelligence/entrenamiento.py::MINIMO_POR_CLASE",
-    "services/intelligence/entrenamiento.py::PCT_VALIDACION",
-    "services/intelligence/extraccion.py::CONFIANZA_MINIMA",
-    "services/intelligence/generacion.py::MINIMO_CONTEXTO",
-    "services/intelligence/prediccion.py::FACTORES_VISIBLES",
-    "services/intelligence/transcripcion.py::CONFIANZA_MINIMA",
-    "services/intelligence/variantes.py::MINIMO_POR_RAMA",
-    "services/intelligence/voz.py::CONFIANZA_MINIMA",
     "services/marketing/activos.py::DIAS_PREAVISO",
     "services/marketing/campanas.py::BLANDOS_PARA_SUPRIMIR",
     "services/marketing/momento.py::MINIMO_INTERACCIONES",

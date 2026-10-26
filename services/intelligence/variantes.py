@@ -52,9 +52,19 @@ AFIRMACIONES = (
 
 ESTADOS = ("propuesta", "aprobada", "rechazada", "publicada")
 
+
 # Envíos mínimos por rama para declarar una ganadora. Por debajo, la diferencia
 # cabe entera en el ruido.
-MINIMO_POR_RAMA = 500
+def _ia_minimo_por_rama() -> float:
+    """Envíos mínimos por rama para dar una prueba A/B por concluyente.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_minimo_por_rama
 
 
 def _ahora() -> datetime:
@@ -169,7 +179,7 @@ def elegir_ganadora(*, ramas: list[dict[str, Any]]) -> dict[str, Any]:
     mejor, resto = ordenadas[0], ordenadas[1:]
     diferencia = mejor["tasa"] - resto[0]["tasa"] if resto else mejor["tasa"]
 
-    concluyente = menor >= MINIMO_POR_RAMA and diferencia >= 0.01
+    concluyente = menor >= _ia_minimo_por_rama() and diferencia >= 0.01
     return {
         "hay_ganadora": concluyente,
         "mejor": {"texto": mejor.get("texto"), "tasa": round(mejor["tasa"] * 100, 2)},
@@ -178,9 +188,9 @@ def elegir_ganadora(*, ramas: list[dict[str, Any]]) -> dict[str, Any]:
             for r in ordenadas
         ],
         "porque": (
-            f"La rama más pequeña tiene {menor} envíos y hacen falta {MINIMO_POR_RAMA}: "
+            f"La rama más pequeña tiene {menor} envíos y hacen falta {_ia_minimo_por_rama()}: "
             "la diferencia cabe entera dentro del ruido."
-            if menor < MINIMO_POR_RAMA
+            if menor < _ia_minimo_por_rama()
             else (
                 f"Gana por {round(diferencia * 100, 2)} puntos con {menor} envíos por " "rama."
                 if concluyente

@@ -59,9 +59,20 @@ logger = get_logger(__name__)
 
 CENTESIMA = Decimal("0.01")
 
+
 # Cuántos factores se enseñan. Más de cinco no los lee nadie, y menos de tres
 # hacen que la explicación parezca una excusa.
-FACTORES_VISIBLES = 5
+def _ia_factores_visibles(db: Any) -> int:
+    """Cuántos factores de una predicción se enseñan.
+
+    Se lee **una vez por llamada** y nunca dentro de un bucle: `efectivo()` va
+    a la base, y ahí dentro sería una consulta por vuelta.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    return int(rt.efectivo("ia_factores_visibles", db) or ajustes().ia_factores_visibles)
 
 
 class Prediccion(Base):
@@ -146,6 +157,9 @@ def puntuar(
     una oportunidad que ya ha cambiado de etapa no es información, es ruido con
     aspecto de dato.
     """
+    # Una vez: se usa tres veces en esta función, y tres lecturas son tres
+    # consultas para el mismo número.
+    visibles = _ia_factores_visibles(uow.db)
     modelo = gobierno.exigir_activo(uow.db, uow.tenant_id, tipo)
     pesos = {str(k): float(v) for k, v in (modelo.pesos or {}).items()}
     if not pesos:
@@ -186,7 +200,7 @@ def puntuar(
         modelo_id=modelo.id,
         version_modelo=modelo.version,
         valor=_redondear(Decimal(str(probabilidad * 100))),
-        factores=contribuciones[:FACTORES_VISIBLES],
+        factores=contribuciones[:visibles],
         caduca_at=caduca,
     )
     uow.db.add(fila)
@@ -198,8 +212,8 @@ def puntuar(
         "puntuacion": float(fila.valor),
         "modelo": f"{tipo} v{modelo.version}",
         # Los dos sentidos, siempre: lo que empuja arriba y lo que empuja abajo.
-        "a_favor": [c for c in contribuciones[:FACTORES_VISIBLES] if c["aporta"] > 0],
-        "en_contra": [c for c in contribuciones[:FACTORES_VISIBLES] if c["aporta"] < 0],
+        "a_favor": [c for c in contribuciones[:visibles] if c["aporta"] > 0],
+        "en_contra": [c for c in contribuciones[:visibles] if c["aporta"] < 0],
         # Lo que el modelo esperaba y no ha recibido: una puntuación calculada sin
         # la mitad de sus variables es una puntuación peor, y quien la lea tiene
         # que saberlo.

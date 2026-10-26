@@ -43,9 +43,20 @@ BASES_PARA_GRABAR = (
     "obligacion_legal",  # sectores regulados que deben grabar
 )
 
+
 # Por debajo de esta confianza, lo transcrito no se propone como dato: se enseña
 # para que alguien lo lea. Un número mal oído entra en el forecast.
-CONFIANZA_MINIMA = 0.75
+def _ia_confianza_transcripcion() -> float:
+    """Confianza mínima para dar una transcripción por fiable.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_confianza_transcripcion
+
 
 # Lo que se extrae de una reunión. Cerrada porque cada cosa se confirma distinto:
 # un compromiso se convierte en tarea y un riesgo en una nota para el jefe.
@@ -106,7 +117,7 @@ def registrar_transcripcion(
     """
     if not texto.strip():
         raise ErrorValidacion("No hay texto transcrito", error_code="transcripcion.vacia")
-    fiable = confianza >= CONFIANZA_MINIMA
+    fiable = confianza >= _ia_confianza_transcripcion()
     return {
         "referencia": referencia,
         "minutos": minutos,
@@ -173,7 +184,7 @@ def proponer_extraidos(
     Lo que viene de una transcripción poco fiable **no se propone siquiera**: una
     propuesta mala también cuesta tiempo, el de leerla y descartarla.
     """
-    if confianza_transcripcion < CONFIANZA_MINIMA:
+    if confianza_transcripcion < _ia_confianza_transcripcion():
         return {
             "propuestas": [],
             "porque": (

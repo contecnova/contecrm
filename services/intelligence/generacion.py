@@ -65,9 +65,21 @@ TAREAS = ("redaccion", "reescritura", "resumen", "traduccion")
 # Marcadores `{{clave}}` de la plantilla.
 RE_MARCADOR = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
 
+
 # Mínimo de contexto para que un resumen signifique algo. Por debajo, el modelo
 # redacta igual y lo que sale es plausible y vacío — que es peor que no responder.
-MINIMO_CONTEXTO = 120
+def _ia_minimo_contexto(db: Any) -> int:
+    """Caracteres mínimos de contexto para resumir o reescribir.
+
+    Se lee **una vez por llamada** y nunca dentro de un bucle: `efectivo()` va
+    a la base, y ahí dentro sería una consulta por vuelta.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    return int(rt.efectivo("ia_minimo_contexto", db) or ajustes().ia_minimo_contexto)
+
 
 # El puerto hacia el modelo. Se inyecta desde fuera —lo registra el arranque del
 # servicio— para que este módulo no sepa de HTTP ni de ningún proveedor, y para
@@ -293,7 +305,9 @@ def generar(
         uow.db, uow.tenant_id, fragmentos=list(contexto or []), principal=principal
     )
     texto_contexto = "\n\n".join(str(f.get("texto") or "") for f in filtrado["fragmentos"])
-    if ficha.tarea in ("resumen", "reescritura") and len(texto_contexto) < MINIMO_CONTEXTO:
+    if ficha.tarea in ("resumen", "reescritura") and len(texto_contexto) < _ia_minimo_contexto(
+        uow.db
+    ):
         guardias.anotar_bloqueo(
             uow,
             motivo="sin_contexto",

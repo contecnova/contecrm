@@ -42,11 +42,33 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Mínimos para que entrenar tenga sentido. No son cifras mágicas: son el punto por
 # debajo del cual el resultado depende más del azar que del histórico, y por
 # tanto el punto por debajo del cual hay que decir que no.
-MINIMO_CASOS = 200
-MINIMO_POR_CLASE = 30
+def _ia_minimo_casos_entreno() -> float:
+    """Casos mínimos para entrenar un clasificador.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_minimo_casos_entreno
+
+
+def _ia_minimo_por_clase() -> float:
+    """Casos mínimos de cada clase para entrenar.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_minimo_por_clase
+
 
 # Variables que NO entran en un modelo que decide a quién se llama o a quién se le
 # da prioridad. No es una opción de configuración: es la diferencia entre un
@@ -65,10 +87,20 @@ PROHIBIDAS = {
     ),
 }
 
+
 # Cuánto del histórico se reserva para comprobar. Se separa por FECHA y no al azar:
 # repartir aleatoriamente mete casos del futuro en el entrenamiento y el acierto
 # sale inflado — el modelo ha visto cómo acabó lo que tiene que predecir.
-PCT_VALIDACION = 25
+def _ia_pct_validacion() -> float:
+    """Porcentaje de casos que se reserva para validar.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_pct_validacion
 
 
 def comprobar_variables(*, variables: list[str]) -> dict[str, Any]:
@@ -103,15 +135,15 @@ def se_puede_entrenar(*, casos: list[dict[str, Any]], variables: list[str]) -> d
     perdidos = [c for c in casos if c.get("resultado") == "perdido"]
     problemas: list[str] = []
 
-    if len(casos) < MINIMO_CASOS:
+    if len(casos) < _ia_minimo_casos_entreno():
         problemas.append(
-            f"Solo hay {len(casos)} casos cerrados y hacen falta al menos {MINIMO_CASOS}. "
+            f"Solo hay {len(casos)} casos cerrados y hacen falta al menos {_ia_minimo_casos_entreno()}. "
             "Con menos, lo que sale no es un modelo: es una superstición con decimales."
         )
-    if len(ganados) < MINIMO_POR_CLASE or len(perdidos) < MINIMO_POR_CLASE:
+    if len(ganados) < _ia_minimo_por_clase() or len(perdidos) < _ia_minimo_por_clase():
         problemas.append(
             f"Hay {len(ganados)} ganados y {len(perdidos)} perdidos; hacen falta "
-            f"{MINIMO_POR_CLASE} de cada. Un modelo que casi no ha visto perder aprende "
+            f"{_ia_minimo_por_clase()} de cada. Un modelo que casi no ha visto perder aprende "
             "a decir que sí."
         )
 
@@ -150,7 +182,7 @@ def se_puede_entrenar(*, casos: list[dict[str, Any]], variables: list[str]) -> d
 
 
 def particion_temporal(
-    *, casos: list[dict[str, Any]], pct_validacion: int = PCT_VALIDACION
+    *, casos: list[dict[str, Any]], pct_validacion: int | None = None
 ) -> dict[str, Any]:
     """Separa entrenamiento y validación **por fecha, no al azar**.
 
@@ -158,6 +190,11 @@ def particion_temporal(
     el modelo ha visto cómo acabó lo que tiene que predecir. El acierto sale
     magnífico y no significa nada: en producción no existe el futuro.
     """
+    # Dentro y no en la firma: un valor por defecto se evalúa al IMPORTAR, así
+    # que congelaría el ajuste para toda la vida del proceso — se podría
+    # cambiar en el `.env` y no cambiaría nada.
+    if pct_validacion is None:
+        pct_validacion = _ia_pct_validacion()
     con_fecha = [c for c in casos if isinstance(c.get("cerrado_el"), date)]
     if len(con_fecha) != len(casos):
         raise ErrorValidacion(

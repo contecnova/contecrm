@@ -60,9 +60,21 @@ logger = get_logger(__name__)
 # basura con buena cara.
 TIPOS = ("texto", "numero", "fecha", "booleano", "lista")
 
+
 # Confianza mínima para proponer. Por debajo, la propuesta cuesta más revisarla
 # que escribir el dato a mano, que es cuando la gente deja de usar la función.
-CONFIANZA_MINIMA = 0.5
+def _ia_confianza_extraccion(db: Any) -> float:
+    """Confianza mínima para dar por buena una extracción de campos.
+
+    Se lee **una vez por llamada** y nunca dentro de un bucle: `efectivo()` va
+    a la base, y ahí dentro sería una consulta por vuelta.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    return float(rt.efectivo("ia_confianza_extraccion", db) or ajustes().ia_confianza_extraccion)
+
 
 _extractor: Callable[..., dict[str, Any]] | None = None
 
@@ -252,6 +264,8 @@ def extraer(
     propuestos: list[dict[str, Any]] = []
     descartados: list[dict[str, Any]] = []
 
+    # Fuera del bucle: dentro sería una consulta por campo extraído.
+    minima = Decimal(str(_ia_confianza_extraccion(uow.db)))
     for cruda in respuesta.get("campos") or []:
         clave = str(cruda.get("clave") or "")
         if clave not in tipos:
@@ -277,7 +291,7 @@ def extraer(
             confianza = Decimal(str(cruda.get("confianza", 0)))
         except (InvalidOperation, ValueError):
             confianza = Decimal(0)
-        if confianza < Decimal(str(CONFIANZA_MINIMA)):
+        if confianza < minima:
             descartados.append(
                 {
                     "campo": clave,

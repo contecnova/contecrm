@@ -267,6 +267,59 @@ inadvertidamente, en producción está impedido.
 
 ## Operación diaria
 
+### Umbrales: qué se afina por cliente y qué por despliegue
+
+Un umbral escrito en el código es un umbral que nadie puede cambiar sin tocar,
+desplegar y esperar. Medido el 26-10-2026: **85 constantes numéricas de módulo**
+en 70 ficheros. Van saliendo por lotes, con un guardián que impide que entren
+nuevas (`test_ningun_umbral_vive_en_el_codigo.py`).
+
+Al moverlas se aplica una regla que conviene conocer, porque explica por qué
+unas se pueden poner por cliente y otras no:
+
+- **Clave en caliente** (`ajustes_runtime`, por tenant) sólo para las que se
+  leen donde hay sesión de base de datos. `efectivo()` consulta, así que se lee
+  **una vez por llamada y nunca dentro de un bucle** — ahí sería una consulta
+  por vuelta.
+- **Sólo `.env`** para las que se calculan en funciones puras. Ahí meter una
+  sesión para leer un número sería pagar una consulta por llamada.
+
+A las segundas **no se les declara clave a propósito**. Un ajuste que la consola
+deja poner por tenant y que luego no se aplica es peor que no tenerlo: quien lo
+pone cree que ya está.
+
+Y en ningún caso el valor va como defecto de un argumento: eso se evalúa al
+**importar**, así que congelaría el ajuste para toda la vida del proceso y
+cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.
+
+#### Lo que ya se puede afinar
+
+| Clave | Qué decide | Por cliente |
+|---|---|---|
+| `SALUD_DIAS_VIGENCIA` | Cuándo una medida de salud deja de valer para actuar | sí |
+| `MDM_DIAS_FRESCURA` | Cuánto aguanta un dato maestro sin revisar | sí |
+| `PROVEEDOR_DIAS_PREAVISO` | Antelación del aviso de renovación | sí |
+| `STEWARDSHIP_DESCARTES_PARA_SOSPECHAR` | Descartes tras los que se sospecha de una regla | sí |
+| `IDENTIFICADOR_DIAS_VEREDICTO` | Cuánto vale un veredicto fiscal | sí |
+| `IA_MINIMO_SENALES` | Señales mínimas para recomendar | sí |
+| `IA_MINIMO_CONTEXTO` | Caracteres mínimos para resumir | sí |
+| `IA_CONFIANZA_EXTRACCION` | Cuándo se da por buena una extracción | sí |
+| `IA_FACTORES_VISIBLES` | Cuántos factores explican una predicción | sí |
+| `IA_CONFIANZA_TRANSCRIPCION` | Cuándo una transcripción es fiable | no |
+| `IA_CONFIANZA_VOZ` | Cuándo se actúa sobre lo entendido por voz | no |
+| `IA_PARECIDO_CASO` | Parecido para proponer un caso ya resuelto | no |
+| `IA_CASOS_SUGERIDOS` | Cuántos casos parecidos se sugieren | no |
+| `IA_MINIMO_CASOS_ENTRENO`, `IA_MINIMO_POR_CLASE` | Datos mínimos para entrenar | no |
+| `IA_PCT_VALIDACION` | Qué porcentaje se reserva para validar | no |
+| `IA_MINIMO_POR_RAMA` | Envíos por rama para dar una A/B por concluyente | no |
+| `SLA_RIESGO_HORAS` | Cuándo un caso pasa a «a punto de vencer» | sí |
+
+> **Los de IA se ponen bajos a propósito**, para proponer mucho y decidir poco:
+> una sugerencia que alguien descarta cuesta un clic, un dato que se mete solo y
+> está mal cuesta encontrarlo meses después. En un sector regulado conviene
+> subir `IA_CONFIANZA_EXTRACCION` antes de dejar que una extracción pise lo que
+> escribió una persona.
+
 ### Filtrar un listado por rango (`CRM-00.02.01.10`)
 
 Los filtros de la URL eran **igualdad y nada más**, así que no había forma de

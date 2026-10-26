@@ -38,10 +38,22 @@ from services.intelligence import generacion, rag
 
 logger = get_logger(__name__)
 
+
 # Mínimo de señales para que una recomendación de próximos pasos signifique algo.
 # Con menos, lo que sale es el orden por defecto del producto disfrazado de
 # consejo — y eso es peor que no recomendar, porque parece que alguien lo pensó.
-MINIMO_SENALES = 3
+def _ia_minimo_senales(db: Any) -> int:
+    """Señales mínimas para dar una recomendación. Con menos, la recomendación
+    sería el orden por defecto con otro nombre.
+
+    Se lee **una vez por llamada** y nunca dentro de un bucle: `efectivo()` va
+    a la base, y ahí dentro sería una consulta por vuelta.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.intelligence.ajustes import ajustes
+
+    return int(rt.efectivo("ia_minimo_senales", db) or ajustes().ia_minimo_senales)
 
 
 def sugerir_respuesta(
@@ -205,13 +217,16 @@ def proximos_pasos(
     pensó.
     """
     utiles = {k: v for k, v in (senales or {}).items() if v is not None}
-    if len(utiles) < MINIMO_SENALES:
+    # Una vez: se usa dos veces en esta función, y dos lecturas son dos
+    # consultas para el mismo número.
+    minimo = _ia_minimo_senales(db)
+    if len(utiles) < minimo:
         return {
             "concluyente": False,
             "senales": len(utiles),
             "porque": (
                 f"Solo hay {len(utiles)} señales de esta oportunidad y hacen falta "
-                f"{MINIMO_SENALES}. Con menos, la recomendación sería el orden por "
+                f"{minimo}. Con menos, la recomendación sería el orden por "
                 "defecto del producto con otro nombre."
             ),
             "pasos": [],

@@ -125,7 +125,10 @@ class ParticionIn(BaseModel):
     # El porcentaje por omisión es el del módulo. Repetir aquí el número
     # significa que el día que se cambie allí, esta puerta sigue partiendo como
     # antes y no lo nota nadie.
-    pct_validacion: int = Field(ent.PCT_VALIDACION, ge=5, le=50)
+    # `None` = el del despliegue. Antes aquí había la constante del módulo,
+    # que además congelaba el valor en el esquema publicado: el OpenAPI decía
+    # «25» aunque la instalación usara otro.
+    pct_validacion: int | None = Field(None, ge=5, le=50)
 
 
 class CosteTranscribirIn(BaseModel):

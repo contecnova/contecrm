@@ -39,9 +39,20 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Por debajo de esta confianza no se actúa: se repregunta una vez y, si sigue sin
 # entenderse, pasa a una persona.
-CONFIANZA_MINIMA = 0.7
+def _ia_confianza_voz() -> float:
+    """Confianza mínima para actuar sobre lo entendido por voz.
+
+    Sin `db` a propósito: esto se calcula en una función pura y meterle una
+    sesión para leer un número sería pagar una consulta por llamada. Sale del
+    `.env`, o sea de la configuración del despliegue.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    return ajustes().ia_confianza_voz
+
 
 # Cuántas veces se puede pedir que lo repita. Dos. Al tercer «no te he entendido»
 # el cliente ya ha decidido que esta empresa no vale.
@@ -81,7 +92,7 @@ def entender(*, texto: str, confianza: float, intento: int) -> dict[str, Any]:
     mejora el reconocimiento: solo confirma al cliente que está hablando con una
     máquina que no funciona.
     """
-    if confianza >= CONFIANZA_MINIMA:
+    if confianza >= _ia_confianza_voz():
         return {"entendido": True, "texto": texto, "confianza": round(confianza, 2)}
     if intento >= REINTENTOS_MAXIMOS:
         return {
