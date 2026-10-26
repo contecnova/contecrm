@@ -65,7 +65,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            SIEMPRE —el motor comparaba None con None y el «=»
 #                            daba cierto—, y el enlace de un subproceso con su
 #                            padre estaba en la fila y no salia por la API
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 191
+#   26-10-2026  185 de 752  auditados los webhooks y el catalogo de eventos
+#                            (CRM-00.02.02). Nada roto; lo que se fija es cada
+#                            forma de fallar EN SILENCIO: el tipo mal escrito,
+#                            la firma sin instante, el reenvio de algo viejo, el
+#                            endpoint caido que sigue recibiendo y el replay sin
+#                            tope
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 185
 
 
 @functools.cache
