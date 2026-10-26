@@ -37,6 +37,11 @@ export default {
     sinValor: "sin valor",
     conValor: "con valor",
   },
+  medidor: {
+    sinObjetivo: "Sin objetivo fijado: esto es una cifra, no un medidor.",
+    cumplido: "Objetivo {{objetivo}} — cumplido",
+    faltan: "Objetivo {{objetivo}} — faltan {{falta}}",
+  },
   grafica: {
     verTabla: "Ver como tabla",
     verDibujo: "Ver como gráfica",

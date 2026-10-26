@@ -275,6 +275,36 @@ igual. Y que recargar no la pierde.
 hay muchas filas: el listado trae páginas, y filtrar en el navegador recortaría
 sólo la página que ya se había traído — diría «3 resultados» donde hay cuarenta.
 
+## Cuadros de mando
+
+Cada componente de un cuadro ejecuta su informe y se pinta. Dos cosas que
+conviene saber al montarlos:
+
+**Un gráfico elige su forma.** Al añadir un componente de tipo *gráfico* se
+puede pedir `barras`, `lineas` o `area`. Antes el catálogo prometía las tres y
+siempre se dibujaban barras: una serie temporal salía como un bosque de barras,
+que es la forma de no ver una tendencia. Sin forma declarada siguen saliendo
+barras, así que un cuadro ya montado no cambia de dibujo.
+
+Una forma que no existe se **rechaza al guardar**, no cae a barras en silencio:
+un cuadro que pide líneas y sale en barras no se nota hasta que alguien discute
+una tendencia que no está dibujada.
+
+**Un medidor enseña la meta.** Un componente de tipo *gauge* es «una métrica
+contra su objetivo», y se dibujaba como una cifra suelta — perdiendo el
+objetivo, que es lo único que lo distingue de un KPI. Ahora enseña la cifra, el
+porcentaje, la meta y cuánto falta.
+
+Es una barra y no una aguja a propósito: estimar ángulos no se hace bien a ojo,
+y dos agujas parecidas sólo se distinguen leyendo los números. Y **pasarse se
+ve**: la pista llega hasta lo conseguido, así que la marca del objetivo queda
+dentro de la barra. Un medidor que recorta en el 100 % esconde que se superó la
+meta, que es la noticia buena.
+
+Un *mapa* todavía se dibuja como barras por territorio, y la pantalla lo dice:
+una barra por territorio ordena y compara, mientras que un hueco con el título
+puesto parece que no ha cargado.
+
 ## Las gráficas
 
 Una respuesta analítica se dibuja según lo que **tiene que hacer quien la lee**,

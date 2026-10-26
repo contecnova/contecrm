@@ -57,6 +57,11 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
+# Las formas que puede tomar un componente de tipo «gráfico». El nombre es el
+# del trabajo que hace, no el del dibujo: quien monta un cuadro elige «tendencia»
+# porque quiere ver cómo evoluciona, y lo que se dibuja es una línea.
+FORMAS_DE_GRAFICO: tuple[str, ...] = ("barras", "lineas", "area")
+
 # Qué necesita cada tipo de componente para poder pintarse (CRM-05.01.02.02).
 # Cerrado a propósito: un tipo libre haría que el front tuviera que adivinar cómo
 # dibujar algo que no conoce, y lo que dibujaría es un hueco.
@@ -69,6 +74,14 @@ TIPOS_COMPONENTE: dict[str, dict[str, Any]] = {
     "grafico": {
         "necesita": ("dimension", "metrica"),
         "descripcion": "Barras, líneas o áreas: una dimensión contra una o más métricas",
+        # **La forma la elige quien monta el cuadro, no el front.** La
+        # descripción prometía «barras, líneas o áreas» desde el principio y el
+        # front dibujaba barras para las tres: una serie temporal salía como un
+        # bosque de barras, que es la forma de no ver una tendencia.
+        #
+        # Lista cerrada: una forma libre obligaría al front a adivinar cómo
+        # dibujar algo que no conoce, y lo que dibujaría es un hueco.
+        "formas": FORMAS_DE_GRAFICO,
     },
     "embudo": {
         "necesita": ("dimension", "metrica", "orden"),
@@ -237,7 +250,16 @@ def catalogo_componentes() -> list[dict[str, Any]]:
     acaban no coincidiendo, y la que se queda corta es siempre la del front.
     """
     return [
-        {"tipo": tipo, "necesita": list(d["necesita"]), "descripcion": d["descripcion"]}
+        {
+            "tipo": tipo,
+            "necesita": list(d["necesita"]),
+            "descripcion": d["descripcion"],
+            # Las formas van aquí y no sólo en el código: si no, quien monta un
+            # cuadro tendría que adivinar que un gráfico puede ser de líneas, o
+            # leerse el front. Vacío para los tipos que no tienen forma — y
+            # vacío es la respuesta, no un olvido.
+            "formas": list(d.get("formas") or ()),
+        }
         for tipo, d in TIPOS_COMPONENTE.items()
     ]
 
@@ -268,6 +290,22 @@ def validar_componente(componente: dict[str, Any]) -> list[str]:
             f"Un «{tipo}» necesita {', '.join(faltan)}.",
             error_code="cuadro.componente_incompleto",
             detalle={"faltan": faltan, "tipo": tipo},
+        )
+
+    forma = componente.get("forma")
+    if forma and forma not in FORMAS_DE_GRAFICO:
+        # Se rechaza en vez de caer a barras en silencio: un cuadro que pide
+        # «lineas» y sale en barras no se nota hasta que alguien discute una
+        # tendencia que no está dibujada.
+        raise ErrorValidacion(
+            f"«{forma}» no es una forma de gráfico.",
+            error_code="cuadro.forma_desconocida",
+            detalle={"admitidas": list(FORMAS_DE_GRAFICO)},
+        )
+    if forma and tipo != "grafico":
+        raise ErrorValidacion(
+            f"Un «{tipo}» no tiene forma: sólo la tienen los gráficos.",
+            error_code="cuadro.forma_en_tipo_sin_forma",
         )
 
     avisos: list[str] = []

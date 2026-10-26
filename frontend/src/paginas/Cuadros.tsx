@@ -27,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { ErrorApi, llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Medidor } from "@/componentes/graficas/Medidor";
 import { RespuestaAnalitica, type Payload } from "@/componentes/RespuestaAnalitica";
 
 interface Componente {
@@ -38,6 +39,17 @@ interface Componente {
   dimension?: string;
   texto?: string;
   limite?: number;
+  /**
+   * Forma de un gráfico: `barras`, `lineas` o `area`.
+   *
+   * La elige quien monta el cuadro. El catálogo del servidor prometía «barras,
+   * líneas o áreas» desde el principio y aquí se dibujaban las tres como
+   * barras: una serie temporal salía como un bosque de barras, que es la forma
+   * de no ver una tendencia.
+   */
+  forma?: string;
+  /** La meta de un `gauge`. Sin ella no hay medidor, sólo una cifra. */
+  objetivo?: number;
 }
 
 interface Resultado {
@@ -69,11 +81,36 @@ interface InformeListado {
 /** Cómo se dibuja cada tipo de componente. La tabla es el suelo: siempre se lee. */
 const FORMA: Record<string, string> = {
   kpi: "kpi_card",
-  gauge: "kpi_card",
+  // `gauge` ya NO cae aquí: tiene su propio dibujo. Pintarlo como un KPI
+  // perdía el objetivo, que es lo único que distingue un medidor de una cifra.
   grafico: "bar_chart",
   embudo: "funnel_chart",
+  // Un mapa todavía no se dibuja como mapa. Cae a barras **y se dice**: una
+  // barra por territorio es honesta —ordena y compara— mientras que un hueco
+  // con el título puesto parece que no ha cargado.
   mapa: "bar_chart",
   tabla: "table",
+};
+
+/**
+ * La cifra de un payload de KPI, para el medidor.
+ *
+ * Se saca del payload ya calculado y no se vuelve a sumar aquí: dos sumas de
+ * lo mismo en dos sitios acaban dando dos cifras, y entonces nadie sabe cuál
+ * es la buena.
+ */
+function valorDe(payload: Payload): number {
+  const fila = (payload.data ?? [])[0] ?? {};
+  const clave = payload.series?.[0]?.key ?? Object.keys(fila)[0] ?? "";
+  const bruto = fila[clave];
+  return typeof bruto === "number" ? bruto : Number(bruto ?? 0);
+}
+
+/** La forma que pide el componente, traducida al tipo que entiende la gráfica. */
+const DE_FORMA: Record<string, string> = {
+  barras: "bar_chart",
+  lineas: "line_chart",
+  area: "area_chart",
 };
 
 interface Cuadro {
@@ -290,7 +327,19 @@ function ComponenteDelCuadro({ componente }: { componente: Componente }) {
         <Cargando />
       ) : (
         <>
-          <RespuestaAnalitica payload={payload} />
+          {componente.tipo === "gauge" ? (
+            // El medidor NO pasa por el payload analítico: lo que dibuja es una
+            // cifra contra su meta, y el payload no sabe de metas. Pintarlo
+            // como un KPI —que es lo que se hacía— perdía el objetivo, o sea
+            // lo único que distingue un medidor de una cifra suelta.
+            <Medidor
+              titulo={componente.titulo ?? ""}
+              valor={valorDe(payload)}
+              objetivo={Number(componente.objetivo ?? 0)}
+            />
+          ) : (
+            <RespuestaAnalitica payload={payload} />
+          )}
           {/* Un informe cortado se dice. Leído como el total, se toman
               decisiones con la mitad de los datos. */}
           {resultado?.truncado ? (
@@ -337,7 +386,17 @@ function aPayload(componente: Componente, resultado: Resultado): Payload {
   const data = (resultado.filas ?? []).map((fila) =>
     Object.fromEntries(columnas.map((c, i) => [c, fila[i]])),
   );
-  const tipo = FORMA[componente.tipo] ?? "table";
+  // La forma que pide el componente manda sobre la de su tipo. Sin forma,
+  // barras: es lo que había, y así un cuadro existente no cambia de dibujo
+  // al desplegar esto.
+  const tipo =
+    (componente.forma ? DE_FORMA[componente.forma] : undefined) ??
+    // El medidor usa el mismo cálculo que un KPI —sumar la métrica— y luego
+    // lo dibuja distinto. Compartir el cálculo es lo que hace que la cifra del
+    // medidor y la del KPI equivalente coincidan.
+    (componente.tipo === "gauge" ? "kpi_card" : undefined) ??
+    FORMA[componente.tipo] ??
+    "table";
 
   if (tipo === "kpi_card") {
     const clave = componente.metrica ?? columnas[columnas.length - 1] ?? "";
