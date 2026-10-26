@@ -255,6 +255,37 @@ Automatización, que es de administrar, y se enseñan en Trabajar. Aprobar un
 descuento no es configurar nada, y esconderlo detrás de «Administrar» es
 garantizar que se quede esperando.
 
+## Los formularios
+
+Se generan del contrato del servicio, así que un campo nuevo aparece solo. Y
+están pensados para rellenarlos de verdad:
+
+- **Dos columnas** cuando hay sitio. Lo que necesita el ancho entero —un texto
+  largo, una lista de líneas, un objeto— lo ocupa.
+- **Lo imprescindible delante** y lo opcional plegado. Un alta de cuarenta
+  campos, toda a la vista, no la rellena nadie.
+- **La ayuda encima del campo**, que es donde sirve: «el nombre comercial con el
+  que factura» ayuda a decidir qué poner, no a comprobarlo después.
+- **Sin asteriscos.** Lo obligatorio y lo opcional están en grupos distintos, así
+  que marcar cada campo del primero con un asterisco rojo no distingue nada.
+- Un campo que apunta a otro registro **se busca**, no se teclea: `cuenta_id` es
+  un cliente, no un identificador que haya que copiar a mano.
+- Una lista de textos se escribe **una a una** y cada valor queda como etiqueta;
+  una lista de opciones se **marca**; un objeto se edita **por pares**, con el
+  JSON detrás de un interruptor para el caso raro.
+
+> Lo de arriba son cuatro arreglos de octubre de 2026, y los cuatro se vieron
+> **renderizando el formulario y mirándolo**: una sola columna a ochocientos
+> píxeles de ancho, campos con más alto y más radio que un botón, la ayuda
+> debajo, y las cajas de una misma fila a distinta altura cuando un campo tenía
+> ayuda y el otro no — que es lo que hace que un formulario parezca descuidado,
+> porque el ojo sigue la línea de las cajas y no la de los rótulos.
+
+Lo que el formulario **no** hace es validar reglas de negocio. Marca lo
+obligatorio y respeta el tipo y la longitud que declara el esquema, porque eso
+es contrato; «el descuento no puede pasar del 30 %» lo comprueba el servicio, y
+duplicarlo aquí sería tener dos versiones de la misma regla.
+
 ## La bandeja de casos
 
 Los casos abiertos en tres montones, por lo que hay que hacer con ellos:

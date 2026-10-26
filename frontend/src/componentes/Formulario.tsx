@@ -42,6 +42,9 @@ import type { Recurso } from "@/lib/modulos";
 import { recursoDeReferencia } from "@/lib/referencias";
 import { cn } from "@/lib/utiles";
 
+/** Los tipos que ocupan las dos columnas de la rejilla. */
+const ANCHOS = new Set(["texto_largo", "lineas", "objeto", "lista_multiple", "etiquetas"]);
+
 export interface Props {
   campos: CampoEsquema[];
   /**
@@ -111,6 +114,11 @@ export function Formulario({
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-4">
+      {/* Dos columnas en cuanto hay sitio. Una sola a ochocientos píxeles de
+          ancho hace que un email ocupe lo mismo que una descripción, y un alta
+          de treinta campos se va al doble de largo. Lo que necesita el ancho
+          entero lo pide él (`campo-ancho`). */}
+      <div className="rejilla-formulario">
       {obligatorios.map((campo) => (
         <Campo
           key={campo.nombre}
@@ -120,6 +128,7 @@ export function Formulario({
           propio={recurso}
         />
       ))}
+      </div>
 
       {opcionales.length > 0 ? (
         <div className="border-t border-ink-dim/30 pt-3">
@@ -137,7 +146,7 @@ export function Formulario({
             {t("formulario.masCampos", { total: opcionales.length })}
           </button>
           {verOpcionales ? (
-            <div className="mt-3 flex flex-col gap-4">
+            <div className="rejilla-formulario mt-3">
               {opcionales.map((campo) => (
                 <Campo
                   key={campo.nombre}
@@ -182,18 +191,35 @@ function Campo({
   };
 
   return (
-    <div>
+    // Lo que necesita el ancho entero lo pide. Un texto largo, una lista de
+    // líneas o un objeto en media columna se convierten en una caja estrecha
+    // con scroll, que es peor que no partir el formulario.
+    <div className={cn(ANCHOS.has(campo.tipo) && "campo-ancho")}>
       {/* El booleano pone su propia etiqueta al lado de la casilla: encima, y a
           dos centímetros, no se sabe qué se está marcando. */}
       {campo.tipo !== "booleano" ? (
         <label htmlFor={id} className="label-base">
           {campo.titulo}
-          {campo.obligatorio ? <span className="text-danger"> *</span> : null}
+          {/* Sin asterisco. Los obligatorios van en su propio grupo y los
+              opcionales en otro, así que marcar cada uno con un asterisco rojo
+              no distingue nada: en el primer grupo lo llevan todos. Lo que
+              separa los dos grupos es dónde están, que se ve sin leer. */}
         </label>
       ) : null}
 
+      {/* La ayuda ENCIMA del campo, no debajo.
+          Debajo llega cuando ya se ha escrito: «el nombre comercial con el que
+          factura» sirve para decidir qué poner, no para comprobarlo después. */}
+      {campo.descripcion && campo.tipo !== "booleano" ? (
+        <p id={ayuda} className="mb-1 text-3xs text-ink-faint">
+          {campo.descripcion}
+        </p>
+      ) : null}
+
       {campo.tipo === "booleano" ? (
-        <label htmlFor={id} className="inline-flex items-center gap-2 text-xs text-ink">
+        // `py-1.5` para que la casilla caiga a la altura de la caja de al
+        // lado: sin eso flota a media celda y la fila se lee torcida.
+        <label htmlFor={id} className="inline-flex items-center gap-2 py-1.5 text-xs text-ink">
           <input
             type="checkbox"
             id={id}
@@ -249,11 +275,6 @@ function Campo({
         />
       )}
 
-      {campo.descripcion ? (
-        <p id={ayuda} className="mt-1 text-3xs text-ink-faint">
-          {campo.descripcion}
-        </p>
-      ) : null}
     </div>
   );
 }
