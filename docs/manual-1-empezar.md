@@ -262,13 +262,28 @@ están pensados para rellenarlos de verdad:
 
 - **Dos columnas** cuando hay sitio. Lo que necesita el ancho entero —un texto
   largo, una lista de líneas, un objeto— lo ocupa.
-- **Área de texto sólo donde hay texto de verdad.** Lo decide el modelo, no el
-  tamaño: una columna sin tope —notas, una descripción, un cuerpo— se edita en
-  un área, y una con tope se edita en una línea por grande que sea el tope.
-  Hasta el 26-10-2026 era al revés y `web` salía como un cuadro de cinco líneas
-  mientras `teléfono` y `email`, al lado, eran una línea: la columna es de 500
-  caracteres y el umbral estaba en 400. De los trece campos del producto con
-  tope mayor que 400, once son de una línea.
+- **Área de texto sólo donde hay texto de verdad, y lo decide el nombre del
+  campo.** Por defecto, una línea. Se edita en un área cuando el nombre dice que
+  ahí va prosa —`descripción`, `notas`, `motivo`, `cuerpo`, `observaciones`,
+  `causa_raíz`…— o cuando el contrato declara un tope de mil caracteres o más,
+  que ya no es un nombre: es un motivo escrito.
+
+  > **Por qué no lo decide el tamaño.** Se intentó dos veces y las dos se vieron
+  > en pantalla a la primera mirada. Con «área cuando el tope pasa de 400»,
+  > `web` salía como un cuadro de cinco líneas mientras `teléfono` y `email`, al
+  > lado, eran una línea: la columna es de 500 caracteres. Con «área cuando NO
+  > hay tope», el formulario de contacto entero —nombre, apellidos, nombre
+  > completo, tratamiento— pasó a ser un muro de áreas. Medido el 26-10-2026
+  > sobre el contrato publicado: **de 402 propiedades de texto, sólo 40 llevan
+  > tope declarado, el 9 %**, porque los esquemas de salida y los de
+  > actualización no lo propagan. Un dato que falta en nueve de cada diez casos
+  > no puede ser el criterio.
+  >
+  > La lista de raíces no está elegida a ojo: cubre 193 de las 229 columnas de
+  > texto largo del modelo, el 84 %. Lo que se queda fuera son URLs, firmas y
+  > sellos, que es justo lo que no debe tener un área. Cuando aparezca un campo
+  > de prosa que no case, lo que corresponde es añadir su raíz y decir cuántas
+  > columnas pasa a cubrir, no ensanchar la regla hasta que entre todo.
 - **Lo imprescindible delante** y lo opcional plegado. Un alta de cuarenta
   campos, toda a la vista, no la rellena nadie.
 - **La ayuda encima del campo**, que es donde sirve: «el nombre comercial con el

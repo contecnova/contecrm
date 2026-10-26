@@ -1,6 +1,12 @@
 /**
  * Consola única de gobierno de la suite (CRM-00.01.07.06).
  *
+ * Enseña CRM-00.01.07.03 (el alta y la baja de usuario en cascada, y sobre
+ * todo las bajas sin aplicar), CRM-00.01.07.07 (la divergencia entre lo que
+ * dice cada herramienta y lo que decimos nosotros), CRM-00.01.07.10 (la cola de
+ * aprovisionamiento con su cuarentena y su reintento) y CRM-00.01.07.12 (la
+ * auditoría transversal).
+ *
  * Quien administra contecrm administra también el resto de herramientas de la
  * casa, y hasta ahora eso significaba cuatro pantallas y cuatro sitios donde dar
  * de baja a alguien que se va — que es justo el momento en el que olvidarse de

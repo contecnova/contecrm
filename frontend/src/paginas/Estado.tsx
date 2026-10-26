@@ -1,5 +1,10 @@
 /**
  * La página de estado del tenant (CRM-00.06.01.06).
+ *
+ * Enseña además CRM-00.06.01.04 (el objetivo de servicio comprometido por tier
+ * y el presupuesto de error gastado), CRM-00.06.01.05 (el alertado con su
+ * runbook enlazado) y CRM-00.06.02.07 (si el sistema está en modo degradado:
+ * la lectura sigue y la escritura no).
 
  * Enseña también los compromisos de servicio del tenant —RPO, RTO,
  * disponibilidad— junto a lo medido (CRM-07.04.03.30): un compromiso escrito en

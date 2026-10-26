@@ -22,6 +22,20 @@ export interface Modulo {
   seccion: string;
   /** Capacidad del catálogo que esta pantalla implementa. Es la traza. */
   capacidad: string;
+  /**
+   * Las **demás** capacidades del catálogo que esta pantalla enseña
+   * (CRM-07.04.05.05).
+   *
+   * `capacidad` dice qué capacidad de FRONT es esta pantalla; esto dice qué
+   * capacidades de producto se ven en ella. No es lo mismo y hacían falta las
+   * dos: sin esto, el informe de cobertura al revés contaba una pantalla por
+   * módulo y concluía que el CRM esconde casi todo lo que sabe hacer.
+   *
+   * **La regla para añadir una: abrir la pantalla y verla.** Un identificador
+   * aquí se escribe en un minuto, y por eso se pinta en la pantalla de
+   * cobertura — una declaración falsa la ve el primero que entra.
+   */
+  capacidades?: string[];
   /** Grupo del menú. */
   grupo: string;
   /** Recursos que se pintan, en orden de pestañas. */
@@ -111,6 +125,20 @@ export const MODULOS: Modulo[] = [
     titulo: "Tenants y unidades",
     seccion: "0.1",
     capacidad: "CRM-07.04.03.01",
+    // El alta por API y el autoservicio (`POST /tenants`), el cambio de estado
+    // —suspender, reactivar, congelar en solo lectura—, las unidades de
+    // negocio, los ajustes jerárquicos, el catálogo de planes y capacidades,
+    // la localización del tenant y su consumo contra el límite. Todo cuelga de
+    // la ficha del tenant, que se abre porque la fila lleva `objeto`.
+    capacidades: [
+      "CRM-00.01.03.01",
+      "CRM-00.01.03.04",
+      "CRM-00.01.03.08",
+      "CRM-00.01.04.01",
+      "CRM-00.01.04.05",
+      "CRM-00.01.04.07",
+      "CRM-00.01.06.06",
+    ],
     grupo: "Plataforma",
     recursos: [
       {
@@ -146,6 +174,10 @@ export const MODULOS: Modulo[] = [
     titulo: "Contrato de la API",
     seccion: "0.2",
     capacidad: "CRM-07.04.03.02",
+    // La superficie publicada entera —cada operación con su método, su ruta y
+    // el permiso que exige— y la salud de cada servicio enrutado, que es el
+    // catálogo interno con su dueño y su estado.
+    capacidades: ["CRM-00.02.01.01", "CRM-00.02.01.04", "CRM-00.03.01.04"],
     grupo: "Plataforma",
     recursos: [
       { nombre: "Servicios", listar: "/api/v1/servicios", servicio: "gateway" },
@@ -156,6 +188,25 @@ export const MODULOS: Modulo[] = [
     titulo: "Procesos y orquestación",
     seccion: "0.3",
     capacidad: "CRM-07.04.03.03",
+    // El lienzo de procesos y sus instancias, la bandeja de tareas humanas, las
+    // tablas de decisión, las automatizaciones, los webhooks, las conexiones
+    // con su prueba y su rotación, el monitor de ejecuciones, el registro de
+    // conectores instalables, los trabajos largos y el progreso de convivencia
+    // con el CRM heredado.
+    capacidades: [
+      "CRM-00.02.01.12",
+      "CRM-00.02.02.01",
+      "CRM-00.03.01.07",
+      "CRM-00.03.02.02",
+      "CRM-00.03.02.09",
+      "CRM-00.03.02.10",
+      "CRM-00.03.02.11",
+      "CRM-00.03.03.01",
+      "CRM-00.03.04.02",
+      "CRM-00.03.04.05",
+      "CRM-00.03.04.06",
+      "CRM-00.03.04.10",
+    ],
     grupo: "Plataforma",
     recursos: [
       {
@@ -248,6 +299,8 @@ export const MODULOS: Modulo[] = [
     titulo: "Modelo de datos",
     seccion: "0.4",
     capacidad: "CRM-07.04.03.04",
+    // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
+    capacidades: ["CRM-00.04.01.01", "CRM-00.04.01.03"],
     grupo: "Plataforma",
     recursos: [
       {
@@ -272,6 +325,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Identidad y acceso",
     seccion: "0.5",
     capacidad: "CRM-07.04.03.05",
+    // Proveedores de identidad por tenant, credenciales de máquina con ámbito y
+    // caducidad, sesiones revocables, dispositivos de confianza, roles y las
+    // políticas de acceso editables desde aquí.
+    capacidades: [
+      "CRM-00.05.01.03",
+      "CRM-00.05.01.07",
+      "CRM-00.05.01.08",
+      "CRM-00.05.01.20",
+      "CRM-00.05.02.01",
+      "CRM-00.05.02.17",
+    ],
     grupo: "Plataforma",
     recursos: [
       {
@@ -325,6 +389,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Operación",
     seccion: "0.6",
     capacidad: "CRM-07.04.03.06",
+    // El modelo canónico de intercambio, los conflictos de sincronización, el
+    // catálogo de eventos publicado, la cola de fallidos con su reenvío y el
+    // archivo desde el que se reproduce lo histórico.
+    capacidades: [
+      "CRM-00.02.02.03",
+      "CRM-00.02.02.07",
+      "CRM-00.02.02.09",
+      "CRM-00.03.04.07",
+      "CRM-00.03.04.08",
+      "CRM-00.03.04.09",
+    ],
     grupo: "Plataforma",
     recursos: [
       {
@@ -377,6 +452,25 @@ export const MODULOS: Modulo[] = [
     titulo: "Cuentas y contactos",
     seccion: "1.1",
     capacidad: "CRM-07.04.03.07",
+    // La ficha de cuenta y la de contacto con sus canales, las relaciones entre
+    // cuentas, las direcciones e identificadores fiscales con su
+    // reverificación, las visitas, el mapa de personas e influencia, la cola de
+    // calidad del dato con sus duplicados y su fusión, los derechos del
+    // interesado y la papelera con restauración en cascada.
+    capacidades: [
+      "CRM-01.01.01.01",
+      "CRM-01.01.01.04",
+      "CRM-01.01.01.05",
+      "CRM-01.01.01.06",
+      "CRM-01.01.01.13",
+      "CRM-01.01.02.03",
+      "CRM-01.01.02.04",
+      "CRM-01.01.02.06",
+      "CRM-01.01.04.01",
+      "CRM-01.01.04.03",
+      "CRM-01.01.04.08",
+      "CRM-00.06.02.04",
+    ],
     grupo: "Clientes",
     recursos: [
       // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
@@ -485,6 +579,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Proveedores",
     seccion: "9.1",
     capacidad: "CRM-07.04.03.31",
+    // El proveedor como cuenta con rol, su homologación por categoría y la
+    // documentación obligatoria con vigencia que avisa de lo que caduca.
+    capacidades: ["CRM-09.01.01.01", "CRM-09.01.01.02", "CRM-09.01.01.03"],
     grupo: "Clientes",
     recursos: [
       {
@@ -524,6 +621,10 @@ export const MODULOS: Modulo[] = [
     titulo: "Actividades",
     seccion: "1.2",
     capacidad: "CRM-07.04.03.08",
+    // El modelo común de actividad —tareas, eventos, llamadas, notas y
+    // visitas—, sus plantillas y secuencias por tipo de proceso, y las
+    // recurrencias con su reprogramación.
+    capacidades: ["CRM-01.02.01.01", "CRM-01.02.01.02", "CRM-01.02.01.07", "CRM-01.02.01.09"],
     grupo: "Clientes",
     recursos: [
       {
@@ -559,6 +660,23 @@ export const MODULOS: Modulo[] = [
     titulo: "Oportunidades",
     seccion: "3.1",
     capacidad: "CRM-07.04.03.13",
+    // La oportunidad con su pipeline y sus etapas, los presupuestos con
+    // versiones y vigencia, el motor de precios, los pedidos y su traspaso al
+    // ERP, los contratos con su renovación, las suscripciones, el catálogo de
+    // producto, las metodologías de venta, la cola priorizada del comercial y
+    // la papelera.
+    capacidades: [
+      "CRM-03.01.01.01",
+      "CRM-03.01.01.02",
+      "CRM-03.01.01.03",
+      "CRM-03.01.02.01",
+      "CRM-03.03.01.02",
+      "CRM-03.03.02.01",
+      "CRM-03.03.02.03",
+      "CRM-03.03.02.08",
+      "CRM-03.03.02.09",
+      "CRM-03.03.02.11",
+    ],
     grupo: "Ventas",
     recursos: [
       {
@@ -657,6 +775,18 @@ export const MODULOS: Modulo[] = [
     titulo: "Prospección",
     seccion: "3.3",
     capacidad: "CRM-07.04.03.15",
+    // El lead con su ciclo de vida, la captura multicanal con sus canales y
+    // recepciones, el enrutamiento por reglas, los motivos de descarte
+    // normalizados, la trazabilidad de origen con sus campañas y toques, y las
+    // cadencias con sus plantillas de correo.
+    capacidades: [
+      "CRM-01.01.03.01",
+      "CRM-01.01.03.02",
+      "CRM-01.01.03.04",
+      "CRM-01.01.03.06",
+      "CRM-03.03.01.01",
+      "CRM-03.03.01.03",
+    ],
     grupo: "Ventas",
     recursos: [
       { nombre: "Cadencias", listar: "/api/v1/cadencias", servicio: "sales" },
@@ -709,6 +839,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Previsión",
     seccion: "3.2",
     capacidad: "CRM-07.04.03.14",
+    // Los territorios con su jerarquía, las categorías y periodos de forecast
+    // con su cierre, las cuotas y su consecución, el ingreso previsto y el
+    // resumen del pipeline con las oportunidades estancadas.
+    capacidades: [
+      "CRM-03.01.01.12",
+      "CRM-03.02.01.01",
+      "CRM-03.02.01.09",
+      "CRM-03.02.02.01",
+      "CRM-03.02.02.04",
+      "CRM-03.02.02.06",
+    ],
     grupo: "Ventas",
     recursos: [
       {
@@ -771,6 +912,15 @@ export const MODULOS: Modulo[] = [
     titulo: "Canal indirecto",
     seccion: "3.4",
     capacidad: "CRM-07.04.03.16",
+    // El registro de partners con sus niveles y certificaciones, el portal de
+    // partner con el registro de oportunidades, los fondos de marketing con sus
+    // solicitudes y liquidaciones, y los planes de comisión.
+    capacidades: [
+      "CRM-03.02.03.01",
+      "CRM-03.04.01.01",
+      "CRM-03.04.01.02",
+      "CRM-03.04.01.04",
+    ],
     grupo: "Ventas",
     recursos: [
       {
@@ -866,6 +1016,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Servicio de campo",
     seccion: "4.4",
     capacidad: "CRM-07.04.03.20",
+    // Las órdenes de trabajo, los activos instalados con sus garantías, los
+    // técnicos, los planes preventivos con sus vencimientos, los repuestos y su
+    // reposición, y los dispositivos con su telemetría.
+    capacidades: [
+      "CRM-04.04.01.01",
+      "CRM-04.04.01.04",
+      "CRM-04.04.01.05",
+      "CRM-04.04.02.01",
+      "CRM-04.04.02.03",
+      "CRM-04.04.02.05",
+    ],
     grupo: "Servicio",
     recursos: [
       {
@@ -946,6 +1107,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Postventa",
     seccion: "4.5",
     capacidad: "CRM-07.04.03.21",
+    // Las devoluciones con su autorización y disposición, los expedientes con
+    // sus plazos legales y los problemas con su correlación de casos.
+    capacidades: ["CRM-04.01.01.11", "CRM-04.05.01.01", "CRM-04.05.01.03"],
     grupo: "Servicio",
     recursos: [
       {
@@ -1010,6 +1174,18 @@ export const MODULOS: Modulo[] = [
     titulo: "Explotación",
     seccion: "5.1",
     capacidad: "CRM-07.04.03.22",
+    // El estado del enlace con contecintelligence, las consultas con su
+    // auditoría, la correspondencia entre tenant y organización, las métricas
+    // certificadas, la frescura del almacén analítico y sus destinos de
+    // exportación.
+    capacidades: [
+      "CRM-05.01.03.01",
+      "CRM-05.01.03.02",
+      "CRM-05.01.03.03",
+      "CRM-05.01.04.02",
+      "CRM-05.01.04.07",
+      "CRM-05.01.04.12",
+    ],
     grupo: "Analítica",
     recursos: [
       // La explotación la resuelve contecintelligence de forma frontless
@@ -1078,6 +1254,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Gobierno y cumplimiento",
     seccion: "7.3",
     capacidad: "CRM-07.04.03.28",
+    // El registro de riesgos y el catálogo de controles, las reglas de
+    // segregación de funciones, las políticas de retención con sus bloqueos
+    // legales y las clases de dato con su sensibilidad.
+    capacidades: [
+      "CRM-07.03.01.01",
+      "CRM-07.03.01.05",
+      "CRM-07.03.01.06",
+      "CRM-07.03.02.01",
+      "CRM-07.03.02.02",
+      "CRM-07.03.02.06",
+    ],
     grupo: "Gobierno",
     recursos: [
       {
@@ -1129,6 +1316,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Segmentación",
     seccion: "2.1",
     capacidad: "CRM-07.04.03.09",
+    // El constructor de segmentos con sus condiciones anidadas, las supresiones
+    // y listas negras, y los modelos de puntuación.
+    capacidades: ["CRM-02.01.01.01", "CRM-02.01.01.02", "CRM-02.01.01.06", "CRM-02.01.02.01"],
     grupo: "Marketing",
     recursos: [
       {
@@ -1157,6 +1347,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Campañas",
     seccion: "2.2",
     capacidad: "CRM-07.04.03.10",
+    // La jerarquía de campañas con su presupuesto, las reglas de presión y
+    // frecuencia de contacto, los rebotes duros y blandos, y la papelera.
+    capacidades: ["CRM-02.02.01.01", "CRM-02.02.02.06", "CRM-02.03.01.04"],
     grupo: "Marketing",
     recursos: [
       {
@@ -1200,6 +1393,21 @@ export const MODULOS: Modulo[] = [
     titulo: "Casos",
     seccion: "4.1",
     capacidad: "CRM-07.04.03.17",
+    // El caso con su taxonomía y su ciclo, las colas con su asignación, las
+    // reglas de escalado, los SLA con sus relojes, los entitlements, los
+    // agentes disponibles con su capacidad, las encuestas de satisfacción y la
+    // papelera.
+    capacidades: [
+      "CRM-04.01.01.01",
+      "CRM-04.01.01.02",
+      "CRM-04.01.01.05",
+      "CRM-04.01.01.07",
+      "CRM-04.01.01.12",
+      "CRM-04.01.02.01",
+      "CRM-04.01.02.02",
+      "CRM-04.01.02.03",
+      "CRM-04.02.02.03",
+    ],
     grupo: "Servicio",
     recursos: [
       {
@@ -1261,6 +1469,8 @@ export const MODULOS: Modulo[] = [
     titulo: "Omnicanalidad",
     seccion: "4.2",
     capacidad: "CRM-07.04.03.18",
+    // Los canales de servicio y las macros con sus acciones compuestas.
+    capacidades: ["CRM-04.02.02.04"],
     grupo: "Servicio",
     recursos: [
       // Las conversaciones no tienen listado general a propósito: se trabajan
@@ -1288,6 +1498,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Conocimiento",
     seccion: "4.3",
     capacidad: "CRM-07.04.03.19",
+    // Los artículos con sus versiones y su flujo de aprobación, los accesos al
+    // portal de autoservicio y los hilos de la comunidad.
+    capacidades: ["CRM-04.03.01.01", "CRM-04.03.02.01", "CRM-04.03.02.04"],
     grupo: "Servicio",
     recursos: [
       {
@@ -1316,6 +1529,9 @@ export const MODULOS: Modulo[] = [
     titulo: "Canales de ejecución",
     seccion: "2.3",
     capacidad: "CRM-07.04.03.11",
+    // Los canales de marketing, las landings y formularios alojados, y los
+    // dominios de envío con su entregabilidad.
+    capacidades: ["CRM-02.03.01.03", "CRM-02.03.02.06"],
     grupo: "Marketing",
     recursos: [
       {
@@ -1347,6 +1563,17 @@ export const MODULOS: Modulo[] = [
     titulo: "Contenido y gobierno",
     seccion: "2.4",
     capacidad: "CRM-07.04.03.12",
+    // Las reglas de contenido por marca, país e idioma, el consentimiento de
+    // cookies, la renovación del opt-in, las plantillas de correo con sus
+    // bloques reutilizables, las categorías del centro de preferencias y las
+    // supresiones.
+    capacidades: [
+      "CRM-02.03.01.01",
+      "CRM-02.03.01.05",
+      "CRM-02.04.01.03",
+      "CRM-02.04.02.02",
+      "CRM-07.03.01.08",
+    ],
     grupo: "Marketing",
     recursos: [
       {

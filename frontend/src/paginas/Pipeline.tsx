@@ -1,6 +1,10 @@
 /**
  * El embudo como tablero: la pantalla que define un CRM.
  *
+ * Enseña CRM-03.01.01.01 (la oportunidad con su importe, su fecha de cierre y
+ * su etapa), CRM-03.01.01.02 (varios pipelines, uno por línea de negocio) y
+ * CRM-03.01.01.03 (las etapas configurables, que son las columnas).
+ *
  * Esto faltaba, y es lo primero que echa en falta cualquiera que venga de una
  * herramienta del mercado. Pipedrive, Salesforce, HubSpot y Dynamics enseñan
  * las oportunidades como **columnas por etapa con tarjetas que se arrastran**,

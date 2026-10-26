@@ -114,6 +114,23 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           </span>
         }
       />
+      {/* Y qué capacidades de PRODUCTO se ven aquí, no solo cuál de front es
+          esta pantalla. Se pinta a propósito: la declaración vive en
+          `modulos.ts` y se escribe en un minuto, así que ponerla delante es lo
+          único que hace caro declarar algo que no se enseña. Va plegada porque
+          es trazabilidad y no trabajo diario. */}
+      {modulo.capacidades?.length ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-3xs text-ink-faint">
+            {t("modulo.capacidades", { cuantas: modulo.capacidades.length })}
+          </summary>
+          <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-3xs text-ink-faint">
+            {modulo.capacidades.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
       {modulo.recursos.length > 1 ? (
         <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap items-center gap-1">
           {/* Las pestañas rotuladas con icono —hoy, la papelera— van siempre al

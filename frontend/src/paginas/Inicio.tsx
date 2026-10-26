@@ -1,6 +1,9 @@
 /**
  * La portada: **mi día**, no un menú.
  *
+ * Enseña CRM-01.02.01.02 (el seguimiento de lo vencido, incluido lo delegado)
+ * y CRM-03.02.02.07 (la cobertura del pipeline contra lo que toca cerrar).
+ *
  * Antes esto listaba enlaces a pantallas y los contaba. Quien abre un CRM a
  * primera hora no viene a elegir pantalla: viene a saber qué tiene que hacer
  * hoy y qué se le está pasando. Una portada que es un índice obliga a

@@ -161,7 +161,14 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            HUECO: los componentes embebibles
 #                            (CRM-00.02.03.05) son un contrato declarado sin
 #                            componente que lo cumpla. Avisado en su nota
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 102
+#   26-10-2026  100 de 752  el informe de cobertura AL REVES
+#                            (CRM-07.04.05.02) y la declaracion por pantalla
+#                            (CRM-07.04.05.05). El que habia medía operaciones
+#                            publicadas; este mide capacidades, que es lo que
+#                            el catalogo enumera y lo que se vende. Primera
+#                            medida: 684 de 753 capacidades hechas no las
+#                            nombraba ninguna pantalla
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 100
 
 
 @functools.cache

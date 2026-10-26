@@ -250,9 +250,13 @@ function Campo({
       ) : campo.tipo === "objeto" ? (
         <Pares campo={campo} valor={valor} alCambiar={alCambiar} id={id} ayuda={ayuda} />
       ) : campo.tipo === "texto_largo" ? (
+        // Tres líneas y no cuatro: con cuatro, tres campos de prosa seguidos ya
+        // no caben en la pantalla y el formulario se recorre a rueda. Crece al
+        // escribir, así que lo que se gana en el caso corto no se pierde en el
+        // largo.
         <textarea
           {...comun}
-          rows={4}
+          rows={3}
           maxLength={campo.maximo ?? undefined}
           value={String(valor ?? "")}
           onChange={(e) => alCambiar(e.target.value)}

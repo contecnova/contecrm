@@ -464,6 +464,7 @@ export default {
     filasCargadas: "{{cuantas}} filas cargadas",
     cargarMas: "Cargar más",
     seccion: "sección",
+    capacidades: "Enseña {{cuantas}} capacidades del catálogo",
   },
   consola: {
     eligeArea: "Elige un área de la lista",

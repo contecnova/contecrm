@@ -2,6 +2,11 @@
  * Rendimiento a la vista: volumetría, límites y por qué algo tarda
  * (CRM-07.04.03.29).
  *
+ * Es donde se ven CRM-00.06.01.02 (las métricas del tenant: latencia, carga y
+ * tasa de error), CRM-00.06.01.07 (las consultas que se han degradado,
+ * comparadas consigo mismas) y CRM-00.01.06.02 (las cuotas del plan con lo
+ * consumido al lado).
+ *
  * La pregunta que llega a soporte no es «¿cuál es vuestro p95?»: es **«¿por qué
  * mi lista tarda?»**. Esta pantalla contesta esa, y por eso enseña tres cosas
  * juntas que normalmente están en tres sitios:

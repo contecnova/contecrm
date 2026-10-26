@@ -195,7 +195,7 @@ export function camposDe(documento: Documento, ruta: string, metodo: string): Ca
     const elemento = p.items ? resolver(documento, p.items) : undefined;
     return {
       nombre,
-      tipo: tipoDe(p, elemento),
+      tipo: tipoDe(p, elemento, nombre),
       obligatorio: obligatorios.has(nombre),
       titulo: humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
@@ -220,7 +220,7 @@ function subcamposDe(documento: Documento, elemento?: Esquema): CampoEsquema[] {
     const interno = p.items ? resolver(documento, p.items) : undefined;
     return {
       nombre,
-      tipo: tipoDe(p, interno),
+      tipo: tipoDe(p, interno, nombre),
       obligatorio: obligatorios.has(nombre),
       titulo: humanizar(p.title ?? nombre),
       descripcion: p.description ?? "",
@@ -257,7 +257,53 @@ function resolver(documento: Documento, esquema: Esquema): Esquema {
   return actual;
 }
 
-function tipoDe(esquema: Esquema, elemento?: Esquema): CampoEsquema["tipo"] {
+/**
+ * Nombres de campo que de verdad llevan prosa.
+ *
+ * **Medido sobre el modelo el 26-10-2026**, no elegido a ojo: de las 229
+ * columnas `Text` del producto —las que no tienen tope porque son un texto
+ * largo de verdad—, estas raíces cubren 193, el 84 %. Lo que se queda fuera son
+ * URLs, firmas y sellos, que es exactamente lo que **no** debe tener un área de
+ * cinco líneas.
+ *
+ * Es una lista corta y se quedará corta: cuando aparezca un campo de prosa que
+ * no case, lo que corresponde es añadir su raíz aquí **y decir cuántas columnas
+ * pasa a cubrir**, no ensanchar la regla hasta que entre todo.
+ */
+const RAICES_DE_PROSA = [
+  "descripcion",
+  "motivo",
+  "cuerpo",
+  "nota",
+  "notas",
+  "comentario",
+  "detalle",
+  "mensaje",
+  "resumen",
+  "observacion",
+  "observaciones",
+  "justificacion",
+  "resolucion",
+  "porque",
+  "explicacion",
+  "causa",
+  "solucion",
+  "ayuda",
+  "respuesta",
+  "pregunta",
+  "contenido",
+  "conclusion",
+  "recomendacion",
+  "instrucciones",
+];
+
+/** Si el nombre del campo dice que lo que se escribe ahí es un texto largo. */
+function esProsa(nombre: string): boolean {
+  const n = nombre.toLowerCase();
+  return RAICES_DE_PROSA.some((r) => n === r || n.startsWith(`${r}_`) || n.endsWith(`_${r}`));
+}
+
+function tipoDe(esquema: Esquema, elemento?: Esquema, nombre = ""): CampoEsquema["tipo"] {
   if (esquema.enum) return "lista";
   switch (esquema.type) {
     case "integer":
@@ -277,24 +323,27 @@ function tipoDe(esquema: Esquema, elemento?: Esquema): CampoEsquema["tipo"] {
       return "objeto";
     default:
       if (esquema.format === "date" || esquema.format === "date-time") return "fecha";
-      // **Sin tope de longitud: área. Con tope: una línea.**
+      // **Una línea, salvo que algo diga que ahí va un texto largo.**
       //
-      // Estaba al revés —área cuando el tope pasaba de 400— y eso convertía
-      // `web` en un cuadro de cinco líneas, porque la columna es `String(500)`.
-      // Medido el 26-10-2026 sobre el modelo: de los trece campos con tope
-      // mayor que 400, **once son de una línea** (web, uri, base_url,
-      // callback_url, ruta, credencial_id…) y el criterio acertaba en dos.
+      // Las dos reglas anteriores fallaron por el mismo motivo —decidir sobre
+      // `maxLength`— y conviene dejar escrito por qué, porque es la trampa:
       //
-      // La señal buena es la contraria, y sale del propio modelo: una columna
-      // `Text` —sin tope— es una descripción, unas notas, un cuerpo; hay 233 y
-      // llegan al contrato **sin `maxLength`**. Una `String(n)` es un dato de
-      // una línea por grande que sea n, porque alguien decidió acotarlo.
+      //   · «área cuando el tope pasa de 400» convertía `web` en un cuadro de
+      //     cinco líneas, porque la columna es `String(500)`;
+      //   · «área cuando NO hay tope» lo convertía casi todo. **Medido el
+      //     26-10-2026 sobre el contrato de party: de 402 propiedades de
+      //     texto, sólo 40 llevan `maxLength` — el 9 %.** Los esquemas de
+      //     salida y los de actualización no lo propagan, así que `nombre`,
+      //     `apellidos` o `tratamiento` salían como un área de cinco líneas.
       //
-      // Lo que empeora con esto, dicho: un `String(500)` que sí sea una
-      // descripción se edita en una línea. Son dos en todo el producto, y lo
-      // que corresponde entonces es declararlos `Text` en el modelo —que es lo
-      // que son— en vez de adivinarlo por el tamaño.
-      return esquema.maxLength === undefined ? "texto_largo" : "texto";
+      // `maxLength` no sirve para decidir esto porque **casi nunca está**. Lo
+      // que sí es señal es un tope grande de verdad cuando está —1.000 o más es
+      // un motivo escrito, no un nombre— y, sobre todo, el nombre del campo.
+      //
+      // Y por defecto, una línea: un campo de prosa en una línea molesta; un
+      // nombre de pila en un área de cinco líneas hace el formulario inusable.
+      if (esquema.maxLength !== undefined && esquema.maxLength >= 1000) return "texto_largo";
+      return esProsa(nombre) ? "texto_largo" : "texto";
   }
 }
 

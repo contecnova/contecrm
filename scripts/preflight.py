@@ -181,6 +181,19 @@ GATES: list[Gate] = [
         "los dos manuales cubren todo y no describen lo que ya no existe",
     ),
     Gate(
+        "pantallas",
+        [
+            PY,
+            "-m",
+            "pytest",
+            "tests/unit/test_cada_capacidad_tiene_pantalla.py",
+            "-q",
+            "--no-header",
+        ],
+        "fast",
+        "de cada capacidad hecha se llega a una pantalla, y el tope solo baja",
+    ),
+    Gate(
         "contrato-headless",
         [PY, "-m", "pytest", "tests/unit/test_headless_contract.py", "-q", "--no-header"],
         "fast",

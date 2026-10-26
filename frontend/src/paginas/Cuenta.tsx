@@ -1,6 +1,11 @@
 /**
  * La ficha de un cliente, con la forma que tiene en el mercado.
  *
+ * Es donde se ven CRM-01.01.05.01 (la línea de tiempo unificada de todas las
+ * interacciones), CRM-01.01.01.10 (el equipo de cuenta con sus roles),
+ * CRM-01.01.02.02 (la relación contacto–cuenta con su rol y su vigencia) y
+ * CRM-01.01.05.06 (las métricas embebidas del cliente).
+ *
  * Salesforce y HubSpot llevan años convergiendo en el mismo reparto, y no por
  * copiarse: es lo que hace falta para trabajar con un cliente delante.
  *

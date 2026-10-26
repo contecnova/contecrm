@@ -1,6 +1,11 @@
 /**
  * Documentos que esperan tu decisión (RT-5).
  *
+ * Es la bandeja unificada de CRM-00.03.05.13: lo que me toca decidir con el
+ * contexto suficiente para decidirlo. Enseña además CRM-00.03.05.06 (las
+ * cadenas y el quórum, tal como los resuelve el motor) y CRM-00.03.05.07 (quién
+ * es el aprobador, que viene resuelto y no se deduce aquí).
+ *
  * El motor de aprobación es de contecmind: quórum, segregación de funciones y
  * en qué orden firma cada uno viven allí. Esta pantalla **no lo reimplementa**,
  * ni siquiera un poco:
