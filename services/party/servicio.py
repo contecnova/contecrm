@@ -1294,10 +1294,24 @@ def desrelacionar_cuentas(uow: UnidadDeTrabajo, *, cuenta_id: UUID, relacion_id:
 
 # ── Verificación contra registros externos ────────────────────────────────
 
+
 # Cuánto vale un veredicto antes de volver a preguntar. Un NIF verificado hace
 # tres años no es un NIF verificado; uno verificado esta mañana no hace falta
 # volver a preguntarlo y gastar cuota del registro.
-DIAS_VEREDICTO_VIGENTE = 90
+def _dias_veredicto(db: Session) -> int:
+    """Cuánto vale un veredicto de verificación antes de repetirlo.
+
+    Era una constante —90— igual para todos. Un NIF no cambia, pero una baja
+    sí: quien trabaja con proveedores de riesgo lo quiere más corto. Se lee una
+    vez por llamada, nunca dentro de un recorrido.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    return int(
+        rt.efectivo("identificador_dias_veredicto", db) or ajustes().identificador_dias_veredicto
+    )
 
 
 def verificar_identificador_fiscal(
@@ -1329,7 +1343,9 @@ def verificar_identificador_fiscal(
         )
 
     if not forzar and identificador.verificado_at is not None:
-        vigente_hasta = _aware(identificador.verificado_at) + timedelta(days=DIAS_VEREDICTO_VIGENTE)
+        vigente_hasta = _aware(identificador.verificado_at) + timedelta(
+            days=_dias_veredicto(uow.db)
+        )
         if vigente_hasta > datetime.now(timezone.utc):
             return {
                 "identificador": identificador.valor,
@@ -1951,7 +1967,7 @@ def caducados_por_reverificar(
     """
     from datetime import datetime, timedelta, timezone
 
-    limite_fecha = datetime.now(timezone.utc) - timedelta(days=DIAS_VEREDICTO_VIGENTE)
+    limite_fecha = datetime.now(timezone.utc) - timedelta(days=_dias_veredicto(db))
     return list(
         db.execute(
             select(IdentificadorFiscal)

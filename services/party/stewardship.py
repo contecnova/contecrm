@@ -67,10 +67,25 @@ CIERRES = (
     "ya_no_aplica",
 )
 
+
 # A partir de cuántos «no era un error» sobre la misma regla se sospecha de la
 # regla. Es bajo a propósito: si cinco personas distintas dicen que no es un
 # error, probablemente no lo es.
-DESCARTES_PARA_SOSPECHAR = 5
+def _descartes_para_sospechar(db: Session) -> int:
+    """Cuántos descartes seguidos hacen sospechar de una regla de duplicados.
+
+    Era una constante —5— igual para todos. Por debajo de cinco, un par de
+    descartes legítimos ya acusan a la regla; en un tenant con mucho volumen
+    conviene subirlo. Se lee **fuera** del recorrido de reglas.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    return int(
+        rt.efectivo("stewardship_descartes_para_sospechar", db)
+        or ajustes().stewardship_descartes_para_sospechar
+    )
 
 
 def _ahora() -> datetime:
@@ -454,6 +469,8 @@ def reglas_sospechosas(db: Session, tenant_id: UUID) -> dict[str, Any]:
         if fila.cierre == "no_era_un_error":
             datos["descartadas"] += 1
 
+    # Fuera de la comprensión: dentro sería una consulta por regla.
+    minimo = _descartes_para_sospechar(db)
     sospechosas = [
         {
             "regla": regla,
@@ -462,7 +479,7 @@ def reglas_sospechosas(db: Session, tenant_id: UUID) -> dict[str, Any]:
             "pct_descartadas": round(d["descartadas"] / d["cerradas"] * 100, 1),
         }
         for regla, d in por_regla.items()
-        if d["descartadas"] >= DESCARTES_PARA_SOSPECHAR and d["descartadas"] / d["cerradas"] > 0.5
+        if d["descartadas"] >= minimo and d["descartadas"] / d["cerradas"] > 0.5
     ]
 
     return {

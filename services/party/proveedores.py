@@ -80,10 +80,35 @@ ESTADOS_HOMOLOGACION = (
     "suspendido",
 )
 
+
 # Con cuánta antelación se avisa de lo que va a vencer. Es configurable por
 # requisito; esto es el valor por defecto y existe porque avisar el mismo día es
 # no avisar: renovar un seguro lleva semanas.
-DIAS_PREAVISO = 30
+def _dias_preaviso_defecto() -> int:
+    """Antelación con la que se avisa de la renovación de un documento.
+
+    **Sin `db`, a propósito.** Esto se usa como valor por defecto de una
+    columna y como valor por defecto de dos argumentos: en los tres sitios se
+    evalúa donde no hay sesión, y en el de la columna no puede haberla. Sale de
+    `Settings`, o sea del `.env`, que es configuración del despliegue y se lee
+    sin tocar la base.
+
+    Quien quiera afinarlo **por cliente** lo hace en la ruta, que sí tiene
+    sesión: ver `documentos_que_vencen`.
+    """
+    from services.party.ajustes import ajustes
+
+    return ajustes().proveedor_dias_preaviso
+
+
+def _dias_preaviso(db: Session, pedido: int | None = None) -> int:
+    """El preaviso que toca: el que pide quien llama, o el del tenant."""
+    from crmcore.runtime import settings as rt
+
+    if pedido is not None:
+        return pedido
+    return int(rt.efectivo("proveedor_dias_preaviso", db) or _dias_preaviso_defecto())
+
 
 # Funciones que hacen falta de un proveedor. Cerrada porque la pregunta real es
 # «¿a quién llamo cuando esto falla a las once de la noche?», y con texto libre
@@ -145,7 +170,9 @@ class DocumentoProveedor(Base, TimestampMixin):
     referencia: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     valido_desde: Mapped[date | None] = mapped_column(Date, nullable=True)
     valido_hasta: Mapped[date | None] = mapped_column(Date, nullable=True)
-    dias_preaviso: Mapped[int] = mapped_column(Integer, nullable=False, default=DIAS_PREAVISO)
+    dias_preaviso: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=_dias_preaviso_defecto
+    )
     # Si su caducidad bloquea. No todo bloquea: el certificado de calidad es
     # deseable y el seguro de responsabilidad civil no lo es.
     bloquea_al_vencer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -379,7 +406,7 @@ def registrar_documento(
     referencia: str,
     valido_hasta: date | None,
     valido_desde: date | None = None,
-    dias_preaviso: int = DIAS_PREAVISO,
+    dias_preaviso: int | None = None,
     bloquea_al_vencer: bool = True,
 ) -> DocumentoProveedor:
     """Registra un papel obligatorio con su vigencia.
@@ -413,7 +440,9 @@ def registrar_documento(
     fila.referencia = referencia.strip()
     fila.valido_desde = valido_desde
     fila.valido_hasta = valido_hasta
-    fila.dias_preaviso = max(0, dias_preaviso)
+    # `None` significa «el del tenant», no cero: con `max(0, None)` esto
+    # reventaría, y con un cero silencioso el documento no avisaría nunca.
+    fila.dias_preaviso = max(0, _dias_preaviso(uow.db, dias_preaviso))
     fila.bloquea_al_vencer = bloquea_al_vencer
     uow.db.flush()
     return fila
@@ -510,7 +539,7 @@ def estado_documental(
 
 
 def documentos_que_vencen(
-    db: Session, tenant_id: UUID, *, dias: int = DIAS_PREAVISO, hoy: date | None = None
+    db: Session, tenant_id: UUID, *, dias: int | None = None, hoy: date | None = None
 ) -> dict[str, Any]:
     """La lista de trabajo: qué hay que renovar y de quién.
 
@@ -518,7 +547,7 @@ def documentos_que_vencen(
     un aviso, es un problema que está pasando ahora.
     """
     momento = hoy or _hoy(db)
-    limite = momento + timedelta(days=dias)
+    limite = momento + timedelta(days=_dias_preaviso(db, dias))
     filas = list(
         db.execute(
             select(DocumentoProveedor).where(

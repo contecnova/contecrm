@@ -23,6 +23,36 @@ from pydantic import Field
 class AjustesParty(Settings):
     """Configuración del servicio `party`."""
 
+    # ── Umbrales que estaban escritos en el código ────────────────────────
+    #
+    # Los cinco eran constantes de módulo. Son decisiones de negocio, y cada
+    # instalación —a veces cada cliente de la misma— las quiere distintas:
+    # mientras vivan en el código, cambiarlas es tocar, desplegar y esperar.
+
+    # A partir de cuántos días una medida de salud deja de valer para actuar.
+    # 45 porque un 42 en rojo de hace tres meses es un recuerdo, no una alerta,
+    # y llamar por él molesta a un cliente cuyo problema ya se resolvió. Un
+    # negocio con ciclos largos lo querrá más alto.
+    salud_dias_vigencia: int = Field(45, ge=1, le=730)
+
+    # Cuánto aguanta un dato maestro sin revisar cuando su campo no declara
+    # plazo propio. Un año: por debajo, media ficha sale marcada como caducada
+    # el primer día y la señal deja de mirarse.
+    mdm_dias_frescura: int = Field(365, ge=1, le=3650)
+
+    # Con cuánta antelación se avisa de la renovación de un contrato de
+    # proveedor. 30 días es lo habitual para poder renegociar; un contrato con
+    # preaviso de 90 necesita más.
+    proveedor_dias_preaviso: int = Field(30, ge=1, le=365)
+
+    # Cuántos descartes seguidos hacen sospechar de una regla de duplicados.
+    # Por debajo de cinco, un par de descartes legítimos ya la acusan.
+    stewardship_descartes_para_sospechar: int = Field(5, ge=2, le=100)
+
+    # Cuánto vale un veredicto de verificación de identificador fiscal antes de
+    # volver a comprobarlo. 90 días: un NIF no cambia, pero una baja sí.
+    identificador_dias_veredicto: int = Field(90, ge=1, le=3650)
+
     # ── Deduplicación (CRM-01.01.04.01, .02) ──────────────────────────────
     # Similitud a partir de la cual dos fichas se PROPONEN como duplicadas.
     # 0,82 deja pasar erratas y cambios de orden sin inundar de falsos positivos.
@@ -155,6 +185,46 @@ registrar_claves(
             minimo=1,
             maximo=3650,
             campo_settings="cuenta_dias_sin_actividad",
+        ),
+        ClaveAjuste(
+            clave="salud_dias_vigencia",
+            tipo="int",
+            descripcion="Días tras los que una medida de salud deja de valer para actuar",
+            minimo=1,
+            maximo=730,
+            campo_settings="salud_dias_vigencia",
+        ),
+        ClaveAjuste(
+            clave="mdm_dias_frescura",
+            tipo="int",
+            descripcion="Días que aguanta un dato maestro sin revisar, si su campo no dice otra cosa",
+            minimo=1,
+            maximo=3650,
+            campo_settings="mdm_dias_frescura",
+        ),
+        ClaveAjuste(
+            clave="proveedor_dias_preaviso",
+            tipo="int",
+            descripcion="Antelación con la que se avisa de la renovación de un contrato de proveedor",
+            minimo=1,
+            maximo=365,
+            campo_settings="proveedor_dias_preaviso",
+        ),
+        ClaveAjuste(
+            clave="stewardship_descartes_para_sospechar",
+            tipo="int",
+            descripcion="Descartes seguidos tras los que se sospecha de una regla de duplicados",
+            minimo=2,
+            maximo=100,
+            campo_settings="stewardship_descartes_para_sospechar",
+        ),
+        ClaveAjuste(
+            clave="identificador_dias_veredicto",
+            tipo="int",
+            descripcion="Días que vale un veredicto de verificación antes de repetirlo",
+            minimo=1,
+            maximo=3650,
+            campo_settings="identificador_dias_veredicto",
         ),
         ClaveAjuste(
             clave="derechos_plazo_dias",

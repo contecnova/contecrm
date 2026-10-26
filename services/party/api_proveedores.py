@@ -68,7 +68,10 @@ class DocumentoIn(BaseModel):
     referencia: str
     valido_desde: date | None = None
     valido_hasta: date | None = None
-    dias_preaviso: int = prv.DIAS_PREAVISO
+    # `None` = el preaviso del tenant. Antes aquí había una constante del
+    # módulo, que además congelaba el valor en el esquema publicado: el
+    # OpenAPI decía «30» aunque la instalación usara otro.
+    dias_preaviso: int | None = None
     bloquea_al_vencer: bool = True
 
 
@@ -307,7 +310,13 @@ def documentos(cuenta_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         "está pasando ahora."
     ),
 )
-def vencen(db: DbDep, principal: AutenticadoDep, dias: int = Query(prv.DIAS_PREAVISO)) -> Any:
+def vencen(
+    db: DbDep,
+    principal: AutenticadoDep,
+    # Sin valor por defecto en la firma: el que vale es el del tenant, y se
+    # resuelve dentro, donde hay sesión.
+    dias: int | None = Query(None),
+) -> Any:
     return prv.documentos_que_vencen(db, principal.tenant_id, dias=dias)
 
 

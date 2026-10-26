@@ -62,10 +62,23 @@ ESTRATEGIAS = (
 # diciendo que el otro estaba mal.
 FUENTE_MANUAL = "manual"
 
+
 # Cuánto se considera que un valor sigue siendo bueno si nadie lo confirma. Es un
 # valor por defecto: lo suyo es declararlo por campo, porque un NIF no caduca y
 # un cargo caduca en cuanto ascienden a esa persona.
-DIAS_FRESCURA_POR_DEFECTO = 365
+def _dias_frescura(db: Session) -> int:
+    """Cuánto aguanta un dato maestro sin revisar cuando su campo no declara
+    plazo propio.
+
+    Era una constante —365— igual para todos. Se lee **una vez por llamada** y
+    nunca dentro del bucle de filas: `efectivo()` va a la base, y ahí dentro
+    sería una consulta por cada valor revisado.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    return int(rt.efectivo("mdm_dias_frescura", db) or ajustes().mdm_dias_frescura)
 
 
 class LinajeValor(Base):
@@ -409,6 +422,8 @@ def valores_obsoletos(
     """
     momento = ahora or _ahora()
     plazos = dict(dias_por_campo or {})
+    # Fuera del bucle, a propósito: ver `_dias_frescura`.
+    por_defecto = _dias_frescura(db)
     filas = list(
         db.execute(
             select(LinajeValor).where(
@@ -423,7 +438,7 @@ def valores_obsoletos(
 
     viejos: list[dict[str, Any]] = []
     for fila in filas:
-        dias_tope = plazos.get(fila.campo, DIAS_FRESCURA_POR_DEFECTO)
+        dias_tope = plazos.get(fila.campo, por_defecto)
         edad = (
             momento - fila.recibido_at.replace(tzinfo=fila.recibido_at.tzinfo or timezone.utc)
         ).days
@@ -447,7 +462,7 @@ def valores_obsoletos(
             "esté al día: se puede decir que nunca se ha verificado, que no es lo "
             "mismo."
         ),
-        "plazo_por_defecto_dias": DIAS_FRESCURA_POR_DEFECTO,
+        "plazo_por_defecto_dias": por_defecto,
     }
 
 

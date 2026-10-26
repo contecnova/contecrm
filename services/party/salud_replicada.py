@@ -39,9 +39,25 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
-# A partir de cuántos días la medida deja de valer para actuar. No se borra: se
-# marca. Un 42 en rojo de hace tres meses es un recuerdo, no una alerta.
-DIAS_VIGENCIA = 45
+
+def _dias_vigencia(db: Session) -> int:
+    """A partir de cuántos días la medida deja de valer para actuar.
+
+    No se borra: se marca. Un 42 en rojo de hace tres meses es un recuerdo, no
+    una alerta.
+
+    Era una constante de módulo —45— igual para todos. Un negocio con ciclos
+    largos la quiere más alta, y uno de soporte diario más baja; mientras viva
+    en el código, cambiarla es desplegar.
+
+    Se lee aquí y **una sola vez por llamada**: `efectivo()` va a la base, y
+    metido en un bucle sería una consulta por vuelta.
+    """
+    from crmcore.runtime import settings as rt
+
+    from services.party.ajustes import ajustes
+
+    return int(rt.efectivo("salud_dias_vigencia", db) or ajustes().salud_dias_vigencia)
 
 
 class SaludCuentaReplicada(Base, TimestampMixin):
@@ -146,7 +162,7 @@ def de_la_cuenta(
         }
 
     dias = (momento - fila.medida_at).days
-    vigente = dias <= DIAS_VIGENCIA
+    vigente = dias <= _dias_vigencia(db)
     return {
         "hay": True,
         "puntuacion": float(fila.puntuacion),
@@ -189,7 +205,7 @@ def en_riesgo(
     también los que sí lo estaban.
     """
     momento = ahora or _ahora()
-    corte = momento - timedelta(days=DIAS_VIGENCIA)
+    corte = momento - timedelta(days=_dias_vigencia(db))
     filas = list(
         db.execute(
             select(SaludCuentaReplicada)
