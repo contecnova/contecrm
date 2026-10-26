@@ -11389,6 +11389,22 @@ siguiente, con su autor y su hora.
   puede ser en producción uno que ya existe con otro tipo; aplicar y descubrirlo a
   la mitad deja el entorno con medio paquete dentro y sin forma de saber cuál.
   Un cambio de tipo con datos dentro **no se aplica solo**: puede perderlos.
+- **Se puede preguntar de qué commit sale lo que hay puesto**
+  (`CRM-07.02.01.04`). `GET /entornos/{entorno}/desplegado` devuelve el
+  paquete, su versión, su huella, la **referencia de repositorio**, quién lo
+  desplegó, cuándo y con qué motivo.
+
+  Hasta el 26-10-2026 no se podía. El paquete guardaba `referencia_git` desde
+  el principio —es la mitad de «configuración como código con control de
+  versiones»— y **ninguna ruta la devolvía**: se escribía al empaquetar y no se
+  leía en ningún sitio, así que la pregunta que justifica el campo no se podía
+  contestar desde el producto. Un campo que se escribe y no se lee no existe
+  para quien lo necesita.
+
+  Un paquete sin referencia **lo dice**: hay tenants que configuran desde la
+  consola, y eso no es un fallo — es que no hay un commit al que volver, sólo
+  el paquete anterior. Y «no consta nada desplegado» no es «está vacío»: lo que
+  haya puesto se puso fuera del camino.
 - **El drift se mide contra el paquete desplegado** (`CRM-07.02.01.06`)**, no
   contra otro entorno.**
   Comparar dos entornos dice en qué se diferencian, que puede ser legítimo porque
@@ -13178,7 +13194,11 @@ alrededor de la decisión que la hace útil o inútil:
   lo que va por sondeo se dice — sus cambios entran con retraso.
 - **Entornos y cambios (ALM).** El desvío se mide contra el paquete desplegado, no
   contra otro entorno, y **lo que desapareció también es desvío**: un panel que
-  solo enseña lo añadido deja fuera el caso más incómodo.
+  solo enseña lo añadido deja fuera el caso más incómodo. Encima del desvío se
+  dice **qué hay puesto y de qué commit sale**, porque las dos cosas se piensan
+  a la vez: un informe de desvío sin decir contra qué se compara se queda sin
+  referencia. Y se dice también **qué no se ha comparado**, que es lo que
+  distingue un «limpio» de un «no se ha mirado».
 - **Rendimiento.** Contesta la pregunta que llega de verdad —«¿por qué mi lista
   tarda?»— juntando tres cosas que normalmente están en tres sitios: cuánto hay,
   cuánto cabe y **qué se está aplazando ahora mismo**.

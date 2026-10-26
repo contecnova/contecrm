@@ -38,7 +38,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #   11-10-2026  228 de 752  MAL otra vez: ese 228 lo saqué sumando tres a la
 #                            medición anterior en vez de volver a medir
 #   11-10-2026  227 de 752  medido, ejecutando el recorrido
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 227
+#   26-10-2026  224 de 752  auditada la familia de entornos y despliegue
+#                            (CRM-07.02.01): las tres que no citaba ninguna
+#                            prueba —entornos separados, configuracion como
+#                            codigo y gates de calidad— ya la tienen, y
+#                            mirandolas salio un agujero de verdad: la
+#                            referencia de Git se escribia y no se leia
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 224
 
 
 @functools.cache

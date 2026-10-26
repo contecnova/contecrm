@@ -90,17 +90,38 @@ function filas(datos: Drift): Fila[] {
   return [...tocado, ...ido];
 }
 
+/** Lo que hay puesto en el entorno: `GET /entornos/{entorno}/desplegado`. */
+interface Desplegado {
+  hay: boolean;
+  porque?: string;
+  paquete?: string;
+  version?: number;
+  /** De qué commit sale. Vacío es legítimo: se montó desde la consola. */
+  referencia_git?: string;
+  desplegado_at?: string | null;
+  motivo?: string;
+  que_significa?: string;
+}
+
 export function Alm() {
   const { t } = useTranslation();
   const [entorno, setEntorno] = useState("produccion");
   const [datos, setDatos] = useState<Drift | null>(null);
+  const [puesto, setPuesto] = useState<Desplegado | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const mirar = async () => {
     setFallo(null);
     try {
-      const r = await llamar<Drift>(`/api/v1/entornos/${entorno}/drift`);
-      setDatos(r.datos);
+      // Las dos preguntas se hacen a la vez porque se piensan a la vez: «qué
+      // hay puesto aquí» y «qué se ha tocado por encima». Enseñar el desvío sin
+      // decir contra qué se compara deja el informe sin referencia.
+      const [desvio, hay] = await Promise.all([
+        llamar<Drift>(`/api/v1/entornos/${entorno}/drift`),
+        llamar<Desplegado>(`/api/v1/entornos/${entorno}/desplegado`),
+      ]);
+      setDatos(desvio.datos);
+      setPuesto(hay.datos);
     } catch (e) {
       setFallo(e);
     }
@@ -144,6 +165,20 @@ export function Alm() {
       </div>
 
       {fallo ? <Fallo error={fallo} /> : null}
+
+      {puesto ? (
+        <p className="mt-4 text-2xs text-ink-muted" data-testid="alm-desplegado">
+          {puesto.hay
+            ? t("alm.puesto", {
+                paquete: puesto.paquete,
+                version: puesto.version,
+                // Un paquete montado desde la consola no tiene commit al que
+                // volver, y decirlo es la mitad de la respuesta.
+                git: puesto.referencia_git || t("alm.sinGit"),
+              })
+            : puesto.porque}
+        </p>
+      ) : null}
 
       {datos && !datos.medible ? (
         <Vacio titulo={t("alm.sinPaquete")} detalle={datos.porque} />

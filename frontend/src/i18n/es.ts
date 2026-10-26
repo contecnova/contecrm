@@ -646,6 +646,8 @@ export default {
     verDesvio: "Ver desvío",
     sinPaquete: "No hay ningún paquete desplegado",
     noComparado: "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",
+    puesto: "Puesto aquí: {{paquete}} v{{version}} · {{git}}",
+    sinGit: "sin referencia de repositorio (montado desde la consola)",
     tipo: "Tipo",
     clave: "Clave",
     quePaso: "Qué pasó",

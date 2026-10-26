@@ -363,6 +363,63 @@ def desplegar(
     }
 
 
+def desplegado(db: Session, tenant_id: UUID, *, entorno: str) -> dict[str, Any]:
+    """Qué hay puesto en este entorno, **y de qué commit sale**.
+
+    El paquete guarda `referencia_git` desde el principio —es la mitad de
+    «configuración como código con control de versiones»— y hasta el
+    26-10-2026 **no había forma de leerla**: se escribía al empaquetar y
+    ninguna ruta la devolvía. O sea que la pregunta que justifica el campo
+    —«¿de qué versión del repositorio sale lo que hay en producción?»— no se
+    podía contestar desde el producto. Un campo que se escribe y no se lee es
+    un campo que no existe para quien lo necesita.
+
+    Va junto a quién lo desplegó y cuándo, porque las tres se preguntan a la
+    vez: delante de un entorno raro, lo primero es qué hay, de dónde sale y
+    quién lo puso.
+    """
+    if entorno not in ENTORNOS:
+        raise ErrorValidacion(
+            f"Entorno desconocido: «{entorno}»",
+            error_code="entornos.entorno_invalido",
+            detalle={"admitidos": list(ENTORNOS)},
+        )
+    vigente = _vigente(db, tenant_id, entorno)
+    if vigente is None:
+        return {
+            "entorno": entorno,
+            "hay": False,
+            "porque": (
+                "No consta ningún paquete desplegado en este entorno. No significa "
+                "que esté vacío — significa que lo que haya se puso fuera del "
+                "camino y no queda constancia."
+            ),
+        }
+    paquete = db.get(PaqueteConfiguracion, vigente.paquete_id)
+    return {
+        "entorno": entorno,
+        "hay": True,
+        "paquete": paquete.nombre if paquete else "",
+        "version": paquete.version if paquete else 0,
+        "huella": vigente.huella,
+        # Vacío es legítimo: hay tenants que configuran desde la consola y no
+        # desde un repositorio. Se dice vacío, no se inventa.
+        "referencia_git": (paquete.referencia_git if paquete else "") or "",
+        "origen_entorno": paquete.origen_entorno if paquete else "",
+        "desplegado_at": vigente.desplegado_at.isoformat() if vigente.desplegado_at else None,
+        "desplegado_por": str(vigente.desplegado_por) if vigente.desplegado_por else None,
+        "motivo": vigente.motivo,
+        "se_puede_volver_atras": vigente.anterior_id is not None,
+        "que_significa": (
+            "Lo que hay puesto sale de este paquete."
+            if (paquete and paquete.referencia_git)
+            else "Este paquete no declara referencia de repositorio: se montó desde "
+            "la consola, así que no hay un commit al que volver — sólo el paquete "
+            "anterior."
+        ),
+    }
+
+
 def medir_drift(
     db: Session,
     tenant_id: UUID,

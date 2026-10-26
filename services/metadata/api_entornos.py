@@ -114,6 +114,24 @@ def empaquetar(cuerpo: EmpaquetarIn, uow: UowDep, principal: AutenticadoDep) -> 
     }
 
 
+@router_entornos.get(
+    "/{entorno}/desplegado",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Qué hay puesto aquí, de qué commit sale y quién lo puso",
+    description=(
+        "El paquete guarda la referencia de Git desde el principio y **no había "
+        "forma de leerla**: se escribía al empaquetar y ninguna ruta la "
+        "devolvía, así que «¿de qué versión del repositorio sale lo que hay en "
+        "producción?» no se podía contestar desde el producto.\n\n"
+        "Si el paquete no declara referencia se dice, en vez de dejar el hueco: "
+        "hay tenants que configuran desde la consola, y eso no es un fallo — es "
+        "que no hay commit al que volver, sólo el paquete anterior."
+    ),
+)
+def desplegado(entorno: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    return ent.desplegado(db, principal.tenant_id, entorno=entorno)
+
+
 @router_entornos.post(
     "/{entorno}/simular",
     dependencies=[Depends(exige_permiso("metadata:read"))],

@@ -22,9 +22,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Alm } from "@/paginas/Alm";
 
 let respuesta: unknown = {};
+let puesto: unknown = { hay: false, porque: "Aquí no consta nada puesto." };
 
 vi.mock("@/lib/api", () => ({
-  llamar: vi.fn(async () => ({ datos: respuesta })),
+  llamar: vi.fn(async (ruta: string) => ({
+    datos: ruta.endsWith("/desplegado") ? puesto : respuesta,
+  })),
   ErrorApi: class extends Error {},
 }));
 
@@ -58,6 +61,7 @@ async function mirar() {
 describe("el desvío de un entorno", () => {
   beforeEach(() => {
     respuesta = {};
+    puesto = { hay: false, porque: "Aquí no consta nada puesto." };
   });
 
   it("pinta lo tocado a mano con el campo que cambió", async () => {
@@ -107,5 +111,32 @@ describe("el desvío de un entorno", () => {
     expect(
       await screen.findByText(/No consta ningún paquete desplegado/),
     ).toBeInTheDocument();
+  });
+
+  it("dice qué hay puesto y de qué commit sale", async () => {
+    // El agujero de CRM-07.02.01.04: `referencia_git` se escribía al empaquetar
+    // y no la devolvía ninguna ruta, así que «¿de qué versión del repositorio
+    // sale lo que hay en producción?» no se podía contestar desde el producto.
+    respuesta = CON_DESVIO;
+    puesto = {
+      hay: true,
+      paquete: "base",
+      version: 3,
+      referencia_git: "refs/tags/v2.4.0@9f3c1ab",
+    };
+    await mirar();
+    const linea = await screen.findByTestId("alm-desplegado");
+    expect(linea.textContent).toContain("base");
+    expect(linea.textContent).toContain("9f3c1ab");
+  });
+
+  it("un paquete montado desde la consola lo dice, no deja el hueco", async () => {
+    // No hay commit al que volver, sólo el paquete anterior. Un hueco se lee
+    // como «todavía está cargando».
+    respuesta = CON_DESVIO;
+    puesto = { hay: true, paquete: "base", version: 3, referencia_git: "" };
+    await mirar();
+    const linea = await screen.findByTestId("alm-desplegado");
+    expect(linea.textContent).toContain("alm.sinGit");
   });
 });
