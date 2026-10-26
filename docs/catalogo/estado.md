@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**772 capacidades**: ✅ 772 hecho
+**776 capacidades**: ✅ 772 hecho · ⬜ 4 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-284 capacidades · ✅ 284
+287 capacidades · ✅ 284 · ⬜ 3
 
 ### 0.1 Multi-tenancy
 
@@ -279,6 +279,8 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.01.08` | Esquema expuesto vía API de metadatos (describe) para clientes headless | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.09` | Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos | A | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.10` | Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso | A | 0 | metadata | ✅ | — |
+| `CRM-00.04.01.11` | Numeración de negocio por objeto: un código único, legible y correlativo, generado por el sistema o validado contra duplicado si lo trae quien da de alta | A | 1 | metadata | ⬜ | — |
+| `CRM-00.04.01.12` | Granularidad del campo de fecha: día, mes/año o trimestre, declarada en el campo y respetada en validación, filtros, agrupaciones y exportación | A | 1 | metadata | ⬜ | — |
 
 #### CRM-00.04.02 · Extensión por código
 
@@ -308,6 +310,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.03.10` | Paquetes de configuración: exportar el esquema de un entorno e instalarlo en otro con control de versión y vuelta atrás | A | 2 | metadata | ✅ | — |
 | `CRM-00.04.03.11` | Materializar un campo personalizado como columna real cuando su volumen lo justifique, con migración en línea y sin bloquear a los demás tenants | A | 2 | metadata | ✅ | — |
 | `CRM-00.04.03.12` | Trazabilidad del esquema: quién añadió cada campo, cuándo, con qué uso real y qué pasa si se retira | A | 1 | metadata | ✅ | — |
+| `CRM-00.04.03.13` | Solo lectura por condición y por procedencia: un campo que llega de un sistema externo o cuyo registro cumple una condición deja de poder editarse, y la pantalla dice por qué y quién manda sobre ese dato | A | 1 | metadata | ⬜ | — |
 
 #### CRM-00.04.04 · Módulos verticales (caracterización por sector)
 
@@ -646,7 +649,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-65 capacidades · ✅ 65
+66 capacidades · ✅ 65 · ⬜ 1
 
 ### 3.1 Pipeline y oportunidades
 
@@ -707,6 +710,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.02.02.05` | Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo | A | 2 | sales | ✅ | — |
 | `CRM-03.02.02.06` | Seguimiento de consecución y ranking | A | 2 | sales | ✅ | contecflow-PSA:app/services/performance_service.py |
 | `CRM-03.02.02.07` | Planificación de capacidad y cobertura de pipeline vs. cuota | A | 2 | sales | ✅ | contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py |
+| `CRM-03.02.02.08` | Congelación del objetivo de un periodo: quién puede congelarlo, desde cuándo deja de tocarse, qué pasa con lo ya cargado y cómo se descongela dejando constancia | A | 2 | sales | ⬜ | — |
 
 #### CRM-03.02.03 · Incentivos y comisiones (interfaz)
 
