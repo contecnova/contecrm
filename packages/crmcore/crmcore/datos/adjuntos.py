@@ -598,7 +598,16 @@ class CarpetaDocumental(Base, TimestampMixin):
 # Profundidad máxima del árbol. Ocho niveles son más de lo que nadie navega, y
 # el tope existe porque sin él una carpeta movida mal puede generar una ruta que
 # no cabe en la columna.
-MAX_PROFUNDIDAD_CARPETA = 8
+def _carpeta_profundidad_maxima() -> int:
+    """Tope del núcleo, antes `_carpeta_profundidad_maxima() = 8`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().carpeta_profundidad_maxima
 
 
 def crear_carpeta(
@@ -631,9 +640,9 @@ def crear_carpeta(
                 "La carpeta padre no existe en este registro",
                 error_code="carpeta.padre_no_existe",
             )
-        if padre.ruta.count("/") + 1 >= MAX_PROFUNDIDAD_CARPETA:
+        if padre.ruta.count("/") + 1 >= _carpeta_profundidad_maxima():
             raise ErrorValidacion(
-                f"No se pueden anidar más de {MAX_PROFUNDIDAD_CARPETA} niveles",
+                f"No se pueden anidar más de {_carpeta_profundidad_maxima()} niveles",
                 error_code="carpeta.demasiado_profunda",
             )
 

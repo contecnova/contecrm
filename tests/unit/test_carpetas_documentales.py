@@ -18,9 +18,9 @@ from uuid import UUID, uuid4
 
 import pytest
 from crmcore.datos.adjuntos import (
-    MAX_PROFUNDIDAD_CARPETA,
     Adjunto,
     CarpetaDocumental,
+    _carpeta_profundidad_maxima,
     arbol_carpetas,
     borrar_carpeta,
     crear_carpeta,
@@ -138,7 +138,7 @@ def test_hay_tope_de_profundidad(db: Any, tenant_id: UUID) -> None:
     """Sin tope, una rama larga genera una ruta que no cabe en la columna."""
     objeto = uuid4()
     actual = None
-    for nivel in range(MAX_PROFUNDIDAD_CARPETA):
+    for nivel in range(_carpeta_profundidad_maxima()):
         actual = _carpeta(db, tenant_id, objeto, f"n{nivel}", actual)
     with pytest.raises(ErrorValidacion) as e:
         _carpeta(db, tenant_id, objeto, "una_mas", actual)

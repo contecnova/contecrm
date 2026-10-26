@@ -181,7 +181,18 @@ RUTA_CANJE = "/api/v1/tokens/exchange"
 # `services/analytics/cliente.py`: los dos clientes de la casa hacen lo mismo y
 # de la misma forma, a propósito.
 _aplicacion: dict[str, Any] = {"token": "", "expira_at": 0.0}
-_MARGEN_S = 30.0
+
+
+def _credencial_margen_s() -> float:
+    """Tope del núcleo, antes `_credencial_margen_s() = 30.0`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().credencial_margen_s
 
 
 def _token_de_aplicacion(s: Any) -> str:
@@ -203,7 +214,7 @@ def _token_de_aplicacion(s: Any) -> str:
     from crmcore.red import cliente_seguro
 
     ahora = time.monotonic()
-    if _aplicacion["token"] and float(_aplicacion["expira_at"]) - _MARGEN_S > ahora:
+    if _aplicacion["token"] and float(_aplicacion["expira_at"]) - _credencial_margen_s() > ahora:
         return str(_aplicacion["token"])
 
     try:

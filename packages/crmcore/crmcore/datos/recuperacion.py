@@ -59,9 +59,19 @@ NUNCA = {
     "claves": "Las claves de cifrado no viajan en una copia de datos",
 }
 
+
 # Cada cuánto se prueba una recuperación. Trimestral es el mínimo razonable: con
 # una prueba al año, lo que se descubre es que el procedimiento lleva meses roto.
-DIAS_ENTRE_PRUEBAS = 90
+def _recuperacion_dias_entre_pruebas() -> int:
+    """Tope del núcleo, antes `_recuperacion_dias_entre_pruebas() = 90`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().recuperacion_dias_entre_pruebas
 
 
 def _ahora() -> datetime:
@@ -250,14 +260,14 @@ def estado_de_las_pruebas(
         "medible": True,
         "pruebas": len(pruebas),
         "ultima_hace_dias": dias,
-        "al_dia": dias is not None and dias <= DIAS_ENTRE_PRUEBAS and not fallidas,
+        "al_dia": dias is not None and dias <= _recuperacion_dias_entre_pruebas() and not fallidas,
         "fallidas": len(fallidas),
         "peor_tiempo_min": max((p.get("minutos") or 0) for p in pruebas),
         "que_significa": (
             f"La última prueba es de hace {dias} días y el plazo son "
-            f"{DIAS_ENTRE_PRUEBAS}. Con una prueba al año, lo que se descubre es que el "
+            f"{_recuperacion_dias_entre_pruebas()}. Con una prueba al año, lo que se descubre es que el "
             "procedimiento llevaba meses roto."
-            if dias is not None and dias > DIAS_ENTRE_PRUEBAS
+            if dias is not None and dias > _recuperacion_dias_entre_pruebas()
             else (
                 f"{len(fallidas)} pruebas no pasaron. Mientras haya una fallida, el plan "
                 "de recuperación no está validado por mucho que las demás fueran bien."

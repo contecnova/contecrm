@@ -24,6 +24,9 @@ configurables no da libertad: da la posibilidad de romperlo.
     26-10-2026  68  los doce de `intelligence`: confianzas de extracción,
                     transcripción y voz, parecido de caso, mínimos para
                     entrenar y para dar una prueba A/B por concluyente
+    26-10-2026  44  los 24 del núcleo: profundidades, colas, ventanas y
+                    tamaños. Todos operativos, así que van sólo al `.env`:
+                    «por cliente» no significaría nada
 """
 
 from __future__ import annotations
@@ -49,6 +52,11 @@ DE_ESTANDAR = {
     "packages/crmcore/crmcore/db/migraciones.py::CERROJO_MIGRACION": (
         "identificador del cerrojo de Postgres, no un umbral"
     ),
+    "packages/crmcore/crmcore/events/envelope.py::TOPE_DEDUP": (
+        "es el ancho de una columna en tres tablas del bus: cambiarlo exige "
+        "una migración, y un ajuste que no se aplica hasta entonces es peor "
+        "que una constante honesta"
+    ),
     "services/tenancy/marca.py::CONTRASTE_MINIMO": (
         "4.5:1 lo fija WCAG AA; bajarlo es dejar de cumplirlo"
     ),
@@ -56,31 +64,6 @@ DE_ESTANDAR = {
 
 # ── Las que todavía viven en el código ────────────────────────────────────
 EN_EL_CODIGO_HOY = {
-    "packages/crmcore/crmcore/authz/jerarquia.py::PROFUNDIDAD_MAXIMA",
-    "packages/crmcore/crmcore/bus/redis_streams.py::RECLAMO_CADA_S",
-    "packages/crmcore/crmcore/bus/redis_streams.py::RECLAMO_INACTIVO_MS",
-    "packages/crmcore/crmcore/datos/adjuntos.py::MAX_PROFUNDIDAD_CARPETA",
-    "packages/crmcore/crmcore/datos/estado.py::COLA_CAIDA",
-    "packages/crmcore/crmcore/datos/estado.py::RELEVO_PARADO_MIN",
-    "packages/crmcore/crmcore/datos/formulas.py::MAX_NODOS",
-    "packages/crmcore/crmcore/datos/masivas.py::MAX_ERRORES_DEVUELTOS",
-    "packages/crmcore/crmcore/datos/particionado.py::MESES_EN_CALIENTE",
-    "packages/crmcore/crmcore/datos/recuperacion.py::DIAS_ENTRE_PRUEBAS",
-    "packages/crmcore/crmcore/datos/trabajos.py::MAX_ERRORES_GUARDADOS",
-    "packages/crmcore/crmcore/documental/cliente.py::_MARGEN_S",
-    "packages/crmcore/crmcore/documental/firma_presencial.py::MINIMA_DURACION_MS",
-    "packages/crmcore/crmcore/documental/firma_presencial.py::MINIMO_PUNTOS",
-    "packages/crmcore/crmcore/events/envelope.py::TOPE_DEDUP",
-    "packages/crmcore/crmcore/http/deps.py::VENTANA_FIRMA_S",
-    "packages/crmcore/crmcore/http/middleware.py::TOPE_CUERPO_LOG",
-    "packages/crmcore/crmcore/http/reverificacion.py::VALIDEZ_POR_DEFECTO_MIN",
-    "packages/crmcore/crmcore/movil.py::DIAS_AVISO_COLA",
-    "packages/crmcore/crmcore/obs/consultas.py::MAX_MUESTRAS",
-    "packages/crmcore/crmcore/obs/presion.py::BAJADA_MAXIMA",
-    "packages/crmcore/crmcore/obs/presion.py::COLA_POR_WORKER",
-    "packages/crmcore/crmcore/obs/presion.py::POOL_DESDE",
-    "packages/crmcore/crmcore/runtime/settings.py::TTL_CACHE_S",
-    "packages/crmcore/crmcore/tareas.py::FALLOS_PARA_AVERIA",
     "services/analytics/cargador.py::POR_VUELTA",
     "services/analytics/cargador.py::VUELTAS_MAX",
     "services/analytics/cliente.py::_MARGEN_S",
@@ -158,11 +141,23 @@ def _constantes() -> dict[str, tuple[int | float, int]]:
 
 def test_el_recorrido_mira_de_verdad() -> None:
     """Sin esto, un recorrido que no encontrara ninguna constante diría que no
-    queda ninguna por mover."""
+    queda ninguna por mover.
+
+    El control NO es un número: éste baja según se mueven, y atarlo a una cifra
+    obliga a tocar la prueba cada vez — que es como se acaba bajando el listón
+    sin querer. Se comprueba que el AST sigue reconociéndolas, usando las
+    EXENTAS, que por definición no se van a mover nunca.
+    """
     encontradas = _constantes()
-    assert len(encontradas) >= 50, f"sólo se ven {len(encontradas)} constantes"
-    # Y una que sabemos que está, para saber que el AST las reconoce.
-    assert "services/party/identidad.py::UMBRAL_PROPUESTA" in encontradas
+    assert DE_ESTANDAR, "no hay exentas con las que comprobar el recorrido"
+    faltan = sorted(k for k in DE_ESTANDAR if k not in encontradas)
+    assert not faltan, (
+        "El recorrido ha dejado de ver constantes que siguen en el código. "
+        "Lo que diga sobre las demás tampoco vale:\n  " + "\n  ".join(faltan)
+    )
+    # Y que mira más de un fichero: con uno solo, el AST «funciona» y el
+    # recorrido no recorre.
+    assert len({k.split("::")[0] for k in encontradas}) >= 5
 
 
 def test_ningun_umbral_nuevo_nace_en_el_codigo() -> None:

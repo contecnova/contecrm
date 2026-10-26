@@ -60,10 +60,20 @@ OPERACIONES_SENSIBLES: dict[str, str] = {
     "destokenizacion": "Recuperar un dato que se sacó del CRM (tarjeta, cuenta, NIF)",
 }
 
+
 # Cuánto vale un factor fuerte, si nadie lo ha configurado. Quince minutos: lo
 # bastante para encadenar dos operaciones sensibles sin volver a teclear, y lo
 # bastante poco para que una sesión abierta toda la tarde no sirva de salvoconducto.
-VALIDEZ_POR_DEFECTO_MIN = 15
+def _reverificacion_validez_min() -> int:
+    """Tope del núcleo, antes `_reverificacion_validez_min() = 15`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().reverificacion_validez_min
 
 
 def minutos_de_validez(db: Any = None) -> int:
@@ -76,7 +86,7 @@ def minutos_de_validez(db: Any = None) -> int:
     try:
         return max(1, int(valor))  # type: ignore[arg-type]
     except (TypeError, ValueError):
-        return VALIDEZ_POR_DEFECTO_MIN
+        return _reverificacion_validez_min()
 
 
 def comprobar(principal: Any, operacion: str, *, db: Any = None) -> None:

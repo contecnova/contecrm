@@ -7,6 +7,91 @@ from pydantic_settings import BaseSettings
 
 
 class _LimitsSettings(BaseSettings):
+    # ── Topes del núcleo que estaban escritos en el código ────────────────
+    #
+    # Veinticinco constantes de módulo repartidas por `crmcore`. Son todas
+    # operativas —profundidades, colas, ventanas, tamaños—, no decisiones de
+    # negocio, así que van al `.env` y valen para todo el despliegue: una
+    # profundidad de jerarquía o un tamaño de cola no significan nada «por
+    # cliente», y declararlas por tenant crearía ajustes que no se aplican.
+    #
+    # Lo que SÍ cambia entre despliegues: una instalación con mil usuarios y
+    # un bus modesto no quiere los mismos topes que una con cincuenta mil.
+
+    # Profundidad máxima de una jerarquía de usuarios al resolver quién ve qué.
+    # No es un gusto: es la barrera contra un ciclo —A manda a B y B a A— que
+    # colgaría la resolución de permisos.
+    jerarquia_profundidad_maxima: int = Field(12, ge=1, le=100)
+    # Lo mismo para el árbol de carpetas documentales.
+    carpeta_profundidad_maxima: int = Field(8, ge=1, le=50)
+    # Y para el árbol de una fórmula de campo calculado. Un tope bajo evita que
+    # una fórmula pegada desde una hoja de cálculo tumbe el servicio.
+    formula_max_nodos: int = Field(200, ge=1, le=10_000)
+
+    # Cada cuánto el consumidor del bus reclama los mensajes que otro dejó a
+    # medias, y a partir de cuánta inactividad se consideran abandonados.
+    bus_reclamo_cada_s: float = Field(30.0, ge=1.0, le=3600.0)
+    bus_reclamo_inactivo_ms: int = Field(60_000, ge=1_000, le=3_600_000)
+
+    # Cuándo se declara que la cola está caída, y cuántos minutos sin latido
+    # del relevo bastan para decir que está parado.
+    cola_caida_desde: int = Field(5_000, ge=1, le=10_000_000)
+    relevo_parado_min: int = Field(15, ge=1, le=1_440)
+
+    # Cuántos errores se devuelven de una operación masiva, y cuántos se
+    # guardan. Devolver todos convierte la respuesta en un volcado que nadie
+    # lee; guardar todos llena la tabla con el primer fichero mal formado.
+    masivas_errores_devueltos: int = Field(200, ge=1, le=100_000)
+    trabajos_errores_guardados: int = Field(500, ge=1, le=100_000)
+
+    # Meses que se quedan en la partición caliente antes de archivar.
+    particion_meses_en_caliente: int = Field(13, ge=1, le=120)
+    # Cada cuánto hay que probar que una copia de seguridad se restaura. Una
+    # copia que nunca se ha restaurado no es una copia: es una esperanza.
+    recuperacion_dias_entre_pruebas: int = Field(90, ge=1, le=3650)
+
+    # Margen con el que se renueva una credencial antes de que caduque.
+    credencial_margen_s: float = Field(30.0, ge=1.0, le=3600.0)
+
+    # Qué hace falta para que una firma manuscrita cuente como firma y no como
+    # un toque accidental en la pantalla.
+    firma_duracion_minima_ms: int = Field(300, ge=1, le=60_000)
+    firma_puntos_minimos: int = Field(12, ge=2, le=10_000)
+
+    # Ventana de validez de la firma interna entre servicios. Corta a
+    # propósito: es lo que acota una petición robada en tránsito.
+    firma_interna_ventana_s: int = Field(30, ge=1, le=3600)
+
+    # Cuánto cuerpo de petición se guarda en el registro. Guardar todo es
+    # guardar datos personales en los logs sin retención.
+    log_tope_cuerpo: int = Field(4096, ge=0, le=1_048_576)
+
+    # Cuánto vale una reverificación de segundo factor antes de volver a
+    # pedirla.
+    reverificacion_validez_min: int = Field(15, ge=1, le=1_440)
+
+    # Con cuántos días de antelación se avisa de que la cola del móvil lleva
+    # sin sincronizar.
+    movil_dias_aviso_cola: int = Field(7, ge=1, le=365)
+
+    # Cuántas muestras de consulta lenta se guardan para el análisis.
+    obs_max_muestras: int = Field(30, ge=1, le=10_000)
+
+    # El control de presión: desde qué ocupación del pool se empieza a frenar,
+    # cuánta cola por worker se tolera y cuánto se puede bajar de golpe.
+    # Bajar demasiado de una vez produce un vaivén peor que la congestión.
+    presion_pool_desde: float = Field(0.70, ge=0.0, le=1.0)
+    presion_cola_por_worker: int = Field(200, ge=1, le=100_000)
+    presion_bajada_maxima: float = Field(0.15, ge=0.0, le=1.0)
+
+    # Cuánto se cachean los ajustes en caliente. Va aquí y no como ajuste en
+    # caliente a propósito: leerlo de la base sería preguntarle a la caché
+    # cuánto dura la caché.
+    ajustes_ttl_cache_s: float = Field(30.0, ge=0.0, le=3600.0)
+
+    # Fallos seguidos tras los que una tarea de fondo se declara averiada.
+    tarea_fallos_para_averia: int = Field(3, ge=1, le=1_000)
+
     # ── Rate limiting (CRM-00.01.06.01) ───────────────────────────────────
     rate_limit_enabled: bool = True
     # Ventana de conteo. Una ventana corta reacciona antes a una ráfaga; una

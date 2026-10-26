@@ -21,9 +21,9 @@ from typing import Any
 
 import pytest
 from crmcore.tareas import (
-    FALLOS_PARA_AVERIA,
     RelevoDeTareas,
     Tarea,
+    _tarea_fallos_para_averia,
     estado_de_las_tareas,
     limpiar_estado,
     por_tenant,
@@ -74,12 +74,12 @@ async def test_tras_varios_fallos_seguidos_sale_como_averia_con_su_motivo() -> N
         raise RuntimeError("la base no contesta")
 
     relevo = RelevoDeTareas([Tarea("rota", 0, _rota)])
-    for _ in range(FALLOS_PARA_AVERIA):
+    for _ in range(_tarea_fallos_para_averia()):
         await relevo.una_vuelta()
 
     estado = estado_de_las_tareas()["rota"]
     assert estado["averiada"] is True
-    assert estado["fallos_seguidos"] == FALLOS_PARA_AVERIA
+    assert estado["fallos_seguidos"] == _tarea_fallos_para_averia()
     assert "la base no contesta" in estado["ultimo_error"]
 
 
@@ -168,7 +168,7 @@ async def test_la_averia_sale_en_la_pagina_de_estado() -> None:
         raise RuntimeError("no hay quien la levante")
 
     relevo = RelevoDeTareas([Tarea("rota", 0, _rota)])
-    for _ in range(FALLOS_PARA_AVERIA):
+    for _ in range(_tarea_fallos_para_averia()):
         await relevo.una_vuelta()
 
     salida = _componente_tareas(None, None)

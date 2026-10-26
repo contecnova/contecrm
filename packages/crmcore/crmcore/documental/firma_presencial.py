@@ -57,11 +57,32 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Mínimos para que un trazo sea una firma y no un toque. No son un umbral de
 # calidad: son la diferencia entre algo que alguien dibujó y algo que pasó
 # porque la tableta estaba en la mesa.
-MINIMO_PUNTOS = 12
-MINIMA_DURACION_MS = 300
+def _firma_puntos_minimos() -> int:
+    """Tope del núcleo, antes `_firma_puntos_minimos() = 12`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().firma_puntos_minimos
+
+
+def _firma_duracion_minima_ms() -> int:
+    """Tope del núcleo, antes `_firma_duracion_minima_ms() = 300`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().firma_duracion_minima_ms
 
 
 class FirmaPresencial(Base, SoftDeleteMixin):
@@ -178,12 +199,15 @@ def capturar(
         )
 
     puntos, duracion = _medir(trazo)
-    if puntos < MINIMO_PUNTOS or duracion < MINIMA_DURACION_MS:
+    if puntos < _firma_puntos_minimos() or duracion < _firma_duracion_minima_ms():
         raise ErrorValidacion(
             f"El trazo tiene {puntos} puntos en {duracion} ms: un toque "
             "accidental produce una rúbrica que el sistema daría por válida.",
             error_code="firma_presencial.trazo_insuficiente",
-            detalle={"minimo_puntos": MINIMO_PUNTOS, "minima_duracion_ms": MINIMA_DURACION_MS},
+            detalle={
+                "minimo_puntos": _firma_puntos_minimos(),
+                "minima_duracion_ms": _firma_duracion_minima_ms(),
+            },
         )
     if not contenido_firmado:
         raise ErrorValidacion(

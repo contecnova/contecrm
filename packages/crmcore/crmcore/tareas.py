@@ -46,10 +46,20 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Fallos seguidos de una misma tarea tras los que deja de ser «un fallo» y pasa a
 # ser una avería que hay que ver en el monitor de salud. Tres porque dos pueden
 # ser la base reiniciándose y cuatro ya es media hora de cosas sin barrer.
-FALLOS_PARA_AVERIA = 3
+def _tarea_fallos_para_averia() -> int:
+    """Tope del núcleo, antes `_tarea_fallos_para_averia() = 3`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().tarea_fallos_para_averia
 
 
 @dataclass(slots=True)
@@ -116,7 +126,7 @@ def estado_de_las_tareas() -> dict[str, dict[str, Any]]:
             "desde_el_ultimo_exito_s": (
                 round(ahora - e.ultimo_exito, 1) if e.ultimo_exito else None
             ),
-            "averiada": e.fallos_seguidos >= FALLOS_PARA_AVERIA,
+            "averiada": e.fallos_seguidos >= _tarea_fallos_para_averia(),
             # Si ya le ha dado tiempo de correr al menos una vez. Hace falta
             # para no llamar «sin estrenar» a la que todavía espera su turno:
             # las purgas arrancan sin correr a propósito, así que recién
@@ -205,7 +215,9 @@ class RelevoDeTareas:
             estado.fallos_seguidos += 1
             estado.ultimo_error = f"{type(exc).__name__}: {str(exc)[:300]}"
             registro = (
-                logger.error if estado.fallos_seguidos >= FALLOS_PARA_AVERIA else logger.warning
+                logger.error
+                if estado.fallos_seguidos >= _tarea_fallos_para_averia()
+                else logger.warning
             )
             registro(
                 "tareas.fallo",

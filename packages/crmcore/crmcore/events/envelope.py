@@ -52,7 +52,12 @@ from crmcore.ids import nuevo_id
 # es un evento sin deduplicar: es un `StringDataRightTruncation` que tumba la
 # transacción entera del cambio que lo emitió. Pasó al dar de alta usuarios, y
 # el alta fallaba por culpa del evento, no por el usuario.
+# Ancho de la clave de deduplicación. **No es configurable y no debe serlo**:
+# es el ancho de una columna —`String(TOPE_DEDUP)` en tres tablas del bus—, así
+# que cambiarlo exige una migración. Un ajuste que se guarda y no se aplica
+# hasta la siguiente migración es peor que una constante honesta.
 TOPE_DEDUP = 64
+
 
 # Versión del propio formato del sobre, distinta de la versión de cada evento.
 # Solo cambiaría si se añadiera o quitara un campo del sobre.

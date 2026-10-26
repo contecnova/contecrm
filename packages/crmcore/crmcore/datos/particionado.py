@@ -53,10 +53,21 @@ DE_ALTO_VOLUMEN = {
 # tenant grande sigue teniendo su partición enorme.
 ESTRATEGIAS = ("mes", "trimestre", "anio")
 
+
 # Meses que se quedan en caliente por defecto. Trece para que el «mismo mes del
 # año pasado» siga siendo una consulta rápida: es la comparación que más se hace
 # y la que peor sienta que tarde.
-MESES_EN_CALIENTE = 13
+def _particion_meses_en_caliente() -> int:
+    """Tope del núcleo, antes `_particion_meses_en_caliente() = 13`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().particion_meses_en_caliente
+
 
 # Lo que impide archivar una fila, pase lo que pase.
 RETENCIONES = {
@@ -81,7 +92,7 @@ def _hoy(db: Any = None) -> date:
 
 
 def plan_de_particion(
-    *, tabla: str, estrategia: str, meses_en_caliente: int = MESES_EN_CALIENTE
+    *, tabla: str, estrategia: str, meses_en_caliente: int = _particion_meses_en_caliente()
 ) -> dict[str, Any]:
     """Cómo se corta una tabla de alto volumen, y por qué así.
 
@@ -195,13 +206,14 @@ def se_puede_archivar(*, fila: dict[str, Any], hoy: date | None = None) -> dict[
             ),
         }
 
-    bastante_vieja = antiguedad_meses >= MESES_EN_CALIENTE
+    bastante_vieja = antiguedad_meses >= _particion_meses_en_caliente()
     return {
         "puede": bastante_vieja and not impedimentos,
         "antiguedad_meses": antiguedad_meses,
         "impedimentos": impedimentos,
         "porque": (
-            f"Tiene {antiguedad_meses} meses y se conservan {MESES_EN_CALIENTE} en " "caliente."
+            f"Tiene {antiguedad_meses} meses y se conservan {_particion_meses_en_caliente()} en "
+            "caliente."
             if not bastante_vieja
             else (
                 "Hay retenciones activas: moverlo sería cumplir el plazo por accidente y "

@@ -226,7 +226,16 @@ def _es_https(scope: Scope, s: Any) -> bool:
 
 # Tope de lo que se copia del cuerpo. Un adjunto de veinte megas no se guarda
 # en un log, y un cuerpo de CRM que no quepa en cuatro kilos tampoco se lee.
-TOPE_CUERPO_LOG = 4096
+def _log_tope_cuerpo() -> int:
+    """Tope del núcleo, antes `_log_tope_cuerpo() = 4096`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().log_tope_cuerpo
 
 
 def _settings_obs() -> Any:
@@ -248,8 +257,8 @@ def _receive_que_copia(receive: Receive, destino: list[bytes]) -> Receive:
         mensaje = await receive()
         if mensaje.get("type") == "http.request":
             trozo = mensaje.get("body") or b""
-            if trozo and copiados["n"] < TOPE_CUERPO_LOG:
-                destino.append(trozo[: TOPE_CUERPO_LOG - copiados["n"]])
+            if trozo and copiados["n"] < _log_tope_cuerpo():
+                destino.append(trozo[: _log_tope_cuerpo() - copiados["n"]])
                 copiados["n"] += len(trozo)
         return mensaje
 
@@ -270,7 +279,7 @@ def _cuerpo_para_el_log(crudo: bytes) -> Any:
 
     from crmcore.logging import redactar_estructura
 
-    cortado = len(crudo) >= TOPE_CUERPO_LOG
+    cortado = len(crudo) >= _log_tope_cuerpo()
     try:
         dato = json.loads(crudo.decode("utf-8"))
     except Exception:  # noqa: BLE001 — binario, formulario, o cortado por el tope

@@ -95,14 +95,14 @@ def test_el_informe_recorta_los_errores_pero_no_el_recuento(
 ) -> None:
     """Un fichero con todo mal no puede producir una respuesta ilegible; pero
     decir «200 errores» cuando hay 300 haría corregir a medias."""
-    from crmcore.datos.masivas import MAX_ERRORES_DEVUELTOS
+    from crmcore.datos.masivas import _masivas_errores_devueltos
 
     informe = Informe()
-    malos = [{} for _ in range(MAX_ERRORES_DEVUELTOS + 40)]
+    malos = [{} for _ in range(_masivas_errores_devueltos() + 40)]
     aplicar(_uow(db, tenant_id), CUENTAS, "crear", malos, informe=informe)
 
-    assert informe.fallidos == MAX_ERRORES_DEVUELTOS + 40
-    assert len(informe.errores) == MAX_ERRORES_DEVUELTOS
+    assert informe.fallidos == _masivas_errores_devueltos() + 40
+    assert len(informe.errores) == _masivas_errores_devueltos()
     assert informe.a_dict()["errores_no_mostrados"] == 40
 
 

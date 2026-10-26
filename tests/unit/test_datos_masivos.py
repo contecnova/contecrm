@@ -326,12 +326,12 @@ def test_el_informe_no_devuelve_errores_sin_fin(db: Any, tenant_id: UUID) -> Non
 
     El recuento sigue siendo exacto; lo que se recorta es la lista.
     """
-    from crmcore.datos.masivas import MAX_ERRORES_DEVUELTOS, Informe
+    from crmcore.datos.masivas import Informe, _masivas_errores_devueltos
 
     informe = Informe(total=1000)
     for fila in range(1, 1001):
         informe.anotar_error(fila, "validacion")
     d = informe.a_dict()
     assert informe.fallidos == 1000
-    assert len(d["errores"]) == MAX_ERRORES_DEVUELTOS
-    assert d["errores_no_mostrados"] == 1000 - MAX_ERRORES_DEVUELTOS
+    assert len(d["errores"]) == _masivas_errores_devueltos()
+    assert d["errores_no_mostrados"] == 1000 - _masivas_errores_devueltos()

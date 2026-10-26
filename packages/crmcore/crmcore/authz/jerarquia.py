@@ -59,10 +59,20 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Tope de niveles al recorrer hacia abajo. Doce es una organización real grande;
 # mil es un bucle que alguien creó sin querer, y recorrerlo entero deja la
 # consulta colgada con todo el mundo esperando.
-PROFUNDIDAD_MAXIMA = 12
+def _jerarquia_profundidad_maxima() -> int:
+    """Tope del núcleo, antes `_jerarquia_profundidad_maxima() = 12`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().jerarquia_profundidad_maxima
 
 
 class MandoReplicado(Base):
@@ -269,7 +279,7 @@ def subordinados_de(db: Session, tenant_id: UUID, usuario_id: UUID) -> set[UUID]
     """
     encontrados: set[UUID] = set()
     frontera = {usuario_id}
-    for _ in range(PROFUNDIDAD_MAXIMA):
+    for _ in range(_jerarquia_profundidad_maxima()):
         if not frontera:
             break
         filas = (
@@ -292,7 +302,7 @@ def subordinados_de(db: Session, tenant_id: UUID, usuario_id: UUID) -> set[UUID]
                 "jerarquia.demasiado_profunda",
                 tenant=str(tenant_id),
                 usuario=str(usuario_id),
-                tope=PROFUNDIDAD_MAXIMA,
+                tope=_jerarquia_profundidad_maxima(),
             )
     return encontrados
 
@@ -320,7 +330,7 @@ def territorios_de(db: Session, tenant_id: UUID, usuario_id: UUID) -> set[UUID]:
 
     todos = set(propios)
     frontera = set(propios)
-    for _ in range(PROFUNDIDAD_MAXIMA):
+    for _ in range(_jerarquia_profundidad_maxima()):
         if not frontera:
             break
         hijos = set(

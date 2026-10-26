@@ -56,10 +56,20 @@ ESTRATEGIAS = (
     "fusionar_campos",  # cuando tocaron campos distintos y no se pisan
 )
 
+
 # Cuánto aguanta un cambio en la cola antes de que haya que mirarlo. No se
 # descarta nunca: se avisa. Una cola que tira lo viejo convierte un problema de
 # sincronización en una pérdida silenciosa.
-DIAS_AVISO_COLA = 7
+def _movil_dias_aviso_cola() -> int:
+    """Tope del núcleo, antes `_movil_dias_aviso_cola() = 7`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().movil_dias_aviso_cola
 
 
 def preparar_envio(
@@ -246,7 +256,7 @@ def estado_de_la_cola(
         if not isinstance(creado, datetime):
             continue
         dias = (momento - (creado if creado.tzinfo else creado.replace(tzinfo=timezone.utc))).days
-        if dias >= DIAS_AVISO_COLA:
+        if dias >= _movil_dias_aviso_cola():
             viejos.append({"id_cliente": pendiente.get("id_cliente"), "dias": dias})
 
     return {
@@ -264,7 +274,7 @@ def estado_de_la_cola(
         "aviso": (
             ""
             if not viejos
-            else f"{len(viejos)} cambios llevan más de {DIAS_AVISO_COLA} días en la "
+            else f"{len(viejos)} cambios llevan más de {_movil_dias_aviso_cola()} días en la "
             "cola. Alguien tiene que mirar por qué no suben: el usuario cree que ya "
             "están guardados."
         ),

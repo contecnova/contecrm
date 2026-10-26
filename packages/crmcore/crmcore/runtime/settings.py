@@ -37,10 +37,20 @@ from crmcore.runtime.keys import CLAVES, ORDEN_AMBITOS, Ambito, ambito_permitido
 
 logger = get_logger(__name__)
 
+
 # Vida de la caché. Corta porque la invalidación por evento es la vía normal y
 # esto es solo la red de seguridad; larga como para ahorrar la consulta en una
 # ráfaga de peticiones.
-TTL_CACHE_S = 30.0
+def _ajustes_ttl_cache_s() -> float:
+    """Tope del núcleo, antes `_ajustes_ttl_cache_s() = 30.0`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().ajustes_ttl_cache_s
 
 
 class AjusteRuntime(Base):
@@ -108,7 +118,7 @@ def _valores_de_ambito(db: Session, ambito: str, ambito_id: str) -> dict[str, An
     clave = _clave_cache(ambito, ambito_id)
     ahora = time.monotonic()
     guardado = _cache.get(clave)
-    if guardado and ahora - guardado[0] < TTL_CACHE_S:
+    if guardado and ahora - guardado[0] < _ajustes_ttl_cache_s():
         return guardado[1]
 
     filas = db.execute(

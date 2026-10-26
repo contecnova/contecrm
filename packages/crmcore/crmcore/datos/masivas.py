@@ -55,7 +55,7 @@ class Informe:
         # Se recorta la lista de errores: un fichero con cien mil filas todas
         # mal produciría una respuesta imposible de leer y de transportar. El
         # recuento total sigue siendo exacto.
-        if len(self.errores) < MAX_ERRORES_DEVUELTOS:
+        if len(self.errores) < _masivas_errores_devueltos():
             self.errores.append({"fila": fila, "motivo": motivo, **(detalle or {})})
 
     def a_dict(self) -> dict[str, Any]:
@@ -75,7 +75,16 @@ class Informe:
         return d
 
 
-MAX_ERRORES_DEVUELTOS = 200
+def _masivas_errores_devueltos() -> int:
+    """Tope del núcleo, antes `_masivas_errores_devueltos() = 200`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().masivas_errores_devueltos
 
 
 # ── Transferencia de propiedad ────────────────────────────────────────────

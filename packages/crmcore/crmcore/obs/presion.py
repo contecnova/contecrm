@@ -41,18 +41,48 @@ logger = get_logger(__name__)
 # de cuánto peor vaya.
 FACTOR_LATENCIA = 2.0
 
+
 # A partir de qué ocupación del pool empieza a contar. Por debajo del 70 % un pool
 # ocupado es un pool que se está usando, que es para lo que está.
-POOL_DESDE = 0.70
+def _presion_pool_desde() -> float:
+    """Tope del núcleo, antes `_presion_pool_desde() = 0.70`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().presion_pool_desde
+
 
 # Cuántos trabajos pendientes por worker cuentan como saturación total. Es alto a
 # propósito: una cola con cien trabajos no es un problema si hay diez workers.
-COLA_POR_WORKER = 200
+def _presion_cola_por_worker() -> int:
+    """Tope del núcleo, antes `_presion_cola_por_worker() = 200`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().presion_cola_por_worker
+
 
 # Cuánto baja la presión en cada medida cuando la señal mejora. Sube de golpe y
 # baja un 15 % cada vez: sin esto el sistema oscila, y media petición fallando sin
 # patrón es peor que una degradación estable.
-BAJADA_MAXIMA = 0.15
+def _presion_bajada_maxima() -> float:
+    """Tope del núcleo, antes `_presion_bajada_maxima() = 0.15`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().presion_bajada_maxima
 
 
 def _normalizar(valor: float) -> float:
@@ -82,9 +112,9 @@ def por_pool(*, en_uso: int, tamano: int) -> float:
     if tamano <= 0:
         return 0.0
     ocupacion = en_uso / tamano
-    if ocupacion <= POOL_DESDE:
+    if ocupacion <= _presion_pool_desde():
         return 0.0
-    return _normalizar((ocupacion - POOL_DESDE) / (1 - POOL_DESDE))
+    return _normalizar((ocupacion - _presion_pool_desde()) / (1 - _presion_pool_desde()))
 
 
 def por_cola(*, pendientes: int, workers: int) -> float:
@@ -96,7 +126,7 @@ def por_cola(*, pendientes: int, workers: int) -> float:
     """
     if workers <= 0:
         return 1.0 if pendientes else 0.0
-    return _normalizar(pendientes / (workers * COLA_POR_WORKER))
+    return _normalizar(pendientes / (workers * _presion_cola_por_worker()))
 
 
 def calcular(
@@ -157,7 +187,7 @@ def calcular(
     if cruda >= presion_anterior:
         final = cruda
     else:
-        final = max(cruda, presion_anterior - BAJADA_MAXIMA)
+        final = max(cruda, presion_anterior - _presion_bajada_maxima())
 
     return {
         "presion": round(final, 3),

@@ -59,8 +59,19 @@ class Medida:
 
 _medidas: dict[str, Medida] = defaultdict(Medida)
 
+
 # Muestras por forma. Treinta bastan para ver una tendencia y no pesan.
-MAX_MUESTRAS = 30
+def _obs_max_muestras() -> int:
+    """Tope del núcleo, antes `_obs_max_muestras() = 30`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().obs_max_muestras
+
 
 _NUMEROS = re.compile(r"\b\d+\b")
 _CADENAS = re.compile(r"'[^']*'")
@@ -103,7 +114,7 @@ def anotar(sql: str, ms: float, filas: int) -> None:
     medida.ms_total += ms
     medida.filas_total += max(0, filas)
     medida.ms_maximo = max(medida.ms_maximo, ms)
-    if len(medida.muestras) < MAX_MUESTRAS:
+    if len(medida.muestras) < _obs_max_muestras():
         medida.muestras.append((max(0, filas), ms))
 
 

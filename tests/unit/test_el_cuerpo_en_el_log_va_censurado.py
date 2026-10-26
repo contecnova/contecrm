@@ -28,7 +28,7 @@ import os
 from typing import Any
 
 import pytest
-from crmcore.http.middleware import TOPE_CUERPO_LOG, _cuerpo_para_el_log
+from crmcore.http.middleware import _cuerpo_para_el_log, _log_tope_cuerpo
 from crmcore.logging import redactar_estructura
 
 
@@ -99,8 +99,8 @@ def test_lo_que_no_es_sensible_sigue_viéndose() -> None:
 
 
 def test_el_tope_corta_y_lo_dice() -> None:
-    crudo = b'{"nota":"' + b"a" * (TOPE_CUERPO_LOG + 100) + b'"}'
-    assert _cuerpo_para_el_log(crudo[:TOPE_CUERPO_LOG])["cortado"] is True
+    crudo = b'{"nota":"' + b"a" * (_log_tope_cuerpo() + 100) + b'"}'
+    assert _cuerpo_para_el_log(crudo[: _log_tope_cuerpo()])["cortado"] is True
 
 
 def test_la_censura_por_dentro_usa_la_misma_lista_que_el_procesador() -> None:

@@ -23,14 +23,35 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Cada cuánto se reclaman los mensajes que quedaron sin confirmar en un
 # consumidor que murió. Configurable vía Settings en el futuro si hiciera falta
 # afinarlo por despliegue; de momento el valor es el mismo para todos porque el
 # criterio no depende del cliente sino del modo de fallo.
-RECLAMO_CADA_S = 30.0
+def _bus_reclamo_cada_s() -> float:
+    """Tope del núcleo, antes `_bus_reclamo_cada_s() = 30.0`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().bus_reclamo_cada_s
+
+
 # Tiempo que un mensaje puede estar tomado sin confirmar antes de considerarse
 # abandonado. Debe superar con holgura lo que tarda el manejador más lento.
-RECLAMO_INACTIVO_MS = 60_000
+def _bus_reclamo_inactivo_ms() -> int:
+    """Tope del núcleo, antes `_bus_reclamo_inactivo_ms() = 60_000`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().bus_reclamo_inactivo_ms
 
 
 class BusRedis(Bus):
@@ -123,7 +144,7 @@ class BusRedis(Bus):
 
                 ahora = asyncio.get_event_loop().time()
                 if ahora >= proximo_reclamo:
-                    proximo_reclamo = ahora + RECLAMO_CADA_S
+                    proximo_reclamo = ahora + _bus_reclamo_cada_s()
                     await self._reclamar_abandonados(claves, grupo, consumidor, manejador)
             except asyncio.CancelledError:
                 raise
@@ -177,7 +198,7 @@ class BusRedis(Bus):
         for clave in claves:
             try:
                 _cursor, mensajes, _ = await self._r.xautoclaim(
-                    clave, grupo, consumidor, min_idle_time=RECLAMO_INACTIVO_MS, count=10
+                    clave, grupo, consumidor, min_idle_time=_bus_reclamo_inactivo_ms(), count=10
                 )
                 for msg_id, campos in mensajes or []:
                     await self._procesar(clave, grupo, msg_id, campos, manejador)

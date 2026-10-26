@@ -623,7 +623,7 @@ def test_un_veredicto_viejo_caduca_y_se_vuelve_a_preguntar(
     identificador = db.query(IdentificadorFiscal).filter_by(cuenta_id=cuenta.id).one()
     identificador.verificado = True
     identificador.verificado_at = datetime.now(timezone.utc) - timedelta(
-        days=svc.DIAS_VEREDICTO_VIGENTE + 1
+        days=svc._dias_veredicto(db) + 1
     )
     db.flush()
 

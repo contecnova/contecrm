@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**225 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
+**249 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -145,6 +145,30 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
 | Variable de entorno | Clave en caliente | Defecto | Rango | Qué hace |
 |---|---|---|---|---|
+| `JERARQUIA_PROFUNDIDAD_MAXIMA` | — | `12` | 1–100 | Profundidad máxima de una jerarquía de usuarios al resolver quién ve qué. No es un gusto: es la barrera contra un ciclo —A manda a B y B a A— que colgaría la resolución de permisos. |
+| `CARPETA_PROFUNDIDAD_MAXIMA` | — | `8` | 1–50 | Lo mismo para el árbol de carpetas documentales. |
+| `FORMULA_MAX_NODOS` | — | `200` | 1–10000 | Y para el árbol de una fórmula de campo calculado. Un tope bajo evita que una fórmula pegada desde una hoja de cálculo tumbe el servicio. |
+| `BUS_RECLAMO_CADA_S` | — | `30.0` | 1.0–3600.0 | Cada cuánto el consumidor del bus reclama los mensajes que otro dejó a medias, y a partir de cuánta inactividad se consideran abandonados. |
+| `BUS_RECLAMO_INACTIVO_MS` | — | `60000` | 1000–3600000 |  |
+| `COLA_CAIDA_DESDE` | — | `5000` | 1–10000000 | Cuándo se declara que la cola está caída, y cuántos minutos sin latido del relevo bastan para decir que está parado. |
+| `RELEVO_PARADO_MIN` | — | `15` | 1–1440 |  |
+| `MASIVAS_ERRORES_DEVUELTOS` | — | `200` | 1–100000 | Cuántos errores se devuelven de una operación masiva, y cuántos se guardan. Devolver todos convierte la respuesta en un volcado que nadie lee; guardar todos llena la tabla con el primer fichero mal formado. |
+| `TRABAJOS_ERRORES_GUARDADOS` | — | `500` | 1–100000 |  |
+| `PARTICION_MESES_EN_CALIENTE` | — | `13` | 1–120 | Meses que se quedan en la partición caliente antes de archivar. |
+| `RECUPERACION_DIAS_ENTRE_PRUEBAS` | — | `90` | 1–3650 | Cada cuánto hay que probar que una copia de seguridad se restaura. Una copia que nunca se ha restaurado no es una copia: es una esperanza. |
+| `CREDENCIAL_MARGEN_S` | — | `30.0` | 1.0–3600.0 | Margen con el que se renueva una credencial antes de que caduque. |
+| `FIRMA_DURACION_MINIMA_MS` | — | `300` | 1–60000 | Qué hace falta para que una firma manuscrita cuente como firma y no como un toque accidental en la pantalla. |
+| `FIRMA_PUNTOS_MINIMOS` | — | `12` | 2–10000 |  |
+| `FIRMA_INTERNA_VENTANA_S` | — | `30` | 1–3600 | Ventana de validez de la firma interna entre servicios. Corta a propósito: es lo que acota una petición robada en tránsito. |
+| `LOG_TOPE_CUERPO` | — | `4096` | 0–1048576 | Cuánto cuerpo de petición se guarda en el registro. Guardar todo es guardar datos personales en los logs sin retención. |
+| `REVERIFICACION_VALIDEZ_MIN` | — | `15` | 1–1440 | Cuánto vale una reverificación de segundo factor antes de volver a pedirla. |
+| `MOVIL_DIAS_AVISO_COLA` | — | `7` | 1–365 | Con cuántos días de antelación se avisa de que la cola del móvil lleva sin sincronizar. |
+| `OBS_MAX_MUESTRAS` | — | `30` | 1–10000 | Cuántas muestras de consulta lenta se guardan para el análisis. |
+| `PRESION_POOL_DESDE` | — | `0.7` | 0.0–1.0 | El control de presión: desde qué ocupación del pool se empieza a frenar, cuánta cola por worker se tolera y cuánto se puede bajar de golpe. Bajar demasiado de una vez produce un vaivén peor que la congestión. |
+| `PRESION_COLA_POR_WORKER` | — | `200` | 1–100000 |  |
+| `PRESION_BAJADA_MAXIMA` | — | `0.15` | 0.0–1.0 |  |
+| `AJUSTES_TTL_CACHE_S` | — | `30.0` | 0.0–3600.0 | Cuánto se cachean los ajustes en caliente. Va aquí y no como ajuste en caliente a propósito: leerlo de la base sería preguntarle a la caché cuánto dura la caché. |
+| `TAREA_FALLOS_PARA_AVERIA` | — | `3` | 1–1000 | Fallos seguidos tras los que una tarea de fondo se declara averiada. |
 | `RATE_LIMIT_ENABLED` | — | `True` |  |  |
 | `RATE_LIMIT_VENTANA_S` | — | `60` | 1–3600 | Ventana de conteo. Una ventana corta reacciona antes a una ráfaga; una larga tolera mejor el tráfico a golpes de un proceso por lotes. |
 | `RATE_LIMIT_POR_USUARIO` | 🔥 `rate_limit_por_usuario` | `600` | 0–1000000 | Topes por dimensión. Se aplican TODOS: el más restrictivo manda. Están separados porque el abuso tiene formas distintas — un usuario con un bucle, una integración mal configurada, un tenant entero desbocado. |

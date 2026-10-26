@@ -55,12 +55,33 @@ ESTADOS = ("operativo", "degradado", "caido")
 # retraso. No es un umbral de alarma —de eso se encarga Prometheus— sino el
 # punto en que el cliente ya lo nota, porque sus integraciones van detrás.
 COLA_DEGRADADA = 100
+
+
 # Y el punto en el que ya no es un retraso, es que el relevo no está corriendo.
-COLA_CAIDA = 5_000
+def _cola_caida_desde() -> int:
+    """Tope del núcleo, antes `_cola_caida_desde() = 5_000`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().cola_caida_desde
+
 
 # Minutos sin publicar nada con cola pendiente: eso ya no es carga, es que nadie
 # la está vaciando.
-RELEVO_PARADO_MIN = 15
+def _relevo_parado_min() -> int:
+    """Tope del núcleo, antes `_relevo_parado_min() = 15`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().relevo_parado_min
 
 
 def _peor(estados: list[str]) -> str:
@@ -90,16 +111,16 @@ def _cola_saliente(db: Session, tenant_id: UUID) -> dict[str, Any]:
 
     estado = "operativo"
     detalle = "Al día"
-    if pendientes >= COLA_CAIDA:
+    if pendientes >= _cola_caida_desde():
         estado, detalle = "caido", f"{pendientes} eventos sin publicar"
     elif pendientes >= COLA_DEGRADADA:
         estado, detalle = "degradado", f"{pendientes} eventos esperando"
     elif pendientes and ultimo is not None:
         # Poca cola pero parada: peor señal que mucha cola moviéndose.
-        if _aware(ultimo) < datetime.now(timezone.utc) - timedelta(minutes=RELEVO_PARADO_MIN):
+        if _aware(ultimo) < datetime.now(timezone.utc) - timedelta(minutes=_relevo_parado_min()):
             estado, detalle = (
                 "degradado",
-                f"{pendientes} eventos sin publicar desde hace más de {RELEVO_PARADO_MIN} min",
+                f"{pendientes} eventos sin publicar desde hace más de {_relevo_parado_min()} min",
             )
     return {
         "componente": "eventos_salientes",

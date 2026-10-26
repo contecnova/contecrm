@@ -63,10 +63,20 @@ H_TIPO = "x-crm-tipo"
 H_FIRMA = "x-crm-firma"
 H_MOMENTO = "x-crm-momento"
 
+
 # Ventana en la que se acepta la firma interna. Corta: estas peticiones viajan
 # por la red interna y tardan milisegundos, así que una ventana amplia solo
 # amplía el margen para reutilizar una petición capturada.
-VENTANA_FIRMA_S = 30
+def _firma_interna_ventana_s() -> int:
+    """Tope del núcleo, antes `_firma_interna_ventana_s() = 30`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().firma_interna_ventana_s
 
 
 def firmar_cabeceras_internas(valores: dict[str, str], secreto: str) -> dict[str, str]:
@@ -92,7 +102,7 @@ def _verificar_firma(request: Request, secreto: str) -> bool:
     momento = request.headers.get(H_MOMENTO, "")
     if not firma or not momento.isdigit():
         return False
-    if abs(time.time() - int(momento)) > VENTANA_FIRMA_S:
+    if abs(time.time() - int(momento)) > _firma_interna_ventana_s():
         logger.warning("deps.firma_caducada")
         return False
     valores = {

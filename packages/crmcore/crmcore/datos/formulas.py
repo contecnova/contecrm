@@ -99,10 +99,20 @@ FUNCIONES: dict[str, Callable[..., Any]] = {
     "vacio": lambda v: v in (None, "", [], {}),
 }
 
+
 # Tope de nodos de la expresión. Una fórmula de negocio no pasa de veinte; mil
 # nodos es alguien pegando algo generado, y evaluarlo en cada lectura de cada
 # fila de un listado convierte una lista en una espera.
-MAX_NODOS = 200
+def _formula_max_nodos() -> int:
+    """Tope del núcleo, antes `_formula_max_nodos() = 200`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().formula_max_nodos
 
 
 def validar(formula: str) -> list[str]:
@@ -119,8 +129,10 @@ def validar(formula: str) -> list[str]:
         return [f"No se entiende la fórmula: {exc.msg}"]
 
     nodos = list(ast.walk(arbol))
-    if len(nodos) > MAX_NODOS:
-        problemas.append(f"La fórmula tiene {len(nodos)} partes y el tope son {MAX_NODOS}")
+    if len(nodos) > _formula_max_nodos():
+        problemas.append(
+            f"La fórmula tiene {len(nodos)} partes y el tope son {_formula_max_nodos()}"
+        )
 
     for nodo in nodos:
         if isinstance(nodo, ast.Call):

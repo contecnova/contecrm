@@ -61,9 +61,19 @@ ESTADOS = ("encolado", "ejecutando", "completado", "fallido", "cancelado")
 ESTADOS_VIVOS = ("encolado", "ejecutando")
 ESTADOS_FINALES = ("completado", "fallido", "cancelado")
 
+
 # Errores que se guardan en la ficha del trabajo. Ver la cabecera: el recuento
 # sigue siendo exacto por encima de este tope.
-MAX_ERRORES_GUARDADOS = 500
+def _trabajos_errores_guardados() -> int:
+    """Tope del núcleo, antes `_trabajos_errores_guardados() = 500`.
+
+    Era una constante de módulo. Sale del `.env`, no de los ajustes en
+    caliente: es un tope operativo del despliegue y «por cliente» no
+    significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().trabajos_errores_guardados
 
 
 class Trabajo(EntidadBase):
@@ -409,7 +419,7 @@ def avanzar(db: Session, trabajo: Trabajo, *, tanda_max: int) -> bool:
     trabajo.ok += tanda.ok
     trabajo.fallidos += tanda.fallidos
     if tanda.errores:
-        hueco = MAX_ERRORES_GUARDADOS - len(trabajo.errores)
+        hueco = _trabajos_errores_guardados() - len(trabajo.errores)
         if hueco > 0:
             trabajo.errores = [*trabajo.errores, *tanda.errores[:hueco]]
     if tanda.resultado:
