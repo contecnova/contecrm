@@ -342,7 +342,7 @@ def test_la_pagina_tiene_tope_aunque_pidan_mas(
         scim.crear_usuario(uow, tenant_id, {"userName": f"u{i}@ejemplo.com"})
     uow.db.flush()
     filas, _ = scim.buscar_usuarios(uow.db, tenant_id, por_pagina=100000)
-    assert len(filas) <= scim.MAXIMO_POR_PAGINA
+    assert len(filas) <= scim._scim_maximo_por_pagina()
 
 
 @pytest.mark.db
@@ -364,7 +364,7 @@ def test_el_servidor_no_declara_lo_que_no_tiene() -> None:
     assert config["bulk"]["supported"] is False
     assert config["sort"]["supported"] is False
     assert config["patch"]["supported"] is True
-    assert config["filter"]["maxResults"] == scim.MAXIMO_POR_PAGINA
+    assert config["filter"]["maxResults"] == scim._scim_maximo_por_pagina()
 
 
 # ── Grupos ────────────────────────────────────────────────────────────────

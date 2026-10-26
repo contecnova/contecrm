@@ -392,10 +392,19 @@ def _herramienta(db: Session, tenant_id: UUID, nombre: str) -> HerramientaConect
 # no ve nadie.
 PRIORIDAD = {"baja": 0, "actualizacion": 1, "alta": 2}
 
+
 # Intentos antes de apartar a cuarentena. Reintentar para siempre esconde el
 # problema en un log que nadie mira; rendirse a la primera convierte un fallo de
 # red en trabajo manual.
-MAX_INTENTOS = 5
+def _suite_max_intentos() -> int:
+    """Antes `_suite_max_intentos() = 5`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().suite_max_intentos
 
 
 def encolar(
@@ -506,7 +515,7 @@ def anotar_resultado(
         fila.reintentar_at = None
         if identificador_externo:
             fila.identificador_externo = identificador_externo
-    elif fila.intentos >= MAX_INTENTOS:
+    elif fila.intentos >= _suite_max_intentos():
         # A cuarentena, no a un log. Reintentar para siempre esconde el problema
         # donde nadie mira; apartarlo y enseñarlo es lo único que hace que
         # alguien lo arregle.

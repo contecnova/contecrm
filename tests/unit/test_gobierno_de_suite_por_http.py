@@ -413,7 +413,7 @@ def test_lo_que_la_herramienta_rechaza_acaba_en_cuarentena_con_lo_que_se_mando(
     """
     from sqlalchemy import update
 
-    from services.tenancy.suite import MAX_INTENTOS, SincronizacionSuite
+    from services.tenancy.suite import SincronizacionSuite, _suite_max_intentos
 
     base_url, estado = herramienta_remota
     _conectar(cliente, cabeceras, base_url, con_login=False)
@@ -427,7 +427,7 @@ def test_lo_que_la_herramienta_rechaza_acaba_en_cuarentena_con_lo_que_se_mando(
         json={"id": str(uuid4()), "email": "ana@cliente.com", "roles": ["director"]},
     )
 
-    for _ in range(MAX_INTENTOS):
+    for _ in range(_suite_max_intentos()):
         respuesta = cliente.post("/api/v1/suite/aplicar", headers=cabeceras)
         assert respuesta.status_code == 200, respuesta.text
         db.execute(update(SincronizacionSuite).values(reintentar_at=None))

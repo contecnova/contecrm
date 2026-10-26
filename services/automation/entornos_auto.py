@@ -38,10 +38,19 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Cuántos registros afectados hacen que la prueba exija confirmación aparte. No
 # es un límite técnico: es el número a partir del cual un error deja de ser un
 # error y pasa a ser un incidente que se cuenta a los clientes.
-UMBRAL_MASIVO = 500
+def _cambio_umbral_masivo() -> int:
+    """Antes `_cambio_umbral_masivo() = 500`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().cambio_umbral_masivo
 
 
 def probar_en_seco(
@@ -86,10 +95,10 @@ def probar_en_seco(
         # arregla; cuatro mil correos enviados, no.
         "correos_que_saldrian": total * len(envios),
         "registros_que_cambiarian": total * len(escrituras),
-        "es_masiva": total >= UMBRAL_MASIVO,
+        "es_masiva": total >= _cambio_umbral_masivo(),
         "aviso": (
             ""
-            if total < UMBRAL_MASIVO
+            if total < _cambio_umbral_masivo()
             else f"Esto tocaría {total} registros. A partir de ahí, un error deja de "
             "ser un error y pasa a ser un incidente que hay que contarle a los "
             "clientes: activarla exige confirmarlo aparte."

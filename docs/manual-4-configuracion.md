@@ -292,6 +292,17 @@ Y en ningún caso el valor va como defecto de un argumento: eso se evalúa al
 **importar**, así que congelaría el ajuste para toda la vida del proceso y
 cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.
 
+> **Medido el 26-10-2026: de 85 a 0.** No queda ninguna constante numérica de
+> módulo en `services` ni en `crmcore`, salvo seis que no son umbrales y están
+> exentas con su motivo: el radio de la Tierra, el tamaño de un nonce de
+> AES-GCM, la longitud mínima de clave, el identificador del cerrojo de
+> migración, el 4.5:1 de WCAG y el ancho de la columna de deduplicación —esta
+> última se movió, y al moverla se vio que cambiarla exige una migración, así
+> que volvió al código—.
+>
+> El guardián sigue puesto: lo que vuelva a escribirse en el código cae en
+> `test_ningun_umbral_nuevo_nace_en_el_codigo`.
+
 #### Lo que ya se puede afinar
 
 | Clave | Qué decide | Por cliente |

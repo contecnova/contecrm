@@ -35,9 +35,18 @@ logger = get_logger(__name__)
 # comprueba de una forma y con texto libre no se comprueba ninguno.
 EJES_DE_ALCANCE = ("categoria", "geografia", "cliente", "canal")
 
+
 # Cuánto antes de la fecha límite de preaviso se avisa. Un mes: menos no da
 # tiempo a negociar nada y la renovación automática se convierte en la decisión.
-DIAS_AVISO_PREAVISO = 30
+def _acuerdo_dias_preaviso() -> int:
+    """Antes `_acuerdo_dias_preaviso() = 30`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().acuerdo_dias_preaviso
 
 
 def _hoy(db: Any = None) -> date:
@@ -98,7 +107,7 @@ def estado_del_contrato(
         "dias_para_vencer": dias,
         "limite_preaviso": limite_preaviso.isoformat(),
         "dias_para_el_preaviso": dias_para_preaviso,
-        "hay_que_avisar_ya": 0 <= dias_para_preaviso <= DIAS_AVISO_PREAVISO,
+        "hay_que_avisar_ya": 0 <= dias_para_preaviso <= _acuerdo_dias_preaviso(),
         "preaviso_pasado": dias_para_preaviso < 0 and renovacion_automatica,
         "compromisos_sin_cobertura": [
             {"referencia": c.get("referencia"), "fecha": c["fecha"].isoformat()}

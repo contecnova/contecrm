@@ -47,11 +47,21 @@ logger = get_logger(__name__)
 # condiciones anidadas es exactamente donde se cuelan los errores.
 COMBINADORES = ("y", "o", "no")
 
+
 # Profundidad máxima del árbol. Existe porque una definición con anidamiento sin
 # fin —por error o a propósito— puede hacer que la evaluación no termine, y el
 # síntoma sería una petición que no responde. Siete niveles es mucho más de lo
 # que nadie escribe a mano.
-PROFUNDIDAD_MAXIMA = 7
+def _segmento_profundidad_maxima() -> int:
+    """Antes `_segmento_profundidad_maxima() = 7`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().segmento_profundidad_maxima
+
 
 # Operadores temporales relativos. Se evalúan **contra el momento de la
 # consulta**, que es lo que hace que un segmento dinámico signifique hoy lo que
@@ -77,9 +87,9 @@ def validar(definicion: dict[str, Any], *, profundidad: int = 0) -> None:
     lanzar la campaña ya ha costado el envío. Aquí falla el que la escribe, con
     el segmento delante.
     """
-    if profundidad > PROFUNDIDAD_MAXIMA:
+    if profundidad > _segmento_profundidad_maxima():
         raise ErrorValidacion(
-            f"El árbol de condiciones pasa de {PROFUNDIDAD_MAXIMA} niveles.",
+            f"El árbol de condiciones pasa de {_segmento_profundidad_maxima()} niveles.",
             error_code="marketing.segmento_demasiado_anidado",
         )
     if not isinstance(definicion, dict) or not definicion:

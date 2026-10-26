@@ -9,6 +9,24 @@ from pydantic_settings import BaseSettings
 
 
 class _AuthSettings(BaseSettings):
+    # ── Lo que estaba escrito en el código ────────────────────────────────
+    # Longitud mínima de una contraseña nueva. Doce es el suelo razonable de
+    # hoy; una instalación con un marco propio puede exigir más, pero no
+    # menos — y por eso el rango empieza en 12 y no en 8.
+    contrasena_minimo: int = Field(12, ge=12, le=256)
+    # Cuánto vale el enlace de restablecer. Corto a propósito: es lo que acota
+    # un correo reenviado o leído por quien no debía.
+    restablecer_validez_min: int = Field(30, ge=1, le=1_440)
+    # Cuánto vale el reto de una passkey. Muy corto: es lo que impide
+    # reutilizar un reto capturado.
+    passkey_reto_min: int = Field(5, ge=1, le=60)
+    # Tope de resultados por página en SCIM. Lo fija el proveedor de identidad
+    # al sincronizar, y sin techo una sincronización completa se trae el
+    # directorio entero de una vez.
+    scim_maximo_por_pagina: int = Field(200, ge=1, le=10_000)
+    # Cuánto puede durar un usuario invitado antes de caducar.
+    invitado_max_dias: int = Field(90, ge=1, le=3650)
+
     # ── Firma de tokens ───────────────────────────────────────────────────
     # Firma TODOS los tokens de acceso y refresco. Si en producción sigue
     # valiendo el placeholder, cualquiera puede emitirse un token de

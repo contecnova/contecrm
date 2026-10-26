@@ -45,9 +45,18 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 # recordar para no volver a preguntarlo.
 DECISIONES = ("fusionar", "no_es_duplicado", "descartar")
 
+
 # Por debajo de esto no se propone nada. No es un umbral escrito a mano: se lee
 # de los ajustes, y este es solo el valor con el que se estrena.
-UMBRAL_POR_DEFECTO = 0.72
+def _duplicados_umbral_defecto() -> float:
+    """Antes `_duplicados_umbral_defecto() = 0.72`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().duplicados_umbral_defecto
 
 
 class CandidatoDuplicado(Base, TimestampMixin):
@@ -89,9 +98,9 @@ def _umbral(db: Session) -> float:
 
     valor = rt.efectivo("duplicados_umbral_propuesta", db)
     try:
-        return float(valor) if valor is not None else UMBRAL_POR_DEFECTO
+        return float(valor) if valor is not None else _duplicados_umbral_defecto()
     except (TypeError, ValueError):
-        return UMBRAL_POR_DEFECTO
+        return _duplicados_umbral_defecto()
 
 
 def barrido(uow: UnidadDeTrabajo, *, limite: int = 500) -> dict[str, Any]:

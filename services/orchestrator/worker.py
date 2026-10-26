@@ -37,13 +37,34 @@ from services.orchestrator.motor import Motor
 
 logger = get_logger(__name__)
 
+
 # Cuánto se queda un worker una instancia antes de que otro pueda recuperarla.
 # Debe superar con holgura lo que tarda el paso más lento; si se queda corto,
 # dos workers avanzan la misma instancia a la vez.
-BLOQUEO_MINUTOS = 5
+def _worker_bloqueo_min() -> int:
+    """Antes `_worker_bloqueo_min() = 5`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().worker_bloqueo_min
+
+
 # Instancias por vuelta. Lotes grandes amortizan el viaje a la base; lotes
 # pequeños reparten mejor entre réplicas.
-LOTE = 20
+def _worker_lote() -> int:
+    """Antes `_worker_lote() = 20`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().worker_lote
+
+
 # Espera cuando no hay nada vencido. Es la latencia máxima de un temporizador,
 # así que no conviene subirla mucho.
 ESPERA_VACIO_S = 2.0
@@ -74,7 +95,7 @@ def _tomar_lote(db: Any, worker_id: str) -> list[InstanciaProceso]:
                 ),
             )
             .order_by(InstanciaProceso.despertar_at)
-            .limit(LOTE)
+            .limit(_worker_lote())
             .with_for_update(skip_locked=True)
         )
         .scalars()
@@ -82,7 +103,7 @@ def _tomar_lote(db: Any, worker_id: str) -> list[InstanciaProceso]:
     )
     for instancia in instancias:
         instancia.tomada_por = worker_id
-        instancia.tomada_hasta = ahora + timedelta(minutes=BLOQUEO_MINUTOS)
+        instancia.tomada_hasta = ahora + timedelta(minutes=_worker_bloqueo_min())
     db.commit()
     return list(instancias)
 
@@ -167,7 +188,7 @@ def _vencer_tareas(db: Any) -> int:
                 TareaHumana.vence_at.is_not(None),
                 TareaHumana.vence_at < ahora,
             )
-            .limit(LOTE)
+            .limit(_worker_lote())
         )
         .scalars()
         .all()

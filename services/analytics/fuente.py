@@ -307,10 +307,20 @@ RUTA_FUENTES = "/api/sources"
 # Y la de ejecutar un plan de informe. Mismo prefijo, por lo mismo.
 RUTA_PLAN = "/api/query/plan"
 
+
 # Lo que se espera a una muestra al medir la forma de un listado. Corto a
 # propósito: son decenas de peticiones y lo único que se busca es la forma de la
 # primera fila. Una ruta que tarde más que esto tampoco serviría como fuente.
-PLAZO_MUESTRA_S = 15.0
+def _fuente_plazo_muestra_s() -> float:
+    """Tope, antes `_fuente_plazo_muestra_s() = 15.0`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().fuente_plazo_muestra_s
+
 
 # Lo que hace falta para poder dar de alta una fuente allí. `sources:write` no
 # existía: sus alcances delegados llegaban a `sources:read`, así que esta
@@ -519,7 +529,7 @@ def _entidades_de(base_url: str, clave_api: str) -> list[dict[str, Any]]:
                 muestra = cli.get(
                     f"{raiz}{ruta[len('/api/v1') :]}?limite=1",
                     headers=cabeceras,
-                    timeout=PLAZO_MUESTRA_S,
+                    timeout=_fuente_plazo_muestra_s(),
                 )
             except Exception:  # noqa: BLE001 — una ruta que no contesta no es una entidad
                 continue

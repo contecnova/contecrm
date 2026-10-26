@@ -36,11 +36,21 @@ logger = get_logger(__name__)
 # equivocado.
 PREFIJO = "crm_"
 
+
 # Cuánto se recuerda una clave válida. Sin caché, cada petición de una
 # integración añadiría una llamada a `identity` — o sea, el doble de latencia en
 # el camino de todas las llamadas de máquina. Treinta segundos es el compromiso:
 # revocar una clave tarda eso en surtir efecto y se dice en el manual.
-TTL_CACHE_S = 30.0
+def _claves_ttl_cache_s() -> float:
+    """Antes `_claves_ttl_cache_s() = 30.0`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().claves_ttl_cache_s
+
 
 _cache: dict[str, tuple[float, Principal]] = {}
 
@@ -102,5 +112,5 @@ async def principal_de_clave(
         # una clave de solo lectura no escribe aunque su rol pudiera.
         scopes=frozenset(datos.get("scopes") or []),
     )
-    _cache[secreto] = (ahora + TTL_CACHE_S, principal)
+    _cache[secreto] = (ahora + _claves_ttl_cache_s(), principal)
     return principal

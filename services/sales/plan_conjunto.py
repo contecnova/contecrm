@@ -58,9 +58,18 @@ PREGUNTAS = (
     "que_falta_por_saber",  # lo que no sabemos, que es lo que más pesa
 )
 
+
 # Cuántos días sin tocar el plan antes de que deje de valer. Un plan acordado en
 # marzo y no revisado desde entonces no es un acuerdo: es un documento.
-DIAS_SIN_TOCAR = 21
+def _plan_dias_sin_tocar() -> int:
+    """Antes `_plan_dias_sin_tocar() = 21`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().plan_dias_sin_tocar
 
 
 def _hoy(db: Any = None) -> date:

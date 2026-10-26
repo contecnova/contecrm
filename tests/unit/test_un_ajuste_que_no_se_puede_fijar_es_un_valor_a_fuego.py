@@ -132,16 +132,28 @@ def test_el_umbral_que_fusiona_solo_se_puede_cambiar() -> None:
     cuándo se EJECUTA sola, que es la destructiva."""
     claves = _catalogo_con_los_servicios_arrancados()
     assert "identidad_umbral_automatico" in claves
-    # Se mira LA LÍNEA QUE DECIDE y no el fichero entero: el nombre aparece en
-    # dos sitios, así que buscarlo suelto deja pasar que la comparación vuelva
-    # a la constante mientras el otro uso lo mantiene. Medido: con el texto
-    # suelto, la mutación no caía.
-    fuente = (RAIZ / "services/party/identidad.py").read_text(encoding="utf-8")
-    decision = next(
-        (ln for ln in fuente.splitlines() if "automatico = " in ln and "umbral" in ln.lower()),
-        "",
-    )
-    assert decision, "ha desaparecido la línea que decide el umbral automático"
-    assert (
-        "efectivo(" in decision
-    ), f"la unión automática ha vuelto a decidir con la constante: {decision.strip()!r}"
+    # Se mira LA ASIGNACIÓN QUE DECIDE, por el árbol y no por texto. El nombre
+    # aparece en dos sitios, así que buscarlo suelto deja pasar que la
+    # comparación vuelva a la constante mientras el otro uso lo mantiene
+    # —medido: con el texto suelto, la mutación no caía—. Y por AST y no por
+    # línea, porque una asignación puede ocupar varias: una prueba que depende
+    # de dónde parte el formateador se rompe sin que nada esté mal.
+    import ast
+
+    arbol = ast.parse((RAIZ / "services/party/identidad.py").read_text(encoding="utf-8"))
+    decisiones = [
+        n
+        for n in ast.walk(arbol)
+        if isinstance(n, ast.Assign)
+        and any(getattr(d, "id", "") == "automatico" for d in n.targets)
+    ]
+    assert decisiones, "ha desaparecido la asignación que decide el umbral automático"
+    for decision in decisiones:
+        llamadas = {
+            getattr(c.func, "attr", "") or getattr(c.func, "id", "")
+            for c in ast.walk(decision)
+            if isinstance(c, ast.Call)
+        }
+        assert "efectivo" in llamadas, (
+            "la unión automática ha vuelto a decidir con una constante: " f"{ast.unparse(decision)}"
+        )

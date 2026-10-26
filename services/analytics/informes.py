@@ -103,11 +103,20 @@ IDENTIFICADOR = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 PERIODOS = ("dia", "semana", "mes", "trimestre", "anio")
 FORMATOS = ("csv", "excel", "pdf", "json")
 
+
 # Tope de filas por ejecución. Es un ajuste con valor de partida, no un límite
 # duro escondido: un informe que devuelve medio millón de filas tumba el
 # navegador de quien lo abrió y no lo lee nadie, pero el tope correcto depende
 # del cliente.
-TOPE_FILAS_DEFECTO = 50_000
+def _informe_tope_filas() -> int:
+    """Tope, antes `_informe_tope_filas() = 50_000`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().informe_tope_filas
 
 
 class Informe(Base, TimestampMixin):
@@ -423,9 +432,9 @@ def validar(definicion: dict[str, Any]) -> list[str]:
         )
     if not definicion.get("columnas") and not metricas:
         avisos.append("El informe no enseña ninguna columna ni calcula nada: saldrá vacío.")
-    if definicion.get("limite") and int(definicion["limite"]) > TOPE_FILAS_DEFECTO:
+    if definicion.get("limite") and int(definicion["limite"]) > _informe_tope_filas():
         avisos.append(
-            f"El límite pedido pasa de {TOPE_FILAS_DEFECTO} filas; se recortará al "
+            f"El límite pedido pasa de {_informe_tope_filas()} filas; se recortará al "
             "tope configurado del tenant."
         )
     return avisos
@@ -608,7 +617,7 @@ def compilar(
             {"campo": "propietario_id", "operador": "=", "valor": str(usuario_id), "impuesto": True}
         )
 
-    limite = min(int(informe.limite or TOPE_FILAS_DEFECTO), tope or TOPE_FILAS_DEFECTO)
+    limite = min(int(informe.limite or _informe_tope_filas()), tope or _informe_tope_filas())
     return {
         "vista": vista,
         "objeto": informe.objeto,

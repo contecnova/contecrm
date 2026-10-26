@@ -43,10 +43,20 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
+
 # Cuánto vale un reto. Muy corto: el usuario está delante del navegador y el
 # diálogo se contesta en segundos. Alargarlo solo alarga la ventana de reproducir
 # una firma capturada.
-MINUTOS_RETO = 5
+def _passkey_reto_min() -> int:
+    """Tope, antes `_passkey_reto_min() = 5`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().passkey_reto_min
+
 
 PROPOSITOS = ("registro", "entrada")
 
@@ -115,7 +125,7 @@ def _guardar_reto(
             usuario_id=usuario_id,
             reto=bytes_to_base64url(reto),
             proposito=proposito,
-            caduca_at=_ahora() + timedelta(minutes=MINUTOS_RETO),
+            caduca_at=_ahora() + timedelta(minutes=_passkey_reto_min()),
         )
     )
     db.flush()

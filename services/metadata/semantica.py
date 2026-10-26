@@ -53,9 +53,18 @@ ROLES_SEMANTICOS = (
     "interno",  # no se explota: notas, campos técnicos
 )
 
+
 # Longitud mínima de una descripción útil. No es una cifra mágica: por debajo de
 # eso lo que se escribe es la etiqueta otra vez, y eso ya lo teníamos.
-MINIMO_DESCRIPCION = 25
+def _semantica_minimo_descripcion() -> int:
+    """Antes `_semantica_minimo_descripcion() = 25`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().semantica_minimo_descripcion
 
 
 def describir_campo(
@@ -84,7 +93,7 @@ def describir_campo(
         )
     texto = descripcion.strip()
     if explotable and rol != "interno":
-        if len(texto) < MINIMO_DESCRIPCION:
+        if len(texto) < _semantica_minimo_descripcion():
             raise ErrorValidacion(
                 f"La descripción de «{nombre}» es demasiado corta para servir de algo. "
                 "Hace falta qué significa, en qué se basa y quién lo rellena: con menos, "

@@ -33,10 +33,19 @@ logger = get_logger(__name__)
 # con los meses de 31 días.
 PERIODOS = ("dia", "semana", "mes", "trimestre")
 
+
 # Mínimo de sujetos para que un porcentaje signifique algo. Por debajo, una
 # cohorte de tres clientes pasa del 100 % al 66 % porque uno se fue, y eso se lee
 # como un desplome.
-MINIMO_COHORTE = 5
+def _cohorte_minimo() -> int:
+    """Tope, antes `_cohorte_minimo() = 5`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().cohorte_minimo
 
 
 def _redondear(valor: Decimal) -> Decimal:
@@ -86,7 +95,7 @@ def cohortes(
     periodo: str = "mes",
     periodos: int = 6,
     hoy: date | None = None,
-    minimo: int = MINIMO_COHORTE,
+    minimo: int = _cohorte_minimo(),
 ) -> dict[str, Any]:
     """Retención por cohorte de alta (CRM-05.01.03.04).
 

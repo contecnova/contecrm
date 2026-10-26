@@ -78,10 +78,30 @@ PESOS: dict[str, int] = {
     "nombre": 5,
 }
 
+
 # Umbrales por defecto. Lo automático pide más que lo manual porque una persona
 # que une dos fichas está mirando las dos, y un proceso nocturno no mira nada.
-UMBRAL_AUTOMATICO = 150
-UMBRAL_PROPUESTA = 80
+def _identidad_umbral_automatico() -> int:
+    """Antes `_identidad_umbral_automatico() = 150`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().identidad_umbral_automatico
+
+
+def _identidad_umbral_propuesta() -> int:
+    """Antes `_identidad_umbral_propuesta() = 80`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().identidad_umbral_propuesta
+
 
 RE_NO_DIGITOS = re.compile(r"\D")
 
@@ -254,7 +274,9 @@ def resolver(
     teléfono de centralita compartida es cómo se mezclan dos clientes.
     """
     minimo = int(
-        umbral if umbral is not None else (rt.efectivo("identidad_umbral", db) or UMBRAL_PROPUESTA)
+        umbral
+        if umbral is not None
+        else (rt.efectivo("identidad_umbral", db) or _identidad_umbral_propuesta())
     )
     coincidencias: dict[str, dict[str, Any]] = {}
     sin_reconocer: list[str] = []
@@ -341,7 +363,9 @@ def proponer_uniones(
     propuestas se revisan.
     """
     minimo = int(
-        umbral if umbral is not None else (rt.efectivo("identidad_umbral", db) or UMBRAL_PROPUESTA)
+        umbral
+        if umbral is not None
+        else (rt.efectivo("identidad_umbral", db) or _identidad_umbral_propuesta())
     )
     filas = (
         db.execute(
@@ -396,7 +420,9 @@ def proponer_uniones(
                 p
                 for p in propuestas
                 if p["puntuacion"]
-                >= int(rt.efectivo("identidad_umbral_automatico", db) or UMBRAL_AUTOMATICO)
+                >= int(
+                    rt.efectivo("identidad_umbral_automatico", db) or _identidad_umbral_automatico()
+                )
             ]
         ),
         "medible": bool(filas),
@@ -428,7 +454,9 @@ def unir(
     # de los ajustes y éste no, así que se podía afinar cuándo se PROPONE una
     # fusión y no cuándo se EJECUTA sola, que es la destructiva. Medido el
     # 12-10-2026.
-    automatico = int(rt.efectivo("identidad_umbral_automatico", uow.db) or UMBRAL_AUTOMATICO)
+    automatico = int(
+        rt.efectivo("identidad_umbral_automatico", uow.db) or _identidad_umbral_automatico()
+    )
     if modo == "automatica" and puntuacion < automatico:
         raise Conflicto(
             "Una unión automática necesita una puntuación mucho más alta que una "

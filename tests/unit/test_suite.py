@@ -200,7 +200,7 @@ def test_tras_agotar_intentos_va_a_cuarentena(
     suite.provisionar_usuario(db, tenant_id, _usuario())
     db.flush()
     fila = suite.pendientes(db, tenant_id)[0]
-    for _ in range(suite.MAX_INTENTOS):
+    for _ in range(suite._suite_max_intentos()):
         suite.anotar_resultado(db, fila, ok=False, detalle="HTTP 500")
     db.flush()
 
@@ -218,7 +218,7 @@ def test_una_baja_en_cuarentena_se_marca_como_grave(
     suite.provisionar_usuario(db, tenant_id, _usuario(), operacion="baja")
     db.flush()
     fila = suite.pendientes(db, tenant_id)[0]
-    for _ in range(suite.MAX_INTENTOS):
+    for _ in range(suite._suite_max_intentos()):
         suite.anotar_resultado(db, fila, ok=False, detalle="HTTP 500")
     db.flush()
     assert suite.cuarentena(db, tenant_id)[0]["gravedad"] == "alta"
@@ -246,7 +246,7 @@ def test_reintentar_saca_de_cuarentena(
     suite.provisionar_usuario(db, tenant_id, _usuario())
     db.flush()
     fila = suite.pendientes(db, tenant_id)[0]
-    for _ in range(suite.MAX_INTENTOS):
+    for _ in range(suite._suite_max_intentos()):
         suite.anotar_resultado(db, fila, ok=False, detalle="x")
     db.flush()
     suite.reintentar(db, tenant_id, fila.id)

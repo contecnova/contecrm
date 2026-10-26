@@ -1082,10 +1082,19 @@ def presion(db: Session, tenant_id: UUID, *, dias: int = 7, canal: str = "email"
 
 # ── Rebotes y quejas (CRM-02.03.01.04) ────────────────────────────────────
 
+
 # Rebotes blandos seguidos a partir de los cuales se suprime. Un blando aislado
 # es normal —el buzón estaba lleno—; cinco seguidos son una dirección muerta que
 # está hundiendo la reputación de envío.
-BLANDOS_PARA_SUPRIMIR = 5
+def _rebotes_blandos_para_suprimir() -> int:
+    """Antes `_rebotes_blandos_para_suprimir() = 5`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().rebotes_blandos_para_suprimir
 
 
 def anotar_rebote(
@@ -1148,7 +1157,7 @@ def anotar_rebote(
             select(Rebote.tipo)
             .where(Rebote.tenant_id == uow.tenant_id, Rebote.direccion == direccion)
             .order_by(Rebote.created_at.desc())
-            .limit(BLANDOS_PARA_SUPRIMIR)
+            .limit(_rebotes_blandos_para_suprimir())
         ).scalars()
     )
     seguidos = 0
@@ -1157,7 +1166,7 @@ def anotar_rebote(
             break
         seguidos += 1
 
-    if seguidos >= BLANDOS_PARA_SUPRIMIR:
+    if seguidos >= _rebotes_blandos_para_suprimir():
         seg.suprimir(
             uow,
             direccion=direccion,

@@ -306,7 +306,7 @@ def test_el_freno_se_suelta_solo() -> None:
     ano.reiniciar()
     tenant = uuid4()
     ano.frenar(tenant, motivo="pico")
-    despues = dt.now(timezone.utc) + timedelta(minutes=ano.MINUTOS_FRENO + 1)
+    despues = dt.now(timezone.utc) + timedelta(minutes=ano._anomalia_minutos_freno() + 1)
     assert ano.estado(tenant, ahora=despues)["frenado"] is False
 
 

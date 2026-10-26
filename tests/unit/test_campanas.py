@@ -464,7 +464,7 @@ def test_varios_blandos_seguidos_si_suprimen(
     """Sin el histórico hay que elegir entre suprimir al primer fallo —perdiendo
     contactos buenos— o no suprimir nunca."""
     salida = {}
-    for _ in range(cmp.BLANDOS_PARA_SUPRIMIR):
+    for _ in range(cmp._rebotes_blandos_para_suprimir()):
         salida = cmp.anotar_rebote(uow, direccion="muerta@x.com", tipo="blando")
         db.flush()
     assert salida["suprimido"] is True

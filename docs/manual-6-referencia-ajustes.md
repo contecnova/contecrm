@@ -9,7 +9,7 @@ entorno del proceso). Los marcados con 🔥 se pueden cambiar además
 **en caliente por tenant** desde la consola de administración, sin
 reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
-**249 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
+**287 ajustes** en total, de los cuales **90** son editables en caliente por tenant.
 
 ## Identidad del servicio y red
 
@@ -97,6 +97,11 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 
 | Variable de entorno | Clave en caliente | Defecto | Rango | Qué hace |
 |---|---|---|---|---|
+| `CONTRASENA_MINIMO` | — | `12` | 12–256 | Longitud mínima de una contraseña nueva. Doce es el suelo razonable de hoy; una instalación con un marco propio puede exigir más, pero no menos — y por eso el rango empieza en 12 y no en 8. |
+| `RESTABLECER_VALIDEZ_MIN` | — | `30` | 1–1440 | Cuánto vale el enlace de restablecer. Corto a propósito: es lo que acota un correo reenviado o leído por quien no debía. |
+| `PASSKEY_RETO_MIN` | — | *(secreto)* | 1–60 | Cuánto vale el reto de una passkey. Muy corto: es lo que impide reutilizar un reto capturado. |
+| `SCIM_MAXIMO_POR_PAGINA` | — | `200` | 1–10000 | Tope de resultados por página en SCIM. Lo fija el proveedor de identidad al sincronizar, y sin techo una sincronización completa se trae el directorio entero de una vez. |
+| `INVITADO_MAX_DIAS` | — | `90` | 1–3650 | Cuánto puede durar un usuario invitado antes de caducar. |
 | `SECRET_KEY` | — | *(secreto)* |  | Firma TODOS los tokens de acceso y refresco. Si en producción sigue valiendo el placeholder, cualquiera puede emitirse un token de administrador: el arranque lo comprueba y se niega a levantar. |
 | `JWT_ALGORITHM` | — | `HS256` |  |  |
 | `ACCESS_TOKEN_MINUTOS` | — | `15` | 1–1440 | Duración del token de acceso. Corta a propósito: la revocación de una sesión no puede invalidar un JWT ya emitido, así que el tiempo de vida ES la ventana de exposición. 15 minutos es el equilibrio habitual entre eso y no renovar constantemente. |
@@ -168,6 +173,39 @@ reiniciar: ahí el valor de `.env` es solo el punto de partida.
 | `PRESION_COLA_POR_WORKER` | — | `200` | 1–100000 |  |
 | `PRESION_BAJADA_MAXIMA` | — | `0.15` | 0.0–1.0 |  |
 | `AJUSTES_TTL_CACHE_S` | — | `30.0` | 0.0–3600.0 | Cuánto se cachean los ajustes en caliente. Va aquí y no como ajuste en caliente a propósito: leerlo de la base sería preguntarle a la caché cuánto dura la caché. |
+| `CAMBIO_UMBRAL_MASIVO` | — | `500` | 1–10000000 | Filas a partir de las cuales un cambio de entorno se trata como masivo y pide confirmación aparte. |
+| `WEBHOOK_FALLOS_PARA_DESACTIVAR` | — | `20` | 1–10000 | Entregas fallidas seguidas tras las que se desactiva un webhook. Alto a propósito: desactivarlo a la tercera deja al integrador sin eventos por un corte de diez minutos. |
+| `ANOMALIA_FACTOR` | — | `3.0` | 1.0–1000.0 | Cuántas veces por encima de lo normal cuenta como anomalía de tráfico, y cuántos minutos se frena a quien la provoca. |
+| `ANOMALIA_MINUTOS_FRENO` | — | `5` | 1–1440 |  |
+| `CLAVES_TTL_CACHE_S` | — | `30.0` | 0.0–3600.0 | Cuánto se cachean las claves de API en el gateway. |
+| `SUPERFICIE_COSTE_MAXIMO` | — | `50` | 1–100000 | Coste máximo de una consulta a la superficie, y días que vive un sandbox. |
+| `SANDBOX_DIAS` | — | `30` | 1–3650 |  |
+| `TELEFONO_MINIMO_DIGITOS` | — | `7` | 1–30 | Dígitos mínimos para dar un teléfono por marcable. |
+| `ACTIVO_DIAS_PREAVISO` | — | `30` | 1–365 | Antelación del aviso de caducidad de un activo de marketing y de un acuerdo comercial con proveedor. |
+| `ACUERDO_DIAS_PREAVISO` | — | `30` | 1–365 |  |
+| `REBOTES_BLANDOS_PARA_SUPRIMIR` | — | `5` | 1–1000 | Rebotes blandos seguidos tras los que se suprime una dirección. Un rebote blando es temporal —buzón lleno—; cinco seguidos ya no lo son. |
+| `MOMENTO_MINIMO_INTERACCIONES` | — | `8` | 1–10000 | Interacciones mínimas para decir a qué hora conviene escribir a alguien. Con menos, lo que sale es la hora a la que se mandó el último correo. |
+| `SEGMENTO_PROFUNDIDAD_MAXIMA` | — | `7` | 1–50 | Profundidad máxima de un segmento anidado. |
+| `DISENADOR_AVISO_CAMPOS` | — | `15` | 1–200 | A partir de cuántos campos por sección el diseñador avisa de que la pantalla va a ser ilegible. |
+| `SEMANTICA_MINIMO_DESCRIPCION` | — | `25` | 1–10000 | Caracteres mínimos de una descripción semántica para que sirva de algo. |
+| `WORKER_BLOQUEO_MIN` | — | `5` | 1–1440 | Minutos que un worker bloquea un trabajo, y cuántos coge de una vez. |
+| `WORKER_LOTE` | — | `20` | 1–10000 |  |
+| `REVERIFICACION_TOPE` | — | `50` | 1–100000 | Candidatos que se reverifican de una tacada. |
+| `PLAN_DIAS_SIN_TOCAR` | — | `21` | 1–3650 | Días sin tocar un plan conjunto tras los que se avisa. |
+| `CADENCIA_MINIMO_DIAS` | — | `30` | 1–3650 | Duración mínima de una cadencia, en días. |
+| `MARCADOR_ABANDONO_MAXIMO_PCT` | — | `3.0` | 0.0–100.0 | Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en varios países; por eso se puede ajustar pero no quitar. |
+| `GRC_UMBRAL_RIESGO_ALTO` | — | `12` | 1–1000 | Puntuación a partir de la cual un riesgo de GRC es alto. |
+| `SUITE_MAX_INTENTOS` | — | `5` | 1–1000 | Intentos de sincronización de la suite antes de rendirse. |
+| `DUPLICADOS_UMBRAL_DEFECTO` | — | `0.72` | 0.0–1.0 | Similitud por defecto para encolar un duplicado cuando el tenant no la ha fijado. |
+| `IDENTIDAD_UMBRAL_PROPUESTA` | — | `80` | 1–10000 | Puntuación a partir de la cual se PROPONE una fusión de identidades y a partir de la cual se ejecuta sola. La segunda es destructiva, y por eso está muy por encima: por debajo decide una persona. |
+| `IDENTIDAD_UMBRAL_AUTOMATICO` | — | `150` | 1–10000 |  |
+| `CARGA_FILAS_POR_VUELTA` | — | `200` | 1–100000 | Filas por vuelta del cargador y vueltas máximas. El producto de los dos es el techo de una carga: subir el primero va más rápido y ocupa más memoria; subir el segundo alarga la carga sin ocupar más. |
+| `CARGA_VUELTAS_MAXIMAS` | — | `50` | 1–100000 |  |
+| `ANALITICA_MARGEN_CREDENCIAL_S` | — | `30.0` | 1.0–3600.0 | Margen con el que se renueva la credencial del almacén analítico. |
+| `COHORTE_MINIMO` | — | `5` | 1–10000 | Personas mínimas para enseñar una cohorte. Por debajo, el dato agregado deja de ser agregado: con dos personas, «el 50 % se dio de baja» es «una». |
+| `FUENTE_PLAZO_MUESTRA_S` | — | `15.0` | 0.1–600.0 | Cuánto se espera a que una fuente externa devuelva una muestra. |
+| `INFORME_TOPE_FILAS` | — | `50000` | 1–10000000 | Techo de filas de un informe y de una métrica. Una consulta sin techo tumba el almacén y de paso el panel de quien la lanzó. |
+| `METRICA_TOPE_FILAS` | — | `5000` | 1–10000000 |  |
 | `TAREA_FALLOS_PARA_AVERIA` | — | `3` | 1–1000 | Fallos seguidos tras los que una tarea de fondo se declara averiada. |
 | `RATE_LIMIT_ENABLED` | — | `True` |  |  |
 | `RATE_LIMIT_VENTANA_S` | — | `60` | 1–3600 | Ventana de conteo. Una ventana corta reacciona antes a una ráfaga; una larga tolera mejor el tráfico a golpes de un proceso por lotes. |

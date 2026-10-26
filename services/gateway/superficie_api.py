@@ -43,10 +43,20 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Coste máximo de una composición. No es el número de campos: es cuántas
 # llamadas internas cuesta servirla. Sin tope, «dame la cuenta con sus contactos
 # y las oportunidades de cada uno» es una consulta que hace mil peticiones.
-COSTE_MAXIMO = 50
+def _superficie_coste_maximo() -> int:
+    """Antes `_superficie_coste_maximo() = 50`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().superficie_coste_maximo
+
 
 # Cuánto cuesta cada pieza. Una lista cuesta más que una ficha porque puede
 # traer cien; una lista anidada cuesta por lo que multiplica.
@@ -104,13 +114,13 @@ def validar_composicion(
         )
 
     total = coste_de(partes)
-    if total > COSTE_MAXIMO:
+    if total > _superficie_coste_maximo():
         raise Conflicto(
-            f"La composición «{nombre}» cuesta {total} y el tope es {COSTE_MAXIMO}. No "
+            f"La composición «{nombre}» cuesta {total} y el tope es {_superficie_coste_maximo()}. No "
             "es el número de campos: es cuántas llamadas internas cuesta servirla, y "
             "sin tope una sola consulta hace mil peticiones.",
             error_code="bff.demasiado_cara",
-            detalle={"coste": total, "tope": COSTE_MAXIMO},
+            detalle={"coste": total, "tope": _superficie_coste_maximo()},
         )
 
     incluidas: list[str] = []
@@ -143,10 +153,19 @@ def validar_composicion(
 
 # ── Sandbox de API (CRM-00.02.01.15) ──────────────────────────────────────
 
+
 # Cuánto vive un sandbox sin tocarse. Uno eterno acumula credenciales que nadie
 # recuerda y datos que nadie mira, y acaba siendo la puerta más vieja del
 # sistema.
-DIAS_SANDBOX = 30
+def _sandbox_dias() -> int:
+    """Antes `_sandbox_dias() = 30`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().sandbox_dias
 
 
 def crear_sandbox(
@@ -174,7 +193,7 @@ def crear_sandbox(
             "sandbox en un sitio donde hay que buscar.",
             error_code="sandbox.tamano_invalido",
         )
-    caduca = datetime.now(timezone.utc) + timedelta(days=DIAS_SANDBOX)
+    caduca = datetime.now(timezone.utc) + timedelta(days=_sandbox_dias())
     return {
         "tenant_id": str(tenant_id),
         "objetos": sorted(set(objetos)),

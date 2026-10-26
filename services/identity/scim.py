@@ -53,10 +53,19 @@ ESQUEMA_LISTA = "urn:ietf:params:scim:api:messages:2.0:ListResponse"
 ESQUEMA_PATCH = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
 ESQUEMA_ERROR = "urn:ietf:params:scim:api:messages:2.0:Error"
 
+
 # Tope duro de página. El RFC deja que el servidor imponga el suyo y avise en
 # `itemsPerPage`; sin tope, un `count=100000` de un IdP mal configurado se lleva
 # por delante el servicio de identidad, que es justamente el que no puede caer.
-MAXIMO_POR_PAGINA = 200
+def _scim_maximo_por_pagina() -> int:
+    """Tope, antes `_scim_maximo_por_pagina() = 200`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().scim_maximo_por_pagina
 
 
 # ── Verdad booleana tolerante ─────────────────────────────────────────────
@@ -240,7 +249,7 @@ def buscar_usuarios(
         select(func.count()).select_from(consulta.order_by(None).subquery())
     ).scalar_one()
 
-    por_pagina = max(1, min(por_pagina, MAXIMO_POR_PAGINA))
+    por_pagina = max(1, min(por_pagina, _scim_maximo_por_pagina()))
     desplazamiento = max(0, inicio - 1)
     filas = db.execute(
         consulta.order_by(Usuario.email).offset(desplazamiento).limit(por_pagina)
@@ -539,7 +548,7 @@ def buscar_grupos(
     total = db.execute(
         select(func.count()).select_from(consulta.order_by(None).subquery())
     ).scalar_one()
-    por_pagina = max(1, min(por_pagina, MAXIMO_POR_PAGINA))
+    por_pagina = max(1, min(por_pagina, _scim_maximo_por_pagina()))
     roles = (
         db.execute(consulta.order_by(RolTenant.nombre).offset(max(0, inicio - 1)).limit(por_pagina))
         .scalars()
@@ -628,7 +637,7 @@ def configuracion_del_proveedor(base: str) -> dict[str, Any]:
         "documentationUri": f"{base}/Schemas",
         "patch": {"supported": True},
         "bulk": {"supported": False, "maxOperations": 0, "maxPayloadSize": 0},
-        "filter": {"supported": True, "maxResults": MAXIMO_POR_PAGINA},
+        "filter": {"supported": True, "maxResults": _scim_maximo_por_pagina()},
         "changePassword": {"supported": False},
         "sort": {"supported": False},
         "etag": {"supported": False},

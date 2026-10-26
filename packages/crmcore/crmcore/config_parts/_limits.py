@@ -89,6 +89,85 @@ class _LimitsSettings(BaseSettings):
     # cuánto dura la caché.
     ajustes_ttl_cache_s: float = Field(30.0, ge=0.0, le=3600.0)
 
+    # ── Los últimos que vivían en el código ───────────────────────────────
+    # Filas a partir de las cuales un cambio de entorno se trata como masivo y
+    # pide confirmación aparte.
+    cambio_umbral_masivo: int = Field(500, ge=1, le=10_000_000)
+    # Entregas fallidas seguidas tras las que se desactiva un webhook. Alto a
+    # propósito: desactivarlo a la tercera deja al integrador sin eventos por
+    # un corte de diez minutos.
+    webhook_fallos_para_desactivar: int = Field(20, ge=1, le=10_000)
+    # Cuántas veces por encima de lo normal cuenta como anomalía de tráfico, y
+    # cuántos minutos se frena a quien la provoca.
+    anomalia_factor: float = Field(3.0, ge=1.0, le=1_000.0)
+    anomalia_minutos_freno: int = Field(5, ge=1, le=1_440)
+    # Cuánto se cachean las claves de API en el gateway.
+    claves_ttl_cache_s: float = Field(30.0, ge=0.0, le=3600.0)
+    # Coste máximo de una consulta a la superficie, y días que vive un sandbox.
+    superficie_coste_maximo: int = Field(50, ge=1, le=100_000)
+    sandbox_dias: int = Field(30, ge=1, le=3650)
+    # Dígitos mínimos para dar un teléfono por marcable.
+    telefono_minimo_digitos: int = Field(7, ge=1, le=30)
+    # Antelación del aviso de caducidad de un activo de marketing y de un
+    # acuerdo comercial con proveedor.
+    activo_dias_preaviso: int = Field(30, ge=1, le=365)
+    acuerdo_dias_preaviso: int = Field(30, ge=1, le=365)
+    # Rebotes blandos seguidos tras los que se suprime una dirección. Un rebote
+    # blando es temporal —buzón lleno—; cinco seguidos ya no lo son.
+    rebotes_blandos_para_suprimir: int = Field(5, ge=1, le=1_000)
+    # Interacciones mínimas para decir a qué hora conviene escribir a alguien.
+    # Con menos, lo que sale es la hora a la que se mandó el último correo.
+    momento_minimo_interacciones: int = Field(8, ge=1, le=10_000)
+    # Profundidad máxima de un segmento anidado.
+    segmento_profundidad_maxima: int = Field(7, ge=1, le=50)
+    # A partir de cuántos campos por sección el diseñador avisa de que la
+    # pantalla va a ser ilegible.
+    disenador_aviso_campos: int = Field(15, ge=1, le=200)
+    # Caracteres mínimos de una descripción semántica para que sirva de algo.
+    semantica_minimo_descripcion: int = Field(25, ge=1, le=10_000)
+    # Minutos que un worker bloquea un trabajo, y cuántos coge de una vez.
+    worker_bloqueo_min: int = Field(5, ge=1, le=1_440)
+    worker_lote: int = Field(20, ge=1, le=10_000)
+    # Candidatos que se reverifican de una tacada.
+    reverificacion_tope: int = Field(50, ge=1, le=100_000)
+    # Días sin tocar un plan conjunto tras los que se avisa.
+    plan_dias_sin_tocar: int = Field(21, ge=1, le=3650)
+    # Duración mínima de una cadencia, en días.
+    cadencia_minimo_dias: int = Field(30, ge=1, le=3650)
+    # Abandono máximo tolerado en el marcador, en porcentaje. Lo fija la ley en
+    # varios países; por eso se puede ajustar pero no quitar.
+    marcador_abandono_maximo_pct: float = Field(3.0, ge=0.0, le=100.0)
+    # Puntuación a partir de la cual un riesgo de GRC es alto.
+    grc_umbral_riesgo_alto: int = Field(12, ge=1, le=1_000)
+    # Intentos de sincronización de la suite antes de rendirse.
+    suite_max_intentos: int = Field(5, ge=1, le=1_000)
+    # Similitud por defecto para encolar un duplicado cuando el tenant no la
+    # ha fijado.
+    duplicados_umbral_defecto: float = Field(0.72, ge=0.0, le=1.0)
+    # Puntuación a partir de la cual se PROPONE una fusión de identidades y a
+    # partir de la cual se ejecuta sola. La segunda es destructiva, y por eso
+    # está muy por encima: por debajo decide una persona.
+    identidad_umbral_propuesta: int = Field(80, ge=1, le=10_000)
+    identidad_umbral_automatico: int = Field(150, ge=1, le=10_000)
+
+    # ── Analítica ─────────────────────────────────────────────────────────
+    # Filas por vuelta del cargador y vueltas máximas. El producto de los dos
+    # es el techo de una carga: subir el primero va más rápido y ocupa más
+    # memoria; subir el segundo alarga la carga sin ocupar más.
+    carga_filas_por_vuelta: int = Field(200, ge=1, le=100_000)
+    carga_vueltas_maximas: int = Field(50, ge=1, le=100_000)
+    # Margen con el que se renueva la credencial del almacén analítico.
+    analitica_margen_credencial_s: float = Field(30.0, ge=1.0, le=3600.0)
+    # Personas mínimas para enseñar una cohorte. Por debajo, el dato agregado
+    # deja de ser agregado: con dos personas, «el 50 % se dio de baja» es «una».
+    cohorte_minimo: int = Field(5, ge=1, le=10_000)
+    # Cuánto se espera a que una fuente externa devuelva una muestra.
+    fuente_plazo_muestra_s: float = Field(15.0, ge=0.1, le=600.0)
+    # Techo de filas de un informe y de una métrica. Una consulta sin techo
+    # tumba el almacén y de paso el panel de quien la lanzó.
+    informe_tope_filas: int = Field(50_000, ge=1, le=10_000_000)
+    metrica_tope_filas: int = Field(5_000, ge=1, le=10_000_000)
+
     # Fallos seguidos tras los que una tarea de fondo se declara averiada.
     tarea_fallos_para_averia: int = Field(3, ge=1, le=1_000)
 

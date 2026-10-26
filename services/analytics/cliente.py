@@ -239,9 +239,18 @@ RUTA_CANJE = "/api/tokens/exchange"
 # token no da acceso a ningún dato: solo sirve para pedir el del paso 2.
 _aplicacion: dict[str, Any] = {"token": "", "expira_at": 0.0}
 
+
 # Margen con el que se considera caducado. Un token que vence en dos segundos es
 # un token que va a llegar caducado.
-_MARGEN_S = 30.0
+def _analitica_margen_credencial_s() -> float:
+    """Tope, antes `_analitica_margen_credencial_s() = 30.0`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().analitica_margen_credencial_s
 
 
 def _token_de_aplicacion(s: Any) -> str:
@@ -258,7 +267,10 @@ def _token_de_aplicacion(s: Any) -> str:
     from crmcore.red import cliente_seguro
 
     ahora = time.monotonic()
-    if _aplicacion["token"] and float(_aplicacion["expira_at"]) - _MARGEN_S > ahora:
+    if (
+        _aplicacion["token"]
+        and float(_aplicacion["expira_at"]) - _analitica_margen_credencial_s() > ahora
+    ):
         return str(_aplicacion["token"])
 
     try:

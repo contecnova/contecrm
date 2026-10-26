@@ -66,11 +66,21 @@ IDENTIFICADOR = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 # falla al usarse, no al definirse.
 AGREGACIONES = ("suma", "cuenta", "cuenta_distinta", "media", "minimo", "maximo", "ratio")
 
+
 # Cuántas filas como mucho trae una métrica agrupada. Es un tope de cordura, no
 # una preferencia: una métrica agrupada por una dimensión de alta cardinalidad
 # —el identificador de cliente, por ejemplo— devolvería una fila por cliente y
 # eso no es una métrica, es una exportación.
-TOPE_FILAS_METRICA = 5_000
+def _metrica_tope_filas() -> int:
+    """Tope, antes `_metrica_tope_filas() = 5_000`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().metrica_tope_filas
+
 
 # Estados de una métrica.
 #
@@ -510,7 +520,7 @@ def _valor_de(
         ],
         "filtros": list(plan.get("filtros") or []),
         "orden": [],
-        "limite": TOPE_FILAS_METRICA,
+        "limite": _metrica_tope_filas(),
         "_usuario_id": str(usuario_id) if usuario_id else "",
         "_roles": sorted(roles),
         "_es_admin": bool(es_admin),

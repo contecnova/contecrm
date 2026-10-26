@@ -48,9 +48,19 @@ EVENTOS = ("entrante", "contestada", "colgada", "perdida", "transferida", "en_co
 # nunca llegó a sonar, y confundirlas oculta un problema de enrutado.
 RESULTADOS = ("contestada", "perdida", "abandonada", "desviada", "buzon")
 
+
 # Longitud mínima para intentar identificar por número. Con menos, media base
 # encaja: un «600» coincide con miles de fichas.
-MINIMO_DIGITOS = 7
+def _telefono_minimo_digitos() -> int:
+    """Antes `_telefono_minimo_digitos() = 7`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().telefono_minimo_digitos
+
 
 _SOLO_DIGITOS = re.compile(r"\D+")
 
@@ -79,13 +89,13 @@ def identificar(*, numero: str, candidatos: list[dict[str, Any]]) -> dict[str, A
     encaja.
     """
     clave = _normalizar(numero)
-    if len(clave) < MINIMO_DIGITOS:
+    if len(clave) < _telefono_minimo_digitos():
         return {
             "identificado": False,
             "motivo": "numero_corto",
             "que_hacer": (
                 "El número es demasiado corto para buscar: con menos de "
-                f"{MINIMO_DIGITOS} dígitos media base encaja. Se abre la pantalla en "
+                f"{_telefono_minimo_digitos()} dígitos media base encaja. Se abre la pantalla en "
                 "blanco y se pregunta."
             ),
         }

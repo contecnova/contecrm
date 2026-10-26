@@ -18,10 +18,20 @@ from services.eventing.modelos import Entrega, Suscripcion
 
 logger = get_logger(__name__)
 
+
 # Fallos seguidos tras los que se desactiva una suscripción. Un endpoint que
 # lleva veinte entregas fallando está caído o ya no existe, y seguir
 # intentándolo es tráfico, ruido en los logs y una cola que no se vacía nunca.
-FALLOS_PARA_DESACTIVAR = 20
+def _webhook_fallos_para_desactivar() -> int:
+    """Antes `_webhook_fallos_para_desactivar() = 20`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().webhook_fallos_para_desactivar
+
 
 # Cabeceras propias de la entrega de eventos. La firma y el momento vienen de
 # `crmcore.security.firma`, que es donde viven desde que el aviso de fin de un
@@ -162,7 +172,7 @@ async def entregar(
 
     if registro.resultado == "fallido":
         suscripcion.fallos_consecutivos += 1
-        if suscripcion.fallos_consecutivos >= FALLOS_PARA_DESACTIVAR:
+        if suscripcion.fallos_consecutivos >= _webhook_fallos_para_desactivar():
             suscripcion.activa = False
             suscripcion.desactivada_at = datetime.now(timezone.utc)
             logger.error(

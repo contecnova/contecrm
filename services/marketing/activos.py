@@ -66,9 +66,18 @@ USOS = ("web", "correo", "redes", "impresion", "exterior", "video", "interno")
 # usar algo que se retiró por un motivo.
 ESTADOS = ("borrador", "en_revision", "aprobado", "rechazado", "caducado", "retirado")
 
+
 # Con cuánta antelación se avisa de una licencia o una vigencia que termina. Un
 # mes: menos no da tiempo a renovar un contrato de imagen ni a rehacer una pieza.
-DIAS_PREAVISO = 30
+def _activo_dias_preaviso() -> int:
+    """Antes `_activo_dias_preaviso() = 30`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().activo_dias_preaviso
 
 
 def _hoy(db: Any = None) -> date:
@@ -317,7 +326,7 @@ def revisar_biblioteca(db: Session, tenant_id: UUID, *, hoy: date | None = None)
         }
         if dias < 0:
             caducados.append(entrada)
-        elif dias <= DIAS_PREAVISO:
+        elif dias <= _activo_dias_preaviso():
             por_caducar.append(entrada)
 
     return {

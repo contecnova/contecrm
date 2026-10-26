@@ -710,13 +710,22 @@ registrar_apartados()
 
 # ── Panel de GRC (CRM-07.03.02.10) ────────────────────────────────────────
 
+
 # A partir de aquí, un riesgo se considera alto. Sobre 25 —probabilidad por
 # impacto, los dos de 1 a 5—, 12 es la mitad larga: lo que un comité mira. Va
 # como constante del módulo y no como ajuste porque mover el umbral cambiaría
 # qué sale en el panel sin cambiar ningún riesgo, y eso es maquillar el informe;
 # quien quiera menos ruido tiene que bajar el impacto o la probabilidad de un
 # riesgo concreto, que es una decisión que deja rastro.
-UMBRAL_RIESGO_ALTO = 12
+def _grc_umbral_riesgo_alto() -> int:
+    """Antes `_grc_umbral_riesgo_alto() = 12`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().grc_umbral_riesgo_alto
 
 
 def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
@@ -763,7 +772,7 @@ def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
     altos_sin_control = [
         r.codigo
         for r in riesgos
-        if r.inherente >= UMBRAL_RIESGO_ALTO
+        if r.inherente >= _grc_umbral_riesgo_alto()
         and r.codigo in datos_vencidos["riesgos_a_mitigar_sin_control"]
     ]
 

@@ -815,10 +815,19 @@ def _sin_usar(*_a: Any) -> None:  # pragma: no cover
 
 # ── Invitados externos con acceso acotado y temporal (CRM-06.02.01.06) ────
 
+
 # Cuánto dura como mucho una invitación. No es un ajuste de comodidad: un acceso
 # de invitado sin fecha se queda abierto para siempre, y el auditor de tu cliente
 # encuentra en tu sistema a alguien que dejó la empresa hace dos años.
-MAX_DIAS_INVITADO = 90
+def _invitado_max_dias() -> int:
+    """Tope, antes `_invitado_max_dias() = 90`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().invitado_max_dias
 
 
 def invitar_externo(
@@ -861,9 +870,9 @@ def invitar_externo(
             "rol da acceso a lo que ese rol gane después.",
             error_code="identity.invitacion_sin_permisos",
         )
-    if dias < 1 or dias > MAX_DIAS_INVITADO:
+    if dias < 1 or dias > _invitado_max_dias():
         raise ErrorValidacion(
-            f"El acceso de invitado dura entre 1 y {MAX_DIAS_INVITADO} días. Sin "
+            f"El acceso de invitado dura entre 1 y {_invitado_max_dias()} días. Sin "
             "tope, el acceso se queda abierto para siempre.",
             error_code="identity.invitacion_plazo_invalido",
         )

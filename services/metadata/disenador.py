@@ -47,10 +47,19 @@ logger = get_logger(__name__)
 # no aparece jamás sin que nadie sepa por qué.
 OPERADORES = ("=", "!=", ">", ">=", "<", "<=", "vacio", "no_vacio", "en")
 
+
 # Cuántos campos caben en una sección antes de avisar. No es un tope: es que un
 # formulario de cuarenta campos seguidos no se rellena, se abandona a la mitad,
 # y eso sale luego en forma de fichas incompletas.
-AVISO_CAMPOS_POR_SECCION = 15
+def _disenador_aviso_campos() -> int:
+    """Antes `_disenador_aviso_campos() = 15`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().disenador_aviso_campos
 
 
 def _claves_del_esquema(campos: list[dict[str, Any]]) -> set[str]:
@@ -125,7 +134,7 @@ def validar_layout(
         claves_seccion.add(clave_seccion)
 
         campos_seccion = list(seccion.get("campos") or [])
-        if len(campos_seccion) > AVISO_CAMPOS_POR_SECCION:
+        if len(campos_seccion) > _disenador_aviso_campos():
             avisos.append(
                 f"La sección «{clave_seccion}» tiene {len(campos_seccion)} campos "
                 "seguidos. Un formulario así no se rellena: se abandona a la mitad, y "

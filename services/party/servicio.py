@@ -1949,15 +1949,24 @@ def contexto_de_direcciones(
 
 # ── Reverificación periódica con cuota (CRM-01.01.01.13) ──────────────────
 
+
 # Cuántos identificadores se reverifican como mucho en cada pasada. Es el número
 # que hace que esto sea utilizable: muchos registros oficiales tienen cuota
 # diaria, y un barrido sin control la agota en una mañana — dejando sin verificar
 # lo que de verdad hacía falta, que son las altas nuevas.
-TOPE_REVERIFICACION = 50
+def _reverificacion_tope() -> int:
+    """Antes `_reverificacion_tope() = 50`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().reverificacion_tope
 
 
 def caducados_por_reverificar(
-    db: Session, tenant_id: UUID, *, limite: int = TOPE_REVERIFICACION
+    db: Session, tenant_id: UUID, *, limite: int = _reverificacion_tope()
 ) -> list[IdentificadorFiscal]:
     """Identificadores cuyo veredicto ha caducado, **los más viejos primero**.
 
@@ -1987,7 +1996,7 @@ def caducados_por_reverificar(
 
 
 def barrer_reverificaciones(
-    uow: UnidadDeTrabajo, *, limite: int = TOPE_REVERIFICACION
+    uow: UnidadDeTrabajo, *, limite: int = _reverificacion_tope()
 ) -> dict[str, Any]:
     """Vuelve a preguntar por los veredictos caducados, **con tope**.
 

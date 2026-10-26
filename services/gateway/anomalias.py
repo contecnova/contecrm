@@ -41,14 +41,34 @@ logger = get_logger(__name__)
 # menos, lo que se detecta es que el tenant acaba de empezar a usar el sistema.
 MINIMO_VENTANAS = 10
 
+
 # Cuánto por encima de su propia media se considera anómalo. Tres veces es mucho
 # y pasa: una importación, un informe pesado, una campaña. Por eso no se corta.
-FACTOR_ANOMALIA = 3.0
+def _anomalia_factor() -> float:
+    """Antes `_anomalia_factor() = 3.0`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().anomalia_factor
+
 
 # Cuánto se ralentiza y cuánto dura. Gradual y temporal: el freno que hay que
 # quitar a mano se queda puesto para siempre.
 ESCALONES = (0.75, 0.5, 0.25)
-MINUTOS_FRENO = 5
+
+
+def _anomalia_minutos_freno() -> int:
+    """Antes `_anomalia_minutos_freno() = 5`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().anomalia_minutos_freno
 
 
 @dataclass
@@ -113,7 +133,7 @@ def evaluar(tenant_id: UUID | str) -> dict[str, Any]:
         }
 
     factor = ultima / media
-    anomalo = factor >= FACTOR_ANOMALIA
+    anomalo = factor >= _anomalia_factor()
     return {
         "anomalo": anomalo,
         "medible": True,
@@ -142,7 +162,7 @@ def frenar(tenant_id: UUID | str, *, motivo: str, ahora: datetime | None = None)
     obs = _observado.setdefault(str(tenant_id), Observacion())
     sigue_frenado = obs.frenado_hasta is not None and obs.frenado_hasta > momento
     obs.escalon = min(obs.escalon + 1, len(ESCALONES)) if sigue_frenado else 1
-    obs.frenado_hasta = momento + timedelta(minutes=MINUTOS_FRENO)
+    obs.frenado_hasta = momento + timedelta(minutes=_anomalia_minutos_freno())
     obs.motivo = motivo
     factor = ESCALONES[obs.escalon - 1]
     logger.warning(
@@ -158,7 +178,7 @@ def frenar(tenant_id: UUID | str, *, motivo: str, ahora: datetime | None = None)
         # fuerte y empeora justo lo que se estaba intentando arreglar.
         "mensaje_para_el_cliente": (
             f"Estás haciendo muchas más peticiones de lo habitual. Tu cuota está "
-            f"temporalmente al {int(factor * 100)} % durante {MINUTOS_FRENO} minutos. "
+            f"temporalmente al {int(factor * 100)} % durante {_anomalia_minutos_freno()} minutos. "
             "No hace falta hacer nada: se restablece solo. Reintentar más rápido lo "
             "empeora."
         ),

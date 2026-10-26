@@ -43,13 +43,31 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
+
 # Cuánto vale el enlace. Corto: el que lo pide está delante de la pantalla, y lo
 # que alarga la vida del enlace alarga la ventana de quien lo intercepte.
-MINUTOS = 30
+def _restablecer_validez_min() -> int:
+    """Tope, antes `_restablecer_validez_min() = 30`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().restablecer_validez_min
+
 
 # Longitud mínima de la contraseña nueva. Aquí y no solo en el formulario: una
 # comprobación que solo vive en el navegador no comprueba nada.
-MINIMO = 12
+def _contrasena_minimo() -> int:
+    """Tope, antes `_contrasena_minimo() = 12`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().contrasena_minimo
 
 
 class EnlaceRestablecer(Base):
@@ -116,7 +134,7 @@ def solicitar(uow: UnidadDeTrabajo, *, email: str, ip: str = "") -> str:
             tenant_id=uow.tenant_id,
             usuario_id=usuario.id,
             hash_token=_hash(token),
-            caduca_at=_ahora() + timedelta(minutes=MINUTOS),
+            caduca_at=_ahora() + timedelta(minutes=_restablecer_validez_min()),
             ip_solicitud=ip or None,
         )
     )
@@ -140,11 +158,11 @@ def confirmar(db: Session, token: str, *, contrasena: str, ip: str = "") -> UUID
     from services.identity import servicio as svc
     from services.identity.modelos import Usuario
 
-    if len(contrasena or "") < MINIMO:
+    if len(contrasena or "") < _contrasena_minimo():
         raise ErrorValidacion(
-            f"La contraseña necesita al menos {MINIMO} caracteres",
+            f"La contraseña necesita al menos {_contrasena_minimo()} caracteres",
             error_code="restablecer.contrasena_corta",
-            detalle={"minimo": MINIMO},
+            detalle={"minimo": _contrasena_minimo()},
         )
 
     enlace = db.execute(

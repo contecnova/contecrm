@@ -36,9 +36,19 @@ from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 # Interacciones mínimas para personalizar. Por debajo, lo que se detecta es azar
 # con aspecto de patrón.
-MINIMO_INTERACCIONES = 8
+def _momento_minimo_interacciones() -> int:
+    """Antes `_momento_minimo_interacciones() = 8`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().momento_minimo_interacciones
+
 
 # Canales que se pueden elegir. Cerrada porque cada uno tiene su regla de
 # consentimiento y su coste, y con texto libre no se comprueba ninguno.
@@ -64,12 +74,12 @@ def franja_preferida(
         for i in interacciones
         if str(i.get("resultado")) in RESPUESTA_DE_VERDAD and isinstance(i.get("cuando"), datetime)
     ]
-    if len(utiles) < MINIMO_INTERACCIONES:
+    if len(utiles) < _momento_minimo_interacciones():
         return {
             "personalizable": False,
             "interacciones_utiles": len(utiles),
             "porque": (
-                f"Solo hay {len(utiles)} respuestas y hacen falta {MINIMO_INTERACCIONES}. "
+                f"Solo hay {len(utiles)} respuestas y hacen falta {_momento_minimo_interacciones()}. "
                 "Con menos, lo que se detecta es azar con aspecto de patrón."
             ),
             "que_usar": "La hora del segmento, o la general. Es honesto y funciona.",
@@ -134,7 +144,7 @@ def canal_preferido(
     canal, cuantas = disponibles[0]
     return {
         "canal": canal,
-        "medible": len(interacciones) >= MINIMO_INTERACCIONES,
+        "medible": len(interacciones) >= _momento_minimo_interacciones(),
         "respuestas": cuantas,
         "prohibidos": sorted(vetados),
         "porque": (
@@ -144,7 +154,7 @@ def canal_preferido(
         ),
         "aviso": (
             ""
-            if len(interacciones) >= MINIMO_INTERACCIONES
+            if len(interacciones) >= _momento_minimo_interacciones()
             else "Con este historial la preferencia es una suposición: se usa, pero no "
             "se presenta como un dato."
         ),

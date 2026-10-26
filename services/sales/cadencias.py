@@ -784,7 +784,11 @@ def rendimiento_plantillas(db: Session, tenant_id: UUID) -> dict[str, Any]:
         .scalars()
         .all()
     )
-    MINIMO = 30
+    # Era un `MINIMO = 30` escrito aquí dentro. Local o de módulo, un
+    # umbral es un umbral: sale del `.env`.
+    from crmcore.config import get_settings
+
+    MINIMO = get_settings().cadencia_minimo_dias
     salida = []
     for p in filas:
         suficiente = p.enviados >= MINIMO

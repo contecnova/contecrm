@@ -27,6 +27,13 @@ configurables no da libertad: da la posibilidad de romperlo.
     26-10-2026  44  los 24 del núcleo: profundidades, colas, ventanas y
                     tamaños. Todos operativos, así que van sólo al `.env`:
                     «por cliente» no significaría nada
+    26-10-2026  32  los 7 de `analytics` y los 5 de `identity`: tamaños de
+                    carga, techos de informe, y la longitud mínima de
+                    contraseña y la validez de los enlaces de acceso
+    26-10-2026   0  los 26 últimos. La lista queda VACÍA, y vaciarla no es
+                    el final: el recorrido sigue puesto y lo que vuelva a
+                    escribirse en el código cae en
+                    `test_ningun_umbral_nuevo_nace_en_el_codigo`
 """
 
 from __future__ import annotations
@@ -63,46 +70,7 @@ DE_ESTANDAR = {
 }
 
 # ── Las que todavía viven en el código ────────────────────────────────────
-EN_EL_CODIGO_HOY = {
-    "services/analytics/cargador.py::POR_VUELTA",
-    "services/analytics/cargador.py::VUELTAS_MAX",
-    "services/analytics/cliente.py::_MARGEN_S",
-    "services/analytics/cohortes.py::MINIMO_COHORTE",
-    "services/analytics/fuente.py::PLAZO_MUESTRA_S",
-    "services/analytics/informes.py::TOPE_FILAS_DEFECTO",
-    "services/analytics/semantico.py::TOPE_FILAS_METRICA",
-    "services/automation/entornos_auto.py::UMBRAL_MASIVO",
-    "services/eventing/entrega.py::FALLOS_PARA_DESACTIVAR",
-    "services/gateway/anomalias.py::FACTOR_ANOMALIA",
-    "services/gateway/anomalias.py::MINUTOS_FRENO",
-    "services/gateway/claves.py::TTL_CACHE_S",
-    "services/gateway/superficie_api.py::COSTE_MAXIMO",
-    "services/gateway/superficie_api.py::DIAS_SANDBOX",
-    "services/identity/passkeys.py::MINUTOS_RETO",
-    "services/identity/restablecer.py::MINIMO",
-    "services/identity/restablecer.py::MINUTOS",
-    "services/identity/scim.py::MAXIMO_POR_PAGINA",
-    "services/identity/servicio.py::MAX_DIAS_INVITADO",
-    "services/integration/telefonia.py::MINIMO_DIGITOS",
-    "services/marketing/activos.py::DIAS_PREAVISO",
-    "services/marketing/campanas.py::BLANDOS_PARA_SUPRIMIR",
-    "services/marketing/momento.py::MINIMO_INTERACCIONES",
-    "services/marketing/segmentos.py::PROFUNDIDAD_MAXIMA",
-    "services/metadata/disenador.py::AVISO_CAMPOS_POR_SECCION",
-    "services/metadata/semantica.py::MINIMO_DESCRIPCION",
-    "services/orchestrator/worker.py::BLOQUEO_MINUTOS",
-    "services/orchestrator/worker.py::LOTE",
-    "services/party/cola_duplicados.py::UMBRAL_POR_DEFECTO",
-    "services/party/identidad.py::UMBRAL_AUTOMATICO",
-    "services/party/identidad.py::UMBRAL_PROPUESTA",
-    "services/party/servicio.py::TOPE_REVERIFICACION",
-    "services/sales/cadencias.py::MINIMO",
-    "services/sales/plan_conjunto.py::DIAS_SIN_TOCAR",
-    "services/sales/proveedores_comercial.py::DIAS_AVISO_PREAVISO",
-    "services/service/marcador.py::ABANDONO_MAXIMO_PCT",
-    "services/tenancy/grc.py::UMBRAL_RIESGO_ALTO",
-    "services/tenancy/suite.py::MAX_INTENTOS",
-}
+EN_EL_CODIGO_HOY: set[str] = set()
 
 
 def _constantes() -> dict[str, tuple[int | float, int]]:

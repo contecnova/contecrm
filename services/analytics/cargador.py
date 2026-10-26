@@ -35,12 +35,31 @@ from services.analytics import almacen as alm
 
 logger = get_logger(__name__)
 
+
 # Cuántas filas se piden por vuelta. El tope de la API es 200.
-POR_VUELTA = 200
+def _carga_filas_por_vuelta() -> int:
+    """Tope, antes `_carga_filas_por_vuelta() = 200`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().carga_filas_por_vuelta
+
+
 # Tope de vueltas por tabla y carga. Una tabla con un millón de filas no se trae
 # entera en el camino de un botón: se trae lo más reciente y el resto en la
 # siguiente. Sin tope, alguien pulsa «cargar» y la petición no vuelve nunca.
-VUELTAS_MAX = 50
+def _carga_vueltas_maximas() -> int:
+    """Tope, antes `_carga_vueltas_maximas() = 50`.
+
+    Era una constante de módulo. Sale del `.env`: es un tope del despliegue y
+    «por cliente» no significaría nada.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().carga_vueltas_maximas
 
 
 def cargar_tabla(
@@ -75,9 +94,9 @@ def cargar_tabla(
     recogidas: list[dict[str, Any]] = []
     cursor = ""
     with cliente_seguro(timeout=60.0) as cli:
-        for _ in range(VUELTAS_MAX):
+        for _ in range(_carga_vueltas_maximas()):
             sep = "&" if "?" in camino else "?"
-            url = f"{raiz}{camino}{sep}limite={POR_VUELTA}" + (
+            url = f"{raiz}{camino}{sep}limite={_carga_filas_por_vuelta()}" + (
                 f"&cursor={cursor}" if cursor else ""
             )
             r = cli.get(url, headers={"Authorization": f"Bearer {clave_api}"})

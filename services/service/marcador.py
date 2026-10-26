@@ -57,10 +57,19 @@ EXIGEN_ACCION = {
     "reprogramar": "Se crea la siguiente llamada con fecha, o se pierde",
 }
 
+
 # Tope de abandono en marcado automático. Es el porcentaje de llamadas que suenan
 # y se cuelgan porque no había nadie libre. Está regulado en varios países y,
 # además de la multa, es lo que hace que el número acabe marcado como spam.
-ABANDONO_MAXIMO_PCT = 3.0
+def _marcador_abandono_maximo_pct() -> float:
+    """Antes `_marcador_abandono_maximo_pct() = 3.0`.
+
+    Era una constante de módulo. Sale del `.env`, que es donde una instalación
+    puede afinarla sin tocar código.
+    """
+    from crmcore.config import get_settings
+
+    return get_settings().marcador_abandono_maximo_pct
 
 
 def _ahora() -> datetime:
@@ -182,7 +191,7 @@ def ritmo_de_marcado(
     """
     total = abandonadas + contestadas
     pct = (abandonadas / total * 100) if total else 0.0
-    dentro = pct <= ABANDONO_MAXIMO_PCT
+    dentro = pct <= _marcador_abandono_maximo_pct()
 
     if not dentro:
         recomendado = max(1, agentes_libres)
@@ -193,7 +202,7 @@ def ritmo_de_marcado(
 
     return {
         "abandono_pct": round(pct, 2),
-        "tope": ABANDONO_MAXIMO_PCT,
+        "tope": _marcador_abandono_maximo_pct(),
         "dentro_del_limite": dentro,
         "lanzar_como_mucho": recomendado,
         "medible": total >= 50,
@@ -203,7 +212,7 @@ def ritmo_de_marcado(
             if total < 50
             else (
                 f"El abandono está en {round(pct, 2)} % y el tope es "
-                f"{ABANDONO_MAXIMO_PCT} %. Hay que bajar el ritmo: además de la multa, "
+                f"{_marcador_abandono_maximo_pct()} %. Hay que bajar el ritmo: además de la multa, "
                 "es lo que hace que el número acabe marcado como spam, y eso no se "
                 "arregla pagando."
                 if not dentro
