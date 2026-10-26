@@ -75,7 +75,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            HALLAZGO GORDO: `enviar` marcaba el sobre como
 #                            enviado y NO llamaba al proveedor — el cliente no
 #                            recibia nada y el CRM decia que estaba mandado
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 179
+#   26-10-2026  160 de 752  los 19 modulos de la consola, recorridos abriendo
+#                            sus 110 pestanas contra el servicio dueno. Todas
+#                            contestan; el barrido queda porque lo caro es la
+#                            pestana que se rompe el dia que alguien cambia un
+#                            permiso, no mantener quince segundos de prueba
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 160
 
 
 @functools.cache

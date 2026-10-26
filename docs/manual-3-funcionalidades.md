@@ -3812,6 +3812,21 @@ Tres decisiones de esa consola que conviene entender:
   eso decide qué ofrecer. Si decidiera ella, bastaría con abrir las herramientas
   del navegador para «concederse» una acción.
 
+**Y las pestañas se abren de verdad, no sólo existen.** Desde el 26-10-2026 hay
+un barrido que abre **las 110 pestañas de los 19 módulos** contra el servicio
+dueño de cada una, como las abre quien entra. Cubre el hueco que quedaba entre
+los dos gates que ya había —uno comprueba que la ruta exista en el contrato,
+otro que los listados de cada servicio no revienten—: una ruta puede existir y
+pasar el barrido genérico y aun así contestar **403** porque el permiso que
+exige no es el que el módulo supone, **422** porque pide un parámetro que la
+pestaña no manda, o **404** porque el servicio declarado no es el que la
+publica. Las tres se ven igual desde dentro: una pestaña con su rótulo y un
+error.
+
+Medido: las 110 contestan, en quince segundos. Que no saliera ninguna rota no
+es motivo para no tenerlo — lo barato es mantenerlo, y lo caro es la pestaña que
+se rompe el día que alguien cambia un permiso.
+
 Y cuando un servicio no contesta a la superficie, **se dice y se nombra**: una
 consola que callara eso escondería media administración como si no existiera.
 
