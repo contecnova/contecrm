@@ -1,5 +1,6 @@
 /**
- * La bandeja de casos: lo que la pantalla tiene que decir y lo que no.
+ * La bandeja de casos: lo que la pantalla tiene que decir y lo que no
+ * (CRM-07.04.03.17).
  *
  * El escenario general ya comprueba que la fila llega. Aquí van las dos cosas
  * que se pueden romper sin que eso falle, y que mienten al que atiende:

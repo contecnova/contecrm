@@ -93,11 +93,26 @@ export function Puesto() {
           ) : null}
 
           {/* Lo que no se ha medido no se pinta en verde: es una conexión de la
-              que no se sabe nada. */}
+              que no se sabe nada.
+
+              Y se dicen CUÁLES, no sólo cuántas. Las paradas salen con su
+              nombre porque hay que ir a mirarlas; las que no se han medido
+              también, y hasta el 26-10-2026 sólo salía el recuento: quien leía
+              «1 conexión sin medir» no sabía cuál, que es lo primero que hace
+              falta para arreglarlo. */}
           {datos.sin_medir.length > 0 ? (
-            <p className="mt-4 text-2xs text-warning">
-              {t("puesto.sinMedir", { cuantas: datos.sin_medir.length })}
-            </p>
+            <>
+              <p className="mt-4 text-2xs text-warning">
+                {t("puesto.sinMedir", { cuantas: datos.sin_medir.length })}
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {datos.sin_medir.map((c) => (
+                  <li key={c} className="text-2xs text-ink-muted">
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : null}
 
           {datos.los_en_sondeo ? (

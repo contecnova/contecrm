@@ -86,8 +86,26 @@ export function Rendimiento() {
         <p className="mt-2 text-2xs text-ink-muted" role="status">
           {presion.que_significa}
         </p>
+        {/* **Cuál está peor y qué significa.** El servidor lo manda desde el
+            principio y aquí sólo se pintaba el resumen, así que la pantalla
+            decía «el sistema está bajo presión» y no decía de quién — que es
+            lo único accionable. Medido el 26-10-2026. */}
+        {presion.peor?.servicio ? (
+          <p className="mt-2 text-2xs text-ink">
+            <span className="font-medium">{presion.peor.servicio}</span>
+            {presion.peor.que_significa ? ` · ${presion.peor.que_significa}` : null}
+          </p>
+        ) : null}
         {/* Un servicio que no contesta no cuenta como tranquilo: suele ser el
-            que está peor. */}
+            que está peor. Y hay que decir CUÁLES: el comentario prometía esto
+            y el render sólo enseñaba el aviso genérico. */}
+        {presion.sin_respuesta.length > 0 ? (
+          <p className="mt-2 text-2xs text-warning">
+            {t("rendimiento.sinRespuesta", {
+              servicios: presion.sin_respuesta.join(", "),
+            })}
+          </p>
+        ) : null}
         {presion.aviso ? (
           <p className="mt-2 text-2xs text-warning">{presion.aviso}</p>
         ) : null}

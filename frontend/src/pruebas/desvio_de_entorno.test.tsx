@@ -1,5 +1,6 @@
 /**
- * El desvío de un entorno, PINTADO con lo que el servidor manda de verdad.
+ * El desvío de un entorno, PINTADO con lo que el servidor manda de verdad
+ * (CRM-07.04.03.27).
  *
  * La pantalla leía `hay_desvio` y `diferencias`. El servidor manda `limpio`,
  * `tocado_a_mano` y `desaparecido`, y no ha mandado nunca los otros dos:

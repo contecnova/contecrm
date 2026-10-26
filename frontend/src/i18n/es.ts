@@ -659,6 +659,7 @@ export default {
     titulo: "Rendimiento",
     intro: "Cuánto hay, cuánto cabe y qué se está aplazando ahora mismo.",
     queSeAplaza: "Qué se está aplazando",
+    sinRespuesta: "No han contestado: {{servicios}}. No cuentan como tranquilos.",
     limites: "Límites del plan",
     recurso: "Recurso",
     usado: "Usado",

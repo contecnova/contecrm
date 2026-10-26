@@ -13289,8 +13289,10 @@ alrededor de la decisión que la hace útil o inútil:
   puntuación es baja por falta de datos. Sin contribuciones no se pinta un número:
   se dice que no se puede explicar.
 - **Puesto de trabajo.** Lo que enseña no es «está conectado»: es **si está
-  entrando algo y desde cuándo no**. Lo que no se ha medido no cuenta como verde, y
-  lo que va por sondeo se dice — sus cambios entran con retraso.
+  entrando algo y desde cuándo no**. Y lo que no se ha medido sale **con su
+  nombre**, no sólo contado: quien lee «1 conexión sin medir» no sabe cuál, que
+  es lo primero que hace falta para arreglarlo. Lo no medido no cuenta como
+  verde, y lo que va por sondeo se dice — sus cambios entran con retraso.
 - **Entornos y cambios (ALM).** El desvío se mide contra el paquete desplegado, no
   contra otro entorno, y **lo que desapareció también es desvío**: un panel que
   solo enseña lo añadido deja fuera el caso más incómodo. Encima del desvío se
@@ -13300,7 +13302,11 @@ alrededor de la decisión que la hace útil o inútil:
   distingue un «limpio» de un «no se ha mirado».
 - **Rendimiento.** Contesta la pregunta que llega de verdad —«¿por qué mi lista
   tarda?»— juntando tres cosas que normalmente están en tres sitios: cuánto hay,
-  cuánto cabe y **qué se está aplazando ahora mismo**.
+  cuánto cabe y **qué se está aplazando ahora mismo**. Dice **qué servicio está
+  peor** y **cuáles no han contestado**: un servicio que no contesta no cuenta
+  como tranquilo, suele ser el que está peor. Hasta el 26-10-2026 sólo se pintaba
+  el resumen —«el sistema está bajo presión»— sin decir de quién, que es lo único
+  accionable; el servidor mandaba las dos cosas desde el principio.
 - **Proveedores.** Lo vencido no se pinta igual que lo que va a vencer —uno está
   pasando y lo otro es una tarea de esta semana— y «no consta» no se pinta como
   «está bien».
