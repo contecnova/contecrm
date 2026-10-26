@@ -331,6 +331,29 @@ cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.
 > subir `IA_CONFIANZA_EXTRACCION` antes de dejar que una extracción pise lo que
 > escribió una persona.
 
+### El contrato publicado está sellado (`CRM-00.02.01.06`)
+
+`docs/contrato-publicado.json` guarda las **2.396 operaciones** —método y
+camino— que publican los catorce servicios. Un gate comprueba en cada push que
+ninguna haya desaparecido.
+
+Existe porque la compatibilidad hacia atrás es la promesa que más duele
+romper y **no se rompe con un error**: se rompe en silencio, y quien se entera
+es el cliente de otro, en producción, el día del despliegue.
+
+- **Añadir no rompe nada**, así que no se vigila.
+- **Quitar no se bloquea del todo: se bloquea quitar sin decirlo.** Para
+  retirar algo hay dos caminos, y los dos son explícitos: anunciar la retirada
+  con `API_SUNSET_DATE` y subir la versión mayor, o volver a sellar dejando
+  dicho en el commit qué se fue y por qué.
+
+Se sella con `python scripts/sellar_contrato.py --sellar`, igual que se
+regenera el documento de procesos.
+
+Lo que el sello **no** guarda son los campos. Los vigilan otros gates —el de
+atributos y los contratos que leen las pantallas— y meterlos aquí haría un
+fichero que nadie revisa y que cambia en cada commit.
+
 ### Los formatos los pone el tenant, no el código (`CRM-07.04.01.05`)
 
 `GET /api/v1/localizacion` devuelve las preferencias **ya resueltas** por la

@@ -108,7 +108,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 #   26-10-2026  139 de 752  autenticacion (CRM-00.05.01): volver a entrar, las
 #                            credenciales de maquina, las sesiones, el segundo
 #                            factor y la federacion. Nada roto
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 139
+#   26-10-2026  134 de 752  los contratos de API (CRM-00.02.01). Con sello del
+#                            contrato publicado —2.396 operaciones— para que
+#                            la compatibilidad hacia atras no se rompa en
+#                            silencio: no se rompe con un error, se rompe y se
+#                            entera el cliente de otro el dia del despliegue
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 134
 
 
 @functools.cache
