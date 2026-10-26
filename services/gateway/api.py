@@ -1440,7 +1440,11 @@ async def flujo_de_eventos(principal: AutenticadoDep, desde: int = Query(0, ge=0
     ),
 )
 async def empujar_evento(request: Request, principal: AutenticadoDep) -> Any:
-    cuerpo = await request.json()
+    from crmcore.http.cuerpo import cuerpo_json
+
+    # Igual que la captura pública: leer el cuerpo crudo sin red convierte un
+    # error de quien llama en un error del servidor.
+    cuerpo = await cuerpo_json(request)
     tenant = principal.tenant_id or cuerpo.get("tenant_id")
     if tenant is None:
         raise ErrorValidacion(

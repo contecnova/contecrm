@@ -42,12 +42,115 @@ from crmcore.http.pagination import (
     aplicar_orden_y_cursor,
     construir_pagina,
 )
+from crmcore.http.parametros import admite_parametros_abiertos
 
 # Lo que NO es un filtro: el resto de la query se interpreta como columna.
 # Los que gobiernan la FORMA de la respuesta, no qué filas salen. Un parámetro
 # que no está aquí y no es columna se rechaza con un 422 a propósito: un filtro
 # que no filtra devuelve filas de más y parece correcto.
 _NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "total", "formato"})
+
+# ── Operadores de filtro, en la URL ───────────────────────────────────────
+#
+# `?vence_at__hasta=2026-11-02`. Sin sufijo sigue siendo igualdad, así que
+# nada de lo que ya funcionaba cambia.
+#
+# **No es una gramática nueva: son nombres url-safe de la que ya hay.** El
+# motor de permisos tiene desde siempre una lista cerrada de operadores y su
+# traductor a SQL (`crmcore.authz.abac`), con el motivo escrito en su propia
+# documentación: dos gramáticas para lo mismo es cómo se acaba con un listado
+# que enseña un registro que la ficha luego niega. Esto son alias —`hasta`
+# significa `<=`— y lo que traduce sigue siendo `a_sql`.
+#
+# Los nombres van en castellano y no en `gte`/`lte` porque son los mismos que
+# verá quien construya una vista guardada o un filtro en la interfaz, y
+# mezclar dos idiomas en la misma URL es un detalle que se paga toda la vida
+# del producto.
+#
+# `contiene` NO está: en SQL depende del tipo de la columna —un JSONB, un
+# array, una relación— y `a_sql` devuelve `None` a propósito en vez de
+# inventarse una traducción aproximada. Un filtro «casi igual» produce un
+# listado que casi acierta, y eso no se detecta mirándolo.
+SEPARADOR_OPERADOR = "__"
+OPERADORES_DE_URL: dict[str, str] = {
+    "desde": ">=",
+    "hasta": "<=",
+    "mayor": ">",
+    "menor": "<",
+    "distinto": "!=",
+    "en": "en",
+    "no_en": "no_en",
+    "vacio": "vacio",
+    "no_vacio": "no_vacio",
+}
+
+
+def _atar(col: Any, crudo: str, valor: str) -> Any:
+    """El texto de la URL, convertido al tipo de su columna.
+
+    Sin esto, un valor mal escrito llega hasta Postgres y vuelve como **500**:
+    `?entrada_at__hasta=manzana` daba «invalid input syntax for type timestamp»
+    y un error interno. Un filtro mal escrito es un error de quien llama, y
+    tiene que decirlo con un 422 y con qué se esperaba — un 500 manda a mirar
+    los registros del servidor para descubrir una errata.
+
+    Ya pasaba con la igualdad de siempre: esto no lo trae el rango, lo destapa.
+
+    Lo que no se sabe convertir se deja pasar tal cual: un `String` admite
+    cualquier texto, y una columna de un tipo que no esté aquí es mejor que la
+    valide la base que inventarse una conversión.
+    """
+    from datetime import date, datetime
+    from decimal import Decimal, InvalidOperation
+    from uuid import UUID as _UUID
+
+    from sqlalchemy import literal
+
+    from crmcore.errors import ErrorValidacion
+
+    try:
+        python = col.type.python_type
+    except NotImplementedError:  # pragma: no cover — tipos sin equivalente
+        python = str
+
+    try:
+        if python is datetime:
+            # `Z` por `+00:00`: `fromisoformat` no lo admitía hasta 3.11 y
+            # medio mundo lo manda así. Y el `+` de un desfase horario viaja
+            # como espacio en una query —es lo que dice el estándar—, así que
+            # se admite también esa forma en vez de devolver un error que
+            # parece de formato y es de codificación.
+            texto = valor.strip().replace("Z", "+00:00")
+            if " " in texto and "+" not in texto and texto.count(":") >= 3:
+                texto = texto.replace(" ", "+")
+            atado: Any = datetime.fromisoformat(texto)
+        elif python is date:
+            atado = date.fromisoformat(valor.strip())
+        elif python is bool:
+            bajo = valor.strip().lower()
+            if bajo not in _CIERTOS | _FALSOS:
+                raise ValueError(valor)
+            atado = bajo in _CIERTOS
+        elif python is int:
+            atado = int(valor)
+        elif python in (float, Decimal):
+            atado = python(valor)
+        elif python is _UUID:
+            atado = _UUID(valor)
+        else:
+            atado = valor
+    except (ValueError, TypeError, InvalidOperation) as error:
+        raise ErrorValidacion(
+            f"«{valor}» no vale para filtrar por «{crudo}»",
+            error_code="listado.valor_no_valido",
+            detalle={"esperado": getattr(python, "__name__", str(python))},
+        ) from error
+
+    return literal(atado, col.type)
+
+
+_CIERTOS = frozenset({"1", "true", "si", "sí", "verdadero"})
+_FALSOS = frozenset({"0", "false", "no", "falso"})
 
 
 def _filtros_de_la_url(
@@ -78,8 +181,8 @@ def _filtros_de_la_url(
     El valor se ata con el tipo de su columna, así que un UUID llega como UUID y
     una fecha como fecha, sin que quien llama tenga que saberlo.
     """
-    from sqlalchemy import literal
 
+    from crmcore.authz.abac import a_sql
     from crmcore.authz.proyeccion import columnas_usables
     from crmcore.errors import ErrorValidacion
 
@@ -102,15 +205,50 @@ def _filtros_de_la_url(
     # puede pedir el de otro.
     usables = {c for c in usables if c != "tenant_id"}
 
-    for nombre, valor in crudos.items():
+    for crudo, valor in crudos.items():
+        nombre, _, sufijo = crudo.partition(SEPARADOR_OPERADOR)
         if nombre not in usables:
             raise ErrorValidacion(
                 f"No se puede filtrar por «{nombre}»",
                 error_code="listado.filtro_no_permitido",
                 detalle={"permitidos": sorted(usables)},
             )
+        if sufijo and sufijo not in OPERADORES_DE_URL:
+            # Se dice cuáles valen. Callarse y aplicar igualdad convertiría
+            # `?importe__mayor=1000` en «todos los importes», que es un listado
+            # que parece correcto y trae de más.
+            raise ErrorValidacion(
+                f"No existe el operador «{sufijo}»",
+                error_code="listado.operador_no_permitido",
+                detalle={"permitidos": sorted(OPERADORES_DE_URL)},
+            )
         col = getattr(modelo, nombre)
-        consulta = consulta.where(col == literal(valor, col.type))
+        operador = OPERADORES_DE_URL.get(sufijo, "=")
+
+        if operador in ("vacio", "no_vacio"):
+            # No llevan valor. Se ignora lo que venga en vez de intentar
+            # convertirlo: `?cerrada_at__vacio=1` y `...=true` quieren decir lo
+            # mismo, y rechazar uno de los dos sería una trampa de sintaxis.
+            atado: Any = None
+        elif operador in ("en", "no_en"):
+            # Lista por comas. Cada elemento se ata al tipo de la columna por
+            # separado, igual que el valor suelto.
+            atado = [_atar(col, crudo, v) for v in valor.split(",") if v != ""]
+            if not atado:
+                raise ErrorValidacion(
+                    f"«{crudo}» no trae ningún valor",
+                    error_code="listado.filtro_sin_valor",
+                )
+        else:
+            atado = _atar(col, crudo, valor)
+
+        condicion = a_sql(col, operador, atado)
+        if condicion is None:  # pragma: no cover — la tabla de arriba lo impide
+            raise ErrorValidacion(
+                f"El operador «{sufijo}» no se puede traducir a una consulta",
+                error_code="listado.operador_no_traducible",
+            )
+        consulta = consulta.where(condicion)
     return consulta
 
 
@@ -303,6 +441,14 @@ def montar_listado(
         # así que «número de contactos activos» o «importe total de las líneas»
         # no los calculaba nada.
         return pagina.a_dict(con_rollups(db, objeto, filas, proyecta))
+
+    # Esta ruta recibe parámetros que NO puede declarar: sus filtros son los
+    # nombres de las columnas del modelo y cambian con él. Los valida ella
+    # misma —y mejor, porque además mira si este principal ve ese campo en
+    # claro—, así que la comprobación global se aparta aquí y sólo aquí.
+    admite_parametros_abiertos(
+        listar, "los filtros son las columnas del modelo; las valida `_filtros_de_la_url`"
+    )
 
     montar_exportacion(
         router,

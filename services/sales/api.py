@@ -1247,15 +1247,17 @@ async def recibir_lead(
     quien monta el formulario lo pega una vez en el HTML.
     """
     from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.http.cuerpo import cuerpo_json
     from crmcore.tenancy.context import con_contexto
 
     from services.sales import captura
 
-    entrada = await peticion.json()
-    if not isinstance(entrada, dict):
-        raise ErrorValidacion(
-            "El cuerpo tiene que ser un objeto", error_code="captura.cuerpo_invalido"
-        )
+    # Por el lector común y no con `await peticion.json()` a pelo: ahí, un
+    # cuerpo que no es JSON —un formulario mal montado, un robot, una petición
+    # vacía— reventaba con un **500**. Y es la peor respuesta posible en una
+    # ruta pública: dice «me has roto» en vez de «esto no vale», que es una
+    # invitación a insistir.
+    entrada = await cuerpo_json(peticion)
 
     with con_contexto(tenant_id=tenant_id, origen="api"), unidad_de_trabajo(tenant_id) as uow:
         return captura.recibir(

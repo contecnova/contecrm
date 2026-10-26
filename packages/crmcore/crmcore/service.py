@@ -566,7 +566,7 @@ def crear_servicio(
         # Van aquí, en el arranque común, y con ellas los ajustes que las
         # gobiernan dejan de ser decorativos: `INBOX_RETENCION_DIAS` existía,
         # estaba documentado y no lo leía nadie.
-        if necesita_db:
+        if necesita_db and s.tareas_fondo_enabled:
             from crmcore.tareas import RelevoDeTareas
 
             _base = RelevoDeTareas(_barridos_del_nucleo(nombre))
@@ -641,6 +641,7 @@ def crear_servicio(
                 await bus.cerrar()
 
     from crmcore.http.idempotency import dependencia as dep_idempotencia
+    from crmcore.http.parametros import dep_parametros_conocidos
 
     app = FastAPI(
         title=f"{s.app_name} · {nombre}",
@@ -648,7 +649,14 @@ def crear_servicio(
         # engancharla una a una significa que funciona en las que alguien se
         # acordó. Va como dependencia y no como middleware porque necesita la
         # identidad ya autenticada — ver el porqué en `crmcore.http.idempotency`.
-        dependencies=[Depends(dep_idempotencia)],
+        dependencies=[
+            Depends(dep_idempotencia),
+            # Y por lo mismo: FastAPI se come en silencio cualquier parámetro
+            # de query que la función no declare, y eso convierte un filtro en
+            # «todas las filas». La fábrica de listados ya lo rechazaba para
+            # los suyos; los 29 escritos a mano seguían sin mirarlo.
+            Depends(dep_parametros_conocidos),
+        ],
         description=descripcion,
         version=version,
         lifespan=ciclo_de_vida,

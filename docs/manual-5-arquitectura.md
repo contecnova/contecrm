@@ -169,6 +169,77 @@ bueno.
 El paso 4 es el que evita el estado imposible más caro de un sistema con bus: la
 oportunidad ganada en la base y nadie enterado.
 
+### «Todo o nada» sólo lo cumplía media aplicación
+
+Una petición compuesta —varias operaciones en una llamada— promete una cosa: o
+está todo o no está nada. El mecanismo lleva tiempo escrito y es correcto: el
+router abre **una** sesión, la marca como compartida (`compartir_sesion`) y cada
+sub-petición la reutiliza; si algo falla, un solo `rollback()` deshace el
+conjunto.
+
+Pero sólo **una de las dos puertas** lo miraba. `get_db` sí; `get_uow` —la que
+usan las escrituras que emiten eventos, o sea casi todas— abría su propia
+sesión y la **confirmaba** al acabar su sub-petición. Lo escrito por las
+operaciones anteriores quedaba confirmado de verdad antes de que fallara la
+siguiente, y el `rollback()` del conjunto ya no lo tocaba.
+
+Quien mandaba «crea la cuenta y luego el contacto» y fallaba en el contacto se
+quedaba con la cuenta creada **y** un error diciendo que se había deshecho todo.
+Peor que no tener la función: hay que limpiar a mano lo que el sistema dice que
+ya está limpio.
+
+Nadie lo vio porque **la promesa no tenía prueba**. Había pruebas de las
+referencias entre operaciones, del tope, de la petición vacía y de las redes de
+origen; ninguna de lo único que hace falta que sea cierto. Ahora la hay, por
+HTTP y con mutación: `test_la_peticion_compuesta_es_todo_o_nada.py`.
+
+### El arnés devolvía al pool una conexión envenenada
+
+Durante semanas la suite entera daba **doce fallos** repartidos por el portal de
+partner, SAML, los barridos de aislamiento y las rutas sin autenticar. Once de
+los doce eran inocentes.
+
+El mecanismo, medido el 26-10-2026 con una sonda sobre la conexión:
+`ROLLBACK TO SAVEPOINT x` **no borra x** —lo deja establecido— y SQLAlchemy no
+lo suelta nunca después de deshacerlo, ni con `rollback()` ni con `close()`. En
+producción da igual, porque la conexión muere con la petición. Pero el arnés ata
+**todas** las sesiones a una sola conexión para que la prueba pueda deshacerlo
+todo, así que cada petición que acaba en error deja su savepoint vivo. El
+barrido de aislamiento, que recorre unas 2.400 rutas, llegaba a pilas de más de
+cincuenta.
+
+Y una pila profunda es una trampa, porque **soltar un savepoint destruye todos
+los posteriores**. Basta con que una sesión de fuera confirme mientras otra de
+dentro sigue abierta:
+
+```
+SAVEPOINT 54        ← sesión de fuera
+SAVEPOINT 55        ← sesión anidada
+RELEASE 54          ← la de fuera confirma: destruye la 55
+ROLLBACK TO 55      ← la de dentro se deshace → «savepoint does not exist»
+```
+
+A partir de ahí la conexión queda inservible —`Can't reconnect until invalid
+savepoint transaction is rolled back`— y, como `close()` la devolvía al pool, se
+la llevaba la prueba siguiente, y la siguiente. De ahí los once inocentes.
+
+**Lo que se arregla:** la conexión de cada prueba se `invalidate()` en vez de
+devolverse, así que el veneno no viaja; y los barridos de fondo del núcleo se
+pueden apagar por configuración (`TAREAS_FONDO_ENABLED`), igual que el relevo
+del outbox, para que no abran sesiones en medio de un recorrido de 2.400
+peticiones. Ese interruptor también sirve en producción: las tres tablas que
+barren son comunes, y catorce servicios barriendo las mismas filas es el mismo
+trabajo repetido trece veces.
+
+**Lo que NO se arregla, y queda dicho:** el barrido de aislamiento sigue siendo
+inestable de vez en cuando —de cero a un fallo por pasada— por la misma razón de
+fondo: simular N transacciones independientes sobre una conexión no se puede
+hacer del todo. Se probaron tres salidas y las tres se midieron y se
+descartaron: soltar el savepoint tras deshacerlo rompe la contabilidad de
+SQLAlchemy (14 fallos y 69 errores), envolver cada vuelta en un savepoint propio
+empeora el solape, y compartir la sesión del arnés desactiva la RLS —es de
+sistema y sin tenant— y el barrido empieza a ver fugas que no existen.
+
 ### La paleta de gráficas no se elige a ojo
 
 Cinco series, en orden fijo y **nunca cicladas**: el color sigue a la entidad,

@@ -419,8 +419,16 @@ def _cliente(nombre: str) -> Iterator[tuple[Any, Any]]:
     # probar contra fugas entre tenants, que es como se quedaron hasta hoy.
     opcionales = ("SCIM_ENABLED", "MFA_ENABLED", "SAML_ENABLED", "OIDC_ENABLED")
 
-    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", *opcionales)}
+    # Y LOS BARRIDOS DEL NÚCLEO, APAGADOS, por lo mismo que el relevo del
+    # outbox y con el mismo tipo de interruptor (`TAREAS_FONDO_ENABLED`). Un
+    # barrido abre su sesión cuando le toca el reloj; si eso cae en medio de
+    # una de las ~2.400 peticiones de este recorrido, las dos comparten la
+    # conexión del arnés, y soltar un savepoint destruye los posteriores.
+    #
+    # No se está probando el barrido: se está probando quién puede ver qué.
+    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED", *opcionales)}
     os.environ["OUTBOX_ENABLED"] = "false"
+    os.environ["TAREAS_FONDO_ENABLED"] = "false"
     for clave in opcionales:
         os.environ[clave] = "true"
     get_settings.cache_clear()

@@ -81,6 +81,25 @@ class _AppSettings(BaseSettings):
     # enseña su contrato.
     api_docs_enabled: bool = True
 
+    # ── Tareas de fondo ───────────────────────────────────────────────────
+    # Los barridos del núcleo —purgar la bandeja de entrada de eventos, la de
+    # salida y los adjuntos huérfanos— que arranca TODO servicio.
+    #
+    # Se puede apagar, y hay dos motivos de verdad para hacerlo:
+    #
+    # - **En producción**, porque las tres tablas son comunes y catorce
+    #   servicios barriendo las mismas filas es trabajo repetido trece veces.
+    #   Un operador puede dejarlas encendidas en un solo proceso.
+    # - **En pruebas**, porque un barrido abre su sesión cuando le toca el
+    #   reloj, y si eso cae en medio de una petición las dos comparten la
+    #   conexión del arnés: soltar un savepoint destruye los posteriores y la
+    #   prueba revienta por algo que no está probando. Es exactamente el
+    #   motivo por el que `OUTBOX_ENABLED` ya existía.
+    #
+    # Encendido por defecto: apagarlo sin querer deja tres tablas creciendo sin
+    # techo, que es peor que barrer de más.
+    tareas_fondo_enabled: bool = True
+
     # ── Interfaz ──────────────────────────────────────────────────────────
     # Densidad por defecto de la interfaz.
     #

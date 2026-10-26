@@ -493,6 +493,33 @@ def get_uow(principal: PrincipalDep) -> Iterator[Any]:
 
     exigir_escritura()
 
+    # Si hay una sesión COMPARTIDA, se usa esa y no se abre otra — exactamente
+    # igual que en `get_db`, y por el mismo motivo.
+    #
+    # **Esta mitad faltaba.** `get_db` lo miraba desde el principio y `get_uow`
+    # no, así que una petición compuesta cumplía «todo o nada» sólo si la ruta
+    # usaba `DbDep`. Las que usan `UowDep` —las escrituras que emiten eventos,
+    # o sea casi todas— abrían su propia sesión y la **confirmaban** al acabar
+    # su sub-petición: lo escrito por las operaciones anteriores quedaba
+    # confirmado de verdad antes de que fallara la siguiente, y el `rollback()`
+    # del conjunto ya no lo tocaba.
+    #
+    # Quien mandaba «crea la cuenta y luego el contacto» y fallaba en el
+    # contacto se quedaba con la cuenta creada **y** un error diciendo que se
+    # había deshecho todo. Medido por HTTP en
+    # `test_la_peticion_compuesta_es_todo_o_nada.py`.
+    #
+    # Los eventos sí se vuelcan aquí: son de esta operación y tienen que
+    # escribirse dentro de la misma transacción que el cambio. Quien confirma
+    # —o deshace— es el dueño de la sesión compartida, que es el único que sabe
+    # si el conjunto entero salió bien.
+    compartida = _sesion_compartida.get()
+    if compartida is not None:
+        uow = UnidadDeTrabajo(db=compartida, tenant_id=compartida.info.get("tenant_id"))
+        yield uow
+        uow._volcar_eventos()
+        return
+
     db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
     uow = UnidadDeTrabajo(db=db, tenant_id=db.info.get("tenant_id"))
     try:

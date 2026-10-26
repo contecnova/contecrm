@@ -305,12 +305,34 @@ def db(_esquema: str) -> Iterator[Any]:
     try:
         yield sesion
     finally:
-        sesion.close()
         db_session._sessionmaker = anterior
-        # Se deshace TODO, incluido lo que el código hubiera confirmado: los
-        # commits de dentro eran savepoints.
-        transaccion.rollback()
-        conexion.close()
+        try:
+            sesion.close()
+            # Se deshace TODO, incluido lo que el código hubiera confirmado:
+            # los commits de dentro eran savepoints.
+            transaccion.rollback()
+        finally:
+            # ── La conexión NO vuelve al pool: se tira ────────────────────
+            #
+            # `close()` la devolvería, y si quedó en mal estado se la lleva la
+            # prueba siguiente. Medido el 26-10-2026: un barrido que recorre
+            # cientos de rutas sobre esta conexión compartida puede dejar la
+            # pila de savepoints inconsistente —basta con que una sesión de
+            # fuera confirme mientras otra de dentro sigue abierta, porque
+            # soltar un savepoint destruye los posteriores— y a partir de ahí
+            # TODAS las pruebas que tocaban la base fallaban con
+            # «Can't reconnect until invalid savepoint transaction is rolled
+            # back».
+            #
+            # Once de los doce fallos de la suite entera eran ese arrastre, y
+            # ninguna de esas once tenía nada que ver con el problema. Una
+            # suite que acusa a once inocentes no la mira nadie.
+            #
+            # `invalidate()` cierra la conexión de verdad y el pool abre otra.
+            # Cuesta unos milisegundos contra un Postgres local; mentir sobre
+            # qué está roto cuesta mucho más.
+            conexion.invalidate()
+            conexion.close()
 
 
 def _importar_todos_los_modelos() -> None:

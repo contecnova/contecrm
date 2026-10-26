@@ -267,6 +267,83 @@ inadvertidamente, en producción está impedido.
 
 ## Operación diaria
 
+### Filtrar un listado por rango (`CRM-00.02.01.10`)
+
+Los filtros de la URL eran **igualdad y nada más**, así que no había forma de
+pedir «lo que vence antes del viernes» ni «lo de más de 50.000». Ahora:
+
+```
+?vence_at__hasta=2026-11-02          lo que vence antes (incluido)
+?vence_at__desde=2026-10-26          desde esa fecha (incluida)
+?importe__mayor=50000                estrictamente mayor
+?importe__menor=1000                 estrictamente menor
+?estado__distinto=cerrada            todo menos ése
+?estado__en=abierta,en_curso         cualquiera de la lista
+?cerrada_at__vacio=1                 sin valor
+?cerrada_at__no_vacio=1              con valor
+?estado=abierta                      igualdad, como siempre
+```
+
+Los dos extremos a la vez acotan una ventana (`...__desde=X&...__hasta=Y`).
+
+**No es una gramática nueva.** El motor de permisos tiene desde siempre una
+lista cerrada de operadores con su traductor a SQL, y la razón está escrita en
+su propio código: dos gramáticas para lo mismo es cómo se acaba con un listado
+que enseña un registro que la ficha luego niega. Estos son nombres url-safe de
+esa misma gramática.
+
+Tres cosas que conviene saber:
+
+- **Un operador que no existe se rechaza con 422** y dice cuáles valen.
+  Tratarlo como igualdad —o ignorarlo— devolvería filas de más y parecería
+  correcto, que es el mismo fallo que ya costó caro con los filtros que no
+  filtraban.
+- **Un valor mal escrito también es 422**, no 500. Antes
+  `?vence_at__hasta=manzana` llegaba hasta Postgres y volvía como error interno,
+  que manda a mirar los registros del servidor para descubrir una errata. Ya
+  pasaba con la igualdad de siempre: el rango no lo trae, lo destapa.
+- **El `+` de un desfase horario viaja como espacio** en una query: es lo que
+  dice el estándar. Se admiten las tres formas —`Z`, `%2B02:00` y el espacio—
+  porque rechazar una sería un error que parece de formato y es de
+  codificación.
+
+`contiene` no está: en SQL depende del tipo de la columna —un JSONB, un array,
+una relación— y el traductor devuelve «no sé» a propósito en vez de inventarse
+una traducción aproximada. Un filtro «casi igual» produce un listado que casi
+acierta, y eso no se detecta mirándolo.
+
+### Un parámetro que no se mira es un filtro que no filtra
+
+FastAPI **se come en silencio** cualquier parámetro de query que la función no
+declare. Eso ya costó caro: `/activities?cuenta_id=X` devolvía todas las filas
+del tenant como si el filtro existiera. Se arregló en la fábrica de listados,
+que monta 61 — y quedaban **29 escritos a mano** con el mismo agujero: usuarios,
+roles, políticas, encargos, entornos.
+
+Ahora la comprobación va en la aplicación entera, igual que la idempotencia:
+engancharla ruta a ruta significa que funciona en las que alguien se acordó, y
+son casi trescientas. Un parámetro que la operación no mira devuelve **422** y
+dice cuáles admite.
+
+Dos clases de ruta quedan fuera, cada una con su motivo escrito al lado: los
+listados de la fábrica, cuyos filtros son los nombres de las columnas y que ya
+los validan ellos mismos, y las vueltas de un proveedor externo —OAuth, SAML,
+una pasarela—, que traen lo que les da la gana.
+
+### `TAREAS_FONDO_ENABLED`
+
+Los barridos del núcleo —purgar la bandeja de entrada de eventos, la de salida y
+los adjuntos huérfanos— que arranca **todo** servicio. Encendidos por defecto.
+
+Apagarlos tiene sentido en dos sitios: en producción, porque las tres tablas son
+comunes y catorce servicios barriendo las mismas filas es el mismo trabajo
+repetido trece veces —se pueden dejar encendidos en un solo proceso—; y en
+pruebas, porque un barrido abre su sesión cuando le toca el reloj y eso puede
+caer en medio de otra cosa.
+
+Apagarlo en **todos** los procesos deja tres tablas creciendo sin techo. Si se
+apaga, que sea en trece de los catorce.
+
 ### Lo que ajusta la instalación y lo que ajusta cada persona
 
 Hay dos niveles de configuración y conviene no mezclarlos, porque el segundo no
