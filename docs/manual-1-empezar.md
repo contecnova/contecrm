@@ -165,6 +165,38 @@ La cuarta llamada es la que enseña de qué va esto: el sistema responde **qué
 está mal y por qué**, con los mismos errores que daría al guardar, para que
 cualquier frontend pueda enseñarlos sin reimplementar las reglas.
 
+## La portada: tu día
+
+Lo primero que ves al entrar es **lo que tienes hoy**, en orden de urgencia:
+
+1. **Ya se ha pasado.** Primero y en rojo, porque es lo único que no admite
+   espera. Incluye lo que delegaste: quien delega sigue siendo responsable, y
+   sin eso la tarea desaparece de tu vista en cuanto la pasas.
+2. **Para hoy.** Lo que vence antes de medianoche, en tu zona horaria.
+3. **Cierran esta semana**, y tu **embudo** dibujado por etapas, con lo que hay
+   en cada una.
+
+Dos cosas que se hacen a propósito:
+
+**Ningún número suelto.** Cada cifra lleva su lista debajo. Una portada de
+contadores obliga a buscar a qué se refieren, y entonces vuelve a ser un índice
+con otra forma.
+
+**Cuando no hay nada, se dice.** «Nada vencido. Bien.» Un hueco en blanco se lee
+como «no ha cargado», y entonces nadie se fía tampoco de los bloques que sí
+tienen cosas.
+
+> Antes esta pantalla listaba enlaces a las demás y los contaba —«28 pantallas a
+> tu alcance»—. Quien abre un CRM a primera hora no viene a elegir pantalla:
+> viene a saber qué tiene que hacer y qué se le está pasando. Reconstruir eso a
+> mano, abriendo tres pantallas y cruzándolas de cabeza, es trabajo que el
+> sistema puede hacer y no hacía.
+
+Tus **roles** ya no están aquí: viven en el menú de tu avatar, arriba a la
+derecha. Son identidad —qué puedes hacer—, no trabajo del día, y ahí ocupaban el
+sitio de lo que sí vence hoy. Siguen estando porque explican por qué no ves una
+pantalla: sin ellos, «no me aparece» no tiene respuesta.
+
 ## Las dos entradas: trabajar y administrar
 
 Arriba del todo del panel izquierdo hay dos pestañas, y es la primera decisión

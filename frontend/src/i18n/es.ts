@@ -175,7 +175,22 @@ export default {
   inicio: {
     empezar: "Dar de alta",
     saludo: "Hola, {{nombre}}",
+    // Lo que había aquí —«{{pantallas}} pantallas a tu alcance»— describía el
+    // producto, no el día de quien entra. Contar pantallas es una métrica
+    // nuestra; a quien abre esto a primera hora no le dice nada.
+    miDia: "Esto es lo que tienes hoy.",
     entradilla: "{{pantallas}} pantallas a tu alcance. Busca cualquiera con {{atajo}}.",
+    vencidas: "Ya se ha pasado",
+    nadaVencido: "Nada vencido. Bien.",
+    hoy: "Para hoy",
+    nadaHoy: "Nada vence hoy.",
+    cierranEstaSemana: "Cierran esta semana",
+    nadaCierra: "Ninguna de las tuyas cierra esta semana.",
+    miEmbudo: "Mi embudo",
+    etapa: "Etapa",
+    importe: "Importe",
+    verTodas: "Ver todas",
+    verEmbudo: "Ver el embudo",
     sinRoles: "Sin roles asignados todavía",
     modulos: "Módulos del catálogo",
     modulosDetalle: "Cada uno enseña una sección del catálogo funcional.",

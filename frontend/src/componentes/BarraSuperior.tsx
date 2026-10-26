@@ -290,6 +290,22 @@ export function BarraSuperior({
                   <p className="truncate text-xs font-medium text-ink" title={sesion.email}>
                     {sesion.email}
                   </p>
+                  {/* Los roles viven aquí y no en la portada. Son identidad
+                      —«qué puedo hacer»—, no trabajo del día, y en la portada
+                      ocupaban el sitio de lo que sí vence hoy. Siguen estando
+                      porque explican por qué alguien no ve una pantalla: sin
+                      ellos, «no me aparece» no tiene respuesta. */}
+                  {sesion.roles.length > 0 ? (
+                    <p className="mt-1 flex flex-wrap gap-1">
+                      {sesion.roles.map((rol) => (
+                        <span key={rol} className="badge badge-muted">
+                          {rol}
+                        </span>
+                      ))}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-3xs text-warning">{t("inicio.sinRoles")}</p>
+                  )}
                 </div>
               ) : null}
               <Link

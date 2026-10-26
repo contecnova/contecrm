@@ -625,18 +625,27 @@ describe("las ocho que no tenían escenario también enseñan lo suyo", () => {
     );
   };
 
-  it("Inicio enseña lo que trae la sesión", async () => {
-    // El saludo pasa por `t()` con interpolación, y aquí `t` devuelve la clave:
-    // el testigo tiene que ser algo que la pantalla pinte TAL CUAL. Los roles
-    // se pintan crudos, y son lo que de verdad decide qué ve esta persona.
+  it("Inicio enseña el trabajo del día, no un índice", async () => {
+    // Antes el testigo eran los ROLES, porque la portada era un menú y el
+    // saludo pasa por `t()` —que aquí devuelve la clave— así que no servía de
+    // marcador. Ahora la portada enseña datos, y el testigo es un dato: si
+    // dejara de pintarlos, esta prueba cae aunque la pantalla monte bien.
+    //
+    // Los roles no desaparecen del producto: se han movido al menú de perfil,
+    // que es donde va la identidad.
+    await responder((ruta) =>
+      ruta.includes("/activities/vencidas")
+        ? [{ id: "a1", asunto: "TESTIGO-vencida", vence_at: "2026-10-01T09:00:00Z" }]
+        : { items: [] },
+    );
     montar(pantalla("Inicio"), "/x", "/x", {
-      sesion: { ...PROPS.sesion, roles: ["TESTIGO-rol"] },
+      sesion: { ...PROPS.sesion, roles: ["rol"] },
     });
 
     await waitFor(() => {
       expect(
-        (document.body.textContent ?? "").includes("TESTIGO-rol"),
-        "«Inicio» no enseña los roles de quien ha entrado",
+        (document.body.textContent ?? "").includes("TESTIGO-vencida"),
+        "«Inicio» no enseña lo que ya ha vencido, que es lo primero que hay que ver",
       ).toBe(true);
     });
   });
