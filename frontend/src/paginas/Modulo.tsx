@@ -30,8 +30,10 @@ import {
 } from "@/componentes/Vistas";
 import { cn } from "@/lib/utiles";
 import { Formulario } from "@/componentes/Formulario";
+import { Filtros } from "@/componentes/Filtros";
 import { Tabla } from "@/componentes/Tabla";
 import { ErrorApi, llamar } from "@/lib/api";
+import { comoQuery, leerFiltros, parametroDe, type Filtro } from "@/lib/filtros";
 import {
   admite,
   camposDe,
@@ -259,7 +261,28 @@ function RecursoVista({
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
   const [creando, setCreando] = useState(abrirAlta);
   const [enviando, setEnviando] = useState(false);
+  const [parametros, setParametros] = useSearchParams();
   const [termino, setTermino] = useState("");
+  // Los filtros viven en la URL y no en un estado interno: es lo que hace que
+  // una lista filtrada se pueda guardar en marcadores, pegar en un chat y
+  // recargar sin perderla.
+  const filtros = useMemo(
+    () => leerFiltros(parametros, recurso?.busqueda?.parametro),
+    [parametros, recurso],
+  );
+  const fijarFiltros = useCallback(
+    (nuevos: Filtro[]) => {
+      const siguientes = new URLSearchParams();
+      // Se conservan los parámetros que gobiernan la pantalla —la pestaña— y
+      // se reemplazan los filtros enteros: quitar uno tiene que quitarlo de la
+      // URL, no dejarlo con valor vacío, que el servidor interpretaría.
+      const pestaña = parametros.get("r");
+      if (pestaña) siguientes.set("r", pestaña);
+      for (const f of nuevos) siguientes.set(parametroDe(f), f.valor);
+      setParametros(siguientes, { replace: true });
+    },
+    [parametros, setParametros],
+  );
   const [proposito, setProposito] = useState<Proposito | null>(null);
   /**
    * La ruta a la que se da de alta, y si la fila se puede abrir.
@@ -346,6 +369,12 @@ function RecursoVista({
       try {
         const partes: string[] = [];
         if (busqueda) partes.push(`${busqueda.parametro}=${encodeURIComponent(termino.trim())}`);
+        // Los filtros van en la petición, no se aplican sobre lo recibido.
+        // Filtrar en el navegador obliga a traerse todas las filas para
+        // enseñar diez —y con paginación por cursor, además, miente: filtra
+        // sólo la página que ya se había traído.
+        const consulta = comoQuery(filtros);
+        if (consulta) partes.push(consulta);
         if (cursor) partes.push(`cursor=${encodeURIComponent(cursor)}`);
         const separador = recurso.listar.includes("?") ? "&" : "?";
         const ruta = partes.length ? `${recurso.listar}${separador}${partes.join("&")}` : recurso.listar;
@@ -364,7 +393,7 @@ function RecursoVista({
         if (mia === peticion.current) setFallo(error);
       }
     },
-    [recurso.listar, puedeVer, busqueda, termino, terminoValido],
+    [recurso.listar, puedeVer, busqueda, termino, terminoValido, filtros],
   );
 
   useEffect(() => {
@@ -523,6 +552,21 @@ function RecursoVista({
               columnas primero y el de vista a su derecha, siempre en ese orden.
               En la vista de tabla los pinta la propia tabla, porque el botón de
               columnas es suyo; aquí solo cuando no hay tabla. */}
+          {/* Los filtros, encima de todo y siempre visibles. Un panel lateral
+              tapa justo lo que se está filtrando, y uno escondido tras un botón
+              hace que nadie sepa que hay un recorte puesto — que es cómo se
+              acaba discutiendo un número calculado sobre media lista.
+
+              No se enseñan en un vocabulario: son nueve palabras, y filtrar
+              nueve palabras es más trabajo que leerlas. */}
+          {vocabulario ? null : (
+            <Filtros
+              campos={ordenar(filas, recurso.columnas)}
+              filas={filas}
+              puestos={filtros}
+              alCambiar={fijarFiltros}
+            />
+          )}
           {vista === "tabla" && !vocabulario ? null : (
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-3xs text-ink-faint" role="status">

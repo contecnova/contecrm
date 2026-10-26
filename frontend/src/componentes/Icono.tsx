@@ -15,9 +15,10 @@
 
 import { cn } from "@/lib/utiles";
 
-export type Tamano = "sm" | "md" | "lg" | "xl";
+export type Tamano = "xs" | "sm" | "md" | "lg" | "xl";
 
 const CLASE_TAMANO: Record<Tamano, string> = {
+  xs: "material-symbol--xs",
   sm: "material-symbol--sm",
   md: "",
   lg: "material-symbol--lg",

@@ -787,6 +787,11 @@
       "GRAD" 0,
       "opsz" 24;
   }
+  /* 14px: para iconos DENTRO de texto denso —el aspa de una pastilla de
+     filtro, una marca al lado de un rótulo de 10px—. Sin este escalón, el más
+     pequeño que había eran 18px y el icono salía más grande que la palabra que
+     acompaña, que es lo que hace que una pastilla parezca un botón. */
+  .material-symbol--xs { font-size: 14px; }
   .material-symbol--sm { font-size: 18px; }
   .material-symbol--lg { font-size: 24px; }
   .material-symbol--xl { font-size: 32px; }

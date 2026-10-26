@@ -583,6 +583,44 @@ describe("el listado genérico enseña sus filas", () => {
       ).toBe(true);
     });
   });
+
+  it("el filtro de la URL viaja al SERVIDOR, no se aplica sobre lo recibido", async () => {
+    // **Es lo único que hace honesto un filtro con paginación por cursor.**
+    // Filtrando en el navegador se recortaría sólo la página ya traída, y la
+    // pantalla diría «3 resultados» donde hay cuarenta. Y además se estaría
+    // trayendo todo para enseñar unos pocos.
+    const pedidas: string[] = [];
+    const api = await import("@/lib/api");
+    (api.llamar as unknown as { mockImplementation: (f: unknown) => void }).mockImplementation(
+      async (ruta: string) => {
+        pedidas.push(ruta);
+        return { retenidos: [], datos: { items: [], total: 0 } };
+      },
+    );
+
+    const { Modulo } = paginas as unknown as {
+      Modulo: React.ComponentType<Record<string, unknown>>;
+    };
+    render(
+      <MemoryRouter initialEntries={["/m/tenants?estado=activo&created_at__desde=2026-01-01"]}>
+        <Frontera clave="x">
+          <Routes>
+            <Route path="/m/:ruta" element={<Modulo {...PROPS} />} />
+          </Routes>
+        </Frontera>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const listados = pedidas.filter((r) => r.includes("estado=activo"));
+      expect(
+        listados.length,
+        `ninguna petición llevó el filtro. Pedidas: ${pedidas.join(" | ")}`,
+      ).toBeGreaterThan(0);
+      // Y el rango también: es el que no existía antes y el que da valor.
+      expect(listados.some((r) => r.includes("created_at__desde"))).toBe(true);
+    });
+  });
 });
 
 /**

@@ -225,6 +225,32 @@ Automatización, que es de administrar, y se enseñan en Trabajar. Aprobar un
 descuento no es configurar nada, y esconderlo detrás de «Administrar» es
 garantizar que se quede esperando.
 
+## Filtrar una lista
+
+Encima de cualquier listado hay un botón **Filtrar**. Se elige un campo, una
+condición y un valor:
+
+| El campo es | Puedes pedir |
+|---|---|
+| una fecha | **desde**, **hasta**, es, sin valor, con valor |
+| un número | **más de**, **menos de**, al menos, como mucho, es, sin valor |
+| un texto | es, no es, **es alguno de** (separados por comas), sin valor, con valor |
+| un sí/no | es, sin valor |
+
+Lo puesto se ve como pastillas encima de la lista, cada una con su aspa. Están
+siempre a la vista y no escondidas detrás de un panel: lo que importa más que
+poder añadir el filtro siguiente es **saber qué recorte estás mirando**, porque
+un filtro invisible es cómo se acaba discutiendo un número calculado sobre media
+lista.
+
+**El filtro viaja en la dirección.** Eso significa que una lista filtrada se
+puede guardar en marcadores, pegar en un chat o en un correo, y al abrirla sale
+igual. Y que recargar no la pierde.
+
+**Se filtra en el servidor, no en tu navegador.** La diferencia importa cuando
+hay muchas filas: el listado trae páginas, y filtrar en el navegador recortaría
+sólo la página que ya se había traído — diría «3 resultados» donde hay cuarenta.
+
 ## Las gráficas
 
 Una respuesta analítica se dibuja según lo que **tiene que hacer quien la lee**,
