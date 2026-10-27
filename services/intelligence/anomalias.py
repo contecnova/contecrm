@@ -32,7 +32,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import ErrorValidacion
+from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from sqlalchemy import (
@@ -293,6 +293,41 @@ def observar(
         # También cuando sube: un detector que solo mira hacia abajo deja pasar
         # el mes en que alguien cargó el pipeline por duplicado.
         "porque": explicacion,
+    }
+
+
+def ficha(db: Session, *, tenant_id: UUID, anomalia_id: UUID) -> dict[str, Any]:
+    """Una anomalía, con lo que la explica.
+
+    Existía «decir si el aviso valía» —una acción sobre el registro— y no
+    existía forma de abrir el registro: la acción no tenía pantalla desde la
+    que llamarse. Es la misma asimetría que tenía el aislamiento del tenant, y
+    sale del mismo sitio: la acción se escribe cuando se necesita y la ficha
+    sólo cuando alguien la mira.
+
+    Lo que lleva dentro es lo que permite decidir si el aviso valía: el valor,
+    lo que se esperaba, cuánto se desvía y por qué. Sin eso, «¿era real?» se
+    contesta a ojo.
+    """
+    fila = db.execute(
+        select(Anomalia).where(Anomalia.tenant_id == tenant_id, Anomalia.id == anomalia_id)
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado("No existe esa anomalía.", error_code="anomalia.no_encontrada")
+    return {
+        "id": str(fila.id),
+        "serie_id": str(fila.serie_id),
+        "fecha": fila.fecha.isoformat() if fila.fecha else None,
+        "valor": fila.valor,
+        "esperado": fila.esperado,
+        "desviacion": fila.desviacion,
+        "z": fila.z,
+        "sentido": fila.sentido,
+        "severidad": fila.severidad,
+        "explicacion": fila.explicacion,
+        "revisada": fila.revisada,
+        "era_real": fila.era_real,
+        "comentario": fila.comentario,
     }
 
 

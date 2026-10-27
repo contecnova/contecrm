@@ -395,6 +395,22 @@ class Clasificar(BaseModel):
     umbral_escalado: float = 0.8
 
 
+@router_anomalias.get(
+    "/{anomalia_id}",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Una anomalía, con lo que la explica",
+    description=(
+        "Existía «decir si el aviso valía» y no existía forma de **abrir** el "
+        "aviso: la acción no tenía pantalla desde la que llamarse.\n\n"
+        "Lleva el valor, lo que se esperaba, cuánto se desvía y por qué, que es "
+        "lo que hace falta para contestar si era real. Sin eso se contesta a ojo, "
+        "y entonces la respuesta no mide el detector: mide quién la dio."
+    ),
+)
+def ficha_de_anomalia(anomalia_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    return ano.ficha(db, tenant_id=principal.tenant_id, anomalia_id=anomalia_id)
+
+
 @router_conversacion.post(
     "/resumen",
     status_code=status.HTTP_201_CREATED,

@@ -14338,3 +14338,46 @@ ninguno del código. Veintitrés fallos que no significan nada son la forma más
 rápida de que alguien deje de mirar ese gate, y el día que una pantalla se rompa
 de verdad estará ahí, en la lista, con las otras veintidós. Ahora se para antes
 con un mensaje que dice qué instalar.
+
+## La IA publicaba 71 operaciones y la pantalla enseñaba la salud de una cuenta (`CRM-05.02.01.04`, `.05`, `.07`, `CRM-05.02.02.07`, `.09`, `.10`, `CRM-05.02.03.01`, `.03`, `.04`)
+
+`/api/v1/ia` publica setenta y una operaciones. La única pantalla de
+inteligencia que había contesta una pregunta legítima —qué sabe la IA de esta
+cuenta y por qué— y ninguna de las que hace quien **responde** de la IA:
+
+- **Quién presta el servicio, en qué región y a qué coste**, y si el proveedor
+  es propio del cliente. Es la primera pregunta de quien firma la factura y de
+  quien tiene que decir dónde acaban los datos. Ahí mismo se ve el *opt-out* de
+  entrenamiento por proveedor: un *opt-out* que consta en un contrato y no en
+  la pantalla no lo comprueba nadie.
+- **Qué modelos hay**, con su versión, su estado, sus métricas, cuándo se
+  entrenaron, con qué ventana de datos y con qué vigencia; se activa una
+  versión y se calcula la deriva.
+- **Qué agentes autónomos están sueltos.** Un agente que nadie ve es un proceso
+  con permisos corriendo solo. Se ven sus herramientas, sus permisos acotados,
+  su máximo de acciones, su presupuesto de tokens al día y desde qué importe o
+  qué nivel de riesgo pide aprobación humana. Se apagan desde su ficha, y el
+  apagado deja su motivo escrito. Sus herramientas se pueden generar **desde el
+  contrato** —de las propias operaciones publicadas— en vez de escribirlas a
+  mano.
+- **Qué bloquearon las guardias.** Una guardia sin registro es una promesa:
+  nadie puede decir si ha actuado alguna vez.
+- **Cuánto cuesta**, con la tasa de descarte —cuánto de lo que se paga se
+  tira— y la curva por día, que es donde se ve el salto del martes que nadie
+  pidió.
+- **Qué cuentas marca el modelo en riesgo**, que es la lista sobre la que se
+  trabaja.
+
+Y lo que **no** se ha fingido: transcripciones, variantes, voz y sugerencias de
+caso son extremos de análisis —un `POST` que devuelve un cálculo—, no listados.
+Su sitio es dentro de la actividad, del caso o de la campaña; una pestaña que
+pida un JSON a mano no es una pantalla, es una calculadora en la que el usuario
+tiene que ser el modelo. Tampoco se declara la trazabilidad por registro
+(`CRM-05.02.02.08`): su extremo cuelga de un registro y su sitio es la ficha,
+que todavía no lo pinta.
+
+**Una asimetría más, la misma de siempre.** Las anomalías tenían la acción
+«decir si el aviso valía» y no tenían forma de abrir el aviso. Ahora publican su
+ficha con el valor, lo esperado, la desviación y la explicación, que es lo que
+hace falta para contestar si era real sin contestar a ojo — y una respuesta dada
+a ojo no mide el detector: mide a quien la dio.

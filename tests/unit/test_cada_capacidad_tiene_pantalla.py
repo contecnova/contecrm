@@ -84,7 +84,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            quien tiene hoy permisos incompatibles y por que
 #                            esta persona puede hacer esto—. Las cuatro tenian
 #                            extremo publicado y ninguna tenia puerta
-TOPE_SIN_PANTALLA = 505
+#   27-10-2026  494 de 753  gobierno de la IA. `/api/v1/ia` publica 71
+#                            operaciones y la unica pantalla de inteligencia
+#                            que habia ensena la salud de UNA cuenta: quien
+#                            presta el servicio y en que region, que modelos
+#                            hay con sus metricas y su deriva, que agentes
+#                            estan sueltos con sus permisos y su presupuesto,
+#                            que bloquearon las guardias y cuanto cuesta todo
+#                            no tenian puerta. Lo que NO se ha fingido:
+#                            transcripciones, variantes, voz y sugerencias de
+#                            caso son extremos de analisis, no listados, y su
+#                            sitio es dentro de la actividad o del caso
+TOPE_SIN_PANTALLA = 494
 
 
 def _es_pantalla(p: Path) -> bool:

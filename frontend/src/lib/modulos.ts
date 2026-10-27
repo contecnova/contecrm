@@ -1140,6 +1140,102 @@ export const MODULOS: Modulo[] = [
 
   // ── Módulo 5 · Analítica ────────────────────────────────────────────────
   {
+    // El gobierno de la IA, que no tenía ninguna puerta: `/api/v1/ia` publica
+    // 71 operaciones y la única pantalla de inteligencia que había enseña la
+    // salud de UNA cuenta. Lo que falta no es eso: es quién puede llamar a
+    // qué modelo, cuánto está costando, qué bloquearon las guardias y qué
+    // agentes hay sueltos.
+    //
+    // Aquí van las COLECCIONES, que es lo que un módulo genérico enseña bien.
+    // Lo que no está y no se finge: transcripciones, variantes, voz y
+    // sugerencias de caso son extremos de análisis (`POST` que devuelven un
+    // cálculo), no listados; su sitio es dentro de la actividad, del caso o de
+    // la campaña, no una pestaña que pida un JSON.
+    ruta: "ia",
+    titulo: "Gobierno de la IA",
+    seccion: "5.2",
+    capacidad: "CRM-07.04.03.23",
+    grupo: "Analítica",
+    recursos: [
+      // Quién presta el servicio, con qué modelo y a qué coste. Es la primera
+      // pregunta de cualquiera que firme una factura de IA.
+      {
+        nombre: "Proveedores de IA",
+        listar: "/api/v1/ia/proveedores",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      {
+        nombre: "Modelos",
+        listar: "/api/v1/ia/modelos",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      // Un agente autónomo que nadie ve es un proceso con permisos corriendo
+      // solo. Aquí se ve cuáles hay, y desde la ficha se apagan.
+      {
+        nombre: "Agentes autónomos",
+        listar: "/api/v1/ia/agentes-autonomos",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+        acciones: [
+          {
+            ruta: "/api/v1/ia/agentes-autonomos/herramientas-desde-contrato",
+            nombre: "Herramientas desde el contrato",
+            detalle: "Las saca de las propias operaciones publicadas, en vez de escribirlas a mano",
+            permiso: "ia:administrar",
+          },
+        ],
+      },
+      {
+        nombre: "Anomalías",
+        listar: "/api/v1/ia/anomalias",
+        servicio: "intelligence",
+        permiso: "ia:usar",
+      },
+      // Lo que las guardias NO dejaron pasar. Una guardia sin registro es una
+      // promesa: nadie sabe si ha actuado nunca.
+      {
+        nombre: "Bloqueos de las guardias",
+        listar: "/api/v1/ia/guardias/bloqueos",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      // Las dos caras del gasto: el total con su tasa de descarte —cuánto de
+      // lo que se paga se tira— y la curva por día, que es donde se ve el
+      // salto del martes que nadie pidió.
+      {
+        nombre: "Consumo y coste",
+        listar: "/api/v1/ia/uso",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      {
+        nombre: "Uso por día",
+        listar: "/api/v1/ia/uso/por-dia",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      // Cuentas que el modelo marca en riesgo, que es la lista sobre la que se
+      // trabaja; la salud de una cuenta suelta ya se ve en su pantalla.
+      {
+        nombre: "Cuentas en riesgo",
+        listar: "/api/v1/ia/salud/riesgo",
+        servicio: "intelligence",
+        permiso: "ia:usar",
+      },
+      // Herramientas que exponemos a agentes de fuera por MCP. Vive en
+      // integración y se gobierna aquí: lo que se decide es a qué puede llegar
+      // un agente que no es nuestro.
+      {
+        nombre: "Exposiciones MCP",
+        listar: "/api/v1/agentes-ia/exposiciones",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+    ],
+  },
+  {
     ruta: "explotacion",
     titulo: "Explotación",
     seccion: "5.1",

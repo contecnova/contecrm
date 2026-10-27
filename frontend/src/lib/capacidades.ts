@@ -17,6 +17,25 @@
  */
 
 export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
+  // El gobierno de la IA: quién la presta y en qué región, con qué modelo y a
+  // qué coste; qué modelos hay y con qué métricas y deriva; qué agentes están
+  // sueltos, con sus permisos, su presupuesto y su punto de control humano; y
+  // qué bloquearon las guardias. La trazabilidad por registro
+  // (CRM-05.02.02.08) NO está declarada: su extremo cuelga de un registro y su
+  // sitio es la ficha, que todavía no lo pinta.
+  "ia": [
+    "CRM-05.02.01.04",
+    "CRM-05.02.01.05",
+    "CRM-05.02.01.07",
+    "CRM-05.02.02.07",
+    "CRM-05.02.02.09",
+    "CRM-05.02.02.10",
+    "CRM-05.02.03.01",
+    "CRM-05.02.03.02",
+    "CRM-05.02.03.03",
+    "CRM-05.02.03.04",
+  ],
+
   // El alta por API y el autoservicio (`POST /tenants`), el cambio de estado
   // —suspender, reactivar, congelar en solo lectura—, las unidades de
   // negocio, los ajustes jerárquicos, el catálogo de planes y capacidades,
