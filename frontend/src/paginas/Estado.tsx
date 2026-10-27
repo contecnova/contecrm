@@ -67,10 +67,51 @@ interface Compromisos {
   compromisos: Compromiso[];
 }
 
+/** `GET /estado/slo`: el objetivo por servicio y el presupuesto de error. */
+interface Slo {
+  tier: string;
+  servicios_medibles: number;
+  sin_medicion: string[];
+  presupuesto_agotado_en: string[];
+  se_puede_desplegar: boolean;
+  que_significa: string;
+  servicios: {
+    servicio: string;
+    objetivo_pct: number;
+    latencia_objetivo_ms: number;
+    presupuesto_minutos: number;
+    aviso?: string;
+  }[];
+}
+
+/** `GET /estado/consumo`: cuánto se lleva gastado de lo contratado. */
+interface Consumo {
+  metricas: { metrica: string; consumido: number; por_modulo: Record<string, number> }[];
+}
+
+/** `GET /estado/contratos`: si lo que un servicio promete llega de verdad. */
+interface Contratos {
+  en_verde: boolean;
+  incumplimientos: unknown[];
+  sin_respuesta: string[];
+  servicios: { servicio: string; cobertura_pct: number; incumplimientos: unknown[] }[];
+}
+
+/** `GET /estado/consultas-degradadas`: lo que va más lento de lo que debería. */
+interface Degradadas {
+  aviso: string;
+  sin_respuesta: string[];
+  servicios: { servicio: string; consultas: unknown[] }[];
+}
+
 export function Estado() {
   const { t } = useTranslation();
   const [datos, setDatos] = useState<Respuesta | null>(null);
   const [compromisos, setCompromisos] = useState<Compromisos | null>(null);
+  const [slo, setSlo] = useState<Slo | null>(null);
+  const [consumo, setConsumo] = useState<Consumo | null>(null);
+  const [contratos, setContratos] = useState<Contratos | null>(null);
+  const [degradadas, setDegradadas] = useState<Degradadas | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
@@ -83,6 +124,26 @@ export function Estado() {
     // se pudo leer un número de contrato sería el peor momento para perderlo.
     llamar<Compromisos>("/api/v1/compromisos", { signal: control.signal })
       .then((r) => setCompromisos(r.datos))
+      .catch(() => undefined);
+    // Y lo demás que esta página dice enseñar desde que se escribió —el
+    // objetivo de servicio y el presupuesto de error (CRM-00.06.01.04)— más lo
+    // que se pregunta al lado: cuánto se lleva gastado de lo contratado, si lo
+    // que un servicio promete llega de verdad, y qué va más lento de lo que
+    // debería. Las cuatro estaban servidas y ninguna se pedía.
+    //
+    // Cada una con su fallo: que no se pueda leer el consumo no puede dejar
+    // sin ver qué componente está caído, que es lo urgente cuando algo va mal.
+    llamar<Slo>("/api/v1/estado/slo", { signal: control.signal })
+      .then((r) => setSlo(r.datos))
+      .catch(() => undefined);
+    llamar<Consumo>("/api/v1/estado/consumo", { signal: control.signal })
+      .then((r) => setConsumo(r.datos))
+      .catch(() => undefined);
+    llamar<Contratos>("/api/v1/estado/contratos", { signal: control.signal })
+      .then((r) => setContratos(r.datos))
+      .catch(() => undefined);
+    llamar<Degradadas>("/api/v1/estado/consultas-degradadas", { signal: control.signal })
+      .then((r) => setDegradadas(r.datos))
       .catch(() => undefined);
     return () => control.abort();
   }, []);
@@ -179,6 +240,118 @@ export function Estado() {
               </div>
             ))}
           </div>
+        </>
+      ) : null}
+
+      {/* El presupuesto de error, y lo PRIMERO que decide: si hoy se puede
+          desplegar. Un objetivo de servicio que no cambia ninguna decisión es
+          un número de informe; éste dice cuándo toca parar de añadir y
+          arreglar lo que falla.
+
+          Y los cuatro paneles de aquí abajo comprueban la LISTA, no el objeto:
+          es la misma lección que ya estaba escrita unas líneas más arriba para
+          los compromisos y que volví a saltarme. Protegerse de que la petición
+          FALLE no protege de que conteste con otra forma, y entonces esta
+          pantalla —la que se mira justo cuando algo va mal— se cae entera al
+          pintar. Lo cazaron sus propias pruebas. */}
+      {slo?.servicios?.length ? (
+        <>
+          <h2 className="mt-8 text-sm font-medium text-ink">{t("estado.slo")}</h2>
+          <p
+            className={`mt-1 text-2xs ${
+              slo.se_puede_desplegar === false ? "text-danger" : "text-ink-muted"
+            }`}
+            role="status"
+          >
+            {slo.que_significa ?? ""}
+          </p>
+          {/* Lo que NO se mide va delante y aparte: un servicio sin medición
+              no está en verde, está sin mirar, y contarlo con los que cumplen
+              es cómo un panel dice que todo va bien sobre media flota. */}
+          {slo.sin_medicion?.length ? (
+            <p className="mt-1 text-3xs text-warning">
+              {t("estado.sinMedicion", { cuantos: slo.sin_medicion.length })}:{" "}
+              {slo.sin_medicion.join(", ")}
+            </p>
+          ) : null}
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {slo.servicios.map((s) => (
+              <li
+                key={s.servicio}
+                className={`rounded-lg border px-3 py-2 ${
+                  (slo.presupuesto_agotado_en ?? []).includes(s.servicio)
+                    ? "border-danger/60 bg-danger/5"
+                    : "border-ink-dim/60 bg-paper"
+                }`}
+              >
+                <p className="text-2xs text-ink">{s.servicio}</p>
+                <p className="text-3xs text-ink-faint">
+                  {t("estado.objetivo", {
+                    objetivo: s.objetivo_pct,
+                    minutos: s.presupuesto_minutos,
+                  })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {/* Lo que se lleva gastado de lo contratado. Con el reparto por módulo:
+          «vais por el 80 %» no dice qué hacer; «el 80 % es almacenamiento de
+          servicio» sí. */}
+      {consumo?.metricas?.length ? (
+        <>
+          <h2 className="mt-8 text-sm font-medium text-ink">{t("estado.consumo")}</h2>
+          <ul className="mt-2 divide-y divide-ink-dim/30">
+            {consumo.metricas.map((m) => (
+              <li key={m.metrica} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+                <span className="text-xs text-ink">{m.metrica}</span>
+                <span className="text-sm font-medium text-ink">{m.consumido}</span>
+                <span className="text-3xs text-ink-faint">
+                  {Object.entries(m.por_modulo ?? {})
+                    .filter(([, v]) => v > 0)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {/* Dos preguntas que sólo se hacen cuando algo huele mal, y que hasta
+          ahora no tenían dónde hacerse: si lo que un servicio promete en sus
+          eventos llega de verdad, y qué consultas van más lentas de lo que
+          deberían. */}
+      {contratos?.servicios || degradadas?.servicios ? (
+        <>
+          <h2 className="mt-8 text-sm font-medium text-ink">{t("estado.entreServicios")}</h2>
+          {contratos?.servicios ? (
+            <p className="mt-1 text-2xs text-ink-muted">
+              {contratos.en_verde
+                ? t("estado.contratosEnVerde")
+                : t("estado.contratosRotos", {
+                    cuantos: (contratos.incumplimientos ?? []).length,
+                  })}
+              {(contratos.sin_respuesta ?? []).length > 0
+                ? ` · ${t("estado.sinRespuesta", {
+                    cuantos: contratos.sin_respuesta.length,
+                  })}`
+                : ""}
+            </p>
+          ) : null}
+          {degradadas?.servicios ? (
+            <p className="mt-1 text-2xs text-ink-muted">
+              {t("estado.degradadas", {
+                cuantas: degradadas.servicios.reduce(
+                  (n, s) => n + (s.consultas ?? []).length,
+                  0,
+                ),
+              })}
+              {degradadas.aviso ? ` · ${degradadas.aviso}` : ""}
+            </p>
+          ) : null}
         </>
       ) : null}
     </>

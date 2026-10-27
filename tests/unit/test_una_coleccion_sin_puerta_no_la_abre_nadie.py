@@ -60,7 +60,14 @@ FRONT = RAIZ / "frontend/src"
 #                            —lo instalado, los contratos, los pedidos, los
 #                            artículos, la comunidad y quién más entra— sin que
 #                            el cliente pudiera verlas.
-TOPE_SIN_PUERTA = 161
+#   27-10-2026  157 de 708  la página de estado del tenant decía en su propia
+#                            cabecera que enseña el objetivo de servicio y el
+#                            presupuesto de error (CRM-00.06.01.04) y leía una
+#                            sola ruta. Las otras cuatro —objetivo, consumo
+#                            sobre lo contratado, promesas entre servicios y
+#                            consultas degradadas— estaban servidas y nadie las
+#                            pedía.
+TOPE_SIN_PUERTA = 157
 
 SERVICIOS = (
     "party",

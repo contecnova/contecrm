@@ -5555,6 +5555,16 @@ presupuesto de error, con tres decisiones que cambian cómo se lee:
 Cuando el presupuesto se agota, la respuesta lo dice con todas las letras: toca
 arreglar antes que seguir sacando.
 
+**Y se ve en la página de estado**, debajo de los componentes. Hasta el
+27-10-2026 no se veía en ninguna parte: la página decía en su propia cabecera
+que lo enseñaba y leía una sola ruta —la de los componentes—, así que el
+objetivo por servicio, el presupuesto en minutos, el consumo sobre lo
+contratado, si las promesas entre servicios se están cumpliendo y qué consultas
+van más lentas de lo que deberían estaban calculados, servidos y sin pantalla.
+Lo que no se mide va **delante y aparte** de lo que cumple: un servicio sin
+medición no está en verde, está sin mirar, y contarlo con los que cumplen es
+cómo un panel acaba diciendo que todo va bien sobre media flota.
+
 ### De dónde salen los números
 
 Lo cuenta **el propio tránsito**, no una sonda aparte. Cada petición que atiende
