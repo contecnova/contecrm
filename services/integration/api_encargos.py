@@ -210,7 +210,21 @@ class EncargoOut(BaseModel):
     ultima_novedad_at: datetime | None = None
     mudo: bool
     cuenta_id: UUID | None = None
+    contacto_id: UUID | None = None
+    # De qué registro salió el encargo: sin esto, una lista de encargos no
+    # lleva a ninguna parte y hay que buscar a mano a qué oportunidad o a qué
+    # caso pertenece cada uno.
+    objeto_origen: str | None = None
+    objeto_origen_id: UUID | None = None
+    # Lo previsto contra lo facturado, que es de lo que va la conciliación.
+    # Estaban en la tabla y no salían, así que la pantalla podía listar
+    # encargos y no podía decir cuánto costaban.
+    coste_previsto: Decimal | None = None
+    coste_facturado: Decimal | None = None
+    moneda: str | None = None
+    interno: bool = False
     datos: dict[str, Any] = {}
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

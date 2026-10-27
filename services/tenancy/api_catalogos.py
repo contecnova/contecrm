@@ -468,6 +468,13 @@ class ExportacionOut(BaseModel):
     uri: str | None
     manifiesto: dict[str, Any]
     error: str | None
+    # Cuándo acabó, quién la pidió y —sobre todo— cuándo se VERIFICÓ. La
+    # capacidad es «exportación completa verificable»: sin la marca de
+    # verificación, lo que hay es una exportación y la palabra verificable.
+    solicitada_por: UUID | None = None
+    completada_at: datetime | None = None
+    verificada_at: datetime | None = None
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

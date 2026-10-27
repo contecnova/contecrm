@@ -263,3 +263,154 @@ def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
         "Rutas publicadas que el gateway no enruta a su servicio:\n  "
         + "\n  ".join(sorted(inalcanzables))
     )
+
+
+# ── Las columnas que existen y la API no devuelve ─────────────────────────
+#
+# Medido el 27-10-2026: **136 columnas en 32 esquemas de lectura** existían en
+# la tabla y no salían por la API. El síntoma es invisible —la pantalla se ve
+# bien, sólo que incompleta— y nadie echa de menos un campo que nunca ha visto.
+# Lo que se perdía no eran rarezas: una actividad llegaba SIN hora de inicio ni
+# de fin, un lead sin su campaña ni su primer toque, una oportunidad sin el
+# competidor que la ganó, un consentimiento sin el texto que se aceptó —que es
+# lo único que vale ante una reclamación— y un adjunto sin decir si el
+# antivirus lo había mirado.
+#
+# Se arreglaron 114. Las que quedan NO salen a propósito, y cada una dice por
+# qué: la lista es de **excepciones con su motivo**, no de las que sí.
+
+# Columnas de fontanería, iguales en toda tabla: el discriminador de tenant, el
+# borrado lógico, quién tocó qué y la versión optimista. No son del negocio.
+COLUMNAS_DE_FONTANERIA = {
+    "tenant_id",
+    "deleted_at",
+    "deleted_by",
+    "created_by",
+    "updated_by",
+    "version",
+    "clave_canonica",
+    "anonimizado_at",
+    "campos",
+    "created_origen",
+    "updated_origen",
+    "created_at",
+    "updated_at",
+}
+
+NO_SALEN: dict[tuple[str, str], str] = {
+    # Secretos. No es un olvido: si salieran, cualquiera con permiso de lectura
+    # se llevaría la credencial, y una credencial que se ha leído sólo deja de
+    # ser peligrosa revocándola.
+    ("UsuarioOut", "hash_contrasena"): "el hash de la contraseña no sale nunca",
+    (
+        "UsuarioOut",
+        "mfa_secreto",
+    ): "con el secreto de MFA se genera el código: sale el estado, no el secreto",
+    (
+        "UsuarioOut",
+        "mfa_recuperacion",
+    ): "los códigos de recuperación se enseñan UNA vez, al generarlos",
+    (
+        "SuscripcionOut",
+        "secreto",
+    ): "el secreto con el que se firman las entregas; quien lo necesite lo rota",
+    # Rutas internas de almacenamiento: lo que se da fuera es un enlace firmado
+    # de vida corta, no la ruta del bucket.
+    (
+        "AdjuntoOut",
+        "uri",
+    ): "la ruta interna del almacén; fuera se da un enlace firmado de vida corta",
+    # Identificadores de la fila padre, que ya está en la ruta por la que se
+    # pide: devolverlos otra vez no añade nada y confunde al formulario.
+    ("EtapaOut", "pipeline_id"): "la etapa se pide por su pipeline: el padre ya está en la ruta",
+    (
+        "FestivoOut",
+        "calendario_id",
+    ): "el festivo se pide por su calendario: el padre ya está en la ruta",
+    (
+        "SeguimientoOut",
+        "usuario_id",
+    ): "el seguimiento se pide por su usuario: el padre ya está en la ruta",
+    (
+        "DireccionOut",
+        "objeto",
+    ): "la dirección se pide por el objeto al que cuelga, que ya está en la ruta",
+    ("DireccionOut", "objeto_id"): "lo mismo: el identificador del padre viene en la ruta",
+    ("EjecucionOut", "conexion_id"): "la ejecución se pide por su conexión",
+    # Lo que es de dentro y no significa nada fuera.
+    (
+        "CuentaOut",
+        "business_unit_id",
+    ): "la unidad de negocio es del reparto interno; la visibilidad ya la aplica el servidor",
+    (
+        "OportunidadOut",
+        "business_unit_id",
+    ): "lo mismo que en la cuenta: reparto interno, no dato de la venta",
+    (
+        "CuentaOut",
+        "fusionada_en_id",
+    ): "una cuenta fusionada responde con la superviviente; el puntero es de dentro",
+    ("ContactoOut", "fusionado_en_id"): "lo mismo en contactos",
+    (
+        "DireccionOut",
+        "geocodificada_at",
+    ): "cuándo se geocodificó es del proceso, no de la dirección",
+    (
+        "EjecucionOut",
+        "parametros",
+    ): "los parámetros de la llamada pueden llevar datos del cliente; se ven en su registro",
+    ("ProveedorOut", "coste_base"): "el coste con el que negociamos, no el del cliente",
+    (
+        "ConsumoOut",
+        "id",
+    ): "el consumo se agrega por periodo: su identificador de fila no significa nada fuera",
+    ("ConsumoOut", "valor"): "el valor en crudo sin su unidad engaña; sale ya convertido",
+}
+
+
+@pytest.mark.parametrize("servicio", SERVICIOS)
+def test_ninguna_columna_del_modelo_se_queda_sin_salir(servicio: str) -> None:
+    """Lo que está en la tabla, o sale por la API o dice por qué no.
+
+    El front se construye del contrato: una columna que no está en el esquema
+    de lectura **no existe** para ninguna pantalla, por mucho que esté en la
+    base. Y no falla nada — se ve bien, sólo que incompleta.
+    """
+    try:
+        modelos = importlib.import_module(f"services.{servicio}.modelos")
+    except ModuleNotFoundError:
+        pytest.skip(f"«{servicio}» no tiene modelos propios")
+
+    esquemas = _app(servicio).openapi().get("components", {}).get("schemas", {})
+    tablas = {
+        nombre.lower(): getattr(modelos, nombre)
+        for nombre in dir(modelos)
+        if hasattr(getattr(modelos, nombre), "__table__")
+    }
+
+    mirados = 0
+    huecos: list[str] = []
+    for nombre, cuerpo in esquemas.items():
+        if not nombre.endswith("Out"):
+            continue
+        modelo = tablas.get(nombre[:-3].lower())
+        if modelo is None:
+            continue
+        mirados += 1
+        columnas = set(modelo.__table__.columns.keys()) - COLUMNAS_DE_FONTANERIA
+        for columna in sorted(columnas - set(cuerpo.get("properties", {}))):
+            if (nombre, columna) in NO_SALEN:
+                continue
+            huecos.append(f"{nombre}.{columna}")
+
+    assert not huecos, (
+        f"En «{servicio}» hay columnas que existen en la tabla y el esquema de "
+        "lectura no devuelve, así que ninguna pantalla puede enseñarlas. O se "
+        "exponen, o se añaden a NO_SALEN con su motivo:\n  " + "\n  ".join(huecos)
+    )
+    # Y que esto no esté midiendo el vacío: si el emparejamiento entre esquema
+    # y modelo dejara de casar, saldrían cero y el gate pasaría sin mirar.
+    # `identity` empareja pocos a propósito: casi todos sus esquemas de salida
+    # no se llaman como su tabla (`YoOut`, `Tokens`, `SesionOut`…).
+    if servicio in {"party", "sales"}:
+        assert mirados >= 5, f"sólo se han emparejado {mirados} esquemas en «{servicio}»"

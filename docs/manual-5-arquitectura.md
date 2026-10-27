@@ -585,3 +585,34 @@ final del [Manual III](manual-3-funcionalidades.md), y el estado completo de las
 - **Bulkheads y colas por tier**: configurados, no implementados.
 - **Copias de seguridad y recuperación**: documentadas como procedimiento, sin
   automatización propia.
+
+## Lo que está en la tabla, o sale por la API o dice por qué no
+
+El front se construye del contrato. Una columna que no está en el esquema de
+lectura **no existe** para ninguna pantalla, por mucho que esté en la base —y
+no falla nada: la pantalla se ve bien, sólo que incompleta, y nadie echa de
+menos un campo que nunca ha visto.
+
+Medido el 27-10-2026 sobre los trece servicios: **136 columnas en 32 esquemas
+de lectura** no salían. Lo que se perdía no eran rarezas — una actividad
+llegaba sin hora de inicio ni de fin, un lead sin su campaña ni su primer
+toque, una oportunidad sin el competidor que la ganó, un consentimiento sin el
+texto que se aceptó y un adjunto sin decir si el antivirus lo había mirado.
+
+Se expusieron 114. Las 22 que quedan **no salen a propósito**, y la lista es de
+excepciones con su motivo, nunca de las que sí:
+
+- **Secretos**: el hash de la contraseña, el secreto de MFA y sus códigos de
+  recuperación, y el secreto con el que se firman las entregas de un webhook.
+  Si salieran, cualquiera con permiso de lectura se llevaría la credencial, y
+  una credencial que se ha leído sólo deja de ser peligrosa revocándola.
+- **Rutas internas de almacenamiento**: fuera se da un enlace firmado de vida
+  corta, no la ruta del bucket.
+- **El identificador del padre** cuando el recurso se pide por él y ya viene en
+  la ruta.
+- **Lo que es de dentro**: la unidad de negocio del reparto interno, el puntero
+  a la ficha superviviente de una fusión, el coste con el que negociamos.
+
+La comprobación vive dentro del gate que ya construye los catorce contratos, así
+que no cuesta un segundo más, y está validada quitando un campo del esquema de
+salida: sin él, falla nombrándolo.

@@ -227,6 +227,13 @@ class ConsentimientoOut(BaseModel):
     origen: str | None = None
     fecha: datetime
     caduca_at: datetime | None = None
+    contacto_id: UUID | None = None
+    # La evidencia y el texto que se aceptó: es LO ÚNICO que vale ante una
+    # reclamación. Un consentimiento sin el texto que firmó la persona es una
+    # casilla marcada en una base de datos. Estaban en la tabla y no salían.
+    evidencia: dict[str, Any] = {}
+    texto_aceptado: str | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -340,6 +347,14 @@ class SolicitudDerechosOut(BaseModel):
     vence_at: datetime
     resuelta_at: datetime | None = None
     dias_restantes: int = Field(..., description="Negativo si ya ha vencido")
+    contacto_id: UUID | None = None
+    responsable_id: UUID | None = None
+    canal_entrada: str | None = None
+    # Qué se resolvió y con qué prueba. Sin esto, una solicitud cerrada dice
+    # «resuelta» y no dice qué se hizo, que es lo que pide el regulador.
+    resolucion: str | None = None
+    evidencia: dict[str, Any] = {}
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

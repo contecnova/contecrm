@@ -84,6 +84,14 @@ class UsuarioOut(BaseModel):
     mfa_activo: bool
     es_plataforma: bool
     ultimo_acceso_at: datetime | None = None
+    # Por qué no entra: cuántos intentos fallidos lleva y hasta cuándo está
+    # bloqueado. Sin esto, «no puedo entrar» se contesta mirando los registros
+    # del servidor. El secreto de MFA, sus códigos de recuperación y el hash
+    # de la contraseña NO salen, y no es un olvido.
+    intentos_fallidos: int = 0
+    bloqueado_hasta: datetime | None = None
+    preferencias: dict[str, Any] = {}
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

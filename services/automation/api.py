@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -66,6 +67,12 @@ class AutomatizacionOut(BaseModel):
     momento: str
     ejecuciones: int
     fallos: int
+    # Cuándo corrió por última vez y, si es programada, con qué horario.
+    # Estaban en la tabla y no salían: una automatización con doce fallos y
+    # sin fecha no deja saber si pasó ayer o hace medio año.
+    ultima_ejecucion_at: datetime | None = None
+    programacion: dict[str, Any] = {}
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

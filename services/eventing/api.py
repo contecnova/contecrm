@@ -72,6 +72,11 @@ class SuscripcionOut(BaseModel):
     fallos_consecutivos: int
     ultimo_exito_at: datetime | None = None
     desactivada_at: datetime | None = None
+    # Las cabeceras que se mandan con cada entrega: hacen falta para depurar
+    # una integración que rechaza las llamadas. El SECRETO con el que se
+    # firman no sale, y eso no es un olvido: quien lo necesite lo rota.
+    cabeceras: dict[str, Any] = {}
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -85,6 +90,14 @@ class EntregaOut(BaseModel):
     codigo_http: int | None = None
     error: str | None = None
     duracion_ms: int
+    suscripcion_id: UUID | None = None
+    dedup_key: str | None = None
+    # Qué contestó el otro lado y cuándo se reintenta. Sin la respuesta, «dio
+    # 400» manda a mirar los registros del servidor, que es justo lo que esta
+    # pantalla viene a evitar; sin el próximo intento, nadie sabe si queda
+    # algo por pasar o si ya se rindió.
+    respuesta: str | None = None
+    proximo_intento_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

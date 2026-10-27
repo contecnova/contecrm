@@ -80,6 +80,16 @@ class TenantOut(BaseModel):
     marca: dict[str, Any] = {}
     created_at: datetime
     provisionado_at: datetime | None = None
+    # El ciclo de vida completo del tenant, que estaba en la tabla y no salía:
+    # desde cuándo está suspendido, cuándo pidió la baja y a partir de qué día
+    # se pueden borrar sus datos. Sin esto, «este cliente se va» no se ve en
+    # ninguna pantalla hasta que desaparece.
+    suspendido_at: datetime | None = None
+    baja_solicitada_at: datetime | None = None
+    datos_borrables_at: datetime | None = None
+    # Y hacia qué modelo de aislamiento está migrando, si lo está.
+    aislamiento_destino: str | None = None
+    residencia: dict[str, Any] = {}
 
     model_config = {"from_attributes": True}
 

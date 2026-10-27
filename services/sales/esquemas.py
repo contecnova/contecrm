@@ -300,6 +300,12 @@ class CompetidorEntrada(BaseModel):
 
 
 class CambioEtapaOut(BaseModel):
+    # El identificador, de qué oportunidad es y QUIÉN lo movió. Sin el autor,
+    # el seguimiento del deslizamiento dice que la fecha se fue tres veces y
+    # no dice quién la movió, que es la mitad de la conversación.
+    id: UUID
+    oportunidad_id: UUID
+    por: UUID | None = None
     etapa_desde_id: UUID | None = None
     etapa_hasta_id: UUID
     dias_en_etapa: int | None = None

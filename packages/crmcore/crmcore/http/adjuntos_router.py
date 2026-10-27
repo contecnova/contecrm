@@ -9,6 +9,7 @@ accidente adjuntos de objetos que no son suyos.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -46,6 +47,12 @@ class AdjuntoOut(BaseModel):
     version: int
     documento_id: UUID
     es_actual: bool
+    # Si se analizó y qué salió. Estaban en la tabla y no salían, así que la
+    # pantalla enseñaba un adjunto sin decir si está comprobado: un fichero
+    # sin analizar y uno limpio se veían igual, que es la peor de las dos
+    # lecturas posibles.
+    analisis_at: datetime | None = None
+    analisis_detalle: str | None = None
     descripcion: str
     etiquetas: list[Any]
     analisis: str

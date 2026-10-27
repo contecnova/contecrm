@@ -151,7 +151,7 @@ modulos:
               - {id: CRM-00.01.03.02, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/onboarding_guide.py", t: "Onboarding guiado por industria: preconfiguración de objetos, pipelines y flujos"}
               - {id: CRM-00.01.03.03, c: A, fase: 0, svc: tenancy, estado: hecho, t: "Clonado de tenant (para sandbox, demo, pre-producción)"}
               - {id: CRM-00.01.03.04, c: C, fase: 0, svc: tenancy, estado: hecho, t: "Suspensión, reactivación y congelación en modo solo lectura"}
-              - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción"}
+              - {id: CRM-00.01.03.05, c: C, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecmind:app/services/exports.py", t: "Offboarding con exportación completa verificable y certificado de destrucción", visto: "2026-10-27 La exportacion de baja ensena cuando se completo, quien la pidio y cuando se VERIFICO. La capacidad es exportacion completa verificable: sin la marca de verificacion lo que hay es una exportacion y la palabra verificable"}
               - {id: CRM-00.01.03.06, c: D, fase: 0, svc: tenancy, estado: hecho, t: "Fusión de tenants (M&A) y escisión de un tenant en dos"}
               - {id: CRM-00.01.03.07, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/models/enterprise.py (jerarquía de organizaciones)", t: "Jerarquía de tenants: matriz–filial, franquiciador–franquiciado, holding"}
               - {id: CRM-00.01.03.08, c: A, fase: 0, svc: tenancy, estado: hecho, reutiliza: "contecflow-PSA:app/services/organizations_service.py", t: "Sub-tenants / business units con herencia configurable de configuración y datos"}
@@ -752,7 +752,7 @@ modulos:
             capacidades:
               - {id: CRM-02.04.02.01, c: C, fase: 4, svc: party, estado: hecho, reutiliza: "contecweb:app/services/grc.py + contecmind:app/services/compliance.py", t: "Registro de consentimiento con finalidad, canal, base legal, fecha y prueba"}
               - {id: CRM-02.04.02.02, c: A, fase: 4, svc: marketing, estado: hecho, t: "Doble opt-in configurable y renovación periódica del consentimiento"}
-              - {id: CRM-02.04.02.03, c: C, fase: 4, svc: marketing, estado: hecho, t: "Baja inmediata propagada a todos los canales y campañas en curso"}
+              - {id: CRM-02.04.02.03, c: C, fase: 4, svc: marketing, estado: hecho, t: "Baja inmediata propagada a todos los canales y campañas en curso", visto: "2026-10-27 El consentimiento ensena la evidencia y el TEXTO que se acepto, que es lo unico que vale ante una reclamacion: un consentimiento sin el texto que firmo la persona es una casilla marcada en una base de datos. Las dos estaban en la tabla y no salian"}
               - {id: CRM-02.04.02.04, c: C, fase: 4, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/services/bi_gdpr_service.py + contecmind:app/services/compliance.py", t: "Gestión de derechos ARCO/GDPR: acceso, rectificación, supresión, portabilidad, oposición"}
               - {id: CRM-02.04.02.05, c: A, fase: 4, svc: party, estado: hecho, reutiliza: "contecmind:app/services/legal_hold.py", t: "Bloqueo de tratamiento sin borrado (derecho de limitación)"}
 

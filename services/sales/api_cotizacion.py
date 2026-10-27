@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -65,7 +65,21 @@ class ProductoOut(BaseModel):
     tipo_ingreso: str
     precio_base: Decimal
     moneda: str
+    # El coste y el margen mínimo: un precio sin coste al lado no deja ver si
+    # un descuento se come el margen, que es la única pregunta que se hace
+    # quien aprueba una oferta. Estaban en la tabla y no salían.
+    coste: Decimal | None = None
+    margen_minimo_pct: Decimal | None = None
+    # Y cómo se vende: la unidad y, si es recurrente, cada cuánto.
+    unidad: str | None = None
+    periodicidad: str | None = None
+    descripcion: str | None = None
+    atributos: dict[str, Any] = {}
     activo: bool
+    # Un producto retirado no desaparece —sigue en ofertas y contratos
+    # firmados—, así que la fecha de retirada tiene que verse.
+    retirado_el: date | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

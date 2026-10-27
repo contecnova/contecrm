@@ -57,6 +57,19 @@ class ProveedorFirmaOut(BaseModel):
     identificaciones: list[Any] = []
     activo: bool
     solo_en_curso: bool
+    conexion_id: UUID | None = None
+    # Si se probó la conexión, cuándo y con qué resultado. Es la capacidad
+    # entera: probar antes de mandar un contrato de verdad. Estaba en la
+    # tabla y no salía, así que la pantalla no podía decir si un proveedor
+    # lleva sin comprobarse desde marzo.
+    probado_at: datetime | None = None
+    prueba_ok: bool | None = None
+    prueba_detalle: str | None = None
+    # El mapa de estados del proveedor a los nuestros, declarado por conector
+    # y no escrito en el código.
+    mapa_estados: dict[str, Any] = {}
+    coste_sobre: Decimal | None = None
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

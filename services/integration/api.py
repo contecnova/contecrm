@@ -108,8 +108,22 @@ class OperacionOut(BaseModel):
     id: UUID
     clave: str
     nombre: str
+    conexion_id: UUID | None = None
     definicion: dict[str, Any] = {}
     activa: bool
+    # El estado de la operación programada: cada cuánto corre, cuándo corrió,
+    # cuándo le toca y qué pasó la última vez. Sin esto, la pantalla listaba
+    # integraciones y no podía contestar «¿por qué no se han traído los
+    # pedidos?», que es la única pregunta que se hace sobre ellas.
+    cada_minutos: int | None = None
+    ultima_at: datetime | None = None
+    proxima_at: datetime | None = None
+    pausada_hasta: datetime | None = None
+    intentos: int = 0
+    ultimo_error: str | None = None
+    estado_transporte: str | None = None
+    marca: str | None = None
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
