@@ -138,6 +138,13 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            el competidor que la gano, sin la nota de perdida
 #                            y sin la probabilidad puesta a mano. Cinco
 #                            capacidades declaradas con eso arreglado
+#   27-10-2026  426 de 755  dos capacidades NUEVAS construidas, no
+#                            declaradas: solo lectura por condicion y por
+#                            procedencia, y la granularidad del campo de
+#                            fecha. Las dos se configuran en el formulario del
+#                            propio campo, en Modelo de datos, asi que el
+#                            recuento no sube pese a que el catalogo tiene dos
+#                            capacidades hechas mas
 TOPE_SIN_PANTALLA = 426
 
 

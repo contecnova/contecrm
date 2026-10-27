@@ -646,3 +646,146 @@ def test_materializar_se_decide_con_una_medida_crm_00_04_03_11(
     assert {c["campo"] for c in estrecho["candidatos"]} == {"referencia", "presupuesto"}
     # Y el orden importa: primero el que más se escribe.
     assert [c["campo"] for c in estrecho["candidatos"]] == ["referencia", "presupuesto"]
+
+
+# ── CRM-00.04.03.13 · Solo lectura por condición y por procedencia ────────
+#
+# `solo_lectura` era una marca fija: o se puede tocar siempre, o nunca. Lo que
+# pide el negocio es lo de en medio, y sin ello hay que elegir entre dejar que
+# alguien cambie lo ya firmado o impedir corregir una errata antes de firmar.
+
+
+def _campo_simulado(**kw: Any) -> Any:
+    """Un campo con lo justo para la validación, sin tocar la base.
+
+    Se construye a mano a propósito: lo que se mide aquí es la DECISIÓN —qué
+    bloquea y qué no—, no que el ORM sepa guardar dos columnas.
+    """
+
+    class _Campo:
+        nombre = kw.get("nombre", "importe")
+        etiqueta = kw.get("etiqueta", "Importe")
+        tipo = "texto"
+        activo = True
+        obligatorio = False
+        unico = False
+        solo_lectura = kw.get("solo_lectura", False)
+        restricciones: dict[str, Any] = {}
+        solo_lectura_si = kw.get("si", [])
+        solo_lectura_salvo_origen = kw.get("origenes", [])
+
+    return _Campo()
+
+
+def test_un_campo_se_cierra_cuando_se_cumple_su_condicion_crm_00_04_03_13() -> None:
+    """**Abierto se edita, cerrado no.** Es el caso que la marca fija no sabe
+    expresar, y el que de verdad se pide: con una sola marca hay que elegir
+    entre dejar cambiar lo firmado o no dejar corregir una errata."""
+    from services.metadata.validacion import validar_registro
+
+    campo = _campo_simulado(si=[{"campo": "estado", "operador": "=", "valor": "cerrada"}])
+
+    _, abiertos = validar_registro([campo], {"importe": "9", "estado": "abierta"})
+    assert not [e for e in abiertos if e["campo"] == "importe"], abiertos
+
+    _, cerrados = validar_registro([campo], {"importe": "9", "estado": "cerrada"})
+    bloqueo = [e for e in cerrados if e["campo"] == "importe"]
+    assert bloqueo and bloqueo[0]["motivo"] == "solo_lectura", cerrados
+    # Y el motivo se dice con palabras: «no se puede modificar» a secas manda a
+    # preguntar, y la respuesta siempre es una de tres.
+    assert "estado del registro" in bloqueo[0]["mensaje"], bloqueo
+
+
+def test_todas_las_condiciones_tienen_que_cumplirse_crm_00_04_03_13() -> None:
+    """Con `cualquiera` en vez de `todas`, un campo se cerraría en cuanto una
+    condición suelta se cumpliera, y nadie entendería por qué."""
+    from services.metadata.validacion import validar_registro
+
+    campo = _campo_simulado(
+        si=[
+            {"campo": "estado", "operador": "=", "valor": "cerrada"},
+            {"campo": "firmado", "operador": "=", "valor": True},
+        ]
+    )
+    _, media = validar_registro([campo], {"importe": "9", "estado": "cerrada", "firmado": False})
+    assert not [e for e in media if e["campo"] == "importe"], media
+
+
+def test_lo_que_mantiene_un_sistema_externo_no_lo_toca_una_persona_crm_00_04_03_13() -> None:
+    """Y sí lo escribe su integración.
+
+    Si lo escribiera una persona, la siguiente sincronización le pisaría el
+    cambio y lo que vería es que «no se guarda», sin ningún error que lo
+    explique. Eso es peor que un rechazo: parece que el sistema pierde datos.
+    """
+    from services.metadata.validacion import validar_registro
+
+    campo = _campo_simulado(nombre="nif", etiqueta="NIF", origenes=["erp"])
+
+    _, desde_pantalla = validar_registro([campo], {"nif": "A"}, origen="ui")
+    assert [e["motivo"] for e in desde_pantalla] == ["solo_lectura"], desde_pantalla
+    assert "erp" in desde_pantalla[0]["mensaje"]
+
+    _, desde_erp = validar_registro([campo], {"nif": "A"}, origen="erp")
+    assert desde_erp == [], desde_erp
+
+
+def test_la_lista_de_origenes_vacia_significa_cualquiera_crm_00_04_03_13() -> None:
+    """Y no «ninguno».
+
+    Es la trampa de la columna nueva: el día que se añade, todos los campos la
+    tienen vacía. Si vacía significara «ninguno», el modelo entero habría
+    quedado de solo lectura para todo el mundo en la misma migración.
+    """
+    from services.metadata.validacion import validar_registro
+
+    campo = _campo_simulado(nombre="nif", origenes=[])
+    _, errores = validar_registro([campo], {"nif": "A"}, origen="lo-que-sea")
+    assert errores == [], errores
+
+
+def test_la_marca_de_siempre_sigue_mandando_crm_00_04_03_13() -> None:
+    """Un campo calculado no se toca desde ningún origen ni en ningún estado:
+    las tres puertas van de la más fija a la más fina, y la primera cierra."""
+    from services.metadata.validacion import validar_registro
+
+    campo = _campo_simulado(solo_lectura=True)
+    _, errores = validar_registro([campo], {"importe": "9"}, origen="erp")
+    assert [e["motivo"] for e in errores] == ["solo_lectura"], errores
+    assert "lo rellena el sistema" in errores[0]["mensaje"]
+
+
+# ── CRM-00.04.01.12 · Granularidad del campo de fecha ─────────────────────
+
+
+def test_un_hito_de_marzo_no_es_el_uno_de_marzo_crm_00_04_01_12() -> None:
+    """**Guardar «marzo de 2027» como un día inventado se paga dos veces**: el
+    informe cuenta vencimientos el día 1 de cada mes y alguien llama al cliente
+    por algo que no prometió para ese día; y quien escribe «Q3» y ve «1 de
+    julio» aprende que el sistema se inventa cosas.
+
+    Se normaliza al GUARDAR y no sólo al pintar: si cada pantalla recortara por
+    su cuenta, dos vistas del mismo dato dirían cosas distintas y una consulta
+    por rango incluiría o excluiría el registro según el día que se tecleó.
+    """
+    from services.metadata.validacion import _fecha
+
+    assert _fecha("2027-03-17", {"granularidad": "mes"}).startswith("2027-03-01")
+    assert _fecha("2027-08-17", {"granularidad": "trimestre"}).startswith("2027-07-01")
+    assert _fecha("2027-01-31", {"granularidad": "trimestre"}).startswith("2027-01-01")
+    assert _fecha("2027-12-31", {"granularidad": "trimestre"}).startswith("2027-10-01")
+    # Sin declararla, el día se respeta: la granularidad se declara en el campo
+    # y NO se adivina del valor. Adivinarla haría que un 1 de marzo escrito a
+    # propósito se leyera como «marzo».
+    assert _fecha("2027-03-17", {}).startswith("2027-03-17")
+
+
+def test_una_granularidad_inventada_se_rechaza_crm_00_04_01_12() -> None:
+    """Guardarla sin comprobar dejaría un campo que dice «por semanas» y se
+    comporta como si fuera por días, que es la peor de las dos."""
+    import pytest as _pytest
+
+    from services.metadata.validacion import _fecha, _Invalido
+
+    with _pytest.raises(_Invalido):
+        _fecha("2027-03-17", {"granularidad": "semana"})

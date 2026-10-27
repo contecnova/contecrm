@@ -103,6 +103,15 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
   "modelo": [
+    // Las dos puertas nuevas del campo, que se configuran en su propio
+    // formulario: cuándo deja de poderse editar —condiciones sobre el
+    // registro— y quién puede escribirlo —las procedencias—. Vacío en las
+    // procedencias significa «cualquiera».
+    "CRM-00.04.03.13",
+    // Y con qué precisión se conoce una fecha: día, mes o trimestre. Se
+    // declara entre las restricciones del campo, como el mínimo, el máximo o
+    // los decimales, porque es una restricción de su tipo.
+    "CRM-00.04.01.12",
     "CRM-00.04.01.01",
     "CRM-00.04.01.03",
   ],

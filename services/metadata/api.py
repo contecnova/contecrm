@@ -386,6 +386,13 @@ def validar(nombre: str, datos: ValidarRegistro, db: DbDep, principal: Autentica
 class VisibilidadIn(BaseModel):
     secciones: list[dict[str, Any]] = Field(default_factory=list)
     registro: dict[str, Any] = Field(default_factory=dict)
+    origen: str = Field(
+        "ui",
+        description=(
+            "Desde dónde se va a escribir. Un campo que mantiene un sistema "
+            "externo lo escribe su integración y no una persona"
+        ),
+    )
 
 
 @router.post(
@@ -402,9 +409,38 @@ class VisibilidadIn(BaseModel):
 )
 def visibilidad(nombre: str, cuerpo: VisibilidadIn, db: DbDep, principal: AutenticadoDep) -> Any:
     from services.metadata.disenador import evaluar_visibilidad
+    from services.metadata.validacion import _por_que_no_se_puede_tocar
 
-    _objeto(db, principal.tenant_id, nombre)
-    return evaluar_visibilidad(secciones=cuerpo.secciones, registro=cuerpo.registro)
+    objeto = _objeto(db, principal.tenant_id, nombre)
+    salida = evaluar_visibilidad(secciones=cuerpo.secciones, registro=cuerpo.registro)
+
+    # Y **qué está de solo lectura ahora mismo** (CRM-00.04.03.13). Va con la
+    # visibilidad y en la misma llamada porque es la misma pregunta —«¿qué
+    # puedo hacer con este registro delante?»— y partirla en dos obligaría a la
+    # pantalla a pedir dos veces y a quedarse a medias si una falla.
+    #
+    # Se resuelve en el SERVIDOR por el mismo motivo que la visibilidad: si lo
+    # decidiera el front, bastaría con no preguntarlo. Aquí sólo se dice para
+    # que la pantalla no ofrezca lo que el servidor va a rechazar; quien decide
+    # sigue siendo la validación al guardar.
+    campos = (
+        db.execute(
+            select(CampoDefinido).where(
+                CampoDefinido.objeto_id == objeto.id, CampoDefinido.activo.is_(True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    bloqueados = []
+    for campo in campos:
+        cerrado, porque = _por_que_no_se_puede_tocar(
+            campo, cuerpo.registro, origen=cuerpo.origen or "ui"
+        )
+        if cerrado:
+            bloqueados.append({"campo": campo.nombre, "porque": porque})
+    salida["solo_lectura_ahora"] = bloqueados
+    return salida
 
 
 class FormularioIn(BaseModel):

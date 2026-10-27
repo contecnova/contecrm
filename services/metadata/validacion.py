@@ -78,6 +78,34 @@ def _booleano(valor: Any, _r: dict[str, Any]) -> bool:
     raise _Invalido("no es un valor de sí/no")
 
 
+# Con qué precisión se conoce una fecha (CRM-00.04.01.12).
+#
+# **Un hito que es «marzo de 2027» no es el 1 de marzo de 2027.** Guardarlo
+# como un día inventado tiene dos consecuencias que se pagan: el informe cuenta
+# vencimientos el día 1 de cada mes y alguien llama al cliente preguntando por
+# algo que no había prometido para ese día. Y al revés: quien escribe «Q3» y ve
+# «1 de julio» aprende que el sistema se inventa cosas y deja de fiarse.
+#
+# La granularidad se declara en el campo, no se adivina del valor: adivinarla
+# haría que el 1 de marzo escrito a propósito se leyera como «marzo».
+GRANULARIDADES = ("dia", "mes", "trimestre")
+
+
+def _normalizar_por_granularidad(parseada: date | datetime, granularidad: str) -> date | datetime:
+    """Lleva la fecha al **primer día** de su periodo.
+
+    Se normaliza al guardar y no sólo al pintar: si cada pantalla recortara por
+    su cuenta, dos vistas del mismo dato dirían cosas distintas, y una consulta
+    por rango incluiría o excluiría el registro según el día que se tecleó.
+    """
+    if granularidad == "mes":
+        return parseada.replace(day=1)
+    if granularidad == "trimestre":
+        primer_mes = 3 * ((parseada.month - 1) // 3) + 1
+        return parseada.replace(month=primer_mes, day=1)
+    return parseada
+
+
 def _fecha(valor: Any, r: dict[str, Any]) -> str:
     try:
         parseada = (
@@ -87,6 +115,10 @@ def _fecha(valor: Any, r: dict[str, Any]) -> str:
         )
     except ValueError:
         raise _Invalido("no es una fecha válida (usa ISO-8601)")
+    granularidad = str(r.get("granularidad") or "dia")
+    if granularidad not in GRANULARIDADES:
+        raise _Invalido(f"granularidad desconocida: {granularidad}")
+    parseada = _normalizar_por_granularidad(parseada, granularidad)
     texto = parseada.isoformat()
     if r.get("no_pasado") and _esta_en_el_pasado(parseada):
         raise _Invalido("no puede estar en el pasado")
@@ -202,12 +234,51 @@ def validar_campo(campo: Any, valor: Any) -> Any:
     return validador(valor, campo.restricciones or {})
 
 
+def _por_que_no_se_puede_tocar(
+    campo: Any, registro: dict[str, Any], *, origen: str = ""
+) -> tuple[bool, str]:
+    """Si este campo está bloqueado ahora mismo, y con qué palabras decirlo.
+
+    Tres puertas, de la más fija a la más fina (CRM-00.04.03.13):
+
+      1. la marca de siempre: calculado o rellenado por el sistema;
+      2. **por condición**, con el registro delante: el importe se edita
+         mientras la oportunidad está abierta y deja de editarse al cerrarla;
+      3. **por procedencia**: el valor lo manda un sistema externo, así que lo
+         escribe su integración y no una persona — si lo escribiera una
+         persona, la siguiente sincronización se lo pisaría y nadie entendería
+         por qué «no se guarda».
+
+    El motivo se devuelve con el bloqueo y no se deja en un código: «no se
+    puede modificar» a secas manda a preguntar, y la respuesta siempre es una
+    de estas tres.
+    """
+    from services.metadata.disenador import _cumple
+
+    if campo.solo_lectura:
+        return True, f"«{campo.etiqueta}» lo rellena el sistema y no se edita a mano"
+
+    condiciones = list(getattr(campo, "solo_lectura_si", None) or [])
+    if condiciones and all(_cumple(c, registro) for c in condiciones):
+        return True, f"«{campo.etiqueta}» ya no se puede cambiar en este estado del registro"
+
+    # Lista VACÍA significa «cualquiera», no «ninguno». Al revés, el día que se
+    # añadió la columna el modelo entero habría quedado de solo lectura.
+    origenes = [str(o) for o in (getattr(campo, "solo_lectura_salvo_origen", None) or [])]
+    if origenes and origen not in origenes:
+        quienes = ", ".join(origenes)
+        return True, f"«{campo.etiqueta}» lo mantiene {quienes}: aquí se ve, no se edita"
+
+    return False, ""
+
+
 def validar_registro(
     campos: list[Any],
     datos: dict[str, Any],
     *,
     reglas: list[Any] | None = None,
     parcial: bool = False,
+    origen: str = "",
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Valida un registro entero. Devuelve (valores convertidos, errores).
 
@@ -224,12 +295,13 @@ def validar_registro(
         presente = campo.nombre in datos
         if not presente and parcial:
             continue
-        if campo.solo_lectura and presente:
+        bloqueado, porque = _por_que_no_se_puede_tocar(campo, datos, origen=origen)
+        if bloqueado and presente:
             errores.append(
                 {
                     "campo": campo.nombre,
                     "motivo": "solo_lectura",
-                    "mensaje": f"«{campo.etiqueta}» no se puede modificar",
+                    "mensaje": porque or f"«{campo.etiqueta}» no se puede modificar",
                 }
             )
             continue

@@ -75,6 +75,27 @@ class CrearCampo(BaseModel):
     obligatorio: bool = False
     unico: bool = False
     solo_lectura: bool = False
+    # Lo de en medio (CRM-00.04.03.13). Mismo lenguaje que las condiciones de
+    # visibilidad del diseñador: `{"campo", "operador", "valor"}`.
+    solo_lectura_si: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "Condiciones que, si se cumplen TODAS sobre el registro, dejan el "
+            "campo de solo lectura. Para lo que se edita mientras algo está "
+            "abierto y deja de editarse al cerrarlo"
+        ),
+        examples=[[{"campo": "estado", "operador": "=", "valor": "cerrada"}]],
+    )
+    solo_lectura_salvo_origen: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Procedencias que SÍ pueden escribirlo; el resto no. Vacío "
+            "significa «cualquiera». Para los campos que mantiene un sistema "
+            "externo: si los tocara una persona, la siguiente sincronización "
+            "le pisaría el cambio"
+        ),
+        examples=[["erp"]],
+    )
     valor_defecto: Any = None
     restricciones: dict[str, Any] = Field(
         default_factory=dict,
@@ -97,6 +118,8 @@ class CampoOut(BaseModel):
     obligatorio: bool
     unico: bool
     solo_lectura: bool
+    solo_lectura_si: list[dict[str, Any]] = []
+    solo_lectura_salvo_origen: list[str] = []
     valor_defecto: Any = None
     restricciones: dict[str, Any] = {}
     sensibilidad: str

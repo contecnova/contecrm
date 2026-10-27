@@ -1471,3 +1471,58 @@ medida se señalan aparte: son los que hacen que la migración no acabe nunca.
 Y dar un objeto por migrado **con registros aún en el viejo** exige forzarlo con
 motivo: cerrarlo dejaría fuera lo que queda allí, y nadie volvería a mirarlo
 porque ya constaría migrado.
+
+## Un campo que se edita hasta cierto punto (`CRM-00.04.03.13`)
+
+`solo_lectura` era una marca fija: o el campo se puede tocar siempre, o no se
+puede tocar nunca. Con eso hay que elegir entre dejar que alguien cambie lo ya
+firmado o impedir que nadie corrija una errata antes de firmar. Ahora hay tres
+puertas, de la más fija a la más fina, y la primera que cierra manda:
+
+1. **La marca de siempre.** El campo lo rellena el sistema —calculado, de una
+   fórmula— y no se edita a mano desde ningún sitio.
+2. **Por condición**, con el registro delante: *el importe se edita mientras la
+   oportunidad está abierta y deja de editarse al cerrarla*. Se declara con el
+   mismo lenguaje que las condiciones de visibilidad del diseñador
+   (`{campo, operador, valor}`) porque es la misma pregunta, y tienen que
+   cumplirse **todas**: con «cualquiera», un campo se cerraría en cuanto una
+   condición suelta se diera y nadie entendería por qué.
+3. **Por procedencia**: *el NIF lo mantiene el ERP*. Lo escribe la integración
+   que lo trae y no una persona — si lo tocara una persona, la siguiente
+   sincronización le pisaría el cambio y lo que vería es que «no se guarda»,
+   sin ningún error que lo explique. Eso es peor que un rechazo: parece que el
+   sistema pierde datos.
+
+**Una lista de procedencias vacía significa «cualquiera», no «ninguna».** Es la
+trampa de la columna nueva: el día que se añade, todos los campos la tienen
+vacía, y con la lectura contraria la propia migración habría dejado el modelo
+entero de solo lectura para todo el mundo.
+
+El motivo viaja **con** el bloqueo: «no se puede modificar» a secas manda a
+preguntar, y la respuesta siempre es una de las tres. Y la pantalla lo consulta
+en la misma llamada que la visibilidad, porque es la misma pregunta —«¿qué
+puedo hacer con este registro delante?»— y partirla en dos obligaría a pedir
+dos veces y a quedarse a medias si una falla. Quien decide sigue siendo la
+validación al guardar; lo que hace la pantalla es no ofrecer lo que el servidor
+va a rechazar.
+
+## Fechas que no son un día (`CRM-00.04.01.12`)
+
+Un hito que es «marzo de 2027» no es el 1 de marzo de 2027, y guardarlo como un
+día inventado se paga dos veces: el informe cuenta vencimientos el día 1 de cada
+mes y alguien llama al cliente preguntando por algo que no había prometido para
+ese día; y quien escribe «Q3» y ve «1 de julio» aprende que el sistema se
+inventa cosas y deja de fiarse de lo que lee.
+
+Un campo de fecha declara su granularidad —`dia`, `mes` o `trimestre`— en sus
+restricciones, y el valor se normaliza al **primer día de su periodo**. Dos
+decisiones que importan:
+
+- **Se declara en el campo, no se adivina del valor.** Adivinarla haría que un
+  1 de marzo escrito a propósito se leyera como «marzo».
+- **Se normaliza al guardar, no al pintar.** Si cada pantalla recortara por su
+  cuenta, dos vistas del mismo dato dirían cosas distintas, y una consulta por
+  rango incluiría o excluiría el registro según el día que se tecleó.
+
+Una granularidad desconocida se rechaza: guardarla sin comprobar dejaría un
+campo que dice «por semanas» y se comporta como si fuera por días.

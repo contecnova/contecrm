@@ -71,6 +71,24 @@ class CampoDefinido(Base, TimestampMixin):
     unico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Solo lectura desde la API: campos calculados o rellenados por el sistema.
     solo_lectura: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Y lo de en medio, que es lo que pasa de verdad (CRM-00.04.03.13).
+    #
+    # **Por condición**: el importe de una oportunidad se edita mientras está
+    # abierta y deja de editarse al cerrarla. Con una marca fija hay que elegir
+    # entre dejar que alguien cambie lo firmado o impedir corregir una errata
+    # antes de firmar. Mismo lenguaje que las condiciones de visibilidad del
+    # diseñador: la misma pregunta no se contesta en dos idiomas.
+    solo_lectura_si: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # **Por procedencia**: un campo que llega de un sistema externo no lo toca
+    # una persona —la siguiente sincronización le pisaría el cambio y nadie
+    # entendería por qué «no se guarda»—, pero sí lo escribe la integración que
+    # lo trae. Lista VACÍA significa «cualquiera», no «ninguno»: al revés, el
+    # día que se añadió la columna el modelo entero quedaría de solo lectura.
+    solo_lectura_salvo_origen: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     valor_defecto: Mapped[Any] = mapped_column(JSONB, nullable=True)
 
     # Restricciones por tipo: longitudes, rangos, patrón, decimales, opciones de
