@@ -14415,3 +14415,23 @@ las reglas de compartición y los buzones. Aparecen porque el servidor etiqueta
 esas operaciones como de administración y la consola se construye de ahí; si una
 desapareciera del servidor, dejaría de pintarse y el recuento por capacidad lo
 diría.
+
+## Diez columnas que existían y la API no devolvía (`CRM-01.01.01.07`, `.09`, `CRM-01.01.02.01`, `.05`, `CRM-01.01.04.10`)
+
+Al ir a declarar qué enseña la pantalla de cuentas y contactos apareció otra
+cosa: el modelo tiene columnas que **el esquema de salida no incluye**, así que
+la pantalla no puede enseñarlas por mucho que existan. No es un olvido
+inofensivo — son justo las que cierran una capacidad:
+
+| Objeto | No salía | Qué se perdía |
+|---|---|---|
+| Cuenta | `clasificacion_abc` | La segmentación que se vende son seis cosas y llegaban cuatro. El ABC estaba incluso en el esquema de alta: se podía escribir y no leer |
+| Cuenta | `es_personal` | Una cuenta B2C no se distinguía de una B2B en ninguna pantalla |
+| Contacto | `frecuencia_maxima`, `horario_preferido` | «Respetar la preferencia del contacto» era media promesa: el canal y el idioma sí, cuántas veces y a qué horas no |
+| Contacto | `estado_email`, `estado_telefono` | No se podía distinguir una dirección verificada de una escrita. Un correo sin verificar que se lee como bueno es una campaña que rebota entera |
+| Contacto | `email_secundario`, `canales` | Los canales alternativos declarados no llegaban a ninguna parte |
+
+Es el mismo patrón que la tabla de recursos del paquete o la acción sin ficha:
+las dos mitades existen y nadie las junta. La diferencia aquí es que el síntoma
+es invisible — la pantalla sale bien, sólo que incompleta, y nadie echa de menos
+un campo que nunca ha visto.

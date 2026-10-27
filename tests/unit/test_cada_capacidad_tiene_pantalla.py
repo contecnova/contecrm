@@ -113,7 +113,22 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            catalogo, y hay una prueba que exige que el
 #                            motivo sea una frase y no repita el enunciado:
 #                            marcar es la salida barata y tiene que costar
-TOPE_SIN_PANTALLA = 458
+#   27-10-2026  431 de 753  quince mas fuera del recuento con su motivo
+#                            —telemetria, continuidad, rendimiento y los
+#                            compromisos: los ejecuta y los vigila quien opera
+#                            la plataforma, no hay palanca dentro del
+#                            producto— y doce declaradas de verdad. Seis en
+#                            Procesos: el disparador, las acciones y el
+#                            momento de una automatizacion son campos de su
+#                            propio registro, y la instancia lleva su espera y
+#                            su proceso padre. Y seis en Cuentas, con arreglo
+#                            de por medio: el modelo tenia diez columnas que
+#                            el contrato NO devolvia —ABC, es_personal,
+#                            frecuencia, horario, estado del correo y del
+#                            telefono, canales y correo secundario—, asi que
+#                            la pantalla no podia ensenarlas por mucho que
+#                            existieran
+TOPE_SIN_PANTALLA = 431
 
 
 def _es_pantalla(p: Path) -> bool:

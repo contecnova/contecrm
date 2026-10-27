@@ -72,6 +72,20 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // conectores instalables, los trabajos largos y el progreso de convivencia
   // con el CRM heredado.
   "procesos": [
+    // La automatización, en los campos de su propio registro: cuándo se
+    // dispara y sobre qué campos vigilados (.02), qué hace —lista cerrada de
+    // nueve acciones, ninguna que ejecute código (.03)— y si corre al momento,
+    // al confirmar la transacción o a una hora (.05).
+    "CRM-00.03.03.02",
+    "CRM-00.03.03.03",
+    "CRM-00.03.03.05",
+    // Y la instancia de un proceso, en los suyos: cuándo despierta de una
+    // espera (.07) y de qué proceso padre cuelga (.08).
+    "CRM-00.03.02.07",
+    "CRM-00.03.02.08",
+    // La definición lleva su versión y su estado —borrador, publicado,
+    // archivado—, y la instancia termina con la versión con la que empezó.
+    "CRM-00.03.05.05",
     "CRM-00.02.01.12",
     "CRM-00.02.02.01",
     "CRM-00.03.01.07",
@@ -131,6 +145,25 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // calidad del dato con sus duplicados y su fusión, los derechos del
   // interesado y la papelera con restauración en cascada.
   "cuentas": [
+    // La segmentación completa de la cuenta, que es la que se vende: sector
+    // con su esquema (CNAE/SIC/NAICS), tamaño, facturación, tier, ABC y ciclo
+    // de vida. Llegaban cuatro de las seis: la clasificación ABC y «es una
+    // persona» estaban en la tabla y no salían por la API.
+    "CRM-01.01.01.07",
+    "CRM-01.01.01.09",
+    // La ficha de contacto con sus canales —correo principal y secundario,
+    // teléfono, móvil y los canales alternativos declarados—, y sus cuatro
+    // preferencias: canal, frecuencia máxima, idioma y horario. Las dos
+    // últimas tampoco salían.
+    "CRM-01.01.02.01",
+    "CRM-01.01.02.05",
+    // La puntuación de completitud de cada registro, con la lista de lo que
+    // falta: no un número suelto, sino qué hay que rellenar.
+    "CRM-01.01.04.05",
+    // Y si el correo y el teléfono están verificados o sólo escritos. Un
+    // correo sin verificar que se lee como bueno es una campaña que rebota
+    // entera.
+    "CRM-01.01.04.10",
     "CRM-01.01.01.01",
     "CRM-01.01.01.04",
     "CRM-01.01.01.05",

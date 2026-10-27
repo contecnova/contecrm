@@ -86,6 +86,12 @@ class CuentaOut(BaseModel):
     facturacion_anual: Decimal | None = None
     moneda: str
     tier: str | None = None
+    # La clasificación ABC y si la cuenta es de una persona (B2C) estaban en la
+    # tabla y no salían: la segmentación que se vende —sector, tamaño,
+    # facturación, tier, ABC y ciclo de vida— llegaba a la pantalla sin dos de
+    # las seis, y el modelo B2C no se distinguía del B2B en ninguna parte.
+    clasificacion_abc: str | None = None
+    es_personal: bool = False
     web: str | None = None
     telefono: str | None = None
     email: str | None = None
@@ -150,8 +156,23 @@ class ContactoOut(BaseModel):
     email: str | None = None
     telefono: str | None = None
     movil: str | None = None
+    email_secundario: str | None = None
+    # El estado de verificación del correo y del teléfono: existía en la tabla
+    # y no salía por la API, así que la pantalla no podía decir si una
+    # dirección está comprobada o sólo escrita. Un correo sin verificar que se
+    # lee como bueno es una campaña que rebota entera.
+    estado_email: str | None = None
+    estado_telefono: str | None = None
     idioma: str | None = None
     canal_preferido: str | None = None
+    # Las otras dos preferencias de contacto. Sin ellas, «respetar la
+    # preferencia del contacto» era media promesa: se podía elegir el canal y
+    # el idioma, y no cuántas veces ni a qué horas.
+    frecuencia_maxima: int | None = None
+    horario_preferido: str | None = None
+    # Los canales alternativos declarados (mensajería, redes). Estaban en la
+    # tabla y no llegaban a ninguna pantalla.
+    canales: dict[str, Any] = {}
     no_contactar: bool
     owner_id: UUID | None = None
     calidad: int
