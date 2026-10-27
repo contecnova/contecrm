@@ -282,6 +282,38 @@ export default {
     vaciaDetalle: "Cuando entre una conversación aparecerá aquí.",
     sinAsunto: "(sin asunto)",
   },
+  conversacion: {
+    sinAsunto: "(sin asunto)",
+    entradilla:
+      "Todo lo que este cliente ha hablado con nosotros, por cualquier canal y " +
+      "ordenado por tiempo. No agrupado por canal: agrupar es lo que hace que se " +
+      "le pregunte tres veces lo mismo.",
+    porBot: "la atiende el bot",
+    sinHilo: "Sin mensajes todavía",
+    sinHiloDetalle:
+      "Esta conversación no está ligada a ningún cliente, así que no hay " +
+      "historial que traer.",
+    delCliente: "del cliente",
+    nuestro: "nuestro",
+    interna: "nota interna",
+    soloLectura: "Puedes leer la conversación; responder necesita permiso de escritura.",
+    respuesta: "Respuesta",
+    esNotaInterna: "Es una nota interna (no se manda al cliente ni cuenta como primera respuesta)",
+    responder: "Responder al cliente",
+    dejarNota: "Dejar la nota",
+    escalar: "Escalar a una persona",
+    cambiarCanal: "Cambiar de canal",
+    elegirCanal: "Elegir canal…",
+    motivo: "Motivo",
+    transferir: "Cambiar",
+    transferirDetalle:
+      "Cambiar de canal no abre una conversación nueva: el hilo se conserva.",
+    hecho: {
+      responder: "Mandado.",
+      "escalar-a-humano": "Escalado a una persona con todo el contexto.",
+      transferir: "Canal cambiado. El hilo sigue siendo el mismo.",
+    },
+  },
   conocimiento: {
     titulo: "Conocimiento",
     entradilla:

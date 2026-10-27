@@ -14199,3 +14199,76 @@ Dos decisiones que importan:
 
 Y el error dice **a qué sí podía apuntar**: «destino no admitido» a secas obliga a
 ir a buscar la definición para saber qué poner.
+
+## La cola llevaba a una pantalla que no existía (`CRM-04.02.02.01`, `.02`, `CRM-04.02.01.03`)
+
+La consola de agente enseña una sola cola con los casos y las conversaciones de
+todos los canales, y cada fila enlaza al registro. La de una conversación
+apuntaba a `/m/conversaciones/conversacion/{id}`, y ese módulo **no existe**:
+quien pulsaba una conversación de la cola llegaba a «no existe».
+
+Detrás había tres operaciones publicadas y probadas desde hacía meses sin un
+solo botón que las llamara: responder (o dejar una nota interna), cambiar de
+canal y escalar a una persona.
+
+Ahora hay pantalla, y lo que decide su forma es el problema que la omnicanalidad
+viene a resolver:
+
+- **El hilo es el del cliente, no el de esta conversación.** Se pide por
+  contacto o por identidad externa, y trae todo lo hablado por cualquier canal.
+  Quien escribió el lunes por correo, llamó el martes y abrió un chat hoy está
+  teniendo **una** conversación; enseñar sólo los mensajes de este hilo es lo
+  que hace que se le pregunte tres veces lo mismo.
+- **No agrupado por canal.** Agrupar reproduce el problema. El canal va como
+  etiqueta en cada mensaje.
+- **La nota interna se dice con palabras**, no sólo con un color: es lo único
+  que la separa de una respuesta que sale hacia el cliente. Y no cuenta como
+  primera respuesta —eso lo decide el servidor—, porque si contara el indicador
+  de «cuándo contestó una persona» saldría magnífico sin medir nada.
+- **Cambiar de canal no abre una conversación nueva.** Si la abriera, pasar de
+  chat a correo perdería lo hablado y el cliente tendría que explicarse otra
+  vez. Se dice en la propia pantalla para que nadie abra una «por si acaso».
+- **Escalar reusa como motivo lo que ya se había escrito.** Pedirlo en otra caja
+  obliga a escribirlo dos veces.
+- **Sin `case:write` el hilo se lee y no hay caja de respuesta.** Quien decide
+  sigue siendo el servidor; esconder lo que va a dar 403 sólo evita hacerle
+  perder el tiempo a quien lo pulsa.
+
+Una conversación que no está ligada a ningún cliente no tiene historial que
+traer: el extremo responde 422 si no se le da contacto ni identidad, y la
+pantalla lo dice en vez de enseñar un error.
+
+## Lo que un menú dice que enseña, y lo que su pantalla pide (`CRM-07.04.05.01`)
+
+El informe de cobertura del front cuenta un recurso como enseñado en cuanto una
+entrada de menú lo declara. **Nadie comprobaba esa declaración**, y declarar es
+gratis mientras que callar sale caro: la lista se había llenado de recursos que
+la pantalla no pedía nunca, y el informe —que es el que se mira para decidir qué
+falta— daba por cubierto lo que no existía.
+
+Medido el 27-10-2026: de 45 recursos declarados, **30 no los pedía ningún
+fichero del front**. Entre ellos `aprobaciones` (once operaciones; la pantalla
+de aprobaciones pide `documentos`, que es otra cosa), `aislamiento` y
+`residencia` (31 operaciones que sólo tenían puerta por API) y
+`aprobaciones-documentales`, que ni siquiera existe como recurso: cero
+operaciones con ese nombre.
+
+Quedan en 18, y el resto están en su sitio:
+
+| Dónde | Qué se ve ahora |
+|---|---|
+| Tenants y unidades | Aislamiento, sus migraciones, residencia, subprocesadores y transferencias internacionales (`tenant:read`) |
+| Procesos y orquestación | Las aprobaciones del motor, con «revisar plazos» (`aprobacion:read`) |
+| Operación | Encargos a proveedor con entregados sin prueba, cumplimiento y estados sin mapear, más «revisar silencios» y «conciliar»; plantillas de documento; firma presencial |
+| Casos | Créditos de servicio y cumplimiento de SLA (`case:read`) |
+| Campañas | Recorridos |
+| Contenido y gobierno | Activos de marketing |
+
+Cada uno con el permiso que exige su operación, y no al revés: una pestaña que
+sólo sirve para enseñar un 403 es peor que no tenerla.
+
+La comprobación que lo sostiene es deliberadamente tonta —que el literal de la
+ruta aparezca en algún fichero del front que no sea la propia navegación ni el
+informe— y vive dentro del gate de pantallas que ya existía, sin sumar una
+entrada nueva al preflight. No demuestra que la pantalla lo enseñe bien;
+demuestra que lo pide, que es la mitad que faltaba.

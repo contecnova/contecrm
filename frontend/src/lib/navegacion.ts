@@ -185,7 +185,7 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
   // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
   // garantizar que las aprobaciones se queden esperando.
-  { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["aprobaciones-documentales"] },
+  { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["documentos"] },
   { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["compensacion", "encargos", "firma", "firma-presencial", "plantillas-documento", "suite", "suites"] },
 
   { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" , recursos: ["aislamiento", "residencia", "entornos", "sso-gobierno", "factores", "notificaciones", "scim"] },

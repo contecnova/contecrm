@@ -338,6 +338,41 @@ def comprobar(uow: UnidadDeTrabajo, *, tenant_id: UUID) -> dict[str, Any]:
     }
 
 
+def ficha(db: Session, *, tenant_id: UUID) -> dict[str, Any]:
+    """Lo declarado para UN tenant, y si alguien lo ha contrastado.
+
+    Existía `comprobar` —una acción sobre el registro— y no existía forma de
+    abrir el registro: la acción no tenía pantalla desde la que llamarse, y el
+    listado llevaba a una ficha que respondía 404. Es la misma asimetría que ya
+    estaba resuelta en residencia, que sí publica su `GET /{tenant_id}`.
+
+    Un tenant sin declarar sale como **hueco** y no como «compartido por
+    defecto»: el defecto silencioso es justo cómo un cliente que paga por base
+    dedicada acaba en la compartida sin que nadie se entere.
+    """
+    fila = db.execute(
+        select(AislamientoTenant).where(AislamientoTenant.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if fila is None:
+        raise NoEncontrado(
+            "Este tenant no tiene aislamiento declarado.",
+            error_code="aislamiento.sin_declarar",
+        )
+    return {
+        "tenant_id": str(fila.tenant_id),
+        "modalidad": fila.modalidad,
+        "esquema": fila.esquema,
+        "instancia": fila.instancia,
+        "base": fila.base,
+        "infraestructura_del_cliente": fila.infraestructura_del_cliente,
+        "pool_computo": fila.pool_computo,
+        "comprobado_at": fila.comprobado_at.isoformat() if fila.comprobado_at else None,
+        "comprobado_ok": fila.comprobado_ok,
+        "comprobado_detalle": fila.comprobado_detalle,
+        "notas": fila.notas,
+    }
+
+
 def sin_comprobar(db: Session, *, dias: int = 30) -> dict[str, Any]:
     """Tenants cuyo aislamiento nadie ha contrastado últimamente.
 

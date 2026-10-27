@@ -6,6 +6,7 @@ import { Frontera } from "@/componentes/Frontera";
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Cuenta } from "@/paginas/Cuenta";
+import { Conversacion } from "@/paginas/Conversacion";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Casos } from "@/paginas/Casos";
@@ -200,6 +201,12 @@ export function App() {
           <Route path="/embudo" element={<Pipeline sesion={sesion} />} />
           <Route path="/casos" element={<Casos />} />
           <Route path="/consola-agente" element={<ConsolaAgente />} />
+          {/* La cola de la consola de agente enlazaba aquí desde el primer
+              día y este módulo no existe: se llegaba a «no existe». */}
+          <Route
+            path="/m/conversaciones/conversacion/:id"
+            element={<Conversacion sesion={sesion} />}
+          />
           <Route path="/conocimiento" element={<Conocimiento />} />
           <Route path="/marketing" element={<Marketing />} />
           <Route path="/coste" element={<Coste />} />

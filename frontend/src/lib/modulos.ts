@@ -138,6 +138,14 @@ export const MODULOS: Modulo[] = [
       "CRM-00.01.04.05",
       "CRM-00.01.04.07",
       "CRM-00.01.06.06",
+      "CRM-00.01.01.01",
+      "CRM-00.01.01.02",
+      "CRM-00.01.01.03",
+      "CRM-00.01.01.04",
+      "CRM-00.01.01.05",
+      "CRM-00.01.05.01",
+      "CRM-00.01.05.02",
+      "CRM-00.01.05.03",
     ],
     grupo: "Plataforma",
     recursos: [
@@ -166,6 +174,44 @@ export const MODULOS: Modulo[] = [
         nombre: "Localización",
         listar: "/api/v1/localizacion",
         servicio: "tenancy",
+      },
+      // El modelo de aislamiento del tenant y las migraciones entre modelos
+      // (CRM-00.01.01.01 a .05): qué tenant está en pool, en esquema propio o
+      // en instancia dedicada, y la migración de uno a otro con su ventana, su
+      // verificación y su vuelta atrás. Hasta hoy esto solo existía por API.
+      {
+        nombre: "Aislamiento",
+        listar: "/api/v1/aislamiento",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      {
+        nombre: "Migraciones de aislamiento",
+        listar: "/api/v1/aislamiento/migraciones",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      // Dónde viven los datos de cada tenant, quién los trata por cuenta
+      // nuestra y qué transferencias internacionales hay declaradas
+      // (CRM-00.01.05.01 a .03). Es lo que se enseña en una auditoría, y hasta
+      // hoy había que pedirlo por API.
+      {
+        nombre: "Residencia",
+        listar: "/api/v1/residencia",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      {
+        nombre: "Subprocesadores",
+        listar: "/api/v1/residencia/subprocesadores",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      {
+        nombre: "Transferencias internacionales",
+        listar: "/api/v1/residencia/transferencias",
+        servicio: "tenancy",
+        permiso: "tenant:read",
       },
     ],
   },
@@ -206,6 +252,8 @@ export const MODULOS: Modulo[] = [
       "CRM-00.03.04.05",
       "CRM-00.03.04.06",
       "CRM-00.03.04.10",
+      "CRM-00.03.05.09",
+      "CRM-00.03.05.10",
     ],
     grupo: "Plataforma",
     recursos: [
@@ -291,6 +339,24 @@ export const MODULOS: Modulo[] = [
         nombre: "Transportes",
         listar: "/api/v1/conectores/transportes",
         servicio: "integration",
+      },
+      // Las aprobaciones del motor de flujos (CRM-00.03.05): la lista entera,
+      // no solo la bandeja de quien entra. «Aprobaciones» en la navegación
+      // llevaba a la bandeja documental, que es otra cosa: estas son las del
+      // proceso, con su delegación, su plazo y su decisión por enlace firmado.
+      {
+        nombre: "Aprobaciones",
+        listar: "/api/v1/aprobaciones",
+        servicio: "orchestrator",
+        permiso: "aprobacion:read",
+        acciones: [
+          {
+            ruta: "/api/v1/aprobaciones/revisar-plazos",
+            nombre: "Revisar plazos",
+            detalle: "Avisa a los que van tarde y escala a los que ya se pasaron",
+            permiso: "aprobacion:write",
+          },
+        ],
       },
     ],
   },
@@ -399,6 +465,17 @@ export const MODULOS: Modulo[] = [
       "CRM-00.03.04.07",
       "CRM-00.03.04.08",
       "CRM-00.03.04.09",
+      "CRM-00.04.05.01",
+      "CRM-00.04.05.02",
+      "CRM-00.04.05.04",
+      "CRM-00.04.05.05",
+      "CRM-00.04.05.08",
+      "CRM-00.04.05.09",
+      "CRM-00.04.05.10",
+      "CRM-06.01.01.06",
+      "CRM-06.01.02.09",
+      "CRM-06.01.02.13",
+      "CRM-06.01.02.14",
     ],
     grupo: "Plataforma",
     recursos: [
@@ -442,6 +519,66 @@ export const MODULOS: Modulo[] = [
         nombre: "Archivo de eventos",
         listar: "/api/v1/eventos/archivo",
         servicio: "eventing",
+      },
+      // El encargo a un proveedor externo y su rastro (CRM-00.04.05): qué se
+      // le pidió, por dónde va, qué incidencias lleva y qué documentos ha
+      // devuelto. Doce operaciones publicadas y ninguna pantalla hasta hoy.
+      {
+        nombre: "Encargos a proveedor",
+        listar: "/api/v1/encargos",
+        servicio: "integration",
+        permiso: "integracion:read",
+        acciones: [
+          {
+            ruta: "/api/v1/encargos/revisar-silencios",
+            nombre: "Revisar silencios",
+            detalle: "Marca como mudo el encargo del que el proveedor no dice nada dentro de su plazo",
+            permiso: "integracion:write",
+          },
+          {
+            ruta: "/api/v1/encargos/conciliar",
+            nombre: "Conciliar lo facturado",
+            detalle: "Lo que el proveedor factura contra lo que consta entregado",
+            permiso: "integracion:write",
+          },
+        ],
+      },
+      // Las tres vistas que convierten el encargo en algo operable: lo
+      // entregado sin prueba, el cumplimiento por proveedor y los estados que
+      // el proveedor manda y nadie ha mapeado todavía. Son hermanas del
+      // listado, no hijas de un registro, así que se declaran.
+      {
+        nombre: "Encargos: entregados sin prueba",
+        listar: "/api/v1/encargos/entregados-sin-prueba",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Encargos: cumplimiento por proveedor",
+        listar: "/api/v1/encargos/cumplimiento",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Encargos: estados sin mapear",
+        listar: "/api/v1/encargos/estados-sin-mapear",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      // Las plantillas con las que se generan los documentos y la firma hecha
+      // delante del cliente. Viven aquí, con la integración, porque es de ahí
+      // de donde salen y hacia donde van.
+      {
+        nombre: "Plantillas de documento",
+        listar: "/api/v1/plantillas-documento",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Firma presencial",
+        listar: "/api/v1/firma-presencial",
+        servicio: "integration",
+        permiso: "firma:read",
       },
     ],
   },
@@ -1340,6 +1477,14 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/puntuacion/modelos",
         servicio: "marketing",
       },
+      // Los activos de marketing con su revisión y su aprobación: qué se
+      // puede usar, desde cuándo y hasta cuándo.
+      {
+        nombre: "Activos de marketing",
+        listar: "/api/v1/activos-marketing",
+        servicio: "marketing",
+        permiso: "marketing:read",
+      },
     ],
   },
   {
@@ -1349,7 +1494,15 @@ export const MODULOS: Modulo[] = [
     capacidad: "CRM-07.04.03.10",
     // La jerarquía de campañas con su presupuesto, las reglas de presión y
     // frecuencia de contacto, los rebotes duros y blandos, y la papelera.
-    capacidades: ["CRM-02.02.01.01", "CRM-02.02.02.06", "CRM-02.03.01.04"],
+    capacidades: [
+      "CRM-02.02.01.01",
+      "CRM-02.02.02.06",
+      "CRM-02.03.01.04",
+      "CRM-02.02.02.02",
+      "CRM-02.02.02.03",
+      "CRM-02.02.02.07",
+      "CRM-02.02.02.08",
+    ],
     grupo: "Marketing",
     recursos: [
       {
@@ -1384,6 +1537,14 @@ export const MODULOS: Modulo[] = [
         servicio: "marketing",
       },
       { nombre: "Rebotes", listar: "/api/v1/rebotes", servicio: "marketing" },
+      // El recorrido automatizado (CRM-02.02.02): sus nodos, sus inscritos,
+      // su embudo y su publicación. Catorce operaciones sin pantalla.
+      {
+        nombre: "Recorridos",
+        listar: "/api/v1/recorridos",
+        servicio: "marketing",
+        permiso: "campana:read",
+      },
     ],
   },
 
@@ -1407,6 +1568,8 @@ export const MODULOS: Modulo[] = [
       "CRM-04.01.02.02",
       "CRM-04.01.02.03",
       "CRM-04.02.02.03",
+      "CRM-04.01.02.07",
+      "CRM-04.01.02.08",
     ],
     grupo: "Servicio",
     recursos: [
@@ -1462,6 +1625,20 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/entitlements",
         servicio: "service",
       },
+      // Lo que se le debe al cliente cuando el SLA se incumple
+      // (CRM-04.01.02): el crédito calculado, quién lo aprueba y cómo quedó.
+      {
+        nombre: "Créditos de servicio",
+        listar: "/api/v1/creditos-servicio",
+        servicio: "service",
+        permiso: "case:read",
+      },
+      {
+        nombre: "Cumplimiento de SLA",
+        listar: "/api/v1/creditos-servicio/cumplimiento",
+        servicio: "service",
+        permiso: "case:read",
+      },
     ],
   },
   {
@@ -1470,7 +1647,9 @@ export const MODULOS: Modulo[] = [
     seccion: "4.2",
     capacidad: "CRM-07.04.03.18",
     // Los canales de servicio y las macros con sus acciones compuestas.
-    capacidades: ["CRM-04.02.02.04"],
+    capacidades: [
+      "CRM-04.02.02.04",
+    ],
     grupo: "Servicio",
     recursos: [
       // Las conversaciones no tienen listado general a propósito: se trabajan
@@ -1491,6 +1670,8 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/macros",
         servicio: "service",
       },
+      // La conversación como registro, con su historial, su transferencia y
+      // su escalado a persona. El canal ya se veía; la conversación no.
     ],
   },
   {

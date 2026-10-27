@@ -61,7 +61,22 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            ensena. 144 capacidades en un bloque, ninguna
 #                            pantalla nueva: estaban todas construidas y no lo
 #                            decia nadie
-TOPE_SIN_PANTALLA = 540
+#   27-10-2026  510 de 753  el bloque de «la pantalla toca lo que dice que
+#                            ensena»: cinco listados de aislamiento y
+#                            residencia en Tenants, las aprobaciones del motor
+#                            en Procesos, los encargos a proveedor con sus
+#                            tres vistas derivadas y sus dos acciones de
+#                            coleccion mas las plantillas de documento y la
+#                            firma presencial en Operacion, los creditos de
+#                            servicio y el cumplimiento de SLA en Casos, los
+#                            recorridos en Campanas y los activos en
+#                            Contenido. Y pantalla propia para la
+#                            conversacion: responder, nota interna, cambio de
+#                            canal y escalado a persona estaban publicados y
+#                            probados sin un solo boton que los llamara, y la
+#                            cola de la consola de agente enlazaba a una ruta
+#                            que no existia
+TOPE_SIN_PANTALLA = 510
 
 
 def _es_pantalla(p: Path) -> bool:

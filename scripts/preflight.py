@@ -187,11 +187,12 @@ GATES: list[Gate] = [
             "-m",
             "pytest",
             "tests/unit/test_cada_capacidad_tiene_pantalla.py",
+            "tests/unit/test_la_pantalla_toca_lo_que_dice_que_ensena.py",
             "-q",
             "--no-header",
         ],
         "fast",
-        "de cada capacidad hecha se llega a una pantalla, y el tope solo baja",
+        "de cada capacidad hecha se llega a una pantalla, y el menu no miente",
     ),
     Gate(
         "contrato-headless",
