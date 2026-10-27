@@ -86,9 +86,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/party/trabajos"
     },
     {
-      "r": "/api/v1/sales/trabajos"
-    },
-    {
       "r": "/api/v1/conectores"
     },
     {
@@ -135,6 +132,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/metadata/relaciones/tipos"
+    },
+    {
+      "r": "/api/v1/sales/vocabularios",
+      "p": "metadata:read"
+    },
+    {
+      "r": "/api/v1/party/buscar/objetos",
+      "p": "metadata:read"
     },
     {
       "r": "/api/v1/entornos",

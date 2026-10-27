@@ -86,3 +86,76 @@ def test_lo_retirado_no_se_admite_pero_no_se_borra(db: Any, tenant_id: UUID) -> 
 def test_un_vocabulario_que_nadie_declara_no_admite_nada(db: Any) -> None:
     """Y no revienta: un servicio puede preguntar por uno que no es suyo."""
     assert voc.valores(db, f"inventado_{uuid4().hex}") == frozenset()
+
+
+# ── Un servicio no hereda los vocabularios del vecino ─────────────────────
+
+
+def test_un_servicio_no_ve_los_vocabularios_de_otro(monkeypatch: Any) -> None:
+    """El registro es global al proceso, y eso decidía rutas por orden de import.
+
+    En producción da igual: cada servicio importa sus módulos y nada más. Donde
+    no da igual es donde se construyen varios en el mismo proceso —el sellado
+    del contrato, los gates que leen los catorce OpenAPI—. El router de
+    vocabularios sólo se monta si el servicio declara alguno, y al construir en
+    orden alfabético, cuando llegaba el turno de `service` y `tenancy` ya
+    estaban importados los módulos de `sales`: montaban el router.
+
+    Lo que se veía, medido el 27-10-2026: el contrato publicado anunciaba
+    **doce operaciones** —`/api/v1/service/vocabularios` y
+    `/api/v1/tenancy/vocabularios` con sus valores— que pedidas al servicio de
+    verdad daban 404. Un contrato que anuncia lo que no existe es peor que uno
+    incompleto: quien integra escribe contra ello.
+    """
+    from dataclasses import dataclass
+
+    @dataclass
+    class _Ajustes:
+        service_name: str
+
+    registro = dict(voc._REGISTRO)
+    try:
+        voc._REGISTRO.clear()
+        voc._REGISTRO["motivos_perdida"] = voc.Vocabulario(
+            nombre="motivos_perdida",
+            etiqueta="Motivos de pérdida",
+            defectos=("precio",),
+            servicio="sales",
+        )
+        voc._REGISTRO["canales_caso"] = voc.Vocabulario(
+            nombre="canales_caso",
+            etiqueta="Canales",
+            defectos=("correo",),
+            servicio="service",
+        )
+
+        import crmcore.config as cfg
+
+        monkeypatch.setattr(cfg, "get_settings", lambda: _Ajustes("sales"))
+        assert set(voc.registrados()) == {
+            "motivos_perdida"
+        }, "«sales» no puede ver el vocabulario que declaró «service»"
+
+        monkeypatch.setattr(cfg, "get_settings", lambda: _Ajustes("tenancy"))
+        assert voc.registrados() == {}, (
+            "«tenancy» no declara ninguno: si ve alguno, monta un router que en "
+            "producción no monta, y el contrato anuncia rutas que dan 404"
+        )
+    finally:
+        voc._REGISTRO.clear()
+        voc._REGISTRO.update(registro)
+
+
+def test_cada_vocabulario_sabe_quien_lo_declara() -> None:
+    """De lo contrario el filtro de arriba no filtra nada y pasa siempre.
+
+    El servicio sale del nombre del módulo que llama a `registrar`, no de un
+    argumento: pedirlo obligaría a escribirlo en cada llamada, y el día que
+    alguien copie una declaración de un servicio a otro se la deja puesta.
+    """
+    import importlib
+
+    importlib.import_module("services.sales.servicio")
+    declarados = {n: v.servicio for n, v in voc._REGISTRO.items() if n.startswith("motivos_")}
+    assert declarados, "no se ve ningún vocabulario de ventas: el recorrido no mira"
+    assert set(declarados.values()) == {"sales"}, declarados

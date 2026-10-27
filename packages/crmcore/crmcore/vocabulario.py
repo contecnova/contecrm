@@ -82,9 +82,29 @@ class Vocabulario:
     etiqueta: str
     defectos: tuple[str, ...]
     descripcion: str = ""
+    #: Qué servicio lo declara. Sale del módulo que llama a `registrar`.
+    servicio: str = ""
 
 
 _REGISTRO: dict[str, Vocabulario] = {}
+
+
+def _servicio_que_llama() -> str:
+    """De qué servicio es el módulo que está registrando.
+
+    Del nombre del módulo —`services.sales.servicio` → `sales`— y no de un
+    argumento: pedirlo obligaría a escribirlo en cada llamada, y el día que
+    alguien copie una declaración de un servicio a otro se la deja puesta.
+    """
+    import inspect
+
+    marco = inspect.currentframe()
+    # Dos saltos: este ayudante y `registrar`.
+    for _ in range(2):
+        marco = marco.f_back if marco else None
+    modulo = str((marco.f_globals if marco else {}).get("__name__") or "")
+    partes = modulo.split(".")
+    return partes[1] if len(partes) > 1 and partes[0] == "services" else ""
 
 
 def registrar(
@@ -105,12 +125,33 @@ def registrar(
         etiqueta=etiqueta,
         defectos=tuple(sorted(defectos)),
         descripcion=descripcion,
+        servicio=_servicio_que_llama(),
     )
 
 
 def registrados() -> dict[str, Vocabulario]:
-    """Los vocabularios que declara este servicio."""
-    return dict(_REGISTRO)
+    """Los vocabularios que declara ESTE servicio, y no los de los vecinos.
+
+    El registro es global al proceso, y en producción eso da igual: cada
+    servicio importa sus módulos y nada más. Donde no da igual es donde se
+    construyen varios en el mismo proceso —el sellado del contrato, los gates
+    que leen los catorce OpenAPI—, y ahí el orden alfabético decidía: al
+    importar `sales` quedaban registrados sus vocabularios, y `service` y
+    `tenancy`, construidos después, montaban el router de vocabularios que en
+    producción no montan.
+
+    Lo que se veía: el contrato publicado anunciaba
+    `GET /api/v1/service/vocabularios` y `GET /api/v1/tenancy/vocabularios`, y
+    pedirlas al servicio de verdad daba **404**. Un contrato que anuncia rutas
+    que no existen es peor que uno incompleto: quien integra escribe contra
+    ellas.
+    """
+    from crmcore.config import get_settings
+
+    mio = get_settings().service_name
+    # Sin servicio —una prueba que registra desde su propio módulo— no se
+    # filtra: filtrar ahí escondería lo que la prueba acaba de declarar.
+    return {n: v for n, v in _REGISTRO.items() if not v.servicio or not mio or v.servicio == mio}
 
 
 def definicion(nombre: str) -> Vocabulario | None:

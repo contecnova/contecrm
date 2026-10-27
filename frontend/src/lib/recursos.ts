@@ -147,15 +147,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "integration",
       },
       { nombre: "Webhooks", listar: "/api/v1/webhooks", servicio: "eventing" },
+      // Eran dos pestañas —«de clientes» y «de ventas»— para lo mismo, y los
+      // trabajos de analítica y de inteligencia no salían en ninguna. Una
+      // pestaña con selector: lo mismo, todos los servicios, y una entrada
+      // menos en un menú que ya tiene veinte.
       {
-        nombre: "Trabajos de clientes",
-        listar: "/api/v1/party/trabajos",
+        nombre: "Trabajos de fondo",
+        objeto: "trabajo",
+        listar: "/api/v1/:servicio/trabajos",
+        por_servicio: ["party", "sales", "analytics", "intelligence"],
         servicio: "party",
-      },
-      {
-        nombre: "Trabajos de ventas",
-        listar: "/api/v1/sales/trabajos",
-        servicio: "sales",
       },
       // El catálogo de conectores y lo instalado aquí, juntos: la pregunta real
       // es «¿qué tengo puesto y qué versión?», no «¿qué existe?».
@@ -268,6 +269,30 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Tipos de relación",
         listar: "/api/v1/metadata/relaciones/tipos",
         servicio: "metadata",
+      },
+      // Qué vocabularios de negocio hay. Los valores de uno suelto ya se veían
+      // —«Motivos de descarte»—, pero cuáles existen no: para saberlo había que
+      // probar su ruta.
+      //
+      // Sólo `sales`, y no los tres que decía el contrato publicado: el router
+      // se monta en el servicio que DECLARA alguno, y declararlos sólo los
+      // declara ventas. El contrato anunciaba también los de `service` y
+      // `tenancy` porque se construyen los catorce en el mismo proceso y el
+      // registro era global; pedidas al servicio de verdad daban 404.
+      {
+        nombre: "Vocabularios de negocio",
+        listar: "/api/v1/sales/vocabularios",
+        servicio: "sales",
+        permiso: "metadata:read",
+      },
+      // Qué objetos admite la búsqueda de cada servicio. Sin esto, la única
+      // forma de saber si algo es buscable era buscarlo y ver si salía.
+      {
+        nombre: "Objetos buscables",
+        listar: "/api/v1/:servicio/buscar/objetos",
+        por_servicio: ["party", "sales"],
+        servicio: "party",
+        permiso: "metadata:read",
       },
       // Los entornos declarados. La pantalla de ALM los tenía escritos a mano
       // en un desplegable mientras el servidor los publicaba: un entorno nuevo
@@ -1258,19 +1283,27 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/segregacion/reglas",
         servicio: "identity",
       },
+      // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos
+      // legales» y «Clases de dato»: quien las abría creía ver las de todo el
+      // sistema y veía las de clientes. Las de identidad y las de ventas no
+      // tenían pantalla. Cada servicio guarda las suyas en su esquema, así que
+      // la pestaña lleva selector en vez de apuntar a una.
       {
         nombre: "Retención",
-        listar: "/api/v1/party/retencion/politicas",
+        listar: "/api/v1/:servicio/retencion/politicas",
+        por_servicio: ["party", "identity", "sales"],
         servicio: "party",
       },
       {
         nombre: "Bloqueos legales",
-        listar: "/api/v1/party/retencion/bloqueos",
+        listar: "/api/v1/:servicio/retencion/bloqueos",
+        por_servicio: ["party", "identity", "sales"],
         servicio: "party",
       },
       {
         nombre: "Clases de dato",
-        listar: "/api/v1/party/retencion/clases",
+        listar: "/api/v1/:servicio/retencion/clases",
+        por_servicio: ["party", "identity", "sales"],
         servicio: "party",
       },
     ],

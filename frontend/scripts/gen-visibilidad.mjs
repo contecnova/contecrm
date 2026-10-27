@@ -46,7 +46,13 @@ function visibilidadDe(fuente) {
       if (!listar) continue;
       const permiso = /permiso:\s*"([^"]+)"/.exec(bloque)?.[1];
       const plataforma = /solo_plataforma:\s*true/.test(bloque);
-      const fila = { r: listar };
+      // `:servicio` se sustituye por el PRIMER servicio declarado. Este
+      // resumen sólo decide si el módulo se enseña en el menú, y para eso
+      // basta con una ruta de verdad: con la plantilla sin sustituir no casaba
+      // con ninguna de las que publica el servidor, así que la pestaña quedaba
+      // escondida para todo el mundo.
+      const primero = /por_servicio:\s*\[\s*"([^"]+)"/.exec(bloque)?.[1];
+      const fila = { r: primero ? listar.replace(":servicio", primero) : listar };
       if (permiso) fila.p = permiso;
       if (plataforma) fila.sp = true;
       pestañas.push(fila);

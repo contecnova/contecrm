@@ -290,7 +290,7 @@ function resumir(datos: unknown): string {
 }
 
 function RecursoVista({
-  recurso,
+  recurso: declarado,
   sesion,
   ruta,
   abrirAlta = false,
@@ -302,6 +302,32 @@ function RecursoVista({
   abrirAlta?: boolean;
 }) {
   const { t } = useTranslation();
+  /**
+   * Qué servicio se está mirando, cuando la misma colección está en varios.
+   *
+   * Las políticas de retención, los trabajos de fondo o los vocabularios los
+   * publica cada servicio en su prefijo. La pestaña apuntaba a uno y se
+   * llamaba «Retención»: quien la abría creía ver todas las políticas del
+   * sistema y veía las de un servicio. Con el selector, una pestaña enseña
+   * todos y ninguno queda escondido.
+   */
+  const [servicioElegido, setServicioElegido] = useState(declarado.por_servicio?.[0] ?? "");
+  // Al cambiar de pestaña hay que volver al primero: el componente se
+  // reutiliza, y si no, se queda el servicio de la pestaña anterior —que
+  // puede ni publicar esta colección— y la pantalla sale en 404.
+  useEffect(() => {
+    setServicioElegido(declarado.por_servicio?.[0] ?? "");
+  }, [declarado]);
+  const recurso = useMemo<Recurso>(() => {
+    if (!declarado.por_servicio?.length || !servicioElegido) return declarado;
+    const poner = (r?: string) => r?.replace(":servicio", servicioElegido);
+    return {
+      ...declarado,
+      servicio: servicioElegido,
+      listar: poner(declarado.listar) ?? declarado.listar,
+      crear: poner(declarado.crear),
+    };
+  }, [declarado, servicioElegido]);
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [siguiente, setSiguiente] = useState<string | null>(null);
@@ -680,6 +706,27 @@ function RecursoVista({
             />
           </label>
         </div>
+      ) : null}
+
+      {/* El selector de servicio, arriba y antes de los datos: lo que se ve
+          debajo es de UNO, y enseñarlo sin decir de cuál es lo que hacía creer
+          que era de todos. Mismo sitio y misma forma que en «Plataforma», que
+          tiene el mismo problema y lo resuelve igual. */}
+      {declarado.por_servicio?.length ? (
+        <label className="mb-3 flex items-center gap-2 text-2xs text-ink-muted">
+          {t("modulo.servicio")}
+          <select
+            className="input-base"
+            value={servicioElegido}
+            onChange={(e) => setServicioElegido(e.target.value)}
+          >
+            {declarado.por_servicio.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
 
       {recurso.acciones?.length ? (

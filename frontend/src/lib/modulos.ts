@@ -81,6 +81,26 @@ export interface Recurso {
    */
   periodo?: boolean;
   /**
+   * La misma colección existe en VARIOS servicios, cada uno con lo suyo.
+   *
+   * Las políticas de retención, los trabajos de fondo, los vocabularios de
+   * negocio y la búsqueda por objeto los publica cada servicio en su propio
+   * prefijo —`/api/v1/:servicio/retencion/politicas`— porque cada uno guarda
+   * los suyos en su esquema. Eso es correcto por dentro, y por fuera creaba un
+   * problema que no se veía: la pestaña apuntaba a **uno** de ellos y se
+   * llamaba «Retención», así que quien la abría creía estar viendo todas las
+   * políticas del sistema cuando veía las de clientes. Las de identidad y las
+   * de ventas no tenían pantalla.
+   *
+   * Con esto, `listar` lleva `:servicio` y la pantalla pone un selector con
+   * estos nombres. Una pestaña, todos los servicios, y ninguno escondido.
+   *
+   * La alternativa era una pestaña por servicio —«Retención (clientes)»,
+   * «Retención (ventas)»…— y son tres pestañas que dicen lo mismo en un menú
+   * donde ya hay veinte.
+   */
+  por_servicio?: string[];
+  /**
    * Tipo de objeto para lo que cuelga del registro: adjuntos, comentarios y
    * documentos. Sin él no hay ficha, porque esas rutas lo llevan dentro.
    */
@@ -368,11 +388,26 @@ export function porGrupo(): Map<string, Modulo[]> {
  */
 export function recursoVisible(
   sesion: Sesion | null,
-  recurso: { listar: string; permiso?: string; solo_plataforma?: boolean },
+  recurso: {
+    listar: string;
+    permiso?: string;
+    solo_plataforma?: boolean;
+    por_servicio?: string[];
+  },
   permitidas?: Set<string>,
 ): boolean {
   if (recurso.solo_plataforma && !sesion?.es_admin_plataforma) return false;
   if (!puede(sesion, recurso.permiso)) return false;
+  // Una colección que vive en varios servicios se enseña si se puede ver en
+  // ALGUNO: la plantilla `/api/v1/:servicio/…` no casa con ninguna ruta de
+  // las que publica el servidor, así que sin esto la pestaña quedaba escondida
+  // para todo el mundo — y es la que acaba de dejar de mentir.
+  if (recurso.por_servicio?.length && recurso.listar.includes(":servicio")) {
+    if (!permitidas || permitidas.size === 0) return true;
+    return recurso.por_servicio.some((s) =>
+      rutaPermitida(permitidas, recurso.listar.replace(":servicio", s)),
+    );
+  }
   // Lo que de verdad manda es lo que el servidor dice que exige esa ruta. El
   // campo `permiso` de aquí solo lo declaran unos pocos recursos, así que por
   // sí solo no filtra nada: sin la superficie, a un agente de soporte se le

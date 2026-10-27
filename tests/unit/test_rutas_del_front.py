@@ -45,10 +45,17 @@ def _declaraciones() -> list[tuple[str, str, str, str]]:
         if not servicio:
             continue
         nombre = campo(bloque, "nombre") or "(sin nombre)"
-        if listar := campo(bloque, "listar"):
-            salida.append((nombre, servicio, listar, "get"))
-        if crear := campo(bloque, "crear"):
-            salida.append((nombre, servicio, crear, "post"))
+        # Una colección que vive en varios servicios declara cuáles y su ruta
+        # lleva `:servicio`. Se comprueban TODOS: si sólo se mirara el primero,
+        # añadir un servicio a la lista que no publique esa ruta dejaría una
+        # opción del selector que siempre da 404, y nadie lo cazaría.
+        servicios = re.search(r"por_servicio:\s*\[([^\]]*)\]", bloque)
+        cuales = re.findall(r'"([^"]+)"', servicios.group(1)) if servicios else [servicio]
+        for suyo in cuales:
+            if listar := campo(bloque, "listar"):
+                salida.append((nombre, suyo, listar.replace(":servicio", suyo), "get"))
+            if crear := campo(bloque, "crear"):
+                salida.append((nombre, suyo, crear.replace(":servicio", suyo), "post"))
     return salida
 
 
