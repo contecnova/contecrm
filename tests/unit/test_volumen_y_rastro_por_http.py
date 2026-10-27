@@ -124,9 +124,34 @@ def test_no_se_particiona_lo_que_no_crece(cliente: Any, cabeceras: dict[str, str
         headers=cabeceras,
     )
     assert ok.status_code == 200, ok.text
-    assert ok.json()["estrategia"] == "mes"
+    # Una sola forma, también al pedir una tabla: dos formas según los
+    # parámetros obligan a ramificar a quien lo lee, y la rama que menos se usa
+    # es la que se queda sin probar.
+    plan = ok.json()["tablas"][0]
+    assert plan["estrategia"] == "mes"
     # El aislamiento no cambia: cambia cómo se guarda, no quién ve qué.
-    assert ok.json()["indice_por_tenant"] is True
+    assert plan["indice_por_tenant"] is True
+
+
+def test_sin_tabla_salen_todas_las_que_crecen(cliente: Any, cabeceras: dict[str, str]) -> None:
+    """`tabla` era obligatoria, y eso dejaba la ruta sin puerta posible.
+
+    Para pedirla había que saber ya cuáles son las tablas de alto volumen, y esa
+    lista solo existía dentro del núcleo: la única forma de sacarla era pedir una
+    tabla mala y leerla del detalle del error. Quien administra la base no quiere
+    elegir una de cinco, quiere ver las cinco.
+    """
+    from crmcore.datos.particionado import DE_ALTO_VOLUMEN
+
+    r = cliente.get("/api/v1/sales/volumen/plan-de-particion", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["cuantas"] == len(DE_ALTO_VOLUMEN)
+    assert {t["tabla"] for t in cuerpo["tablas"]} == set(DE_ALTO_VOLUMEN)
+    # Y cada una dice POR QUÉ crece: sin eso, la lista es un inventario y no
+    # una explicación de por qué sólo se parten éstas.
+    assert all(t["por_que_crece"] for t in cuerpo["tablas"])
+    assert "más lenta" in cuerpo["porque_solo_estas"]
 
 
 def test_particionar_por_tenant_no_es_una_opcion(cliente: Any, cabeceras: dict[str, str]) -> None:

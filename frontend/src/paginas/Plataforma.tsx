@@ -63,6 +63,36 @@ const SERVICIOS = [
   "eventing",
 ] as const;
 
+/** `GET /{servicio}/cumplimiento/informe`: lo que el RAT no contesta. */
+interface InformeCumplimiento {
+  servicio: string;
+  generado_at: string;
+  avisos: string[];
+  integridad_del_audit_trail: { verificacion: Record<string, unknown> };
+  politicas_de_acceso: { activas: number; nombres: string[] };
+}
+
+/** `GET /{servicio}/rastro`: qué agregados tienen el rastro completo encendido. */
+interface Rastro {
+  servicio: string;
+  agregados: Record<string, unknown>;
+  porque: string;
+}
+
+/** `GET /{servicio}/volumen/plan-de-particion`: todas las tablas que crecen. */
+interface PlanDeParticion {
+  cuantas: number;
+  porque_solo_estas: string;
+  tablas: {
+    tabla: string;
+    por_que_crece: string;
+    estrategia: string;
+    meses_en_caliente: number;
+    porque_por_tiempo: string;
+    indice_por_tenant: boolean;
+  }[];
+}
+
 interface Apunte {
   secuencia: number;
   cuando: string;
@@ -180,6 +210,8 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
       <Recuperable servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
       <HastaDondeSeVuelve servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
       <Aguanta servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
+      <ComoSeCorta servicio={servicio} puedeVer={puede(sesion, "admin:read")} />
+      <RastroCompleto servicio={servicio} puedeVer={puede(sesion, "admin:read")} />
       <Boveda servicio={servicio} puedeVer={puede(sesion, "tokenizacion:read")} />
     </>
   );
@@ -344,6 +376,7 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
   const { t } = useTranslation();
   const [rat, setRat] = useState<Rat | null>(null);
   const [matriz, setMatriz] = useState<Matriz | null>(null);
+  const [informe, setInforme] = useState<InformeCumplimiento | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
@@ -351,6 +384,7 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
     const control = new AbortController();
     setRat(null);
     setMatriz(null);
+    setInforme(null);
     setFallo(null);
     Promise.all([
       llamar<Rat>(`/api/v1/${servicio}/cumplimiento/rat`, { signal: control.signal }),
@@ -363,6 +397,14 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
         setMatriz(m.datos);
       })
       .catch(salvoCancelacion(setFallo));
+    // El informe aparte y con su propio fallo: contesta otras dos preguntas
+    // —si el rastro de auditoría cuadra y cuántas políticas de acceso hay
+    // activas— y que no se pueda leer no puede dejar el RAT sin ver.
+    llamar<InformeCumplimiento>(`/api/v1/${servicio}/cumplimiento/informe`, {
+      signal: control.signal,
+    })
+      .then((r) => setInforme(r.datos))
+      .catch(() => undefined);
     return () => control.abort();
   }, [servicio, puedeVer]);
 
@@ -419,6 +461,30 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
               <p className="mt-1 text-3xs text-ink-faint">{matriz.alcance_de_los_roles}</p>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {/* Los avisos del informe van los ÚLTIMOS y en rojo: son lo único de
+          este panel que obliga a hacer algo hoy, y enterrarlos entre dos
+          recuentos es cómo se aprende a no mirarlos. */}
+      {informe ? (
+        <div className="mt-3 border-t border-ink-dim/30 pt-3">
+          <p className="text-3xs text-ink-muted">
+            {t("plataforma.politicasActivas", {
+              cuantas: informe.politicas_de_acceso.activas,
+            })}
+          </p>
+          {informe.avisos.length > 0 ? (
+            <ul className="mt-1 space-y-0.5">
+              {informe.avisos.map((aviso) => (
+                <li key={aviso} className="text-3xs text-danger">
+                  {aviso}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-3xs text-ink-faint">{t("plataforma.sinAvisos")}</p>
+          )}
         </div>
       ) : null}
     </Panel>
@@ -659,6 +725,123 @@ function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }
             </ul>
           ) : null}
           <p className="mt-1 text-3xs text-ink-muted">{particiones.porque}</p>
+        </>
+      ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Cómo se corta cada tabla que crece, y por qué así.
+ *
+ * Va pegado a «qué particiones faltan» porque son la misma conversación: una
+ * dice qué hay que crear mañana y la otra por qué esa tabla se parte por mes y
+ * no por cliente. La ruta existía desde el primer día y **no tenía puerta
+ * posible**: exigía el nombre de la tabla, y la lista de tablas de alto volumen
+ * sólo vivía dentro del núcleo.
+ */
+function ComoSeCorta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+  const { t } = useTranslation();
+  const [plan, setPlan] = useState<PlanDeParticion | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    if (!puedeVer) return undefined;
+    const control = new AbortController();
+    setPlan(null);
+    setFallo(null);
+    llamar<PlanDeParticion>(`/api/v1/${servicio}/volumen/plan-de-particion`, {
+      signal: control.signal,
+    })
+      .then((r) => setPlan(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, puedeVer]);
+
+  useEffect(cargar, [cargar]);
+
+  if (!puedeVer) return null;
+  return (
+    <Panel titulo={t("plataforma.comoSeCorta")} ayuda={t("plataforma.comoSeCortaAyuda")}>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!plan && !fallo ? <Cargando /> : null}
+      {plan ? (
+        <>
+          <ul className="divide-y divide-ink-dim/30">
+            {plan.tablas.map((tabla) => (
+              <li key={tabla.tabla} className="py-1.5">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-medium text-ink">{tabla.tabla}</span>
+                  <span className="chip-dato">{tabla.estrategia}</span>
+                  <span className="text-3xs text-ink-muted">
+                    {t("plataforma.mesesEnCaliente", { meses: tabla.meses_en_caliente })}
+                  </span>
+                </div>
+                {/* Por qué crece, dicho por el servidor: sin eso la lista es un
+                    inventario y no explica por qué sólo se parten éstas. */}
+                <p className="text-3xs text-ink-faint">{tabla.por_que_crece}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-3xs text-ink-muted">{plan.porque_solo_estas}</p>
+        </>
+      ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Qué agregados guardan su historia completa, y por qué no todos.
+ *
+ * «Ninguno» no es un hueco: encender el rastro completo para todo multiplica
+ * la escritura por algo que casi nunca se consulta. Por eso el servidor manda
+ * el porqué y aquí se enseña — un panel vacío sin explicación se lee como algo
+ * que falta.
+ */
+function RastroCompleto({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+  const { t } = useTranslation();
+  const [rastro, setRastro] = useState<Rastro | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    if (!puedeVer) return undefined;
+    const control = new AbortController();
+    setRastro(null);
+    setFallo(null);
+    llamar<Rastro>(`/api/v1/${servicio}/rastro`, { signal: control.signal })
+      .then((r) => setRastro(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, puedeVer]);
+
+  useEffect(cargar, [cargar]);
+
+  if (!puedeVer) return null;
+  const agregados = Object.keys(rastro?.agregados ?? {});
+  return (
+    <Panel titulo={t("plataforma.rastro")} ayuda={t("plataforma.rastroAyuda")}>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!rastro && !fallo ? <Cargando /> : null}
+      {rastro ? (
+        <>
+          {agregados.length > 0 ? (
+            <ul className="flex flex-wrap gap-1">
+              {agregados.map((a) => (
+                <li key={a} className="chip-dato">
+                  {a}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Vacio
+              titulo={t("plataforma.sinRastroCompleto")}
+              detalle={rastro.porque}
+              compacto
+            />
+          )}
+          {agregados.length > 0 ? (
+            <p className="mt-2 text-3xs text-ink-muted">{rastro.porque}</p>
+          ) : null}
         </>
       ) : null}
     </Panel>

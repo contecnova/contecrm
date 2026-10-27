@@ -299,6 +299,18 @@ const pantallas = {
       "sólo con una referencia.",
     conBoveda: "Hay bóveda: se puede tokenizar",
     sinBoveda: "No hay bóveda",
+    politicasActivas: "{{cuantas}} políticas de acceso activas",
+    sinAvisos: "El informe no levanta ningún aviso",
+    comoSeCorta: "Cómo se corta cada tabla que crece",
+    comoSeCortaAyuda:
+      "Por tiempo y no por cliente: con dos mil clientes salen dos mil " +
+      "particiones y el planificador tarda más en decidir que en ejecutar.",
+    mesesEnCaliente: "{{meses}} meses en caliente",
+    rastro: "Qué guarda su historia completa",
+    rastroAyuda:
+      "El rastro completo permite reconstruir un registro paso a paso. No está " +
+      "encendido para todo, y eso es una decisión, no un hueco.",
+    sinRastroCompleto: "Ninguno en este servicio",
   },
   recorrido: {
     titulo: "Recorrido por la solución",

@@ -90,10 +90,32 @@ def crear_router_volumen(servicio: str) -> APIRouter:
     )
     def plan_de_particion(
         principal: AutenticadoDep,
-        tabla: str = Query(..., description="Una de las declaradas de alto volumen"),
+        tabla: str = Query("", description="Una de las declaradas de alto volumen. Vacío: todas"),
         estrategia: str = Query("mes", description="mes · trimestre · anio"),
     ) -> Any:
-        return part.plan_de_particion(tabla=tabla, estrategia=estrategia)
+        """Sin `tabla`, todas las que crecen. Y **siempre la misma forma**.
+
+        `tabla` era obligatoria, y eso dejaba la ruta sin puerta posible: para
+        pedirla hay que saber ya cuáles son las tablas de alto volumen, y esa
+        lista solo existía dentro del núcleo —la única forma de sacarla era
+        pedir una tabla mala y leerla del detalle del error—. Quien administra
+        la base no quiere elegir una de cinco: quiere ver las cinco y por qué
+        cada una se corta como se corta.
+
+        La respuesta lleva `tablas` también cuando se pide una sola. Dos formas
+        según los parámetros es lo que obliga a quien lo lee a ramificar, y la
+        rama que menos se usa es la que se queda sin probar.
+        """
+        cuales = [tabla] if tabla else sorted(part.DE_ALTO_VOLUMEN)
+        return {
+            "tablas": [part.plan_de_particion(tabla=t, estrategia=estrategia) for t in cuales],
+            "cuantas": len(cuales),
+            "porque_solo_estas": (
+                "Particionar lo que no crece la hace más lenta: cada partición "
+                "tiene su coste de planificación. Las demás tablas se quedan en "
+                "cientos de miles de filas para siempre."
+            ),
+        }
 
     @router.get(
         "/particiones-a-crear",
