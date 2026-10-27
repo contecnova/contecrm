@@ -3895,6 +3895,7 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
     encuesta a un caso resuelto. Inventar identificadores daría filas que la
     ficha no puede abrir, que es peor que la pestaña vacía.
     """
+    sin_sembrar: list[str] = []
     usuarios = api.listar("/api/v1/usuarios", 5)
     cuentas = api.listar("/api/v1/accounts", 5)
     contactos = api.listar("/api/v1/contacts", 5)
@@ -3924,6 +3925,13 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
                 "base_url": "https://graph.microsoft.com/v1.0",
                 "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
                 "incremento": "delta",
+                "alcances": {
+                    "base": "offline_access",
+                    "correo.leer": "Mail.Read",
+                    "calendario.leer": "Calendars.Read",
+                    "calendario.escribir": "Calendars.ReadWrite",
+                    "contactos.leer": "Contacts.Read",
+                },
                 "recursos": {
                     "correo": {
                         "endpoint": "/me/messages",
@@ -4177,7 +4185,167 @@ def sembrar_las_que_siguen_vacias(api: Api) -> None:
         },
     )
 
+    # ── Dónde vive cada clase de dato, y qué sale de la región ────────────
+    if yo:
+        for tipo_dato, region, proveedor in (
+            ("transaccional", "ue", "Infraestructura propia (Fráncfort)"),
+            ("copias", "ue", "Almacenamiento cifrado (Irlanda)"),
+            ("ia", "ue", "Proveedor de modelos con opt-out de entrenamiento"),
+        ):
+            api.crear(
+                "/api/v1/residencia",
+                {
+                    "tenant_id": yo,
+                    "tipo_dato": tipo_dato,
+                    "region": region,
+                    "proveedor": proveedor,
+                },
+            )
+        # Una transferencia declarada: lo que sale y por qué. Sin ninguna, la
+        # pantalla no distingue «no sale nada» de «nadie lo ha mirado».
+        api.crear(
+            "/api/v1/residencia/transferencias",
+            {
+                "tenant_id": yo,
+                "tipo_dato": "registros",
+                "desde_region": "ue",
+                "hacia_region": "us",
+                "subprocesador": "Soporte del fabricante del motor de búsqueda",
+                "motivo": "Diagnóstico de incidencias con el índice, bajo petición",
+            },
+        )
+
+    # ── Mis preferencias de aviso ─────────────────────────────────────────
+    #
+    # Por PUT: no es una colección a la que se añade, es lo que esta persona
+    # ha elegido. Sin una sola fila, la pantalla de avisos parece rota.
+    for tipo, canales in (
+        ("mencion", ["app", "correo"]),
+        ("asignacion", ["app"]),
+        ("vencimiento", ["app", "correo"]),
+    ):
+        api.crear(
+            "/api/v1/notificaciones/preferencias",
+            {"tipo": tipo, "canales": canales, "agrupar_minutos": 15},
+            metodo="PUT",
+        )
+
+    # ── Lo que cada uno ha autorizado de su suite ─────────────────────────
+    api.crear(
+        "/api/v1/suites/consentimiento",
+        {
+            "perfil": "Microsoft 365 del cliente",
+            "recursos": ["correo"],
+            "sentido": "leer",
+            "tiene_refresco": True,
+        },
+    )
+
+    # ── Una aprobación en marcha ──────────────────────────────────────────
+    #
+    # La bandeja vacía se lee como «no hay nada que aprobar», y lo que pasa es
+    # que nunca se ha pedido ninguna.
+    if oportunidades:
+        api.crear(
+            "/api/v1/aprobaciones",
+            {
+                "politica": "descuento",
+                "objeto": "oportunidad",
+                "objeto_id": oportunidades[0]["id"],
+                "titulo": "Descuento del 18 % en la oferta de renovación",
+                "etapas": [
+                    {
+                        "nombre": "Responsable comercial",
+                        "origen": "usuario",
+                        "usuarios": [u["id"] for u in usuarios[:1]],
+                        "quorum": "cualquiera",
+                        "vence_en_horas": 48,
+                    },
+                    {
+                        "nombre": "Dirección",
+                        "origen": "usuario",
+                        "usuarios": [u["id"] for u in usuarios[:1]],
+                        "quorum": "todos",
+                        "vence_en_horas": 72,
+                    },
+                ],
+                "campos_vigilados": ["importe", "descuento_pct"],
+            },
+        )
+
+    # ── Un documento generado y su sobre de firma ─────────────────────────
+    #
+    # El panel «pendiente de firma» vacío se lee como «nadie debe nada». Para
+    # que haya algo que firmar hace falta un documento de verdad: se genera
+    # desde una plantilla, que es el camino que usa una persona.
+    plantillas = api.listar("/api/v1/plantillas-documento", 3)
+    if plantillas and cuentas and contactos:
+        generado = api.crear(
+            "/api/v1/plantillas-documento/generar",
+            {
+                "clave": plantillas[0].get("clave") or plantillas[0].get("nombre"),
+                "objeto": "cuenta",
+                "objeto_id": cuentas[0]["id"],
+                "datos": {
+                    "cliente": cuentas[0].get("nombre") or "Cliente",
+                    "fecha": "2026-10-27",
+                },
+                # Una plantilla puede pedir campos que esta instalación no
+                # tiene todavía: se permite para poder enseñar el circuito, y
+                # el propio documento dice qué le faltó.
+                "permitir_incompleto": True,
+            },
+        )
+        # `generar` devuelve el TEXTO, no un documento archivado: lo dice su
+        # propia respuesta —«aquí no se guarda el documento: dos copias del
+        # mismo contrato divergen»— y el `documento_id` lo pone quien lo sube
+        # al corpus. En esta instalación el corpus no tiene organización
+        # asignada, así que no hay a qué atar un sobre de firma.
+        documento_id = (generado or {}).get("documento_id") or (generado or {}).get("id")
+        if not documento_id:
+            sin_sembrar.append(
+                "firma/sobres: hace falta un documento archivado en el corpus, y este "
+                "despliegue no tiene gestor documental conectado"
+            )
+        if documento_id:
+            api.crear(
+                "/api/v1/firma/sobres",
+                {
+                    "documento_id": documento_id,
+                    "firmantes": [
+                        {
+                            "nombre": contactos[0].get("nombre_completo") or "Cliente",
+                            "email": contactos[0].get("email") or "cliente@ejemplo.com",
+                            "orden": 1,
+                        }
+                    ],
+                    "objeto_origen": "cuenta",
+                    "objeto_origen_id": cuentas[0]["id"],
+                    "cuenta_id": cuentas[0]["id"],
+                    "asunto": "Contrato de mantenimiento 2026",
+                    "mensaje": "Adjuntamos el contrato para su firma.",
+                    "dias_validez": 15,
+                },
+            )
+
+    # ── Y lo que NO se puede sembrar, con el motivo ───────────────────────
+    #
+    # Es la otra mitad del informe. Una tabla vacía porque no ha pasado nada no
+    # es un hueco, y callarlo deja a quien mira la pantalla sin saber si falta
+    # un dato o falta un suceso.
+    sin_sembrar.extend(
+        [
+            "créditos de servicio: los genera el incumplimiento de un SLA, no un alta",
+            "registros recibidos y conflictos de sincronización: llegan de fuera, "
+            "cuando un sistema externo empuja datos",
+            "proveedores de identidad: SAML y OIDC están apagados en esta instalación "
+            "(SAML_ENABLED, OIDC_ENABLED)",
+        ]
+    )
     print(f"  {api.cuenta['creados']} creados hasta aquí")
+    print("  Lo que no se siembra, y por qué:")
+    for motivo in sin_sembrar:
+        print(f"    · {motivo}")
 
 
 PARTES: dict[str, Any] = {
