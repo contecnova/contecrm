@@ -61,6 +61,10 @@ def _pestanas() -> dict[str, list[tuple[str, str]]]:
     motivo escrito allí: las que **exigen un término** de búsqueda —pedidas sin
     él contestan 422 a propósito— y las que son **sólo de plataforma**, que
     desde el tenant dan 403 por diseño.
+
+    Las de **periodo** no se dejan fuera: se abren con un rango, que es como las
+    abre quien entra. Saltárselas sería no mirar justo los informes, que son los
+    que más fácilmente se rompen al cambiar un cálculo.
     """
     salida: dict[str, list[tuple[str, str]]] = {}
     for bloque in ENTRADA.findall(MODULOS.read_text(encoding="utf-8")):
@@ -75,8 +79,13 @@ def _pestanas() -> dict[str, list[tuple[str, str]]]:
         # desde el menú: sin un registro de verdad delante no se pueden abrir.
         if "${" in listar.group(1) or "{" in listar.group(1):
             continue
+        ruta = listar.group(1)
+        # Un informe de periodo exige `desde` y `hasta`: sin ellos contesta 422
+        # a propósito. Se le da un rango, que es lo que hace la pantalla.
+        if re.search(r"periodo:\s*true", bloque):
+            ruta = f"{ruta}?desde=2020-01-01&hasta=2030-12-31"
         salida.setdefault(servicio.group(1), []).append(
-            (nombre.group(1) if nombre else listar.group(1), listar.group(1))
+            (nombre.group(1) if nombre else listar.group(1), ruta)
         )
     return salida
 

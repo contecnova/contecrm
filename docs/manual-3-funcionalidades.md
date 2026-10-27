@@ -14272,3 +14272,69 @@ ruta aparezca en algún fichero del front que no sea la propia navegación ni el
 informe— y vive dentro del gate de pantallas que ya existía, sin sumar una
 entrada nueva al preflight. No demuestra que la pantalla lo enseñe bien;
 demuestra que lo pide, que es la mitad que faltaba.
+
+## Identidad y seguridad: cuatro preguntas que no son una tabla (`CRM-00.05.01.15`, `.17`, `.25`, `CRM-00.05.02.11`, `CRM-07.03.02.06`)
+
+El módulo genérico «Identidad y acceso» ya lista lo que es una colección:
+usuarios, roles, políticas, claves de API, sesiones, dispositivos de confianza
+y proveedores de identidad. Lo que no puede listar es lo que **no es una
+tabla**, y resulta ser justo lo que un administrador necesita saber. Las cuatro
+tenían su extremo publicado y ninguna tenía puerta.
+
+**Quién no tiene segundo factor.** Un panel que diga «78 %» no sirve: el trabajo
+es hablar con los que faltan, así que lo que se enseña es la lista, con su
+correo y sus roles. El porcentaje va con el **N al lado** — un 78 % sobre nueve
+personas no es lo mismo que sobre novecientas, y sin el N se leen igual. Avisa
+además de dos cosas que cambian cómo se lee ese número: si el segundo factor no
+es obligatorio en el tenant, y si hay canales débiles activos (SMS, correo), que
+cuentan como factor y se interceptan sin tocar el dispositivo.
+
+**Qué certificado del proveedor de identidad caduca.** Ordenados por urgencia y
+no por proveedor: primero los caducados, luego los que caducan pronto. Un
+certificado de IdP que caduca no avisa — un sábado por la noche deja de validar
+toda aserción y el lunes no entra nadie de la empresa.
+
+**Quién tiene hoy permisos incompatibles.** Se calcula en vivo y no se guarda:
+una lista de conflictos vieja es peor que ninguna, porque se actúa sobre ella.
+Los que tienen excepción vigente **salen igual, marcados**; esconderlos haría
+que una excepción caducada pasara de «aprobado» a «no existe» sin que nadie lo
+viera.
+
+**Por qué esta persona puede hacer esto.** Sin el explicador, la respuesta se
+busca leyendo roles, políticas y reglas de compartición a la vez, y se contesta
+mal.
+
+Lo que la pantalla **no** declara, aunque lo roce: la MFA obligatoria
+configurable por rol (`CRM-00.05.01.06`). Aquí se ve si está puesta; no se
+configura, y declarar lo que no se hace es justo lo que la traza existe para
+impedir.
+
+## Dos listas escritas a mano que se quedaban cortas
+
+**Lo que un menú dice que lleva, lo tiene que pedir esa pantalla.** La primera
+versión de esa comprobación medía flojo: pedía que el recurso lo pidiera *algún*
+fichero del front, no *la pantalla a la que lleva el menú*. Con la regla floja
+salían 18 reclamos falsos; con la buena, **35 de 46**. Y la diferencia no es
+contable: esa lista es la que contesta «¿dónde veo esto?», así que un reclamo en
+la entrada equivocada manda a quien busca los recorridos a Marketing, donde no
+están, en vez de a Campañas, donde sí.
+
+Se quitaron los 35 en el mismo commit. Dieciséis sobraban —el recurso se enseña
+en un módulo genérico, que ya lo declara por su cuenta— y diecinueve no se
+enseñaban en ninguna parte, así que vuelven al informe de cobertura como lo que
+son: potencia escondida en la API. No hay tope que mantener: o la pantalla lo
+pide, o el reclamo sobra.
+
+**El barrido de pantallas se leía de una lista a mano.** Y la red que lo
+protegía era «que haya al menos 22», así que una pantalla nueva no entraba y
+nadie se enteraba: veintidós seguían siendo veintidós. Pasó con «Identidad y
+seguridad» el mismo día de añadirla. Ahora la lista se lee del propio enrutador,
+descartando las rutas con parámetro —una ficha no se abre sin un registro
+delante— y las redirecciones.
+
+**Y las pantallas no se comprobaban en absoluto.** El pase completo devolvía 23
+pantallas «rotas» que eran un navegador sin instalar: veintitrés rojos idénticos,
+ninguno del código. Veintitrés fallos que no significan nada son la forma más
+rápida de que alguien deje de mirar ese gate, y el día que una pantalla se rompa
+de verdad estará ahí, en la lista, con las otras veintidós. Ahora se para antes
+con un mensaje que dice qué instalar.

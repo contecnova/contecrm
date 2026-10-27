@@ -343,6 +343,16 @@ def test_el_postgres_de_desarrollo_no_se_recoge() -> None:
 # que no esté ni marcado ni aquí, esta prueba lo dice.
 AISLAMIENTO_DE_DOMINIO = {
     "test_adjuntos_y_notificaciones.py",
+    # Las cuatro de los bloques de auditoría del catálogo (26-10-2026). Las tres
+    # primeras comprueban aislamiento **de paso**: lo suyo es la jerarquía de
+    # ajustes, el modelo extensible y el motor de reglas, y el caso genérico
+    # —que un listado no deje ver lo de otro— ya lo barre el fuzzing en cada
+    # push. La cuarta, `test_una_empresa_no_ve_a_otra.py`, es justo lo
+    # contrario: su asunto ES el aislamiento, así que lleva la marca y corre en
+    # cada push.
+    "test_extender_el_modelo_sin_escribir_codigo.py",
+    "test_la_automatizacion_no_se_muerde_la_cola.py",
+    "test_la_configuracion_baja_por_la_jerarquia.py",
     "test_auditoria_cadena.py",
     "test_busqueda.py",
     "test_byok.py",

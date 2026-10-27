@@ -18,6 +18,10 @@ import { defineConfig, devices } from "@playwright/test";
  * que un cliente nota y nosotros no.
  */
 export default defineConfig({
+  // Para antes de abrir nada si falta el navegador: sin esto salen 23 rojos
+  // idénticos que no son del código, y un gate que grita de mentira deja de
+  // mirarse.
+  globalSetup: "./e2e/navegador-instalado.ts",
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: true,

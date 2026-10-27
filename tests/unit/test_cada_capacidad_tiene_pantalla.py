@@ -76,7 +76,15 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            probados sin un solo boton que los llamara, y la
 #                            cola de la consola de agente enlazaba a una ruta
 #                            que no existia
-TOPE_SIN_PANTALLA = 510
+#   27-10-2026  505 de 753  pantalla de identidad y seguridad: las cuatro
+#                            preguntas que el modulo generico no puede
+#                            contestar porque no son tablas —quien no tiene
+#                            segundo factor con la LISTA de los que faltan y
+#                            no un porcentaje, que certificado del IdP caduca,
+#                            quien tiene hoy permisos incompatibles y por que
+#                            esta persona puede hacer esto—. Las cuatro tenian
+#                            extremo publicado y ninguna tenia puerta
+TOPE_SIN_PANTALLA = 505
 
 
 def _es_pantalla(p: Path) -> bool:

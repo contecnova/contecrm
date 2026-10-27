@@ -149,7 +149,7 @@ export const AREA_DE_GRUPO: Record<string, IdArea> = {
  */
 export const ACCESOS: Entrada[] = [
   { a: "/", clave: "nav.inicio", icono: "home" },
-  { a: "/puesto", clave: "nav.puesto", icono: "desk", recursos: ["agenda"] },
+  { a: "/puesto", clave: "nav.puesto", icono: "desk" },
   // El chat va aquí y no en un área porque no trata de un dominio: se habla de
   // clientes, de ventas y de casos desde el mismo sitio. Estaba escrito, tenía
   // ruta en el router y no salía en ningún menú, así que solo lo encontraba
@@ -169,27 +169,32 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
 
-  { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read" , recursos: ["activos-marketing", "atribucion", "audiencias-externas", "momento", "recorridos", "social"] },
+  { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read"  },
 
-  { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read" , recursos: ["conversaciones", "creditos-servicio"] },
-  { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente", "macros", "marcador"] },
+  { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read"  },
+  { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente"] },
   { area: "servicio", a: "/conocimiento", clave: "nav.conocimiento", icono: "menu_book", permiso: "conocimiento:read" , recursos: ["conocimiento"] },
 
   { area: "analisis", a: "/cuadros", clave: "nav.cuadros", icono: "dashboard", permiso: "informe:read" , recursos: ["cuadros-mando", "informes"] },
-  { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion", "almacen"] },
-  { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed" , recursos: ["metricas"] },
-  { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar" , recursos: ["agentes-ia", "ia", "modelos", "sugerencias-caso", "transcripciones", "variantes", "voz"] },
+  { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion"] },
+  { area: "analisis", a: "/rendimiento", clave: "nav.rendimiento", icono: "speed"  },
+  { area: "analisis", a: "/inteligencia", clave: "nav.inteligencia", icono: "neurology", permiso: "ia:usar"  },
 
-  { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read" , recursos: ["aprobaciones"] },
+  { area: "automatizacion", a: "/procesos", clave: "nav.procesos", icono: "account_tree", permiso: "proceso:read"  },
   // La única excepción de ámbito del producto: vive en Automatización, que es
   // de administrar, y es trabajo diario de cualquier responsable. Aprobar un
   // descuento no es configurar nada, y esconderlo detrás de «Administrar» es
   // garantizar que las aprobaciones se queden esperando.
   { area: "automatizacion", ambito: "trabajar", a: "/aprobaciones", clave: "nav.aprobacionesDoc", icono: "approval" , recursos: ["documentos"] },
-  { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["compensacion", "encargos", "firma", "firma-presencial", "plantillas-documento", "suite", "suites"] },
+  { area: "automatizacion", a: "/suite", clave: "nav.suite", icono: "sync_alt", permiso: "integration:read" , recursos: ["suite"] },
 
-  { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read" , recursos: ["aislamiento", "residencia", "entornos", "sso-gobierno", "factores", "notificaciones", "scim"] },
-  { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" , recursos: ["entornos", "sandboxes"] },
+  { area: "configuracion", a: "/administracion", clave: "nav.consola", icono: "tune", permiso: "tenant:read"  },
+  // Las cuatro preguntas de seguridad que el módulo genérico no puede contestar
+  // porque no son tablas: quién no tiene segundo factor, qué certificado del
+  // IdP caduca, quién tiene permisos incompatibles y por qué esta persona ve
+  // esto. `user:read` porque es lo que exigen sus extremos.
+  { area: "configuracion", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
+  { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" , recursos: ["entornos"] },
   // El recorrido guiado y la cobertura hablan **del producto**, no del trabajo
   // de nadie: estaban en Marketing, donde quien busca sus campañas se topa con
   // una visita guiada, y donde quien la busca no la encuentra. Y el recorrido

@@ -88,6 +88,23 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 
   useEffect(() => setActivo(inicial), [ruta, inicial]);
 
+  // La lista de capacidades que enseña este módulo se trae aparte: son 180
+  // identificadores que crecen en cada bloque y que sólo se pintan aquí, en un
+  // desplegable cerrado. En `modulos.ts` viajaban en el módulo de entrada —el
+  // que se descarga antes de pintar nada— porque al marco también le hace
+  // falta ese fichero. Si no llega, la cabecera se queda sin la lista y la
+  // pantalla funciona igual: es trazabilidad, no contenido.
+  const [capacidades, setCapacidades] = useState<readonly string[]>([]);
+  useEffect(() => {
+    let vigente = true;
+    void import("@/lib/capacidades").then((m) => {
+      if (vigente) setCapacidades(m.CAPACIDADES_POR_MODULO[ruta ?? ""] ?? []);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [ruta]);
+
   // Si la activa no es visible —porque se llegó con `?r=` a una que no toca, o
   // porque la superficie llegó después—, se cae a la primera que sí lo es.
   useEffect(() => {
@@ -115,17 +132,17 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         }
       />
       {/* Y qué capacidades de PRODUCTO se ven aquí, no solo cuál de front es
-          esta pantalla. Se pinta a propósito: la declaración vive en
-          `modulos.ts` y se escribe en un minuto, así que ponerla delante es lo
-          único que hace caro declarar algo que no se enseña. Va plegada porque
-          es trazabilidad y no trabajo diario. */}
-      {modulo.capacidades?.length ? (
+          esta pantalla. Se pinta a propósito: la declaración se escribe en un
+          minuto, así que ponerla delante es lo único que hace caro declarar
+          algo que no se enseña. Va plegada porque es trazabilidad y no trabajo
+          diario, y se carga aparte porque no la necesita quien mira su menú. */}
+      {capacidades.length > 0 ? (
         <details className="mt-2">
           <summary className="cursor-pointer text-3xs text-ink-faint">
-            {t("modulo.capacidades", { cuantas: modulo.capacidades.length })}
+            {t("modulo.capacidades", { cuantas: capacidades.length })}
           </summary>
           <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-3xs text-ink-faint">
-            {modulo.capacidades.map((c) => (
+            {capacidades.map((c) => (
               <li key={c}>{c}</li>
             ))}
           </ul>
@@ -280,6 +297,8 @@ function RecursoVista({
   const [enviando, setEnviando] = useState(false);
   const [parametros, setParametros] = useSearchParams();
   const [termino, setTermino] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   // Los filtros viven en la URL y no en un estado interno: es lo que hace que
   // una lista filtrada se pueda guardar en marcadores, pegar en un chat y
   // recargar sin perderla.
@@ -371,6 +390,11 @@ function RecursoVista({
 
   const busqueda = recurso.busqueda;
   const terminoValido = !busqueda || termino.trim().length >= (busqueda.minimo ?? 1);
+  // Un informe de periodo exige las dos fechas. No se inventa un rango por
+  // defecto: el número que alguien copia a un correo tiene que ser de un
+  // periodo que eligió alguien.
+  const periodo = recurso.periodo === true;
+  const rangoValido = !periodo || (desde !== "" && hasta !== "" && desde <= hasta);
 
   const cargar = useCallback(
     async (cursor?: string) => {
@@ -381,11 +405,16 @@ function RecursoVista({
         setFilas(null);
         return;
       }
+      if (periodo && !rangoValido) {
+        setFilas(null);
+        return;
+      }
       const mia = (peticion.current += 1);
       setFallo(null);
       try {
         const partes: string[] = [];
         if (busqueda) partes.push(`${busqueda.parametro}=${encodeURIComponent(termino.trim())}`);
+        if (periodo) partes.push(`desde=${desde}`, `hasta=${hasta}`);
         // Los filtros van en la petición, no se aplican sobre lo recibido.
         // Filtrar en el navegador obliga a traerse todas las filas para
         // enseñar diez —y con paginación por cursor, además, miente: filtra
@@ -410,7 +439,7 @@ function RecursoVista({
         if (mia === peticion.current) setFallo(error);
       }
     },
-    [recurso.listar, puedeVer, busqueda, termino, terminoValido, filtros],
+    [recurso.listar, puedeVer, busqueda, termino, terminoValido, periodo, rangoValido, desde, hasta, filtros],
   );
 
   useEffect(() => {
@@ -536,6 +565,29 @@ function RecursoVista({
         </div>
       ) : null}
 
+      {periodo ? (
+        <div className="mb-4 flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="label-base">{t("modulo.desde")}</span>
+            <input
+              type="date"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              className="input-base"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-base">{t("modulo.hasta")}</span>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              className="input-base"
+            />
+          </label>
+        </div>
+      ) : null}
+
       {recurso.acciones?.length ? (
         <AccionesDeColeccion acciones={recurso.acciones} alTerminar={() => void cargar()} />
       ) : null}
@@ -545,6 +597,10 @@ function RecursoVista({
       {busqueda && !terminoValido ? (
         <p className="text-2xs text-ink-faint" role="status">
           {t("modulo.escribeParaBuscar", { minimo: busqueda.minimo ?? 1 })}
+        </p>
+      ) : periodo && !rangoValido ? (
+        <p className="text-2xs text-ink-faint" role="status">
+          {t(desde && hasta ? "modulo.rangoAlReves" : "modulo.eligePeriodo")}
         </p>
       ) : filas === null ? (
         <Cargando />

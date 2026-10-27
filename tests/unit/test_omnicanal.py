@@ -509,3 +509,135 @@ def test_un_canal_duplicado_se_rechaza(
 ) -> None:
     with pytest.raises(Conflicto):
         omni.crear_canal(db, tenant_id=tenant_id, clave="soporte", nombre="Otro")
+
+
+# ── La pantalla de la conversación, por HTTP ──────────────────────────────
+#
+# La pantalla declara la forma de dos respuestas: la de la conversación y la
+# del historial del cliente. Un contrato declarado que ninguna prueba pide es
+# un contrato que puede dejar de cumplirse sin que falle nada: el servidor deja
+# de mandar un campo y la pantalla se queda en blanco.
+
+
+@pytest.fixture
+def cliente_http(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        modulo = importlib.import_module("services.service.main")
+        with TestClient(modulo.app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def cabeceras_http(tenant_id: UUID) -> dict[str, str]:
+    from datetime import datetime, timezone
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    return firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(uuid4()),
+            H_PERMISOS: "*:*",
+            H_ROLES: "agente",
+            H_FACTOR_FUERTE: datetime.now(timezone.utc).isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+@pytest.mark.db
+def test_la_pantalla_de_la_conversacion_recibe_lo_que_lee(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    canal: Any,
+    uow: Any,
+    cliente_http: Any,
+    cabeceras_http: dict[str, str],
+) -> None:
+    """Los campos con los que la pantalla decide qué pintar.
+
+    `identidad_externa` es el que permite traer el historial: sin él la
+    pantalla no sabe por quién preguntar y enseña una conversación suelta.
+    """
+    _, secreto = canal
+    salida = omni.recibir(
+        uow,
+        canal_clave="soporte",
+        secreto=secreto,
+        entrada=_entrada(id_externo="<para-la-pantalla@cliente.com>"),
+    )
+    db.flush()
+
+    conversacion_id = salida["conversacion_id"]
+    respuesta = cliente_http.get(
+        f"/api/v1/conversaciones/{conversacion_id}", headers=cabeceras_http
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    for campo in ("id", "canal_actual", "estado", "identidad_externa"):
+        assert campo in cuerpo, f"falta «{campo}»: {sorted(cuerpo)}"
+
+
+@pytest.mark.db
+def test_el_historial_que_pinta_la_pantalla_trae_sus_campos(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    canal: Any,
+    uow: Any,
+    cliente_http: Any,
+    cabeceras_http: dict[str, str],
+) -> None:
+    """Y **por identidad**, que es como lo pide la pantalla cuando la
+    conversación no está ligada a un contacto todavía.
+
+    Sin cliente responde 422 a propósito: traer «los últimos mensajes de
+    cualquiera» en una pantalla de atención es enseñarle a un agente lo que ha
+    hablado otro con otro.
+    """
+    _, secreto = canal
+    omni.recibir(
+        uow,
+        canal_clave="soporte",
+        secreto=secreto,
+        entrada=_entrada(id_externo="<historial@cliente.com>", remitente="ana@cliente.com"),
+    )
+    db.flush()
+
+    respuesta = cliente_http.get(
+        "/api/v1/conversaciones/historial",
+        params={"identidad": "ana@cliente.com"},
+        headers=cabeceras_http,
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    filas = respuesta.json()
+    assert isinstance(filas, list) and filas, filas
+    for campo in ("at", "canal", "direccion", "interno", "cuerpo", "conversacion_id"):
+        assert campo in filas[0], f"falta «{campo}»: {sorted(filas[0])}"
+
+    sin_cliente = cliente_http.get("/api/v1/conversaciones/historial", headers=cabeceras_http)
+    assert sin_cliente.status_code == 422, sin_cliente.text

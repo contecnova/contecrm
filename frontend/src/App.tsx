@@ -6,7 +6,6 @@ import { Frontera } from "@/componentes/Frontera";
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Cuenta } from "@/paginas/Cuenta";
-import { Conversacion } from "@/paginas/Conversacion";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Casos } from "@/paginas/Casos";
@@ -73,6 +72,15 @@ const Coste = lazy(() =>
 );
 const Conocimiento = lazy(() =>
   import("@/paginas/Conocimiento").then((m) => ({ default: m.Conocimiento })),
+);
+// Diferida como las demás pantallas de ruta: estática, entraba en el módulo
+// de entrada y subía a 131 kB lo que se descarga antes de pintar nada, con un
+// tope de 130. A una conversación se entra desde la cola, no al abrir.
+const Conversacion = lazy(() =>
+  import("@/paginas/Conversacion").then((m) => ({ default: m.Conversacion })),
+);
+const Seguridad = lazy(() =>
+  import("@/paginas/Seguridad").then((m) => ({ default: m.Seguridad })),
 );
 const Chat = lazy(() =>
   import("@/paginas/Chat").then((m) => ({ default: m.Chat })),
@@ -191,6 +199,7 @@ export function App() {
           <Route path="/m/proveedores/proveedor/:id" element={<Cuenta />} />
           <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
           <Route path="/estado" element={<Estado />} />
+          <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />
           <Route path="/cobertura" element={<Cobertura />} />
           <Route path="/chat" element={<Chat sesion={sesion} />} />
           <Route path="/recorrido" element={<Recorrido />} />

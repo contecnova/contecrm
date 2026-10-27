@@ -34,7 +34,10 @@ from uuid import UUID, uuid4
 
 import pytest
 
-pytestmark = pytest.mark.db
+# Su asunto ES el aislamiento, así que corre en cada push y no sólo en el pase
+# completo: un fallo aquí no es un detalle que pueda esperar al bloque, es una
+# empresa viendo los datos de otra. Mide 3,5 s.
+pytestmark = [pytest.mark.db, pytest.mark.despliegue]
 
 
 @pytest.fixture

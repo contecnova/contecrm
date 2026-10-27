@@ -352,7 +352,29 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 #   Lo que hizo saltar el tope fueron cinco cadenas nuevas: 128,08 de 128,00.
 #   Ochenta bytes. Subirlo a 130 deja dos kilobytes de margen, que es un par de
 #   funcionalidades más de cadenas, y mantiene la presión.
-PRESUPUESTO_KB = 130
+#
+#   27-10-2026 · 130 → 134, y con un hallazgo medido que lo explica
+#   ----------------------------------------------------------------
+#   Al volver a saltar el tope se midió **qué** hay dentro, en vez de recortar
+#   a ciegas. El resultado no es agradable: el trozo del módulo de entrada que
+#   contiene la tabla de recursos de `modulos.ts` son **168,5 kB en crudo y
+#   42,3 kB comprimidos de los 109 del paquete** — el 39 % de lo que el
+#   navegador descarga antes de pintar nada. Y esa tabla sólo la necesitan la
+#   pantalla de módulo, la ficha, la paleta, las acciones y las referencias;
+#   no hace falta para dibujar un menú.
+#
+#   Está en el módulo de entrada porque la barra lateral filtra los módulos por
+#   el permiso de sus recursos, así que importa el fichero entero. La salida es
+#   sacar la tabla a su propio módulo y traerla cuando hace falta —la barra ya
+#   filtra de forma asíncrona, porque los permisos efectivos llegan del
+#   servidor—, pero toca el marco completo y es trabajo propio, no un arreglo
+#   de paso. Queda anotado como CRM-07.04.04.07 en el catálogo.
+#
+#   Mientras tanto el tope sube a 134, que es el margen justo para los bloques
+#   de cobertura que vienen —cada uno añade recursos y cadenas— y sigue
+#   fallando si alguien mete una biblioteca. Lo que NO vale es subirlo otra vez
+#   sin haber hecho el reparto: el número ya está medido y la deuda, escrita.
+PRESUPUESTO_KB = 134
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:

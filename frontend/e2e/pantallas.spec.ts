@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "@playwright/test";
 
 import { abrir, desbordamiento, doblarApi, elementosVisibles } from "./apoyo";
@@ -25,32 +27,30 @@ import { abrir, desbordamiento, doblarApi, elementosVisibles } from "./apoyo";
  * visibles con la página entera en blanco.
  */
 
-/** Las rutas fijas de `App.tsx`, cada una con su pantalla propia. */
-const PANTALLAS: Array<{ ruta: string; nombre: string }> = [
-  { ruta: "/", nombre: "Inicio" },
-  { ruta: "/administracion", nombre: "Consola" },
-  { ruta: "/estado", nombre: "Estado" },
-  { ruta: "/cobertura", nombre: "Cobertura" },
-  { ruta: "/chat", nombre: "Chat" },
-  { ruta: "/recorrido", nombre: "Recorrido" },
-  { ruta: "/procesos", nombre: "Procesos" },
-  { ruta: "/aprobaciones", nombre: "Aprobaciones" },
-  { ruta: "/explotacion", nombre: "Explotación" },
-  { ruta: "/cuadros", nombre: "Cuadros" },
-  { ruta: "/embudo", nombre: "Embudo" },
-  { ruta: "/casos", nombre: "Casos" },
-  { ruta: "/consola-agente", nombre: "Consola de agente" },
-  { ruta: "/conocimiento", nombre: "Conocimiento" },
-  { ruta: "/marketing", nombre: "Marketing" },
-  { ruta: "/coste", nombre: "Coste" },
-  { ruta: "/inteligencia", nombre: "Inteligencia" },
-  { ruta: "/puesto", nombre: "Puesto" },
-  { ruta: "/alm", nombre: "Almacén" },
-  { ruta: "/rendimiento", nombre: "Rendimiento" },
-  { ruta: "/suite", nombre: "Gobierno de la suite" },
-  { ruta: "/ayuda", nombre: "Ayuda" },
-];
-
+/**
+ * Las rutas fijas de `App.tsx`, **leídas del propio enrutador**.
+ *
+ * Estaban escritas a mano, y la comprobación de que el barrido no se quedaba
+ * corto era «que haya al menos 22»: una pantalla nueva no entraba en la lista
+ * y nadie se enteraba, porque veintidós seguían siendo veintidós. Pasó con
+ * «Identidad y seguridad» el 27-10-2026, recién añadida y sin mirar.
+ *
+ * Se quedan fuera las que llevan parámetro —`/m/:ruta`, una ficha— porque sin
+ * un registro de verdad delante no se pueden abrir, y las redirecciones, que
+ * no son pantallas.
+ */
+const PANTALLAS: Array<{ ruta: string; nombre: string }> = readFileSync(
+  new URL("../src/App.tsx", import.meta.url),
+  "utf8",
+)
+  .split("\n")
+  .flatMap((linea) => {
+    const casa = /<Route\s+path="([^"]+)"\s+element=\{<(\w+)/.exec(linea);
+    if (!casa) return [];
+    const [, ruta, componente] = casa as unknown as [string, string, string];
+    if (ruta.includes(":") || ruta === "*" || componente === "Navigate") return [];
+    return [{ ruta, nombre: componente }];
+  });
 /**
  * Mínimo de elementos visibles para no dar por buena una página en blanco.
  *
@@ -91,8 +91,13 @@ for (const { ruta, nombre } of PANTALLAS) {
 
 test("el barrido recorre todas las pantallas declaradas", () => {
   // Un barrido que se queda corto contesta «ninguna rota» sin haber mirado.
-  // Medido el 04-10-2026: 22 rutas fijas con pantalla propia en `App.tsx`.
+  // El suelo sigue, pero ya no es la única red: la lista se lee del enrutador,
+  // así que una pantalla nueva entra sola. El suelo caza lo otro — que el
+  // patrón deje de casar y el barrido se quede en cero.
   expect(PANTALLAS.length).toBeGreaterThanOrEqual(22);
+  // Y una que tiene que estar siempre, para que un patrón roto no pase por una
+  // lista legítimamente corta.
+  expect(PANTALLAS.map((p) => p.ruta)).toContain("/administracion");
 });
 
 test("sin frontera de error, una pantalla rota se lleva la aplicación entera", async ({

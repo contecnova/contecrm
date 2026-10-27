@@ -86,6 +86,7 @@ export default {
     inicio: "Inicio",
     consola: "Consola de administración",
     estado: "Estado",
+    seguridad: "Identidad y seguridad",
     cobertura: "Cobertura",
     recorrido: "Recorrido guiado",
     procesos: "Procesos en curso",
@@ -281,6 +282,66 @@ export default {
     vacia: "No hay nada esperando",
     vaciaDetalle: "Cuando entre una conversación aparecerá aquí.",
     sinAsunto: "(sin asunto)",
+  },
+  seguridad: {
+    titulo: "Identidad y seguridad",
+    entradilla:
+      "Las preguntas que no son una tabla: quién no tiene segundo factor, qué " +
+      "certificado caduca, quién tiene permisos incompatibles y por qué esta " +
+      "persona ve esto.",
+    mfa: {
+      titulo: "Quién no tiene segundo factor",
+      // El N al lado del porcentaje siempre: un 78 % sobre nueve personas no es
+      // lo mismo que sobre novecientas, y sin el N se leen igual.
+      resumen: "{{pct}} % lo tiene: {{con}} de {{total}} personas.",
+      sinUsuarios: "Todavía no hay nadie a quien medir.",
+      noObligatoria:
+        "El segundo factor no es obligatorio en este tenant: quien no lo active, no lo tendrá.",
+      canalesDebiles:
+        "Hay canales débiles activos ({{canales}}): se interceptan sin tocar el dispositivo. " +
+        "Cuentan como segundo factor y no protegen como una passkey.",
+      todos: "Todo el mundo tiene segundo factor",
+      todosDetalle: "No hay nadie con quien hablar.",
+    },
+    certificados: {
+      titulo: "Certificados del proveedor de identidad",
+      porQue:
+        "Un certificado que caduca no avisa: un sábado por la noche deja de validar " +
+        "toda aserción y el lunes no entra nadie de la empresa.",
+      ninguno: "Ningún certificado declarado",
+      ningunoDetalle:
+        "O no hay proveedor de identidad configurado, o ninguno ha registrado su certificado de firma.",
+      sinFecha: "sin fecha",
+      dias: "{{dias}} días",
+      estado: {
+        vigente: "vigente",
+        por_caducar: "caduca pronto",
+        caducado: "caducado",
+        sin_fecha: "sin fecha",
+      },
+    },
+    sod: {
+      titulo: "Permisos incompatibles",
+      porQue:
+        "Calculado en vivo sobre {{reglas}} reglas y no guardado: una lista de " +
+        "conflictos vieja es peor que ninguna, porque se actúa sobre ella.",
+      sinReglas: "No hay reglas de incompatibilidad",
+      sinReglasDetalle:
+        "Sin reglas no hay conflictos que encontrar. Se declaran en segregación de funciones.",
+      ninguna: "Nadie tiene hoy permisos incompatibles",
+      ningunaDetalle: "Con las reglas declaradas hoy, y sobre los permisos efectivos de ahora.",
+      conExcepcion: "con excepción vigente",
+    },
+    explicador: {
+      titulo: "Por qué esta persona puede hacer esto",
+      porQue:
+        "Sin esto, la respuesta se busca leyendo roles, políticas y reglas de " +
+        "compartición a la vez, y se contesta mal.",
+      usuario: "Usuario",
+      objeto: "Objeto",
+      accion: "Acción",
+      preguntar: "Preguntar",
+    },
   },
   conversacion: {
     sinAsunto: "(sin asunto)",
@@ -489,6 +550,10 @@ export default {
   modulo: {
     sinRegistros: "Aquí no hay nada todavía",
     sinRegistrosDetalle: "Da de alta el primero y aparecerá en esta lista.",
+    desde: "Desde",
+    hasta: "Hasta",
+    eligePeriodo: "Elige el periodo: un informe sin fechas no es el de hoy, es el de ningún sitio.",
+    rangoAlReves: "La fecha de inicio es posterior a la de fin.",
     escribeParaBuscar: "Escribe al menos {{minimo}} caracteres para buscar.",
     nuevo: "Nuevo",
     cancelar: "Cancelar",
