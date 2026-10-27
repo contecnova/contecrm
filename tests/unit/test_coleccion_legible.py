@@ -60,10 +60,6 @@ ACCIONES: dict[str, str] = {
         "pregunta: «¿de dónde sale ESTE dato?». Un listado de todo el linaje del "
         "tenant son millones de filas que nadie mira"
     ),
-    "/contacts/{contacto_id}/cuentas": (
-        "se leen desde el otro lado, en `GET /accounts/{id}/relaciones`; la "
-        "asimetría es real pero el dato se alcanza"
-    ),
     "/proveedores/{cuenta_id}/homologacion": (
         "las lista `GET /proveedores/{id}/homologaciones`, que se añadió justo "
         "por esto: «se podía consultar de una en una sabiendo ya el nombre»"

@@ -60,12 +60,17 @@ def _devolver_el_servicio():
 
 
 def _contrato(servicio: str) -> dict:
-    os.environ["SERVICE_NAME"] = servicio
-    from crmcore.config import limpiar_cache_settings
+    """Los caminos que publica ese servicio.
 
-    limpiar_cache_settings()
-    app = importlib.import_module(f"services.{servicio}.main").app
-    return app.openapi().get("paths") or {}
+    Por el ayudante compartido, que lo construye **una vez por proceso**. Antes
+    se construía aquí y sin caché: esta función se llama una vez por servicio
+    en la parametrización y otras catorce en el recuento de abajo, así que el
+    gate generaba veintiocho contratos para mirar catorce. Medido: 16,5 s de un
+    presupuesto de 200 s para el nivel «push» entero.
+    """
+    from tests.unit._contratos import caminos
+
+    return dict(caminos(servicio))
 
 
 def _acciones(paths: dict) -> list[str]:

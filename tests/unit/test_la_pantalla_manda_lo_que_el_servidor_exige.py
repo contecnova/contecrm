@@ -21,30 +21,13 @@ pantalla.
 from __future__ import annotations
 
 import functools
-import importlib
-import os
 import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 FRONT = RAIZ / "frontend" / "src"
 
-SERVICIOS = (
-    "tenancy",
-    "identity",
-    "metadata",
-    "orchestrator",
-    "automation",
-    "integration",
-    "eventing",
-    "party",
-    "sales",
-    "analytics",
-    "intelligence",
-    "service",
-    "marketing",
-    "gateway",
-)
+from tests.unit._contratos import SERVICIOS  # noqa: E402
 
 # `llamar<Tipo>("/api/v1/…")` y `fetch(`${…}/api/v1/…`)`: lo que de verdad pide
 # una ruta. Se queda con la ruta y con lo que venga detrás, que es donde van los
@@ -54,39 +37,35 @@ RE_PETICION = re.compile(r"""["'`](/api/v1/[^"'`]*)["'`]""")
 
 @functools.cache
 def _parametros_obligatorios() -> dict[str, tuple[str, ...]]:
-    """Ruta `GET` → parámetros de consulta que el servidor exige."""
-    from crmcore.config import limpiar_cache_settings
+    """Ruta `GET` → parámetros de consulta que el servidor exige.
 
-    previo = os.environ.get("SERVICE_NAME")
+    Por el ayudante compartido: construir los catorce contratos cuesta diez
+    segundos largos y hay varios gates que los necesitan. Dentro de una misma
+    ejecución de pytest se construyen una vez y los comparten todos, que es lo
+    que mantiene el nivel «push» dentro de su presupuesto.
+    """
+    from tests.unit._contratos import caminos
+
     salida: dict[str, tuple[str, ...]] = {}
-    try:
-        for servicio in SERVICIOS:
-            os.environ["SERVICE_NAME"] = servicio
-            limpiar_cache_settings()
-            try:
-                app = importlib.import_module(f"services.{servicio}.main").app
-            except Exception:  # noqa: BLE001
-                # Un servicio que no monta aquí no se da por bueno ni por malo:
-                # se dice en el recorrido, que es lo que impide que esto pase en
-                # verde por no haber mirado nada.
+    for servicio in SERVICIOS:
+        try:
+            rutas = caminos(servicio)
+        except Exception:  # noqa: BLE001
+            # Un servicio que no monta aquí no se da por bueno ni por malo: el
+            # recuento de abajo es quien impide que esto pase en verde por no
+            # haber mirado nada.
+            continue
+        for camino, ops in rutas.items():
+            get = ops.get("get")
+            if not get:
                 continue
-            for camino, ops in (app.openapi().get("paths") or {}).items():
-                get = ops.get("get")
-                if not get:
-                    continue
-                exigidos = tuple(
-                    p["name"]
-                    for p in get.get("parameters", [])
-                    if p.get("in") == "query" and p.get("required")
-                )
-                if exigidos:
-                    salida[camino] = exigidos
-    finally:
-        if previo is None:
-            os.environ.pop("SERVICE_NAME", None)
-        else:
-            os.environ["SERVICE_NAME"] = previo
-        limpiar_cache_settings()
+            exigidos = tuple(
+                p["name"]
+                for p in get.get("parameters", [])
+                if p.get("in") == "query" and p.get("required")
+            )
+            if exigidos:
+                salida[camino] = exigidos
     return salida
 
 

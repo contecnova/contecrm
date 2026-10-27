@@ -290,10 +290,21 @@ def rpo_real(
     if ultima_copia is None:
         return {
             "medible": False,
+            # **La misma forma, siempre.** Antes, sin copia, faltaban tres
+            # campos: `se_perderia_min`, `rpo_comprometido_min` y `dentro`. Una
+            # respuesta que cambia de forma según el caso obliga a cada cliente
+            # a adivinar cuál le ha tocado, y el que no lo haga enseña un hueco
+            # sin explicación justo en la pantalla que se mira el día del
+            # incidente. Van a nulo, que es la respuesta: «no se sabe» no es lo
+            # mismo que «cero», y es lo que dice `medible`.
+            "se_perderia_min": None,
+            "rpo_comprometido_min": rpo_comprometido_min,
+            "dentro": None,
             "porque": (
                 "No consta ninguna copia. El dato que se perdería no es cero: es todo lo "
                 "que hay."
             ),
+            "aviso": "",
         }
     minutos = round((momento - ultima_copia).total_seconds() / 60, 1)
     return {

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { Frontera } from "@/componentes/Frontera";
-import { Cargando } from "@/componentes/Estados";
+import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
@@ -18,7 +18,7 @@ import { Puesto } from "@/paginas/Puesto";
 import { llamar } from "@/lib/api";
 import { aplicarDensidad, densidadDelPerfil } from "@/lib/densidad";
 import { aplicarLocalizacion, aplicarMarcaDelTenant } from "@/lib/localizacion";
-import { cargarSesion, type Sesion } from "@/lib/sesion";
+import { cargarEntrada, type Sesion } from "@/lib/sesion";
 
 /**
  * Las pantallas que no son de uso diario, cargadas cuando se abren.
@@ -108,11 +108,21 @@ const MINUTOS_ENTRE_RENOVACIONES = 10;
 export function App() {
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [resuelta, setResuelta] = useState(false);
+  /**
+   * Que no se ha podido ni preguntar quién entra.
+   *
+   * Es distinto de no haber entrado: antes se trataban igual y un 502 —el
+   * gateway caído, el contenedor reiniciándose— salía como la pantalla de
+   * entrada, invitando a teclear la contraseña en un sistema que no puede
+   * contestar. Y al enviarla, otro error opaco.
+   */
+  const [caido, setCaido] = useState<unknown>(null);
 
   const refrescar = useCallback(() => {
     const control = new AbortController();
-    cargarSesion(control.signal).then((s) => {
-      setSesion(s);
+    cargarEntrada(control.signal).then((entrada) => {
+      setSesion(entrada.estado === "dentro" ? entrada.sesion : null);
+      setCaido(entrada.estado === "caido" ? entrada.error : null);
       setResuelta(true);
     });
     return () => control.abort();
@@ -183,6 +193,9 @@ export function App() {
   }
 
   if (!resuelta) return <Cargando />;
+  // Primero lo caído: con el sistema sin responder, la pantalla de entrada
+  // promete algo que no se puede hacer.
+  if (caido) return <Fallo error={caido} reintentar={refrescar} />;
   if (!sesion) return <Entrar alEntrar={refrescar} />;
 
   return (

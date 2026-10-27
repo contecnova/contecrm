@@ -4097,6 +4097,36 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### Lo que destapó el nivel completo sobre la pantalla nueva
+
+La pantalla de «Plataforma y cumplimiento» declaraba la forma de nueve
+respuestas y **ninguna prueba de servidor las pedía**. El gate que lo mira
+—`test_ninguna_pantalla_pide_una_forma_a_una_ruta_que_nadie_toca`— lo cazó en
+el nivel completo, al día siguiente de escribirla: es el circuito abierto de
+siempre, con las dos mitades existiendo y nadie recorriendo lo que las une.
+
+Las nueve se recorren ahora, **y por servicio**: siete de ellas las publica
+cada uno de los trece con su propio prefijo, y comprobarlas en uno solo daría
+verde con doce sin mirar.
+
+Al escribirlo salieron dos cosas más:
+
+- **`/restauracion/rpo` cambiaba de forma.** Sin copia de la que medir
+  devolvía dos campos y con ella seis: faltaban `se_perderia_min`,
+  `rpo_comprometido_min` y `dentro`. Una respuesta que cambia de forma según el
+  caso obliga a cada cliente a adivinar cuál le ha tocado, y el que no lo haga
+  enseña un hueco sin explicación justo en la pantalla que se mira el día del
+  incidente. Ahora van a nulo, que es la respuesta: «no se sabe» no es «cero»,
+  y es lo que dice `medible`.
+- **Y la prueba componía las rutas con una f-string**, así que el gate seguía
+  sin encontrarlas y la pantalla seguía contando como infractora aunque la
+  prueba la recorriera. Van escritas enteras, con `{servicio}` dentro.
+
+Y una excepción que sobraba: `/contacts/{id}/cuentas` estaba declarada como
+subcolección «que se lee por otra puerta», y ahora tiene la suya. El gate de
+colecciones legibles exige que una excepción que deja de hacer falta se retire,
+y por eso salió en rojo el mismo día.
+
 ### Lo que destapó sembrar una empresa de verdad
 
 Sembrar una empresa entera con `sembrar_empresa.py` y `sembrar_configuracion.py`

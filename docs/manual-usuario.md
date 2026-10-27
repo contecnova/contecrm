@@ -85,6 +85,20 @@ porque los que están mal escritos suelen ser los clientes de toda la vida.
 
 ---
 
+### Si el sistema no responde, lo dice
+
+Entrar y «el sistema no está respondiendo» son dos cosas distintas, y antes se
+veían igual: si el servidor no contestaba —un reinicio, un corte de red, el
+túnel caído— aparecía **el formulario de entrada**, como si sólo te faltara
+escribir la contraseña. Y al escribirla, otro error que tampoco explicaba nada,
+porque la contraseña no era lo que estaba mal.
+
+Ahora, cuando no se ha podido ni preguntar quién eres, sale el aviso con lo que
+dijo el servidor y un botón para reintentar. No te pide una credencial que no
+va a poder comprobar.
+
+---
+
 ## Tu espacio y el de tu empresa (sección 0.1)
 
 Cada empresa tiene su propio espacio, con sus datos, su configuración y su marca.

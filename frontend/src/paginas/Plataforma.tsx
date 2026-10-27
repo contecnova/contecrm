@@ -101,7 +101,8 @@ interface Matriz {
 
 interface Rpo {
   medible: boolean;
-  dentro: boolean;
+  /** Nulo cuando no hay copia de la que medir: no se sabe, que no es «dentro». */
+  dentro: boolean | null;
   se_perderia_min: number | null;
   rpo_comprometido_min: number;
   porque: string;

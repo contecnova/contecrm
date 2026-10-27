@@ -164,11 +164,20 @@ GATES: list[Gate] = [
             "tests/unit/test_acciones_alcanzables.py",
             "tests/unit/test_rutas_del_front.py",
             "tests/unit/test_catalogo_eventos.py",
+            # Aquí y no en «pantallas», y la razón es el presupuesto: esta
+            # comprueba que ninguna pantalla llame a una ruta sin un parámetro
+            # que el servidor exige, y para eso necesita los catorce contratos
+            # OpenAPI. En su propio gate los construía otra vez —doce segundos
+            # de los doscientos del nivel «push»—; aquí comparte la caché con
+            # las acciones, que ya los tiene construidos. Lo que caza es un
+            # panel que responde 422 SIEMPRE, y eso no lo ve el compilador, ni
+            # el tipo de la respuesta, ni la prueba de la pantalla.
+            "tests/unit/test_la_pantalla_manda_lo_que_el_servidor_exige.py",
             "-q",
             "--no-header",
         ],
         "tests",
-        "lo que la API deja hacer se alcanza desde el front, y lo que emite se puede recibir",
+        "lo que la API deja hacer se alcanza desde el front, se pide bien, y lo que emite se recibe",
         # No aporta nada si no cambió el código: cruza lo que la API ofrece con lo que el front alcanza.
         toca=("services/", "packages/", "frontend/src/"),
     ),
@@ -192,17 +201,11 @@ GATES: list[Gate] = [
             "pytest",
             "tests/unit/test_cada_capacidad_tiene_pantalla.py",
             "tests/unit/test_la_pantalla_toca_lo_que_dice_que_ensena.py",
-            # La tercera de la familia, y la que cuesta: construye los catorce
-            # contratos OpenAPI (12 s). Se paga en cada empujón a propósito —lo
-            # que caza es un panel que responde 422 SIEMPRE, y eso no lo ve el
-            # compilador, ni el tipo de la respuesta, ni la prueba de la
-            # pantalla: sólo se ve pidiendo la ruta.
-            "tests/unit/test_la_pantalla_manda_lo_que_el_servidor_exige.py",
             "-q",
             "--no-header",
         ],
         "fast",
-        "de cada capacidad hecha se llega a una pantalla, el menu no miente y nada pide mal",
+        "de cada capacidad hecha se llega a una pantalla, y el menu no miente",
     ),
     Gate(
         "contrato-headless",
