@@ -789,3 +789,100 @@ def test_una_granularidad_inventada_se_rechaza_crm_00_04_01_12() -> None:
 
     with _pytest.raises(_Invalido):
         _fecha("2027-03-17", {"granularidad": "semana"})
+
+
+# ── Materializar un campo como columna real (CRM-00.04.03.11) ────────────
+#
+# La decisión ya estaba medida —qué campos lo justifican por volumen— y la
+# ejecución era prosa en la respuesta del endpoint: se hacía a mano en una
+# migración, y `UsoCampo.materializado` no lo ponía nadie, así que un campo ya
+# materializado seguía saliendo como candidato.
+
+
+def test_el_ddl_no_se_puede_inyectar_crm_00_04_03_11() -> None:
+    """Esto acaba en DDL, donde no hay parámetros.
+
+    El nombre ya viene validado por el metamodelo, y aquí se vuelve a
+    comprobar: una validación que se da por hecha en el sitio donde se
+    interpola es la que falta el día que alguien llama a la función desde otro
+    lado.
+    """
+    import pytest as _pytest
+    from crmcore.errors import ErrorValidacion
+    from crmcore.metamodelo import sql_de_materializacion
+
+    assert "ADD COLUMN IF NOT EXISTS c_importe_obra numeric" in sql_de_materializacion(
+        "cuentas", "importe_obra", "moneda"
+    )
+    for malo in ("DROP TABLE x", "a; drop", "Mayus", ""):
+        with _pytest.raises(ErrorValidacion):
+            sql_de_materializacion("cuentas", malo, "texto")
+    with _pytest.raises(ErrorValidacion):
+        sql_de_materializacion("cuentas; drop", "campo", "texto")
+
+
+def test_la_columna_se_anade_nullable_crm_00_04_03_11() -> None:
+    """**Es lo que hace que la migración sea en línea.**
+
+    Con `NOT NULL` o con `DEFAULT`, PostgreSQL reescribe la tabla entera — y
+    esa tabla la comparten mil tenants, así que los bloquea a todos. Nullable
+    es instantáneo.
+    """
+    from crmcore.metamodelo import sql_de_materializacion
+
+    sql = sql_de_materializacion("cuentas", "importe_obra", "moneda")
+    assert "NULL" in sql
+    assert "NOT NULL" not in sql
+    assert "DEFAULT" not in sql
+
+
+def test_la_columna_lleva_prefijo_crm_00_04_03_11() -> None:
+    """Un campo personalizado llamado `estado` o `nombre` chocaría con la
+    columna de verdad del objeto, y lo que pasaría es que el filtro del campo
+    personalizado filtraría por el del sistema sin avisar a nadie."""
+    from crmcore.metamodelo import _columna_materializada
+
+    assert _columna_materializada("estado") == "c_estado"
+    assert _columna_materializada("nombre") == "c_nombre"
+
+
+def test_el_campo_se_marca_SOLO_al_final_crm_00_04_03_11() -> None:
+    """Marcarlo antes haría que las consultas leyeran una columna a medio
+    rellenar, y las listas saldrían incompletas **sin que fallara nada**, que
+    es peor que fallar.
+
+    Se comprueba sobre el ejecutor: mientras queden filas, la tanda dice
+    «rellenando» y no toca la marca.
+    """
+    import inspect
+
+    from crmcore.datos import materializar
+
+    fuente = inspect.getsource(materializar._ejecutar)
+    antes = fuente.index('"fase": "rellenando"')
+    marca = fuente.index("uso.materializado = True")
+    assert antes < marca, "la marca se pone antes de terminar de rellenar"
+    # Y el índice, también al final: mantenerlo durante el relleno lo hace más
+    # lento y más grande. Se busca la LLAMADA y no el nombre, que aparece
+    # antes en la lista de imports.
+    assert fuente.index("indexar_columna(db,") > antes
+
+
+def test_la_expresion_del_campo_prefiere_la_columna_crm_00_04_03_11() -> None:
+    """Y en un solo sitio.
+
+    Es el único lugar donde se construye la expresión de un campo
+    personalizado, así que todo lo que filtra y ordena lo hereda. Si hubiera
+    que cambiarlo en cada listado, materializar sería una promesa que se cumple
+    en unos sitios sí y en otros no, y nadie sabría en cuáles.
+    """
+    import inspect
+
+    from crmcore import metamodelo
+
+    fuente = inspect.getsource(metamodelo._columna)
+    assert "materializado" in fuente
+    # Con respaldo: la columna es de la TABLA, común a todos los tenants, y
+    # sólo se rellena la del que lo pidió. Sin `COALESCE`, los demás leerían
+    # nulo en un campo que sí tienen.
+    assert "coalesce" in fuente.lower()

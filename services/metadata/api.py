@@ -989,6 +989,64 @@ def candidatos_columna(nombre: str, db: DbDep, principal: AutenticadoDep) -> Any
     return publicacion.candidatos_a_materializar(db, principal.tenant_id, nombre)
 
 
+class MaterializarCampo(BaseModel):
+    campo: str = Field(..., pattern=r"^[a-z][a-z0-9_]{1,79}$")
+
+
+@router.post(
+    "/objetos/{nombre}/materializar",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(exige_permiso("metadata:write"))],
+    summary="Materializar un campo como columna real (CRM-00.04.03.11)",
+    description=(
+        "Acepta y devuelve el trabajo: el relleno de una tabla con millones de "
+        "filas no cabe en una petición, y **tiene que poder reanudarse** — un "
+        "despliegue a mitad no puede dejar media columna puesta y a nadie "
+        "mirando.\n\n"
+        "El orden no es un detalle: la columna se añade *nullable* —instantáneo "
+        "y sin reescribir la tabla—, se rellena por lotes, se indexa sólo sobre "
+        "las filas de este tenant, y **sólo entonces** se marca. Marcarlo antes "
+        "haría que las consultas leyeran una columna a medio rellenar, y las "
+        "listas saldrían incompletas sin que fallara nada."
+    ),
+)
+def materializar_campo(
+    nombre: str, datos: MaterializarCampo, db: DbDep, principal: AutenticadoDep
+) -> Any:
+    from crmcore.datos.materializar import encolar_materializacion
+
+    objeto = _objeto(db, principal.tenant_id, nombre)
+    campo = db.execute(
+        select(CampoDefinido).where(
+            CampoDefinido.objeto_id == objeto.id,
+            CampoDefinido.nombre == datos.campo,
+            CampoDefinido.activo.is_(True),
+        )
+    ).scalar_one_or_none()
+    if campo is None:
+        raise NoEncontrado(
+            f"El objeto «{nombre}» no tiene un campo activo llamado «{datos.campo}»",
+            error_code="metadata.campo_no_encontrado",
+        )
+
+    trabajo = encolar_materializacion(
+        db,
+        tenant_id=principal.tenant_id,
+        objeto=nombre,
+        campo=campo.nombre,
+        tipo=campo.tipo,
+        pedido_por=principal.id,
+    )
+    return {
+        "trabajo_id": str(trabajo.id),
+        "estado": trabajo.estado,
+        "columna": f"c_{campo.nombre}",
+        # Se dice antes de empezar, porque es la pregunta que hace quien lo
+        # pulsa: ¿esto para a alguien?
+        "bloquea": "No. La columna se añade nullable y el relleno va por lotes.",
+    }
+
+
 @router.get(
     "/paquete",
     dependencies=[Depends(exige_permiso("metadata:read"))],

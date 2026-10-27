@@ -8,6 +8,7 @@ ejecutores en ESTE proceso, que no es el de la API.
 
 from __future__ import annotations
 
+import crmcore.datos.materializar  # noqa: F401 — el de materializar un campo
 from crmcore.datos.trabajos_worker import run
 
 import services.sales.masivo  # noqa: F401 — registra los ejecutores

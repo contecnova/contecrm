@@ -536,6 +536,17 @@ def validar_y_anotar(
 OPERADORES_FILTRO = ("=", "!=", ">", ">=", "<", "<=", "contiene", "empieza", "en", "vacio")
 
 
+def _columna_materializada(campo: str) -> str:
+    """Cómo se llama la columna de un campo materializado.
+
+    Con prefijo y no con el nombre pelado: un campo personalizado que se llame
+    `estado` o `nombre` chocaría con la columna de verdad del objeto, y lo que
+    pasaría es que el filtro del campo personalizado filtraría por el del
+    sistema sin avisar a nadie.
+    """
+    return f"c_{campo}"
+
+
 def _columna(modelo: Any, definicion: dict[str, Any]) -> Any:
     """La expresión SQL del campo, con el casteo de su tipo declarado.
 
@@ -546,7 +557,26 @@ def _columna(modelo: Any, definicion: dict[str, Any]) -> Any:
     """
     nombre = str(definicion.get("nombre"))
     tipo = str(definicion.get("tipo", "texto"))
-    texto = modelo.campos[nombre].astext
+
+    # **Si el campo está materializado, se lee de su columna** (CRM-00.04.03.11).
+    #
+    # Aquí, y sólo aquí: es el único sitio donde se construye la expresión de
+    # un campo personalizado, así que todo lo que filtra y todo lo que ordena
+    # la hereda sin tocar nada más. Si hubiera que cambiarlo en cada listado,
+    # materializar sería una promesa que se cumple en unos sitios y en otros no
+    # —y nadie sabría en cuáles—.
+    #
+    # Va con `COALESCE`: la columna es de la TABLA, que es común a todos los
+    # tenants, y sólo se rellena la del tenant que lo pidió. Sin el respaldo,
+    # los demás leerían nulo en un campo que sí tienen, que es la peor forma de
+    # romper algo — no falla, simplemente deja de encontrar registros.
+    columna_real = getattr(modelo, _columna_materializada(nombre), None)
+    if columna_real is not None and definicion.get("materializado"):
+        from sqlalchemy import func as _func
+
+        texto = _func.coalesce(columna_real, modelo.campos[nombre].astext)
+    else:
+        texto = modelo.campos[nombre].astext
     if tipo in _NUMERICOS:
         return texto.cast(Numeric)
     if tipo == "booleano":
@@ -711,6 +741,129 @@ def sincronizar_indices(
         db.execute(text(sentencia))
         quitados += 1
     return {"creados": creados, "retirados": quitados}
+
+
+# ── Materializar un campo como columna de verdad (CRM-00.04.03.11) ───────
+#
+# **No es la norma, es la excepción**, y la excepción se decide con una medida:
+# `candidatos_a_materializar` dice qué campos la justifican por volumen. Lo que
+# falta aquí es la ejecución, y la ejecución tiene un orden que no se puede
+# cambiar:
+#
+#   1. **Añadir la columna, nullable.** En PostgreSQL moderno es instantáneo y
+#      no reescribe la tabla; con un `NOT NULL` o un `DEFAULT` sí la
+#      reescribiría, y eso bloquea a los mil tenants que comparten esa tabla.
+#   2. **Rellenarla por lotes**, cada lote en su transacción. De una vez sería
+#      un `UPDATE` de millones de filas: una transacción enorme, un bloqueo
+#      largo y un `rollback` de horas si algo falla a la mitad.
+#   3. **Indexar**, y sólo las filas de ese tenant: el índice parcial se
+#      construye sobre lo suyo, así que el bloqueo es proporcional a ese tenant
+#      y no a la tabla entera.
+#   4. **Y sólo entonces marcarla.** Marcarla antes haría que las consultas
+#      empezaran a leer una columna a medio rellenar, y las listas saldrían
+#      incompletas sin que fallara nada — que es la peor de las dos.
+
+_TIPO_COLUMNA = {
+    "numero": "numeric",
+    "moneda": "numeric",
+    "porcentaje": "numeric",
+    "booleano": "boolean",
+    "fecha": "date",
+    "fecha_hora": "timestamptz",
+}
+
+
+def sql_de_materializacion(tabla: str, campo: str, tipo: str) -> str:
+    """El `ALTER TABLE` que añade la columna. Idempotente.
+
+    El nombre del campo ya viene validado contra `^[a-z][a-z0-9_]{1,79}$` por
+    el metamodelo, y aquí se vuelve a comprobar: esto acaba en DDL, donde no
+    hay parámetros y una interpolación mal hecha es inyección directa.
+    """
+    import re
+
+    if not re.fullmatch(r"[a-z][a-z0-9_]{1,79}", campo):
+        raise ErrorValidacion(
+            f"Nombre de campo no válido para materializar: «{campo}»",
+            error_code="metamodelo.campo_no_materializable",
+        )
+    if not re.fullmatch(r"[a-z_][a-z0-9_]{1,62}", tabla):
+        raise ErrorValidacion(
+            f"Nombre de tabla no válido: «{tabla}»",
+            error_code="metamodelo.tabla_no_valida",
+        )
+    sql_tipo = _TIPO_COLUMNA.get(tipo, "text")
+    return (
+        f"ALTER TABLE {tabla} ADD COLUMN IF NOT EXISTS "
+        f"{_columna_materializada(campo)} {sql_tipo} NULL"
+    )
+
+
+def crear_columna_materializada(db: Session, tabla: str, campo: str, tipo: str) -> None:
+    """Paso 1. Instantáneo y sin reescribir la tabla."""
+    db.execute(text(sql_de_materializacion(tabla, campo, tipo)))
+
+
+def rellenar_columna(
+    db: Session, tabla: str, campo: str, tipo: str, tenant_id: UUID, *, lote: int = 1_000
+) -> int:
+    """Paso 2, **un lote**. Devuelve cuántas filas ha rellenado.
+
+    Un lote y no todo: quien llama lo repite hasta que devuelva cero, y entre
+    lote y lote hay un `commit`. De una vez sería una transacción de millones
+    de filas — bloqueo largo y `rollback` de horas si falla a la mitad.
+
+    Sólo las filas de ESE tenant: la columna es de la tabla, que es común, y
+    rellenar las de todos haría el trabajo de un cliente a costa del resto.
+    """
+    columna = _columna_materializada(campo)
+    sql_tipo = _TIPO_COLUMNA.get(tipo, "text")
+    sentencia = text(
+        f"""
+        UPDATE {tabla} SET {columna} = (campos->>:campo)::{sql_tipo}
+        WHERE id IN (
+            SELECT id FROM {tabla}
+            WHERE tenant_id = :tenant
+              AND {columna} IS NULL
+              AND campos ? :campo
+            LIMIT :lote
+        )
+        """
+    )
+    # El nombre de la tabla y el de la columna van interpolados porque en DDL y
+    # en nombres de columna no hay parámetros; los dos están validados contra
+    # su patrón en `sql_de_materializacion`, que se ejecuta antes. Los VALORES
+    # —el campo, el tenant, el tamaño del lote— van como parámetros.
+    sql_de_materializacion(tabla, campo, tipo)
+    resultado = db.execute(sentencia, {"campo": campo, "tenant": str(tenant_id), "lote": lote})
+    # `rowcount` sólo está en el resultado de un DML; el tipo que declara
+    # SQLAlchemy es el genérico, así que se pide con `getattr` en vez de
+    # escribirlo como si siempre estuviera — que es como se llega a un 500 que
+    # nadie ve hasta que corre esa línea.
+    return int(getattr(resultado, "rowcount", 0) or 0)
+
+
+def quedan_por_rellenar(db: Session, tabla: str, campo: str, tenant_id: UUID) -> int:
+    """Cuántas filas de este tenant siguen sin la columna puesta."""
+    columna = _columna_materializada(campo)
+    sentencia = text(
+        f"SELECT count(*) FROM {tabla} "
+        f"WHERE tenant_id = :tenant AND {columna} IS NULL AND campos ? :campo"
+    )
+    return int(db.execute(sentencia, {"tenant": str(tenant_id), "campo": campo}).scalar_one() or 0)
+
+
+def indexar_columna(db: Session, tabla: str, campo: str, tenant_id: UUID) -> str:
+    """Paso 3. Índice parcial, de ese tenant y de esa columna."""
+    columna = _columna_materializada(campo)
+    nombre = f"ix_{tabla}_{columna}_{str(tenant_id).replace('-', '')[:12]}"[:63]
+    db.execute(
+        text(
+            f"CREATE INDEX IF NOT EXISTS {nombre} ON {tabla} ({columna}) "
+            f"WHERE tenant_id = '{tenant_id}'"
+        )
+    )
+    return nombre
 
 
 # ── Vista tipada para BI (CRM-00.04.03.04) ────────────────────────────────

@@ -1611,3 +1611,49 @@ que nadie reclama.
 La salida del barrido dice **cuántos se saltaron por ser de otro pool**. Sin
 ese número, un proceso mal configurado barre cero tenants y su salida es
 idéntica a la de un sistema sin trabajo pendiente.
+
+## Cuando un campo personalizado merece una columna de verdad (`CRM-00.04.03.11`)
+
+Materializar **no es la norma, es la excepción**, y la excepción se decide con
+una medida: hay un informe que dice qué campos la justifican por volumen de
+escrituras. Sin ese número, cada cliente que note su lista lenta pediría
+columna y acabaríamos con el `ALTER TABLE` de siempre disfrazado de
+optimización — y un `ALTER TABLE` en una tabla que comparten mil tenants los
+bloquea a todos.
+
+Lo que faltaba era **hacerlo**. Estaba descrito paso a paso en la respuesta del
+informe y se ejecutaba a mano en una migración; la marca de «ya materializado»
+no la ponía nadie, así que un campo ya convertido seguía saliendo como
+candidato para siempre.
+
+Ahora es un trabajo reanudable —un despliegue a mitad del relleno no puede
+dejar media columna puesta y a nadie mirando— con cuatro pasos **en un orden
+que es la capacidad misma**:
+
+1. **La columna se añade *nullable*.** En PostgreSQL moderno es instantáneo y
+   no reescribe la tabla. Con `NOT NULL` o con `DEFAULT` sí la reescribe, y ahí
+   es donde se bloquea a los demás.
+2. **Se rellena por lotes**, cada uno en su transacción. De una vez sería un
+   `UPDATE` de millones de filas: bloqueo largo y un `rollback` de horas si algo
+   falla a la mitad.
+3. **Se indexa al final**, y sólo sobre las filas de ese tenant: mantener el
+   índice durante el relleno lo hace más lento y más grande.
+4. **Y sólo entonces se marca.** Marcarlo antes haría que las consultas
+   empezaran a leer una columna a medio rellenar, y las listas saldrían
+   incompletas **sin que fallara nada** — que es peor que fallar.
+
+Dos decisiones más que deciden si esto funciona de verdad:
+
+- **La expresión del campo prefiere la columna en un solo sitio**: el único
+  lugar donde se construye la expresión de un campo personalizado. Así todo lo
+  que filtra y todo lo que ordena lo hereda sin tocar nada más. Si hubiera que
+  cambiarlo listado por listado, materializar sería una promesa que se cumple
+  en unos sitios sí y en otros no, y nadie sabría en cuáles.
+- **Va con `COALESCE`.** La columna es de la tabla, que es común a todos los
+  tenants, y sólo se rellena la del que lo pidió. Sin el respaldo, los demás
+  leerían nulo en un campo que sí tienen — y eso no falla: simplemente deja de
+  encontrar registros.
+
+La columna se llama `c_<campo>`: un campo personalizado llamado `estado` o
+`nombre` chocaría con la columna real del objeto, y el filtro del personalizado
+acabaría filtrando por el del sistema sin avisar a nadie.
