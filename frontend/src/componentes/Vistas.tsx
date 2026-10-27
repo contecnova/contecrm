@@ -21,7 +21,7 @@
  * columnas no quiere volver a la tabla cada mañana.
  */
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
@@ -35,6 +35,7 @@ import {
   tonoDe,
 } from "@/lib/semaforo";
 import { escalar, esIdentificadorTecnico, humanizar, nombreDelRegistro, tieneDato } from "@/lib/formato";
+import { ErrorApi } from "@/lib/api";
 import { cn } from "@/lib/utiles";
 
 export type Vista = "tabla" | "tarjetas" | "agrupado";
@@ -383,16 +384,58 @@ export function Tarjetas({
   );
 }
 
+/**
+ * Las columnas, con el registro moviéndose de una a otra.
+ *
+ * Un tablero en el que no se puede mover nada es una tabla girada: obliga a
+ * abrir la ficha, buscar el campo y guardarlo para hacer lo que la propia
+ * forma del tablero está prometiendo con sólo existir. Arrastrar **es** la
+ * acción, y por eso va aquí y no en una pantalla concreta: donde haya columnas
+ * se arrastra, sin que nadie tenga que acordarse de enchufarlo.
+ *
+ * **Sólo si se puede guardar.** `mover` llega desde fuera y sólo llega cuando
+ * el contrato admite cambiar ese campo de ese registro. Sin él no se marca
+ * nada como arrastrable: un tablero que deja coger una tarjeta y la devuelve a
+ * su sitio sin decir por qué se lee como que la aplicación falla.
+ *
+ * **Y con teclado.** Arrastrar con el ratón no es una forma de hacer algo: es
+ * una de las formas. Con la tarjeta enfocada, `Ctrl`/`Cmd` + flecha la mueve a
+ * la columna de al lado, y el resultado se canta en una región viva — sin eso,
+ * quien no ve la pantalla no se entera de que ha pasado nada.
+ */
+/**
+ * La columna de los que no tienen valor no es un valor.
+ *
+ * Soltar ahí escribiría el guion como si fuera el estado del registro, y
+ * entonces «—» pasaría a existir de verdad en los datos. Vaciar un campo es
+ * una decisión que se toma en la ficha, con su campo delante.
+ */
+const SIN_COLUMNA = "Esa columna agrupa lo que no tiene valor: no se puede mover ahí";
+
+/**
+ * Por qué no se movió, con la frase del servidor.
+ *
+ * «Algo ha ido mal» hace que se intente otra vez igual. «Una oportunidad
+ * perdida no vuelve a negociación» dice qué hacer.
+ */
+function porQueNoSeMovio(error: unknown): string {
+  if (error instanceof ErrorApi) return error.explicacion || error.titulo;
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function Agrupado({
   filas,
   campo,
   columnas,
   enlace,
+  mover,
 }: {
   filas: Record<string, unknown>[];
   campo: string;
   columnas?: string[];
   enlace?: (fila: Record<string, unknown>) => string | null;
+  /** Guarda el nuevo valor del campo de agrupación. Ausente: no se arrastra. */
+  mover?: (fila: Record<string, unknown>, valor: string) => Promise<void>;
 }) {
   const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
   const personas = usePersonas();
@@ -411,13 +454,78 @@ export function Agrupado({
   }, [filas, campo]);
 
   const mayor = Math.max(...grupos.map(([, f]) => f.length), 1);
+  const claves = useMemo(() => grupos.map(([c]) => c), [grupos]);
+
+  // Lo que se está arrastrando, por su identificador. En una `ref` y no en el
+  // estado: cambiarlo redibuja el tablero entero a mitad del arrastre y el
+  // navegador cancela el gesto.
+  const arrastrando = useRef<Record<string, unknown> | null>(null);
+  const [encima, setEncima] = useState<string | null>(null);
+  // Lo que se canta. Una tarjeta que cambia de sitio sin decirlo deja a quien
+  // no mira la pantalla sin saber si se ha movido, si ha fallado o si no pasó
+  // nada.
+  const [dicho, setDicho] = useState("");
+
+  const llevar = useCallback(
+    async (fila: Record<string, unknown> | null, destino: string) => {
+      if (!mover || !fila || String(fila[campo] ?? "—") === destino) return;
+      // «—» es la columna de los que no tienen valor, no un valor: soltar ahí
+      // escribiría el guion como si fuera el estado del registro.
+      if (destino === "—") {
+        setDicho(SIN_COLUMNA);
+        return;
+      }
+      try {
+        await mover(fila, destino);
+        setDicho(`${nombreDelRegistro(fila)} → ${humanizar(destino)}`);
+      } catch (error) {
+        // El motivo del servidor, no «algo ha ido mal»: una transición que el
+        // negocio no admite es la respuesta útil, y esconderla hace que se
+        // intente otra vez igual.
+        setDicho(`${nombreDelRegistro(fila)}: ${porQueNoSeMovio(error)}`);
+      }
+    },
+    [mover, campo],
+  );
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
+      {/* La región viva va fuera de las columnas y siempre montada: si
+          apareciera al mover, el lector no la estaría observando todavía. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {dicho}
+      </p>
       {grupos.map(([clave, suyas]) => {
         const suma = sumable ? suyas.reduce((t, f) => t + (Number(f[sumable]) || 0), 0) : 0;
         return (
-          <section key={clave} className="w-72 shrink-0">
+          <section
+            key={clave}
+            className={`w-72 shrink-0 rounded-xl transition-colors ${
+              encima === clave ? "bg-accent/10 ring-1 ring-accent" : ""
+            }`}
+            // `preventDefault` en `dragOver` es lo que hace que una zona
+            // ACEPTE lo que se suelta: sin él, el navegador rechaza el gesto y
+            // la tarjeta vuelve a su sitio sin que falle nada visible.
+            onDragOver={
+              mover
+                ? (e) => {
+                    e.preventDefault();
+                    setEncima(clave);
+                  }
+                : undefined
+            }
+            onDragLeave={mover ? () => setEncima((c) => (c === clave ? null : c)) : undefined}
+            onDrop={
+              mover
+                ? (e) => {
+                    e.preventDefault();
+                    setEncima(null);
+                    void llevar(arrastrando.current, clave);
+                    arrastrando.current = null;
+                  }
+                : undefined
+            }
+          >
             <header className="mb-2">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="truncate text-xs font-medium text-ink">{humanizar(clave)}</h3>
@@ -451,17 +559,72 @@ export function Agrupado({
                     compacta
                   />
                 );
+                const propiedadesDeArrastre = mover
+                  ? {
+                      draggable: true,
+                      onDragStart: () => {
+                        arrastrando.current = fila;
+                      },
+                      onDragEnd: () => {
+                        arrastrando.current = null;
+                        setEncima(null);
+                      },
+                    }
+                  : {};
+                const id = String(fila.id ?? i);
+                // El mismo selector que el embudo, y a propósito: dos pantallas
+                // que hacen lo mismo lo hacen igual. Escondido hasta que recibe
+                // el foco —con el ratón se arrastra; con teclado se tabula
+                // hasta aquí y aparece—, porque siempre visible cada tarjeta
+                // repetiría el nombre de su propia columna y el tablero se
+                // leería como un formulario.
+                const selector = mover ? (
+                  <>
+                    <label htmlFor={`mover-${id}`} className="sr-only">
+                      {`Mover ${nombreDelRegistro(fila)} a otra columna`}
+                    </label>
+                    <select
+                      id={`mover-${id}`}
+                      value={clave}
+                      onChange={(e) => void llevar(fila, e.target.value)}
+                      className="input-sm mt-2 text-3xs sr-only focus:not-sr-only focus:relative"
+                    >
+                      {claves.map((c) => (
+                        <option key={c} value={c}>
+                          {humanizar(c)}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : null;
                 return (
-                  <li key={String(fila.id ?? i)}>
+                  <li key={id}>
                     {a ? (
-                      <Link
-                        to={a}
-                        className="block rounded-xl border border-ink-dim/60 bg-paper p-2.5 hover:border-accent"
+                      // El selector va FUERA del enlace: dentro de un `<a>` no
+                      // se puede usar —el navegador se lleva la pulsación al
+                      // enlace— y la única forma de mover con teclado dejaría
+                      // de funcionar justo en el caso normal.
+                      <div
+                        className={`rounded-xl border border-ink-dim/60 bg-paper p-2.5 hover:border-accent ${
+                          mover ? "cursor-grab active:cursor-grabbing" : ""
+                        }`}
+                        {...propiedadesDeArrastre}
+                      >
+                        <Link to={a} className="block">
+                          {cuerpo}
+                        </Link>
+                        {selector}
+                      </div>
+                    ) : (
+                      <div
+                        className={`rounded-xl border border-ink-dim/60 bg-paper p-2.5 ${
+                          mover ? "cursor-grab active:cursor-grabbing" : ""
+                        }`}
+                        {...propiedadesDeArrastre}
                       >
                         {cuerpo}
-                      </Link>
-                    ) : (
-                      <div className="rounded-xl border border-ink-dim/60 bg-paper p-2.5">{cuerpo}</div>
+                        {selector}
+                      </div>
                     )}
                   </li>
                 );

@@ -353,6 +353,16 @@ function RecursoVista({
    * contrato en el nombre de su parámetro, así que no hay que declararlo.
    */
   const [campoFicha, setCampoFicha] = useState(recurso.objeto ? "id" : "");
+  /**
+   * La ruta de un registro y qué deja cambiar, para mover en el tablero.
+   *
+   * Se descubren del contrato y no se declaran: una lista a mano de «recursos
+   * que se pueden arrastrar» se queda corta al primer recurso nuevo, y
+   * entonces el tablero de ése es el único que no deja mover nada sin que haya
+   * un motivo.
+   */
+  const [plantillaFicha, setPlantillaFicha] = useState<string | null>(null);
+  const [camposEditables, setCamposEditables] = useState<Set<string>>(() => new Set());
   const recuerdaComo = `${ruta}.${recurso.nombre}`;
   const [vista, setVista] = useState<Vista>(() => vistaRecordada(recuerdaComo) ?? "tarjetas");
   /**
@@ -377,6 +387,47 @@ function RecursoVista({
   // nada que separar, y con uno distinto por fila serían columnas de una.
   const campoAgrupacion = useMemo(() => campoDeAgrupacion(filas ?? []), [filas]);
   const vocabulario = useMemo(() => esVocabulario(filas ?? []), [filas]);
+
+  /**
+   * Mover un registro de columna, que en el tablero es la acción.
+   *
+   * Sólo existe si el contrato admite cambiar ESE campo de ESE registro: se
+   * descubre, no se declara. Cuando no, `Agrupado` no marca nada como
+   * arrastrable — un tablero que deja coger una tarjeta y la devuelve a su
+   * sitio sin decir por qué se lee como que la aplicación falla.
+   *
+   * Se pinta antes de que conteste el servidor y **se deshace si falla**. Sin
+   * lo primero, la tarjeta se queda donde estaba medio segundo y parece que no
+   * ha funcionado; sin lo segundo, la pantalla enseña un estado que la base no
+   * tiene, que es peor que el parpadeo.
+   */
+  const mover = useMemo(() => {
+    if (!plantillaFicha || !campoAgrupacion || !camposEditables.has(campoAgrupacion)) {
+      return undefined;
+    }
+    const parametro = plantillaFicha.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
+    const campoClave = !parametro ? "id" : /(^|_)id$/.test(parametro) ? "id" : parametro;
+    return async (fila: Record<string, unknown>, valor: string) => {
+      const clave = fila[campoClave] ?? fila.id;
+      if (typeof clave !== "string") return;
+      const antes = fila[campoAgrupacion];
+      const mismo = (f: Record<string, unknown>) => (f[campoClave] ?? f.id) === clave;
+      setFilas((actuales) =>
+        (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campoAgrupacion]: valor } : f)),
+      );
+      try {
+        await llamar(plantillaFicha.replace(/\{[a-z_]+\}$/, encodeURIComponent(clave)), {
+          metodo: "PATCH",
+          cuerpo: { [campoAgrupacion]: valor },
+        });
+      } catch (error) {
+        setFilas((actuales) =>
+          (actuales ?? []).map((f) => (mismo(f) ? { ...f, [campoAgrupacion]: antes } : f)),
+        );
+        throw error;
+      }
+    };
+  }, [plantillaFicha, campoAgrupacion, camposEditables]);
   /**
    * Número de la última petición lanzada.
    *
@@ -499,6 +550,17 @@ function RecursoVista({
       // con un registro —acciones, líneas, adjuntos, la conversación— cuelga de
       // la ficha y sin abrirla no se alcanza nada de eso.
       const plantillaFicha = fichaDe(documento, recurso.listar);
+      setPlantillaFicha(plantillaFicha);
+      // Lo que el PATCH del registro admite. Si el campo por el que se agrupa
+      // no está, el tablero no deja arrastrar: ofrecer un gesto que el
+      // servidor va a rechazar es peor que no ofrecerlo.
+      setCamposEditables(
+        new Set(
+          plantillaFicha
+            ? camposDe(documento, plantillaFicha, "patch").map((c) => c.nombre)
+            : [],
+        ),
+      );
       const parametro = plantillaFicha?.match(/\{([a-z_]+)\}$/)?.[1] ?? "";
       // `{cuenta_id}` es el identificador de siempre; `{clave}` es otro campo
       // de la fila, y hay que mandar ese.
@@ -707,6 +769,7 @@ function RecursoVista({
               campo={campoAgrupacion}
               columnas={recurso.columnas}
               enlace={aLaFicha}
+              mover={mover}
             />
           ) : vista === "tarjetas" ? (
             <Tarjetas filas={filas} columnas={recurso.columnas} enlace={aLaFicha} />

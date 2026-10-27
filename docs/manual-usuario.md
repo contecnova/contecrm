@@ -811,6 +811,30 @@ La única lista que se abre en tabla es la que no tiene nada que poner de
 titular: un registro de auditoría o un apunte de consumo es una fecha y un
 código, y en tarjeta sería una caja con un identificador dentro.
 
+**En columnas, las tarjetas se arrastran.** Mover un registro de una columna a
+otra —cambiar la etapa de una venta, el estado de un caso, el papel de una
+persona en el mapa de una cuenta— es el gesto más repetido del día, y hasta el
+27-10-2026 obligaba a abrir la ficha, buscar el campo y guardar. Ahora se
+arrastra la tarjeta y ya está. Un tablero en el que no se puede mover nada es
+una tabla girada.
+
+Tres cosas que conviene saber:
+
+- **Sólo se arrastra lo que se puede guardar.** Si ese campo no se puede
+  cambiar después de crear el registro, la tarjeta no se coge. Dejarte cogerla
+  para devolverla a su sitio sin decir por qué se lee como que algo falla.
+- **Si el servidor dice que no, la tarjeta vuelve** y se enseña su motivo. Hay
+  cambios que el negocio no admite —una oportunidad perdida no vuelve a
+  negociación— y dejarla donde la soltaste enseñaría un embudo que no existe.
+- **Sin ratón también se mueve.** Tabulando hasta la tarjeta aparece un
+  selector con las columnas; es el mismo que ya lleva el embudo. Arrastrar es
+  una de las formas de mover, no la forma.
+
+La columna de la izquierda del todo puede ser «—»: ahí se agrupa lo que no
+tiene ese dato. No se puede soltar nada en ella, porque eso escribiría el guion
+como si fuera un valor. Vaciar un campo se hace en la ficha, con el campo
+delante.
+
 ### Añadir y editar, en general
 
 Casi todas las pantallas que enseñan una lista permiten **dar de alta** y
