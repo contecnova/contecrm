@@ -9,7 +9,7 @@
 | 0 — Plataforma y arquitectura transversal | 287 | 287 | 0 | 0 |
 | 1 — Núcleo de datos de cliente (Customer 360) | 54 | 54 | 0 | 0 |
 | 2 — Marketing | 54 | 54 | 0 | 0 |
-| 3 — Ventas (SFA) | 66 | 65 | 0 | 1 |
+| 3 — Ventas (SFA) | 66 | 66 | 0 | 0 |
 | 4 — Servicio y atención al cliente | 62 | 62 | 0 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
 | 6 — Productividad y colaboración | 58 | 58 | 0 | 0 |
@@ -22,7 +22,7 @@
 | Criticidad | Total | Hecho |
 |---|--:|--:|
 | C — Core | 311 | 309 |
-| A — Avanzado | 423 | 422 |
+| A — Avanzado | 423 | 423 |
 | D — Diferencial | 44 | 44 |
 
 ## Por fase
@@ -31,7 +31,7 @@
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 180 | 180 |
 | 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 182 | 180 |
-| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 216 | 215 |
+| 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 216 | 216 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |
 | 5 · Inteligencia | Analítica avanzada, predictivos, IA generativa y agentes | 50 | 50 |

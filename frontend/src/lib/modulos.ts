@@ -905,6 +905,16 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/pipeline/estancadas",
         servicio: "sales",
       },
+      // Qué periodos tienen el objetivo cerrado, con quién lo cerró, cuándo y
+      // por qué —y los que se reabrieron, con su motivo—. Es el historial, no
+      // un interruptor: reabrir a mitad de año es legítimo y tiene que
+      // quedar rastro.
+      {
+        nombre: "Objetivos congelados",
+        listar: "/api/v1/cuotas/congelaciones",
+        servicio: "sales",
+        permiso: "forecast:read",
+      },
     ],
   },
 

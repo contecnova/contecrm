@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: ✅ 775 hecho · ⬜ 3 pendiente
+**778 capacidades**: ✅ 776 hecho · ⬜ 2 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -649,7 +649,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 3 — Ventas (SFA)
 
-66 capacidades · ✅ 65 · ⬜ 1
+66 capacidades · ✅ 66
 
 ### 3.1 Pipeline y oportunidades
 
@@ -710,7 +710,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-03.02.02.05` | Prorrateo de cuota por altas y bajas de comerciales a mitad de periodo | A | 2 | sales | ✅ | — |
 | `CRM-03.02.02.06` | Seguimiento de consecución y ranking | A | 2 | sales | ✅ | contecflow-PSA:app/services/performance_service.py |
 | `CRM-03.02.02.07` | Planificación de capacidad y cobertura de pipeline vs. cuota | A | 2 | sales | ✅ | contecflow-PSA:app/services/capacity_planning_service.py + capacity_service.py |
-| `CRM-03.02.02.08` | Congelación del objetivo de un periodo: quién puede congelarlo, desde cuándo deja de tocarse, qué pasa con lo ya cargado y cómo se descongela dejando constancia | A | 2 | sales | ⬜ | — |
+| `CRM-03.02.02.08` | Congelación del objetivo de un periodo: quién puede congelarlo, desde cuándo deja de tocarse, qué pasa con lo ya cargado y cómo se descongela dejando constancia | A | 2 | sales | ✅ | — |
 
 #### CRM-03.02.03 · Incentivos y comisiones (interfaz)
 

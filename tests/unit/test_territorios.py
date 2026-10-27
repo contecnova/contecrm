@@ -381,3 +381,114 @@ def test_el_que_va_corto_sale_en_riesgo(uow: UnidadDeTrabajo) -> None:
 def test_un_territorio_que_no_existe_da_404(uow: UnidadDeTrabajo) -> None:
     with pytest.raises(NoEncontrado):
         ter.publicar(uow, uuid4())
+
+
+# ── Congelación del objetivo de un periodo (CRM-03.02.02.08) ─────────────
+#
+# El problema es de confianza, no de permisos: a partir del cierre, los
+# informes de consecución, las comisiones y las revisiones se calculan contra
+# ese número. Si el número puede cambiar después —y cambia siempre, porque
+# alguien reimporta la hoja o corrige una celda— nadie puede decir contra qué
+# se midió a nadie.
+
+
+def test_con_el_objetivo_cerrado_no_entra_otra_cuota_crm_03_02_02_08(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Y el mensaje dice **cuándo se cerró y por qué**: «no se puede modificar»
+    a secas manda a preguntar a quien no sabe, y lo que hace falta es saber a
+    quién pedir la reapertura."""
+    from crmcore.errors import Conflicto
+
+    quien = uuid4()
+    ter.crear_cuota(
+        uow,
+        desde=date(2026, 7, 1),
+        hasta=date(2026, 9, 30),
+        objetivo=Decimal(100000),
+        usuario_id=quien,
+    )
+    ter.congelar_objetivo(uow, periodo="2026-T3", por=quien, motivo="plan aprobado en comité")
+
+    with pytest.raises(Conflicto) as e:
+        ter.crear_cuota(
+            uow,
+            desde=date(2026, 7, 1),
+            hasta=date(2026, 9, 30),
+            objetivo=Decimal(250000),
+            usuario_id=quien,
+        )
+    assert e.value.error_code == "cuota.objetivo_congelado"
+    assert "2026-T3" in str(e.value)
+    assert "plan aprobado en comité" in str(e.value)
+
+
+def test_cerrar_un_trimestre_no_cierra_los_demas_crm_03_02_02_08(uow: UnidadDeTrabajo) -> None:
+    """Si cerrara el año entero, cerrar el tercer trimestre impediría planificar
+    el cuarto, que es cuando se hace."""
+    ter.congelar_objetivo(uow, periodo="2026-T3", motivo="cerrado")
+    cuarto = ter.crear_cuota(
+        uow,
+        desde=date(2026, 10, 1),
+        hasta=date(2026, 12, 31),
+        objetivo=Decimal(90000),
+        usuario_id=uuid4(),
+    )
+    assert cuarto.objetivo == Decimal(90000)
+
+
+def test_descongelar_sin_motivo_no_se_puede_crm_03_02_02_08(uow: UnidadDeTrabajo) -> None:
+    """Permitirlo convierte el cierre en un trámite de dos clics, que es no
+    tener cierre."""
+    ter.congelar_objetivo(uow, periodo="2026-T1", motivo="plan cerrado")
+    with pytest.raises(ErrorValidacion) as e:
+        ter.descongelar_objetivo(uow, periodo="2026-T1", motivo="   ")
+    assert e.value.error_code == "cuota.descongelar_sin_motivo"
+
+
+def test_descongelar_deja_rastro_y_vuelve_a_dejar_cargar_crm_03_02_02_08(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Y el rastro es una fila, no un interruptor: descongelar y volver a
+    congelar es legítimo —se revisa el plan a mitad de año— y con un booleano
+    el segundo cierre pisaría al primero, de modo que «¿cuándo se cerró y por
+    qué se reabrió?» no tendría respuesta."""
+    quien = uuid4()
+    ter.congelar_objetivo(uow, periodo="2026-T2", por=quien, motivo="plan de abril")
+    abierto = ter.descongelar_objetivo(
+        uow, periodo="2026-T2", por=quien, motivo="revisión por la pérdida del contrato grande"
+    )
+    assert abierto.descongelado_at is not None
+    assert abierto.motivo == "plan de abril"
+    assert "contrato grande" in abierto.motivo_descongelacion
+
+    # Y ahora sí entra la cuota revisada.
+    nueva = ter.crear_cuota(
+        uow,
+        desde=date(2026, 4, 1),
+        hasta=date(2026, 6, 30),
+        objetivo=Decimal(50000),
+        usuario_id=quien,
+    )
+    assert nueva.objetivo == Decimal(50000)
+
+    # Volver a cerrarlo crea una congelación NUEVA: el historial queda entero.
+    otra = ter.congelar_objetivo(uow, periodo="2026-T2", por=quien, motivo="plan revisado")
+    assert otra.id != abierto.id
+
+
+def test_congelar_dos_veces_no_duplica_crm_03_02_02_08(uow: UnidadDeTrabajo) -> None:
+    """Dos congelaciones vivas del mismo periodo darían dos respuestas a «desde
+    cuándo está cerrado»."""
+    una = ter.congelar_objetivo(uow, periodo="2026", motivo="plan anual")
+    otra = ter.congelar_objetivo(uow, periodo="2026", motivo="otra vez")
+    assert una.id == otra.id
+    assert una.motivo == "plan anual"
+
+
+def test_el_periodo_de_una_cuota_se_nombra_igual_que_se_cierra_crm_03_02_02_08() -> None:
+    """Si la etiqueta no coincidiera con la que usa quien cierra, la
+    congelación no alcanzaría a ninguna cuota y el cierre sería decorativo."""
+    assert ter.etiqueta_de_periodo(date(2026, 8, 15), "trimestral") == "2026-T3"
+    assert ter.etiqueta_de_periodo(date(2026, 8, 15), "mensual") == "2026-08"
+    assert ter.etiqueta_de_periodo(date(2026, 8, 15), "anual") == "2026"

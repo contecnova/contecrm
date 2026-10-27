@@ -14463,3 +14463,40 @@ nunca**—, pero las de los objetos que se trabajan a diario sí:
   desde cuándo lleva parada en su etapa, ni el importe en la moneda de la casa,
   que es lo que permite sumar un pipeline con cuatro monedas sin que cada
   pantalla invente el cambio.
+
+## Cerrar el objetivo de un periodo (`CRM-03.02.02.08`)
+
+El objetivo de un trimestre se discute, se negocia y en algún momento se da por
+bueno. A partir de ahí, **los informes de consecución, las comisiones y las
+revisiones se calculan contra ese número**. Si el número puede cambiar después
+—y cambia siempre, porque alguien reimporta la hoja o corrige una celda— nadie
+puede decir contra qué se midió a nadie, y el informe del mes pasado deja de
+cuadrar sin que haya constancia de por qué.
+
+El problema es de confianza, no de permisos, y por eso el cierre tiene cuatro
+decisiones escritas:
+
+- **Qué se congela.** El **objetivo**, no la consecución: lo vendido sigue
+  entrando. Congelar la consecución sería congelar la realidad.
+- **Quién puede.** `forecast:congelar`, aparte de `forecast:write`. Fijar una
+  cuota es trabajo de todos los días y cerrar el periodo no: quien pueda cerrar
+  y reabrir puede cambiar contra qué se mide a la gente. Lo tiene el
+  responsable de ventas, no el comercial.
+- **Qué pasa con lo ya cargado.** Lo cargado se queda; lo que se rechaza es el
+  cambio, **con nombres y fechas**: «el objetivo de 2026-T3 se congeló el 14 de
+  julio (plan aprobado en comité)». Un «no se puede modificar» a secas manda a
+  preguntar a quien no sabe, y lo que hace falta es saber a quién pedir la
+  reapertura. La comprobación vive en el servicio y no en la ruta, porque la
+  carga masiva desde una hoja entra por otro camino — y dejarla en la ruta la
+  dejaría fuera justo por donde se recargan las cuotas.
+- **Cómo se descongela.** Con **motivo obligatorio**. Permitir una reapertura
+  sin motivo convierte el cierre en un trámite de dos clics, que es no tener
+  cierre.
+
+Y es **una fila por congelación, no un interruptor**: descongelar y volver a
+cerrar es legítimo —se revisa el plan a mitad de año— y con un booleano el
+segundo cierre pisaría al primero, de modo que «¿cuándo se cerró y por qué se
+reabrió?» no tendría respuesta.
+
+Cerrar un trimestre no cierra los demás: si cerrara el año entero, cerrar el
+tercer trimestre impediría planificar el cuarto, que es justo cuando se hace.

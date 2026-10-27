@@ -224,6 +224,12 @@ ROLES_BASE: dict[str, Rol] = {
             {
                 "forecast:read",
                 "forecast:write",
+                # Cerrar el objetivo de un periodo va aparte de fijar cuotas
+                # (CRM-03.02.02.08): fijar una cuota es trabajo de todos los
+                # días y cerrar el periodo no, y a partir del cierre los
+                # informes de consecución y las comisiones se calculan contra
+                # ese número. Lo tiene el responsable, no el comercial.
+                "forecast:congelar",
                 # Crear informes va con el mando: un informe mal definido que se
                 # distribuye a cien personas es una cifra equivocada repetida
                 # cien veces.

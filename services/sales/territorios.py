@@ -36,7 +36,7 @@ from uuid import UUID
 
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
-from crmcore.errors import ErrorValidacion, NoEncontrado
+from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
@@ -679,6 +679,145 @@ def aplicar(uow: UnidadDeTrabajo, tenant_id: UUID, cuentas: list[dict[str, Any]]
 # ── Cuotas y prorrateo (CRM-03.02.02.04, .05) ─────────────────────────────
 
 
+class CongelacionObjetivo(Base, TimestampMixin):
+    """El objetivo de un periodo, cerrado (CRM-03.02.02.08).
+
+    **El problema es de confianza, no de permisos.** El objetivo de un
+    trimestre se discute, se negocia y en algún momento se da por bueno: a
+    partir de ahí, los informes de consecución, las comisiones y las revisiones
+    se calculan contra ese número. Si el número puede cambiar después —y cambia
+    siempre, porque alguien reimporta la hoja o corrige una celda— nadie puede
+    decir contra qué se midió a nadie, y el informe del mes pasado deja de
+    cuadrar sin que haya constancia de por qué.
+
+    Lo que se congela es **el objetivo**, no la consecución: lo vendido sigue
+    entrando. Congelar la consecución sería congelar la realidad.
+
+    Una fila por congelación, no un booleano: descongelar y volver a congelar
+    es legítimo —se revisa el plan a mitad de año— y lo que no puede pasar es
+    que no quede rastro. Con un booleano, el segundo cierre pisa al primero y
+    la pregunta «¿cuándo se cerró y por qué se reabrió?» no tiene respuesta.
+    """
+
+    __tablename__ = "congelaciones_objetivo"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=nuevo_id)
+    tenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False, index=True)
+    # El periodo tal como lo nombra quien lo cierra: `2026`, `2026-T3`,
+    # `2026-07`. Texto y no un rango de fechas porque lo que se cierra es «el
+    # tercer trimestre», y dos cuotas del mismo trimestre con fechas de un día
+    # de diferencia tienen que quedar las dos dentro.
+    periodo: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    congelado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    congelado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    motivo: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    # Y cómo se abrió otra vez. El motivo es OBLIGATORIO al descongelar: una
+    # reapertura sin motivo es exactamente lo que esto viene a impedir.
+    descongelado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    descongelado_por: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    motivo_descongelacion: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+
+
+def etiqueta_de_periodo(desde: date, periodo: str) -> str:
+    """Cómo se llama el periodo de una cuota: `2026`, `2026-T3`, `2026-07`.
+
+    Se deriva de la fecha de inicio y de la cadencia, y no se guarda: guardarlo
+    daría dos verdades —la etiqueta y las fechas— que se separan en cuanto
+    alguien corrige una de las dos.
+    """
+    if periodo == "anual":
+        return f"{desde.year:04d}"
+    if periodo == "trimestral":
+        return f"{desde.year:04d}-T{(desde.month - 1) // 3 + 1}"
+    if periodo == "mensual":
+        return f"{desde.year:04d}-{desde.month:02d}"
+    # Semestral y cualquier otra cadencia que se añada: el año y el semestre.
+    return f"{desde.year:04d}-S{1 if desde.month <= 6 else 2}"
+
+
+def congelacion_vigente(db: Session, tenant_id: UUID, periodo: str) -> CongelacionObjetivo | None:
+    """La congelación viva de este periodo, si la hay."""
+    return db.execute(
+        select(CongelacionObjetivo)
+        .where(
+            CongelacionObjetivo.tenant_id == tenant_id,
+            CongelacionObjetivo.periodo == periodo,
+            CongelacionObjetivo.descongelado_at.is_(None),
+        )
+        .order_by(CongelacionObjetivo.congelado_at.desc())
+    ).scalar_one_or_none()
+
+
+def exigir_objetivo_abierto(db: Session, tenant_id: UUID, periodo: str) -> None:
+    """Revienta —con nombres y fechas— si el objetivo de este periodo está cerrado.
+
+    El mensaje dice **cuándo se cerró y con qué motivo**: «no se puede
+    modificar» a secas manda a preguntar a quien no sabe, y lo que de verdad
+    hace falta es saber a quién pedir la reapertura.
+    """
+    cerrado = congelacion_vigente(db, tenant_id, periodo)
+    if cerrado is None:
+        return
+    cuando = cerrado.congelado_at.date().isoformat()
+    porque = f" ({cerrado.motivo})" if cerrado.motivo else ""
+    raise Conflicto(
+        f"El objetivo de «{periodo}» se congeló el {cuando}{porque}: para cambiarlo "
+        "hay que descongelarlo, y eso deja constancia.",
+        error_code="cuota.objetivo_congelado",
+        detalle={"periodo": periodo, "congelado_at": cerrado.congelado_at.isoformat()},
+    )
+
+
+def congelar_objetivo(
+    uow: UnidadDeTrabajo, *, periodo: str, por: UUID | None = None, motivo: str = ""
+) -> CongelacionObjetivo:
+    """Cierra el objetivo de un periodo.
+
+    Congelar dos veces no es un error silencioso: devuelve la congelación que
+    ya había. Crear una segunda dejaría dos vivas y la pregunta «desde cuándo
+    está cerrado» tendría dos respuestas.
+    """
+    ya = congelacion_vigente(uow.db, uow.tenant_id, periodo)
+    if ya is not None:
+        return ya
+    fila = CongelacionObjetivo(
+        tenant_id=uow.tenant_id, periodo=periodo, congelado_por=por, motivo=motivo
+    )
+    uow.db.add(fila)
+    uow.db.flush()
+    return fila
+
+
+def descongelar_objetivo(
+    uow: UnidadDeTrabajo, *, periodo: str, por: UUID | None = None, motivo: str
+) -> CongelacionObjetivo:
+    """Lo abre otra vez, **dejando constancia**.
+
+    El motivo es obligatorio y no por formalismo: una reapertura sin motivo es
+    justo lo que la congelación viene a impedir, y permitirla vacía convierte
+    el cierre en un trámite de dos clics.
+    """
+    if not motivo.strip():
+        raise ErrorValidacion(
+            "Descongelar un objetivo exige decir por qué: sin motivo, cerrar el "
+            "periodo no protege de nada.",
+            error_code="cuota.descongelar_sin_motivo",
+        )
+    cerrado = congelacion_vigente(uow.db, uow.tenant_id, periodo)
+    if cerrado is None:
+        raise NoEncontrado(
+            f"El objetivo de «{periodo}» no está congelado.",
+            error_code="cuota.objetivo_no_congelado",
+        )
+    cerrado.descongelado_at = datetime.now(timezone.utc)
+    cerrado.descongelado_por = por
+    cerrado.motivo_descongelacion = motivo
+    uow.db.flush()
+    return cerrado
+
+
 def crear_cuota(
     uow: UnidadDeTrabajo,
     *,
@@ -719,6 +858,12 @@ def crear_cuota(
             "equipo, un territorio o un partner.",
             error_code="cuota.sin_sujeto",
         )
+    # Y el objetivo del periodo no puede estar cerrado (CRM-03.02.02.08). Se
+    # comprueba aquí, en el servicio, y no en la ruta: la carga masiva de
+    # cuotas desde una hoja entra por otro sitio, y dejar la comprobación en la
+    # ruta la dejaría fuera justo en el camino por el que se recargan.
+    exigir_objetivo_abierto(uow.db, uow.tenant_id, etiqueta_de_periodo(desde, periodo))
+
     fila = Cuota(
         tenant_id=uow.tenant_id,
         usuario_id=usuario_id,

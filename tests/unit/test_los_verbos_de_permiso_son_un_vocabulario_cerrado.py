@@ -51,6 +51,12 @@ VERBOS_PRIVILEGIADOS = frozenset(
         "auditar",
         "bloquear",
         "configurar",
+        # Cerrar el objetivo de un periodo (CRM-03.02.02.08). Privilegiado y no
+        # de escritura: a partir del cierre, los informes de consecución y las
+        # comisiones se calculan contra ese número, así que quien pueda cerrar
+        # y reabrir puede cambiar contra qué se mide a la gente. Fijar una
+        # cuota es trabajo de todos los días; esto no.
+        "congelar",
         "convert",
         "credenciales",
         "decidir",

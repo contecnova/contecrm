@@ -258,6 +258,8 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // con su cierre, las cuotas y su consecución, el ingreso previsto y el
   // resumen del pipeline con las oportunidades estancadas.
   "prevision": [
+    // El cierre del objetivo de un periodo, con su historial de reaperturas.
+    "CRM-03.02.02.08",
     "CRM-03.01.01.12",
     "CRM-03.02.01.01",
     "CRM-03.02.01.09",

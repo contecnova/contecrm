@@ -307,6 +307,109 @@ def crear_cuota(datos: CrearCuota, uow: UowDep) -> Any:
     return {"id": str(fila.id), "prorrateo": ter.prorratear(fila)}
 
 
+class CongelarObjetivo(BaseModel):
+    periodo: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="Como lo nombra quien lo cierra: 2026, 2026-T3, 2026-07",
+        examples=["2026-T3"],
+    )
+    motivo: str = Field("", max_length=500)
+
+
+class DescongelarObjetivo(BaseModel):
+    periodo: str = Field(..., min_length=1, max_length=20, examples=["2026-T3"])
+    motivo: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description=(
+            "Obligatorio. Una reapertura sin motivo es justo lo que congelar " "viene a impedir"
+        ),
+    )
+
+
+@router_cuotas.post(
+    "/congelar",
+    dependencies=[Depends(exige_permiso("forecast:congelar"))],
+    summary="Cerrar el objetivo de un periodo (CRM-03.02.02.08)",
+    description=(
+        "A partir de aquí, el objetivo de ese periodo deja de tocarse: ni a "
+        "mano ni recargando la hoja.\n\n"
+        "**Lo que se congela es el objetivo, no la consecución.** Lo vendido "
+        "sigue entrando; congelar la consecución sería congelar la realidad.\n\n"
+        "Permiso aparte de `forecast:write` a propósito: fijar una cuota es "
+        "trabajo de todos los días y cerrar el periodo no."
+    ),
+)
+def congelar_objetivo(datos: CongelarObjetivo, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = ter.congelar_objetivo(uow, periodo=datos.periodo, por=principal.id, motivo=datos.motivo)
+    return {
+        "periodo": fila.periodo,
+        "congelado_at": fila.congelado_at.isoformat(),
+        "motivo": fila.motivo,
+    }
+
+
+@router_cuotas.post(
+    "/descongelar",
+    dependencies=[Depends(exige_permiso("forecast:congelar"))],
+    summary="Abrirlo otra vez, dejando constancia",
+    description=(
+        "El motivo es obligatorio. Permitir una reapertura sin motivo convierte "
+        "el cierre en un trámite de dos clics, que es no tener cierre."
+    ),
+)
+def descongelar_objetivo(datos: DescongelarObjetivo, uow: UowDep, principal: AutenticadoDep) -> Any:
+    fila = ter.descongelar_objetivo(
+        uow, periodo=datos.periodo, por=principal.id, motivo=datos.motivo
+    )
+    return {
+        "periodo": fila.periodo,
+        "descongelado_at": fila.descongelado_at.isoformat() if fila.descongelado_at else None,
+        "motivo": fila.motivo_descongelacion,
+    }
+
+
+@router_cuotas.get(
+    "/congelaciones",
+    dependencies=[Depends(exige_permiso("forecast:read"))],
+    summary="Qué periodos están cerrados, y los que se reabrieron",
+    description=(
+        "Con su historial: una reapertura legítima —se revisa el plan a mitad "
+        "de año— tiene que dejar rastro, y con un simple interruptor el segundo "
+        "cierre pisaría al primero."
+    ),
+)
+def listar_congelaciones(db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select as _select
+
+    filas = (
+        db.execute(
+            _select(ter.CongelacionObjetivo)
+            .where(ter.CongelacionObjetivo.tenant_id == principal.tenant_id)
+            .order_by(ter.CongelacionObjetivo.congelado_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "id": str(f.id),
+            "periodo": f.periodo,
+            "congelado_at": f.congelado_at.isoformat(),
+            "congelado_por": str(f.congelado_por) if f.congelado_por else None,
+            "motivo": f.motivo,
+            "vigente": f.descongelado_at is None,
+            "descongelado_at": f.descongelado_at.isoformat() if f.descongelado_at else None,
+            "descongelado_por": str(f.descongelado_por) if f.descongelado_por else None,
+            "motivo_descongelacion": f.motivo_descongelacion,
+        }
+        for f in filas
+    ]
+
+
 @router_cuotas.get(
     "/consecucion",
     dependencies=[Depends(exige_permiso("forecast:read"))],
