@@ -978,9 +978,6 @@ stateDiagram-v2
 | `POST /api/v1/analytics/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/analytics/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/analytics/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
-| `POST /api/v1/analytics/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
-| `PATCH /api/v1/analytics/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
-| `DELETE /api/v1/analytics/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/analytics/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/analytics/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/analytics/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -1078,9 +1075,6 @@ stateDiagram-v2
 | `POST /api/v1/intelligence/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/intelligence/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
 | `POST /api/v1/intelligence/trabajos/{trabajo_id}/cancelar` | Pide que un trabajo pare | trabajo_id*, motivo | 200, 422 | — |
-| `POST /api/v1/intelligence/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
-| `PATCH /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
-| `DELETE /api/v1/intelligence/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/intelligence/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/intelligence/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/intelligence/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -1283,9 +1277,6 @@ stateDiagram-v2
 | `POST /api/v1/service/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/service/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/service/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
-| `POST /api/v1/service/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
-| `PATCH /api/v1/service/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
-| `DELETE /api/v1/service/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/service/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/service/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/service/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |
@@ -1369,9 +1360,6 @@ stateDiagram-v2
 | `POST /api/v1/marketing/restauracion/pruebas/estado` | Si las pruebas de restauración están al día | pruebas | 200, 422 | — |
 | `POST /api/v1/marketing/tokenizacion` | Sacar un número del CRM y quedarse con la referencia | valor*, tipo* | 200, 422 | — |
 | `POST /api/v1/marketing/tokenizacion/{token}/resolver` | Recuperar el número, con motivo y rastro | token*, tipo*, motivo* | 200, 422 | — |
-| `POST /api/v1/marketing/vocabularios/{nombre}` | Añadir un valor | nombre*, valor*, etiqueta*, orden, extra | 201, 422 | — |
-| `PATCH /api/v1/marketing/vocabularios/{nombre}/{valor}` | Cambiar un valor | nombre*, valor*, etiqueta, orden, activo, extra | 200, 422 | — |
-| `DELETE /api/v1/marketing/vocabularios/{nombre}/{valor}` | Retirar un valor | nombre*, valor* | 200, 422 | — |
 | `POST /api/v1/marketing/volumen/archivar` | Qué se puede mover a frío, y qué lo impide | filas, destino* | 200, 422 | — |
 | `POST /api/v1/marketing/volumen/desarchivar/{registro_id}` | Devolver una fila archivada a su tabla viva | registro_id* | 200, 422 | — |
 | `POST /api/v1/marketing/volumen/puede-borrarse` | Si estas filas se pueden borrar de la tabla viva | filas, destino* | 200, 422 | — |

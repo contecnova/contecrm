@@ -101,6 +101,13 @@ def test_toda_llamada_del_front_existe_como_ruta_publicada() -> None:
             ruta = encontrada.split("?", 1)[0]
             if ruta in RUTAS_EXENTAS:
                 continue
+            # `:servicio` es una plantilla, no una ruta: la pestaña declara en
+            # qué servicios vive la misma colección y la pantalla lo sustituye
+            # por el que se elige. Se comprueba contra UNO de verdad —si está
+            # publicada para uno, lo está para los que declare, y de eso se
+            # encarga el gate de rutas del front, que los recorre todos—.
+            if ":servicio" in ruta:
+                ruta = ruta.replace(":servicio", "sales")
             if not any(p.match(ruta) for p in patrones):
                 desconocidas.append(f"{fichero.relative_to(FRONT)}: {ruta}")
 
@@ -174,6 +181,14 @@ def test_el_front_no_guarda_datos_de_negocio_en_el_navegador() -> None:
         # Entra por el mismo criterio: es una preferencia de quien mira, no
         # dice nada del negocio, y perderla solo cuesta volver a elegirla.
         "componentes/Vistas.tsx",
+        # Qué cliente está mirando quien opera la plataforma. Entra por el
+        # mismo criterio y con una condición más: va en `sessionStorage`, que
+        # vive en la PESTAÑA. Recargar la mantiene —si no, cada F5 devolvería a
+        # mitad de trabajo— y cerrarla la olvida, que es lo correcto para algo
+        # que da acceso a datos de otro. No es la sesión, no concede nada por
+        # sí solo —el servidor sólo la atiende si quien la manda opera la
+        # plataforma— y no guarda ni un dato de negocio: sólo cuál se mira.
+        "lib/api.ts",
     }
     usos: list[str] = []
     for fichero in _fuentes():
@@ -409,7 +424,20 @@ PRESUPUESTO_KB = 118
 #
 #   190 deja cinco kilobytes sobre lo medido: un par de pantallas más, y sigue
 #   saltando si alguien mete una biblioteca.
-PRESUPUESTO_TOTAL_KB = 190
+#
+#   27-10-2026  190 → 198 kB, y otra vez es producto. Lo que entró ese día, en
+#   ------------------------------------------------------------------------
+#   la misma sesión: la búsqueda global en la paleta —que el manual prometía y
+#   no existía—, el selector de cliente para quien opera la plataforma, el
+#   panel de medidas que acompaña a un listado (noventa y seis rutas que no
+#   cabían como pestaña), las seis secciones que el portal del cliente servía
+#   y no enseñaba, «tu segundo factor» en Seguridad, «la suite de una vez», y
+#   los cuatro paneles que faltaban en la página de estado del tenant.
+#
+#   Medido antes de subirlo: 192,98 kB. Se deja en 198 y no en 193 por lo
+#   mismo que la vez anterior —margen para un par de pantallas— y porque el
+#   tope que se roza se sube cada semana, que es como deja de medir.
+PRESUPUESTO_TOTAL_KB = 198
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

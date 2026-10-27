@@ -80,6 +80,15 @@ def _pestanas() -> dict[str, list[tuple[str, str]]]:
         if "${" in listar.group(1) or "{" in listar.group(1):
             continue
         ruta = listar.group(1)
+        # `:servicio` es una plantilla: la misma colección vive en varios
+        # servicios y la pantalla la sustituye por el que se elige. Se abre la
+        # de ESTE servicio si está entre los declarados; si no, no es suya.
+        if ":servicio" in ruta:
+            declarados = re.search(r"por_servicio:\s*\[([^\]]*)\]", bloque)
+            cuales = re.findall(r'"([^"]+)"', declarados.group(1)) if declarados else []
+            if servicio.group(1) not in cuales:
+                continue
+            ruta = ruta.replace(":servicio", servicio.group(1))
         # Un informe de periodo exige `desde` y `hasta`: sin ellos contesta 422
         # a propósito. Se le da un rango, que es lo que hace la pantalla.
         if re.search(r"periodo:\s*true", bloque):

@@ -746,3 +746,41 @@ def test_las_suscripciones_por_renovar_separan_las_que_no_dicen_cuando_caducan(
         isinstance(x, str) for x in cuerpo["sin_caducidad_declarada"]
     ), "son identificadores sueltos, no registros: la pantalla no puede pedirles `recurso`"
     assert cuerpo["aviso"].strip(), "si hay alguna sin declarar, el aviso lo dice"
+
+
+# ── El informe de cumplimiento y mis passkeys: Plataforma.tsx, Seguridad.tsx ──
+
+
+def test_el_informe_de_cumplimiento_dice_lo_que_el_rat_no_dice(
+    integration: Any, cabeceras: dict[str, str], tenant_id: UUID
+) -> None:
+    """Tres cosas que el registro de tratamiento no contesta.
+
+    El RAT dice qué datos personales se tratan y con qué base legal. El informe
+    añade lo que hace falta para fiarse de él: si el rastro de auditoría
+    **cuadra** —un registro que se puede reescribir no prueba nada—, cuántas
+    políticas de acceso hay activas, y los avisos de lo que no encaja.
+    """
+    r = integration.get("/api/v1/integration/cumplimiento/informe", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "servicio", "generado_at", "rat", "avisos", "integridad_del_audit_trail")
+    _campos(cuerpo["integridad_del_audit_trail"], "verificacion")
+    # `politicas_de_acceso` es lo que pinta el panel: sin el recuento, «hay
+    # políticas» y «no hay ninguna» se ven igual.
+    _campos(cuerpo["politicas_de_acceso"], "activas", "nombres")
+    assert isinstance(cuerpo["avisos"], list)
+
+
+def test_mis_passkeys_se_listan_aunque_no_haya_ninguna(
+    identity: Any, cabeceras: dict[str, str]
+) -> None:
+    """Y la lista vacía es una lista, no un error.
+
+    La pantalla de seguridad cuenta cuántas hay para decirle a cada uno con qué
+    ha entrado. Si esto contestara un objeto en vez de una lista —o un 404
+    cuando no hay ninguna— el recuento saldría en blanco sin que fallara nada.
+    """
+    r = identity.get("/api/v1/auth/passkeys", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list), f"la pantalla las cuenta: llega {type(r.json())}"

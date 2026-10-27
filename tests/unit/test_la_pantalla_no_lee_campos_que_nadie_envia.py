@@ -39,6 +39,25 @@ RAIZ = Path(__file__).resolve().parents[2]
 PANTALLAS = RAIZ / "frontend/src/paginas"
 PRUEBAS = RAIZ / "tests/unit"
 
+SERVICIOS = frozenset(
+    {
+        "party",
+        "sales",
+        "service",
+        "marketing",
+        "metadata",
+        "analytics",
+        "identity",
+        "orchestrator",
+        "automation",
+        "integration",
+        "intelligence",
+        "tenancy",
+        "eventing",
+        "gateway",
+    }
+)
+
 RE_LLAMAR = re.compile(r'llamar<([A-Za-z0-9_\[\]{}<> ,|]+)>\(\s*[`"\']([^`"\']+)')
 
 # ── Contratos que una pantalla da por bueno y ninguna prueba recorre ──────
@@ -118,7 +137,17 @@ def _rutas_con_prueba_de_servidor() -> set[str]:
             continue
         texto = fichero.read_text(encoding="utf-8")
         for ruta in re.findall(r'["\'](/api/v1/[^"\'\s]+)', texto):
-            vistas.add(re.sub(r"\{[^}]*\}|\$\{[^}]*\}", "{}", ruta.split("?")[0]))
+            forma = re.sub(r"\{[^}]*\}|\$\{[^}]*\}", "{}", ruta.split("?")[0])
+            vistas.add(forma)
+            # Las rutas que cada servicio publica en su prefijo —la papelera,
+            # el cumplimiento, el volumen— las escribe el front con
+            # `${servicio}` y una prueba las recorre con un servicio concreto.
+            # Son la misma ruta: la monta el mismo router compartido para los
+            # trece. Sin esto, el gate pedía una prueba por servicio para algo
+            # que sólo existe una vez.
+            partes = forma.split("/")
+            if len(partes) > 3 and partes[3] in SERVICIOS:
+                vistas.add("/".join(partes[:3] + ["{}"] + partes[4:]))
     return vistas
 
 

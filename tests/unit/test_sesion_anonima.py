@@ -21,7 +21,7 @@ from crmcore.http.deps import ANONIMO, get_db
 
 def test_una_peticion_sin_identidad_no_abre_sesion_de_base() -> None:
     with pytest.raises(NoAutenticado) as fallo:
-        next(get_db(ANONIMO))
+        next(get_db(None, ANONIMO))
     assert fallo.value.error_code == "auth.requerida"
 
 
@@ -37,4 +37,4 @@ def test_el_orden_de_los_parametros_ya_no_decide_la_respuesta() -> None:
     with pytest.raises(NoAutenticado):
         exige_autenticacion(ANONIMO)
     with pytest.raises(NoAutenticado):
-        next(get_db(ANONIMO))
+        next(get_db(None, ANONIMO))
