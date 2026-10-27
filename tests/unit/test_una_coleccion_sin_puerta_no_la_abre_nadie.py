@@ -93,7 +93,65 @@ FRONT = RAIZ / "frontend/src"
 #                            devolvía cero siempre, porque el gateway
 #                            preguntaba a `/api/v1/buscar` de cada servicio y
 #                            cada uno la publica en `/api/v1/{servicio}/buscar`.
-TOPE_SIN_PUERTA = 107
+#   27-10-2026   87 de 708  veinte declaradas SIN PANTALLA A PROPÓSITO, cada
+#                            una con su motivo y dos gates que impiden que la
+#                            lista envejezca: las sondas de salud, el SCIM que
+#                            llama el directorio del cliente, los componentes
+#                            que se pintan en SU web, los documentos de
+#                            contrato, dos caminos a una colección que ya tiene
+#                            pestaña, y las conversaciones, que se trabajan en
+#                            la consola de agente en una sola cola.
+TOPE_SIN_PUERTA = 87
+
+# ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
+#
+# Con su motivo, y el motivo tiene que ser una propiedad de la ruta, no una
+# excusa. Una lista de excepciones sin razones es una forma de poner el
+# contador en verde; con razones es lo contrario de una lista de los que SÍ:
+# cada línea se puede discutir, y la que no se sostenga se quita y se abre la
+# puerta.
+#
+# Hay un gate más abajo que exige que cada una siga existiendo en el contrato:
+# una excepción a una ruta que ya no está es una línea que nadie va a releer.
+SIN_PUERTA_A_PROPOSITO: dict[str, str] = {
+    # Sondas del balanceador y del orquestador. No son API de negocio: las
+    # llama la infraestructura cada pocos segundos y una persona nunca.
+    "/health": "sonda de infraestructura",
+    "/health/live": "sonda de infraestructura",
+    "/health/ready": "sonda de infraestructura",
+    # SCIM es el estándar con el que el directorio del CLIENTE da de alta y de
+    # baja a su gente. Lo llama su proveedor de identidad, no una pantalla
+    # nuestra; lo que sí tiene pantalla es qué proveedores hay configurados.
+    "/api/v1/scim/v2/Users": "la llama el proveedor de identidad del cliente",
+    "/api/v1/scim/v2/Groups": "la llama el proveedor de identidad del cliente",
+    "/api/v1/scim/v2/Schemas": "la llama el proveedor de identidad del cliente",
+    "/api/v1/scim/v2/ResourceTypes": "la llama el proveedor de identidad del cliente",
+    "/api/v1/scim/v2/ServiceProviderConfig": "la llama el proveedor de identidad del cliente",
+    # Los componentes embebibles se pintan DENTRO de la web del cliente, con su
+    # token acotado a un registro. Una pantalla nuestra que los abriera sería
+    # la ficha que ya existe.
+    "/api/v1/embebido/ficha-cuenta": "se pinta en la web del cliente, no aquí",
+    "/api/v1/embebido/estado-pedido": "se pinta en la web del cliente, no aquí",
+    "/api/v1/embebido/lista-casos": "se pinta en la web del cliente, no aquí",
+    "/api/v1/sdk/componentes": "catálogo para quien integra, como el OpenAPI",
+    "/api/v1/sdk/plan": "catálogo para quien integra, como el OpenAPI",
+    "/api/v1/eventos/asyncapi.json": "documento de contrato, como el OpenAPI",
+    # Dos caminos a la misma colección. El que tiene pestaña es el otro, y
+    # enseñar los dos obligaría a saber cuál mira cada pantalla.
+    "/api/v1/agentes-ia": "misma colección que /agentes-ia/exposiciones, que sí tiene pestaña",
+    "/api/v1/agentes-ia/exportar": "misma colección que /agentes-ia/exposiciones",
+    "/api/v1/party-admin/papelera": "misma papelera que /party/papelera, que sí tiene pestaña",
+    # Decisión escrita en `recursos.ts`: las conversaciones se trabajan desde
+    # la consola de agente, que las da junto a los casos en UNA sola cola. Una
+    # lista aparte reintroduce la bandeja por canal que la omnicanalidad viene
+    # a quitar.
+    "/api/v1/conversaciones": "se trabajan en la consola de agente, en una sola cola",
+    "/api/v1/conversaciones/exportar": "se trabajan en la consola de agente",
+    # La portada del portal se compone de sus secciones, y el portal las pinta
+    # una a una: pedirla además sería pedir dos veces lo mismo.
+    "/api/v1/portal/mi/resumen": "el portal pinta sus secciones, que es lo que resume",
+}
+
 
 SERVICIOS = (
     "party",
@@ -174,6 +232,7 @@ def _sin_puerta(pedidas: frozenset[str] | None = None) -> tuple[str, ...]:
             for c in _colecciones()
             if _forma(c) not in pedidas
             and _forma(c) not in exportables
+            and c not in SIN_PUERTA_A_PROPOSITO
             and not cuelga_de_una_con_puerta(c)
         )
     )
@@ -201,9 +260,11 @@ def test_el_gate_caza_una_puerta_que_se_cierra() -> None:
     el exportar cuelgan de ella, así que cerrarla cierra tres.
     """
     colecciones = _colecciones()
-    assert len(_sin_puerta(frozenset())) == len(
-        colecciones
-    ), "sin una sola llamada del front, el recuento tiene que ser el total"
+    # Todo menos las declaradas a propósito, que no dependen del front.
+    a_proposito = len([r for r in SIN_PUERTA_A_PROPOSITO if r in colecciones])
+    assert (
+        len(_sin_puerta(frozenset())) == len(colecciones) - a_proposito
+    ), "sin una sola llamada del front, el recuento tiene que ser todo lo demás"
 
     cerrada = frozenset(r for r in _pedidas() if r != "/api/v1/accounts")
     nuevas = set(_sin_puerta(cerrada)) - set(_sin_puerta())
@@ -232,3 +293,32 @@ def test_el_tope_baja_cuando_se_abren_puertas() -> None:
         f"Van {cuantas} y el tope dice {TOPE_SIN_PUERTA}: bájalo en este mismo "
         "commit, que es lo que convierte el arreglo en un suelo."
     )
+
+
+def test_ninguna_excepcion_sobra() -> None:
+    """Una excepción a una ruta que ya no existe es una línea que nadie relee.
+
+    Y es peor que inútil: el día que vuelva a publicarse esa ruta, se daría por
+    excusada sin que nadie lo haya decidido.
+    """
+    colecciones = _colecciones()
+    # Las sondas de salud no están en el contrato publicado —no son API de
+    # negocio— así que se comprueban por su forma.
+    sobran = [
+        ruta
+        for ruta in SIN_PUERTA_A_PROPOSITO
+        if ruta not in colecciones and not ruta.startswith("/health")
+    ]
+    assert not sobran, "Excepciones a rutas que ya no publica nadie. Se quitan:\n  " + "\n  ".join(
+        sobran
+    )
+
+
+def test_toda_excepcion_lleva_su_motivo() -> None:
+    """Sin motivo, esta lista es una forma de poner el contador en verde.
+
+    Con motivo es lo contrario de una lista de los que SÍ: cada línea se puede
+    discutir, y la que no se sostenga se quita y se abre la puerta.
+    """
+    mudas = [r for r, porque in SIN_PUERTA_A_PROPOSITO.items() if len(porque.strip()) < 15]
+    assert not mudas, mudas
