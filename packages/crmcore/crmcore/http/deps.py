@@ -59,6 +59,13 @@ H_PLATAFORMA = "x-crm-plataforma"
 # cuanto entró una credencial de máquina, los servicios de detrás la trataron
 # como a una persona sin registros a su nombre y le enseñaron CERO filas — sin
 # error, que es la forma más cara de equivocarse.
+# El alcance de un componente embebido (CRM-00.02.03.05): a qué componente y a
+# qué registro está atado el token. Viaja firmado como el resto de la
+# identidad, porque a los servicios de detrás no les llega el token —y sin
+# esto, el extremo del componente no sabría de qué registro hablar y habría que
+# pasarle el identificador por la URL, que es justo lo que el acotamiento
+# existe para impedir.
+H_EMBEBIDO = "x-crm-embebido"
 H_TIPO = "x-crm-tipo"
 H_FIRMA = "x-crm-firma"
 H_MOMENTO = "x-crm-momento"
@@ -284,7 +291,21 @@ def _principal_de_cabeceras(request: Request) -> Principal:
         roles=frozenset(r for r in request.headers.get(H_ROLES, "").split(",") if r),
         scopes=frozenset(p for p in request.headers.get(H_SCOPES, "").split(",") if p),
         es_admin_plataforma=request.headers.get(H_PLATAFORMA, "") == "1",
+        atributos=_embebido_de_cabecera(request.headers.get(H_EMBEBIDO, "")),
     )
+
+
+def _embebido_de_cabecera(valor: str) -> dict[str, object]:
+    """`componente|objeto|id` → los tres atributos, o nada.
+
+    Formato plano y no JSON porque viaja en una cabecera HTTP firmada: un JSON
+    con comillas dentro de una cabecera es una fuente de escapados mal hechos,
+    y lo que se transporta son tres cadenas sin espacios.
+    """
+    partes = valor.split("|")
+    if len(partes) != 3 or not all(partes):
+        return {}
+    return {"componente": partes[0], "objeto": partes[1], "objeto_id": partes[2]}
 
 
 def _principal_de_token(token: str, secreto: str) -> Principal:
@@ -316,6 +337,16 @@ def _principal_de_token(token: str, secreto: str) -> Principal:
             actor_real_id=UUID(datos["actor_real"]) if datos.get("actor_real") else None,
             sesion_id=UUID(datos["sid"]) if datos.get("sid") else None,
             factor_fuerte_at=str(datos.get("af") or ""),
+            # El acotamiento de un componente embebido, si lo lleva.
+            atributos=(
+                {
+                    "componente": str(datos.get("componente") or ""),
+                    "objeto": str(datos.get("objeto") or ""),
+                    "objeto_id": str(datos.get("objeto_id") or ""),
+                }
+                if datos.get("componente")
+                else {}
+            ),
         )
     except (ValueError, KeyError):
         raise NoAutenticado(

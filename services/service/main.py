@@ -8,6 +8,7 @@ from crmcore.service import crear_servicio
 
 from services.service.api import ROUTERS, ROUTERS_SIN_PREFIJO
 from services.service.api_campo import ROUTERS_CAMPO
+from services.service.api_embebido import router_embebido
 from services.service.api_postventa import ROUTERS_POSTVENTA
 from services.service.consumidores import consumir_comando
 
@@ -97,7 +98,7 @@ app = crear_servicio(
         "ventana, y relojes de SLA en horas laborables con pausas que desplazan "
         "el vencimiento."
     ),
-    routers=[*ROUTERS, *ROUTERS_CAMPO, *ROUTERS_POSTVENTA],
+    routers=[*ROUTERS, *ROUTERS_CAMPO, *ROUTERS_POSTVENTA, router_embebido],
     # La entrada de mensajes va sin el prefijo de versión: la URL se pega en la
     # configuración de un buzón, de una pasarela de WhatsApp o en el HTML de una
     # web, y una versión dentro invita a cambiarla el día que exista `v2`.

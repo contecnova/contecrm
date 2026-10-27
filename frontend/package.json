@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:embebido": "vite build --config vite.embebido.config.ts",
     "preview": "vite preview --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs",
+    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && vite build --config vite.embebido.config.ts && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs",
     "pantallas": "playwright test --project=chromium"
   },
   "dependencies": {

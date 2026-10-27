@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 import httpx
 from crmcore.config import get_settings
@@ -921,6 +922,71 @@ def componentes_embebibles(principal: AutenticadoDep, nombre: str = Query("")) -
     return {
         "componentes": [sdk.contrato_de_componente(c) for c in sdk.COMPONENTES],
     }
+
+
+class TokenEmbebido(BaseModel):
+    componente: str = Field(..., description="Uno de los declarados en /sdk/componentes")
+    objeto: str = Field(..., min_length=1, max_length=60, examples=["cuenta"])
+    objeto_id: UUID
+    minutos: int = Field(
+        60,
+        ge=1,
+        le=1440,
+        description=(
+            "Vida del token. Un token embebido vive en el HTML de una página "
+            "que puede quedarse abierta toda la noche: lo que se filtra tiene "
+            "que caducar solo"
+        ),
+    )
+
+
+# Lo mínimo que necesita cada componente para pintar, y nada más. No hereda los
+# permisos de quien lo pide: si los heredara, el token de un escaparate llevaría
+# dentro los de un administrador.
+PERMISOS_DE_COMPONENTE: dict[str, list[str]] = {
+    "ficha-cuenta": ["party:read"],
+    "lista-casos": ["case:read"],
+    "formulario-alta": ["lead:write"],
+    "estado-pedido": ["sales:read"],
+}
+
+
+@router.post(
+    "/sdk/componentes/token",
+    # Dos comprobaciones, y hacen falta las dos. Ésta es la estática y
+    # auditable: **poder incrustar algo del CRM en una web de fuera es una
+    # decisión de integración**, no algo que venga con saber leer una cuenta.
+    # La fina —que quien lo pide pueda ver ESE registro— va dentro, porque
+    # depende del componente que se pida y no se puede escribir aquí.
+    dependencies=[Depends(exige_permiso("integracion:write"))],
+    summary="Un token acotado para incrustar un componente (CRM-00.02.03.05)",
+    description=(
+        "**Acotado al registro, y el acotamiento no es un permiso**: el "
+        "identificador va DENTRO del token. El extremo del componente no "
+        "recibe ninguno por la URL, así que un token de la cuenta A no puede "
+        "pedir la cuenta B — no hay forma de pedirla.\n\n"
+        "Un componente que usara la sesión del CRM dejaría entrar a quien pase "
+        "por la página: basta con abrir las herramientas del navegador."
+    ),
+)
+def token_embebido(datos: TokenEmbebido, principal: AutenticadoDep) -> Any:
+    from crmcore import embebido
+
+    # Quien pide el token tiene que poder ver eso: si no, cualquiera con sesión
+    # fabricaría un token para un registro que él mismo no puede abrir.
+    permisos = PERMISOS_DE_COMPONENTE.get(datos.componente, [])
+    for permiso in permisos:
+        principal.exigir(permiso)
+
+    assert principal.tenant_id is not None  # `AutenticadoDep` no deja pasar sin tenant
+    return embebido.emitir(
+        componente=datos.componente,
+        objeto=datos.objeto,
+        objeto_id=datos.objeto_id,
+        tenant_id=principal.tenant_id,
+        permisos=permisos,
+        minutos=datos.minutos,
+    )
 
 
 @router.get(

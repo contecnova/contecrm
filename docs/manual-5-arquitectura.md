@@ -616,3 +616,53 @@ excepciones con su motivo, nunca de las que sí:
 La comprobación vive dentro del gate que ya construye los catorce contratos, así
 que no cuesta un segundo más, y está validada quitando un campo del esquema de
 salida: sin él, falla nombrándolo.
+
+## Un componente dentro de la web de otro (`CRM-00.02.03.05`)
+
+El contrato de los cuatro componentes embebibles se declaraba y se servía desde
+hacía meses. No existía ni un *custom element* ni forma de hablar con el CRM
+desde una web ajena: las dos mitades, otra vez, sin nadie que las juntara.
+
+**Lo que decide si esto sirve o es un agujero no es cómo pinta: es con qué
+identidad habla.** Un componente que usara la sesión del CRM deja entrar a
+quien pase por la página — basta con abrir las herramientas del navegador,
+coger el token y llamar a la API con él; a partir de ahí tiene todo lo que
+tiene la persona que lo emitió.
+
+Por eso el token va **acotado al registro**, y el acotamiento **no es un
+permiso**: el identificador va *dentro* del token y **ninguna de las cuatro
+rutas recibe uno por la URL**. Un token de la cuenta A no puede pedir la cuenta
+B porque no existe forma de pedirla. Hay una prueba que lo comprueba ruta a
+ruta, porque en cuanto una admitiera un identificador el acotamiento entero
+dejaría de valer.
+
+Tres decisiones más del lado del servidor:
+
+- **No hereda los permisos de quien lo pide.** Lleva lo mínimo para pintar eso
+  y nada más; si los heredara, el token de un escaparate llevaría dentro los de
+  un administrador.
+- **Quien lo pide tiene que poder ver eso.** Si no, cualquiera con sesión
+  fabricaría un token para un registro que él mismo no puede abrir.
+- **Dura poco** —una hora por defecto—, porque vive en el HTML de una página
+  que puede quedarse abierta toda la noche en el mostrador de una tienda: lo
+  que se filtre caduca solo.
+
+Y del lado del navegador:
+
+- **1,93 kB comprimidos**, construido aparte. No arrastra React, ni el cliente
+  HTTP, ni los estilos: son cientos de kilobytes viajando a una página ajena
+  para pintar cuatro líneas.
+- **Shadow DOM**: los estilos del anfitrión no entran y los nuestros no salen.
+  Sin él, una hoja de estilos cualquiera de esa página puede dejar el
+  componente ilegible, o nosotros romperle la maquetación — y lo descubre el
+  cliente en su web, no nosotros.
+- **Hereda su aspecto por variables CSS**, sin imponer tipografía: un recuadro
+  con nuestra tipografía dentro de la web de otro se ve como lo que es, un
+  trozo pegado.
+- **No toca `window` ni `localStorage`** y **no manda cookies**: está en una
+  página que no es nuestra, y la sesión del CRM no tiene nada que hacer ahí.
+
+El gateway lo enruta **por el componente y no por el servicio**
+(`/api/v1/embebido/ficha-cuenta`, no `/api/v1/party/embebido/…`): esa ruta la
+escribe quien incrusta el componente en su web, y no tiene por qué saber cómo
+está repartido el sistema por dentro.

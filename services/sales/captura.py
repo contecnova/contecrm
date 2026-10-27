@@ -244,8 +244,19 @@ def recibir(
     página web, y una respuesta distinta por cada motivo de descarte le enseña a
     un robot qué tiene que cambiar.
     """
+    return recibir_por_canal(uow, _canal(uow.db, tenant_id, clave, secreto), entrada)
+
+
+def recibir_por_canal(uow: Any, canal: CanalCaptura, entrada: dict[str, Any]) -> dict[str, Any]:
+    """Lo mismo, con el canal ya resuelto.
+
+    Existe porque hay **dos formas legítimas de probar que se puede escribir en
+    este canal** y sólo una lógica de captura: la clave y el secreto, que usa
+    un formulario que los lleva en el servidor; y el token acotado de un
+    componente embebido (CRM-00.02.03.05), que no puede llevar el secreto
+    porque vive en el HTML de una página ajena.
+    """
     db = uow.db
-    canal = _canal(db, tenant_id, clave, secreto)
 
     if canal.campo_trampa and str(entrada.get(canal.campo_trampa) or "").strip():
         # Un humano no ve ese campo, así que no lo rellena. Se descarta con un

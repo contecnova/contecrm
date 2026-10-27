@@ -13,6 +13,7 @@ from services.sales.api_cadencias import ROUTERS_CADENCIAS
 from services.sales.api_comisiones import ROUTERS_COMISIONES
 from services.sales.api_coste import ROUTERS_COSTE
 from services.sales.api_cotizacion import ROUTERS_COTIZACION
+from services.sales.api_embebido import router_embebido
 from services.sales.api_ingresos import ROUTERS_INGRESOS
 from services.sales.api_partners import ROUTERS_PARTNERS
 from services.sales.api_proveedores import ROUTERS_PROVEEDORES
@@ -57,6 +58,7 @@ app = crear_servicio(
         *ROUTERS_PARTNERS,
         *ROUTERS_COMISIONES,
         *ROUTERS_PROVEEDORES,
+        router_embebido,
     ],
     al_arrancar=_al_arrancar,
     routers_sin_prefijo=ROUTERS_SIN_PREFIJO,

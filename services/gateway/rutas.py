@@ -361,6 +361,15 @@ SECCIONES_PORTAL = {
     "contactos": "party",
 }
 
+# Qué servicio sirve cada componente embebible. El dueño de lo que enseña:
+# quien tiene el dato responde por él, como en todo lo demás.
+SERVICIO_DE_COMPONENTE = {
+    "ficha-cuenta": "party",
+    "formulario-alta": "sales",
+    "lista-casos": "service",
+    "estado-pedido": "sales",
+}
+
 RECURSOS_TRANSVERSALES = {
     # Los vocabularios de negocio: los publica cada servicio en su prefijo, como
     # la papelera, y por lo mismo — los valida él, en su esquema.
@@ -456,6 +465,13 @@ def servicio_de(ruta: str, servicios: frozenset[str] | None = None) -> str | Non
             # error que el 404 del gateway, que no dice si te equivocaste de
             # sección o si el portal no existe.
             return SECCIONES_PORTAL.get(partes[4], "service")
+        # Los componentes embebibles (CRM-00.02.03.05): el segundo tramo dice
+        # cuál es, y cada uno vive en el servicio dueño de lo que enseña. Se
+        # resuelve así —y no con `/api/v1/<servicio>/embebido/…`— porque esta
+        # ruta la escribe quien incrusta el componente en SU web, y no tiene
+        # por qué saber cómo está repartido el sistema por dentro.
+        if partes[2] == "embebido":
+            return SERVICIO_DE_COMPONENTE.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "comentarios":
             return OBJETOS_COMENTARIO.get(partes[3]) if len(partes) >= 4 else None
         if partes[2] == "adjuntos":

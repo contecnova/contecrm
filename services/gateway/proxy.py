@@ -132,6 +132,7 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
     """Construye y firma las cabeceras de identidad interna."""
     from crmcore.http.deps import (
         H_ACTOR_REAL,
+        H_EMBEBIDO,
         H_FACTOR_FUERTE,
         H_PERMISOS,
         H_PLATAFORMA,
@@ -161,5 +162,22 @@ def cabeceras_de_identidad(principal: Any, secreto: str) -> dict[str, str]:
         # segundo factor es de hace un minuto o de hace ocho horas, y la única
         # salida honesta sería no dejar hacerla nunca o dejarla siempre.
         H_FACTOR_FUERTE: str(getattr(principal, "factor_fuerte_at", "") or ""),
+        # El acotamiento de un componente embebido (CRM-00.02.03.05): a qué
+        # componente y a qué REGISTRO está atado este token. Sin propagarlo, el
+        # extremo del componente no sabría de qué registro hablar y habría que
+        # pasarle el identificador por la URL — que es exactamente lo que el
+        # acotamiento existe para impedir.
+        H_EMBEBIDO: _embebido(principal),
     }
     return firmar_cabeceras_internas(valores, secreto)
+
+
+def _embebido(principal: Any) -> str:
+    """`componente|objeto|id`, o vacío si no es un token de componente."""
+    atributos = getattr(principal, "atributos", None) or {}
+    partes = [
+        str(atributos.get("componente") or ""),
+        str(atributos.get("objeto") or ""),
+        str(atributos.get("objeto_id") or ""),
+    ]
+    return "|".join(partes) if all(partes) else ""

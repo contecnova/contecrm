@@ -902,3 +902,120 @@ def test_las_funciones_son_una_lista_cerrada_crm_00_03_04_04() -> None:
     assert FUNCIONES, "no hay funciones de transformación"
     prohibidas = {"eval", "exec", "codigo", "script", "python", "lambda", "expresion"}
     assert not (set(FUNCIONES) & prohibidas), sorted(set(FUNCIONES) & prohibidas)
+
+
+# ── Componentes embebibles (CRM-00.02.03.05) ─────────────────────────────
+#
+# El contrato de los cuatro componentes estaba declarado y servido desde hacía
+# meses, y no existía ni un custom element ni la forma de hablar con el CRM
+# desde una web ajena. Lo que decide si esto sirve o es un agujero no es cómo
+# pinta: es CON QUÉ IDENTIDAD habla.
+
+
+def test_el_identificador_va_dentro_del_token_crm_00_02_03_05() -> None:
+    """**Ahí está todo el acotamiento.**
+
+    Un componente que usara la sesión del CRM dejaría entrar a quien pase por
+    la página: basta con abrir las herramientas del navegador. Con el
+    identificador dentro del token, un token de la cuenta A no puede pedir la
+    cuenta B — no hay parámetro que cambiar.
+    """
+    from uuid import uuid4
+
+    import jwt
+    from crmcore import embebido
+    from crmcore.config import get_settings
+
+    cuenta, tenant = uuid4(), uuid4()
+    salida = embebido.emitir(
+        componente="ficha-cuenta",
+        objeto="cuenta",
+        objeto_id=cuenta,
+        tenant_id=tenant,
+        permisos=["party:read"],
+        minutos=60,
+    )
+    carga = jwt.decode(
+        salida["token"],
+        get_settings().secret_key.get_secret_value(),
+        algorithms=[get_settings().jwt_algorithm],
+    )
+    assert carga["objeto_id"] == str(cuenta)
+    assert carga["tipo"] == "componente"
+    # Lo mínimo para pintar eso y nada más: no hereda los de quien lo pide. Si
+    # los heredara, el token de un escaparate llevaría los de un administrador.
+    assert carga["permisos"] == ["party:read"]
+    assert carga["exp"] > carga["iat"]
+
+
+def test_un_token_de_sesion_no_abre_la_puerta_del_componente_crm_00_02_03_05() -> None:
+    """Si la abriera, cualquiera con sesión entraría por una ruta que no
+    comprueba permisos de fila."""
+    import pytest as _pytest
+    from crmcore import embebido
+    from crmcore.authz.principal import Principal
+    from crmcore.errors import NoAutenticado
+
+    with _pytest.raises(NoAutenticado):
+        embebido.registro_del_token(
+            Principal(id=None, tipo="usuario"), componente="ficha-cuenta", objeto="cuenta"
+        )
+
+
+def test_el_token_de_un_componente_no_vale_para_otro_crm_00_02_03_05() -> None:
+    """Sin esto, el token de una lista de casos serviría para abrir la ficha de
+    la cuenta, que es más de lo que se pidió enseñar."""
+    from uuid import uuid4
+
+    import pytest as _pytest
+    from crmcore import embebido
+    from crmcore.authz.principal import Principal
+    from crmcore.errors import Prohibido
+
+    principal = Principal(
+        id=None,
+        tipo=embebido.TIPO,
+        atributos={
+            "componente": "lista-casos",
+            "objeto": "cuenta",
+            "objeto_id": str(uuid4()),
+        },
+    )
+    # El suyo sí.
+    assert embebido.registro_del_token(principal, componente="lista-casos", objeto="cuenta")
+    # El de otro componente, no.
+    with _pytest.raises(Prohibido):
+        embebido.registro_del_token(principal, componente="ficha-cuenta", objeto="cuenta")
+
+
+def test_ninguna_ruta_de_componente_recibe_identificador_crm_00_02_03_05() -> None:
+    """Es la comprobación que sostiene el acotamiento entero.
+
+    En cuanto una de estas rutas admitiera un identificador por la URL, el
+    token dejaría de acotar nada: quien lo tuviera podría apuntarlo a
+    cualquier registro desde las herramientas del navegador.
+    """
+    import importlib
+
+    for servicio in ("party", "service", "sales"):
+        app = importlib.import_module(f"services.{servicio}.main").app
+        rutas = [r for r in app.openapi()["paths"] if "/embebido/" in r]
+        assert rutas, f"«{servicio}» no publica ninguna ruta de componente"
+        for ruta in rutas:
+            assert "{" not in ruta, f"{ruta} recibe un identificador por la URL"
+
+
+def test_los_cuatro_componentes_declarados_tienen_extremo_crm_00_02_03_05() -> None:
+    """El contrato declaraba cuatro y no había ninguno. Que la lista y las
+    rutas no se separen es lo que impide volver a esa situación."""
+    import importlib
+
+    from crmcore.sdk import COMPONENTES
+
+    servidos = set()
+    for servicio in ("party", "service", "sales"):
+        app = importlib.import_module(f"services.{servicio}.main").app
+        for ruta in app.openapi()["paths"]:
+            if "/embebido/" in ruta:
+                servidos.add(ruta.rsplit("/", 1)[-1])
+    assert servidos == set(COMPONENTES), (sorted(servidos), sorted(COMPONENTES))

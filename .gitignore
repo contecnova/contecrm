@@ -67,3 +67,6 @@ frontend/dist/
 # Construcción aparte de las pruebas de pantalla: comparte carpeta con nadie
 # para no pisarse con el `vite build` del gate del front.
 /frontend/dist-pantallas/
+# El componente embebible se construye aparte, a su propia carpeta: dos
+# construcciones escribiendo la misma dejan una a medias.
+/frontend/dist-embebido/
