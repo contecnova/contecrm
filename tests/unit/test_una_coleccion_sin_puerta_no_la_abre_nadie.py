@@ -67,7 +67,15 @@ FRONT = RAIZ / "frontend/src"
 #                            sobre lo contratado, promesas entre servicios y
 #                            consultas degradadas— estaban servidas y nadie las
 #                            pedía.
-TOPE_SIN_PUERTA = 157
+#   27-10-2026  148 de 708  `resumen`: una pestaña puede llevar encima las
+#                            MEDIDAS que la acompañan —un objeto con cifras y
+#                            la frase que dice qué significan—. De las que
+#                            quedaban sin puerta, 96 de 157 eran eso: no caben
+#                            como pestaña y hacerle una pantalla a cada una
+#                            serían noventa y seis pantallas de un párrafo.
+#                            Estrenado en el módulo de IA, con tres listados
+#                            que tampoco tenían pestaña.
+TOPE_SIN_PUERTA = 148
 
 SERVICIOS = (
     "party",

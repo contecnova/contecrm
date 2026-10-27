@@ -35,6 +35,7 @@ import { Formulario } from "@/componentes/Formulario";
 import { Filtros } from "@/componentes/Filtros";
 import { Tabla } from "@/componentes/Tabla";
 import { ErrorApi, llamar } from "@/lib/api";
+import { escalar, esIdentificadorTecnico, humanizar } from "@/lib/formato";
 import { comoQuery, leerFiltros, parametroDe, type Filtro } from "@/lib/filtros";
 import {
   admite,
@@ -729,6 +730,11 @@ function RecursoVista({
         </label>
       ) : null}
 
+      {/* Las medidas que acompañan al listado, arriba: el gasto del mes encima
+          del consumo, la calidad de los borradores encima de los borradores.
+          Es donde se preguntan. */}
+      {recurso.resumen?.length ? <Medidas rutas={recurso.resumen} /> : null}
+
       {recurso.acciones?.length ? (
         <AccionesDeColeccion acciones={recurso.acciones} alTerminar={() => void cargar()} />
       ) : null}
@@ -887,4 +893,92 @@ export function ordenar(
   if (!preferidas) return [...todas];
   const delante = preferidas.filter((c) => todas.has(c));
   return [...delante, ...[...todas].filter((c) => !delante.includes(c))];
+}
+
+
+/**
+ * Una medida: un objeto con cifras y una frase que dice qué significan.
+ *
+ * Lo que se enseña sale del propio objeto. Las cifras delante —que es lo que
+ * se viene a mirar— y la explicación debajo, con las palabras del servidor:
+ * un número sin su frase se interpreta mal, y la frase la escribe quien sabe
+ * cómo se calculó.
+ *
+ * **Lo que no es concluyente se dice.** Estas respuestas traen `medible`,
+ * `concluyente` o `aviso` justo para eso, y pintar sus ceros como si fueran
+ * una medida es la forma de que alguien decida sobre un dato que nadie ha
+ * medido.
+ */
+export function Medidas({ rutas }: { rutas: string[] }) {
+  const [datos, setDatos] = useState<Record<string, Record<string, unknown>>>({});
+
+  useEffect(() => {
+    const control = new AbortController();
+    setDatos({});
+    for (const ruta of rutas) {
+      // Cada una con su fallo: que no se pueda leer una medida no puede dejar
+      // sin ver el listado, que es a lo que se venía.
+      void llamar<Record<string, unknown>>(ruta, { signal: control.signal })
+        .then((r) => setDatos((previos) => ({ ...previos, [ruta]: r.datos })))
+        .catch(() => undefined);
+    }
+    return () => control.abort();
+  }, [rutas]);
+
+  const pintadas = rutas.filter((r) => datos[r]);
+  if (pintadas.length === 0) return null;
+
+  return (
+    <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {pintadas.map((ruta) => (
+        <Medida key={ruta} datos={datos[ruta] ?? {}} />
+      ))}
+    </div>
+  );
+}
+
+/** Los campos que explican, por orden de cuál manda si hay varios. */
+const EXPLICAN = ["que_significa", "porque", "aviso", "detalle"];
+/** Los que dicen que el número NO es una medida. */
+const NO_CONCLUYE = ["medible", "concluyente", "tier_confirmado"];
+
+function Medida({ datos }: { datos: Record<string, unknown> }) {
+  const explicacion = EXPLICAN.map((c) => datos[c]).find(
+    (v) => typeof v === "string" && v.trim(),
+  ) as string | undefined;
+  const sinMedir = NO_CONCLUYE.some((c) => datos[c] === false);
+  const cifras = Object.entries(datos).filter(
+    ([clave, valor]) =>
+      !EXPLICAN.includes(clave) &&
+      !NO_CONCLUYE.includes(clave) &&
+      !esIdentificadorTecnico(clave) &&
+      (typeof valor === "number" ||
+        (typeof valor === "string" && /^-?\d+([.,]\d+)?$/.test(valor))),
+  );
+
+  return (
+    <section className="card p-3">
+      {cifras.length > 0 ? (
+        <dl className="flex flex-wrap gap-x-4 gap-y-1">
+          {cifras.slice(0, 6).map(([clave, valor]) => (
+            <div key={clave}>
+              <dt className="text-3xs text-ink-faint">{humanizar(clave)}</dt>
+              <dd
+                className={`text-sm font-medium ${
+                  sinMedir ? "text-ink-muted" : "text-ink"
+                }`}
+              >
+                {escalar(valor, clave)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {explicacion ? (
+        <p className={`mt-1 text-3xs ${sinMedir ? "text-warning" : "text-ink-faint"}`}>
+          {explicacion}
+        </p>
+      ) : null}
+    </section>
+  );
 }

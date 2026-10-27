@@ -534,6 +534,15 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "ia:administrar"
     },
     {
+      "r": "/api/v1/ia/salud"
+    },
+    {
+      "r": "/api/v1/ia/prediccion"
+    },
+    {
+      "r": "/api/v1/ia/extraidos"
+    },
+    {
       "r": "/api/v1/ia/salud/riesgo",
       "p": "ia:usar"
     },

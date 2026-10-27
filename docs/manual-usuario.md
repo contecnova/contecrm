@@ -830,6 +830,17 @@ Tres cosas que conviene saber:
   selector con las columnas; es el mismo que ya lleva el embudo. Arrastrar es
   una de las formas de mover, no la forma.
 
+**Y algunas listas llevan medidas encima.** No todo lo que el sistema sabe es
+una lista: hay respuestas que son cuatro cifras y una frase que dice qué
+significan —cuánto se lleva gastado de IA este mes y si queda margen, si los
+avisos de anomalía han servido de algo, cuánto se ha consumido de lo
+contratado—. Se enseñan arriba del listado al que pertenecen, que es donde se
+preguntan: el gasto encima del consumo, la calidad de los borradores encima de
+los borradores. Cuando una de esas cifras **no es concluyente** —porque nadie
+ha marcado todavía qué hizo con los borradores, por ejemplo— sale en ámbar y
+con el motivo, no como un cero: un cero ahí se leería como «va mal» o como «va
+bien» según a quién le pregunten, y lo que pasa es que no se ha medido.
+
 La columna de la izquierda del todo puede ser «—»: ahí se agrupa lo que no
 tiene ese dato. No se puede soltar nada en ella, porque eso escribiría el guion
 como si fuera un valor. Vaciar un campo se hace en la ficha, con el campo

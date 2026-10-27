@@ -1152,6 +1152,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Anomalías",
+        // Si los avisos sirven de algo, encima de los avisos. Un detector que
+        // nadie confirma nunca es un detector que se acaba ignorando.
+        resumen: ["/api/v1/ia/anomalias/utilidad"],
         listar: "/api/v1/ia/anomalias",
         servicio: "intelligence",
         permiso: "ia:usar",
@@ -1169,6 +1172,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // salto del martes que nadie pidió.
       {
         nombre: "Consumo y coste",
+        // Con el presupuesto del mes encima: el coste acumulado no dice si
+        // queda margen, y «queda margen» es la decisión.
+        resumen: ["/api/v1/ia/presupuesto", "/api/v1/ia/eleccion"],
         listar: "/api/v1/ia/uso",
         servicio: "intelligence",
         permiso: "ia:administrar",
@@ -1181,6 +1187,29 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       // Cuentas que el modelo marca en riesgo, que es la lista sobre la que se
       // trabaja; la salud de una cuenta suelta ya se ve en su pantalla.
+      {
+        // La salud de TODAS las cuentas, no sólo las que están en riesgo: la
+        // lista de riesgo dice a quién llamar hoy y ésta si el modelo está
+        // midiendo algo. Con la calidad de lo que propone encima.
+        nombre: "Salud de cuentas",
+        resumen: ["/api/v1/ia/calidad"],
+        listar: "/api/v1/ia/salud",
+        servicio: "intelligence",
+      },
+      {
+        nombre: "Predicciones",
+        listar: "/api/v1/ia/prediccion",
+        servicio: "intelligence",
+      },
+      {
+        // Lo que la extracción ha sacado de documentos y correos, con sus
+        // conflictos: un campo extraído que choca con lo que hay guardado es
+        // una decisión de alguien, no un dato que se pisa solo.
+        nombre: "Campos extraídos",
+        resumen: ["/api/v1/ia/extraidos"],
+        listar: "/api/v1/ia/extraidos",
+        servicio: "intelligence",
+      },
       {
         nombre: "Cuentas en riesgo",
         listar: "/api/v1/ia/salud/riesgo",

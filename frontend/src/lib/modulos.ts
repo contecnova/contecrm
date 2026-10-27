@@ -101,6 +101,25 @@ export interface Recurso {
    */
   por_servicio?: string[];
   /**
+   * Medidas que acompañan a este listado: un objeto, no una lista.
+   *
+   * De las colecciones publicadas sin pantalla, **96 de 157 son esto**: un
+   * `GET` que devuelve un objeto con cuatro cifras y una frase que explica qué
+   * significan —«el presupuesto de IA gastado este mes», «cuánto se lleva
+   * consumido de lo contratado», «si los avisos de anomalía sirven de algo»—.
+   * No son listados y por eso no cabían como pestaña, y hacerle una pantalla a
+   * cada una serían noventa y seis pantallas de un párrafo.
+   *
+   * Se pintan arriba del listado al que pertenecen, que es donde se preguntan:
+   * el gasto del mes, encima del consumo; la calidad de los borradores, encima
+   * de los borradores. Lo que se enseña sale del propio objeto —las cifras y
+   * su explicación—, así que una medida nueva no pide código.
+   *
+   * Cada una con su fallo: que no se pueda leer una medida no puede dejar sin
+   * ver el listado, que es a lo que se venía.
+   */
+  resumen?: string[];
+  /**
    * Tipo de objeto para lo que cuelga del registro: adjuntos, comentarios y
    * documentos. Sin él no hay ficha, porque esas rutas lo llevan dentro.
    */
