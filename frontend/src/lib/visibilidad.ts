@@ -625,6 +625,9 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/presion/reglas"
     },
     {
+      "r": "/api/v1/rebotes"
+    },
+    {
       "r": "/api/v1/recorridos",
       "p": "campana:read"
     }
@@ -645,6 +648,9 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/categorias-caso"
+    },
+    {
+      "r": "/api/v1/sla"
     },
     {
       "r": "/api/v1/escalado/reglas"

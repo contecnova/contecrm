@@ -75,7 +75,12 @@ FRONT = RAIZ / "frontend/src"
 #                            serían noventa y seis pantallas de un párrafo.
 #                            Estrenado en el módulo de IA, con tres listados
 #                            que tampoco tenían pestaña.
-TOPE_SIN_PUERTA = 148
+#   27-10-2026  127 de 708  veintiuna medidas enganchadas a la pestaña donde
+#                            se preguntan: la salud del dato encima de su cola,
+#                            las licencias encima de los usuarios, el MRR
+#                            encima de las suscripciones, los casos a punto de
+#                            incumplir encima de los acuerdos de servicio.
+TOPE_SIN_PUERTA = 127
 
 SERVICIOS = (
     "party",

@@ -77,6 +77,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Aislamiento",
         listar: "/api/v1/aislamiento",
+      // Los tenants cuyo aislamiento no ha contrastado nadie. No es que estén mal:
+        // es que no se sabe, y contarlos con los comprobados es el verde falso.
+      resumen: ["/api/v1/aislamiento/sin-comprobar"],
         servicio: "tenancy",
         permiso: "tenant:read",
       },
@@ -331,6 +334,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Usuarios",
         objeto: "usuario",
         listar: "/api/v1/usuarios",
+      // Lo que se consume de licencias, encima de la lista: dar de alta a alguien
+        // sin saber si quedan licencias es cómo se descubre el tope al revés.
+      resumen: ["/api/v1/usuarios/licencias"],
         servicio: "identity",
         permiso: "user:read",
       },
@@ -366,6 +372,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Proveedores de identidad",
         listar: "/api/v1/proveedores-identidad",
+      // Qué perfiles hay declarados y qué comparte de verdad cada proveedor con la
+        // suite: lo segundo es lo que se pregunta cuando alguien no aparece.
+      resumen: ["/api/v1/proveedores-identidad/perfiles", "/api/v1/proveedores-identidad/suite"],
         servicio: "identity",
       },
     ],
@@ -486,6 +495,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Buzones conectados",
         objeto: "buzon",
         listar: "/api/v1/buzones",
+      // Cómo va la sincronización y, sobre todo, qué NO está entrando: un buzón
+        // conectado que lleva días sin traer nada se lee como que no hay correo.
+      resumen: ["/api/v1/buzones/panel"],
         crear: "/api/v1/buzones",
         servicio: "integration",
         permiso: "integracion:read",
@@ -571,6 +583,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Calidad del dato",
         listar: "/api/v1/calidad-dato/cola",
+      // La salud del dato encima de la cola: la cola dice qué hay que tocar hoy;
+        // la salud, si la cola está creciendo. Y qué reglas producen ruido en vez
+        // de trabajo, que es lo que explica una cola que no baja.
+      resumen: ["/api/v1/calidad-dato/salud", "/api/v1/calidad-dato/metricas", "/api/v1/calidad-dato/reglas-sospechosas"],
         servicio: "party",
         permiso: "account:read",
       },
@@ -710,6 +726,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Planes conjuntos",
         objeto: "plan_conjunto",
         listar: "/api/v1/planes-conjuntos",
+      // Cuánto se parece lo que se dice en las revisiones a lo que luego pasa, y
+        // qué lleva demasiado sin revisarse: un plan conjunto que nadie revisa es
+        // un documento, no un acuerdo.
+      resumen: ["/api/v1/planes-conjuntos/calibracion", "/api/v1/planes-conjuntos/sin-revisar"],
         crear: "/api/v1/planes-conjuntos",
         servicio: "sales",
         permiso: "sales:read",
@@ -718,6 +738,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Pedidos",
         objeto: "pedido",
         listar: "/api/v1/pedidos",
+      // Los pedidos de los que el ERP no ha dicho nada: no salen como un estado
+        // del pedido, salen de comparar, y sin esto no los ve nadie.
+      resumen: ["/api/v1/pedidos/conciliacion-erp"],
         servicio: "sales",
         permiso: "order:read",
       },
@@ -731,6 +754,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Suscripciones",
         listar: "/api/v1/suscripciones",
+      // MRR y ARR encima de las suscripciones: es la cifra por la que se mira esta
+        // lista, y calcularla a mano desde las filas es cómo salen dos números.
+      resumen: ["/api/v1/suscripciones/recurrente"],
         servicio: "sales",
         permiso: "contract:read",
       },
@@ -801,6 +827,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Plantillas de correo",
         listar: "/api/v1/plantillas-correo",
+      // Qué plantillas funcionan, encima de las plantillas: la lista las ordena
+        // por nombre y la pregunta es cuál usar.
+      resumen: ["/api/v1/plantillas-correo/rendimiento"],
         servicio: "sales",
       },
       {
@@ -815,6 +844,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Enrutamiento",
         listar: "/api/v1/lead-routing/reglas",
+      // Qué estrategias de reparto hay, encima de las reglas que las usan: sin
+        // ellas, escribir una regla es adivinar qué valores admite.
+      resumen: ["/api/v1/lead-routing/estrategias"],
         servicio: "sales",
       },
       {
@@ -1310,6 +1342,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Segregación",
         listar: "/api/v1/segregacion/reglas",
+      // Las excepciones aprobadas, con la regla al lado: una regla de segregación
+        // sin ver sus excepciones dice lo contrario de lo que pasa de verdad.
+      resumen: ["/api/v1/segregacion/excepciones"],
         servicio: "identity",
       },
       // Las tres apuntaban a `party` y se llamaban «Retención», «Bloqueos
@@ -1354,6 +1389,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Puntuación",
         listar: "/api/v1/puntuacion/modelos",
+      // Cuántos leads llevan una versión vieja del modelo: activar una versión
+        // nueva no repuntúa lo anterior, y eso no se ve en la lista de modelos.
+      resumen: ["/api/v1/puntuacion/pendientes"],
         servicio: "marketing",
       },
       // Los activos de marketing con su revisión y su aprobación: qué se
@@ -1361,6 +1399,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Activos de marketing",
         listar: "/api/v1/activos-marketing",
+      // Qué hay que mirar antes de que dé un problema: un activo caducado que
+        // sigue publicado no avisa solo.
+      resumen: ["/api/v1/activos-marketing/revision"],
         servicio: "marketing",
         permiso: "marketing:read",
       },
@@ -1395,9 +1436,19 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Presión de contacto",
         listar: "/api/v1/presion/reglas",
+      // A cuánta gente se ha escrito y cuántas veces, encima de las reglas que lo
+        // limitan: una regla de presión sin la presión medida es una promesa.
+      resumen: ["/api/v1/presion"],
         servicio: "marketing",
       },
-      { nombre: "Rebotes", listar: "/api/v1/rebotes", servicio: "marketing" },
+      {
+        nombre: "Rebotes",
+        // Las tasas con su umbral al lado: una lista de rebotes no dice si se
+        // está cerca de que el proveedor corte el envío, y eso es lo que decide.
+        resumen: ["/api/v1/rebotes/salud"],
+        listar: "/api/v1/rebotes",
+        servicio: "marketing",
+      },
       // El recorrido automatizado (CRM-02.02.02): sus nodos, sus inscritos,
       // su embudo y su publicación. Catorce operaciones sin pantalla.
       {
@@ -1448,7 +1499,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/categorias-caso",
         servicio: "service",
       },
-      { nombre: "SLA", listar: "/api/v1/sla", servicio: "service" },
+      {
+        nombre: "SLA",
+        // Los casos que van a incumplir si nadie hace nada, encima de los
+        // acuerdos: el acuerdo se lee una vez; lo que está a punto de romperse,
+        // hoy.
+        resumen: ["/api/v1/sla/en-riesgo"],
+        listar: "/api/v1/sla",
+        servicio: "service",
+      },
       { nombre: "Colas", listar: "/api/v1/colas", servicio: "service" },
       {
         nombre: "Escalado",
@@ -1503,6 +1562,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Artículos",
         objeto: "articulo",
         listar: "/api/v1/conocimiento/articulos",
+      // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
+        // conocimiento sin esto crece hasta que nadie encuentra nada.
+      resumen: ["/api/v1/conocimiento/eficacia"],
         crear: "/api/v1/conocimiento/articulos",
         servicio: "service",
         columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
