@@ -1,6 +1,6 @@
 """Lo que la consola ofrece, ¿contesta? (CRM-07.04.03).
 
-La consola no escribe una pantalla por recurso: declara en `modulos.ts` de
+La consola no escribe una pantalla por recurso: declara en `recursos.ts` de
 dónde se lista cada cosa y dibuja las pestañas a partir de eso. Ya hay un gate
 que comprueba que esas rutas **existan** en el contrato del servicio, y un
 barrido que comprueba que los listados de cada servicio no revienten.
@@ -45,9 +45,9 @@ import pytest
 pytestmark = pytest.mark.db
 
 RAIZ = Path(__file__).resolve().parents[2]
-MODULOS = RAIZ / "frontend/src/lib/modulos.ts"
+MODULOS = RAIZ / "frontend/src/lib/recursos.ts"
 
-# Una entrada de `modulos.ts` es un objeto sin objetos dentro, igual que lee el
+# Una entrada de `recursos.ts` es un objeto sin objetos dentro, igual que lee el
 # gate de rutas. Se leen con expresión regular y no importando el módulo porque
 # es TypeScript; a cambio, el recuento mínimo de abajo hace que un cambio de
 # formato que deje de encontrar entradas se note.
@@ -91,7 +91,7 @@ def _pestanas() -> dict[str, list[tuple[str, str]]]:
 
 
 def test_el_recorrido_mira_de_verdad() -> None:
-    """Sin esto, un cambio de formato en `modulos.ts` dejaría el barrido sin
+    """Sin esto, un cambio de formato en `recursos.ts` dejaría el barrido sin
     pestañas que abrir y pasaría en verde — que es el verde de no mirar."""
     todas = _pestanas()
     cuantas = sum(len(v) for v in todas.values())

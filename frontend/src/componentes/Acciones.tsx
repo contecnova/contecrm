@@ -28,6 +28,7 @@ import { Link } from "react-router-dom";
 import { llamar } from "@/lib/api";
 import { escalar, humanizar } from "@/lib/formato";
 import { MODULOS, type Recurso } from "@/lib/modulos";
+import { recursosDe } from "@/lib/recursos";
 import { objetoDe, recursoDeReferencia } from "@/lib/referencias";
 import { camposDe, contratoDe, type CampoEsquema } from "@/lib/contrato";
 import { type Accion } from "@/lib/acciones";
@@ -97,7 +98,7 @@ const UUID_SUELTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /** En qué módulo vive un recurso, para poder componer la ruta de su ficha. */
 function moduloDelRecurso(recurso: Recurso): string | null {
   for (const modulo of MODULOS) {
-    if (modulo.recursos.includes(recurso)) return modulo.ruta;
+    if (recursosDe(modulo.ruta).includes(recurso)) return modulo.ruta;
   }
   return null;
 }

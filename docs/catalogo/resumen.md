@@ -13,7 +13,7 @@
 | 4 — Servicio y atención al cliente | 62 | 62 | 0 | 0 |
 | 5 — Analítica, inteligencia e IA | 57 | 57 | 0 | 0 |
 | 6 — Productividad y colaboración | 58 | 58 | 0 | 0 |
-| 7 — Administración, ALM y gobierno | 108 | 106 | 0 | 2 |
+| 7 — Administración, ALM y gobierno | 108 | 107 | 0 | 1 |
 | 8 — Requisitos no funcionales | 12 | 12 | 0 | 0 |
 | 9 — Proveedores, coste y capacidad | 20 | 20 | 0 | 0 |
 
@@ -21,7 +21,7 @@
 
 | Criticidad | Total | Hecho |
 |---|--:|--:|
-| C — Core | 311 | 309 |
+| C — Core | 311 | 310 |
 | A — Avanzado | 423 | 423 |
 | D — Diferencial | 44 | 44 |
 
@@ -30,7 +30,7 @@
 | Fase | Alcance | Capacidades | Hecho |
 |---|---|--:|--:|
 | 0 · Cimientos | Módulo 0 completo | 180 | 180 |
-| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 182 | 180 |
+| 1 · Núcleo | Módulo 1 + Ventas básica (3.1) + administración (7.1) | 182 | 181 |
 | 2 · Proceso comercial | Forecasting, territorios, cotización, contratos, order-to-cash | 216 | 216 |
 | 3 · Servicio | Casos, SLA, omnicanalidad, conocimiento, portal | 52 | 52 |
 | 4 · Marketing | Segmentación, journeys, canales, atribución | 65 | 65 |

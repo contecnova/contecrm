@@ -666,3 +666,36 @@ El gateway lo enruta **por el componente y no por el servicio**
 (`/api/v1/embebido/ficha-cuenta`, no `/api/v1/party/embebido/…`): esa ruta la
 escribe quien incrusta el componente en su web, y no tiene por qué saber cómo
 está repartido el sistema por dentro.
+
+## Lo que el navegador descarga antes de pintar nada (`CRM-07.04.04.05`)
+
+La tabla de pestañas —de dónde lista cada una, qué permiso exige, qué acciones
+tiene— vivía en el mismo fichero que la lista de módulos, y ese fichero lo
+importa el marco entero: la barra lateral, la de arriba, la paleta. Así que
+viajaba en el paquete de apertura, para algo que sólo necesitan la pantalla de
+módulo, la ficha, la de cliente, la paleta y las referencias — y ninguna se
+abre al entrar.
+
+Ahora está en su propio fichero. El marco se queda con un **resumen derivado**:
+de cada pestaña, su ruta, el permiso que exige y si es sólo de quien opera la
+plataforma. Eso es todo lo que hace falta para decidir si un módulo se enseña
+en el menú, que es la única pregunta que el marco le hace a esa tabla.
+
+El resumen **se genera**, no se escribe a mano, y hay un gate que comprueba que
+está al día. Dos listas a mano acaban diciendo cosas distintas y entonces no se
+sabe cuál manda: un permiso que se añade a una pestaña y no al resumen deja el
+módulo visible para quien no puede abrirlo, y al revés lo esconde para quien
+sí.
+
+**Y una corrección, porque la medida que motivó esto estaba mal.** Se midió el
+tramo del *chunk* entre la primera y la última ruta de API —168,5 kB en crudo,
+42,3 comprimidos— y se dio por hecho que era la tabla. No lo era: ahí dentro
+iba medio paquete. La tabla sola son **4,7 kB comprimidos**. El error no fue de
+cálculo, fue de método: se midió un tramo y se habló de un artefacto.
+
+Lo que sí baja, medido sobre el paquete construido: **la apertura pasa de 130,4
+a 115,3 kB comprimidos, un 11,6 % menos**. Y la mayor parte no sale de la tabla
+en sí, sino de que al sacarla se pudieron diferir la pantalla de módulo, la
+ficha y la de cliente, que eran quienes la arrastraban.
+
+El tope del paquete baja de 134 a 118 kB: tres de margen sobre lo medido.

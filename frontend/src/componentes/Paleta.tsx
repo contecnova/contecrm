@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { MODULOS, recursoVisible } from "@/lib/modulos";
+import { VISIBILIDAD } from "@/lib/visibilidad";
 import { entradaVisible, iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
 import { usePermitidas } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
@@ -67,8 +68,13 @@ export function Paleta({
         grupo: t("nav.grupoPantallas"),
         icono: e.icono,
       }));
+    // Con el resumen de visibilidad y no con la tabla entera: la paleta vive
+    // en el marco, así que lo que importe viaja en el paquete de apertura. Lo
+    // único que necesita es decidir si el módulo se ofrece.
     const modulos: Destino[] = MODULOS.filter((m) =>
-      m.recursos.some((r) => recursoVisible(sesion, r, permitidas)),
+      (VISIBILIDAD[m.ruta] ?? []).some((pe) =>
+        recursoVisible(sesion, { listar: pe.r, permiso: pe.p, solo_plataforma: pe.sp }, permitidas),
+      ),
     ).map((m) => ({
       a: `/m/${m.ruta}`,
       rotulo: m.titulo,

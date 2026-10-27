@@ -32,7 +32,8 @@ import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
-import { moduloDe, recursoDe } from "@/lib/modulos";
+import { moduloDe } from "@/lib/modulos";
+import { recursoDe } from "@/lib/recursos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { AprobacionDeDocumento } from "@/paginas/Aprobaciones";
 

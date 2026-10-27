@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { MODULOS } from "@/lib/modulos";
+import { recursosDe } from "@/lib/recursos";
 import { todasLasEntradas } from "@/lib/navegacion";
 import { cargarSuperficie, recursoDe, type Superficie } from "@/lib/superficie";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -151,7 +152,7 @@ export function calcular(superficie: Superficie): Informe {
   // cuanto alguien añade una pestaña.
   const enseñados = new Set<string>();
   for (const modulo of MODULOS) {
-    for (const recurso of modulo.recursos) enseñados.add(recursoDe(recurso.listar));
+    for (const recurso of recursosDe(modulo.ruta)) enseñados.add(recursoDe(recurso.listar));
   }
   // Y las pantallas escritas a mano, que declaran lo que enseñan. Sin esto, el
   // informe contaba «sin pantalla» proveedores, cuadros de mando, inteligencia

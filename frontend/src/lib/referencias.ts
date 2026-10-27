@@ -14,6 +14,7 @@
  */
 
 import { MODULOS, type Recurso } from "@/lib/modulos";
+import { recursosDe } from "@/lib/recursos";
 
 /** El objeto al que apunta un campo, si apunta a alguno: `cuenta_id` → `cuenta`. */
 export function objetoDe(campo: string): string | null {
@@ -88,7 +89,7 @@ export function recursoDeReferencia(
   const objeto = declarado || (SON_PERSONAS.has(campo) ? "usuario" : objetoDe(campo));
   if (!objeto) return null;
   for (const modulo of MODULOS) {
-    for (const recurso of modulo.recursos) {
+    for (const recurso of recursosDe(modulo.ruta)) {
       if (recurso.objeto === objeto) return recurso;
     }
   }

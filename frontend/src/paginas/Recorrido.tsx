@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { MODULOS, porGrupo } from "@/lib/modulos";
+import { recursosDe } from "@/lib/recursos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 export function Recorrido() {
@@ -48,7 +49,7 @@ export function Recorrido() {
                   <p className="text-xs text-ink">{m.titulo}</p>
                   <p className="mt-1 font-mono text-3xs text-ink-faint">{m.capacidad}</p>
                   <p className="mt-1 text-3xs text-ink-faint">
-                    {m.recursos.map((r) => r.nombre).join(" · ")}
+                    {recursosDe(m.ruta).map((r) => r.nombre).join(" · ")}
                   </p>
                 </Link>
               ))}

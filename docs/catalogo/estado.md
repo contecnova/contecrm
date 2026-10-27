@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: ✅ 776 hecho · ⬜ 2 pendiente
+**778 capacidades**: ✅ 777 hecho · ⬜ 1 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1079,7 +1079,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-108 capacidades · ✅ 106 · ⬜ 2
+108 capacidades · ✅ 107 · ⬜ 1
 
 ### 7.1 Administración funcional
 
@@ -1217,7 +1217,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.04.02` | Comprobación automática de accesibilidad en las pantallas principales | C | 1 | front | ✅ | — |
 | `CRM-07.04.04.03` | Presupuesto de rendimiento: tamaño del paquete y tiempo hasta interactivo, comprobados en el preflight local | A | 1 | front | ✅ | — |
 | `CRM-07.04.04.04` | Tipado estricto, cero exportaciones muertas y tipos de la API generados del OpenAPI | A | 1 | front | ✅ | contecmind:frontend/scripts/check-dead-exports.mjs |
-| `CRM-07.04.04.05` | Repartir la tabla de recursos fuera del módulo de entrada: medido el 27-10-2026, son 168,5 kB en crudo y 42,3 kB comprimidos de los 109 que el navegador descarga antes de pintar nada —el 39 %— y sólo la necesitan la pantalla de módulo, la ficha, la paleta, las acciones y las referencias. Está ahí porque la barra lateral filtra los módulos por el permiso de sus recursos; la barra ya filtra de forma asíncrona, así que puede esperar a que llegue | C | 1 | front | ⬜ | — |
+| `CRM-07.04.04.05` | Repartir la tabla de recursos fuera del módulo de entrada: medido el 27-10-2026, son 168,5 kB en crudo y 42,3 kB comprimidos de los 109 que el navegador descarga antes de pintar nada —el 39 %— y sólo la necesitan la pantalla de módulo, la ficha, la paleta, las acciones y las referencias. Está ahí porque la barra lateral filtra los módulos por el permiso de sus recursos; la barra ya filtra de forma asíncrona, así que puede esperar a que llegue | C | 1 | front | ✅ | — |
 
 #### CRM-07.04.05 · Cobertura y demostración
 

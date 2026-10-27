@@ -44,6 +44,7 @@ import {
   type Proposito,
 } from "@/lib/contrato";
 import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos";
+import { recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
 import { usePermitidas } from "@/lib/permisos";
@@ -61,7 +62,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   const pedido = parametros.get("r");
   const inicial = Math.max(
     0,
-    modulo?.recursos.findIndex((r) => r.nombre === pedido) ?? 0,
+    recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido) ?? 0,
   );
   const [activo, setActivo] = useState(inicial);
   const permitidas = usePermitidas();
@@ -79,11 +80,11 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
    */
   const pestañas = useMemo(
     () =>
-      (modulo?.recursos ?? [])
+      recursosDe(ruta ?? "")
         .map((r, i) => ({ r, i }))
         .filter(({ r }) => recursoVisible(sesion, r, permitidas))
         .sort((a, b) => Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono))),
-    [modulo?.recursos, sesion, permitidas],
+    [ruta, sesion, permitidas],
   );
 
   useEffect(() => setActivo(inicial), [ruta, inicial]);
@@ -114,7 +115,8 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
   }, [pestañas, activo]);
 
   if (!modulo) return <Vacio />;
-  const recurso = modulo.recursos[activo] ?? modulo.recursos[0];
+  const pestanas_ = recursosDe(ruta ?? "");
+  const recurso = pestanas_[activo] ?? pestanas_[0];
 
   return (
     <>
@@ -148,7 +150,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
           </ul>
         </details>
       ) : null}
-      {modulo.recursos.length > 1 ? (
+      {recursosDe(ruta ?? "").length > 1 ? (
         <nav aria-label={modulo.titulo} className="mt-3 flex flex-wrap items-center gap-1">
           {/* Las pestañas rotuladas con icono —hoy, la papelera— van siempre al
               final y separadas del resto: no son un sitio donde se trabaja, son

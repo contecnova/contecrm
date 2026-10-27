@@ -18,6 +18,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { VISIBILIDAD } from "@/lib/visibilidad";
+
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MODULO = readFileSync(join(SRC, "paginas", "Modulo.tsx"), "utf8");
 const FICHA = readFileSync(join(SRC, "paginas", "Ficha.tsx"), "utf8");
@@ -63,5 +65,40 @@ describe("no se piden al servidor cosas que todavía no se pueden pedir", () => 
     expect(APP).toMatch(/aplicarLocalizacion\(\)/);
     // Y la marca, por lo mismo y en el mismo sitio.
     expect(APP).toMatch(/aplicarMarcaDelTenant\(\)/);
+  });
+});
+
+describe("la tabla de pestañas no viaja en la apertura", () => {
+  it("el resumen de visibilidad está al día con los recursos", () => {
+    /**
+     * El marco decide qué módulos enseña con un RESUMEN —de cada pestaña, su
+     * ruta, su permiso y si es sólo de plataforma—, no con la tabla entera.
+     * El resumen se genera de `recursos.ts`; esta prueba es la red por si
+     * alguien edita uno y no regenera el otro: un permiso que se añade a una
+     * pestaña y no al resumen deja el módulo visible para quien no puede
+     * abrirlo, y al revés lo esconde para quien sí.
+     */
+    const recursos = readFileSync(join(SRC, "lib", "recursos.ts"), "utf8");
+    const rutas = [...recursos.matchAll(/^ {2}"([a-z-]+)": \[/gm)].map((m) => m[1]);
+    expect(rutas.length).toBeGreaterThan(20);
+    for (const ruta of rutas) {
+      expect(VISIBILIDAD[ruta!], `falta «${ruta}» en el resumen`).toBeTruthy();
+    }
+    // Y al revés: un resumen con módulos que ya no existen esconde el hecho de
+    // que alguien borró un módulo y no limpió.
+    for (const ruta of Object.keys(VISIBILIDAD)) {
+      expect(rutas, `«${ruta}» está en el resumen y no en los recursos`).toContain(ruta);
+    }
+  });
+
+  it("el marco NO importa la tabla de pestañas", () => {
+    // Es lo único que mantiene la tabla fuera del paquete de apertura. Un
+    // import nuevo desde la barra, la paleta o `App` la devuelve ahí sin que
+    // nadie lo note: el tope del paquete lo cazaría, pero diciendo «pesa de
+    // más» en vez de «alguien importó la tabla».
+    for (const fichero of ["App.tsx", "componentes/BarraLateral.tsx", "componentes/Paleta.tsx"]) {
+      const fuente = readFileSync(join(SRC, fichero), "utf8");
+      expect(fuente, fichero).not.toMatch(/from "@\/lib\/recursos"/);
+    }
   });
 });

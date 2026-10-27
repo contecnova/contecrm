@@ -5,16 +5,13 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Frontera } from "@/componentes/Frontera";
 import { Cargando } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
-import { Cuenta } from "@/paginas/Cuenta";
 import { Consola } from "@/paginas/Consola";
 import { Entrar } from "@/paginas/Entrar";
 import { Casos } from "@/paginas/Casos";
 import { ConsolaAgente } from "@/paginas/Consola.agente";
 import { Marketing } from "@/paginas/Marketing";
-import { Ficha } from "@/paginas/Ficha";
 import { Inicio } from "@/paginas/Inicio";
 import { Pipeline } from "@/paginas/Pipeline";
-import { Modulo } from "@/paginas/Modulo";
 import { Procesos } from "@/paginas/Procesos";
 import { Aprobaciones } from "@/paginas/Aprobaciones";
 import { Puesto } from "@/paginas/Puesto";
@@ -82,6 +79,14 @@ const Conversacion = lazy(() =>
 const Seguridad = lazy(() =>
   import("@/paginas/Seguridad").then((m) => ({ default: m.Seguridad })),
 );
+// La ficha de cliente trae las acciones y el formulario, y con ellos la tabla
+// de pestañas. Diferida por lo mismo que las otras dos.
+const Cuenta = lazy(() => import("@/paginas/Cuenta").then((m) => ({ default: m.Cuenta })));
+// Las dos que traen la tabla de pestañas (`recursos.ts`, 42 kB comprimidos).
+// Diferidas, esa tabla deja de viajar en el paquete de apertura y llega cuando
+// alguien abre un módulo — que es justo cuando hace falta.
+const Modulo = lazy(() => import("@/paginas/Modulo").then((m) => ({ default: m.Modulo })));
+const Ficha = lazy(() => import("@/paginas/Ficha").then((m) => ({ default: m.Ficha })));
 const Chat = lazy(() =>
   import("@/paginas/Chat").then((m) => ({ default: m.Chat })),
 );

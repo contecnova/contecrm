@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "verificar": "tsc --noEmit && eslint src && vitest run && vite build && vite build --config vite.embebido.config.ts && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs",
+    "visibilidad": "node scripts/gen-visibilidad.mjs",
+    "verificar": "node scripts/gen-visibilidad.mjs --comprobar && tsc --noEmit && eslint src && vitest run && vite build && vite build --config vite.embebido.config.ts && node scripts/clases-sin-regla.mjs && node scripts/contraste.mjs",
     "pantallas": "playwright test --project=chromium"
   },
   "dependencies": {

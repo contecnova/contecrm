@@ -1,6 +1,6 @@
 """Las rutas que el front declara existen en la API, con su método.
 
-El front no escribe un formulario por recurso: declara en `modulos.ts` de dónde
+El front no escribe un formulario por recurso: declara en `recursos.ts` de dónde
 se lista y a dónde se crea cada cosa, y saca los campos del OpenAPI del servicio
 dueño. Eso funciona mientras las dos partes digan la misma ruta.
 
@@ -23,9 +23,9 @@ from pathlib import Path
 
 import pytest
 
-MODULOS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "lib" / "modulos.ts"
+MODULOS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "lib" / "recursos.ts"
 
-# Una entrada de `modulos.ts` es un objeto sin objetos dentro: `{ nombre: "…",
+# Una entrada de `recursos.ts` es un objeto sin objetos dentro: `{ nombre: "…",
 # listar: "…", servicio: "…" }`. Se leen con expresión regular y no importando
 # el módulo porque es TypeScript; a cambio, el gate de abajo exige un recuento
 # mínimo, para que un cambio de formato que deje de encontrar entradas se note.
@@ -122,12 +122,14 @@ def test_cada_pantalla_apunta_a_una_operacion_que_existe() -> None:
 def test_el_gate_ve_las_pantallas() -> None:
     """Un gate que no encuentra declaraciones pasa siempre.
 
-    `modulos.ts` tenía 110 listados y 22 altas al escribir esto. El suelo va por
+    `recursos.ts` tenía 110 listados y 22 altas al escribir esto. El suelo va por
     debajo para que quitar pantallas a propósito no lo rompa, y lo bastante
     cerca para que un cambio de formato que deje de leer el fichero sí lo haga.
     """
     total = len(_declaraciones())
-    assert total > 100, f"solo se leen {total} declaraciones de modulos.ts; el gate no está mirando"
+    assert (
+        total > 100
+    ), f"solo se leen {total} declaraciones de recursos.ts; el gate no está mirando"
 
 
 def test_lo_que_se_lista_se_puede_abrir() -> None:
@@ -170,7 +172,7 @@ def test_lo_que_se_lista_se_puede_abrir() -> None:
 
 # ── Las pantallas escritas a mano ─────────────────────────────────────────
 #
-# Lo de arriba comprueba lo que se declara en `modulos.ts`. Pero hay veinte
+# Lo de arriba comprueba lo que se declara en `recursos.ts`. Pero hay veinte
 # pantallas escritas a mano —el tablero, la consola de agente, el puesto, la
 # suite— que llaman a la API directamente, y esas no las miraba nadie: una ruta
 # mal escrita ahí solo se descubre abriendo la pantalla, y algunas se abren poco.
@@ -299,7 +301,7 @@ def test_ningun_formulario_pide_un_identificador_a_mano() -> None:
     se sabe un UUID, así que el campo o se deja vacío o se rellena copiando de
     otra pantalla —y una copia mal hecha apunta a otro registro sin avisar.
 
-    El front resuelve tres casos: el objeto declarado en `modulos.ts`
+    El front resuelve tres casos: el objeto declarado en `recursos.ts`
     (`cuenta_id` → cuentas), los campos que son personas (`owner_id`) y los que
     apuntan al mismo tipo (`padre_id`). Lo que no encaje en ninguno **tiene que
     declararlo la columna** con `info={"referencia": "..."}`; si no, sale como
@@ -332,6 +334,6 @@ def test_ningun_formulario_pide_un_identificador_a_mano() -> None:
         "Formularios que piden un identificador a mano:\n  "
         + "\n  ".join(sorted(sueltos))
         + '\n\nDeclara a qué apunta la columna —`info={"referencia": "contacto"}`— '
-        "o el `objeto` del recurso en `modulos.ts`. Si lo pone el sistema y no una "
+        "o el `objeto` del recurso en `recursos.ts`. Si lo pone el sistema y no una "
         "persona, sácalo del formulario con `NO_EDITABLES`."
     )
