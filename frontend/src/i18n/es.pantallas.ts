@@ -341,6 +341,15 @@ const pantallas = {
     noConsta: "no consta",
   },
   seguridad: {
+    mio: {
+      titulo: "Tu segundo factor",
+      entradaDeHoy: "Has entrado con: {{factores}}",
+      passkeys: "{{cuantas}} passkeys registradas",
+      sensibles: "Te pedirán verificarte otra vez para",
+      inscribir_primero: "Inscribe un primer factor",
+      inscribir_respaldo: "Inscribe un método de respaldo",
+      inscribir_fuerte: "Inscribe un factor fuerte (passkey o aplicación)",
+    },
     titulo: "Identidad y seguridad",
     entradilla:
       "Las preguntas que no son una tabla: quién no tiene segundo factor, qué " +

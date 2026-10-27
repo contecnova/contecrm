@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
@@ -234,6 +235,39 @@ def listar_perfiles(db: DbDep, principal: AutenticadoDep) -> Any:
         }
         for f in filas
     ]
+
+
+@router_ciclo.get(
+    "/perfiles/{clave}",
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Un perfil de industria",
+    description=(
+        "Existe porque de un perfil cuelga **simular qué dejaría puesto**, y a "
+        "un registro que no se abre no se llega desde ninguna pantalla. Sin "
+        "esto, esa simulación sólo se alcanzaba sabiéndose la clave de memoria."
+        "\n\n"
+        "Lleva lo que el perfil **no** incluye, igual que el listado: un perfil "
+        "que no dice lo que le falta se vende como completo."
+    ),
+)
+def ver_perfil(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select
+
+    fila = (
+        db.execute(select(PerfilIndustria).where(PerfilIndustria.clave == clave)).scalars().first()
+    )
+    if fila is None:
+        raise NoEncontrado(
+            f"No hay ningún perfil de industria «{clave}»",
+            error_code="ciclo_vida.perfil_no_encontrado",
+        )
+    return {
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "descripcion": fila.descripcion,
+        "no_incluye": list(fila.no_incluye or []),
+        "contenido": dict(fila.contenido or {}),
+    }
 
 
 ROUTERS_CICLO_VIDA = [router_ciclo]

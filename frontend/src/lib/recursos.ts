@@ -49,6 +49,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // Los calendarios laborales y los festivos: de ellos salen los plazos de
       // los SLA, así que un festivo que falta mueve la fecha de resolución de
       // todos los casos de ese día. Se publicaban y no se veían.
+      // Los perfiles de industria: lo que deja puesto un alta según el sector.
+      // Se declaran y nadie los veía, así que elegir uno al dar de alta un
+      // cliente era elegir a ciegas.
+      {
+        nombre: "Perfiles de industria",
+        listar: "/api/v1/ciclo-vida/perfiles",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
       {
         nombre: "Calendarios laborales",
         // Con `objeto` para que la fila abra: los festivos y el cálculo de
@@ -334,6 +343,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "party",
         permiso: "metadata:read",
       },
+      // Qué módulos del producto tiene puestos este cliente y cuáles hay para
+      // instalar. Con `objeto` para que la fila abra: de un módulo cuelgan si
+      // lo instalado es lo que se publicó y qué parte se usa de verdad, y a un
+      // registro que no se abre no se llega.
+      {
+        nombre: "Módulos instalados",
+        objeto: "modulo",
+        resumen: ["/api/v1/metadata/modulos/catalogo"],
+        listar: "/api/v1/metadata/modulos",
+        servicio: "metadata",
+        permiso: "metadata:read",
+      },
       // Los entornos declarados. La pantalla de ALM los tenía escritos a mano
       // en un desplegable mientras el servidor los publicaba: un entorno nuevo
       // no aparecía hasta que alguien editara el front.
@@ -400,6 +421,20 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "identity",
       },
       { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
+      // A quién se le avisa de qué y por dónde. Los canales de entrega y cuántos
+      // llegaron, se abrieron o rebotaron van encima: una preferencia sin saber
+      // si el canal entrega es una casilla que no hace nada.
+      {
+        nombre: "Avisos y preferencias",
+        objeto: "notificacion",
+        resumen: [
+          "/api/v1/notificaciones/canales",
+          "/api/v1/notificaciones/entregas/estadisticas",
+        ],
+        listar: "/api/v1/notificaciones/preferencias",
+        servicio: "identity",
+        permiso: "user:read",
+      },
       // Quién ve lo de quién por regla, no por jerarquía. Se publicaba y no
       // salía en ninguna parte: una regla de compartición que nadie ve es un
       // acceso concedido que nadie audita.
@@ -1484,6 +1519,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       // Los activos de marketing con su revisión y su aprobación: qué se
       // puede usar, desde cuándo y hasta cuándo.
+      // Quién tiene que aprobar qué, antes de publicarlo. La lista de activos
+      // dice lo que hay; ésta, lo que está parado esperando a alguien.
+      {
+        nombre: "Aprobaciones de activos",
+        objeto: "activo_marketing",
+        listar: "/api/v1/activos-marketing/aprobacion",
+        servicio: "marketing",
+        permiso: "marketing:read",
+      },
       {
         nombre: "Activos de marketing",
         listar: "/api/v1/activos-marketing",

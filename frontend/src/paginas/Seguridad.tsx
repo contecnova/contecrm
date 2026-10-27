@@ -84,6 +84,39 @@ interface Violacion {
   exento?: boolean;
 }
 
+/** `GET /factores/nivel`: con qué ha entrado esta sesión. */
+interface Nivel {
+  nivel: number;
+  factores: { factor: string; at: string }[];
+  factor_fuerte_at: string | null;
+}
+
+/** `GET /factores/plan-de-inscripcion`: qué falta para tenerlo en condiciones. */
+interface Plan {
+  activos: string[];
+  pasos: { paso: string; porque: string }[];
+  completo: boolean;
+  porque: string;
+}
+
+interface Operacion {
+  clave: string;
+  descripcion: string;
+}
+
+/** `GET /factores/cambio-de-dispositivo`: qué camino hay al cambiar de móvil. */
+interface Cambio {
+  puede_solo: boolean;
+  camino: string;
+  aprobadores_necesarios: number;
+  porque: string;
+}
+
+interface Passkey {
+  id: string;
+  nombre?: string;
+}
+
 export function Seguridad({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const [adopcion, setAdopcion] = useState<Adopcion | null>(null);
@@ -127,10 +160,110 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
       />
 
       <SegundoFactor datos={adopcion} />
+      {/* Y lo de UNA persona, que es lo que no contesta el porcentaje: el
+          administrador ve quién no tiene factor; quien entra necesita saber
+          qué le falta a él, qué operaciones le van a pedir verificarse otra
+          vez, y qué pasa el día que cambie de móvil — que es la llamada que
+          más veces acaba en un desbloqueo manual, la puerta de atrás de toda
+          la MFA. Las cuatro rutas estaban servidas y sin pantalla. */}
+      <MiSegundoFactor />
       <Certificados filas={certificados} />
       <Segregacion datos={sod} />
       {puede(sesion, "user:read") ? <Explicador /> : null}
     </div>
+  );
+}
+
+/**
+ * Lo que le falta a QUIEN mira, no al conjunto.
+ *
+ * Un panel de adopción dice «78 %» y el trabajo que genera es hablar con los
+ * que faltan. Esto contesta lo otro: con qué he entrado hoy, qué me falta para
+ * tener el segundo factor en condiciones, qué operaciones me van a pedir
+ * verificarme otra vez y qué camino hay si cambio de móvil.
+ *
+ * Lo último importa más de lo que parece: sin factor viejo ni respaldo, lo
+ * único que demuestra quién es alguien es que otras personas respondan por
+ * ella, y el desbloqueo manual es la puerta de atrás de toda la MFA. Decirlo
+ * ANTES, en frío, es lo que evita descubrirlo en caliente.
+ */
+function MiSegundoFactor() {
+  const { t } = useTranslation();
+  const [nivel, setNivel] = useState<Nivel | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [sensibles, setSensibles] = useState<Operacion[] | null>(null);
+  const [cambio, setCambio] = useState<Cambio | null>(null);
+  const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    const opciones = { signal: control.signal };
+    // Cada una con su fallo: que no se pueda leer el plan no puede dejar sin
+    // ver con qué se ha entrado.
+    void llamar<Nivel>("/api/v1/factores/nivel", opciones)
+      .then((r) => setNivel(r.datos))
+      .catch(() => undefined);
+    void llamar<Plan>("/api/v1/factores/plan-de-inscripcion", opciones)
+      .then((r) => setPlan(r.datos))
+      .catch(() => undefined);
+    void llamar<{ operaciones: Operacion[] }>("/api/v1/factores/operaciones-sensibles", opciones)
+      .then((r) => setSensibles(r.datos.operaciones ?? []))
+      .catch(() => undefined);
+    void llamar<Cambio>("/api/v1/factores/cambio-de-dispositivo", opciones)
+      .then((r) => setCambio(r.datos))
+      .catch(() => undefined);
+    void llamar<Passkey[]>("/api/v1/auth/passkeys", opciones)
+      .then((r) => setPasskeys(Array.isArray(r.datos) ? r.datos : []))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  if (!nivel && !plan && !cambio) return null;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-semibold text-ink">{t("seguridad.mio.titulo")}</h2>
+
+      {plan ? (
+        <p className={`text-2xs ${plan.completo ? "text-ink-muted" : "text-warning"}`}>
+          {plan.porque}
+        </p>
+      ) : null}
+
+      {/* Los pasos que faltan, con el porqué de cada uno: «inscribe un
+          respaldo» sin decir que perder el móvil obliga a un desbloqueo
+          manual se lee como una recomendación opcional. */}
+      {plan?.pasos?.length ? (
+        <ul className="space-y-1">
+          {plan.pasos.map((paso) => (
+            <li key={paso.paso} className="rounded-lg bg-paper-sunk px-3 py-2">
+              <p className="text-2xs text-ink">{t(`seguridad.mio.${paso.paso}`, paso.paso)}</p>
+              <p className="text-3xs text-ink-faint">{paso.porque}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <p className="text-3xs text-ink-faint">
+        {t("seguridad.mio.entradaDeHoy", {
+          factores: (nivel?.factores ?? []).map((f) => f.factor).join(", ") || "—",
+        })}
+        {passkeys ? ` · ${t("seguridad.mio.passkeys", { cuantas: passkeys.length })}` : ""}
+      </p>
+
+      {/* Qué va a pedir verificarse otra vez. Saberlo antes evita la sorpresa
+          en mitad de una operación que no se puede dejar a medias. */}
+      {sensibles?.length ? (
+        <p className="text-3xs text-ink-faint">
+          {t("seguridad.mio.sensibles")}:{" "}
+          {sensibles.map((o) => o.descripcion).join(" · ")}
+        </p>
+      ) : null}
+
+      {cambio ? (
+        <p className="text-3xs text-ink-faint">{cambio.porque}</p>
+      ) : null}
+    </section>
   );
 }
 

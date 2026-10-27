@@ -1143,6 +1143,34 @@ def telemetria(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any]:
     }
 
 
+def instalado(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any] | None:
+    """Un módulo puesto en este tenant, o `None`.
+
+    Existe porque de un módulo cuelgan dos preguntas —si lo instalado es lo que
+    se publicó y qué parte se usa de verdad— y a un registro que no se abre no
+    se llega desde ninguna pantalla.
+    """
+    fila = (
+        db.execute(
+            select(ModuloInstalado).where(
+                ModuloInstalado.tenant_id == tenant_id, ModuloInstalado.clave == clave
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if fila is None:
+        return None
+    return {
+        "clave": fila.clave,
+        "nombre": fila.nombre,
+        "version": fila.version,
+        "autor": fila.autor,
+        "estado": fila.estado,
+        "instalado_at": fila.instalado_at.isoformat() if fila.instalado_at else None,
+    }
+
+
 def instalados(db: Session, tenant_id: UUID) -> list[dict[str, Any]]:
     filas = (
         db.execute(

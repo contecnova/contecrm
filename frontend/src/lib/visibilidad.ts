@@ -34,6 +34,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "sp": true
     },
     {
+      "r": "/api/v1/ciclo-vida/perfiles",
+      "p": "tenant:read"
+    },
+    {
       "r": "/api/v1/calendarios",
       "p": "tenant:read",
       "o": "calendario_laboral"
@@ -172,6 +176,11 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "metadata:read"
     },
     {
+      "r": "/api/v1/metadata/modulos",
+      "p": "metadata:read",
+      "o": "modulo"
+    },
+    {
       "r": "/api/v1/entornos",
       "p": "metadata:read",
       "o": "entorno"
@@ -203,6 +212,11 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/claves-api"
+    },
+    {
+      "r": "/api/v1/notificaciones/preferencias",
+      "p": "user:read",
+      "o": "notificacion"
     },
     {
       "r": "/api/v1/sharing-rules",
@@ -690,6 +704,11 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/puntuacion/modelos"
+    },
+    {
+      "r": "/api/v1/activos-marketing/aprobacion",
+      "p": "marketing:read",
+      "o": "activo_marketing"
     },
     {
       "r": "/api/v1/activos-marketing",

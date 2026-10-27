@@ -1235,6 +1235,31 @@ def listar_modulos(db: DbDep, principal: AutenticadoDep) -> Any:
 
 
 @router.get(
+    "/modulos/{clave}",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Un módulo instalado en este tenant",
+    description=(
+        "Existe porque de un módulo cuelgan **si lo instalado es lo que se "
+        "publicó** y **qué parte se usa de verdad**, y a un registro que no se "
+        "abre no se llega desde ninguna pantalla: esas dos sólo se alcanzaban "
+        "sabiéndose la clave de memoria."
+    ),
+)
+def ver_modulo(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.errors import NoEncontrado
+
+    from services.metadata import modulos
+
+    fila = modulos.instalado(db, principal.tenant_id, clave)
+    if fila is None:
+        raise NoEncontrado(
+            f"El módulo «{clave}» no está instalado en este tenant",
+            error_code="modulo.no_instalado",
+        )
+    return fila
+
+
+@router.get(
     "/modulos/catalogo",
     dependencies=[Depends(exige_permiso("metadata:read"))],
     summary="Módulos disponibles para instalar",

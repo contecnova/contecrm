@@ -108,7 +108,14 @@ FRONT = RAIZ / "frontend/src"
 #                            remitente de cada clase de correo, qué se puede
 #                            explotar del tenant, la clave de cifrado propia y
 #                            la revisión de activos.
-TOPE_SIN_PUERTA = 76
+#   27-10-2026   60 de 708  el panel «tu segundo factor» en Seguridad —con qué
+#                            has entrado, qué te falta, qué te van a pedir
+#                            reverificar y qué pasa si cambias de móvil, que es
+#                            la llamada que acaba en desbloqueo manual—, y
+#                            cuatro pestañas: módulos instalados, avisos y
+#                            preferencias, perfiles de industria y aprobaciones
+#                            de activos.
+TOPE_SIN_PUERTA = 60
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
