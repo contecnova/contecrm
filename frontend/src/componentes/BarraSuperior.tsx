@@ -21,6 +21,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AvisoDeChat } from "@/componentes/AvisoDeChat";
 import { Icono } from "@/componentes/Icono";
 import { Notificaciones } from "@/componentes/Notificaciones";
+import { llamar, mirarTenant, tenantMirado } from "@/lib/api";
 import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
 import { MODULOS } from "@/lib/modulos";
@@ -194,6 +195,13 @@ export function BarraSuperior({
       >
         <Icono nombre="search" />
       </button>
+
+      {/* De quién son los datos que se están viendo. Sólo sale a quien opera
+          la plataforma, que es el único que puede mirar otro cliente, y sale
+          SIEMPRE que hay uno elegido: una consola que enseña datos de un
+          cliente sin decir cuál es cómo se contesta un correo mirando la ficha
+          de otro. */}
+      {sesion?.es_admin_plataforma ? <QueCliente sesion={sesion} /> : null}
 
       <div className="flex shrink-0 items-center gap-1">
         {/* Dar de alta, siempre a la vista. Sin esto, la única forma de crear
@@ -371,4 +379,72 @@ export function derivarMigas(camino: string, t: (clave: string) => string): Miga
   // pero es honesto: una miga vacía diría que no estás en ningún sitio.
   const ultimo = partes[partes.length - 1] ?? camino;
   return [raiz, { rotulo: entrada ? t(entrada.clave) : ultimo }];
+}
+
+
+/**
+ * El selector de cliente, para quien opera la plataforma.
+ *
+ * Hasta el 27-10-2026 no hacía falta porque las pantallas de negocio enseñaban
+ * **todos los clientes a la vez**, sin decirlo: 97 de cada 100 cuentas eran de
+ * otro. Ahora se ve uno cada vez y se sabe cuál, que es lo que permite trabajar
+ * sin contestarle a un cliente mirando la ficha de otro.
+ *
+ * Cuando se está mirando a otro, el selector va **en color de aviso**: es un
+ * estado del que hay que acordarse de salir, y un desplegable gris más en una
+ * barra llena no se recuerda.
+ */
+function QueCliente({ sesion }: { sesion: Sesion }) {
+  const { t } = useTranslation();
+  const [tenants, setTenants] = useState<{ id: string; nombre: string }[] | null>(null);
+  const [elegido, setElegido] = useState(() => tenantMirado());
+
+  useEffect(() => {
+    const control = new AbortController();
+    // La lista de clientes es de plataforma, así que se pide con lo que ya
+    // concede el propio permiso. Si no se puede, el selector no sale: ofrecer
+    // un desplegable vacío es ofrecer algo que no hace nada.
+    void llamar<{ items: { id: string; nombre: string; slug?: string }[] }>(
+      "/api/v1/tenants?limite=200",
+      { signal: control.signal },
+    )
+      .then((r) => setTenants((r.datos.items ?? []).map((x) => ({ id: x.id, nombre: x.nombre }))))
+      .catch(() => setTenants([]));
+    return () => control.abort();
+  }, []);
+
+  if (!tenants?.length) return null;
+
+  function cambiar(id: string) {
+    mirarTenant(id);
+    setElegido(id);
+    // Se recarga a propósito: media pantalla con los datos de un cliente y la
+    // otra media con los del anterior es peor que esperar un segundo.
+    window.location.reload();
+  }
+
+  const mirandoAOtro = Boolean(elegido) && elegido !== sesion.tenant_id;
+
+  return (
+    <label
+      className={`ml-auto hidden shrink-0 items-center gap-2 rounded-full px-3 py-1 text-2xs md:flex ${
+        mirandoAOtro ? "bg-warning/15 text-warning" : "text-ink-muted"
+      }`}
+    >
+      <span className="sr-only">{t("nav.queCliente")}</span>
+      <Icono nombre={mirandoAOtro ? "visibility" : "domain"} tamano="sm" />
+      <select
+        value={elegido || sesion.tenant_id || ""}
+        onChange={(e) => cambiar(e.target.value)}
+        className="bg-transparent text-2xs outline-none"
+        aria-label={t("nav.queCliente")}
+      >
+        {tenants.map((x) => (
+          <option key={x.id} value={x.id}>
+            {x.nombre}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }

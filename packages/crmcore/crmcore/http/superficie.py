@@ -151,16 +151,14 @@ def _es_de_plataforma(ruta: Any) -> bool:
 
     `es_admin_plataforma` no es un permiso: un administrador de empresa tiene
     `tenant:read` y aun así recibe 403. Por eso no basta con mirar permisos.
+
+    La detección vive en `deps` y aquí sólo se usa: la sesión la necesita para
+    decidir si una petición puede mirar más de un tenant, y dos copias de esto
+    dejarían de coincidir el día que alguien cambie una.
     """
-    dependant = getattr(ruta, "dependant", None)
-    for dependencia in getattr(dependant, "dependencies", []) or []:
-        if getattr(dependencia.call, "__name__", "") == "exige_plataforma":
-            return True
-        # `PlataformaDep` llega como sub-dependencia del propio parámetro.
-        for hija in getattr(dependencia, "dependencies", []) or []:
-            if getattr(hija.call, "__name__", "") == "exige_plataforma":
-                return True
-    return False
+    from crmcore.http.deps import ruta_de_plataforma
+
+    return ruta_de_plataforma(ruta)
 
 
 def _rutas_planas(app: FastAPI) -> list[tuple[str, Any]]:

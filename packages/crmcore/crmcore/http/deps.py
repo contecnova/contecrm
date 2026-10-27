@@ -39,6 +39,11 @@ logger = get_logger(__name__)
 
 # Cabeceras con las que el gateway propaga la identidad ya verificada.
 H_TENANT = "x-crm-tenant"
+# Qué tenant mira esta petición, cuando quien la hace opera la plataforma y ha
+# elegido uno. No es una identidad: es una elección de la pantalla, y por eso
+# **no viaja firmada** ni concede nada — quien no es de plataforma la manda y
+# no pasa nada, porque sólo se mira si `es_admin_plataforma`.
+H_TENANT_MIRADO = "x-crm-tenant-mirado"
 H_USER = "x-crm-user"
 H_PERMISOS = "x-crm-permisos"
 # Los roles viajan ADEMÁS de los permisos, y no son redundantes: hay decisiones
@@ -432,6 +437,76 @@ def exige_plataforma(principal: AutenticadoDep) -> Principal:
 PlataformaDep = Annotated[Principal, Depends(exige_plataforma)]
 
 
+def ruta_de_plataforma(ruta: Any) -> bool:
+    """¿Esta operación es de las que cruzan tenants?
+
+    Se lee de sus dependencias —si exige `exige_plataforma`— y no de una lista,
+    por lo mismo que lo hace la superficie: un inventario aparte y la realidad
+    dejan de coincidir el día que alguien cambia uno y no el otro.
+
+    Vive aquí y no en `superficie.py` porque lo necesitan los dos: aquélla para
+    no enseñar en el menú lo que no es de este administrador, y la sesión para
+    decidir si esta petición puede mirar más de un tenant.
+    """
+    dependant = getattr(ruta, "dependant", None)
+    for dependencia in getattr(dependant, "dependencies", []) or []:
+        if getattr(dependencia.call, "__name__", "") == "exige_plataforma":
+            return True
+        for hija in getattr(dependencia, "dependencies", []) or []:
+            if getattr(hija.call, "__name__", "") == "exige_plataforma":
+                return True
+    return False
+
+
+def _cruza_tenants(request: Request | None, principal: Principal) -> bool:
+    """Si ESTA petición puede mirar más de un tenant.
+
+    Antes era `principal.es_admin_plataforma` a secas, y eso convertía todas
+    las pantallas de negocio en una vista global: quien opera la plataforma
+    abría «Cuentas» y veía las de ocho clientes mezcladas, sin saberlo y sin
+    nada que lo dijera. Medido el 27-10-2026 contra la instalación local: 97 de
+    100 cuentas eran de otro cliente, 100 de 100 contactos, 100 de 100
+    oportunidades. Ninguna prueba lo cubría —la de aislamiento usa
+    `es_admin_plataforma=False` en todos sus casos—, y lo que lo destapó fue
+    que el sembrado pidiera las cuentas, le llegaran las de otro y el servidor
+    contestara, con razón, que esa cuenta no existe.
+
+    Ahora lo decide **la ruta**: las que declaran `exige_plataforma` —dar de
+    alta un tenant, el panel de aislamiento, la operación— cruzan; las demás,
+    no. Quien opera la plataforma sigue pudiendo mirar los datos de un cliente
+    concreto, pero eligiéndolo: para eso está la cabecera de abajo, y así en la
+    pantalla siempre se sabe de quién es lo que se está viendo.
+    """
+    if not principal.es_admin_plataforma or request is None:
+        return False
+    return ruta_de_plataforma(request.scope.get("route"))
+
+
+def tenant_mirado(request: Request | None, principal: Principal) -> Any:
+    """Qué tenant mira esta petición.
+
+    El suyo, salvo que quien opera la plataforma pida expresamente otro. Que
+    sea explícito es el punto: un administrador de plataforma que ve datos de
+    un cliente tiene que haber dicho cuál, y la pantalla tiene que poder
+    decirlo también.
+    """
+    if request is None or not principal.es_admin_plataforma:
+        return principal.tenant_id
+    pedido = (request.headers.get(H_TENANT_MIRADO) or "").strip()
+    if not pedido:
+        return principal.tenant_id
+    from uuid import UUID as _UUID
+
+    from crmcore.ids import sin_prefijo
+
+    try:
+        return _UUID(str(sin_prefijo(pedido)))
+    except (ValueError, TypeError):
+        # Un valor ilegible no se interpreta como «todos»: se cae al suyo. Lo
+        # contrario convierte una cabecera mal escrita en una vista global.
+        return principal.tenant_id
+
+
 # La sesión que comparte una petición compuesta, si la hay. Es un `ContextVar` y
 # no un atributo de la aplicación porque dos peticiones compuestas simultáneas
 # tienen que ver cada una la suya: un atributo global las mezclaría, y mezclarlas
@@ -452,7 +527,7 @@ def soltar_sesion(testigo: Any) -> None:
     _sesion_compartida.reset(testigo)
 
 
-def get_db(principal: PrincipalDep) -> Iterator[Session]:
+def get_db(request: Request, principal: PrincipalDep) -> Iterator[Session]:
     """Sesión de base de datos atada al tenant de la petición.
 
     Atarla aquí, y no en cada endpoint, es lo que hace que el aislamiento no
@@ -489,7 +564,7 @@ def get_db(principal: PrincipalDep) -> Iterator[Session]:
         yield compartida
         return
 
-    db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
+    db = nueva_sesion(tenant_mirado(request, principal), sistema=_cruza_tenants(request, principal))
     try:
         yield db
         db.commit()
@@ -503,7 +578,7 @@ def get_db(principal: PrincipalDep) -> Iterator[Session]:
 DbDep = Annotated[Session, Depends(get_db)]
 
 
-def get_uow(principal: PrincipalDep) -> Iterator[Any]:
+def get_uow(request: Request, principal: PrincipalDep) -> Iterator[Any]:
     """Unidad de trabajo: transacción más los eventos que produce.
 
     Se usa en las escrituras que emiten eventos de dominio, que son casi todas.
@@ -562,7 +637,7 @@ def get_uow(principal: PrincipalDep) -> Iterator[Any]:
         uow._volcar_eventos()
         return
 
-    db = nueva_sesion(principal.tenant_id, sistema=principal.es_admin_plataforma)
+    db = nueva_sesion(tenant_mirado(request, principal), sistema=_cruza_tenants(request, principal))
     uow = UnidadDeTrabajo(db=db, tenant_id=db.info.get("tenant_id"))
     try:
         yield uow

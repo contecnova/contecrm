@@ -77,6 +77,13 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
+**Si operas la plataforma, de quién son los datos que ves.** En la barra de
+arriba hay un selector de cliente. Ves **uno cada vez**, el tuyo salvo que
+elijas otro, y mientras miras a otro el selector se pone en ámbar para que no
+se te olvide. Hasta el 27-10-2026 no existía porque las listas enseñaban los
+clientes mezclados sin decirlo, que es como se acaba contestando a un cliente
+mirando la ficha de otro. Lo que elijas se olvida al cerrar la pestaña.
+
 **Buscar.** Se escribe en el mismo sitio: `⌘K` o `Ctrl+K`. Arriba salen las
 pantallas que casan con lo escrito y **debajo los registros**: cuentas,
 contactos, oportunidades, casos y documentos, con su nombre y lo que los

@@ -116,9 +116,48 @@ export async function subir<T = unknown>(
   return datos as T;
 }
 
+/**
+ * Qué cliente se está mirando, cuando quien mira opera la plataforma.
+ *
+ * Vive aquí y en `sessionStorage` por una razón: es una elección de la
+ * **pestaña del navegador**, no del usuario ni del servidor. Recargar la
+ * mantiene —si no, cada F5 devolvería a quien está revisando un cliente a su
+ * propio tenant a mitad de trabajo— y cerrarla la olvida, que es lo correcto
+ * para algo que da acceso a datos de otro.
+ *
+ * No concede nada por sí sola: el servidor sólo la mira si quien la manda es
+ * administrador de plataforma. Mandarla siendo otro no hace nada.
+ */
+const CLAVE_MIRADO = "crm.tenant_mirado";
+
+export function tenantMirado(): string {
+  try {
+    return sessionStorage.getItem(CLAVE_MIRADO) ?? "";
+  } catch {
+    // Ventana privada, almacenamiento bloqueado: se mira el propio tenant,
+    // que es lo seguro.
+    return "";
+  }
+}
+
+export function mirarTenant(id: string): void {
+  try {
+    if (id) sessionStorage.setItem(CLAVE_MIRADO, id);
+    else sessionStorage.removeItem(CLAVE_MIRADO);
+  } catch {
+    // Si no se puede guardar, no se finge que se ha cambiado.
+  }
+}
+
 export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {}): Promise<Respuesta<T>> {
   const metodo = (opciones.metodo ?? "GET").toUpperCase();
   const cabeceras: Record<string, string> = { Accept: "application/json" };
+
+  // El cliente que se está mirando, si hay uno elegido. Va en TODAS las
+  // llamadas: con ella sólo en algunas, media pantalla hablaría de un cliente
+  // y la otra media del propio, que es peor que no poder mirar.
+  const mirado = tenantMirado();
+  if (mirado) cabeceras["X-CRM-Tenant-Mirado"] = mirado;
 
   if (opciones.cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
   if (opciones.version) cabeceras["If-Match"] = opciones.version;

@@ -74,6 +74,7 @@ export default {
     caso: "Caso de soporte",
   },
   nav: {
+    queCliente: "Cliente que estás mirando",
     crear: "Crear",
     crearQue: "Qué quieres dar de alta",
     areaClientes: "Clientes",

@@ -545,3 +545,80 @@ def test_el_traceparent_del_que_llama_se_conserva_crm_00_02_04_07() -> None:
     assert devuelto, salida.headers
     # El tramo puede ser otro —es otro tramo—, pero la traza es la misma.
     assert devuelto.split("-")[1] == suyo.split("-")[1], devuelto
+
+
+# ── Quien opera la plataforma tampoco, salvo donde se dice ────────────────
+
+
+def test_un_admin_de_plataforma_no_ve_lo_de_otro_cliente_en_una_pantalla_normal() -> None:
+    """La sesión la decide la RUTA, no quién la pide.
+
+    Hasta el 27-10-2026 era `principal.es_admin_plataforma` a secas, y eso
+    convertía todas las pantallas de negocio en una vista global: quien opera
+    la plataforma abría «Cuentas» y veía las de ocho clientes mezcladas, sin
+    saberlo y sin nada en la pantalla que lo dijera. Medido contra la
+    instalación local: **97 de 100 cuentas eran de otro cliente**, 100 de 100
+    contactos, 100 de 100 oportunidades.
+
+    No lo cazaba nada: todos los casos de este fichero usan
+    `es_admin_plataforma=False`, que es justo el que no tenía el problema. Lo
+    destapó el sembrado, al pedir las cuentas, recibir las de otro cliente y
+    oír del servidor —con razón— que esa cuenta no existe.
+    """
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from crmcore.http.deps import _cruza_tenants, tenant_mirado
+
+    mio = uuid4()
+    operador = SimpleNamespace(es_admin_plataforma=True, tenant_id=mio)
+
+    class _Peticion:
+        def __init__(self, ruta: Any, cabeceras: dict[str, str] | None = None) -> None:
+            self.scope = {"route": ruta}
+            self.headers = cabeceras or {}
+
+    # Una ruta de negocio: no cruza, aunque quien la pida opere la plataforma.
+    de_negocio = SimpleNamespace(dependant=SimpleNamespace(dependencies=[]))
+    assert _cruza_tenants(_Peticion(de_negocio), operador) is False
+    assert tenant_mirado(_Peticion(de_negocio), operador) == mio
+
+    # Una que declara `exige_plataforma` —dar de alta un tenant, el panel de
+    # aislamiento— sí: es para lo que existe.
+    from crmcore.http.deps import exige_plataforma
+
+    de_plataforma = SimpleNamespace(
+        dependant=SimpleNamespace(
+            dependencies=[SimpleNamespace(call=exige_plataforma, dependencies=[])]
+        )
+    )
+    assert _cruza_tenants(_Peticion(de_plataforma), operador) is True
+
+
+def test_mirar_los_datos_de_un_cliente_hay_que_pedirlo_y_sólo_puede_la_plataforma() -> None:
+    """Y un valor ilegible NO se interpreta como «todos».
+
+    Lo contrario convertiría una cabecera mal escrita en una vista global, que
+    es exactamente el fallo del que se viene.
+    """
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from crmcore.http.deps import H_TENANT_MIRADO, tenant_mirado
+
+    mio, otro = uuid4(), uuid4()
+    operador = SimpleNamespace(es_admin_plataforma=True, tenant_id=mio)
+    de_empresa = SimpleNamespace(es_admin_plataforma=False, tenant_id=mio)
+
+    class _Peticion:
+        def __init__(self, valor: str) -> None:
+            self.scope = {"route": None}
+            self.headers = {H_TENANT_MIRADO: valor}
+
+    assert tenant_mirado(_Peticion(str(otro)), operador) == otro
+    # A quien no opera la plataforma la cabecera no le concede nada: mandarla
+    # no le mueve de su tenant.
+    assert tenant_mirado(_Peticion(str(otro)), de_empresa) == mio
+    # Y lo ilegible cae a lo suyo, no a todos.
+    assert tenant_mirado(_Peticion("no-es-un-uuid"), operador) == mio
+    assert tenant_mirado(_Peticion(""), operador) == mio

@@ -881,6 +881,36 @@ quedan **ocho** sin borrado, cada uno por un motivo:
 | Bloqueo legal | Se levanta, con quién y cuándo. Un bloqueo que se puede borrar no bloquea |
 | Interacción, predicción, salud de cuenta | Son lo ocurrido o un cálculo derivado, no algo que alguien mantenga |
 
+### 3.5.1 Quien opera la plataforma, y de quién son los datos que ve
+
+La sesión de base de datos se ata **al tenant de la petición**, y eso es lo que
+hace que el aislamiento no dependa de que nadie se despiste. Hasta el
+27-10-2026 había una excepción que no estaba escrita en ninguna parte: para una
+cuenta con `es_admin_plataforma` la sesión se abría con `sistema=True` —sin
+filtro— en **todas** las peticiones, no sólo en las de la consola de
+plataforma. El efecto medido sobre la instalación local: abriendo «Cuentas»,
+97 de 100 filas eran de otro cliente; en contactos y oportunidades, 100 de 100,
+de hasta ocho clientes mezclados y sin nada que lo dijera.
+
+No lo cazaba ninguna prueba: las de aislamiento usan `es_admin_plataforma=False`
+en todos sus casos, que es justo el que no tenía el problema. Lo destapó el
+sembrado, al pedir las cuentas, recibir las de otro cliente y oír del servidor
+—con razón— que esa cuenta no existe.
+
+**Ahora lo decide la ruta, no quién la pide.** Cruzan tenants las operaciones
+que declaran `exige_plataforma` —dar de alta un tenant, el panel de
+aislamiento, la operación—, que es para lo que existen. Las de negocio, no.
+
+**Y mirar los datos de un cliente se pide.** La cabecera
+`X-CRM-Tenant-Mirado` dice cuál, y el servidor sólo la atiende si quien la
+manda opera la plataforma: mandarla siendo otro no concede nada. Un valor
+ilegible **no** se interpreta como «todos» — cae al tenant propio, porque lo
+contrario convertiría una cabecera mal escrita en la vista global de la que se
+viene. En la interfaz es un selector en la barra, con la elección guardada en
+la pestaña del navegador: recargar la mantiene y cerrarla la olvida, que es lo
+correcto para algo que da acceso a datos de otro. Mientras se mira a otro, el
+selector va en color de aviso: es un estado del que hay que acordarse de salir.
+
 ### 3.6 El portal, y la sesión de quien entra desde fuera
 
 El portal se diseñó **headless**: la API sirve datos para que cada cliente monte
