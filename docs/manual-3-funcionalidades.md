@@ -14381,3 +14381,37 @@ que todavía no lo pinta.
 ficha con el valor, lo esperado, la desviación y la explicación, que es lo que
 hace falta para contestar si era real sin contestar a ojo — y una respuesta dada
 a ojo no mide el detector: mide a quien la dio.
+
+## Qué capacidad merece pantalla, y cuál no (`CRM-07.04.05.02`)
+
+El recuento de «capacidades que ninguna pantalla enseña» mezclaba dos cosas muy
+distintas: lo que falta por construir y lo que **no se construye nunca porque no
+es una pantalla**. En la misma lista estaban «el diseñador visual de
+formularios» y «gRPC para comunicación interna», y eso hace que el número no
+sirva para decidir nada.
+
+La regla es estrecha a propósito: una capacidad sale del recuento **sólo si no
+hay nada que una persona pueda ver ni hacer** sobre ella — es un protocolo, una
+garantía del servidor o una propiedad de la arquitectura. Si un administrador
+podría querer ver su estado, es pantalla y se queda dentro. Por eso siguen
+contando el *sandbox* de API, el portal de desarrollador, la lista blanca de IP
+o el depurador de automatizaciones: todos tienen algo que mirar.
+
+Las veintinueve primeras marcadas así son las de siempre: GraphQL y gRPC,
+idempotencia, ETag, paginación por cursor, Problem Details, la firma HMAC de los
+webhooks, la entrega al menos una vez, el CDC hacia el lago del cliente, la
+ordenación por agregado, el patrón BFF, los SDK, mTLS, el *service mesh*, el
+*outbox* transaccional y las garantías del motor de procesos.
+
+**Marcar es la salida barata, así que cuesta.** El motivo va escrito capacidad a
+capacidad en el catálogo, **se publica en la hoja de estado** —cualquiera lo
+lee— y hay una comprobación que exige que sea una frase y que no repita el
+enunciado de la capacidad, que sería no haber pensado nada. Sin eso, el camino
+rápido para bajar el número sería marcarlo todo.
+
+Y la consola de administración declara lo que pinta sólo ella: las claves de
+cifrado del cliente, los *flags*, las plantillas, los calendarios, las monedas,
+las reglas de compartición y los buzones. Aparecen porque el servidor etiqueta
+esas operaciones como de administración y la consola se construye de ahí; si una
+desapareciera del servidor, dejaría de pintarse y el recuento por capacidad lo
+diría.

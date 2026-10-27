@@ -534,6 +534,8 @@
     // cómo sería una marca de confianza, que es justo lo que no hace falta.
     const visto = c.visto
       ? `<div class="visto">visto funcionar · ${esc(c.visto)}</div>` : "";
+    const sinPantalla = c.sin_pantalla_porque
+      ? `<div class="visto">sin pantalla, y con motivo · ${esc(c.sin_pantalla_porque)}</div>` : "";
     return `<article class="cap">
       <div class="cap-id">${esc(c.id)}</div>
       <p class="cap-t">${esc(c.t)}</p>
@@ -544,7 +546,7 @@
         <span class="crit" style="border-left-color:transparent;padding-left:0">F${esc(c.fase)}</span>
       </div>
       ${medias}
-      ${visto}
+      ${visto}${sinPantalla}
       ${reutiliza}
     </article>`;
   }

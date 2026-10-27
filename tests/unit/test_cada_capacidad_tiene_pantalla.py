@@ -95,7 +95,25 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            transcripciones, variantes, voz y sugerencias de
 #                            caso son extremos de analisis, no listados, y su
 #                            sitio es dentro de la actividad o del caso
-TOPE_SIN_PANTALLA = 494
+#   27-10-2026  458 de 753  dos cosas a la vez, y conviene no confundirlas.
+#                            SIETE son pantalla de verdad: la consola de
+#                            administracion declara lo que pinta y solo ella
+#                            —claves de cifrado del cliente, flags, plantillas,
+#                            calendarios, monedas, reglas de comparticion y
+#                            buzones—, que se ve porque el servidor etiqueta
+#                            esas operaciones como de administracion y la
+#                            consola se construye de ahi.
+#                            VEINTINUEVE salen del recuento porque su
+#                            entregable NO es una pantalla: GraphQL, gRPC,
+#                            idempotencia, ETag, paginacion por cursor,
+#                            Problem Details, firma HMAC, entrega al menos una
+#                            vez, CDC, ordenacion por agregado, BFF, SDK,
+#                            mTLS, service mesh, outbox y las garantias del
+#                            motor. Cada una con su motivo escrito en el
+#                            catalogo, y hay una prueba que exige que el
+#                            motivo sea una frase y no repita el enunciado:
+#                            marcar es la salida barata y tiene que costar
+TOPE_SIN_PANTALLA = 458
 
 
 def _es_pantalla(p: Path) -> bool:
@@ -125,7 +143,29 @@ def _capacidades_hechas() -> tuple[dict, ...]:
         # Las de `docs` quedan fuera: su entregable ES el documento, y una
         # pantalla que «enseñe el manual» ya existe —la ayuda en producto—,
         # así que exigirles declaración sería contar dos veces lo mismo.
-        if cap.get("estado") == "hecho" and cap.get("svc") != "docs"
+        #
+        # Y las que llevan `sin_pantalla_porque` en el catálogo: su entregable
+        # no es una pantalla. La regla es estrecha a propósito —**no hay nada
+        # que una persona pueda ver ni hacer**: un protocolo, una garantía del
+        # servidor, una propiedad de la arquitectura— y el motivo va escrito
+        # capacidad a capacidad, en el catálogo, que es donde se revisa. Si un
+        # administrador podría querer ver su estado, es pantalla y se queda.
+        if cap.get("estado") == "hecho"
+        and cap.get("svc") != "docs"
+        and not cap.get("sin_pantalla_porque")
+    )
+
+
+@functools.cache
+def _excluidas() -> tuple[dict, ...]:
+    catalogo = yaml.safe_load((RAIZ / "docs/catalogo/catalogo.yaml").read_text(encoding="utf-8"))
+    return tuple(
+        cap
+        for modulo in catalogo["modulos"]
+        for seccion in modulo["secciones"]
+        for funcion in seccion["funciones"]
+        for cap in funcion["capacidades"]
+        if cap.get("sin_pantalla_porque")
     )
 
 
@@ -133,6 +173,26 @@ def _capacidades_hechas() -> tuple[dict, ...]:
 def _sin_pantalla() -> tuple[str, ...]:
     vistas = _ids_del_front()
     return tuple(c["id"] for c in _capacidades_hechas() if c["id"] not in vistas)
+
+
+def test_sacar_una_capacidad_del_recuento_cuesta_un_motivo() -> None:
+    """La salida de emergencia, cerrada con llave.
+
+    Marcar una capacidad como «no es pantalla» baja el tope sin construir nada,
+    así que tiene que costar: el motivo va escrito, es largo —una frase, no una
+    palabra— y **no puede ser el propio enunciado**, que sería no haber pensado
+    nada. Sin esto, el camino barato para bajar el número es marcarlo todo.
+    """
+    flojos: list[str] = []
+    for cap in _excluidas():
+        motivo = str(cap.get("sin_pantalla_porque", ""))
+        if len(motivo) < 60:
+            flojos.append(f"{cap['id']}: el motivo tiene {len(motivo)} caracteres")
+        elif motivo.strip().lower() in str(cap.get("t", "")).strip().lower():
+            flojos.append(f"{cap['id']}: el motivo repite el enunciado")
+    assert not flojos, "Motivos que no explican nada:\n  " + "\n  ".join(flojos)
+    # Y que esto no esté midiendo el vacío.
+    assert len(_excluidas()) >= 20, len(_excluidas())
 
 
 def test_el_recorrido_mira_de_verdad() -> None:

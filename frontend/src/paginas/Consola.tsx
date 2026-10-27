@@ -2,6 +2,20 @@
  * La consola de administración, construida desde el contrato
  * (CRM-07.01.01.01, CRM-07.04.03.26).
  *
+ * Y por eso **enseña todo lo que el servidor marca como administración**, sin
+ * que nadie escriba una pantalla por área. Estas son las capacidades de
+ * producto que se ven aquí y en ningún otro sitio, cada una con el área que la
+ * pinta: `claves-cifrado` (CRM-00.01.04.09, la clave del cliente con su
+ * rotación y su revocación), `flags` (CRM-00.01.04.04), `plantillas`
+ * (CRM-07.01.01.04), `calendarios` (CRM-07.01.01.05), `monedas`
+ * (CRM-07.01.01.06), `sharing-rules` (CRM-00.05.02.04) y `buzones`
+ * (CRM-06.01.01.01, la sincronización de correo y calendario del puesto).
+ *
+ * La lista no se mantiene a mano en ninguna otra parte: el área aparece porque
+ * el servidor etiqueta sus operaciones como de administración, así que si una
+ * de estas desapareciera del servidor, dejaría de pintarse — y el gate de
+ * cobertura por capacidad lo diría.
+ *
  * El menú, las tablas y las acciones salen de `GET /api/v1/superficie`. Eso es
  * lo que hace **comprobable** —y no solo declarado— que la consola está
  * replicada al 100 % por API: aquí no hay forma de pintar una acción que no sea

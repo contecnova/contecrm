@@ -153,6 +153,11 @@ def _datos() -> dict:
                             # El hueco entre «hecho» y «visto» es el mapa de lo
                             # que nadie ha comprobado nunca.
                             "visto": cap.get("visto", ""),
+                            # Y por qué una capacidad no tiene pantalla, cuando
+                            # su entregable no es una. Se publica a propósito:
+                            # sacar algo del recuento es la salida barata, y lo
+                            # que la encarece es que el motivo se lea.
+                            "sin_pantalla_porque": cap.get("sin_pantalla_porque", ""),
                         }
                     )
 
