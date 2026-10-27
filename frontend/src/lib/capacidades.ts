@@ -199,6 +199,18 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // producto, las metodologías de venta, la cola priorizada del comercial y
   // la papelera.
   "oportunidades": [
+    // La probabilidad de la etapa y la puesta a mano, las dos a la vez: saber
+    // cuál manda es lo que separa una previsión creída de una inventada.
+    // `probabilidad_manual` estaba en la tabla y no salía por la API.
+    "CRM-03.01.01.04",
+    // Por qué se perdió, con el motivo normalizado —que agrupa—, la nota
+    // —que explica— y contra quién: sin el competidor, el informe dice
+    // «precio» cincuenta veces y no dice contra quién. Las dos últimas
+    // tampoco salían.
+    "CRM-03.01.01.09",
+    // Y que una oportunidad cerrada se bloquea, con el recuento de cuántas
+    // veces se ha reabierto.
+    "CRM-03.01.01.14",
     "CRM-03.01.01.01",
     "CRM-03.01.01.02",
     "CRM-03.01.01.03",
@@ -215,6 +227,14 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   // normalizados, la trazabilidad de origen con sus campañas y toques, y las
   // cadencias con sus plantillas de correo.
   "leads": [
+    // El motivo de descarte normalizado con su nota y su fecha de reciclaje:
+    // el motivo agrupa —«precio»— y la nota dice cuál era el precio del otro.
+    // La nota estaba en la tabla y no salía por la API.
+    "CRM-01.01.03.05",
+    // Y el SLA de primera respuesta: cuándo vencía, cuándo se contestó de
+    // verdad y si se incumplió. Un lead que lleva tres semanas sin tocar no
+    // se distingue de uno de ayer si esto no se ve.
+    "CRM-01.01.03.07",
     "CRM-01.01.03.01",
     "CRM-01.01.03.02",
     "CRM-01.01.03.04",

@@ -48,9 +48,32 @@ class LeadOut(BaseModel):
     primera_respuesta_at: datetime | None = None
     sla_incumplido: bool
     motivo_descarte: str | None = None
+    # El motivo normalizado dice «precio»; la nota dice cuál era el precio del
+    # otro. Sin ella, el informe de descartes agrupa bien y no explica nada.
+    nota_descarte: str | None = None
     reciclar_at: date | None = None
+    # De dónde vino y por dónde ha pasado: la campaña, los parámetros UTM, el
+    # país y la web. Estaban en la tabla y no salían, así que la atribución
+    # —de qué campaña salió este lead— no se podía ver en ninguna pantalla,
+    # que es justo lo que se pregunta cuando hay que repartir presupuesto.
+    campana_id: UUID | None = None
+    utm: dict[str, Any] = {}
+    pais: str | None = None
+    web: str | None = None
+    # Y el pulso: cuándo se le asignó, cuándo fue el primer toque y el último.
+    # Un lead sin tocar desde hace tres semanas no se distingue de uno de ayer
+    # si no se ve esto.
+    asignado_at: datetime | None = None
+    # El primer y el último toque son objetos —canal, cuándo y con qué—, no
+    # fechas: el nombre engaña y el primer intento los declaró como `datetime`,
+    # lo que convirtió el alta de un lead en un 500. Lo cazó el barrido de
+    # escrituras con el cuerpo vacío, que es para lo que está.
+    primer_toque: dict[str, Any] = {}
+    ultimo_toque: dict[str, Any] = {}
+    contacto_id: UUID | None = None
     cuenta_id: UUID | None = None
     oportunidad_id: UUID | None = None
+    convertido_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -196,8 +219,24 @@ class OportunidadOut(BaseModel):
     fecha_cierre_real: date | None = None
     estado: str
     motivo_perdida: str | None = None
+    # El motivo normalizado agrupa; la nota explica. Y quién ganó, que es la
+    # otra mitad de «por qué se perdió»: sin el competidor, el informe de
+    # pérdidas dice «precio» cincuenta veces y no dice contra quién.
+    nota_perdida: str | None = None
+    competidor_ganador: str | None = None
     bloqueada: bool
     reaperturas: int
+    # La probabilidad puesta a mano, distinta de la de la etapa: saber cuál de
+    # las dos manda es lo que separa una previsión creída de una inventada.
+    probabilidad_manual: int | None = None
+    # La categoría de previsión —comprometida, probable, descartada— y desde
+    # cuándo lleva en esta etapa, que es la señal de que algo está parado.
+    categoria_forecast: str | None = None
+    etapa_desde: datetime | None = None
+    ultima_actividad_at: datetime | None = None
+    # El importe en la moneda de la casa, para poder sumar un pipeline con
+    # oportunidades en cuatro monedas sin que cada pantalla invente el cambio.
+    importe_funcional: Decimal | None = None
     owner_id: UUID | None = None
     lead_id: UUID | None = None
     campos: dict[str, Any] = {}

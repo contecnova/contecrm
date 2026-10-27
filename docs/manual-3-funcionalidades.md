@@ -14435,3 +14435,31 @@ Es el mismo patrón que la tabla de recursos del paquete o la acción sin ficha:
 las dos mitades existen y nadie las junta. La diferencia aquí es que el síntoma
 es invisible — la pantalla sale bien, sólo que incompleta, y nadie echa de menos
 un campo que nunca ha visto.
+
+## Y veintinueve columnas más, en actividades, leads y oportunidades
+
+Medido el mismo día sobre los trece servicios: **136 columnas en 32 esquemas de
+lectura** que existen en la tabla y no salen por la API. No todas son un fallo
+—`hash_contrasena`, `mfa_secreto` y el secreto de un webhook **no deben salir
+nunca**—, pero las de los objetos que se trabajan a diario sí:
+
+- **Una actividad llegaba a la pantalla sin hora.** `inicio_at` y `fin_at` no
+  salían, así que de una visita del martes a las diez sólo se veía que vencía
+  el martes, que es otra cosa. Con ellas van el recordatorio —cuándo avisa,
+  cuántos avisos van y cuántos caben— y las reprogramaciones, que son la señal
+  de que algo se está evitando.
+- **Un lead sin su procedencia ni su pulso.** No salían la campaña, los
+  parámetros UTM, el país ni la web, así que de qué campaña salió un lead no se
+  podía ver en ninguna pantalla — justo lo que se pregunta al repartir
+  presupuesto. Tampoco cuándo se asignó ni cuándo fue el primer y el último
+  toque: sin eso, un lead de hace tres semanas sin tocar no se distingue de uno
+  de ayer. Y faltaba la nota del descarte: el motivo normalizado dice «precio»,
+  la nota dice cuál era el precio del otro.
+- **Una oportunidad sin contra quién se perdió.** No salían el competidor que
+  ganó ni la nota de pérdida, así que el informe de pérdidas decía «precio»
+  cincuenta veces sin decir contra quién. Tampoco la probabilidad puesta a mano
+  —saber si la cifra es la de la etapa o la que puso alguien es lo que separa
+  una previsión creída de una inventada—, ni la categoría de previsión, ni
+  desde cuándo lleva parada en su etapa, ni el importe en la moneda de la casa,
+  que es lo que permite sumar un pipeline con cuatro monedas sin que cada
+  pantalla invente el cambio.

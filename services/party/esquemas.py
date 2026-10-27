@@ -270,6 +270,26 @@ class ActividadOut(BaseModel):
     prioridad: str
     asignada_a: UUID | None = None
     vence_at: datetime | None = None
+    # Cuándo empieza y cuándo acaba. Estaban en la tabla y no salían, así que
+    # una reunión llegaba a la pantalla sin hora: lo único que se veía era su
+    # vencimiento, que es otra cosa — una visita del martes a las diez no es
+    # una tarea que vence el martes.
+    inicio_at: datetime | None = None
+    fin_at: datetime | None = None
+    # El recordatorio y lo que lleva recorrido: cuándo avisa, cuántos avisos
+    # van y cuántos caben. Sin esto, «me avisará» es una promesa que nadie
+    # puede comprobar hasta que no pasa.
+    recordar_at: datetime | None = None
+    recordatorio_enviado: bool = False
+    avisos_enviados: int = 0
+    max_avisos: int | None = None
+    repetir_cada_min: int | None = None
+    # Y las reprogramaciones, que son la señal de que algo se está evitando:
+    # cuántas van y cuántas admite.
+    veces_reprogramada: int = 0
+    max_reprogramaciones: int | None = None
+    reprogramar_cada_dias: int | None = None
+    delegada_por: UUID | None = None
     completada_at: datetime | None = None
     resultado: str | None = None
     detalles: dict[str, Any] = {}

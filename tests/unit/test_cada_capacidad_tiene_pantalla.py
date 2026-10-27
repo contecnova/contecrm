@@ -128,7 +128,17 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            telefono, canales y correo secundario—, asi que
 #                            la pantalla no podia ensenarlas por mucho que
 #                            existieran
-TOPE_SIN_PANTALLA = 431
+#   27-10-2026  426 de 753  el mismo hallazgo de las columnas que no salen,
+#                            llevado a actividades, leads y oportunidades: 29
+#                            columnas mas que existian en la tabla y el
+#                            esquema de lectura no devolvia. Una reunion
+#                            llegaba a la pantalla SIN HORA —`inicio_at` y
+#                            `fin_at` no salian—, un lead sin su campana ni
+#                            sus UTM ni su primer toque, y una oportunidad sin
+#                            el competidor que la gano, sin la nota de perdida
+#                            y sin la probabilidad puesta a mano. Cinco
+#                            capacidades declaradas con eso arreglado
+TOPE_SIN_PANTALLA = 426
 
 
 def _es_pantalla(p: Path) -> bool:

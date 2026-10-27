@@ -620,9 +620,9 @@ modulos:
               - {id: CRM-01.01.03.02, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/public_forms.py + app/services/public_forms_service.py", t: "Captura multicanal: formularios, web, importación, API, eventos, listas, chat"}
               - {id: CRM-01.01.03.03, c: C, fase: 1, svc: party, estado: hecho, t: "Deduplicación en el momento de la captura contra leads y contactos existentes"}
               - {id: CRM-01.01.03.04, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/service_desk/agent_group_service.py (enrutado por carga y skill)", t: "Enrutamiento y asignación por reglas (territorio, producto, carga, skill, round-robin)"}
-              - {id: CRM-01.01.03.05, c: C, fase: 1, svc: sales, estado: hecho, t: "Estados y motivos de descarte normalizados con reciclaje posterior"}
+              - {id: CRM-01.01.03.05, c: C, fase: 1, svc: sales, estado: hecho, t: "Estados y motivos de descarte normalizados con reciclaje posterior", visto: "2026-10-27 Motivo de descarte normalizado con su nota libre y su fecha de reciclaje. La nota no salia por la API: el motivo agrupa y la nota es la que dice cual era el precio del otro"}
               - {id: CRM-01.01.03.06, c: C, fase: 1, svc: sales, estado: hecho, t: "Trazabilidad de origen: campaña, canal, medio, término, contenido, first/last touch"}
-              - {id: CRM-01.01.03.07, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py", t: "SLA de primera respuesta con alertas y escalado"}
+              - {id: CRM-01.01.03.07, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/sla_service.py", t: "SLA de primera respuesta con alertas y escalado", visto: "2026-10-27 El SLA de primera respuesta se ve en el propio lead: cuando vencia, cuando se contesto y si se incumplio. Y ahora tambien cuando se asigno y cuando fue el primer y el ultimo toque, que estaban en la tabla y no salian: sin eso, un lead de hace tres semanas sin tocar no se distingue de uno de ayer"}
           - id: CRM-01.01.04
             nombre: Calidad y gobierno del dato
             capacidades:
@@ -652,7 +652,7 @@ modulos:
           - id: CRM-01.02.01
             nombre: Gestión de actividades
             capacidades:
-              - {id: CRM-01.02.01.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/activity.py + app/services/activity_service.py", t: "Tareas, eventos, llamadas, notas y visitas con modelo común de actividad"}
+              - {id: CRM-01.02.01.01, c: C, fase: 1, svc: party, estado: hecho, reutiliza: "contecflow-PSA:app/models/activity.py + app/services/activity_service.py", t: "Tareas, eventos, llamadas, notas y visitas con modelo común de actividad", visto: "2026-10-27 La actividad llegaba a la pantalla SIN HORA: `inicio_at` y `fin_at` estaban en la tabla y el esquema de lectura no los devolvia, asi que una visita del martes a las diez solo se veia como una tarea que vence el martes, que es otra cosa. Expuestos, con el recordatorio y las reprogramaciones"}
               - {id: CRM-01.02.01.02, c: C, fase: 1, svc: party, estado: hecho, t: "Asignación, delegación, recordatorios y seguimiento de vencidas"}
               - {id: CRM-01.02.01.03, c: C, fase: 1, svc: party, estado: hecho, t: "Relación polimórfica de la actividad con cualquier objeto"}
               - {id: CRM-01.02.01.04, c: A, fase: 2, svc: integration, estado: hecho, reutiliza: "contecmind:app/services/microsoft_drive.py + teams_* (M365); contecflow-PSA:app/services/m365_service.py", t: "Registro automático de interacciones desde correo, teléfono y calendario"}
@@ -768,17 +768,17 @@ modulos:
               - {id: CRM-03.01.01.01, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/pipeline.py (311) + app/services/pipeline_service.py", t: "Oportunidad con importe, moneda, fecha de cierre, probabilidad y etapa"}
               - {id: CRM-03.01.01.02, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/pipeline_stages_service.py", t: "Múltiples pipelines por línea de negocio, producto, canal o región"}
               - {id: CRM-03.01.01.03, c: A, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/pipeline_stages_service.py", t: "Etapas configurables con criterios de salida obligatorios y checklist"}
-              - {id: CRM-03.01.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Probabilidad por etapa, ajustable manualmente y por modelo predictivo"}
+              - {id: CRM-03.01.01.04, c: A, fase: 2, svc: sales, estado: hecho, t: "Probabilidad por etapa, ajustable manualmente y por modelo predictivo", visto: "2026-10-27 La probabilidad de la etapa y la puesta a mano se ven las dos: `probabilidad_manual` estaba en la tabla y el esquema de lectura no la devolvia, asi que nadie podia saber si la cifra de una oportunidad era la de su etapa o la que puso alguien. Saber cual manda es lo que separa una prevision creida de una inventada"}
               - {id: CRM-03.01.01.05, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecweb:app/services/catalog + contecpos:services/catalogo", t: "Líneas de producto/servicio en la oportunidad con cantidad, precio y descuento"}
               - {id: CRM-03.01.01.06, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/revenue_service.py + app/models/revenue.py", t: "Ingresos recurrentes vs. puntuales, con ARR/MRR, TCV y ACV calculados"}
               - {id: CRM-03.01.01.07, c: A, fase: 2, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/services/revenue_service.py", t: "Planificación de ingresos por periodos (revenue schedule)"}
               - {id: CRM-03.01.01.08, c: A, fase: 2, svc: sales, estado: hecho, t: "Split de oportunidad entre varios comerciales (overlay, crédito, equipo)"}
-              - {id: CRM-03.01.01.09, c: A, fase: 1, svc: sales, estado: hecho, t: "Competidores presentes, posicionamiento y motivo de pérdida estructurado"}
+              - {id: CRM-03.01.01.09, c: A, fase: 1, svc: sales, estado: hecho, t: "Competidores presentes, posicionamiento y motivo de pérdida estructurado", visto: "2026-10-27 Por que se perdio, completo: el motivo normalizado que agrupa, la nota que explica y el competidor que gano. Las dos ultimas estaban en la tabla y no salian, asi que el informe de perdidas decia precio cincuenta veces y no decia contra quien"}
               - {id: CRM-03.01.01.10, c: A, fase: 2, svc: sales, estado: hecho, t: "Buying group / mapa de decisión asociado a la oportunidad"}
               - {id: CRM-03.01.01.11, c: A, fase: 2, svc: sales, estado: hecho, t: "Oportunidades relacionadas: renovación, upsell, cross-sell, sustitución"}
               - {id: CRM-03.01.01.12, c: C, fase: 1, svc: sales, estado: hecho, reutiliza: "contecflow-PSA:app/models/task_movement_log.py (antigüedad por etapa)", t: "Antigüedad por etapa, estancamiento y alertas de inactividad"}
               - {id: CRM-03.01.01.13, c: A, fase: 2, svc: sales, estado: hecho, t: "Historial de cambios de importe y fecha (slippage tracking)"}
-              - {id: CRM-03.01.01.14, c: A, fase: 1, svc: sales, estado: hecho, t: "Bloqueo de edición tras cierre y proceso de reapertura auditado"}
+              - {id: CRM-03.01.01.14, c: A, fase: 1, svc: sales, estado: hecho, t: "Bloqueo de edición tras cierre y proceso de reapertura auditado", visto: "2026-10-27 Una oportunidad cerrada se bloquea y se ve cuantas veces se ha reabierto, en la propia ficha"}
           - id: CRM-03.01.02
             nombre: Metodologías de venta
             capacidades:
