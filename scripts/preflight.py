@@ -78,6 +78,10 @@ class Gate:
     # con los que cambiaron. Ver `_acotar_a_los_servicios_que_cambiaron`: sólo
     # se acota cuando no hay NADA fuera de `services/<x>/`.
     por_servicio: bool = False
+    # Si este gate se ha recortado a los servicios que cambiaron. Lo pone
+    # `_acotar`, y sirve para una sola cosa: distinguir «no hay nada que mirar
+    # aquí» de «este gate no ha mirado nada».
+    acotado: bool = False
 
 
 GATES: list[Gate] = [
@@ -540,7 +544,7 @@ def _acotar_a_los_servicios_que_cambiaron(gate: Gate, cambios: list[str] | None)
         return gate
 
     expresion = " or ".join(sorted(servicios))
-    return replace(gate, comando=[*gate.comando, "-k", expresion])
+    return replace(gate, comando=[*gate.comando, "-k", expresion], acotado=True)
 
 
 def _correr(gate: Gate) -> tuple[bool, float, str]:
@@ -554,6 +558,18 @@ def _correr(gate: Gate) -> tuple[bool, float, str]:
     except subprocess.TimeoutExpired:
         return (False, time.perf_counter() - inicio, "tiempo agotado (30 min)")
     salida = (proceso.stdout + proceso.stderr).strip()
+    # Pytest devuelve 5 cuando no recoge ninguna prueba, y eso **no siempre es
+    # un fallo**: cuando el gate se ha acotado a los servicios que cambiaron,
+    # «ninguna prueba de aislamiento habla de `gateway`» significa que no hay
+    # nada que mirar ahí, no que algo vaya mal.
+    #
+    # Se distingue del otro cero, que sí es grave: un gate SIN acotar que no
+    # recoge nada está pasando en verde sin mirar, y eso se sigue tratando como
+    # rojo. Lo cazó el tablero de ventas: un arreglo que sólo tocaba `gateway`
+    # dejaba el gate de aislamiento en 4.369 deseleccionadas y en rojo, sin que
+    # el mensaje dijera por qué.
+    if proceso.returncode == 5 and gate.acotado:
+        return (True, time.perf_counter() - inicio, "nada que mirar en lo que cambió")
     return (proceso.returncode == 0, time.perf_counter() - inicio, salida)
 
 

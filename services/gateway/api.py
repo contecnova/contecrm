@@ -17,6 +17,7 @@ from crmcore.http.deps import (
     exige_permiso,
     ip_de,
 )
+from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -1161,6 +1162,28 @@ async def proxy_api(ruta: str, request: Request, principal: PrincipalDep) -> Res
         },
         media_type=respuesta.headers.get("content-type"),
     )
+
+
+# **El proxy no puede declarar lo que no conoce** (CRM-00.02.04.01).
+#
+# La comprobación de parámetros desconocidos es una dependencia GLOBAL de cada
+# aplicación, y eso incluye a este catch-all. Como aquí no hay más parámetro
+# declarado que el camino, el guardián rechazaba CUALQUIER parámetro de
+# consulta que pasara por el gateway —que es por donde pasa todo— con un «esta
+# operación no mira «limite»» y una lista de admitidos de tres elementos.
+#
+# Lo veía cualquiera que abriera el tablero de ventas: pide doscientas
+# oportunidades, y la pantalla salía entera en rojo. Lo contó quien lo usaba.
+#
+# La comprobación no desaparece: la hace **el servicio de destino**, que sí
+# sabe qué mira cada una de sus rutas. Aquí sería imposible por construcción —
+# tendría que conocer las dos mil quinientas operaciones de los trece
+# servicios— y fingir que la hace es peor que no hacerla.
+admite_parametros_abiertos(
+    proxy_api,
+    "es el proxy de toda la API: los parámetros los declara y los comprueba la "
+    "ruta de destino, que es la única que sabe cuáles mira",
+)
 
 
 @router.get(

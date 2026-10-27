@@ -275,3 +275,25 @@ llegue al repositorio. Depende de que estén instalados.
 
 Por eso `./setup.sh instalar` los instala, y por eso este documento está enlazado
 desde la primera página del manual.
+
+## «Cero pruebas» significa dos cosas distintas
+
+El gate de aislamiento se acota a los servicios que cambiaron: es la
+optimización que lo baja de 117 s a unos pocos cuando el cambio vive dentro de
+un solo servicio. Pero `pytest` devuelve el código 5 cuando no recoge ninguna
+prueba, y eso salía **en rojo**.
+
+Pasó el 27-10-2026 con el arreglo del tablero de ventas: tocaba sólo
+`services/gateway/`, ninguna prueba de aislamiento habla de `gateway`, y el
+gate acabó en «4.369 deseleccionadas» y rojo — sin que el mensaje dijera por
+qué, que es lo peor de un rojo.
+
+Ahora se distinguen los dos ceros, y la diferencia importa:
+
+- **Gate acotado que no recoge nada**: no hay nada que mirar en lo que cambió.
+  Pasa, y lo dice con esas palabras.
+- **Gate sin acotar que no recoge nada**: está pasando en verde sin mirar, que
+  es el peor verde que hay. Sigue siendo rojo.
+
+Comprobado en los dos sentidos: forzando la marca a falso, el mismo gate vuelve
+a salir en rojo.

@@ -20,6 +20,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { AvisoDeChat } from "@/componentes/AvisoDeChat";
 import { Icono } from "@/componentes/Icono";
+import { Notificaciones } from "@/componentes/Notificaciones";
 import { ALTAS } from "@/lib/altas";
 import { humanizar } from "@/lib/formato";
 import { MODULOS } from "@/lib/modulos";
@@ -254,6 +255,11 @@ export function BarraSuperior({
         >
           <Icono nombre={densidad === "comoda" ? "density_large" : "density_small"} />
         </button>
+
+        {/* Los avisos, antes del tema y la densidad: lo que se mira quince
+            veces al día va donde se busca sin pensar, y el tema se toca una
+            vez en la vida. */}
+        <Notificaciones />
 
         <button
           type="button"

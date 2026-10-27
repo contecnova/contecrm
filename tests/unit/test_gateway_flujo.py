@@ -146,3 +146,65 @@ async def test_pedir_flujo_donde_no_lo_hay_devuelve_la_respuesta_leida() -> None
             cliente, "text/event-stream, application/json", "/api/v1/chat/sin-leer"
         )
         assert respuesta.json() == {"ok": True}
+
+
+# ── El proxy no puede declarar lo que no conoce (CRM-00.02.04.01) ────────
+
+
+def test_el_gateway_no_rechaza_los_parametros_de_las_rutas_de_detras() -> None:
+    """**El tablero de ventas salía entero en rojo, y lo contó quien lo usaba.**
+
+    La comprobación de parámetros desconocidos es una dependencia GLOBAL de
+    cada aplicación, y eso incluye el catch-all del gateway. Como ahí el único
+    parámetro declarado es el camino, cualquier `?limite=200` que pasara por el
+    gateway —y por el gateway pasa todo— se rechazaba con «esta operación no
+    mira «limite»» y una lista de admitidos de tres elementos.
+
+    No se quita la comprobación: la hace el servicio de destino, que es el
+    único que sabe qué mira cada una de sus rutas. Aquí sería imposible por
+    construcción —tendría que conocer las dos mil quinientas operaciones de los
+    trece servicios— y fingir que la hace es peor que no hacerla.
+    """
+    import importlib
+
+    from crmcore.http import superficie as sup
+    from crmcore.http.parametros import motivo_de_apertura
+
+    app = importlib.import_module("services.gateway.main").app
+    proxies = [
+        r
+        for prefijo, r in sup._rutas_planas(app)
+        if "{ruta:path}" in f"{prefijo}{getattr(r, 'path', '')}"
+    ]
+    assert proxies, "no se ha encontrado el proxy: esta prueba no está mirando nada"
+    for ruta in proxies:
+        motivo = motivo_de_apertura(getattr(ruta, "endpoint", None))
+        assert motivo, (
+            "el proxy del gateway tiene que estar marcado como de parámetros "
+            "abiertos: si no, rechaza cualquier filtro, orden o página de "
+            "cualquier pantalla del producto"
+        )
+        # Y con un motivo de verdad: una marca sin motivo se copia a la
+        # siguiente ruta que dé guerra, y la comprobación deja de comprobar.
+        assert len(motivo) > 40, motivo
+
+
+def test_las_rutas_propias_del_gateway_si_declaran_lo_que_miran() -> None:
+    """La exención es SOLO del proxy.
+
+    Si valiera para todo el gateway, sus propias rutas —la superficie, el
+    registro de servicios— volverían a tragarse en silencio un parámetro mal
+    escrito, que es lo que convierte un filtro en «todas las filas».
+    """
+    import importlib
+
+    from crmcore.http import superficie as sup
+    from crmcore.http.parametros import motivo_de_apertura
+
+    app = importlib.import_module("services.gateway.main").app
+    abiertas = [
+        f"{prefijo}{getattr(r, 'path', '')}"
+        for prefijo, r in sup._rutas_planas(app)
+        if motivo_de_apertura(getattr(r, "endpoint", None))
+    ]
+    assert abiertas == ["/api/{ruta:path}"], abiertas

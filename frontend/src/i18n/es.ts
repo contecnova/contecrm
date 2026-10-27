@@ -343,6 +343,17 @@ export default {
       preguntar: "Preguntar",
     },
   },
+  avisos: {
+    abrir: "Avisos",
+    titulo: "Avisos",
+    marcarTodas: "Marcar todo como leído",
+    // El recuento se anuncia para quien no ve la pantalla: pulsar «marcar» y
+    // que no pase nada audible es no saber si funcionó.
+    sinLeer_one: "Queda 1 aviso sin leer",
+    sinLeer_other: "Quedan {{count}} avisos sin leer",
+    cargando: "Trayendo los avisos…",
+    vacio: "No hay avisos. Cuando algo que sigues cambie, aparecerá aquí.",
+  },
   conversacion: {
     sinAsunto: "(sin asunto)",
     entradilla:

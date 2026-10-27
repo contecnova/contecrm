@@ -530,3 +530,54 @@ Ahora el ámbito de `/m/<ruta>` sale del grupo de ese módulo, y lo mismo para l
 ficha de dentro. La prueba que lo fija comprueba los dos sentidos —un módulo de
 administración se queda en Administrar y uno de trabajo sigue en Trabajar— y
 está validada quitando el arreglo: sin él, vuelve a fallar.
+
+## El tablero de ventas salía entero en rojo
+
+«Esta operación no mira «limite»», y debajo una lista de admitidos con tres
+nombres. Lo contó quien lo usaba.
+
+La causa es de las que no se ven leyendo el fichero donde aparece el síntoma.
+Hay una comprobación que **rechaza los parámetros de consulta que una ruta no
+declara** —existe porque FastAPI se los come en silencio, y un filtro mal
+escrito que se ignora convierte «las de este mes» en «todas»—. Esa comprobación
+se instala como **dependencia global de la aplicación**, a propósito: engancharla
+ruta a ruta significa que funciona en las que alguien se acordó.
+
+Lo que nadie miró es que el **gateway** también es una aplicación, y su ruta
+principal es un `catch-all` que reenvía todo lo demás. Ahí el único parámetro
+declarado es el camino, así que cualquier `?limite=200`, cualquier filtro y
+cualquier página que pasara por el gateway —y por el gateway pasa todo— se
+rechazaba.
+
+El arreglo no es quitar la comprobación: la hace **el servicio de destino**, que
+es el único que sabe qué mira cada una de sus rutas. En el gateway sería
+imposible por construcción —tendría que conocer las 2.475 operaciones de los
+trece servicios— y fingir que la hace es peor que no hacerla. El proxy queda
+marcado como de parámetros abiertos, **con su motivo escrito**, y hay dos
+pruebas: una exige que el proxy esté exento y la otra que **sólo** el proxy lo
+esté, porque si la exención valiera para todo el gateway sus propias rutas
+volverían a tragarse un parámetro mal escrito.
+
+## Los avisos, donde se miran (`CRM-06.02.01.02`)
+
+Estaba todo construido menos la puerta: el servidor guarda las notificaciones,
+las agrupa, respeta el horario de silencio de cada uno y las entrega por los
+canales que elige — y en el producto no había forma de verlas. Un aviso que sólo
+existe en la base de datos no ha avisado a nadie.
+
+Ahora hay una campana en la barra, con el número sin leer. Tres decisiones, y
+las tres salen de que esto se mira de reojo, quince veces al día:
+
+- **El número no se consulta en bucle.** Un sondeo cada pocos segundos
+  multiplica las peticiones por pestañas abiertas y por personas, para enterarse
+  un minuto antes de algo que no corre prisa. Se refresca al abrir el panel y al
+  marcar como leído, que es cuando cambia de verdad.
+- **Cada aviso lleva a su registro**, y el que no tiene registro **no finge ser
+  un enlace**: un enlace que no lleva a nada se pulsa una vez y a partir de ahí
+  se desconfía de todos los demás.
+- **Marcar como leído es explícito.** Marcar al abrir el panel haría desaparecer
+  lo que no ha dado tiempo a leer, que es la forma más rápida de perder un aviso
+  para siempre.
+
+Y un fallo del servidor se dice dentro del panel: la barra es el marco, y si se
+cae la barra no queda ni forma de navegar.
