@@ -37,6 +37,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // así que esa columna salía siempre vacía.
         objeto: "tenant",
         listar: "/api/v1/tenants",
+        // El estado de la clave de cifrado propia del tenant: si está revocada, lo
+        // cifrado con ella no se lee, y eso es irreversible.
+        resumen: ["/api/v1/claves-cifrado"],
         crear: "/api/v1/tenants",
         servicio: "tenancy",
         solo_plataforma: true,
@@ -630,10 +633,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Calidad del dato",
         listar: "/api/v1/calidad-dato/cola",
-      // La salud del dato encima de la cola: la cola dice qué hay que tocar hoy;
+        // La salud del dato encima de la cola: la cola dice qué hay que tocar hoy;
         // la salud, si la cola está creciendo. Y qué reglas producen ruido en vez
-        // de trabajo, que es lo que explica una cola que no baja.
-      resumen: ["/api/v1/calidad-dato/salud", "/api/v1/calidad-dato/metricas", "/api/v1/calidad-dato/reglas-sospechosas"],
+        // de trabajo, que es lo que explica una cola que no baja. Con los pares
+        // que parecen la misma persona y cuándo toca volver a preguntar fuera.
+        resumen: ["/api/v1/calidad-dato/salud", "/api/v1/calidad-dato/metricas", "/api/v1/calidad-dato/reglas-sospechosas", "/api/v1/calidad-dato/uniones-propuestas", "/api/v1/calidad-dato/enriquecimiento/caducidad"],
         servicio: "party",
         permiso: "account:read",
       },
@@ -1345,6 +1349,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Tablas del almacén",
         objeto: "tabla_analitica",
         listar: "/api/v1/almacen/tablas",
+        // Qué se puede explotar de este tenant y cómo se describe el CRM para poder
+        // preguntarle: es lo que decide si una pregunta en lenguaje natural tiene
+        // alguna posibilidad de contestarse.
+        resumen: ["/api/v1/analitica/modelo-semantico", "/api/v1/explotacion/descripcion"],
         servicio: "analytics",
         permiso: "informe:read",
       },
@@ -1397,6 +1405,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Riesgos",
         listar: "/api/v1/grc/riesgos",
+        // El panel de GRC encima de los riesgos: lo que no cuadra HOY, ordenado
+        // por lo que urge, y qué del producto tiene control y qué no. Un
+        // registro de riesgos sin eso es un inventario que nadie recorre.
+        resumen: ["/api/v1/grc/panel", "/api/v1/grc/pendiente", "/api/v1/grc/cobertura"],
         servicio: "tenancy",
         columnas: [
           "codigo",
@@ -1475,9 +1487,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Activos de marketing",
         listar: "/api/v1/activos-marketing",
-      // Qué hay que mirar antes de que dé un problema: un activo caducado que
+        // Qué hay que mirar antes de que dé un problema: un activo caducado que
         // sigue publicado no avisa solo.
-      resumen: ["/api/v1/activos-marketing/revision"],
+        resumen: ["/api/v1/activos-marketing/revision"],
         servicio: "marketing",
         permiso: "marketing:read",
       },
@@ -1638,9 +1650,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Artículos",
         objeto: "articulo",
         listar: "/api/v1/conocimiento/articulos",
-      // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
+        // Qué artículos sirven, cuáles estorban y cuáles no usa nadie. Un gestor de
         // conocimiento sin esto crece hasta que nadie encuentra nada.
-      resumen: ["/api/v1/conocimiento/eficacia"],
+        resumen: ["/api/v1/conocimiento/eficacia", "/api/v1/conocimiento"],
         crear: "/api/v1/conocimiento/articulos",
         servicio: "service",
         columnas: ["clave", "estado", "audiencia", "idioma", "vistas"],
@@ -1696,6 +1708,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Plantillas",
         listar: "/api/v1/correo/plantillas",
+        // Por qué dominio sale cada clase de correo. Mandar una campaña desde el
+        // dominio de las facturas quema la reputación del que cobra.
+        resumen: ["/api/v1/correo/remitente"],
         crear: "/api/v1/correo/plantillas",
         servicio: "marketing",
         columnas: ["clave", "nombre", "clase", "categoria", "idioma"],

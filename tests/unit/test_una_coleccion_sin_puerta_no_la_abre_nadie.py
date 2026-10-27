@@ -101,7 +101,14 @@ FRONT = RAIZ / "frontend/src"
 #                            contrato, dos caminos a una colección que ya tiene
 #                            pestaña, y las conversaciones, que se trabajan en
 #                            la consola de agente en una sola cola.
-TOPE_SIN_PUERTA = 87
+#   27-10-2026   76 de 708  doce medidas más: el panel de GRC encima de los
+#                            riesgos, los pares que parecen la misma persona y
+#                            la caducidad del enriquecimiento encima de la cola
+#                            de calidad, la eficacia del conocimiento, el
+#                            remitente de cada clase de correo, qué se puede
+#                            explotar del tenant, la clave de cifrado propia y
+#                            la revisión de activos.
+TOPE_SIN_PUERTA = 76
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
