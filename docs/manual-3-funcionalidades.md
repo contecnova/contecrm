@@ -4120,7 +4120,16 @@ masivas (`CRM-00.05.03.06`), el registro de actividades de tratamiento
 (`CRM-07.03.01.04`), el informe de cumplimiento (`CRM-07.03.01.07`), la matriz
 de permisos (`CRM-07.03.02.09`) y la restauración selectiva
 (`CRM-00.06.02.03`). El recuento de capacidades sin pantalla declarada baja de
-426 a 415 en el mismo commit, que es lo que el trinquete exige.
+426 a 413 en dos pasos del mismo bloque, que es lo que el trinquete exige.
+
+Un segundo grupo de paneles cubre las otras cinco preguntas que también se
+repiten servicio a servicio: el RPO real frente al comprometido y la ventana de
+retención (`/restauracion/rpo`, `/restauracion/ventana`, `CRM-00.06.02.02`),
+las particiones que faltan por crear (`/volumen/particiones-a-crear`) y si hay
+bóveda para tokenizar (`/tokenizacion`, `CRM-00.05.03.04`). Con eso, las rutas
+de colección sin puerta bajan de 426 a 374 —medidas sobre rutas únicas; la
+primera versión de la sonda mezclaba el total por ocurrencias con los
+pendientes por rutas únicas, y ese número no se podía comparar con nada—.
 
 Lo que **no** declara, aunque lo roce: `CRM-00.05.04.06` —reconstruir un
 agregado desde sus eventos—, porque reconstruir pide el identificador de un

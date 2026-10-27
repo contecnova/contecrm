@@ -190,6 +190,29 @@ export default {
     enCascada: "y {{cuantos}} registros colgando",
     papeleraVacia: "No hay nada borrado pendiente de purgar",
     restaurables: "Objetos restaurables: {{objetos}}",
+    volverAtras: "Hasta dónde se puede volver atrás",
+    volverAtrasAyuda:
+      "Cuánto se perdería si el incidente fuera ahora, frente a lo " +
+      "comprometido, y si la retención llega hasta donde se pide. Las dos " +
+      "preguntas del día del incidente, que es el día en que nadie se pone a " +
+      "buscarlas.",
+    sePerderia: "Se perderían {{minutos}} min",
+    comprometido: "(comprometido: {{minutos}} min)",
+    noMedible: "No se puede medir",
+    ventana: "Volver {{pedidos}} d atrás con {{retencion}} d de retención",
+    volumen: "Qué va camino de dar problemas",
+    volumenAyuda:
+      "Las particiones que hay que crear antes de que hagan falta. Una que " +
+      "falta no se nota hasta que la escritura falla, y entonces ya es un " +
+      "incidente.",
+    faltaLaDeEsteMes: "Falta la partición de este mes",
+    particionesPorCrear: "{{cuantas}} particiones por crear",
+    boveda: "Tarjetas e identificadores fiscales",
+    bovedaAyuda:
+      "Si este despliegue puede sacar del CRM un número sensible y quedarse " +
+      "sólo con una referencia.",
+    conBoveda: "Hay bóveda: se puede tokenizar",
+    sinBoveda: "No hay bóveda",
   },
   cuenta: {
     datos: "Datos",

@@ -836,6 +836,23 @@ existían por API, es decir, que estaban hechas y no se podían ver:
   tiempo le queda antes de purgarse, con cuántos registros se llevaría por
   delante al restaurarlo.
 
+Y tres más que se preguntan el día que algo va mal, que es el día en que nadie
+se pone a buscarlas:
+
+- **Hasta dónde se puede volver atrás.** Cuánto se perdería si el incidente
+  fuera ahora, frente a lo comprometido —el dato real, no el del contrato: la
+  diferencia entre los dos es lo único que se puede enseñar en una auditoría—,
+  y si la retención llega hasta donde se pide. Pedir volver a hace noventa días
+  cuando la retención son treinta no es un error de quien lo pide: es una
+  expectativa que alguien le dio.
+- **Qué va camino de dar problemas.** Las particiones que hay que crear antes
+  de que hagan falta. Una que falta no se nota hasta que la escritura falla, y
+  entonces ya es un incidente.
+- **Tarjetas e identificadores fiscales.** Si este despliegue puede sacar del
+  CRM un número sensible y quedarse sólo con una referencia. Se mira **antes**
+  de ofrecer el campo: sin bóveda, guardarlo «hasta que la haya» mete el
+  sistema en el alcance de PCI sin que nadie lo haya decidido.
+
 Arriba hay un **selector de servicio**, porque cada parte del sistema guarda lo
 suyo y la pregunta es la misma para todas. Lo alternativo eran setenta y ocho
 pestañas diciendo lo mismo, y en setenta y ocho pestañas no se encuentra nada.

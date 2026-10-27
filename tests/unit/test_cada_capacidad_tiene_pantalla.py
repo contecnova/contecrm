@@ -161,7 +161,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            plataforma, el DLP de exportaciones, el RAT, el
 #                            informe de cumplimiento, la matriz de permisos y
 #                            la restauracion selectiva
-TOPE_SIN_PANTALLA = 415
+#   27-10-2026  413 de 778  segundo grupo de paneles en la misma pantalla,
+#                            con la misma medida detras: de las 426 rutas que
+#                            seguian sin puerta, 52 eran otras cinco
+#                            preguntas repetidas en los catorce servicios
+#                            —cuanto se perderia ahora (RPO real), si la
+#                            retencion llega hasta donde se pide, que
+#                            particiones faltan por crear y si hay boveda para
+#                            tokenizar—. Dos capacidades mas declaradas:
+#                            recuperacion a un punto en el tiempo por tenant y
+#                            tokenizacion de datos de pago. Medido con la
+#                            sonda corregida —la primera mezclaba total por
+#                            ocurrencias con pendientes por rutas unicas y su
+#                            numero no se podia comparar con nada—: 426 -> 374
+TOPE_SIN_PANTALLA = 413
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -1,7 +1,8 @@
 /**
  * Lo que la plataforma hace por debajo, con puerta (CRM-00.05.04.01,
  * CRM-00.05.04.03, CRM-00.05.04.04, CRM-00.05.04.05, CRM-00.05.03.06,
- * CRM-07.03.01.04, CRM-07.03.01.07, CRM-07.03.02.09, CRM-00.06.02.03).
+ * CRM-07.03.01.04, CRM-07.03.01.07, CRM-07.03.02.09, CRM-00.06.02.03,
+ * CRM-00.06.02.02, CRM-00.05.03.04).
  *
  * Son rutas que el producto publica desde el primer día y a las que **no se
  * llegaba desde ninguna pantalla**: el audit trail, las anomalías de
@@ -98,6 +99,34 @@ interface Matriz {
   alcance_de_los_roles: string;
 }
 
+interface Rpo {
+  medible: boolean;
+  dentro: boolean;
+  se_perderia_min: number | null;
+  rpo_comprometido_min: number;
+  porque: string;
+}
+
+interface Ventana {
+  se_puede: boolean;
+  retencion_dias: number;
+  pedidos_dias: number;
+  porque: string;
+}
+
+interface Tokenizacion {
+  hay_boveda: boolean;
+  tipos: string[];
+  que_significa: string;
+}
+
+interface Particiones {
+  urgente: boolean;
+  ya_falta_la_de_este_mes: boolean;
+  faltan: string[];
+  porque: string;
+}
+
 interface EntradaPapelera {
   id: string;
   objeto: string;
@@ -148,6 +177,9 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
       </h2>
       <Cumplimiento servicio={servicio} puedeVer={puede(sesion, "cumplimiento:leer")} />
       <Recuperable servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
+      <HastaDondeSeVuelve servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
+      <Aguanta servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
+      <Boveda servicio={servicio} puedeVer={puede(sesion, "tokenizacion:read")} />
     </>
   );
 }
@@ -465,6 +497,203 @@ function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boole
         <p className="mt-3 text-3xs text-ink-faint">
           {t("plataforma.restaurables", { objetos: objetos.join(", ") })}
         </p>
+      ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Hasta cuándo se puede volver atrás, y cuánto se perdería si fuera ahora.
+ *
+ * Las dos preguntas que se hacen el día del incidente, y ese día nadie se pone
+ * a leer una API. El RPO que importa es el **real**, no el del contrato: la
+ * diferencia entre los dos es lo único que se puede enseñar en una auditoría.
+ */
+function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+  const { t } = useTranslation();
+  const [rpo, setRpo] = useState<Rpo | null>(null);
+  const [ventana, setVentana] = useState<Ventana | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    if (!puedeVer) return undefined;
+    const control = new AbortController();
+    setRpo(null);
+    setFallo(null);
+    Promise.all([
+      llamar<Rpo>(`/api/v1/${servicio}/restauracion/rpo`, { signal: control.signal }),
+      llamar<Ventana>(`/api/v1/${servicio}/restauracion/ventana`, { signal: control.signal }),
+    ])
+      .then(([r, v]) => {
+        setRpo(r.datos);
+        setVentana(v.datos);
+      })
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, puedeVer]);
+
+  useEffect(cargar, [cargar]);
+
+  if (!puedeVer) return null;
+  return (
+    <Panel titulo={t("plataforma.volverAtras")} ayuda={t("plataforma.volverAtrasAyuda")}>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!rpo && !fallo ? <Cargando /> : null}
+      {rpo ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            {/* «No medible» NO es «cero minutos»: sin la fecha de la última
+                copia no se sabe cuánto se perdería, y enseñar un cero sería un
+                verde que nadie se ha ganado. */}
+            {rpo.medible ? (
+              <p
+                className={
+                  rpo.dentro ? "text-sm font-medium text-ink" : "text-sm font-medium text-danger"
+                }
+              >
+                {t("plataforma.sePerderia", { minutos: rpo.se_perderia_min ?? 0 })}
+                <span className="text-3xs text-ink-faint">
+                  {" "}
+                  {t("plataforma.comprometido", { minutos: rpo.rpo_comprometido_min })}
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm font-medium text-ink-muted">{t("plataforma.noMedible")}</p>
+            )}
+            <p className="mt-1 text-3xs text-ink-muted">{rpo.porque}</p>
+          </div>
+          {ventana ? (
+            <div>
+              <p
+                className={
+                  ventana.se_puede
+                    ? "text-sm font-medium text-ink"
+                    : "text-sm font-medium text-danger"
+                }
+              >
+                {t("plataforma.ventana", {
+                  pedidos: ventana.pedidos_dias,
+                  retencion: ventana.retencion_dias,
+                })}
+              </p>
+              <p className="mt-1 text-3xs text-ink-muted">{ventana.porque}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Qué tabla va camino de dar problemas, antes de darlos.
+ *
+ * Una partición que falta no se nota hasta que la escritura falla, y entonces
+ * ya es un incidente. Por eso lo que se enseña es **lo que falta por crear**,
+ * no el inventario de lo que hay.
+ */
+function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+  const { t } = useTranslation();
+  const [particiones, setParticiones] = useState<Particiones | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    if (!puedeVer) return undefined;
+    const control = new AbortController();
+    setParticiones(null);
+    setFallo(null);
+    llamar<Particiones>(`/api/v1/${servicio}/volumen/particiones-a-crear`, {
+      signal: control.signal,
+    })
+      .then((r) => setParticiones(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, puedeVer]);
+
+  useEffect(cargar, [cargar]);
+
+  if (!puedeVer) return null;
+  return (
+    <Panel titulo={t("plataforma.volumen")} ayuda={t("plataforma.volumenAyuda")}>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!particiones && !fallo ? <Cargando /> : null}
+      {particiones ? (
+        <>
+          <p
+            className={
+              particiones.urgente ? "text-sm font-medium text-danger" : "text-sm font-medium text-ink"
+            }
+          >
+            {particiones.ya_falta_la_de_este_mes
+              ? t("plataforma.faltaLaDeEsteMes")
+              : t("plataforma.particionesPorCrear", { cuantas: particiones.faltan.length })}
+          </p>
+          {particiones.faltan.length > 0 ? (
+            <ul className="mt-1 flex flex-wrap gap-1">
+              {particiones.faltan.map((f) => (
+                <li key={f} className="chip-dato">
+                  {f}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="mt-1 text-3xs text-ink-muted">{particiones.porque}</p>
+        </>
+      ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * Si este despliegue puede sacar del CRM un número de tarjeta o un NIF.
+ *
+ * Se pregunta **antes** de ofrecer el campo: sin bóveda no se tokeniza en
+ * falso, porque guardar el número «hasta que haya bóveda» mete el sistema en
+ * el alcance de PCI sin que nadie lo haya decidido.
+ */
+function Boveda({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+  const { t } = useTranslation();
+  const [estado, setEstado] = useState<Tokenizacion | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    if (!puedeVer) return undefined;
+    const control = new AbortController();
+    setEstado(null);
+    setFallo(null);
+    llamar<Tokenizacion>(`/api/v1/${servicio}/tokenizacion`, { signal: control.signal })
+      .then((r) => setEstado(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, puedeVer]);
+
+  useEffect(cargar, [cargar]);
+
+  if (!puedeVer) return null;
+  return (
+    <Panel titulo={t("plataforma.boveda")} ayuda={t("plataforma.bovedaAyuda")}>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {!estado && !fallo ? <Cargando /> : null}
+      {estado ? (
+        <>
+          <p
+            className={
+              estado.hay_boveda ? "text-sm font-medium text-ink" : "text-sm font-medium text-danger"
+            }
+          >
+            {estado.hay_boveda ? t("plataforma.conBoveda") : t("plataforma.sinBoveda")}
+          </p>
+          <p className="mt-1 text-3xs text-ink-muted">{estado.que_significa}</p>
+          {estado.tipos.length > 0 ? (
+            <ul className="mt-1 flex flex-wrap gap-1">
+              {estado.tipos.map((x) => (
+                <li key={x} className="chip-dato">
+                  {x}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : null}
     </Panel>
   );
