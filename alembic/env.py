@@ -115,6 +115,12 @@ def _importar_modelos(servicio: str) -> None:
         # esquema, porque los valida en mitad de una operación y no puede
         # preguntárselos a otro servicio.
         "crmcore.vocabulario",
+        # La numeración de negocio: misma forma y mismo motivo. Y va en los
+        # TRECE a propósito, no en los tres que hoy la usan: decidir a mano en
+        # cuáles existe la tabla es exactamente la fragilidad que ya se
+        # arregló con los vocabularios, donde dónde existía dependía de qué
+        # importara cada servicio por casualidad.
+        "crmcore.numeracion",
     ]
     for modulo in [*comunes, f"services.{servicio}.modelos"]:
         try:

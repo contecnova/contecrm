@@ -103,6 +103,9 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
   ],
   // Los objetos propios del tenant y el grafo de relaciones con sus tipos.
   "modelo": [
+    // El código legible que la gente dice por teléfono: su patrón, su relleno,
+    // cuándo reinicia y qué saldría el siguiente.
+    "CRM-00.04.01.11",
     // Las dos puertas nuevas del campo, que se configuran en su propio
     // formulario: cuándo deja de poderse editar —condiciones sobre el
     // registro— y quién puede escribirlo —las procedencias—. Vacío en las

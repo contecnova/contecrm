@@ -758,6 +758,14 @@ def crear_servicio(
         if _voc.registrados():
             app.include_router(crear_router_vocabulario(nombre), prefix=s.api_prefix)
 
+    # La numeración de negocio va en todos los servicios que guardan objetos de
+    # negocio: el código legible es del objeto, y el objeto vive aquí
+    # (CRM-00.04.01.11).
+    if nombre in {"sales", "service", "party"}:
+        from crmcore.http.numeracion_router import crear_router_numeracion
+
+        app.include_router(crear_router_numeracion(nombre), prefix=s.api_prefix)
+
     for router in routers or []:
         app.include_router(router, prefix=s.api_prefix)
     for router in routers_sin_prefijo or []:

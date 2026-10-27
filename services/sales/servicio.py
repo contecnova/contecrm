@@ -420,18 +420,33 @@ def crear_oportunidad_nueva(
 
 
 def _siguiente_codigo(db: Session, tenant_id: UUID) -> str:
-    """Código legible correlativo por tenant y año: `OPP-2026-00123`.
+    """Código legible correlativo: `OPP-2026-00123` (CRM-00.04.01.11).
 
-    Se calcula contando lo del año en curso. Con concurrencia alta dos altas
-    simultáneas podrían pedir el mismo número, y por eso hay una restricción
-    única: la segunda falla y reintenta, en vez de duplicar el código en
-    silencio.
+    **Antes se contaba, y contar falla de tres maneras que pasan todas**: si se
+    borra una oportunidad la siguiente repite número; si dos altas entran a la
+    vez piden el mismo y la restricción única convierte el alta en un error que
+    el usuario no entiende; y si alguien carga histórico con códigos propios,
+    el recuento no tiene nada que ver con el último emitido.
+
+    Ahora lo lleva el contador común (`crmcore.numeracion`), bajo cerrojo de
+    fila, con el patrón como configuración del tenant. Si el tenant no ha
+    declarado numeración para `oportunidad` se cae al patrón de siempre, que es
+    el prefijo de sus ajustes: estrenar el CRM no puede exigir configurar una
+    numeración antes de poder crear la primera oportunidad.
     """
+    from crmcore import numeracion
+
     from services.sales.ajustes import ajustes
 
+    codigo = numeracion.siguiente(db, tenant_id, objeto="oportunidad")
+    if codigo is not None:
+        return codigo
+
+    # Primera vez: se declara con el patrón de siempre y se emite. Así el
+    # contador queda creado y a partir de aquí ya no se cuenta nunca más.
     anio = hoy(db).year
     prefijo = f"{ajustes().codigo_prefijo}-{anio}-"
-    total = (
+    ya_hay = (
         db.execute(
             select(func.count(Oportunidad.id)).where(
                 Oportunidad.tenant_id == tenant_id,
@@ -440,7 +455,22 @@ def _siguiente_codigo(db: Session, tenant_id: UUID) -> str:
         ).scalar_one()
         or 0
     )
-    return f"{prefijo}{total + 1:05d}"
+    numeracion.declarar(
+        db,
+        tenant_id,
+        objeto="oportunidad",
+        # El prefijo sigue saliendo de los ajustes del tenant, que es donde
+        # estaba y donde la gente lo busca.
+        patron=f"{ajustes().codigo_prefijo}-{{anio}}-{{secuencia}}",
+        relleno=5,
+        reinicio="anual",
+        # Arranca donde estaba: si hay 123 de este año, el siguiente es el 124.
+        # Empezar en cero repetiría todos los códigos ya emitidos.
+        empezar_en=ya_hay,
+    )
+    emitido = numeracion.siguiente(db, tenant_id, objeto="oportunidad")
+    assert emitido is not None  # se acaba de declarar
+    return emitido
 
 
 def cambiar_etapa(

@@ -1526,3 +1526,52 @@ decisiones que importan:
 
 Una granularidad desconocida se rechaza: guardarla sin comprobar dejaría un
 campo que dice «por semanas» y se comporta como si fuera por días.
+
+## El código que la gente dice por teléfono (`CRM-00.04.01.11`)
+
+Un identificador opaco es lo correcto para la máquina —no se adivina, no se
+enumera, no se agota— y **no sirve para lo que la gente hace con él**: decirlo
+por teléfono, escribirlo en un correo, buscarlo en la hoja de cálculo que le
+mandó el cliente. Por eso al lado va un código de negocio: corto, legible y
+correlativo.
+
+**Lo que había contaba filas, y sólo para oportunidades.** Contar falla de tres
+maneras, y las tres pasan:
+
+- si se borra un registro, el siguiente **repite** número — y ese número puede
+  estar impreso en una oferta;
+- si dos altas entran a la vez piden el mismo, y la restricción única convierte
+  el alta en un error que el usuario no entiende;
+- si alguien carga histórico con códigos propios, el recuento no tiene nada que
+  ver con el último emitido.
+
+Ahora hay un contador de verdad, por objeto, **bajo cerrojo de fila**, y guarda
+el último emitido (no el siguiente: así un contador recién creado vale cero y no
+hay que decidir en dos sitios si el primero es el 0 o el 1).
+
+**El patrón es configuración.** `OPP-2026-00123` es una convención, no una ley:
+hay clientes que numeran por delegación, otros sin año y otros que arrastran el
+formato del sistema del que vienen — y tiene que seguir siendo el mismo para que
+sus referencias de veinte años no se queden huérfanas. Se declaran el patrón
+(`{objeto}`, `{anio}`, `{anio_corto}`, `{mes}`, `{secuencia}`), el relleno y
+cuándo reinicia.
+
+**Lo que no se deja hacer, que es lo importante:**
+
+- un patrón **sin `{secuencia}`** daría el mismo código a todos los registros, y
+  lo que se vería es «no se puede crear», no «falta el número»;
+- reiniciar cada año **sin el año en el patrón** repite los códigos el 1 de
+  enero; y llevar el año **sin reiniciar** saca el año nuevo con el número
+  viejo, que no es lo que nadie espera;
+- **bajar el contador** repetiría códigos ya emitidos. Es la única forma de
+  hacer daño desde esa pantalla, y está cerrada.
+
+Todo eso se comprueba **al guardar la numeración**, no al emitir: descubrirlo al
+emitir es descubrirlo con un registro a medio crear y delante de quien no la
+escribió.
+
+Para llegar de otro sistema está `empezar_en`: el último código ya emitido. Sin
+él, el primer registro del CRM repetiría uno que el cliente tiene impreso en un
+albarán. Y un objeto sin numeración declarada **no es un error**: devuelve nada
+y el alta sigue. Que reventara obligaría a declarar numeración para todo antes
+de poder dar de alta la primera cosa.

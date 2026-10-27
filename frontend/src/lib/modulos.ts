@@ -338,6 +338,14 @@ export const MODULOS: Modulo[] = [
         listar: "/api/v1/metadata/relaciones/tipos",
         servicio: "metadata",
       },
+      // Cómo se numera cada objeto: el patrón, el relleno, cuándo reinicia y
+      // —lo que de verdad se viene a mirar— qué código saldría el siguiente.
+      {
+        nombre: "Numeración de negocio",
+        listar: "/api/v1/sales/numeracion",
+        servicio: "sales",
+        permiso: "metadata:read",
+      },
     ],
   },
   {

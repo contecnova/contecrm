@@ -354,6 +354,9 @@ def _importar_todos_los_modelos() -> None:
         # pérdida y el listado de vocabularios— reventaban con «relation
         # valores_vocabulario does not exist» en cuanto alguien las abría.
         "crmcore.vocabulario",
+        # La numeración de negocio: misma forma que los vocabularios —tabla
+        # común, en el esquema de cada servicio— y por el mismo motivo.
+        "crmcore.numeracion",
         "crmcore.datos.jerarquia",
         "crmcore.busqueda",
         "crmcore.authz.proyeccion",

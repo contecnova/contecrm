@@ -9,11 +9,11 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: ✅ 774 hecho · ⬜ 4 pendiente
+**778 capacidades**: ✅ 775 hecho · ⬜ 3 pendiente
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
-287 capacidades · ✅ 286 · ⬜ 1
+287 capacidades · ✅ 287
 
 ### 0.1 Multi-tenancy
 
@@ -279,7 +279,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-00.04.01.08` | Esquema expuesto vía API de metadatos (describe) para clientes headless | C | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.09` | Límites y gobierno del esquema (número de campos, índices, profundidad) con avisos | A | 0 | metadata | ✅ | — |
 | `CRM-00.04.01.10` | Migraciones de esquema seguras: añadir, renombrar, deprecar, backfill con progreso | A | 0 | metadata | ✅ | — |
-| `CRM-00.04.01.11` | Numeración de negocio por objeto: un código único, legible y correlativo, generado por el sistema o validado contra duplicado si lo trae quien da de alta | A | 1 | metadata | ⬜ | — |
+| `CRM-00.04.01.11` | Numeración de negocio por objeto: un código único, legible y correlativo, generado por el sistema o validado contra duplicado si lo trae quien da de alta | A | 1 | metadata | ✅ | — |
 | `CRM-00.04.01.12` | Granularidad del campo de fecha: día, mes/año o trimestre, declarada en el campo y respetada en validación, filtros, agrupaciones y exportación | A | 1 | metadata | ✅ | — |
 
 #### CRM-00.04.02 · Extensión por código

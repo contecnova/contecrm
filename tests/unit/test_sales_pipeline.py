@@ -409,3 +409,84 @@ def test_no_hay_pipeline_configurado_da_un_error_util(db: Any, tenant_id: UUID, 
         svc.crear_oportunidad_nueva(uow, nombre="Sin pipeline")
     assert exc.value.error_code == "sales.sin_pipeline"
     assert "Crea uno" in exc.value.mensaje
+
+
+# ── CRM-00.04.01.11 · Numeración de negocio por objeto ───────────────────
+#
+# El código que la gente dice por teléfono. Lo que había contaba filas, y
+# contar falla de tres maneras que pasan todas: al borrar se repite número, dos
+# altas simultáneas piden el mismo, y una carga histórica con códigos propios
+# deja el recuento sin relación con el último emitido.
+
+
+def test_borrar_una_oportunidad_no_repite_su_codigo_crm_00_04_01_11(
+    db: Any, tenant_id: UUID, uow: Any
+) -> None:
+    """**El caso que el recuento no sabe resolver.**
+
+    Con un contador que cuenta filas: se crean dos, se borra una, quedan una y
+    la siguiente vuelve a pedir el 2 — el mismo código que ya tiene impreso el
+    cliente en una oferta. Con un contador de verdad, el 2 no vuelve.
+    """
+    from services.sales.modelos import Oportunidad
+
+    _pipeline(db, tenant_id)
+    una = svc.crear_oportunidad_nueva(uow, nombre="Una")
+    dos = svc.crear_oportunidad_nueva(uow, nombre="Dos")
+    db.flush()
+    assert una.codigo != dos.codigo, (una.codigo, dos.codigo)
+
+    # Se borra la segunda, que es lo que hacía repetir el número.
+    db.delete(db.get(Oportunidad, dos.id))
+    db.flush()
+
+    tres = svc.crear_oportunidad_nueva(uow, nombre="Tres")
+    db.flush()
+    assert (
+        tres.codigo != dos.codigo
+    ), f"«{tres.codigo}» repite un código ya emitido: el contador está contando filas"
+
+
+def test_el_patron_del_codigo_lo_decide_el_cliente_crm_00_04_01_11(
+    db: Any, tenant_id: UUID, uow: Any
+) -> None:
+    """`OPP-2026-00123` es una convención, no una ley: hay clientes que numeran
+    por delegación y otros que arrastran el formato del sistema del que vienen
+    —y tiene que seguir siendo el mismo para que sus referencias de veinte años
+    no se queden huérfanas."""
+    from crmcore import numeracion
+
+    _pipeline(db, tenant_id)
+    numeracion.declarar(
+        db,
+        tenant_id,
+        objeto="oportunidad",
+        patron="NEG/{anio_corto}/{secuencia}",
+        relleno=3,
+        reinicio="anual",
+        empezar_en=41,
+    )
+    nueva = svc.crear_oportunidad_nueva(uow, nombre="Con su formato")
+    db.flush()
+    assert nueva.codigo.startswith("NEG/"), nueva.codigo
+    assert nueva.codigo.endswith("/042"), nueva.codigo
+
+
+def test_el_contador_no_se_puede_bajar_por_la_api_crm_00_04_01_11(db: Any, tenant_id: UUID) -> None:
+    """Es la única forma de hacer daño desde esa pantalla: bajarlo repetiría
+    códigos que ya están impresos en ofertas y albaranes."""
+    from crmcore import numeracion
+
+    numeracion.declarar(
+        db,
+        tenant_id,
+        objeto="pedido",
+        patron="PED-{anio}-{secuencia}",
+        reinicio="anual",
+        empezar_en=100,
+    )
+    fila = numeracion.declarar(
+        db, tenant_id, objeto="pedido", patron="PED-{anio}-{secuencia}", reinicio="anual"
+    )
+    # Sin `empezar_en`, cambiar el patrón NO toca el contador.
+    assert fila.ultimo == 100, fila.ultimo

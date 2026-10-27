@@ -365,6 +365,9 @@ RECURSOS_TRANSVERSALES = {
     # Los vocabularios de negocio: los publica cada servicio en su prefijo, como
     # la papelera, y por lo mismo — los valida él, en su esquema.
     "vocabularios",
+    # La numeración de negocio, por lo mismo: el código legible es del objeto y
+    # el objeto vive en su servicio, así que el contador también.
+    "numeracion",
     "trabajos",
     "retencion",
     "buscar",
