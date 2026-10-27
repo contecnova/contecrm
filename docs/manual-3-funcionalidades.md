@@ -4097,6 +4097,62 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### El panel que responde 422 siempre
+
+Hay una forma de romper una pantalla que no ve nada: llamar a una ruta sin un
+parámetro que el servidor exige. El tipo de la respuesta es correcto, la ruta
+existe, el permiso es el bueno y el front compila; sólo se ve **pidiéndola**.
+
+Pasó el mismo día en que se puso el panel de particiones de «Plataforma»:
+llamaba a `/volumen/particiones-a-crear` sin `ultima_existente` —cuál es la
+última partición que ya hay, que sólo lo sabe quien administra la base—, así
+que el panel salía en error para los catorce servicios. Ahora se pregunta, con
+el primero del mes en curso de partida.
+
+Y hay gate: `test_la_pantalla_manda_lo_que_el_servidor_exige` cruza las rutas
+que el front escribe con los parámetros obligatorios de los catorce OpenAPI.
+Corre en cada empujón aunque cueste doce segundos, porque lo que caza no lo ve
+nada más.
+
+Dos cosas que merece la pena contar de él. La primera, que **su primera versión
+señaló dos pestañas que funcionan**: las que llevan `periodo: true` no escriben
+`desde` y `hasta` en la ruta porque se los pone la pantalla de módulo en cada
+petición. Mirarlo antes de creérselo es lo que separa un gate de un ruido. Y la
+segunda, que está validado plantando el caso malo: quitándole el parámetro al
+panel, falla y dice el fichero y el parámetro que falta.
+
+### El botón que faltaba: exportar un listado (`CRM-05.01.01.07`)
+
+El caso más limpio de «escrito y sin enchufar» de todo el producto. El servidor
+publica `GET {colección}/exportar` en **setenta** colecciones, y lo hace bien:
+aplica los filtros de la URL, incluye las columnas propias del tenant, pasa por
+la misma proyección por rol que el listado —un CSV que enseña el teléfono que la
+ficha tapa es la vía más fácil de saltarse la protección, y la más silenciosa—,
+pone la marca de origen y exige reverificación por exportación masiva. El manual
+de usuario lo describe entero desde hace meses.
+
+Y no había **un solo botón** en todo el front.
+
+El que se ha puesto se decide desde la superficie y no desde una lista escrita a
+mano: una lista se queda corta en la colección setenta y uno, que es justo la
+que alguien querrá exportar. Con él ganan puerta 54 colecciones —las otras 16
+exportaciones siguen huérfanas porque su listado tampoco se enseña en ninguna
+parte, y se cerrarán cuando lo tenga—.
+
+Dos cosas que se arreglaron de paso, y las dos salieron de leer lo que el
+manual promete:
+
+- **el recorte no se decía en `csv`.** En `json` venía en el cuerpo desde el
+  principio; en el formato que se baja la gente, en ninguna parte. Ahora va en
+  una cabecera —`X-Exportacion-Truncada`—, porque en una hoja no cabe decirlo
+  sin ensuciarla y hace falta saberlo antes de abrirla. Hay prueba que planta el
+  caso malo: una cabecera que siempre vale «0» no avisa de nada y lo parece;
+- **y el paso de verificación se explica.** Un 401 pintado como «no autorizado»
+  se lee como que falta un permiso, que lleva a pedirle a un administrador algo
+  que no arregla nada. Se distingue además «vuelve a verificarte» de «no tienes
+  segundo factor configurado», que para quien está delante son dos cosas muy
+  distintas.
+
 ### Lo publicado que no tenía botón: «Plataforma y cumplimiento»
 
 Medido el 27-10-2026 cruzando el contrato publicado con el front: de 871

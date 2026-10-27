@@ -174,7 +174,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            sonda corregida —la primera mezclaba total por
 #                            ocurrencias con pendientes por rutas unicas y su
 #                            numero no se podia comparar con nada—: 426 -> 374
-TOPE_SIN_PANTALLA = 413
+#   27-10-2026  412 de 778  el boton de exportar un listado. Estaba TODO hecho
+#                            menos el boton: el servidor publica
+#                            `{coleccion}/exportar` en setenta colecciones, con
+#                            los filtros de la URL, las columnas propias del
+#                            tenant, la misma proyeccion por rol que el
+#                            listado, la marca de origen y el paso de
+#                            reverificacion; y el manual de usuario lo describe
+#                            entero desde hace meses. Cero botones. Con uno
+#                            —leido de la superficie, no de una lista— ganan
+#                            puerta 54 colecciones. Y se cerro de paso el
+#                            hueco que quedaba: en `csv` el recorte no se
+#                            decia en ninguna parte, asi que el fichero salia
+#                            cortado EN SILENCIO
+TOPE_SIN_PANTALLA = 412
 
 
 def _es_pantalla(p: Path) -> bool:

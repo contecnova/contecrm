@@ -591,30 +591,50 @@ function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer
  * Una partición que falta no se nota hasta que la escritura falla, y entonces
  * ya es un incidente. Por eso lo que se enseña es **lo que falta por crear**,
  * no el inventario de lo que hay.
+ *
+ * La pregunta necesita un dato que sólo sabe quien administra la base: **cuál
+ * es la última partición que ya existe**. El servidor lo exige, y la primera
+ * versión de este panel llamaba sin él: la respuesta era un 422 y el panel
+ * salía en error siempre, para todos los servicios. Así que se pide, con el
+ * primero del mes en curso de partida —el caso normal— y diciendo para qué
+ * sirve, en vez de inventarse un valor y dar una respuesta que no es sobre
+ * esta instalación.
  */
 function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
   const { t } = useTranslation();
+  const [ultima, setUltima] = useState(primeroDeEsteMes);
   const [particiones, setParticiones] = useState<Particiones | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
-    if (!puedeVer) return undefined;
+    if (!puedeVer || !ultima) return undefined;
     const control = new AbortController();
     setParticiones(null);
     setFallo(null);
-    llamar<Particiones>(`/api/v1/${servicio}/volumen/particiones-a-crear`, {
-      signal: control.signal,
-    })
+    llamar<Particiones>(
+      `/api/v1/${servicio}/volumen/particiones-a-crear?ultima_existente=${ultima}`,
+      { signal: control.signal },
+    )
       .then((r) => setParticiones(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
-  }, [servicio, puedeVer]);
+  }, [servicio, puedeVer, ultima]);
 
   useEffect(cargar, [cargar]);
 
   if (!puedeVer) return null;
   return (
     <Panel titulo={t("plataforma.volumen")} ayuda={t("plataforma.volumenAyuda")}>
+      <label className="mb-3 flex flex-wrap items-center gap-2 text-2xs text-ink-muted">
+        {t("plataforma.ultimaParticion")}
+        <input
+          type="date"
+          className="campo"
+          value={ultima}
+          onChange={(e) => setUltima(e.target.value)}
+          aria-label={t("plataforma.ultimaParticion")}
+        />
+      </label>
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!particiones && !fallo ? <Cargando /> : null}
       {particiones ? (
@@ -697,6 +717,11 @@ function Boveda({ servicio, puedeVer }: { servicio: string; puedeVer: boolean })
       ) : null}
     </Panel>
   );
+}
+
+function primeroDeEsteMes(): string {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function ahora(): string {

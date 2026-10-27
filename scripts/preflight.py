@@ -192,11 +192,17 @@ GATES: list[Gate] = [
             "pytest",
             "tests/unit/test_cada_capacidad_tiene_pantalla.py",
             "tests/unit/test_la_pantalla_toca_lo_que_dice_que_ensena.py",
+            # La tercera de la familia, y la que cuesta: construye los catorce
+            # contratos OpenAPI (12 s). Se paga en cada empujón a propósito —lo
+            # que caza es un panel que responde 422 SIEMPRE, y eso no lo ve el
+            # compilador, ni el tipo de la respuesta, ni la prueba de la
+            # pantalla: sólo se ve pidiendo la ruta.
+            "tests/unit/test_la_pantalla_manda_lo_que_el_servidor_exige.py",
             "-q",
             "--no-header",
         ],
         "fast",
-        "de cada capacidad hecha se llega a una pantalla, y el menu no miente",
+        "de cada capacidad hecha se llega a una pantalla, el menu no miente y nada pide mal",
     ),
     Gate(
         "contrato-headless",

@@ -191,8 +191,12 @@ Tres cosas que notarás:
 
 ### Exportar un listado
 
-Cualquier lista se puede bajar a una hoja de cálculo, con los filtros que tengas
-puestos en ese momento. Tres cosas que importan:
+El botón **Exportar** está arriba de cada lista, al lado del selector de vista.
+Baja lo que estás mirando a una hoja de cálculo, **con los filtros que tengas
+puestos en ese momento** — exportar «todo» cuando en pantalla hay un recorte es
+la forma de mandar un fichero con mucho más de lo que creías.
+
+Sale sólo donde el sistema admite exportar: no hay botones que luego fallen. Tres cosas que importan:
 
 - **Salen también vuestros campos propios**, no solo los que trae el producto. Lo
   que ves en la ficha es lo que llevará el fichero.
@@ -203,7 +207,10 @@ puestos en ese momento. Tres cosas que importan:
   base de clientes es lo que hace alguien que ya está dentro, y ahí el permiso no
   distingue. Si acabas de verificarte, no te lo vuelve a pedir.
 - **Si la lista es muy larga, el fichero se corta y te lo dice.** Un fichero
-  cortado en silencio es el que alguien manda creyendo que lleva todo.
+  cortado en silencio es el que alguien manda creyendo que lleva todo. El aviso
+  sale al bajarlo, con cuántas filas lleva: en una hoja de cálculo no cabe
+  decirlo sin ensuciarla, y hace falta saberlo **antes** de abrirla, que es
+  cuando todavía sirve de algo.
 
 Cada fichero lleva además una **marca de origen** con el día y una referencia:
 sirve para saber de dónde salió si aparece donde no debe. No lleva tu nombre en

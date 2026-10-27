@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import { Exportar } from "@/componentes/Exportar";
 import { Icono } from "@/componentes/Icono";
 import {
   Agrupado,
@@ -679,12 +680,22 @@ function RecursoVista({
               {/* Sin selector para un vocabulario: no hay tres formas de mirar
                   nueve palabras. */}
               {vocabulario ? null : (
-                <SelectorVista
-                  vista={vista}
-                  alCambiar={setVista}
-                  recuerdaComo={recuerdaComo}
-                  puedeAgrupar={Boolean(campoAgrupacion)}
-                />
+                <span className="flex items-center gap-2">
+                  {/* Con los filtros puestos: exportar «todo» cuando en
+                      pantalla hay un recorte es la forma de que alguien mande
+                      un fichero con mucho más de lo que creía. */}
+                  <Exportar
+                    listar={recurso.listar}
+                    nombre={recurso.nombre}
+                    consulta={comoQuery(filtros)}
+                  />
+                  <SelectorVista
+                    vista={vista}
+                    alCambiar={setVista}
+                    recuerdaComo={recuerdaComo}
+                    puedeAgrupar={Boolean(campoAgrupacion)}
+                  />
+                </span>
               )}
             </div>
           )}
@@ -719,12 +730,19 @@ function RecursoVista({
                 </p>
               }
               acciones={
-                <SelectorVista
-                  vista={vista}
-                  alCambiar={setVista}
-                  recuerdaComo={recuerdaComo}
-                  puedeAgrupar={Boolean(campoAgrupacion)}
-                />
+                <span className="flex items-center gap-2">
+                  <Exportar
+                    listar={recurso.listar}
+                    nombre={recurso.nombre}
+                    consulta={comoQuery(filtros)}
+                  />
+                  <SelectorVista
+                    vista={vista}
+                    alCambiar={setVista}
+                    recuerdaComo={recuerdaComo}
+                    puedeAgrupar={Boolean(campoAgrupacion)}
+                  />
+                </span>
               }
             />
           )}

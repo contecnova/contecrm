@@ -1118,6 +1118,14 @@ def montar_exportacion(
                     # Que no se quede en ninguna caché intermedia: lleva datos de
                     # clientes y una marca que identifica a quien lo pidió.
                     "Cache-Control": "no-store",
+                    # Si se ha llegado al tope, en una cabecera. En `json` el
+                    # recorte iba en el cuerpo y en `csv` no iba a ninguna
+                    # parte: el fichero salía cortado **en silencio**, que es
+                    # justo el que alguien manda creyendo que lleva todo. En un
+                    # CSV no cabe decirlo sin ensuciar la hoja, así que va
+                    # donde el que lo pide puede leerlo antes de abrirlo.
+                    "X-Exportacion-Truncada": "1" if len(filas) >= limite else "0",
+                    "X-Exportacion-Filas": str(len(filas)),
                 },
             )
 

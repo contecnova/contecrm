@@ -147,6 +147,23 @@ export default {
       "dar de alta oportunidades.",
     irAConfigurar: "Crear un pipeline",
   },
+  exportar: {
+    boton: "Exportar",
+    bajando: "Preparando…",
+    deQue: "Exportar {{nombre}} a una hoja de cálculo",
+    listo: "Fichero descargado",
+    cortado:
+      "Fichero descargado, pero CORTADO en {{cuantas}} filas: la lista es más " +
+      "larga. Acota con un filtro antes de mandarlo a nadie.",
+    noSePudo: "No se ha podido exportar",
+    vuelveAVerificarte:
+      "Exportar en masa pide volver a verificar tu identidad. Hazlo desde tu " +
+      "perfil y vuelve: vale para los próximos {{minutos}} minutos.",
+    sinSegundoFactor:
+      "Exportar en masa exige un segundo factor y tu cuenta no tiene ninguno " +
+      "configurado. Se configura desde tu perfil.",
+  },
+
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:
@@ -205,6 +222,7 @@ export default {
       "Las particiones que hay que crear antes de que hagan falta. Una que " +
       "falta no se nota hasta que la escritura falla, y entonces ya es un " +
       "incidente.",
+    ultimaParticion: "Última partición que ya existe",
     faltaLaDeEsteMes: "Falta la partición de este mes",
     particionesPorCrear: "{{cuantas}} particiones por crear",
     boveda: "Tarjetas e identificadores fiscales",

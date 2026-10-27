@@ -277,6 +277,36 @@ def test_el_csv_sale_ya_montado_y_ya_marcado(cliente: Any, cabeceras: dict[str, 
     assert lineas[-1].startswith("#"), "el CSV sale sin marca abajo"
 
 
+def test_el_csv_dice_si_se_ha_cortado(
+    cliente: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Un CSV cortado en silencio es el que alguien manda creyendo que lleva todo.
+
+    En `json` el recorte venía en el cuerpo desde el principio; en `csv` **no
+    iba a ninguna parte**, y es el formato que se baja la gente. En una hoja no
+    cabe decirlo sin ensuciarla, así que va en una cabecera: quien lo pide
+    puede leerla antes de abrir el fichero, que es cuando todavía sirve de
+    algo.
+    """
+    from services.sales.catalogo import ListaPrecio
+
+    for i in range(3):
+        db.add(ListaPrecio(tenant_id=tenant_id, clave=f"lp-tope-{i}", nombre=f"Tarifa {i}"))
+    db.commit()
+
+    # Con el tope por encima de lo que hay, no se corta.
+    entera = cliente.get("/api/v1/listas-precio/exportar?formato=csv&limite=50", headers=cabeceras)
+    assert entera.status_code == 200, entera.text[:300]
+    assert entera.headers.get("X-Exportacion-Truncada") == "0"
+
+    # Y con el tope por debajo, lo dice. Se planta el caso malo a propósito:
+    # una cabecera que siempre vale «0» no avisa de nada y parece que sí.
+    cortada = cliente.get("/api/v1/listas-precio/exportar?formato=csv&limite=2", headers=cabeceras)
+    assert cortada.status_code == 200, cortada.text[:300]
+    assert cortada.headers.get("X-Exportacion-Truncada") == "1"
+    assert cortada.headers.get("X-Exportacion-Filas") == "2"
+
+
 def test_el_csv_no_se_rompe_con_una_coma_dentro(
     cliente: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
 ) -> None:
