@@ -151,6 +151,17 @@ function Datos({
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
+  // Al cambiar de registro se sale de edición y se cancela la confirmación
+  // pendiente. Esta pantalla atiende a `/m/:ruta/:tipo/:id`: ir de una ficha a
+  // otra **no la desmonta**, así que sin esto se abría la siguiente ya en modo
+  // edición —con los datos de la anterior todavía en el formulario— y un
+  // «¿seguro que quieres borrar?» a medias se quedaba apuntando al registro
+  // nuevo. Borrar el que no era está a un clic de ahí.
+  useEffect(() => {
+    setEditando(false);
+    setConfirmando(false);
+  }, [modulo, objeto, id]);
+
   const ruta = recurso ? `${recurso.listar}/${id}` : "";
   // Todo lo que el servidor admite hacer con este registro, leído del contrato.
   // Son 144 en el sistema y ninguna se escribe a mano aquí.

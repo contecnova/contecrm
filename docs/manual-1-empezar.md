@@ -620,3 +620,26 @@ luego sin contemplaciones: un servicio local que no atiende a SIGTERM en diez
 segundos está colgado— y barre además los que quedaron sin pidfile, que son los
 que ocupan el puerto. Y `arrancar` comprueba que el proceso sigue vivo medio
 segundo después; si no, lo dice y señala su registro en vez de cantar un ✓.
+
+## El modo «crear» se quedaba pegado al cambiar de pantalla
+
+Pulsar «crear» en un módulo, irse a otro sin cerrar, y seguir en modo alta allí
+y en todos los siguientes hasta darle a cancelar en alguno. Lo contó quien lo
+usaba, y tiene razón en lo que molesta: un formulario que aparece solo encima
+de otra pantalla no se lee como un estado heredado, se lee como un error.
+
+La causa no es del producto, es de cómo funciona React: la pantalla de módulo
+atiende a `/m/:ruta`, así que **cambiar de módulo no la desmonta** y su estado
+sobrevive. Con él sobrevivían también el término de búsqueda y el rango de
+fechas de la pantalla anterior, que es el mismo fallo con menos ruido.
+
+Ahora la vista del recurso se identifica por su módulo **y su pestaña**, así
+que cambiar de cualquiera de los dos la empieza de cero. Sólo con el módulo no
+bastaba: cambiar de pestaña dentro del mismo seguiría arrastrando el formulario
+abierto.
+
+Y la ficha tenía lo mismo: ir de un registro a otro no la desmonta, así que el
+siguiente se abría **ya en modo edición y con los datos del anterior en el
+formulario**. Peor todavía, un «¿seguro que quieres borrar?» a medias quedaba
+apuntando al registro nuevo — y borrar el que no era está a un clic de ahí.
+Ahora al cambiar de registro se sale de edición y se cancela la confirmación.

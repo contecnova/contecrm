@@ -174,7 +174,17 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
         </nav>
       ) : null}
       {recurso ? (
+        /* La `key` NO es decorativa: sin ella React reutiliza esta misma
+           instancia al cambiar de módulo o de pestaña, y con ella se quedan
+           **el formulario de alta abierto**, el término de búsqueda y el rango
+           de fechas de la pantalla anterior.
+
+           Lo que se veía: pulsar «crear» en Cuentas, irse a Casos sin cerrar, y
+           seguir en modo alta ahí y en todas las siguientes hasta darle a
+           cancelar en alguna. Un formulario que aparece solo encima de otra
+           pantalla no se lee como un estado heredado: se lee como un error. */
         <RecursoVista
+          key={`${ruta}:${recurso.nombre}`}
           recurso={recurso}
           sesion={sesion}
           ruta={ruta}
