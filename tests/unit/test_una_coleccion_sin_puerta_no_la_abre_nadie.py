@@ -126,6 +126,28 @@ FRONT = RAIZ / "frontend/src"
 #                            de eventos, que es un `text/event-stream` abierto
 #                            y no una colección: una pantalla que lo listara se
 #                            quedaría colgada.
+#
+# **De qué son las 44 que quedan**, clasificadas el 27-10-2026 para que el
+# siguiente no tenga que medirlo otra vez. No son más de lo mismo:
+#
+#   · **~20 son calculadoras**: piden datos que sólo tiene quien está en mitad
+#     de otra cosa —«¿qué le cobramos a este cliente por esto?», «¿se puede
+#     mandar esto, ahora, a esta persona?», «¿a qué proveedor le toca este
+#     correo?»—. Su sitio es dentro del flujo donde se preguntan, no una
+#     pestaña: una pantalla que pide un JSON a mano no es una pantalla, es una
+#     calculadora en la que el usuario tiene que ser el modelo. Abrirlas es
+#     trabajo de cada flujo, no de la navegación.
+#   · **~8 cuelgan de un registro pero por OTRO prefijo**: el historial de
+#     previsión de una oportunidad vive en `/forecast/oportunidades/{id}/…` y
+#     su ficha en `/opportunities/{id}`. La ficha descubre sus paneles por
+#     prefijo común, así que no los ve. Lo que los identifica es el nombre del
+#     parámetro —`{oportunidad_id}`—, que es la convención que ya usa
+#     `montar_ficha`; engancharlos por ahí es un trabajo propio y además varias
+#     devuelven un objeto, no una lista, y la ficha hoy sólo pinta listas.
+#   · **6 son el corpus documental** —carpetas, sus documentos, sus permisos—,
+#     que es una pantalla entera y pide decidir cómo se navega un árbol.
+#   · **3 son del chat** —buscar, presencia, versiones de un mensaje—, que son
+#     mejoras de esa pantalla.
 TOPE_SIN_PUERTA = 44
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
