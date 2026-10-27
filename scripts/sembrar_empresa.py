@@ -852,11 +852,30 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
         )
         if ya_oport >= vol.oportunidades:
             print(f"Ya hay {ya_oport} oportunidades: no hacen falta más.")
+            # Pero sí sus OFERTAS, si se quedaron sin ellas. «No hacen falta
+            # más» impedía arreglar un sembrado anterior que no llegó a
+            # ofertar: seiscientas oportunidades sin una sola oferta, y las
+            # pestañas de ofertas, de líneas y de pedidos vacías para siempre,
+            # porque la única forma de volver a entrar aquí era borrarlas.
+            _ofertar_las_que_no_tienen(
+                uow,
+                svc_presupuestos,
+                productos=productos,
+                tenant_id=tenant_id,
+                reloj=reloj,
+                rnd=rnd,
+            )
         elif not cuentas:
             print("Sin fichero de enlace no se pueden atar oportunidades a cuentas: se omiten.")
         else:
             caminos = [e for e in abiertas]
-            hechos = {"ofertas": 0, "aprobaciones": 0, "pedidos": 0, "descartadas": 0}
+            hechos = {
+                "ofertas": 0,
+                "aprobaciones": 0,
+                "pedidos": 0,
+                "descartadas": 0,
+                "sin_catalogo": 0,
+            }
             for i in range(ya_oport, vol.oportunidades):
                 cuenta = cuentas[i % len(cuentas)]
                 titulo, minimo, maximo = PROYECTOS[i % len(PROYECTOS)]
@@ -917,6 +936,11 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
                 f"{hechos['ofertas']} ofertas ({hechos['aprobaciones']} pasaron por aprobación) "
                 f"y {hechos['pedidos']} pedidos"
                 + (f"; {hechos['descartadas']} descartadas" if hechos["descartadas"] else "")
+                + (
+                    f"; {hechos['sin_catalogo']} sin producto en el catálogo de " "esta empresa"
+                    if hechos.get("sin_catalogo")
+                    else ""
+                )
             )
 
 
@@ -1023,6 +1047,71 @@ def _recorrer_embudo(
     oportunidad.ultima_actividad_at = momento
 
 
+def _ofertar_las_que_no_tienen(
+    uow, svc_presupuestos, *, productos: dict, tenant_id, reloj, rnd
+) -> None:
+    """Las ofertas de las oportunidades que se quedaron sin ninguna.
+
+    Una empresa ya sembrada no se vuelve a sembrar —y está bien—, pero eso
+    dejaba sin arreglo lo que la pasada anterior no llegó a crear. Aquí se mira
+    **lo que falta**, no lo que hay: por oportunidad sin presupuesto.
+    """
+    from datos_demo import lineas_de_oferta
+    from sqlalchemy import select
+
+    from services.sales.modelos import Oportunidad, Presupuesto
+
+    con_oferta = {
+        f
+        for (f,) in uow.db.execute(
+            select(Presupuesto.oportunidad_id).where(Presupuesto.tenant_id == tenant_id)
+        ).all()
+    }
+    sin_oferta = [
+        o
+        for o in uow.db.execute(select(Oportunidad).where(Oportunidad.tenant_id == tenant_id))
+        .scalars()
+        .all()
+        if o.id not in con_oferta
+    ]
+    if not sin_oferta:
+        return
+
+    from crmcore.errors import Conflicto as ConflictoCrm
+    from crmcore.errors import ErrorValidacion
+
+    hechos = {"ofertas": 0, "aprobaciones": 0, "pedidos": 0, "descartadas": 0, "sin_catalogo": 0}
+    for oportunidad in sin_oferta:
+        abierta = oportunidad.created_at or reloj.desde
+        cierre = min(getattr(oportunidad, "cerrada_at", None) or reloj.hoy, reloj.hoy)
+        try:
+            _ofertar(
+                uow,
+                svc_presupuestos,
+                productos=productos,
+                oportunidad=oportunidad,
+                estado=oportunidad.estado,
+                abierta=abierta,
+                cierre=cierre,
+                lineas=lineas_de_oferta(rnd),
+                hechos=hechos,
+            )
+        except (ConflictoCrm, ErrorValidacion) as error:
+            hechos["descartadas"] += 1
+            print(f"  oferta descartada: {error}")
+    uow.db.flush()
+    print(
+        f"  {hechos['ofertas']} ofertas creadas para oportunidades que no tenían "
+        f"({hechos['pedidos']} pedidos)"
+        + (f"; {hechos['descartadas']} descartadas" if hechos["descartadas"] else "")
+        + (
+            f"; {hechos['sin_catalogo']} sin producto en el catálogo"
+            if hechos["sin_catalogo"]
+            else ""
+        )
+    )
+
+
 def _ofertar(
     uow,
     svc_presupuestos,
@@ -1045,16 +1134,34 @@ def _ofertar(
     """
     from datetime import timedelta
 
-    detalle = [
-        {
-            "producto_id": productos[linea["sku"]],
-            "cantidad": linea["cantidad"],
-            "descuento_pct": linea["descuento_pct"],
-        }
-        for linea in lineas
-        if linea["sku"] in productos
-    ]
+    # El catálogo del tenant manda, no el de este fichero. Lo pedido por SKU
+    # cuando existe; cuando no, un producto REAL de los que tiene la empresa.
+    #
+    # Antes era `if linea["sku"] in productos`, y debajo un `return` mudo. Con
+    # un tenant cuyo catálogo lo había creado el otro sembrador —SKU de
+    # automoción: `RS-220`, `ECU-77`— ninguna línea casaba, no se creaba
+    # ninguna oferta y el recuento decía «0 ofertas y 0 pedidos» como si fuera
+    # una decisión. Medido el 27-10-2026: seiscientas oportunidades sin una
+    # sola oferta, y las pestañas de pedidos y de líneas vacías por eso.
+    del_catalogo = sorted(productos.values())
+    detalle = []
+    for i, linea in enumerate(lineas):
+        producto_id = productos.get(linea["sku"])
+        if producto_id is None and del_catalogo:
+            producto_id = del_catalogo[i % len(del_catalogo)]
+        if producto_id is None:
+            continue
+        detalle.append(
+            {
+                "producto_id": producto_id,
+                "cantidad": linea["cantidad"],
+                "descuento_pct": linea["descuento_pct"],
+            }
+        )
     if not detalle:
+        # Y se dice, en vez de volver callando: sin catálogo no hay ofertas, y
+        # eso es un hecho sobre la instalación, no un silencio.
+        hechos["sin_catalogo"] = hechos.get("sin_catalogo", 0) + 1
         return
 
     presupuesto = svc_presupuestos.crear(
