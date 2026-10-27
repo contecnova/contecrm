@@ -80,7 +80,15 @@ FRONT = RAIZ / "frontend/src"
 #                            las licencias encima de los usuarios, el MRR
 #                            encima de las suscripciones, los casos a punto de
 #                            incumplir encima de los acuerdos de servicio.
-TOPE_SIN_PUERTA = 127
+#   27-10-2026  108 de 708  nueve listados que no tenían pestaña —las tablas
+#                            del almacén, las fuentes federadas, los cuadros
+#                            incrustados, las interacciones por canal, lo
+#                            programado y lo recibido de cada integración, el
+#                            estado financiero de un plan de cuenta y el
+#                            histórico de tipos de cambio— y la numeración, que
+#                            enseñaba la de ventas y no la de `party` ni la de
+#                            `service`.
+TOPE_SIN_PUERTA = 108
 
 SERVICIOS = (
     "party",

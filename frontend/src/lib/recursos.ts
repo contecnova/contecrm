@@ -66,6 +66,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
       { nombre: "Ajustes", listar: "/api/v1/ajustes", servicio: "tenancy" },
       {
+        // El histórico de tipos de cambio. Sin él, un importe convertido no se
+        // puede explicar: «salió a 1,07» es verificable, «salió al cambio» no.
+        nombre: "Tipos de cambio",
+        listar: "/api/v1/monedas/cambios",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      {
         nombre: "Localización",
         listar: "/api/v1/localizacion",
         servicio: "tenancy",
@@ -184,6 +192,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         permiso: "integracion:read",
       },
       {
+        // Lo que ha entrado por cada canal. Sin esto, un canal configurado y
+        // mudo se ve igual que uno que trabaja.
+        nombre: "Interacciones por canal",
+        objeto: "canal_entrada",
+        listar: "/api/v1/canales-entrada/interacciones",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
         nombre: "Entradas sin atribuir",
         listar: "/api/v1/canales-entrada/sin-atribuir",
         servicio: "integration",
@@ -226,6 +243,23 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         crear: "/api/v1/sagas",
         servicio: "orchestrator",
         permiso: "proceso:read",
+      },
+      // Lo que corre solo y lo que ha llegado. Son las dos preguntas de quien
+      // mantiene una integración —«¿se está ejecutando?» y «¿está entrando
+      // algo?»— y ninguna tenía pantalla.
+      {
+        nombre: "Ejecuciones programadas",
+        objeto: "registro_recibido",
+        listar: "/api/v1/integraciones/programacion",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Registros recibidos",
+        objeto: "registro_recibido",
+        listar: "/api/v1/integraciones/registros-recibidos",
+        servicio: "integration",
+        permiso: "integracion:read",
       },
       {
         nombre: "Transportes",
@@ -311,7 +345,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // —lo que de verdad se viene a mirar— qué código saldría el siguiente.
       {
         nombre: "Numeración de negocio",
-        listar: "/api/v1/sales/numeracion",
+        // Los tres servicios que numeran objetos de negocio, no sólo ventas:
+        // el código legible es del objeto y el objeto vive en su servicio, así
+        // que `party` y `service` llevan el suyo y no se veían.
+        listar: "/api/v1/:servicio/numeracion",
+        por_servicio: ["sales", "party", "service"],
         servicio: "sales",
         permiso: "metadata:read",
       },
@@ -563,6 +601,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       // Quién ha cambiado de empresa. Es calidad del dato y es una oportunidad:
       // un contacto que se va a otra cuenta se lleva la relación.
+      {
+        // El estado financiero de la cuenta, que es de donde sale si se le
+        // puede vender más: un plan de cuenta sin eso es una lista de deseos.
+        nombre: "Estado financiero",
+        objeto: "plan_cuenta",
+        listar: "/api/v1/planes-cuenta/financiero",
+        servicio: "party",
+        permiso: "party:read",
+      },
       {
         nombre: "Cambios de empresa",
         objeto: "cambio_de_empresa",
@@ -1291,6 +1338,35 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         objeto: "metrica",
         servicio: "analytics",
         columnas: ["clave", "nombre", "estado", "objeto", "agregacion", "unidad"],
+      },
+      // Qué hay en el almacén y de dónde sale. La frescura decía si estaba al
+      // día sin decir de QUÉ, así que el almacén se miraba por su síntoma.
+      {
+        nombre: "Tablas del almacén",
+        objeto: "tabla_analitica",
+        listar: "/api/v1/almacen/tablas",
+        servicio: "analytics",
+        permiso: "informe:read",
+      },
+      {
+        // Lo que se consulta sin copiarlo: una fuente federada que falla no
+        // deja un hueco en una tabla, deja un informe en error.
+        nombre: "Fuentes federadas",
+        objeto: "tabla_analitica",
+        listar: "/api/v1/almacen/federadas",
+        servicio: "analytics",
+        permiso: "informe:read",
+      },
+      {
+        // Los enlaces de cuadro incrustado, con los tipos de componente que
+        // admite: un enlace embebido es una ventana al dato desde fuera, y
+        // quién tiene una abierta es justo lo que hay que poder mirar.
+        nombre: "Cuadros incrustados",
+        objeto: "enlace_embebido",
+        resumen: ["/api/v1/cuadros-mando/componentes"],
+        listar: "/api/v1/cuadros-mando/embebidos",
+        servicio: "analytics",
+        permiso: "informe:read",
       },
       {
         nombre: "Frescura del almacén",

@@ -39,6 +39,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "tenant:read"
     },
     {
+      "r": "/api/v1/monedas/cambios",
+      "p": "tenant:read"
+    },
+    {
       "r": "/api/v1/localizacion"
     },
     {
@@ -96,6 +100,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "integracion:read"
     },
     {
+      "r": "/api/v1/canales-entrada/interacciones",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/canales-entrada/sin-atribuir"
     },
     {
@@ -114,6 +122,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/sagas",
       "p": "proceso:read"
+    },
+    {
+      "r": "/api/v1/integraciones/programacion",
+      "p": "integracion:read"
+    },
+    {
+      "r": "/api/v1/integraciones/registros-recibidos",
+      "p": "integracion:read"
     },
     {
       "r": "/api/v1/conectores/transportes"
@@ -258,6 +274,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/planes-cuenta",
+      "p": "party:read"
+    },
+    {
+      "r": "/api/v1/planes-cuenta/financiero",
       "p": "party:read"
     },
     {
@@ -564,6 +584,18 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/metricas"
+    },
+    {
+      "r": "/api/v1/almacen/tablas",
+      "p": "informe:read"
+    },
+    {
+      "r": "/api/v1/almacen/federadas",
+      "p": "informe:read"
+    },
+    {
+      "r": "/api/v1/cuadros-mando/embebidos",
+      "p": "informe:read"
     },
     {
       "r": "/api/v1/almacen/frescura"
