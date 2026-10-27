@@ -88,6 +88,7 @@ export default {
     estado: "Estado",
     seguridad: "Identidad y seguridad",
     plataforma: "Plataforma y cumplimiento",
+    firma: "Pendiente de firma",
     cobertura: "Cobertura",
     recorrido: "Recorrido guiado",
     procesos: "Procesos en curso",
@@ -147,6 +148,23 @@ export default {
       "dar de alta oportunidades.",
     irAConfigurar: "Crear un pipeline",
   },
+  firma: {
+    titulo: "Pendiente de firma",
+    entradilla:
+      "Qué contratos están parados, desde cuándo y por quién. Lo que lleva " +
+      "más tiempo esperando, primero.",
+    nadaEsperando: "No hay nada esperando una firma",
+    nadaEsperandoDetalle:
+      "Ningún sobre abierto. No es «todo firmado»: es que no hay nada en curso.",
+    cuantos: "{{cuantos}} sobres esperando",
+    diasParado: "{{dias}} d",
+    firmados: "{{firmados}} de {{total}} firmado",
+    nadieLoHaAbierto: "Nadie lo ha abierto",
+    caducaEn: "caduca en {{dias}} d",
+    esperandoA: "Esperando a",
+    abrirSobre: "Abrir el sobre",
+  },
+
   modeloDatos: {
     limites: "Cuánto sitio queda",
     camposDeTope: "{{campos}} campos de {{tope}}",

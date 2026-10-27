@@ -199,7 +199,17 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            en 404 —peor que no tenerlo—. La pantalla abre
 #                            por identificador, lee el nombre y con el pide lo
 #                            demas. Ocho capacidades
-TOPE_SIN_PANTALLA = 404
+#   27-10-2026  401 de 778  la firma electronica. Veintidos rutas publicadas y
+#                            cero pestanas: los sobres, sus firmantes, sus
+#                            recordatorios, su cancelacion y su evidencia
+#                            legal. Con `objeto` en el listado, las acciones
+#                            sobre un sobre las resuelve sola la ficha desde
+#                            la superficie, asi que el bloque es una pestana y
+#                            una pantalla: la de «pendiente de firma», que
+#                            contesta la pregunta de quien cierra un trimestre
+#                            —que contratos estan parados y por quien— y que
+#                            el servidor sabia responder desde el primer dia
+TOPE_SIN_PANTALLA = 401
 
 
 def _es_pantalla(p: Path) -> bool:

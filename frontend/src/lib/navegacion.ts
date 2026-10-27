@@ -166,6 +166,13 @@ export const ACCESOS: Entrada[] = [
  * distintos del menú.
  */
 export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
+  // Qué contratos están parados y por quién. Va en **Ventas** y no en
+  // Automatización, que es donde vive el motor de firma: quien persigue una
+  // firma es quien cierra la venta, y la busca al lado de sus oportunidades.
+  // Colocarla por donde está implementada en vez de por donde se usa es lo que
+  // hace que no se encuentre — y además habría necesitado una excepción de
+  // ámbito, que es justo la señal de que el sitio está mal elegido.
+  { area: "ventas", a: "/pendiente-de-firma", clave: "nav.firma", icono: "draw", permiso: "integracion:read" , recursos: ["firma"] },
   { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
 

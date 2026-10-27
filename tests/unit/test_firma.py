@@ -674,3 +674,115 @@ def test_mandar_llama_al_proveedor_crm_06_01_02_11(
     sobre = _sobre(uow)
     fir.enviar(uow, sobre.id)
     assert [o for o, _ in operador_de_firma] == ["crear_sobre"], operador_de_firma
+
+
+# ── Y el panel POR SU RUTA (CRM-06.01.02.10) ──────────────────────────────
+
+# La ruta con su hueco escrito: el gate que comprueba que ninguna pantalla
+# declara una forma que nadie pide busca el literal en los ficheros de prueba.
+PANEL = "/api/v1/firma/panel"
+
+
+@pytest.fixture
+def cliente_integracion(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        modulo = importlib.import_module("services.integration.main")
+        with TestClient(modulo.app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def cabeceras_integracion(tenant_id: UUID) -> dict[str, str]:
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    return firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(uuid4()),
+            H_PERMISOS: "*:*",
+            H_ROLES: "admin",
+            H_FACTOR_FUERTE: _ahora().isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+@pytest.mark.db
+def test_el_panel_contesta_por_su_ruta_lo_que_la_pantalla_pinta(
+    uow: UnidadDeTrabajo,
+    proveedor: Any,
+    db: Any,
+    cliente_integracion: Any,
+    cabeceras_integracion: dict[str, str],
+) -> None:
+    """La pantalla «Pendiente de firma» lee nueve campos de aquí.
+
+    El panel estaba probado llamando a la **función**. La ruta no, y entre la
+    función y la pantalla están el permiso, el serializador y el nombre de cada
+    campo. Si el servidor deja de mandar uno —o nunca lo mandó— el panel se
+    queda en blanco y no se entera nadie, que es justo lo que esta pantalla
+    existe para evitar: un contrato parado que nadie persigue.
+    """
+    _sobre(uow, asunto="Contrato marco")
+    db.commit()
+
+    r = cliente_integracion.get(f"{PANEL}?limite=50", headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text[:300]
+    cuerpo = r.json()
+    for clave in ("sobres", "cuantos", "medible"):
+        assert clave in cuerpo, f"la pantalla lee «{clave}» y la ruta no lo manda"
+    assert cuerpo["sobres"], "se ha creado un sobre y el panel sale vacío"
+
+    sobre = cuerpo["sobres"][0]
+    for clave in (
+        "sobre_id",
+        "referencia",
+        "asunto",
+        "estado",
+        "nivel",
+        "proveedor",
+        "dias_esperando",
+        "firmados",
+        "total",
+        "esperando_a",
+        "caduca_en_dias",
+        # Un correo que no llegó y una decisión que no se toma se persiguen de
+        # forma distinta: sin este campo, la pantalla las mezcla.
+        "nadie_lo_ha_abierto",
+    ):
+        assert clave in sobre, f"la pantalla lee «{clave}» de cada sobre y no viene"
+    # A quién le toca, por su nombre: «2 de 3» no dice a quién hay que llamar.
+    assert sobre["esperando_a"] == ["ana@cliente.com"]
+
+
+@pytest.mark.db
+def test_sin_sobres_abiertos_el_panel_no_dice_que_todo_esta_firmado(
+    cliente_integracion: Any, cabeceras_integracion: dict[str, str], contexto_tenant: UUID
+) -> None:
+    """Un verde vacío se lee igual que uno ganado, y no es lo mismo."""
+    cuerpo = cliente_integracion.get(PANEL, headers=cabeceras_integracion).json()
+    assert cuerpo["sobres"] == []
+    assert cuerpo["medible"] is False

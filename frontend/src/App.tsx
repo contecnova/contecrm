@@ -87,6 +87,9 @@ const Plataforma = lazy(() =>
 const ObjetoDelModelo = lazy(() =>
   import("@/paginas/ObjetoDelModelo").then((m) => ({ default: m.ObjetoDelModelo })),
 );
+const PendienteDeFirma = lazy(() =>
+  import("@/paginas/PendienteDeFirma").then((m) => ({ default: m.PendienteDeFirma })),
+);
 // La ficha de cliente trae las acciones y el formulario, y con ellos la tabla
 // de pestañas. Diferida por lo mismo que las otras dos.
 const Cuenta = lazy(() => import("@/paginas/Cuenta").then((m) => ({ default: m.Cuenta })));
@@ -238,6 +241,7 @@ export function App() {
           <Route path="/recorrido" element={<Recorrido />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
+          <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />
           <Route path="/explotacion" element={<Explotacion />} />
           <Route path="/cuadros" element={<Cuadros />} />
           <Route path="/embudo" element={<Pipeline sesion={sesion} />} />

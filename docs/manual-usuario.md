@@ -463,6 +463,30 @@ dejas de verlo **ese mismo día**, no cuando alguien se acuerde de revisarlo.
 
 ---
 
+### Qué está esperando una firma
+
+En **Ventas › Pendiente de firma** está lo que de verdad se pregunta al cerrar
+un trimestre: qué contratos están parados, desde cuándo y **por quién**.
+
+Lo que lleva más tiempo esperando sale primero —un listado por fecha de
+creación pone arriba lo recién mandado, que es lo único que no hay que tocar— y
+cada sobre dice a quién le toca firmar, por su nombre: «2 de 3 firmado» no dice
+a quién hay que llamar, que es lo único que vas a hacer con ese dato.
+
+Y se distingue **«nadie lo ha abierto»** de «abierto y sin firmar». No es un
+matiz: el primero es un correo que no llegó y se reenvía; el segundo es una
+decisión que no se toma y se resuelve con una llamada. Mezclarlos hace perder
+el tiempo en la mitad de los casos.
+
+Si no hay nada esperando, lo dice así: «no hay nada en curso», no «todo
+firmado». Un verde vacío se lee igual que uno ganado y no es lo mismo.
+
+Los sobres en sí, con sus firmantes y su evidencia, están en
+**Administrar › Operación › Sobres de firma**, y desde cada uno se puede
+mandar, recordar, cancelar o archivar el documento firmado.
+
+---
+
 ## Previsión y objetivos (sección 3.2)
 
 La previsión no es la suma del pipeline. Lo que verás:

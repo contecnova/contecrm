@@ -369,6 +369,27 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "integration",
         permiso: "integracion:read",
       },
+      // La firma electrónica entera estaba publicada y sin una sola pestaña:
+      // los sobres, sus firmantes, sus recordatorios, su cancelación y su
+      // evidencia legal. Con `objeto` la fila abre, y las acciones sobre un
+      // sobre —mandarlo, recordar, cancelar, archivar el firmado— las resuelve
+      // sola la ficha desde la superficie.
+      {
+        nombre: "Sobres de firma",
+        objeto: "sobre_firma",
+        listar: "/api/v1/firma/sobres",
+        crear: "/api/v1/firma/sobres",
+        servicio: "integration",
+        columnas: ["referencia", "asunto", "estado", "nivel", "proveedor"],
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Proveedores de firma",
+        listar: "/api/v1/firma/proveedores",
+        crear: "/api/v1/firma/proveedores",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       {
         nombre: "Firma presencial",
         listar: "/api/v1/firma-presencial",
