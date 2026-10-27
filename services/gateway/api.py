@@ -1292,8 +1292,16 @@ async def buscar_global(
     async def _preguntar(servicio: str) -> tuple[str, list[dict[str, Any]] | None]:
         destino = _destinos[servicio]
         try:
+            # Con el tramo del SERVICIO. Cada servicio publica su búsqueda en
+            # `/api/v1/{servicio}/buscar`, como la papelera y la retención,
+            # porque varios publican la misma ruta y sin ese tramo el gateway
+            # no sabría a cuál mandarla. Aquí se pedía `/api/v1/buscar` a secas:
+            # los dos contestaban **404**, los dos se contaban como caídos y la
+            # búsqueda global devolvía cero resultados **siempre**, con un
+            # aviso en el registro que no miraba nadie. Medido el 27-10-2026
+            # contra la pila viva.
             respuesta = await _cliente.get(
-                f"{destino.url_base}/api/v1/buscar",
+                f"{destino.url_base}/api/v1/{servicio}/buscar",
                 params={"q": q, "limite": limite},
                 headers=cabeceras,
                 timeout=5.0,

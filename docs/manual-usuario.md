@@ -77,11 +77,20 @@ sabes que existe.
 **Claro y oscuro.** El botón de la barra de arriba cambia el tema, y la elección
 se recuerda en ese navegador.
 
-**Buscar.** La búsqueda mira a la vez en cuentas, contactos, oportunidades, casos
-y documentos, y respeta lo anterior: no encuentra lo que no puedes ver. Busca por
-nombre, por identificador fiscal, por teléfono y por correo — y por teléfono
-funciona aunque esté escrito de otra forma (`+34 600…`, `0034600…`, `600…`),
-porque los que están mal escritos suelen ser los clientes de toda la vida.
+**Buscar.** Se escribe en el mismo sitio: `⌘K` o `Ctrl+K`. Arriba salen las
+pantallas que casan con lo escrito y **debajo los registros**: cuentas,
+contactos, oportunidades, casos y documentos, con su nombre y lo que los
+distingue, y `Intro` lleva a la ficha. Respeta lo anterior: no encuentra lo que
+no puedes ver. Busca por nombre, por identificador fiscal, por teléfono y por
+correo — y por teléfono funciona aunque esté escrito de otra forma
+(`+34 600…`, `0034600…`, `600…`), porque los que están mal escritos suelen ser
+los clientes de toda la vida.
+
+Hasta el 27-10-2026 esto estaba prometido aquí y **no funcionaba de dos formas
+a la vez**: la paleta sólo buscaba pantallas —quien escribía «Acme» llegaba a
+la lista de cuentas y tenía que buscar Acme otra vez dentro— y la búsqueda del
+servidor devolvía cero resultados siempre, porque preguntaba a cada servicio
+por una dirección que no era la suya. No daba error: devolvía «no hay nada».
 
 ---
 

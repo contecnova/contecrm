@@ -216,6 +216,9 @@ _DEL_GATEWAY = {
     "/api/v1/servicios",
     "/api/v1/estado",
     "/api/v1/salud",
+    # La búsqueda global: la compone el gateway preguntando a los índices de
+    # cada servicio, así que no está en el contrato de ninguno.
+    "/api/v1/buscar",
 }
 
 # Y las que el gateway sirve con un tramo variable dentro.

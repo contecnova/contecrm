@@ -88,7 +88,12 @@ FRONT = RAIZ / "frontend/src"
 #                            histórico de tipos de cambio— y la numeración, que
 #                            enseñaba la de ventas y no la de `party` ni la de
 #                            `service`.
-TOPE_SIN_PUERTA = 108
+#   27-10-2026  107 de 708  la búsqueda global. No es una puerta menos: es que
+#                            `GET /api/v1/buscar` no la llamaba nadie Y además
+#                            devolvía cero siempre, porque el gateway
+#                            preguntaba a `/api/v1/buscar` de cada servicio y
+#                            cada uno la publica en `/api/v1/{servicio}/buscar`.
+TOPE_SIN_PUERTA = 107
 
 SERVICIOS = (
     "party",

@@ -54,6 +54,12 @@ function visibilidadDe(fuente) {
       const primero = /por_servicio:\s*\[\s*"([^"]+)"/.exec(bloque)?.[1];
       const fila = { r: primero ? listar.replace(":servicio", primero) : listar };
       if (permiso) fila.p = permiso;
+      // El tipo de registro, cuando la pestaña lo declara. Lo necesita la
+      // paleta para llevar un resultado de búsqueda a SU ficha: sin él, lo
+      // único que podría hacer con «Acme» es abrir la lista de cuentas y
+      // dejar que el usuario lo busque otra vez dentro.
+      const objeto = /objeto:\s*"([^"]+)"/.exec(bloque)?.[1];
+      if (objeto) fila.o = objeto;
       if (plataforma) fila.sp = true;
       pestañas.push(fila);
     }
@@ -85,6 +91,8 @@ const contenido = `/**
 export interface PestanaVisible {
   /** De dónde lista. Se compara con lo que el servidor dice que permite. */
   r: string;
+  /** El tipo de registro de la pestaña, si lo declara. */
+  o?: string;
   /** El permiso que declara el recurso, si declara alguno. */
   p?: string;
   /** Sólo para quien opera la plataforma. */

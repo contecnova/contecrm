@@ -360,6 +360,24 @@ export function moduloDe(ruta: string): Modulo | undefined {
 }
 
 /**
+ * En qué módulo vive un tipo de registro.
+ *
+ * Lo necesita la búsqueda global para llevar un resultado a SU ficha. Sale del
+ * resumen de visibilidad —derivado de `recursos.ts` por un script, no copiado—
+ * porque la paleta vive en el marco y traerse la tabla entera costaría 42 kB
+ * comprimidos en la apertura.
+ *
+ * Sin módulo conocido devuelve cadena vacía, y quien llama decide: inventarse
+ * uno llevaría a una pantalla que no existe, que es peor que no enlazar.
+ */
+export function moduloDeObjeto(objeto: string): string {
+  for (const [ruta, pestanas] of Object.entries(VISIBILIDAD)) {
+    if (pestanas.some((p) => p.o === objeto)) return ruta;
+  }
+  return "";
+}
+
+/**
  * Con qué nombre viaja un recurso en la dirección de su ficha.
  *
  * El `objeto` declarado manda cuando lo hay, porque además de identificar la
