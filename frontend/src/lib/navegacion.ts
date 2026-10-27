@@ -269,7 +269,25 @@ export function ambitoDe(entrada: Entrada, area: IdArea): IdAmbito {
  * de trabajar, y quien lo viera pensaría que el menú está roto. Lo desconocido
  * cae en «trabajar», que es donde está casi todo y donde se entra.
  */
-export function ambitoDelCamino(camino: string): IdAmbito {
+export function ambitoDelCamino(
+  camino: string,
+  grupoDelModulo?: (ruta: string) => string | undefined,
+): IdAmbito {
+  // Los módulos del catálogo (`/m/<ruta>`) **también tienen ámbito**, y hasta
+  // el 27-10-2026 no se miraban: sólo se buscaba entre las pantallas a medida,
+  // así que `/m/tenants` o `/m/modelo` caían en «trabajar» por descarte. El
+  // efecto era de los que se sufren: estando en Administrar, abrir cualquier
+  // módulo de administración cambiaba la pestaña a Trabajar, y como el destino
+  // de esa pestaña es la portada, el siguiente clic te sacaba del sitio donde
+  // estabas trabajando. Lo contó quien lo usaba, no una prueba.
+  //
+  // El grupo se pide como función en vez de importar el catálogo de módulos:
+  // este fichero lo carga el marco entero y ese catálogo pesa.
+  const modulo = /^\/m\/([^/]+)/.exec(camino);
+  if (modulo && grupoDelModulo) {
+    const grupo = grupoDelModulo(modulo[1] ?? "");
+    if (grupo) return ambitoDelArea(AREA_DE_GRUPO[grupo] ?? "configuracion");
+  }
   const entrada = TRANSVERSALES.filter((e) => camino.startsWith(e.a)).sort(
     (a, b) => b.a.length - a.a.length,
   )[0];

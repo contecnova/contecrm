@@ -511,3 +511,22 @@ arrancar: el Postgres local se reinicializa solo.
 - **Cómo está construido y por qué** → [Manual V](manual-5-arquitectura.md)
 - **Contribuir** → [Gates locales](QUALITY_GATES.md). Empieza por ahí: los
   gates solo protegen si los instalas.
+
+## Estando en Administrar, abrir un módulo te devolvía a la portada
+
+Lo contó quien lo usaba, no una prueba, y es de los fallos que se sufren: desde
+«Administrar», al abrir **Tenants y unidades**, **Modelo de datos** o
+**Identidad y acceso**, la pestaña saltaba sola a «Trabajar», y como el destino
+de esa pestaña es la portada, el siguiente clic te sacaba de donde estabas.
+
+La causa: el ámbito de una pantalla se deduce del camino —a propósito, para que
+un enlace directo deje marcada la pestaña correcta— y esa deducción sólo miraba
+las pantallas escritas a mano. Los módulos del catálogo viven en `/m/<ruta>`, no
+estaban en esa lista, y caían en «trabajar» por descarte. Las dos mitades
+existían —el módulo sabe a qué grupo pertenece, y el grupo a qué ámbito— y nadie
+las juntaba.
+
+Ahora el ámbito de `/m/<ruta>` sale del grupo de ese módulo, y lo mismo para la
+ficha de dentro. La prueba que lo fija comprueba los dos sentidos —un módulo de
+administración se queda en Administrar y uno de trabajo sigue en Trabajar— y
+está validada quitando el arreglo: sin él, vuelve a fallar.

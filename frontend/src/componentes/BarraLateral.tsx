@@ -23,7 +23,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { config } from "@/lib/config";
-import { porGrupoVisible } from "@/lib/modulos";
+import { grupoDelModulo, porGrupoVisible } from "@/lib/modulos";
 import {
   ACCESOS,
   AMBITOS,
@@ -154,7 +154,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
   // El ámbito activo sale del CAMINO, no de un estado. Si fuera estado, abrir
   // un enlace directo a una pantalla de configuración dejaría marcada la
   // pestaña de trabajar y el menú parecería estropeado.
-  const ambito = ambitoDelCamino(ubicacion.pathname);
+  const ambito = ambitoDelCamino(ubicacion.pathname, grupoDelModulo);
   const areas = useMemo(
     () => menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e), ambito),
     [sesion, permitidas, ambito],

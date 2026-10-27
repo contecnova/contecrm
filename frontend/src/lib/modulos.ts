@@ -1736,6 +1736,18 @@ export function recursoVisible(
  * una lista escrita en el front: si el servidor cambia de opinión, el menú
  * cambia con él.
  */
+/**
+ * El grupo de menú al que pertenece un módulo, por su ruta.
+ *
+ * Lo necesita la navegación para saber a qué **ámbito** —Trabajar o
+ * Administrar— pertenece `/m/<ruta>`. Se expone como función y no importando
+ * `MODULOS` desde allí a propósito: ese fichero lo carga el marco entero y
+ * esta tabla pesa.
+ */
+export function grupoDelModulo(ruta: string): string | undefined {
+  return MODULOS.find((m) => m.ruta === ruta)?.grupo;
+}
+
 export function porGrupoVisible(
   sesion: Sesion | null,
   permitidas?: Set<string>,

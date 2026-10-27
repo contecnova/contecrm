@@ -14,6 +14,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { grupoDelModulo } from "@/lib/modulos";
 import {
   AREAS,
   TRANSVERSALES,
@@ -92,6 +93,32 @@ describe("las dos entradas", () => {
     // Lo que no está en el mapa cae en trabajar, que es donde se entra.
     expect(ambitoDelCamino("/")).toBe("trabajar");
     expect(ambitoDelCamino("/lo-que-sea")).toBe("trabajar");
+  });
+
+  it("un módulo de administración NO te devuelve a trabajar", () => {
+    /**
+     * El fallo que lo contó un usuario, no una prueba: estando en
+     * «Administrar», abrir un módulo de administración cambiaba la pestaña a
+     * «Trabajar» —porque `/m/<ruta>` no estaba en el mapa y caía por
+     * descarte— y, como el destino de esa pestaña es la portada, el siguiente
+     * clic te sacaba de donde estabas trabajando.
+     *
+     * Se comprueba con módulos reales del catálogo y en los dos sentidos: el
+     * de administración se queda, y el de trabajo sigue siendo de trabajo.
+     */
+    expect(grupoDelModulo("tenants")).toBe("Plataforma");
+    expect(ambitoDelCamino("/m/tenants", grupoDelModulo)).toBe("administrar");
+    expect(ambitoDelCamino("/m/modelo", grupoDelModulo)).toBe("administrar");
+    expect(ambitoDelCamino("/m/acceso", grupoDelModulo)).toBe("administrar");
+    // Y la ficha de dentro de ese módulo, que es la misma travesía.
+    expect(ambitoDelCamino("/m/tenants/tenant/abc", grupoDelModulo)).toBe("administrar");
+
+    expect(ambitoDelCamino("/m/cuentas", grupoDelModulo)).toBe("trabajar");
+    expect(ambitoDelCamino("/m/oportunidades", grupoDelModulo)).toBe("trabajar");
+
+    // Sin el buscador de grupo se comporta como antes: es el parámetro el que
+    // arregla el fallo, y así queda dicho que quitarlo lo devuelve.
+    expect(ambitoDelCamino("/m/tenants")).toBe("trabajar");
   });
 
   it("gana el camino más largo cuando uno es prefijo de otro", () => {
