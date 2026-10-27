@@ -736,7 +736,10 @@ los de descarte en Captación de leads.
 ### Cómo se ve una lista: tarjetas
 
 Una lista se abre **en tarjetas**: cada registro con su nombre delante y sus
-cuatro datos debajo. Una tabla enseña catorce columnas del mismo tamaño y no
+cuatro datos debajo. Todas miden lo mismo —el alto de la mayor—, aunque a unas
+les falte un dato que otras sí tienen: un borde que no cuadra con el de al lado
+se lee como que a esa ficha le falta algo, cuando lo que está vacío puede
+estarlo a propósito. Una tabla enseña catorce columnas del mismo tamaño y no
 destaca ninguna, así que para encontrar el dato por el que has entrado hay que
 leerlas todas; una tarjeta se ojea.
 

@@ -314,8 +314,12 @@ function Tarjeta({
         </dl>
       ) : null}
 
+      {/* Abajo del todo: con `mt-auto` el responsable se pega al borde
+          inferior, así que en una fila de tarjetas los avatares quedan
+          alineados entre sí en vez de a distinta altura cada uno. En la
+          variante compacta, que no es flex, `mt-auto` no hace nada. */}
       {responsable ? (
-        <p className="mt-2 flex items-center gap-1.5 text-3xs text-ink-muted">
+        <p className="mt-auto flex items-center gap-1.5 pt-2 text-3xs text-ink-muted">
           <span
             aria-hidden
             className="grid h-5 w-5 place-items-center rounded-full bg-paper-sunk text-[0.6rem] font-medium text-ink-muted"
@@ -341,21 +345,36 @@ export function Tarjetas({
   const campos = useMemo(() => camposDeTarjeta(filas, columnas, "nombre"), [filas, columnas]);
   const personas = usePersonas();
   return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    // Todas las tarjetas del mismo alto, y el de la mayor **de la rejilla
+    // entera**, no el de su fila. Hacen falta las tres cosas y por separado:
+    //
+    //   · `auto-rows-fr` reparte el alto entre TODAS las filas por igual, así
+    //     que una fila sin responsables no sale más baja que la de debajo;
+    //   · `items-stretch` estira cada celda al alto de su fila;
+    //   · y `h-full` hasta la propia tarjeta, porque si no se estira la celda
+    //     y la tarjeta de dentro se queda con su alto.
+    //
+    // Con sólo las dos últimas quedaban iguales por fila y distintas entre
+    // filas, que es como se vio la segunda vez. No es estética: un borde que
+    // no cuadra con el de al lado se lee como que a esa ficha le falta algo, y
+    // lo que le falta es un dato que puede estar vacío a propósito.
+    <ul className="grid auto-rows-fr items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {filas.map((fila, i) => {
         const a = enlace?.(fila) ?? null;
         const cuerpo = <Tarjeta fila={fila} campos={campos} personas={personas} />;
         return (
-          <li key={String(fila.id ?? i)}>
+          <li key={String(fila.id ?? i)} className="h-full">
             {a ? (
               <Link
                 to={a}
-                className="block rounded-xl border border-ink-dim/60 bg-paper p-3 hover:border-accent"
+                className="flex h-full flex-col rounded-xl border border-ink-dim/60 bg-paper p-3 hover:border-accent"
               >
                 {cuerpo}
               </Link>
             ) : (
-              <div className="rounded-xl border border-ink-dim/60 bg-paper p-3">{cuerpo}</div>
+              <div className="flex h-full flex-col rounded-xl border border-ink-dim/60 bg-paper p-3">
+                {cuerpo}
+              </div>
             )}
           </li>
         );
