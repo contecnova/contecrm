@@ -369,6 +369,26 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "integration",
         permiso: "integracion:read",
       },
+      // Los perfiles de suite y el consentimiento de cada usuario: el primero
+      // es la declaración de qué sabe hacer un proveedor —endpoints, campos,
+      // incremento y límites, como configuración y no como código—, y el
+      // segundo es con qué permiso se conectó cada buzón. Los dos se listaban
+      // por API y no salían en ninguna parte.
+      {
+        nombre: "Perfiles de suite",
+        objeto: "perfil_suite",
+        listar: "/api/v1/suites/perfiles",
+        crear: "/api/v1/suites/perfiles",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Consentimiento de suite",
+        listar: "/api/v1/suites/consentimiento",
+        crear: "/api/v1/suites/consentimiento",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       // La firma electrónica entera estaba publicada y sin una sola pestaña:
       // los sobres, sus firmantes, sus recordatorios, su cancelación y su
       // evidencia legal. Con `objeto` la fila abre, y las acciones sobre un

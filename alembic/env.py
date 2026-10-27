@@ -121,6 +121,16 @@ def _importar_modelos(servicio: str) -> None:
         # arregló con los vocabularios, donde dónde existía dependía de qué
         # importara cada servicio por casualidad.
         "crmcore.numeracion",
+        # El esquema replicado del tenant y el uso de campos, por lo mismo y
+        # con el mismo síntoma —y es la quinta vez que esta lista se queda
+        # corta por el mismo motivo—. No es una tabla «de metadata»: la lee la
+        # proyección de campos, que pasa por TODAS las lecturas de TODOS los
+        # servicios para resolver los campos calculados del tenant. Estaba en
+        # seis esquemas de trece, y en los otros siete la consulta reventaba,
+        # dejaba la transacción envenenada y lo que se veía era el error de la
+        # consulta de ABAC: `GET /ia/agentes-autonomos` daba 500 con un mensaje
+        # que no nombraba ni el metamodelo ni la tabla que faltaba.
+        "crmcore.metamodelo",
     ]
     for modulo in [*comunes, f"services.{servicio}.modelos"]:
         try:

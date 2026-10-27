@@ -380,6 +380,28 @@ const pantallas = {
     },
   },
   suite: {
+    saludSuites: "Correo, calendario y contactos de cada uno",
+    saludSuitesAyuda:
+      "Qué buzón lleva sin sincronizar y por qué, qué credenciales van a dejar " +
+      "de funcionar y qué suscripciones hay que renovar. Las tres se preguntan " +
+      "ANTES de que pase algo, que es cuando sirven.",
+    sinConexiones: "Ninguna conexión de suite configurada",
+    sinConexionesPorque:
+      "No es «todo al día»: es que nadie ha conectado su correo ni su calendario.",
+    paradas: "{{cuantas}} de {{total}} conexiones paradas",
+    todasAlDia: "Las {{total}} conexiones están al día",
+    horasParada: "{{horas}} h",
+    enSondeo:
+      "{{cuantas}} van por sondeo porque no se pudo renovar su suscripción: sus " +
+      "cambios entran con retraso, no al instante.",
+    sinMedir: "{{cuantas}} sin medir: de ésas no se dice nada, no se han mirado.",
+    credenciales: "Credenciales",
+    credencialesAlDia: "Ninguna de las {{revisados}} pide nada",
+    credencialesSinRevisar:
+      "Ninguna credencial que revisar: nadie ha autorizado todavía su correo ni su calendario.",
+    suscripciones: "Suscripciones",
+    suscripcionesAlDia: "Ninguna pendiente de renovar",
+    sinCaducidadDeclarada: "sin caducidad declarada: no es «no caduca», es que no se sabe",
     titulo: "Gobierno de la suite",
     intro: "Las herramientas de la casa, quién entra en cada una y qué falta por aplicar.",
     sinHerramientas: "No hay herramientas conectadas",

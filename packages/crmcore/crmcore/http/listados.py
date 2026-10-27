@@ -507,6 +507,7 @@ def montar_listado(
         for r in router.routes
     ):
         return
+    antes = len(router.routes)
     montar_ficha(
         router,
         modelo=modelo,
@@ -516,6 +517,15 @@ def montar_listado(
         nombre=nombre,
         ruta=ruta,
     )
+    # Se marcan como automáticas para que una `montar_ficha` escrita a mano
+    # DESPUÉS pueda quitarlas. El guardián de arriba sólo mira hacia atrás, y en
+    # `marketing` y `service` la ficha a mano venía después: quedaban las dos
+    # montadas, ocho rutas duplicadas, y FastAPI avisaba de ello en cada arranque
+    # con un «Duplicate Operation ID» que nadie leía. Funcionaba por casualidad
+    # —gana la primera que casa—, así que las opciones de la escrita a mano
+    # —`editable`, `con_lectura`, su parámetro— no se aplicaban nunca.
+    for ruta_montada in router.routes[antes:]:
+        ruta_montada.ficha_automatica = True  # type: ignore[attr-defined]
 
 
 # Columnas que nunca se editan desde la ficha: las pone el sistema y dejarlas
@@ -691,6 +701,20 @@ def montar_ficha(
     # encontraba y esas rutas se quedaban sin probar, en silencio.
     parametro = parametro or f"{objeto}_id"
     ruta_registro = f"{ruta}/{{{parametro}}}"
+
+    # Si `montar_listado` ya montó una ficha automática para esta colección, se
+    # retira: la escrita a mano es la que manda, y dejar las dos no es
+    # inofensivo —gana la primera registrada, así que lo que se escribe aquí no
+    # se aplica— además de duplicar cuatro rutas en el contrato publicado.
+    prefijo_registro = f"{getattr(router, 'prefix', '')}{ruta_registro}"
+    router.routes[:] = [
+        r
+        for r in router.routes
+        if not (
+            getattr(r, "ficha_automatica", False)
+            and getattr(r, "path", "").startswith(prefijo_registro)
+        )
+    ]
 
     def _buscar(db: Any, registro_id: Any) -> Any:
         fila = db.get(modelo, registro_id)

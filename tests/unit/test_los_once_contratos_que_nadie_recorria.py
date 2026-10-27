@@ -624,3 +624,125 @@ def test_la_salud_del_puesto_separa_lo_parado_de_lo_que_no_se_ha_medido(
     _campos(cuerpo["paradas"][0], "conexion", "horas_sin_sincronizar", "estado", "porque")
     assert len(cuerpo["sin_medir"]) == 1, "la que nunca sincronizó no puede contar como sana"
     assert cuerpo["todo_bien"] is False
+
+
+# ── Las dos que acompañan a la salud del puesto: Suite.tsx ────────────────
+#
+# Se añaden el 27-10-2026 por un fallo recién plantado y recién cazado. El
+# panel «salud de las suites» se escribió leyendo las dos rutas como si
+# devolvieran una LISTA, y las dos devuelven un sobre:
+# `{revisados, que_piden_algo}` y `{por_renovar, sin_caducidad_declarada,
+# aviso}`. El `.filter` sobre un objeto revienta dentro del `.then`, el
+# `.catch` se lo traga, y el panel sale con sus dos rótulos y nada debajo. Sin
+# error en consola y sin 500: exactamente el fallo que da nombre a este
+# fichero, cometido otra vez el mismo día.
+
+
+def test_la_salud_de_las_credenciales_viene_en_un_sobre_y_dice_cual_se_rompe_sola(
+    integration: Any, cabeceras: dict[str, str], uow: Any, tenant_id: UUID, usuario: UUID
+) -> None:
+    """Tres credenciales y sólo una es la bomba de relojería.
+
+    La que tiene caducidad **y no tiene refresco** sale aunque le queden
+    trescientos días: el día que llegue deja de entrar el correo de todos a la
+    vez, y conseguir refresco o planificar la reautorización no se hace en una
+    semana. La que no declara caducidad sale como «no fiable» —no se sabe que
+    esté bien, se sabe que no se ha medido—. La sana y con refresco no sale.
+    """
+    from services.integration.suites import ConsentimientoSuite
+
+    lejos = datetime.now(timezone.utc) + timedelta(days=300)
+    for perfil, caduca, refresco in (
+        ("bomba", lejos, False),
+        ("sana", lejos, True),
+        ("sin_medir", None, True),
+    ):
+        uow.db.add(
+            ConsentimientoSuite(
+                tenant_id=tenant_id,
+                usuario_id=usuario,
+                perfil=perfil,
+                recurso="correo",
+                concedido_at=datetime.now(timezone.utc),
+                credencial_caduca_at=caduca,
+                tiene_refresco=refresco,
+            )
+        )
+    uow.db.flush()
+
+    r = integration.get("/api/v1/suites/credenciales/salud", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    # El sobre, que es lo que la pantalla leía mal: un objeto, no una lista.
+    assert isinstance(cuerpo, dict), f"la pantalla lo lee como lista y llega {type(cuerpo)}"
+    _campos(cuerpo, "revisados", "que_piden_algo")
+    assert cuerpo["revisados"] == 3, "las tres se han mirado"
+
+    piden = {c["perfil"]: c for c in cuerpo["que_piden_algo"]}
+    assert "sana" not in piden, "una credencial con refresco y lejos de caducar no pide nada"
+    assert set(piden) == {"bomba", "sin_medir"}, sorted(piden)
+
+    # Campo a campo, los que pinta el panel.
+    _campos(
+        piden["bomba"],
+        "consentimiento_id",
+        "usuario_id",
+        "perfil",
+        "recurso",
+        "se_rompera_sola",
+        "renovar",
+        "avisar",
+        "fiable",
+        "porque",
+    )
+    assert piden["bomba"]["se_rompera_sola"] is True
+    assert piden["sin_medir"]["se_rompera_sola"] is False
+    assert piden["sin_medir"]["fiable"] is False
+    # El porqué viaja escrito: «error de autenticación» a secas es el mensaje
+    # que atasca una implantación una semana.
+    assert piden["bomba"]["porque"].strip(), "sin porqué, el panel no dice qué hacer"
+
+
+def test_las_suscripciones_por_renovar_separan_las_que_no_dicen_cuando_caducan(
+    integration: Any, cabeceras: dict[str, str], uow: Any, tenant_id: UUID, usuario: UUID
+) -> None:
+    """Y `sin_caducidad_declarada` son identificadores, no registros.
+
+    Importa porque la pantalla pintaba `s.recurso` de cada uno: con una lista
+    de cadenas eso es `undefined`, y la línea sale vacía sin que falle nada.
+    """
+    from services.integration.suites import SuscripcionSuite
+
+    for recurso, caduca in (
+        ("correo", datetime.now(timezone.utc) + timedelta(hours=6)),
+        ("calendario", datetime.now(timezone.utc) + timedelta(days=200)),
+        ("contactos", None),
+    ):
+        uow.db.add(
+            SuscripcionSuite(
+                tenant_id=tenant_id,
+                usuario_id=usuario,
+                perfil="generico",
+                recurso=recurso,
+                estado="activa",
+                caduca_at=caduca,
+            )
+        )
+    uow.db.flush()
+
+    r = integration.get("/api/v1/suites/suscripciones/por-renovar", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert isinstance(cuerpo, dict), f"la pantalla lo lee como lista y llega {type(cuerpo)}"
+    _campos(cuerpo, "por_renovar", "sin_caducidad_declarada", "aviso")
+
+    assert [s["recurso"] for s in cuerpo["por_renovar"]] == [
+        "correo"
+    ], "sólo la que caduca dentro del margen; la de doscientos días no es urgente"
+    _campos(cuerpo["por_renovar"][0], "id", "recurso", "usuario_id", "caduca_at")
+
+    assert len(cuerpo["sin_caducidad_declarada"]) == 1
+    assert all(
+        isinstance(x, str) for x in cuerpo["sin_caducidad_declarada"]
+    ), "son identificadores sueltos, no registros: la pantalla no puede pedirles `recurso`"
+    assert cuerpo["aviso"].strip(), "si hay alguna sin declarar, el aviso lo dice"

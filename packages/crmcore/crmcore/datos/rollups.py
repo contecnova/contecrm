@@ -125,12 +125,21 @@ def calcular(db: Session, rollups: list[Rollup], padres: list[UUID]) -> dict[UUI
             consulta = consulta.where(rollup.filtro)
         consulta = consulta.group_by(columna_padre)
 
+        # Con SAVEPOINT, y no un `try` a secas: un `try` atrapa el error pero
+        # deja la sesión envenenada, así que el rollup siguiente —y después el
+        # propio listado— morían con `InFailedSqlTransaction`. El `except`
+        # escribía su aviso tranquilizador y el listado se caía igual, que es
+        # justo lo que este bloque dice evitar.
+        punto = db.begin_nested()
         try:
             filas = db.execute(consulta).all()
+            punto.commit()
         except Exception as exc:  # noqa: BLE001 — un rollup roto no tumba el listado
             # Se deja el valor sin calcular y se dice en el log. Propagar
             # convertiría un rollup mal declarado en un listado que no se puede
             # abrir, y el listado es lo que la gente usa todo el día.
+            if punto.is_active:
+                punto.rollback()
             logger.error("rollup.fallo", rollup=rollup.nombre, error=str(exc)[:200])
             continue
 

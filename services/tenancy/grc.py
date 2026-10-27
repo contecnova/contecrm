@@ -387,6 +387,11 @@ def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dic
     fuente = control.fuente_evidencia
     if not fuente:
         return {}
+    # Con SAVEPOINT: una fuente que no se sabe leer tiene que quedarse en una
+    # evidencia con su error, y un `try` a secas no lo consigue —deja la sesión
+    # envenenada y el control SIGUIENTE muere con `InFailedSqlTransaction`, así
+    # que un control mal declarado tumbaba la evaluación entera—.
+    punto = db.begin_nested()
     try:
         if fuente == "audit_trail":
             # `ApunteAuditoria`, no `EntradaAuditoria`: ese nombre no existe.
@@ -420,7 +425,14 @@ def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dic
             ).scalar_one()
             return {"fuente": fuente, "certificados": int(cuantos)}
     except Exception as exc:  # noqa: BLE001 — la evidencia que falla se dice
+        if punto.is_active:
+            punto.rollback()
         return {"fuente": fuente, "error": str(exc)[:200]}
+    finally:
+        # El `return` de dentro del `try` pasa por aquí: sin esto, el SAVEPOINT
+        # se quedaría abierto y el siguiente `begin_nested` fallaría.
+        if punto.is_active:
+            punto.commit()
     return {"fuente": fuente, "error": "fuente no reconocida"}
 
 

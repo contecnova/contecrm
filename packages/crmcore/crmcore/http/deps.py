@@ -31,6 +31,7 @@ from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from crmcore.authz.principal import ANONIMO, Principal
+from crmcore.db.al_margen import al_margen
 from crmcore.errors import NoAutenticado, Prohibido
 from crmcore.logging import get_logger
 
@@ -621,8 +622,15 @@ def proyectar_para(
     # exportación—: el tipo de campo «fórmula» se podía declarar desde el primer
     # día y no lo evaluaba nadie, así que el campo existía, la persona escribía
     # su fórmula y el registro no enseñaba ningún valor. Sin error.
+    # El `try` lleva SAVEPOINT y no va suelto, y la diferencia no es cosmética:
+    # el 27-10-2026 faltaba `esquemas_tenant` en siete de los trece esquemas, la
+    # consulta de aquí reventaba, el `except` lo daba por «sin fórmulas» —que es
+    # la respuesta correcta— y la petición se moría DOS líneas más abajo, al
+    # leer las políticas ABAC, con un `InFailedSqlTransaction` que no nombraba
+    # ni el metamodelo ni la tabla que faltaba. `GET /ia/agentes-autonomos` daba
+    # 500 y el mensaje mandaba a buscar el fallo donde no estaba.
     formulas: list[tuple[str, str]] = []
-    try:
+    with al_margen(db, "proyeccion.formulas_no_resueltas", objeto=objeto):
         from crmcore.metamodelo import campos_de
 
         formulas = [
@@ -630,8 +638,6 @@ def proyectar_para(
             for c in campos_de(db, principal.tenant_id, objeto)
             if c.get("tipo") == "formula" and c.get("activo", True)
         ]
-    except Exception:  # pragma: no cover — sin esquema replicado no hay fórmulas
-        formulas = []
     roles = frozenset(principal.roles) | (
         {"admin"} if principal.es_admin_plataforma else frozenset()
     )
@@ -707,7 +713,20 @@ def _ocultos_de_politica(db: Any, objeto: str, datos: dict[str, Any]) -> set[str
     try:
         return campos_ocultos(db, objeto=objeto, registro=datos)
     except Exception as exc:  # noqa: BLE001 — ante la duda, no se enseña
-        get_logger(__name__).error("abac.fallo_al_ocultar", objeto=objeto, error=str(exc)[:300])
+        # Con la traza y el tipo, no sólo el mensaje. Sin esto, un fallo aquí
+        # sale como «current transaction is aborted» —que es la CONSECUENCIA de
+        # otro error anterior, no la causa— y no hay forma de saber de dónde
+        # vino: costó una tarde perseguir uno así, con el mensaje bueno
+        # escondido detrás del de la transacción rota.
+        import traceback
+
+        get_logger(__name__).error(
+            "abac.fallo_al_ocultar",
+            objeto=objeto,
+            tipo=type(exc).__name__,
+            error=str(exc)[:300],
+            traza=traceback.format_exc()[-1200:],
+        )
         try:
             from crmcore.authz.politicas import campos_gobernados
             from crmcore.tenancy.context import contexto_actual

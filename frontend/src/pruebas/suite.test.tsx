@@ -17,17 +17,24 @@ import { SuiteGobierno } from "@/paginas/Suite";
 let respuestas: Record<string, unknown> = {};
 const llamadas: { ruta: string; metodo?: string }[] = [];
 
-vi.mock("@/lib/api", () => ({
-  llamar: vi.fn(async (ruta: string, opciones?: { metodo?: string }) => {
-    llamadas.push({ ruta, metodo: opciones?.metodo });
-    const clave = Object.keys(respuestas)
-      .filter((k) => ruta.startsWith(k))
-      .sort((a, b) => b.length - a.length)[0];
-    if (!clave) throw new Error(`sin respuesta preparada para ${ruta}`);
-    return { datos: respuestas[clave] };
-  }),
-  salvoCancelacion: (fn: (e: unknown) => void) => fn,
-}));
+vi.mock("@/lib/api", async (importOriginal) => {
+  // `ErrorApi` sale del módulo de verdad: `Estados.tsx` hace
+  // `error instanceof ErrorApi`, y con el módulo mockeado entero esa clase no
+  // existe — la pantalla reventaba al pintar un fallo, no al pedirlo.
+  const real = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...real,
+    llamar: vi.fn(async (ruta: string, opciones?: { metodo?: string }) => {
+      llamadas.push({ ruta, metodo: opciones?.metodo });
+      const clave = Object.keys(respuestas)
+        .filter((k) => ruta.startsWith(k))
+        .sort((a, b) => b.length - a.length)[0];
+      if (!clave) throw new Error(`sin respuesta preparada para ${ruta}`);
+      return { datos: respuestas[clave] };
+    }),
+    salvoCancelacion: (fn: (e: unknown) => void) => fn,
+  };
+});
 
 vi.mock("@/lib/permisos", () => ({
   usePuedeOperar: () => () => true,
@@ -69,14 +76,38 @@ const APARTADO = {
   gravedad: "alta",
 };
 
+/**
+ * Las tres rutas del panel de salud, que se piden siempre que se monta la
+ * pantalla. Van con la forma EXACTA del servidor —un sobre, no una lista—,
+ * porque leerlas como listas es justo el fallo que tuvo este panel: el
+ * `.filter` sobre un objeto revienta dentro del `.then`, el `.catch` se lo
+ * traga y el panel sale con sus rótulos y nada debajo.
+ */
+const SALUD_DE_SUITES = {
+  "/api/v1/suites/salud": {
+    total: 0,
+    paradas: [],
+    sin_medir: [],
+    en_sondeo: [],
+    todo_bien: false,
+  },
+  "/api/v1/suites/credenciales/salud": { revisados: 0, que_piden_algo: [] },
+  "/api/v1/suites/suscripciones/por-renovar": {
+    por_renovar: [],
+    sin_caducidad_declarada: [],
+    aviso: "",
+  },
+};
+
 describe("la consola de gobierno de la suite", () => {
   beforeEach(() => {
-    respuestas = {};
+    respuestas = { ...SALUD_DE_SUITES };
     llamadas.length = 0;
   });
 
   it("sin herramientas conectadas no dice «todo bien»", async () => {
     respuestas = {
+      ...SALUD_DE_SUITES,
       "/api/v1/suite/panel": {
         ...PANEL_LIMPIO,
         herramientas: [],
@@ -89,6 +120,7 @@ describe("la consola de gobierno de la suite", () => {
 
   it("enseña las bajas sin aplicar como lo primero", async () => {
     respuestas = {
+      ...SALUD_DE_SUITES,
       "/api/v1/suite/panel": { ...PANEL_LIMPIO, bajas_sin_aplicar: 2 },
     };
     render(<SuiteGobierno />);
@@ -99,6 +131,7 @@ describe("la consola de gobierno de la suite", () => {
 
   it("lo que está en cuarentena se ve, con lo que se mandó dentro", async () => {
     respuestas = {
+      ...SALUD_DE_SUITES,
       "/api/v1/suite/panel": { ...PANEL_LIMPIO, cuarentena: 1 },
       "/api/v1/suite/cuarentena": [APARTADO],
     };
@@ -115,6 +148,7 @@ describe("la consola de gobierno de la suite", () => {
 
   it("el botón de reintentar llama a la ruta con el id de la sincronización", async () => {
     respuestas = {
+      ...SALUD_DE_SUITES,
       "/api/v1/suite/panel": { ...PANEL_LIMPIO, cuarentena: 1 },
       "/api/v1/suite/cuarentena": [APARTADO],
       "/api/v1/suite/cuarentena/s-1/reintentar": { id: "s-1", estado: "pendiente" },
@@ -132,8 +166,51 @@ describe("la consola de gobierno de la suite", () => {
     });
   });
 
+  it("el panel de salud lee el sobre que manda el servidor, no una lista", async () => {
+    // El fallo que esto caza ya pasó: el panel leía las dos rutas como arrays
+    // y hacía `.filter` sobre el objeto. Reventaba dentro del `.then`, el
+    // `.catch` se lo tragaba y las dos columnas salían con su rótulo y nada
+    // debajo — sin error en consola y sin 500.
+    respuestas = {
+      ...SALUD_DE_SUITES,
+      "/api/v1/suite/panel": PANEL_LIMPIO,
+      "/api/v1/suites/credenciales/salud": {
+        revisados: 3,
+        que_piden_algo: [
+          {
+            consentimiento_id: "c-1",
+            usuario_id: "u-1",
+            perfil: "microsoft",
+            recurso: "correo",
+            se_rompera_sola: true,
+            renovar: false,
+            avisar: false,
+            fiable: true,
+            porque: "Quedan 300 días. Y no hay token de refresco",
+          },
+        ],
+      },
+      "/api/v1/suites/suscripciones/por-renovar": {
+        por_renovar: [
+          { id: "s-9", recurso: "calendario", usuario_id: "u-1", caduca_at: null },
+        ],
+        sin_caducidad_declarada: ["s-7"],
+        aviso: "1 suscripciones no dicen cuándo caducan.",
+      },
+    };
+    render(<SuiteGobierno />);
+
+    // La bomba de relojería, con su porqué: «error de autenticación» a secas
+    // es el mensaje que atasca una implantación una semana.
+    expect(await screen.findByText(/microsoft · correo/)).toBeInTheDocument();
+    expect(screen.getByText(/no hay token de refresco/)).toBeInTheDocument();
+    // Y la suscripción por renovar, que la pantalla pintaba vacía.
+    expect(screen.getByText(/calendario/)).toBeInTheDocument();
+    expect(screen.getByText(/1 suscripciones no dicen/)).toBeInTheDocument();
+  });
+
   it("cuando no hay nada apartado no pinta la tabla de cuarentena", async () => {
-    respuestas = { "/api/v1/suite/panel": PANEL_LIMPIO };
+    respuestas = { ...SALUD_DE_SUITES, "/api/v1/suite/panel": PANEL_LIMPIO };
     render(<SuiteGobierno />);
     await screen.findByText("contecmind");
     expect(screen.queryByRole("button", { name: "suite.reintentar" })).toBeNull();

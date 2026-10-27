@@ -194,6 +194,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "integracion:read"
     },
     {
+      "r": "/api/v1/suites/perfiles",
+      "p": "integracion:read"
+    },
+    {
+      "r": "/api/v1/suites/consentimiento",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/firma/sobres",
       "p": "integracion:read"
     },

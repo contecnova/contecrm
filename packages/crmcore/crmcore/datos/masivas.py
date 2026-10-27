@@ -20,6 +20,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from crmcore.db.al_margen import al_margen
 from crmcore.logging import get_logger
 
 logger = get_logger(__name__)
@@ -267,6 +268,13 @@ def importar(
                 informe.actualizados += 1
             continue
 
+        # Un SAVEPOINT por fila. Antes era un `try` con `db.rollback()` dentro,
+        # y ese `rollback` no deshace la fila mala: deshace **la transacción
+        # entera**. El comentario de abajo decía «una fila mala no arrastra a
+        # las 9.999 buenas» y el código hacía justo lo contrario — una carga de
+        # diez mil filas con un fallo en la cinco mil perdía las 4.999
+        # anteriores, y el informe seguía contándolas como creadas.
+        punto = db.begin_nested()
         try:
             if existente is not None:
                 plan.actualizar(db, existente, fila)
@@ -277,8 +285,17 @@ def importar(
             # Un volcado por fila: así una fila mala falla sola y no arrastra a
             # las 9.999 buenas del lote.
             db.flush()
+            punto.commit()
         except Exception as exc:  # noqa: BLE001 — una fila mala no tumba la carga
-            db.rollback()
+            if punto.is_active:
+                punto.rollback()
+            # El recuento también se deshace: lo subía antes de saber si la
+            # fila entraba, y una carga con fallos decía haber creado más de
+            # las que había.
+            if existente is not None:
+                informe.actualizados -= 1
+            else:
+                informe.creados -= 1
             informe.anotar_error(indice, "error", {"detalle": str(exc)[:300]})
 
     if not simular:
@@ -320,10 +337,11 @@ def _actualizar_estadisticas(db: Session, modelo: type) -> None:
     tabla = getattr(modelo, "__tablename__", "")
     if not tabla:
         return
-    try:
+    # Al margen de verdad: un `ANALYZE` que falla deja la sesión envenenada, y
+    # esto corre al final de la importación —justo antes del volcado—, así que
+    # una estadística se llevaría por delante las filas ya cargadas.
+    with al_margen(db, "datos.analyze_fallido", tabla=tabla):
         db.execute(_text(f'ANALYZE "{tabla}"'))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("datos.analyze_fallido", tabla=tabla, error=str(exc)[:200])
 
 
 def exportar(
