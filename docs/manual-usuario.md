@@ -726,10 +726,38 @@ el primer día, y en cuanto cambias uno la lista pasa a ser tuya entera.
 Están en la pestaña correspondiente de cada módulo: los de pérdida en Pipeline,
 los de descarte en Captación de leads.
 
+### Cómo se ve una lista: tarjetas
+
+Una lista se abre **en tarjetas**: cada registro con su nombre delante y sus
+cuatro datos debajo. Una tabla enseña catorce columnas del mismo tamaño y no
+destaca ninguna, así que para encontrar el dato por el que has entrado hay que
+leerlas todas; una tarjeta se ojea.
+
+Arriba a la derecha puedes cambiar a **tabla** —que sigue siendo lo mejor para
+revisar cien filas seguidas o comparar columnas— o a **columnas**, que agrupa
+por lo que separa el trabajo: la etapa de la venta, el estado del caso, la
+prioridad. Lo que elijas se recuerda **para esa lista**: quien trabaja el embudo
+en columnas no vuelve a la tabla cada mañana.
+
+La única lista que se abre en tabla es la que no tiene nada que poner de
+titular: un registro de auditoría o un apunte de consumo es una fecha y un
+código, y en tarjeta sería una caja con un identificador dentro.
+
 ### Añadir y editar, en general
 
 Casi todas las pantallas que enseñan una lista permiten **dar de alta** y
-**abrir cada fila** para verla, cambiarla o borrarla. Lo que puedes hacer en
+**abrir cada fila** para verla, cambiarla o borrarla. Eso incluye las fichas con
+diseño propio, como la de un cliente: ahí tienes **Editar** y **Eliminar**
+arriba, junto a las demás acciones. Hasta el 27-10-2026 no los tenía —la
+edición vivía dentro de la ficha genérica y la de cliente se quedó sin ella—,
+así que un cliente no se podía cambiar desde ningún punto de su propia ficha
+aunque el sistema lo admitiera y la misma pantalla estuviera avisando, al lado,
+de que le faltaban cuatro campos por rellenar.
+
+Qué campos puedes cambiar no lo decide la pantalla: son los que el sistema
+admite modificar después de crear el registro, que no son los mismos que se
+piden al darlo de alta. Hay cosas que se fijan al crear y no se tocan luego, y
+ofrecértelas sería prometerte un cambio que acabaría en error. Lo que puedes hacer en
 cada una no lo decide la pantalla: lo decide el servidor, y la pantalla se
 limita a ofrecer lo que de verdad admite. Por eso no hay pantallas que ofrezcan
 un botón que luego falla, ni —lo que pasaba antes— pantallas que escondan algo
@@ -793,9 +821,9 @@ funcionalidad que solo exista por API. Es sustituible —se puede no desplegar y
 poner el vuestro— y eso también es comprobable: ningún servicio sirve pantallas ni
 depende de ellas.
 
-Lo que encontrarás en él: listas configurables, ficha con pestañas, buscador
-global, panel de inicio por perfil, diseñador visual, consola de administración,
-paneles de estado y ayuda en contexto.
+Lo que encontrarás en él: listas configurables en tarjetas, tabla o columnas,
+ficha con pestañas, buscador global, panel de inicio por perfil, diseñador
+visual, consola de administración, paneles de estado y ayuda en contexto.
 
 ---
 

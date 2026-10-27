@@ -30,8 +30,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
+import {
+  BotonesDeRegistro,
+  ConfirmarBorrado,
+  FormularioDeEdicion,
+  useEdicion,
+} from "@/componentes/Edicion";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -41,7 +47,9 @@ import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { escalar, humanizar, importe } from "@/lib/formato";
+import { moduloDe } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
+import { recursoDe } from "@/lib/recursos";
 
 interface Contacto360 {
   id: string;
@@ -121,6 +129,21 @@ export function Cuenta() {
   const [casos, setCasos] = useState<Caso[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const { superficie, tiene } = useSuperficie();
+  const navegar = useNavigate();
+  const [editando, setEditando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [borrando, setBorrando] = useState(false);
+  /**
+   * El recurso de cuentas, el mismo que usa el listado y la ficha genérica.
+   *
+   * Se busca y no se escribe a mano para que la edición de un cliente pase por
+   * la MISMA ruta y el mismo contrato que su listado: dos pantallas que enseñan
+   * el mismo registro tienen que escribirlo igual, o una de las dos se queda
+   * atrás el día que cambie el contrato.
+   */
+  const moduloCuentas = moduloDe("cuentas");
+  const recurso = moduloCuentas ? recursoDe(moduloCuentas, "cuenta") : undefined;
+  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
 
   const cargar = useCallback(
     (signal?: AbortSignal) => {
@@ -148,6 +171,29 @@ export function Cuenta() {
     cargar(control.signal);
     return () => control.abort();
   }, [cargar]);
+
+  // Al cambiar de cliente se sale de edición y se cancela la confirmación: esta
+  // pantalla no se desmonta al ir de una ficha a otra, y sin esto el «¿seguro
+  // que quieres eliminar?» a medias quedaría apuntando al cliente nuevo.
+  useEffect(() => {
+    setEditando(false);
+    setConfirmando(false);
+  }, [id]);
+
+  async function borrar() {
+    setBorrando(true);
+    try {
+      await llamar(ruta, { metodo: "DELETE" });
+      // Se vuelve al listado: quedarse en la ficha de algo que ya no existe
+      // enseña un cliente fantasma hasta que alguien recargue.
+      navegar("/m/cuentas");
+    } catch (error) {
+      setFallo(error);
+      setConfirmando(false);
+    } finally {
+      setBorrando(false);
+    }
+  }
 
   if (fallo) return <Fallo error={fallo} reintentar={() => cargar()} />;
   if (!vista) return <Cargando />;
@@ -189,6 +235,42 @@ export function Cuenta() {
           </>
         }
       />
+
+      {/* Editar y borrar van ANTES que las acciones de negocio: lo primero
+          que se busca en una ficha abierta es cambiar un dato que está mal, y
+          esta pantalla no lo ofrecía en ningún punto aunque el servidor lo
+          admitiera. */}
+      {!editando ? (
+        <div className="mb-3">
+          <BotonesDeRegistro
+            puedeEditar={puedeEditar}
+            puedeBorrar={puedeBorrar}
+            alEditar={() => setEditando(true)}
+            alBorrar={() => setConfirmando(true)}
+          />
+        </div>
+      ) : null}
+
+      {confirmando ? (
+        <ConfirmarBorrado
+          enviando={borrando}
+          alBorrar={() => void borrar()}
+          alCancelar={() => setConfirmando(false)}
+        />
+      ) : null}
+
+      {editando && recurso ? (
+        <FormularioDeEdicion
+          recurso={recurso}
+          ruta={ruta}
+          valores={cuenta as unknown as Record<string, unknown>}
+          alGuardar={() => {
+            setEditando(false);
+            cargar();
+          }}
+          alCancelar={() => setEditando(false)}
+        />
+      ) : null}
 
       <Acciones acciones={acciones} servicio="party" alTerminar={() => cargar()} />
 

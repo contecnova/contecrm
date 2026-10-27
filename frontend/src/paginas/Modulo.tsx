@@ -25,7 +25,8 @@ import {
   Tarjetas,
   campoDeAgrupacion,
   esVocabulario,
-  leerVista,
+  vistaPorDefecto,
+  vistaRecordada,
   type Vista,
 } from "@/componentes/Vistas";
 import { cn } from "@/lib/utiles";
@@ -352,7 +353,25 @@ function RecursoVista({
    */
   const [campoFicha, setCampoFicha] = useState(recurso.objeto ? "id" : "");
   const recuerdaComo = `${ruta}.${recurso.nombre}`;
-  const [vista, setVista] = useState<Vista>(() => leerVista(recuerdaComo));
+  const [vista, setVista] = useState<Vista>(() => vistaRecordada(recuerdaComo) ?? "tarjetas");
+  /**
+   * El valor por defecto se decide cuando llegan los datos, no antes.
+   *
+   * Tarjetas en todas partes, salvo donde el registro no tiene titular que
+   * poner delante —y eso solo se sabe mirando una fila—. Solo se aplica si
+   * este usuario **no ha elegido** vista para este recurso: pisarle la
+   * elección con un valor calculado es la forma de que su preferencia no sirva
+   * para nada. Y no se guarda nada en el almacenamiento del navegador: lo que
+   * calcula la pantalla no es una decisión del usuario, y escribirlo haría que
+   * el día que cambie el criterio ya nadie lo viera.
+   */
+  useEffect(() => {
+    if (!filas?.length || vistaRecordada(recuerdaComo)) return;
+    setVista(vistaPorDefecto(filas));
+    // `recuerdaComo` entra en las dependencias porque al cambiar de recurso
+    // hay que volver a decidir: el componente se reutiliza entre pantallas.
+  }, [filas, recuerdaComo]);
+
   // Por qué campo agrupar sale de los datos que hay: con un solo valor no hay
   // nada que separar, y con uno distinto por fila serían columnas de una.
   const campoAgrupacion = useMemo(() => campoDeAgrupacion(filas ?? []), [filas]);

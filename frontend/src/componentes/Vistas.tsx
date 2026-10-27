@@ -58,16 +58,47 @@ const AGRUPABLES = [
 /** Campos cuya suma dice algo. Sumar «probabilidad» no dice nada. */
 const SUMABLES = /^(importe|total|importe_ponderado|presupuesto|asignado|coste|cantidad)/;
 
-export function leerVista(recuerdaComo: string): Vista {
+/**
+ * La vista que este usuario eligió para este recurso, o `null` si nunca eligió.
+ *
+ * Devuelve `null` y no «tabla» a propósito: hay que poder distinguir «quiso
+ * tabla» de «no ha dicho nada», porque lo segundo lo decide `vistaPorDefecto`.
+ * Mientras devolvía «tabla» para las dos cosas, el valor por defecto no se
+ * podía cambiar sin pisar la elección de quien sí había elegido.
+ */
+export function vistaRecordada(recuerdaComo: string): Vista | null {
   try {
     const guardado = JSON.parse(localStorage.getItem(CLAVE) ?? "{}") as Record<string, Vista>;
     const vista = guardado[recuerdaComo];
-    return vista === "tarjetas" || vista === "agrupado" ? vista : "tabla";
+    return vista === "tabla" || vista === "tarjetas" || vista === "agrupado" ? vista : null;
   } catch {
-    // Puede fallar en navegación privada o con el almacenamiento bloqueado: se
-    // vuelve a la tabla, que es lo que había antes de que esto existiera.
-    return "tabla";
+    // Puede fallar en navegación privada o con el almacenamiento bloqueado.
+    return null;
   }
+}
+
+/**
+ * Con qué vista se abre un listado que nadie ha configurado: **tarjetas**.
+ *
+ * Una tabla enseña catorce columnas del mismo tamaño y no destaca ninguna:
+ * quien entra tiene que leerlas todas para encontrar el dato por el que ha
+ * venido. Una tarjeta lleva delante el nombre del registro y debajo sus cuatro
+ * datos, y eso es lo que convierte una lista en algo que se ojea. Por eso las
+ * tarjetas son la vista por defecto en todas partes.
+ *
+ * La excepción, y sale de los datos y no de una lista escrita a mano —una
+ * lista de los recursos que SÍ pueden se queda corta el día que se añade el
+ * número veintiséis—: **si el registro no tiene nada que poner de titular**, la
+ * tarjeta queda siendo una caja con un identificador dentro, que se lee peor
+ * que una fila. Pasa con lo que es puro registro técnico: apuntes de auditoría,
+ * eventos, consumos. Ahí se abre en tabla.
+ */
+export function vistaPorDefecto(filas: Record<string, unknown>[]): Vista {
+  if (filas.length === 0) return "tarjetas";
+  const conTitular = filas.filter((f) => nombreDelRegistro(f).trim()).length;
+  // La mayoría, no todas: en un listado de contactos puede haber uno sin
+  // nombre, y eso no convierte al resto en una tabla.
+  return conTitular * 2 >= filas.length ? "tarjetas" : "tabla";
 }
 
 function recordarVista(recuerdaComo: string, vista: Vista): void {

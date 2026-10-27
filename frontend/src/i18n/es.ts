@@ -535,6 +535,9 @@ export default {
     confirmarBorrado:
       "Se va a eliminar este registro. Lo que cuelga de él —adjuntos, comentarios, " +
       "documentos— deja de estar accesible desde aquí.",
+    sinCamposEditables:
+      "El contrato de este objeto no declara ningún campo que se pueda cambiar " +
+      "después de crearlo.",
     secciones: "Secciones de la ficha",
     datos: "Datos",
     adjuntos: "Adjuntos",

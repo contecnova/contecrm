@@ -18,8 +18,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
 import { Celda, Tabla } from "@/componentes/Tabla";
-import { Formulario } from "@/componentes/Formulario";
-import { camposDe, contratoDe, fichaDe, type CampoEsquema } from "@/lib/contrato";
+import {
+  BotonesDeRegistro,
+  ConfirmarBorrado,
+  FormularioDeEdicion,
+  useEdicion,
+} from "@/componentes/Edicion";
 import {
   escalar,
   esIdentificadorTecnico,
@@ -30,7 +34,7 @@ import { Acciones } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
-import { usePuedeOperar, useSuperficie } from "@/lib/permisos";
+import { useSuperficie } from "@/lib/permisos";
 import { llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -137,7 +141,6 @@ function Datos({
 }) {
   const { t } = useTranslation();
   const navegar = useNavigate();
-  const puedeOperar = usePuedeOperar();
   const { superficie, tiene } = useSuperficie();
   const m = moduloDe(modulo);
   // Por el objeto de la dirección y no `recursos[0]`: un módulo tiene varias
@@ -147,7 +150,6 @@ function Datos({
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
-  const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
   const [editando, setEditando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -163,7 +165,7 @@ function Datos({
     setConfirmando(false);
   }, [modulo, objeto, id]);
 
-  const ruta = recurso ? `${recurso.listar}/${id}` : "";
+  const { ruta, puedeEditar, puedeBorrar } = useEdicion(recurso, id);
   // Todo lo que el servidor admite hacer con este registro, leído del contrato.
   // Son 144 en el sistema y ninguna se escribe a mano aquí.
   const acciones = useMemo(
@@ -176,9 +178,6 @@ function Datos({
     () => (recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : []),
     [superficie, recurso, id, tiene],
   );
-  const puedeEditar = Boolean(ruta) && puedeOperar("PATCH", ruta);
-  const puedeBorrar = Boolean(ruta) && puedeOperar("DELETE", ruta);
-
   const cargar = useCallback(
     (signal?: AbortSignal) => {
       if (!ruta) return;
@@ -198,39 +197,6 @@ function Datos({
     cargar(control.signal);
     return () => control.abort();
   }, [cargar]);
-
-  // Los campos que admite la MODIFICACIÓN, que no son los del alta: hay cosas
-  // que se fijan al crear y no se cambian después, y ofrecerlas aquí sería
-  // prometer una edición que el servidor rechaza.
-  useEffect(() => {
-    if (!recurso || !editando) return;
-    let vivo = true;
-    void contratoDe(recurso.servicio).then((documento) => {
-      // La ruta se la pedimos al contrato en vez de componerla: cada servicio
-      // nombra el parámetro por su objeto —`{oportunidad_id}`— y buscando
-      // `/{id}` no aparecía la operación, así que el formulario de edición
-      // salía sin ningún campo y no había nada que guardar.
-      const plantilla = fichaDe(documento, recurso.listar);
-      if (vivo) setCampos(plantilla ? camposDe(documento, plantilla, "patch") : []);
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [recurso, editando]);
-
-  async function guardar(valores: Record<string, unknown>) {
-    setEnviando(true);
-    try {
-      await llamar(ruta, { metodo: "PATCH", cuerpo: valores });
-      setEditando(false);
-      cargar();
-      setFallo(null);
-    } catch (error) {
-      setFallo(error);
-    } finally {
-      setEnviando(false);
-    }
-  }
 
   async function borrar() {
     setEnviando(true);
@@ -265,40 +231,23 @@ function Datos({
         </>
       ) : null}
 
-      {(puedeEditar || puedeBorrar) && !editando ? (
-        <div className="mb-3 flex gap-2">
-          {puedeEditar ? (
-            <button type="button" onClick={() => setEditando(true)} className="btn-secondary">
-              {t("ficha.editar")}
-            </button>
-          ) : null}
-          {puedeBorrar ? (
-            <button type="button" onClick={() => setConfirmando(true)} className="btn-danger">
-              {t("ficha.eliminar")}
-            </button>
-          ) : null}
+      {!editando ? (
+        <div className="mb-3">
+          <BotonesDeRegistro
+            puedeEditar={puedeEditar}
+            puedeBorrar={puedeBorrar}
+            alEditar={() => setEditando(true)}
+            alBorrar={() => setConfirmando(true)}
+          />
         </div>
       ) : null}
 
       {confirmando ? (
-        // Se pregunta antes de borrar, y se dice qué se borra. Un borrado sin
-        // confirmación es un borrado que alguien hará sin querer.
-        <div className="card mb-3 border-danger/40 p-4" role="alertdialog" aria-label={t("ficha.eliminar")}>
-          <p className="text-xs text-ink">{t("ficha.confirmarBorrado")}</p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => void borrar()}
-              disabled={enviando}
-              className="btn-danger"
-            >
-              {t("ficha.eliminarDeVerdad")}
-            </button>
-            <button type="button" onClick={() => setConfirmando(false)} className="btn-secondary">
-              {t("modulo.cancelar")}
-            </button>
-          </div>
-        </div>
+        <ConfirmarBorrado
+          enviando={enviando}
+          alBorrar={() => void borrar()}
+          alCancelar={() => setConfirmando(false)}
+        />
       ) : null}
 
       {fallo ? (
@@ -307,28 +256,18 @@ function Datos({
         </div>
       ) : null}
 
-      {editando ? (
-        <div className="card mb-3 p-4">
-          {campos ? (
-            <Formulario
-              recurso={recurso}
-              campos={campos}
-              valores={fila}
-              enviando={enviando}
-              textoEnviar={t("ficha.guardar")}
-              alEnviar={(v) => void guardar(v)}
-            />
-          ) : (
-            <Cargando />
-          )}
-          <button
-            type="button"
-            onClick={() => setEditando(false)}
-            className="btn-link mt-3"
-          >
-            {t("modulo.cancelar")}
-          </button>
-        </div>
+      {editando && recurso ? (
+        <FormularioDeEdicion
+          recurso={recurso}
+          ruta={ruta}
+          valores={fila}
+          alGuardar={() => {
+            setEditando(false);
+            cargar();
+            setFallo(null);
+          }}
+          alCancelar={() => setEditando(false)}
+        />
       ) : (
         // Los datos como ficha, no como una tabla de una sola fila: una tabla
         // horizontal de veinte columnas para UN registro obliga a desplazarse
