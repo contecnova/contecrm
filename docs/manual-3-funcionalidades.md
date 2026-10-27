@@ -4097,6 +4097,30 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### El modelo de datos se podía listar y no abrir
+
+La familia de «extender sin código» —`CRM-00.04.01` y `CRM-00.04.03`— estaba
+publicada entera y **sin puerta**: el módulo listaba los objetos y ahí se
+acababa, porque la fila no abría. Y como los paneles de una ficha se
+construyen a partir de los `GET` que devuelven lista, los campos de un objeto,
+sus validaciones, sus tipos de registro, sus límites y la trazabilidad del
+esquema no se alcanzaban desde ninguna pantalla. Lo que se puede hacer por API
+—añadir un campo, publicarlo, renombrarlo, materializarlo— no se podía ni
+mirar.
+
+**No bastaba con marcar la fila como abrible**, y conviene decir por qué:
+las rutas hijas de un objeto se dirigen por su **nombre**
+(`/objetos/{nombre}/describe`) mientras que el objeto se abre por su
+**identificador**. La ficha genérica pasa el identificador a todas, así que
+cada panel habría salido en 404 — peor que no tenerlos, porque un panel en
+error se lee como un sistema roto y un panel ausente, como algo que no existe.
+La pantalla propia abre por identificador, lee el nombre y con él pide lo
+demás, y hay prueba que recorre las cinco rutas y lo fija.
+
+El panel que manda es el de los campos **con sus escrituras al lado**: es lo
+que contesta la única pregunta que se hace de verdad delante de un modelo de
+datos, que es si un campo se puede quitar.
+
 ### Lo que destapó el nivel completo sobre la pantalla nueva
 
 La pantalla de «Plataforma y cumplimiento» declaraba la forma de nueve

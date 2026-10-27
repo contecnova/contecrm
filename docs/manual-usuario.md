@@ -180,6 +180,26 @@ Lo importante para el día a día:
 - **Y un cambio de tipo de campo con datos dentro no se aplica solo**: primero
   enseña a cuántos registros afecta y qué se perdería.
 
+### Abrir un objeto del modelo
+
+En **Administrar › Modelo de datos › Objetos**, cada fila se abre. Dentro está
+todo lo que gobierna ese objeto:
+
+- **Sus campos**, con el tipo, si son obligatorios, si son únicos y su
+  sensibilidad. Y al lado, **cuántas veces se ha escrito cada uno**: es lo que
+  contesta «¿puedo quitar este campo?». Leer mide quién mira; escribir mide si
+  el campo se rellena. Los que no se han escrito nunca salen señalados, porque
+  son los candidatos a retirar — sin este dato la respuesta es siempre «no lo
+  sé», y así es como un modelo acaba con trescientos campos de los que nadie
+  recuerda la mitad.
+- **Cuánto sitio queda** antes del tope de campos, y qué pasa al llegar. Un
+  tope que sólo se explica cuando se alcanza se explica tarde.
+- **Las validaciones**, con el mensaje que verá quien las incumpla: es la mitad
+  de la regla, y sin él no se puede juzgar si está bien escrita.
+- **Los tipos de registro**, que son el mismo objeto visto de formas distintas.
+- **Qué se publicó y cuándo**, con cuántos campos llevaba cada versión: es a lo
+  que se vuelve cuando algo deja de encajar.
+
 ### Campos que se calculan solos
 
 Hay dos clases y conviene no confundirlas:

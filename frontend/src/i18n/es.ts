@@ -147,6 +147,43 @@ export default {
       "dar de alta oportunidades.",
     irAConfigurar: "Crear un pipeline",
   },
+  modeloDatos: {
+    limites: "Cuánto sitio queda",
+    camposDeTope: "{{campos}} campos de {{tope}}",
+    campos: "Campos",
+    camposAyuda:
+      "Con las veces que se ha ESCRITO cada uno al lado, que es lo que " +
+      "contesta «¿puedo quitarlo?». Leer mide quién mira; escribir mide si el " +
+      "campo se rellena.",
+    sinCampos: "Este objeto no tiene campos propios todavía",
+    obligatorio: "Obligatorio",
+    unico: "Único",
+    soloLectura: "Solo lectura",
+    deprecado: "Deprecado",
+    nuncaEscrito: "nunca escrito",
+    escrituras: "{{cuantas}} escrituras",
+    materializado: "Columna real",
+    sinUsar: "{{cuantos}} campos sin una sola escritura: son los candidatos a retirar.",
+    reglas: "Validaciones",
+    reglasAyuda:
+      "Con el mensaje que verá quien las incumpla: es la mitad de la regla, y " +
+      "sin él no se puede juzgar si está bien escrita.",
+    sinReglas: "Sin validaciones declaradas",
+    apagada: "Apagada",
+    tipos: "Tipos de registro",
+    tiposAyuda:
+      "El mismo objeto visto de formas distintas, con sus campos y sus listas " +
+      "recortadas. Partirlo en dos objetos rompe los informes.",
+    sinTipos: "Un solo tipo de registro",
+    porDefecto: "Por defecto",
+    ocultos: "{{cuantos}} campos ocultos",
+    publicaciones: "Qué se publicó y cuándo",
+    publicacionesAyuda:
+      "Cada versión del esquema, con quién la publicó y cuántos campos " +
+      "llevaba: es a lo que se vuelve cuando algo deja de encajar.",
+    camposEnPublicacion: "{{cuantos}} campos",
+  },
+
   exportar: {
     boton: "Exportar",
     bajando: "Preparando…",

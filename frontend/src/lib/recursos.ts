@@ -198,8 +198,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
   "modelo": [
       {
         nombre: "Objetos",
+        // Con `objeto` para que la fila abra. Sin esto, el modelo de datos se
+        // podía listar y nada más: los campos, las validaciones, los tipos de
+        // registro, los límites y la trazabilidad del esquema no se alcanzaban
+        // desde ninguna pantalla, aunque la API los publique entera.
+        objeto: "objeto",
         listar: "/api/v1/metadata/objetos",
         servicio: "metadata",
+        columnas: ["nombre", "etiqueta", "origen", "activo"],
       },
       {
         nombre: "Relaciones",

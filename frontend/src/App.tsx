@@ -84,6 +84,9 @@ const Seguridad = lazy(() =>
 const Plataforma = lazy(() =>
   import("@/paginas/Plataforma").then((m) => ({ default: m.Plataforma })),
 );
+const ObjetoDelModelo = lazy(() =>
+  import("@/paginas/ObjetoDelModelo").then((m) => ({ default: m.ObjetoDelModelo })),
+);
 // La ficha de cliente trae las acciones y el formulario, y con ellos la tabla
 // de pestañas. Diferida por lo mismo que las otras dos.
 const Cuenta = lazy(() => import("@/paginas/Cuenta").then((m) => ({ default: m.Cuenta })));
@@ -220,6 +223,12 @@ export function App() {
               segundo sitio donde mirar lo mismo, con el «lo que ha pasado» en
               otro lugar y las mismas cosas contadas de otra forma. */}
           <Route path="/m/proveedores/proveedor/:id" element={<Cuenta />} />
+          {/* El objeto del modelo tiene pantalla propia, y no por capricho:
+              sus rutas hijas se dirigen por NOMBRE —`/objetos/{nombre}/campos`—
+              y la ficha genérica pasa el identificador, así que cada panel
+              habría salido en 404. Ésta abre por identificador, lee el nombre
+              y con él pide lo demás. */}
+          <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
           <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
           <Route path="/estado" element={<Estado />} />
           <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />

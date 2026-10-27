@@ -30,6 +30,7 @@ export { Inicio } from "@/paginas/Inicio";
 export { Inteligencia } from "@/paginas/Inteligencia";
 export { Marketing } from "@/paginas/Marketing";
 export { Modulo } from "@/paginas/Modulo";
+export { ObjetoDelModelo } from "@/paginas/ObjetoDelModelo";
 export { Pipeline } from "@/paginas/Pipeline";
 export { Plataforma } from "@/paginas/Plataforma";
 export { Portal } from "@/paginas/Portal";

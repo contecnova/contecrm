@@ -187,7 +187,19 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            hueco que quedaba: en `csv` el recorte no se
 #                            decia en ninguna parte, asi que el fichero salia
 #                            cortado EN SILENCIO
-TOPE_SIN_PANTALLA = 412
+#   27-10-2026  404 de 778  la pantalla de un objeto del modelo de datos. La
+#                            familia entera —campos, validaciones, tipos de
+#                            registro, limites del esquema, trazabilidad de
+#                            quien puso cada campo— estaba publicada y sin
+#                            puerta: el modulo listaba los objetos y ahi se
+#                            acababa, porque la fila no abria. Y no bastaba
+#                            con marcarla abrible: las rutas hijas se dirigen
+#                            por NOMBRE y la ficha generica pasa el
+#                            identificador, asi que cada panel habria salido
+#                            en 404 —peor que no tenerlo—. La pantalla abre
+#                            por identificador, lee el nombre y con el pide lo
+#                            demas. Ocho capacidades
+TOPE_SIN_PANTALLA = 404
 
 
 def _es_pantalla(p: Path) -> bool:
