@@ -1563,6 +1563,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
           "en_cascada",
         ],
       },
+      // Qué hay en marcha y qué se solapa. Dos campañas al mismo público la
+      // misma semana no dan error: dan una tasa de baja que nadie explica.
+      {
+        nombre: "Calendario de campañas",
+        listar: "/api/v1/campanas/calendario",
+        periodo: true,
+        servicio: "marketing",
+        permiso: "campaign:read",
+      },
       {
         nombre: "Campañas",
         objeto: "campana",
@@ -1601,6 +1610,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
     ],
   "casos": [
+      // CSAT, CES y NPS del periodo, juntos: mirarlos por separado es cómo se
+      // acaba citando el que mejor sale.
+      {
+        nombre: "Satisfacción del periodo",
+        listar: "/api/v1/encuestas/resumen",
+        periodo: true,
+        servicio: "service",
+        permiso: "case:read",
+      },
       {
         nombre: "Encuestas",
         objeto: "encuesta",
@@ -1640,6 +1658,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         objeto: "categoria",
         listar: "/api/v1/categorias-caso",
         servicio: "service",
+      },
+      // El cumplimiento del periodo: los acuerdos dicen a qué nos
+      // comprometimos y esto si se cumplió. Sin rango no se pide nada — un
+      // informe que se abre con «los últimos noventa días» da un número de un
+      // periodo que no eligió nadie.
+      {
+        nombre: "Cumplimiento del periodo",
+        listar: "/api/v1/sla/cumplimiento",
+        periodo: true,
+        servicio: "service",
+        permiso: "case:read",
       },
       {
         nombre: "SLA",

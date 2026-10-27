@@ -721,6 +721,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "o": "entrada_papelera"
     },
     {
+      "r": "/api/v1/campanas/calendario",
+      "p": "campaign:read"
+    },
+    {
       "r": "/api/v1/campanas",
       "p": "campana:read",
       "o": "campana"
@@ -737,6 +741,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     }
   ],
   "casos": [
+    {
+      "r": "/api/v1/encuestas/resumen",
+      "p": "case:read"
+    },
     {
       "r": "/api/v1/encuestas",
       "o": "encuesta"
@@ -756,6 +764,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/categorias-caso",
       "o": "categoria"
+    },
+    {
+      "r": "/api/v1/sla/cumplimiento",
+      "p": "case:read"
     },
     {
       "r": "/api/v1/sla"

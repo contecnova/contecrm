@@ -120,7 +120,13 @@ FRONT = RAIZ / "frontend/src"
 #                            entera y si las bajas se cerraron en TODAS las
 #                            herramientas—, tres medidas más y cinco rutas que
 #                            no llevan pantalla a propósito.
-TOPE_SIN_PUERTA = 48
+#   27-10-2026   44 de 708  tres informes de periodo que no tenían pestaña
+#                            —cumplimiento de SLA, satisfacción y el calendario
+#                            de campañas, donde se ve qué se solapa— y el flujo
+#                            de eventos, que es un `text/event-stream` abierto
+#                            y no una colección: una pantalla que lo listara se
+#                            quedaría colgada.
+TOPE_SIN_PUERTA = 44
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
@@ -183,6 +189,10 @@ SIN_PUERTA_A_PROPOSITO: dict[str, str] = {
     # el OpenAPI, y por eso no tiene pantalla: lo que sí la tiene es qué
     # módulos hay instalados y si lo instalado es lo que se publicó.
     "/api/v1/metadata/modulos/superficie": "documento de contrato del módulo, como el OpenAPI",
+    # Un `text/event-stream` que se queda abierto, con latido cada veinte
+    # segundos. Lo consume quien integra para recibir eventos sin montar un
+    # endpoint propio; una pantalla que lo «listara» se quedaría colgada.
+    "/api/v1/eventos/flujo": "es un flujo que se queda abierto, no una colección",
 }
 
 
