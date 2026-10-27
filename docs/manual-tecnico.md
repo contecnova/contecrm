@@ -494,6 +494,25 @@ ellas pasaron por aprobación por descuento—, 160 pedidos, 1.500 casos con su
 reloj de SLA, 120 máquinas instaladas, 500 órdenes de trabajo y 44 campañas
 bajo 11 programas anuales. Tarda **50 segundos**.
 
+#### Qué queda vacío después de sembrar, y por qué
+
+Medido el 27-10-2026 sobre una empresa sembrada entera con los dos guiones:
+de **452 tablas, 134 con datos**. Las 318 vacías no son 318 huecos —la mayoría
+sólo existen cuando pasa algo: excepciones de calidad, bloqueos legales,
+fusiones, migraciones de aislamiento— y una tabla vacía porque no ha pasado
+nada no es un hueco.
+
+El número que importa es otro: **cuántas de las vacías las lista alguna
+pantalla**, porque ésas alguien las abre y las ve en blanco. Eran 25 y quedan
+**9**, y las nueve por un motivo que se puede decir:
+
+| Qué | Por qué sigue vacío |
+|---|---|
+| conversaciones, mensajes, notificaciones, anomalías | No se dan de alta: los produce el sistema cuando pasa algo. Sembrarlos a mano sería escribir en la tabla lo que el producto tendría que haber escrito, y entonces la demostración enseña el resultado sin el camino. |
+| passkeys, dispositivos de confianza | Son de una persona y de su navegador. No hay forma de crearlos desde fuera, y eso es la protección funcionando. |
+| claves de API, proveedores de identidad | El alta exige volver a verificar la identidad, y SAML está apagado en esta instalación. Salen en el informe como «rechazadas por diseño». |
+| créditos de servicio | Se calculan —y el sembrado los calcula—: salen cero porque ningún contrato de esta empresa los pacta. Cero es la respuesta correcta. |
+
 #### Comprobar lo sembrado
 
 ```bash

@@ -44,6 +44,11 @@ class Api:
         # recuento final diría menos de lo que se ha creado.
         self.cuenta: dict[str, int] = {"creados": 0, "saltados": 0}
         self.fallos: list[str] = []
+        # El identificador del tenant, que algún alta pide en el cuerpo. Se
+        # saca de la sesión al entrar y no se pasa por parámetro: el que
+        # manda es el de la sesión, y pedirlo aparte abre la puerta a sembrar
+        # en un tenant distinto del que se ha entrado.
+        self.tenant_id: str = ""
 
     def _llamar(self, metodo: str, ruta: str, cuerpo: Any = None) -> tuple[int, Any]:
         datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
@@ -75,6 +80,8 @@ class Api:
         self.token = cuerpo.get("access_token") or cuerpo.get("token") or ""
         if not self.token:
             raise SystemExit(f"La respuesta de entrada no trae token: {sorted(cuerpo)}")
+        estado, yo = self._llamar("GET", "/api/v1/auth/me")
+        self.tenant_id = str((yo or {}).get("tenant_id") or "") if estado == 200 else ""
 
     def como(self, email: str, contrasena: str, tenant: str) -> "Api":
         """Otra sesión, con los contadores compartidos.
@@ -128,6 +135,55 @@ class Api:
                 return list(arrays[0])
         return []
 
+    def subir(
+        self, ruta: str, nombre: str, contenido: bytes, campos: dict[str, str]
+    ) -> dict | None:
+        """Sube un fichero por `multipart/form-data`, a mano.
+
+        Sin dependencias, como el resto de este cliente: corre antes que nada y
+        añadir `requests` para esto sería pagar una dependencia por veinte
+        líneas. Los adjuntos son el panel que más se abre en una ficha, y
+        salían vacíos en todas: una pantalla de adjuntos vacía se lee como que
+        la función no está hecha.
+        """
+        import uuid as _uuid
+
+        frontera = f"----contecrm{_uuid.uuid4().hex}"
+        trozos: list[bytes] = []
+        for clave, valor in campos.items():
+            trozos.append(
+                f'--{frontera}\r\nContent-Disposition: form-data; name="{clave}"\r\n\r\n'
+                f"{valor}\r\n".encode()
+            )
+        trozos.append(
+            f'--{frontera}\r\nContent-Disposition: form-data; name="fichero"; '
+            f'filename="{nombre}"\r\nContent-Type: text/plain\r\n\r\n'.encode()
+        )
+        trozos.append(contenido + b"\r\n")
+        trozos.append(f"--{frontera}--\r\n".encode())
+        cuerpo = b"".join(trozos)
+
+        pet = urllib.request.Request(f"{self.base}{ruta}", data=cuerpo, method="POST")
+        pet.add_header("Content-Type", f"multipart/form-data; boundary={frontera}")
+        if self.token:
+            pet.add_header("Authorization", f"Bearer {self.token}")
+        try:
+            with urllib.request.urlopen(pet, timeout=TIEMPO_ESPERA) as r:
+                self.cuenta["creados"] += 1
+                crudo = r.read().decode()
+                return json.loads(crudo) if crudo else {}
+        except urllib.error.HTTPError as e:
+            crudo = e.read().decode()
+            try:
+                respuesta = json.loads(crudo)
+            except json.JSONDecodeError:
+                respuesta = {"detail": crudo[:300]}
+            if e.code == 409:
+                self.cuenta["saltados"] += 1
+                return None
+            self.fallos.append(f"POST {ruta} «{nombre}» → {e.code} {_motivo(respuesta)}")
+            return None
+
     def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
         estado, respuesta = self._llamar(metodo, ruta, cuerpo)
         if estado in (200, 201, 204):
@@ -144,12 +200,31 @@ class Api:
 
 
 def _motivo(respuesta: Any) -> str:
+    """Por qué se ha rechazado, con el campo concreto cuando lo hay.
+
+    «Los datos enviados no son válidos» es el texto del validador de entrada y
+    **no dice nada**: el campo que falla viaja aparte, en `errores`. Sin él,
+    tres altas rechazadas obligan a reproducirlas a mano una por una para
+    enterarse de que lo que fallaba era una lista donde se esperaba un objeto.
+    Un diagnóstico que calla lo que sabe cuesta más que no tenerlo, porque
+    parece completo.
+    """
     if not isinstance(respuesta, dict):
         return str(respuesta)[:200]
+    detalles = respuesta.get("errores") or respuesta.get("detalle") or {}
+    pistas = ""
+    if isinstance(detalles, list) and detalles:
+        pistas = " · " + "; ".join(
+            f"{'.'.join(str(x) for x in (d.get('loc') or [])[1:])}: {d.get('msg') or d.get('mensaje')}"
+            for d in detalles[:4]
+            if isinstance(d, dict)
+        )
+    elif isinstance(detalles, dict) and detalles:
+        pistas = " · " + json.dumps(detalles, ensure_ascii=False)[:200]
     for clave in ("mensaje", "detail", "message", "error"):
         if respuesta.get(clave):
-            return str(respuesta[clave])[:300]
-    return json.dumps(respuesta)[:300]
+            return (str(respuesta[clave])[:300] + pistas)[:500]
+    return json.dumps(respuesta, ensure_ascii=False)[:300]
 
 
 def _uno(filas: list[dict], *claves: str) -> str:
@@ -3472,6 +3547,331 @@ def sembrar_analitica(api: Api) -> None:
 
 # ── Arranque ──────────────────────────────────────────────────────────────
 
+
+def sembrar_lo_que_sale_vacio(api: Api) -> None:
+    """Las últimas pantallas que se abrían sin una sola fila.
+
+    Medido el 27-10-2026 sobre una empresa sembrada entera: de 452 tablas, 335
+    seguían vacías. La mayoría **con razón** —excepciones de calidad, bloqueos
+    legales, fusiones, migraciones de aislamiento: cosas que sólo existen
+    cuando pasa algo—, y una tabla vacía porque no ha pasado nada no es un
+    hueco. Las que sí lo eran salían a 25: las que **alguna pantalla lista**, y
+    por tanto alguien abre y ve en blanco.
+
+    Aquí se llenan las que tienen un alta de verdad. Las que no la tienen se
+    dicen abajo, con el motivo, en vez de inventarlas: un informe que da por
+    cubierto lo que no lo está es peor que no tenerlo.
+    """
+    # ── Comentarios sobre registros reales ────────────────────────────────
+    #
+    # Es la conversación interna sobre un cliente, una venta o un caso, y es de
+    # lo primero que se mira al abrir una ficha: vacía siempre, parece que el
+    # panel no funciona.
+    comentarios = (
+        "Hablado con ellos por teléfono: confirman presupuesto para el primer trimestre.",
+        "Ojo con los plazos de este cliente: la última vez se retrasó la entrega dos semanas.",
+        "Lo lleva ahora otra persona por su parte. Pedir contacto actualizado.",
+    )
+    for ruta, tipo in (
+        ("/api/v1/accounts", "cuenta"),
+        ("/api/v1/opportunities", "oportunidad"),
+        ("/api/v1/casos", "caso"),
+    ):
+        filas = api.listar(f"{ruta}?estado=", 3)
+        for i, fila in enumerate(filas):
+            if not fila.get("id"):
+                continue
+            api.crear(
+                f"/api/v1/comentarios/{tipo}/{fila['id']}",
+                {"cuerpo": comentarios[i % len(comentarios)], "interno": i % 2 == 0},
+            )
+
+    # ── Adjuntos sobre registros reales ──────────────────────────────────
+    #
+    # El panel de adjuntos es de los primeros que se abren en una ficha, y
+    # salía vacío en todas. Se suben ficheros de texto pequeños y con nombre
+    # que diga qué son: un «documento.pdf» de relleno no enseña nada.
+    adjuntos = (
+        ("acta-reunion.txt", "Acta de la reunión de arranque", b"Asistentes, acuerdos y plazos."),
+        ("pliego-tecnico.txt", "Pliego técnico recibido", b"Requisitos y condiciones del cliente."),
+        ("foto-instalacion.txt", "Nota de la visita a planta", b"Medidas tomadas en la visita."),
+    )
+    for ruta, tipo in (
+        ("/api/v1/accounts", "cuenta"),
+        ("/api/v1/opportunities", "oportunidad"),
+        ("/api/v1/casos", "caso"),
+    ):
+        for i, fila in enumerate(api.listar(f"{ruta}?estado=", 2)):
+            if not fila.get("id"):
+                continue
+            nombre, descripcion, contenido = adjuntos[i % len(adjuntos)]
+            api.subir(
+                f"/api/v1/adjuntos/{tipo}",
+                nombre,
+                contenido,
+                {"objeto_id": str(fila["id"]), "descripcion": descripcion},
+            )
+
+    # ── Informes y cuadros de mando ───────────────────────────────────────
+    # Las agrupaciones son **objetos** con su campo —y su periodo si es una
+    # fecha—, no nombres de columna: lo dice el propio contrato en su ejemplo.
+    # Con cadenas, el alta responde 422 «los datos enviados no son válidos» y
+    # no dice cuál, que es por lo que costó encontrarlo.
+    for clave, nombre, objeto, columnas, agrupaciones in (
+        (
+            "cartera-por-sector",
+            "Cartera por sector",
+            "cuenta",
+            ["nombre", "tier"],
+            [{"campo": "sector_codigo"}],
+        ),
+        (
+            "ventas-por-etapa",
+            "Ventas por etapa",
+            "oportunidad",
+            ["nombre", "importe"],
+            [{"campo": "estado"}],
+        ),
+        (
+            "casos-por-prioridad",
+            "Casos por prioridad",
+            "caso",
+            ["asunto", "estado"],
+            [{"campo": "prioridad"}],
+        ),
+    ):
+        api.crear(
+            "/api/v1/informes",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "objeto": objeto,
+                "descripcion": f"{nombre}, con el recorte que tengas puesto.",
+                "columnas": columnas,
+                "agrupaciones": agrupaciones,
+            },
+        )
+
+    api.crear(
+        "/api/v1/cuadros-mando",
+        {
+            "clave": "direccion",
+            "nombre": "Cuadro de dirección",
+            "descripcion": "Lo que se mira en el comité: cartera, embudo y postventa.",
+            # Cada componente apunta al informe del que saca los datos —sin
+            # él no hay de dónde— y un «kpi» necesita además su métrica. Lo
+            # valida al guardarlo, no al pintarlo: un cuadro mal montado que
+            # sólo falla al abrirse se descubre delante de alguien.
+            "componentes": [
+                {
+                    "tipo": "kpi",
+                    "titulo": "Ingresos ganados",
+                    "informe": "ventas-por-etapa",
+                    "metrica": "ingresos_ganados",
+                },
+                {
+                    "tipo": "grafico",
+                    "titulo": "Casos por prioridad",
+                    "informe": "casos-por-prioridad",
+                    "dimension": "prioridad",
+                    "metrica": "casos_abiertos",
+                    "forma": "barras",
+                },
+            ],
+        },
+    )
+
+    # ── Plantillas de documento y canales de entrada ──────────────────────
+    api.crear(
+        "/api/v1/plantillas-documento",
+        {
+            "clave": "oferta-estandar",
+            "nombre": "Oferta estándar",
+            "tipo": "propuesta",
+            "cuerpo": (
+                "Estimado/a {{contacto}}:\n\nAdjuntamos nuestra oferta para "
+                "{{oportunidad}}, por importe de {{importe}}.\n\nVigencia: 30 días."
+            ),
+        },
+    )
+    api.crear(
+        "/api/v1/canales-entrada",
+        {
+            "clave": "buzon-comercial",
+            "canal": "correo",
+            "nombre": "Buzón comercial",
+            "destino": "lead",
+        },
+    )
+
+    # ── Activos de marketing y un recorrido ───────────────────────────────
+    api.crear(
+        "/api/v1/activos-marketing",
+        {
+            "clave": "foto-planta-2026",
+            "nombre": "Fotografía de planta 2026",
+            "referencia": "https://activos.example.com/planta-2026.jpg",
+            "tipo": "imagen",
+            "usos_permitidos": ["web", "correo"],
+            "licencia": "propia",
+        },
+    )
+    api.crear(
+        "/api/v1/recorridos",
+        {
+            "clave": "bienvenida-cliente",
+            "nombre": "Bienvenida al cliente nuevo",
+            "descripcion": "Tres toques en tres semanas tras la primera compra.",
+            "inicio": "saludo",
+            # El lienzo ES la definición: un diccionario de nodos con su tipo
+            # y a dónde van, no una lista.
+            "nodos": {
+                "saludo": {
+                    "tipo": "accion",
+                    "accion": "email",
+                    "plantilla": "bienvenida",
+                    "siguiente": "esperar",
+                },
+                "esperar": {"tipo": "espera", "dias": 7, "siguiente": "encuesta"},
+                "encuesta": {"tipo": "accion", "accion": "email", "siguiente": "fin"},
+                "fin": {"tipo": "fin"},
+            },
+        },
+    )
+
+    # ── Un agente de IA y los subprocesadores ─────────────────────────────
+    api.crear(
+        "/api/v1/ia/agentes-autonomos",
+        {
+            "clave": "primera-respuesta",
+            "tipo": "respuesta_soporte",
+            "descripcion": "Propone la primera respuesta de un caso, para que la revise alguien.",
+            "permisos": ["account:read", "activity:read"],
+            "max_acciones": 20,
+        },
+    )
+    # `trata` no es opcional, y el propio servidor lo explica: «un
+    # subprocesador sin eso es un nombre en una lista, y no contesta a lo que
+    # pregunta un cliente».
+    for clave, nombre, finalidad, trata in (
+        (
+            "correo-transaccional",
+            "Proveedor de correo",
+            "Envío de avisos y notificaciones",
+            ["transaccional"],
+        ),
+        (
+            "almacen-objetos",
+            "Almacenamiento de adjuntos",
+            "Guardar los ficheros adjuntos",
+            ["adjuntos", "copias"],
+        ),
+    ):
+        api.crear(
+            "/api/v1/residencia/subprocesadores",
+            {
+                "tenant_id": api.tenant_id,
+                "clave": clave,
+                "nombre": nombre,
+                "finalidad": finalidad,
+                "trata": trata,
+                "region": "ue",
+                "garantia": "clausulas_tipo",
+            },
+        )
+
+    # ── Encargos a proveedor, con su rastro ───────────────────────────────
+    #
+    # La pantalla de encargos se abría vacía en un sistema con mil casos. Se
+    # atan a una cuenta real: un encargo sin cliente no contesta «¿de quién es
+    # este envío?», que es la pregunta por la que se mira.
+    cuentas = api.listar("/api/v1/accounts?estado=", 3)
+    # Los proveedores que de verdad tiene este tenant, no dos nombres
+    # inventados: el alta los comprueba —«no hay ningún proveedor
+    # «mensajeria» configurado»— y hace bien, porque un encargo a un
+    # proveedor que no existe no lo recoge nadie.
+    proveedores = [
+        p["clave"] for p in api.listar("/api/v1/proveedores-servicio", 10) if p.get("clave")
+    ]
+    for i, cuenta in enumerate(cuentas):
+        if not cuenta.get("id") or not proveedores:
+            continue
+        api.crear(
+            "/api/v1/encargos",
+            {
+                "proveedor": proveedores[i % len(proveedores)],
+                "referencia_externa": f"EXT-{1000 + i}",
+                "objeto_origen": "cuenta",
+                "objeto_origen_id": str(cuenta["id"]),
+                "cuenta_id": str(cuenta["id"]),
+                "datos": {"concepto": "Recogida de material para revisión"},
+            },
+        )
+
+    # ── Plantillas de comunicación del tenant ─────────────────────────────
+    for clave, nombre, asunto, cuerpo in (
+        (
+            "aviso-vencimiento",
+            "Aviso de vencimiento",
+            "Tu contrato vence el {{fecha}}",
+            "Hola {{nombre}}:\n\nTe recordamos que tu contrato vence el {{fecha}}.",
+        ),
+        (
+            "gracias-por-el-pedido",
+            "Gracias por el pedido",
+            "Hemos recibido tu pedido {{numero}}",
+            "Hola {{nombre}}:\n\nTu pedido {{numero}} está confirmado.",
+        ),
+    ):
+        api.crear(
+            "/api/v1/plantillas",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "tipo": "correo",
+                "idioma": "es",
+                "asunto": asunto,
+                "cuerpo": cuerpo,
+            },
+        )
+
+    # ── Créditos de servicio del trimestre ────────────────────────────────
+    #
+    # No se dan de alta: se **calculan** a partir de los incumplimientos de
+    # SLA que ya hay. Pedirlo es lo que los crea, y sin pedirlo la pantalla
+    # sale vacía aunque haya casos fuera de plazo — que es justo lo contrario
+    # de lo que pasa.
+    hoy = date.today()
+    api.crear(
+        "/api/v1/creditos-servicio/calcular",
+        {
+            "periodo": f"{hoy.year}-T{(hoy.month - 1) // 3 + 1}",
+            "desde": str(hoy.replace(day=1) - timedelta(days=90)),
+            "hasta": str(hoy),
+        },
+    )
+
+    # ── Lo que NO se siembra, y por qué ───────────────────────────────────
+    #
+    # Se dice en vez de callarlo: un listado de pantallas pendientes que
+    # esconde las que no se pueden llenar deja a quien lo lee creyendo que ya
+    # está todo, y la que falta la descubre el cliente.
+    #
+    #   · **notificaciones, conversaciones, mensajes y anomalías** — no se dan
+    #     de alta: los produce el sistema cuando pasa algo. Sembrarlos a mano sería escribir en la tabla lo que el producto
+    #     tendría que haber escrito, y entonces la demostración enseña un
+    #     resultado sin el camino que lo produce.
+    #   · **passkeys y dispositivos de confianza** — son de una persona y de su
+    #     navegador: no hay forma de crearlos desde fuera, y es la protección
+    #     funcionando.
+    #   · **créditos de servicio** — se calculan, y se calculan aquí: salen
+    #     cero porque ningún contrato de esta empresa los pacta. Cero es la
+    #     respuesta correcta, no un hueco.
+    #   · **claves de API y proveedores de identidad** — el alta exige volver a
+    #     verificar la identidad, y SAML está apagado en esta instalación. Las
+    #     dos salen ya en el informe de «rechazadas por diseño».
+
+
 PARTES: dict[str, Any] = {
     "identidad": sembrar_identidad,
     "metadatos": sembrar_metadatos,
@@ -3498,6 +3898,7 @@ PARTES: dict[str, Any] = {
     "calidad": sembrar_calidad,
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
+    "lo_que_sale_vacio": sembrar_lo_que_sale_vacio,
 }
 
 

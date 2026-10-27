@@ -222,7 +222,14 @@ class EncargoOut(BaseModel):
     coste_previsto: Decimal | None = None
     coste_facturado: Decimal | None = None
     moneda: str | None = None
-    interno: bool = False
+    # Lo que no se le enseña al cliente —coste, notas, proveedor alternativo y
+    # por qué se eligió éste—: es un objeto, no un interruptor. Estaba
+    # declarado `bool` y la columna es JSONB, así que **crear un encargo
+    # respondía 500 al serializar**, con la fila ya escrita y su hito
+    # apuntado. No lo cazó el barrido de escrituras porque esta ruta exige un
+    # proveedor configurado: en un tenant vacío contesta 404 y no llega a
+    # serializar nada. Hizo falta una empresa sembrada de verdad.
+    interno: dict[str, Any] = {}
     datos: dict[str, Any] = {}
     created_at: datetime
 

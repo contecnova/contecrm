@@ -612,3 +612,97 @@ def test_sin_entregas_no_se_dice_que_todo_este_probado(uow: UnidadDeTrabajo, gls
     salida = enc.entregados_sin_prueba(uow.db, uow.tenant_id)
     assert salida["medible"] is False
     assert salida["cuantos"] == 0
+
+
+# ── Y por la ruta, con un proveedor configurado ───────────────────────────
+
+
+@pytest.fixture
+def cliente_integracion(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        modulo = importlib.import_module("services.integration.main")
+        with TestClient(modulo.app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def cabeceras_integracion(tenant_id: UUID) -> dict[str, str]:
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    return firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(uuid4()),
+            H_PERMISOS: "*:*",
+            H_ROLES: "admin",
+            H_FACTOR_FUERTE: _ahora().isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+@pytest.mark.db
+def test_encargar_por_la_ruta_devuelve_el_encargo_entero(
+    cliente_integracion: Any,
+    cabeceras_integracion: dict[str, str],
+    db: Any,
+    gls: Any,
+    contexto_tenant: UUID,
+) -> None:
+    """`interno` es un OBJETO —coste, notas, proveedor alternativo y por qué se
+    eligió éste—, no un interruptor.
+
+    Estaba declarado `bool` en el contrato de la respuesta y la columna es
+    JSONB, así que el alta respondía 500 al serializar: la fila quedaba escrita
+    y su primer hito apuntado, y quien encargó veía un error del sistema.
+
+    No lo cazó el barrido de escrituras con cuerpo válido porque esta ruta
+    exige un proveedor configurado: en un tenant vacío contesta 404 y no llega
+    a serializar nada. Hizo falta sembrar una empresa de verdad, y por eso esta
+    prueba monta el proveedor antes.
+    """
+    db.commit()
+    r = cliente_integracion.post(
+        "/api/v1/encargos",
+        json={
+            "proveedor": "gls",
+            "referencia_externa": "EXT-1",
+            "datos": {"concepto": "Recogida de material"},
+        },
+        headers=cabeceras_integracion,
+    )
+    assert r.status_code == 201, r.text[:400]
+    cuerpo = r.json()
+    assert isinstance(cuerpo["interno"], dict), cuerpo["interno"]
+    # Y lo que lleva dentro es lo que se decidió al elegir proveedor: sin
+    # esto, la conciliación no puede explicar por qué fue a éste y no a otro.
+    assert "regla_de_eleccion" in cuerpo["interno"]
+    assert cuerpo["proveedor"] == "gls"
+    assert cuerpo["referencia_propia"], "un encargo sin referencia propia no se puede reclamar"
+    # El plazo del proveedor, puesto solo: 48 horas en esta ficha.
+    assert cuerpo["prometido_para"]
