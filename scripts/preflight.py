@@ -201,6 +201,11 @@ GATES: list[Gate] = [
             "pytest",
             "tests/unit/test_cada_capacidad_tiene_pantalla.py",
             "tests/unit/test_la_pantalla_toca_lo_que_dice_que_ensena.py",
+            # Y al revés: colecciones que la API publica y ninguna pantalla
+            # abre. Va aquí porque es la misma pregunta por el otro lado, y
+            # porque es estática —lee el contrato sellado, no construye
+            # ninguna aplicación—: medio segundo.
+            "tests/unit/test_una_coleccion_sin_puerta_no_la_abre_nadie.py",
             "-q",
             "--no-header",
         ],
