@@ -7079,6 +7079,20 @@ a sus compañeros sin llamarnos. El acceso nace en el más bajo: eso impide que
 quien abrió una incidencia acabe viendo las facturas de su empresa porque alguien
 creó el acceso deprisa.
 
+**Y el portal enseña las secciones que el acceso concede, todas.** Hasta el
+27-10-2026 enseñaba dos —pedir algo y hablar con quien atiende— mientras la API
+servía ocho: lo que la empresa tiene instalado, sus contratos, sus pedidos, los
+artículos que ese cliente puede leer, los hilos de la comunidad y quién más de
+su empresa tiene acceso. Estaban servidas, filtradas por nivel y probadas, y no
+había forma de verlas. Ahora el portal pinta exactamente lo que el servidor
+declara en `secciones` —que lo declara justo para eso— y **no pide lo que no
+concede**: una llamada que va a dar 403 no comprueba nada, sólo ensucia el
+registro. Una sección que el servidor conceda y el portal no sepa pintar no se
+inventa: no se enseña, porque un recuadro con su rótulo y nada dentro se lee
+como «no tenéis nada». Y lo que no se puede leer se dice, en vez de salir vacío:
+callarlo deja al cliente creyendo que no tiene contratos cuando lo que pasa es
+que su acceso está mal dado.
+
 **El filtro va en el servidor y por el nivel del acceso.** Filtrar en el cliente
 funciona hasta que alguien mira la respuesta de la API, y entonces el portal deja
 de ser un portal para ser una copia del CRM con un filtro de pantalla. Un nivel de

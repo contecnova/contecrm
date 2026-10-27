@@ -210,6 +210,18 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
 
       <NuevaPeticion sesion={sesion} alCrear={cargar} />
       <MisCasos casos={casos} />
+      {/* Las demás secciones, **las que este acceso concede y no más**. El
+          servidor ya dice cuáles en `sesion.secciones`, y lo dice justo para
+          que el portal no pinte botones que luego dan 403.
+
+          Hasta el 27-10-2026 esta pantalla enseñaba dos —peticiones y
+          conversación— y las otras seis estaban publicadas y servidas sin que
+          el cliente pudiera verlas: lo que su empresa tiene instalado, sus
+          contratos, sus pedidos, los artículos que puede leer, la comunidad y
+          quién más de su empresa tiene acceso. */}
+      {sesion.secciones.map((seccion) => (
+        <Seccion key={seccion} seccion={seccion} sesion={sesion} />
+      ))}
       {/* Y si además es proveedora, sus papeles: es la parte que más se usa de
           un portal de proveedor, porque perseguir certificados caducados es
           trabajo de alguien todos los meses y el único que puede resolverlo es
@@ -217,6 +229,128 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
       <MisPapeles sesion={sesion} />
       <Conversacion sesion={sesion} hilo={hilo} alEscribir={cargar} />
     </main>
+  );
+}
+
+/**
+ * Qué enseña cada sección del portal, y de dónde.
+ *
+ * El mapa es ruta y rótulo, nada más: lo que se pinta de cada fila sale del
+ * propio registro. Un componente por sección serían seis pantallas que dicen
+ * lo mismo con otro nombre, y la que menos se mire será la que se quede sin
+ * arreglar.
+ *
+ * `casos` y `conversacion` no están: tienen su propio sitio arriba, con el
+ * formulario de pedir y el de escribir.
+ */
+const SECCIONES: Record<string, { ruta: string; titulo: string; vacio: string }> = {
+  conocimiento: {
+    ruta: "/api/v1/portal/mi/conocimiento",
+    titulo: "Ayuda",
+    vacio: "Todavía no hay artículos publicados para ti.",
+  },
+  comunidad: {
+    ruta: "/api/v1/portal/mi/comunidad",
+    titulo: "Comunidad",
+    vacio: "Nadie ha abierto ningún hilo todavía.",
+  },
+  activos: {
+    ruta: "/api/v1/portal/mi/activos",
+    titulo: "Lo que tenéis instalado",
+    vacio: "No consta nada instalado a nombre de tu empresa.",
+  },
+  contratos: {
+    ruta: "/api/v1/portal/mi/contratos",
+    titulo: "Vuestros contratos",
+    vacio: "No consta ningún contrato.",
+  },
+  pedidos: {
+    ruta: "/api/v1/portal/mi/pedidos",
+    titulo: "Vuestros pedidos",
+    vacio: "No consta ningún pedido.",
+  },
+  contactos: {
+    ruta: "/api/v1/portal/mi/contactos",
+    titulo: "Quién más entra de tu empresa",
+    vacio: "Eres la única persona con acceso.",
+  },
+};
+
+/** Lo que se enseña de una fila, por orden de a qué se mira primero. */
+const TITULO = ["nombre", "titulo", "asunto", "nombre_completo", "codigo", "referencia"];
+const DEBAJO = ["estado", "categoria", "tipo", "email", "numero_serie", "vence_at", "fecha"];
+
+function texto(fila: Record<string, unknown>, campos: string[]): string {
+  for (const campo of campos) {
+    const valor = fila[campo];
+    if (typeof valor === "string" && valor.trim()) return valor;
+    if (typeof valor === "number") return String(valor);
+  }
+  return "";
+}
+
+function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
+  const definicion = SECCIONES[seccion];
+  const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
+  const [fallo, setFallo] = useState("");
+
+  useEffect(() => {
+    if (!definicion) return;
+    let vivo = true;
+    void pedir<unknown>(definicion.ruta, sesion.token)
+      .then((datos) => {
+        if (!vivo) return;
+        // La API devuelve a veces la lista pelada y a veces un sobre con
+        // `items`: se admiten las dos en vez de obligar a cada extremo a
+        // cambiar, que es lo que dejaría media sección en blanco sin error.
+        const lista = Array.isArray(datos)
+          ? datos
+          : ((datos as { items?: unknown[] })?.items ?? []);
+        setFilas(lista as Record<string, unknown>[]);
+      })
+      .catch((error: unknown) => {
+        if (!vivo) return;
+        // Se dice. Una sección que el acceso concede y no se puede leer es un
+        // problema de quien lo dio, y callarlo deja al cliente creyendo que no
+        // tiene nada.
+        setFallo(error instanceof Error ? error.message : "No se ha podido cargar");
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [definicion, sesion.token]);
+
+  // Una sección que el servidor concede y este portal no sabe pintar no se
+  // inventa: no se enseña nada. Enseñar un recuadro vacío con su rótulo se lee
+  // como que no hay datos.
+  if (!definicion) return null;
+
+  return (
+    <section className="card mb-4 p-4">
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-faint">
+        {definicion.titulo}
+      </h2>
+      {fallo ? (
+        <p role="alert" className="text-2xs text-danger">
+          {fallo}
+        </p>
+      ) : filas === null ? (
+        <p className="text-2xs text-ink-faint">Cargando…</p>
+      ) : filas.length === 0 ? (
+        <p className="text-2xs text-ink-faint">{definicion.vacio}</p>
+      ) : (
+        <ul className="space-y-2">
+          {filas.map((fila, i) => (
+            <li key={String(fila.id ?? i)} className="rounded-lg bg-paper-sunk px-3 py-2">
+              <p className="text-xs text-ink">{texto(fila, TITULO) || "—"}</p>
+              {texto(fila, DEBAJO) ? (
+                <p className="text-3xs text-ink-faint">{texto(fila, DEBAJO)}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

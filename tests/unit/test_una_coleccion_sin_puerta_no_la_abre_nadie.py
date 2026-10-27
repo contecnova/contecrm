@@ -55,7 +55,12 @@ FRONT = RAIZ / "frontend/src"
 #   27-10-2026  167 de 708  `por_servicio`: una pestaña abre la misma colección
 #                            en todos los servicios que la publican. El
 #                            denominador sube porque el contrato se reselló.
-TOPE_SIN_PUERTA = 167
+#   27-10-2026  161 de 708  el portal del cliente enseñaba dos secciones de
+#                            ocho. Las otras seis estaban publicadas y servidas
+#                            —lo instalado, los contratos, los pedidos, los
+#                            artículos, la comunidad y quién más entra— sin que
+#                            el cliente pudiera verlas.
+TOPE_SIN_PUERTA = 161
 
 SERVICIOS = (
     "party",
