@@ -581,3 +581,42 @@ las tres salen de que esto se mira de reojo, quince veces al día:
 
 Y un fallo del servidor se dice dentro del panel: la barra es el marco, y si se
 cae la barra no queda ni forma de navegar.
+
+## Tres cosas que se veían en la consola del navegador
+
+**«No se puede filtrar por «r»» al pulsar crear.** La pantalla de módulo escribe
+en la URL sus propios parámetros —`r` es la pestaña abierta, `nuevo=1` abre el
+formulario de alta— y al leerlos de vuelta los mandaba al servidor como si
+fueran campos del objeto. La respuesta era un 422 con la lista de columnas
+debajo, y lo veía cualquiera que pulsara «crear» desde una pestaña: la pantalla
+entera en rojo en vez del formulario.
+
+Lo que lo hace peor: **había una prueba que daba el fallo por bueno**. Afirmaba
+que `r` se leyera como filtro, así que el candado estaba puesto sobre el
+defecto. Corregida, con el porqué escrito al lado.
+
+**404 en `/api/v1/marca` en cada carga de página.** No tener marca propia es el
+caso normal —se usa la del despliegue— y se respondía con un «no encontrado».
+Todos los tenants que no la han configurado, que son casi todos, veían un error
+rojo cada vez que entraban. Ahora devuelve el diagnóstico completo con los
+cuatro puntos de fuga pendientes y nada que aplicar, que es lo que el front ya
+sabe leer. Un error que se aprende a ignorar es donde se esconde el que sí
+importa.
+
+## `parar` decía que paraba, y no paraba
+
+Y es la causa de que se estuviera mirando el código de la víspera sin un solo
+error a la vista.
+
+`parar` mandaba la señal y escribía «✓ parado» **sin comprobar que el proceso
+muriera**. Después, `arrancar` lanzaba los trece servicios, escribía «✓ sales en
+:8009» y seguía — pero el puerto seguía ocupado por el proceso viejo, así que el
+nuevo moría en el acto y lo que atendía era el de ayer. Dos comprobaciones que
+no miran, una detrás de otra, y el resultado es una pantalla que se comporta
+como hace veinticuatro horas mientras todo dice que está bien.
+
+Ahora `parar` **espera a que el proceso muera** —diez segundos de cortesía y
+luego sin contemplaciones: un servicio local que no atiende a SIGTERM en diez
+segundos está colgado— y barre además los que quedaron sin pidfile, que son los
+que ocupan el puerto. Y `arrancar` comprueba que el proceso sigue vivo medio
+segundo después; si no, lo dice y señala su registro en vez de cantar un ✓.

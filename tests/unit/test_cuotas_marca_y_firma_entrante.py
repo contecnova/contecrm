@@ -394,3 +394,27 @@ def test_el_apunte_lleva_la_entrada_y_dice_que_limite_se_paso() -> None:
     # La salida NO se guarda: puede llevar el registro entero.
     assert "salida" not in salida
     assert salida["salida_no_se_guarda"].strip()
+
+
+def test_un_tenant_sin_marca_no_es_un_error(db: Any, tenant_id: UUID) -> None:
+    """**No tener marca propia es el caso normal**, no un fallo.
+
+    Devolvía 404 «Este tenant no tiene marca configurada», y el front pide esta
+    ruta en CADA carga de página: todos los tenants que no la han configurado
+    —o sea casi todos— veían un error rojo en la consola del navegador cada vez
+    que entraban. Un error que se aprende a ignorar es donde se esconde el que
+    sí importa.
+
+    La respuesta correcta es el diagnóstico completo con los cuatro puntos de
+    fuga pendientes y `aplicable` vacío, que es lo que el front ya sabe leer:
+    sin marca que aplicar, se queda con la del despliegue.
+    """
+    from services.tenancy import marca as mrc
+
+    salida = mrc.comprobar(db, tenant_id)
+    assert salida["aplicable"] == {}, salida
+    assert salida["se_puede_activar"] is False
+    # Los cuatro puntos, cada uno con su motivo: un tenant sin marca no tiene
+    # «nada pendiente», tiene todo pendiente.
+    assert len(salida["faltan"]) == len(mrc.PUNTOS_DE_FUGA), salida["faltan"]
+    assert "del despliegue" in salida["porque"]

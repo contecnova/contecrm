@@ -1575,3 +1575,39 @@ Para llegar de otro sistema está `empezar_en`: el último código ya emitido. S
 albarán. Y un objeto sin numeración declarada **no es un error**: devuelve nada
 y el alta sigue. Que reventara obligaría a declarar numeración para todo antes
 de poder dar de alta la primera cosa.
+
+## Workers dedicados por cliente (`CRM-00.01.01.06`)
+
+Se vende cómputo aislado: que el trabajo pesado de un cliente no caiga en los
+mismos procesos que el de todos los demás. **Y hasta hoy era sólo un campo.**
+`pool_computo` estaba en la migración, en el modelo, en el parámetro con el que
+se declara el aislamiento y en la respuesta de la API — se podía declarar, se
+veía en pantalla, y el barrido de tareas recorría todos los tenants igual.
+
+Ahora un proceso arrancado con `POOL_COMPUTO=acme` sólo atiende a los tenants
+cuyo pool es `acme`.
+
+**Cómo llega el dato.** El pool manda en `aislamiento_tenants`, que es de
+`tenancy`. El barrido corre **dentro de cada servicio** y no puede leer el
+esquema de otro, así que el valor viaja por el camino que ya llega a los
+catorce: los ajustes en caliente. Declarar el aislamiento escribe también el
+ajuste `pool_computo` en el ámbito del tenant, y a partir de ahí cada servicio
+lo tiene en el suyo.
+
+**Dos vacíos, y los dos significan «todos».** No es dejadez, es la decisión:
+
+- un proceso **sin** `POOL_COMPUTO` atiende a todos. Al revés, el día que
+  alguien despliegue sin definir la variable los barridos de todos los tenants
+  dejarían de correr y nadie se enteraría hasta que una tabla creciera sin
+  techo;
+- un tenant **sin pool declarado** lo atiende cualquiera, que es lo que pasa
+  hoy con todos los que nadie ha movido del común.
+
+Y si el pool de un tenant no se puede resolver —la réplica aún no ha llegado,
+no hay sesión— **se atiende igual, y queda aviso en el registro**. Saltárselo
+por no saber convertiría un retraso de la réplica en trabajo que no se hace y
+que nadie reclama.
+
+La salida del barrido dice **cuántos se saltaron por ser de otro pool**. Sin
+ese número, un proceso mal configurado barre cero tenants y su salida es
+idéntica a la de un sistema sin trabajo pendiente.

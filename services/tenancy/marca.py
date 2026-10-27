@@ -204,7 +204,29 @@ def comprobar(db: Session, tenant_id: UUID) -> dict[str, Any]:
         db.execute(select(MarcaTenant).where(MarcaTenant.tenant_id == tenant_id)).scalars().first()
     )
     if fila is None:
-        raise NoEncontrado("Este tenant no tiene marca configurada", error_code="marca.no_existe")
+        # **No tener marca propia no es un error**: es el caso normal, y la
+        # respuesta correcta es «usa la del despliegue», que es justo lo que el
+        # front hace. Devolver 404 convertía cada carga de página en un error
+        # rojo en la consola del navegador —en TODOS los tenants que no la han
+        # configurado, o sea casi todos— y los errores que se aprenden a
+        # ignorar son donde se esconde el que sí importa.
+        return {
+            "tenant_id": str(tenant_id),
+            "puntos_de_fuga": list(PUNTOS_DE_FUGA),
+            # Faltan los cuatro, porque no hay nada: es el diagnóstico correcto
+            # de un tenant sin marca, no un hueco.
+            "faltan": [
+                {"punto": punto, "porque": "No hay marca configurada todavía"}
+                for punto in PUNTOS_DE_FUGA
+            ],
+            "se_puede_activar": False,
+            "aviso_contraste": "",
+            "aplicable": {},
+            "porque": (
+                "Este tenant no tiene marca propia: se usa la del despliegue, "
+                "que es el comportamiento normal mientras nadie la configure."
+            ),
+        }
 
     faltan: list[dict[str, str]] = []
     if not fila.remitente or not fila.dominio_envio:

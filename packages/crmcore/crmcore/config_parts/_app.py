@@ -100,6 +100,20 @@ class _AppSettings(BaseSettings):
     # techo, que es peor que barrer de más.
     tareas_fondo_enabled: bool = True
 
+    # A qué **pool de cómputo** atiende este proceso (CRM-00.01.01.06).
+    #
+    # Un tenant puede tener workers dedicados —se vende, y hasta hoy el campo
+    # existía en la base, salía por la API y no lo miraba nadie: todos los
+    # procesos barrían todos los tenants—. Con esto, un proceso arrancado con
+    # `POOL_COMPUTO=acme` sólo barre los tenants cuyo pool es `acme`.
+    #
+    # **Vacío significa «todos», y es el valor de fábrica a propósito.** Al
+    # revés —vacío significando «ninguno»— el día que alguien despliegue sin
+    # definir la variable, los barridos de todos los tenants dejarían de correr
+    # y nadie se enteraría hasta que una tabla creciera sin techo. Es la misma
+    # decisión que la lista de procedencias de un campo de solo lectura.
+    pool_computo: str = ""
+
     # ── Interfaz ──────────────────────────────────────────────────────────
     # Densidad por defecto de la interfaz.
     #

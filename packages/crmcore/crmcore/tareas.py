@@ -235,6 +235,54 @@ class RelevoDeTareas:
         logger.info("tareas.vuelta", tarea=tarea.nombre, **(resultado or {}))
 
 
+def _es_de_mi_pool(tenant_id: Any) -> bool:
+    """¿Atiende este proceso a ese tenant? (CRM-00.01.01.06)
+
+    **El campo existía y no lo miraba nadie.** `pool_computo` estaba en la
+    migración, en el modelo, en el parámetro de `declarar` y en la respuesta de
+    la API; el barrido recorría todos los tenants igual. O sea: se podía vender
+    cómputo dedicado, declararlo y verlo en la pantalla, y el trabajo pesado de
+    un cliente seguía cayendo en los mismos workers que el de todos los demás.
+
+    Dos vacíos y los dos significan «todos», a propósito:
+
+    - **este proceso sin pool** (`POOL_COMPUTO` sin definir) atiende a todos.
+      Al revés, el día que alguien despliegue sin la variable los barridos
+      dejarían de correr y nadie se enteraría hasta que una tabla creciera sin
+      techo;
+    - **un tenant sin pool declarado** lo atiende cualquiera, que es lo que
+      pasa hoy con todos los que nadie ha movido del común.
+
+    Y si no se puede resolver el pool del tenant —no hay sesión, la réplica
+    todavía no ha llegado—, se atiende. Saltárselo por no saber convertiría un
+    retraso de la réplica en trabajo que no se hace y nadie reclama.
+    """
+    from crmcore.config import get_settings
+
+    mio = (get_settings().pool_computo or "").strip()
+    if not mio:
+        return True
+    from uuid import UUID
+
+    try:
+        from crmcore.db.session import sesion
+        from crmcore.runtime import settings as rt
+        from crmcore.tenancy.context import con_contexto
+
+        suyo = ""
+        identificador = tenant_id if isinstance(tenant_id, UUID) else UUID(str(tenant_id))
+        with sesion(identificador) as db:
+            # El ámbito se resuelve del contexto, no de un parámetro, así que
+            # hay que ponerlo: sin él, `efectivo` contestaría el valor global y
+            # todos los tenants parecerían del mismo pool.
+            with con_contexto(tenant_id=identificador):
+                suyo = str(rt.efectivo("pool_computo", db) or "").strip()
+    except Exception as exc:  # noqa: BLE001 — no saber no es motivo para no trabajar
+        logger.warning("tareas.pool_sin_resolver", tenant=str(tenant_id), motivo=str(exc)[:120])
+        return True
+    return not suyo or suyo == mio
+
+
 def por_tenant(
     tenants: Callable[[], list[Any]],
     trabajo: Callable[[Any], dict[str, Any]],
@@ -252,7 +300,11 @@ def por_tenant(
 
     def _correr() -> dict[str, Any]:
         hechos, fallidos = 0, []
+        saltados = 0
         for tenant_id in tenants():
+            if not _es_de_mi_pool(tenant_id):
+                saltados += 1
+                continue
             try:
                 trabajo(tenant_id)
                 hechos += 1
@@ -275,6 +327,10 @@ def por_tenant(
             "tenants": hechos,
             "fallidos": len(fallidos),
             "cuales": fallidos[:10],
+            # Cuántos no eran de este proceso. Se dice: sin esto, un proceso
+            # mal configurado barre cero tenants y su salida es idéntica a la
+            # de un sistema sin trabajo pendiente.
+            "de_otro_pool": saltados,
         }
 
     return _correr

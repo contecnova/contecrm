@@ -187,6 +187,19 @@ CLAVES: dict[str, ClaveAjuste] = {
             maximo=500,
             campo_settings="comentario_max_menciones",
         ),
+        # A qué pool de cómputo pertenece este tenant (CRM-00.01.01.06).
+        #
+        # El dato manda en `aislamiento_tenants`, que es de `tenancy`; aquí vive
+        # su RÉPLICA, por el mismo camino que los demás ajustes en caliente —que
+        # ya llegan a los catorce servicios— y por el mismo motivo: el barrido
+        # de tareas corre dentro de cada servicio y no puede leer el esquema de
+        # otro para preguntar a qué pool va cada tenant.
+        _c(
+            "pool_computo",
+            "str",
+            "Pool de workers que atiende a este tenant",
+            campo_settings="pool_computo",
+        ),
         # Adjuntos y almacenamiento (CRM-06.01.01.05)
         _c(
             "adjunto_max_mb",

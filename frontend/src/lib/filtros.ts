@@ -118,8 +118,29 @@ export function parametroDe(filtro: Filtro): string {
  * La lista es de los que NO lo son, y es corta y cerrada a propósito: con una
  * lista de los que sí, cada campo nuevo de cada módulo habría que añadirlo
  * aquí, y el que se olvide deja de poderse filtrar sin que nadie lo note.
+ *
+ * **`r` y `nuevo` faltaban, y los escribe la propia pantalla de módulo**: `r`
+ * es la pestaña abierta y `nuevo=1` abre el formulario de alta. Al leerlos de
+ * vuelta se mandaban al servidor como si fueran campos, y la respuesta era un
+ * 422 «No se puede filtrar por «r»» con la lista de columnas del objeto
+ * debajo. Lo veía cualquiera que pulsara «crear» desde una pestaña: la
+ * pantalla entera en rojo en vez del formulario.
+ *
+ * Son de la pantalla, no del dato: ningún objeto del catálogo tiene un campo
+ * que se llame `r` ni `nuevo`, así que excluirlos no quita ningún filtro real.
  */
-const NO_SON_FILTROS = new Set(["cursor", "limite", "orden", "campos", "total", "formato", "vista"]);
+const NO_SON_FILTROS = new Set([
+  "cursor",
+  "limite",
+  "orden",
+  "campos",
+  "total",
+  "formato",
+  "vista",
+  // Las dos de la pantalla de módulo: qué pestaña y si se abre el alta.
+  "r",
+  "nuevo",
+]);
 
 export function leerFiltros(params: URLSearchParams, buscar?: string): Filtro[] {
   const salida: Filtro[] = [];

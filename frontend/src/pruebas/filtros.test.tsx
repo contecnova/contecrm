@@ -113,7 +113,14 @@ describe("cómo viajan en la URL", () => {
     const params = new URLSearchParams("estado=abierta&importe__mayor=50000&cursor=XYZ&r=Cuentas");
     const leidos = leerFiltros(params);
     // `cursor` gobierna la paginación, no qué filas salen: no es un filtro.
-    expect(leidos.map(parametroDe).sort()).toEqual(["estado", "importe__mayor", "r"]);
+    //
+    // Y `r` tampoco, aunque esta prueba dijera lo contrario hasta el
+    // 27-10-2026: es la pestaña abierta, la escribe la propia pantalla de
+    // módulo, y al mandarla al servidor como si fuera un campo la respuesta
+    // era un 422 «No se puede filtrar por «r»». La prueba no cazó el fallo
+    // porque LO DABA POR BUENO — es el caso que convierte una prueba en un
+    // candado sobre el defecto.
+    expect(leidos.map(parametroDe).sort()).toEqual(["estado", "importe__mayor"]);
   });
 
   it("el término de búsqueda no se confunde con un filtro", () => {
@@ -196,5 +203,27 @@ describe("la barra", () => {
     // Sin campo elegido, aplicar no hace nada: mandarlo produciría un 422 y el
     // usuario vería un error del servidor por no haber rellenado un hueco.
     expect(screen.getByRole("button", { name: "filtros.aplicar" })).toBeDisabled();
+  });
+});
+
+describe("los parámetros que gobiernan la pantalla no son filtros", () => {
+  it("«r» y «nuevo» no viajan al servidor", () => {
+    /**
+     * Los escribe la propia pantalla de módulo —`r` es la pestaña abierta y
+     * `nuevo=1` abre el alta— y al leerlos de vuelta se mandaban como si
+     * fueran campos del objeto. La respuesta era un 422 «No se puede filtrar
+     * por «r»» con la lista de columnas debajo, y lo veía cualquiera que
+     * pulsara «crear» desde una pestaña: la pantalla entera en rojo en vez
+     * del formulario.
+     */
+    const params = new URLSearchParams("r=Pipelines&nuevo=1&estado=abierta");
+    const filtros = leerFiltros(params);
+    expect(filtros.map((f) => f.campo)).toEqual(["estado"]);
+    expect(comoQuery(filtros)).toBe("estado=abierta");
+  });
+
+  it("y los de paginación y formato tampoco", () => {
+    const params = new URLSearchParams("cursor=abc&limite=50&formato=csv&tier=oro");
+    expect(leerFiltros(params).map((f) => f.campo)).toEqual(["tier"]);
   });
 });

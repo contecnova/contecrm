@@ -315,8 +315,20 @@ arrancar_local() {
       nohup .venv/bin/uvicorn "services.$s.main:app" \
         --host 127.0.0.1 --port "$puerto" --no-access-log \
         > "$VAR/log/$s.log" 2>&1 &
-    echo $! > "$VAR/pid/$s.pid"
-    ok "$s en :$puerto"
+    local pid=$!
+    echo "$pid" > "$VAR/pid/$s.pid"
+    # Y se COMPRUEBA que sigue vivo. Decir «✓ sales en :8009» justo después de
+    # lanzarlo es la misma comprobación que no mira que tenía `parar`: si el
+    # puerto estaba ocupado por un proceso anterior, uvicorn muere en el acto
+    # y lo que queda atendiendo es el viejo — con el código de la víspera y sin
+    # un solo error a la vista.
+    sleep 0.6
+    if kill -0 "$pid" 2>/dev/null; then
+      ok "$s en :$puerto"
+    else
+      aviso "$s NO ha arrancado; mira $VAR/log/$s.log"
+      rm -f "$VAR/pid/$s.pid"
+    fi
   done
 
   # Los workers, DESPUÉS de los servicios HTTP: es el servicio de cada esquema
@@ -420,6 +432,31 @@ arrancar_front() {
 }
 
 # ── parar ────────────────────────────────────────────────────────────────────
+# Mata un proceso y **espera a que muera**.
+#
+# `kill` solo manda la señal. Decir «parado» justo después es una comprobación
+# que no mira: el 27-10-2026 dejó trece servicios de la víspera vivos mientras
+# el arranque siguiente decía «✓ sales en :8009» de un proceso que ya había
+# muerto porque el puerto estaba ocupado — y lo que se vio en el navegador fue
+# el código del día anterior, sin ningún error en ninguna parte.
+#
+# Diez segundos de cortesía y luego sin contemplaciones: un servicio local que
+# no atiende a SIGTERM en diez segundos está colgado, y esperar más sólo
+# retrasa el arranque.
+matar_de_verdad() {
+  local pid="$1" i=0
+  kill "$pid" 2>/dev/null || true
+  while kill -0 "$pid" 2>/dev/null && (( i < 20 )); do
+    sleep 0.5
+    i=$((i + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -9 "$pid" 2>/dev/null || true
+    sleep 0.5
+  fi
+  ! kill -0 "$pid" 2>/dev/null
+}
+
 parar() {
   if [[ "${1:-}" == "--docker" ]]; then
     titulo "Parando Docker"
@@ -444,21 +481,39 @@ parar() {
   for s in "${SERVICIOS[@]}"; do
     local pidfile="$VAR/pid/$s.pid"
     if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-      kill "$(cat "$pidfile")" 2>/dev/null || true
-      rm -f "$pidfile"
-      ok "$s parado"
-      parados=$((parados + 1))
+      if matar_de_verdad "$(cat "$pidfile")"; then
+        rm -f "$pidfile"
+        ok "$s parado"
+        parados=$((parados + 1))
+      else
+        aviso "$s NO ha parado (pid $(cat "$pidfile")); páralo a mano"
+      fi
     fi
   done
   for w in "${WORKERS[@]}"; do
     local pidfile="$VAR/pid/${w%%:*}-${w##*:}.pid"
     if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-      kill "$(cat "$pidfile")" 2>/dev/null || true
-      rm -f "$pidfile"
-      ok "worker ${w%%:*}/${w##*:} parado"
-      parados=$((parados + 1))
+      if matar_de_verdad "$(cat "$pidfile")"; then
+        rm -f "$pidfile"
+        ok "worker ${w%%:*}/${w##*:} parado"
+        parados=$((parados + 1))
+      else
+        aviso "worker ${w%%:*}/${w##*:} NO ha parado"
+      fi
     fi
   done
+
+  # Y los que quedaron sueltos: un proceso cuyo pidfile se perdió —o que viene
+  # de un arranque anterior— sigue ocupando el puerto, y entonces el arranque
+  # siguiente no puede coger ninguno. Es lo que dejó a un equipo con el código
+  # de la víspera creyendo que había reiniciado.
+  local sueltos
+  sueltos=$(pgrep -f "uvicorn services\..*\.main:app" 2>/dev/null | tr '\n' ' ')
+  if [[ -n "${sueltos// /}" ]]; then
+    aviso "Quedaban procesos sin pidfile: $sueltos"
+    for p in $sueltos; do matar_de_verdad "$p" >/dev/null || true; done
+    ok "Sueltos parados"
+  fi
   [[ $parados -eq 0 ]] && info "No había nada corriendo"
   # El Postgres embebido se queda vivo a propósito: arrancarlo cuesta segundos y
   # los datos locales siguen ahí para la próxima.

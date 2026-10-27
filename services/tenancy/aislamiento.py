@@ -241,6 +241,27 @@ def declarar(
     fila.comprobado_ok = None
     fila.comprobado_detalle = "Declaración cambiada: hay que volver a comprobar."
     uow.db.flush()
+
+    # Y el pool se REPLICA a los demás servicios (CRM-00.01.01.06).
+    #
+    # El dato manda aquí, en `aislamiento_tenants`, que es de este servicio. El
+    # barrido de tareas corre dentro de CADA servicio y no puede leer este
+    # esquema para preguntar a qué pool va un tenant, así que el valor viaja
+    # por el camino que ya llega a los catorce: los ajustes en caliente.
+    #
+    # Sin esto, `pool_computo` era un campo que se guardaba, salía por la API y
+    # no lo miraba nadie: se podía vender cómputo dedicado, declararlo, verlo
+    # en la pantalla, y el trabajo pesado de ese cliente seguía cayendo en los
+    # mismos workers que el de todos los demás.
+    from crmcore.runtime import settings as rt
+
+    rt.fijar(
+        uow.db,
+        "pool_computo",
+        pool_computo,
+        ambito="tenant",
+        ambito_id=str(tenant_id),
+    )
     registrar(
         uow.db,
         accion="aislamiento.declarado",

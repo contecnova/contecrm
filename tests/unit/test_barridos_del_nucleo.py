@@ -302,3 +302,82 @@ def test_las_purgas_esperan_su_turno_y_lo_que_recupera_trabajo_no() -> None:
     ], f"en la primera vuelta tenía que correr solo lo que recupera: {corridas}"
     for t in (purga, recupera):
         _estado.pop(t.nombre, None)
+
+
+# ── Pools de cómputo (CRM-00.01.01.06) ───────────────────────────────────
+#
+# `pool_computo` estaba en la migración, en el modelo, en el parámetro de
+# `declarar` y en la respuesta de la API, y el barrido recorría todos los
+# tenants igual. O sea: se podía vender cómputo dedicado, declararlo y verlo en
+# la pantalla, y el trabajo pesado de ese cliente seguía cayendo en los mismos
+# workers que el de todos los demás.
+
+
+def test_un_proceso_sin_pool_atiende_a_todos(monkeypatch: Any) -> None:
+    """Y es el valor de fábrica, a propósito.
+
+    Al revés —vacío significando «ninguno»— el día que alguien despliegue sin
+    definir la variable los barridos de todos los tenants dejarían de correr y
+    nadie se enteraría hasta que una tabla creciera sin techo.
+    """
+    from crmcore.config import get_settings
+    from crmcore.tareas import por_tenant
+
+    monkeypatch.setenv("POOL_COMPUTO", "")
+    get_settings.cache_clear()
+
+    vistos: list[str] = []
+    salida = por_tenant(lambda: ["a", "b"], lambda t: vistos.append(t) or {})()
+    assert vistos == ["a", "b"], vistos
+    assert salida["de_otro_pool"] == 0
+
+
+def test_un_proceso_con_pool_salta_lo_que_no_es_suyo(
+    monkeypatch: Any, db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """El caso que da sentido a la capacidad.
+
+    Dos tenants, uno declarado en `acme` y otro sin declarar. El worker de
+    `acme` atiende al suyo; el que no tiene pool declarado lo atiende
+    cualquiera, que es lo que pasa hoy con todos los que nadie ha movido del
+    común.
+    """
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.runtime import settings as rt
+    from crmcore.tareas import por_tenant
+
+    de_acme, del_comun = tenant_id, uuid4()
+    rt.fijar(db, "pool_computo", "acme", ambito="tenant", ambito_id=str(de_acme))
+    db.flush()
+
+    monkeypatch.setenv("POOL_COMPUTO", "acme")
+    get_settings.cache_clear()
+
+    vistos: list[str] = []
+    salida = por_tenant(lambda: [de_acme, del_comun], lambda t: vistos.append(str(t)) or {})()
+    assert str(de_acme) in vistos, "el worker de acme no ha atendido a su propio tenant"
+    assert salida["de_otro_pool"] == 0, salida
+
+    # Y el worker de OTRO pool no toca ninguno de los dos… salvo el que no
+    # tiene pool declarado, que es de todos.
+    monkeypatch.setenv("POOL_COMPUTO", "otro")
+    get_settings.cache_clear()
+    vistos.clear()
+    salida = por_tenant(lambda: [de_acme, del_comun], lambda t: vistos.append(str(t)) or {})()
+    assert str(de_acme) not in vistos, "un worker de «otro» ha barrido un tenant de «acme»"
+    assert str(del_comun) in vistos, "el tenant sin pool tiene que atenderlo cualquiera"
+    assert salida["de_otro_pool"] == 1, salida
+
+    get_settings.cache_clear()
+
+
+def test_cuantos_se_saltaron_se_dice(monkeypatch: Any) -> None:
+    """Sin esto, un proceso mal configurado barre cero tenants y su salida es
+    idéntica a la de un sistema sin trabajo pendiente."""
+    from crmcore.tareas import por_tenant
+
+    monkeypatch.setenv("POOL_COMPUTO", "")
+    salida = por_tenant(lambda: [], lambda t: {})()
+    assert "de_otro_pool" in salida, salida
