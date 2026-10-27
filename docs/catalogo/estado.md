@@ -9,7 +9,7 @@ por su identificador, y está en el manual. Lo comprueba
 `tests/unit/test_catalogo_trazabilidad.py`, así que este documento no
 puede decir que algo está hecho si no lo está.
 
-**778 capacidades**: ✅ 777 hecho · ⬜ 1 pendiente
+**778 capacidades**: ✅ 778 hecho
 
 ## Módulo 0 — Plataforma y arquitectura transversal
 
@@ -1079,7 +1079,7 @@ puede decir que algo está hecho si no lo está.
 
 ## Módulo 7 — Administración, ALM y gobierno
 
-108 capacidades · ✅ 107 · ⬜ 1
+108 capacidades · ✅ 108
 
 ### 7.1 Administración funcional
 
@@ -1228,7 +1228,7 @@ puede decir que algo está hecho si no lo está.
 | `CRM-07.04.05.03` | Modo demostración: un tenant de muestra con datos coherentes que permite enseñar el sistema entero sin tocar datos reales | C | 1 | front | ✅ | — |
 | `CRM-07.04.05.04` | Recorrido guiado por la solución, construido desde el catálogo, que enseña cada módulo con lo que de verdad hace hoy | A | 1 | front | ✅ | — |
 | `CRM-07.04.05.05` | Cada pantalla declara qué capacidades del catálogo implementa, consultable desde la propia interfaz | A | 2 | front | ✅ | — |
-| `CRM-07.04.05.06` | Sistema de demostración poblado: diez años de actividad coherente y relacionada en TODAS las opciones —clientes con su historia, oportunidades ganadas y perdidas, casos con su SLA, campañas con sus resultados, encargos a proveedor, aprobaciones, auditoría— generada por un mecanismo repetible que levanta un sistema de demostración entero, como en contecintelligence. Lo que hay hoy (CRM-07.04.05.03) siembra un tenant de muestra: basta para probar que una pantalla pinta, y no para enseñar el producto, porque casi toda pantalla sale vacía o con tres filas | C | 1 | front | ⬜ | — |
+| `CRM-07.04.05.06` | Sistema de demostración poblado: diez años de actividad coherente y relacionada en TODAS las opciones —clientes con su historia, oportunidades ganadas y perdidas, casos con su SLA, campañas con sus resultados, encargos a proveedor, aprobaciones, auditoría— generada por un mecanismo repetible que levanta un sistema de demostración entero, como en contecintelligence. Lo que hay hoy (CRM-07.04.05.03) siembra un tenant de muestra: basta para probar que una pantalla pinta, y no para enseñar el producto, porque casi toda pantalla sale vacía o con tres filas | C | 1 | front | ✅ | — |
 
 ### 7.5 Documentación de producto
 

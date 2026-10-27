@@ -457,20 +457,65 @@ existan sin documentar, y hay un gate que lo comprueba.
 #### Sembrar una empresa con volumen
 
 `sembrar_demo.py` crea cuatro cuentas: sirve para comprobar que el sistema
-funciona, no para enseñarlo. Sin volumen no se ve nada de lo que hace un CRM —ni
+funciona, no para enseñarlo —esa es toda su función, y por eso sigue siendo
+corto—. Sin volumen no se ve nada de lo que hace un CRM —ni
 un embudo, ni una previsión, ni una cola de casos, ni un aviso de vencimiento—,
 y para eso está `sembrar_empresa.py`:
 
 ```bash
 python scripts/sembrar_empresa.py --slug acme --nombre "Acme, S.A." \
-    --email direccion@acme.example --contrasena "…" --escala 60
+    --email direccion@acme.example --contrasena "…" --escala 60 --anios 10
 ```
 
-`--escala` es el número de cuentas; el resto de volúmenes se derivan de él, con
-un reparto que imita el de una empresa real: tres contactos por cuenta, cuatro
-actividades, dos oportunidades y dos casos y medio. Los datos se componen de
-piezas y se combinan con un generador **sembrado a partir del slug**, así que la
-misma empresa da siempre los mismos datos y dos empresas dan datos distintos.
+`--escala` es el número de cuentas y `--anios` cuánta historia se siembra hacia
+atrás —diez por defecto—; el resto de volúmenes se derivan de los dos, con un
+reparto que imita el de una empresa real: tres contactos por cuenta, cuatro
+actividades al año, dos oportunidades y dos casos y medio por cuenta y año. Los
+datos se componen de piezas y se combinan con un generador **sembrado a partir
+del slug**, así que la misma empresa da siempre los mismos datos y dos empresas
+dan datos distintos.
+
+**Por qué los años importan.** Hasta el 27-10-2026 todo se creaba hoy: las
+actividades entre −90 y +45 días, los casos en los últimos 120 y las
+oportunidades en ±210. Con eso no se puede enseñar ni una evolución anual, ni
+un ciclo medio de venta, ni una comparación con el año pasado —y son tres de las
+pantallas que más se miran—. Ahora cada fecha se reparte sobre el periodo
+entero, con más peso en los años recientes porque un negocio crece, menos en
+agosto porque un negocio no factura igual en agosto, y **nunca antes de aquello
+de lo que cuelga**: un contacto no nace antes que su cuenta ni un caso antes que
+su cliente. El eje de tiempo y las piezas que no tenía ningún sembrador —el
+catálogo de productos, las campañas y el parque instalado— están en
+`scripts/datos_demo.py`, que `sembrar_empresa.py` consume: un solo generador,
+porque dos catálogos de empresas se separan a la primera corrección.
+
+A escala 60 y diez años salen, medidos: 60 cuentas, 180 contactos, 2.400
+actividades, 600 oportunidades con su historial de etapas, 600 ofertas —219 de
+ellas pasaron por aprobación por descuento—, 160 pedidos, 1.500 casos con su
+reloj de SLA, 120 máquinas instaladas, 500 órdenes de trabajo y 44 campañas
+bajo 11 programas anuales. Tarda **50 segundos**.
+
+#### Comprobar lo sembrado
+
+```bash
+python scripts/sembrar_empresa.py --slug acme --tenant <uuid> --comprobar
+```
+
+Recorre lo escrito y dice si se sostiene: 21 comprobaciones repartidas por
+servicio —`party` no puede mirar lo de `sales`, que es el aislamiento
+funcionando— y **cada una dice cuántas filas recorrió**. Eso último no es
+decoración: una consulta que no encuentra nada porque la tabla está vacía da
+cero fallos y parece verde, y el recorrido fue lo que delató, tres veces, que
+faltaban datos. Devuelve código 1 si algo falla.
+
+Seis incoherencias se cazaron así, y ninguna se veía en pantalla: un contacto
+nacido antes que su cuenta —uno entre 145, por el ajuste de agosto—; actividades
+apuntadas en el futuro; el 76 % de los casos incumpliendo el SLA porque las
+horas se sorteaban sueltas en vez de medirse contra el plazo de cada tier; dos
+etapas del embudo vacías por fijar la profundidad del recorrido a tres;
+310 oportunidades con dos ofertas y 235 ganadas sin pedido, porque las ofertas
+se ataban a la oportunidad **por nombre** y los nombres se repiten; y los cortes
+de idempotencia sin filtrar por tenant, que al sembrar la segunda empresa
+encontraban las filas de la primera, decían «ya hay» y se iban sin crear nada.
 
 Con la pila en Docker hay que ejecutarlo **por partes, una por servicio**, porque
 el rol de `sales` no tiene permisos sobre el esquema de `party` —el aislamiento
@@ -485,14 +530,32 @@ docker compose exec party    python scripts/sembrar_empresa.py --parte party    
 docker compose cp contecrm-dev-party-1:/tmp/acme.json .   # y copiarlo a sales y service
 docker compose exec sales    python scripts/sembrar_empresa.py --parte sales    --tenant <uuid> --enlaces /tmp/acme.json …
 docker compose exec service  python scripts/sembrar_empresa.py --parte service  --tenant <uuid> --enlaces /tmp/acme.json …
+docker compose exec marketing python scripts/sembrar_empresa.py --parte marketing --tenant <uuid> …
 ```
 
 Además de la plantilla de usuarios con roles distintos, siembra unidades de
-negocio, un pipeline de siete etapas con una de cada cuatro oportunidades ya
-cerrada —sin histórico no hay tasa de conversión ni ciclo medio de venta—, una
-taxonomía de casos de dos niveles, un SLA por tier de cliente y una cola de casos
-donde **uno de cada siete incumple el plazo**: una cola sin incumplimientos no
-enseña para qué sirve el SLA.
+negocio, un pipeline de siete etapas con **el historial de por dónde pasó cada
+oportunidad** —sin él no hay tasa de conversión, ni ciclo medio de venta, ni
+informe de dónde se atasca la venta—, el catálogo de productos y una oferta por
+oportunidad con sus líneas, la aprobación por descuento cuando el producto la
+exige, el pedido de las que se ganaron, una taxonomía de casos de dos niveles,
+un SLA por tier de cliente, el parque instalado del cliente con sus órdenes de
+trabajo asignadas a técnicos, y los programas y campañas de cada año con su
+presupuesto y su consumo.
+
+Las proporciones no son decorativas y se eligieron porque lo contrario no se
+puede enseñar: se **pierde más de lo que se gana** —una demostración con el 90 %
+ganado deja de creerse en cuanto alguien la mira—, el 15 % de los casos incumple
+el plazo —una cola sin incumplimientos no enseña para qué sirve el SLA, y una
+con el 76 % no se parece a ningún servicio—, y unas campañas se pasan del
+presupuesto y otras no llegan, porque si todas gastaran lo presupuestado la
+pantalla de consumo no tendría nada que decir.
+
+El camino que se recorre es el **de verdad**: las ofertas pasan por `crear`,
+`enviar` y `aceptar`, que es quien calcula los precios con el motor, decide si
+el descuento necesita aprobación y numera el pedido. Insertando filas a mano
+saldrían ofertas con precios que la aplicación nunca daría, y la demostración
+enseñaría números que el producto no produce.
 
 Se niega a ejecutarse con `ENV` de producción.
 

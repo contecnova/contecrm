@@ -119,8 +119,8 @@ Imprime las credenciales al terminar.
 —cartera, embudo, casos— y con su **configuración puesta** hay dos pasos:
 
 ```bash
-# Lo que se mueve: cuentas, contactos, oportunidades, casos
-python scripts/sembrar_empresa.py --slug ficosa --escala mediana \
+# Lo que se mueve: diez años de cartera, embudo, postventa y marketing
+python scripts/sembrar_empresa.py --slug ficosa --escala 60 --anios 10 \
     --email direccion@ficosa.example --contrasena '...'
 
 # Lo que las sostiene: canales, plantillas, procesos, reglas, riesgos, roles
@@ -128,6 +128,23 @@ python scripts/sembrar_configuracion.py --tenant ficosa \
     --email direccion@ficosa.example --contrasena '...' \
     --aprobador soporte.jefe@ficosa.example
 ```
+
+`--anios` es cuánta historia se siembra hacia atrás, diez por defecto. Importa
+más de lo que parece: con todo creado hoy, la evolución anual sale como una
+barra, el ciclo medio de venta no se puede calcular y la comparación con el año
+pasado no tiene con qué comparar. Cada fecha se reparte sobre el periodo, con
+más actividad en los años recientes y menos en agosto, y nada nace antes que
+aquello de lo que cuelga.
+
+Para comprobar que lo sembrado se sostiene —y no sólo que el guion terminó sin
+error—:
+
+```bash
+python scripts/sembrar_empresa.py --slug ficosa --tenant <uuid> --comprobar
+```
+
+Recorre lo escrito, dice cuántas filas ha mirado en cada comprobación y
+devuelve error si algo no cuadra.
 
 El segundo va **por la API y no por la base de datos**, a propósito: lo que deja
 sembrado es exactamente lo que una persona podría haber creado desde el front

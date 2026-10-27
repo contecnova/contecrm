@@ -4097,6 +4097,43 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### El sistema de demostración poblado (`CRM-07.04.05.06`)
+
+Un tenant de muestra con cuatro cuentas sirve para comprobar que una pantalla
+pinta; no sirve para enseñar el producto, porque casi toda pantalla sale vacía o
+con tres filas. Lo que hace falta es **una empresa que lleva diez años usando el
+CRM**, y es lo que siembra `scripts/sembrar_empresa.py --anios 10`.
+
+El mecanismo es uno solo, y eso fue una corrección: se había escrito un
+sembrador nuevo antes de ver que `sembrar_empresa.py` ya era el de volumen. Dos
+sembradores paralelos son el defecto, no la solución. Ahora
+`scripts/datos_demo.py` aporta **sólo lo que no había** —el eje de diez años, el
+catálogo de productos, las campañas y el parque instalado— y `sembrar_empresa.py`
+lo consume.
+
+Lo que antes no existía y ahora sí: fechas repartidas sobre el periodo —antes
+todo se creaba hoy—, el historial de por dónde pasó cada oportunidad, una oferta
+con sus líneas por oportunidad, la aprobación por descuento cuando el producto
+la exige, el pedido de las que se ganaron, los programas y campañas de cada año
+con su presupuesto y su consumo, y los técnicos, el parque instalado y las
+órdenes de trabajo del servicio de campo —tres familias que no tenían una sola
+fila—.
+
+Las proporciones imitan a un negocio y no a un folleto: se pierde más de lo que
+se gana, el 15 % de los casos incumple el plazo, unas campañas se pasan del
+presupuesto y otras no llegan. Una demostración donde todo sale bien deja de
+creerse en cuanto alguien la mira.
+
+**Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
+repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
+que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.
+Seis incoherencias se cazaron así y ninguna se veía en pantalla —entre ellas, un
+contacto nacido antes que su cuenta (uno entre 145), el 76 % de los casos
+incumpliendo el SLA por sortear horas sueltas en vez de medir contra el plazo de
+cada tier, y 235 ventas ganadas sin pedido porque las ofertas se ataban a su
+oportunidad por nombre y los nombres se repiten—. El comprobador se validó
+plantando tres casos malos y verificando que los caza.
+
 ### El tenant de demostración (`CRM-07.04.05.03`)
 
 Enseñar la solución sobre una base vacía no enseña nada: lo que hay que ver es

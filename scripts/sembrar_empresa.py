@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Siembra una empresa con datos de verdad: volumen, variedad y coherencia.
+"""Siembra una empresa con datos de verdad: volumen, variedad, coherencia y diez
+años de historia (CRM-07.04.05.06).
 
     python scripts/sembrar_empresa.py --slug ficosa --nombre "Ficosa, S.A." \
         --email direccion@ficosa.example --contrasena "…"
@@ -30,6 +31,7 @@ tiene permisos:
     --parte party     desde party
     --parte sales     desde sales
     --parte service   desde service
+    --parte marketing desde marketing
 
 **Y las partes se pasan los identificadores por un fichero.** Las oportunidades
 y los casos cuelgan de cuentas que viven en otro esquema. En ejecución, un
@@ -59,6 +61,16 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "packages" / "crmcore"))
 
+from scripts.datos_demo import (  # noqa: E402
+    PRODUCTOS_DEMO,
+    Reloj,
+    activo_instalado,
+    campanas,
+    lineas_de_oferta,
+    perfil_de_tecnico,
+    reloj_de_caso,
+    reparto_de_embudo,
+)
 
 # ══════════════════════════════════════════════════════════════════════════
 #  Las piezas con las que se compone todo
@@ -300,13 +312,23 @@ class Volumen:
     porque el postventa genera mucho más volumen que la venta.
     """
 
-    def __init__(self, escala: int) -> None:
+    def __init__(self, escala: int, anios: int = 10) -> None:
         self.cuentas = escala
         self.contactos = escala * 3
-        self.actividades = escala * 4
-        self.leads = int(escala * 1.4)
-        self.oportunidades = escala * 2
-        self.casos = int(escala * 2.5)
+        # Más actividades y más casos cuanto más periodo se siembre: con los
+        # volúmenes atados solo a la escala, diez años de historia tenían la
+        # misma cantidad de apuntes que seis meses, y la gráfica de evolución
+        # salía como una línea plana con un pico al final.
+        self.actividades = escala * 4 * anios
+        self.leads = int(escala * 1.4) * max(1, anios // 2)
+        self.oportunidades = escala * 2 * max(1, anios // 2)
+        # Por año y no por periodo: con los casos atados sólo a la escala, diez
+        # años de postventa daban 186 casos —uno y medio al mes— y la cola del
+        # día salía con once. Un cliente industrial abre varios al año, y es
+        # ese ritmo el que llena la bandeja de quien atiende.
+        self.casos = int(escala * 2.5) * anios
+        self.activos = escala * 2
+        self.campanas_por_anio = 4
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -470,9 +492,15 @@ def sembrar_usuarios(cfg: argparse.Namespace, tenant_id: UUID) -> list[str]:
 
 
 def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dict[str, object]:
-    """Cuentas, contactos y actividades. Corre donde `party` tiene permisos."""
+    """Cuentas, contactos y actividades, repartidas en los años que se pidan.
+
+    Las fechas de alta no son decorativas. Sin ellas, diez años de cartera
+    aparecen creados hoy: la gráfica de altas por año sale como una barra, la
+    comparación con el año pasado no tiene con qué comparar y la antigüedad de
+    un cliente —que es lo que decide si se le llama o no— es cero para todos.
+    """
     _cambiar_a("party")
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.errors import Conflicto
@@ -483,7 +511,8 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
     from services.party.modelos import Cuenta
 
     rnd = random.Random(f"{cfg.slug}:party")
-    enlaces: dict[str, object] = {"cuentas": [], "contactos": []}
+    reloj = Reloj(anios=cfg.anios)
+    enlaces: dict[str, object] = {"cuentas": [], "contactos": [], "anios": cfg.anios}
 
     with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
         # No se sale si ya hay cuentas: se **completa** lo que falte. Salir era
@@ -493,7 +522,9 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
         # alta ya rechaza los duplicados por nombre, así que repetirlo es
         # seguro.
 
-        cuentas: list[tuple[UUID, str, str]] = []
+        # Con su fecha de alta: lo que cuelga de una cuenta no puede nacer
+        # antes que ella, y para comprobarlo hay que tenerla a mano.
+        cuentas: list[tuple[UUID, str, str, datetime]] = []
         for i in range(vol.cuentas):
             raiz = RAICES_EMPRESA[i % len(RAICES_EMPRESA)]
             # A partir de la segunda vuelta se añade la población para que el
@@ -536,12 +567,22 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
                     facturacion_anual=plantilla * rnd.randrange(90, 260) * 1_000,
                     identificadores=[{"tipo": "nif", "valor": _cif(rnd)}],
                     forzar=True,
+                    # La cartera no nace de golpe: se reparte sobre el periodo
+                    # con más altas en los años recientes, que es como crece
+                    # una empresa.
+                    created_at=(alta := reloj.momento(rnd)),
                 )
             except Conflicto:
                 continue
-            cuentas.append((cuenta.id, nombre, tier))
+            cuentas.append((cuenta.id, nombre, tier, alta))
             enlaces["cuentas"].append(  # type: ignore[union-attr]
-                {"id": str(cuenta.id), "nombre": nombre, "tier": tier, "sector": sector}
+                {
+                    "id": str(cuenta.id),
+                    "nombre": nombre,
+                    "tier": tier,
+                    "sector": sector,
+                    "alta": alta.isoformat(),
+                }
             )
         print(f"{len(cuentas)} cuentas creadas")
 
@@ -549,16 +590,22 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
         # solo las de esta pasada: si no, al completar un tenant que ya tenía
         # cuentas, los contactos y las oportunidades se amontonarían en las
         # nuevas y las viejas se quedarían sin nada.
-        for fila in uow.db.execute(select(Cuenta)).scalars():
+        for fila in uow.db.execute(select(Cuenta).where(Cuenta.tenant_id == tenant_id)).scalars():
             if all(str(fila.id) != c["id"] for c in enlaces["cuentas"]):  # type: ignore[index,union-attr]
                 enlaces["cuentas"].append(  # type: ignore[union-attr]
-                    {"id": str(fila.id), "nombre": fila.nombre, "tier": fila.tier, "sector": ""}
+                    {
+                        "id": str(fila.id),
+                        "nombre": fila.nombre,
+                        "tier": fila.tier,
+                        "sector": "",
+                        "alta": fila.created_at.isoformat(),
+                    }
                 )
-                cuentas.append((fila.id, fila.nombre, fila.tier or "C"))
+                cuentas.append((fila.id, fila.nombre, fila.tier or "C", fila.created_at))
 
         contactos: list[tuple[UUID, UUID]] = []
         for i in range(vol.contactos):
-            cuenta_id, empresa, _tier = cuentas[i % len(cuentas)]
+            cuenta_id, empresa, _tier, alta_cuenta = cuentas[i % len(cuentas)]
             nombre = NOMBRES[(i * 7) % len(NOMBRES)]
             apellidos = (
                 f"{APELLIDOS[(i * 5) % len(APELLIDOS)]} {APELLIDOS[(i * 11) % len(APELLIDOS)]}"
@@ -573,6 +620,10 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
                     cargo=CARGOS[i % len(CARGOS)],
                     cuenta_id=cuenta_id,
                     forzar=True,
+                    # Plano dentro de la vida de SU cuenta, no sesgado otra vez
+                    # hacia hoy: el sesgo aplicado dos veces amontonaba todo en
+                    # los últimos años.
+                    created_at=reloj.momento(rnd, desde=alta_cuenta, sesgo=1.0),
                 )
             except Conflicto:
                 continue
@@ -585,7 +636,7 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
         # Las actividades se reparten en el tiempo hacia atrás y hacia delante.
         # Todas al día escondería los avisos y los vencimientos, que es la mitad
         # de lo que se nota al usar un CRM.
-        ahora = datetime.now(timezone.utc)
+        ahora = reloj.hoy
         tipos = ["llamada", "correo", "reunion", "tarea", "visita"]
         acciones = [
             "Seguimiento de la oferta",
@@ -597,36 +648,77 @@ def sembrar_party(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> dic
             "Reclamación de pedido pendiente",
             "Repaso de incidencias abiertas",
         ]
+        pendientes = 0
         for i in range(vol.actividades):
-            cuenta_id, empresa, _t = cuentas[i % len(cuentas)]
-            dias = rnd.randrange(-90, 45)
+            cuenta_id, empresa, _t, alta_cuenta = cuentas[i % len(cuentas)]
+            # Una parte pequeña vence en los próximos días: sin nada por
+            # delante, la bandeja de «lo que me toca hoy» sale vacía el día de
+            # la demostración, que es la primera pantalla que se enseña. Pero
+            # sólo una parte pequeña: lo que hace falta ahí son unas decenas de
+            # tareas, no una proporción de diez años de historia.
+            if rnd.random() < 0.08:
+                vence = ahora + timedelta(days=rnd.randrange(-4, 21), hours=rnd.randrange(24))
+                # Hacia atrás desde HOY y no desde el vencimiento: restando del
+                # vencimiento, las que vencen dentro de tres semanas se
+                # apuntaban en el futuro.
+                creada = ahora - timedelta(days=rnd.randrange(0, 26), hours=rnd.randrange(24))
+            else:
+                creada = reloj.momento(rnd, desde=alta_cuenta, sesgo=1.0)
+                vence = creada + timedelta(days=rnd.randrange(1, 45))
+            # Una tarea se apunta ANTES de vencer y nunca en el futuro.
+            creada = min(creada, vence, ahora)
+            # Lo pasado está hecho salvo un resto: un histórico sin ninguna
+            # tarea olvidada no se parece a ninguna bandeja real.
+            hecha = vence < ahora and rnd.random() < 0.88
+            pendientes += 0 if hecha else 1
             svc.crear_actividad(
                 uow,
                 tipo=tipos[i % len(tipos)],
                 asunto=f"{acciones[i % len(acciones)]} — {empresa.split(',')[0]}",
                 objeto="cuenta",
                 objeto_id=cuenta_id,
-                vence_at=ahora + timedelta(days=dias, hours=rnd.randrange(0, 9)),
+                vence_at=vence,
+                estado="completada" if hecha else "pendiente",
+                created_at=creada,
             )
-        print(f"{vol.actividades} actividades creadas, repartidas entre −90 y +45 días")
+        print(
+            f"{vol.actividades} actividades creadas en {cfg.anios} años "
+            f"({pendientes} siguen pendientes)"
+        )
 
     return enlaces
 
 
 def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlaces: dict) -> None:
-    """Pipeline, leads y oportunidades. Corre donde `sales` tiene permisos."""
+    """Catálogo, pipeline, leads, oportunidades con su historial, y lo que se vendió.
+
+    Tres cosas que no estaban y que son la mitad de lo que se mira:
+
+      · **El recorrido.** Una oportunidad ganada sin historial de etapas no
+        dice cuánto tardó en cada una, y el informe de embudo —dónde se atasca
+        la venta— no tiene de dónde salir.
+      · **Lo que se ofreció.** Un importe de 180.000 € sin líneas no dice qué
+        se vendió, y el margen por familia no se puede calcular.
+      · **El pedido.** Una venta ganada que no acaba en pedido deja la pantalla
+        de pedidos vacía en un sistema donde se han ganado trescientas.
+    """
     _cambiar_a("sales")
-    from datetime import date, timedelta
+    from datetime import timedelta
     from decimal import Decimal
 
     from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.errors import Conflicto as ConflictoCrm
+    from crmcore.errors import ErrorValidacion
     from crmcore.tenancy.context import con_contexto
     from sqlalchemy import func, select
 
+    from services.sales import presupuestos as svc_presupuestos
     from services.sales import servicio as svc
-    from services.sales.modelos import Etapa, Lead, Oportunidad, Pipeline
+    from services.sales.catalogo import Producto
+    from services.sales.modelos import CambioEtapa, Etapa, Lead, Oportunidad, Pipeline
 
     rnd = random.Random(f"{cfg.slug}:sales")
+    reloj = Reloj(anios=cfg.anios)
     cuentas = list(enlaces.get("cuentas") or [])
 
     # Clave, nombre, probabilidad, terminal, ganada. «Terminal» y «ganada» van
@@ -686,8 +778,48 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
         # pedido. Antes, con un solo registro el sembrado se daba por hecho y no
         # creaba nada: un tenant con las cuatro filas de la demo mínima no podía
         # crecer nunca, y con cuatro filas no se ve ni un embudo ni una cola.
+        # Filtrado por tenant **a mano**. Sin el `where`, el corte miraba las
+        # filas de TODOS los tenants de la base: al sembrar la segunda empresa
+        # encontraba las de la primera, decía «ya hay» y se iba sin crear nada.
+        # Y no fallaba: dejaba la empresa nueva con la pantalla vacía y un
+        # mensaje tranquilizador.
+        # El catálogo va primero: una oferta sin productos no se puede crear,
+        # y el motor de precios es quien pone el precio —no quien llama—, así
+        # que sin catálogo no hay con qué calcularlo.
+        if (
+            uow.db.execute(
+                select(Producto).where(Producto.tenant_id == tenant_id).limit(1)
+            ).scalar_one_or_none()
+            is None
+        ):
+            for sku, nombre_p, familia, precio, coste, tipo_ing, periodicidad in PRODUCTOS_DEMO:
+                uow.db.add(
+                    Producto(
+                        tenant_id=tenant_id,
+                        sku=sku,
+                        nombre=nombre_p,
+                        familia=familia,
+                        precio_base=Decimal(precio),
+                        coste=Decimal(coste),
+                        tipo_ingreso=tipo_ing,
+                        periodicidad=periodicidad,
+                        activo=True,
+                    )
+                )
+            uow.db.flush()
+            print(f"{len(PRODUCTOS_DEMO)} productos de catálogo creados")
+        productos = {
+            f.sku: f.id
+            for f in uow.db.execute(select(Producto).where(Producto.tenant_id == tenant_id))
+            .scalars()
+            .all()
+        }
+
         ya_leads = int(
-            uow.db.execute(select(func.count()).select_from(Lead)).scalar_one_or_none() or 0
+            uow.db.execute(
+                select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id)
+            ).scalar_one_or_none()
+            or 0
         )
         if ya_leads >= vol.leads:
             print(f"Ya hay {ya_leads} leads: no hacen falta más.")
@@ -704,58 +836,285 @@ def sembrar_sales(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlace
                     email=_correo(nombre, f"{apellidos}{i}", empresa),
                     telefono=_telefono(rnd),
                     origen=rnd.choice(CANALES_LEAD),
+                    # Repartidos en el periodo: todos de hoy dejaba el informe
+                    # de captación por mes con una sola barra.
+                    created_at=reloj.momento(rnd),
                 )
             print(f"{vol.leads - ya_leads} leads creados")
 
         ya_oport = int(
-            uow.db.execute(select(func.count()).select_from(Oportunidad)).scalar_one_or_none() or 0
+            uow.db.execute(
+                select(func.count())
+                .select_from(Oportunidad)
+                .where(Oportunidad.tenant_id == tenant_id)
+            ).scalar_one_or_none()
+            or 0
         )
         if ya_oport >= vol.oportunidades:
             print(f"Ya hay {ya_oport} oportunidades: no hacen falta más.")
         elif not cuentas:
             print("Sin fichero de enlace no se pueden atar oportunidades a cuentas: se omiten.")
         else:
-            hoy = date.today()
+            caminos = [e for e in abiertas]
+            hechos = {"ofertas": 0, "aprobaciones": 0, "pedidos": 0, "descartadas": 0}
             for i in range(ya_oport, vol.oportunidades):
                 cuenta = cuentas[i % len(cuentas)]
                 titulo, minimo, maximo = PROYECTOS[i % len(PROYECTOS)]
-                # Una de cada cuatro está cerrada, y de esas, dos de cada tres
-                # ganadas. Un pipeline sin histórico no permite calcular ni una
-                # tasa de conversión ni un ciclo medio de venta, que es para lo
-                # que sirve tener el histórico.
-                cerrada = i % 4 == 0
-                etapa = (
-                    (ganada if i % 12 != 0 else perdida)
-                    if cerrada and ganada and perdida
-                    else abiertas[i % len(abiertas)]
-                )
-                assert etapa is not None
-                dias = rnd.randrange(-180, -5) if cerrada else rnd.randrange(5, 210)
-                extras: dict[str, object] = {
-                    "descripcion": f"{titulo} para {cuenta['nombre']}.",
-                    "fecha_cierre": hoy + timedelta(days=dias),
-                    "etapa_id": etapa.id,
-                }
-                if cerrada:
-                    extras["estado"] = "ganada" if etapa.ganada else "perdida"
-                    extras["fecha_cierre_real"] = hoy + timedelta(days=dias)
-                    if not etapa.ganada:
-                        extras["motivo_perdida"] = rnd.choice(MOTIVOS_PERDIDA)
-                svc.crear_oportunidad_nueva(
+                alta_cuenta = _fecha(cuenta.get("alta")) or reloj.desde
+                # La oportunidad nace DESPUÉS que su cuenta y dentro del
+                # periodo. Antes se sorteaba un desplazamiento sobre hoy, así
+                # que una cartera de diez años tenía todo el embudo en los
+                # últimos seis meses.
+                abierta = reloj.momento(rnd, desde=alta_cuenta, sesgo=1.0)
+                estado, pasos = reparto_de_embudo(rnd, len(caminos))
+                importe = Decimal(rnd.randrange(minimo, maximo))
+                duracion = rnd.randrange(15, 240)
+                cierre = abierta + timedelta(days=duracion)
+                oportunidad = svc.crear_oportunidad_nueva(
                     uow,
                     nombre=f"{titulo} — {cuenta['nombre'].split(',')[0]}",
                     cuenta_id=UUID(str(cuenta["id"])),
                     pipeline_id=pipeline.id,
-                    importe=Decimal(rnd.randrange(minimo, maximo)),
-                    **extras,
+                    importe=importe,
+                    descripcion=f"{titulo} para {cuenta['nombre']}.",
+                    fecha_cierre=cierre.date(),
+                    created_at=abierta,
+                    etapa_desde=abierta,
                 )
-            print(f"{vol.oportunidades} oportunidades creadas, una de cada cuatro ya cerrada")
+                _recorrer_embudo(
+                    uow,
+                    CambioEtapa,
+                    oportunidad=oportunidad,
+                    camino=caminos,
+                    ganada=ganada,
+                    perdida=perdida,
+                    estado=estado,
+                    pasos=pasos,
+                    abierta=abierta,
+                    cierre=min(cierre, reloj.hoy),
+                    motivo=rnd.choice(MOTIVOS_PERDIDA),
+                )
+                try:
+                    _ofertar(
+                        uow,
+                        svc_presupuestos,
+                        productos=productos,
+                        oportunidad=oportunidad,
+                        estado=estado,
+                        abierta=abierta,
+                        cierre=min(cierre, reloj.hoy),
+                        lineas=lineas_de_oferta(rnd),
+                        hechos=hechos,
+                    )
+                except (ConflictoCrm, ErrorValidacion) as error:
+                    # Se dice, no se esconde: una oferta que el propio producto
+                    # rechaza es información, y callarla dejaría la empresa con
+                    # menos ofertas de las que el recuento dice.
+                    hechos["descartadas"] += 1
+                    print(f"  oferta descartada: {error}")
+            print(
+                f"{vol.oportunidades - ya_oport} oportunidades creadas con su historial; "
+                f"{hechos['ofertas']} ofertas ({hechos['aprobaciones']} pasaron por aprobación) "
+                f"y {hechos['pedidos']} pedidos"
+                + (f"; {hechos['descartadas']} descartadas" if hechos["descartadas"] else "")
+            )
+
+
+def _fecha(valor: object):
+    """Una fecha del fichero de enlace, o `None` si no venía."""
+    from datetime import datetime
+
+    if not isinstance(valor, str) or not valor:
+        return None
+    try:
+        return datetime.fromisoformat(valor)
+    except ValueError:
+        return None
+
+
+def _recorrer_embudo(
+    uow,
+    CambioEtapa,
+    *,
+    oportunidad,
+    camino: list,
+    ganada,
+    perdida,
+    estado: str,
+    pasos: int,
+    abierta,
+    cierre,
+    motivo: str,
+) -> None:
+    """Escribe por dónde pasó la oportunidad hasta donde está hoy.
+
+    El historial se escribe aquí y no llamando a `cambiar_etapa` porque ese
+    camino sella la fecha con `now()` y exige los criterios de salida: los dos
+    están bien para el uso en vivo y los dos hacen imposible cargar histórico,
+    que por definición nunca cumplió unos criterios que aún no existían. Lo que
+    sí se respeta es la forma del apunte, para que las pantallas de duración por
+    etapa y de deslizamiento lean lo mismo que leen de una venta real.
+    """
+    from datetime import timedelta
+
+    # El apunte de nacimiento lo pone el servicio con `now()`; aquí se corrige a
+    # la fecha real, porque la duración de la primera etapa se calcula restando
+    # desde él y si no, sale de diez años.
+    from sqlalchemy import select as _select
+
+    primero = (
+        uow.db.execute(_select(CambioEtapa).where(CambioEtapa.oportunidad_id == oportunidad.id))
+        .scalars()
+        .first()
+    )
+    if primero is not None:
+        primero.created_at = abierta
+
+    recorrido = camino if estado == "ganada" else camino[: max(1, pasos)]
+    momento, anterior = abierta, camino[0].id
+    for etapa in recorrido[1:]:
+        dias = max(1, int((cierre - momento).days / max(1, len(recorrido))))
+        siguiente = momento + timedelta(days=dias)
+        uow.db.add(
+            CambioEtapa(
+                tenant_id=uow.tenant_id,
+                oportunidad_id=oportunidad.id,
+                etapa_desde_id=anterior,
+                etapa_hasta_id=etapa.id,
+                dias_en_etapa=dias,
+                importe_en_cambio=oportunidad.importe,
+                fecha_cierre_en_cambio=oportunidad.fecha_cierre,
+                created_at=siguiente,
+            )
+        )
+        oportunidad.etapa_id = etapa.id
+        oportunidad.probabilidad = etapa.probabilidad
+        oportunidad.etapa_desde = siguiente
+        anterior, momento = etapa.id, siguiente
+
+    if estado != "abierta":
+        final = ganada if estado == "ganada" else perdida
+        if final is None:
+            return
+        uow.db.add(
+            CambioEtapa(
+                tenant_id=uow.tenant_id,
+                oportunidad_id=oportunidad.id,
+                etapa_desde_id=anterior,
+                etapa_hasta_id=final.id,
+                dias_en_etapa=max(0, (cierre - momento).days),
+                importe_en_cambio=oportunidad.importe,
+                fecha_cierre_en_cambio=oportunidad.fecha_cierre,
+                motivo=motivo if estado == "perdida" else "",
+                created_at=cierre,
+            )
+        )
+        oportunidad.etapa_id = final.id
+        oportunidad.probabilidad = final.probabilidad
+        oportunidad.etapa_desde = cierre
+        oportunidad.estado = estado
+        oportunidad.fecha_cierre_real = cierre.date()
+        # Cerrada y bloqueada: una oportunidad cerrada no se edita, y una
+        # demostración donde sí se puede enseña una regla que el producto no
+        # tiene.
+        oportunidad.bloqueada = True
+        if estado == "perdida":
+            oportunidad.motivo_perdida = motivo
+    oportunidad.ultima_actividad_at = momento
+
+
+def _ofertar(
+    uow,
+    svc_presupuestos,
+    *,
+    productos: dict,
+    oportunidad,
+    estado: str,
+    abierta,
+    cierre,
+    lineas: list,
+    hechos: dict,
+) -> None:
+    """La oferta de esta oportunidad y, si se ganó, su pedido.
+
+    Se recorre el camino de verdad —`crear`, `enviar`, `aceptar`— y no se
+    insertan filas a mano: es ese camino el que calcula los precios con el
+    motor, decide si el descuento necesita aprobación y numera el pedido.
+    Insertando a mano saldrían ofertas con precios que la aplicación nunca
+    daría, y la demostración enseñaría números que el producto no produce.
+    """
+    from datetime import timedelta
+
+    detalle = [
+        {
+            "producto_id": productos[linea["sku"]],
+            "cantidad": linea["cantidad"],
+            "descuento_pct": linea["descuento_pct"],
+        }
+        for linea in lineas
+        if linea["sku"] in productos
+    ]
+    if not detalle:
+        return
+
+    presupuesto = svc_presupuestos.crear(
+        uow,
+        lineas=detalle,
+        cuenta_id=oportunidad.cuenta_id,
+        oportunidad_id=oportunidad.id,
+        titulo=f"Oferta — {oportunidad.nombre}",
+    )
+    hechos["ofertas"] += 1
+    svc_presupuestos.enviar(uow, presupuesto.id)
+    if presupuesto.estado == "en_aprobacion":
+        # El descuento pedía aprobación y la aplicación lo paró. Se aprueba y se
+        # vuelve a mandar: así hay ofertas que pasaron por la matriz de
+        # aprobación y queda constancia de por qué.
+        hechos["aprobaciones"] += 1
+        presupuesto.estado = "aprobado"
+        uow.db.flush()
+        svc_presupuestos.enviar(uow, presupuesto.id)
+
+    presupuesto.created_at = abierta
+    presupuesto.enviado_at = abierta + timedelta(days=2)
+    # Y sus líneas con ella. Quedaban todas creadas hoy, así que un informe de
+    # qué se vendió por año salía con el catálogo entero en el año en curso.
+    # No hay relación declarada entre el presupuesto y sus líneas, así que se
+    # piden: inventarse el atributo habría fallado en silencio.
+    from sqlalchemy import select as _sel
+
+    from services.sales.presupuestos import LineaPresupuesto as _Linea
+
+    for linea in (
+        uow.db.execute(_sel(_Linea).where(_Linea.presupuesto_id == presupuesto.id)).scalars().all()
+    ):
+        linea.created_at = abierta
+
+    if estado == "ganada":
+        # `aceptar` se niega si la oferta ha caducado, y la de una venta de 2019
+        # caducó en 2019. Se le da vigencia para recorrer el camino de verdad y
+        # luego se devuelve a su fecha: el pedido queda numerado y auditado por
+        # la aplicación, no inventado aquí.
+        from crmcore.fechas import hoy as _hoy
+
+        valido = presupuesto.valido_hasta
+        presupuesto.valido_hasta = _hoy(uow.db) + timedelta(days=1)
+        uow.db.flush()
+        pedido = svc_presupuestos.aceptar(uow, presupuesto.id)
+        presupuesto.valido_hasta = valido
+        presupuesto.aceptado_at = cierre
+        pedido.created_at = cierre
+        pedido.confirmado_at = cierre
+        pedido.estado = "confirmado"
+        hechos["pedidos"] += 1
+    elif estado == "perdida":
+        presupuesto.estado = "rechazado"
 
 
 def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enlaces: dict) -> None:
     """Taxonomía, SLA, colas y casos. Corre donde `service` tiene permisos."""
     _cambiar_a("service")
-    from datetime import datetime, timedelta, timezone
+    from datetime import timedelta
 
     from crmcore.db.uow import unidad_de_trabajo
     from crmcore.tenancy.context import con_contexto
@@ -765,10 +1124,16 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
     from services.service.operacion import ColaCasos
 
     rnd = random.Random(f"{cfg.slug}:service")
+    reloj = Reloj(anios=cfg.anios)
     cuentas = list(enlaces.get("cuentas") or [])
 
     with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
-        if uow.db.execute(select(CategoriaCaso).limit(1)).scalar_one_or_none() is None:
+        if (
+            uow.db.execute(
+                select(CategoriaCaso).where(CategoriaCaso.tenant_id == tenant_id).limit(1)
+            ).scalar_one_or_none()
+            is None
+        ):
             # Un árbol de dos niveles: solo las hojas se pueden elegir. Dejar
             # elegir el nodo intermedio convierte «calidad» en un cajón donde
             # acaba la mitad de los casos, y entonces la taxonomía no agrupa.
@@ -817,7 +1182,12 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
             uow.db.flush()
             print(f"Taxonomía de casos creada: {len(arbol)} familias y sus hojas")
 
-        if uow.db.execute(select(DefinicionSLA).limit(1)).scalar_one_or_none() is None:
+        if (
+            uow.db.execute(
+                select(DefinicionSLA).where(DefinicionSLA.tenant_id == tenant_id).limit(1)
+            ).scalar_one_or_none()
+            is None
+        ):
             # Por tier de cliente. Un SLA único para todos no es un compromiso:
             # o se le promete de más al cliente pequeño o de menos al grande.
             for clave, nombre, tier, primera, resolucion in (
@@ -840,7 +1210,12 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
             uow.db.flush()
             print("3 definiciones de SLA creadas, una por tier")
 
-        if uow.db.execute(select(ColaCasos).limit(1)).scalar_one_or_none() is None:
+        if (
+            uow.db.execute(
+                select(ColaCasos).where(ColaCasos.tenant_id == tenant_id).limit(1)
+            ).scalar_one_or_none()
+            is None
+        ):
             for clave, nombre, descripcion in (
                 ("entrada", "Entrada", "Todo lo que llega sin clasificar."),
                 ("calidad", "Calidad", "Reclamaciones de producto y no conformidades."),
@@ -856,7 +1231,10 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
             print("4 colas de casos creadas")
 
         ya_casos = int(
-            uow.db.execute(select(func.count()).select_from(Caso)).scalar_one_or_none() or 0
+            uow.db.execute(
+                select(func.count()).select_from(Caso).where(Caso.tenant_id == tenant_id)
+            ).scalar_one_or_none()
+            or 0
         )
         if ya_casos >= vol.casos:
             print(f"Ya hay {ya_casos} casos: no hacen falta más.")
@@ -874,72 +1252,509 @@ def sembrar_service(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen, enla
                 )
             ).scalars()
         )
-        ahora = datetime.now(timezone.utc)
         # El reparto de estados imita una cola real: la mayoría cerrada, una
         # minoría viva. Con todos abiertos no se puede medir nada —ni tiempo de
         # resolución ni reincidencia— y con todos cerrados la cola sale vacía.
-        estados = (
-            ["cerrado"] * 10
-            + ["resuelto"] * 3
-            + ["en_curso"] * 4
-            + ["esperando_cliente"] * 2
-            + ["asignado"] * 2
-            + ["nuevo"] * 2
+        #
+        # El reparto de los que siguen vivos. Cuáles están cerrados ya no se
+        # sortea: lo decide la fecha, porque un caso de hace seis años cerrado
+        # o no es lo que separa una cola creíble de una inventada.
+        estados_vivos = (
+            ["en_curso"] * 4 + ["esperando_cliente"] * 2 + ["asignado"] * 2 + ["nuevo"] * 2
         )
         horas_por_tier = {"A": 8, "B": 24, "C": 72}
-        incumplidos = 0
+        incumplidos = abiertos_vivos = 0
+        casos_puestos: list[tuple[UUID, UUID, str, object, object]] = []
         for i in range(ya_casos, vol.casos):
             cuenta = cuentas[i % len(cuentas)]
             hoja = hojas[i % len(hojas)] if hojas else None
-            estado = estados[i % len(estados)]
             tier = str(cuenta.get("tier") or "C")
-            abierto = ahora - timedelta(days=rnd.randrange(0, 120), hours=rnd.randrange(0, 23))
-            vence = abierto + timedelta(hours=horas_por_tier.get(tier, 72))
-            terminado = estado in ("cerrado", "resuelto")
-            # Uno de cada siete se pasa de plazo. Una cola sin incumplimientos
-            # no enseña para qué sirve el SLA, y ponerlos todos al día sería
-            # sembrar el sistema con la respuesta que a uno le gustaría ver.
-            tarde = i % 7 == 0
-            resuelto_at = (
-                (
-                    vence + timedelta(hours=rnd.randrange(2, 40))
-                    if tarde
-                    else abierto
-                    + timedelta(hours=rnd.randrange(1, max(2, horas_por_tier.get(tier, 72))))
-                )
-                if terminado
-                else None
+            alta_cuenta = _fecha(cuenta.get("alta")) or reloj.desde
+            # El caso nace DESPUÉS que su cliente y dentro del periodo. Antes se
+            # repartían en los últimos 120 días, así que un sistema de diez años
+            # tenía toda la postventa en el último trimestre y la comparación
+            # con el año pasado no tenía con qué comparar.
+            # Con reparto plano salían nueve casos vivos de ciento ochenta y
+            # seis: la cola del día quedaba vacía, que es la primera pantalla
+            # que abre quien atiende. No es un retoque estético — el volumen de
+            # postventa sigue al parque instalado, y el parque crece, así que
+            # los últimos años pesan más. El periodo entero sigue cubierto
+            # porque el suelo es el alta de su cliente.
+            abierto = reloj.momento(rnd, desde=alta_cuenta, sesgo=0.75)
+            margen = timedelta(hours=horas_por_tier.get(tier, 72))
+            vence = abierto + margen
+            # Cuánto tardó, **medido en su propio SLA** y no en horas sueltas:
+            # un cliente A con ocho horas de compromiso y un cierre a cuarenta
+            # incumple siempre, y el panel salía en rojo por construcción.
+            cerrado, factor_respuesta, factor_resolucion = reloj_de_caso(
+                rnd, antiguo=(reloj.hoy - abierto) > timedelta(days=45)
             )
-            if tarde and terminado:
+            resuelto_at = abierto + margen * factor_resolucion
+            if not cerrado or resuelto_at > reloj.hoy:
+                # Un caso no se cierra en el futuro: si el margen lo llevaría
+                # más allá de hoy, sigue abierto, que es lo que de verdad pasa
+                # con un caso reciente.
+                estado, resuelto_at = estados_vivos[i % len(estados_vivos)], None
+                tarde = reloj.hoy > vence
+                abiertos_vivos += 1
+            else:
+                estado = "cerrado" if i % 4 else "resuelto"
+                tarde = resuelto_at > vence
+            if tarde and resuelto_at is not None:
                 incumplidos += 1
-            uow.db.add(
-                Caso(
-                    tenant_id=tenant_id,
-                    codigo=f"CS-{i + 1:05d}",
-                    asunto=f"{ASUNTOS_CASO[i % len(ASUNTOS_CASO)]} — {cuenta['nombre'].split(',')[0]}",
-                    descripcion="Caso de muestra generado al sembrar la empresa.",
-                    tipo=rnd.choice(["incidencia", "peticion", "reclamacion"]),
-                    categoria_id=hoja.id if hoja else None,
-                    linea="general",
-                    severidad=rnd.choice(["baja", "media", "alta", "critica"]),
-                    prioridad=(hoja.prioridad_sugerida if hoja else None) or "media",
-                    origen=rnd.choice(["correo", "telefono", "portal", "manual"]),
-                    estado=estado,
-                    cuenta_id=UUID(str(cuenta["id"])),
-                    equipo=rnd.choice(["entrada", "calidad", "campo", "admin"]),
-                    sla_clave={"A": "oro", "B": "plata"}.get(tier, "bronce"),
-                    sla_version=1,
-                    vence_resolucion_at=vence,
-                    resuelto_at=resuelto_at,
-                    cerrado_at=resuelto_at if estado == "cerrado" else None,
-                    incumplio_resolucion=bool(terminado and tarde),
-                    created_at=abierto,
+            primera = min(abierto + margen * factor_respuesta, reloj.hoy)
+            caso = Caso(
+                tenant_id=tenant_id,
+                codigo=f"CS-{i + 1:05d}",
+                asunto=f"{ASUNTOS_CASO[i % len(ASUNTOS_CASO)]} — {cuenta['nombre'].split(',')[0]}",
+                descripcion="Caso de muestra generado al sembrar la empresa.",
+                tipo=rnd.choice(["incidencia", "peticion", "reclamacion"]),
+                categoria_id=hoja.id if hoja else None,
+                linea="general",
+                severidad=rnd.choice(["baja", "media", "alta", "critica"]),
+                prioridad=(hoja.prioridad_sugerida if hoja else None) or "media",
+                origen=rnd.choice(["correo", "telefono", "portal", "manual"]),
+                estado=estado,
+                cuenta_id=UUID(str(cuenta["id"])),
+                equipo=rnd.choice(["entrada", "calidad", "campo", "admin"]),
+                sla_clave={"A": "oro", "B": "plata"}.get(tier, "bronce"),
+                sla_version=1,
+                vence_primera_respuesta_at=abierto + margen / 4,
+                vence_resolucion_at=vence,
+                primera_respuesta_at=primera,
+                incumplio_primera_respuesta=primera > abierto + margen / 4,
+                resuelto_at=resuelto_at,
+                cerrado_at=resuelto_at if estado == "cerrado" else None,
+                incumplio_resolucion=bool(tarde),
+                created_at=abierto,
+            )
+            uow.db.add(caso)
+            uow.db.flush()
+            casos_puestos.append(
+                (
+                    caso.id,
+                    UUID(str(cuenta["id"])),
+                    caso.prioridad,
+                    abierto,
+                    caso.cerrado_at,
                 )
             )
-        print(f"{vol.casos} casos creados; {incumplidos} cerrados fuera de plazo")
+        print(
+            f"{vol.casos - ya_casos} casos creados en {cfg.anios} años; "
+            f"{incumplidos} fuera de plazo y {abiertos_vivos} todavía vivos"
+        )
+
+    _sembrar_campo(cfg, tenant_id, vol, cuentas, casos_puestos, reloj)
 
 
 # ══════════════════════════════════════════════════════════════════════════
+
+
+def _sembrar_campo(
+    cfg: argparse.Namespace,
+    tenant_id: UUID,
+    vol: Volumen,
+    cuentas: list,
+    casos: list,
+    reloj: Reloj,
+) -> None:
+    """Técnicos, parque instalado y órdenes de trabajo.
+
+    Era la familia que no tenía **ni una sola fila**: el planificador, la
+    agenda del técnico, el mapa de rutas y la ficha de un activo se abrían
+    vacíos en un sistema con ochocientos casos. Y las órdenes cuelgan de un
+    caso y de un activo del mismo cliente: sueltas no enseñan nada, porque lo
+    que se mira en el servicio de campo es por qué hay que ir, a qué máquina y
+    de quién es.
+    """
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from crmcore.db.uow import unidad_de_trabajo
+    from sqlalchemy import select
+
+    from services.service import activos as svc_activos
+    from services.service import campo as svc_campo
+    from services.service.campo import Tecnico
+
+    rnd = random.Random(f"{cfg.slug}:campo")
+
+    with unidad_de_trabajo(tenant_id) as uow:
+        if (
+            uow.db.execute(
+                select(Tecnico).where(Tecnico.tenant_id == tenant_id).limit(1)
+            ).scalar_one_or_none()
+            is not None
+        ):
+            print("Ya hay técnicos de campo: no se tocan.")
+            return
+
+        from services.identity.modelos import Membresia  # noqa: F401  (solo el id)
+
+        # Los técnicos son usuarios del tenant, no una lista aparte: un técnico
+        # que no es usuario no puede firmar un parte, y el servicio de campo
+        # acabaría enseñando nombres que no existen en ningún otro sitio. Los
+        # identificadores de usuario no se pueden leer desde aquí —otro
+        # esquema—, así que se usa el del propio técnico como referencia: lo
+        # que importa en esta pantalla es a quién se le asigna, y eso es la
+        # fila de técnico.
+        tecnicos = []
+        for i in range(max(3, vol.cuentas // 8)):
+            perfil = perfil_de_tecnico(rnd, i)
+            fila = Tecnico(
+                tenant_id=tenant_id,
+                usuario_id=UUID(int=i + 1),
+                nombre=f"{NOMBRES[(i * 3) % len(NOMBRES)]} {APELLIDOS[(i * 7) % len(APELLIDOS)]}",
+                zonas=perfil["zonas"],
+                competencias=perfil["competencias"],
+                minutos_jornada=perfil["minutos_jornada"],
+                activo=True,
+            )
+            uow.db.add(fila)
+            tecnicos.append(fila)
+        uow.db.flush()
+        print(f"{len(tecnicos)} técnicos de campo dados de alta")
+
+        por_cuenta: dict[UUID, list] = {}
+        puestos = 0
+        for i in range(vol.activos):
+            cuenta = cuentas[i % len(cuentas)]
+            cuenta_id = UUID(str(cuenta["id"]))
+            alta = _fecha(cuenta.get("alta")) or reloj.desde
+            datos = activo_instalado(rnd, reloj.momento(rnd, desde=alta, sesgo=1.0))
+            activo, _avisos = svc_activos.crear(
+                uow,
+                nombre=datos["nombre"],
+                modelo=datos["modelo"],
+                numero_serie=datos["numero_serie"],
+                cuenta_id=cuenta_id,
+                ubicacion=datos["ubicacion"],
+                instalado_el=datos["instalado_el"],
+            )
+            por_cuenta.setdefault(cuenta_id, []).append((activo.id, datos))
+            puestos += 1
+
+        ordenes = 0
+        for i, (caso_id, cuenta_id, prioridad, abierto, cerrado) in enumerate(casos):
+            # No todos los casos acaban en visita: un servicio donde cada
+            # incidencia manda un técnico no existe, y la pantalla de «cuántas
+            # se resuelven en remoto» saldría a cero.
+            if i % 3 or cuenta_id not in por_cuenta:
+                continue
+            activo_id, datos_activo = por_cuenta[cuenta_id][i % len(por_cuenta[cuenta_id])]
+            tecnico = tecnicos[i % len(tecnicos)]
+            orden, _avisos = svc_campo.crear_orden(
+                uow,
+                titulo=f"Visita por caso {i + 1}",
+                tipo="correctivo" if prioridad in ("alta", "critica") else "inspeccion",
+                caso_id=caso_id,
+                activo_id=activo_id,
+                cuenta_id=cuenta_id,
+                zona=datos_activo["zona"],
+                prioridad=prioridad,
+                competencias=list(tecnico.competencias)[:1],
+                duracion_estimada_min=60 * (2 if prioridad == "critica" else 1),
+                ventana_desde=abierto + timedelta(days=1),
+                ventana_hasta=abierto + timedelta(days=4),
+                # Sin coordenadas la orden no entra en la optimización de ruta,
+                # y el planificador es justo lo que se enseña.
+                latitud=Decimal("41.%06d" % ((i * 7919) % 1_000_000)),
+                longitud=Decimal("2.%06d" % ((i * 104729) % 1_000_000)),
+            )
+            # `crear_orden` deja la orden en borrador y sin cita, que es lo
+            # correcto cuando alguien la abre de verdad. Cargando histórico eso
+            # deja diez años de órdenes esperando planificación, y el
+            # planificador sale con mil trabajos sin asignar que nadie va a
+            # hacer.
+            cita = abierto + timedelta(days=2)
+            orden.created_at = abierto
+            orden.tecnico_id = tecnico.id
+            orden.cita_desde = cita
+            orden.cita_hasta = cita + timedelta(minutes=orden.duracion_estimada_min)
+            orden.motivo_asignacion = "Zona y competencia, carga del día dentro de jornada"
+            if cerrado:
+                orden.estado = "cerrada"
+                orden.iniciada_at = cita
+                orden.completada_at = min(cerrado, cita + timedelta(hours=6))
+                orden.cerrada_at = cerrado
+                orden.firmado_por = "Responsable de planta"
+                orden.firmado_at = cerrado
+                orden.conforme = True
+            elif cita < reloj.hoy:
+                orden.estado = "en_curso"
+                orden.iniciada_at = cita
+            else:
+                orden.estado = "planificada"
+            ordenes += 1
+        print(f"{puestos} activos instalados y {ordenes} órdenes de trabajo")
+
+
+def sembrar_marketing(cfg: argparse.Namespace, tenant_id: UUID, vol: Volumen) -> None:
+    """Programas y campañas con su presupuesto y su consumo.
+
+    Otra familia que estaba a cero: la pantalla de campañas, la de consumo de
+    presupuesto y la de atribución se abrían vacías. Las campañas cuelgan de un
+    programa por año porque el presupuesto sube por la jerarquía: con todas
+    sueltas, el consumo por programa sale vacío aunque haya cuarenta campañas.
+    """
+    _cambiar_a("marketing")
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import select
+
+    from services.marketing import campanas as svc_campanas
+    from services.marketing.campanas import Campana
+
+    rnd = random.Random(f"{cfg.slug}:marketing")
+    reloj = Reloj(anios=cfg.anios)
+
+    with con_contexto(tenant_id=tenant_id, origen="cli"):
+        with unidad_de_trabajo(tenant_id) as uow:
+            if (
+                uow.db.execute(
+                    select(Campana).where(Campana.tenant_id == tenant_id).limit(1)
+                ).scalar_one_or_none()
+                is not None
+            ):
+                print("Ya hay campañas: no se tocan.")
+                return
+
+        lista = campanas(rnd, reloj, vol.campanas_por_anio)
+        programas: dict[int, UUID] = {}
+        with unidad_de_trabajo(tenant_id) as uow:
+            for anio in sorted({c["anio"] for c in lista}):
+                from datetime import date as _date
+                from datetime import datetime as _dt
+                from datetime import timezone as _tz
+
+                programa = svc_campanas.crear(
+                    uow,
+                    clave=f"plan-{anio}",
+                    nombre=f"Plan de marketing {anio}",
+                    nivel="programa",
+                    desde=_date(anio, 1, 1),
+                    hasta=_date(anio, 12, 31),
+                    estado="finalizada" if anio < reloj.hoy.year else "activa",
+                    created_at=min(_dt(anio, 1, 1, tzinfo=_tz.utc), reloj.hoy),
+                )
+                programas[anio] = programa.id
+
+        with unidad_de_trabajo(tenant_id) as uow:
+            for datos in lista:
+                svc_campanas.crear(
+                    uow,
+                    clave=datos["clave"],
+                    nombre=datos["nombre"],
+                    nivel="campana",
+                    padre_id=programas[datos["anio"]],
+                    canal=datos["canal"],
+                    tipo=datos["canal"],
+                    desde=datos["inicio"].date(),
+                    hasta=datos["fin"].date(),
+                    presupuesto=datos["presupuesto"],
+                    gasto=datos["gasto"],
+                    estado="finalizada" if datos["fin"] < reloj.hoy else "activa",
+                    created_at=min(datos["inicio"], reloj.hoy),
+                )
+        print(f"{len(programas)} programas y {len(lista)} campañas creadas")
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  Comprobar lo sembrado
+# ══════════════════════════════════════════════════════════════════════════
+
+# Lo que tiene que ser cierto, por servicio. Es **por servicio** y no una lista
+# suelta porque cada parte corre donde tiene permisos: `sales` no puede mirar
+# si un contacto nació antes que su cuenta, porque no ve el esquema de `party`.
+# Pretender comprobarlo todo desde un sitio sólo funcionaría en local, que es
+# justo donde no hace falta.
+#
+# Cada comprobación dice CUÁNTAS filas recorrió, no sólo cuántas fallaron: una
+# consulta que no encuentra nada porque la tabla está vacía da cero fallos y
+# parece verde. Las tres primeras veces que se ejecutó esto, el recorrido fue
+# el dato que delató que faltaban datos.
+COMPROBACIONES: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "party": (
+        (
+            "ningún contacto nace antes que su cuenta",
+            "select count(*) from contacto_cuenta r join contactos k on k.id = r.contacto_id "
+            "join cuentas c on c.id = r.cuenta_id "
+            "where r.tenant_id = :t and k.created_at < c.created_at",
+            "select count(*) from contacto_cuenta where tenant_id = :t",
+        ),
+        (
+            "ninguna actividad se apunta en el futuro ni después de vencer",
+            "select count(*) from actividades where tenant_id = :t "
+            "and (created_at > now() or created_at > vence_at)",
+            "select count(*) from actividades where tenant_id = :t",
+        ),
+        (
+            # Sólo se exige cuando hay cartera con la que repartir: con seis
+            # cuentas no se puede cubrir una década, y una comprobación que
+            # falla por el tamaño que se pidió es una que se aprende a ignorar.
+            "la cartera cubre el periodo y no un solo año",
+            "select case when count(*) >= 12 "
+            "and count(distinct extract(year from created_at)) < 3 then 1 else 0 end "
+            "from cuentas where tenant_id = :t",
+            "select count(*) from cuentas where tenant_id = :t",
+        ),
+        (
+            "queda trabajo por delante en la agenda",
+            "select case when count(*) = 0 then 1 else 0 end from actividades "
+            "where tenant_id = :t and estado <> 'completada' and vence_at > now()",
+            "select count(*) from actividades where tenant_id = :t",
+        ),
+    ),
+    "sales": (
+        (
+            "ninguna oportunidad se crea ni se cierra en el futuro",
+            "select count(*) from oportunidades where tenant_id = :t "
+            "and (created_at > now() or fecha_cierre_real > current_date)",
+            "select count(*) from oportunidades where tenant_id = :t",
+        ),
+        (
+            "ningún cambio de etapa es anterior al alta de su oportunidad",
+            "select count(*) from cambios_etapa h join oportunidades o on o.id = h.oportunidad_id "
+            "where h.tenant_id = :t and h.created_at < o.created_at - interval '1 second'",
+            "select count(*) from cambios_etapa where tenant_id = :t",
+        ),
+        (
+            "el estado concuerda con la etapa",
+            "select count(*) from oportunidades o join etapas e on e.id = o.etapa_id "
+            "where o.tenant_id = :t and ((o.estado = 'abierta' and e.terminal) "
+            "or (o.estado = 'ganada' and not e.ganada) "
+            "or (o.estado = 'perdida' and not (e.terminal and not e.ganada)))",
+            "select count(*) from oportunidades where tenant_id = :t",
+        ),
+        (
+            "toda perdida dice por qué",
+            "select count(*) from oportunidades where tenant_id = :t and estado = 'perdida' "
+            "and coalesce(motivo_perdida, '') = ''",
+            "select count(*) from oportunidades where tenant_id = :t and estado = 'perdida'",
+        ),
+        (
+            # Con menos oportunidades vivas que el triple de etapas, que alguna
+            # columna salga vacía es aritmética, no un defecto de los datos.
+            "el embudo tiene gente en todas sus etapas no terminales",
+            "select count(*) from etapas e where e.tenant_id = :t and not e.terminal "
+            "and not exists (select 1 from oportunidades o where o.etapa_id = e.id) "
+            "and (select count(*) from oportunidades o2 where o2.tenant_id = :t "
+            "and o2.estado = 'abierta') >= 3 * (select count(*) from etapas e2 "
+            "where e2.tenant_id = :t and not e2.terminal)",
+            "select count(*) from etapas where tenant_id = :t and not terminal",
+        ),
+        (
+            "toda oportunidad ganada acabó en pedido",
+            "select count(*) from oportunidades o where o.tenant_id = :t and o.estado = 'ganada' "
+            "and not exists (select 1 from presupuestos p join pedidos d "
+            "on d.presupuesto_id = p.id where p.oportunidad_id = o.id)",
+            "select count(*) from oportunidades where tenant_id = :t and estado = 'ganada'",
+        ),
+        (
+            "ninguna oportunidad lleva dos ofertas",
+            "select count(*) from (select oportunidad_id from presupuestos where tenant_id = :t "
+            "group by 1 having count(*) > 1) x",
+            "select count(*) from presupuestos where tenant_id = :t",
+        ),
+        (
+            "ningún presupuesto se queda sin líneas",
+            "select count(*) from presupuestos p where p.tenant_id = :t and not exists "
+            "(select 1 from lineas_presupuesto l where l.presupuesto_id = p.id)",
+            "select count(*) from presupuestos where tenant_id = :t",
+        ),
+    ),
+    "service": (
+        (
+            "ningún caso se cierra antes de abrirse ni en el futuro",
+            "select count(*) from casos where tenant_id = :t "
+            "and (cerrado_at < created_at or cerrado_at > now())",
+            "select count(*) from casos where tenant_id = :t",
+        ),
+        (
+            "todo caso lleva su reloj de SLA",
+            "select count(*) from casos where tenant_id = :t and vence_resolucion_at is null",
+            "select count(*) from casos where tenant_id = :t",
+        ),
+        (
+            "el incumplimiento coincide con las fechas",
+            "select count(*) from casos where tenant_id = :t and cerrado_at is not null "
+            "and incumplio_resolucion <> (cerrado_at > vence_resolucion_at)",
+            "select count(*) from casos where tenant_id = :t and cerrado_at is not null",
+        ),
+        (
+            "queda cola viva que atender",
+            "select case when count(*) = 0 then 1 else 0 end from casos "
+            "where tenant_id = :t and cerrado_at is null and resuelto_at is null",
+            "select count(*) from casos where tenant_id = :t",
+        ),
+        (
+            "toda orden es del mismo cliente que su caso y que su activo",
+            "select count(*) from ordenes_trabajo o "
+            "left join casos c on c.id = o.caso_id "
+            "left join activos_instalados a on a.id = o.activo_id "
+            "where o.tenant_id = :t and (o.cuenta_id is distinct from c.cuenta_id "
+            "or o.cuenta_id is distinct from a.cuenta_id)",
+            "select count(*) from ordenes_trabajo where tenant_id = :t",
+        ),
+        (
+            "toda orden tiene técnico y cita, y no antes de su caso",
+            "select count(*) from ordenes_trabajo o join casos c on c.id = o.caso_id "
+            "where o.tenant_id = :t and (o.tecnico_id is null or o.cita_desde is null "
+            "or o.cita_desde < c.created_at)",
+            "select count(*) from ordenes_trabajo where tenant_id = :t",
+        ),
+    ),
+    "marketing": (
+        (
+            "ninguna campaña cuelga del aire",
+            "select count(*) from campanas where tenant_id = :t and nivel = 'campana' "
+            "and padre_id is null",
+            "select count(*) from campanas where tenant_id = :t and nivel = 'campana'",
+        ),
+        (
+            "ninguna campaña se crea en el futuro",
+            "select count(*) from campanas where tenant_id = :t and created_at > now()",
+            "select count(*) from campanas where tenant_id = :t",
+        ),
+        (
+            "ni todas gastan lo presupuestado ni todas se pasan",
+            "select case when count(*) filter (where gasto > presupuesto) = 0 "
+            "or count(*) filter (where gasto > 0 and gasto < presupuesto) = 0 then 1 else 0 end "
+            "from campanas where tenant_id = :t and nivel = 'campana' and presupuesto is not null",
+            "select count(*) from campanas where tenant_id = :t and nivel = 'campana'",
+        ),
+    ),
+}
+
+
+def comprobar(tenant_id: UUID, partes: tuple[str, ...]) -> int:
+    """Recorre lo sembrado y dice si se sostiene. Devuelve cuántas cosas fallan."""
+    from crmcore.db.uow import unidad_de_trabajo
+    from crmcore.tenancy.context import con_contexto
+    from sqlalchemy import text
+
+    fallos = 0
+    for parte in partes:
+        comprobaciones = COMPROBACIONES.get(parte)
+        if not comprobaciones:
+            continue
+        _cambiar_a(parte)
+        print(f"\n{parte}:")
+        with con_contexto(tenant_id=tenant_id, origen="cli"), unidad_de_trabajo(tenant_id) as uow:
+            for titulo, sql_mal, sql_total in comprobaciones:
+                mal = uow.db.execute(text(sql_mal), {"t": tenant_id}).scalar() or 0
+                total = uow.db.execute(text(sql_total), {"t": tenant_id}).scalar() or 0
+                if total == 0:
+                    # Cero filas no es «todo bien»: es que no hay nada que
+                    # mirar, y una pantalla vacía no enseña nada.
+                    print(f"  SIN DATOS  {titulo} (0 filas recorridas)")
+                    fallos += 1
+                elif mal:
+                    print(f"  MAL        {titulo}: {mal} de {total}")
+                    fallos += 1
+                else:
+                    print(f"  bien       {titulo} ({total} filas recorridas)")
+    return fallos
 
 
 def main() -> int:
@@ -956,7 +1771,18 @@ def main() -> int:
         default=60,
         help="cuántas cuentas; el resto de volúmenes se derivan de esta",
     )
+    parser.add_argument(
+        "--anios",
+        type=int,
+        default=10,
+        help="cuántos años de historia se siembran hacia atrás (por defecto, diez)",
+    )
     parser.add_argument("--parte", default="todo")
+    parser.add_argument(
+        "--comprobar",
+        action="store_true",
+        help="no siembra: recorre lo sembrado y comprueba que se sostiene",
+    )
     parser.add_argument("--tenant", default="", help="identificador del tenant, para las partes")
     parser.add_argument("--enlaces", default="", help="fichero de enlace entre partes")
     cfg = parser.parse_args()
@@ -974,7 +1800,22 @@ def main() -> int:
         )
         return 2
 
-    vol = Volumen(cfg.escala)
+    if cfg.anios < 1:
+        print("«--anios» tiene que ser al menos 1.", file=sys.stderr)
+        return 2
+    vol = Volumen(cfg.escala, cfg.anios)
+
+    if cfg.comprobar:
+        if not cfg.tenant:
+            print("Falta --tenant con el identificador de la empresa.", file=sys.stderr)
+            return 2
+        partes = tuple(COMPROBACIONES) if cfg.parte == "todo" else (cfg.parte,)
+        fallos = comprobar(UUID(cfg.tenant), partes)
+        if fallos:
+            print(f"\n{fallos} {'comprobaciones' if fallos > 1 else 'comprobación'} mal.")
+        else:
+            print("\nTodo se sostiene.")
+        return 1 if fallos else 0
     ruta_enlaces = Path(cfg.enlaces) if cfg.enlaces else None
     enlaces: dict[str, object] = {}
     if ruta_enlaces and ruta_enlaces.exists():
@@ -1013,6 +1854,11 @@ def main() -> int:
 
     if cfg.parte in ("service", "todo"):
         sembrar_service(cfg, tenant_id, vol, enlaces)
+        if cfg.parte == "service":
+            return 0
+
+    if cfg.parte in ("marketing", "todo"):
+        sembrar_marketing(cfg, tenant_id, vol)
 
     return 0
 
