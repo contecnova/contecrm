@@ -111,6 +111,30 @@ describe("las medidas que acompañan a un listado", () => {
     expect(await screen.findByText("TESTIGO-va bien")).toBeInTheDocument();
   });
 
+  it("una medida sin cifras ni frase no deja una caja vacía", async () => {
+    // Lo vio quien lo usa: en «Enrutamiento» salía una caja gris debajo del
+    // título y preguntó para qué servía. No servía para nada: la respuesta
+    // —el catálogo de estrategias de reparto— no trae cifras ni explicación,
+    // y el panel pintaba su marco igual.
+    respuestas["/api/v1/vacia"] = { medible: true };
+    const { container } = pintar(["/api/v1/vacia"]);
+    await waitFor(() => expect(llamadas.length).toBeGreaterThan(0));
+    expect(container.querySelectorAll("section")).toHaveLength(0);
+  });
+
+  it("un catálogo de opciones con su descripción sí se enseña", async () => {
+    // Es justo lo que hace falta tener delante al escribir la regla que las
+    // usa: «por turnos», «al que menos carga tenga».
+    respuestas["/api/v1/lead-routing/estrategias"] = {
+      round_robin: "Por turnos: el siguiente de la lista, en orden estable",
+      menos_carga: "Al que menos leads abiertos tenga ahora mismo",
+    };
+    pintar(["/api/v1/lead-routing/estrategias"]);
+    expect(
+      await screen.findByText("Al que menos leads abiertos tenga ahora mismo"),
+    ).toBeInTheDocument();
+  });
+
   it("sin ninguna medida legible no deja un hueco con marco", async () => {
     fallan.add("/api/v1/ia/calidad");
     const { container } = pintar(["/api/v1/ia/calidad"]);

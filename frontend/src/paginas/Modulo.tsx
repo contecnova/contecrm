@@ -947,14 +947,28 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
     (v) => typeof v === "string" && v.trim(),
   ) as string | undefined;
   const sinMedir = NO_CONCLUYE.some((c) => datos[c] === false);
-  const cifras = Object.entries(datos).filter(
-    ([clave, valor]) =>
-      !EXPLICAN.includes(clave) &&
-      !NO_CONCLUYE.includes(clave) &&
-      !esIdentificadorTecnico(clave) &&
-      (typeof valor === "number" ||
-        (typeof valor === "string" && /^-?\d+([.,]\d+)?$/.test(valor))),
+  const util = Object.entries(datos).filter(
+    ([clave]) =>
+      !EXPLICAN.includes(clave) && !NO_CONCLUYE.includes(clave) && !esIdentificadorTecnico(clave),
   );
+  const cifras = util.filter(
+    ([, valor]) =>
+      typeof valor === "number" ||
+      (typeof valor === "string" && /^-?\d+([.,]\d+)?$/.test(valor)),
+  );
+  // Hay medidas que no son cifras: un catálogo de opciones con su
+  // descripción —las estrategias de reparto: «por turnos», «al que menos carga
+  // tenga»—. Se enseñan igual, porque es justo lo que hace falta tener delante
+  // al escribir la regla que las usa. Antes salían como un recuadro vacío: lo
+  // vio quien lo usa, y tenía razón en preguntar para qué servía esa caja.
+  const textos = util.filter(
+    ([, valor]) => typeof valor === "string" && valor.trim().length > 2 && !/^-?\d/.test(valor),
+  );
+
+  // **Sin nada que enseñar, no se enseña.** Un recuadro con marco y vacío se
+  // lee como un dato que falta; y aquí es peor, porque no es un dato que
+  // falte: es que esa respuesta no tenía nada que contar.
+  if (cifras.length === 0 && textos.length === 0 && !explicacion) return null;
 
   return (
     <section className="card p-3">
@@ -963,13 +977,19 @@ function Medida({ datos }: { datos: Record<string, unknown> }) {
           {cifras.slice(0, 6).map(([clave, valor]) => (
             <div key={clave}>
               <dt className="text-3xs text-ink-faint">{humanizar(clave)}</dt>
-              <dd
-                className={`text-sm font-medium ${
-                  sinMedir ? "text-ink-muted" : "text-ink"
-                }`}
-              >
+              <dd className={`text-sm font-medium ${sinMedir ? "text-ink-muted" : "text-ink"}`}>
                 {escalar(valor, clave)}
               </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {cifras.length === 0 && textos.length > 0 ? (
+        <dl className="space-y-0.5">
+          {textos.slice(0, 8).map(([clave, valor]) => (
+            <div key={clave} className="flex flex-wrap items-baseline gap-x-2">
+              <dt className="text-2xs text-ink">{humanizar(clave)}</dt>
+              <dd className="text-3xs text-ink-faint">{String(valor)}</dd>
             </div>
           ))}
         </dl>

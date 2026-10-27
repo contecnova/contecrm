@@ -1079,8 +1079,17 @@ def sembrar_ventas(api: Api) -> None:
             "activa": True,
         },
     ]
+    # Antes de crearlas, las que ya hay. Esta ruta **no rechaza el nombre
+    # repetido** —una regla de reparto puede llamarse como otra, y está bien
+    # que pueda— así que el 409 que hace idempotente al resto del sembrado aquí
+    # no llega y una segunda pasada dejaría las tres duplicadas.
+    #
+    # Comprobado el 27-10-2026 que todavía no había pasado: las seis tarjetas
+    # que se veían en pantalla eran tres de este cliente y tres de otro, por el
+    # cruce de tenants de la cuenta de plataforma. Esto es para que no pase.
+    ya = {str(r.get("nombre") or "") for r in api.listar("/api/v1/lead-routing/reglas", 100)}
     for regla in reglas:
-        if regla["candidatos"]:
+        if regla["candidatos"] and regla["nombre"] not in ya:
             api.crear("/api/v1/lead-routing/reglas", regla)
 
     # Toques de origen: la cadena por la que llegó cada lead. Sin ellos la
@@ -3872,6 +3881,305 @@ def sembrar_lo_que_sale_vacio(api: Api) -> None:
     #     dos salen ya en el informe de «rechazadas por diseño».
 
 
+def sembrar_las_que_siguen_vacias(api: Api) -> None:
+    """Las pestañas que seguían abriéndose sin una sola fila (27-10-2026).
+
+    Medido cruzando lo que cada pestaña lista con lo que hay en la base para
+    este tenant: **de 130 pestañas con tabla identificada, 36 salían vacías**.
+    No es lo mismo que una tabla vacía: una excepción de calidad o una fusión
+    vacías están bien —son cosas que sólo existen cuando pasa algo—. Éstas no:
+    son configuración o trabajo corriente que cualquier instalación tiene.
+
+    Cada alta va con **datos que se sostienen**: el consentimiento de un buzón
+    apunta a un usuario de verdad, el plan de cuenta a una cuenta de verdad, la
+    encuesta a un caso resuelto. Inventar identificadores daría filas que la
+    ficha no puede abrir, que es peor que la pestaña vacía.
+    """
+    usuarios = api.listar("/api/v1/usuarios", 5)
+    cuentas = api.listar("/api/v1/accounts", 5)
+    contactos = api.listar("/api/v1/contacts", 5)
+    oportunidades = api.listar("/api/v1/opportunities", 5)
+    casos = api.listar("/api/v1/casos", 5)
+
+    # ── Correo y calendario de cada uno ───────────────────────────────────
+    for i, usuario in enumerate(usuarios[:3]):
+        api.crear(
+            "/api/v1/buzones",
+            {
+                "usuario_id": usuario["id"],
+                "perfil": "generico",
+                "direccion": usuario.get("email") or f"persona{i}@ejemplo.com",
+                "ambito": "correo" if i % 2 == 0 else "calendario",
+                "entrante": True,
+                "saliente": i % 2 == 0,
+            },
+        )
+    api.crear(
+        "/api/v1/suites/perfiles",
+        {
+            "nombre": "Microsoft 365 del cliente",
+            "sistema": "m365",
+            # Como configuración, no como código: endpoints, campos y límites.
+            "config": {
+                "base_url": "https://graph.microsoft.com/v1.0",
+                "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                "incremento": "delta",
+                "recursos": {
+                    "correo": {
+                        "endpoint": "/me/messages",
+                        "incremento": "token_delta",
+                        "sentidos": ["leer"],
+                        "campos": {
+                            "asunto": "subject",
+                            "cuerpo": "body.content",
+                            "de": "from.emailAddress.address",
+                            "fecha": "receivedDateTime",
+                        },
+                    },
+                    "calendario": {
+                        "endpoint": "/me/events",
+                        "incremento": "token_delta",
+                        "sentidos": ["leer", "escribir"],
+                        "campos": {
+                            "asunto": "subject",
+                            "inicio": "start.dateTime",
+                            "fin": "end.dateTime",
+                        },
+                    },
+                    "contactos": {
+                        "endpoint": "/me/contacts",
+                        "incremento": "token_delta",
+                        "sentidos": ["leer"],
+                        "campos": {
+                            "nombre": "displayName",
+                            "email": "emailAddresses[0].address",
+                            "telefono": "mobilePhone",
+                        },
+                    },
+                },
+            },
+        },
+    )
+
+    # ── Convivencia con el CRM heredado ───────────────────────────────────
+    #
+    # Quién manda sobre cada objeto mientras los dos sistemas conviven. Sin
+    # reglas, la migración es «a ver quién escribe último».
+    for objeto, dueno in (("cuenta", "nuevo"), ("contacto", "heredado"), ("lead", "ambos")):
+        api.crear(
+            "/api/v1/convivencia",
+            {
+                "objeto": objeto,
+                "dueno": dueno,
+                "nombre": f"Quién manda en {objeto}",
+                "prioridad": 10,
+                "manda_en_empate": "nuevo" if dueno == "ambos" else None,
+                "replicar_al_heredado": dueno == "nuevo",
+            },
+        )
+
+    # ── Un agente de IA expuesto por MCP ──────────────────────────────────
+    api.crear(
+        "/api/v1/agentes-ia/exposiciones",
+        {
+            "clave": "soporte-lectura",
+            "nombre": "Soporte, sólo lectura",
+            "descripcion": "Consultar casos y artículos. No escribe nada.",
+            "cuota_hora": 120,
+        },
+    )
+
+    # ── Repuestos y su reposición ─────────────────────────────────────────
+    for sku, nombre, unidad, coste in (
+        ("REP-FILT", "Filtro de repuesto", "unidad", 18.5),
+        ("REP-JUNTA", "Junta de estanqueidad", "unidad", 4.2),
+        ("REP-ACEITE", "Aceite hidráulico", "litro", 9.9),
+    ):
+        api.crear(
+            "/api/v1/repuestos",
+            {"sku": sku, "nombre": nombre, "unidad": unidad, "coste": coste, "activo": True},
+        )
+
+    # ── La encuesta de un caso cerrado ────────────────────────────────────
+    #
+    # A casos de verdad: una encuesta sin caso no se puede abrir desde ninguna
+    # parte, y el resumen de satisfacción saldría calculado sobre nada.
+    for caso in casos[:3]:
+        api.crear("/api/v1/encuestas", {"caso_id": caso["id"], "tipo": "csat", "validez_dias": 14})
+
+    # ── Plan de cuenta y plan conjunto ────────────────────────────────────
+    for cuenta in cuentas[:2]:
+        api.crear(
+            "/api/v1/planes-cuenta",
+            {
+                "cuenta_id": cuenta["id"],
+                "periodo": "2026",
+                # Con fecha y con responsable los dos: el producto rechaza lo
+                # demás, y tiene razón — «un plan de frases se revisa una vez:
+                # en la reunión en la que se escribió».
+                "objetivos": [
+                    {
+                        "titulo": "Entrar en la planta de Zaragoza",
+                        "fecha_objetivo": "2026-06-30",
+                        "responsable_id": (usuarios[0]["id"] if usuarios else None),
+                    },
+                    {
+                        "titulo": "Renovar el contrato de mantenimiento",
+                        "fecha_objetivo": "2026-09-30",
+                        "responsable_id": (usuarios[0]["id"] if usuarios else None),
+                    },
+                ],
+                "riesgos": [{"titulo": "El responsable de compras cambia de puesto"}],
+                "objetivo_importe": 250000,
+            },
+        )
+    for oportunidad in oportunidades[:2]:
+        api.crear(
+            "/api/v1/planes-conjuntos",
+            {
+                "oportunidad_id": oportunidad["id"],
+                "pasos": [
+                    {
+                        "titulo": "Visita técnica a la planta",
+                        "de_quien": "nuestro",
+                        "fecha": "2026-03-15",
+                        "responsable": (usuarios[0]["id"] if usuarios else "Comercial"),
+                    },
+                    {
+                        "titulo": "Validación del pliego",
+                        "de_quien": "del_cliente",
+                        "fecha": "2026-04-10",
+                        "responsable": "Compras del cliente",
+                    },
+                    {
+                        "titulo": "Prueba de concepto en su línea",
+                        "de_quien": "conjunto",
+                        "fecha": "2026-05-20",
+                        "responsable": "Ingeniería de ambas partes",
+                    },
+                ],
+            },
+        )
+
+    # ── Alguien que ha cambiado de empresa ────────────────────────────────
+    for contacto in contactos[:2]:
+        api.crear(
+            "/api/v1/cambios-de-empresa",
+            {
+                "contacto_id": contacto["id"],
+                "indicio": "correo_rebotado",
+                "detalle": "Su dirección rebota y aparece en otra empresa en LinkedIn.",
+            },
+        )
+
+    # ── Un proveedor de identidad declarado ───────────────────────────────
+    api.crear(
+        "/api/v1/proveedores-identidad",
+        {
+            "nombre": "Directorio corporativo (OIDC)",
+            "tipo": "oidc",
+            "dominio_email": "contecrm.dev",
+            "config": {"issuer": "https://login.example.com/", "client_id": "contecrm"},
+            "jit_provisioning": True,
+            "activo": False,
+        },
+    )
+
+    # ── Cómo está aislado este cliente, y dónde se tratan sus datos ───────
+    #
+    # El panel de aislamiento vacío se lee como «no está aislado». Lo que pasa
+    # es que nadie lo ha declarado, que es otra cosa — y es justo lo que la
+    # pantalla existe para que deje de pasar.
+    yo = api.tenant_id
+    if yo:
+        api.crear(
+            "/api/v1/aislamiento",
+            {
+                "tenant_id": yo,
+                "modalidad": "esquema",
+                "tier": "estandar",
+                "instancia": "crm-eu-1",
+                "base": "contecrm",
+                "esquema": "por_servicio",
+                "notas": "Un esquema por servicio, con RLS por tenant dentro de cada uno.",
+            },
+        )
+        # Lo que trata cada uno, con los tipos que admite el producto: no es
+        # una etiqueta libre, y por eso el proveedor de modelos declara «ia» y
+        # el de ficheros «adjuntos» — es lo que luego permite contestar «¿quién
+        # ve los adjuntos de mis clientes?» sin leerse contratos.
+        for clave, nombre, region, finalidad, trata in (
+            (
+                "correo",
+                "Proveedor de correo transaccional",
+                "ue",
+                "Envío de avisos y notificaciones",
+                ["transaccional"],
+            ),
+            (
+                "almacenamiento",
+                "Almacenamiento de adjuntos",
+                "ue",
+                "Guardar ficheros de los registros",
+                ["adjuntos", "copias"],
+            ),
+            (
+                "ia",
+                "Proveedor de modelos de lenguaje",
+                "ue",
+                "Resúmenes y borradores asistidos",
+                ["ia"],
+            ),
+        ):
+            api.crear(
+                "/api/v1/residencia/subprocesadores",
+                {
+                    "tenant_id": yo,
+                    "clave": clave,
+                    "nombre": nombre,
+                    "region": region,
+                    "finalidad": finalidad,
+                    "trata": trata,
+                    # Las que reconoce el RGPD, no las siglas del contrato:
+                    # dentro de la UE no hace falta transferencia, así que lo
+                    # que aplica es la decisión de adecuación.
+                    "garantia": "decision_adecuacion",
+                },
+            )
+
+    # ── Un cuadro incrustado ──────────────────────────────────────────────
+    cuadros = api.listar("/api/v1/cuadros-mando", 1)
+    if cuadros:
+        api.crear(
+            "/api/v1/cuadros-mando/embebidos",
+            {
+                "cuadro_id": cuadros[0]["id"],
+                "dominios": ["intranet.ejemplo.com"],
+                "nombre": "Cuadro para la intranet",
+                "minutos_validez": 60,
+            },
+        )
+
+    # ── Una saga en marcha ────────────────────────────────────────────────
+    #
+    # Lo que cruza servicios y hay que poder deshacer. Sin ninguna, la pantalla
+    # no enseña qué pasa cuando un paso falla a mitad, que es para lo que está.
+    api.crear(
+        "/api/v1/sagas",
+        {
+            "clave": "alta-de-cliente",
+            "objeto": "cuenta",
+            "pasos": [
+                {"nombre": "crear_cuenta", "servicio": "party"},
+                {"nombre": "abrir_oportunidad", "servicio": "sales"},
+                {"nombre": "dar_de_alta_en_soporte", "servicio": "service"},
+            ],
+        },
+    )
+
+    print(f"  {api.cuenta['creados']} creados hasta aquí")
+
+
 PARTES: dict[str, Any] = {
     "identidad": sembrar_identidad,
     "metadatos": sembrar_metadatos,
@@ -3899,6 +4207,7 @@ PARTES: dict[str, Any] = {
     "analitica": sembrar_analitica,
     "rastro": sembrar_rastro,
     "lo_que_sale_vacio": sembrar_lo_que_sale_vacio,
+    "las_que_siguen_vacias": sembrar_las_que_siguen_vacias,
 }
 
 

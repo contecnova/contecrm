@@ -936,10 +936,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       {
         nombre: "Enrutamiento",
+        // Qué estrategias de reparto hay, encima de las reglas que las usan:
+        // sin ellas, escribir una regla es adivinar qué valores admite.
+        resumen: ["/api/v1/lead-routing/estrategias"],
         listar: "/api/v1/lead-routing/reglas",
-      // Qué estrategias de reparto hay, encima de las reglas que las usan: sin
-        // ellas, escribir una regla es adivinar qué valores admite.
-      resumen: ["/api/v1/lead-routing/estrategias"],
         servicio: "sales",
       },
       {
