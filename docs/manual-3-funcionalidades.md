@@ -4097,6 +4097,54 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### Lo que destapó sembrar una empresa de verdad
+
+Sembrar una empresa entera con `sembrar_empresa.py` y `sembrar_configuracion.py`
+—312 registros de configuración por la API, pasando por las mismas
+validaciones, los mismos permisos y los mismos eventos que una persona— dejó un
+informe de 30 altas rechazadas. **Ocho eran el producto defendiéndose** y tres
+defectos de verdad:
+
+- **`POST /automatizaciones` respondía 500 siempre que no se le daba horario**,
+  que es el caso normal porque la mayoría se disparan por evento. El contrato
+  declaraba `programacion` como objeto y la columna es una expresión cron que
+  admite nulo: reventaba al serializar la respuesta, **con la fila ya escrita**.
+  Ninguna prueba en rojo, porque todas las que creaban una le ponían horario.
+- **`POST /data-subject-requests` respondía 500 siempre.** El mapeador devolvía
+  ocho de los catorce campos que declara su contrato, y uno de los que faltaban
+  era obligatorio. Los otros cinco llevaban meses saliendo vacíos: de quién es
+  la solicitud, quién la lleva, por dónde entró y —lo que pide el regulador—
+  qué se resolvió y con qué prueba.
+- **`GET /contacts/{id}/cuentas` no existía.** La relación contacto–cuenta es
+  N:M: se podía crear el vínculo y se podía cerrar, y no se podía leer. Dos
+  consecuencias, y la segunda no la vio nadie: nadie podía contestar «¿de qué
+  empresas es esta persona?», y la ficha del contacto no pintaba su panel de
+  cuentas —los paneles se construyen a partir de los `GET` que devuelven
+  lista—, lo que se lee como «no está en ninguna cuenta».
+
+Y el informe del sembrador ahora **separa lo que la API rechaza por diseño**
+—reverificación por operación sensible, publicar exige otro aprobador, SAML
+apagado en esta instalación, una oportunidad cerrada que está bloqueada a
+propósito— de lo que está roto. Mezclarlo tiene un coste medido: quien lee
+treinta persigue treinta, encuentra ocho que no llevan a ninguna parte, y a la
+tercera deja de leer la lista.
+
+#### El barrido que faltaba
+
+Los dos 500 compartían forma, y ninguno lo cazaba el barrido de escrituras que
+ya había: ése manda `{}` y recibe un 422 correcto, así que **la petición no
+llega a ejecutarse** y no puede ver si la respuesta serializa.
+
+El nuevo manda un **cuerpo válido mínimo compuesto a partir del propio
+contrato** —nada escrito a mano que se quede viejo— y marca sólo el 500: un
+409, un 422 o un 502 son respuestas previstas, la ruta ha hecho su trabajo y
+dice qué pasa. Trece servicios en 19 segundos, en el nivel completo. Validado
+revirtiendo uno de los arreglos: falla y dice la ruta, el cuerpo y el error.
+
+Casi siempre lo que caza es el contrato de la **respuesta**: un campo que el
+modelo declara obligatorio y el mapeador no pone. La fila se escribe y quien la
+creó ve un error del sistema.
+
 ### El panel que responde 422 siempre
 
 Hay una forma de romper una pantalla que no ve nada: llamar a una ruta sin un

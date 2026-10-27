@@ -690,6 +690,56 @@ def obtener_contacto(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) ->
     return proyecta(contacto)
 
 
+@router_contactos.get(
+    "/{contacto_id}/cuentas",
+    response_model=list[dict],
+    dependencies=[Depends(exige_permiso("contact:read"))],
+    summary="Las cuentas de este contacto, con su papel en cada una",
+    description=(
+        "La relación contacto–cuenta es N:M (CRM-01.01.02.02): se podía "
+        "**crear** y se podía **cerrar**, y no se podía leer. Una relación que "
+        "no se consulta no existe para nadie: ni la ficha del contacto podía "
+        "pintar su panel de cuentas —lo construye a partir de un `GET` que "
+        "devuelva lista, y no lo había— ni nadie podía contestar «¿de qué "
+        "empresas es esta persona?», que es la pregunta por la que la relación "
+        "se guarda.\n\n"
+        "Salen **también las cerradas**, marcadas con su fecha: «ya no trabaja "
+        "ahí» es justo lo que hay que saber antes de llamar, y esconderlo deja "
+        "el histórico de la cuenta sin sentido."
+    ),
+)
+def cuentas_del_contacto(contacto_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select as _select
+
+    from services.party.modelos import Cuenta as _Cuenta
+    from services.party.modelos import RelacionContactoCuenta as _Vinculo
+
+    svc.exigir_contacto(db, contacto_id)
+    filas = db.execute(
+        _select(_Vinculo, _Cuenta)
+        .join(_Cuenta, _Cuenta.id == _Vinculo.cuenta_id)
+        .where(_Vinculo.contacto_id == contacto_id)
+        # El principal primero y luego los abiertos: quien mira esta lista
+        # busca a quién llamar, no un inventario.
+        .order_by(_Vinculo.principal.desc(), _Vinculo.hasta.is_(None).desc(), _Cuenta.nombre)
+    ).all()
+    return [
+        {
+            "cuenta_id": str(vinculo.cuenta_id),
+            # El nombre, no sólo el identificador: una lista de UUID no
+            # contesta «de qué empresas es esta persona».
+            "cuenta": cuenta.nombre,
+            "rol": vinculo.rol,
+            "cargo": vinculo.cargo,
+            "principal": vinculo.principal,
+            "desde": vinculo.desde.isoformat() if vinculo.desde else None,
+            "hasta": vinculo.hasta.isoformat() if vinculo.hasta else None,
+            "vigente": vinculo.hasta is None,
+        }
+        for vinculo, cuenta in filas
+    ]
+
+
 @router_contactos.post(
     "/{contacto_id}/cuentas",
     response_model=dict,
@@ -1269,6 +1319,21 @@ def levantar_limitacion(
 
 
 def _solicitud_out(solicitud: SolicitudDerechos) -> dict[str, Any]:
+    """La solicitud, con TODO lo que su contrato declara.
+
+    Faltaban seis campos, y uno de ellos —`created_at`— es obligatorio en el
+    contrato: así que **registrar una solicitud de derechos respondía 500
+    siempre**, con la fila ya escrita en la base. El interesado quedaba
+    registrado y quien lo registró veía un error del sistema; a la tercera
+    deja de usar la pantalla y las solicitudes se llevan por correo, que es
+    justo lo que esto existe para evitar.
+
+    Los otros cinco no reventaban porque tienen valor por defecto, y por eso
+    llevaban meses saliendo vacíos: de quién es la solicitud, quién la lleva,
+    por dónde entró y —lo que pide el regulador— qué se resolvió y con qué
+    prueba. Una solicitud cerrada que dice «resuelta» y no dice qué se hizo no
+    sirve de evidencia ante nadie.
+    """
     restantes = (solicitud.vence_at - datetime.now(timezone.utc)).days
     return {
         "id": solicitud.id,
@@ -1279,6 +1344,12 @@ def _solicitud_out(solicitud: SolicitudDerechos) -> dict[str, Any]:
         "vence_at": solicitud.vence_at,
         "resuelta_at": solicitud.resuelta_at,
         "dias_restantes": restantes,
+        "contacto_id": solicitud.contacto_id,
+        "responsable_id": solicitud.responsable_id,
+        "canal_entrada": solicitud.canal_entrada,
+        "resolucion": solicitud.resolucion,
+        "evidencia": dict(solicitud.evidencia or {}),
+        "created_at": solicitud.created_at,
     }
 
 

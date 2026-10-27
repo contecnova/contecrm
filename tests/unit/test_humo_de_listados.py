@@ -232,6 +232,156 @@ def test_ninguna_escritura_revienta_con_el_cuerpo_vacio(
     )
 
 
+def _valor_de(esquema: dict[str, Any], componentes: dict[str, Any], hondo: int = 0) -> Any:
+    """Un valor que satisface este esquema. Lo mínimo que lo haga válido.
+
+    No busca ser realista: busca **pasar la validación de entrada** para que la
+    petición llegue a ejecutarse y se pueda ver si la respuesta serializa. Un
+    valor bonito no caza más fallos que uno feo.
+    """
+    if hondo > 4:
+        return None
+    ref = esquema.get("$ref")
+    if ref:
+        nombre = ref.rsplit("/", 1)[-1]
+        return _valor_de(componentes.get(nombre) or {}, componentes, hondo + 1)
+    for rama in ("anyOf", "oneOf", "allOf"):
+        if esquema.get(rama):
+            # La primera que no sea `null`: `str | None` con `None` pasa la
+            # validación sin ejercitar nada.
+            for opcion in esquema[rama]:
+                if opcion.get("type") != "null":
+                    return _valor_de(opcion, componentes, hondo + 1)
+            return None
+    if "enum" in esquema and esquema["enum"]:
+        return esquema["enum"][0]
+    if "const" in esquema:
+        return esquema["const"]
+    formato = esquema.get("format") or ""
+    tipo = esquema.get("type")
+    if tipo == "string":
+        if formato == "uuid":
+            return "00000000-0000-4000-8000-000000000000"
+        if formato == "email":
+            return "humo@example.com"
+        if formato == "date":
+            return "2026-01-01"
+        if formato in ("date-time",):
+            return "2026-01-01T00:00:00Z"
+        patron = esquema.get("pattern") or ""
+        # Un patrón se respeta con algo que casi siempre casa: minúsculas y
+        # guiones bajos. Si no casa, la ruta contesta 422 y no 500, que es una
+        # respuesta correcta y no se marca.
+        return "humo" if not patron else "humo_1"
+    if tipo == "integer":
+        return int(esquema.get("minimum") or 1)
+    if tipo == "number":
+        return float(esquema.get("minimum") or 1)
+    if tipo == "boolean":
+        return False
+    if tipo == "array":
+        return []
+    if tipo == "object" or "properties" in esquema:
+        return _cuerpo_minimo(esquema, componentes, hondo + 1)
+    return "humo"
+
+
+def _cuerpo_minimo(esquema: dict[str, Any], componentes: dict[str, Any], hondo: int = 0) -> Any:
+    ref = esquema.get("$ref")
+    if ref:
+        nombre = ref.rsplit("/", 1)[-1]
+        return _cuerpo_minimo(componentes.get(nombre) or {}, componentes, hondo + 1)
+    propiedades = esquema.get("properties") or {}
+    exigidos = esquema.get("required") or []
+    return {p: _valor_de(propiedades.get(p) or {}, componentes, hondo) for p in exigidos}
+
+
+def _escrituras_con_cuerpo(app: Any) -> list[tuple[str, str, Any]]:
+    doc = app.openapi()
+    componentes = (doc.get("components") or {}).get("schemas") or {}
+    salida: list[tuple[str, str, Any]] = []
+    for camino, ops in (doc.get("paths") or {}).items():
+        if "{" in camino or not camino.startswith("/api/v1/"):
+            continue
+        for metodo in ("post", "put", "patch"):
+            operacion = ops.get(metodo)
+            if not operacion:
+                continue
+            # Las que exigen algo por la URL contestan 422 y ese no es el fallo
+            # que se busca: se saltan para que el resultado sea legible.
+            if any(p.get("required") for p in operacion.get("parameters") or []):
+                continue
+            esquema = (
+                ((operacion.get("requestBody") or {}).get("content") or {}).get("application/json")
+                or {}
+            ).get("schema")
+            if not esquema:
+                continue
+            salida.append((metodo.upper(), camino, _cuerpo_minimo(esquema, componentes)))
+    return sorted(salida, key=lambda x: (x[1], x[0]))
+
+
+@pytest.mark.parametrize("servicio", SERVICIOS)
+def test_ninguna_escritura_revienta_con_un_cuerpo_valido(
+    servicio: str, db: Any, tenant_id: UUID
+) -> None:
+    """Y con el cuerpo **bien puesto**, que es donde estaban los dos 500.
+
+    El barrido de al lado manda `{}` y recibe un 422 correcto: la petición no
+    llega a ejecutarse, así que no puede ver si la respuesta serializa. Y ahí
+    es donde fallaban dos rutas que nadie había tocado en meses:
+
+      · `POST /automatizaciones` declaraba `programacion` como objeto y la
+        columna es una expresión cron que admite nulo, así que crear una sin
+        horario —el caso normal— reventaba al serializar, **con la fila ya
+        escrita**;
+      · `POST /data-subject-requests` devolvía ocho de los catorce campos que
+        declara su contrato, y uno de los que faltaban era obligatorio.
+
+    Los dos se descubrieron sembrando una empresa de demostración, no aquí. Lo
+    que se añade es la comprobación que faltaba, con el cuerpo compuesto a
+    partir del propio contrato: nada escrito a mano que se quede viejo.
+
+    **Sólo el 500.** Un 409, un 422 o un 502 son respuestas previstas: la ruta
+    ha hecho su trabajo y dice qué pasa. El 500 es el que no dice nada y es el
+    que puede haber dejado algo a medias.
+    """
+    from crmcore.config import limpiar_cache_settings
+    from fastapi.testclient import TestClient
+
+    os.environ["SERVICE_NAME"] = servicio
+    limpiar_cache_settings()
+    app = importlib.import_module(f"services.{servicio}.main").app
+
+    cliente = TestClient(app, raise_server_exceptions=False)
+    cabeceras = _cabeceras(tenant_id)
+    rotas: list[str] = []
+    escrituras = _escrituras_con_cuerpo(app)
+    for metodo, camino, cuerpo in escrituras:
+        respuesta = cliente.request(metodo, camino, headers=cabeceras, json=cuerpo)
+        if respuesta.status_code == 500:
+            try:
+                detalle = str(respuesta.json())[:160]
+            except Exception:  # noqa: BLE001
+                detalle = respuesta.text[:160]
+            rotas.append(f"{metodo} {camino} ← {cuerpo} → {detalle}")
+
+    # BARRER CERO NO ES ESTAR EN VERDE: si el filtro dejara de encontrar rutas,
+    # esto pasaría sin haber mirado nada.
+    assert len(escrituras) >= 3, (
+        f"El barrido sólo ve {len(escrituras)} escrituras con cuerpo en "
+        f"«{servicio}»: o el servicio ha cambiado de forma o este ayudante ha "
+        "dejado de encontrarlas."
+    )
+    assert not rotas, (
+        f"En «{servicio}» hay escrituras que revientan con un cuerpo válido:\n  "
+        + "\n  ".join(rotas)
+        + "\n\nCasi siempre es el contrato de la RESPUESTA: un campo que el "
+        "modelo declara obligatorio y el mapeador no pone. La fila se escribe "
+        "y quien la creó ve un error del sistema."
+    )
+
+
 @pytest.mark.parametrize("servicio", SERVICIOS)
 def test_ningun_listado_revienta_al_abrirlo(servicio: str, db: Any, tenant_id: UUID) -> None:
     from crmcore.config import limpiar_cache_settings

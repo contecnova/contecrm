@@ -71,7 +71,13 @@ class AutomatizacionOut(BaseModel):
     # Estaban en la tabla y no salían: una automatización con doce fallos y
     # sin fecha no deja saber si pasó ayer o hace medio año.
     ultima_ejecucion_at: datetime | None = None
-    programacion: dict[str, Any] = {}
+    # La expresión cron, tal como se guarda: **una cadena**, no un objeto.
+    # Estaba declarada aquí como `dict` y la columna es `String(120)` que
+    # admite nulo, así que crear una automatización sin programación —que es
+    # el caso normal, porque la mayoría se disparan por evento— reventaba al
+    # serializar la respuesta: 500 limpio, con la fila ya escrita. No lo cazó
+    # ninguna prueba porque todas las que crean una le ponían horario.
+    programacion: str | None = None
     created_at: datetime | None = None
 
     model_config = {"from_attributes": True}

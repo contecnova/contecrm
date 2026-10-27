@@ -812,11 +812,18 @@ Si tu empresa trabaja con entorno de pruebas y producción:
 ## Tus derechos y los de tus clientes (sección 7.3)
 
 - **Acceso, rectificación, supresión y portabilidad**: el CRM tiene un flujo para
-  cada uno, con plazo y con prueba de lo que se hizo.
+  cada uno, con plazo y con prueba de lo que se hizo. En la ficha de cada
+  solicitud consta de quién es, quién la lleva, por dónde entró y —cuando se
+  cierra— qué se resolvió y con qué prueba: una solicitud cerrada que dice
+  «resuelta» y no dice qué se hizo no sirve de evidencia ante nadie.
 - **Consentimientos por canal y por finalidad**, con su fecha y su origen. Un
   consentimiento sin origen no vale para demostrar nada.
 - **Datos personales marcados en el modelo**, para saber en todo momento dónde
   están — incluidos los campos que creó tu empresa.
+- **De qué empresas es cada persona**: un contacto puede serlo de varias, con
+  papel distinto en cada una, y en su ficha salen todas — también las que ya
+  dejó, con la fecha. «Ya no trabaja ahí» es justo lo que hay que saber antes
+  de llamar.
 - **Auditoría encadenada**: el registro de quién hizo qué no se puede alterar sin
   que se note.
 - Y **lo que se borra, se borra también donde se copió**: en el lago de datos del

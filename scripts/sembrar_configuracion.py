@@ -94,6 +94,18 @@ class Api:
     def listar(self, ruta: str, limite: int = 50) -> list[dict]:
         sep = "&" if "?" in ruta else "?"
         estado, cuerpo = self._llamar("GET", f"{ruta}{sep}limite={limite}")
+        if estado == 422 and "limite" in str(_motivo(cuerpo)):
+            # **No todo lo que devuelve una lista es una colección paginada.**
+            # Hay extremos que devuelven un catálogo acotado —las clases de
+            # retención de un servicio, los planes de comisión de un tenant—:
+            # no declaran `limite` porque no crece, y la API rechaza por
+            # principio el parámetro que no mira, que es lo correcto —un
+            # filtro que se ignora en silencio devuelve de más y nadie se
+            # entera—. El que se equivocaba era este cliente, mandándolo a
+            # todo. Se reintenta sin él en vez de apuntarlo como fallo: tres
+            # listados salían en el informe de altas rechazadas sin que nada
+            # estuviera roto.
+            estado, cuerpo = self._llamar("GET", ruta)
         if estado != 200:
             # Una ruta que no existe no puede pasar por «no hay nada». Pasó:
             # el sembrado pedía `/api/v1/contactos` —que es `/contacts`—, leía
@@ -3236,6 +3248,13 @@ def sembrar_duenos(api: Api) -> None:
         for i, fila in enumerate(filas):
             if not fila.get("id") or fila.get(campo):
                 continue
+            # Una oportunidad cerrada está **bloqueada a propósito**: sus
+            # números ya están en un informe que alguien ha mirado, y cambiarle
+            # el dueño cambiaría la consecución de dos comerciales a la vez.
+            # Reabrirla para repartirla sería saltarse justo la regla que el
+            # producto defiende, así que se deja como está.
+            if fila.get("bloqueada"):
+                continue
             estado, cuerpo = api._llamar(
                 "PATCH", f"{ruta}/{fila['id']}", {campo: entre[i % len(entre)]}
             )
@@ -3520,9 +3539,34 @@ def main() -> int:
         print(f"  {nombre:16} {api.cuenta['creados'] - antes:4} registros")
 
     print(f"\nCreados {api.cuenta['creados']}, ya existían {api.cuenta['saltados']}.")
-    if api.fallos:
-        print(f"\n{len(api.fallos)} altas rechazadas por la API:")
-        for fallo in api.fallos:
+
+    # **Lo que la API rechaza por diseño no es un fallo.** Mezclarlo con lo que
+    # sí lo es tiene un coste medido: la primera pasada completa dio «30 altas
+    # rechazadas», y ocho eran el producto defendiéndose —reverificación por
+    # operación sensible, publicar exige otro aprobador, SAML apagado en esta
+    # instalación—. Quien lee treinta persigue treinta, encuentra ocho que no
+    # llevan a ninguna parte, y a la tercera deja de leer la lista.
+    por_diseno, rotos = [], []
+    for fallo in api.fallos:
+        esperado = any(
+            marca in fallo
+            for marca in (
+                "exige volver a verificar",
+                "exige aprobación de alguien distinto",
+                "no está activo en esta instalación",
+                "está cerrada y bloqueada",
+            )
+        )
+        (por_diseno if esperado else rotos).append(fallo)
+
+    if por_diseno:
+        print(f"\n{len(por_diseno)} rechazadas POR DISEÑO (el producto defendiéndose):")
+        for fallo in por_diseno:
+            print(f"  · {fallo}")
+
+    if rotos:
+        print(f"\n{len(rotos)} altas rechazadas sin motivo previsto:")
+        for fallo in rotos:
             print(f"  · {fallo}")
         # Se devuelve error: un sembrado a medias que dice que todo fue bien es
         # cómo se acaba mirando una pantalla vacía sin saber que falló su alta.
