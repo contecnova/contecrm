@@ -407,7 +407,7 @@ def test_ninguna_ruta_de_sagas_queda_sin_permiso(
 def test_la_puerta_de_entrada_sabe_a_quien_mandar_las_sagas() -> None:
     """Sin esto la ruta existe en el servicio y **no se alcanza desde fuera**: el
     gateway devuelve 404 y el módulo sigue tan incomunicado como antes."""
-    from services.gateway.rutas import servicio_de
+    from crmcore.rutas_de_api import servicio_de
 
     assert servicio_de("/api/v1/sagas") == "orchestrator"
     assert servicio_de(f"/api/v1/sagas/{uuid4()}/fallo") == "orchestrator"

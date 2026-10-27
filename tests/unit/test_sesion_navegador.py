@@ -213,7 +213,9 @@ def test_el_proxy_avisa_de_la_cookie_caducada_salvo_al_entrar() -> None:
     """
     import inspect
 
-    from services.gateway import api, rutas
+    from crmcore import rutas_de_api as rutas
+
+    from services.gateway import api
 
     fuente = inspect.getsource(api.proxy_api)
     assert "cookie_rechazada" in fuente

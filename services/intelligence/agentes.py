@@ -107,6 +107,24 @@ def registrar_planificador(fn: Callable[..., dict[str, Any]]) -> None:
     _planificador = fn
 
 
+def _definicion(agente: "Agente", nombre: str) -> dict[str, Any]:
+    """La herramienta tal como la declaró el agente: método, ruta y parámetros.
+
+    El paso guarda el NOMBRE, no la ruta, y a propósito: una herramienta es la
+    misma aunque el contrato cambie de camino, y guardar la ruta en cada paso
+    dejaría ejecuciones viejas llamando a rutas que ya no existen. Quien ejecuta
+    la busca aquí, en la declaración viva del agente.
+
+    Vacío si el agente ya no la tiene. Quien llama decide qué hacer con eso; lo
+    que no puede es inventarse un método y una ruta, que es como un agente
+    acabaría llamando a algo que nadie le dio.
+    """
+    for h in agente.herramientas or []:
+        if str(h.get("nombre") or "") == nombre:
+            return dict(h)
+    return {}
+
+
 class Agente(Base, TimestampMixin, SoftDeleteMixin):
     """Un agente declarado, con sus herramientas y sus límites."""
 
@@ -644,6 +662,8 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
         resultado = _invocador(
             herramienta=siguiente.herramienta,
             argumentos=siguiente.argumentos,
+            definicion=_definicion(agente, siguiente.herramienta),
+            tenant_id=uow.tenant_id,
             principal_id=agente.principal_id,
             permisos=list(agente.permisos or []),
         )
@@ -762,6 +782,12 @@ def revertir(
     ejecucion = uow.db.get(EjecucionAgente, ejecucion_id)
     if ejecucion is None or ejecucion.tenant_id != uow.tenant_id:
         raise NoEncontrado("Esa ejecución no existe", error_code="agente.ejecucion_no_encontrada")
+    # El agente, para deshacer con SU identidad y con sus herramientas. Se pide
+    # aunque esté apagado: apagar un agente no puede impedir deshacer lo que
+    # hizo —sería justo al revés de lo que hace falta ese día—.
+    agente = uow.db.get(Agente, ejecucion.agente_id)
+    if agente is None:
+        raise NoEncontrado("El agente ya no existe", error_code="agente.no_encontrado")
 
     pasos = (
         uow.db.execute(
@@ -791,11 +817,19 @@ def revertir(
             )
             continue
         try:
+            # Con la identidad del agente, no sin ninguna. Iba con
+            # `principal_id=None` y `permisos=[]`: la compensación salía sin
+            # identidad y sin permisos, así que en cuanto el invocador fuera de
+            # verdad la habría rechazado el servicio de destino — y deshacer
+            # habría fallado justo cuando hace falta.
+            nombre_compensa = str(paso.compensacion.get("herramienta") or "")
             _invocador(
-                herramienta=str(paso.compensacion.get("herramienta") or ""),
+                herramienta=nombre_compensa,
                 argumentos=dict(paso.compensacion.get("argumentos") or {}),
-                principal_id=None,
-                permisos=[],
+                definicion=_definicion(agente, nombre_compensa),
+                tenant_id=uow.tenant_id,
+                principal_id=agente.principal_id,
+                permisos=list(agente.permisos or []),
             )
             paso.estado = "revertido"
             paso.revertido_at = _ahora()

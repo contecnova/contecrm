@@ -93,7 +93,9 @@ def _gateway_con(respuestas: dict[str, Any]) -> Any:
     `respuestas[servicio]` puede ser un dict —lo que publica ese módulo— o una
     excepción, para el caso que importa: el servicio que no contesta.
     """
-    from services.gateway import api, rutas
+    from crmcore import rutas_de_api as rutas
+
+    from services.gateway import api
 
     def responder(peticion: httpx.Request) -> httpx.Response:
         nombre = peticion.url.host

@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 import httpx
+from crmcore import rutas_de_api as rutas
 from crmcore.config import get_settings
 from crmcore.errors import ErrorValidacion, LimiteExcedido, NoDisponible, NoEncontrado
 from crmcore.http.deps import (
@@ -25,7 +26,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from services.gateway import anomalias, empuje, operatividad, proxy, rutas
+from services.gateway import anomalias, empuje, operatividad, proxy
 from services.gateway import superficie_api as superficie
 from services.gateway.sesion import crear_router_sesion
 

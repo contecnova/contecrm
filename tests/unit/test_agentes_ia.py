@@ -465,3 +465,177 @@ def test_cada_paso_recomendado_lleva_el_dato_que_lo_justifica(db: Any, tenant_id
     assert salida["concluyente"] is True
     assert all(p["porque"] for p in salida["pasos"])
     assert salida["pasos"][0]["urgencia"] == "alta"
+
+
+# ── El invocador de verdad (CRM-05.02.03.01) ──────────────────────────────
+#
+# Hasta el 27-10-2026 `puerto._invocar_herramienta` lanzaba siempre: el agente
+# planificaba y **no podía actuar en ningún despliegue**, con la capacidad
+# constando `hecho`. Lo que sigue prueba las tres decisiones del invocador real,
+# que son donde esto se rompe: de dónde salen método y ruta, dónde va cada
+# argumento, y qué pasa cuando falta un hueco de la ruta.
+
+
+def test_una_herramienta_sin_declarar_no_se_intenta_a_ciegas() -> None:
+    """El paso guarda el NOMBRE, no la ruta. Si el agente ya no tiene esa
+    herramienta no hay a qué llamar, y adivinar una ruta por el nombre es cómo
+    un agente acaba llamando a algo que nadie le dio."""
+    from crmcore.errors import ErrorDependencia
+
+    from services.intelligence import puerto
+
+    with pytest.raises(ErrorDependencia) as fallo:
+        puerto._invocar_herramienta(herramienta="get_api_v1_contacts", argumentos={}, definicion={})
+    assert fallo.value.error_code == "agente.herramienta_sin_declarar"
+
+
+def test_cada_argumento_va_donde_la_ruta_lo_espera() -> None:
+    """Camino, consulta y cuerpo salen del contrato, no del nombre del campo.
+
+    Adivinar por el nombre es el principio de la lista escrita a mano: un
+    `cuenta_id` que en una ruta va en el camino y en otra en la consulta.
+    """
+    from services.intelligence.puerto import _repartir_argumentos
+
+    declarada = {
+        "ruta": "/api/v1/cuentas/{cuenta_id}/contactos",
+        "parametros": {
+            "properties": {
+                "cuenta_id": {"in": "path"},
+                "limite": {"in": "query"},
+                "cuerpo": {"type": "object"},
+            }
+        },
+    }
+    ruta, consulta, cuerpo = _repartir_argumentos(
+        declarada, {"cuenta_id": "01a1", "limite": 10, "nota": "hola"}
+    )
+    assert ruta == "/api/v1/cuentas/01a1/contactos", "el valor sustituye al hueco"
+    assert consulta == {"limite": 10}
+    # Lo que el contrato no nombra viaja en el cuerpo si la ruta lo admite.
+    assert cuerpo == {"nota": "hola"}
+
+
+def test_lo_que_no_cabe_en_ningun_sitio_no_se_cuela_en_la_consulta() -> None:
+    """Una ruta sin cuerpo y un argumento que no está en el contrato: se
+    descarta. Mandarlo en la consulta es un 422 que el agente no sabe leer."""
+    from services.intelligence.puerto import _repartir_argumentos
+
+    declarada = {"ruta": "/api/v1/cuentas", "parametros": {"properties": {}}}
+    ruta, consulta, cuerpo = _repartir_argumentos(declarada, {"inventado": 1})
+    assert (ruta, consulta, cuerpo) == ("/api/v1/cuentas", {}, None)
+
+
+def test_un_hueco_sin_rellenar_se_dice_y_no_se_manda() -> None:
+    """Sin esto, `/cuentas/{cuenta_id}` llega al servicio con el hueco literal y
+    vuelve un 404 que no explica nada — ni al agente ni a quien lo audita."""
+    from crmcore.errors import ErrorDependencia
+
+    from services.intelligence.puerto import _repartir_argumentos
+
+    declarada = {
+        "ruta": "/api/v1/cuentas/{cuenta_id}",
+        "parametros": {"properties": {"cuenta_id": {"in": "path"}}},
+    }
+    with pytest.raises(ErrorDependencia) as fallo:
+        _repartir_argumentos(declarada, {})
+    assert fallo.value.error_code == "agente.ruta_incompleta"
+    assert "cuenta_id" in str(fallo.value)
+
+
+def test_el_agente_llama_con_SU_identidad_y_no_con_la_de_la_casa(
+    monkeypatch: Any,
+) -> None:
+    """La identidad del agente viaja en las cabeceras firmadas.
+
+    Un agente que llamara con las cabeceras vacías tendría el poder de «la
+    casa», que no es acotable y no aparece en el rastro como nadie. Esto
+    comprueba lo que se manda, que es donde se rompería sin ruido.
+    """
+    from crmcore.http import interno
+
+    visto: dict[str, Any] = {}
+
+    class _Respuesta:
+        status_code = 200
+
+        def json(self) -> dict[str, Any]:
+            return {"items": []}
+
+    def _request(metodo: str, url: str, **kw: Any) -> Any:
+        visto.update({"metodo": metodo, "url": url, **kw})
+        return _Respuesta()
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "request", _request)
+    monkeypatch.setattr(interno, "direccion_de", lambda _s: "http://party:8000")
+
+    tenant = uuid4()
+    agente_id = uuid4()
+    salida = interno.invocar(
+        metodo="GET",
+        ruta="/api/v1/cuentas",
+        parametros={"limite": 5},
+        cuerpo=None,
+        tenant_id=tenant,
+        principal_id=agente_id,
+        permisos=["account:read"],
+    )
+    assert salida == {"estado": 200, "ok": True, "datos": {"items": []}}
+    assert visto["url"] == "http://party:8000/api/v1/cuentas"
+    cabeceras = visto["headers"]
+    assert cabeceras["x-crm-tenant"] == str(tenant)
+    assert cabeceras["x-crm-user"] == str(agente_id)
+    assert cabeceras["x-crm-permisos"] == "account:read"
+    assert cabeceras["x-crm-tipo"] == "maquina"
+    # Nunca admin de plataforma: un error de un agente no puede tener alcance
+    # de todos los clientes.
+    assert cabeceras["x-crm-plataforma"] == ""
+
+
+def test_un_error_del_destino_es_informacion_para_el_agente_no_una_caida(
+    monkeypatch: Any,
+) -> None:
+    """Un 409 tiene que llegarle al modelo para que corrija en el paso
+    siguiente. Convertirlo en excepción marca el paso como caído y pierde el
+    porqué, que es justo lo que el agente necesitaba leer."""
+    from crmcore.http import interno
+
+    class _Respuesta:
+        status_code = 409
+
+        def json(self) -> dict[str, Any]:
+            return {"detail": "Ya existe un contacto con ese correo"}
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "request", lambda *a, **k: _Respuesta())
+    monkeypatch.setattr(interno, "direccion_de", lambda _s: "http://party:8000")
+
+    salida = interno.invocar(
+        metodo="POST",
+        ruta="/api/v1/contactos",
+        cuerpo={"email": "a@b.c"},
+        tenant_id=uuid4(),
+        principal_id=uuid4(),
+    )
+    assert salida["ok"] is False
+    assert salida["estado"] == 409
+    assert "Ya existe" in salida["datos"]["detail"]
+
+
+def test_una_ruta_que_no_atiende_nadie_no_se_manda_a_ningun_sitio() -> None:
+    """Y se distingue de «el servicio no responde»: la respuesta al agente —y a
+    quien lo audita— no es la misma."""
+    from crmcore.errors import NoDisponible
+    from crmcore.http import interno
+
+    with pytest.raises(NoDisponible) as fallo:
+        interno.invocar(
+            metodo="GET",
+            ruta="/api/v1/esto-no-existe-en-ninguna-tabla",
+            tenant_id=uuid4(),
+            principal_id=uuid4(),
+        )
+    assert fallo.value.error_code == "interno.ruta_sin_dueno"

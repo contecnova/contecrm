@@ -1,7 +1,18 @@
 """Tabla de enrutado: qué prefijo va a qué servicio.
 
-Se declara en configuración (`RUTAS_SERVICIOS`) y no en código para que añadir
-un servicio o cambiar su dirección no exija reconstruir la imagen del gateway.
+Las DIRECCIONES se declaran en configuración (`RUTAS_SERVICIOS`) y no en código
+para que añadir un servicio o cambiar su dirección no exija reconstruir la
+imagen. Lo que vive aquí es el reparto: qué recurso de la API pública atiende
+cada servicio, que es una propiedad del sistema y no de un despliegue.
+
+**Vivía dentro del gateway y se ha subido al núcleo el 27-10-2026.** No por
+orden: el agente autónomo tiene que llamar a la API del CRM para actuar, y para
+eso necesita exactamente esta respuesta —«¿quién atiende esta ruta?»—. Mientras
+estuvo dentro del gateway, la única salida era copiar la tabla o que un servicio
+importara módulos de otro, que es justo lo que el gate de arquitectura prohíbe.
+Copiarla habría sido peor que las dos: dos tablas de acoplamiento que tienen que
+coincidir acaban no coincidiendo, y el síntoma sería un agente llamando al
+servicio equivocado.
 """
 
 from __future__ import annotations

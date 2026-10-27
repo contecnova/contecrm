@@ -56,6 +56,132 @@ def cabeceras_firmadas() -> dict[str, str]:
     return firmar_cabeceras_internas(vacias, get_settings().secret_key.get_secret_value())
 
 
+def cabeceras_de(
+    *,
+    tenant_id: Any,
+    principal_id: Any,
+    permisos: list[str] | None = None,
+    roles: list[str] | None = None,
+) -> dict[str, str]:
+    """Firma una llamada interna CON una identidad concreta.
+
+    Lo contrario de `cabeceras_firmadas`, y la diferencia importa: aquella dice
+    «soy de la casa» y no puede tocar datos de nadie; ésta dice **quién** hace la
+    llamada, así que el servicio de destino aplica sus permisos, su compartición
+    y su rastro de auditoría como con cualquier persona.
+
+    Se usa para el agente autónomo, que es un principal de máquina con permisos
+    propios —normalmente un subconjunto de los de quien lo puso en marcha—. Un
+    agente que llamara con las cabeceras vacías tendría el poder de «la casa»,
+    que no es acotable y no aparece en el rastro como nadie.
+    """
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_ACTOR_REAL,
+        H_PERMISOS,
+        H_PLATAFORMA,
+        H_ROLES,
+        H_SCOPES,
+        H_TENANT,
+        H_TIPO,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    valores = {
+        H_TENANT: str(tenant_id or ""),
+        H_USER: str(principal_id or ""),
+        # Máquina, no persona: a una credencial de máquina no se le aplica la
+        # compartición entre usuarios, porque no posee registros.
+        H_TIPO: "maquina",
+        H_PERMISOS: ",".join(sorted(permisos or [])),
+        H_ROLES: ",".join(sorted(roles or [])),
+        H_SCOPES: "",
+        H_ACTOR_REAL: "",
+        # Nunca admin de plataforma. Un agente actúa dentro de un tenant; si
+        # pudiera marcarse como plataforma, cualquier error suyo sería un error
+        # con alcance de todos los clientes.
+        H_PLATAFORMA: "",
+    }
+    return firmar_cabeceras_internas(valores, get_settings().secret_key.get_secret_value())
+
+
+def invocar(
+    *,
+    metodo: str,
+    ruta: str,
+    parametros: dict[str, Any] | None = None,
+    cuerpo: dict[str, Any] | None = None,
+    tenant_id: Any,
+    principal_id: Any,
+    permisos: list[str] | None = None,
+    timeout_s: float = 30.0,
+) -> dict[str, Any]:
+    """Llama a una ruta de la API del CRM con una identidad concreta.
+
+    El servicio de destino **se resuelve de la ruta**, con la misma tabla que
+    usa el gateway (`crmcore.rutas_de_api`). No se pasa como argumento a
+    propósito: quien llama —el agente— conoce la ruta porque la sacó del
+    contrato publicado, y no tiene por qué saber cómo está repartido el sistema
+    por dentro.
+
+    Devuelve siempre un diccionario con `estado` y `datos`, también cuando el
+    destino contesta 4xx. Un error del destino es **información para el
+    agente**: si se convirtiera en excepción, el paso se marcaría como caído y
+    el modelo no podría leer el porqué ni corregir en el paso siguiente. Lo que
+    sí lanza es no poder llamar —ruta sin dueño, servicio sin dirección, red
+    caída—, porque eso no es una respuesta y tratarlo como tal haría que el
+    agente informara de un «no hay nada» que nadie ha comprobado.
+    """
+    import httpx
+
+    from crmcore.rutas_de_api import servicio_de
+
+    servicio = servicio_de(ruta.lstrip("/"))
+    if not servicio:
+        raise NoDisponible(
+            f"Ningún servicio atiende «{ruta}»",
+            error_code="interno.ruta_sin_dueno",
+            detalle={"ruta": ruta},
+        )
+    base = direccion_de(servicio)
+    if not base:
+        raise NoDisponible(
+            f"No hay dirección configurada para el servicio «{servicio}»",
+            error_code="interno.servicio_sin_direccion",
+            detalle={"servicio": servicio, "ruta": ruta},
+        )
+
+    cabeceras = cabeceras_de(tenant_id=tenant_id, principal_id=principal_id, permisos=permisos)
+    try:
+        salida = httpx.request(
+            metodo.upper(),
+            f"{base}{ruta}",
+            params=parametros or None,
+            json=cuerpo if cuerpo is not None else None,
+            headers=cabeceras,
+            timeout=timeout_s,
+        )
+    except httpx.HTTPError as exc:
+        logger.error(
+            "interno.invocacion_sin_respuesta", servicio=servicio, ruta=ruta, error=str(exc)[:200]
+        )
+        raise NoDisponible(
+            f"El servicio «{servicio}» no responde",
+            error_code="interno.servicio_no_responde",
+            detalle={"servicio": servicio, "ruta": ruta},
+        ) from exc
+
+    try:
+        datos: Any = salida.json()
+    except ValueError:
+        # Una descarga, un 204 o un error en HTML. El texto recortado vale más
+        # que un diccionario vacío: con el vacío, el agente no distingue «no hay
+        # nada» de «no he sabido leer la respuesta».
+        datos = {"texto": salida.text[:2000]}
+    return {"estado": salida.status_code, "ok": salida.status_code < 400, "datos": datos}
+
+
 def pedir(servicio: str, ruta: str, *, timeout_s: float = 5.0) -> dict[str, Any] | None:
     """GET firmado a otro servicio. `None` si contesta 404.
 

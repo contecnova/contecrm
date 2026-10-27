@@ -207,7 +207,7 @@ def test_toda_ruta_publicada_es_alcanzable_por_el_gateway() -> None:
     lo que hace que el próximo recurso nuevo no repita el fallo: el día que
     alguien publique `/api/v1/loquesea` sin declararlo, esta prueba lo dice.
     """
-    from services.gateway.rutas import servicio_de
+    from crmcore.rutas_de_api import servicio_de
 
     inalcanzables: list[str] = []
 

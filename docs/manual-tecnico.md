@@ -1437,6 +1437,41 @@ publicitarias.
 Escribir un módulo por proveedor convierte cada implantación en una versión del
 producto; por eso no hay ninguno.
 
+### 4.6.1 Cómo actúa el agente autónomo
+
+Por la API del CRM, nunca por la base. Un agente que escribiera directamente se
+saltaría el metamodelo, los permisos y las reglas de negocio, que es lo que hace
+que un CRM tenga **una sola verdad** sobre qué se puede hacer.
+
+Las tres piezas, y dónde están:
+
+- **Qué puede llamar.** `services/intelligence/herramientas.py` deriva el
+  catálogo del contrato publicado, cruzado con los permisos del agente. Cada
+  herramienta lleva su método, su ruta, su permiso y su riesgo.
+- **A quién llamar.** `crmcore.rutas_de_api.servicio_de(ruta)` — la misma tabla
+  que usa el gateway para enrutar. Vivía dentro del gateway; se subió al núcleo
+  el 27-10-2026 porque copiarla habría dejado dos tablas de acoplamiento que
+  tienen que coincidir, y el síntoma de que dejaran de coincidir sería un
+  agente llamando al servicio equivocado. La dirección de cada servicio sigue
+  saliendo de `RUTAS_SERVICIOS`.
+- **Con qué identidad.** `crmcore.http.interno.invocar` firma las cabeceras
+  internas con la identidad del agente: su tenant, su identificador, sus
+  permisos y `tipo=maquina`. Nunca con las cabeceras vacías de «soy de la
+  casa», que no son acotables y no aparecen en el rastro como nadie; y nunca
+  como administrador de plataforma, porque entonces un error del agente tendría
+  alcance de todos los clientes.
+
+Un 4xx del destino **no es una excepción**: vuelve como `{estado, ok, datos}` y
+el modelo lo lee para corregir en el paso siguiente. Lo que sí es excepción es
+no poder llamar —ruta sin dueño, servicio sin dirección, red caída—, porque eso
+no es una respuesta y tratarlo como tal haría que el agente informara de un «no
+hay nada» que nadie ha comprobado.
+
+Qué hace falta en un despliegue: `RUTAS_SERVICIOS` con la dirección de cada
+servicio —la misma variable que ya necesita el gateway— y nada más. Sin ella,
+el invocador responde `interno.servicio_sin_direccion` diciendo cuál falta, en
+vez de fallar con un error de red.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

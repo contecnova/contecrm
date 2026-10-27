@@ -335,6 +335,8 @@ def _invocar_herramienta(
     *,
     herramienta: str,
     argumentos: dict[str, Any],
+    definicion: dict[str, Any] | None = None,
+    tenant_id: Any = None,
     principal_id: Any = None,
     permisos: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -344,17 +346,94 @@ def _invocar_herramienta(
     se saltaría el metamodelo, los permisos y las reglas de negocio, que es lo
     que hace que un CRM tenga una sola verdad sobre qué se puede hacer.
 
-    Va sin implementar contra un despliegue concreto a propósito: la dirección
-    del gateway y la credencial del agente son configuración, y el módulo que las
-    resuelve es el mismo que resuelve las de cualquier otra llamada saliente.
+    **Esto no existía hasta el 27-10-2026.** Lanzaba siempre
+    `agente.invocador_no_configurado`, así que un agente planificaba y no
+    actuaba **en ningún despliegue** — y `CRM-05.02.03.01` decía «agentes que
+    ejecutan procesos» y constaba hecho. La excusa escrita aquí era que la
+    dirección y la credencial son configuración; lo eran, y configuración es
+    justo lo que esta casa sabe resolver: la dirección sale de
+    `RUTAS_SERVICIOS` —la misma que usa el gateway— y la identidad se firma con
+    el secreto interno, como cualquier llamada entre servicios.
+
+    El método y la ruta salen de la DECLARACIÓN de la herramienta, no de su
+    nombre: el nombre es legible y estable, pero no es una dirección. Una
+    herramienta que el agente ya no tiene no se intenta a ciegas.
     """
-    raise ErrorDependencia(
-        "Este despliegue no tiene conectado el invocador de herramientas del "
-        "agente. Sin él, un agente puede planificar pero no actuar — y eso es "
-        "mejor que actuar a medias.",
-        error_code="agente.invocador_no_configurado",
-        detalle={"herramienta": herramienta},
+    from crmcore.http.interno import invocar
+
+    declarada = dict(definicion or {})
+    metodo = str(declarada.get("metodo") or "")
+    ruta = str(declarada.get("ruta") or "")
+    if not metodo or not ruta:
+        raise ErrorDependencia(
+            f"La herramienta «{herramienta}» no está declarada en este agente, "
+            "así que no se sabe a qué ruta llama. No se intenta adivinar.",
+            error_code="agente.herramienta_sin_declarar",
+            detalle={"herramienta": herramienta},
+        )
+
+    ruta_final, consulta, cuerpo = _repartir_argumentos(declarada, argumentos)
+    return invocar(
+        metodo=metodo,
+        ruta=ruta_final,
+        parametros=consulta,
+        cuerpo=cuerpo,
+        tenant_id=tenant_id,
+        principal_id=principal_id,
+        permisos=list(permisos or []),
     )
+
+
+def _repartir_argumentos(
+    declarada: dict[str, Any], argumentos: dict[str, Any]
+) -> tuple[str, dict[str, Any], dict[str, Any] | None]:
+    """Coloca cada argumento donde la ruta lo espera: camino, consulta o cuerpo.
+
+    El contrato ya dice de cada parámetro si va `in: path` o `in: query` —lo
+    guarda `herramientas.desde_openapi`—, así que aquí no hay que adivinarlo.
+    Adivinarlo por el nombre sería el principio de la lista escrita a mano: un
+    `cliente_id` que a veces va en el camino y a veces en la consulta.
+
+    Lo que el contrato **no** nombre se manda en el cuerpo si la ruta lo admite,
+    y si no, se descarta — un parámetro inventado en la consulta es un 422 y el
+    agente no sabría por qué.
+    """
+    import re
+
+    ruta = str(declarada.get("ruta") or "")
+    propiedades = dict((declarada.get("parametros") or {}).get("properties") or {})
+    admite_cuerpo = "cuerpo" in propiedades
+
+    consulta: dict[str, Any] = {}
+    cuerpo: dict[str, Any] | None = None
+    sobrantes: dict[str, Any] = {}
+
+    for nombre, valor in (argumentos or {}).items():
+        if nombre == "cuerpo":
+            cuerpo = dict(valor) if isinstance(valor, dict) else {"valor": valor}
+            continue
+        donde = str((propiedades.get(nombre) or {}).get("in") or "")
+        if donde == "path":
+            ruta = ruta.replace(f"{{{nombre}}}", str(valor))
+        elif donde == "query":
+            consulta[nombre] = valor
+        else:
+            sobrantes[nombre] = valor
+
+    if sobrantes and admite_cuerpo:
+        cuerpo = {**(cuerpo or {}), **sobrantes}
+
+    # Un hueco sin rellenar se dice aquí y no se manda: `/cuentas/{cuenta_id}`
+    # tal cual llega al servicio como un identificador literal «{cuenta_id}» y
+    # vuelve un 404 que no explica nada.
+    huecos = re.findall(r"\{([^}]+)\}", ruta)
+    if huecos:
+        raise ErrorDependencia(
+            f"Faltan valores para {', '.join(huecos)} en la ruta de la herramienta",
+            error_code="agente.ruta_incompleta",
+            detalle={"ruta": ruta, "faltan": huecos},
+        )
+    return ruta, consulta, cuerpo
 
 
 def conectar() -> None:

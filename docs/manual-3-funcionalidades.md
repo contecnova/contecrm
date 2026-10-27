@@ -14594,6 +14594,17 @@ cuenta y por qué— y ninguna de las que hace quien **responde** de la IA:
   apagado deja su motivo escrito. Sus herramientas se pueden generar **desde el
   contrato** —de las propias operaciones publicadas— en vez de escribirlas a
   mano.
+- **Y cuando actúa, actúa como un usuario más.** El agente no escribe en la
+  base: llama a la misma API que usa cualquier pantalla, **con su propia
+  identidad y sus propios permisos**, que normalmente son menos que los de
+  quien lo puso en marcha. Eso tiene tres consecuencias que se notan: lo que no
+  puede hacer una persona con esos permisos tampoco lo puede hacer el agente;
+  todo lo que hace aparece en el rastro de auditoría a nombre del agente y no
+  de «el sistema»; y un error suyo tiene el alcance de sus permisos, no el de
+  la plataforma. Los pasos se ejecutan **de uno en uno**, porque entre paso y
+  paso es donde caben el apagado, el tope de acciones y la aprobación humana.
+  Si un paso falla, la ejecución se para: seguir con los siguientes de un plan
+  cuyo tercer paso falló es ejecutar un plan que ya no tiene sentido.
 - **Qué bloquearon las guardias.** Una guardia sin registro es una promesa:
   nadie puede decir si ha actuado alguna vez.
 - **Cuánto cuesta**, con la tasa de descarte —cuánto de lo que se paga se
