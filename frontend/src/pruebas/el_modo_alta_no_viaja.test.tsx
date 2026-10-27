@@ -18,9 +18,11 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-const PAGINAS = join(dirname(fileURLToPath(import.meta.url)), "..", "paginas");
-const MODULO = readFileSync(join(PAGINAS, "Modulo.tsx"), "utf8");
-const FICHA = readFileSync(join(PAGINAS, "Ficha.tsx"), "utf8");
+const SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
+const MODULO = readFileSync(join(SRC, "paginas", "Modulo.tsx"), "utf8");
+const FICHA = readFileSync(join(SRC, "paginas", "Ficha.tsx"), "utf8");
+const ARRANQUE = readFileSync(join(SRC, "main.tsx"), "utf8");
+const APP = readFileSync(join(SRC, "App.tsx"), "utf8");
 
 describe("el modo alta y el modo edición no viajan entre pantallas", () => {
   it("la vista del recurso se remonta al cambiar de módulo o de pestaña", () => {
@@ -42,5 +44,24 @@ describe("el modo alta y el modo edición no viajan entre pantallas", () => {
     // «¿seguro que quieres borrar?» a medias apunta al registro nuevo.
     expect(FICHA).toMatch(/setEditando\(false\);\s*\n\s*setConfirmando\(false\);/);
     expect(FICHA).toMatch(/\}, \[modulo, objeto, id\]\);/);
+  });
+});
+
+describe("no se piden al servidor cosas que todavía no se pueden pedir", () => {
+  it("la localización NO se pide en el arranque, sino al haber sesión", () => {
+    /**
+     * Se pedía en los dos sitios. En el arranque no puede funcionar —todavía
+     * no hay sesión—, así que el servidor responde 401 y el navegador lo
+     * escribe en rojo en la consola CADA VEZ que alguien abre la pantalla de
+     * entrada. El valor no se usaba, porque `App` lo vuelve a pedir y ese sí
+     * llega: lo único que aportaba era el error.
+     *
+     * Un error que sale siempre y no significa nada es donde se esconde el
+     * que sí importa.
+     */
+    expect(ARRANQUE).not.toMatch(/aplicarLocalizacion\(\)/);
+    expect(APP).toMatch(/aplicarLocalizacion\(\)/);
+    // Y la marca, por lo mismo y en el mismo sitio.
+    expect(APP).toMatch(/aplicarMarcaDelTenant\(\)/);
   });
 });

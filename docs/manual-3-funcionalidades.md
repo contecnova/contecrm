@@ -14500,3 +14500,51 @@ reabrió?» no tendría respuesta.
 
 Cerrar un trimestre no cierra los demás: si cerrara el año entero, cerrar el
 tercer trimestre impediría planificar el cuarto, que es justo cuando se hace.
+
+## El mapeo copiaba valores, y nada más (`CRM-00.03.04.04`)
+
+El conector genérico traducía los campos de una API ajena a los nuestros: de
+dónde sale cada uno, con alternativas y marcadores de vacío. Y ahí se acababa.
+Lo que pasa en toda integración de verdad es que el valor **no sirve tal cual**
+— el código viene con espacios, el país en minúsculas, el importe como texto
+con coma decimal, la fecha con el formato del otro lado, la referencia con un
+prefijo que aquí sobra.
+
+Sin transformaciones hay dos salidas y las dos son malas: escribir un conector
+a medida por cliente —que es justo lo que el conector genérico existe para
+evitar— o meter los datos sucios y arreglarlos después, cuando ya han disparado
+automatizaciones.
+
+Ahora son tres pasos:
+
+1. **Mapear**, como antes.
+2. **Transformar**: `recortar`, `mayusculas`, `minusculas`, `quitar_prefijo`,
+   `quitar_sufijo`, `numero`, `booleano`, `fecha`, `defecto` y `mapa`.
+3. **Validar**: qué campos son obligatorios y qué valores se admiten.
+
+**Es una lista cerrada, nunca una expresión.** Una expresión arbitraria en la
+configuración de una integración es código de un usuario final corriendo en el
+servidor, con los permisos del servicio y sin revisión — la misma decisión que
+en las acciones de las automatizaciones, y por el mismo motivo.
+
+Cuatro detalles que deciden si esto sirve:
+
+- **El valor por defecto se aplica también al hueco.** Si sólo corriera sobre
+  lo que viene, no serviría para nada: es la transformación más pedida y el
+  caso es justo que el campo falte.
+- **La fecha no se adivina.** Con el formato del otro lado se convierte; sin
+  él, ISO. Elegir entre `%d/%m` y `%m/%d` por sorteo mete una fecha equivocada
+  que nadie revisa — el 3 de abril y el 4 de marzo son los dos válidos.
+- **Un código que no está en la tabla se deja como viene**, y entonces lo
+  rechaza la validación si el campo tiene lista cerrada. Es mejor que inventar
+  un estado que aquí no significa nada y que nadie volverá a mirar.
+- **Lo que no cumple ni se cuela ni se tira en silencio**: se aparta con su
+  motivo y sale en el resultado. Colarlo mete datos sucios; tirarlo callando
+  deja una importación que dice «200 registros» y guarda 180 sin que nadie
+  pregunte, y el hueco se descubre semanas después.
+
+Y una función mal escrita —`mayuscuals`— se caza **al publicar el conector**,
+no en la primera importación de un cliente, donde ya hay registros a medio
+traducir y nadie sabe cuáles. Lo mismo con una regla que valide un campo que el
+mapeo no produce: rechazaría todos los registros y el motivo señalaría a un
+campo que no existe.

@@ -752,3 +752,153 @@ def test_no_se_da_por_migrado_algo_que_nadie_ha_contado(uow: UnidadDeTrabajo) ->
     with pytest.raises(ErrorValidacion) as error:
         conv.dar_por_migrado(uow, objeto="cuenta")
     assert "nadie ha contado" in str(error.value)
+
+
+# ── Transformación y validación del mapeo (CRM-00.03.04.04) ──────────────
+#
+# El mapeo copiaba valores de un sitio a otro y nada más. Lo que pasa en toda
+# integración de verdad es que el valor NO sirve tal cual: el código viene con
+# espacios, el país en minúsculas, el importe como texto con coma, la fecha con
+# el formato del otro lado. Sin transformaciones hay dos salidas y las dos son
+# malas — escribir un conector a medida por cliente, que es lo que el conector
+# genérico existe para evitar, o meter los datos sucios y arreglarlos después,
+# cuando ya han disparado automatizaciones.
+
+
+def test_el_valor_se_transforma_antes_de_entrar_crm_00_03_04_04() -> None:
+    """Las que se piden siempre: recortar, mayúsculas y el número con coma.
+
+    Un `1.234,56` que llega como texto y se guarda como texto convierte toda
+    suma posterior en una concatenación, y eso se descubre en un informe.
+    """
+    from decimal import Decimal
+
+    from services.integration.conector import mapear
+
+    operacion = {
+        "mapeo": {"nombre": "n", "importe": "i"},
+        "transformar": {"nombre": ["recortar", "mayusculas"], "importe": ["numero"]},
+    }
+    salida = mapear([{"n": "  acme ", "i": "1.234,56"}], operacion)
+    assert salida == [{"nombre": "ACME", "importe": Decimal("1234.56")}], salida
+
+
+def test_el_valor_por_defecto_corre_aunque_no_venga_nada_crm_00_03_04_04() -> None:
+    """Es la transformación más pedida de todas, y sólo sirve si se aplica al
+    hueco: si sólo corriera sobre lo que viene, no serviría para nada."""
+    from services.integration.conector import mapear
+
+    operacion = {
+        "mapeo": {"pais": "p"},
+        "transformar": {"pais": [{"f": "defecto", "arg": "ES"}]},
+    }
+    assert mapear([{"otro": 1}], operacion) == [{"pais": "ES"}]
+
+
+def test_la_fecha_no_se_adivina_crm_00_03_04_04() -> None:
+    """Con el formato del otro lado se convierte; sin él, ISO.
+
+    Lo que NO se hace es elegir entre `%d/%m` y `%m/%d` por sorteo: el 3 de
+    abril y el 4 de marzo son los dos válidos, y acertar por casualidad mete
+    una fecha equivocada que nadie revisa.
+    """
+    from services.integration.conector import aplicar_funciones
+
+    assert aplicar_funciones("03/04/2026", [{"f": "fecha", "arg": "%d/%m/%Y"}]) == "2026-04-03"
+    # Sin formato y sin ser ISO, se deja como está en vez de inventarse una.
+    assert aplicar_funciones("03/04/2026", ["fecha"]) == "03/04/2026"
+
+
+def test_un_codigo_que_no_esta_en_la_tabla_no_se_inventa_crm_00_03_04_04() -> None:
+    """Devuelve el original, y entonces la validación lo rechaza si el campo
+    tiene lista cerrada. Es mejor que meter un estado que aquí no significa
+    nada y que nadie volverá a mirar."""
+    from services.integration.conector import aplicar_funciones
+
+    tabla = [{"f": "mapa", "arg": {"OPEN": "abierta"}}]
+    assert aplicar_funciones("OPEN", tabla) == "abierta"
+    assert aplicar_funciones("WEIRD", tabla) == "WEIRD"
+
+
+def test_lo_que_no_cumple_se_aparta_con_su_motivo_crm_00_03_04_04() -> None:
+    """Ni se cuela ni se tira en silencio.
+
+    Colarlo mete datos sucios que disparan automatizaciones; tirarlo callando
+    deja una importación que dice «200 registros» y guarda 180 sin que nadie
+    pregunte, y el hueco se descubre semanas después.
+    """
+    from services.integration.conector import mapear
+
+    operacion = {
+        "mapeo": {"nombre": "n", "pais": "p"},
+        "validar": {"obligatorios": ["nombre"], "admitidos": {"pais": ["ES", "FR"]}},
+    }
+    rechazos: list[dict[str, Any]] = []
+    salida = mapear(
+        [{"n": "uno", "p": "ES"}, {"p": "DE"}, {"n": "dos", "p": "PT"}],
+        operacion,
+        rechazos=rechazos,
+    )
+    assert salida == [{"nombre": "uno", "pais": "ES"}], salida
+    assert len(rechazos) == 2, rechazos
+    assert "falta «nombre»" in rechazos[0]["motivos"]
+    assert "no está entre los admitidos" in rechazos[1]["motivos"][0]
+
+
+def test_una_funcion_mal_escrita_se_caza_al_publicar_crm_00_03_04_04() -> None:
+    """Y no en la primera importación de un cliente, donde ya hay registros a
+    medio traducir y nadie sabe cuáles."""
+    from services.integration.manifiestos import validar
+
+    base = {
+        "clave": "erp",
+        "nombre": "ERP",
+        "version": "1.0.0",
+        "dominios": ["erp.example"],
+    }
+    mala = {
+        "clave": "pedidos",
+        "ruta": "/p",
+        "mapeo": {"nombre": "n"},
+        "transformar": {"nombre": ["mayuscuals"]},
+    }
+    problemas = validar({**base, "operaciones": [mala]})
+    assert any("mayuscuals" in p for p in problemas), problemas
+
+    buena = {**mala, "transformar": {"nombre": ["mayusculas"]}}
+    assert validar({**base, "operaciones": [buena]}) == []
+
+
+def test_validar_un_campo_que_el_mapeo_no_produce_se_caza_crm_00_03_04_04() -> None:
+    """Sería una regla que no se cumple jamás: rechazaría todos los registros
+    y el motivo señalaría a un campo que no existe."""
+    from services.integration.manifiestos import validar
+
+    manifiesto = {
+        "clave": "erp",
+        "nombre": "ERP",
+        "version": "1.0.0",
+        "dominios": ["erp.example"],
+        "operaciones": [
+            {
+                "clave": "pedidos",
+                "ruta": "/p",
+                "mapeo": {"nombre": "n"},
+                "validar": {"obligatorios": ["pais"]},
+            }
+        ],
+    }
+    problemas = validar(manifiesto)
+    assert any("no produce" in p for p in problemas), problemas
+
+
+def test_las_funciones_son_una_lista_cerrada_crm_00_03_04_04() -> None:
+    """**Una expresión arbitraria en la configuración de una integración es
+    código de un usuario final corriendo en el servidor**, con los permisos del
+    servicio y sin revisión. Es la misma decisión que en las acciones de las
+    automatizaciones, y por el mismo motivo."""
+    from services.integration.conector import FUNCIONES
+
+    assert FUNCIONES, "no hay funciones de transformación"
+    prohibidas = {"eval", "exec", "codigo", "script", "python", "lambda", "expresion"}
+    assert not (set(FUNCIONES) & prohibidas), sorted(set(FUNCIONES) & prohibidas)

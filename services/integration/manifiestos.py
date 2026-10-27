@@ -210,6 +210,37 @@ def validar(manifiesto: dict[str, Any]) -> list[str]:
         mapeo = operacion.get("mapeo") or {}
         if not isinstance(mapeo, dict):
             problemas.append(f"El mapeo de «{clave or i}» tiene que ser un diccionario.")
+
+        # Las transformaciones se comprueban AL PUBLICAR el conector
+        # (CRM-00.03.04.04). Una función mal escrita —`mayuscuals`— no puede
+        # descubrirse en la primera importación de un cliente: ahí ya hay
+        # registros a medio traducir y nadie sabe cuáles.
+        from services.integration.conector import FUNCIONES, funciones_desconocidas
+
+        desconocidas = funciones_desconocidas(operacion)
+        if desconocidas:
+            problemas.append(
+                f"La operación «{clave or i}» usa funciones que no existen: "
+                f"{', '.join(desconocidas)}. Las que hay son {', '.join(sorted(FUNCIONES))}."
+            )
+        validar_op = operacion.get("validar") or {}
+        if validar_op and not isinstance(validar_op, dict):
+            problemas.append(
+                f"Las reglas de validación de «{clave or i}» tienen que ser un objeto."
+            )
+        elif isinstance(validar_op, dict):
+            # Validar un campo que el mapeo no produce nunca es una regla que
+            # no se cumple jamás: rechazaría todos los registros y el motivo
+            # señalaría a un campo que no existe.
+            destinos = set(mapeo) if isinstance(mapeo, dict) else set()
+            for campo in list(validar_op.get("obligatorios") or []) + list(
+                (validar_op.get("admitidos") or {}).keys()
+            ):
+                if str(campo) not in destinos:
+                    problemas.append(
+                        f"«{clave or i}» valida el campo «{campo}», que su mapeo no produce: "
+                        "la regla no se cumpliría nunca."
+                    )
     for i, credencial in enumerate(manifiesto.get("credenciales") or [], 1):
         if not str(credencial.get("clave") or ""):
             problemas.append(f"La credencial {i} no tiene clave.")

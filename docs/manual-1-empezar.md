@@ -643,3 +643,29 @@ siguiente se abría **ya en modo edición y con los datos del anterior en el
 formulario**. Peor todavía, un «¿seguro que quieres borrar?» a medias quedaba
 apuntando al registro nuevo — y borrar el que no era está a un clic de ahí.
 Ahora al cambiar de registro se sale de edición y se cancela la confirmación.
+
+## Los errores rojos de la consola al entrar
+
+Tres, y sólo uno era inevitable.
+
+**`GET /api/v1/localizacion` → 401 en la pantalla de entrada.** Se pedía en el
+arranque y otra vez en cuanto había sesión. En el arranque no puede funcionar
+—todavía no hay sesión—, así que el servidor respondía 401 y el navegador lo
+escribía en rojo **cada vez que alguien abría la pantalla de entrada**. El valor
+no se usaba, porque la segunda llamada sí llega. Lo único que aportaba era el
+error: se ha quitado.
+
+**`GET /api/v1/marca` → 404 en cada carga.** Ya está: no tener marca propia es
+el caso normal y ahora se responde con el diagnóstico, no con un «no
+encontrado».
+
+**`GET /api/v1/auth/me` → 401 antes de entrar.** Este se queda, y es correcto:
+**es la pregunta**. La aplicación no puede saber si hay sesión sin preguntarlo,
+y un 401 es la respuesta «no la hay», no un fallo. Quitarlo exigiría adivinar la
+sesión por otro medio —una cookie leída a mano, un estado guardado— y entonces
+la pantalla decidiría por su cuenta quién ha entrado, que es exactamente lo que
+no puede hacer.
+
+La regla detrás de los tres: **un error que sale siempre y no significa nada es
+donde se esconde el que sí importa.** Si la consola tiene dos rojos fijos, el
+tercero no lo mira nadie.

@@ -263,6 +263,7 @@ async def ejecutar(
     paginacion = operacion.get("paginacion") or {}
     max_paginas = int(paginacion.get("max_paginas", 20))
     registros: list[dict[str, Any]] = []
+    rechazados: list[dict[str, Any]] = []
     crudos = 0
     paginas = 0
 
@@ -323,14 +324,24 @@ async def ejecutar(
             if not isinstance(filas, list):
                 filas = []
             crudos += len(filas)
-            registros.extend(mapear(filas, operacion))
+            registros.extend(mapear(filas, operacion, rechazos=rechazados))
             paginas += 1
 
             siguiente_url, query = _siguiente_pagina(
                 paginacion, datos, respuesta, query or {}, paginas
             )
 
-    return {"registros": registros, "paginas": paginas, "crudos": crudos}
+    return {
+        "registros": registros,
+        "paginas": paginas,
+        "crudos": crudos,
+        # Lo que NO pasó la validación, con su motivo. Va en la salida y no
+        # sólo al registro del servidor: una importación que dice «200
+        # registros» y guarda 180 sin decir nada es la forma más silenciosa de
+        # perder datos, y el hueco se descubre semanas después.
+        "rechazados": rechazados,
+        "cuantos_rechazados": len(rechazados),
+    }
 
 
 def _siguiente_pagina(
@@ -384,8 +395,206 @@ def _siguiente_pagina(
     return None, query
 
 
-def mapear(filas: list[Any], operacion: dict[str, Any]) -> list[dict[str, Any]]:
-    """Traduce los registros de la API a los campos de contecrm (CRM-00.03.04.04)."""
+# ── Funciones de transformación (CRM-00.03.04.04) ────────────────────────
+#
+# El mapeo copiaba valores de un sitio a otro y nada más. Lo que pasa en toda
+# integración de verdad es que el valor **no sirve tal cual**: el código viene
+# con espacios, el país en minúsculas, el importe como texto con coma, la fecha
+# partida en tres campos y la referencia con un prefijo que aquí sobra.
+#
+# Sin transformaciones hay dos salidas y las dos son malas: escribir un conector
+# a medida por cliente —que es lo que esto existe para evitar— o meter los datos
+# sucios y arreglarlos después, cuando ya han disparado automatizaciones.
+#
+# **Es una lista cerrada, no un intérprete.** Una expresión arbitraria en la
+# configuración de una integración es código de un usuario final corriendo en el
+# servidor, con los permisos del servicio y sin revisión. Es la misma decisión
+# que en las acciones de las automatizaciones, y por el mismo motivo.
+def _f_recortar(v: Any, _arg: Any) -> Any:
+    return v.strip() if isinstance(v, str) else v
+
+
+def _f_mayusculas(v: Any, _arg: Any) -> Any:
+    return v.upper() if isinstance(v, str) else v
+
+
+def _f_minusculas(v: Any, _arg: Any) -> Any:
+    return v.lower() if isinstance(v, str) else v
+
+
+def _f_quitar_prefijo(v: Any, arg: Any) -> Any:
+    prefijo = str(arg or "")
+    return v[len(prefijo) :] if isinstance(v, str) and prefijo and v.startswith(prefijo) else v
+
+
+def _f_quitar_sufijo(v: Any, arg: Any) -> Any:
+    sufijo = str(arg or "")
+    return v[: -len(sufijo)] if isinstance(v, str) and sufijo and v.endswith(sufijo) else v
+
+
+def _f_numero(v: Any, _arg: Any) -> Any:
+    """Texto a número, admitiendo la coma decimal.
+
+    Un `1.234,56` que llega como texto y se guarda como texto convierte toda
+    suma posterior en una concatenación, y eso se descubre en un informe.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    if isinstance(v, (int, float, Decimal)):
+        return v
+    if not isinstance(v, str) or not v.strip():
+        return v
+    limpio = v.strip().replace(" ", "")
+    # Si lleva coma, la coma es el decimal y el punto el separador de miles.
+    if "," in limpio:
+        limpio = limpio.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(limpio)
+    except InvalidOperation:
+        return v
+
+
+def _f_booleano(v: Any, _arg: Any) -> Any:
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in {"1", "true", "si", "sí", "s", "y", "yes", "x"}
+    return bool(v)
+
+
+def _f_fecha(v: Any, arg: Any) -> Any:
+    """Fecha con el formato del otro lado, a ISO.
+
+    `arg` es el formato de origen (`%d/%m/%Y`). Sin él se intenta ISO, que es
+    lo que manda la mayoría. Lo que NO se hace es adivinar entre `%d/%m` y
+    `%m/%d`: el 3 de abril y el 4 de marzo son los dos válidos, y acertar por
+    sorteo mete una fecha equivocada que nadie revisa.
+    """
+    from datetime import date, datetime
+
+    if isinstance(v, (date, datetime)):
+        return v.isoformat()
+    if not isinstance(v, str) or not v.strip():
+        return v
+    formato = str(arg or "").strip()
+    try:
+        if formato:
+            return datetime.strptime(v.strip(), formato).date().isoformat()
+        return datetime.fromisoformat(v.strip().replace("Z", "+00:00")).isoformat()
+    except ValueError:
+        return v
+
+
+def _f_defecto(v: Any, arg: Any) -> Any:
+    """Lo que vale cuando no viene nada. Es la transformación más pedida."""
+    return arg if v in (None, "", [], {}) else v
+
+
+def _f_mapa(v: Any, arg: Any) -> Any:
+    """Traduce un código del otro lado al nuestro.
+
+    Lo que NO hace: inventarse el valor cuando el código no está en la tabla.
+    Devuelve el original, y entonces la validación de abajo lo rechaza si el
+    campo tiene una lista cerrada — que es mejor que meter un estado que aquí
+    no significa nada.
+    """
+    tabla = arg if isinstance(arg, dict) else {}
+    return tabla.get(str(v), v)
+
+
+FUNCIONES: dict[str, Any] = {
+    "recortar": _f_recortar,
+    "mayusculas": _f_mayusculas,
+    "minusculas": _f_minusculas,
+    "quitar_prefijo": _f_quitar_prefijo,
+    "quitar_sufijo": _f_quitar_sufijo,
+    "numero": _f_numero,
+    "booleano": _f_booleano,
+    "fecha": _f_fecha,
+    "defecto": _f_defecto,
+    "mapa": _f_mapa,
+}
+
+
+def aplicar_funciones(valor: Any, pasos: Any) -> Any:
+    """Pasa el valor por las funciones declaradas, en orden.
+
+    Una función desconocida **no se ignora**: deja el valor como está y lo dice
+    en el resultado de la validación. Ignorarla en silencio haría que un
+    `mayuscuals` mal escrito pareciera funcionar.
+    """
+    if not isinstance(pasos, list):
+        return valor
+    for paso in pasos:
+        if isinstance(paso, str):
+            nombre, arg = paso, None
+        elif isinstance(paso, dict):
+            nombre, arg = str(paso.get("f", "")), paso.get("arg")
+        else:
+            continue
+        funcion = FUNCIONES.get(nombre)
+        if funcion is None:
+            continue
+        valor = funcion(valor, arg)
+    return valor
+
+
+def funciones_desconocidas(operacion: dict[str, Any]) -> list[str]:
+    """Las que el mapeo nombra y no existen. Se comprueba al guardar."""
+    fuera: list[str] = []
+    for pasos in (operacion.get("transformar") or {}).values():
+        if not isinstance(pasos, list):
+            continue
+        for paso in pasos:
+            nombre = paso if isinstance(paso, str) else str((paso or {}).get("f", ""))
+            if nombre and nombre not in FUNCIONES:
+                fuera.append(nombre)
+    return sorted(set(fuera))
+
+
+def validar_mapeado(registro: dict[str, Any], reglas: Any) -> list[str]:
+    """Qué tiene de malo este registro ya traducido.
+
+    Devuelve los motivos, no un booleano: «no vale» sin decir por qué deja a
+    quien mira el monitor sin nada que hacer salvo abrir los registros del
+    servidor.
+
+    Dos reglas y las dos son las que de verdad se piden: que un campo venga, y
+    que su valor esté entre los admitidos.
+    """
+    if not isinstance(reglas, dict):
+        return []
+    motivos: list[str] = []
+    for campo in reglas.get("obligatorios") or []:
+        if registro.get(str(campo)) in (None, "", [], {}):
+            motivos.append(f"falta «{campo}»")
+    for campo, admitidos in (reglas.get("admitidos") or {}).items():
+        valor = registro.get(str(campo))
+        if valor is not None and isinstance(admitidos, list) and valor not in admitidos:
+            motivos.append(f"«{campo}» vale «{valor}», que no está entre los admitidos")
+    return motivos
+
+
+def mapear(
+    filas: list[Any],
+    operacion: dict[str, Any],
+    *,
+    rechazos: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Traduce los registros de la API a los campos de contecrm (CRM-00.03.04.04).
+
+    Tres pasos, y hasta hoy sólo estaba el primero:
+
+      1. **mapear**: de dónde sale cada campo, con alternativas y marcadores de
+         vacío;
+      2. **transformar**: recortar, pasar a mayúsculas, convertir un número con
+         coma decimal, componer una fecha con el formato del otro lado, poner
+         un valor por defecto o traducir un código. Lista cerrada, nunca una
+         expresión: una expresión en la configuración de una integración es
+         código de un usuario final corriendo en el servidor;
+      3. **validar**: qué campos son obligatorios y qué valores se admiten. Lo
+         que no cumple se aparta **con su motivo** en `rechazos`.
+    """
     mapeo = operacion.get("mapeo") or {}
     if not mapeo:
         # Sin mapeo declarado se devuelve tal cual. Sirve para explorar una API
@@ -394,7 +603,13 @@ def mapear(filas: list[Any], operacion: dict[str, Any]) -> list[dict[str, Any]]:
 
     vacios = marcadores_vacio(operacion)
     expandir = str(operacion.get("expandir", "")).strip()
+    transformar = operacion.get("transformar") or {}
+    reglas = operacion.get("validar") or {}
     salida: list[dict[str, Any]] = []
+    # Los apartados se devuelven por el parámetro, no en el valor de retorno:
+    # así los llamantes de siempre siguen recibiendo una lista de registros y
+    # quien quiera saber qué se quedó fuera pasa una lista y la lee.
+    rechazados = [] if rechazos is None else rechazos
 
     for fila in filas:
         if not isinstance(fila, dict):
@@ -409,8 +624,23 @@ def mapear(filas: list[Any], operacion: dict[str, Any]) -> list[dict[str, Any]]:
             registro: dict[str, Any] = {}
             for destino, origen in mapeo.items():
                 valor = primer_valor(_rutas(origen), variante, fila, vacios)
+                # Las transformaciones se aplican también a lo que NO vino:
+                # `defecto` es la más pedida de todas, y sólo sirve si corre
+                # cuando el campo falta.
+                pasos = transformar.get(str(destino))
+                if pasos:
+                    valor = aplicar_funciones(valor, pasos)
                 if valor is not None:
                     registro[str(destino)] = valor
-            if registro:
-                salida.append(registro)
+            if not registro:
+                continue
+            motivos = validar_mapeado(registro, reglas)
+            if motivos:
+                # El registro malo NO se cuela y NO se tira en silencio: se
+                # aparta con su motivo. Colarlo mete datos sucios que disparan
+                # automatizaciones; tirarlo callando deja una importación que
+                # dice «200 registros» y guarda 180 sin que nadie pregunte.
+                rechazados.append({"registro": registro, "motivos": motivos})
+                continue
+            salida.append(registro)
     return salida

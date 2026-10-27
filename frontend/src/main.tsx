@@ -38,7 +38,6 @@ import { BrowserRouter } from "react-router-dom";
 import { App } from "@/App";
 import { iniciarI18n } from "@/i18n";
 import { aplicarMarca, cargarConfig } from "@/lib/config";
-import { aplicarLocalizacion } from "@/lib/localizacion";
 
 async function arrancar() {
   // La configuración se lee ANTES de montar nada: si la aplicación se monta
@@ -52,18 +51,17 @@ async function arrancar() {
   //
   // `GET /api/v1/localizacion` resuelve la jerarquía global → tier → tenant →
   // unidad → usuario y existe desde hace tiempo; el front no la leía y tenía
-  // `"es-ES"` escrito a mano en dieciséis sitios, así que un tenant en
-  // Portugal o en México veía sus números escritos como en España.
+  // La localización del tenant **no se pide aquí**: se pide en `App`, en
+  // cuanto se sabe quién ha entrado.
   //
-  // **No bloquea el arranque.** Si la petición falla —o todavía no hay
-  // sesión— se monta igual con el respaldo: una pantalla en blanco porque no
-  // se pudo leer un formato de fecha sería peor que un número con la coma en
-  // otro sitio. Cuando llega, los formateadores se rehacen.
+  // Se pedía en los dos sitios, y en el arranque no puede funcionar: todavía
+  // no hay sesión, el servidor responde 401 y el navegador lo escribe en rojo
+  // en la consola **cada vez que alguien abre la pantalla de entrada**. El
+  // valor no se usaba —`App` lo vuelve a pedir y ese sí llega—, así que lo
+  // único que aportaba era el error.
   //
-  // Se intenta aquí y **se vuelve a intentar al haber sesión** (en `App`): en
-  // el arranque puede no haberla todavía, y entonces esta llamada no devuelve
-  // nada útil.
-  void aplicarLocalizacion();
+  // Un error que sale siempre y no significa nada es donde se esconde el que
+  // sí importa: es la misma razón por la que el 404 de la marca dejó de serlo.
 
   const raiz = document.getElementById("root");
   if (!raiz) throw new Error("Falta el elemento #root");
