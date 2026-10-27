@@ -28,7 +28,7 @@
  * 26-10-2026 recorriendo la ruta de verdad.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Error as Fallo, Vacio } from "@/componentes/Estados";
@@ -103,12 +103,34 @@ interface Desplegado {
   que_significa?: string;
 }
 
+/** Un entorno declarado, de `GET /api/v1/entornos`. */
+interface Entorno {
+  nombre: string;
+  orden: number;
+  es_produccion: boolean;
+}
+
 export function Alm() {
   const { t } = useTranslation();
   const [entorno, setEntorno] = useState("produccion");
+  // Los entornos SE PIDEN. Estaban escritos a mano en el desplegable —cuatro
+  // `<option>`— mientras el servidor los publicaba: un entorno nuevo no
+  // aparecía aquí hasta que alguien editara el front, y el síntoma no era un
+  // error sino que ese entorno no existía para quien mira el desvío.
+  const [entornos, setEntornos] = useState<Entorno[] | null>(null);
   const [datos, setDatos] = useState<Drift | null>(null);
   const [puesto, setPuesto] = useState<Desplegado | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<{ items: Entorno[] }>("/api/v1/entornos", { signal: control.signal })
+      .then((r) => setEntornos(r.datos.items ?? []))
+      // Si no se pueden pedir, se queda el que hay seleccionado: mejor un
+      // desplegable con una opción que una pantalla que no deja mirar nada.
+      .catch(() => setEntornos([]));
+    return () => control.abort();
+  }, []);
 
   const mirar = async () => {
     setFallo(null);
@@ -149,10 +171,14 @@ export function Alm() {
             value={entorno}
             onChange={(e) => setEntorno(e.target.value)}
           >
-            <option value="desarrollo">desarrollo</option>
-            <option value="pruebas">pruebas</option>
-            <option value="preproduccion">preproducción</option>
-            <option value="produccion">producción</option>
+            {(entornos ?? [{ nombre: entorno, orden: 0, es_produccion: true }])
+              .slice()
+              .sort((a, b) => a.orden - b.orden)
+              .map((e) => (
+                <option key={e.nombre} value={e.nombre}>
+                  {e.nombre}
+                </option>
+              ))}
           </select>
         </div>
         <button

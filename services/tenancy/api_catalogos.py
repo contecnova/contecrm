@@ -304,6 +304,25 @@ def anadir_festivo(calendario_id: UUID, datos: CrearFestivo, uow: UowDep) -> Any
 
 
 @router_calendarios.get(
+    "/{calendario_id}",
+    response_model=CalendarioOut,
+    summary="Un calendario laboral",
+    description=(
+        "Existe porque de un calendario cuelgan sus festivos y el cálculo de "
+        "vencimiento, y **a un registro que no se abre no se llega desde "
+        "ninguna pantalla**: las dos rutas estaban publicadas y sin puerta.\n\n"
+        "De aquí salen los plazos de los SLA, así que un festivo que falta "
+        "mueve la fecha de resolución de todos los casos de ese día."
+    ),
+)
+def ver_calendario(calendario_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:
+    fila = db.get(CalendarioLaboral, calendario_id)
+    if fila is None:
+        raise NoEncontrado("Calendario no encontrado", error_code="tenancy.calendario_no_existe")
+    return fila
+
+
+@router_calendarios.get(
     "/{calendario_id}/festivos", response_model=list[FestivoOut], summary="Festivos del calendario"
 )
 def listar_festivos(calendario_id: UUID, db: DbDep, _: AutenticadoDep) -> Any:

@@ -43,6 +43,26 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         columnas: ["slug", "nombre", "estado", "plan", "region", "idioma"],
         permiso: "tenant:read",
       },
+      // Los calendarios laborales y los festivos: de ellos salen los plazos de
+      // los SLA, así que un festivo que falta mueve la fecha de resolución de
+      // todos los casos de ese día. Se publicaban y no se veían.
+      {
+        nombre: "Calendarios laborales",
+        // Con `objeto` para que la fila abra: los festivos y el cálculo de
+        // vencimiento cuelgan del calendario.
+        objeto: "calendario_laboral",
+        listar: "/api/v1/calendarios",
+        crear: "/api/v1/calendarios",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
+      {
+        nombre: "Plantillas del cliente",
+        listar: "/api/v1/plantillas",
+        crear: "/api/v1/plantillas",
+        servicio: "tenancy",
+        permiso: "tenant:read",
+      },
       { nombre: "Planes", listar: "/api/v1/planes", servicio: "tenancy" },
       { nombre: "Ajustes", listar: "/api/v1/ajustes", servicio: "tenancy" },
       {
@@ -149,8 +169,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/conectores/instalados",
         servicio: "integration",
       },
+      // La lista de canales, delante de los que no se han sabido atribuir: lo
+      // primero que se pregunta es cuáles hay, no cuáles fallaron.
       {
         nombre: "Canales de entrada",
+        objeto: "canal_entrada",
+        listar: "/api/v1/canales-entrada",
+        crear: "/api/v1/canales-entrada",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
+        nombre: "Entradas sin atribuir",
         listar: "/api/v1/canales-entrada/sin-atribuir",
         servicio: "integration",
       },
@@ -166,10 +196,32 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
       // El progreso de la migración, por delante de la lista de reglas: lo que
       // se pregunta cada semana es cuánto falta.
+      // Y las reglas que gobiernan ese progreso: se veía cuánto falta y no qué
+      // regla decide a quién le toca, que es lo que hay que cambiar para que
+      // avance.
+      {
+        nombre: "Migración: reglas",
+        objeto: "regla_convivencia",
+        listar: "/api/v1/convivencia",
+        crear: "/api/v1/convivencia",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       {
         nombre: "Migración: progreso",
         listar: "/api/v1/convivencia/progreso",
         servicio: "integration",
+      },
+      // Las sagas: lo que cruza servicios y hay que poder deshacer. Se
+      // publicaban desde el primer día y no salían en ninguna pantalla, así que
+      // una compensación a medias no la veía nadie.
+      {
+        nombre: "Sagas",
+        objeto: "saga",
+        listar: "/api/v1/sagas",
+        crear: "/api/v1/sagas",
+        servicio: "orchestrator",
+        permiso: "proceso:read",
       },
       {
         nombre: "Transportes",
@@ -216,6 +268,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         nombre: "Tipos de relación",
         listar: "/api/v1/metadata/relaciones/tipos",
         servicio: "metadata",
+      },
+      // Los entornos declarados. La pantalla de ALM los tenía escritos a mano
+      // en un desplegable mientras el servidor los publicaba: un entorno nuevo
+      // no aparecía hasta que alguien editara el front.
+      {
+        nombre: "Entornos",
+        objeto: "entorno",
+        listar: "/api/v1/entornos",
+        servicio: "metadata",
+        permiso: "metadata:read",
       },
       // Cómo se numera cada objeto: el patrón, el relleno, cuándo reinicia y
       // —lo que de verdad se viene a mirar— qué código saldría el siguiente.
@@ -266,6 +328,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "identity",
       },
       { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
+      // Quién ve lo de quién por regla, no por jerarquía. Se publicaba y no
+      // salía en ninguna parte: una regla de compartición que nadie ve es un
+      // acceso concedido que nadie audita.
+      {
+        nombre: "Reglas de compartición",
+        listar: "/api/v1/sharing-rules",
+        crear: "/api/v1/sharing-rules",
+        servicio: "identity",
+        permiso: "sharing:read",
+      },
       {
         nombre: "Proveedores de identidad",
         listar: "/api/v1/proveedores-identidad",
@@ -382,6 +454,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "integration",
         permiso: "integracion:read",
       },
+      // Y los buzones de verdad: qué correo y qué calendario de quién está
+      // conectado, con su estado. El consentimiento dice qué se autorizó; esto,
+      // qué está entrando.
+      {
+        nombre: "Buzones conectados",
+        objeto: "buzon",
+        listar: "/api/v1/buzones",
+        crear: "/api/v1/buzones",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       {
         nombre: "Consentimiento de suite",
         listar: "/api/v1/suites/consentimiento",
@@ -429,6 +512,27 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "party",
         columnas: ["nombre", "estado", "sector_codigo", "owner_id"],
         permiso: "account:read",
+      },
+      // El plan de cuenta: a qué se ha comprometido el equipo con este cliente
+      // este año. Se publicaba entero —plan, financiero, hitos— y no se llegaba
+      // desde ninguna pantalla.
+      {
+        nombre: "Planes de cuenta",
+        objeto: "plan_cuenta",
+        listar: "/api/v1/planes-cuenta",
+        crear: "/api/v1/planes-cuenta",
+        servicio: "party",
+        permiso: "party:read",
+      },
+      // Quién ha cambiado de empresa. Es calidad del dato y es una oportunidad:
+      // un contacto que se va a otra cuenta se lleva la relación.
+      {
+        nombre: "Cambios de empresa",
+        objeto: "cambio_de_empresa",
+        listar: "/api/v1/cambios-de-empresa",
+        crear: "/api/v1/cambios-de-empresa",
+        servicio: "party",
+        permiso: "party:read",
       },
       {
         nombre: "Contactos",
@@ -574,6 +678,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "sales",
         permiso: "quote:read",
         columnas: ["codigo", "estado", "total", "moneda", "valido_hasta"],
+      },
+      // El plan conjunto: lo acordado CON el cliente, con su calibración. Es
+      // del mismo ciclo que la oferta y el pedido, y se publicaba sin pestaña.
+      {
+        nombre: "Planes conjuntos",
+        objeto: "plan_conjunto",
+        listar: "/api/v1/planes-conjuntos",
+        crear: "/api/v1/planes-conjuntos",
+        servicio: "sales",
+        permiso: "sales:read",
       },
       {
         nombre: "Pedidos",

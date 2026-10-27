@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso
 from crmcore.http.pagination import PaginaDeListado
@@ -79,6 +80,39 @@ def listar_entornos() -> Any:
         ],
         "siguiente": None,
         "hay_mas": False,
+    }
+
+
+@router_entornos.get(
+    "/{entorno}",
+    dependencies=[Depends(exige_permiso("metadata:read"))],
+    summary="Un entorno, con lo que se puede preguntar de él",
+    description=(
+        "Existe porque de un entorno cuelgan cinco acciones —desplegar, "
+        "simular, mirar el desvío, volver atrás— y **a un registro que no se "
+        "abre no se llega desde ninguna pantalla**. Sin esta ruta, esas cinco "
+        "sólo se alcanzaban desde un desplegable escrito a mano.\n\n"
+        "Un nombre que no está en la lista responde 404 en vez de un entorno "
+        "vacío: «no existe» y «existe y no tiene nada» llevan a sitios "
+        "distintos."
+    ),
+)
+def ver_entorno(entorno: str) -> Any:
+    if entorno not in ENTORNOS:
+        raise NoEncontrado(
+            f"«{entorno}» no es un entorno de este sistema",
+            error_code="entorno.no_encontrado",
+            detalle={"entornos": list(ENTORNOS)},
+        )
+    i = ENTORNOS.index(entorno)
+    return {
+        "nombre": entorno,
+        "orden": i,
+        "es_produccion": entorno == "produccion",
+        # El siguiente del camino: es lo que se pregunta al promocionar, y
+        # calcularlo en el front obliga a conocer el orden en dos sitios.
+        "promociona_a": ENTORNOS[i + 1] if i + 1 < len(ENTORNOS) else None,
+        "viene_de": ENTORNOS[i - 1] if i > 0 else None,
     }
 
 

@@ -31,6 +31,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "sp": true
     },
     {
+      "r": "/api/v1/calendarios",
+      "p": "tenant:read"
+    },
+    {
+      "r": "/api/v1/plantillas",
+      "p": "tenant:read"
+    },
+    {
       "r": "/api/v1/localizacion"
     },
     {
@@ -87,6 +95,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/conectores/instalados"
     },
     {
+      "r": "/api/v1/canales-entrada",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/canales-entrada/sin-atribuir"
     },
     {
@@ -96,7 +108,15 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/federacion/vistas"
     },
     {
+      "r": "/api/v1/convivencia",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/convivencia/progreso"
+    },
+    {
+      "r": "/api/v1/sagas",
+      "p": "proceso:read"
     },
     {
       "r": "/api/v1/conectores/transportes"
@@ -115,6 +135,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/metadata/relaciones/tipos"
+    },
+    {
+      "r": "/api/v1/entornos",
+      "p": "metadata:read"
     },
     {
       "r": "/api/v1/sales/numeracion",
@@ -142,6 +166,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     },
     {
       "r": "/api/v1/claves-api"
+    },
+    {
+      "r": "/api/v1/sharing-rules",
+      "p": "sharing:read"
     },
     {
       "r": "/api/v1/proveedores-identidad"
@@ -198,6 +226,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "integracion:read"
     },
     {
+      "r": "/api/v1/buzones",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/suites/consentimiento",
       "p": "integracion:read"
     },
@@ -218,6 +250,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/accounts",
       "p": "account:read"
+    },
+    {
+      "r": "/api/v1/planes-cuenta",
+      "p": "party:read"
+    },
+    {
+      "r": "/api/v1/cambios-de-empresa",
+      "p": "party:read"
     },
     {
       "r": "/api/v1/contacts",
@@ -274,6 +314,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/presupuestos",
       "p": "quote:read"
+    },
+    {
+      "r": "/api/v1/planes-conjuntos",
+      "p": "sales:read"
     },
     {
       "r": "/api/v1/pedidos",
