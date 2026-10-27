@@ -194,6 +194,12 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // IdP caduca, quién tiene permisos incompatibles y por qué esta persona ve
   // esto. `user:read` porque es lo que exigen sus extremos.
   { area: "configuracion", a: "/seguridad", clave: "nav.seguridad", icono: "shield_person", permiso: "user:read" , recursos: ["factores", "sso-gobierno", "segregacion", "roles"] },
+  // El audit trail, las anomalías de exportación, el registro de tratamiento,
+  // la matriz de permisos y la papelera: rutas que el producto publica desde
+  // el primer día y a las que no se llegaba desde ninguna pantalla. Medido
+  // sobre el contrato: 477 colecciones GET sin un solo botón, 170 de ellas la
+  // misma ruta repetida en los catorce servicios.
+  { area: "configuracion", a: "/plataforma", clave: "nav.plataforma", icono: "shield_lock", permiso: "tenant:read" , recursos: ["grc"] },
   { area: "configuracion", a: "/alm", clave: "nav.alm", icono: "layers", permiso: "metadata:read" , recursos: ["entornos"] },
   // El recorrido guiado y la cobertura hablan **del producto**, no del trabajo
   // de nadie: estaban en Marketing, donde quien busca sus campañas se topa con

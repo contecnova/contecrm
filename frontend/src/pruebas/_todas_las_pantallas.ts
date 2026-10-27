@@ -31,6 +31,7 @@ export { Inteligencia } from "@/paginas/Inteligencia";
 export { Marketing } from "@/paginas/Marketing";
 export { Modulo } from "@/paginas/Modulo";
 export { Pipeline } from "@/paginas/Pipeline";
+export { Plataforma } from "@/paginas/Plataforma";
 export { Portal } from "@/paginas/Portal";
 export { Procesos } from "@/paginas/Procesos";
 export { Puesto } from "@/paginas/Puesto";

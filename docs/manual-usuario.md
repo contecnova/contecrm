@@ -812,6 +812,34 @@ Si tu empresa trabaja con entorno de pruebas y producción:
 - Y **lo que se borra, se borra también donde se copió**: en el lago de datos del
   cliente, en las audiencias de las plataformas y en las proyecciones internas.
 
+### Dónde se mira todo eso: «Plataforma y cumplimiento»
+
+En **Administrar › Plataforma y cumplimiento** están cuatro cosas que antes solo
+existían por API, es decir, que estaban hechas y no se podían ver:
+
+- **Quién tocó qué.** El registro de accesos, cambios, exportaciones y acciones
+  de administración, filtrable por acción y por objeto. Se consulta aquí y no
+  exportándolo a otra herramienta: «¿quién tocó esta cuenta?» se pregunta
+  mientras se mira la cuenta, y obligar a salir significa que casi nunca se
+  responde. Desde ahí se puede **volcar al SIEM** de tu empresa, en un formato
+  neutro que cualquiera lee.
+- **Lo que se salió de lo normal.** Las exportaciones y lecturas masivas de los
+  últimos treinta días, con cuántos registros salieron y si se bloquearon.
+- **Qué datos personales trata cada servicio**, con los huecos por delante: un
+  objeto con datos personales y sin tratamiento declarado sale señalado. Un
+  registro que se presenta completo sin serlo es peor que no tenerlo, porque
+  nadie vuelve a mirarlo. Y al lado, **quién puede hacer qué**, con los dos
+  agujeros opuestos: permisos que alguna pantalla exige y no tiene ningún rol
+  —funcionalidad muerta— y permisos concedidos que ninguna pantalla exige
+  —privilegios dados por si acaso—.
+- **Qué se puede recuperar.** Lo que hay en la papelera, lo primero lo que menos
+  tiempo le queda antes de purgarse, con cuántos registros se llevaría por
+  delante al restaurarlo.
+
+Arriba hay un **selector de servicio**, porque cada parte del sistema guarda lo
+suyo y la pregunta es la misma para todas. Lo alternativo eran setenta y ocho
+pestañas diciendo lo mismo, y en setenta y ocho pestañas no se encuentra nada.
+
 ---
 
 ## La interfaz oficial (sección 7.4)

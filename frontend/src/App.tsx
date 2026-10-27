@@ -79,6 +79,11 @@ const Conversacion = lazy(() =>
 const Seguridad = lazy(() =>
   import("@/paginas/Seguridad").then((m) => ({ default: m.Seguridad })),
 );
+// Diferida como el resto de las de administración: no la abre nadie al entrar,
+// y cargarla con el marco engorda lo que el navegador descarga antes de pintar.
+const Plataforma = lazy(() =>
+  import("@/paginas/Plataforma").then((m) => ({ default: m.Plataforma })),
+);
 // La ficha de cliente trae las acciones y el formulario, y con ellos la tabla
 // de pestañas. Diferida por lo mismo que las otras dos.
 const Cuenta = lazy(() => import("@/paginas/Cuenta").then((m) => ({ default: m.Cuenta })));
@@ -205,6 +210,7 @@ export function App() {
           <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
           <Route path="/estado" element={<Estado />} />
           <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />
+          <Route path="/plataforma" element={<Plataforma sesion={sesion} />} />
           <Route path="/cobertura" element={<Cobertura />} />
           <Route path="/chat" element={<Chat sesion={sesion} />} />
           <Route path="/recorrido" element={<Recorrido />} />

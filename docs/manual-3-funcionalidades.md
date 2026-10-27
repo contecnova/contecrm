@@ -4097,6 +4097,36 @@ enunciado, al código y a la prueba: es la trazabilidad puesta delante de quien
 la mira, en vez de enterrada en un fichero que solo abre quien ya sabe que
 existe.
 
+### Lo publicado que no tenía botón: «Plataforma y cumplimiento»
+
+Medido el 27-10-2026 cruzando el contrato publicado con el front: de 871
+colecciones `GET` publicadas, **477 no aparecían en ninguna pantalla**. Y 327
+formas distintas, de las cuales veinte eran **la misma ruta repetida en los
+catorce servicios** —papelera, rastro, cumplimiento, restauración, volumen,
+tokenización, retención—: 170 rutas que son la misma pregunta hecha a trece
+sitios.
+
+Eso descarta la solución evidente. Una pestaña por servicio y por familia son
+setenta y ocho pestañas que dicen lo mismo, y en setenta y ocho pestañas no se
+encuentra nada. La pantalla lleva **un selector de servicio arriba** y debajo
+cuatro preguntas, que no cambian: quién tocó qué, qué se salió de lo normal,
+qué datos personales trata esto y qué se puede recuperar.
+
+Lo que cubre, con su identificador: el audit trail inmutable
+(`CRM-00.05.04.01`), la auditoría de cambios de configuración y de permisos
+(`CRM-00.05.04.03`), su volcado a un SIEM (`CRM-00.05.04.04`), su consulta
+desde la propia plataforma (`CRM-00.05.04.05`), el control de exportaciones
+masivas (`CRM-00.05.03.06`), el registro de actividades de tratamiento
+(`CRM-07.03.01.04`), el informe de cumplimiento (`CRM-07.03.01.07`), la matriz
+de permisos (`CRM-07.03.02.09`) y la restauración selectiva
+(`CRM-00.06.02.03`). El recuento de capacidades sin pantalla declarada baja de
+426 a 415 en el mismo commit, que es lo que el trinquete exige.
+
+Lo que **no** declara, aunque lo roce: `CRM-00.05.04.06` —reconstruir un
+agregado desde sus eventos—, porque reconstruir pide el identificador de un
+registro concreto y su sitio es la ficha de ese registro. Declararlo aquí sería
+declarar lo que no se hace, que es justo lo que esa traza existe para impedir.
+
 ### El sistema de demostración poblado (`CRM-07.04.05.06`)
 
 Un tenant de muestra con cuatro cuentas sirve para comprobar que una pantalla

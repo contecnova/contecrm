@@ -87,6 +87,7 @@ export default {
     consola: "Consola de administración",
     estado: "Estado",
     seguridad: "Identidad y seguridad",
+    plataforma: "Plataforma y cumplimiento",
     cobertura: "Cobertura",
     recorrido: "Recorrido guiado",
     procesos: "Procesos en curso",
@@ -145,6 +146,50 @@ export default {
       "Un pipeline son las etapas por las que pasa una venta. Sin él no se pueden " +
       "dar de alta oportunidades.",
     irAConfigurar: "Crear un pipeline",
+  },
+  plataforma: {
+    titulo: "Plataforma y cumplimiento",
+    entradilla:
+      "Quién tocó qué, qué se salió de lo normal, qué datos personales trata " +
+      "cada servicio y qué se puede recuperar.",
+    servicio: "Servicio",
+    deEsteServicio: "De «{{servicio}}»",
+    auditoria: "Quién tocó qué",
+    auditoriaAyuda:
+      "El registro de accesos, cambios, exportaciones y acciones de " +
+      "administración. Se consulta aquí en vez de exportarlo a otra " +
+      "herramienta: «¿quién tocó esta cuenta?» se pregunta mientras se mira la " +
+      "cuenta, y obligar a salir significa que casi nunca se responde.",
+    volcarSiem: "Volcar al SIEM",
+    filtroAccion: "Filtrar por acción",
+    filtroObjeto: "Filtrar por objeto",
+    enNombreDe: "en nombre de otra persona",
+    sinApuntes: "Sin apuntes con ese filtro",
+    anomalias: "Lo que se salió de lo normal",
+    anomaliasAyuda:
+      "Exportaciones y lecturas masivas de los últimos treinta días, con " +
+      "cuántos registros salieron y si se bloquearon.",
+    bloqueada: "Bloqueada",
+    permitida: "Permitida",
+    sinAnomalias: "Nada fuera de lo normal en los últimos treinta días",
+    cumplimiento: "Datos personales y permisos",
+    cumplimientoAyuda:
+      "El registro de tratamiento de este servicio y quién puede hacer qué en " +
+      "él, derivado de las rutas montadas y de los permisos reales.",
+    tratamientos: "{{cuantos}} tratamientos declarados",
+    sinTratamiento: "{{cuantos}} objetos con datos personales y sin tratamiento declarado",
+    ratCompleto: "Todo objeto con datos personales tiene su tratamiento declarado",
+    permisos: "Permisos",
+    sinRol: "{{cuantos}} permisos que exige alguna ruta y no tiene ningún rol",
+    sinRuta: "{{cuantos}} permisos concedidos que ninguna ruta exige",
+    recuperable: "Qué se puede recuperar",
+    recuperableAyuda:
+      "Lo que hay en la papelera de este servicio, lo primero lo que menos " +
+      "tiempo le queda antes de purgarse.",
+    diasParaPurga: "{{dias}} d",
+    enCascada: "y {{cuantos}} registros colgando",
+    papeleraVacia: "No hay nada borrado pendiente de purgar",
+    restaurables: "Objetos restaurables: {{objetos}}",
   },
   cuenta: {
     datos: "Datos",

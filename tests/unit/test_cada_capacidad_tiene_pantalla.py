@@ -145,7 +145,23 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            propio campo, en Modelo de datos, asi que el
 #                            recuento no sube pese a que el catalogo tiene dos
 #                            capacidades hechas mas
-TOPE_SIN_PANTALLA = 426
+#   27-10-2026  415 de 778  pantalla de Plataforma y cumplimiento. Lo que la
+#                            destapo fue medir el contrato publicado contra el
+#                            front: 477 colecciones GET sin un solo boton, y
+#                            170 de ellas la MISMA ruta repetida en los
+#                            catorce servicios —papelera, rastro,
+#                            cumplimiento, restauracion, volumen,
+#                            tokenizacion—. Lo evidente, una pestana por
+#                            servicio y familia, son setenta y ocho pestanas
+#                            que dicen lo mismo. Con un selector de servicio
+#                            arriba y cuatro preguntas debajo se cubren diez
+#                            capacidades: el audit trail inmutable, la
+#                            auditoria de cambios de configuracion y permisos,
+#                            su volcado al SIEM, su consulta desde la propia
+#                            plataforma, el DLP de exportaciones, el RAT, el
+#                            informe de cumplimiento, la matriz de permisos y
+#                            la restauracion selectiva
+TOPE_SIN_PANTALLA = 415
 
 
 def _es_pantalla(p: Path) -> bool:
