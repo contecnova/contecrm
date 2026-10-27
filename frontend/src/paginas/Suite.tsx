@@ -157,11 +157,115 @@ export function SuiteGobierno() {
           están entrando— y juntarlas en el mismo bloque haría creer que una
           baja sin aplicar y un buzón parado se arreglan en el mismo sitio. */}
       <SaludDeLasSuites />
+      {/* Y lo que la suite sabe del cliente como un todo: su identidad tal
+          como la ven todas las herramientas, qué cambiaría una aplicación
+          antes de aplicarla, quién cambió qué y dónde acabó, y el certificado
+          de cierre. Las cuatro estaban servidas y sin pantalla. */}
+      <LaSuiteComoUnTodo />
 
       <p className="mt-6 text-3xs text-ink-faint">
         {t("suite.noEsControlRemoto")}
       </p>
     </>
+  );
+}
+
+/**
+ * Lo que la suite sabe del cliente, visto de una vez.
+ *
+ * Un gobierno de suite que sólo enseña herramienta a herramienta obliga a
+ * sumar de cabeza: en qué quedó aquel cambio, si lo que vamos a aplicar va a
+ * tocar algo que no esperamos, y si al dar de baja a alguien se cerró en todas
+ * partes o en casi todas.
+ *
+ * **Lo que se simula va antes de lo que se aplica**, y por eso está aquí: un
+ * cambio de identidad que se propaga a cinco herramientas no se deshace
+ * llamando a cinco soportes.
+ */
+function LaSuiteComoUnTodo() {
+  const { t } = useTranslation();
+  const [identidad, setIdentidad] = useState<Record<string, unknown> | null>(null);
+  const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
+  const [historial, setHistorial] = useState<Cambio[] | null>(null);
+  const [cierre, setCierre] = useState<Cierre | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    const opciones = { signal: control.signal };
+    // Cada una con su fallo: no poder leer el historial no puede dejar sin ver
+    // lo que está a punto de aplicarse, que es lo que tiene consecuencias.
+    void llamar<{ tenant: Record<string, unknown> }>("/api/v1/suite/identidad", opciones)
+      .then((r) => setIdentidad(r.datos.tenant ?? null))
+      .catch(() => undefined);
+    void llamar<Simulacion>("/api/v1/suite/simular", opciones)
+      .then((r) => setSimulacion(r.datos))
+      .catch(() => undefined);
+    void llamar<Cambio[]>("/api/v1/suite/historial", opciones)
+      .then((r) => setHistorial(Array.isArray(r.datos) ? r.datos : []))
+      .catch(() => undefined);
+    void llamar<Cierre>("/api/v1/suite/certificado-de-cierre", opciones)
+      .then((r) => setCierre(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  if (!identidad && !simulacion && !cierre) return null;
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("suite.comoUnTodo")}</h2>
+      <p className="mb-3 text-3xs text-ink-faint">{t("suite.comoUnTodoAyuda")}</p>
+
+      {/* Lo que se aplicaría, primero: es lo único de aquí que cambia algo. */}
+      {simulacion ? (
+        <p
+          className={
+            simulacion.total_a_aplicar > 0
+              ? "text-sm font-medium text-ink"
+              : "text-sm text-ink-muted"
+          }
+        >
+          {t("suite.aAplicar", {
+            cuantos: simulacion.total_a_aplicar,
+            ya: simulacion.ya_aplicadas,
+          })}
+        </p>
+      ) : null}
+
+      {identidad ? (
+        <p className="mt-1 text-3xs text-ink-muted">
+          {t("suite.identidad", {
+            nombre: String(identidad.nombre ?? "—"),
+            estado: String(identidad.estado ?? "—"),
+          })}
+        </p>
+      ) : null}
+
+      {/* El cierre: lo abierto delante de lo cerrado. Una baja que se cerró en
+          cuatro herramientas de cinco es un acceso que sigue abierto. */}
+      {cierre ? (
+        <p
+          className={`mt-1 text-3xs ${
+            (cierre.abiertas ?? []).length > 0 ? "text-danger" : "text-ink-faint"
+          }`}
+        >
+          {(cierre.abiertas ?? []).length > 0
+            ? t("suite.quedanAbiertas", { cuantas: cierre.abiertas.length })
+            : t("suite.todoCerrado", { cuantas: (cierre.cerradas ?? []).length })}
+        </p>
+      ) : null}
+
+      {historial?.length ? (
+        <ul className="mt-2 space-y-0.5">
+          {historial.slice(0, 5).map((cambio, i) => (
+            <li key={String(cambio.id ?? i)} className="text-3xs text-ink-muted">
+              {cambio.que ?? cambio.accion ?? "—"}
+              {cambio.herramienta ? ` · ${cambio.herramienta}` : ""}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 
@@ -348,6 +452,25 @@ interface SaludSuites {
   sin_medir: string[];
   en_sondeo: string[];
   todo_bien: boolean;
+}
+
+/** `GET /suite/simular`: qué se crearía, cambiaría o desactivaría. */
+interface Simulacion {
+  total_a_aplicar: number;
+  ya_aplicadas: number;
+}
+
+/** `GET /suite/certificado-de-cierre`: una baja, en todas las herramientas. */
+interface Cierre {
+  abiertas: string[];
+  cerradas: string[];
+}
+
+interface Cambio {
+  id?: string;
+  que?: string;
+  accion?: string;
+  herramienta?: string;
 }
 
 /** `GET /suites/credenciales/salud`: cuántas se miraron y cuáles piden algo. */

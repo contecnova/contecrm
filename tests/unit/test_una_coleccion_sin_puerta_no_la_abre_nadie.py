@@ -115,7 +115,12 @@ FRONT = RAIZ / "frontend/src"
 #                            cuatro pestañas: módulos instalados, avisos y
 #                            preferencias, perfiles de industria y aprobaciones
 #                            de activos.
-TOPE_SIN_PUERTA = 60
+#   27-10-2026   48 de 708  «la suite de una vez» —qué cambiaría lo que está a
+#                            punto de aplicarse, cómo ve el cliente la suite
+#                            entera y si las bajas se cerraron en TODAS las
+#                            herramientas—, tres medidas más y cinco rutas que
+#                            no llevan pantalla a propósito.
+TOPE_SIN_PUERTA = 48
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #
@@ -164,6 +169,20 @@ SIN_PUERTA_A_PROPOSITO: dict[str, str] = {
     # La portada del portal se compone de sus secciones, y el portal las pinta
     # una a una: pedirla además sería pedir dos veces lo mismo.
     "/api/v1/portal/mi/resumen": "el portal pinta sus secciones, que es lo que resume",
+    # La búsqueda por servicio: su puerta es la paleta, que llama a
+    # `/api/v1/buscar` y el gateway reparte. Una pantalla por servicio sería
+    # pedirle al usuario que sepa en cuál vive lo que busca.
+    "/api/v1/party/buscar": "la llama la búsqueda global, que sí tiene puerta",
+    "/api/v1/sales/buscar": "la llama la búsqueda global, que sí tiene puerta",
+    # Los valores admitidos de un vocabulario de negocio. La pantalla que los
+    # gobierna es la del vocabulario —donde además se cambian—: enseñar los dos
+    # caminos obligaría a saber cuál manda.
+    "/api/v1/leads/motivos-descarte": "los gobierna la pantalla de vocabularios de negocio",
+    "/api/v1/pipeline/motivos-perdida": "los gobierna la pantalla de vocabularios de negocio",
+    # El contrato de un módulo, para quien lo escribe. Es documentación, como
+    # el OpenAPI, y por eso no tiene pantalla: lo que sí la tiene es qué
+    # módulos hay instalados y si lo instalado es lo que se publicó.
+    "/api/v1/metadata/modulos/superficie": "documento de contrato del módulo, como el OpenAPI",
 }
 
 

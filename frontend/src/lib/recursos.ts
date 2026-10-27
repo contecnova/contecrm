@@ -285,6 +285,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Aprobaciones",
         listar: "/api/v1/aprobaciones",
+        // Lo que me toca decidir A MÍ, encima de todas las aprobaciones: la
+        // lista entera dice qué hay parado y la bandeja, qué está parado por mí.
+        resumen: ["/api/v1/aprobaciones/bandeja"],
         servicio: "orchestrator",
         permiso: "aprobacion:read",
         acciones: [
@@ -306,6 +309,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // desde ninguna pantalla, aunque la API los publique entera.
         objeto: "objeto",
         listar: "/api/v1/metadata/objetos",
+        // El mapa de relaciones del tenant, encima de los objetos: la lista dice
+        // cuáles hay y el mapa cómo se enganchan, que es lo que se mira antes de
+        // tocar una relación.
+        resumen: ["/api/v1/metadata/relaciones/grafo"],
         servicio: "metadata",
         columnas: ["nombre", "etiqueta", "origen", "activo"],
       },
@@ -1458,6 +1465,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       {
         nombre: "Controles",
         listar: "/api/v1/grc/controles",
+        // Del marco normativo a las capacidades que lo sostienen: un control sin
+        // saber a qué marco responde es trabajo que nadie sabe por qué se hace.
+        resumen: ["/api/v1/grc/marcos"],
         servicio: "tenancy",
         columnas: ["codigo", "nombre", "tipo", "frecuencia", "activo"],
         permiso: "tenant:read",

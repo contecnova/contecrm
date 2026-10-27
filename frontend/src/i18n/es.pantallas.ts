@@ -432,6 +432,14 @@ const pantallas = {
     suscripciones: "Suscripciones",
     suscripcionesAlDia: "Ninguna pendiente de renovar",
     sinCaducidadDeclarada: "sin caducidad declarada: no es «no caduca», es que no se sabe",
+    comoUnTodo: "La suite, de una vez",
+    comoUnTodoAyuda:
+      "Qué cambiaría lo que está a punto de aplicarse, cómo ve el cliente la " +
+      "suite entera y si las bajas se cerraron en TODAS las herramientas.",
+    aAplicar: "{{cuantos}} cambios por aplicar · {{ya}} ya aplicados",
+    identidad: "El cliente, para la suite: {{nombre}} ({{estado}})",
+    quedanAbiertas: "{{cuantas}} herramientas con accesos todavía abiertos",
+    todoCerrado: "Cerrado en las {{cuantas}} herramientas",
     titulo: "Gobierno de la suite",
     intro: "Las herramientas de la casa, quién entra en cada una y qué falta por aplicar.",
     sinHerramientas: "No hay herramientas conectadas",
