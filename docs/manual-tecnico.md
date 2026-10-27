@@ -424,6 +424,34 @@ El armazón son tres piezas y están en `frontend/src/componentes/`:
 | `BarraSuperior` | Dónde estás (miga de pan), buscar, tema y menú de usuario. |
 | `Paleta` | Ir a cualquier pantalla escribiendo su nombre (`⌘K` / `Ctrl+K`). |
 
+#### Lo que pesa abrir la aplicación
+
+Hay dos presupuestos y vigilan cosas distintas, los dos en
+`tests/unit/test_front_oficial.py`:
+
+- **La apertura** (118 kB comprimidos): lo que el navegador descarga antes de
+  pintar nada. Hoy son **88,3**.
+- **El conjunto** (190 kB): la suma de todos los trozos, contando lo que se
+  carga al abrir cada pantalla. Existe para que partir el paquete no sea la
+  forma de esconder el crecimiento — basta con diferir lo que engorda para que
+  el primer tope no se entere. Hoy son **184,8**.
+
+El bulto de la apertura era **el diccionario de idioma entero**, que viaja ahí
+porque hace falta para pintar la pantalla de acceso. Está partido: las
+diecisiete secciones que sólo usan pantallas diferidas viven en
+`i18n/es.pantallas.ts` y cada `lazy` **espera ese trozo antes de resolver su
+componente**. En paralelo habría una ventana de milisegundos con la clave de
+traducción escrita en la cabecera, que es el aspecto que tiene una interfaz
+rota.
+
+Cuáles se mueven no se eligió a ojo: se midió fichero a fichero qué sección usa
+cada pantalla, y las compartidas o del marco se quedan. Si una llegara tarde se
+vería la clave en crudo.
+
+**Y partir el diccionario no baja el total, lo sube**: 184,2 → 184,8 kB, porque
+un trozo de 5,5 kB comprime peor suelto que dentro del grande. Conviene saberlo
+antes de intentarlo otra vez.
+
 El árbol de navegación está en `lib/navegacion.ts` y lo leen las tres: una sola
 lista, porque tres que tienen que coincidir acaban no coincidiendo y la que se
 queda corta es siempre la del buscador.

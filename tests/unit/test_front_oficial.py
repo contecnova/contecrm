@@ -369,12 +369,47 @@ def test_el_front_es_accesible_por_teclado_y_para_lectores(  # noqa: D103
 #
 #   El tope vuelve a 118: tres kilobytes de margen sobre lo medido, que es un
 #   par de pantallas más, y sigue fallando si alguien mete una biblioteca.
+#   27-10-2026 · el diccionario, partido por fin
+#   ------------------------------------------------------------------------
+#   Las dos subidas anteriores dejaron escrito que el bulto era el DICCIONARIO
+#   DE IDIOMA ENTERO viajando en la apertura —hace falta para pintar el acceso—
+#   y que la forma correcta de quitarlo era partirlo por pantalla. Hecho: las
+#   diecisiete secciones que sólo usan pantallas diferidas viven en
+#   `i18n/es.pantallas.ts`, y cada `lazy` espera ese trozo ANTES de resolver su
+#   componente —en paralelo habría una ventana de milisegundos con
+#   `plataforma.titulo` escrito en la cabecera—.
+#
+#   Cuáles se mueven NO se eligió a ojo: se midió fichero a fichero qué sección
+#   usa cada pantalla, y las compartidas o del marco se quedan. Si una llegara
+#   tarde, se vería la clave en crudo.
+#
+#   Medido sobre el paquete construido: la apertura pasa de 93,3 a 88,3 kB
+#   comprimidos. El tope de apertura se queda en 118 —treinta de margen, que es
+#   mucho— porque bajarlo ahora congelaría el reparto actual de trozos.
 PRESUPUESTO_KB = 118
 
 # Y un tope para el conjunto, contando lo que se carga al abrir cada pantalla.
 # Sin él, partir el paquete sería la forma de esconder cualquier crecimiento:
 # basta con diferir lo que engorda para que el primer tope no se entere.
-PRESUPUESTO_TOTAL_KB = 180
+#
+#   27-10-2026  180 → 190 kB, y el motivo es el producto, no la grasa.
+#   ------------------------------------------------------------------------
+#   En un día entraron cuatro pantallas: «Plataforma y cumplimiento», la del
+#   objeto del modelo de datos, «Pendiente de firma» y el botón de exportar con
+#   sus textos. Las cuatro cubren rutas que el servidor publicaba y que no se
+#   alcanzaban desde ninguna parte, así que lo que crece es lo que se puede
+#   hacer, no lo que pesa de más.
+#
+#   **Y partir el diccionario no baja este número, lo sube**: 184,2 → 184,8 kB.
+#   Un trozo de 5,5 kB comprime peor suelto que dentro del grande. Queda dicho
+#   porque es contraintuitivo y porque el aviso de este gate —«diferir una
+#   pantalla la saca de la apertura, no del producto»— es exactamente eso: aquí
+#   no hay nada que diferir, sólo que justificar o que quitar. No se quita, se
+#   justifica.
+#
+#   190 deja cinco kilobytes sobre lo medido: un par de pantallas más, y sigue
+#   saltando si alguien mete una biblioteca.
+PRESUPUESTO_TOTAL_KB = 190
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

@@ -1,8 +1,9 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { Frontera } from "@/componentes/Frontera";
+import { cargarTextosDePantallas } from "@/i18n";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
 import { Consola } from "@/paginas/Consola";
@@ -33,73 +34,118 @@ import { cargarEntrada, type Sesion } from "@/lib/sesion";
  * una pieza: diferirlas cambiaría una espera de nada por un parpadeo en lo
  * que se abre veinte veces al día.
  */
-const Portal = lazy(() => import("@/paginas/Portal").then((m) => ({ default: m.Portal })));
-const Cobertura = lazy(() =>
-  import("@/paginas/Cobertura").then((m) => ({ default: m.Cobertura })),
+/**
+ * Una pantalla diferida, con sus textos delante.
+ *
+ * El diccionario de las pantallas viaja en su propio trozo para no cargarlo al
+ * abrir la aplicación, y se espera **antes** de resolver el componente: en
+ * paralelo quedaría una ventana de milisegundos con la clave de traducción
+ * escrita en la cabecera, que es el aspecto que tiene una interfaz rota.
+ */
+function pantalla<M, P>(cargar: () => Promise<M>, elegir: (modulo: M) => ComponentType<P>) {
+  return lazy(async () => {
+    const [modulo] = await Promise.all([cargar(), cargarTextosDePantallas()]);
+    return { default: elegir(modulo) };
+  });
+}
+
+const Portal = pantalla(
+  () => import("@/paginas/Portal"),
+  (m) => m.Portal,
 );
-const Estado = lazy(() =>
-  import("@/paginas/Estado").then((m) => ({ default: m.Estado })),
+const Cobertura = pantalla(
+  () => import("@/paginas/Cobertura"),
+  (m) => m.Cobertura,
 );
-const Recorrido = lazy(() =>
-  import("@/paginas/Recorrido").then((m) => ({ default: m.Recorrido })),
+const Estado = pantalla(
+  () => import("@/paginas/Estado"),
+  (m) => m.Estado,
 );
-const Alm = lazy(() =>
-  import("@/paginas/Alm").then((m) => ({ default: m.Alm })),
+const Recorrido = pantalla(
+  () => import("@/paginas/Recorrido"),
+  (m) => m.Recorrido,
 );
-const Ayuda = lazy(() =>
-  import("@/paginas/Ayuda").then((m) => ({ default: m.Ayuda })),
+const Alm = pantalla(
+  () => import("@/paginas/Alm"),
+  (m) => m.Alm,
 );
-const Inteligencia = lazy(() =>
-  import("@/paginas/Inteligencia").then((m) => ({ default: m.Inteligencia })),
+const Ayuda = pantalla(
+  () => import("@/paginas/Ayuda"),
+  (m) => m.Ayuda,
 );
-const Rendimiento = lazy(() =>
-  import("@/paginas/Rendimiento").then((m) => ({ default: m.Rendimiento })),
+const Inteligencia = pantalla(
+  () => import("@/paginas/Inteligencia"),
+  (m) => m.Inteligencia,
 );
-const SuiteGobierno = lazy(() =>
-  import("@/paginas/Suite").then((m) => ({ default: m.SuiteGobierno })),
+const Rendimiento = pantalla(
+  () => import("@/paginas/Rendimiento"),
+  (m) => m.Rendimiento,
 );
-const Explotacion = lazy(() =>
-  import("@/paginas/Explotacion").then((m) => ({ default: m.Explotacion })),
+const SuiteGobierno = pantalla(
+  () => import("@/paginas/Suite"),
+  (m) => m.SuiteGobierno,
 );
-const Cuadros = lazy(() =>
-  import("@/paginas/Cuadros").then((m) => ({ default: m.Cuadros })),
+const Explotacion = pantalla(
+  () => import("@/paginas/Explotacion"),
+  (m) => m.Explotacion,
 );
-const Coste = lazy(() =>
-  import("@/paginas/Coste").then((m) => ({ default: m.Coste })),
+const Cuadros = pantalla(
+  () => import("@/paginas/Cuadros"),
+  (m) => m.Cuadros,
 );
-const Conocimiento = lazy(() =>
-  import("@/paginas/Conocimiento").then((m) => ({ default: m.Conocimiento })),
+const Coste = pantalla(
+  () => import("@/paginas/Coste"),
+  (m) => m.Coste,
+);
+const Conocimiento = pantalla(
+  () => import("@/paginas/Conocimiento"),
+  (m) => m.Conocimiento,
 );
 // Diferida como las demás pantallas de ruta: estática, entraba en el módulo
 // de entrada y subía a 131 kB lo que se descarga antes de pintar nada, con un
 // tope de 130. A una conversación se entra desde la cola, no al abrir.
-const Conversacion = lazy(() =>
-  import("@/paginas/Conversacion").then((m) => ({ default: m.Conversacion })),
+const Conversacion = pantalla(
+  () => import("@/paginas/Conversacion"),
+  (m) => m.Conversacion,
 );
-const Seguridad = lazy(() =>
-  import("@/paginas/Seguridad").then((m) => ({ default: m.Seguridad })),
+const Seguridad = pantalla(
+  () => import("@/paginas/Seguridad"),
+  (m) => m.Seguridad,
 );
 // Diferida como el resto de las de administración: no la abre nadie al entrar,
 // y cargarla con el marco engorda lo que el navegador descarga antes de pintar.
-const Plataforma = lazy(() =>
-  import("@/paginas/Plataforma").then((m) => ({ default: m.Plataforma })),
+const Plataforma = pantalla(
+  () => import("@/paginas/Plataforma"),
+  (m) => m.Plataforma,
 );
-const ObjetoDelModelo = lazy(() =>
-  import("@/paginas/ObjetoDelModelo").then((m) => ({ default: m.ObjetoDelModelo })),
+const ObjetoDelModelo = pantalla(
+  () => import("@/paginas/ObjetoDelModelo"),
+  (m) => m.ObjetoDelModelo,
 );
-const PendienteDeFirma = lazy(() =>
-  import("@/paginas/PendienteDeFirma").then((m) => ({ default: m.PendienteDeFirma })),
+const PendienteDeFirma = pantalla(
+  () => import("@/paginas/PendienteDeFirma"),
+  (m) => m.PendienteDeFirma,
 );
 // La ficha de cliente trae las acciones y el formulario, y con ellos la tabla
 // de pestañas. Diferida por lo mismo que las otras dos.
-const Cuenta = lazy(() => import("@/paginas/Cuenta").then((m) => ({ default: m.Cuenta })));
+const Cuenta = pantalla(
+  () => import("@/paginas/Cuenta"),
+  (m) => m.Cuenta,
+);
 // Las dos que traen la tabla de pestañas (`recursos.ts`, 42 kB comprimidos).
 // Diferidas, esa tabla deja de viajar en el paquete de apertura y llega cuando
 // alguien abre un módulo — que es justo cuando hace falta.
-const Modulo = lazy(() => import("@/paginas/Modulo").then((m) => ({ default: m.Modulo })));
-const Ficha = lazy(() => import("@/paginas/Ficha").then((m) => ({ default: m.Ficha })));
-const Chat = lazy(() =>
-  import("@/paginas/Chat").then((m) => ({ default: m.Chat })),
+const Modulo = pantalla(
+  () => import("@/paginas/Modulo"),
+  (m) => m.Modulo,
+);
+const Ficha = pantalla(
+  () => import("@/paginas/Ficha"),
+  (m) => m.Ficha,
+);
+const Chat = pantalla(
+  () => import("@/paginas/Chat"),
+  (m) => m.Chat,
 );
 
 /**
