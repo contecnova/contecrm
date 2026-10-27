@@ -254,9 +254,10 @@ stateDiagram-v2
 | `POST /api/v1/metadata/modulos/{clave}/desinstalar` | Quitar un módulo diciendo qué pasa con los datos | clave*, aplicar, borrar_datos | 200, 422 | `module.uninstalled` |
 | `POST /api/v1/metadata/movil/sincronizar` | Qué hacer con la cola del móvil para «metadata» | operaciones, estrategia | 200, 422 | — |
 | `POST /api/v1/metadata/objetos` | Crear un objeto propio del tenant | nombre*, etiqueta*, etiqueta_plural, descripcion, icono, papelera, estados | 201, 422 | — |
-| `POST /api/v1/metadata/objetos/{nombre}/campos` | Añadir un campo a un objeto | nombre*, nombre*, etiqueta*, tipo*, ayuda, obligatorio, unico, solo_lectura, valor_defecto, restricciones, sensibilidad, orden | 201, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/campos` | Añadir un campo a un objeto | nombre*, nombre*, etiqueta*, tipo*, ayuda, obligatorio, unico, solo_lectura, solo_lectura_si, solo_lectura_salvo_origen, valor_defecto, restricciones, sensibilidad, orden | 201, 422 | — |
 | `DELETE /api/v1/metadata/objetos/{nombre}/campos/{campo}` | Deprecar un campo | nombre*, campo* | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/formulario` | El formulario que puede pintar cualquier front | nombre*, campos, secciones | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/materializar` | Materializar un campo como columna real (CRM-00.04.03.11) | nombre*, campo* | 202, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/publicar` | Publicar el esquema a todos los servicios | nombre*, nota | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/reglas` | Crear una regla de validación | nombre*, nombre*, mensaje*, condiciones*, combinacion, momento, estado_desde, estado_hasta | 201, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/renombrar-campo` | Empezar un renombrado compatible (CRM-00.04.01.10) | nombre*, desde*, hasta* | 200, 422 | — |
@@ -264,7 +265,7 @@ stateDiagram-v2
 | `PUT /api/v1/metadata/objetos/{nombre}/tipos/{clave}` | Crear o cambiar un tipo de registro | nombre*, clave*, nombre, layout, valores_lista, campos_ocultos, por_defecto | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/traducir-entrada` | Aceptar el nombre viejo de un campo y traducirlo al nuevo | nombre*, datos | 200, 422 | — |
 | `POST /api/v1/metadata/objetos/{nombre}/validar` | Validar un registro sin guardarlo | nombre*, datos*, parcial, exigir | 200, 422 | — |
-| `POST /api/v1/metadata/objetos/{nombre}/visibilidad` | Qué secciones y campos se ven con este registro delante | nombre*, secciones, registro | 200, 422 | — |
+| `POST /api/v1/metadata/objetos/{nombre}/visibilidad` | Qué secciones y campos se ven con este registro delante | nombre*, secciones, registro, origen | 200, 422 | — |
 | `PATCH /api/v1/metadata/objetos/{objeto_id}` | Editar objetos del modelo | objeto_id*, nombre, etiqueta, etiqueta_plural, descripcion, origen, icono, activo, papelera, estados | 200, 422 | — |
 | `DELETE /api/v1/metadata/objetos/{objeto_id}` | Borrar objetos del modelo | objeto_id* | 204, 422 | — |
 | `POST /api/v1/metadata/objetos/{objeto_id}/archivar` | Archivar objetos del modelo | objeto_id* | 200, 422 | — |
@@ -661,6 +662,7 @@ stateDiagram-v2
 | `POST /api/v1/party-admin/transferir-propiedad` | Traspasar todo lo de una persona a otra | de_usuario*, a_usuario*, motivo, simular | 200, 422 | — |
 | `POST /api/v1/party/compuesto` | Varias operaciones de «party» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/party/movil/sincronizar` | Qué hacer con la cola del móvil para «party» | operaciones, estrategia | 200, 422 | — |
+| `POST /api/v1/party/numeracion` | Declarar o cambiar cómo se numera un objeto | objeto*, patron*, relleno, reinicio, empezar_en | 200, 422 | — |
 | `POST /api/v1/party/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/party/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/party/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
@@ -761,6 +763,8 @@ stateDiagram-v2
 | `POST /api/v1/coste/respuestas` | Qué ha contestado cada proveedor, y quién no ha contestado | pedidas_a, respuestas, fecha_limite* | 200, 422 | — |
 | `POST /api/v1/cuotas` | Fijar una cuota | desde*, hasta*, objetivo*, usuario_id, equipo, territorio_id, periodo, metrica, moneda, familia, activa_desde, activa_hasta | 201, 422 | — |
 | `POST /api/v1/cuotas/cobertura` | Si hay pipeline suficiente para llegar | desde*, hasta*, pipeline_por_sujeto, logrado_por_sujeto, minimo | 200, 422 | — |
+| `POST /api/v1/cuotas/congelar` | Cerrar el objetivo de un periodo (CRM-03.02.02.08) | periodo*, motivo | 200, 422 | — |
+| `POST /api/v1/cuotas/descongelar` | Abrirlo otra vez, dejando constancia | periodo*, motivo* | 200, 422 | — |
 | `PATCH /api/v1/cuotas/{cuota_id}` | Editar cuotas | cuota_id*, usuario_id, equipo, territorio_id, partner_id, periodo, desde, hasta, metrica, objetivo, moneda, familia, activa_desde, activa_hasta | 200, 422 | — |
 | `DELETE /api/v1/cuotas/{cuota_id}` | Borrar cuotas | cuota_id* | 204, 422 | — |
 | `POST /api/v1/documentos/analisis-de-rama` | Pedir el resumen (o los conceptos) de una rama del corpus | carpetas*, que, pregunta, con_subcarpetas | 200, 422 | — |
@@ -770,6 +774,7 @@ stateDiagram-v2
 | `PUT /api/v1/documentos/organizacion` | Mapear este tenant a una organización del gestor | organizacion* | 200, 422 | — |
 | `POST /api/v1/documentos/{objeto_tipo}/{objeto_id}` | Enlazar un documento del corpus con un registro | objeto_tipo*, objeto_id*, documento_id*, titulo, tipo, rol, sistema, etiqueta | 201, 422 | — |
 | `DELETE /api/v1/documentos/{objeto_tipo}/{objeto_id}/{enlace_id}` | Quitar el enlace (no borra el documento) | objeto_tipo*, objeto_id*, enlace_id* | 204, 422 | — |
+| `POST /api/v1/embebido/formulario-alta` | Recoger un alta desde una web ajena | nombre, apellidos, empresa, email, telefono, mensaje, extra, trampa | 200, 422 | `lead.assigned`, `lead.created` |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `PUT /api/v1/forecast/oportunidades/{oportunidad_id}/categoria` | Poner una oportunidad en una categoría de previsión | oportunidad_id*, categoria* | 200, 422 | — |
 | `POST /api/v1/forecast/periodos` | Abrir un periodo de previsión | clave*, desde*, hasta*, nombre | 201, 422 | — |
@@ -893,6 +898,7 @@ stateDiagram-v2
 | `POST /api/v1/registros-oportunidad/{registro_oportunidad_id}/archivar` | Archivar registros de oportunidad | registro_oportunidad_id* | 200, 422 | — |
 | `POST /api/v1/sales/compuesto` | Varias operaciones de «sales» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/sales/movil/sincronizar` | Qué hacer con la cola del móvil para «sales» | operaciones, estrategia | 200, 422 | — |
+| `POST /api/v1/sales/numeracion` | Declarar o cambiar cómo se numera un objeto | objeto*, patron*, relleno, reinicio, empezar_en | 200, 422 | — |
 | `POST /api/v1/sales/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/sales/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/sales/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
@@ -1266,6 +1272,7 @@ stateDiagram-v2
 | `POST /api/v1/repuestos/{repuesto_id}/archivar` | Archivar repuestos | repuesto_id* | 200, 422 | — |
 | `POST /api/v1/service/compuesto` | Varias operaciones de «service» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/service/movil/sincronizar` | Qué hacer con la cola del móvil para «service» | operaciones, estrategia | 200, 422 | — |
+| `POST /api/v1/service/numeracion` | Declarar o cambiar cómo se numera un objeto | objeto*, patron*, relleno, reinicio, empezar_en | 200, 422 | — |
 | `POST /api/v1/service/papelera/purgar` | Destruir definitivamente lo que ya cumplió su plazo | motivo* | 200, 422 | — |
 | `POST /api/v1/service/papelera/{entrada_id}/restaurar` | Devolver un registro a la vida | entrada_id* | 200, 422 | — |
 | `POST /api/v1/service/restauracion` | Devolver registros concretos a como estaban | exportacion*, objeto*, ids*, desde, forzar_modificados | 200, 422 | — |
@@ -1487,9 +1494,9 @@ llamada de nadie.
 | `journey.entered` | marketing | recorrido, en_recorrido_id, objeto_id | `POST /api/v1/recorridos/{recorrido_id}/entrar` | — |
 | `journey.exited` | marketing | en_recorrido_id, recorrido_id, objeto_id, motivo | `POST /api/v1/recorridos/avanzar`, `POST /api/v1/recorridos/inscritos/{en_recorrido_id}/salir` | — |
 | `knowledge.published` | service | articulo_id, clave, idioma, version, audiencia | `POST /api/v1/conocimiento/{articulo_id}/publicar` | — |
-| `lead.assigned` | sales | lead_id, asignado_a, regla | `POST /api/v1/leads` | — |
+| `lead.assigned` | sales | lead_id, asignado_a, regla | `POST /api/v1/embebido/formulario-alta`, `POST /api/v1/leads` | — |
 | `lead.converted` | sales | lead_id, cuenta_id, contacto_id, oportunidad_id | `POST /api/v1/leads/{lead_id}/convertir` | — |
-| `lead.created` | sales | lead_id, origen | `POST /api/v1/leads` | — |
+| `lead.created` | sales | lead_id, origen | `POST /api/v1/embebido/formulario-alta`, `POST /api/v1/leads` | — |
 | `lead.qualified` | sales | lead_id | `POST /api/v1/puntuacion/leads/{lead_id}` | — |
 | `metadata.schema.changed` | metadata | objeto, cambio, campos, version | un proceso de fondo | — |
 | `module.installed` | metadata | modulo, version, elementos, conectores | `POST /api/v1/metadata/modulos/instalar` | — |

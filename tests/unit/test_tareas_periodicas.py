@@ -151,9 +151,17 @@ def test_un_tenant_que_falla_no_para_a_los_siguientes() -> None:
 
 
 def test_sin_tenants_que_barrer_no_falla(caplog: Any) -> None:
-    """Cero tenants con trabajo es un caso normal, no un error."""
+    """Cero tenants con trabajo es un caso normal, no un error.
+
+    La igualdad es exacta a propósito: la salida la pinta la página de estado,
+    y un campo que aparece sin que nadie lo espere se queda sin sitio donde
+    enseñarse. Por eso aquí está también `de_otro_pool`, que entró con el
+    reparto por pool de cómputo — **cero no es lo mismo que ausente**: sin ese
+    número, un proceso mal configurado barre cero tenants y su salida es
+    idéntica a la de un sistema sin trabajo pendiente.
+    """
     salida = por_tenant(lambda: [], lambda _t: {})()
-    assert salida == {"tenants": 0, "fallidos": 0, "cuales": []}
+    assert salida == {"tenants": 0, "fallidos": 0, "cuales": [], "de_otro_pool": 0}
 
 
 # ── El monitor de salud lo enseña ─────────────────────────────────────────

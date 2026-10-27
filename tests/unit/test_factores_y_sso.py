@@ -780,3 +780,141 @@ def test_sin_usuarios_no_se_dice_cien_por_cien(
     panel = factores.adopcion_mfa(db, tenant_id)
     assert panel["medible"] is False
     assert panel["adopcion_pct"] is None
+
+
+# ── Y por la ruta, no sólo por la función (CRM-00.05.01.06) ───────────────
+
+
+@pytest.fixture
+def cliente_identidad(db: Any) -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = os.environ.get("OUTBOX_ENABLED")
+    os.environ["OUTBOX_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        modulo = importlib.import_module("services.identity.main")
+        with TestClient(modulo.app) as cli:
+            yield cli
+    finally:
+        if previo is None:
+            os.environ.pop("OUTBOX_ENABLED", None)
+        else:
+            os.environ["OUTBOX_ENABLED"] = previo
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def cabeceras_identidad(tenant_id: UUID) -> dict[str, str]:
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    return firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(uuid4()),
+            H_PERMISOS: "*:*",
+            H_ROLES: "admin",
+            H_FACTOR_FUERTE: datetime.now(timezone.utc).isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+@pytest.mark.db
+def test_el_panel_de_mfa_llega_entero_por_la_ruta(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    cliente_identidad: Any,
+    cabeceras_identidad: dict[str, str],
+) -> None:
+    """La pantalla de seguridad declara esta forma; aquí se comprueba que llega.
+
+    Se probaba `adopcion_mfa()` llamando a la función, no `GET
+    /api/v1/factores/adopcion`. Son dos cosas distintas: entre la función y la
+    pantalla están el permiso, el serializador y el nombre de cada campo, y por
+    ahí es por donde se rompe sin que nadie se entere —el panel se queda en
+    blanco y parece que no hay nadie sin MFA, que es lo contrario de lo que
+    pasa—. Es el circuito abierto de siempre: las dos mitades existen y nadie
+    había recorrido lo que las une.
+    """
+    con = _usuario(db, tenant_id, "con.ruta@ejemplo.com")
+    con.mfa_activo = True
+    _usuario(db, tenant_id, "sin.ruta@ejemplo.com")
+    db.flush()
+
+    r = cliente_identidad.get("/api/v1/factores/adopcion", headers=cabeceras_identidad)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+
+    # Campo a campo, con el nombre que la pantalla usa: que falte uno es
+    # exactamente el fallo que esto existe para cazar.
+    for campo in (
+        "total_usuarios",
+        "con_factor",
+        "sin_factor",
+        "adopcion_pct",
+        "medible",
+        "mfa_obligatoria",
+        "usuarios_sin_factor",
+        "canales_debiles_activos",
+        "aviso",
+    ):
+        assert campo in cuerpo, f"la pantalla lee «{campo}» y la ruta no lo manda"
+
+    assert cuerpo["medible"] is True
+    assert cuerpo["con_factor"] == 1 and cuerpo["sin_factor"] == 1
+    # La lista de los que faltan, que es para lo que está el panel: el
+    # porcentaje solo no dice con quién hay que hablar.
+    assert [u["email"] for u in cuerpo["usuarios_sin_factor"]] == ["sin.ruta@ejemplo.com"]
+    assert set(cuerpo["usuarios_sin_factor"][0]) >= {"usuario_id", "email", "nombre", "roles"}
+
+
+@pytest.mark.db
+def test_sin_permiso_de_usuarios_el_panel_de_mfa_no_se_abre(
+    db: Any,
+    tenant_id: UUID,
+    contexto_tenant: UUID,
+    cliente_identidad: Any,
+) -> None:
+    """Quién no tiene MFA es una lista de personas: no la ve cualquiera."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_FACTOR_FUERTE,
+        H_PERMISOS,
+        H_ROLES,
+        H_TENANT,
+        H_USER,
+        firmar_cabeceras_internas,
+    )
+
+    sin_permiso = firmar_cabeceras_internas(
+        {
+            H_TENANT: str(tenant_id),
+            H_USER: str(uuid4()),
+            H_PERMISOS: "caso:read",
+            H_ROLES: "agente",
+            H_FACTOR_FUERTE: datetime.now(timezone.utc).isoformat(),
+        },
+        get_settings().secret_key.get_secret_value(),
+    )
+    r = cliente_identidad.get("/api/v1/factores/adopcion", headers=sin_permiso)
+    assert r.status_code == 403, r.text
