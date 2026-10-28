@@ -27,7 +27,8 @@ const pantallas = {
     entorno: "Entorno",
     verDesvio: "Ver desvío",
     sinPaquete: "No hay ningún paquete desplegado",
-    noComparado: "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",
+    noComparado:
+      "Sin comparar: {{tipos}}. De eso no se dice nada, no se ha mirado.",
     puesto: "Puesto aquí: {{paquete}} v{{version}} · {{git}}",
     sinGit: "sin referencia de repositorio (montado desde la consola)",
     tipo: "Tipo",
@@ -38,7 +39,8 @@ const pantallas = {
     titulo: "Ayuda",
     intro: "El manual, abierto por donde estás.",
     abrirCapitulo: "Abrir el capítulo de {{capitulo}}",
-    sinCapitulo: "Esta pantalla todavía no tiene capítulo asociado en el manual.",
+    sinCapitulo:
+      "Esta pantalla todavía no tiene capítulo asociado en el manual.",
     otros: "Los dos manuales completos",
     manualUsuario: "Manual de usuario",
     manualTecnico: "Manual técnico",
@@ -65,7 +67,8 @@ const pantallas = {
     buscar: "Buscar duplicados ahora",
     buscando: "Buscando…",
     soloPendientes: "Sólo las que faltan por decidir",
-    resultadoBarrido: "Revisadas {{revisadas}} fichas, {{propuestas}} parejas nuevas.",
+    resultadoBarrido:
+      "Revisadas {{revisadas}} fichas, {{propuestas}} parejas nuevas.",
     ninguna: "No hay ninguna pareja por decidir",
     ningunaDetalle:
       "O no hay duplicados, o nadie ha pasado el barrido todavía. El botón de arriba lo pasa sobre todo el maestro, no sólo sobre lo que entre a partir de ahora.",
@@ -98,20 +101,23 @@ const pantallas = {
     elige: "Elige un agente",
     modoIterativo: "decide sobre la marcha",
     quePides: "Qué quieres",
-    ejemplo: "Por ejemplo: qué cuentas llevan más de dos meses sin contacto y tienen una oportunidad abierta.",
+    ejemplo:
+      "Por ejemplo: qué cuentas llevan más de dos meses sin contacto y tienen una oportunidad abierta.",
     planificar: "Preparar el plan",
     noEjecutaNada: "Esto no ejecuta nada todavía: devuelve el plan.",
     seguir: "Dar el siguiente paso",
     trabajando: "Trabajando…",
     tokens: "{{tokens}} tokens",
     sinPasos: "El agente no ha propuesto ningún paso para esto.",
-    haPensado: "Ha decidido el siguiente paso con el resultado del anterior delante:",
+    haPensado:
+      "Ha decidido el siguiente paso con el resultado del anterior delante:",
     paroPorque: "Paró porque:",
     pidioLoQueNoTiene: "Ha pedido una herramienta que no tiene declarada:",
     autorizar: "Autorizar",
     rechazar: "No lo hagas",
     esperaAPersona_one: "Hay un paso esperando a que alguien lo autorice.",
-    esperaAPersona_other: "Hay {{count}} pasos esperando a que alguien los autorice.",
+    esperaAPersona_other:
+      "Hay {{count}} pasos esperando a que alguien los autorice.",
     deshacer: "Deshacer lo hecho",
     noTodoSeDeshace:
       "Esto no se deshace del todo. No tiene vuelta atrás, y se quedará como está:",
@@ -144,9 +150,11 @@ const pantallas = {
     delCliente: "del cliente",
     nuestro: "nuestro",
     interna: "nota interna",
-    soloLectura: "Puedes leer la conversación; responder necesita permiso de escritura.",
+    soloLectura:
+      "Puedes leer la conversación; responder necesita permiso de escritura.",
     respuesta: "Respuesta",
-    esNotaInterna: "Es una nota interna (no se manda al cliente ni cuenta como primera respuesta)",
+    esNotaInterna:
+      "Es una nota interna (no se manda al cliente ni cuenta como primera respuesta)",
     responder: "Responder al cliente",
     dejarNota: "Dejar la nota",
     escalar: "Escalar a una persona",
@@ -212,10 +220,12 @@ const pantallas = {
     nuevaActividad: "Registrar actividad",
     nuevaOportunidad: "Nueva oportunidad",
     sinDato: "sin dato",
-    sinMetricas: "Ninguna métrica ha llegado todavía desde los demás servicios.",
+    sinMetricas:
+      "Ninguna métrica ha llegado todavía desde los demás servicios.",
     sinDatoDe: "Sin dato de: {{metricas}}.",
     deHace: "de hace {{dias}} d",
-    caducada: "El dato está caducado: se enseña con su antigüedad en vez de como si acabara de llegar.",
+    caducada:
+      "El dato está caducado: se enseña con su antigüedad en vez de como si acabara de llegar.",
   },
   estado: {
     titulo: "Estado del servicio",
@@ -230,12 +240,15 @@ const pantallas = {
     medido: "Medido",
     noSeMide: "no se mide desde aquí",
     slo: "Objetivo de servicio y presupuesto de error",
-    sinMedicion: "{{cuantos}} sin medición: de ésos no se dice nada, no están en verde",
+    sinMedicion:
+      "{{cuantos}} sin medición: de ésos no se dice nada, no están en verde",
     objetivo: "{{objetivo}} % · {{minutos}} min de margen",
     consumo: "Consumo sobre lo contratado",
     entreServicios: "Entre servicios",
-    contratosEnVerde: "Lo que cada servicio promete en sus eventos está llegando.",
-    contratosRotos: "{{cuantos}} promesas entre servicios no se están cumpliendo.",
+    contratosEnVerde:
+      "Lo que cada servicio promete en sus eventos está llegando.",
+    contratosRotos:
+      "{{cuantos}} promesas entre servicios no se están cumpliendo.",
     sinRespuesta: "{{cuantos}} no han contestado",
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
   },
@@ -288,7 +301,8 @@ const pantallas = {
     nuncaEscrito: "nunca escrito",
     escrituras: "{{cuantas}} escrituras",
     materializado: "Columna real",
-    sinUsar: "{{cuantos}} campos sin una sola escritura: son los candidatos a retirar.",
+    sinUsar:
+      "{{cuantos}} campos sin una sola escritura: son los candidatos a retirar.",
     reglas: "Validaciones",
     reglasAyuda:
       "Con el mensaje que verá quien las incumpla: es la mitad de la regla, y " +
@@ -338,8 +352,10 @@ const pantallas = {
       "El registro de tratamiento de este servicio y quién puede hacer qué en " +
       "él, derivado de las rutas montadas y de los permisos reales.",
     tratamientos: "{{cuantos}} tratamientos declarados",
-    sinTratamiento: "{{cuantos}} objetos con datos personales y sin tratamiento declarado",
-    ratCompleto: "Todo objeto con datos personales tiene su tratamiento declarado",
+    sinTratamiento:
+      "{{cuantos}} objetos con datos personales y sin tratamiento declarado",
+    ratCompleto:
+      "Todo objeto con datos personales tiene su tratamiento declarado",
     permisos: "Permisos",
     sinRol: "{{cuantos}} permisos que exige alguna ruta y no tiene ningún rol",
     sinRuta: "{{cuantos}} permisos concedidos que ninguna ruta exige",
@@ -400,7 +416,8 @@ const pantallas = {
     titulo: "Rendimiento",
     intro: "Cuánto hay, cuánto cabe y qué se está aplazando ahora mismo.",
     queSeAplaza: "Qué se está aplazando",
-    sinRespuesta: "No han contestado: {{servicios}}. No cuentan como tranquilos.",
+    sinRespuesta:
+      "No han contestado: {{servicios}}. No cuentan como tranquilos.",
     limites: "Límites del plan",
     recurso: "Recurso",
     usado: "Usado",
@@ -462,7 +479,8 @@ const pantallas = {
       sinReglasDetalle:
         "Sin reglas no hay conflictos que encontrar. Se declaran en segregación de funciones.",
       ninguna: "Nadie tiene hoy permisos incompatibles",
-      ningunaDetalle: "Con las reglas declaradas hoy, y sobre los permisos efectivos de ahora.",
+      ningunaDetalle:
+        "Con las reglas declaradas hoy, y sobre los permisos efectivos de ahora.",
       conExcepcion: "con excepción vigente",
     },
     explicador: {
@@ -477,6 +495,25 @@ const pantallas = {
     },
   },
   suite: {
+    noConecta: "Esto no conecta: ¿qué falta exactamente?",
+    noConectaPorque:
+      "«Error de autenticación» no dice si es la contraseña, el permiso, el inquilino o el reloj — y probándolo todo se acaba pidiendo permisos de administrador global «para descartar». Pega aquí lo que diga el proveedor y te decimos qué pasa.",
+    codigoHttp: "Código que devuelve (401, 403, 429…)",
+    mensajeDelProveedor: "Mensaje del proveedor, tal cual",
+    alcancesConcedidos: "Alcances concedidos, separados por comas",
+    alcancesNecesarios: "Alcances necesarios, separados por comas",
+    queFalla: "Dime qué falla",
+    mirando: "Mirando…",
+    faltanEstos: "Faltan:",
+    antesDeDesconectar: "Antes de desconectar: qué se queda y qué se va",
+    antesDeDesconectarPorque:
+      "No es simétrico, y por eso se enseña entero: las actividades registradas se quedan —son el histórico de la empresa— y la copia de su agenda se va, porque era suya.",
+    porQueSeDesconecta: "Por qué se desconecta",
+    motivoRevocacion: "La persona ha revocado el permiso",
+    motivoBaja: "La persona se va de la empresa",
+    motivoFinContrato: "Se acaba el contrato con la suite",
+    seQueda: "Se queda en el CRM",
+    seBorra: "Desaparece",
     saludSuites: "Correo, calendario y contactos de cada uno",
     saludSuitesAyuda:
       "Qué buzón lleva sin sincronizar y por qué, qué credenciales van a dejar " +
@@ -491,14 +528,16 @@ const pantallas = {
     enSondeo:
       "{{cuantas}} van por sondeo porque no se pudo renovar su suscripción: sus " +
       "cambios entran con retraso, no al instante.",
-    sinMedir: "{{cuantas}} sin medir: de ésas no se dice nada, no se han mirado.",
+    sinMedir:
+      "{{cuantas}} sin medir: de ésas no se dice nada, no se han mirado.",
     credenciales: "Credenciales",
     credencialesAlDia: "Ninguna de las {{revisados}} pide nada",
     credencialesSinRevisar:
       "Ninguna credencial que revisar: nadie ha autorizado todavía su correo ni su calendario.",
     suscripciones: "Suscripciones",
     suscripcionesAlDia: "Ninguna pendiente de renovar",
-    sinCaducidadDeclarada: "sin caducidad declarada: no es «no caduca», es que no se sabe",
+    sinCaducidadDeclarada:
+      "sin caducidad declarada: no es «no caduca», es que no se sabe",
     comoUnTodo: "La suite, de una vez",
     comoUnTodoAyuda:
       "Qué cambiaría lo que está a punto de aplicarse, cómo ve el cliente la " +
@@ -508,7 +547,8 @@ const pantallas = {
     quedanAbiertas: "{{cuantas}} herramientas con accesos todavía abiertos",
     todoCerrado: "Cerrado en las {{cuantas}} herramientas",
     titulo: "Gobierno de la suite",
-    intro: "Las herramientas de la casa, quién entra en cada una y qué falta por aplicar.",
+    intro:
+      "Las herramientas de la casa, quién entra en cada una y qué falta por aplicar.",
     sinHerramientas: "No hay herramientas conectadas",
     sinHerramientasPorque:
       "Un «todo bien» aquí haría creer que el cliente está en la suite cuando solo está en el CRM.",
@@ -516,7 +556,8 @@ const pantallas = {
     estado: "Estado",
     bajas: "Bajas sin aplicar",
     ultimoError: "Último error",
-    bajasSinAplicar: "{{cuantas}} bajas sin aplicar: son accesos que siguen abiertos.",
+    bajasSinAplicar:
+      "{{cuantas}} bajas sin aplicar: son accesos que siguen abiertos.",
     sinBajasPendientes: "No hay bajas pendientes de aplicar.",
     cuarentena: "{{cuantas}} elementos en cuarentena.",
     queSeMando: "Qué se mandó",

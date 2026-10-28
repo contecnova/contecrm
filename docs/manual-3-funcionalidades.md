@@ -12567,6 +12567,23 @@ escribió — cosa que acaba en la comisión de alguien. Y cuando una dirección
 declarada en dos usuarios no se elige: se dice que es ambigua, porque elegir haría
 que la misma conversación se atribuyera a uno u otro según el día.
 
+**Dónde se preguntan las dos cosas del momento malo.** En la pantalla de
+**Suite**, al final, hay dos recuadros que contestan lo que uno se pregunta
+justo cuando algo falla:
+
+- *«Esto no conecta: ¿qué falta exactamente?»* — se pega el código que devuelve
+  el proveedor, su mensaje tal cual, y los alcances que tiene y los que hacen
+  falta. Los alcances se escriben **separados por comas, como los lista la
+  pantalla de consentimiento del proveedor**: pedirlos en otro formato sería
+  pedirle al consultor que haga de traductor para poder usar la herramienta.
+- *«Antes de desconectar: qué se queda y qué se va»* — con el motivo elegido
+  (revocó el permiso, se va de la empresa, se acaba el contrato) y **las dos
+  mitades a la vez**. Enseñar sólo lo que desaparece asusta y entonces nadie
+  desconecta; enseñar sólo lo que se queda engaña.
+
+Las dos las contestaba el servidor desde el primer día y no había dónde
+hacerlas.
+
 **El diagnóstico.** «Error de autenticación» es el mensaje que atasca una
 implantación una semana: el consultor no sabe si es la contraseña, el permiso, el
 inquilino o el reloj, así que lo prueba todo y acaba pidiendo permisos de

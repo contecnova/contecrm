@@ -223,7 +223,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            esta: las otras tres ya estaban declaradas y el
 #                            tope se habia quedado alto. Medido antes de
 #                            tocar nada: 398
-TOPE_SIN_PANTALLA = 397
+#   28-10-2026  395 de 778  las dos preguntas que se hacen cuando la suite de
+#                            productividad falla, y que el servidor contestaba
+#                            desde el primer dia sin que hubiera donde
+#                            hacerlas: «esto no conecta, que falta
+#                            exactamente» —que es lo que evita que una
+#                            implantacion se atasque una semana probandolo
+#                            todo y acabe pidiendo permisos de administrador
+#                            global «para descartar»— y «si lo desconecto, que
+#                            me llevo y que se queda», que nadie se atreve a
+#                            hacer sin saberlo. Las 29 operaciones de la suite
+#                            son casi todas POST —calculadoras, no listados—,
+#                            asi que lo que falta ahi no son pestanas: son las
+#                            preguntas concretas que alguien se hace
+TOPE_SIN_PANTALLA = 395
 
 
 def _es_pantalla(p: Path) -> bool:
