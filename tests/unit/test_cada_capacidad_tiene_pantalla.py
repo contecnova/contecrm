@@ -344,7 +344,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            que es como se aplican, y las apagadas se ven:
 #                            una regla apagada es lo que explica que algo
 #                            dejara de pasar
-TOPE_SIN_PANTALLA = 360
+#   28-10-2026  355 de 778  la explotacion delegada. Cuatro las HACIA YA y no
+#                            las declaraba —canjea la credencial por un token
+#                            del usuario, registra el CRM como fuente, guarda y
+#                            publica preguntas y explica la degradacion
+#                            diciendo que SIGUE funcionando— y la quinta no
+#                            existia en el front: preguntar sobre el registro
+#                            que se esta mirando, desde su ficha. Esa se hace
+#                            delante del dato, que es donde se le ocurre a
+#                            alguien, y ENSEÑA EL FILTRO con el que se
+#                            contesto: un numero que parece de toda la empresa
+#                            y es de una cuenta no cuadra con nada en la
+#                            reunion siguiente, y para cuando se descubre ya se
+#                            ha dicho en voz alta
+TOPE_SIN_PANTALLA = 355
 
 
 def _es_pantalla(p: Path) -> bool:

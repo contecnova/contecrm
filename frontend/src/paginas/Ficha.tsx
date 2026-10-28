@@ -40,7 +40,7 @@ import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
 import { accionesDe, subColeccionesDe } from "@/lib/acciones";
 import { useSuperficie } from "@/lib/permisos";
-import { llamar, salvoCancelacion, subir } from "@/lib/api";
+import { ErrorApi, llamar, salvoCancelacion, subir } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -253,6 +253,11 @@ function Datos({
               alRegistrar={cargar}
             />
           ) : null}
+          {/* Y preguntar sobre ESTE registro (CRM-05.01.04.09). La pregunta se
+              hace aquí, delante del dato, que es donde se le ocurre a alguien;
+              obligar a irse a la pantalla de explotación y volver a escribir de
+              qué cuenta se habla es como se deja de preguntar. */}
+          {objeto ? <PreguntarSobreEsto objeto={objeto} objetoId={id} /> : null}
         </>
       ) : null}
 
@@ -756,6 +761,84 @@ function BuscarEnElCorpus({
           ))}
         </ul>
       ) : null}
+    </section>
+  );
+}
+
+
+/**
+ * Preguntar sobre el registro que se está mirando (CRM-05.01.04.09).
+ *
+ * La pregunta se hace **delante del dato**, que es donde se le ocurre a
+ * alguien. Obligar a irse a la pantalla de explotación y volver a escribir de
+ * qué cuenta se habla es como se deja de preguntar.
+ *
+ * Lo que no se negocia: **el filtro se enseña**. El servidor lo añade —no lo
+ * sugiere— y devuelve la pregunta tal como quedó, porque un número que parece
+ * de toda la empresa y es de una cuenta no cuadra con nada en la reunión
+ * siguiente, y para cuando se descubre ya se ha dicho en voz alta.
+ */
+export function PreguntarSobreEsto({ objeto, objetoId }: { objeto: string; objetoId: string }) {
+  const { t } = useTranslation();
+  const [pregunta, setPregunta] = useState("");
+  const [salida, setSalida] = useState<{ pregunta?: string; filtro?: string } | null>(null);
+  const [fallo, setFallo] = useState<ErrorApi | null>(null);
+  const [pidiendo, setPidiendo] = useState(false);
+
+  async function preguntar() {
+    setPidiendo(true);
+    setFallo(null);
+    try {
+      const r = await llamar<{ pregunta?: string; filtro?: string }>(
+        "/api/v1/analisis/contexto",
+        {
+          metodo: "POST",
+          cuerpo: { pregunta, objeto, registro_id: objetoId },
+        },
+      );
+      setSalida(r.datos);
+    } catch (e: unknown) {
+      if (e instanceof ErrorApi) setFallo(e);
+    } finally {
+      setPidiendo(false);
+    }
+  }
+
+  return (
+    <section className="card p-3">
+      <h2 className="section-label mb-1">{t("ficha.preguntarSobreEsto")}</h2>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex-1">
+          <span className="sr-only">{t("ficha.tuPregunta")}</span>
+          <input
+            className="input-base w-full"
+            value={pregunta}
+            placeholder={t("ficha.ejemploPregunta")}
+            onChange={(e) => setPregunta(e.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={pidiendo || pregunta.trim() === ""}
+          onClick={() => void preguntar()}
+        >
+          {t("ficha.preguntar")}
+        </button>
+      </div>
+      {fallo ? <Fallo error={fallo} /> : null}
+      <div role="status" aria-live="polite">
+        {salida ? (
+          <p className="mt-2 text-3xs text-ink-muted" data-testid="pregunta-en-contexto">
+            {salida.pregunta}
+            {salida.filtro ? (
+              <span className="ml-1 text-ink">
+                {t("ficha.conFiltro", { filtro: salida.filtro })}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

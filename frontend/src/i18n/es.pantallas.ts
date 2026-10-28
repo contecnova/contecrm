@@ -265,6 +265,13 @@ const pantallas = {
     sinRespuesta: "{{cuantos}} no han contestado",
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
   },
+  ficha: {
+    preguntarSobreEsto: "Preguntar sobre este registro",
+    tuPregunta: "Tu pregunta",
+    ejemploPregunta: "¿Cuánto hemos facturado aquí este año?",
+    preguntar: "Preguntar",
+    conFiltro: "· filtrado por {{filtro}}",
+  },
   firma: {
     conQue: "Con qué se firma",
     sinProveedor: "No hay ningún proveedor de firma configurado",

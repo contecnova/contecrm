@@ -1259,6 +1259,14 @@ separados, y esa separación es la parte que importa:
 2. **En la pantalla**, ese token corto es el único que viaja
    (CRM-05.01.04.03).
 
+**Y se pregunta desde donde está el dato** (`CRM-05.01.04.09`). En la ficha de
+cualquier registro hay un recuadro para preguntar sobre él: obligar a irse a la
+pantalla de explotación y volver a escribir de qué cuenta se habla es como se
+deja de preguntar. El filtro del registro **lo añade el servidor** —no lo
+sugiere— y la pantalla **lo enseña**: un número que parece de toda la empresa y
+es de una cuenta no cuadra con nada en la reunión siguiente, y para cuando se
+descubre ya se ha dicho en voz alta.
+
 Cada tenant de contecrm se corresponde con una organización de
 `contecintelligence`, **creada al provisionar y sin que nadie tenga que
 acordarse** (CRM-05.01.04.02): dar de alta un cliente emite el aviso de alta y la

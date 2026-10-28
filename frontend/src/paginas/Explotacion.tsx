@@ -1,5 +1,17 @@
 /**
- * La pantalla de explotación (CRM-05.01.04.03).
+ * La pantalla de explotación (CRM-05.01.04.01, CRM-05.01.04.03,
+ * CRM-05.01.04.04, CRM-05.01.04.06, CRM-05.01.04.08).
+ *
+ * Cuatro de esas cinco las hacía ya y no las declaraba: **canjea la credencial
+ * de aplicación por un token del usuario** en el servidor —que es lo que hace
+ * que la consulta analítica no devuelva lo que esa persona no podría ver—,
+ * **registra el CRM como fuente consultable**, **guarda y publica preguntas**
+ * y **explica la degradación** diciendo qué sigue funcionando cuando la
+ * explotación no responde.
+ *
+ * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-05.01.04.05`, la
+ * propagación de permisos. La hace —por eso se canjea el token aquí— pero no
+ * la enseña, y declarar lo que no se ve es justo lo que la traza impide.
  *
  * Aquí se pregunta y se ven las respuestas **sin salir del CRM**. La consulta la
  * resuelve contecintelligence (RT-4): esta pantalla no calcula nada, no agrega
