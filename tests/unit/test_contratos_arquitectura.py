@@ -988,3 +988,28 @@ def test_la_gramatica_de_filtros_es_UNA() -> None:
     assert (
         OPERADORES_PLAN is OPERADORES_DE_FILTRO
     ), "el que PROPONE se ha escrito su propia lista de operadores"
+
+
+def test_donde_se_procesa_un_dato_es_UNA_lista() -> None:
+    """Quien firma la residencia y quien la hace cumplir tienen que decir lo mismo.
+
+    Mismo patrón que la gramática de filtros, y con dos síntomas medidos el
+    28-10-2026: la política de IA no sabía escribir `latam` ni `apac` —así que
+    el cliente que firmaba residencia allí no podía declarar su política—, y
+    admitía `otra`, que en un proveedor significa «no consta dónde está». Las
+    dos van ahora de `crmcore.regiones`.
+    """
+    from crmcore.regiones import REGIONES, REGIONES_DE_PROVEEDOR
+
+    from services.intelligence.enrutador import REGIONES as REGIONES_DE_LA_POLITICA
+    from services.tenancy.residencia import REGIONES as REGIONES_DE_LA_RESIDENCIA
+
+    assert (
+        REGIONES_DE_LA_RESIDENCIA is REGIONES
+    ), "quien FIRMA dónde se queda el dato se ha escrito su propia lista"
+    assert (
+        REGIONES_DE_LA_POLITICA is REGIONES
+    ), "quien lo HACE CUMPLIR se ha escrito su propia lista"
+    # «otra» vive donde describe y no donde promete.
+    assert "otra" not in REGIONES
+    assert "otra" in REGIONES_DE_PROVEEDOR

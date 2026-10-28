@@ -44,6 +44,8 @@ from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
 from crmcore.events.dominio import AI_BUDGET_EXHAUSTED
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from crmcore.regiones import REGIONES as REGIONES_DE_DATOS
+from crmcore.regiones import REGIONES_DE_PROVEEDOR
 from sqlalchemy import (
     Boolean,
     Date,
@@ -80,10 +82,13 @@ USOS = (
     "clasificacion",
 )
 
-# Dónde se procesa. Lista cerrada porque es lo que se le promete al cliente por
-# escrito, y un valor libre haría que «UE» y «eu-west» fueran regiones distintas
-# para el filtro.
-REGIONES = ("ue", "ee_uu", "reino_unido", "suiza", "local", "otra")
+# Dónde se procesa. Dos listas y no una, porque no es la misma pregunta:
+# `REGIONES` es dónde puede quedarse el dato de un tenant —la misma que firma su
+# residencia, de `crmcore`—, y `REGIONES_DE_PROVEEDOR` es ésa más «otra», que es
+# lo que se dice de un proveedor del que no consta dónde está. Admitir «otra»
+# como región de un tenant era prometer que el dato no sale de un sitio que no
+# se sabe cuál es.
+REGIONES = REGIONES_DE_DATOS
 
 
 class ProveedorIA(Base, TimestampMixin, SoftDeleteMixin):
@@ -111,7 +116,7 @@ class ProveedorIA(Base, TimestampMixin, SoftDeleteMixin):
         String(40), nullable=False, default="openai_chat", info={"opciones": DIALECTOS}
     )
     region: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="otra", info={"opciones": REGIONES}
+        String(20), nullable=False, default="otra", info={"opciones": REGIONES_DE_PROVEEDOR}
     )
     # Si el proveedor admite pedir que no se entrene con lo enviado. Cuando no,
     # un tenant con opt-out **no puede usarlo**, y eso se comprueba antes de
@@ -221,11 +226,11 @@ def registrar_proveedor(
     solo_este_tenant: bool = False,
 ) -> tuple[ProveedorIA, list[str]]:
     """Declara un proveedor de IA."""
-    if region not in REGIONES:
+    if region not in REGIONES_DE_PROVEEDOR:
         raise ErrorValidacion(
             f"Región «{region}» no reconocida.",
             error_code="ia.region_no_valida",
-            detalle={"validas": list(REGIONES)},
+            detalle={"validas": list(REGIONES_DE_PROVEEDOR)},
         )
     # El formato se comprueba igual que la región, y no lo hacía nadie: era
     # texto libre, así que «openai» o «Anthropic» se guardaban perfectamente y

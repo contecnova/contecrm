@@ -10164,6 +10164,18 @@ declarado **solo para un tenant** es su modelo, en su casa, y gana siempre.
 datos no salen de la UE y el modelo está fuera, **no se llama**. Llamar igual y
 anotarlo en una traza es contarle después a alguien que sus datos ya salieron.
 
+**Y las regiones son las mismas que firma su residencia.** Hasta el 28-10-2026
+eran dos listas distintas, y eso tenía dos consecuencias. Un cliente podía
+firmar residencia en **LATAM o APAC** y la política de IA no sabía escribir esas
+regiones: le contestaba «región no reconocida». Justo el cliente que más
+necesita el modo «el dato no sale de aquí» era el único que no podía pedirlo. Y
+al revés, un tenant podía admitir la región **«otra»**, que en un proveedor
+significa *no consta dónde está*: el modo sin salida de datos elegía entonces un
+proveedor de paradero desconocido y lo anunciaba como «la misma región del
+tenant». Ahora la lista se escribe una vez: **«otra» describe a un proveedor y
+no se puede prometer**, y lo que el cliente firma es exactamente lo que la IA
+puede cumplir.
+
 **El opt-out de entrenamiento se exige por defecto y viaja en cada petición.** No
 basta con haberlo firmado: la garantía que se le da al cliente es técnica. Si el
 proveedor configurado no lo admite, se descarta — y se dice cuál de las

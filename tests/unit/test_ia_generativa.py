@@ -142,6 +142,33 @@ def test_la_region_es_una_condicion_no_una_preferencia(uow: UnidadDeTrabajo) -> 
     assert "solo admite" in salida["descartados"][0]["porque"]
 
 
+def test_un_cliente_de_latam_puede_declarar_su_politica(uow: UnidadDeTrabajo) -> None:
+    """Era el único que no podía, y el que más lo necesita.
+
+    La residencia de un tenant admite `latam` y `apac`; la política de IA tenía
+    su propia lista y no. Resultado medido el 28-10-2026: un cliente podía
+    firmar que su dato se queda en LATAM y recibir `ia.region_no_valida` al
+    pedir que la IA lo respetara. Ahora las dos listas son la misma.
+    """
+    rut.fijar_politica(uow, regiones_admitidas=["latam", "apac"], exigir_opt_out=False)
+    assert rut.politica(uow.db, uow.tenant_id).regiones_admitidas == ["latam", "apac"]
+
+
+def test_un_tenant_no_puede_admitir_la_region_otra(uow: UnidadDeTrabajo) -> None:
+    """El otro lado del mismo desajuste, y el que hacía daño en silencio.
+
+    «otra» describe a un proveedor del que **no consta dónde está**. Admitirla
+    como región de un tenant hacía que el modo sin salida de datos eligiera uno
+    de paradero desconocido y lo anunciara como «la misma región del tenant»:
+    la promesa se daba por cumplida sin poder comprobarla.
+    """
+    with pytest.raises(ErrorValidacion) as e:
+        rut.fijar_politica(uow, regiones_admitidas=["otra"])
+    assert e.value.error_code == "ia.region_no_valida"
+    # Y sigue siendo válida donde sí significa algo: describiendo al proveedor.
+    _proveedor(uow, clave="sin-paradero", region="otra")
+
+
 def test_el_modelo_propio_del_tenant_gana(uow: UnidadDeTrabajo) -> None:
     """Es su modelo, en su casa."""
     _proveedor(uow, clave="general")

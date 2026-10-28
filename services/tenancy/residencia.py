@@ -42,6 +42,7 @@ from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from crmcore.regiones import REGIONES as REGIONES_DE_DATOS
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -59,10 +60,11 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 logger = get_logger(__name__)
 
-# Las regiones que el despliegue sabe distinguir. Lista cerrada porque es lo que
-# se firma: con texto libre, «UE» y «eu-west» serían dos regiones distintas para
-# el informe y la misma para el cliente.
-REGIONES = ("ue", "ee_uu", "reino_unido", "suiza", "latam", "apac", "local")
+# Las regiones que el despliegue sabe distinguir. Viene de `crmcore` porque la
+# política de IA promete lo mismo sobre la misma lista, y cuando eran dos había
+# clientes —los de `latam` y `apac`— que podían firmar su residencia y no podían
+# declarar su política. Ver `crmcore/regiones.py`.
+REGIONES = REGIONES_DE_DATOS
 
 # Los tipos de dato que se ubican por separado. Esta lista ES la capacidad: lo
 # transaccional casi siempre está bien, y lo que se escapa son los otros cuatro.
