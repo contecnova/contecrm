@@ -26,6 +26,28 @@ quince segundos. Que no saliera ningún roto no es motivo para no tenerlo: lo
 barato es mantenerlo, y lo caro es la pestaña que se rompe el día que alguien
 cambia un permiso.
 
+**Un fallo intermitente que sigue abierto, y lo que se sabe de él (28-10-2026).**
+En la tanda completa esta prueba cae a veces —en un servicio distinto cada vez,
+y nunca al correr el fichero suelto— con `PendingRollbackError`. Lo medido hasta
+ahora, para que el siguiente no lo repita:
+
+  * **no es la máquina llena**: cae igual con la máquina libre y en tiempo normal;
+  * **no es el relevo del outbox ni los barridos de fondo**: los dos se apagan aquí;
+  * **no es el limitador de peticiones**: en pruebas está apagado;
+  * **no es `al_margen`**, aunque ahí había un fallo de verdad —deshacía el
+    savepoint sólo «si seguía activo»— que se arregló el mismo día. Siguió
+    cayendo después;
+  * **la conexión llega limpia**: hay una comprobación al entrar que lo dice,
+    así que no es una prueba anterior la que envenena;
+  * **una pestaña envenena y caen todas las de después**, siempre a partir de
+    una que contestó 200.
+
+Por eso esta prueba apunta la pestaña por su nombre cuando revienta, y no deja
+que la excepción suba: el rastro terminaba en `get_db` y no nombraba la ruta.
+
+Lo que **no** es: un fallo del producto. El arnés ata todas las sesiones a UNA
+conexión; en un despliegue cada petición tiene la suya.
+
 **Lo que NO hace.** No mira que el dato sea el correcto; eso es de cada prueba
 de dominio. Se abre la pestaña como la abre la consola al entrar —sin filtros,
 con permisos de administrador— y se exige que conteste. Un error aquí es una
@@ -140,7 +162,20 @@ def test_las_pestanas_de_la_consola_abren(
     import os
 
     from crmcore.config import get_settings
+    from sqlalchemy import text as _text
     from starlette.testclient import TestClient
+
+    # ¿Llega limpia la conexión? El arnés ata TODAS las sesiones a una sola, así
+    # que una prueba anterior que deje un savepoint inválido envenena a ésta —y
+    # entonces lo que se ve es que «fallan las pestañas de marketing», que es
+    # mentira. Se mira al entrar para no acusar al inocente.
+    try:
+        db.execute(_text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001 — el diagnóstico ES el valor
+        raise AssertionError(
+            "La conexión ya venía envenenada ANTES de abrir ninguna pestaña, "
+            f"así que esto no es un fallo de «{servicio}»: {type(exc).__name__}: {exc}"
+        ) from exc
 
     pestanas = _pestanas()[servicio]
     # EL RELEVO DEL OUTBOX Y LOS BARRIDOS DE FONDO, APAGADOS.
