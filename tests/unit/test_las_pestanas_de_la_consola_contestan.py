@@ -166,7 +166,17 @@ def test_las_pestanas_de_la_consola_abren(
     try:
         with TestClient(importlib.import_module(f"services.{servicio}.main").app) as cli:
             for nombre, ruta in pestanas:
-                respuesta = cli.get(ruta, headers=cabeceras)
+                # Si la petición REVIENTA —no contesta mal, revienta— también
+                # es una pestaña rota, y hay que saber cuál. Dejar que la
+                # excepción suba daba un rastro que termina en `get_db` y no
+                # nombra la ruta: tres tandas enteras sin poder decir qué
+                # pestaña había envenenado la sesión.
+                try:
+                    respuesta = cli.get(ruta, headers=cabeceras)
+                except Exception as exc:  # noqa: BLE001 — el nombre es el dato
+                    rotas.append(f"«{nombre}» ({ruta}) ha reventado: {type(exc).__name__}: {exc}")
+                    abiertas += 1
+                    continue
                 abiertas += 1
                 if respuesta.status_code != 200:
                     rotas.append(
