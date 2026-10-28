@@ -3794,6 +3794,289 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
             )
 
 
+# ── La operación del día a día ────────────────────────────────────────────
+
+
+def sembrar_la_operacion_del_dia(api: Api) -> None:
+    """Diez familias más de las 55 pestañas vacías (28-10-2026, segunda tanda).
+
+    Ésta va de lo que hace funcionar el día: con qué habla el CRM, por dónde
+    entra lo que llega, quién atiende y en qué estado, qué se firma y qué se le
+    debe a un cliente cuando se le incumple el plazo.
+
+    El criterio es el mismo de la tanda anterior: sólo lo que una instalación
+    tiene de verdad. Nada de inventar averías para llenar paneles de alertas.
+    """
+    cuentas = api.listar("/api/v1/accounts", 4)
+    usuarios = api.listar("/api/v1/usuarios", 6)
+    contactos = api.listar("/api/v1/contacts", 3)
+
+    # 1. Conectores publicados e instalados. Un catálogo de extensiones vacío se
+    #    lee como «esto no se integra con nada».
+    for clave, nombre, categoria, operaciones in (
+        (
+            "erp-sap",
+            "SAP S/4HANA",
+            "erp",
+            [
+                {
+                    "clave": "pedidos.leer",
+                    "nombre": "Leer pedidos",
+                    "sentido": "entrada",
+                    "metodo": "GET",
+                    "ruta": "/API_SALES_ORDER_SRV/A_SalesOrder",
+                },
+                {
+                    "clave": "clientes.enviar",
+                    "nombre": "Enviar clientes",
+                    "sentido": "salida",
+                    "metodo": "POST",
+                    "ruta": "/API_BUSINESS_PARTNER/A_BusinessPartner",
+                },
+            ],
+        ),
+        (
+            "mensajeria-seur",
+            "Seguimiento de envíos",
+            "logistica",
+            [
+                {
+                    "clave": "envios.leer",
+                    "nombre": "Leer envíos",
+                    "sentido": "entrada",
+                    "metodo": "GET",
+                    "ruta": "/v1/shipments",
+                }
+            ],
+        ),
+    ):
+        api.crear(
+            "/api/v1/conectores",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "version": "1.0.0",
+                "categoria": categoria,
+                "descripcion": f"Conector de {nombre}, declarado como configuración.",
+                "operaciones": operaciones,
+                "protocolo": "rest",
+                "dominios": [f"{clave}.ejemplo.test"],
+            },
+        )
+        api.crear("/api/v1/conectores/instalar", {"clave": clave, "version": "1.0.0"})
+
+    # 2. Por dónde entra lo que llega, y lo que ha entrado. Un canal declarado y
+    #    sin una sola interacción no distingue «no entra nada» de «no se mira».
+    for clave, canal, nombre in (
+        ("soporte-telefono", "voz", "Teléfono de soporte"),
+        ("buzon-comercial", "correo", "Buzón comercial"),
+        ("chat-postventa", "chat", "Chat de postventa"),
+    ):
+        api.crear(
+            "/api/v1/canales-entrada",
+            {
+                "clave": clave,
+                "canal": canal,
+                "nombre": nombre,
+                "produce": "actividad",
+                "guardar_contenido": canal != "voz",
+            },
+        )
+    for i in range(12):
+        contacto = contactos[i % len(contactos)] if contactos else None
+        canal = ("voz", "correo", "chat")[i % 3]
+        api.crear(
+            "/api/v1/canales-entrada/interacciones",
+            {
+                "canal": canal,
+                "clave_canal": ("soporte-telefono", "buzon-comercial", "chat-postventa")[i % 3],
+                "id_externo": f"ext-{i:04d}",
+                "interlocutor": (contacto or {}).get("email") or "+34 600 000 000",
+                "asunto": ("Consulta de plazo", "Petición de oferta", "Avería en línea")[i % 3],
+                "contenido": "Entrada registrada por el canal, con su contenido guardado.",
+                "ocurrido_at": _f(-(i + 1)) + "T09:30:00Z",
+                "duracion_s": 180 + i * 20 if canal == "voz" else None,
+                "direccion": "entrante",
+                # Dos de cada tres con contacto: las que no lo traen son las que
+                # alimentan «entradas sin atribuir», que es una pantalla real.
+                "contacto_id": (contacto or {}).get("id") if i % 3 else None,
+            },
+        )
+
+    # 3. Proveedor de firma y 4. plantilla. El mapa de estados es lo que traduce
+    #    el vocabulario del proveedor al nuestro; sin él, un sobre firmado se
+    #    queda «en curso» para siempre.
+    api.crear(
+        "/api/v1/firma/proveedores",
+        {
+            "clave": "firma-cualificada",
+            "nombre": "Firma electrónica cualificada",
+            "niveles": ["simple", "avanzada", "cualificada"],
+            "identificaciones": ["sms", "video", "certificado"],
+            "mapa_estados": {
+                "sent": "enviado",
+                "viewed": "visto",
+                "signed": "firmado",
+                "declined": "rechazado",
+                "expired": "caducado",
+            },
+            "coste_sobre": "1.20",
+        },
+    )
+    for clave, nombre, tipo_doc, nivel, dias in (
+        ("oferta", "Aceptación de oferta", "oferta", "avanzada", 15),
+        ("contrato-marco", "Contrato marco", "contrato", "cualificada", 30),
+        ("conformidad-rma", "Conformidad de devolución", "rma", "simple", 7),
+    ):
+        api.crear(
+            "/api/v1/firma/plantillas",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "tipo_documento": tipo_doc,
+                "nivel": nivel,
+                "dias_validez": dias,
+                "orden_estricto": tipo_doc == "contrato",
+                "campos": [
+                    {"clave": "firma", "tipo": "firma", "pagina": 1},
+                    {"clave": "fecha", "tipo": "fecha", "pagina": 1},
+                ],
+            },
+        )
+
+    # 5. Quién atiende y en qué estado. «Agentes disponibles» vacío con casos en
+    #    cola es la pantalla que hace pensar que el enrutado está roto.
+    for i, usuario in enumerate(usuarios[:4]):
+        if not usuario.get("id"):
+            continue
+        api.crear(
+            "/api/v1/agentes",
+            {
+                "usuario_id": usuario["id"],
+                "capacidad": {"caso": 6 - (i % 3), "chat": 3 - (i % 2)},
+                "competencias": [["mecanica", "electronica"], ["calidad"], ["administracion"]][
+                    i % 3
+                ],
+                "nivel": 1 + (i % 3),
+                "activo": True,
+            },
+            metodo="PUT",
+        )
+    # Y su presencia: sin ninguno disponible, el reparto no tiene a quién dar un
+    # caso y la cola crece sin que nada parezca fallar.
+    api.crear("/api/v1/agentes/presencia", {"presencia": "disponible"}, metodo="PUT")
+
+    # 6. Créditos de servicio del trimestre: lo que se le debe a un cliente
+    #    cuando se le incumple el plazo. Calcularlo es lo que crea las filas.
+    api.crear(
+        "/api/v1/creditos-servicio/calcular",
+        {
+            "periodo": "2026-T3",
+            "desde": _f(-120),
+            "hasta": _f(-30),
+            "escala": [
+                {"desde_pct": 95.0, "credito_pct": 5.0},
+                {"desde_pct": 90.0, "credito_pct": 10.0},
+                {"desde_pct": 0.0, "credito_pct": 25.0},
+            ],
+        },
+    )
+
+    # 7. Módulos instalados: lo que distingue un CRM configurable de uno cerrado,
+    #    y la pantalla estaba vacía aunque el mecanismo existe.
+    api.crear(
+        "/api/v1/metadata/modulos/instalar",
+        {
+            "manifiesto": {
+                "formato": 1,
+                "clave": "homologaciones",
+                "nombre": "Homologaciones por mercado",
+                "version": "1.0.0",
+                "descripcion": "Añade el seguimiento de homologación de pieza por país.",
+                "objetos": [
+                    {
+                        "nombre": "homologacion_mercado",
+                        "etiqueta": "Homologación por mercado",
+                        "campos": [
+                            {"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"},
+                            {"nombre": "norma", "tipo": "texto", "etiqueta": "Norma"},
+                            {"nombre": "vence_at", "tipo": "fecha", "etiqueta": "Vence"},
+                        ],
+                    }
+                ],
+            },
+            "aplicar": True,
+        },
+    )
+
+    # 8. Estado financiero de la cuenta. Sin él, cualquiera promete un plazo de
+    #    pago a un cliente con la deuda vencida, que es el caso que más caro
+    #    sale de todos los que esta pantalla evita.
+    for i, cuenta in enumerate(cuentas[:3]):
+        if not cuenta.get("id"):
+            continue
+        estado, bloqueado = (("al_corriente", False), ("vigilancia", False), ("bloqueado", True))[
+            i % 3
+        ]
+        api.crear(
+            "/api/v1/planes-cuenta/financiero",
+            {
+                "cuenta_id": cuenta["id"],
+                "estado": estado,
+                "origen": "erp",
+                "vigente_at": _f(-1) + "T06:00:00Z",
+                "limite_credito": ["250000.00", "80000.00", "40000.00"][i % 3],
+                "credito_dispuesto": ["112400.00", "61900.00", "39800.00"][i % 3],
+                "deuda_vencida": ["0.00", "4200.00", "18750.00"][i % 3],
+                "bloqueado": bloqueado,
+                # Sin `motivo_bloqueo` cuando no hay bloqueo: mandar `null` en un
+                # campo de texto es un 422 de esquema, no un hueco.
+                **({"motivo_bloqueo": "Deuda vencida a más de 90 días."} if bloqueado else {}),
+            },
+        )
+
+    # 9. Plan de cuenta: a dónde se quiere llegar con cada cliente grande y qué
+    #    falta para llegar.
+    for i, cuenta in enumerate(cuentas[:2]):
+        if not cuenta.get("id"):
+            continue
+        api.crear(
+            "/api/v1/planes-cuenta",
+            {
+                "cuenta_id": cuenta["id"],
+                "periodo": "2027",
+                "objetivo_importe": ["900000.00", "450000.00"][i],
+                "objetivos": [
+                    {
+                        "titulo": "Entrar en la plataforma eléctrica",
+                        "fecha_objetivo": "2027-06-30",
+                        "responsable_id": (usuarios[0] or {}).get("id") if usuarios else None,
+                    },
+                    {
+                        "titulo": "Homologar la segunda fuente",
+                        "fecha_objetivo": "2027-09-30",
+                        "responsable_id": (usuarios[0] or {}).get("id") if usuarios else None,
+                    },
+                ],
+                "riesgos": [
+                    {"cual": "Competidor con precio un 8 % menor", "mitigacion": "Valor por TCO"},
+                ],
+            },
+        )
+
+    # 10. Exposición de agentes: por dónde puede un asistente externo usar el
+    #     CRM, con su cuota. Declararlo es lo que permite auditarlo después.
+    api.crear(
+        "/api/v1/agentes-ia/exposiciones",
+        {
+            "clave": "asistente-comercial",
+            "nombre": "Asistente comercial",
+            "descripcion": "Consulta de cartera y alta de actividades, sin borrar nada.",
+            "cuota_hora": 120,
+        },
+    )
+
+
 # ── Arranque ──────────────────────────────────────────────────────────────
 
 
@@ -4617,6 +4900,7 @@ PARTES: dict[str, Any] = {
     "lo_que_sale_vacio": sembrar_lo_que_sale_vacio,
     "las_que_siguen_vacias": sembrar_las_que_siguen_vacias,
     "la_plataforma_y_la_ia": sembrar_la_plataforma_y_la_ia,
+    "la_operacion_del_dia": sembrar_la_operacion_del_dia,
 }
 
 

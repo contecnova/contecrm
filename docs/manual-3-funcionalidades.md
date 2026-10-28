@@ -4353,6 +4353,25 @@ callado: las claves de API exigen volver a verificar la identidad antes de
 crear una credencial de máquina —el producto defendiéndose, y está bien— y los
 proveedores de identidad necesitan `OIDC_ENABLED` encendido en la instalación.
 
+La segunda tanda va de **lo que hace funcionar el día**: con qué habla el CRM
+—conectores publicados e instalados—, por dónde entra lo que llega —canales de
+entrada con sus interacciones, y una de cada tres sin atribuir, que es lo que
+alimenta esa pantalla—, quién atiende y con qué capacidad por canal, qué se
+firma —proveedor con su **mapa de estados**, sin el cual un sobre firmado se
+queda «en curso» para siempre—, qué se le debe a un cliente al incumplirle el
+plazo, qué módulos lleva instalados la instalación y el **estado financiero**
+replicado de cada cuenta, sin el cual cualquiera promete un plazo de pago a un
+cliente con deuda vencida.
+
+Lo que enseñó correrlo, y no se habría visto leyendo: seis formas equivocadas
+de las diez. El canal no admite `telefono` ni `whatsapp` sino `voz` y `chat`;
+la capacidad de un agente es **por canal** y no un número suelto; un manifiesto
+de módulo declara su formato; una operación REST de un conector tiene que decir
+a qué ruta llama; un objetivo de plan de cuenta sin fecha **y** sin responsable
+lo rechaza el producto —y tiene razón, es una frase—; y un `null` en un campo
+de texto es un 422 de esquema, no un hueco. Un sembrador que no se corre no
+siembra nada.
+
 **Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
 repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
 que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.
