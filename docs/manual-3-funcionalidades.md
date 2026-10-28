@@ -4333,6 +4333,26 @@ se gana, el 15 % de los casos incumple el plazo, unas campañas se pasan del
 presupuesto y otras no llegan. Una demostración donde todo sale bien deja de
 creerse en cuanto alguien la mira.
 
+**Qué pestaña sale vacía se mide, no se recuerda.** El 28-10-2026 se llamó a
+las **215 pestañas con listado** contra una instalación servida: 138 traían
+datos y **55 se abrían con cero filas**. Esa cifra no es la lista de trabajo,
+porque buena parte está vacía con razón: la papelera, la cola de fallidos, los
+conflictos de sincronización o «aparatos callados» sólo existen cuando pasa
+algo, y llenarlas sería fabricar averías para que la demostración luzca. Lo que
+sí es trabajo es la configuración que cualquier instalación tiene el primer día
+y aquí no estaba: el calendario laboral con sus festivos —sin él todo plazo se
+cuenta a 24 horas y vence en domingo—, los tipos de cambio —sin ellos un CRM
+multimoneda convierte a 1:1 sin avisar—, los perfiles de industria, las reglas
+de compartición, los proveedores y modelos de IA con su política, y las series
+vigiladas con observaciones detrás: una pantalla de anomalías sin ninguna serie
+declarada no dice «no hay anomalías», dice «no se está mirando nada», y las dos
+se ven igual.
+
+Dos quedan vacías **y el sembrado dice por qué**, que es distinto de quedarse
+callado: las claves de API exigen volver a verificar la identidad antes de
+crear una credencial de máquina —el producto defendiéndose, y está bien— y los
+proveedores de identidad necesitan `OIDC_ENABLED` encendido en la instalación.
+
 **Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
 repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
 que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.

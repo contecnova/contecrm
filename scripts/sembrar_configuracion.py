@@ -3554,6 +3554,246 @@ def sembrar_analitica(api: Api) -> None:
         )
 
 
+# ── La plataforma, la identidad y la IA puestas ───────────────────────────
+
+
+def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
+    """Diez familias de configuración que toda instalación tiene y aquí no (28-10-2026).
+
+    Medido llamando a las 215 pestañas con listado contra el tenant servido:
+    138 traían datos, **55 se abrían con cero filas**. No todas son un fallo —la
+    papelera, la cola de fallidos o «aparatos callados» vacías están bien, son
+    listas que sólo existen cuando pasa algo, y llenarlas sería fabricar
+    averías—. Éstas diez no: son lo que cualquier instalación tiene puesto el
+    primer día, y sin ellas la mitad de Administración parece sin construir.
+
+    Todo por la API, como el resto del fichero: lo sembrado es exactamente lo
+    que una persona habría podido crear desde el front, y si un alta está rota
+    el sembrado se para y lo dice.
+    """
+    # 1. El calendario laboral, con sus festivos. Sin él, cualquier plazo de SLA
+    #    se cuenta a 24 horas y los vencimientos caen en domingo.
+    calendario = api.crear(
+        "/api/v1/calendarios",
+        {
+            "clave": "iberia",
+            "nombre": "Jornada peninsular",
+            "zona_horaria": "Europe/Madrid",
+            "pais": "ES",
+            # Por día de la semana, 0=lunes. Jornada partida de lunes a jueves
+            # y viernes intensivo, que es lo que tiene media industria española:
+            # un calendario de 9 a 18 todos los días hace que los plazos de SLA
+            # del viernes por la tarde venzan cuando no hay nadie.
+            "horario": {
+                **{
+                    str(dia): [
+                        {"desde": "08:00", "hasta": "13:30"},
+                        {"desde": "15:00", "hasta": "18:00"},
+                    ]
+                    for dia in range(4)
+                },
+                "4": [{"desde": "08:00", "hasta": "14:30"}],
+            },
+            "por_defecto": True,
+        },
+    )
+    if calendario and calendario.get("id"):
+        for fecha, nombre in (
+            ("2026-01-01", "Año nuevo"),
+            ("2026-05-01", "Fiesta del trabajo"),
+            ("2026-08-15", "Asunción"),
+            ("2026-10-12", "Fiesta nacional"),
+            ("2026-12-25", "Navidad"),
+        ):
+            api.crear(
+                f"/api/v1/calendarios/{calendario['id']}/festivos",
+                {"fecha": fecha, "nombre": nombre, "anual": True},
+            )
+
+    # 2. Los tipos de cambio. Un CRM multimoneda sin tasas convierte a 1:1 sin
+    #    avisar, y el forecast sale redondo y falso.
+    for desde, hasta, tasa in (
+        ("EUR", "USD", 1.0850),
+        ("EUR", "GBP", 0.8420),
+        ("EUR", "MXN", 19.7400),
+        ("EUR", "BRL", 5.9100),
+        ("USD", "EUR", 0.9217),
+    ):
+        api.crear(
+            "/api/v1/monedas/cambios",
+            {"desde": desde, "hasta": hasta, "tasa": tasa, "origen": "bce"},
+            metodo="PUT",
+        )
+
+    # 3. Perfiles de industria: el paquete con el que se abre una empresa nueva
+    #    del mismo sector, para no reconfigurarlo todo a mano cada vez.
+    for clave, nombre, descripcion in (
+        (
+            "automocion_tier1",
+            "Automoción · proveedor de primer nivel",
+            "Homologaciones por mercado, auditorías de cliente y series largas.",
+        ),
+        (
+            "industrial_bienes_equipo",
+            "Bienes de equipo",
+            "Parque instalado, mantenimiento preventivo y repuestos.",
+        ),
+    ):
+        api.crear(
+            "/api/v1/ciclo-vida/perfiles",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "descripcion": descripcion,
+                "contenido": {
+                    "catalogos": ["categorias_caso", "etapas", "territorios"],
+                    "plantillas": ["correo", "marketing"],
+                    "reglas": ["escalada", "asignacion"],
+                },
+                # Lo que NO se lleva es tan importante como lo que sí: copiar
+                # datos de un cliente a otro es el accidente que no se deshace.
+                "no_incluye": ["cuentas", "contactos", "oportunidades", "casos"],
+            },
+        )
+
+    # 4. Claves de API: toda integración que no es una persona entra por una.
+    for nombre, rol, dias in (
+        ("ERP · lectura de pedidos", "integracion", 365),
+        ("Portal de cliente", "integracion", 180),
+        ("Cuadro de mando de dirección", "lectura", 90),
+    ):
+        api.crear("/api/v1/claves-api", {"nombre": nombre, "rol": rol, "dias": dias})
+
+    # 5. Reglas de compartición: lo que un equipo ve del de al lado sin ser suyo.
+    roles = api.listar("/api/v1/roles", 10)
+    destino = next((r["id"] for r in roles if "comercial" in r.get("nombre", "").lower()), None)
+    if destino:
+        for nombre, objeto, acceso in (
+            ("Grandes cuentas visibles a toda la dirección comercial", "cuenta", "lectura"),
+            ("Casos críticos visibles al equipo de calidad", "caso", "lectura"),
+        ):
+            api.crear(
+                "/api/v1/sharing-rules",
+                {
+                    "nombre": nombre,
+                    "objeto": objeto,
+                    "destino_tipo": "rol",
+                    "destino_id": destino,
+                    "acceso": acceso,
+                    "activa": True,
+                },
+            )
+
+    # 6. Proveedor de identidad: casi ningún cliente industrial entra con
+    #    contraseña, y una pantalla de SSO vacía se lee como «no lo soporta».
+    api.crear(
+        "/api/v1/proveedores-identidad",
+        {
+            "nombre": "Entra ID corporativo",
+            "tipo": "oidc",
+            "dominio_email": "ejemplo-industrial.com",
+            "config": {
+                "issuer_url": "https://login.microsoftonline.com/ejemplo/v2.0",
+                "client_id": "00000000-0000-0000-0000-000000000000",
+            },
+            "jit_provisioning": True,
+            "activo": True,
+        },
+    )
+
+    # 7. Proveedores de IA, uno por región. Y aquí `latam` y `apac` ya se pueden
+    #    escribir: hasta el 28-10-2026 la política de IA no las admitía aunque la
+    #    residencia del tenant sí (ver `crmcore/regiones.py`).
+    for clave, region, base_url, formato, propio in (
+        ("modelo-ue", "ue", "https://ia.ejemplo-ue.test/v1", "openai_chat", False),
+        ("modelo-latam", "latam", "https://ia.ejemplo-latam.test/v1", "anthropic_messages", False),
+        ("modelo-propio", "local", "http://modelo-propio.interno:8000/v1", "openai_chat", True),
+    ):
+        api.crear(
+            "/api/v1/ia/proveedores",
+            {
+                "clave": clave,
+                "base_url": base_url,
+                "region": region,
+                "nombre": f"Proveedor {region.upper()}",
+                "formato": formato,
+                "admite_opt_out": True,
+                "modelos": [{"clave": "estandar", "nombre": "Estándar"}],
+                "coste_entrada_millon": "3.0000",
+                "coste_salida_millon": "15.0000",
+                "solo_este_tenant": propio,
+            },
+        )
+
+    # 8. Y la política que los gobierna: dónde puede quedarse el dato y cuánto
+    #    se puede gastar al mes.
+    api.crear(
+        "/api/v1/ia/politica",
+        {
+            "regiones_admitidas": ["ue", "local"],
+            "exigir_opt_out": True,
+            "preferencias": {"redaccion": "modelo-ue", "extraccion": "modelo-propio"},
+            "presupuesto_mes": "250.00",
+        },
+    )
+
+    # 9. Modelos predictivos con su versión registrada. Sin una versión, la
+    #    pantalla de modelos no puede decir con qué se está puntuando.
+    # Los tipos salen de la lista cerrada del servicio, no inventados: un tipo
+    # que no existe se rechaza y la pantalla se queda igual de vacía.
+    for tipo, variables, metricas in (
+        ("scoring_lead", ["sector", "plantilla", "origen"], {"auc": 0.81, "brier": 0.14}),
+        ("cierre", ["etapa", "dias_en_etapa", "importe"], {"auc": 0.77, "brier": 0.18}),
+        ("churn", ["casos_abiertos", "nps", "retraso_pago"], {"auc": 0.84, "brier": 0.11}),
+        ("importe", ["plantilla", "sector", "historico"], {"mae": 11200.0, "mape": 0.18}),
+    ):
+        api.crear(
+            "/api/v1/ia/modelos",
+            {
+                "tipo": tipo,
+                "variables": variables,
+                "pesos": {v: round(1 / len(variables), 3) for v in variables},
+                "metricas": metricas,
+                "datos_desde": _f(-730),
+                "datos_hasta": _f(-1),
+                "ejemplos": 4200,
+                "vigencia_dias": 90,
+                "notas": "Entrenado con el histórico de la propia instalación.",
+            },
+        )
+
+    # 10. Series vigiladas, con observaciones de verdad detrás: una pantalla de
+    #     anomalías sin serie declarada no es que no haya anomalías, es que no
+    #     se está mirando nada, y las dos cosas se ven igual.
+    for ambito, clave, descripcion in (
+        ("pipeline", "oportunidades_creadas", "Altas de oportunidad por día"),
+        ("servicio", "casos_abiertos", "Casos abiertos por día"),
+        ("ingresos", "importe_ganado", "Importe ganado por día"),
+    ):
+        api.crear(
+            "/api/v1/ia/anomalias/series",
+            {
+                "ambito": ambito,
+                "clave": clave,
+                "descripcion": descripcion,
+                "minimo_observaciones": 14,
+                "sigmas": 3.0,
+            },
+        )
+        for dia in range(21, 0, -1):
+            api.crear(
+                "/api/v1/ia/anomalias/observaciones",
+                {
+                    "ambito": ambito,
+                    "clave": clave,
+                    "fecha": _f(-dia),
+                    # Un valor estable con un pico al final: sin variación, la
+                    # serie no tiene desviación y nunca podría detectar nada.
+                    "valor": 12.0 + (18.0 if dia == 1 else (dia % 4)),
+                },
+            )
+
+
 # ── Arranque ──────────────────────────────────────────────────────────────
 
 
@@ -4376,6 +4616,7 @@ PARTES: dict[str, Any] = {
     "rastro": sembrar_rastro,
     "lo_que_sale_vacio": sembrar_lo_que_sale_vacio,
     "las_que_siguen_vacias": sembrar_las_que_siguen_vacias,
+    "la_plataforma_y_la_ia": sembrar_la_plataforma_y_la_ia,
 }
 
 
