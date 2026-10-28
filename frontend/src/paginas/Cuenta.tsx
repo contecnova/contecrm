@@ -367,7 +367,13 @@ export function Cuenta() {
               se estiraba hasta el alto de la fila de la rejilla y quedaba
               medio vacía, con el contenido arriba y un desierto debajo.
 
-          Lo que cuadra es esto: la rejilla se queda en una pantalla, cada
+            · un alto FIJO de una pantalla: con un cliente recién creado —sin
+              actividad, sin contactos, sin oportunidades y sin casos— la caja
+              del centro era un recuadro vacío de pantalla entera. El tope
+              tiene que ser un MÁXIMO, no una altura: con poco que enseñar, la
+              ficha mide lo que mide su contenido.
+
+          Lo que cuadra es esto: la rejilla no pasa de una pantalla, cada
           columna reparte su alto entre sus cajas y cada caja recorre su lista.
           Cuántas filas se ven no lo decide una constante: lo decide el alto que
           hay, que es lo que hace que cuadre en cualquier pantalla.
@@ -375,7 +381,7 @@ export function Cuenta() {
           **Sólo de `lg` para arriba.** En un móvil hay una sola columna y una
           barra dentro de otra es peor que el problema: el dedo no sabe cuál de
           las dos está moviendo. Ahí se desplaza la página. */}
-      <div className="grid gap-4 lg:h-[calc(100vh-15rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]">
+      <div className="grid gap-4 lg:max-h-[calc(100vh-15rem)] lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]">
         {/* ── Datos ──────────────────────────────────────────────────── */}
         <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <section className="card p-4">

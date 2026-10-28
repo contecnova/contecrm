@@ -109,6 +109,42 @@ async function montar() {
   );
 }
 
+/** La misma ficha pero recién creada: sin actividad y sin nada relacionado. */
+async function montarVacia() {
+  vi.resetModules();
+  vi.doMock("@/lib/api", async () => {
+    const real = await vi.importActual<Record<string, unknown>>("@/lib/api");
+    return {
+      ...real,
+      llamar: async (ruta: string) => {
+        if (ruta.includes("/360")) {
+          return { datos: { ...CUENTA, contactos: [], timeline: [] } };
+        }
+        return { datos: { items: [], siguiente: null } };
+      },
+    };
+  });
+  vi.doMock("@/lib/permisos", async () => {
+    const real =
+      await vi.importActual<Record<string, unknown>>("@/lib/permisos");
+    return {
+      ...real,
+      useSuperficie: () => ({ superficie: null, tiene: () => true }),
+    };
+  });
+  vi.doMock("react-router-dom", async () => {
+    const real =
+      await vi.importActual<Record<string, unknown>>("react-router-dom");
+    return { ...real, useParams: () => ({ id: "c1" }) };
+  });
+  const { Cuenta } = await import("@/paginas/Cuenta");
+  return render(
+    <MemoryRouter>
+      <Cuenta />
+    </MemoryRouter>,
+  );
+}
+
 function caja(titulo: string): HTMLElement {
   const rotulo = screen.getByText(titulo);
   const seccion = rotulo.closest("section");
@@ -190,6 +226,29 @@ describe("la ficha de cliente", () => {
         /max-h-max/,
       );
     }
+  });
+
+  it("una ficha sin nada que enseñar no ocupa una pantalla entera", async () => {
+    await montarVacia();
+    await screen.findByText("cuenta.sinTimeline");
+
+    // El tope de alto es un MÁXIMO, no una altura. Con un alto fijo, un
+    // cliente recién creado —sin actividad, sin contactos, sin oportunidades
+    // y sin casos— enseñaba un recuadro vacío de pantalla entera.
+    const rejilla = screen.getByText("cuenta.sinTimeline").closest(".grid")!;
+    expect(rejilla.className).toMatch(/lg:max-h-/);
+    expect(
+      rejilla.className,
+      "altura fija: con poco contenido queda un hueco",
+    ).not.toMatch(/lg:h-\[/);
+    expect(rejilla.className, "un mínimo fuerza el hueco igual").not.toMatch(
+      /lg:min-h-\[/,
+    );
+
+    // Y los paneles vacíos lo dicen, cada uno con su motivo.
+    expect(screen.getByText("cuenta.sinContactos")).toBeInTheDocument();
+    expect(screen.getByText("cuenta.sinOportunidades")).toBeInTheDocument();
+    expect(screen.getByText("cuenta.sinCasos")).toBeInTheDocument();
   });
 
   it("se enseña todo lo que ha llegado: lo que no cabe se alcanza con la barra", async () => {
