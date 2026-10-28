@@ -257,7 +257,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            ellas, promover un cambio era rehacerlo a mano en
 #                            el otro entorno, que es como los dos entornos
 #                            dejan de parecerse
-TOPE_SIN_PANTALLA = 392
+#   28-10-2026  391 de 778  el registro de llamadas al proveedor de firma. No
+#                            era una pantalla que faltara: era un AGUJERO. La
+#                            tabla se escribia en cada llamada —la capacidad
+#                            dice «para conciliar la factura»— y NINGUNA ruta
+#                            la devolvia, asi que no se podia leer. Ahora hay
+#                            ruta y panel, con el gasto sumado —conciliar una
+#                            factura con doscientos importes en pantalla es
+#                            volver a sumarlos a mano— y las fallidas aparte
+#                            con el suyo, porque un proveedor que cobra por
+#                            intento hace que el importe y los sobres no
+#                            cuadren
+TOPE_SIN_PANTALLA = 391
 
 
 def _es_pantalla(p: Path) -> bool:

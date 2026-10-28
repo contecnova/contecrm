@@ -786,3 +786,106 @@ def test_sin_sobres_abiertos_el_panel_no_dice_que_todo_esta_firmado(
     cuerpo = cliente_integracion.get(PANEL, headers=cabeceras_integracion).json()
     assert cuerpo["sobres"] == []
     assert cuerpo["medible"] is False
+
+
+# ── El registro de llamadas, que se escribía y no leía nadie ──────────────
+
+LLAMADAS = "/api/v1/firma/llamadas"
+
+
+def test_el_registro_de_llamadas_se_puede_LEER_y_trae_el_gasto_sumado(
+    cliente_integracion: Any, cabeceras_integracion: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """La capacidad dice «para conciliar la factura», y hasta hoy no se podía.
+
+    `LlamadaProveedorFirma` se escribía en cada llamada y **no la leía nadie**:
+    ninguna ruta la devolvía. Un registro que no se puede leer no concilia
+    nada, y para desatascar un sobre a las dos de la mañana tampoco sirve.
+
+    Lo que esta prueba fija, además de que se lea: que venga **el gasto
+    sumado**. Conciliar una factura con doscientos importes en pantalla es
+    volver a sumarlos a mano, que es justo lo que se quería evitar.
+    """
+    from decimal import Decimal
+
+    from services.integration.firma import LlamadaProveedorFirma
+
+    db.add_all(
+        [
+            LlamadaProveedorFirma(
+                tenant_id=tenant_id,
+                proveedor="unafirma",
+                operacion="crear_sobre",
+                codigo=200,
+                ok=True,
+                duracion_ms=120,
+                coste=Decimal("0.5000"),
+            ),
+            LlamadaProveedorFirma(
+                tenant_id=tenant_id,
+                proveedor="unafirma",
+                operacion="crear_sobre",
+                codigo=500,
+                ok=False,
+                duracion_ms=90,
+                coste=Decimal("0.5000"),
+                error="el proveedor devolvió 500",
+            ),
+        ]
+    )
+    db.flush()
+
+    r = cliente_integracion.get(LLAMADAS, headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text[:300]
+    datos = r.json()
+    assert datos["cuantas"] == 2
+    assert Decimal(datos["gasto"]) == Decimal("1.0000")
+
+    # Y las que fallaron, APARTE y con su gasto: un proveedor que cobra por
+    # intento hace que el importe y el número de sobres no cuadren, y esa
+    # diferencia es lo primero que se busca en una factura que no sale.
+    assert datos["fallidas"] == 1
+    assert Decimal(datos["gasto_de_las_fallidas"]) == Decimal("0.5000")
+
+    # El error viaja entero: recortarlo obliga a ir al registro del servidor,
+    # que es lo que esta tabla existe para evitar.
+    fallida = next(fila for fila in datos["llamadas"] if not fila["ok"])
+    assert fallida["error"] == "el proveedor devolvió 500"
+
+
+def test_sin_llamadas_no_se_dice_cero_gasto(
+    cliente_integracion: Any, cabeceras_integracion: dict[str, str], db: Any
+) -> None:
+    """«El proveedor no ha cobrado nada» y «aquí no consta nada» no son lo
+    mismo, y un cero se lee como lo primero."""
+    r = cliente_integracion.get(LLAMADAS, headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text[:300]
+    datos = r.json()
+    assert datos["cuantas"] == 0
+    assert datos["aviso"], "un cero sin aviso se lee como «no ha cobrado nada»"
+
+
+def test_se_pueden_pedir_solo_las_que_fallaron(
+    cliente_integracion: Any, cabeceras_integracion: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Es el filtro de desatascar: lo que se busca a las dos de la mañana no es
+    la llamada que fue bien."""
+    from decimal import Decimal
+
+    from services.integration.firma import LlamadaProveedorFirma
+
+    db.add_all(
+        [
+            LlamadaProveedorFirma(
+                tenant_id=tenant_id, proveedor="p", operacion="ok", ok=True, coste=Decimal("1")
+            ),
+            LlamadaProveedorFirma(
+                tenant_id=tenant_id, proveedor="p", operacion="mal", ok=False, coste=Decimal("1")
+            ),
+        ]
+    )
+    db.flush()
+
+    r = cliente_integracion.get(f"{LLAMADAS}?solo_fallidas=true", headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text[:300]
+    assert [fila["operacion"] for fila in r.json()["llamadas"]] == ["mal"]

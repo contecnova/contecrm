@@ -266,6 +266,15 @@ const pantallas = {
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
   },
   firma: {
+    llamadas: {
+      titulo: "Lo que el proveedor de firma cobró",
+      porQue:
+        "Qué se le pidió, qué contestó y cuánto costó cada llamada. Sirve para conciliar su factura y para desatascar un sobre parado, que son las dos veces que esto se mira.",
+      soloFallidas: "Sólo las que fallaron",
+      resumen: "{{cuantas}} llamadas, {{gasto}} en total.",
+      deEllasFallidas: "De ellas {{fallidas}} fallaron, y cuestan {{gasto}}.",
+      sinCoste: "sin coste anotado",
+    },
     titulo: "Pendiente de firma",
     entradilla:
       "Qué contratos están parados, desde cuándo y por quién. Lo que lleva " +

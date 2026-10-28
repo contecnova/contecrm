@@ -440,6 +440,41 @@ def panel(db: DbDep, principal: AutenticadoDep, limite: int = Query(100, ge=1, l
 # leer. Un sobre de firma, una tabla del almacén o una predicción que no se
 # pueden listar no existen para quien tiene que revisarlos.
 
+
+@router.get(
+    "/llamadas",
+    dependencies=[Depends(exige_permiso("firma:read"))],
+    summary="Qué se le pidió al proveedor, qué contestó y cuánto costó",
+    description=(
+        "**El registro se escribía desde el primer día y no lo leía nadie.** La "
+        "capacidad dice «para conciliar la factura», y un registro que no se "
+        "puede leer no concilia nada — ni sirve para desatascar un sobre a las "
+        "dos de la mañana, que es la otra vez que se mira.\n\n"
+        "Devuelve el **gasto sumado** además de las filas: conciliar una factura "
+        "con doscientos importes en pantalla es volver a sumarlos a mano.\n\n"
+        "Y **las que fallaron van aparte, con su gasto**. Un proveedor que cobra "
+        "por intento hace que el importe y el número de sobres no cuadren, y esa "
+        "diferencia es lo primero que se busca en una factura que no sale."
+    ),
+)
+def llamadas_al_proveedor(
+    db: DbDep,
+    principal: AutenticadoDep,
+    proveedor: str = Query("", max_length=60),
+    sobre_id: UUID | None = Query(None),
+    solo_fallidas: bool = Query(False),
+    limite: int = Query(200, ge=1, le=1000),
+) -> Any:
+    return fir.llamadas_al_proveedor(
+        db,
+        principal.tenant_id,
+        proveedor=proveedor,
+        sobre_id=sobre_id,
+        solo_fallidas=solo_fallidas,
+        limite=limite,
+    )
+
+
 montar_listado(
     router,
     modelo=Sobre,

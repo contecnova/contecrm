@@ -47,6 +47,25 @@ interface Sobre {
   nadie_lo_ha_abierto: boolean;
 }
 
+interface Llamadas {
+  llamadas: {
+    id: string;
+    proveedor: string;
+    operacion: string;
+    codigo: number | null;
+    ok: boolean;
+    coste: string | null;
+    error: string | null;
+    cuando: string;
+  }[];
+  cuantas: number;
+  gasto: string;
+  fallidas: number;
+  gasto_de_las_fallidas: string;
+  /** Por qué no hay filas. Vacío cuando sí las hay. */
+  aviso: string;
+}
+
 interface Panel {
   sobres: Sobre[];
   cuantos: number;
@@ -83,7 +102,10 @@ export function PendienteDeFirma() {
       {/* Sin sobres abiertos NO se dice «todo firmado»: es que no hay nada
           esperando, y un verde vacío se lee igual que uno ganado. */}
       {!panel.medible ? (
-        <Vacio titulo={t("firma.nadaEsperando")} detalle={t("firma.nadaEsperandoDetalle")} />
+        <Vacio
+          titulo={t("firma.nadaEsperando")}
+          detalle={t("firma.nadaEsperandoDetalle")}
+        />
       ) : (
         <>
           <p className="mb-3 text-2xs text-ink-muted" role="status">
@@ -104,25 +126,36 @@ export function PendienteDeFirma() {
                   >
                     {t("firma.diasParado", { dias: sobre.dias_esperando })}
                   </span>
-                  <span className="text-sm font-medium text-ink">{sobre.asunto}</span>
-                  <span className="text-3xs text-ink-faint">{sobre.referencia}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {sobre.asunto}
+                  </span>
+                  <span className="text-3xs text-ink-faint">
+                    {sobre.referencia}
+                  </span>
                   <span className="chip-dato">{sobre.nivel}</span>
                   <span className="chip-dato">{sobre.proveedor}</span>
                 </div>
 
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
                   <span className="text-2xs text-ink-muted">
-                    {t("firma.firmados", { firmados: sobre.firmados, total: sobre.total })}
+                    {t("firma.firmados", {
+                      firmados: sobre.firmados,
+                      total: sobre.total,
+                    })}
                   </span>
                   {/* Un correo que no llegó y una decisión que no se toma se
                       persiguen de forma distinta. */}
                   {sobre.nadie_lo_ha_abierto ? (
-                    <span className="chip-dato chip-dato--no">{t("firma.nadieLoHaAbierto")}</span>
+                    <span className="chip-dato chip-dato--no">
+                      {t("firma.nadieLoHaAbierto")}
+                    </span>
                   ) : null}
                   {sobre.caduca_en_dias !== null ? (
                     <span
                       className={
-                        sobre.caduca_en_dias <= 3 ? "text-3xs text-danger" : "text-3xs text-ink-muted"
+                        sobre.caduca_en_dias <= 3
+                          ? "text-3xs text-danger"
+                          : "text-3xs text-ink-muted"
                       }
                     >
                       {t("firma.caducaEn", { dias: sobre.caduca_en_dias })}
@@ -153,6 +186,120 @@ export function PendienteDeFirma() {
           </ul>
         </>
       )}
+
+      {/* Lo que el proveedor cobró, al lado de lo que hizo. */}
+      <LoQueCobraElProveedor />
     </>
+  );
+}
+
+/**
+ * Qué se le pidió al proveedor de firma, qué contestó y cuánto costó
+ * (`CRM-06.01.02.15`).
+ *
+ * El registro se escribía desde el primer día y **no lo leía nadie**: no había
+ * ninguna ruta que lo devolviera. La capacidad dice «para conciliar la
+ * factura», y un registro que no se puede leer no concilia nada — ni sirve
+ * para desatascar un sobre a las dos de la mañana, que es la otra vez que se
+ * mira.
+ *
+ * Dos cosas que se enseñan a propósito:
+ *
+ * - **el gasto sumado**, porque conciliar una factura con doscientos importes
+ *   en pantalla es volver a sumarlos a mano;
+ * - **las fallidas aparte, con su gasto**. Un proveedor que cobra por intento
+ *   hace que el importe y el número de sobres no cuadren, y esa diferencia es
+ *   lo primero que se busca en una factura que no sale.
+ *
+ * Y sin filas no se dice «cero gasto»: se dice que no consta ninguna llamada.
+ * Un cero ahí se leería como «el proveedor no ha cobrado nada».
+ */
+function LoQueCobraElProveedor() {
+  const { t } = useTranslation();
+  const [datos, setDatos] = useState<Llamadas | null>(null);
+  const [soloFallidas, setSoloFallidas] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    setFallo(null);
+    llamar<Llamadas>(
+      `/api/v1/firma/llamadas?solo_fallidas=${soloFallidas}&limite=200`,
+      {
+        signal: control.signal,
+      },
+    )
+      .then((r) => setDatos(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [soloFallidas]);
+
+  return (
+    <section className="card mt-6 p-4">
+      <h2 className="section-label mb-1">{t("firma.llamadas.titulo")}</h2>
+      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+        {t("firma.llamadas.porQue")}
+      </p>
+
+      <label className="flex items-center gap-2 text-2xs text-ink-muted">
+        <input
+          type="checkbox"
+          checked={soloFallidas}
+          onChange={(e) => setSoloFallidas(e.target.checked)}
+        />
+        {t("firma.llamadas.soloFallidas")}
+      </label>
+
+      {fallo ? <Fallo error={fallo} /> : null}
+      <div role="status" aria-live="polite" className="mt-3">
+        {datos ? (
+          datos.aviso ? (
+            <p className="text-2xs text-ink-muted">{datos.aviso}</p>
+          ) : (
+            <p className="text-2xs text-ink">
+              {t("firma.llamadas.resumen", {
+                cuantas: datos.cuantas,
+                gasto: datos.gasto,
+              })}
+              {datos.fallidas > 0 ? (
+                <span className="ml-2 text-warning">
+                  {t("firma.llamadas.deEllasFallidas", {
+                    fallidas: datos.fallidas,
+                    gasto: datos.gasto_de_las_fallidas,
+                  })}
+                </span>
+              ) : null}
+            </p>
+          )
+        ) : null}
+      </div>
+
+      {datos && datos.llamadas.length > 0 ? (
+        <ul className="lista-acotada mt-2 divide-y divide-ink-dim/30 pr-1">
+          {datos.llamadas.map((l) => (
+            <li key={l.id} className="py-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="text-2xs text-ink">{l.operacion}</span>
+                <span className="text-3xs text-ink-muted">{l.proveedor}</span>
+                <span
+                  className={`badge ${l.ok ? "badge-muted" : "badge-danger"}`}
+                >
+                  {l.codigo ?? "—"}
+                </span>
+                <span className="font-mono text-3xs text-ink-faint">
+                  {l.coste ?? t("firma.llamadas.sinCoste")}
+                </span>
+              </div>
+              {/* El error entero: es lo que se lee para desatascar, y
+                  recortarlo obliga a ir al registro del servidor — justo lo
+                  que esta tabla existe para evitar. */}
+              {l.error ? (
+                <p className="mt-0.5 text-3xs text-danger">{l.error}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

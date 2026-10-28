@@ -11018,6 +11018,19 @@ coste, **también cuando falla**: un registro que solo guarda lo que salió bien
 sirve para la factura y no sirve para depurar, que es para lo que se mira a las
 dos de la mañana.
 
+**Y ahora se puede leer.** Hasta el 28-10-2026 la tabla se escribía y ninguna
+ruta la devolvía, así que el registro «para conciliar la factura» no conciliaba
+nada. Está en «Pendiente de firma», al final, con dos cosas que no son adorno:
+
+- **el gasto sumado**, porque conciliar una factura con doscientos importes en
+  pantalla es volver a sumarlos a mano;
+- **las que fallaron aparte, con su gasto**. Un proveedor que cobra por intento
+  hace que el importe y el número de sobres no cuadren, y esa diferencia es lo
+  primero que se busca en una factura que no sale.
+
+Sin ninguna llamada registrada **no se dice «cero gasto»**: se dice que no
+consta ninguna. Un cero ahí se leería como «el proveedor no ha cobrado nada».
+
 ### Probar antes de mandar un contrato (`CRM-06.01.02.14`)
 
 Descubrir que la credencial estaba mal cuando ya hay un contrato a medias es caro

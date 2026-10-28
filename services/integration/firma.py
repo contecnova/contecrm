@@ -1583,3 +1583,81 @@ def migrar_proveedor(
             "hasta que terminen o caduquen."
         ),
     }
+
+
+def llamadas_al_proveedor(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    proveedor: str = "",
+    sobre_id: UUID | None = None,
+    solo_fallidas: bool = False,
+    limite: int = 200,
+) -> dict[str, Any]:
+    """Qué se le pidió al proveedor de firma, qué contestó y cuánto costó.
+
+    **El registro existía y no lo leía nadie.** Se escribía en cada llamada
+    —`CRM-06.01.02.15` dice «para conciliar la factura»— y no había ninguna
+    ruta que lo devolviera: un registro que no se puede leer no sirve para
+    conciliar nada, y para depurar un sobre atascado a las dos de la mañana,
+    menos.
+
+    Devuelve el **gasto sumado** además de las filas, y no sólo las filas:
+    conciliar una factura con doscientos importes en pantalla es volver a
+    sumarlos a mano, que es exactamente lo que se quería evitar.
+
+    Y las que fallaron cuentan aparte. Un proveedor que cobra por intento hace
+    que el gasto y el número de sobres no cuadren, y esa diferencia es lo
+    primero que se busca al revisar una factura que no sale.
+    """
+    consulta = select(LlamadaProveedorFirma).where(LlamadaProveedorFirma.tenant_id == tenant_id)
+    if proveedor:
+        consulta = consulta.where(LlamadaProveedorFirma.proveedor == proveedor)
+    if sobre_id is not None:
+        consulta = consulta.where(LlamadaProveedorFirma.sobre_id == sobre_id)
+    if solo_fallidas:
+        consulta = consulta.where(LlamadaProveedorFirma.ok.is_(False))
+    filas = (
+        db.execute(consulta.order_by(LlamadaProveedorFirma.created_at.desc()).limit(limite))
+        .scalars()
+        .all()
+    )
+    gasto = sum((f.coste or Decimal(0) for f in filas), Decimal(0))
+    fallidas = [f for f in filas if not f.ok]
+    return {
+        "llamadas": [
+            {
+                "id": str(f.id),
+                "proveedor": f.proveedor,
+                "operacion": f.operacion,
+                "sobre_id": str(f.sobre_id) if f.sobre_id else None,
+                "codigo": f.codigo,
+                "ok": f.ok,
+                "duracion_ms": f.duracion_ms,
+                "coste": str(f.coste) if f.coste is not None else None,
+                # El error va entero: es lo que se lee para desatascar, y
+                # recortarlo obliga a ir al registro del servidor, que es
+                # justo lo que esta tabla existe para evitar.
+                "error": f.error,
+                "cuando": f.created_at.isoformat(),
+            }
+            for f in filas
+        ],
+        "cuantas": len(filas),
+        # El gasto sumado, para no volver a sumar doscientos importes a mano.
+        "gasto": str(gasto),
+        # Y lo que falló, aparte: con un proveedor que cobra por intento, el
+        # gasto y el número de sobres no cuadran, y esa diferencia es lo
+        # primero que se busca en una factura que no sale.
+        "fallidas": len(fallidas),
+        "gasto_de_las_fallidas": str(sum((f.coste or Decimal(0) for f in fallidas), Decimal(0))),
+        # Sin filas no se dice «cero gasto»: se dice que no hay registro. Un
+        # cero ahí se leería como «el proveedor no ha cobrado nada».
+        "aviso": (
+            ""
+            if filas
+            else "No hay ninguna llamada registrada con este filtro. Eso no "
+            "significa que el proveedor no haya cobrado: significa que aquí no "
+            "consta ninguna llamada."
+        ),
+    }
