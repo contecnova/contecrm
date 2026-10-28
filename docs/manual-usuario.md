@@ -1007,6 +1007,21 @@ Si tu empresa trabaja con entorno de pruebas y producción:
 - Y **lo que se borra, se borra también donde se copió**: en el lago de datos del
   cliente, en las audiencias de las plataformas y en las proyecciones internas.
 
+### Dos preguntas que se hacen en «Identidad y seguridad»
+
+- **«Y éstos, ¿por qué están permitidos?»** El informe de segregación marca los
+  conflictos que alguien autorizó. Justo debajo están esas autorizaciones **con
+  el motivo que se escribió y hasta cuándo valen** — que es lo que el alta
+  exige y lo que hasta ahora no se podía leer. Una excepción que no se puede
+  leer no es un control, es papeleo. Se pueden ver también las caducadas, que
+  es lo que distingue «no hay ninguna» de «todas vencieron».
+- **«No puedo entrar»: ¿por dónde le toca entrar?** Se escribe el correo y dice
+  si le toca SSO —con qué proveedor— o contraseña del CRM, y avisa si su
+  dominio tiene el SSO forzado y por tanto no hay vía de escape. El usuario no
+  puede contestarlo: él sabe su correo, no si su empresa usa Entra ID o Ping. Y
+  mirarlo a ojo en la lista de dominios falla justo en los casos raros, porque
+  un subdominio hereda del dominio padre y gana el más específico.
+
 ### Dónde se mira todo eso: «Plataforma y cumplimiento»
 
 En **Administrar › Plataforma y cumplimiento** están cuatro cosas que antes solo

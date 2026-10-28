@@ -425,6 +425,30 @@ const pantallas = {
     noConsta: "no consta",
   },
   seguridad: {
+    excepciones: {
+      titulo: "Y éstos, ¿por qué están permitidos?",
+      porQue:
+        "Los conflictos que alguien aprobó, con el motivo que escribió y hasta cuándo valen. El alta los exige: si no se pueden leer, son papeleo.",
+      verCaducadas: "Ver también las caducadas",
+      ninguna: "No hay ninguna excepción aprobada",
+      ningunaDetalle:
+        "Todo conflicto que aparezca arriba lo es de verdad: nadie lo ha autorizado.",
+      hasta: "Vale hasta el {{fecha}}",
+      caducada: "Caducó el {{fecha}}",
+    },
+    aQuienLeToca: {
+      titulo: "«No puedo entrar»: ¿por dónde le toca entrar?",
+      porQue:
+        "El usuario sabe su correo, no si su empresa usa Entra ID o Ping. Y el subdominio hereda del dominio padre, así que mirarlo a ojo falla justo en los casos raros, que son los que generan la incidencia.",
+      correo: "Correo de quien no puede entrar",
+      mirar: "Mirar",
+      mirando: "Mirando…",
+      entraPorSso: "Le toca entrar por SSO, con «{{nombre}}» ({{tipo}}).",
+      entraPorContrasena:
+        "A ese correo no le toca ningún proveedor: entra con contraseña del CRM.",
+      sinContrasenaLocal:
+        "Y no puede usar contraseña local: su dominio tiene el SSO forzado, así que no hay vía de escape.",
+    },
     mio: {
       titulo: "Tu segundo factor",
       entradaDeHoy: "Has entrado con: {{factores}}",

@@ -1,7 +1,7 @@
 /**
  * Identidad y seguridad: las cuatro preguntas que nadie podía contestar
  * (CRM-00.05.01.15, CRM-00.05.01.17, CRM-00.05.01.25, CRM-00.05.02.11,
- * CRM-07.03.02.06).
+ * CRM-07.03.02.06, CRM-00.05.01.14).
  *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.01.06` —MFA
  * obligatoria configurable por rol— porque aquí se ve si está puesta y no se
@@ -42,6 +42,22 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
+
+interface Excepcion {
+  id: string;
+  regla_codigo: string;
+  usuario_id: string;
+  motivo: string;
+  caduca_at: string;
+  vigente: boolean;
+}
+
+interface Descubrimiento {
+  tiene_proveedor: boolean;
+  nombre?: string;
+  tipo?: string;
+  contrasena_local_permitida?: boolean;
+}
 
 interface UsuarioMfa {
   usuario_id: string;
@@ -121,7 +137,10 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
   const { t } = useTranslation();
   const [adopcion, setAdopcion] = useState<Adopcion | null>(null);
   const [certificados, setCertificados] = useState<Certificado[] | null>(null);
-  const [sod, setSod] = useState<{ violaciones: Violacion[]; reglas: number } | null>(null);
+  const [sod, setSod] = useState<{
+    violaciones: Violacion[];
+    reglas: number;
+  } | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
 
   const cargar = useCallback(() => {
@@ -130,12 +149,18 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
     // lenta aunque cada una vaya rápida.
     Promise.all([
       llamar<Adopcion>("/api/v1/factores/adopcion", { signal: control.signal }),
-      llamar<{ certificados: Certificado[] }>("/api/v1/sso-gobierno/certificados", {
-        signal: control.signal,
-      }),
-      llamar<{ violaciones: Violacion[]; reglas: number }>("/api/v1/segregacion/violaciones", {
-        signal: control.signal,
-      }),
+      llamar<{ certificados: Certificado[] }>(
+        "/api/v1/sso-gobierno/certificados",
+        {
+          signal: control.signal,
+        },
+      ),
+      llamar<{ violaciones: Violacion[]; reglas: number }>(
+        "/api/v1/segregacion/violaciones",
+        {
+          signal: control.signal,
+        },
+      ),
     ])
       .then(([a, c, s]) => {
         setAdopcion(a.datos);
@@ -169,6 +194,15 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
       <MiSegundoFactor />
       <Certificados filas={certificados} />
       <Segregacion datos={sod} />
+      {/* Y, justo debajo, por qué algunos de esos conflictos están
+          permitidos: el informe de arriba los marca «con excepción» y hasta
+          ahora no había forma de leer ni el motivo ni hasta cuándo. Una
+          excepción que no se puede leer no es un control. */}
+      <ExcepcionesAprobadas />
+      {/* A qué proveedor le toca un correo. Es la primera pregunta cuando
+          alguien «no puede entrar», y la que el propio usuario no sabe
+          contestar: él sabe su correo, no si su empresa usa Entra ID o Ping. */}
+      <AQuienLeToca />
       {puede(sesion, "user:read") ? <Explicador /> : null}
     </div>
   );
@@ -206,7 +240,10 @@ function MiSegundoFactor() {
     void llamar<Plan>("/api/v1/factores/plan-de-inscripcion", opciones)
       .then((r) => setPlan(r.datos))
       .catch(() => undefined);
-    void llamar<{ operaciones: Operacion[] }>("/api/v1/factores/operaciones-sensibles", opciones)
+    void llamar<{ operaciones: Operacion[] }>(
+      "/api/v1/factores/operaciones-sensibles",
+      opciones,
+    )
       .then((r) => setSensibles(r.datos.operaciones ?? []))
       .catch(() => undefined);
     void llamar<Cambio>("/api/v1/factores/cambio-de-dispositivo", opciones)
@@ -222,10 +259,14 @@ function MiSegundoFactor() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">{t("seguridad.mio.titulo")}</h2>
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.mio.titulo")}
+      </h2>
 
       {plan ? (
-        <p className={`text-2xs ${plan.completo ? "text-ink-muted" : "text-warning"}`}>
+        <p
+          className={`text-2xs ${plan.completo ? "text-ink-muted" : "text-warning"}`}
+        >
           {plan.porque}
         </p>
       ) : null}
@@ -237,7 +278,9 @@ function MiSegundoFactor() {
         <ul className="space-y-1">
           {plan.pasos.map((paso) => (
             <li key={paso.paso} className="rounded-lg bg-paper-sunk px-3 py-2">
-              <p className="text-2xs text-ink">{t(`seguridad.mio.${paso.paso}`, paso.paso)}</p>
+              <p className="text-2xs text-ink">
+                {t(`seguridad.mio.${paso.paso}`, paso.paso)}
+              </p>
               <p className="text-3xs text-ink-faint">{paso.porque}</p>
             </li>
           ))}
@@ -246,9 +289,12 @@ function MiSegundoFactor() {
 
       <p className="text-3xs text-ink-faint">
         {t("seguridad.mio.entradaDeHoy", {
-          factores: (nivel?.factores ?? []).map((f) => f.factor).join(", ") || "—",
+          factores:
+            (nivel?.factores ?? []).map((f) => f.factor).join(", ") || "—",
         })}
-        {passkeys ? ` · ${t("seguridad.mio.passkeys", { cuantas: passkeys.length })}` : ""}
+        {passkeys
+          ? ` · ${t("seguridad.mio.passkeys", { cuantas: passkeys.length })}`
+          : ""}
       </p>
 
       {/* Qué va a pedir verificarse otra vez. Saberlo antes evita la sorpresa
@@ -272,7 +318,9 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
   const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">{t("seguridad.mfa.titulo")}</h2>
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.mfa.titulo")}
+      </h2>
       {/* El porcentaje va con el N al lado: un 78 % sobre nueve personas no es
           lo mismo que sobre novecientas, y sin el N se lee igual. */}
       <p className="text-2xs text-ink-muted">
@@ -285,7 +333,9 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
           : t("seguridad.mfa.sinUsuarios")}
       </p>
       {!datos.mfa_obligatoria ? (
-        <p className="text-3xs text-warning">{t("seguridad.mfa.noObligatoria")}</p>
+        <p className="text-3xs text-warning">
+          {t("seguridad.mfa.noObligatoria")}
+        </p>
       ) : null}
       {datos.canales_debiles_activos.length > 0 ? (
         <p className="text-3xs text-warning">
@@ -295,14 +345,26 @@ function SegundoFactor({ datos }: { datos: Adopcion }) {
         </p>
       ) : null}
       {datos.usuarios_sin_factor.length === 0 ? (
-        <Vacio titulo={t("seguridad.mfa.todos")} detalle={t("seguridad.mfa.todosDetalle")} />
+        <Vacio
+          titulo={t("seguridad.mfa.todos")}
+          detalle={t("seguridad.mfa.todosDetalle")}
+        />
       ) : (
         <ul className="divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
           {datos.usuarios_sin_factor.map((u) => (
-            <li key={u.usuario_id} className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-2xs text-ink">{u.nombre}</span>
-              <span className="truncate font-mono text-3xs text-ink-muted">{u.email}</span>
-              <span className="text-3xs text-ink-faint">{u.roles.join(", ")}</span>
+            <li
+              key={u.usuario_id}
+              className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5"
+            >
+              <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+                {u.nombre}
+              </span>
+              <span className="truncate font-mono text-3xs text-ink-muted">
+                {u.email}
+              </span>
+              <span className="text-3xs text-ink-faint">
+                {u.roles.join(", ")}
+              </span>
             </li>
           ))}
         </ul>
@@ -316,12 +378,23 @@ function Certificados({ filas }: { filas: Certificado[] }) {
   const { t } = useTranslation();
   // Primero los que ya caducaron, luego los que van a caducar: el orden es el
   // de la urgencia, no el del nombre del proveedor.
-  const orden = { caducado: 0, por_caducar: 1, sin_fecha: 2, vigente: 3 } as const;
-  const ordenadas = [...filas].sort((a, b) => orden[a.estado] - orden[b.estado]);
+  const orden = {
+    caducado: 0,
+    por_caducar: 1,
+    sin_fecha: 2,
+    vigente: 3,
+  } as const;
+  const ordenadas = [...filas].sort(
+    (a, b) => orden[a.estado] - orden[b.estado],
+  );
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">{t("seguridad.certificados.titulo")}</h2>
-      <p className="text-3xs text-ink-faint">{t("seguridad.certificados.porQue")}</p>
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.certificados.titulo")}
+      </h2>
+      <p className="text-3xs text-ink-faint">
+        {t("seguridad.certificados.porQue")}
+      </p>
       {ordenadas.length === 0 ? (
         <Vacio
           titulo={t("seguridad.certificados.ninguno")}
@@ -345,14 +418,18 @@ function Certificados({ filas }: { filas: Certificado[] }) {
               >
                 {t(`seguridad.certificados.estado.${c.estado}`)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-2xs text-ink">{c.proveedor}</span>
+              <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+                {c.proveedor}
+              </span>
               <span className="truncate font-mono text-3xs text-ink-faint">
                 {c.huella.slice(0, 16)}
               </span>
               <span className="font-mono text-3xs text-ink-muted">
                 {c.dias_restantes === null
                   ? t("seguridad.certificados.sinFecha")
-                  : t("seguridad.certificados.dias", { dias: c.dias_restantes })}
+                  : t("seguridad.certificados.dias", {
+                      dias: c.dias_restantes,
+                    })}
               </span>
             </li>
           ))}
@@ -363,19 +440,31 @@ function Certificados({ filas }: { filas: Certificado[] }) {
 }
 
 /** Quién tiene hoy permisos incompatibles. */
-function Segregacion({ datos }: { datos: { violaciones: Violacion[]; reglas: number } }) {
+function Segregacion({
+  datos,
+}: {
+  datos: { violaciones: Violacion[]; reglas: number };
+}) {
   const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">{t("seguridad.sod.titulo")}</h2>
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.sod.titulo")}
+      </h2>
       <p className="text-3xs text-ink-faint">
         {t("seguridad.sod.porQue", { reglas: datos.reglas })}
       </p>
       {datos.violaciones.length === 0 ? (
         <Vacio
-          titulo={t(datos.reglas === 0 ? "seguridad.sod.sinReglas" : "seguridad.sod.ninguna")}
+          titulo={t(
+            datos.reglas === 0
+              ? "seguridad.sod.sinReglas"
+              : "seguridad.sod.ninguna",
+          )}
           detalle={t(
-            datos.reglas === 0 ? "seguridad.sod.sinReglasDetalle" : "seguridad.sod.ningunaDetalle",
+            datos.reglas === 0
+              ? "seguridad.sod.sinReglasDetalle"
+              : "seguridad.sod.ningunaDetalle",
           )}
         />
       ) : (
@@ -384,14 +473,20 @@ function Segregacion({ datos }: { datos: { violaciones: Violacion[]; reglas: num
             <li key={`${v.usuario_id}:${v.regla}:${i}`} className="px-3 py-2">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="badge">{v.nivel}</span>
-                <span className="min-w-0 flex-1 truncate text-2xs text-ink">{v.nombre}</span>
+                <span className="min-w-0 flex-1 truncate text-2xs text-ink">
+                  {v.nombre}
+                </span>
                 {/* La excepción no esconde el conflicto: lo marca. Esconderlo
                     haría que una excepción caducada pasara de «aprobado» a «no
                     existe» sin que nadie lo viera. */}
                 {v.exento ? (
-                  <span className="badge badge-warning">{t("seguridad.sod.conExcepcion")}</span>
+                  <span className="badge badge-warning">
+                    {t("seguridad.sod.conExcepcion")}
+                  </span>
                 ) : null}
-                <span className="font-mono text-3xs text-ink-faint">{v.usuario_id.slice(0, 8)}</span>
+                <span className="font-mono text-3xs text-ink-faint">
+                  {v.usuario_id.slice(0, 8)}
+                </span>
               </div>
               <p className="mt-0.5 font-mono text-3xs text-ink-muted">
                 {v.por_el_lado_a.join(", ")} ↔ {v.por_el_lado_b.join(", ")}
@@ -432,11 +527,17 @@ function Explicador() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold text-ink">{t("seguridad.explicador.titulo")}</h2>
-      <p className="text-3xs text-ink-faint">{t("seguridad.explicador.porQue")}</p>
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.explicador.titulo")}
+      </h2>
+      <p className="text-3xs text-ink-faint">
+        {t("seguridad.explicador.porQue")}
+      </p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">{t("seguridad.explicador.usuario")}</span>
+          <span className="text-3xs text-ink-muted">
+            {t("seguridad.explicador.usuario")}
+          </span>
           <input
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
@@ -445,7 +546,9 @@ function Explicador() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">{t("seguridad.explicador.objeto")}</span>
+          <span className="text-3xs text-ink-muted">
+            {t("seguridad.explicador.objeto")}
+          </span>
           <input
             value={objeto}
             onChange={(e) => setObjeto(e.target.value)}
@@ -454,7 +557,9 @@ function Explicador() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-3xs text-ink-muted">{t("seguridad.explicador.accion")}</span>
+          <span className="text-3xs text-ink-muted">
+            {t("seguridad.explicador.accion")}
+          </span>
           <input
             value={accion}
             onChange={(e) => setAccion(e.target.value)}
@@ -482,4 +587,198 @@ function Explicador() {
       </div>
     </section>
   );
+}
+
+/**
+ * Los conflictos que alguien aprobó, con su motivo y su caducidad
+ * (`CRM-07.03.02.06`).
+ *
+ * El informe de arriba marca «con excepción» los conflictos permitidos, y eso
+ * está bien —esconderlos haría que una excepción caducada pasara de «aprobado»
+ * a «no existe» sin que nadie lo viera—. Lo que faltaba es poder contestar la
+ * pregunta siguiente, que es la que hace un auditor: **¿y éstos por qué están
+ * permitidos?**
+ *
+ * El alta exige motivo escrito y caducidad. Si no se pueden leer, esos dos
+ * requisitos son papeleo: la prueba se genera y se archiva donde nadie puede
+ * recuperarla.
+ *
+ * Por defecto sólo las vigentes. Una lista con las de hace tres años obliga a
+ * filtrar a mano justo cuando se está revisando.
+ */
+function ExcepcionesAprobadas() {
+  const { t } = useTranslation();
+  const [filas, setFilas] = useState<Excepcion[] | null>(null);
+  const [caducadas, setCaducadas] = useState(false);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    setFallo(null);
+    llamar<Excepcion[]>(
+      `/api/v1/segregacion/excepciones?incluir_caducadas=${caducadas}`,
+      {
+        signal: control.signal,
+      },
+    )
+      .then((r) => setFilas(filas_(r.datos)))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [caducadas]);
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.excepciones.titulo")}
+      </h2>
+      <p className="text-3xs text-ink-faint">
+        {t("seguridad.excepciones.porQue")}
+      </p>
+      <label className="flex items-center gap-2 text-3xs text-ink-muted">
+        <input
+          type="checkbox"
+          checked={caducadas}
+          onChange={(e) => setCaducadas(e.target.checked)}
+        />
+        {t("seguridad.excepciones.verCaducadas")}
+      </label>
+      {fallo ? <Fallo error={fallo} /> : null}
+      {filas === null ? null : filas.length === 0 ? (
+        <Vacio
+          titulo={t("seguridad.excepciones.ninguna")}
+          detalle={t("seguridad.excepciones.ningunaDetalle")}
+          compacto
+        />
+      ) : (
+        <ul className="lista-acotada divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40">
+          {filas.map((e) => (
+            <li key={e.id} className="px-3 py-2">
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="font-mono text-2xs text-ink">
+                  {e.regla_codigo}
+                </span>
+                <span className="font-mono text-3xs text-ink-faint">
+                  {e.usuario_id.slice(0, 8)}
+                </span>
+                {/* Caducada se marca y no se esconde: una excepción vencida
+                    sigue explicando por qué alguien tuvo ese permiso. */}
+                <span
+                  className={`badge ${e.vigente ? "badge-warning" : "badge-muted"}`}
+                >
+                  {e.vigente
+                    ? t("seguridad.excepciones.hasta", {
+                        fecha: e.caduca_at.slice(0, 10),
+                      })
+                    : t("seguridad.excepciones.caducada", {
+                        fecha: e.caduca_at.slice(0, 10),
+                      })}
+                </span>
+              </div>
+              {/* El motivo, siempre: sin él la lista dice que hay excepciones
+                  y no por qué, que es justo lo que hay que revisar. */}
+              <p className="mt-0.5 text-3xs text-ink-muted">{e.motivo}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * A qué proveedor le toca este correo (`CRM-00.05.01.14`).
+ *
+ * «No puedo entrar» es la incidencia más común y la más cara de diagnosticar a
+ * ciegas: puede ser que su dominio esté forzado a SSO, que no lo esté y se
+ * espere contraseña, o que su subdominio herede de otro proveedor. El usuario
+ * no puede contestarlo —él sabe su correo, no si su empresa usa Entra ID o
+ * Ping— y quien atiende tampoco, si no puede mirarlo.
+ *
+ * El subdominio hereda del dominio padre y gana el más específico, así que
+ * mirarlo «a ojo» en la lista de dominios se equivoca justo en los casos raros,
+ * que son los que generan la incidencia.
+ */
+function AQuienLeToca() {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState("");
+  const [quien, setQuien] = useState<Descubrimiento | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [mirando, setMirando] = useState(false);
+
+  async function mirar() {
+    if (!email.trim()) return;
+    setMirando(true);
+    setFallo(null);
+    try {
+      const r = await llamar<Descubrimiento>(
+        `/api/v1/sso-gobierno/descubrir?email=${encodeURIComponent(email.trim())}`,
+      );
+      setQuien(r.datos);
+    } catch (e: unknown) {
+      setFallo(e);
+    } finally {
+      setMirando(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.aQuienLeToca.titulo")}
+      </h2>
+      <p className="text-3xs text-ink-faint">
+        {t("seguridad.aQuienLeToca.porQue")}
+      </p>
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void mirar();
+        }}
+      >
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-3xs text-ink-muted">
+          {t("seguridad.aQuienLeToca.correo")}
+          <input
+            type="email"
+            className="input-base"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          className="btn-secondary"
+          disabled={mirando || !email.trim()}
+        >
+          {mirando
+            ? t("seguridad.aQuienLeToca.mirando")
+            : t("seguridad.aQuienLeToca.mirar")}
+        </button>
+      </form>
+      {fallo ? <Fallo error={fallo} /> : null}
+      <div role="status" aria-live="polite">
+        {quien ? (
+          <p className="rounded-lg border border-ink-dim/40 p-3 text-2xs text-ink">
+            {quien.tiene_proveedor
+              ? t("seguridad.aQuienLeToca.entraPorSso", {
+                  nombre: quien.nombre,
+                  tipo: quien.tipo,
+                })
+              : t("seguridad.aQuienLeToca.entraPorContrasena")}
+            {quien.tiene_proveedor &&
+            quien.contrasena_local_permitida === false ? (
+              <span className="mt-1 block text-3xs text-warning">
+                {t("seguridad.aQuienLeToca.sinContrasenaLocal")}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/** El servidor devuelve la lista tal cual; esto la deja en array pase lo que pase. */
+function filas_(datos: unknown): Excepcion[] {
+  return Array.isArray(datos) ? (datos as Excepcion[]) : [];
 }

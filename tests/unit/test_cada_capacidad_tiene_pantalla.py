@@ -236,7 +236,17 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            son casi todas POST —calculadoras, no listados—,
 #                            asi que lo que falta ahi no son pestanas: son las
 #                            preguntas concretas que alguien se hace
-TOPE_SIN_PANTALLA = 395
+#   28-10-2026  394 de 778  «no puedo entrar: por donde le toca» —a que
+#                            proveedor le toca un correo, que el usuario no
+#                            sabe contestar porque el sabe su correo, no si su
+#                            empresa usa Entra ID o Ping—. Y de paso, sin
+#                            bajar el tope porque ya estaba declarada, las
+#                            excepciones de segregacion con su motivo y su
+#                            caducidad: el informe marcaba «con excepcion» y
+#                            no habia forma de leer POR QUE estaban
+#                            permitidas, que es la pregunta siguiente de
+#                            cualquier auditor
+TOPE_SIN_PANTALLA = 394
 
 
 def _es_pantalla(p: Path) -> bool:
