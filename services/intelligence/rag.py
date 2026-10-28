@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 from uuid import UUID
 
+from crmcore.consultas import OPERADORES_DE_FILTRO
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion
 from crmcore.logging import get_logger
@@ -49,7 +50,10 @@ RE_CITA = re.compile(r"\[(\d{1,2})\]")
 # Operadores que puede proponer una pregunta en lenguaje natural. Cerrada: el
 # plan lo ejecuta otro, y un operador que no sepa traducir sería una consulta que
 # falla lejos de aquí.
-OPERADORES_PLAN = ("=", "!=", ">", ">=", "<", "<=", "en", "contiene", "entre")
+# La gramática del plan es LA DEL EJECUTOR, no una propia: admitía «entre»,
+# que no lo ejecuta nadie, y no admitía `empieza`, `vacio` ni `no_vacio`, que
+# sí. Ver `crmcore.consultas`.
+OPERADORES_PLAN = OPERADORES_DE_FILTRO
 
 _respondedor: Callable[..., dict[str, Any]] | None = None
 _traductor: Callable[..., dict[str, Any]] | None = None

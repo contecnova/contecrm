@@ -956,3 +956,35 @@ def test_todo_objeto_con_datos_personales_declara_su_tratamiento() -> None:
         + "\n  ".join(rat["tratamientos_sobre_objetos_sin_datos_personales"])
         + "\n\nSuele significar que el objeto cambió y el RAT no."
     )
+
+
+def test_la_gramatica_de_filtros_es_UNA() -> None:
+    """Quien propone un plan y quien lo ejecuta tienen que admitir lo mismo.
+
+    Había dos listas de operadores, en dos servicios, y no decían lo mismo. Las
+    dos consecuencias, medidas el 28-10-2026:
+
+      * «entre» se aceptaba en un plan y **no lo ejecuta nadie**. Una pregunta
+        como «clientes con facturación entre 10.000 y 50.000» daba un plan
+        válido que moría —o se quedaba sin filtro— al ejecutarse: el usuario ve
+        un número y no es el que pidió;
+      * `empieza`, `vacio` y `no_vacio` **sí se ejecutan** y eran inexpresables
+        en un plan, así que el modelo no podía proponerlos aunque fueran justo
+        lo que hacía falta.
+
+    Es el caso de la tabla de rutas del gateway: dos listas de acoplamiento
+    mantenidas por separado dejan de coincidir, y el síntoma aparece lejos de
+    la causa. Ahora la gramática vive en `crmcore.consultas` y las dos la
+    importan; esta prueba existe para que nadie vuelva a escribir la suya.
+    """
+    from crmcore.consultas import OPERADORES_DE_FILTRO
+
+    from services.analytics.informes import OPERADORES
+    from services.intelligence.rag import OPERADORES_PLAN
+
+    assert (
+        OPERADORES is OPERADORES_DE_FILTRO
+    ), "el que EJECUTA se ha escrito su propia lista de operadores"
+    assert (
+        OPERADORES_PLAN is OPERADORES_DE_FILTRO
+    ), "el que PROPONE se ha escrito su propia lista de operadores"

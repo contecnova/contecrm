@@ -10265,7 +10265,14 @@ permiso.
 Para preguntar en lenguaje natural, **el modelo no toca la base de datos**:
 traduce la pregunta a un **plan** —el mismo formato que compila el motor de
 informes— y ese plan lo ejecuta quien tiene el dato, con los permisos de quien
-pregunta. Dejar que escriba SQL sería darle a un generador de texto acceso a
+pregunta. Y **el mismo formato quiere decir la misma gramática**: hasta el
+28-10-2026 había dos listas de operadores, la del que propone y la del que
+ejecuta, y no coincidían. El plan aceptaba «entre», que no lo ejecuta nadie —la
+pregunta daba un plan válido y un número que no era el pedido—, y no podía
+expresar «empieza», «vacío» ni «no vacío», que sí se ejecutan. Ahora la
+gramática está escrita una vez y manda **lo que se puede ejecutar**: proponer
+algo que nadie sabe hacer no es una funcionalidad a medias, es una respuesta
+equivocada con buena presentación. Dejar que escriba SQL sería darle a un generador de texto acceso a
 cualquier tabla, y ningún filtro posterior arregla eso. El plan **se valida contra
 el modelo publicado** antes de devolverlo, y se devuelve **cómo entendió la
 pregunta** en una frase: es lo que permite ver que preguntaste por «este

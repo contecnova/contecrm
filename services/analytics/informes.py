@@ -47,6 +47,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from crmcore.consultas import OPERADORES_DE_FILTRO
 from crmcore.db.base import Base, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado, Prohibido
@@ -83,19 +84,10 @@ AGREGADOS = ("suma", "media", "minimo", "maximo", "cuenta", "cuenta_distinta")
 # estructura de datos, no una consulta. Quien la ejecuta la traduce a su
 # lenguaje, que es lo que dice RT-4 y lo que evita que este módulo se convierta
 # en un segundo motor de explotación.
-OPERADORES = (
-    "=",
-    "!=",
-    ">",
-    ">=",
-    "<",
-    "<=",
-    "contiene",
-    "empieza",
-    "en",
-    "vacio",
-    "no_vacio",
-)
+# La gramática vive en el núcleo: la comparte con quien PROPONE un plan desde
+# una pregunta en lenguaje natural, y dos listas a mano dejaron de coincidir.
+# Ver `crmcore.consultas`.
+OPERADORES = OPERADORES_DE_FILTRO
 # Un identificador de campo válido. Se comprueba aunque el plan no sea SQL:
 # quien lo ejecute lo usará como nombre de columna, y un nombre con comillas o
 # punto y coma es una inyección esperando a que el de abajo no la filtre.
