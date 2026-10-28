@@ -143,8 +143,22 @@ def test_las_pestanas_de_la_consola_abren(
     from starlette.testclient import TestClient
 
     pestanas = _pestanas()[servicio]
-    previo = os.environ.get("OUTBOX_ENABLED")
+    # EL RELEVO DEL OUTBOX Y LOS BARRIDOS DE FONDO, APAGADOS.
+    #
+    # Los dos abren su propia sesión cuando les toca el reloj, y en una prueba
+    # comparten la conexión del arnés: si eso cae en medio de una de estas
+    # ~110 peticiones, soltar un savepoint destruye los posteriores y revienta
+    # la vuelta siguiente.
+    #
+    # El del outbox ya estaba. El de los barridos faltaba, y es lo que hacía
+    # que en el pase completo fallara **un servicio distinto cada vez** —sales,
+    # service, tenancy en tres tandas seguidas— mientras el fichero suelto
+    # pasaba entero: no es la máquina llena, es a qué petición le cae encima el
+    # reloj. `test_fuzzing_tenant` apaga los dos desde el 12-10-2026 y explica
+    # por qué; aquí faltaba el segundo.
+    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED")}
     os.environ["OUTBOX_ENABLED"] = "false"
+    os.environ["TAREAS_FONDO_ENABLED"] = "false"
     get_settings.cache_clear()
     cabeceras = _cabeceras(tenant_id)
     rotas: list[str] = []
@@ -159,10 +173,11 @@ def test_las_pestanas_de_la_consola_abren(
                         f"«{nombre}» ({ruta}) → {respuesta.status_code}: " f"{respuesta.text[:160]}"
                     )
     finally:
-        if previo is None:
-            os.environ.pop("OUTBOX_ENABLED", None)
-        else:
-            os.environ["OUTBOX_ENABLED"] = previo
+        for clave, valor in previo.items():
+            if valor is None:
+                os.environ.pop(clave, None)
+            else:
+                os.environ[clave] = valor
         get_settings.cache_clear()
 
     assert abiertas == len(pestanas), f"se han abierto {abiertas} de {len(pestanas)}"
