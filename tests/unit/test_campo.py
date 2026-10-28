@@ -302,6 +302,62 @@ def test_la_reposicion_dice_cuantas_referencias_no_tienen_minimo(
     assert [linea["reponer"] for linea in salida["lineas"]] == ["4.00"]
 
 
+def test_el_minimo_se_puede_fijar_desde_el_producto(uow: UnidadDeTrabajo) -> None:
+    """La mitad que faltaba no era la medida: era la puerta.
+
+    `reposicion()` decide qué hay que cargar comparando la existencia con
+    `stock_furgoneta.minimo`. Ese campo lo leía ella, lo contaba —devuelve
+    `sin_minimo`— y **ninguna ruta lo escribía**. Se quedaba en el cero por
+    defecto, con el que «por debajo del mínimo» no se cumple nunca, así que la
+    pantalla salía vacía: lo mismo que se ve con un almacén perfectamente
+    surtido. Medido el 28-10-2026 sembrando cinco referencias con existencias y
+    movimientos de verdad, y «qué hay que cargar» sin una sola línea.
+
+    Por qué no se había cazado: la prueba de arriba **planta la fila a mano**,
+    con su mínimo puesto, así que demuestra que el cálculo está bien y pasa por
+    encima de que no haya forma de llegar hasta él. Ésta entra por donde entra
+    el producto.
+    """
+    tecnico = _tecnico(uow)
+    repuesto = _repuesto(uow, "REP-MIN")
+
+    # Y se puede declarar antes de cargar nada: preparar una furgoneta empieza
+    # por decir qué tiene que llevar, no por llevarlo.
+    salida = campo.fijar_minimo(
+        uow, tecnico_id=tecnico.id, repuesto_id=repuesto.id, minimo=Decimal(6)
+    )
+    assert salida["hay_que_reponer"] is True
+    assert campo.reposicion(uow.db, uow.tenant_id, tecnico_id=tecnico.id)["lineas"] == [
+        {
+            "tecnico_id": str(tecnico.id),
+            "repuesto_id": str(repuesto.id),
+            "cantidad": "0.000",
+            # Tres decimales porque es lo que guarda la columna; «reponer» sale
+            # con dos porque lo calcula `_redondear`.
+            "minimo": "6.000",
+            "reponer": "6.00",
+            "en_negativo": False,
+        }
+    ]
+
+    # Al cargar por encima del mínimo deja de pedirse, que es lo que convierte
+    # la pantalla en una lista de trabajo y no en un inventario.
+    campo.mover_repuesto(
+        uow, tecnico_id=tecnico.id, repuesto_id=repuesto.id, tipo="carga", cantidad=Decimal(10)
+    )
+    assert campo.reposicion(uow.db, uow.tenant_id, tecnico_id=tecnico.id)["lineas"] == []
+
+
+def test_un_minimo_negativo_no_quiere_decir_nada(uow: UnidadDeTrabajo) -> None:
+    """Y se rechaza al escribirlo, no al leerlo: un mínimo de −3 haría que la
+    reposición pidiera cantidades negativas y nadie sabría de dónde salen."""
+    tecnico = _tecnico(uow)
+    repuesto = _repuesto(uow, "REP-NEG")
+    with pytest.raises(ErrorValidacion) as e:
+        campo.fijar_minimo(uow, tecnico_id=tecnico.id, repuesto_id=repuesto.id, minimo=Decimal(-3))
+    assert e.value.error_code == "campo.minimo_invalido"
+
+
 # ── Rutas (CRM-04.04.01.02) ───────────────────────────────────────────────
 
 
@@ -459,6 +515,37 @@ def test_un_plan_sin_periodicidad_no_se_dispara_nunca(uow: UnidadDeTrabajo) -> N
     activo, _ = act.crear(uow, nombre="Cámara")
     with pytest.raises(ErrorValidacion):
         campo.crear_plan(uow, nombre="Revisión", activo_id=activo.id)
+
+
+def test_un_plan_puede_arrancar_cuando_se_instalo_la_maquina(uow: UnidadDeTrabajo) -> None:
+    """`crear_plan` admitía `desde` y la API no lo dejaba poner.
+
+    Con lo cual todo plan empezaba el día que se escribía y el primer
+    preventivo caía a un ciclo entero vista. Al cargar un parque que lleva años
+    funcionando eso es falso: la revisión semestral de una máquina instalada en
+    2019 toca el mes que viene, no dentro de seis meses. Mientras tanto
+    «próximos vencimientos» sale vacío y el servicio de campo parece sin uso.
+    """
+    from services.service.api_campo import CrearPlan
+
+    activo, _ = act.crear(uow, nombre="Prensa de 2019")
+    # **Por el modelo de la API y no llamando al servicio.** La primera versión
+    # de esta prueba llamaba a `campo.crear_plan` directamente, y entonces
+    # pasaba igual de verde con el campo quitado del contrato: la mitad que
+    # faltaba era justo la puerta, y una prueba que la salta no la vigila. Es el
+    # mismo descuido que dejó el mínimo de furgoneta sin forma de escribirse.
+    datos = CrearPlan(
+        nombre="Revisión semestral",
+        activo_id=activo.id,
+        cada_dias=180,
+        antelacion_dias=15,
+        desde=date.today() - timedelta(days=172),
+    )
+    plan = campo.crear_plan(uow, **datos.model_dump())
+    # Ocho días vista, no seis meses.
+    assert plan.proxima_fecha == date.today() + timedelta(days=8)
+    claves = [v["plan_id"] for v in campo.vencimientos(uow.db, uow.tenant_id)["vencimientos"]]
+    assert str(plan.id) in claves, "un plan que vence en ocho días tiene que salir"
 
 
 def test_el_preventivo_vence_por_uso_aunque_la_fecha_no_llegue(

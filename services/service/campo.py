@@ -1357,6 +1357,65 @@ def mover_repuesto(
     }
 
 
+def fijar_minimo(
+    uow: UnidadDeTrabajo,
+    *,
+    tecnico_id: UUID,
+    repuesto_id: UUID,
+    minimo: Decimal,
+) -> dict[str, Any]:
+    """Cuánto tiene que llevar siempre esta furgoneta de esta referencia.
+
+    **Sin esto, la reposición no puede pedir nada.** El mínimo se guardaba en
+    `stock_furgoneta.minimo`, lo leía `reposicion()` para decidir qué hay que
+    cargar y **ninguna ruta lo escribía**: se quedaba en el cero por defecto, y
+    con el mínimo a cero la condición «cantidad por debajo del mínimo» no se
+    cumple nunca. La pantalla salía vacía, que es lo mismo que ve un almacén
+    perfectamente surtido. Medido el 28-10-2026 sembrando el almacén: cinco
+    referencias con existencias y movimientos, y «qué hay que cargar» vacío.
+
+    La propia `reposicion()` ya avisaba de esto —devuelve `sin_minimo` con
+    cuántas referencias no lo tienen puesto—, lo que lo deja claro: la mitad que
+    faltaba no era la medida, era la puerta.
+
+    Crea la línea de stock si no existe: declarar el mínimo de una referencia que
+    el técnico todavía no lleva es lo normal al preparar una furgoneta nueva, y
+    obligar a cargarla antes para poder decir cuánto debe llevar es el orden
+    inverso al que se trabaja.
+    """
+    if Decimal(minimo) < 0:
+        raise ErrorValidacion(
+            "Un mínimo negativo no quiere decir nada.",
+            error_code="campo.minimo_invalido",
+        )
+    _tecnico(uow.db, uow.tenant_id, tecnico_id)
+
+    fila = uow.db.execute(
+        select(StockFurgoneta).where(
+            StockFurgoneta.tenant_id == uow.tenant_id,
+            StockFurgoneta.tecnico_id == tecnico_id,
+            StockFurgoneta.repuesto_id == repuesto_id,
+        )
+    ).scalar_one_or_none()
+    if fila is None:
+        fila = StockFurgoneta(
+            tenant_id=uow.tenant_id,
+            tecnico_id=tecnico_id,
+            repuesto_id=repuesto_id,
+            cantidad=Decimal(0),
+        )
+        uow.db.add(fila)
+    fila.minimo = _redondear(Decimal(minimo))
+    uow.db.flush()
+    return {
+        "tecnico_id": str(tecnico_id),
+        "repuesto_id": str(repuesto_id),
+        "minimo": str(fila.minimo),
+        "cantidad": str(fila.cantidad),
+        "hay_que_reponer": Decimal(fila.cantidad) < Decimal(fila.minimo),
+    }
+
+
 def reposicion(db: Session, tenant_id: UUID, *, tecnico_id: UUID | None = None) -> dict[str, Any]:
     """Qué hay que cargar: lo que está por debajo del mínimo o en negativo."""
     consulta = select(StockFurgoneta).where(StockFurgoneta.tenant_id == tenant_id)

@@ -4077,6 +4077,284 @@ def sembrar_la_operacion_del_dia(api: Api) -> None:
     )
 
 
+# ── El campo, la previsión y la postventa ─────────────────────────────────
+
+
+def sembrar_el_campo_y_la_prevision(api: Api) -> None:
+    """Tercera tanda de las 55 pestañas vacías (28-10-2026).
+
+    Aquí hay una diferencia con las dos anteriores que conviene decir: tres de
+    estas pantallas son **listas de aviso** —repuestos a reponer, garantías que
+    vencen, expedientes que se pasan de plazo—. Llenarlas no es fabricar una
+    avería: un almacén con existencias por debajo del mínimo y una garantía que
+    vence en dos meses son el estado normal de cualquier servicio técnico, y lo
+    que no es normal es que no haya ninguno. Lo que no se siembra es un fallo:
+    ni un aparato caído, ni una integración rota, ni un plazo ya incumplido.
+    """
+    tecnicos = api.listar("/api/v1/tecnicos-campo", 4)
+    activos = api.listar("/api/v1/activos", 6)
+    cuentas = api.listar("/api/v1/accounts", 4)
+    usuarios = api.listar("/api/v1/usuarios", 4)
+    contactos = api.listar("/api/v1/contacts", 3)
+
+    # 1. El almacén del servicio técnico, con su mínimo: sin existencias
+    #    declaradas, «reposición» no puede decir qué falta.
+    repuestos: list[dict] = []
+    for sku, nombre, unidad, coste in (
+        ("REP-SENS-220", "Sensor RS-220", "unidad", "84.50"),
+        ("REP-FILT-F220", "Filtro F-220", "unidad", "12.90"),
+        ("REP-CORR-8M", "Correa dentada 8M", "metro", "6.40"),
+        ("REP-PLC-CT100", "Módulo PLC CT-100", "unidad", "412.00"),
+        ("REP-JUNTA-50", "Junta tórica 50 mm", "unidad", "1.75"),
+    ):
+        fila = api.crear(
+            "/api/v1/repuestos",
+            {"sku": sku, "nombre": nombre, "unidad": unidad, "coste": coste, "activo": True},
+        )
+        if fila and fila.get("id"):
+            repuestos.append(fila)
+
+    # 2. Y su movimiento: entradas al almacén y consumos de los técnicos. Sin
+    #    movimientos, el stock es un número escrito a mano.
+    for i, repuesto in enumerate(repuestos):
+        tecnico = tecnicos[i % len(tecnicos)] if tecnicos else None
+        if not tecnico or not tecnico.get("id"):
+            continue
+        api.crear(
+            "/api/v1/repuestos/movimientos",
+            {
+                "tecnico_id": tecnico["id"],
+                "repuesto_id": repuesto["id"],
+                "tipo": "entrada",
+                "cantidad": 20 + i * 5,
+                "motivo": "Reposición de almacén central.",
+            },
+        )
+        api.crear(
+            "/api/v1/repuestos/movimientos",
+            {
+                "tecnico_id": tecnico["id"],
+                "repuesto_id": repuesto["id"],
+                "tipo": "consumo",
+                "cantidad": 3 + i,
+                "motivo": "Consumido en intervención.",
+            },
+        )
+        # Y cuánto tiene que llevar siempre. Sin el mínimo, «qué hay que cargar»
+        # no puede pedir nada: la condición «por debajo del mínimo» no se cumple
+        # nunca con el cero por defecto, y la pantalla sale vacía igual que con
+        # un almacén perfectamente surtido. Dos de las cinco por encima de lo que
+        # queda, para que la lista tenga trabajo y no esté toda en rojo.
+        api.crear(
+            "/api/v1/repuestos/minimos",
+            {
+                "tecnico_id": tecnico["id"],
+                "repuesto_id": repuesto["id"],
+                "minimo": (30, 10, 8, 40, 6)[i % 5],
+            },
+            metodo="PUT",
+        )
+
+    # 3. El mantenimiento preventivo, que es de lo que vive el servicio de campo:
+    #    sin planes, todo lo que se hace es correctivo y nadie lo nota hasta que
+    #    la cuenta se queja de que siempre se va a apagar fuegos.
+    for i, activo in enumerate(activos[:4]):
+        if not activo.get("id"):
+            continue
+        api.crear(
+            "/api/v1/planes-preventivos",
+            {
+                "nombre": ("Revisión semestral", "Calibración anual", "Engrase trimestral")[i % 3],
+                "activo_id": activo["id"],
+                "cada_dias": (180, 365, 90)[i % 3],
+                # El ciclo arranca cuando se instaló la máquina, no hoy: si no,
+                # el primer preventivo cae a un ciclo entero vista y «próximos
+                # vencimientos» sale vacío en un parque que lleva años andando.
+                "desde": _f(-(180, 365, 90)[i % 3] + (8, 20, 5)[i % 3]),
+                "duracion_min": (120, 240, 60)[i % 3],
+                "antelacion_dias": 15,
+                "competencias": [["mecanica"], ["electronica"], ["mecanica"]][i % 3],
+                "checklist": [
+                    {"que": "Comprobar holguras", "obligatorio": True},
+                    {"que": "Registrar lectura del contador", "obligatorio": True},
+                ],
+            },
+        )
+    api.crear("/api/v1/planes-preventivos/generar", {})
+
+    # 4. Garantías del parque instalado, repartidas: una vencida hace tiempo,
+    #    dos corrientes y una que vence pronto. Todas iguales no enseñan nada.
+    for i, activo in enumerate(activos[:4]):
+        if not activo.get("id"):
+            continue
+        desde, hasta = ((-1460, -365), (-700, 400), (-400, 700), (-640, 55))[i % 4]
+        api.crear(
+            f"/api/v1/activos/{activo['id']}/garantias",
+            {
+                "desde": _f(desde),
+                "hasta": _f(hasta),
+                "tipo": ("fabricante", "extension", "fabricante", "contrato")[i % 4],
+                "cobertura": ["piezas", "mano_obra"],
+                "referencia": f"GAR-{2026 - (i % 3)}-{i:03d}",
+            },
+        )
+
+    # 5. Las cuotas del año. «Consecución» sin objetivo fijado no puede decir
+    #    nada: el porcentaje se calcula contra algo.
+    for i, usuario in enumerate(usuarios[:3]):
+        if not usuario.get("id"):
+            continue
+        api.crear(
+            "/api/v1/cuotas",
+            {
+                "usuario_id": usuario["id"],
+                "desde": "2026-01-01",
+                "hasta": "2026-12-31",
+                "periodo": "anual",
+                "objetivo": ["1200000.00", "850000.00", "640000.00"][i],
+                "metrica": "importe",
+                "moneda": "EUR",
+            },
+        )
+
+    # 6. Y un periodo congelado: cerrado el trimestre, el objetivo no se toca.
+    #    Poder cambiarlo después es como se consigue que todo el mundo cumpla.
+    api.crear(
+        "/api/v1/cuotas/congelar",
+        {
+            "periodo": "2026-T3",
+            "motivo": "Trimestre cerrado y comunicado a dirección comercial.",
+        },
+    )
+
+    # 7. Expedientes con plazo: una reclamación de consumo o un requerimiento de
+    #    organismo tienen fecha de entrada y días hábiles para contestar, y lo
+    #    que se pasa de plazo cuesta dinero.
+    for i, (asunto, tipo, via, organismo, dias, entrada) in enumerate(
+        (
+            (
+                "Reclamación de consumo por retraso de entrega",
+                "reclamacion",
+                "organismo",
+                "Consumo",
+                10,
+                -4,
+            ),
+            (
+                "Requerimiento de documentación de homologación",
+                "requerimiento",
+                "correo",
+                "Industria",
+                20,
+                -12,
+            ),
+            ("Petición de acceso a datos de un contacto", "derechos", "portal", "", 30, -22),
+        )
+    ):
+        cuenta = cuentas[i % len(cuentas)] if cuentas else None
+        contacto = contactos[i % len(contactos)] if contactos else None
+        api.crear(
+            "/api/v1/expedientes",
+            {
+                "asunto": asunto,
+                "entrada_at": _f(entrada) + "T09:00:00Z",
+                "plazo_dias": dias,
+                "plazo_habiles": True,
+                "tipo": tipo,
+                "via": via,
+                "descripcion": "Expediente con plazo, abierto por la vía que lo trajo.",
+                **({"organismo": organismo} if organismo else {}),
+                **({"cuenta_id": cuenta["id"]} if cuenta and cuenta.get("id") else {}),
+                **({"contacto_id": contacto["id"]} if contacto and contacto.get("id") else {}),
+            },
+        )
+
+    # 8. Canales de captura: los formularios por los que entra un lead, con su
+    #    campo trampa contra robots y su límite por hora contra el que insiste.
+    for clave, nombre, tipo in (
+        ("web-contacto", "Formulario de contacto de la web", "formulario"),
+        ("feria-hannover", "Captación en feria", "evento"),
+    ):
+        api.crear(
+            "/api/v1/captura/canales",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "tipo": tipo,
+                "mapeo": {
+                    "nombre": "first_name",
+                    "apellidos": "last_name",
+                    "email": "email",
+                    "empresa": "company",
+                },
+                "fijos": {"origen": clave},
+                "obligatorios": ["email", "empresa"],
+                "campo_trampa": "website",
+                "max_por_hora": 60,
+            },
+        )
+
+    # 9. Activos de marketing con su licencia y su aprobación. Una imagen con la
+    #    licencia caducada publicada en campaña es una factura del banco de
+    #    imágenes, y es exactamente lo que esta pantalla evita.
+    aprobadores = [u["id"] for u in usuarios if u.get("id")] or []
+    for clave, nombre, referencia, licencia, hasta in (
+        ("foto-planta", "Fotografía de planta", "assets/planta.jpg", "banco_imagenes", 120),  # noqa: E501
+        ("video-producto", "Vídeo de producto", "assets/producto.mp4", "propia", 900),
+        ("logo-cliente-oem", "Logotipo de cliente OEM", "assets/oem.svg", "cesion_cliente", 45),
+    ):
+        activo_mkt = api.crear(
+            "/api/v1/activos-marketing",
+            {
+                "clave": clave,
+                "nombre": nombre,
+                "referencia": referencia,
+                "usos_permitidos": ["web", "impresion"],
+                "licencia": licencia,
+                "licencia_hasta": _f(hasta),
+                "tipo": referencia.rsplit(".", 1)[-1],
+                "idioma": "es",
+                "etiquetas": ["industrial"],
+            },
+        )
+        if activo_mkt and activo_mkt.get("id") and aprobadores:
+            api.crear(
+                "/api/v1/activos-marketing/aprobacion",
+                {
+                    "objeto": "activo_marketing",
+                    "objeto_id": activo_mkt["id"],
+                    "version": 1,
+                    # Cada paso con su aprobador concreto: el producto rechaza
+                    # «que lo vea marketing», y tiene razón —es una cola donde
+                    # las cosas se quedan y nadie en particular las mira—.
+                    "pasos": [
+                        {"nombre": "Marca", "aprobador_id": aprobadores[0]},
+                        {"nombre": "Legal", "aprobador_id": aprobadores[-1]},
+                    ],
+                },
+            )
+
+    # 10. Consentimiento pedido por doble aceptación: la pantalla de renovación
+    #     no puede enseñar nada si nunca se pidió ninguno.
+    for i, contacto in enumerate(contactos[:3]):
+        destino = (contacto or {}).get("email")
+        if not destino:
+            continue
+        api.crear(
+            "/api/v1/optin",
+            {
+                "destino": destino,
+                "canal": ("correo", "sms", "correo")[i % 3],
+                "finalidad": ("comercial", "novedades", "eventos")[i % 3],
+                "texto_aceptado": (
+                    "Acepto recibir comunicaciones comerciales y entiendo que puedo "
+                    "darme de baja en cualquier momento."
+                ),
+                "horas_validez": 72,
+            },
+        )
+
+
 # ── Arranque ──────────────────────────────────────────────────────────────
 
 
@@ -4901,6 +5179,7 @@ PARTES: dict[str, Any] = {
     "las_que_siguen_vacias": sembrar_las_que_siguen_vacias,
     "la_plataforma_y_la_ia": sembrar_la_plataforma_y_la_ia,
     "la_operacion_del_dia": sembrar_la_operacion_del_dia,
+    "el_campo_y_la_prevision": sembrar_el_campo_y_la_prevision,
 }
 
 

@@ -4372,6 +4372,38 @@ lo rechaza el producto —y tiene razón, es una frase—; y un `null` en un cam
 de texto es un 422 de esquema, no un hueco. Un sembrador que no se corre no
 siembra nada.
 
+La tercera va del **campo, la previsión y la postventa**: almacén de furgoneta
+con sus movimientos, mantenimiento preventivo, garantías del parque, cuotas del
+año con un trimestre congelado, expedientes con plazo, canales de captura,
+activos de marketing con su aprobación y consentimientos pedidos.
+
+Y aquí sembrar destapó **dos agujeros de verdad**, los dos de la misma forma:
+una mitad construida y la otra sin puerta.
+
+**El mínimo de la furgoneta no se podía poner.** «Qué hay que cargar» compara la
+existencia con `stock_furgoneta.minimo`, ese campo lo leía la consulta —que
+hasta devuelve cuántas referencias no lo tienen puesto— y **ninguna ruta lo
+escribía**: se quedaba en el cero por defecto, con el que «por debajo del
+mínimo» no se cumple nunca. La pantalla salía vacía, que es exactamente lo que
+se ve con un almacén perfectamente surtido. Ahora hay `PUT
+/repuestos/minimos`, y crea la línea si el técnico aún no lleva esa referencia:
+preparar una furgoneta empieza por decir qué tiene que llevar, no por llevarlo.
+
+**Y un plan preventivo no podía empezar antes de hoy.** El servicio admitía
+`desde` y el contrato de la API no lo dejaba poner, así que todo plan arrancaba
+el día que se escribía y el primer preventivo caía a un ciclo entero vista. Al
+cargar un parque que lleva años funcionando eso es sencillamente falso: la
+revisión semestral de una máquina instalada en 2019 toca el mes que viene, no
+dentro de seis meses —y mientras tanto «próximos vencimientos» sale vacío y el
+servicio de campo parece sin usar—.
+
+Por qué no se habían cazado antes, que es la parte que importa: **la prueba del
+mínimo plantaba la fila a mano**, con su mínimo ya puesto. Demostraba que el
+cálculo está bien y pasaba por encima de que no hubiera forma de llegar hasta
+él. La primera versión de la prueba del plan cometió el mismo error —llamaba al
+servicio y no al contrato— y se quedaba verde con el campo quitado; se corrigió
+antes de darla por buena.
+
 **Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
 repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
 que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.

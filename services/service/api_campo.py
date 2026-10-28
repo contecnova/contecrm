@@ -136,6 +136,13 @@ class CrearPlan(BaseModel):
     competencias: list[str] = Field(default_factory=list)
     checklist: list[dict[str, Any]] = Field(default_factory=list)
     antelacion_dias: int = 15
+    # Desde cuándo cuenta el ciclo. `crear_plan` lo admitía y la API no lo
+    # dejaba poner, así que todo plan empezaba hoy y el primer preventivo caía a
+    # un ciclo entero vista. Al cargar un parque que lleva años funcionando eso
+    # es sencillamente falso: la revisión semestral de una máquina instalada en
+    # 2019 toca el mes que viene, no dentro de seis meses, y mientras tanto
+    # «próximos vencimientos» sale vacío y el servicio de campo parece sin uso.
+    desde: date | None = None
 
 
 class Sincronizar(BaseModel):
@@ -522,6 +529,31 @@ def crear_repuesto(datos: CrearRepuesto, uow: UowDep) -> Any:
 )
 def mover(datos: Movimiento, uow: UowDep) -> Any:
     return campo.mover_repuesto(uow, **datos.model_dump())
+
+
+class MinimoFurgoneta(BaseModel):
+    tecnico_id: UUID
+    repuesto_id: UUID
+    minimo: Decimal = Field(..., ge=0, description="Cuánto tiene que llevar siempre")
+
+
+@router_repuestos.put(
+    "/minimos",
+    dependencies=[Depends(exige_permiso("case:write"))],
+    summary="Cuánto tiene que llevar siempre una furgoneta de una referencia",
+    description=(
+        "**Sin esto, «qué hay que cargar» no podía pedir nada.** El mínimo se "
+        "guardaba, lo leía la reposición para decidir qué falta y ninguna ruta "
+        "lo escribía: se quedaba en cero, y con el mínimo a cero la condición "
+        "«por debajo del mínimo» no se cumple nunca. La pantalla salía vacía, "
+        "que es lo mismo que se ve con un almacén perfectamente surtido.\n\n"
+        "Crea la línea si el técnico todavía no lleva esa referencia: decir "
+        "cuánto debe llevar una furgoneta que se está preparando es lo normal, "
+        "y obligar a cargarla antes es el orden inverso al que se trabaja."
+    ),
+)
+def fijar_minimo(datos: MinimoFurgoneta, uow: UowDep) -> Any:
+    return campo.fijar_minimo(uow, **datos.model_dump())
 
 
 @router_repuestos.get(
