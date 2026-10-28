@@ -184,6 +184,32 @@ class Api:
             self.fallos.append(f"POST {ruta} «{nombre}» → {e.code} {_motivo(respuesta)}")
             return None
 
+    def asegurar(self, ruta: str, cuerpo: dict, clave: str = "clave") -> dict | None:
+        """Crea, y si ya estaba **devuelve el que hay**.
+
+        `crear` devuelve `None` cuando el alta choca con un duplicado, que es lo
+        correcto para contar. Lo que no sirve es para encadenar: todo lo que
+        cuelga de esa fila —sus movimientos, sus festivos, su aprobación— se
+        salta en silencio en la segunda pasada, y el sembrado dice que fue bien.
+
+        Pasó, y tardó en verse porque hacían falta dos vueltas: en la primera el
+        alta de repuestos funcionó pero la ruta de técnicos era la equivocada,
+        así que no se creó ningún movimiento; de la segunda en adelante los
+        repuestos ya existían, el alta devolvía duplicado y **el bucle de
+        movimientos no se ejecutaba ni una vez**. Dos fallos tapándose el uno al
+        otro, con el informe en verde las dos veces.
+        """
+        fila = self.crear(ruta, cuerpo)
+        if fila and fila.get("id"):
+            return fila
+        esperado = cuerpo.get(clave)
+        if esperado is None:
+            return None
+        for existente in self.listar(ruta, 200):
+            if existente.get(clave) == esperado and existente.get("id"):
+                return existente
+        return None
+
     def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
         estado, respuesta = self._llamar(metodo, ruta, cuerpo)
         if estado in (200, 201, 204):
@@ -3593,7 +3619,7 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
     """
     # 1. El calendario laboral, con sus festivos. Sin él, cualquier plazo de SLA
     #    se cuenta a 24 horas y los vencimientos caen en domingo.
-    calendario = api.crear(
+    calendario = api.asegurar(
         "/api/v1/calendarios",
         {
             "clave": "iberia",
@@ -4153,9 +4179,10 @@ def sembrar_el_campo_y_la_prevision(api: Api) -> None:
         ("REP-PLC-CT100", "Módulo PLC CT-100", "unidad", "412.00"),
         ("REP-JUNTA-50", "Junta tórica 50 mm", "unidad", "1.75"),
     ):
-        fila = api.crear(
+        fila = api.asegurar(
             "/api/v1/repuestos",
             {"sku": sku, "nombre": nombre, "unidad": unidad, "coste": coste, "activo": True},
+            "sku",
         )
         if fila and fila.get("id"):
             repuestos.append(fila)
@@ -4171,7 +4198,8 @@ def sembrar_el_campo_y_la_prevision(api: Api) -> None:
             {
                 "tecnico_id": tecnico["id"],
                 "repuesto_id": repuesto["id"],
-                "tipo": "entrada",
+                # «carga», no «entrada»: los tipos son los del servicio.
+                "tipo": "carga",
                 "cantidad": 20 + i * 5,
                 "motivo": "Reposición de almacén central.",
             },
@@ -4349,7 +4377,7 @@ def sembrar_el_campo_y_la_prevision(api: Api) -> None:
         ("video-producto", "Vídeo de producto", "assets/producto.mp4", "propia", 900),
         ("logo-cliente-oem", "Logotipo de cliente OEM", "assets/oem.svg", "cesion_cliente", 45),
     ):
-        activo_mkt = api.crear(
+        activo_mkt = api.asegurar(
             "/api/v1/activos-marketing",
             {
                 "clave": clave,

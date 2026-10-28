@@ -4435,6 +4435,17 @@ meses en producción— y **no se activa sin métricas**: el producto exige
 `precision`, `recall` y `muestras`, porque sin ellas no se puede saber si la
 versión siguiente mejora o empeora.
 
+Y una última, que hacían falta **dos pasadas** para verla: un sembrado que sólo
+usa lo que él mismo acaba de crear no hace nada la segunda vez. El alta de un
+repuesto que ya existe devuelve duplicado y la función devuelve «nada», así que
+todo lo que colgaba de esa fila —sus movimientos, su mínimo— se saltaba en
+silencio. En la primera pasada tampoco se habían creado, por un motivo
+distinto: la ruta de técnicos era la equivocada y la lista venía vacía. Dos
+fallos tapándose el uno al otro, con el informe en verde las dos veces, y un
+tercero debajo —el movimiento se llama `carga`, no `entrada`— que no se podía
+ver hasta arreglar los dos anteriores. Ahora hay `asegurar()`: crea, y si ya
+estaba, **devuelve el que hay**.
+
 **Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
 repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
 que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.
