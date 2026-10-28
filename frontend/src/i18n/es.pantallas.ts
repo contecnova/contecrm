@@ -459,6 +459,10 @@ const pantallas = {
     noConsta: "no consta",
   },
   seguridad: {
+    aislamiento: "¿Qué impide que una empresa vea a otra?",
+    capaPuesta: "(puesta)",
+    capaNoPuesta: "(NO está haciendo su trabajo)",
+    noSeMideAqui: "no se mide desde aquí",
     excepciones: {
       titulo: "Y éstos, ¿por qué están permitidos?",
       porQue:

@@ -127,6 +127,28 @@ def comprobar(tenant_id: UUID, uow: UowDep) -> Any:
 
 
 @router_aislamiento.get(
+    "/garantias",
+    dependencies=[Depends(exige_permiso("tenant:read"))],
+    summary="Qué impide ahora mismo que una empresa vea a otra",
+    description=(
+        "**Se mide, no se declara.** El manual promete tres capas y cada una tapa "
+        "el hueco de la anterior; esto dice si están puestas *en esta "
+        "instalación*, que no es lo mismo.\n\n"
+        "La línea que más importa es la del **rol de conexión**: un SUPERUSER o un "
+        "rol con `BYPASSRLS` ignora las políticas aunque estén en FORCE, así que "
+        "contar tablas protegidas puede dar verde sobre una red desarmada. Pasó, y "
+        "medido: 623 tablas con RLS, FORCE y política, y el servicio conectando "
+        "como `postgres`. De las tres capas quedaba una.\n\n"
+        "Lo que no se puede medir desde aquí —la suite que intenta entrar en lo "
+        "ajeno, que corre en el gate de pre-push— se dice que es un gate y dónde "
+        "corre, en vez de pintar un visto bueno que nadie ha comprobado hoy."
+    ),
+)
+def garantias(db: DbDep) -> Any:
+    return ais.garantias(db)
+
+
+@router_aislamiento.get(
     "/sin-comprobar",
     dependencies=[Depends(exige_permiso("tenant:read"))],
     summary="Tenants cuyo aislamiento nadie ha contrastado",

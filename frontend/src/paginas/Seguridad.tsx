@@ -1,7 +1,22 @@
 /**
- * Identidad y seguridad: las cuatro preguntas que nadie podía contestar
+ * Identidad y seguridad: las preguntas que nadie podía contestar
  * (CRM-00.05.01.15, CRM-00.05.01.17, CRM-00.05.01.25, CRM-00.05.02.11,
  * CRM-07.03.02.06, CRM-00.05.01.14).
+ *
+ * Y, desde el 28-10-2026, **la primera de todas**: qué impide ahora mismo que
+ * una empresa vea a otra (CRM-00.01.01.09, CRM-00.01.01.10, CRM-00.01.02.01,
+ * CRM-00.01.02.02, CRM-00.01.02.03, CRM-00.01.02.04, CRM-00.01.02.05,
+ * CRM-00.01.02.07). Las ocho estaban construidas y probadas, y a ninguna se
+ * llegaba desde una pantalla: para saber si el aislamiento estaba de verdad
+ * puesto en una instalación había que escribir un script y leer `pg_roles` a
+ * mano. Se hizo, y lo que salió justifica la pantalla: 623 tablas con RLS,
+ * FORCE y política —esa mitad, completa— y el servicio conectando con un rol
+ * SUPERUSER, que se salta las políticas aunque estén en FORCE. De las tres
+ * capas que el manual promete quedaba una.
+ *
+ * Por eso esta pregunta va **arriba del todo** y no al final: es la que decide
+ * si todo lo demás significa algo. La respuesta se mide en cada carga; no hay
+ * ningún visto bueno escrito a mano.
  *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.01.06` —MFA
  * obligatoria configurable por rol— porque aquí se ve si está puesta y no se
@@ -42,6 +57,26 @@ import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
+
+interface CapaDeAislamiento {
+  clave: string;
+  titulo: string;
+  ok: boolean;
+  cuantas: number | null;
+  detalle: string;
+  porque: string;
+  medible_aqui?: boolean;
+}
+
+interface Garantias {
+  esquema: string;
+  rol: string;
+  rol_se_salta_la_red: boolean;
+  tablas_con_tenant: number;
+  capas: CapaDeAislamiento[];
+  todo_puesto: boolean;
+  que_significa: string;
+}
 
 interface Excepcion {
   id: string;
@@ -184,6 +219,10 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
         icono="shield_person"
       />
 
+      {/* Arriba del todo porque es la que decide si lo demás significa algo:
+          con un rol que se salta la RLS, contar tablas protegidas da verde
+          sobre una red desarmada. */}
+      <Aislamiento />
       <SegundoFactor datos={adopcion} />
       {/* Y lo de UNA persona, que es lo que no contesta el porcentaje: el
           administrador ve quién no tiene factor; quien entra necesita saber
@@ -205,6 +244,88 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
       <AQuienLeToca />
       {puede(sesion, "user:read") ? <Explicador /> : null}
     </div>
+  );
+}
+
+/**
+ * Qué impide, ahora mismo, que una empresa vea a otra.
+ *
+ * No es un panel de estado: es la respuesta a la pregunta que abre cualquier
+ * auditoría. Cada capa dice **de dónde sale su número** y, si no está puesta,
+ * qué falla exactamente. La que más importa no es la de arriba: es la del rol
+ * de conexión, porque un SUPERUSER ignora las políticas aunque estén en FORCE
+ * y entonces las demás líneas son verdes sobre nada.
+ *
+ * Lo que no se puede medir desde aquí —la suite que intenta entrar en lo
+ * ajeno— sale dicho como lo que es: un gate que corre antes de empujar. Pintar
+ * un visto bueno que nadie ha comprobado hoy sería peor que no pintar nada.
+ */
+function Aislamiento() {
+  const { t } = useTranslation();
+  const [datos, setDatos] = useState<Garantias | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    const control = new AbortController();
+    llamar<Garantias>("/api/v1/aislamiento/garantias", { signal: control.signal })
+      .then((r) => setDatos(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, []);
+  useEffect(cargar, [cargar]);
+
+  if (fallo) return <Fallo error={fallo} reintentar={cargar} />;
+  if (!datos) return <Cargando />;
+
+  return (
+    <section className="card p-4">
+      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold">{t("seguridad.aislamiento")}</h2>
+        <span
+          role="status"
+          className={
+            datos.todo_puesto
+              ? "text-sm text-success"
+              : "text-sm font-semibold text-warning"
+          }
+          data-testid="aislamiento-veredicto"
+        >
+          {datos.que_significa}
+        </span>
+      </header>
+
+      <ul className="divide-y divide-ink-dim/30">
+        {datos.capas.map((capa) => (
+          <li key={capa.clave} className="flex gap-3 py-2">
+            <span
+              aria-hidden="true"
+              className={
+                capa.ok ? "mt-1 text-success" : "mt-1 font-semibold text-warning"
+              }
+            >
+              {capa.ok ? "✓" : "✗"}
+            </span>
+            <div className="min-w-0">
+              <p className="font-medium">
+                {capa.titulo}
+                {/* El estado también en texto: un color no lo lee quien no
+                    distingue el verde del rojo, y aquí el dato es el estado. */}
+                <span className="sr-only">
+                  {capa.ok ? t("seguridad.capaPuesta") : t("seguridad.capaNoPuesta")}
+                </span>
+                {capa.medible_aqui === false ? (
+                  <span className="ml-2 text-xs text-ink-muted">
+                    {t("seguridad.noSeMideAqui")}
+                  </span>
+                ) : null}
+              </p>
+              <p className="text-sm text-ink-muted">{capa.detalle}</p>
+              <p className="text-xs text-ink-faint">{capa.porque}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

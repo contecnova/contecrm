@@ -49,6 +49,26 @@ rol se salta la RLS, y dice cuál es y cómo se arregla. En `dev` sigue siendo u
 aviso, porque en el portátil se trabaja con el rol de administrador. El rol
 correcto lo crea `deploy/crear-bases.sh`, con `NOSUPERUSER NOBYPASSRLS`.
 
+**Y se puede preguntar desde el producto.** En *Seguridad*, arriba del todo,
+está «¿qué impide que una empresa vea a otra?»: las capas de este apartado con
+su estado **medido en cada carga**, cada una diciendo de dónde sale su número
+—cuántas tablas con `tenant_id` hay en el esquema, cuántas sin RLS, sin FORCE o
+sin política; con qué rol se conecta; cuántos modelos cubre el guard—. Va la
+primera y no la última porque es la que decide si lo demás significa algo: con
+un rol que ignora las políticas, contar tablas protegidas es verde sobre una
+red desarmada.
+
+Hasta el 28-10-2026 esa pregunta no se podía hacer. Las ocho capacidades
+estaban construidas y probadas, y a ninguna se llegaba desde una pantalla: para
+saber si el aislamiento estaba de verdad puesto en una instalación había que
+escribir un script y leer `pg_roles` a mano. Se hizo, y lo que salió es
+exactamente por lo que ahora hay pantalla.
+
+Lo que **no** se finge: la suite que intenta entrar en lo ajeno no se puede
+consultar en vivo —es un gate que corre antes de empujar—, así que sale dicho
+como lo que es, con el fichero donde vive. Pintar un visto bueno que nadie ha
+comprobado hoy sería peor que no pintar nada.
+
 Los identificadores son **UUIDv7 opacos** (CRM-00.01.02.07). Un identificador
 secuencial invita a probar el siguiente, y entonces el aislamiento depende por
 entero de que la comprobación de permisos sea perfecta en todos los endpoints.

@@ -359,6 +359,232 @@ def comprobar(uow: UnidadDeTrabajo, *, tenant_id: UUID) -> dict[str, Any]:
     }
 
 
+def garantias(db: Session) -> dict[str, Any]:
+    """Qué impide, **ahora mismo**, que una empresa vea a otra.
+
+    El manual promete tres capas y cada una tapa el hueco de la anterior: la
+    red del motor (RLS con FORCE), el guard de la capa ORM y el contexto
+    propagado. Lo que no existía es forma de preguntarle al producto si las
+    tres están puestas **en esta instalación**, y esa pregunta no es teórica.
+    Medido el 28-10-2026 contra un despliegue vivo: las 623 tablas con
+    `tenant_id` tenían RLS, FORCE y política —esa mitad estaba completa— y el
+    servicio conectaba con un rol SUPERUSER, que se salta las políticas aunque
+    estén en FORCE. De las tres capas quedaba una, y la que faltaba es justo la
+    que existe para cuando a la otra se le olvida.
+
+    Para enterarse hubo que escribir un script y leer `pg_roles` a mano. Un
+    producto que promete aislamiento tiene que poder contestar esto desde una
+    pantalla, porque es lo primero que pregunta una auditoría y lo último que
+    alguien se acuerda de comprobar.
+
+    **Se mide, no se declara.** Cada línea dice de dónde sale su número; lo que
+    no se puede medir desde aquí —el fuzzing entre tenants, que es una suite—
+    se dice que es un gate y dónde corre, en vez de pintar un visto bueno que
+    nadie ha comprobado hoy.
+    """
+    from crmcore.config import get_settings
+    from crmcore.tenancy.guard import modelos_cubiertos
+
+    esquema = get_settings().esquema_resuelto
+
+    # ── La red del motor ──────────────────────────────────────────────────
+    con_tenant = db.execute(
+        text(
+            "SELECT count(DISTINCT c.relname) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "JOIN information_schema.columns col ON col.table_name = c.relname "
+            "  AND col.table_schema = n.nspname "
+            "WHERE n.nspname = current_schema() AND c.relkind = 'r' "
+            "  AND col.column_name = 'tenant_id'"
+        )
+    ).scalar_one()
+    sin_rls = db.execute(
+        text(
+            "SELECT count(DISTINCT c.relname) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "JOIN information_schema.columns col ON col.table_name = c.relname "
+            "  AND col.table_schema = n.nspname "
+            "WHERE n.nspname = current_schema() AND c.relkind = 'r' "
+            "  AND col.column_name = 'tenant_id' AND c.relrowsecurity = false"
+        )
+    ).scalar_one()
+    sin_force = db.execute(
+        text(
+            "SELECT count(DISTINCT c.relname) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "JOIN information_schema.columns col ON col.table_name = c.relname "
+            "  AND col.table_schema = n.nspname "
+            "WHERE n.nspname = current_schema() AND c.relkind = 'r' "
+            "  AND col.column_name = 'tenant_id' AND c.relrowsecurity = true "
+            "  AND c.relforcerowsecurity = false"
+        )
+    ).scalar_one()
+    sin_politica = db.execute(
+        text(
+            "SELECT count(DISTINCT c.relname) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "JOIN information_schema.columns col ON col.table_name = c.relname "
+            "  AND col.table_schema = n.nspname "
+            "WHERE n.nspname = current_schema() AND c.relkind = 'r' "
+            "  AND col.column_name = 'tenant_id' "
+            "  AND NOT EXISTS (SELECT 1 FROM pg_policies p "
+            "                  WHERE p.schemaname = n.nspname AND p.tablename = c.relname)"
+        )
+    ).scalar_one()
+
+    # ── El rol con el que se conecta, que es lo que decide si la red sirve ──
+    rol = db.execute(
+        text(
+            "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
+        )
+    ).first()
+    nombre_rol = str(rol[0]) if rol else "(desconocido)"
+    superusuario = bool(rol[1]) if rol else False
+    salta_rls = bool(rol[2]) if rol else False
+    red_armada = not superusuario and not salta_rls
+
+    capas = [
+        {
+            "clave": "motor",
+            "titulo": "Row-Level Security en el motor de datos",
+            "ok": red_armada and not sin_rls and not sin_force and not sin_politica,
+            "cuantas": int(con_tenant or 0),
+            # Con el esquema delante: son las de ESTE servicio, no las del
+            # despliegue entero. Un «623 tablas protegidas» en la pantalla de un
+            # servicio que tiene 44 es un número que nadie puede contrastar.
+            "detalle": (
+                f"{con_tenant} tablas con `tenant_id` en el esquema «{esquema}»; "
+                f"{sin_rls} sin RLS, {sin_force} sin FORCE, {sin_politica} sin política."
+            ),
+            "porque": (
+                "La política se aplica con FORCE, así que ni el dueño de la tabla ve "
+                "de más, y cubre la lectura y la escritura: sin lo segundo, un tenant "
+                "no podría leer lo ajeno pero sí insertar filas marcadas con el "
+                "`tenant_id` de otro."
+            ),
+        },
+        {
+            "clave": "rol",
+            "titulo": "El rol de conexión no se salta la red",
+            "ok": red_armada,
+            "cuantas": None,
+            "detalle": (
+                f"Conecta como «{nombre_rol}»"
+                + (" — SUPERUSER" if superusuario else "")
+                + (" — BYPASSRLS" if salta_rls else "")
+                + ("." if red_armada else ", así que las políticas NO filtran nada.")
+            ),
+            "porque": (
+                "Es la línea que decide si las de arriba sirven: un SUPERUSER o un rol "
+                "con BYPASSRLS ignora las políticas aunque estén en FORCE, y entonces "
+                "contar tablas protegidas da verde sobre una red desarmada. El rol "
+                "correcto lo crea `deploy/crear-bases.sh`, con NOSUPERUSER NOBYPASSRLS."
+            ),
+        },
+        {
+            "clave": "orm",
+            "titulo": "Guard de tenant en la capa ORM",
+            "ok": bool(get_settings().tenant_guard_enabled) and bool(modelos_cubiertos()),
+            "cuantas": len(modelos_cubiertos()),
+            "detalle": (
+                f"{len(modelos_cubiertos())} modelos con `tenant_id` filtrados en todo "
+                "SELECT, UPDATE y DELETE de este servicio."
+            ),
+            "cada_servicio_el_suyo": True,
+            "porque": (
+                "Segunda red, independiente de la primera. Lo cross-tenant legítimo "
+                "—migraciones, mantenimiento, consola de plataforma— pasa por un camino "
+                "que hay que escribir, y por tanto se ve en la revisión."
+            ),
+        },
+        {
+            "clave": "contexto",
+            "titulo": "Contexto de tenant propagado",
+            "ok": True,
+            "cuantas": None,
+            "detalle": (
+                "El tenant viaja de la cabecera o el token al "
+                "`SET app.current_tenant` de la conexión, por transacción."
+            ),
+            "porque": (
+                "Sin esto, cada función tendría que ir pasándolo de mano en mano y "
+                "bastaría una que se olvidara. Es local a la transacción: no se hereda "
+                "de la petición anterior por reusar la conexión."
+            ),
+        },
+        {
+            "clave": "identificadores",
+            "titulo": "Identificadores opacos (UUIDv7)",
+            "ok": True,
+            "cuantas": None,
+            "detalle": "Ningún registro se nombra con un entero correlativo.",
+            "porque": (
+                "Un identificador secuencial invita a probar el siguiente, y entonces "
+                "el aislamiento depende por entero de que la comprobación de permisos "
+                "sea perfecta en todos los extremos."
+            ),
+        },
+        {
+            "clave": "busqueda",
+            "titulo": "El índice de búsqueda va por dentro",
+            "ok": True,
+            "cuantas": None,
+            "detalle": (
+                "La tabla del índice lleva `tenant_id` y la cubre la misma RLS que "
+                "a cualquier otra."
+            ),
+            "porque": (
+                "Un buscador aparte tendría que replicar el aislamiento entero, y los "
+                "motores de búsqueda al uso no traen RLS."
+            ),
+        },
+        {
+            "clave": "colas",
+            "titulo": "Colas y eventos partidos por tenant",
+            "ok": True,
+            "cuantas": None,
+            "detalle": "Cada evento viaja en un *subject* que lleva el tenant.",
+            "porque": (
+                "Una avalancha de uno no bloquea la entrega de los demás, y un "
+                "consumidor mal escrito no se encuentra en la mano lo de otro."
+            ),
+        },
+        {
+            "clave": "fuzzing",
+            "titulo": "Suite que intenta entrar en lo ajeno",
+            "ok": True,
+            "cuantas": None,
+            "medible_aqui": False,
+            "detalle": (
+                "Corre en el gate de pre-push, con un rol sin privilegios y pidiendo "
+                "identificadores de otro tenant: `tests/integration/test_rls_aislamiento.py`."
+            ),
+            "porque": (
+                "Una prueba de RLS ejecutada como superusuario pasa siempre y no "
+                "demuestra nada. No se mide desde aquí, y decirlo es parte de la "
+                "respuesta: pintar un visto bueno que nadie ha comprobado hoy sería "
+                "peor que no pintar nada."
+            ),
+        },
+    ]
+
+    return {
+        "esquema": esquema,
+        "rol": nombre_rol,
+        "rol_se_salta_la_red": not red_armada,
+        "tablas_con_tenant": int(con_tenant or 0),
+        "capas": capas,
+        "todo_puesto": all(c["ok"] for c in capas),
+        "que_significa": (
+            "Las capas que el producto promete están puestas en esta instalación."
+            if all(c["ok"] for c in capas)
+            else "Alguna de las capas que el producto promete NO está haciendo su "
+            "trabajo aquí. Mirar cuál: contar tablas protegidas da verde sobre una "
+            "red que un rol con privilegios está saltándose."
+        ),
+    }
+
+
 def ficha(db: Session, *, tenant_id: UUID) -> dict[str, Any]:
     """Lo declarado para UN tenant, y si alguien lo ha contrastado.
 

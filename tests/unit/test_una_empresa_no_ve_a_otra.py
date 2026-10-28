@@ -792,3 +792,73 @@ def test_y_el_de_siempre_sigue_viendo_lo_suyo(cliente_party: Any, db: Any, tenan
     propia = cliente_party.get("/api/v1/accounts", headers=_cabeceras_de(tenant_id))
     assert propia.status_code == 200, propia.text
     assert str(ficosa.id) in _ids(propia)
+
+
+# ── Y poder preguntárselo al producto (CRM-00.01.02.01 a .05, .07) ────────
+
+
+def test_el_producto_contesta_que_impide_que_una_empresa_vea_a_otra(db: Any) -> None:
+    """La pregunta que abre cualquier auditoría, y que había que responder a mano.
+
+    Todo lo de arriba estaba construido y probado. Lo que no existía es forma
+    de preguntarle a una **instalación concreta** si las capas están puestas en
+    ella, y esa pregunta no es teórica: el 28-10-2026 se midió contra un
+    despliegue vivo que tenía las 623 tablas con `tenant_id` con RLS, FORCE y
+    política —esa mitad, completa— y el servicio conectando con un rol
+    SUPERUSER, que se salta las políticas aunque estén en FORCE. De las tres
+    capas que el manual promete quedaba una. Para enterarse hubo que escribir
+    un script y leer `pg_roles` a mano.
+    """
+    from services.tenancy import aislamiento as ais
+
+    salida = ais.garantias(db)
+    claves = {c["clave"] for c in salida["capas"]}
+    assert {"motor", "rol", "orm", "contexto"} <= claves, (
+        "Faltan capas de las que el manual promete: si una no se mide, la "
+        "pantalla tranquiliza sobre algo que nadie ha mirado."
+    )
+    for capa in salida["capas"]:
+        assert capa["detalle"], f"«{capa['clave']}» no dice de dónde sale su número"
+        assert capa["porque"], f"«{capa['clave']}» no dice por qué existe"
+
+
+def test_un_rol_que_se_salta_la_red_no_sale_como_todo_puesto(db: Any) -> None:
+    """**El caso que justifica la pantalla.**
+
+    Las pruebas de esta suite corren sobre el Postgres embebido, que es
+    superusuario. Eso aquí no es una limitación: es exactamente el caso malo
+    que hay que plantar, y por eso se mide contra él. Un veredicto en verde con
+    este rol sería una pantalla de garantías que tranquiliza cuando la garantía
+    no está, que es peor que no tenerla.
+    """
+    import sqlalchemy as sa
+
+    from services.tenancy import aislamiento as ais
+
+    se_salta = db.execute(
+        sa.text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")
+    ).scalar_one()
+    assert se_salta, "Esta prueba necesita el rol que se salta la red para significar algo"
+
+    salida = ais.garantias(db)
+    assert salida["rol_se_salta_la_red"] is True
+    assert salida["todo_puesto"] is False, (
+        "Con un rol que ignora las políticas, contar tablas protegidas da verde "
+        "sobre una red desarmada."
+    )
+    capa = next(c for c in salida["capas"] if c["clave"] == "rol")
+    assert capa["ok"] is False
+    assert "SUPERUSER" in capa["detalle"] or "BYPASSRLS" in capa["detalle"]
+    # Y el motor cae con él: sus políticas no filtran aunque estén todas.
+    assert next(c for c in salida["capas"] if c["clave"] == "motor")["ok"] is False
+
+
+def test_lo_que_no_se_mide_aqui_lo_dice_en_vez_de_darlo_por_bueno(db: Any) -> None:
+    """El fuzzing entre tenants es una suite que corre antes de empujar, no algo
+    que se pueda consultar en vivo. Pintarlo como comprobado sería inventar una
+    medida; decir que es un gate y dónde corre es la respuesta honesta."""
+    from services.tenancy import aislamiento as ais
+
+    fuzz = next(c for c in ais.garantias(db)["capas"] if c["clave"] == "fuzzing")
+    assert fuzz["medible_aqui"] is False
+    assert "pre-push" in fuzz["detalle"]

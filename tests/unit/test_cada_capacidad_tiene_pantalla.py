@@ -268,7 +268,23 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            con el suyo, porque un proveedor que cobra por
 #                            intento hace que el importe y los sobres no
 #                            cuadren
-TOPE_SIN_PANTALLA = 391
+#   28-10-2026  383 de 778  «que impide que una empresa vea a otra», arriba del
+#                            todo en Seguridad. Las ocho estaban construidas y
+#                            probadas, y a ninguna se llegaba desde una
+#                            pantalla: para saber si el aislamiento estaba de
+#                            verdad puesto en una instalacion habia que
+#                            escribir un script y leer `pg_roles` a mano. Se
+#                            hizo, y lo que salio justifica la pantalla: 623
+#                            tablas con RLS, FORCE y politica —esa mitad,
+#                            completa— y el servicio conectando con un rol
+#                            SUPERUSER, que se salta las politicas aunque esten
+#                            en FORCE. De las tres capas que el manual promete
+#                            quedaba una. Ahora se mide en cada carga, cada
+#                            capa dice de donde sale su numero, y lo que no se
+#                            puede medir en vivo —el fuzzing entre tenants, que
+#                            es una suite— sale dicho como gate en vez de como
+#                            visto bueno
+TOPE_SIN_PANTALLA = 383
 
 
 def _es_pantalla(p: Path) -> bool:
