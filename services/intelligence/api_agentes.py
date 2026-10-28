@@ -38,6 +38,15 @@ class DeclararAgente(BaseModel):
     presupuesto_tokens_dia: int = Field(200_000, ge=1_000)
     aprobacion_por_riesgo: list[str] | None = None
     aprobacion_desde_importe: Decimal | None = None
+    modo: str = Field(
+        "plan_cerrado",
+        description=(
+            "plan_cerrado: pide todos los pasos antes de empezar, y una persona "
+            "los aprueba de una vez. iterativo: pide uno, lo ejecuta y vuelve a "
+            "decidir con el resultado delante — lo único que sirve cuando la "
+            "segunda mitad del objetivo depende de la primera."
+        ),
+    )
 
 
 class Apagar(BaseModel):
@@ -83,6 +92,7 @@ def declarar_agente(cuerpo: DeclararAgente, uow: UowDep) -> Any:
         "tipo": fila.tipo,
         "herramientas": len(fila.herramientas or []),
         "max_acciones": fila.max_acciones,
+        "modo": fila.modo,
         "aprobacion_por_riesgo": fila.aprobacion_por_riesgo,
     }
 
@@ -149,7 +159,13 @@ def lanzar(clave: str, cuerpo: Lanzar, uow: UowDep, principal: AutenticadoDep) -
     summary="Ejecutar el siguiente paso, uno solo",
     description=(
         "Uno y no todos: entre paso y paso es donde caben el apagado, el tope de "
-        "acciones y la aprobación humana."
+        "acciones y la aprobación humana.\n\n"
+        "En un agente **iterativo** esta misma llamada hace dos cosas distintas "
+        "en vueltas alternas: ejecuta el paso que había decidido, y cuando no "
+        "queda ninguno decide el siguiente con el resultado del anterior "
+        "delante y lo guarda **sin ejecutarlo**. Por eso puede devolver "
+        "`avanzado: false` con un `paso_decidido`: no es que no haya hecho "
+        "nada, es que lo que ha hecho es pensar."
     ),
 )
 def avanzar(ejecucion_id: UUID, uow: UowDep) -> Any:

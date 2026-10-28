@@ -408,3 +408,156 @@ def test_sin_salida_no_elige_la_region_por_el_cliente(
     con_region = cliente.get("/api/v1/ia/eleccion-sin-salida?region=ue", headers=cabeceras)
     assert con_region.status_code == 200, con_region.text
     assert con_region.json()["sin_salida"] is True
+
+
+# ── El agente autónomo, por su puerta (CRM-05.02.03.01, .03, .05) ─────────
+#
+# La pantalla «Preguntar al sistema» declara la FORMA de dos respuestas:
+# la actuación y la vuelta de avanzar. Las pruebas de este módulo llamaban a
+# `agentes.avanzar()` y `agentes.actuacion()` como funciones, así que el día
+# que una de las dos dejara de mandar un campo —o nunca lo mandara— la
+# pantalla se quedaría vacía y ninguna prueba se enteraría. Aquí se entra por
+# la ruta.
+
+
+@pytest.fixture
+def agente_con_puertos() -> Any:
+    """Un agente que planifica y actúa, con los puertos controlados.
+
+    De mentira porque lo que se fija aquí es **qué devuelve la API**, no qué
+    contesta un modelo: con el puerto de verdad esta prueba mediría la red.
+    """
+    from services.intelligence import agentes as ag
+
+    estado: dict[str, Any] = {"invocaciones": []}
+
+    def _planificar(**_kw: Any) -> dict[str, Any]:
+        return {
+            "pasos": [
+                {
+                    "herramienta": "get_accounts",
+                    "argumentos": {"limite": 5},
+                    "porque": "mirar las cuentas",
+                },
+                {
+                    "herramienta": "post_accounts",
+                    "argumentos": {"cuerpo": {"nombre": "x"}},
+                    "porque": "crear la ficha",
+                    "compensacion": {"herramienta": "post_accounts", "argumentos": {}},
+                },
+            ],
+            "tokens_entrada": 10,
+            "tokens_salida": 5,
+        }
+
+    def _invocar(**kw: Any) -> dict[str, Any]:
+        estado["invocaciones"].append(kw)
+        return {"estado": 200, "ok": True, "datos": {"items": []}}
+
+    ag.registrar_planificador(_planificar)
+    ag.registrar_invocador(_invocar)
+    yield estado
+
+
+def _declarar_agente(cliente: Any, cabeceras: dict[str, str]) -> None:
+    alta = cliente.post(
+        "/api/v1/ia/proveedores",
+        headers=cabeceras,
+        json={
+            "clave": "modelo-ue",
+            "base_url": "https://ia.ejemplo.test",
+            "region": "ue",
+            "admite_opt_out": True,
+            "modelos": [{"uso": "redaccion", "nombre": "m-redaccion"}],
+        },
+    )
+    assert alta.status_code == 201, alta.text
+    agente = cliente.post(
+        "/api/v1/ia/agentes-autonomos",
+        headers=cabeceras,
+        json={
+            "clave": "analista",
+            "tipo": "calificacion_leads",
+            "permisos": ["account:read"],
+            "herramientas": [
+                {
+                    "nombre": "get_accounts",
+                    "metodo": "GET",
+                    "ruta": "/accounts",
+                    "riesgo": "lectura",
+                },
+                {
+                    "nombre": "post_accounts",
+                    "metodo": "POST",
+                    "ruta": "/accounts",
+                    "riesgo": "escritura",
+                },
+            ],
+            "aprobacion_por_riesgo": ["escritura"],
+        },
+    )
+    assert agente.status_code == 201, agente.text
+
+
+def test_la_pantalla_de_preguntar_recibe_lo_que_pinta(
+    cliente: Any, cabeceras: dict[str, str], db: Any, agente_con_puertos: dict[str, Any]
+) -> None:
+    """Los campos que `Preguntar.tsx` lee, pedidos por la ruta.
+
+    Si el servidor deja de mandar `riesgo`, `reversible` o el identificador del
+    paso, la pantalla no da error: deja de poder enseñar el riesgo antes de
+    aprobar, de avisar de lo que no se deshace y de aprobar nada. Son tres
+    fallos silenciosos, y los tres se ven aquí.
+    """
+    _declarar_agente(cliente, cabeceras)
+
+    lanzada = cliente.post(
+        "/api/v1/ia/agentes-autonomos/analista/lanzar",
+        headers=cabeceras,
+        json={"objetivo": "qué cuentas están en riesgo", "contexto": {}},
+    )
+    assert lanzada.status_code == 201, lanzada.text
+    ejecucion_id = lanzada.json()["ejecucion_id"]
+    # El segundo paso es de escritura y el agente la exige aprobada.
+    assert lanzada.json()["esperando_aprobacion"] == [2]
+
+    actuacion = cliente.get(
+        f"/api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}", headers=cabeceras
+    )
+    assert actuacion.status_code == 200, actuacion.text
+    datos = actuacion.json()
+    assert datos["modo"] == "plan_cerrado"
+    assert {"estado", "motivo_fin", "tokens", "reversible_del_todo", "no_reversibles"} <= set(datos)
+    primero = datos["pasos"][0]
+    # El identificador: sin él la pantalla no puede aprobar nada.
+    assert primero["id"]
+    assert primero["riesgo"] == "lectura"
+    assert primero["estado"] == "planificado"
+    assert primero["reversible"] is False  # no declaró compensación
+    assert datos["pasos"][1]["riesgo"] == "escritura"
+
+    vuelta = cliente.post(
+        f"/api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/avanzar", headers=cabeceras
+    )
+    assert vuelta.status_code == 200, vuelta.text
+    assert vuelta.json()["avanzado"] is True
+    assert vuelta.json()["estado"] == "hecho"
+    assert len(agente_con_puertos["invocaciones"]) == 1
+
+    # La siguiente vuelta NO ejecuta: el paso de escritura espera a una persona.
+    parada = cliente.post(
+        f"/api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/avanzar", headers=cabeceras
+    )
+    assert parada.json()["avanzado"] is False
+    assert parada.json()["esperando"] == [2]
+    assert len(agente_con_puertos["invocaciones"]) == 1
+
+    # Y se aprueba por el identificador que vino en la actuación.
+    paso_id = datos["pasos"][1]["id"]
+    aprobado = cliente.post(
+        f"/api/v1/ia/agentes-autonomos/pasos/{paso_id}/aprobar",
+        headers=cabeceras,
+        json={"aprobado": True, "motivo": ""},
+    )
+    assert aprobado.status_code == 200, aprobado.text
+    assert aprobado.json()["estado"] == "planificado"

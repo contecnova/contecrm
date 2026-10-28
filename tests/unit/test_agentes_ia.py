@@ -336,6 +336,256 @@ def test_un_paso_fallido_para_la_ejecucion(
     assert ejecucion.estado == "fallida"
 
 
+# ── El bucle iterativo (CRM-05.02.03.01) ──────────────────────────────────
+#
+# Un plan cerrado no puede expresar un objetivo cuya segunda mitad depende de la
+# primera: «qué cuentas están en riesgo y, de cada una, mira su facturación» se
+# escribiría sobre cuentas que todavía no se sabe cuáles son. Lo que estas
+# pruebas vigilan no es que el bucle funcione, sino que **no se lleve por delante
+# los tres controles** al iterar: el tope, el presupuesto y la aprobación.
+
+
+@pytest.fixture
+def bucle() -> Any:
+    """Un continuador controlado: devuelve los pasos que se le pongan, en orden,
+    y guarda lo que se le mandó en cada vuelta."""
+    estado: dict[str, Any] = {"proximos": [], "recibido": [], "porque_para": "ya está"}
+
+    def _siguiente(**kw: Any) -> dict[str, Any]:
+        estado["recibido"].append(kw)
+        if estado["proximos"]:
+            return {"paso": estado["proximos"].pop(0), "tokens_entrada": 10, "tokens_salida": 5}
+        return {
+            "paso": None,
+            "porque": estado["porque_para"],
+            "conclusion": "Tres cuentas en riesgo",
+            "tokens_entrada": 10,
+            "tokens_salida": 5,
+        }
+
+    ag.registrar_continuador(_siguiente)
+    yield estado
+    ag.registrar_continuador(None)  # type: ignore[arg-type]
+
+
+def _paso(n: int) -> dict[str, Any]:
+    return {"herramienta": "get_contacts", "argumentos": {"n": n}, "porque": f"vuelta {n}"}
+
+
+@pytest.mark.db
+def test_el_iterativo_decide_con_el_resultado_del_anterior_delante(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """Esto es TODO lo que distingue al bucle de un plan cerrado: lo que se le
+    manda para decidir el segundo paso incluye lo que devolvió el primero. Sin
+    esta propiedad el modo iterativo es un plan cerrado con más llamadas."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo")
+    bucle["proximos"] = [_paso(1), _paso(2)]
+    salida = ag.lanzar(uow, clave="califica", objetivo="mira y luego decide")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+
+    # Vuelta 1: ejecuta el paso que se decidió al lanzar.
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    # Vuelta 2: no queda paso, así que decide uno nuevo.
+    segunda = ag.avanzar(uow, ejecucion_id=ejecucion_id)
+
+    assert segunda["paso_decidido"]["orden"] == 2
+    # Al decidir el segundo, el primero ya está hecho Y con su resultado.
+    hechos = bucle["recibido"][-1]["hechos"]
+    assert [h["estado"] for h in hechos] == ["hecho"]
+    assert hechos[0]["resultado"] == {"ok": True}
+    # Y al lanzar no había nada hecho: el primer paso se decidió a ciegas, que
+    # es lo correcto, y no con los resultados de una ejecución anterior.
+    assert bucle["recibido"][0]["hechos"] == []
+
+
+@pytest.mark.db
+def test_el_paso_del_bucle_se_guarda_antes_de_ejecutarse(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """La vuelta que decide no ejecuta. Si decidiera y ejecutara de una, entre
+    las dos cosas no cabría ni el apagado ni la aprobación, que es justo donde
+    tienen que caber."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo")
+    bucle["proximos"] = [_paso(1), _paso(2)]
+    salida = ag.lanzar(uow, clave="califica", objetivo="algo")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    antes = len(puertos["invocaciones"])
+
+    decidida = ag.avanzar(uow, ejecucion_id=ejecucion_id)
+
+    assert decidida["avanzado"] is False
+    assert len(puertos["invocaciones"]) == antes, "la vuelta que piensa no puede ejecutar"
+    assert decidida["paso_decidido"]["estado"] == "planificado"
+
+
+@pytest.mark.db
+def test_un_paso_del_bucle_que_necesita_aprobacion_espera_igual(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """El control humano no se salta por iterar. Era el riesgo real de meter un
+    bucle: que el paso decidido sobre la marcha se ejecutara sin pasar por donde
+    pasa el de un plan."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo", aprobacion_por_riesgo=["escritura", "destructivo"])
+    bucle["proximos"] = [{"herramienta": "post_contacts", "argumentos": {}, "porque": "escribir"}]
+    salida = ag.lanzar(uow, clave="califica", objetivo="escribe algo")
+    assert salida["esperando_aprobacion"] == [1]
+    resultado = ag.avanzar(uow, ejecucion_id=UUID(salida["ejecucion_id"]))
+    assert resultado["avanzado"] is False
+    assert puertos["invocaciones"] == []
+
+
+@pytest.mark.db
+def test_el_bucle_para_cuando_el_modelo_dice_que_ya_esta_y_con_SU_motivo(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """«No queda ningún paso» no distingue entre cumplido y rendido. El motivo
+    que queda guardado es el único rastro de por qué el bucle paró donde paró."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo")
+    bucle["porque_para"] = "Ninguna cuenta cumple el criterio"
+    salida = ag.lanzar(uow, clave="califica", objetivo="busca")
+    # No se ha decidido ni un paso: el modelo ha dicho que no hace falta.
+    assert salida["pasos"] == []
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    final = ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    assert final["terminada"] is True
+    assert final["porque"] == "Ninguna cuenta cumple el criterio"
+    assert final["conclusion"] == "Tres cuentas en riesgo"
+    assert ag.actuacion(uow.db, uow.tenant_id, ejecucion_id)["motivo_fin"] == (
+        "Ninguna cuenta cumple el criterio"
+    )
+
+
+@pytest.mark.db
+def test_un_bucle_que_no_para_solo_lo_para_el_tope(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """El caso malo plantado: un modelo que pide un paso más indefinidamente.
+    Es el incidente número uno de un agente iterativo, y el tope es lo único que
+    lo separa de una factura."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo", max_acciones=3)
+
+    def _sin_fin(**kw: Any) -> dict[str, Any]:
+        return {"paso": _paso(len(kw["hechos"]) + 1), "tokens_entrada": 1, "tokens_salida": 1}
+
+    ag.registrar_continuador(_sin_fin)
+    salida = ag.lanzar(uow, clave="califica", objetivo="no pares")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    vueltas = 0
+    while vueltas < 50:
+        vueltas += 1
+        resultado = ag.avanzar(uow, ejecucion_id=ejecucion_id)
+        if resultado.get("terminada") or resultado.get("detenida"):
+            break
+    assert vueltas < 50, "el bucle no ha parado solo"
+    assert len(puertos["invocaciones"]) <= 3
+    ejecucion = uow.db.get(ag.EjecucionAgente, ejecucion_id)
+    assert ejecucion.motivo_fin == "Tope de acciones alcanzado"
+
+
+@pytest.mark.db
+def test_el_presupuesto_se_mira_en_cada_vuelta_y_no_solo_al_lanzar(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """Un bucle con el presupuesto mirado una sola vez al principio es un bucle
+    sin presupuesto: donde se gasta es en cada vuelta."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo", max_acciones=20, presupuesto_tokens_dia=1_000)
+    bucle["proximos"] = [_paso(1), _paso(2), _paso(3)]
+    salida = ag.lanzar(uow, clave="califica", objetivo="gasta")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    # Se gasta el presupuesto por fuera, como lo gastaría otra ejecución del
+    # mismo agente mientras ésta sigue en marcha.
+    ejecucion = uow.db.get(ag.EjecucionAgente, ejecucion_id)
+    ejecucion.tokens = 5_000
+    uow.db.flush()
+
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)  # ejecuta el paso 1
+    parada = ag.avanzar(uow, ejecucion_id=ejecucion_id)  # tocaría pensar
+
+    assert parada["detenida"] is True
+    assert "presupuesto" in parada["porque"]
+    assert uow.db.get(ag.EjecucionAgente, ejecucion_id).estado == "detenida"
+
+
+@pytest.mark.db
+def test_un_resultado_enorme_se_recorta_y_se_dice(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """Sin recortar, en la quinta vuelta la petición es el listado cinco veces.
+    Y se dice que viene cortado: un modelo que ve una lista cortada sin saberlo
+    concluye que no había más."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo")
+    puertos["grande"] = True
+
+    def _invocar_mucho(**kw: Any) -> dict[str, Any]:
+        puertos["invocaciones"].append(kw)
+        return {"filas": [{"nombre": f"cuenta {i}" * 10} for i in range(500)]}
+
+    ag.registrar_invocador(_invocar_mucho)
+    bucle["proximos"] = [_paso(1), _paso(2)]
+    salida = ag.lanzar(uow, clave="califica", objetivo="lista larga")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)
+
+    enviado = bucle["recibido"][-1]["hechos"][0]["resultado"]
+    assert enviado["recortado"] is True
+    assert enviado["aviso"]
+    assert len(enviado["muestra"]) <= 2_000
+
+
+@pytest.mark.db
+def test_una_herramienta_que_el_bucle_pide_y_no_tiene_no_se_reintenta(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any], bucle: dict[str, Any]
+) -> None:
+    """Volver a preguntar es el bucle que se come el presupuesto pidiendo lo
+    mismo una y otra vez."""
+    _proveedor(uow)
+    _agente(uow, modo="iterativo")
+    bucle["proximos"] = [
+        _paso(1),
+        {"herramienta": "borrar_la_base", "argumentos": {}, "porque": "no"},
+    ]
+    salida = ag.lanzar(uow, clave="califica", objetivo="algo")
+    ejecucion_id = UUID(salida["ejecucion_id"])
+    ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    fallo = ag.avanzar(uow, ejecucion_id=ejecucion_id)
+    assert fallo["herramientas_descartadas"] == ["borrar_la_base"]
+    assert uow.db.get(ag.EjecucionAgente, ejecucion_id).estado == "fallida"
+
+
+@pytest.mark.db
+def test_un_modo_que_no_existe_no_se_declara(uow: UnidadDeTrabajo, contexto_tenant: UUID) -> None:
+    """Texto libre en el modo acabaría en un agente guardado como «bucle» que
+    planifica cerrado, y nadie miraría ahí."""
+    with pytest.raises(ErrorValidacion):
+        _agente(uow, modo="a_ver_que_pasa")
+
+
+@pytest.mark.db
+def test_el_plan_cerrado_sigue_siendo_el_de_antes(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any]
+) -> None:
+    """Los agentes ya declarados no cambian de forma de decidir porque se haya
+    añadido un modo nuevo. Sin esto, la migración les cambiaría el
+    comportamiento sin que nadie lo pidiera."""
+    _proveedor(uow)
+    agente = _agente(uow)
+    assert agente.modo == "plan_cerrado"
+    salida = ag.lanzar(uow, clave="califica", objetivo="algo")
+    assert len(salida["pasos"]) == 1
+    # Y no toca el continuador ni aunque esté registrado.
+    assert "ultimo_plan" in puertos
+
+
 # ── Auditoría y reversión (CRM-05.02.03.05) ───────────────────────────────
 
 

@@ -661,6 +661,33 @@ Además: lo que se transcribe de una llamada **no es un acta** —el reconocimie
 confunde nombres y cifras—, y grabar exige haber avisado. Si algo se propone a
 partir de una transcripción poco fiable, no se propone.
 
+### Preguntar al sistema
+
+En el menú de arriba, al lado del chat, hay **Preguntar al sistema**. Ahí se
+escribe lo que necesitas —«qué cuentas llevan dos meses sin contacto y tienen una
+oportunidad abierta»— y el CRM te contesta **enseñándote antes qué haría para
+averiguarlo**.
+
+Cómo funciona, y por qué está hecho así:
+
+1. **Primero sale el plan, no el resultado.** El botón se llama «preparar el
+   plan» porque eso es lo que hace: no toca nada todavía.
+2. **Cada paso lleva su riesgo al lado.** «Lectura» sólo mira; «escritura» cambia
+   algo; «destructivo» borra. Lo ves antes de autorizar, no después.
+3. **Tú das el siguiente paso.** El botón va avanzando y **se para solo** en
+   cuanto hay algo que necesita que una persona lo autorice. Ahí decides:
+   «autorizar» o «no lo hagas».
+4. **Si el agente está pensando, lo dice.** Hay agentes que deciden sobre la
+   marcha: hacen una cosa, miran el resultado y entonces deciden la siguiente.
+   Cuando eso pasa, la pantalla te cuenta qué ha decidido y por qué.
+5. **Al final puedes deshacer** lo que haya hecho. Y antes de ofrecerte el botón
+   te dice **qué no se puede deshacer**: un correo enviado no se des-envía, y
+   preferimos decírtelo a que lo descubras pulsando.
+
+Si te dice que no hay ningún agente al que preguntar, es que todavía no se ha
+declarado ninguno: se hace en Administración → Agentes autónomos, eligiendo qué
+puede hacer y cuándo tiene que esperarte.
+
 ---
 
 ## Correo, calendario y el resto de tus herramientas (sección 6.1)

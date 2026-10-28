@@ -90,11 +90,32 @@ ESTADOS_EJECUCION = (
 
 ESTADOS_PASO = ("planificado", "esperando_aprobacion", "hecho", "fallido", "saltado", "revertido")
 
+# Cómo decide el agente qué hacer. Son dos problemas distintos, no dos gustos:
+#
+# `plan_cerrado` pide TODOS los pasos de una vez, antes de empezar. Es lo que
+# quiere una persona que va a aprobar: el plan entero está delante y se aprueba
+# o se rechaza sabiendo a qué se dice que sí.
+#
+# `iterativo` pide UN paso, lo ejecuta y vuelve a preguntar con el resultado
+# delante. Es lo único que sirve para un objetivo cuya segunda mitad depende de
+# la primera —«qué cuentas están en riesgo y, de cada una, mira su facturación»
+# no se puede escribir de antemano porque todavía no se sabe cuáles son—.
+#
+# Lo que NO cambia entre los dos: cada paso se guarda antes de ejecutarse, pasa
+# por el control de aprobación y cuenta para el tope de acciones. El bucle
+# itera; no se salta nada.
+MODOS = ("plan_cerrado", "iterativo")
+
 # El puerto que de verdad llama a la herramienta. Se registra desde fuera, como
 # el del modelo: así lo que se prueba es qué se le pide y qué se hace con lo que
 # vuelve, que es donde están los fallos que importan.
 _invocador: Callable[..., dict[str, Any]] | None = None
 _planificador: Callable[..., dict[str, Any]] | None = None
+# El del modo iterativo: decide UN paso con lo ya hecho delante, o dice que ya
+# está. Es otro puerto y no un parámetro del planificador porque lo que se le
+# manda y lo que se le pide son distintos, y mezclarlos acabaría en un prompt
+# con un `if` dentro.
+_continuador: Callable[..., dict[str, Any]] | None = None
 
 
 def registrar_invocador(fn: Callable[..., dict[str, Any]]) -> None:
@@ -105,6 +126,11 @@ def registrar_invocador(fn: Callable[..., dict[str, Any]]) -> None:
 def registrar_planificador(fn: Callable[..., dict[str, Any]]) -> None:
     global _planificador
     _planificador = fn
+
+
+def registrar_continuador(fn: Callable[..., dict[str, Any]]) -> None:
+    global _continuador
+    _continuador = fn
 
 
 def _definicion(agente: "Agente", nombre: str) -> dict[str, Any]:
@@ -151,6 +177,20 @@ class Agente(Base, TimestampMixin, SoftDeleteMixin):
     # ── Los tres límites, que son tres problemas distintos ────────────────
     # Un bucle: el agente que se llama a sí mismo cien veces.
     max_acciones: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    # Plan cerrado o bucle. Por defecto el cerrado: es el que ya existía y el
+    # que una persona puede aprobar de una vez, y cambiar el modo por defecto
+    # de los agentes ya declarados les cambiaría el comportamiento sin que
+    # nadie lo pidiera.
+    modo: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="plan_cerrado",
+        # También en el servidor, y no sólo en el modelo: las filas que ya
+        # existen se migran con un valor, y sin esto la comparación con la
+        # migración no cuadra.
+        server_default=text("'plan_cerrado'"),
+        info={"opciones": MODOS},
+    )
     # Una factura: el agente que funciona y cuesta lo que nadie previó.
     presupuesto_tokens_dia: Mapped[int] = mapped_column(Integer, nullable=False, default=200_000)
     # Un incidente: el agente que hay que parar ahora mismo.
@@ -262,6 +302,7 @@ def declarar(
     presupuesto_tokens_dia: int = 200_000,
     aprobacion_por_riesgo: list[str] | None = None,
     aprobacion_desde_importe: Decimal | None = None,
+    modo: str = "plan_cerrado",
 ) -> Agente:
     """Declara un agente con sus herramientas y sus límites.
 
@@ -275,6 +316,12 @@ def declarar(
             f"Tipo de agente desconocido: «{tipo}»",
             error_code="agente.tipo_desconocido",
             detalle={"admitidos": list(TIPOS)},
+        )
+    if modo not in MODOS:
+        raise ErrorValidacion(
+            f"Modo de agente desconocido: «{modo}»",
+            error_code="agente.modo_desconocido",
+            detalle={"admitidos": list(MODOS)},
         )
     if max_acciones < 1:
         raise ErrorValidacion(
@@ -299,6 +346,7 @@ def declarar(
     fila.principal_id = principal_id or fila.principal_id
     fila.max_acciones = int(max_acciones)
     fila.presupuesto_tokens_dia = int(presupuesto_tokens_dia)
+    fila.modo = modo
     # Vacío no es «ninguno»: es el valor por defecto, que incluye lo destructivo.
     # Leerlo como «ninguno» haría que declarar un agente sin pensar en esto
     # quitara justo el control que más falta hace.
@@ -401,7 +449,9 @@ def lanzar(
     # El apagado general de la IA del tenant manda sobre el del agente: cuando
     # algo va mal de verdad no hay tiempo de decidir cuál de los seis era.
     disponible = enrutador.exigir_disponible(uow.db, uow.tenant_id, uso="redaccion")
-    if _planificador is None:
+    iterativo = agente.modo == "iterativo"
+    pensador = _continuador if iterativo else _planificador
+    if pensador is None:
         raise ErrorDependencia(
             "No hay puerto de IA conectado: sin él no hay plan, y ejecutar sin "
             "plan sería exactamente lo que este módulo evita.",
@@ -428,15 +478,30 @@ def lanzar(
     uow.db.add(ejecucion)
     uow.db.flush()
 
-    salida = _planificador(
-        proveedor=disponible["elegido"],
-        modelo=disponible["modelo"],
-        objetivo=objetivo,
-        contexto=dict(contexto or {}),
-        herramientas=agente.herramientas,
-        opt_out=bool(disponible.get("opt_out")),
-    )
-    pasos_pedidos = list(salida.get("pasos") or [])
+    if iterativo:
+        # Un paso, con nada hecho todavía. El resto los pedirá `avanzar`, con
+        # el resultado del anterior delante: eso es lo que distingue al bucle
+        # de un plan cerrado de un solo paso.
+        salida = pensador(
+            proveedor=disponible["elegido"],
+            modelo=disponible["modelo"],
+            objetivo=objetivo,
+            contexto=dict(contexto or {}),
+            herramientas=agente.herramientas,
+            hechos=[],
+            opt_out=bool(disponible.get("opt_out")),
+        )
+        pasos_pedidos = [salida["paso"]] if salida.get("paso") else []
+    else:
+        salida = pensador(
+            proveedor=disponible["elegido"],
+            modelo=disponible["modelo"],
+            objetivo=objetivo,
+            contexto=dict(contexto or {}),
+            herramientas=agente.herramientas,
+            opt_out=bool(disponible.get("opt_out")),
+        )
+        pasos_pedidos = list(salida.get("pasos") or [])
     ejecucion.tokens = int(salida.get("tokens_entrada") or 0) + int(
         salida.get("tokens_salida") or 0
     )
@@ -460,39 +525,13 @@ def lanzar(
     recortado = len(pasos_pedidos) > agente.max_acciones
     pasos_pedidos = pasos_pedidos[: agente.max_acciones]
 
-    conocidas = {str(h.get("nombre")): h for h in (agente.herramientas or [])}
     creados: list[PasoAgente] = []
     descartados: list[str] = []
     for orden, pedido in enumerate(pasos_pedidos, start=1):
-        nombre = str(pedido.get("herramienta") or "")
-        ficha = conocidas.get(nombre)
-        if ficha is None:
-            # Una herramienta que el agente no tiene no se intenta «por si
-            # acaso»: se descarta y se dice. Intentarla daría un 403 del otro
-            # lado y un paso fallido que parece un error del sistema.
-            descartados.append(nombre)
+        paso = _crear_paso(uow, agente=agente, ejecucion=ejecucion, pedido=pedido, orden=orden)
+        if paso is None:
+            descartados.append(str(pedido.get("herramienta") or ""))
             continue
-        riesgo = str(ficha.get("riesgo") or "lectura")
-        importe = pedido.get("importe")
-        # La decisión de aprobación se toma ANTES de convertir el importe, porque
-        # es ella la que sabe qué hacer con uno ilegible. Convertirlo primero
-        # reventaba el plan entero por un campo que el modelo escribió mal —y un
-        # plan que falla al construirse no deja ni rastro de qué se pretendía.
-        necesita_aprobacion = _necesita_aprobacion(agente, riesgo, importe)
-        paso = PasoAgente(
-            tenant_id=uow.tenant_id,
-            ejecucion_id=ejecucion.id,
-            orden=orden,
-            herramienta=nombre,
-            riesgo=riesgo,
-            porque=str(pedido.get("porque") or ""),
-            argumentos=dict(pedido.get("argumentos") or {}),
-            importe=_importe(importe),
-            compensacion=dict(pedido.get("compensacion") or {}),
-            reversible=bool(pedido.get("compensacion")),
-            estado="esperando_aprobacion" if necesita_aprobacion else "planificado",
-        )
-        uow.db.add(paso)
         creados.append(paso)
 
     ejecucion.estado = (
@@ -535,6 +574,55 @@ def lanzar(
             else ""
         ),
     }
+
+
+def _crear_paso(
+    uow: UnidadDeTrabajo,
+    *,
+    agente: Agente,
+    ejecucion: EjecucionAgente,
+    pedido: dict[str, Any],
+    orden: int,
+) -> PasoAgente | None:
+    """Guarda un paso del plan, **antes** de que nadie lo ejecute.
+
+    Lo usan los dos modos, y a propósito: lo que convierte el bucle iterativo en
+    algo aprobable y auditable es que su paso pasa por aquí igual que el de un
+    plan cerrado. Si el iterativo tuviera su propia creación de pasos, el día
+    que se tocara el control de aprobación se tocaría en una de las dos.
+
+    Devuelve vacío si el agente no tiene esa herramienta.
+    """
+    conocidas = {str(h.get("nombre")): h for h in (agente.herramientas or [])}
+    nombre = str(pedido.get("herramienta") or "")
+    ficha = conocidas.get(nombre)
+    if ficha is None:
+        # Una herramienta que el agente no tiene no se intenta «por si acaso»:
+        # se descarta y se dice. Intentarla daría un 403 del otro lado y un paso
+        # fallido que parece un error del sistema.
+        return None
+    riesgo = str(ficha.get("riesgo") or "lectura")
+    importe = pedido.get("importe")
+    # La decisión de aprobación se toma ANTES de convertir el importe, porque es
+    # ella la que sabe qué hacer con uno ilegible. Convertirlo primero reventaba
+    # el plan entero por un campo que el modelo escribió mal —y un plan que falla
+    # al construirse no deja ni rastro de qué se pretendía.
+    necesita_aprobacion = _necesita_aprobacion(agente, riesgo, importe)
+    paso = PasoAgente(
+        tenant_id=uow.tenant_id,
+        ejecucion_id=ejecucion.id,
+        orden=orden,
+        herramienta=nombre,
+        riesgo=riesgo,
+        porque=str(pedido.get("porque") or ""),
+        argumentos=dict(pedido.get("argumentos") or {}),
+        importe=_importe(importe),
+        compensacion=dict(pedido.get("compensacion") or {}),
+        reversible=bool(pedido.get("compensacion")),
+        estado="esperando_aprobacion" if necesita_aprobacion else "planificado",
+    )
+    uow.db.add(paso)
+    return paso
 
 
 def _importe(valor: Any) -> Decimal | None:
@@ -640,7 +728,14 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
         ejecucion.motivo_fin = "Tope de acciones alcanzado"
         ejecucion.terminada_at = _ahora()
         uow.db.flush()
-        return {"avanzado": False, "porque": "Se ha alcanzado el tope de acciones del agente."}
+        # `terminada` también aquí: sin ella, quien va llamando a `avanzar` en
+        # bucle no distingue «ya no queda nada» de «esta vuelta no tocaba», y
+        # sigue llamando a una ejecución que ya está cerrada.
+        return {
+            "avanzado": False,
+            "porque": "Se ha alcanzado el tope de acciones del agente.",
+            "terminada": True,
+        }
 
     siguiente = next((p for p in pasos if p.estado == "planificado"), None)
     if siguiente is None:
@@ -653,6 +748,13 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
                 "porque": f"{len(esperando)} paso(s) esperan a que una persona los apruebe.",
                 "esperando": [p.orden for p in esperando],
             }
+        if agente.modo == "iterativo":
+            # Aquí es donde el bucle se cierra: no quedan pasos porque todavía
+            # no se han pedido. Se pide UNO, con el resultado de los anteriores
+            # delante, y se guarda sin ejecutarlo. Lo ejecuta el `avanzar`
+            # siguiente, que es lo que deja sitio al apagado y a la aprobación
+            # entre que se decide un paso y se hace.
+            return _pensar_siguiente(uow, agente=agente, ejecucion=ejecucion, pasos=pasos)
         ejecucion.estado = "terminada"
         ejecucion.terminada_at = _ahora()
         uow.db.flush()
@@ -701,6 +803,191 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
     }
 
 
+def _pensar_siguiente(
+    uow: UnidadDeTrabajo,
+    *,
+    agente: Agente,
+    ejecucion: EjecucionAgente,
+    pasos: list[PasoAgente],
+) -> dict[str, Any]:
+    """Pide el siguiente paso con lo ya hecho delante, y lo guarda sin ejecutarlo.
+
+    Esto es lo que un plan cerrado no puede hacer: «qué cuentas están en riesgo
+    y, de cada una, mira su facturación» tiene una segunda mitad que depende de
+    la primera, así que escribirla de antemano es escribir pasos sobre cuentas
+    que todavía no se sabe cuáles son.
+
+    Los tres límites siguen valiendo, y se comprueban **aquí y no sólo al
+    lanzar**: en un bucle, el sitio donde se gasta es cada vuelta. Un bucle con
+    el presupuesto mirado una sola vez al principio es un bucle sin presupuesto.
+    """
+    from services.intelligence.ajustes import ajustes
+
+    if _continuador is None:
+        raise ErrorDependencia(
+            "Este agente es iterativo y no hay puerto de IA conectado: sin él no "
+            "hay siguiente paso que decidir.",
+            error_code="agente.sin_puerto",
+        )
+    # El tope de acciones cuenta los pasos PEDIDOS, no sólo los hechos: si sólo
+    # contara los hechos, un paso fallido o saltado dejaría sitio para otro y
+    # el tope no acotaría el bucle, que es justo para lo que está.
+    if len(pasos) >= agente.max_acciones:
+        ejecucion.estado = "terminada"
+        ejecucion.motivo_fin = "Tope de acciones alcanzado"
+        ejecucion.terminada_at = _ahora()
+        uow.db.flush()
+        return {
+            "avanzado": False,
+            "porque": (
+                f"Se ha alcanzado el tope de {agente.max_acciones} acciones del "
+                "agente antes de llegar al objetivo."
+            ),
+            "terminada": True,
+        }
+    gastado = _tokens_de_hoy(uow.db, uow.tenant_id, agente.id)
+    if gastado >= agente.presupuesto_tokens_dia:
+        ejecucion.estado = "detenida"
+        ejecucion.motivo_fin = "Presupuesto de tokens agotado"
+        ejecucion.terminada_at = _ahora()
+        uow.db.flush()
+        return {
+            "avanzado": False,
+            "porque": (
+                f"El agente ha agotado su presupuesto de tokens de hoy ({gastado} "
+                f"de {agente.presupuesto_tokens_dia}): el bucle se para aquí, con "
+                "lo hecho hasta ahora guardado."
+            ),
+            "detenida": True,
+        }
+
+    disponible = enrutador.exigir_disponible(uow.db, uow.tenant_id, uso="redaccion")
+    tope = ajustes().ia_caracteres_resultado_paso
+    salida = _continuador(
+        proveedor=disponible["elegido"],
+        modelo=disponible["modelo"],
+        objetivo=ejecucion.objetivo,
+        contexto=dict(ejecucion.contexto or {}),
+        herramientas=agente.herramientas,
+        hechos=[
+            {
+                "herramienta": p.herramienta,
+                "argumentos": p.argumentos,
+                "estado": p.estado,
+                "resultado": _recortado(p.resultado, tope),
+                "error": p.error,
+            }
+            for p in pasos
+        ],
+        opt_out=bool(disponible.get("opt_out")),
+    )
+    ejecucion.tokens += int(salida.get("tokens_entrada") or 0) + int(
+        salida.get("tokens_salida") or 0
+    )
+    uso.anotar(
+        uow,
+        tarea="redaccion",
+        proveedor=disponible["elegido"],
+        modelo=disponible["modelo"],
+        objeto="ejecucion_agente",
+        objeto_id=ejecucion.id,
+        tokens_entrada=int(salida.get("tokens_entrada") or 0),
+        tokens_salida=int(salida.get("tokens_salida") or 0),
+        resultado="pendiente",
+        opt_out=bool(disponible.get("opt_out")),
+    )
+
+    pedido = salida.get("paso") or {}
+    if not pedido:
+        # El modelo dice que ya está. Se guarda SU motivo, no uno genérico: es
+        # la única explicación que va a quedar de por qué el bucle paró donde
+        # paró, y «no queda ningún paso» no dice si llegó al objetivo o se
+        # rindió.
+        ejecucion.estado = "terminada"
+        ejecucion.motivo_fin = str(salida.get("porque") or "El agente da el objetivo por cumplido")
+        ejecucion.terminada_at = _ahora()
+        uow.db.flush()
+        registrar(
+            uow.db,
+            accion="agente.bucle_terminado",
+            objeto="ejecucion_agente",
+            objeto_id=ejecucion.id,
+            datos={"pasos": len(pasos), "motivo": ejecucion.motivo_fin[:200]},
+            tenant_id=uow.tenant_id,
+        )
+        return {
+            "avanzado": False,
+            "porque": ejecucion.motivo_fin,
+            "terminada": True,
+            "conclusion": str(salida.get("conclusion") or ""),
+        }
+
+    paso = _crear_paso(uow, agente=agente, ejecucion=ejecucion, pedido=pedido, orden=len(pasos) + 1)
+    if paso is None:
+        # Pidió una herramienta que no tiene. Se para en vez de volver a
+        # preguntar: reintentar aquí es el bucle que se come el presupuesto
+        # pidiendo lo mismo una y otra vez.
+        ejecucion.estado = "fallida"
+        ejecucion.motivo_fin = (
+            f"El agente ha pedido «{pedido.get('herramienta')}», que no tiene declarada"
+        )
+        ejecucion.terminada_at = _ahora()
+        uow.db.flush()
+        return {
+            "avanzado": False,
+            "porque": ejecucion.motivo_fin,
+            "herramientas_descartadas": [str(pedido.get("herramienta") or "")],
+        }
+
+    ejecucion.estado = (
+        "esperando_aprobacion" if paso.estado == "esperando_aprobacion" else "ejecutando"
+    )
+    uow.db.flush()
+    registrar(
+        uow.db,
+        accion="agente.paso_decidido",
+        objeto="paso_agente",
+        objeto_id=paso.id,
+        datos={"herramienta": paso.herramienta, "orden": paso.orden, "porque": paso.porque[:200]},
+        tenant_id=uow.tenant_id,
+    )
+    return {
+        "avanzado": False,
+        "porque": (
+            "El agente ha decidido el siguiente paso con el resultado del "
+            "anterior delante. Se ejecuta en la siguiente vuelta."
+        ),
+        "paso_decidido": {
+            "orden": paso.orden,
+            "herramienta": paso.herramienta,
+            "riesgo": paso.riesgo,
+            "porque": paso.porque,
+            "estado": paso.estado,
+        },
+    }
+
+
+def _recortado(resultado: Any, tope: int) -> Any:
+    """Lo que de un resultado se le enseña al modelo en la vuelta siguiente.
+
+    Se recorta porque un listado de doscientas filas entra entero en la
+    petición, y en la quinta vuelta la petición es el listado cinco veces. Y se
+    **dice** que se ha recortado: un modelo que ve una lista cortada sin saberlo
+    concluye sobre lo que le han dejado ver.
+    """
+    import json as _json
+
+    texto = _json.dumps(resultado, ensure_ascii=False, default=str)
+    if len(texto) <= tope:
+        return resultado
+    return {
+        "recortado": True,
+        "de_caracteres": len(texto),
+        "muestra": texto[:tope],
+        "aviso": "Este resultado viene cortado: no concluyas que no hay más.",
+    }
+
+
 def _tokens_de_hoy(db: Session, tenant_id: UUID, agente_id: UUID) -> int:
     desde = _ahora() - timedelta(days=1)
     total = db.execute(
@@ -735,13 +1022,24 @@ def actuacion(db: Session, tenant_id: UUID, ejecucion_id: UUID) -> dict[str, Any
         .all()
     )
     hechos = [p for p in pasos if p.estado == "hecho"]
+    agente = db.get(Agente, ejecucion.agente_id)
     return {
         "ejecucion_id": str(ejecucion.id),
         "objetivo": ejecucion.objetivo,
         "estado": ejecucion.estado,
+        # Cómo decidió, y por qué paró. Sin el modo, una lista de un solo paso
+        # parece un plan pobre cuando puede ser un bucle que acaba de empezar;
+        # y sin el motivo no se distingue «cumplido» de «se quedó sin tope».
+        "modo": agente.modo if agente is not None else "",
+        "motivo_fin": ejecucion.motivo_fin,
         "tokens": ejecucion.tokens,
         "pasos": [
             {
+                # El identificador va aquí porque es por donde se aprueba: sin
+                # él, una pantalla que enseña los pasos que esperan a una
+                # persona no tiene forma de autorizarlos, y la aprobación sólo
+                # se podría dar por API.
+                "id": str(p.id),
                 "orden": p.orden,
                 "herramienta": p.herramienta,
                 "riesgo": p.riesgo,

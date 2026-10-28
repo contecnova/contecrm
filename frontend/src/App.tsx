@@ -77,6 +77,13 @@ const Inteligencia = pantalla(
   () => import("@/paginas/Inteligencia"),
   (m) => m.Inteligencia,
 );
+// Diferida: se entra a propósito, no al abrir la aplicación, y trae su propio
+// bucle de vueltas. Cargarla con el marco engordaría lo que el navegador baja
+// antes de pintar nada.
+const Preguntar = pantalla(
+  () => import("@/paginas/Preguntar"),
+  (m) => m.Preguntar,
+);
 const Rendimiento = pantalla(
   () => import("@/paginas/Rendimiento"),
   (m) => m.Rendimiento,
@@ -303,6 +310,7 @@ export function App() {
           <Route path="/marketing" element={<Marketing />} />
           <Route path="/coste" element={<Coste />} />
           <Route path="/inteligencia" element={<Inteligencia />} />
+          <Route path="/preguntar" element={<Preguntar />} />
           <Route path="/puesto" element={<Puesto />} />
           <Route path="/alm" element={<Alm />} />
           <Route path="/rendimiento" element={<Rendimiento />} />

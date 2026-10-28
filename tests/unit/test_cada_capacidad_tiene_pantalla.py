@@ -209,7 +209,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            contesta la pregunta de quien cierra un trimestre
 #                            —que contratos estan parados y por quien— y que
 #                            el servidor sabia responder desde el primer dia
-TOPE_SIN_PANTALLA = 401
+#   28-10-2026  397 de 778  la pantalla de «preguntar al sistema». El agente
+#                            autonomo estaba entero por debajo —plan,
+#                            aprobacion por riesgo, tope, presupuesto y
+#                            reversion paso a paso— y lo unico que se veia de
+#                            el era una fila en un listado de administracion
+#                            con un boton de apagar. Ahora se le escribe lo
+#                            que se necesita, se lee el plan ANTES de que pase
+#                            nada, se autoriza paso a paso y se deshace. Eso
+#                            es lo que enseña `CRM-05.02.03.05` —la actuacion
+#                            y su reversion—, que hasta hoy no la enseñaba
+#                            ninguna. De las cuatro que baja el tope, UNA es
+#                            esta: las otras tres ya estaban declaradas y el
+#                            tope se habia quedado alto. Medido antes de
+#                            tocar nada: 398
+TOPE_SIN_PANTALLA = 397
 
 
 def _es_pantalla(p: Path) -> bool:

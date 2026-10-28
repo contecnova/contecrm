@@ -71,6 +71,24 @@ class AjustesIntelligence(Settings):
     # bajarlo produce ganadores que no ganan.
     ia_minimo_por_rama: int = Field(500, ge=1, le=1_000_000)
 
+    # ── Cuánto se le deja contestar ───────────────────────────────────────
+    # Tope de tokens de la respuesta. No es cosmético ni es el mismo caso que
+    # los de arriba: la familia Anthropic **exige** `max_tokens` en cada
+    # petición y la rechaza sin él, así que sin un valor aquí ese dialecto no
+    # se puede usar. Cada proveedor puede poner el suyo en su `config`; esto es
+    # lo que vale cuando no lo pone.
+    #
+    # Se lee en el puerto, que llama sin sesión de tenant, así que **no lleva
+    # clave en caliente**: sale del `.env` y vale para todo el despliegue.
+    ia_max_tokens_respuesta: int = Field(4096, ge=64, le=200_000)
+
+    # Cuánto de un resultado se le enseña al agente iterativo en la vuelta
+    # siguiente. Un listado de doscientas filas entra entero en la petición, y
+    # en la quinta vuelta la petición es ese listado cinco veces: el bucle se
+    # come el presupuesto antes de llegar al objetivo. Lo que pasa del tope se
+    # recorta **diciéndolo**, para que el modelo no concluya que no había más.
+    ia_caracteres_resultado_paso: int = Field(2_000, ge=200, le=200_000)
+
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────
 #

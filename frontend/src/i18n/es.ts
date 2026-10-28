@@ -105,6 +105,7 @@ export default {
     embudo: "Tablero de ventas",
     coste: "Coste",
     inteligencia: "Inteligencia",
+    preguntar: "Preguntar al sistema",
     puesto: "Puesto",
     alm: "Entornos y despliegue",
     rendimiento: "Rendimiento",

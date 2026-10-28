@@ -34,6 +34,7 @@ export { ObjetoDelModelo } from "@/paginas/ObjetoDelModelo";
 export { PendienteDeFirma } from "@/paginas/PendienteDeFirma";
 export { Pipeline } from "@/paginas/Pipeline";
 export { Plataforma } from "@/paginas/Plataforma";
+export { Preguntar } from "@/paginas/Preguntar";
 export { Portal } from "@/paginas/Portal";
 export { Procesos } from "@/paginas/Procesos";
 export { Puesto } from "@/paginas/Puesto";

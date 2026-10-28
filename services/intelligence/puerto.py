@@ -27,12 +27,19 @@ def _llamar(
     mensajes: list[dict[str, str]],
     opt_out: bool,
     formato_json: bool = False,
+    herramientas: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Manda la petición al proveedor configurado.
+    """Manda la petición al proveedor configurado, **en su dialecto**.
 
     El opt-out viaja **en la petición**, no solo en el contrato: la garantía que
     se le da al cliente es técnica. Si el proveedor no lo admite, el enrutador ya
     ha descartado usarlo antes de llegar aquí.
+
+    Hasta el 28-10-2026 aquí se construía siempre el cuerpo de la familia
+    OpenAI, aunque la fila del proveedor dijera otra cosa: `formato` se
+    guardaba, se enseñaba y **no lo leía nadie**. Ahora la traducción vive en
+    `dialectos` y esto sólo decide a quién se llama y qué se hace con lo que
+    vuelve.
     """
     # `sesion(sistema=True)`: `sesion_admin` no existe, así que esta llamada
     # reventaba con ImportError en cuanto se usaba un proveedor de IA.
@@ -40,6 +47,8 @@ def _llamar(
     from crmcore.red import cliente_seguro
     from sqlalchemy import select
 
+    from services.intelligence import dialectos
+    from services.intelligence.ajustes import ajustes
     from services.intelligence.enrutador import ProveedorIA
 
     with sesion(sistema=True) as db:
@@ -52,24 +61,24 @@ def _llamar(
             error_code="ia.proveedor_desaparecido",
         )
 
-    cuerpo: dict[str, Any] = {
-        "model": modelo or "",
-        "messages": mensajes,
-    }
-    if opt_out:
-        # El nombre del campo lo declara el proveedor en su config: no hay dos
-        # que lo llamen igual, y ponerlo aquí sería código por casa.
-        clave = str((ficha.config or {}).get("campo_opt_out") or "store")
-        cuerpo[clave] = False
-    if formato_json:
-        cuerpo["response_format"] = {"type": "json_object"}
+    config = dict(ficha.config or {})
+    formato = dialectos.exigir_dialecto(ficha.formato)
+    cuerpo = dialectos.peticion(
+        formato=formato,
+        modelo=modelo,
+        mensajes=mensajes,
+        opt_out=opt_out,
+        formato_json=formato_json,
+        herramientas=herramientas,
+        max_tokens=int(config.get("max_tokens") or ajustes().ia_max_tokens_respuesta),
+        campo_opt_out=str(config.get("campo_opt_out") or ""),
+    )
+    url = ficha.base_url.rstrip("/") + dialectos.ruta_de(
+        formato, modelo=modelo, declarada=str(config.get("ruta") or "")
+    )
+    cabeceras = dialectos.cabeceras_de(formato, config)
 
-    url = ficha.base_url.rstrip("/") + str((ficha.config or {}).get("ruta") or "/chat/completions")
-    cabeceras = {"Content-Type": "application/json"}
-    if (ficha.config or {}).get("cabecera_auth"):
-        cabeceras[str(ficha.config["cabecera_auth"])] = str(ficha.config.get("credencial") or "")
-
-    with cliente_seguro(timeout=float((ficha.config or {}).get("timeout_s") or 60)) as cli:
+    with cliente_seguro(timeout=float(config.get("timeout_s") or 60)) as cli:
         respuesta = cli.post(url, json=cuerpo, headers=cabeceras)
     if respuesta.status_code >= 400:
         raise ErrorDependencia(
@@ -77,18 +86,13 @@ def _llamar(
             error_code="ia.peticion_rechazada",
             detalle={"codigo_http": respuesta.status_code},
         )
-    datos = respuesta.json()
-    opciones = datos.get("choices") or []
-    texto = ""
-    if opciones:
-        texto = str((opciones[0].get("message") or {}).get("content") or "")
-    uso_tokens = datos.get("usage") or {}
-    return {
-        "texto": texto,
-        "modelo": str(datos.get("model") or modelo),
-        "tokens_entrada": int(uso_tokens.get("prompt_tokens") or 0),
-        "tokens_salida": int(uso_tokens.get("completion_tokens") or 0),
-    }
+    salida = dialectos.respuesta(formato=formato, datos=respuesta.json(), modelo_pedido=modelo)
+    avisos = dialectos.avisos_de(
+        formato, formato_json=formato_json, herramientas=bool(herramientas)
+    )
+    if avisos:
+        salida["avisos"] = avisos
+    return salida
 
 
 def _generar(
@@ -331,6 +335,77 @@ def _planificar(
     return {**salida, "pasos": list(datos.get("pasos") or [])}
 
 
+def _siguiente_paso(
+    *,
+    proveedor: str,
+    modelo: str,
+    objetivo: str,
+    contexto: dict[str, Any],
+    herramientas: list[dict[str, Any]],
+    hechos: list[dict[str, Any]],
+    opt_out: bool,
+) -> dict[str, Any]:
+    """Pide UN paso con lo ya hecho delante, o que diga que ya está.
+
+    Es el modo iterativo, y lo que lo hace distinto de `_planificar` no es el
+    número de pasos: es que **lo que se le manda incluye los resultados**. Un
+    plan cerrado se escribe sin saber qué va a devolver el primer paso, y hay
+    objetivos cuya segunda mitad es exactamente eso.
+
+    Se le pide por *tool use* nativo cuando el proveedor lo habla: así los
+    argumentos los valida el propio proveedor contra el esquema de la
+    herramienta, que es la validación que se pierde pidiendo un JSON de texto.
+    Y se lee también el texto: si no llama a ninguna herramienta, lo que escriba
+    es su conclusión, no un fallo.
+    """
+    import json
+
+    peticion = [
+        {
+            "role": "system",
+            "content": (
+                "Vas paso a paso. Mira lo ya hecho y llama a UNA sola "
+                "herramienta, la que haga falta ahora. Si el objetivo ya está "
+                "cumplido —o no se puede cumplir con lo que tienes—, NO llames a "
+                "ninguna y escribe la conclusión en texto, diciendo en qué te "
+                "apoyas. Un resultado marcado como recortado no significa que no "
+                "haya más."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Objetivo: {objetivo}\n\n"
+                f"Contexto: {json.dumps(contexto, ensure_ascii=False)}\n\n"
+                f"Hecho hasta ahora: {json.dumps(hechos, ensure_ascii=False, default=str)}"
+            ),
+        },
+    ]
+    salida = _llamar(
+        proveedor=proveedor,
+        modelo=modelo,
+        mensajes=peticion,
+        opt_out=opt_out,
+        herramientas=herramientas,
+    )
+    llamadas = list(salida.get("llamadas") or [])
+    if not llamadas:
+        return {**salida, "paso": None, "conclusion": salida.get("texto") or ""}
+    # Una sola, aunque pida varias: el control humano, el tope y el apagado
+    # viven entre paso y paso, y ejecutar tres de golpe porque el modelo las
+    # pidió juntas los convierte en decoración.
+    primera = llamadas[0]
+    return {
+        **salida,
+        "paso": {
+            "herramienta": primera.get("herramienta") or "",
+            "argumentos": primera.get("argumentos") or {},
+            "porque": salida.get("texto") or "",
+        },
+        "pedidas_a_la_vez": len(llamadas),
+    }
+
+
 def _invocar_herramienta(
     *,
     herramienta: str,
@@ -447,5 +522,6 @@ def conectar() -> None:
     conversacion.registrar_resumidor(_resumir)
     conversacion.registrar_clasificador(_clasificar)
     agentes.registrar_planificador(_planificar)
+    agentes.registrar_continuador(_siguiente_paso)
     agentes.registrar_invocador(_invocar_herramienta)
     logger.info("intelligence.puertos_conectados")

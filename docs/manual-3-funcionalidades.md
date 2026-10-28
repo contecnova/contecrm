@@ -10178,6 +10178,29 @@ decidir.
 Y hay **interruptor por tenant**: corta toda la IA sin borrar configuración,
 porque el día que algo va mal lo que se quiere es parar ahora y decidir después.
 
+#### Tres familias, no veinte conectores
+
+Cada proveedor declara su **formato**, que es cómo habla: `openai_chat`,
+`anthropic_messages` o `gemini_generate`. Azure, groq, mistral, deepseek,
+together y los demás clones hablan el primero, así que declararlos uno a uno
+sería la lista escrita a mano que se queda corta en cuanto aparece el séptimo.
+Lo que se declara es el dialecto y la dirección; la credencial, la versión de la
+API y cualquier otra cabecera que exija el proveedor son configuración suya.
+
+El formato **se valida al declararlo**, igual que la región: hasta el 28-10-2026
+era texto libre, así que «openai» o «Anthropic» se guardaban perfectamente y la
+llamada salía en el dialecto equivocado meses después.
+
+Dos cosas que cambian entre familias y se notan en la respuesta, no en la
+llamada, así que se dicen en vez de simularse:
+
+- **El modo JSON** existe en dos de las tres. En la familia Anthropic el JSON se
+  pide por el texto del sistema y puede venir envuelto, y el servidor lo avisa.
+- **El opt-out** tiene un campo estándar sólo en la familia OpenAI (`store`). Un
+  proveedor de otra familia que diga admitirlo **tiene que declarar en qué campo
+  se pide**; si no lo declara, la llamada se para. Mandarla sin el campo sería
+  dar por buena una garantía que no viaja.
+
 ### Guardarraíles (`CRM-05.02.02.07`)
 
 El agujero de la IA en un CRM no es que el modelo diga tonterías: es que **le
@@ -10730,6 +10753,40 @@ fallido que parece un error del sistema— y el plan que supera el tope se recor
 avisando, porque uno de cuarenta pasos cortado en el diez deja treinta a medias y
 nadie sabe cuáles.
 
+#### Plan cerrado o bucle: dos problemas, no dos gustos
+
+Un plan cerrado se escribe entero antes de empezar, y por eso es el que una
+persona puede aprobar de una vez: tiene el plan delante y dice que sí sabiendo a
+qué. Lo que no puede es expresar un objetivo cuya segunda mitad dependa de la
+primera. *«Qué cuentas están en riesgo y, de cada una, mira su facturación»* se
+escribiría sobre cuentas que todavía no se sabe cuáles son.
+
+Para eso está el modo **iterativo**: el agente pide **un** paso, lo ejecuta y
+vuelve a decidir con el resultado del anterior delante. Se declara por agente
+(`modo`), y los que ya estaban siguen en `plan_cerrado`, que es como decidían
+ayer.
+
+Lo que **no** cambia al iterar, que es lo único que hace el bucle aceptable:
+
+- **Cada paso se guarda antes de ejecutarse.** La vuelta que decide no ejecuta;
+  lo ejecuta la siguiente. Entre las dos es donde caben el apagado y la
+  aprobación.
+- **Pasa por el mismo control de aprobación.** Un paso de escritura decidido
+  sobre la marcha espera a una persona igual que uno planificado.
+- **Cuenta para el tope de acciones**, y el tope cuenta los pasos **pedidos**, no
+  sólo los hechos: si contara sólo los hechos, un paso fallido dejaría sitio para
+  otro y el tope no acotaría nada.
+- **El presupuesto se mira en cada vuelta.** Un bucle con el presupuesto
+  comprobado una sola vez al principio es un bucle sin presupuesto: donde se
+  gasta es en cada vuelta.
+
+Dos cosas más, porque se notan en el resultado y no en la llamada. Lo que
+devolvió un paso se le enseña al modelo **recortado** —un listado de doscientas
+filas entra entero en la petición, y en la quinta vuelta la petición es ese
+listado cinco veces—, y el recorte **se dice**, para que no concluya que no había
+más. Y cuando el modelo no llama a ninguna herramienta se para y se guarda **su**
+motivo: «no queda ningún paso» no distingue entre cumplido y rendido.
+
 ### Control humano (`CRM-05.02.03.03`)
 
 Por **riesgo de la herramienta** o por **importe**, y el umbral es configurable.
@@ -10775,6 +10832,28 @@ cambió.
 Y lo que no tiene vuelta atrás **no se toca y se dice**. Un correo enviado no se
 «des-envía»: fingir que la reversión es total sería peor que no tenerla, porque
 alguien confiaría.
+
+#### Dónde se ve: «Preguntar al sistema»
+
+Todo lo anterior estaba construido y **no se veía desde ninguna parte**: el
+agente era una fila en un listado de administración con un botón de apagar. La
+pantalla **Preguntar al sistema** es su puerta, y está ordenada por lo que
+permite desconfiar de ella:
+
+1. Se elige el agente y se escribe lo que se necesita. Ese botón **devuelve el
+   plan**, no el resultado, y lo dice antes de pulsarlo.
+2. El plan se lee paso a paso, con el **riesgo de cada paso al lado** —lectura,
+   escritura, destructivo— y con el porqué que escribió el agente.
+3. «Dar el siguiente paso» va avanzando y **se detiene sola** en cuanto hace
+   falta una persona. Lo que espera autorización se autoriza o se rechaza ahí
+   mismo.
+4. Cuando el agente **piensa** en vez de ejecutar —modo iterativo— la pantalla lo
+   dice, en lugar de parecer que el botón no ha hecho nada.
+5. Al terminar se lee la conclusión y **por qué paró**. Y antes de ofrecer
+   deshacer se dice **qué no se va a deshacer**.
+
+Si no hay ningún agente declarado, la pantalla dice dónde se declara: un agente
+es configuración, y quien abre esto no tiene por qué saberlo.
 
 ### Los agentes concretos son configuración (`CRM-05.02.03.06`)
 

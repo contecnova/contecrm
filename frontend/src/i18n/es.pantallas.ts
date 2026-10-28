@@ -58,6 +58,36 @@ const pantallas = {
       "Es la lista de potencia escondida en la API: capacidades construidas, probadas y documentadas que quien mira el producto concluye que no están.",
     todoEnsenado: "Todo lo publicado tiene pantalla.",
   },
+  preguntar: {
+    titulo: "Preguntar al sistema",
+    entradilla:
+      "Escribe lo que necesitas y el agente propone QUÉ haría para conseguirlo, paso a paso. Primero verás el plan; nada se ejecuta hasta que lo mandas, y lo que toca datos espera a que alguien lo autorice.",
+    quienResponde: "Quién responde",
+    elige: "Elige un agente",
+    modoIterativo: "decide sobre la marcha",
+    quePides: "Qué quieres",
+    ejemplo: "Por ejemplo: qué cuentas llevan más de dos meses sin contacto y tienen una oportunidad abierta.",
+    planificar: "Preparar el plan",
+    noEjecutaNada: "Esto no ejecuta nada todavía: devuelve el plan.",
+    seguir: "Dar el siguiente paso",
+    trabajando: "Trabajando…",
+    tokens: "{{tokens}} tokens",
+    sinPasos: "El agente no ha propuesto ningún paso para esto.",
+    haPensado: "Ha decidido el siguiente paso con el resultado del anterior delante:",
+    paroPorque: "Paró porque:",
+    pidioLoQueNoTiene: "Ha pedido una herramienta que no tiene declarada:",
+    autorizar: "Autorizar",
+    rechazar: "No lo hagas",
+    esperaAPersona_one: "Hay un paso esperando a que alguien lo autorice.",
+    esperaAPersona_other: "Hay {{count}} pasos esperando a que alguien los autorice.",
+    deshacer: "Deshacer lo hecho",
+    noTodoSeDeshace:
+      "Esto no se deshace del todo. No tiene vuelta atrás, y se quedará como está:",
+    sinAgentes: "Todavía no hay ningún agente al que preguntar",
+    sinAgentesDetalle:
+      "Un agente es configuración: se declara en Administración → Agentes autónomos, con las herramientas que puede usar y cuándo tiene que esperar a una persona.",
+  },
+
   conocimiento: {
     titulo: "Conocimiento",
     entradilla:

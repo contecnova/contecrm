@@ -58,7 +58,10 @@ class RegistrarProveedor(BaseModel):
     base_url: str = Field(..., min_length=1)
     region: str = Field(..., description="ue · ee_uu · reino_unido · suiza · local · otra")
     nombre: str = ""
-    formato: str = "openai_chat"
+    formato: str = Field(
+        "openai_chat",
+        description="Dialecto del proveedor: openai_chat · anthropic_messages · gemini_generate",
+    )
     admite_opt_out: bool = False
     modelos: list[dict[str, Any]] = Field(default_factory=list)
     coste_entrada_millon: Decimal = Decimal(0)

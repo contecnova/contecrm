@@ -1502,6 +1502,56 @@ servicio —la misma variable que ya necesita el gateway— y nada más. Sin ell
 el invocador responde `interno.servicio_sin_direccion` diciendo cuál falta, en
 vez de fallar con un error de red.
 
+#### El bucle iterativo
+
+`Agente.modo` decide cómo piensa: `plan_cerrado` pide todos los pasos de una vez
+—es el que una persona aprueba de una vez— y `iterativo` pide uno, lo ejecuta y
+vuelve a decidir con el resultado delante. El puerto es distinto en cada caso:
+`agentes.registrar_planificador` para el primero y `registrar_continuador` para
+el segundo, porque lo que se les manda y lo que se les pide no es lo mismo y
+mezclarlos acabaría en un prompt con un `if` dentro.
+
+El bucle vive en `agentes._pensar_siguiente`, y se entra en él desde `avanzar`
+cuando no queda ningún paso `planificado`. Lo que importa de cómo está escrito:
+
+- **La vuelta que decide no ejecuta.** Crea el paso con `_crear_paso` —el mismo
+  que usa el plan cerrado, a propósito: el día que se toque la aprobación se
+  toca en un sitio— y devuelve `avanzado: false` con `paso_decidido`. Lo ejecuta
+  la vuelta siguiente.
+- **Los tres límites se comprueban en cada vuelta**, no sólo al lanzar. El tope
+  cuenta los pasos **pedidos**: contando sólo los hechos, un paso fallido dejaría
+  hueco y el tope no acotaría el bucle.
+- **Lo que devolvió cada paso se recorta** antes de enseñárselo al modelo
+  (`ia_caracteres_resultado_paso`), y el recorte va marcado en el propio objeto.
+- **Una herramienta pedida y no declarada para el agente para la ejecución**, no
+  se vuelve a preguntar: reintentar es el bucle que se come el presupuesto
+  pidiendo lo mismo.
+
+El puerto `puerto._siguiente_paso` lo pide por **tool use nativo** del proveedor,
+así que los argumentos los valida el propio proveedor contra el esquema de la
+herramienta. Si el modelo pide varias llamadas a la vez se coge **una**: el
+control humano, el tope y el apagado viven entre paso y paso.
+
+### 4.6.2 El dialecto de cada proveedor
+
+`services/intelligence/dialectos.py` es lo único de la casa que sabe cómo se
+llama cada campo en cada familia, y está aparte para poder probarlo **sin red**:
+las pruebas le dan un cuerpo de respuesta de cada familia y comprueban que sale
+lo mismo.
+
+Tres familias, en la lista cerrada del módulo: `openai_chat`, `anthropic_messages` y
+`gemini_generate`. Cada una tiene su ruta por defecto —la de Gemini lleva el
+modelo dentro del camino—, su forma de sacar el sistema de la lista de mensajes,
+su forma de declarar herramientas y su forma de devolverlas. La función
+`respuesta()` lo normaliza todo a las mismas claves —`texto`, `modelo`, los dos
+contadores y `llamadas`— para que el resto del servicio no tenga que saber de
+qué familia vino; si lo supiera, el `if` por familia estaría repartido por todo
+el servicio.
+
+Hasta el 28-10-2026 `ProveedorIA.formato` se guardaba y **no lo leía nadie**:
+`puerto._llamar` construía siempre el cuerpo de la familia OpenAI. Era el
+circuito abierto de siempre, con las dos mitades puestas y nada que las uniera.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

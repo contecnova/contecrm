@@ -323,6 +323,8 @@ cambiarlo en el `.env` no cambiaría nada. Se resuelve dentro de la función.
 | `IA_MINIMO_CASOS_ENTRENO`, `IA_MINIMO_POR_CLASE` | Datos mínimos para entrenar | no |
 | `IA_PCT_VALIDACION` | Qué porcentaje se reserva para validar | no |
 | `IA_MINIMO_POR_RAMA` | Envíos por rama para dar una A/B por concluyente | no |
+| `IA_MAX_TOKENS_RESPUESTA` | Tope de tokens de la respuesta del modelo | no |
+| `IA_CARACTERES_RESULTADO_PASO` | Cuánto de un resultado ve el agente iterativo en la vuelta siguiente | no |
 | `SLA_RIESGO_HORAS` | Cuándo un caso pasa a «a punto de vencer» | sí |
 
 > **Los de IA se ponen bajos a propósito**, para proponer mucho y decidir poco:

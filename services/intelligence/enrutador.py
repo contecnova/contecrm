@@ -61,6 +61,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from services.intelligence.dialectos import DIALECTOS, exigir_dialecto
+
 logger = get_logger(__name__)
 
 CENTIMO = Decimal("0.0001")
@@ -105,7 +107,9 @@ class ProveedorIA(Base, TimestampMixin, SoftDeleteMixin):
     # La dirección y el formato del protocolo. Sin código por casa: lo que cambia
     # entre dos proveedores es esto.
     base_url: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    formato: Mapped[str] = mapped_column(String(40), nullable=False, default="openai_chat")
+    formato: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="openai_chat", info={"opciones": DIALECTOS}
+    )
     region: Mapped[str] = mapped_column(
         String(20), nullable=False, default="otra", info={"opciones": REGIONES}
     )
@@ -223,6 +227,10 @@ def registrar_proveedor(
             error_code="ia.region_no_valida",
             detalle={"validas": list(REGIONES)},
         )
+    # El formato se comprueba igual que la región, y no lo hacía nadie: era
+    # texto libre, así que «openai» o «Anthropic» se guardaban perfectamente y
+    # la llamada salía en el dialecto equivocado meses después.
+    exigir_dialecto(formato)
     if not base_url.strip():
         raise ErrorValidacion(
             "Un proveedor sin dirección no se puede llamar.", error_code="ia.sin_url"
