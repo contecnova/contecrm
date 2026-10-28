@@ -155,10 +155,6 @@ export const ACCESOS: Entrada[] = [
   // ruta en el router y no salía en ningún menú, así que solo lo encontraba
   // quien supiera teclear la dirección.
   { a: "/chat", clave: "nav.chat", icono: "forum", recursos: ["chat"] },
-  // Como el chat, y por lo mismo: no trata de un dominio. Se le pregunta por
-  // cuentas, por casos o por facturación desde el mismo sitio, así que
-  // meterla en un área la escondería de los otros tres.
-  { a: "/preguntar", clave: "nav.preguntar", icono: "smart_toy", permiso: "ia:usar" },
 ];
 
 /**

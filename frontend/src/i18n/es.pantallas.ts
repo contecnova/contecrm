@@ -59,7 +59,7 @@ const pantallas = {
     todoEnsenado: "Todo lo publicado tiene pantalla.",
   },
   preguntar: {
-    titulo: "Preguntar al sistema",
+    titulo: "Nexus",
     entradilla:
       "Escribe lo que necesitas y el agente propone QUÉ haría para conseguirlo, paso a paso. Primero verás el plan; nada se ejecuta hasta que lo mandas, y lo que toca datos espera a que alguien lo autorice.",
     quienResponde: "Quién responde",
@@ -159,6 +159,11 @@ const pantallas = {
     ignoraFiltros: "No le afectan los filtros del cuadro",
   },
   cuenta: {
+    verTodas: "Ver todas",
+    timelineRecortada: "Se enseñan los últimos {{cuantos}}.",
+    timelineEntera: "Se enseñan {{cuantos}} hitos.",
+    verTodoLoQuePaso: "Ver todo lo que ha pasado",
+    cargandoMas: "Cargando…",
     datos: "Datos",
     calidad: "Calidad del dato",
     faltan: "Falta por rellenar",

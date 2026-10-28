@@ -10833,11 +10833,11 @@ Y lo que no tiene vuelta atrás **no se toca y se dice**. Un correo enviado no s
 «des-envía»: fingir que la reversión es total sería peor que no tenerla, porque
 alguien confiaría.
 
-#### Dónde se ve: «Preguntar al sistema»
+#### Dónde se ve: «Nexus»
 
 Todo lo anterior estaba construido y **no se veía desde ninguna parte**: el
 agente era una fila en un listado de administración con un botón de apagar. La
-pantalla **Preguntar al sistema** es su puerta, y está ordenada por lo que
+pantalla **Nexus** es su puerta, y está ordenada por lo que
 permite desconfiar de ella:
 
 1. Se elige el agente y se escribe lo que se necesita. Ese botón **devuelve el

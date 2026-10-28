@@ -1,5 +1,5 @@
 /**
- * Preguntar al sistema: el plan antes que el resultado.
+ * Nexus: el plan antes que el resultado.
  *
  * Esta pantalla es la única puerta del agente autónomo, y lo que la hace
  * aceptable no es que conteste: es que **se puede no fiarse de ella**. Lo que
@@ -74,7 +74,7 @@ async function preguntar() {
   return usuario;
 }
 
-describe("preguntar al sistema", () => {
+describe("nexus", () => {
   beforeEach(() => {
     agentes = [{ id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true }];
     vueltas = [];

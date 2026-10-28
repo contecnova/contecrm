@@ -247,6 +247,21 @@ export function BarraSuperior({
           </div>
         ) : null}
 
+        {/* Nexus. Va de icono en la barra y no de entrada en el menú por lo
+            mismo que el chat: no trata de un dominio —se le pregunta por
+            cuentas, por casos o por facturación desde el mismo sitio— y se
+            abre desde donde uno esté, sin volver a un menú. */}
+        {puede(sesion, "ia:usar") ? (
+          <Link
+            to="/preguntar"
+            className="btn-icon text-ink-muted hover:bg-paper-light hover:text-ink"
+            aria-label={t("nav.nexus")}
+            title={t("nav.nexus")}
+          >
+            <Icono nombre="smart_toy" />
+          </Link>
+        ) : null}
+
         <AvisoDeChat />
 
         {/* Densidad. Al lado del tema porque son la misma clase de cosa para

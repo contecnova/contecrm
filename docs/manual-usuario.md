@@ -358,6 +358,28 @@ es de la cuenta antigua, y moverla dejaría a esa cuenta sin nada.
 
 ---
 
+### Las listas largas de la ficha
+
+Una ficha de cliente con mucho recorrido tiene cientos de cosas que enseñar, y
+antes la página se hacía interminable: la línea de tiempo estiraba el alto, las
+otras dos columnas se quedaban vacías debajo, y para volver a la cabecera había
+que subir toda la página.
+
+Ahora las tres columnas acaban a la misma altura y **cada recuadro se recorre
+por dentro**. La línea de tiempo, los contactos, las oportunidades y los casos
+tienen su propia barra dentro de su caja, así que se mira una lista sin mover
+las demás ni perder de vista con quién se está. Cuántas filas se ven no es un
+número fijo: es lo que quepa en su pantalla.
+
+Cada panel lleva además **«Ver todas»**, que abre el listado completo ya
+filtrado por este cliente — también los contactos, que viven dentro del módulo
+de cuentas y abren directamente en su pestaña.
+
+Y las listas **dicen cuándo vienen recortadas**. Donde pone `20+` hay más de
+veinte; donde pone `20` hay veinte. Antes las dos cosas se escribían igual, que
+es como se acaba creyendo que un cliente tiene veinte casos cuando tiene
+doscientos.
+
 ## Lo que pasa con cada cliente (sección 1.2)
 
 Toda interacción —un correo, una llamada, una reunión, una nota— queda en la ficha
@@ -661,9 +683,9 @@ Además: lo que se transcribe de una llamada **no es un acta** —el reconocimie
 confunde nombres y cifras—, y grabar exige haber avisado. Si algo se propone a
 partir de una transcripción poco fiable, no se propone.
 
-### Preguntar al sistema
+### Nexus
 
-En el menú de arriba, al lado del chat, hay **Preguntar al sistema**. Ahí se
+En la barra de arriba, al lado del chat, hay un icono: **Nexus**. Ahí se
 escribe lo que necesitas —«qué cuentas llevan dos meses sin contacto y tienen una
 oportunidad abierta»— y el CRM te contesta **enseñándote antes qué haría para
 averiguarlo**.

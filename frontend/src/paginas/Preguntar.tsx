@@ -1,5 +1,5 @@
 /**
- * Pregúntale al sistema (CRM-05.02.03.01, CRM-05.02.03.05).
+ * Nexus: pregúntale al sistema (CRM-05.02.03.01, CRM-05.02.03.05).
  *
  * **El agente autónomo no tenía dónde usarse.** Estaba entero por debajo —plan,
  * aprobación por riesgo, tope de acciones, presupuesto, reversión paso a paso—
