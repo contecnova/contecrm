@@ -187,3 +187,43 @@ def test_los_tipos_de_registro_salen_como_lista(
     r = cliente.get(TIPOS.format(nombre="encargo_taller"), headers=cabeceras)
     assert r.status_code == 200, r.text[:300]
     assert isinstance(r.json(), list)
+
+
+def test_la_previsualizacion_dice_a_cuantos_afecta_y_distingue_el_no_lo_se(
+    cliente: Any, cabeceras: dict[str, str], un_objeto: dict[str, Any]
+) -> None:
+    """«Qué pasaría si publicas esto», pedido por su ruta.
+
+    Quien añade un campo obligatorio a un objeto con ochenta mil registros no
+    sabe que los ochenta mil se quedan sin rellenar hasta que alguien intenta
+    guardar uno viejo y no puede. La pantalla lo enseña antes, y para eso lee
+    seis campos: si el servidor deja de mandar uno no da error, deja de avisar.
+
+    Y el que de verdad importa: **`registros` nulo no es cero**. «No se ha
+    podido contar» y «no afecta a nadie» se pintan igual y significan lo
+    contrario — el primero pide mirar y el segundo deja publicar tranquilo—,
+    así que el tipo tiene que admitir el nulo y la pantalla distinguirlo.
+    """
+    nombre = un_objeto["nombre"]
+    r = cliente.get(f"/api/v1/metadata/objetos/{nombre}/previsualizar", headers=cabeceras)
+    assert r.status_code == 200, r.text[:300]
+    previo = r.json()
+    for campo in (
+        "version_actual",
+        "version_al_publicar",
+        "anadidos",
+        "retirados",
+        "cambiados",
+        "registros",
+        "avisos",
+        "hay_cambios",
+        "seguro",
+    ):
+        assert campo in previo, f"la pantalla lee «{campo}» y la ruta no lo manda"
+
+    # El campo obligatorio recién añadido es un cambio por publicar, y la
+    # versión que saldría es la siguiente: si fueran la misma, la pantalla
+    # diría «de la 1 a la 1», que no significa nada.
+    assert previo["hay_cambios"] is True
+    assert previo["version_al_publicar"] == previo["version_actual"] + 1
+    assert previo["registros"] is None or isinstance(previo["registros"], int)

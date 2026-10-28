@@ -22,6 +22,19 @@
 
 const pantallas = {
   alm: {
+    paquete: {
+      titulo: "Llevarse esta configuración a otro entorno",
+      porQue:
+        "Se lleva la CONFIGURACIÓN y nunca los datos: un paquete que arrastrara registros convertiría una promoción en una fuga, porque los datos de pruebas suelen ser copias anonimizadas a medias de clientes reales. Y se simula antes de aplicar: es un cambio de modelo de datos en producción.",
+      exportar: "Exportar la configuración",
+      exportando: "Exportando…",
+      exportado:
+        "Paquete listo: {{objetos}} objetos. Ahora se puede simular su instalación.",
+      simular: "Simular la instalación",
+      simulando: "Simulando…",
+      aplicar: "Aplicar de verdad",
+      aplicando: "Aplicando…",
+    },
     titulo: "Entornos y cambios",
     intro: "Qué hay desplegado y qué tocó alguien a mano.",
     entorno: "Entorno",
@@ -286,6 +299,18 @@ const pantallas = {
     noMedible: "No se puede explicar",
   },
   modeloDatos: {
+    alPublicar: "Qué pasaría si publicas esto",
+    sinCambiosQuePublicar:
+      "No hay nada por publicar: lo guardado es lo que ya está en vigor.",
+    deLaVersionALa: "De la versión {{de}} a la {{a}}.",
+    anadidos: "{{cuantos}} campos nuevos",
+    retirados: "{{cuantos}} campos retirados",
+    cambiados: "{{cuantos}} campos cambiados",
+    noSeHaPodidoContar:
+      "No se ha podido contar a cuántos registros afecta. Eso NO es «no afecta a nadie»: antes de publicar, míralo.",
+    afectaA:
+      "Afecta a {{registros}} registros, de los que {{sin}} se quedarían sin rellenar.",
+    publicarEsSeguro: "Sin avisos: publicar esto no deja nada a medias.",
     limites: "Cuánto sitio queda",
     camposDeTope: "{{campos}} campos de {{tope}}",
     campos: "Campos",

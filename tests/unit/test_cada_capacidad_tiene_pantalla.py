@@ -246,7 +246,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            no habia forma de leer POR QUE estaban
 #                            permitidas, que es la pregunta siguiente de
 #                            cualquier auditor
-TOPE_SIN_PANTALLA = 394
+#   28-10-2026  392 de 778  las dos de configurar el modelo sin sorpresas:
+#                            «que pasaria si publicas esto» —a cuantos
+#                            registros afecta y cuantos se quedarian sin
+#                            rellenar, con la diferencia entre «no se ha
+#                            podido contar» y «no afecta a nadie», que se
+#                            pintaban igual y significan lo contrario— y
+#                            llevarse la configuracion a otro entorno, que se
+#                            exporta, se SIMULA y solo despues se aplica. Sin
+#                            ellas, promover un cambio era rehacerlo a mano en
+#                            el otro entorno, que es como los dos entornos
+#                            dejan de parecerse
+TOPE_SIN_PANTALLA = 392
 
 
 def _es_pantalla(p: Path) -> bool:

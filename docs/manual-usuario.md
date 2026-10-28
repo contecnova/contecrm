@@ -975,6 +975,27 @@ lo que se quería hacer.
 
 ## Cambios, entornos y vuelta atrás (sección 7.2)
 
+### Antes de publicar un cambio del modelo, y antes de llevarlo a otro entorno
+
+Dos cosas que ahora se ven y antes había que adivinar:
+
+- **«¿Qué pasaría si publico esto?»** En la ficha de cada objeto del modelo.
+  Dice de qué versión a cuál se va, cuántos campos se añaden, se retiran o
+  cambian, **a cuántos registros afecta** y cuántos se quedarían sin rellenar.
+  Quien añade un campo obligatorio a un objeto con ochenta mil registros no
+  sabe que los ochenta mil se quedan a medias hasta que alguien intenta guardar
+  uno viejo y no puede. Y cuando no se ha podido contar **lo dice**: «no se ha
+  podido contar» y «no afecta a nadie» no son lo mismo.
+- **Llevarse la configuración a otro entorno.** En «Entornos y despliegue» se
+  exporta la configuración, se **simula** su instalación y sólo después se
+  aplica de verdad —en otro botón y en otro color—, porque un paquete es un
+  cambio de modelo de datos en producción y el error más caro es pulsar
+  creyendo que aún se estaba mirando. Lo que se lleva es **configuración y
+  nunca datos**: un paquete que arrastrara registros convertiría una promoción
+  en una fuga, porque los datos de pruebas suelen ser copias anonimizadas a
+  medias de clientes reales.
+
+
 Si tu empresa trabaja con entorno de pruebas y producción:
 
 - **Un cambio se empaqueta y se promociona**, no se repite a mano en cada sitio.

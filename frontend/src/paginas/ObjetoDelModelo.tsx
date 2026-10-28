@@ -43,6 +43,20 @@ import { escalar } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
 
+interface Previsualizacion {
+  version_actual: number;
+  version_al_publicar: number;
+  anadidos?: unknown[];
+  retirados?: unknown[];
+  cambiados?: unknown[];
+  /** Nulo cuando no se ha podido contar, que no es lo mismo que cero. */
+  registros: number | null;
+  registros_sin_rellenar?: number | null;
+  avisos?: string[];
+  hay_cambios: boolean;
+  seguro: boolean;
+}
+
 interface Objeto {
   id: string;
   nombre: string;
@@ -105,7 +119,12 @@ interface Trazabilidad {
   objeto: string;
   campos: CampoRastreado[];
   sin_usar: string[];
-  publicaciones: { version: number; at: string | null; nota: string; campos: number }[];
+  publicaciones: {
+    version: number;
+    at: string | null;
+    nota: string;
+    campos: number;
+  }[];
 }
 
 interface TipoRegistro {
@@ -157,14 +176,20 @@ export function ObjetoDelModelo() {
         })
           .then((r) => setLimites(r.datos))
           .catch(() => undefined);
-        void llamar<Trazabilidad>(`/api/v1/metadata/objetos/${nombre}/trazabilidad`, {
-          signal: control.signal,
-        })
+        void llamar<Trazabilidad>(
+          `/api/v1/metadata/objetos/${nombre}/trazabilidad`,
+          {
+            signal: control.signal,
+          },
+        )
           .then((r) => setRastro(r.datos))
           .catch(() => undefined);
-        void llamar<TipoRegistro[]>(`/api/v1/metadata/objetos/${nombre}/tipos`, {
-          signal: control.signal,
-        })
+        void llamar<TipoRegistro[]>(
+          `/api/v1/metadata/objetos/${nombre}/tipos`,
+          {
+            signal: control.signal,
+          },
+        )
           .then((r) => setTipos(r.datos))
           .catch(() => undefined);
       })
@@ -211,7 +236,9 @@ export function ObjetoDelModelo() {
                 que añadió esta empresa. */}
             <span className="chip-dato">{objeto.origen}</span>
             {objeto.descripcion ? (
-              <span className="text-2xs text-ink-faint">{objeto.descripcion}</span>
+              <span className="text-2xs text-ink-faint">
+                {objeto.descripcion}
+              </span>
             ) : null}
           </span>
         }
@@ -261,10 +288,15 @@ export function ObjetoDelModelo() {
           <h2 className="section-label mb-1">{t("modeloDatos.limites")}</h2>
           <p
             className={
-              limites.en_aviso ? "text-sm font-medium text-danger" : "text-sm font-medium text-ink"
+              limites.en_aviso
+                ? "text-sm font-medium text-danger"
+                : "text-sm font-medium text-ink"
             }
           >
-            {t("modeloDatos.camposDeTope", { campos: limites.campos, tope: limites.tope })}
+            {t("modeloDatos.camposDeTope", {
+              campos: limites.campos,
+              tope: limites.tope,
+            })}
           </p>
           {/* Qué pasa al llegar, dicho antes de llegar: un tope que sólo se
               explica cuando se alcanza se explica tarde. */}
@@ -272,10 +304,18 @@ export function ObjetoDelModelo() {
         </section>
       ) : null}
 
+      {/* ── Qué pasaría al publicar ─────────────────────────────────────
+          Va ANTES de los campos a propósito: se mira justo después de tocar
+          uno y antes de pulsar publicar, que es el único momento en el que
+          sirve de algo. */}
+      <QuePasaSiPublico objeto={objeto.nombre} />
+
       {/* ── Los campos, con sus escrituras al lado ──────────────────────── */}
       <section className="card mb-4 p-4">
         <h2 className="section-label mb-1">{t("modeloDatos.campos")}</h2>
-        <p className="mb-3 text-3xs text-ink-faint">{t("modeloDatos.camposAyuda")}</p>
+        <p className="mb-3 text-3xs text-ink-faint">
+          {t("modeloDatos.camposAyuda")}
+        </p>
         {!describe ? <Cargando /> : null}
         {describe && describe.campos.length === 0 ? (
           <Vacio titulo={t("modeloDatos.sinCampos")} compacto />
@@ -285,24 +325,39 @@ export function ObjetoDelModelo() {
             {describe.campos.map((campo) => {
               const uso = escrituras.get(campo.nombre);
               return (
-                <li key={campo.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+                <li
+                  key={campo.id}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                >
                   <span className="text-2xs font-medium text-ink">
                     {campo.etiqueta || campo.nombre}
                   </span>
-                  <span className="text-3xs text-ink-faint">{campo.nombre}</span>
+                  <span className="text-3xs text-ink-faint">
+                    {campo.nombre}
+                  </span>
                   <span className="chip-dato">{campo.tipo}</span>
                   {campo.obligatorio ? (
-                    <span className="chip-dato">{t("modeloDatos.obligatorio")}</span>
+                    <span className="chip-dato">
+                      {t("modeloDatos.obligatorio")}
+                    </span>
                   ) : null}
-                  {campo.unico ? <span className="chip-dato">{t("modeloDatos.unico")}</span> : null}
+                  {campo.unico ? (
+                    <span className="chip-dato">{t("modeloDatos.unico")}</span>
+                  ) : null}
                   {campo.solo_lectura ? (
-                    <span className="chip-dato">{t("modeloDatos.soloLectura")}</span>
+                    <span className="chip-dato">
+                      {t("modeloDatos.soloLectura")}
+                    </span>
                   ) : null}
                   {campo.sensibilidad && campo.sensibilidad !== "normal" ? (
-                    <span className="chip-dato chip-dato--no">{campo.sensibilidad}</span>
+                    <span className="chip-dato chip-dato--no">
+                      {campo.sensibilidad}
+                    </span>
                   ) : null}
                   {campo.deprecado ? (
-                    <span className="chip-dato chip-dato--no">{t("modeloDatos.deprecado")}</span>
+                    <span className="chip-dato chip-dato--no">
+                      {t("modeloDatos.deprecado")}
+                    </span>
                   ) : null}
                   {/* Lo que contesta «¿puedo quitarlo?»: cuántas veces se ha
                       ESCRITO. Leer mide quién mira; escribir mide si el campo
@@ -310,12 +365,16 @@ export function ObjetoDelModelo() {
                   {uso ? (
                     <span
                       className={
-                        uso.escrituras === 0 ? "text-3xs text-danger" : "text-3xs text-ink-muted"
+                        uso.escrituras === 0
+                          ? "text-3xs text-danger"
+                          : "text-3xs text-ink-muted"
                       }
                     >
                       {uso.escrituras === 0
                         ? t("modeloDatos.nuncaEscrito")
-                        : t("modeloDatos.escrituras", { cuantas: uso.escrituras })}
+                        : t("modeloDatos.escrituras", {
+                            cuantas: uso.escrituras,
+                          })}
                     </span>
                   ) : null}
                   {uso?.materializado ? (
@@ -330,7 +389,8 @@ export function ObjetoDelModelo() {
         ) : null}
         {rastro && rastro.sin_usar.length > 0 ? (
           <p className="mt-3 text-3xs text-ink-muted">
-            <Icono nombre="info" /> {t("modeloDatos.sinUsar", { cuantos: rastro.sin_usar.length })}
+            <Icono nombre="info" />{" "}
+            {t("modeloDatos.sinUsar", { cuantos: rastro.sin_usar.length })}
           </p>
         ) : null}
       </section>
@@ -339,7 +399,9 @@ export function ObjetoDelModelo() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card p-4">
           <h2 className="section-label mb-1">{t("modeloDatos.reglas")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">{t("modeloDatos.reglasAyuda")}</p>
+          <p className="mb-2 text-3xs text-ink-faint">
+            {t("modeloDatos.reglasAyuda")}
+          </p>
           {describe && describe.reglas.length === 0 ? (
             <Vacio titulo={t("modeloDatos.sinReglas")} compacto />
           ) : null}
@@ -347,10 +409,14 @@ export function ObjetoDelModelo() {
             {(describe?.reglas ?? []).map((regla) => (
               <li key={regla.id} className="py-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="text-2xs font-medium text-ink">{regla.nombre}</span>
+                  <span className="text-2xs font-medium text-ink">
+                    {regla.nombre}
+                  </span>
                   <span className="chip-dato">{regla.momento}</span>
                   {!regla.activa ? (
-                    <span className="chip-dato chip-dato--no">{t("modeloDatos.apagada")}</span>
+                    <span className="chip-dato chip-dato--no">
+                      {t("modeloDatos.apagada")}
+                    </span>
                   ) : null}
                 </div>
                 {/* El mensaje que verá quien la incumpla: es la mitad de la
@@ -363,21 +429,32 @@ export function ObjetoDelModelo() {
 
         <section className="card p-4">
           <h2 className="section-label mb-1">{t("modeloDatos.tipos")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">{t("modeloDatos.tiposAyuda")}</p>
+          <p className="mb-2 text-3xs text-ink-faint">
+            {t("modeloDatos.tiposAyuda")}
+          </p>
           {tipos && tipos.length === 0 ? (
             <Vacio titulo={t("modeloDatos.sinTipos")} compacto />
           ) : null}
           <ul className="divide-y divide-ink-dim/30">
             {(tipos ?? []).map((tipo) => (
-              <li key={tipo.clave} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                <span className="text-2xs font-medium text-ink">{tipo.nombre}</span>
+              <li
+                key={tipo.clave}
+                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+              >
+                <span className="text-2xs font-medium text-ink">
+                  {tipo.nombre}
+                </span>
                 <span className="text-3xs text-ink-faint">{tipo.clave}</span>
                 {tipo.por_defecto ? (
-                  <span className="chip-dato chip-dato--si">{t("modeloDatos.porDefecto")}</span>
+                  <span className="chip-dato chip-dato--si">
+                    {t("modeloDatos.porDefecto")}
+                  </span>
                 ) : null}
                 {tipo.campos_ocultos.length > 0 ? (
                   <span className="text-3xs text-ink-muted">
-                    {t("modeloDatos.ocultos", { cuantos: tipo.campos_ocultos.length })}
+                    {t("modeloDatos.ocultos", {
+                      cuantos: tipo.campos_ocultos.length,
+                    })}
                   </span>
                 ) : null}
               </li>
@@ -389,17 +466,32 @@ export function ObjetoDelModelo() {
       {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
       {rastro && rastro.publicaciones.length > 0 ? (
         <section className="card mt-4 p-4">
-          <h2 className="section-label mb-1">{t("modeloDatos.publicaciones")}</h2>
-          <p className="mb-2 text-3xs text-ink-faint">{t("modeloDatos.publicacionesAyuda")}</p>
+          <h2 className="section-label mb-1">
+            {t("modeloDatos.publicaciones")}
+          </h2>
+          <p className="mb-2 text-3xs text-ink-faint">
+            {t("modeloDatos.publicacionesAyuda")}
+          </p>
           <ul className="divide-y divide-ink-dim/30">
             {rastro.publicaciones.map((pub) => (
-              <li key={pub.version} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
-                <span className="text-2xs font-medium text-ink">v{pub.version}</span>
-                <span className="text-3xs text-ink-faint">{escalar(pub.at, "at")}</span>
-                <span className="text-3xs text-ink-muted">
-                  {t("modeloDatos.camposEnPublicacion", { cuantos: pub.campos })}
+              <li
+                key={pub.version}
+                className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+              >
+                <span className="text-2xs font-medium text-ink">
+                  v{pub.version}
                 </span>
-                {pub.nota ? <span className="text-3xs text-ink-muted">{pub.nota}</span> : null}
+                <span className="text-3xs text-ink-faint">
+                  {escalar(pub.at, "at")}
+                </span>
+                <span className="text-3xs text-ink-muted">
+                  {t("modeloDatos.camposEnPublicacion", {
+                    cuantos: pub.campos,
+                  })}
+                </span>
+                {pub.nota ? (
+                  <span className="text-3xs text-ink-muted">{pub.nota}</span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -407,4 +499,93 @@ export function ObjetoDelModelo() {
       ) : null}
     </>
   );
+}
+
+/**
+ * Qué pasaría al publicar este esquema (`CRM-00.04.03.09`).
+ *
+ * Quien añade un campo obligatorio a un objeto con ochenta mil registros no
+ * sabe que los ochenta mil se quedan sin rellenar — y no lo sabe hasta que
+ * alguien intenta guardar uno viejo y no puede. Esto lo dice antes, que es la
+ * diferencia entre una decisión y una sorpresa.
+ *
+ * El servidor lo contestaba desde el principio y no había dónde preguntarlo.
+ *
+ * **Y cuando no se puede contar, se dice.** «No se ha podido contar» y «no
+ * afecta a nadie» se pintan igual y significan lo contrario: el primero pide
+ * mirar, el segundo deja publicar tranquilo.
+ */
+function QuePasaSiPublico({ objeto }: { objeto: string }) {
+  const { t } = useTranslation();
+  const [previo, setPrevio] = useState<Previsualizacion | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    setFallo(null);
+    llamar<Previsualizacion>(
+      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/previsualizar`,
+      { signal: control.signal },
+    )
+      .then((r) => setPrevio(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [objeto]);
+
+  if (fallo) return null;
+  if (!previo) return null;
+
+  return (
+    <section className="card mb-4 p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.alPublicar")}</h2>
+      {!previo.hay_cambios ? (
+        <p className="text-2xs text-ink-muted">
+          {t("modeloDatos.sinCambiosQuePublicar")}
+        </p>
+      ) : (
+        <>
+          <p className="text-2xs text-ink-muted">
+            {t("modeloDatos.deLaVersionALa", {
+              de: previo.version_actual,
+              a: previo.version_al_publicar,
+            })}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-3xs">
+            <Cuantos clave="modeloDatos.anadidos" lista={previo.anadidos} />
+            <Cuantos clave="modeloDatos.retirados" lista={previo.retirados} />
+            <Cuantos clave="modeloDatos.cambiados" lista={previo.cambiados} />
+          </ul>
+          <p className="mt-2 text-2xs text-ink">
+            {/* El recuento, y la diferencia entre no haber podido contar y que
+                no afecte a nadie. */}
+            {previo.registros === null
+              ? t("modeloDatos.noSeHaPodidoContar")
+              : t("modeloDatos.afectaA", {
+                  registros: previo.registros,
+                  sin: previo.registros_sin_rellenar ?? 0,
+                })}
+          </p>
+          {previo.avisos?.length ? (
+            <ul className="mt-2 flex flex-col gap-1">
+              {previo.avisos.map((a, i) => (
+                <li key={i} className="text-2xs text-warning">
+                  {a}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-2xs text-success">
+              {t("modeloDatos.publicarEsSeguro")}
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Cuantos({ clave, lista }: { clave: string; lista?: unknown[] }) {
+  const { t } = useTranslation();
+  if (!lista?.length) return null;
+  return <li className="chip-dato">{t(clave, { cuantos: lista.length })}</li>;
 }

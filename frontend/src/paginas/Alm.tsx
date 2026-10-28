@@ -69,7 +69,9 @@ interface Fila {
  * clave puede llevar los suyos. */
 function partir(elemento: string): [string, string] {
   const corte = elemento.indexOf(".");
-  return corte < 0 ? ["", elemento] : [elemento.slice(0, corte), elemento.slice(corte + 1)];
+  return corte < 0
+    ? ["", elemento]
+    : [elemento.slice(0, corte), elemento.slice(corte + 1)];
 }
 
 function filas(datos: Drift): Fila[] {
@@ -78,7 +80,9 @@ function filas(datos: Drift): Fila[] {
     return {
       tipo,
       clave,
-      que_paso: d.campos?.length ? `${d.que_paso}: ${d.campos.join(", ")}` : d.que_paso,
+      que_paso: d.campos?.length
+        ? `${d.que_paso}: ${d.campos.join(", ")}`
+        : d.que_paso,
     };
   });
   // Lo que desapareció se pinta igual que lo que se añadió: es el caso que más
@@ -193,7 +197,10 @@ export function Alm() {
       {fallo ? <Fallo error={fallo} /> : null}
 
       {puesto ? (
-        <p className="mt-4 text-2xs text-ink-muted" data-testid="alm-desplegado">
+        <p
+          className="mt-4 text-2xs text-ink-muted"
+          data-testid="alm-desplegado"
+        >
           {puesto.hay
             ? t("alm.puesto", {
                 paquete: puesto.paquete,
@@ -243,6 +250,144 @@ export function Alm() {
           ) : null}
         </>
       ) : null}
+
+      {/* Llevarse la configuración a otro entorno. Va aquí y no en el modelo
+          de datos porque lo que se decide es de ENTORNOS: de dónde sale y a
+          dónde va. */}
+      <ElPaquete />
     </>
   );
+}
+
+/**
+ * Exportar la configuración de este entorno y probar a instalarla
+ * (`CRM-00.04.03.10`).
+ *
+ * El servidor sabía las dos cosas y no había dónde hacerlas, así que promover
+ * un cambio de configuración de pruebas a producción era rehacerlo a mano en
+ * el otro entorno — que es como los dos entornos dejan de parecerse.
+ *
+ * Dos reglas que la pantalla tiene que dejar claras porque son las que hacen
+ * que esto sea seguro:
+ *
+ * - **se lleva configuración y NUNCA datos.** Un paquete que arrastrara
+ *   registros convertiría una promoción en una fuga: los datos de pruebas
+ *   suelen ser copias anonimizadas a medias de clientes reales;
+ * - **instalar simula por defecto.** Un paquete es un cambio de modelo de
+ *   datos en producción, y el error más caro es pulsar el botón creyendo que
+ *   aún se estaba mirando. Por eso aplicar de verdad es un segundo paso, y va
+ *   en otro color.
+ */
+function ElPaquete() {
+  const { t } = useTranslation();
+  const [paquete, setPaquete] = useState<Record<string, unknown> | null>(null);
+  const [resultado, setResultado] = useState<Record<string, unknown> | null>(
+    null,
+  );
+  const [fallo, setFallo] = useState<unknown>(null);
+  const [trabajando, setTrabajando] = useState("");
+
+  async function exportar() {
+    setTrabajando("exportar");
+    setFallo(null);
+    setResultado(null);
+    try {
+      const r = await llamar<Record<string, unknown>>(
+        "/api/v1/metadata/paquete",
+      );
+      setPaquete(r.datos);
+    } catch (e: unknown) {
+      setFallo(e);
+    } finally {
+      setTrabajando("");
+    }
+  }
+
+  async function instalar(aplicar: boolean) {
+    if (!paquete) return;
+    setTrabajando(aplicar ? "aplicar" : "simular");
+    setFallo(null);
+    try {
+      const r = await llamar<Record<string, unknown>>(
+        "/api/v1/metadata/paquete/instalar",
+        {
+          metodo: "POST",
+          cuerpo: { paquete, aplicar },
+        },
+      );
+      setResultado(r.datos);
+    } catch (e: unknown) {
+      setFallo(e);
+    } finally {
+      setTrabajando("");
+    }
+  }
+
+  return (
+    <section className="card mt-6 p-4">
+      <h2 className="section-label mb-1">{t("alm.paquete.titulo")}</h2>
+      <p className="mb-3 max-w-prose text-2xs text-ink-muted">
+        {t("alm.paquete.porQue")}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={trabajando !== ""}
+          onClick={() => void exportar()}
+        >
+          {trabajando === "exportar"
+            ? t("alm.paquete.exportando")
+            : t("alm.paquete.exportar")}
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={trabajando !== "" || !paquete}
+          onClick={() => void instalar(false)}
+        >
+          {trabajando === "simular"
+            ? t("alm.paquete.simulando")
+            : t("alm.paquete.simular")}
+        </button>
+        {/* Aplicar de verdad va aparte y en rojo, y sólo tras simular: el
+            error más caro aquí es pulsar creyendo que aún se miraba. */}
+        <button
+          type="button"
+          className="btn-danger"
+          disabled={trabajando !== "" || !resultado}
+          onClick={() => void instalar(true)}
+        >
+          {trabajando === "aplicar"
+            ? t("alm.paquete.aplicando")
+            : t("alm.paquete.aplicar")}
+        </button>
+      </div>
+
+      {fallo ? <Fallo error={fallo} /> : null}
+      <div
+        role="status"
+        aria-live="polite"
+        className="mt-3 flex flex-col gap-2"
+      >
+        {paquete ? (
+          <p className="text-2xs text-ink">
+            {t("alm.paquete.exportado", { objetos: cuantosObjetos(paquete) })}
+          </p>
+        ) : null}
+        {resultado ? (
+          <pre className="lista-acotada rounded-lg bg-paper-sunk p-3 font-mono text-3xs text-ink-muted">
+            {JSON.stringify(resultado, null, 2)}
+          </pre>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/** Cuántos objetos lleva el paquete, para no enseñar un JSON y ya está. */
+function cuantosObjetos(paquete: Record<string, unknown>): number {
+  const objetos = paquete.objetos;
+  return Array.isArray(objetos) ? objetos.length : 0;
 }

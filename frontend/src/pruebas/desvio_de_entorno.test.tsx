@@ -46,7 +46,9 @@ const CON_DESVIO = {
   paquete: "base",
   version: 1,
   medible: true,
-  tocado_a_mano: [{ elemento: "campos.nif", que_paso: "cambiado a mano", campos: ["tipo"] }],
+  tocado_a_mano: [
+    { elemento: "campos.nif", que_paso: "cambiado a mano", campos: ["tipo"] },
+  ],
   desaparecido: ["campos.web"],
   limpio: false,
   comparado: ["campos"],
@@ -88,14 +90,25 @@ describe("el desvío de un entorno", () => {
     // salía en verde con el texto diciendo lo contrario.
     respuesta = CON_DESVIO;
     await mirar();
-    const aviso = await screen.findByRole("status");
+    // Por su texto y no por el único `role="status"` de la pantalla: desde que
+    // ésta tiene también el bloque del paquete de configuración hay más de una
+    // región que se anuncia, y «la primera que haya» es una suposición que se
+    // rompe en cuanto se añade cualquier cosa.
+    const aviso = (
+      await screen.findByText(/alm\.hayDesvio|configuración tocada/)
+    ).closest("[role='status']")!;
     expect(aviso.className).toContain("text-warning");
     expect(aviso.className).not.toContain("text-success");
   });
 
   it("dice qué no se ha comparado", async () => {
     // Un «limpio» que tapa seis tipos sin mirar es peor que no medir.
-    respuesta = { ...CON_DESVIO, limpio: true, tocado_a_mano: [], desaparecido: [] };
+    respuesta = {
+      ...CON_DESVIO,
+      limpio: true,
+      tocado_a_mano: [],
+      desaparecido: [],
+    };
     await mirar();
     expect(await screen.findByText(/alm\.noComparado/)).toBeInTheDocument();
   });
