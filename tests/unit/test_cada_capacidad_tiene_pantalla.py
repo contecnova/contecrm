@@ -301,7 +301,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            con sus palabras. NO se declara CRM-00.01.07.02
 #                            —alta en cascada—: se ve lo aplicado y lo que se
 #                            aplicaria, pero el alta se dispara por API
-TOPE_SIN_PANTALLA = 375
+#   28-10-2026  368 de 778  «quien ve que, y por que», en Seguridad. El
+#                            explicador contestaba «por que puede» y no «que
+#                            decidiria cada capa»: ahora, con los MISMOS tres
+#                            datos y sin un segundo formulario, se ve el
+#                            veredicto, el rol y los atributos POR SEPARADO —un
+#                            «no puede» sin decir cual de las dos lo impide
+#                            manda a cambiar el rol cuando lo que corta es una
+#                            politica— y el contexto con el que se evaluo, que
+#                            es lo unico que permite reproducirlo. Y debajo,
+#                            los campos que no se comportan como dice su
+#                            clasificacion: SE PODIAN ESCRIBIR Y NO LEER, y la
+#                            propia ruta que los crea justifica escribirlos con
+#                            que «una excepcion que vive en la cabeza de quien
+#                            la pidio es la que nadie revisa al año siguiente»
+TOPE_SIN_PANTALLA = 368
 
 
 def _es_pantalla(p: Path) -> bool:

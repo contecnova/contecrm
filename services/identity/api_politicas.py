@@ -158,6 +158,39 @@ class PoliticaCampoIn(BaseModel):
     rol: str = Field("*", description="`*` para todos los roles")
 
 
+@router_politicas.get(
+    "/campos",
+    dependencies=[Depends(exige_permiso("role:read"))],
+    summary="Las excepciones de campo declaradas",
+    description=(
+        "**Se podían escribir y no leer.** La ruta que las crea justifica "
+        "escribirlas con que «una excepción que vive en la cabeza de quien la "
+        "pidió es la que nadie revisa al año siguiente» — y sin forma de "
+        "leerlas la excepción vivía igual de escondida, sólo que en una tabla. "
+        "Declarar que el margen lo tapa también dirección y que nadie pueda "
+        "comprobarlo después es lo que convierte un control en papeleo.\n\n"
+        "Ordenadas por objeto y campo, no por fecha: se revisan por el dato que "
+        "tapan. La pregunta es «qué pasa con el margen», no «qué se declaró en "
+        "marzo»."
+    ),
+)
+def listar_politicas_de_campo(db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.authz.proyeccion import politicas_de_campo
+
+    filas = politicas_de_campo(db, principal.tenant_id)
+    return {
+        "campos": filas,
+        "cuantas": len(filas),
+        "que_significa": (
+            "No hay ninguna excepción de campo: la sensibilidad sale entera de "
+            "la clasificación del dato."
+            if not filas
+            else "Cada línea es un campo que NO se comporta como dice su "
+            "clasificación. Es lo que hay que revisar."
+        ),
+    }
+
+
 @router_politicas.post(
     "/campos",
     dependencies=[Depends(exige_permiso("role:write"))],

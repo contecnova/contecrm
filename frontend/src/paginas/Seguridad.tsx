@@ -18,6 +18,21 @@
  * si todo lo demás significa algo. La respuesta se mide en cada carga; no hay
  * ningún visto bueno escrito a mano.
  *
+ * Y la tercera tanda, del mismo día: **quién ve qué, y por qué**
+ * (CRM-00.05.02.02, CRM-00.05.02.03, CRM-00.05.02.05, CRM-00.05.02.08,
+ * CRM-00.05.02.18, CRM-00.05.02.20, CRM-00.05.02.21). El explicador contestaba
+ * «por qué puede» y no «qué decidiría cada capa»: ahora, con los mismos tres
+ * datos y sin un segundo formulario, se ve el veredicto, **el rol y los
+ * atributos por separado** —un «no puede» sin decir cuál de las dos lo impide
+ * manda a cambiar el rol cuando lo que corta es una política— y el contexto
+ * con el que se evaluó, que es lo único que permite reproducirlo.
+ *
+ * Y debajo, los campos que **no se comportan como dice su clasificación**. Se
+ * podían declarar y no leer: la ruta que los crea justifica escribirlos con
+ * que «una excepción que vive en la cabeza de quien la pidió es la que nadie
+ * revisa al año siguiente», y sin lectura la excepción vivía igual de
+ * escondida, sólo que en una tabla.
+ *
  * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.05.01.06` —MFA
  * obligatoria configurable por rol— porque aquí se ve si está puesta y no se
  * configura, y declarar lo que no se hace es justo lo que esta traza existe
@@ -242,6 +257,10 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
           alguien «no puede entrar», y la que el propio usuario no sabe
           contestar: él sabe su correo, no si su empresa usa Entra ID o Ping. */}
       <AQuienLeToca />
+      {/* Y los campos que no se comportan como dice su clasificación, justo
+          al lado del explicador: son la respuesta a la mitad de los «pero yo
+          esto lo veía». */}
+      {puede(sesion, "role:read") ? <ExcepcionesDeCampo /> : null}
       {puede(sesion, "user:read") ? <Explicador /> : null}
     </div>
   );
@@ -621,12 +640,114 @@ function Segregacion({
 }
 
 /** Por qué esta persona puede (o no) hacer esto. */
+/**
+ * Los campos que NO se comportan como dice su clasificación.
+ *
+ * La sensibilidad de un campo sale de su clasificación y eso cubre el caso
+ * normal. Lo que se declara aparte es el que no: «el móvil del contacto lo ve
+ * soporte en claro aunque sea un dato personal», «el margen lo tapamos también
+ * para dirección».
+ *
+ * Se podían escribir y **no leer**. La propia ruta que las crea justifica
+ * escribirlas con que «una excepción que vive en la cabeza de quien la pidió
+ * es la que nadie revisa al año siguiente» — y sin lectura la excepción vivía
+ * igual de escondida, sólo que en una tabla. Declarar que el margen lo tapa
+ * también dirección y que nadie pueda comprobarlo después es lo que convierte
+ * un control en papeleo.
+ */
+function ExcepcionesDeCampo() {
+  const { t } = useTranslation();
+  const [datos, setDatos] = useState<RespuestaCampos | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    void llamar<RespuestaCampos>("/api/v1/politicas-acceso/campos", {
+      signal: control.signal,
+    })
+      .then((r) => setDatos(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  if (!datos) return null;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-semibold text-ink">
+        {t("seguridad.campos.titulo")}
+      </h2>
+      <p className="text-3xs text-ink-faint">{datos.que_significa}</p>
+      {datos.campos.length === 0 ? null : (
+        <ul
+          className="divide-y divide-ink-dim/30 overflow-hidden rounded-lg border border-ink-dim/40"
+          data-testid="excepciones-de-campo"
+        >
+          {datos.campos.map((c) => (
+            <li
+              key={`${c.objeto}:${c.campo}:${c.rol}`}
+              className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5 text-3xs"
+            >
+              <span className="font-mono text-ink">
+                {c.objeto}.{c.campo}
+              </span>
+              <span
+                className={
+                  c.nivel === "oculto"
+                    ? "text-warning"
+                    : c.nivel === "enmascarado"
+                      ? "text-ink-muted"
+                      : "text-success"
+                }
+              >
+                {c.nivel}
+              </span>
+              {/* El rol tal como está escrito, con `*` y todo: es lo que hay
+                  que cambiar si se cambia, y traducirlo a «todos» esconde que
+                  no hay ninguna excepción por rol debajo. */}
+              <span className="text-ink-faint">
+                {c.para_todos ? t("seguridad.campos.todosLosRoles") : c.rol}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** `GET /politicas-acceso/campos`. */
+interface RespuestaCampos {
+  campos: {
+    objeto: string;
+    campo: string;
+    rol: string;
+    nivel: string;
+    para_todos: boolean;
+  }[];
+  cuantas: number;
+  que_significa: string;
+}
+
+/** `POST /politicas-acceso/simular`: qué vería un usuario dado, con las dos
+ *  capas por separado y el contexto con el que se evaluó. */
+interface Simulacion {
+  permitido: boolean;
+  origen: string;
+  rbac?: { concede: boolean; permiso?: string };
+  abac?: { permitido: boolean; explicacion?: string };
+  ambito?: {
+    usuario?: { roles?: string[]; business_unit_id?: string | null };
+    contexto?: { hora?: number; dia_semana?: number };
+  };
+}
+
 function Explicador() {
   const { t } = useTranslation();
   const [usuario, setUsuario] = useState("");
   const [objeto, setObjeto] = useState("");
   const [accion, setAccion] = useState("read");
   const [salida, setSalida] = useState<unknown>(null);
+  const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
 
@@ -634,11 +755,23 @@ function Explicador() {
     setPidiendo(true);
     setFallo(null);
     try {
-      const r = await llamar<unknown>("/api/v1/roles/explicar", {
-        metodo: "POST",
-        cuerpo: { usuario_id: usuario, objeto, accion, registro: {} },
-      });
+      // Las dos preguntas con los mismos tres datos, y por eso no hay un
+      // segundo formulario: «¿por qué puede?» la contesta el explicador de
+      // roles y «¿qué decidiría cada capa y con qué contexto?» la simulación
+      // de políticas. Pedirlas por separado obligaría a teclear lo mismo dos
+      // veces y a comparar dos respuestas a ojo, que es donde se concluye mal.
+      const [r, s] = await Promise.all([
+        llamar<unknown>("/api/v1/roles/explicar", {
+          metodo: "POST",
+          cuerpo: { usuario_id: usuario, objeto, accion, registro: {} },
+        }),
+        llamar<Simulacion>("/api/v1/politicas-acceso/simular", {
+          metodo: "POST",
+          cuerpo: { usuario_id: usuario, objeto, accion, registro: {} },
+        }).catch(() => null),
+      ]);
       setSalida(r.datos);
+      setSimulacion(s ? s.datos : null);
     } catch (e: unknown) {
       if (e instanceof ErrorApi) setFallo(e);
     } finally {
@@ -700,6 +833,53 @@ function Explicador() {
       {/* La respuesta se anuncia: quien no ve la pantalla pulsa y no se entera
           de que ya está contestado. */}
       <div role="status" aria-live="polite">
+        {/* **Las dos capas por separado, y el veredicto delante.** Un «no
+            puede» sin decir cuál de las dos lo impide manda a cambiar el rol
+            cuando lo que corta es una política de atributos, o al revés. Y el
+            contexto —hora, día, unidad— se enseña porque una política que
+            depende de él decide distinto a las nueve de la noche, y eso no se
+            puede reproducir sin saber con qué contexto se evaluó. */}
+        {simulacion ? (
+          <div className="rounded-lg border border-ink-dim/40 p-3" data-testid="simulacion-acceso">
+            <p
+              className={
+                simulacion.permitido
+                  ? "text-sm font-medium text-success"
+                  : "text-sm font-medium text-warning"
+              }
+            >
+              {simulacion.permitido
+                ? t("seguridad.simulador.permitido")
+                : t("seguridad.simulador.denegado")}
+              <span className="ml-2 text-3xs text-ink-faint">{simulacion.origen}</span>
+            </p>
+            <p className="mt-1 text-3xs text-ink-muted">
+              {t("seguridad.simulador.rbac", {
+                veredicto: simulacion.rbac?.concede
+                  ? t("seguridad.simulador.concede")
+                  : t("seguridad.simulador.niega"),
+                permiso: simulacion.rbac?.permiso ?? "—",
+              })}
+            </p>
+            <p className="text-3xs text-ink-muted">
+              {t("seguridad.simulador.abac", {
+                veredicto: simulacion.abac?.permitido
+                  ? t("seguridad.simulador.concede")
+                  : t("seguridad.simulador.niega"),
+              })}
+              {simulacion.abac?.explicacion ? ` — ${simulacion.abac.explicacion}` : ""}
+            </p>
+            {simulacion.ambito ? (
+              <p className="mt-1 text-3xs text-ink-faint">
+                {t("seguridad.simulador.contexto", {
+                  roles: (simulacion.ambito.usuario?.roles ?? []).join(", ") || "—",
+                  unidad: simulacion.ambito.usuario?.business_unit_id ?? "—",
+                  hora: simulacion.ambito.contexto?.hora ?? "—",
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {salida ? (
           <pre className="overflow-x-auto rounded-lg border border-ink-dim/40 p-3 text-3xs text-ink">
             {JSON.stringify(salida, null, 2)}

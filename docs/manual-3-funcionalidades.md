@@ -3688,6 +3688,25 @@ comprobar qué haría antes de crearla. Por eso, además, una política se puede
 guardar desactivada: que se pueda escribir sin que aplique es lo que hace que
 alguien la escriba.
 
+**Y ahora se pregunta desde una pantalla**, en *Seguridad*, con los mismos tres
+datos que el explicador de permisos y sin un segundo formulario: quién, qué
+objeto y qué acción. Lo que se ve no es un sí o un no, sino **las dos capas por
+separado** —qué dice el rol y qué dicen los atributos— y el contexto con el que
+se evaluó: roles, unidad de negocio y hora. Importa: un «no podría» a secas
+manda a cambiar el rol cuando lo que corta es una política de atributos, y al
+revés; y sin el contexto, una decisión que depende de la hora no se puede
+reproducir al día siguiente.
+
+**Y las excepciones de campo se pueden leer.** Hasta el 28-10-2026 se podían
+declarar y no consultar, lo que las dejaba tan escondidas como si no se
+hubieran escrito — sólo que en una tabla. La propia ruta que las crea justifica
+escribirlas con que *«una excepción que vive en la cabeza de quien la pidió es
+la que nadie revisa al año siguiente»*: sin lectura, ese argumento no se
+sostenía. Ahora salen ordenadas **por objeto y campo**, no por fecha, porque se
+revisan por el dato que tapan —la pregunta es «qué pasa con el margen», no «qué
+se declaró en marzo»—, y se distingue la que vale para todos los roles de la
+que es de uno solo: leído de pasada, un `*` parece un rol más.
+
 ### Sacar el motor fuera, sin atarse a ningún producto (`CRM-00.05.02.06`)
 
 Decidir dentro del proceso está bien mientras el único que pregunta es el CRM.

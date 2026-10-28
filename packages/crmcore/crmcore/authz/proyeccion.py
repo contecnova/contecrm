@@ -351,6 +351,44 @@ def _nivel_del_campo(
     return nivel_para(sensibilidad_de(modelo, campo), roles, politica)
 
 
+def politicas_de_campo(db: Session, tenant_id: UUID) -> list[dict[str, Any]]:
+    """Las excepciones de campo declaradas, para poder revisarlas.
+
+    `fijar_politica_campo` existía y **nada las devolvía**. La propia ruta que
+    las crea dice por qué se escriben: «una excepción que vive en la cabeza de
+    quien la pidió es la que nadie revisa al año siguiente». Sin lectura, la
+    excepción vivía igual de escondida, sólo que en una tabla: se podía
+    declarar que el margen lo ve dirección y nadie podía comprobarlo después,
+    que es justo lo que convierte un control en papeleo.
+
+    Van ordenadas por objeto y campo —no por fecha— porque se revisan por el
+    dato que tapan: la pregunta es «qué pasa con el margen», no «qué se declaró
+    en marzo».
+    """
+    filas = (
+        db.execute(
+            select(PoliticaCampo)
+            .where(PoliticaCampo.tenant_id == tenant_id)
+            .order_by(PoliticaCampo.objeto, PoliticaCampo.campo, PoliticaCampo.rol)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "objeto": f.objeto,
+            "campo": f.campo,
+            "rol": f.rol,
+            "nivel": f.nivel,
+            # `*` no se traduce a «todos» aquí: el que lo lee tiene que ver el
+            # dato tal como está escrito, porque es lo que va a cambiar.
+            "para_todos": f.rol == "*",
+            "declarada_at": f.created_at.isoformat() if f.created_at else None,
+        }
+        for f in filas
+    ]
+
+
 def fijar_politica_campo(
     db: Session,
     *,

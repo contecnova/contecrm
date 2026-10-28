@@ -460,6 +460,19 @@ const pantallas = {
   },
   seguridad: {
     aislamiento: "¿Qué impide que una empresa vea a otra?",
+    campos: {
+      titulo: "Campos que no se comportan como dice su clasificación",
+      todosLosRoles: "todos los roles",
+    },
+    simulador: {
+      permitido: "Sí podría",
+      denegado: "No podría",
+      concede: "concede",
+      niega: "niega",
+      rbac: "Por su rol: {{veredicto}} ({{permiso}})",
+      abac: "Por los atributos: {{veredicto}}",
+      contexto: "Evaluado con roles {{roles}} · unidad {{unidad}} · hora {{hora}}",
+    },
     capaPuesta: "(puesta)",
     capaNoPuesta: "(NO está haciendo su trabajo)",
     noSeMideAqui: "no se mide desde aquí",

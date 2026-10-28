@@ -492,3 +492,49 @@ def test_un_principal_sin_rol_conocido_recibe_una_respuesta_valida(
     assert isinstance(datos["campos"], dict)
     # Y lo que sí es texto sigue protegido.
     assert datos["nombre"] != "ACME Ibérica" and "·" in datos["nombre"]
+
+
+def test_las_excepciones_de_campo_se_pueden_LEER(db: Any, tenant_id: UUID) -> None:
+    """Se podían escribir y no leer, que es lo mismo que no escribirlas.
+
+    La ruta que las crea justifica escribirlas con que «una excepción que vive
+    en la cabeza de quien la pidió es la que nadie revisa al año siguiente».
+    Sin forma de leerlas, la excepción vivía igual de escondida, sólo que en
+    una tabla: se podía declarar que el margen lo tapa también dirección y
+    nadie podía comprobarlo después. Eso convierte un control en papeleo.
+
+    Van ordenadas **por objeto y campo**, no por fecha, porque se revisan por
+    el dato que tapan: la pregunta es «qué pasa con el margen», no «qué se
+    declaró en marzo».
+    """
+    from crmcore.authz.proyeccion import politicas_de_campo
+
+    fijar_politica_campo(
+        db, tenant_id=tenant_id, objeto="oportunidad", campo="margen", nivel="oculto"
+    )
+    fijar_politica_campo(
+        db,
+        tenant_id=tenant_id,
+        objeto="contacto",
+        campo="movil",
+        nivel="claro",
+        rol="soporte",
+    )
+    db.flush()
+
+    filas = politicas_de_campo(db, tenant_id)
+    assert [(f["objeto"], f["campo"], f["rol"], f["nivel"]) for f in filas] == [
+        ("contacto", "movil", "soporte", "claro"),
+        ("oportunidad", "margen", "*", "oculto"),
+    ], "ordenadas por el dato que tapan, no por cuándo se declararon"
+    # Y se dice cuál es para todos y cuál para un rol: son dos cosas muy
+    # distintas de revisar, y «*» leído de pasada parece un rol más.
+    assert [f["para_todos"] for f in filas] == [False, True]
+
+
+def test_sin_excepciones_la_lista_es_vacia_y_no_un_error(db: Any, tenant_id: UUID) -> None:
+    """Una instalación donde la sensibilidad sale entera de la clasificación es
+    el caso bueno, no un fallo: tiene que poder contestarse."""
+    from crmcore.authz.proyeccion import politicas_de_campo
+
+    assert politicas_de_campo(db, tenant_id) == []
