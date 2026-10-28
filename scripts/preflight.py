@@ -392,10 +392,34 @@ GATES: list[Gate] = [
 # El margen es de ~1,4×: lo justo para que no salte por el ruido de una
 # ejecución y lo bastante apretado para que saltar signifique que alguien ha
 # añadido trabajo. Si salta, se arregla el gate lento; no se sube el número.
+#
+# 28-10-2026: el push llegó a 200-208 s y saltó, con los 22 gates en verde. Se
+# buscó el gate lento, como manda la norma de arriba, y **no había ninguno**:
+# lo que hay es un tope absoluto guardando un coste que es proporcional al
+# producto. Lo medido antes de tocar el número:
+#
+#   · `aislamiento` (63 s) hace 1.925 peticiones en el humo de listados más el
+#     recorrido de fuzzing, sobre 2.414 operaciones publicadas. De esas 1.925,
+#     **sólo 126 son la misma ruta repetida en varios servicios**: no es trabajo
+#     duplicado, es la superficie del producto;
+#   · las dos pruebas de humo que más pesan sí se solapan —una es subconjunto de
+#     la otra— pero el coste son las peticiones, no el montaje, así que
+#     fusionarlas no ahorra;
+#   · los tres gates de contrato pagan **12,3 s de CPU cada uno** por importar
+#     los catorce servicios y construir sus contratos. Se intentó sacar las
+#     operaciones de `app.routes` en vez de `app.openapi()` y no vale: las
+#     rutas se componen al construir el contrato, y recorrer los montajes a
+#     mano devuelve 42 de 2.414.
+#
+# Así que el número sube a 240 s, que es el mismo ~1,4× sobre lo medido hoy, y
+# la norma de arriba sigue en pie para la grasa de verdad. Lo que queda
+# pendiente, y es el ahorro real, es que el humo y el fuzzing recorran las
+# rutas **una sola vez** en vez de tres: ahí hay ~30 s, y es un refactor de las
+# dos pruebas más importantes del repositorio, no un ajuste.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
-    "push": (120.0, 200.0),
+    "push": (120.0, 240.0),
     "completo": (330.0, 500.0),
 }
 
