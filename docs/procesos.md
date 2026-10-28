@@ -1020,12 +1020,12 @@ stateDiagram-v2
 | Operación | Qué hace | Entrada | Respuestas | Dispara → despierta a |
 | --- | --- | --- | --- | --- |
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
-| `POST /api/v1/ia/agentes-autonomos` | Declarar un agente con sus herramientas y sus límites | clave*, tipo*, descripcion, permisos, herramientas, principal_id, max_acciones, presupuesto_tokens_dia, aprobacion_por_riesgo, aprobacion_desde_importe | 201, 422 | — |
+| `POST /api/v1/ia/agentes-autonomos` | Declarar un agente con sus herramientas y sus límites | clave*, tipo*, descripcion, permisos, herramientas, principal_id, max_acciones, presupuesto_tokens_dia, aprobacion_por_riesgo, aprobacion_desde_importe, modo | 201, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/avanzar` | Ejecutar el siguiente paso, uno solo | ejecucion_id* | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/ejecuciones/{ejecucion_id}/revertir` | Deshacer lo que el agente hizo (CRM-05.02.03.05) | ejecucion_id* | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/herramientas-desde-contrato` | Derivar las herramientas del agente de la API del CRM (CRM-05.02.03.02) | contrato*, permisos, riesgos_admitidos, solo_rutas | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/pasos/{paso_id}/aprobar` | Autorizar o rechazar un paso que esperaba a una persona | paso_id*, aprobado*, motivo | 200, 422 | — |
-| `PATCH /api/v1/ia/agentes-autonomos/{agente_autonomo_id}` | Editar agentes autónomos | agente_autonomo_id*, clave, tipo, descripcion, principal_id, permisos, herramientas, max_acciones, presupuesto_tokens_dia, activo, motivo_apagado, aprobacion_por_riesgo, aprobacion_desde_importe | 200, 422 | — |
+| `PATCH /api/v1/ia/agentes-autonomos/{agente_autonomo_id}` | Editar agentes autónomos | agente_autonomo_id*, clave, tipo, descripcion, principal_id, permisos, herramientas, max_acciones, modo, presupuesto_tokens_dia, activo, motivo_apagado, aprobacion_por_riesgo, aprobacion_desde_importe | 200, 422 | — |
 | `DELETE /api/v1/ia/agentes-autonomos/{agente_autonomo_id}` | Borrar agentes autónomos | agente_autonomo_id* | 204, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/{agente_autonomo_id}/archivar` | Archivar agentes autónomos | agente_autonomo_id* | 200, 422 | — |
 | `POST /api/v1/ia/agentes-autonomos/{clave}/apagar` | Kill switch del agente (CRM-05.02.03.04) | clave*, motivo* | 200, 422 | — |
