@@ -45,7 +45,60 @@ def _entrada(**kw: Any) -> dict[str, Any]:
     return base
 
 
-# ── El canal (CRM-04.02.01.01, .02, .04, .07) ─────────────────────────────
+# ── El canal ──────────────────────────────────────────────────────────────
+#
+# Los identificadores van ENTEROS y no en abreviado («.02, .04»): escritos así
+# nadie los encuentra, ni el que busca por qué existe una prueba ni el gate que
+# comprueba que de cada capacidad se llega a una.
+
+
+@pytest.mark.db
+def test_todos_los_tipos_de_canal_declarados_entran_de_verdad(
+    uow: UnidadDeTrabajo, db: Any, tenant_id: UUID
+) -> None:
+    """Un canal declarado que no funciona (CRM-04.02.01.02, CRM-04.02.01.03,
+    CRM-04.02.01.04, CRM-04.02.01.07).
+
+    El tipo del canal es una lista cerrada —correo, formulario, chat, social,
+    api, teléfono, portal— y el catálogo vende cuatro de ellos por su nombre: el
+    formulario web y el portal, el chat en vivo, la mensajería social y el canal
+    de API para incrustar soporte en producto propio.
+
+    **Se recorre la lista declarada, no una escrita a mano aquí.** Una lista
+    propia se queda corta el día que alguien añade un tipo, y justo ése sería el
+    que entra sin probar — que es como un canal acaba publicado y muerto.
+
+    Lo que se exige de cada uno es lo mínimo que lo hace un canal: que entre un
+    mensaje y salga un caso.
+    """
+    abiertos: dict[str, str] = {}
+    for tipo in omni.CANALES:
+        _, secreto = omni.crear_canal(
+            db,
+            tenant_id=tenant_id,
+            clave=f"canal-{tipo}",
+            nombre=f"Entrada por {tipo}",
+            tipo=tipo,
+            mapeo={"asunto": "subject", "cuerpo": "body"},
+            fijos={"linea": "soporte"},
+        )
+        salida = omni.recibir(
+            uow,
+            canal_clave=f"canal-{tipo}",
+            secreto=secreto,
+            entrada={
+                "subject": f"Entra por {tipo}",
+                "body": "Buenos días…",
+                "remitente": f"cliente-{tipo}@ejemplo.test",
+            },
+        )
+        assert salida["aceptado"] is True, f"el canal «{tipo}» no acepta nada"
+        assert salida["caso_id"], f"el canal «{tipo}» acepta y no abre caso"
+        abiertos[tipo] = salida["caso_id"]
+
+    # Y cada canal abre el SUYO: si dos tipos distintos cayeran en el mismo
+    # caso, el hilo de uno acabaría dentro del otro.
+    assert len(set(abiertos.values())) == len(omni.CANALES)
 
 
 @pytest.mark.db

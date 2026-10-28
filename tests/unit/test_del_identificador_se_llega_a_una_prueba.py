@@ -168,7 +168,20 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            el catalogo enumera y lo que se vende. Primera
 #                            medida: 684 de 753 capacidades hechas no las
 #                            nombraba ninguna pantalla
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 100
+#   28-10-2026   95 de 778  los cuatro tipos de canal de servicio que el
+#                            catalogo vende por su nombre —formulario y
+#                            portal, chat en vivo, mensajeria social y canal
+#                            de API in-app—. La traza ya estaba escrita, pero
+#                            EN ABREVIADO («.02, .04»): asi no la encuentra ni
+#                            quien busca por que existe una prueba ni este
+#                            gate. Y en vez de escribirla entera y ya, se
+#                            anadio la prueba que faltaba: recorre la lista
+#                            DECLARADA de tipos y exige que de cada uno entre
+#                            un mensaje y salga un caso propio. Una lista
+#                            escrita a mano en la prueba se quedaria corta el
+#                            dia que alguien anada un tipo, y justo ese seria
+#                            el que entra sin probar
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 95
 
 
 @functools.cache
