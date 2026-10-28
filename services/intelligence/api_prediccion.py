@@ -102,6 +102,30 @@ def estado_modelos(db: DbDep, principal: AutenticadoDep) -> Any:
     return gob.estado_modelos(db, principal.tenant_id)
 
 
+@router_modelos_ml.get(
+    "/deriva",
+    dependencies=[Depends(exige_permiso("ia:administrar"))],
+    summary="Cómo ha ido acertando el modelo con el tiempo",
+    description=(
+        "**Las mediciones se anotaban y no las leía nadie**: había ruta para "
+        "escribir una y ninguna para verlas. Una deriva que no se mira no "
+        "avisa de nada, que es lo contrario de para lo que se mide.\n\n"
+        "Cada medición va con **su referencia y la caída** respecto a ella: un "
+        "AUC de 0,71 no dice nada solo y dice mucho al lado del 0,86 con el que "
+        "se entrenó. Y con **cuántos casos** se midió, porque una caída medida "
+        "sobre catorce casos no es la misma noticia que una medida sobre "
+        "catorce mil."
+    ),
+)
+def historial_de_deriva(
+    db: DbDep,
+    principal: AutenticadoDep,
+    modelo_id: UUID | None = Query(None),
+    limite: int = Query(200, ge=1, le=1000),
+) -> Any:
+    return gob.historial_de_deriva(db, principal.tenant_id, modelo_id=modelo_id, limite=limite)
+
+
 @router_modelos_ml.post(
     "/deriva",
     dependencies=[Depends(exige_permiso("ia:administrar"))],

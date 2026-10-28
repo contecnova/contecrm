@@ -590,6 +590,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "ia:administrar"
     },
     {
+      "r": "/api/v1/ia/modelos/deriva",
+      "p": "ia:administrar"
+    },
+    {
       "r": "/api/v1/ia/agentes-autonomos",
       "p": "ia:administrar"
     },

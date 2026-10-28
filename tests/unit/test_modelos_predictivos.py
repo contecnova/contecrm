@@ -154,6 +154,51 @@ def test_la_deriva_con_pocas_muestras_no_es_concluyente(uow: UnidadDeTrabajo) ->
     assert salida["concluyente"] is False
 
 
+def test_la_deriva_medida_se_puede_LEER(uow: UnidadDeTrabajo) -> None:
+    """Se anotaba y no la leía nadie, que es medirla sin mirarla.
+
+    Había `POST /deriva` para anotar una medición y **ninguna ruta para
+    verlas**, así que «qué tal va acertando el modelo con el tiempo» se cumplía
+    a medias. Una deriva que no se mira no avisa de nada.
+
+    Y cada medición tiene que venir con **su referencia y su caída**: un AUC de
+    0,71 no dice nada solo y dice mucho al lado del 0,86 con el que se entrenó.
+    Con las muestras al lado, además, porque una caída medida sobre treinta
+    casos no es la misma noticia que una medida sobre treinta mil.
+    """
+    modelo = _modelo(uow)
+    gob.activar(uow, tipo="scoring_lead", version=modelo.version)
+    gob.medir_deriva(
+        uow,
+        tipo="scoring_lead",
+        metrica="auc",
+        valor=0.55,
+        muestras=4000,
+        desde=hoy(uow.db) - timedelta(days=30),
+        hasta=hoy(uow.db),
+    )
+
+    historial = gob.historial_de_deriva(uow.db, uow.tenant_id)
+    assert historial["cuantas"] == 1
+    medicion = historial["mediciones"][0]
+    for campo in ("valor", "referencia", "caida", "muestras", "desde", "hasta"):
+        assert campo in medicion, f"la pantalla lee «{campo}» y no viene"
+    assert medicion["muestras"] == 4000
+    # La caída se calcula en el servidor: si la calculara cada pantalla, dos
+    # pantallas acabarían dando dos números para lo mismo.
+    assert Decimal(medicion["caida"]) == Decimal(medicion["referencia"]) - Decimal(
+        medicion["valor"]
+    )
+
+
+def test_sin_mediciones_no_se_dice_que_el_modelo_acierta(uow: UnidadDeTrabajo) -> None:
+    """«No se ha comprobado» y «sigue acertando» son cosas distintas, y una
+    lista vacía se lee como la segunda."""
+    historial = gob.historial_de_deriva(uow.db, uow.tenant_id)
+    assert historial["cuantas"] == 0
+    assert historial["aviso"], "una lista vacía sin aviso se lee como «va bien»"
+
+
 # ── Scoring explicable (CRM-05.02.01.01, .03) ─────────────────────────────
 
 

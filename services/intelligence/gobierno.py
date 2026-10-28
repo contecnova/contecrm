@@ -400,6 +400,65 @@ def exigir_activo(db: Session, tenant_id: UUID, tipo: str) -> ModeloML:
     )
 
 
+def historial_de_deriva(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    modelo_id: UUID | None = None,
+    limite: int = 200,
+) -> dict[str, Any]:
+    """Cómo ha ido acertando el modelo con el tiempo (CRM-05.02.01.07).
+
+    **Las mediciones se escribían y no las leía nadie.** Había `POST /deriva`
+    para anotar una y ninguna ruta para verlas, así que la capacidad —«qué tal
+    va acertando el modelo con el tiempo»— se cumplía a medias: se medía y no
+    se miraba. Una deriva que no se mira no avisa de nada, que es justo lo
+    contrario de para lo que se mide.
+
+    Devuelve cada medición junto a **su referencia** y la caída respecto a
+    ella, porque un AUC de 0,71 no dice nada solo: dice mucho al lado del 0,86
+    con el que se entrenó.
+    """
+    consulta = select(MedicionDeriva).where(MedicionDeriva.tenant_id == tenant_id)
+    if modelo_id is not None:
+        consulta = consulta.where(MedicionDeriva.modelo_id == modelo_id)
+    filas = (
+        db.execute(consulta.order_by(MedicionDeriva.created_at.desc()).limit(limite))
+        .scalars()
+        .all()
+    )
+    mediciones = [
+        {
+            "id": str(f.id),
+            "modelo_id": str(f.modelo_id),
+            "metrica": f.metrica,
+            "valor": str(f.valor),
+            "referencia": str(f.referencia),
+            # La caída, calculada aquí y no en la pantalla: si la calculara
+            # cada pantalla, dos pantallas acabarían dando dos números.
+            "caida": str(f.referencia - f.valor),
+            # Con cuántos casos se midió. Sin esto, una caída medida sobre
+            # catorce casos se lee igual que una medida sobre catorce mil.
+            "muestras": f.muestras,
+            "desde": f.ventana_desde.isoformat(),
+            "hasta": f.ventana_hasta.isoformat(),
+            "cuando": f.created_at.isoformat(),
+        }
+        for f in filas
+    ]
+    return {
+        "mediciones": mediciones,
+        "cuantas": len(mediciones),
+        "aviso": (
+            ""
+            if mediciones
+            else "No hay ninguna medición de deriva. Eso NO significa que el "
+            "modelo acierte: significa que nadie ha comprobado si sigue "
+            "acertando."
+        ),
+    }
+
+
 def medir_deriva(
     uow: UnidadDeTrabajo,
     *,

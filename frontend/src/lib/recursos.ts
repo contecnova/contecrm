@@ -1251,6 +1251,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "intelligence",
         permiso: "ia:administrar",
       },
+      // Cómo ha ido acertando cada modelo con el tiempo. Las mediciones se
+      // anotaban desde el primer día y **no las leía nadie**: había ruta para
+      // escribir una y ninguna para verlas, así que se medía la deriva y no se
+      // miraba — que es lo contrario de para lo que se mide.
+      {
+        nombre: "Deriva de los modelos",
+        listar: "/api/v1/ia/modelos/deriva",
+        servicio: "intelligence",
+        columnas: ["metrica", "valor", "referencia", "caida", "muestras", "hasta"],
+        permiso: "ia:administrar",
+      },
       // Un agente autónomo que nadie ve es un proceso con permisos corriendo
       // solo. Aquí se ve cuáles hay, y desde la ficha se apagan.
       {

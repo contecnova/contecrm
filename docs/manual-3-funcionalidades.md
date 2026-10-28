@@ -10388,7 +10388,15 @@ Un modelo **caduca**. Entrenado con el mercado del año pasado sigue contestando
 tan seguro como el primer día, así que pasada su vigencia deja de puntuar y se
 dice por qué. Y la **deriva se mide contra lo que pasó de verdad**, no contra el
 conjunto de entrenamiento: lo segundo solo demuestra que el modelo se acuerda de
-lo que vio. Por debajo de cien muestras la medición se marca como **no
+lo que vio.
+
+**Y desde el 28-10-2026 se puede mirar.** Hasta entonces había ruta para anotar
+una medición y ninguna para verlas: se medía la deriva y no se miraba, que es lo
+contrario de para lo que se mide. Está en la pestaña «Deriva de los modelos»,
+con cada medición al lado de **su referencia y su caída** —un AUC de 0,71 no
+dice nada solo y dice mucho junto al 0,86 con el que se entrenó— y con **cuántos
+casos** se midió. Sin ninguna medición no se dice que el modelo acierte: se dice
+que nadie lo ha comprobado, que es otra cosa. Por debajo de cien muestras la medición se marca como **no
 concluyente**, porque treinta casos no dicen si el modelo se ha estropeado y
 reentrenar por ruido es cómo se empeora un modelo que iba bien.
 
