@@ -55,7 +55,11 @@ class _DbSettings(BaseSettings):
     #
     # AVISO HONESTO: un rol SUPERUSER o con BYPASSRLS se salta RLS aunque esté
     # FORCE. Con `rls_enabled=true` el arranque comprueba que el rol de conexión
-    # no los tiene y se niega a arrancar si los tiene (ver `crmcore.db.session`).
+    # no los tiene; con `ENV` distinto de `dev` **se niega a arrancar**, y en
+    # `dev` sólo lo avisa, porque en el portátil se trabaja con el rol de
+    # administrador (ver `crmcore.db.session.exigir_rol_sin_bypass`). Hasta el
+    # 28-10-2026 este comentario decía que se negaba siempre, y no era verdad:
+    # sólo escribía una línea en el registro de arranque.
     rls_enabled: bool = True
 
     # Guard de tenant en la capa ORM: segunda red, independiente de RLS, que

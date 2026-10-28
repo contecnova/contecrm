@@ -381,7 +381,7 @@ def crear_servicio(
 
         if necesita_db:
             from crmcore.datos.guard_borrados import instalar_guard_borrados
-            from crmcore.db.session import get_engine, verificar_rol_sin_bypass
+            from crmcore.db.session import exigir_rol_sin_bypass, get_engine
             from crmcore.tenancy.guard import instalar_guard
 
             instalar_guard()
@@ -394,11 +394,12 @@ def crear_servicio(
             from crmcore.cuota_registros import instalar_guard_cuota
 
             instalar_guard_cuota()
-            for aviso in verificar_rol_sin_bypass(get_engine()):
-                # Error y no excepción: en desarrollo se trabaja a menudo con el
-                # rol de administrador, y negarse a arrancar haría imposible el
-                # ciclo local. En producción lo convierte en fallo el gate de
-                # despliegue, que sí puede exigirlo.
+            # En `dev` avisa y sigue —en el portátil se trabaja con el rol de
+            # administrador y negarse haría imposible el ciclo local—. Fuera de
+            # `dev` lanza y el servicio no arranca: un aviso en el registro no
+            # es una red, porque nadie lee el arranque de un servicio que
+            # arrancó, y sin un rol correcto las 623 políticas no filtran nada.
+            for aviso in exigir_rol_sin_bypass(get_engine()):
                 logger.error("arranque.rls_sin_garantia", problema=aviso)
 
         if necesita_bus:

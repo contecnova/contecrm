@@ -209,3 +209,44 @@ def test_el_guc_no_se_hereda_entre_transacciones(
     assert visibles == [], f"el tenant anterior se ha filtrado: {visibles}"
     db.commit()
     _como_sistema(db)
+
+
+def test_fuera_de_desarrollo_no_se_arranca_con_un_rol_que_se_salta_la_red(db: Any) -> None:
+    """Las políticas aíslan —lo prueban las de arriba— si el rol es el correcto.
+
+    Nadie obligaba a que lo fuera. El arranque medía el rol y, si se saltaba la
+    RLS, escribía una línea en el registro y seguía, «porque en producción lo
+    convierte en fallo el gate de despliegue». Ese gate no existía. Medido el
+    28-10-2026 contra la pila viva: servía con el rol `postgres` —SUPERUSER—, y
+    con él las 623 tablas con RLS, FORCE y política no filtraban nada. Lo que
+    aislaba era el guard de la capa ORM, es decir **una red de las dos**, y la
+    que falta es justo la que existe para cuando a la otra se le olvida.
+
+    Un aviso de arranque no es una red: nadie lee el arranque de un servicio que
+    arrancó. En `dev` sigue siendo un aviso —en el portátil se trabaja con el
+    rol de administrador—; fuera de `dev`, no arranca.
+    """
+    from crmcore.config import get_settings
+    from crmcore.db.session import exigir_rol_sin_bypass, get_engine
+
+    s = get_settings()
+    # La prueba corre como superusuario a propósito: es el rol que hay que cazar.
+    assert db.execute(
+        sa.text("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
+    ).scalar_one()
+
+    env_previo, rls_previo = s.env, s.rls_enabled
+    try:
+        object.__setattr__(s, "rls_enabled", True)
+
+        object.__setattr__(s, "env", "dev")
+        avisos = exigir_rol_sin_bypass(get_engine())
+        assert avisos, "en dev tiene que avisar, aunque siga"
+
+        for entorno in ("staging", "prod"):
+            object.__setattr__(s, "env", entorno)
+            with pytest.raises(RuntimeError, match="aislamiento por tenant"):
+                exigir_rol_sin_bypass(get_engine())
+    finally:
+        object.__setattr__(s, "env", env_previo)
+        object.__setattr__(s, "rls_enabled", rls_previo)

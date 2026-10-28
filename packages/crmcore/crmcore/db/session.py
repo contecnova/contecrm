@@ -173,6 +173,38 @@ def verificar_rol_sin_bypass(engine: Engine) -> list[str]:
     return problemas
 
 
+def exigir_rol_sin_bypass(engine: Engine) -> list[str]:
+    """Lo mismo, pero **decidiendo**: fuera de `dev` no se arranca.
+
+    `verificar_rol_sin_bypass` mide y no decide, y durante un tiempo el arranque
+    sólo escribía el aviso en el registro «porque en producción lo convierte en
+    fallo el gate de despliegue». Ese gate no existía. Medido el 28-10-2026: la
+    pila local servía con el rol `postgres` —SUPERUSER— y, con él, las 623
+    tablas con RLS, FORCE y política **no filtran nada**. No es que estuvieran
+    mal escritas: están probadas y aíslan con un rol correcto
+    (`tests/integration/test_rls_aislamiento.py`). Es que nadie obligaba a usar
+    uno.
+
+    Un aviso en el registro de arranque no es una red: nadie lee el arranque de
+    un servicio que arrancó. En `dev` sigue siendo un aviso, porque trabajar con
+    el rol de administrador en el portátil es lo normal y negarse ahí haría
+    imposible el ciclo local. En cualquier otro entorno **se niega a arrancar**,
+    que es el único momento en que alguien se entera.
+
+    Devuelve los avisos para que el que llama los escriba; si no se puede
+    arrancar, lanza.
+    """
+    avisos = verificar_rol_sin_bypass(engine)
+    if avisos and get_settings().env != "dev":
+        raise RuntimeError(
+            "El rol de conexión se salta Row-Level Security, así que el "
+            "aislamiento por tenant NO está garantizado en este despliegue. "
+            + " ".join(avisos)
+            + " Si esto es un entorno de desarrollo, ponle ENV=dev."
+        )
+    return avisos
+
+
 def get_engine() -> Engine:
     """Engine del proceso. Se construye una sola vez."""
     global _engine

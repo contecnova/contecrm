@@ -37,6 +37,18 @@ Se comprueba con un rol **sin privilegios** (CRM-00.01.02.04), que es la única
 forma de que la prueba signifique algo: un superusuario ignora RLS aunque esté
 en FORCE, así que una prueba ejecutada como superusuario pasa siempre.
 
+**Y el despliegue tiene que usar ese rol, no sólo la prueba.** Lo mismo que
+invalida la prueba invalida el sistema entero: con un rol SUPERUSER o con
+`BYPASSRLS`, las políticas están escritas, están en FORCE y **no filtran nada**,
+y entonces de las tres capas de arriba sólo queda la segunda — justo la que
+existe para cuando a alguien se le olvida la primera. Medido el 28-10-2026
+contra una pila viva: servía con el rol `postgres`, y el arranque se limitaba a
+dejar una línea en el registro, que nadie lee en un servicio que arrancó. Desde
+entonces **un servicio con `ENV` distinto de `dev` se niega a arrancar** si su
+rol se salta la RLS, y dice cuál es y cómo se arregla. En `dev` sigue siendo un
+aviso, porque en el portátil se trabaja con el rol de administrador. El rol
+correcto lo crea `deploy/crear-bases.sh`, con `NOSUPERUSER NOBYPASSRLS`.
+
 Los identificadores son **UUIDv7 opacos** (CRM-00.01.02.07). Un identificador
 secuencial invita a probar el siguiente, y entonces el aislamiento depende por
 entero de que la comprobación de permisos sea perfecta en todos los endpoints.
