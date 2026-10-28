@@ -6490,6 +6490,32 @@ réplicas.** De ahí la identidad única de tenant (`CRM-00.01.07.01`): un mismo
 identificador y unos mismos datos en las tres herramientas. Un único punto de administración, empuje automático y reconciliación
 que enseñe lo que ha divergido.
 
+**Y la declaración se enseña, no sólo sus consecuencias.** Hasta el 28-10-2026
+la consola de suite mostraba el resultado —cuántas altas se aplicaron, cuántas
+están en cuarentena, cuántas bajas quedan sin aplicar— y no de dónde sale: con
+qué dirección está declarada cada herramienta, **qué rol de aquí es qué rol de
+allí** (`CRM-00.01.07.04`, `CRM-00.01.07.08`), qué áreas del cliente comparten
+las tres (`CRM-00.01.07.05`) y si el proveedor de identidad es uno solo
+(`CRM-00.01.07.09`). El mapeo de roles estaba guardado y el panel no lo
+devolvía, así que «aprovisionamiento declarativo» había que creérselo. Importa
+por un motivo concreto: un mapeo que no se puede mirar no se puede revisar, y
+es justo donde se cuela que alguien entre de administrador en el gestor
+documental por ser comercial aquí.
+
+Y dos que son de **leer antes de hacer**: la simulación dice ahora **qué**
+caería en cada herramienta —qué alta, qué baja, qué cambio—, porque un «32
+cambios a aplicar» no se puede aprobar y un cambio propagado a tres sitios no
+se deshace llamando a tres soportes (`CRM-00.01.07.11`); y el certificado de
+cierre sale con sus palabras, diciendo si de verdad se puede firmar la
+destrucción o qué herramienta queda abierta (`CRM-00.01.07.13`). Se firma lo
+que consta; si no consta, se dice que no y qué falta.
+
+Una cosa que el producto **no deja hacer, y hace bien**: declarar una
+herramienta que apunte a la propia máquina. Es la defensa contra pedirle al
+servidor que llame a su red interna. La consecuencia honesta es que en un
+portátil donde los vecinos corren en `localhost` la consola sigue diciendo
+«este cliente sólo está en el CRM» — y eso es la verdad.
+
 ### La baja pesa más que el alta, y va primero (`CRM-00.01.07.03`)
 
 Un alta que tarda es una molestia: la persona llama y alguien lo mira. **Una baja

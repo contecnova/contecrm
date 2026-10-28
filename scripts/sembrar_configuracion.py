@@ -4578,6 +4578,43 @@ def sembrar_el_acceso_y_la_ia_aplicada(api: Api) -> None:
             },
         )
 
+    # 4bis. Las otras dos herramientas de la casa, declaradas como dato. Sin
+    #       ellas, la consola de gobierno de la suite dice «este cliente sólo
+    #       está en el CRM», que es verdad y no es lo que se vende. Y el mapeo
+    #       de roles va aquí porque es donde se revisa: el mismo usuario es
+    #       dirección comercial aquí y no tiene por qué serlo allí.
+    for nombre, base_url, tipo, mapeo in (
+        # Las direcciones salen de los puertos que el `.env` documenta para cada
+        # vecino (DMS 4000, CI 8000), sobre `localhost`: el servidor comprueba
+        # que la URL se pueda resolver antes de aceptarla —y hace bien, una
+        # herramienta declarada contra un host que no existe es una cola de
+        # aprovisionamiento que falla entera semanas después—, y un nombre de
+        # red de Docker no resuelve desde la máquina.
+        (
+            "contecmind",
+            "http://localhost:4000/api",
+            "documental",
+            {"direccion": "editor", "comercial": "lector", "por_defecto": "lector"},
+        ),
+        (
+            "contecintelligence",
+            "http://localhost:8000/api",
+            "analitica",
+            {"direccion": "analista", "operaciones": "lector", "por_defecto": "lector"},
+        ),
+    ):
+        api.crear(
+            "/api/v1/suite/herramientas",
+            {
+                "nombre": nombre,
+                "base_url": base_url,
+                "tipo": tipo,
+                "mapeo_roles": mapeo,
+                "mapeo_campos": {"nombre": "name", "email": "email", "unidad": "org_unit"},
+                "objetos": ["tenant", "usuario", "unidad"],
+            },
+        )
+
     # 5. Fuentes federadas: lo que se consulta donde está en vez de copiarlo.
     #    Copiar el ERP entero al almacén para contestar tres preguntas es como
     #    se acaba con un almacén que nadie sabe si está al día.
@@ -5480,6 +5517,15 @@ def main() -> int:
                 "exige volver a verificar",
                 "exige aprobación de alguien distinto",
                 "no está activo en esta instalación",
+                # El servidor no deja declarar una herramienta que apunte a la
+                # propia máquina: es la defensa contra pedirle al servidor que
+                # llame a su red interna, y está bien. Consecuencia honesta: en
+                # un portátil donde los vecinos corren en localhost, la consola
+                # de suite sigue diciendo «sólo está en el CRM», y eso es la
+                # verdad. Se marca el motivo concreto —no «no se puede
+                # consultar» a secas—, porque esa frase también la da una
+                # dirección mal escrita, y ésa sí hay que verla.
+                "que está bloqueado",
                 "está cerrada y bloqueada",
             )
         )

@@ -7,7 +7,28 @@
  * aprovisionamiento con su cuarentena y su reintento) y CRM-00.01.07.12 (la
  * auditoría transversal).
  *
- * Y desde el 28-10-2026, las dos preguntas del momento malo
+ * Y desde el 28-10-2026 también **la declaración de la que sale todo eso**, que
+ * la consola enseñaba por sus consecuencias y no por su causa: la identidad
+ * única del cliente en las tres herramientas (CRM-00.01.07.01), su organigrama
+ * definido una sola vez y replicado (CRM-00.01.07.05), con qué dirección y con
+ * qué **correspondencia de roles** está declarada cada herramienta
+ * (CRM-00.01.07.04, CRM-00.01.07.08) y si comparten proveedor de identidad
+ * (CRM-00.01.07.09). Un mapeo de roles que no se puede mirar no se puede
+ * revisar, y es justo donde se cuela que alguien entre de administrador en el
+ * gestor documental por ser comercial aquí.
+ *
+ * Y con ellas, **lo que se simula antes de aplicarlo** (CRM-00.01.07.11) y el
+ * certificado de cierre (CRM-00.01.07.13) con sus palabras: qué alta, qué baja
+ * y qué cambio caería en cada herramienta —un «32 cambios a aplicar» no se
+ * puede aprobar— y, al cerrar, si de verdad se puede firmar la destrucción o
+ * qué queda abierto. Se firma lo que consta; si no consta, se dice que no.
+ *
+ * Lo que esta pantalla **no** declara, aunque lo roce: `CRM-00.01.07.02`, el
+ * alta del tenant en cascada. Aquí se ve lo que se aplicaría y lo aplicado,
+ * pero el alta se dispara por API y no desde aquí, y declarar un botón que no
+ * existe es justo lo que la traza impide.
+ *
+ * Y las dos preguntas del momento malo
  * (CRM-06.01.03.20, CRM-06.01.03.17): «esto no conecta, ¿qué falta
  * exactamente?» —que es lo que evita que una implantación se atasque una
  * semana probándolo todo y acabe pidiendo permisos de administrador global
@@ -208,11 +229,40 @@ export function SuiteGobierno() {
  * cambio de identidad que se propaga a cinco herramientas no se deshace
  * llamando a cinco soportes.
  */
+interface UnidadDeSuite {
+  id: string;
+  codigo: string;
+  nombre: string;
+  padre: string | null;
+  activa: boolean;
+}
+
+/** Lo que `GET /suite/panel` manda por herramienta. Los nombres son los suyos:
+ *  `herramienta` y no `clave` ni `nombre`. Leer un campo que no existe es un
+ *  hueco en pantalla que nadie relaciona con el contrato. */
+interface HerramientaDeSuite {
+  herramienta: string;
+  tipo?: string;
+  direccion?: string;
+  mapeo_roles?: Record<string, string>;
+}
+
+/** Y el proveedor de identidad compartido, que no es de la herramienta sino
+ *  del tenant: se configura una vez y lo usan las tres (CRM-00.01.07.09). */
+interface SsoDeLaSuite {
+  hay_proveedor: boolean;
+  porque?: string;
+  herramientas?: string[];
+}
+
 function LaSuiteComoUnTodo() {
   const { t } = useTranslation();
   const [identidad, setIdentidad] = useState<Record<string, unknown> | null>(
     null,
   );
+  const [organizacion, setOrganizacion] = useState<UnidadDeSuite[]>([]);
+  const [herramientas, setHerramientas] = useState<HerramientaDeSuite[]>([]);
+  const [sso, setSso] = useState<SsoDeLaSuite | null>(null);
   const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
   const [historial, setHistorial] = useState<Cambio[] | null>(null);
   const [cierre, setCierre] = useState<Cierre | null>(null);
@@ -222,11 +272,22 @@ function LaSuiteComoUnTodo() {
     const opciones = { signal: control.signal };
     // Cada una con su fallo: no poder leer el historial no puede dejar sin ver
     // lo que está a punto de aplicarse, que es lo que tiene consecuencias.
-    void llamar<{ tenant: Record<string, unknown> }>(
-      "/api/v1/suite/identidad",
-      opciones,
-    )
-      .then((r) => setIdentidad(r.datos.tenant ?? null))
+    void llamar<SsoDeLaSuite>("/api/v1/proveedores-identidad/suite", opciones)
+      .then((r) => setSso(r.datos))
+      .catch(() => undefined);
+    void llamar<{
+      herramientas?: HerramientaDeSuite[];
+    }>("/api/v1/suite/panel", opciones)
+      .then((r) => setHerramientas(r.datos.herramientas ?? []))
+      .catch(() => undefined);
+    void llamar<{
+      tenant: Record<string, unknown>;
+      organizacion?: UnidadDeSuite[];
+    }>("/api/v1/suite/identidad", opciones)
+      .then((r) => {
+        setIdentidad(r.datos.tenant ?? null);
+        setOrganizacion(r.datos.organizacion ?? []);
+      })
       .catch(() => undefined);
     void llamar<Simulacion>("/api/v1/suite/simular", opciones)
       .then((r) => setSimulacion(r.datos))
@@ -265,6 +326,37 @@ function LaSuiteComoUnTodo() {
         </p>
       ) : null}
 
+      {/* **Y QUÉ se aplicaría, no sólo cuántos.** Un «32 cambios a aplicar»
+          no se puede aprobar: lo que se revisa antes de propagar algo a tres
+          herramientas es qué alta, qué baja y qué cambio, y en cuál. Un cambio
+          de identidad propagado a cinco sitios no se deshace llamando a cinco
+          soportes, así que la simulación tiene que poder leerse. */}
+      {simulacion?.herramientas?.length ? (
+        <ul className="mt-2 space-y-1" data-testid="suite-simulacion">
+          {simulacion.herramientas.map((h) => (
+            <li key={h.herramienta} className="text-3xs">
+              <span className="text-ink">{h.herramienta}</span>
+              <span className="text-ink-muted">
+                {" · "}
+                {t("suite.plan", {
+                  altas: (h.altas ?? []).length,
+                  bajas: (h.bajas ?? []).length,
+                  cambios: (h.cambios ?? []).length,
+                  sin_cambio: h.sin_cambio ?? 0,
+                })}
+              </span>
+              {/* Las bajas primero y aparte: una baja sin aplicar es un acceso
+                  abierto, y leerla entre treinta altas es no leerla. */}
+              {(h.bajas ?? []).length ? (
+                <p className="text-danger">
+                  {t("suite.bajasDelPlan", { cuales: h.bajas.slice(0, 5).join(", ") })}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {identidad ? (
         <p className="mt-1 text-3xs text-ink-muted">
           {t("suite.identidad", {
@@ -272,6 +364,78 @@ function LaSuiteComoUnTodo() {
             estado: String(identidad.estado ?? "—"),
           })}
         </p>
+      ) : null}
+
+      {/* **El organigrama, y una sola vez.** Un cliente define sus áreas aquí
+          y las tres herramientas las comparten: si cada una tuviera las suyas,
+          «Calidad» querría decir tres cosas distintas y ningún informe
+          transversal cuadraría. Se pinta porque un organigrama replicado que
+          no se puede mirar no se puede comprobar. */}
+      {organizacion.length ? (
+        <div className="mt-2">
+          <p className="text-3xs text-ink-faint">
+            {t("suite.organigrama", { cuantas: organizacion.length })}
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-1" data-testid="suite-organigrama">
+            {organizacion.map((u) => (
+              <li
+                key={u.id}
+                className={`rounded px-1.5 py-0.5 text-3xs ${
+                  u.activa ? "bg-ink-dim/20 text-ink-muted" : "bg-ink-dim/10 text-ink-faint"
+                }`}
+                title={u.padre ? t("suite.cuelgaDe", { de: u.padre }) : undefined}
+              >
+                {u.nombre}
+                {u.padre ? " ↳" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* **Qué herramientas hay declaradas, con qué rol entra cada una y si
+          comparten el proveedor de identidad.** Declarar una herramienta es
+          configuración —dirección, credencial, mapeo de roles—, no código por
+          casa: añadir la cuarta no debería tocar el producto. Y el mapeo va
+          como dato porque el mismo usuario es administrador en una y lector en
+          otra, y escribirlo en el código lo convierte en un despliegue. */}
+      {sso ? (
+        <p
+          className="mt-2 text-3xs text-ink-muted"
+          data-testid="suite-sso"
+        >
+          {sso.hay_proveedor
+            ? t("suite.ssoCompartido", {
+                cuantas: (sso.herramientas ?? []).length,
+              })
+            : sso.porque}
+        </p>
+      ) : null}
+
+      {herramientas.length ? (
+        <ul className="mt-3 divide-y divide-ink-dim/30" data-testid="suite-herramientas">
+          {herramientas.map((h) => (
+            <li key={h.herramienta} className="py-1.5">
+              <p className="text-sm text-ink">
+                {h.herramienta}
+                <span className="ml-2 text-3xs text-ink-faint">
+                  {h.direccion || t("suite.sinDireccion")}
+                </span>
+              </p>
+              <p className="text-3xs text-ink-muted">
+                {t("suite.mapeoDeRoles", {
+                  cuantos: Object.keys(h.mapeo_roles ?? {}).length,
+                })}
+                {Object.keys(h.mapeo_roles ?? {}).length
+                  ? `: ${Object.entries(h.mapeo_roles ?? {})
+                      .slice(0, 4)
+                      .map(([aqui, alli]) => `${aqui} → ${alli}`)
+                      .join(", ")}`
+                  : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {/* El cierre: lo abierto delante de lo cerrado. Una baja que se cerró en
@@ -289,6 +453,22 @@ function LaSuiteComoUnTodo() {
             : t("suite.todoCerrado", {
                 cuantas: (cierre.cerradas ?? []).length,
               })}
+        </p>
+      ) : null}
+
+      {/* El certificado, con sus palabras. Un cierre que se da por bueno
+          porque el panel no enseña lo que falta es exactamente lo que esta
+          capacidad existe para impedir: se firma lo que consta, y si no
+          consta, se dice que no y qué falta para poder firmarlo. */}
+      {cierre?.certificado ? (
+        <p
+          className={`mt-1 text-3xs ${
+            cierre.completo ? "text-ink-faint" : "text-warning"
+          }`}
+          data-testid="suite-certificado"
+        >
+          {cierre.certificado}
+          {cierre.que_hacer ? ` ${cierre.que_hacer}` : ""}
         </p>
       ) : null}
 
@@ -537,7 +717,16 @@ interface SaludSuites {
 }
 
 /** `GET /suite/simular`: qué se crearía, cambiaría o desactivaría. */
+interface PlanDeHerramienta {
+  herramienta: string;
+  altas: string[];
+  bajas: string[];
+  cambios: string[];
+  sin_cambio: number;
+}
+
 interface Simulacion {
+  herramientas?: PlanDeHerramienta[];
   total_a_aplicar: number;
   ya_aplicadas: number;
 }
@@ -546,6 +735,9 @@ interface Simulacion {
 interface Cierre {
   abiertas: string[];
   cerradas: string[];
+  completo?: boolean;
+  certificado?: string;
+  que_hacer?: string;
 }
 
 interface Cambio {

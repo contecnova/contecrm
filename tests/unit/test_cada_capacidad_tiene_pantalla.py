@@ -284,7 +284,24 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            puede medir en vivo —el fuzzing entre tenants, que
 #                            es una suite— sale dicho como gate en vez de como
 #                            visto bueno
-TOPE_SIN_PANTALLA = 383
+#   28-10-2026  375 de 778  la suite por su DECLARACION y no solo por sus
+#                            consecuencias. La consola enseñaba cuantas altas
+#                            hubo y cuantas estan en cuarentena —el resultado—
+#                            y no de que sale: con que direccion esta declarada
+#                            cada herramienta, que rol de aqui es que rol de
+#                            alli, que areas comparte el cliente y si el
+#                            proveedor de identidad es uno para las tres. Un
+#                            mapeo de roles que no se puede mirar no se puede
+#                            revisar, y es justo donde se cuela que alguien
+#                            entre de administrador en el gestor documental por
+#                            ser comercial aqui. El panel tenia el mapeo y no
+#                            lo mandaba. Y dos mas de leer-antes-de-hacer: QUE
+#                            se aplicaria en cada herramienta —un «32 cambios»
+#                            no se puede aprobar— y el certificado de cierre
+#                            con sus palabras. NO se declara CRM-00.01.07.02
+#                            —alta en cascada—: se ve lo aplicado y lo que se
+#                            aplicaria, pero el alta se dispara por API
+TOPE_SIN_PANTALLA = 375
 
 
 def _es_pantalla(p: Path) -> bool:

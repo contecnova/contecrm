@@ -1034,6 +1034,16 @@ def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
                 "tipo": herramienta.tipo,
                 "activa": herramienta.activa,
                 "estado": herramienta.estado,
+                # Con qué dirección y con qué correspondencia de roles está
+                # declarada (CRM-00.01.07.04, .08). El panel las contaba y no
+                # las decía, así que «aprovisionamiento declarativo» había que
+                # creérselo: la consola enseñaba el resultado —cuántas altas,
+                # cuántas en cuarentena— y no la declaración de la que sale.
+                # Un mapeo de roles que no se puede mirar no se puede revisar,
+                # y es justo donde se cuela que alguien entre de administrador
+                # en el gestor documental por ser comercial aquí.
+                "direccion": herramienta.base_url,
+                "mapeo_roles": dict(herramienta.mapeo_roles or {}),
                 "por_estado": {k: int(v) for k, v in cuentas.items()},
                 # Se saca aparte porque es lo único que hay que mirar con prisa:
                 # una baja sin aplicar es un acceso que sigue abierto.

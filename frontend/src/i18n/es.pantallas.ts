@@ -557,6 +557,15 @@ const pantallas = {
     },
   },
   suite: {
+    organigrama:
+      "Áreas del cliente, definidas una vez y compartidas por las tres herramientas ({{cuantas}})",
+    cuelgaDe: "Cuelga de {{de}}",
+    mapeoDeRoles: "{{cuantos}} roles correspondidos",
+    plan: "{{altas}} altas · {{bajas}} bajas · {{cambios}} cambios · {{sin_cambio}} sin tocar",
+    bajasDelPlan: "Bajas: {{cuales}}",
+    sinDireccion: "sin dirección declarada",
+    ssoCompartido:
+      "Proveedor de identidad compartido: se configura una vez y lo usan {{cuantas}} herramientas",
     noConecta: "Esto no conecta: ¿qué falta exactamente?",
     noConectaPorque:
       "«Error de autenticación» no dice si es la contraseña, el permiso, el inquilino o el reloj — y probándolo todo se acaba pidiendo permisos de administrador global «para descartar». Pega aquí lo que diga el proveedor y te decimos qué pasa.",
