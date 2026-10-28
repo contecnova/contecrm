@@ -4404,6 +4404,37 @@ cálculo está bien y pasaba por encima de que no hubiera forma de llegar hasta
 servicio y no al contrato— y se quedaba verde con el campo quitado; se corrigió
 antes de darla por buena.
 
+La cuarta cierra con **el acceso, la IA aplicada y la analítica**: políticas de
+campo, salud de cada cuenta con sus seis señales declaradas, puntuación de
+oportunidades y leads, y una fuente federada —lo que se consulta donde está en
+vez de copiarlo—.
+
+De las 28 que quedaban, **once no se siembran y se dice por qué**: las tres
+papeleras, la cola de fallidos, los conflictos de sincronización, los encargos
+entregados sin prueba o con estados sin mapear, los aparatos callados y las dos
+de migración en curso. Todas sólo existen cuando algo va mal o hay un traslado
+en marcha, y llenarlas sería inventar averías para que la demostración luzca.
+
+Lo que sí se reparte es la **salud de las cuentas**: tres sanas, una en
+vigilancia y una en riesgo de verdad. Todas bien deja «cuentas en riesgo»
+vacía, y una demostración donde ningún cliente va mal deja de creerse en cuanto
+alguien la mira.
+
+**Y aquí el sembrado se estaba mintiendo a sí mismo.** Ocho puntuaciones que el
+producto rechazaba —el modelo estaba registrado pero no activado, y puntuar con
+uno sin activar devuelve 409— salían en el informe como «ya existían 8»: el
+cliente del sembrado trataba *todo* 409 como un duplicado. Pero 409 es
+«conflicto con el estado actual», y eso es también un presupuesto agotado, un
+periodo cerrado o una cuenta bloqueada. El sembrado se daba por bueno, la
+pantalla seguía vacía y nada lo decía. Ahora sólo pasa por duplicado el 409
+cuyo **código de error** lo dice, que es lo que el producto sí declara.
+
+Dos cosas más que enseñó: **registrar un modelo no es activarlo** —queda en
+«evaluada» a propósito, porque activar a ciegas es como un modelo peor se queda
+meses en producción— y **no se activa sin métricas**: el producto exige
+`precision`, `recall` y `muestras`, porque sin ellas no se puede saber si la
+versión siguiente mejora o empeora.
+
 **Y se comprueba.** `--comprobar` recorre lo sembrado con 21 comprobaciones
 repartidas por servicio y cada una dice **cuántas filas recorrió**: una consulta
 que no encuentra nada porque la tabla está vacía da cero fallos y parece verde.

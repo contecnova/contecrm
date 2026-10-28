@@ -190,13 +190,33 @@ class Api:
             self.cuenta["creados"] += 1
             return respuesta if isinstance(respuesta, dict) else {}
         # Un duplicado no es un fallo: el script se vuelve a pasar sobre una
-        # instalación ya sembrada y tiene que poder terminar.
-        if estado == 409:
+        # instalación ya sembrada y tiene que poder terminar. **Pero sólo un
+        # duplicado.** Hasta el 28-10-2026 aquí entraba todo 409, y 409 es
+        # «conflicto con el estado actual»: un modelo retirado, un presupuesto
+        # agotado, un periodo cerrado, una cuenta bloqueada. Ocho puntuaciones
+        # que el producto rechazaba por modelo caducado salieron en el informe
+        # como «ya existían 8», así que el sembrado se daba por bueno y la
+        # pantalla seguía vacía sin que nada lo dijera. Se distingue por el
+        # código del error, que es lo que el producto sí declara.
+        if estado == 409 and _es_duplicado(respuesta):
             self.cuenta["saltados"] += 1
             return None
         etiqueta = cuerpo.get("clave") or cuerpo.get("nombre") or cuerpo.get("codigo") or ""
         self.fallos.append(f"{metodo} {ruta} «{etiqueta}» → {estado} {_motivo(respuesta)}")
         return None
+
+
+# Lo que de verdad quiere decir «esto ya estaba». Un 409 con cualquier otro
+# código es el producto rechazando algo, y pasarlo por duplicado deja el
+# informe en verde sobre lo que no se creó.
+SENALES_DE_DUPLICADO = ("duplicad", "repetid", "ya_existe", "ya_esta", "existente")
+
+
+def _es_duplicado(respuesta: Any) -> bool:
+    if not isinstance(respuesta, dict):
+        return False
+    codigo = str(respuesta.get("error_code") or "")
+    return any(senal in codigo for senal in SENALES_DE_DUPLICADO)
 
 
 def _motivo(respuesta: Any) -> str:
@@ -3742,12 +3762,32 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
     # Los tipos salen de la lista cerrada del servicio, no inventados: un tipo
     # que no existe se rechaza y la pantalla se queda igual de vacía.
     for tipo, variables, metricas in (
-        ("scoring_lead", ["sector", "plantilla", "origen"], {"auc": 0.81, "brier": 0.14}),
-        ("cierre", ["etapa", "dias_en_etapa", "importe"], {"auc": 0.77, "brier": 0.18}),
-        ("churn", ["casos_abiertos", "nps", "retraso_pago"], {"auc": 0.84, "brier": 0.11}),
-        ("importe", ["plantilla", "sector", "historico"], {"mae": 11200.0, "mape": 0.18}),
+        # Las métricas no son adorno: sin `precision`, `recall` y `muestras` el
+        # producto **no deja activar** la versión, porque sin ellas no se puede
+        # saber si la siguiente mejora o empeora. Un regresor sólo necesita
+        # `muestras`, que es lo que dice si la cifra significa algo.
+        (
+            "scoring_lead",
+            ["sector", "plantilla", "origen"],
+            {"auc": 0.81, "brier": 0.14, "precision": 0.74, "recall": 0.68, "muestras": 4200},
+        ),
+        (
+            "cierre",
+            ["etapa", "dias_en_etapa", "importe"],
+            {"auc": 0.77, "brier": 0.18, "precision": 0.71, "recall": 0.63, "muestras": 3100},
+        ),
+        (
+            "churn",
+            ["casos_abiertos", "nps", "retraso_pago"],
+            {"auc": 0.84, "brier": 0.11, "precision": 0.79, "recall": 0.72, "muestras": 2600},
+        ),
+        (
+            "importe",
+            ["plantilla", "sector", "historico"],
+            {"mae": 11200.0, "mape": 0.18, "muestras": 3900},
+        ),
     ):
-        api.crear(
+        version = api.crear(
             "/api/v1/ia/modelos",
             {
                 "tipo": tipo,
@@ -3761,6 +3801,12 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
                 "notas": "Entrenado con el histórico de la propia instalación.",
             },
         )
+        # **Registrar no es activar.** Una versión recién registrada queda en
+        # «evaluada», y puntuar con ella devuelve 409 «el modelo está caducado o
+        # retirado». Es la separación correcta —activar a ciegas es como un
+        # modelo peor se queda meses en producción— pero hay que dar el paso.
+        if version and version.get("version"):
+            api.crear(f"/api/v1/ia/modelos/{tipo}/versiones/{version['version']}/activar", {})
 
     # 10. Series vigiladas, con observaciones de verdad detrás: una pantalla de
     #     anomalías sin serie declarada no es que no haya anomalías, es que no
@@ -4353,6 +4399,175 @@ def sembrar_el_campo_y_la_prevision(api: Api) -> None:
                 "horas_validez": 72,
             },
         )
+
+
+# ── El acceso, la IA aplicada y la analítica ──────────────────────────────
+
+
+def sembrar_el_acceso_y_la_ia_aplicada(api: Api) -> None:
+    """Cuarta tanda de las 55 pestañas vacías (28-10-2026).
+
+    De las 28 que quedaban sin tocar, **once están vacías con razón** y no se
+    siembran: las tres papeleras, la cola de fallidos, los conflictos de
+    sincronización, los encargos entregados sin prueba o con estados sin mapear,
+    los aparatos callados y las dos de migración en curso. Todas ésas sólo
+    existen cuando algo va mal o cuando hay un traslado en marcha, y llenarlas
+    sería inventar averías para que la demostración luzca más.
+
+    Las de aquí son distintas: reglas de acceso que toda instalación con más de
+    un equipo acaba teniendo, la puntuación de lo que ya está en la base, y la
+    analítica federada.
+    """
+    cuentas = api.listar("/api/v1/accounts", 6)
+    oportunidades = api.listar("/api/v1/opportunities", 6)
+    leads = api.listar("/api/v1/leads", 4)
+    roles = api.listar("/api/v1/roles", 10)
+
+    # 1. Políticas de acceso por atributo: quién ve qué, y por qué. Una
+    #    instalación con un solo rol no las necesita; una con cuatro, sí.
+    for nombre, objeto, acciones, condiciones, descripcion in (
+        (
+            "cartera-propia",
+            "cuenta",
+            ["read", "write"],
+            [{"atributo": "owner_id", "operador": "=", "valor": "${usuario_id}"}],
+            "Cada comercial trabaja su cartera; lo demás lo ve quien lo lleva.",
+        ),
+        (
+            "casos-de-mi-cola",
+            "caso",
+            ["read"],
+            [{"atributo": "cola", "operador": "en", "valor": "${colas_del_usuario}"}],
+            "Un agente ve los casos de sus colas, no los de toda la empresa.",
+        ),
+        (
+            "solo-lectura-auditoria",
+            "cuenta",
+            ["read"],
+            [{"atributo": "estado", "operador": "!=", "valor": "borrado"}],
+            "Auditoría interna lee todo y no escribe nada.",
+        ),
+    ):
+        api.crear(
+            f"/api/v1/politicas-acceso/{nombre}",
+            {
+                "nombre": nombre,
+                "objeto": objeto,
+                "acciones": acciones,
+                "condiciones": condiciones,
+                "combinacion": "y",
+                "prioridad": 10,
+                "activa": True,
+                "descripcion": descripcion,
+            },
+            metodo="PUT",
+        )
+
+    # 2. Y a nivel de campo: lo que no debería leer todo el mundo aunque pueda
+    #    abrir el registro. El margen de una oferta es el caso de libro.
+    rol_comercial = next(
+        (r["id"] for r in roles if "comercial" in r.get("nombre", "").lower()), None
+    )
+    for objeto, campo, nivel in (
+        ("cuenta", "facturacion_anual", "oculto"),
+        ("oportunidad", "margen", "oculto"),
+        ("contacto", "telefono_movil", "enmascarado"),
+    ):
+        api.crear(
+            "/api/v1/politicas-acceso/campos",
+            {
+                "objeto": objeto,
+                "campo": campo,
+                "nivel": nivel,
+                **({"rol": rol_comercial} if rol_comercial else {}),
+            },
+        )
+
+    # 3. Salud de cada cuenta, con sus señales y sus pesos declarados. Un número
+    #    de salud sin decir de qué sale no se discute: se ignora.
+    # Repartidas: tres sanas, una en vigilancia y una en riesgo de verdad. Todas
+    # bien deja «cuentas en riesgo» vacía, y una demostración donde ningún
+    # cliente va mal deja de creerse en cuanto alguien la mira.
+    perfiles = (
+        {"uso": 82, "soporte": 75, "relacion": 88, "pago": 95, "valor": 80, "patrocinador": 70},
+        {"uso": 74, "soporte": 68, "relacion": 72, "pago": 90, "valor": 71, "patrocinador": 65},
+        {"uso": 61, "soporte": 55, "relacion": 60, "pago": 78, "valor": 58, "patrocinador": 45},
+        {"uso": 48, "soporte": 40, "relacion": 52, "pago": 55, "valor": 50, "patrocinador": 30},
+        {"uso": 30, "soporte": 22, "relacion": 35, "pago": 20, "valor": 28, "patrocinador": 10},
+    )
+    for i, cuenta in enumerate(cuentas[:5]):
+        if not cuenta.get("id"):
+            continue
+        api.crear(
+            "/api/v1/ia/salud",
+            {
+                "cuenta_id": cuenta["id"],
+                # Las seis señales son lista cerrada: el producto rechaza las
+                # inventadas y dice que añadir una pasa por documentar qué mide.
+                "senales": perfiles[i],
+                "pesos": {
+                    "uso": 25,
+                    "soporte": 15,
+                    "relacion": 15,
+                    "pago": 20,
+                    "valor": 15,
+                    "patrocinador": 10,
+                },
+                "umbrales": {"riesgo": 60, "critico": 40},
+            },
+        )
+
+    # 4. Y la puntuación de lo que ya está en la base: una oportunidad sin
+    #    probabilidad calculada obliga a que cada comercial se invente la suya.
+    for oportunidad in oportunidades[:5]:
+        if not oportunidad.get("id"):
+            continue
+        api.crear(
+            "/api/v1/ia/prediccion",
+            {
+                "tipo": "cierre",
+                "objeto": "oportunidad",
+                "objeto_id": oportunidad["id"],
+                "rasgos": {
+                    "etapa": oportunidad.get("etapa") or "negociacion",
+                    "dias_en_etapa": 21,
+                    "importe": str(oportunidad.get("importe") or "50000"),
+                },
+                "vigencia_dias": 14,
+            },
+        )
+    for lead in leads[:3]:
+        if not lead.get("id"):
+            continue
+        api.crear(
+            "/api/v1/ia/prediccion",
+            {
+                "tipo": "scoring_lead",
+                "objeto": "lead",
+                "objeto_id": lead["id"],
+                "rasgos": {"sector": "automocion", "plantilla": 250, "origen": "web-contacto"},
+                "vigencia_dias": 30,
+            },
+        )
+
+    # 5. Fuentes federadas: lo que se consulta donde está en vez de copiarlo.
+    #    Copiar el ERP entero al almacén para contestar tres preguntas es como
+    #    se acaba con un almacén que nadie sabe si está al día.
+    api.crear(
+        "/api/v1/almacen/federadas",
+        {
+            "clave": "erp-facturacion",
+            "nombre": "Facturación del ERP",
+            "tipo": "rest",
+            "objetos": ["factura", "cobro"],
+            "config": {
+                "base_url": "https://erp.ejemplo.test/api",
+                "ruta": "/facturacion/consulta",
+            },
+            "tope_filas": 5000,
+            "timeout_s": 20,
+        },
+    )
 
 
 # ── Arranque ──────────────────────────────────────────────────────────────
@@ -5180,6 +5395,7 @@ PARTES: dict[str, Any] = {
     "la_plataforma_y_la_ia": sembrar_la_plataforma_y_la_ia,
     "la_operacion_del_dia": sembrar_la_operacion_del_dia,
     "el_campo_y_la_prevision": sembrar_el_campo_y_la_prevision,
+    "el_acceso_y_la_ia_aplicada": sembrar_el_acceso_y_la_ia_aplicada,
 }
 
 
