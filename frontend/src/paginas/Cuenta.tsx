@@ -630,7 +630,7 @@ function Relacionados({
 }) {
   const { t } = useTranslation();
   return (
-    <section className="card flex flex-col overflow-hidden p-4 lg:min-h-0">
+    <section className="card flex flex-col overflow-hidden p-4 lg:min-h-0 lg:max-h-max lg:flex-1 lg:basis-0">
       <h2 className="section-label mb-2 flex shrink-0 items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5">
           <Icono nombre={icono} tamano="sm" />
@@ -646,6 +646,18 @@ function Relacionados({
           {hayMas ? "+" : ""}
         </span>
       </h2>
+      {/* El reparto del alto de la columna, que es lo que decide cuántas filas
+          se ven en cada caja:
+
+            · `flex-1 basis-0` → todas parten de cero y se reparten el alto a
+              PARTES IGUALES. Sin esto el encogido es proporcional a lo que
+              cada una mide, así que la caja de tres contactos se quedaba sin
+              una sola fila mientras la de veinte casos enseñaba siete;
+            · `max-h-max` → pero ninguna coge más de lo que necesita. La de
+              tres contactos se queda en tres filas y el hueco que le sobra se
+              reparte entre las que sí tienen cola.
+
+          O sea: unas cuantas de cada una, y nada de espacio vacío. */}
       {cuantos === 0 ? (
         <p className="py-2 text-3xs text-ink-faint">{vacio}</p>
       ) : (

@@ -168,6 +168,30 @@ describe("la ficha de cliente", () => {
     }
   });
 
+  it("el alto se reparte a partes iguales, no en proporción a lo que cada caja mide", async () => {
+    await montar();
+    await screen.findByText("Hito 0");
+
+    // Pasó: con el encogido por defecto —proporcional a lo que mide cada
+    // caja— la de tres contactos se quedaba SIN UNA SOLA FILA a la vista
+    // mientras la de veinte casos enseñaba siete. Lo que lo arregla es partir
+    // todas de cero (`basis-0 flex-1`) y que ninguna coja más de lo que
+    // necesita (`max-h-max`), para que el hueco que le sobra a la corta se
+    // reparta entre las que tienen cola.
+    for (const titulo of [
+      "cuenta.contactos",
+      "cuenta.oportunidades",
+      "cuenta.casos",
+    ]) {
+      const clases = caja(titulo).className;
+      expect(clases, `${titulo} no parte de cero`).toMatch(/basis-0/);
+      expect(clases, `${titulo} no reparte`).toMatch(/flex-1/);
+      expect(clases, `${titulo} se quedaría con hueco vacío`).toMatch(
+        /max-h-max/,
+      );
+    }
+  });
+
   it("se enseña todo lo que ha llegado: lo que no cabe se alcanza con la barra", async () => {
     await montar();
     await screen.findByText("Hito 0");
