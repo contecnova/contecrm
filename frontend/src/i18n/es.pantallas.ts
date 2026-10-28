@@ -266,6 +266,19 @@ const pantallas = {
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
   },
   firma: {
+    conQue: "Con qué se firma",
+    sinProveedor: "No hay ningún proveedor de firma configurado",
+    sinProveedorPorque:
+      "Sin proveedor no se puede mandar nada a firmar: se declara con su transporte, sus niveles y sus formas de identificar al firmante.",
+    inactivo: "(inactivo)",
+    niveles: "Niveles: {{cuales}}",
+    identificaciones: "Identifica por: {{cuales}}",
+    regla: "#{{prioridad}} {{nombre}} → {{proveedor}}, nivel mínimo {{nivel}}",
+    sinNivelMinimo: "el que pida quien lo manda",
+    apagada: "apagada",
+    plantilla: "{{nombre}} ({{tipo}}) · {{nivel}} · vale {{dias}} días",
+    ordenEstricto: "orden estricto",
+
     llamadas: {
       titulo: "Lo que el proveedor de firma cobró",
       porQue:

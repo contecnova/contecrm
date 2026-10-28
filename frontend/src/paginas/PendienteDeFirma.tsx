@@ -2,6 +2,18 @@
  * Lo que está esperando una firma (CRM-06.01.02.10, CRM-06.01.02.03,
  * CRM-06.01.02.04).
  *
+ * Y, desde el 28-10-2026, **con qué se firma**: los proveedores configurados
+ * con sus niveles eIDAS y sus formas de identificar al firmante
+ * (CRM-06.01.02.02, CRM-06.01.02.05, CRM-06.01.02.08, CRM-06.01.02.12), las
+ * reglas que deciden cuál sale para cada documento y con qué nivel mínimo, y
+ * las plantillas con su plazo y su orden (CRM-06.01.02.06).
+ *
+ * Las dos últimas **se podían escribir y no leer**, que es el mismo agujero de
+ * las excepciones de campo: una regla decide con qué proveedor y con qué nivel
+ * sale a firmar un contrato —lo primero que pregunta una auditoría es «¿por
+ * qué esto se firmó con un clic?»— y la respuesta había que buscarla en la
+ * base de datos.
+ *
  * Es la pregunta del comercial que cierra un trimestre: **qué contratos están
  * parados y por quién**. El servidor la contesta desde el primer día en
  * `/api/v1/firma/panel` y no había forma de pedirla desde ninguna pantalla:
@@ -188,6 +200,9 @@ export function PendienteDeFirma() {
       )}
 
       {/* Lo que el proveedor cobró, al lado de lo que hizo. */}
+      {/* Con qué se firma, debajo de lo que está parado: primero el trabajo,
+          después la configuración de la que sale. */}
+      <ConQueSeFirma />
       <LoQueCobraElProveedor />
     </>
   );
@@ -214,6 +229,151 @@ export function PendienteDeFirma() {
  * Y sin filas no se dice «cero gasto»: se dice que no consta ninguna llamada.
  * Un cero ahí se leería como «el proveedor no ha cobrado nada».
  */
+interface ProveedorFirma {
+  clave: string;
+  nombre: string;
+  niveles: string[];
+  identificaciones: string[];
+  activo: boolean;
+  solo_en_curso: boolean;
+}
+
+interface ReglaFirma {
+  id: string;
+  nombre: string;
+  prioridad: number;
+  activa: boolean;
+  proveedor: string;
+  nivel_minimo: string | null;
+  condiciones: unknown[];
+}
+
+interface PlantillaFirma {
+  clave: string;
+  nombre: string;
+  tipo_documento: string;
+  nivel: string;
+  campos: number;
+  dias_validez: number;
+  orden_estricto: boolean;
+  activa: boolean;
+}
+
+/**
+ * Con qué se firma: proveedores, reglas y plantillas.
+ *
+ * Las reglas y las plantillas se podían escribir y **no leer**. Importa por una
+ * razón que se ve el día de una auditoría: una regla decide con qué proveedor
+ * y con qué nivel eIDAS sale un documento, y «¿por qué este contrato se firmó
+ * con un clic?» no se podía contestar sin mirar la base de datos.
+ *
+ * Las reglas van **por prioridad y no por nombre**, que es el orden en que se
+ * aplican: leídas alfabéticamente, dos que se solapan parecen intercambiables
+ * y no lo son. Y las inactivas salen marcadas, porque una regla apagada es
+ * justo lo que explica que algo dejara de pasar.
+ */
+function ConQueSeFirma() {
+  const { t } = useTranslation();
+  const [proveedores, setProveedores] = useState<ProveedorFirma[] | null>(null);
+  const [reglas, setReglas] = useState<{ reglas: ReglaFirma[]; que_significa: string } | null>(
+    null,
+  );
+  const [plantillas, setPlantillas] = useState<{ plantillas: PlantillaFirma[] } | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    const opciones = { signal: control.signal };
+    void llamar<ProveedorFirma[]>("/api/v1/firma/proveedores", opciones)
+      .then((r) => setProveedores(Array.isArray(r.datos) ? r.datos : []))
+      .catch(() => undefined);
+    void llamar<{ reglas: ReglaFirma[]; que_significa: string }>(
+      "/api/v1/firma/reglas",
+      opciones,
+    )
+      .then((r) => setReglas(r.datos))
+      .catch(() => undefined);
+    void llamar<{ plantillas: PlantillaFirma[] }>("/api/v1/firma/plantillas", opciones)
+      .then((r) => setPlantillas(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  if (!proveedores) return null;
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("firma.conQue")}</h2>
+
+      {proveedores.length === 0 ? (
+        <Vacio titulo={t("firma.sinProveedor")} detalle={t("firma.sinProveedorPorque")} />
+      ) : (
+        <ul
+          className="lista-acotada divide-y divide-ink-dim/30"
+          data-testid="firma-proveedores"
+        >
+          {proveedores.map((p) => (
+            <li key={p.clave} className="py-1.5">
+              <p className="text-sm text-ink">
+                {p.nombre || p.clave}
+                {!p.activo ? (
+                  <span className="ml-2 text-3xs text-warning">{t("firma.inactivo")}</span>
+                ) : null}
+              </p>
+              {/* Los niveles y las formas de identificar, que es lo que
+                  distingue una firma que aguanta un juicio de un clic. */}
+              <p className="text-3xs text-ink-muted">
+                {t("firma.niveles", { cuales: p.niveles.join(", ") || "—" })}
+                {" · "}
+                {t("firma.identificaciones", {
+                  cuales: p.identificaciones.join(", ") || "—",
+                })}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {reglas ? (
+        <div className="mt-3" data-testid="firma-reglas">
+          <p className="text-3xs text-ink-faint">{reglas.que_significa}</p>
+          <ul className="lista-acotada mt-1 space-y-0.5">
+            {reglas.reglas.map((r) => (
+              <li
+                key={r.id}
+                className={r.activa ? "text-3xs text-ink-muted" : "text-3xs text-ink-faint"}
+              >
+                {t("firma.regla", {
+                  prioridad: r.prioridad,
+                  nombre: r.nombre,
+                  proveedor: r.proveedor,
+                  nivel: r.nivel_minimo || t("firma.sinNivelMinimo"),
+                })}
+                {!r.activa ? ` · ${t("firma.apagada")}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {plantillas?.plantillas?.length ? (
+        <ul className="lista-acotada mt-3 space-y-0.5" data-testid="firma-plantillas">
+          {plantillas.plantillas.map((p) => (
+            <li key={p.clave} className="text-3xs text-ink-muted">
+              {t("firma.plantilla", {
+                nombre: p.nombre,
+                tipo: p.tipo_documento || "—",
+                nivel: p.nivel,
+                dias: p.dias_validez,
+              })}
+              {p.orden_estricto ? ` · ${t("firma.ordenEstricto")}` : ""}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 function LoQueCobraElProveedor() {
   const { t } = useTranslation();
   const [datos, setDatos] = useState<Llamadas | null>(null);

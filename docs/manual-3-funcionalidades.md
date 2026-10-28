@@ -8352,6 +8352,19 @@ Un proveedor se puede poner **en retirada** (`solo_en_curso`): deja de recibir
 sobres nuevos y los que tiene en vuelo terminan con él. Es lo que permite cambiar
 de proveedor sin que los contratos a medio firmar se queden huérfanos.
 
+**Y las reglas se pueden leer.** Hasta el 28-10-2026 se podían escribir y no
+consultar, que es el mismo agujero que tenían las excepciones de campo: una
+regla decide con qué proveedor y con qué nivel eIDAS sale un documento —lo
+primero que pregunta una auditoría es «¿por qué este contrato se firmó con un
+clic?»— y la respuesta había que buscarla en la base de datos. Lo mismo con las
+plantillas, que son las que fijan el plazo por el que un sobre caduca.
+
+En pantalla salen **por prioridad y no por nombre**, que es el orden en que se
+aplican: leídas alfabéticamente, dos reglas que se solapan parecen
+intercambiables y no lo son. Y **las apagadas se ven, marcadas**: una regla
+apagada es justo lo que explica que algo dejara de pasar, y esconderla
+convierte ese «dejó de pasar» en un misterio.
+
 ### El nivel decide la identificación (`CRM-06.01.02.05`, `CRM-06.01.02.08`)
 
 | Nivel | Identificaciones que admite |

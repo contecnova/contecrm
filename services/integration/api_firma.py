@@ -112,6 +112,94 @@ def listar_proveedores(db: DbDep, principal: AutenticadoDep) -> Any:
     )
 
 
+@router.get(
+    "/reglas",
+    dependencies=[Depends(exige_permiso("firma:read"))],
+    summary="Qué regla decide proveedor y nivel, y en qué orden",
+    description=(
+        "**Se podían escribir y no leer.** Una regla aquí decide con qué "
+        "proveedor y con qué nivel eIDAS sale a firmar un documento, y eso es "
+        "lo primero que pregunta una auditoría: «¿por qué este contrato se "
+        "firmó con un clic?». Sin lectura, la respuesta había que buscarla en "
+        "la base de datos.\n\n"
+        "**Por prioridad y no por nombre**, que es el orden en que se aplican: "
+        "leídas alfabéticamente, dos reglas que se solapan parecen "
+        "intercambiables y no lo son. Y las inactivas salen, marcadas: una "
+        "regla apagada explica por qué algo dejó de pasar, y esconderla "
+        "convierte ese «dejó de pasar» en un misterio."
+    ),
+)
+def listar_reglas(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(fir.ReglaProveedorFirma)
+            .where(fir.ReglaProveedorFirma.tenant_id == principal.tenant_id)
+            .order_by(fir.ReglaProveedorFirma.prioridad, fir.ReglaProveedorFirma.nombre)
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "reglas": [
+            {
+                "id": str(f.id),
+                "nombre": f.nombre,
+                "prioridad": f.prioridad,
+                "activa": f.activa,
+                "condiciones": list(f.condiciones or []),
+                "proveedor": f.proveedor,
+                "nivel_minimo": f.nivel_minimo,
+            }
+            for f in filas
+        ],
+        "que_significa": (
+            "Sin reglas, todo sale con el proveedor por defecto y con el nivel "
+            "que pida quien lo manda."
+            if not filas
+            else "Se aplican por prioridad, de menor a mayor. La primera que " "case decide."
+        ),
+    }
+
+
+@router.get(
+    "/plantillas",
+    dependencies=[Depends(exige_permiso("firma:read"))],
+    summary="Las plantillas de firma declaradas",
+    description=(
+        "**Se podían escribir y no leer.** Una plantilla dice dónde va cada "
+        "firma, qué tiene que rellenar el firmante, con qué nivel sale y "
+        "cuántos días vale. Sin poder consultarlas, la única forma de saber "
+        "por qué un sobre caducó a los siete días era mandar otro."
+    ),
+)
+def listar_plantillas(db: DbDep, principal: AutenticadoDep) -> Any:
+    filas = (
+        db.execute(
+            select(fir.PlantillaFirma)
+            .where(fir.PlantillaFirma.tenant_id == principal.tenant_id)
+            .order_by(fir.PlantillaFirma.tipo_documento, fir.PlantillaFirma.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "plantillas": [
+            {
+                "clave": f.clave,
+                "nombre": f.nombre,
+                "tipo_documento": f.tipo_documento,
+                "nivel": f.nivel,
+                "campos": len(f.campos or []),
+                "dias_validez": f.dias_validez,
+                "orden_estricto": f.orden_estricto,
+                "activa": f.activa,
+            }
+            for f in filas
+        ],
+        "cuantas": len(filas),
+    }
+
+
 class CrearReglaFirma(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=150)
     prioridad: int = 100

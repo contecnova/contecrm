@@ -330,7 +330,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            La honestidad del texto volvia deshonesta la
 #                            cuenta. Arreglado, vuelven a contarse: 7 cerradas
 #                            menos 4 que reaparecen
-TOPE_SIN_PANTALLA = 365
+#   28-10-2026  360 de 778  con que se firma, debajo de lo que esta parado:
+#                            los proveedores con sus niveles eIDAS y sus
+#                            formas de identificar al firmante, las reglas que
+#                            deciden cual sale para cada documento y con que
+#                            nivel minimo, y las plantillas con su plazo. Las
+#                            dos ultimas SE PODIAN ESCRIBIR Y NO LEER, igual
+#                            que las excepciones de campo: una regla decide
+#                            con que proveedor y con que nivel sale un
+#                            contrato, y «¿por que esto se firmo con un clic?»
+#                            habia que contestarlo mirando la base de datos.
+#                            Las reglas salen POR PRIORIDAD y no por nombre,
+#                            que es como se aplican, y las apagadas se ven:
+#                            una regla apagada es lo que explica que algo
+#                            dejara de pasar
+TOPE_SIN_PANTALLA = 360
 
 
 def _es_pantalla(p: Path) -> bool:
