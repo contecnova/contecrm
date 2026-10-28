@@ -150,12 +150,12 @@ def test_las_pestanas_de_la_consola_abren(
     # ~110 peticiones, soltar un savepoint destruye los posteriores y revienta
     # la vuelta siguiente.
     #
-    # El del outbox ya estaba. El de los barridos faltaba, y es lo que hacía
-    # que en el pase completo fallara **un servicio distinto cada vez** —sales,
-    # service, tenancy en tres tandas seguidas— mientras el fichero suelto
-    # pasaba entero: no es la máquina llena, es a qué petición le cae encima el
-    # reloj. `test_fuzzing_tenant` apaga los dos desde el 12-10-2026 y explica
-    # por qué; aquí faltaba el segundo.
+    # El del outbox ya estaba; el de los barridos faltaba y se añadió al
+    # perseguir un fallo intermitente de esta misma prueba. **No era eso**: el
+    # culpable era `al_margen`, que dejaba la sesión envenenada cuando el fallo
+    # saltaba al volcar, y esta prueba era una de las víctimas —caía en un
+    # servicio distinto en cada tanda y pasaba suelta—. Se queda igualmente,
+    # porque es lo que hace su prueba hermana y por el mismo motivo.
     previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED")}
     os.environ["OUTBOX_ENABLED"] = "false"
     os.environ["TAREAS_FONDO_ENABLED"] = "false"

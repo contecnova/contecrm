@@ -54,6 +54,25 @@ def al_margen(db: Any, evento: str, **contexto: Any) -> Iterator[None]:
         yield
         punto.commit()
     except Exception as exc:  # noqa: BLE001 — es justo lo que este bloque atrapa
-        if punto is not None and punto.is_active:
+        # `rollback()` SIEMPRE, no sólo si el punto «sigue activo».
+        #
+        # Es la trampa de la trampa, y costó encontrarla. Cuando el fallo es de
+        # la base —que es el caso para el que existe este bloque—, SQLAlchemy
+        # **desactiva** el savepoint y aun así exige que se deshaga antes de
+        # seguir. O sea que `if punto.is_active` se saltaba exactamente el
+        # único caso que había que atender, y dejaba la sesión envenenada: la
+        # siguiente instrucción, que no tiene nada que ver, muere con
+        # `PendingRollbackError: Can't reconnect until invalid savepoint
+        # transaction is rolled back`.
+        #
+        # El síntoma no apuntaba aquí ni de lejos. En la suite completa caían
+        # dos o tres pruebas **de otros módulos** —las pestañas de la consola
+        # de un servicio distinto en cada tanda, el ETag de ida y vuelta—
+        # porque comparten la conexión del arnés: lo que se veía era la
+        # víctima, nunca el culpable. Y sueltas pasaban todas.
+        #
+        # Deshacer un savepoint ya deshecho no cuesta nada; dejarlo sin
+        # deshacer cuesta la petición siguiente.
+        if punto is not None:
             punto.rollback()
         logger.warning(evento, error=f"{type(exc).__name__}: {str(exc)[:200]}", **contexto)

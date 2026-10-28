@@ -425,8 +425,10 @@ def _evidencia_automatica(db: Session, tenant_id: UUID, control: Control) -> dic
             ).scalar_one()
             return {"fuente": fuente, "certificados": int(cuantos)}
     except Exception as exc:  # noqa: BLE001 — la evidencia que falla se dice
-        if punto.is_active:
-            punto.rollback()
+        # `rollback()` SIEMPRE, no sólo si «sigue activo»: cuando el fallo es
+        # de la base, SQLAlchemy desactiva el savepoint y aun así exige
+        # deshacerlo. Ver `crmcore.db.al_margen`.
+        punto.rollback()
         return {"fuente": fuente, "error": str(exc)[:200]}
     finally:
         # El `return` de dentro del `try` pasa por aquí: sin esto, el SAVEPOINT

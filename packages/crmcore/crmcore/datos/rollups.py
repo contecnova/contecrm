@@ -138,8 +138,12 @@ def calcular(db: Session, rollups: list[Rollup], padres: list[UUID]) -> dict[UUI
             # Se deja el valor sin calcular y se dice en el log. Propagar
             # convertiría un rollup mal declarado en un listado que no se puede
             # abrir, y el listado es lo que la gente usa todo el día.
-            if punto.is_active:
-                punto.rollback()
+            # `rollback()` SIEMPRE, no sólo si «sigue activo»: cuando el fallo
+            # es de la base, SQLAlchemy desactiva el savepoint y aun así exige
+            # deshacerlo antes de seguir. Con el `if`, la sesión se quedaba
+            # envenenada y moría la instrucción SIGUIENTE, que no tiene nada
+            # que ver. Ver `crmcore.db.al_margen`, donde está contado entero.
+            punto.rollback()
             logger.error("rollup.fallo", rollup=rollup.nombre, error=str(exc)[:200])
             continue
 

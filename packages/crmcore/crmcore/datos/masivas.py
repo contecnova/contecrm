@@ -287,8 +287,12 @@ def importar(
             db.flush()
             punto.commit()
         except Exception as exc:  # noqa: BLE001 — una fila mala no tumba la carga
-            if punto.is_active:
-                punto.rollback()
+            # `rollback()` SIEMPRE, no sólo si «sigue activo»: cuando el fallo
+            # es de la base, SQLAlchemy desactiva el savepoint y aun así exige
+            # deshacerlo antes de seguir. Con el `if`, la sesión se quedaba
+            # envenenada y moría la instrucción SIGUIENTE, que no tiene nada
+            # que ver. Ver `crmcore.db.al_margen`, donde está contado entero.
+            punto.rollback()
             # El recuento también se deshace: lo subía antes de saber si la
             # fila entraba, y una carga con fallos decía haber creado más de
             # las que había.

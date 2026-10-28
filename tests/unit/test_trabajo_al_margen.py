@@ -63,3 +63,45 @@ def test_un_fallo_de_python_tampoco_se_propaga(db: Any) -> None:
         raise ValueError("algo se rompió al calcular la estadística")
     db.execute(text("INSERT INTO prueba_py (id) VALUES (1)"))
     assert db.execute(text("SELECT count(*) FROM prueba_py")).scalar_one() == 1
+
+
+@pytest.mark.db
+def test_sobrevive_cuando_el_fallo_salta_AL_VOLCAR_lo_que_el_ORM_tenia_pendiente(
+    db: Any, tenant_id: UUID
+) -> None:
+    """El caso que faltaba, y es el que de verdad pasa en producción.
+
+    Las pruebas de arriba fallan **dentro** del bloque, con un `execute` que
+    choca al momento: ahí el savepoint sigue activo y deshacerlo es obvio.
+
+    Lo que hace el producto es otra cosa. `al_margen` se usa con `db.add(...)`
+    —anotar el uso de un campo, guardar la versión anterior de un ajuste— y una
+    fila añadida no se escribe al añadirla: se escribe cuando el savepoint se
+    cierra y SQLAlchemy vuelca lo pendiente. Si choca ahí, el motor **desactiva**
+    el savepoint, así que `if punto.is_active: punto.rollback()` no deshacía
+    nada y la sesión quedaba envenenada para todo lo que viniera después.
+
+    Cómo se veía, que es por lo que costó encontrarlo: en la suite completa
+    caían dos o tres pruebas **de otros módulos** —las pestañas de la consola,
+    en un servicio distinto en cada tanda, y el ETag de ida y vuelta— con
+    `PendingRollbackError`. Sueltas pasaban todas, porque el veneno viaja por la
+    conexión que comparte el arnés. Lo que se veía siempre era la víctima.
+    """
+    from services.intelligence.agentes import Agente
+
+    db.add(Agente(tenant_id=tenant_id, clave="repetida", tipo="calificacion_leads"))
+    db.flush()
+
+    with al_margen(db, "prueba.falla_al_volcar"):
+        # No choca aquí: `add` no escribe. Choca cuando el savepoint se cierra
+        # y el motor vuelca lo pendiente contra `uq_agente_clave`.
+        db.add(Agente(tenant_id=tenant_id, clave="repetida", tipo="calificacion_leads"))
+
+    # Y la sesión sigue viva. Esto es lo que moría, arrastrando a la siguiente
+    # petición —que no tenía nada que ver— con un mensaje que no la menciona.
+    db.add(Agente(tenant_id=tenant_id, clave="otra", tipo="calificacion_leads"))
+    db.flush()
+    total = db.execute(
+        text("SELECT count(*) FROM agentes_ia WHERE tenant_id = :t"), {"t": tenant_id}
+    ).scalar_one()
+    assert total == 2, "la operación de después no llegó a ejecutarse"
