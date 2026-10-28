@@ -71,6 +71,36 @@ La primera es la que manda: las otras dos existen para fallar antes y con mejor
 mensaje. Hay un gate que hace *fuzzing* de tenant contra todas las rutas
 publicadas, y ha encontrado fugas reales.
 
+#### Qué prueba la suite y qué no
+
+Conviene saberlo porque se confunde, y confundirlo da una falsa tranquilidad:
+**ninguna prueba de la suite ejercita la RLS**. El arnés conecta con un rol
+superusuario, y Postgres se salta Row-Level Security para un superusuario pase
+lo que pase, esté la política en FORCE o no. El propio arranque lo dice en cada
+pasada —`arranque.rls_sin_garantia`— y es correcto que lo diga.
+
+O sea que lo que la suite comprueba es la **segunda y la tercera** capa: el
+filtro del ORM y el contexto de la petición. Que son las que se rompen más a
+menudo, y las que rompió la fuga del 27-10-2026. Pero la primera, la que sigue
+puesta el día que alguien escriba una consulta a mano, **sólo se puede
+comprobar contra un despliegue de verdad**:
+
+```
+python scripts/de_quien_son_las_filas.py
+```
+
+Mira tres cosas, de más grave a menos: con qué rol se conecta la aplicación
+—si es superusuario o puede saltarse la RLS, la política no filtra nada—, qué
+tablas con `tenant_id` no tienen RLS, FORCE o política, y la que de verdad
+contesta: se pone en el sitio de un cliente y **cuenta las filas ajenas que
+ve**. Lo demás son indicios de que debería funcionar; esto es mirarlo.
+
+El mismo script separa los dos problemas que desde la pantalla se confunden:
+que los datos **se vean** de todos los tenants, y que estén **copiados** en
+todos. Se arreglan en sitios opuestos —el primero en la sesión, el segundo
+borrando— y para distinguirlos compara los nombres, no sólo cuenta tenants por
+tabla: dos tenants con cuentas distintas son dos clientes, no una copia.
+
 ### 1.3 El metamodelo
 
 Los objetos y los campos de cada tenant viven en `metadata` y se aplican en

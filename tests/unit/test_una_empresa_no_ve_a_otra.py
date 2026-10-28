@@ -622,3 +622,171 @@ def test_mirar_los_datos_de_un_cliente_hay_que_pedirlo_y_sólo_puede_la_platafor
     # Y lo ilegible cae a lo suyo, no a todos.
     assert tenant_mirado(_Peticion("no-es-un-uuid"), operador) == mio
     assert tenant_mirado(_Peticion(""), operador) == mio
+
+
+# ── El caso de verdad: un cliente dado de alta y visto desde fuera ────────
+#
+# Las dos pruebas de arriba miran las FUNCIONES que deciden —`_cruza_tenants` y
+# `tenant_mirado`—, y eso deja un hueco con forma de fallo real: siguen pasando
+# aunque `get_db` deje de llamarlas, que es exactamente donde vivía la fuga. Y
+# el barrido de `test_fuzzing_tenant` recorre las fichas, no los LISTADOS, que
+# es donde se vio: «Cuentas» con las de ocho clientes mezcladas.
+#
+# Así que aquí se planta el caso entero y se pide por la ruta: una cuenta en el
+# tenant A, cuatro formas de pedirla desde el B, y la única que la enseña es la
+# que existe para eso.
+#
+# **Y lo que esto NO prueba, dicho aquí para que nadie lo dé por probado:** la
+# RLS. El arnés conecta como SUPERUSER —el propio arranque lo grita:
+# `arranque.rls_sin_garantia`— y Postgres se salta Row-Level Security para un
+# superusuario pase lo que pase. O sea que lo que se mide aquí es la PRIMERA
+# red, la que pone la aplicación. La segunda —la que sigue puesta el día que
+# alguien escriba una consulta a mano— no la puede medir ninguna prueba de esta
+# suite, y por eso se mide contra el despliegue vivo con
+# `scripts/de_quien_son_las_filas.py`, que se pone en el sitio de un cliente y
+# cuenta las filas ajenas que ve.
+
+
+def _cabeceras_de(
+    tenant_id: UUID, *, plataforma: bool = False, mirando: UUID | None = None
+) -> dict[str, str]:
+    from crmcore.config import get_settings
+    from crmcore.http.deps import (
+        H_PERMISOS,
+        H_PLATAFORMA,
+        H_TENANT,
+        H_TENANT_MIRADO,
+        firmar_cabeceras_internas,
+    )
+
+    # `*:*` a propósito: con permisos justos, un 403 por falta de permiso
+    # taparía un aislamiento roto y la prueba pasaría por el motivo equivocado.
+    cabeceras = {H_TENANT: str(tenant_id), "x-crm-user": str(uuid4()), H_PERMISOS: "*:*"}
+    if plataforma:
+        cabeceras[H_PLATAFORMA] = "1"
+    firmadas = firmar_cabeceras_internas(cabeceras, get_settings().secret_key.get_secret_value())
+    # La cabecera de «qué cliente estoy mirando» va FUERA de la firma, igual
+    # que la manda el navegador: si se firmara aquí, la prueba mediría una
+    # petición que nadie hace.
+    if mirando is not None:
+        firmadas[H_TENANT_MIRADO] = str(mirando)
+    return firmadas
+
+
+@pytest.fixture
+def cliente_party() -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED")}
+    os.environ["OUTBOX_ENABLED"] = "false"
+    os.environ["TAREAS_FONDO_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        app = importlib.import_module("services.party.main").app
+        with TestClient(app) as cli:
+            yield cli
+    finally:
+        for clave, valor in previo.items():
+            if valor is None:
+                os.environ.pop(clave, None)
+            else:
+                os.environ[clave] = valor
+        get_settings.cache_clear()
+
+
+def _ids(respuesta: Any) -> list[str]:
+    """Los identificadores, **no los nombres**.
+
+    Medido al escribir esto: el listado devuelve «··cosa» en vez de «Ficosa»
+    —lo tapa la política de campo—, así que una comprobación por nombre daba
+    «Ficosa no está» en los cuatro casos y la prueba pasaba entera por el
+    motivo equivocado, incluido el caso que TIENE que verla. El identificador
+    no lo tapa nada.
+    """
+    datos = respuesta.json()
+    filas = datos if isinstance(datos, list) else (datos.get("items") or [])
+    return [str(f.get("id") or "") for f in filas]
+
+
+@pytest.mark.despliegue
+def test_una_cuenta_de_un_cliente_no_sale_en_el_listado_de_otro(
+    cliente_party: Any, db: Any, tenant_id: UUID, otro_tenant_id: UUID
+) -> None:
+    """El caso tal cual se dio: una empresa dada de alta en un tenant, buscada
+    desde otro. Y en el LISTADO, que es donde se vio y donde el barrido de
+    fichas no mira.
+
+    Las cuatro formas de pedirlo, porque el aislamiento se rompe por una sola:
+
+      1. un usuario normal del otro cliente — no la ve;
+      2. **quien opera la plataforma**, desde su propio tenant, en una pantalla
+         de negocio — tampoco. Éste es el que estaba roto: `get_db` abría la
+         sesión con `sistema=True` para cualquier ruta, y eso salta la RLS;
+      3. quien opera la plataforma **pidiendo mirar** ese cliente — sí, que es
+         para lo que existe la cabecera y por eso la barra lo avisa en ámbar;
+      4. un usuario normal mandando esa misma cabecera a mano — no: la
+         cabecera no concede nada a quien no opera la plataforma.
+    """
+    from services.party.modelos import Cuenta
+
+    ficosa = Cuenta(tenant_id=tenant_id, nombre="Ficosa", clave_canonica="ficosa")
+    db.add(ficosa)
+    db.flush()
+    suya = str(ficosa.id)
+
+    # 1. Otro cliente, usuario normal.
+    ajeno = cliente_party.get("/api/v1/accounts", headers=_cabeceras_de(otro_tenant_id))
+    assert ajeno.status_code == 200, ajeno.text
+    assert suya not in _ids(ajeno)
+
+    # 2. Quien opera la plataforma, en una pantalla de negocio. El que se rompió.
+    operador = cliente_party.get(
+        "/api/v1/accounts", headers=_cabeceras_de(otro_tenant_id, plataforma=True)
+    )
+    assert operador.status_code == 200, operador.text
+    assert suya not in _ids(operador), (
+        "La cuenta de otro cliente sale en una pantalla de negocio de quien "
+        "opera la plataforma. Es la fuga del 27-10-2026: la sesión la tiene "
+        "que decidir la RUTA, no quién la pide."
+    )
+
+    # 3. Pidiendo mirar ese cliente, a propósito.
+    mirando = cliente_party.get(
+        "/api/v1/accounts",
+        headers=_cabeceras_de(otro_tenant_id, plataforma=True, mirando=tenant_id),
+    )
+    assert mirando.status_code == 200, mirando.text
+    assert suya in _ids(mirando), (
+        "Mirar a un cliente a propósito tiene que funcionar: si no, quien "
+        "opera la plataforma no puede dar soporte y acabará pidiendo que se "
+        "le devuelva la vista global."
+    )
+
+    # 4. Y la misma cabecera en manos de quien no opera la plataforma.
+    colado = cliente_party.get(
+        "/api/v1/accounts", headers=_cabeceras_de(otro_tenant_id, mirando=tenant_id)
+    )
+    assert colado.status_code == 200, colado.text
+    assert suya not in _ids(
+        colado
+    ), "Una cabecera que cualquiera puede escribir le ha movido de tenant."
+
+
+@pytest.mark.despliegue
+def test_y_el_de_siempre_sigue_viendo_lo_suyo(cliente_party: Any, db: Any, tenant_id: UUID) -> None:
+    """La otra mitad, y no es de adorno: un aislamiento que no deja ver NADA
+    también pasa las cuatro comprobaciones de arriba. Sin esto, romper el
+    listado entero se leería como aislamiento perfecto."""
+    from services.party.modelos import Cuenta
+
+    ficosa = Cuenta(tenant_id=tenant_id, nombre="Ficosa", clave_canonica="ficosa")
+    db.add(ficosa)
+    db.flush()
+
+    propia = cliente_party.get("/api/v1/accounts", headers=_cabeceras_de(tenant_id))
+    assert propia.status_code == 200, propia.text
+    assert str(ficosa.id) in _ids(propia)
