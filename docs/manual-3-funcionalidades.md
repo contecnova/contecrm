@@ -7701,6 +7701,27 @@ lleva por delante lo del otro.
 Las versiones se comparan **por número y no como texto**: como texto, «1.10» es
 menor que «1.9» y una actualización se saltaría sin avisar.
 
+### Y todo eso se mira desde una pantalla
+
+Hasta el 28-10-2026 la familia entera estaba publicada y sin puerta: el módulo
+«Modelo de datos» listaba los instalados con su versión y ahí se acababa. El
+servidor sabía decir si el módulo sigue siendo el que se publicó, qué partes
+usa el cliente de verdad, qué ajustó a mano y qué pantallas aporta — y nada de
+eso se alcanzaba. El manifiesto, además, estaba **guardado entero** y la ficha
+devolvía cuatro campos.
+
+La ficha de un módulo contesta las tres preguntas que se hacen de verdad, en
+este orden: **qué declara** —objetos, campos, espacio de nombres, de qué
+depende y su huella—, **si sigue siendo el que instalamos** y **si sobra**.
+
+Las dos últimas tienen la misma regla y es la que hace que sirvan: **dicen que
+no saben cuando no saben**. Si la versión instalada ya no está en el catálogo
+no se puede comparar, y entonces se dice eso en vez de pintar un visto bueno
+—un «íntegro» calculado sobre nada es peor que un «no se sabe»—. Y la
+telemetría avisa **antes** de enseñar la lista de lo que no se usa cuando el
+módulo lleva pocos días puesto: concluir que algo sobra a los dos días es
+concluir sobre nada, y la lista invita a hacerlo.
+
 ### Instalar es una decisión (`CRM-00.04.04.02`)
 
 **Simular es el valor por defecto.** Instalar un módulo es un cambio de modelo de

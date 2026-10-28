@@ -130,6 +130,10 @@ const Plataforma = pantalla(
   () => import("@/paginas/Plataforma"),
   (m) => m.Plataforma,
 );
+const ModuloInstalado = pantalla(
+  () => import("@/paginas/ModuloInstalado"),
+  (m) => m.ModuloInstalado,
+);
 const ObjetoDelModelo = pantalla(
   () => import("@/paginas/ObjetoDelModelo"),
   (m) => m.ObjetoDelModelo,
@@ -290,6 +294,10 @@ export function App() {
               habría salido en 404. Ésta abre por identificador, lee el nombre
               y con él pide lo demás. */}
           <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
+          {/* Por CLAVE y no por identificador: las rutas hijas de un módulo
+              —integridad, telemetría— se dirigen por su clave, y pasarles el
+              identificador las dejaría en 404, que es peor que no tenerlas. */}
+          <Route path="/m/modelo/modulo/:clave" element={<ModuloInstalado />} />
           <Route path="/m/:ruta/:tipo/:id" element={<Ficha />} />
           <Route path="/estado" element={<Estado />} />
           <Route path="/seguridad" element={<Seguridad sesion={sesion} />} />

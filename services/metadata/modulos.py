@@ -1161,7 +1161,27 @@ def instalado(db: Session, tenant_id: UUID, clave: str) -> dict[str, Any] | None
     )
     if fila is None:
         return None
+    manifiesto = dict(fila.manifiesto or {})
+    objetos = list(manifiesto.get("objetos") or [])
     return {
+        # Lo que el módulo DECLARA, y no sólo que está puesto
+        # (CRM-00.04.04.01, .03, .05, .08). Estaba guardado entero y la ficha
+        # devolvía cuatro campos, así que el manifiesto —que es la pieza de la
+        # que vive todo esto— no se podía mirar desde ninguna parte. Va
+        # resumido y no en crudo: un volcado del JSON obliga a leerlo para
+        # saber si trae tres objetos o treinta.
+        "objetos": [str(o.get("nombre") or o.get("clave") or "?") for o in objetos],
+        "campos": sum(len(o.get("campos") or []) for o in objetos),
+        # El prefijo con el que viven sus cosas, que es lo que impide que dos
+        # módulos de sectores distintos se pisen un objeto llamado «pedido».
+        "espacio_de_nombres": str(
+            manifiesto.get("espacio_de_nombres") or manifiesto.get("prefijo") or fila.clave
+        ),
+        "depende_de": dict(manifiesto.get("depende_de") or {}),
+        "nucleo_minimo": str(manifiesto.get("nucleo_minimo") or ""),
+        # La huella con la que se instaló: es lo que convierte «de quién es este
+        # módulo» en algo comprobable y no en una línea del manifiesto.
+        "huella": fila.huella,
         "clave": fila.clave,
         "nombre": fila.nombre,
         "version": fila.version,

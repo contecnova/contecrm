@@ -315,7 +315,22 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            propia ruta que los crea justifica escribirlos con
 #                            que «una excepcion que vive en la cabeza de quien
 #                            la pidio es la que nadie revisa al año siguiente»
-TOPE_SIN_PANTALLA = 368
+#   28-10-2026  365 de 778  la ficha de un modulo vertical instalado: su
+#                            manifiesto —que estaba guardado ENTERO y la ficha
+#                            devolvia cuatro campos—, su espacio de nombres,
+#                            de que depende, su huella, si sigue siendo el que
+#                            se instalo y que parte se usa de verdad. Siete.
+#                            Y un arreglo de ESTA MISMA PRUEBA que va en
+#                            sentido contrario: los parrafos de «lo que esta
+#                            pantalla NO declara» contaban como declaracion,
+#                            asi que escribir «esta pantalla NO ensena CRM-X»
+#                            cerraba CRM-X. Ocho capacidades constaban con
+#                            pantalla por ese motivo y por ningun otro, en
+#                            cinco pantallas, cuatro de ellas de antes de hoy.
+#                            La honestidad del texto volvia deshonesta la
+#                            cuenta. Arreglado, vuelven a contarse: 7 cerradas
+#                            menos 4 que reaparecen
+TOPE_SIN_PANTALLA = 365
 
 
 def _es_pantalla(p: Path) -> bool:
@@ -323,13 +338,34 @@ def _es_pantalla(p: Path) -> bool:
     return "/pruebas/" not in texto and ".test." not in texto
 
 
+# Los párrafos en los que una pantalla dice lo que **no** enseña. Existen
+# porque declarar lo que no se hace es justo lo que esta prueba impide, y son
+# buena prosa — pero el identificador que nombran estaba contando como
+# declarado. Es decir: escribir «esta pantalla NO enseña CRM-X» cerraba
+# CRM-X. La honestidad del texto volvía deshonesta la cuenta.
+#
+# Medido el 28-10-2026: **ocho capacidades** constaban con pantalla por este
+# motivo y por ningún otro, en cinco pantallas. Cuatro venían de antes.
+RE_NO_DECLARA = re.compile(
+    r"(?:\*\*no\*\* declara|no declara, aunque lo roce|NO declara)(?:.|\n)*?(?=\n \*\n|\n \*/)",
+    re.IGNORECASE,
+)
+
+
 @functools.cache
 def _ids_del_front() -> frozenset[str]:
-    partes = [
-        p.read_text(encoding="utf-8", errors="ignore")
-        for p in FRONT.rglob("*.ts*")
-        if _es_pantalla(p)
-    ]
+    """Los identificadores que una pantalla dice enseñar.
+
+    Se quitan antes los párrafos de «lo que esta pantalla **no** declara»: lo
+    que nombran es precisamente lo que NO tiene pantalla, y contarlo al revés
+    convierte el aviso en el atajo. Quien escribe esa prosa está siendo
+    cuidadoso; la cuenta tiene que premiarlo, no aprovecharse.
+    """
+    partes = []
+    for p in FRONT.rglob("*.ts*"):
+        if not _es_pantalla(p):
+            continue
+        partes.append(RE_NO_DECLARA.sub(" ", p.read_text(encoding="utf-8", errors="ignore")))
     return frozenset(RE_ID.findall("\n".join(partes)))
 
 

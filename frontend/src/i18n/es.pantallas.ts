@@ -569,6 +569,32 @@ const pantallas = {
       preguntar: "Preguntar",
     },
   },
+  modulo: {
+    entradilla: "Versión {{version}} · {{autor}} · {{estado}}",
+    sinAutor: "sin autor declarado",
+    manifiesto: "Qué declara",
+    trae: "Trae {{objetos}} objetos y {{campos}} campos",
+    espacioDeNombres:
+      "Sus cosas viven bajo «{{prefijo}}», para que dos módulos no se pisen un objeto con el mismo nombre",
+    dependeDe: "Depende de: {{cuales}}",
+    sinDependencias: "No depende de ningún otro módulo",
+    nucleo: "núcleo mínimo {{version}}",
+    huella: "Huella {{huella}}…",
+    sinHuella: "Sin huella: no se instaló desde el catálogo firmado",
+    integridad: "¿Sigue siendo el que instalamos?",
+    integro: "Lo instalado coincide con lo publicado",
+    tocado: "Hay partes que ya no coinciden con lo publicado",
+    tocadosAMano: "Tocado a mano: {{cuales}}",
+    desaparecidos: "Ya no está: {{cuales}}",
+    uso: "¿Se usa?",
+    usados: "{{usados}} de {{elementos}} elementos se han usado alguna vez",
+    sinUsar: "Sin usar nunca: {{cuales}}",
+    ajustados: "Ajustados por el cliente: {{cuales}}",
+    pantallas: "Qué aporta a la interfaz",
+    sinPantallas: "Este módulo no declara ninguna pantalla",
+    sinPantallasPorque:
+      "El front oficial sólo pinta lo que el módulo declara. Sin superficie declarada, sus objetos se ven por el módulo genérico.",
+  },
   suite: {
     organigrama:
       "Áreas del cliente, definidas una vez y compartidas por las tres herramientas ({{cuantas}})",
