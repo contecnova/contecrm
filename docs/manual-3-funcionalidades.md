@@ -6564,6 +6564,17 @@ habitual, hace imposible decir «esto es grave pero puede esperar a mañana» y
 funden, alguien empieza a marcar todo como crítico y el campo deja de significar
 nada.
 
+**Y la severidad es cuatro valores, los mismos en todas partes.** `baja`,
+`media`, `alta` y `critica`. Se dice aquí porque hasta el 28-10-2026 no era
+verdad del todo: la del caso sí era lista cerrada, la del problema era texto
+libre —«Alta», «ALTA» y «muy alta» se guardaban las tres y contaban como tres
+severidades distintas al agrupar— y la telemetría mantenía su propia copia de la
+lista para mandarla en el comando que abre un caso. Esa copia coincidía, pero el
+día que hubiera dejado de coincidir el aparato habría avisado, el comando habría
+salido, el que lo recibe lo habría rechazado por severidad no válida y **el caso
+no se habría abierto**: la alarma existiendo y la atención no. Es una lista
+sola, de las que cruzan de un servicio a otro, y los tres sitios la leen de ahí.
+
 El caso lleva **código legible** (`CAS-2026-00042`): es lo que el cliente escribe
 en el asunto de un correo y lo que se dice por teléfono. Sin él, la referencia
 acaba siendo un identificador opaco que nadie transcribe bien.

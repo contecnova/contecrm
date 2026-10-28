@@ -1013,3 +1013,29 @@ def test_donde_se_procesa_un_dato_es_UNA_lista() -> None:
     # «otra» vive donde describe y no donde promete.
     assert "otra" not in REGIONES
     assert "otra" in REGIONES_DE_PROVEEDOR
+
+
+def test_la_severidad_que_cruza_el_bus_es_UNA_lista() -> None:
+    """La telemetría la manda y el servicio de atención la valida al recibirla.
+
+    `crmcore.contratos` comprueba que el sobre lleve el campo `severidad`; no
+    comprueba —ni puede— que los dos lados entiendan lo mismo por su valor. Con
+    dos listas, el día que una gane un valor que la otra no tiene, el aparato
+    avisa, el comando sale, el que lo recibe lo rechaza por severidad no válida
+    y **el caso no se abre**: la alarma existe y la atención no. Las dos mitades
+    se habrían quedado en verde.
+    """
+    from crmcore.vocabularios import SEVERIDADES
+
+    from services.integration.telemetria import SEVERIDADES as LA_QUE_MANDA
+    from services.service.problemas import SEVERIDADES as LA_DEL_PROBLEMA
+    from services.service.servicio import SEVERIDADES as LA_QUE_RECIBE
+
+    assert LA_QUE_MANDA is SEVERIDADES, "quien MANDA la severidad se ha escrito su propia lista"
+    assert LA_QUE_RECIBE is SEVERIDADES, "quien la RECIBE se ha escrito su propia lista"
+    assert LA_DEL_PROBLEMA is SEVERIDADES, "el problema se ha escrito su propia lista"
+
+    # La prioridad no cruza: es de quien atiende, y se queda en su servicio.
+    from services.service.servicio import PRIORIDADES
+
+    assert PRIORIDADES is not SEVERIDADES, "severidad y prioridad son dos campos"

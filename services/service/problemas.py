@@ -35,6 +35,7 @@ from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
+from crmcore.vocabularios import SEVERIDADES
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -189,6 +190,17 @@ def abrir(
     casos: list[UUID] | None = None,
 ) -> Problema:
     """Abre un problema, opcionalmente con los casos que ya se le atribuyen."""
+    # La severidad era texto libre, y sale al bus en `problem.opened`: «Alta»,
+    # «ALTA» y «muy alta» se guardaban las tres, contaban como tres severidades
+    # distintas al agrupar y ninguna coincidía con la del caso, que sí es lista
+    # cerrada. Es la misma pregunta —qué está roto y cuánto—, así que es la
+    # misma lista.
+    if severidad not in SEVERIDADES:
+        raise ErrorValidacion(
+            f"Severidad «{severidad}» no válida.",
+            error_code="problema.severidad_no_valida",
+            detalle={"validas": list(SEVERIDADES)},
+        )
     fila = Problema(
         tenant_id=uow.tenant_id,
         titulo=titulo.strip(),

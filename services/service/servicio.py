@@ -19,6 +19,7 @@ from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.fechas import hoy
 from crmcore.logging import get_logger
+from crmcore.vocabularios import SEVERIDADES as SEVERIDADES_QUE_CRUZAN
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -33,8 +34,11 @@ logger = get_logger(__name__)
 ESTADOS_PAUSA = ("esperando_cliente",)
 ESTADOS_TERMINALES = ("resuelto", "cerrado")
 
+# La prioridad es de aquí y no sale: en qué orden se atiende es decisión del
+# servicio. La severidad sí viaja —la manda la telemetría en el comando que abre
+# un caso—, así que se escribe una vez en `crmcore.vocabularios`.
 PRIORIDADES = ("baja", "media", "alta", "critica")
-SEVERIDADES = ("baja", "media", "alta", "critica")
+SEVERIDADES = SEVERIDADES_QUE_CRUZAN
 
 
 def _ahora() -> datetime:

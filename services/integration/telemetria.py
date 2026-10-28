@@ -46,6 +46,7 @@ from crmcore.errors import ErrorValidacion
 from crmcore.ids import nuevo_id
 from crmcore.logging import get_logger
 from crmcore.runtime import settings as rt
+from crmcore.vocabularios import SEVERIDADES as SEVERIDADES_DEL_CASO
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -75,8 +76,11 @@ logger = get_logger(__name__)
 #   aviso       solo deja el registro y el evento; no molesta a nadie
 ACCIONES = ("caso", "preventivo", "aviso")
 
-# Severidades admitidas, que se trasladan tal cual al caso.
-SEVERIDADES = ("baja", "media", "alta", "critica")
+# Severidades admitidas, que se trasladan tal cual al caso — y por eso la lista
+# es la del caso, de `crmcore.vocabularios`, y no una copia: si dejaran de
+# coincidir, el aparato avisaría y el caso **no se abriría**, porque el que lo
+# recibe la valida.
+SEVERIDADES = SEVERIDADES_DEL_CASO
 
 
 class Dispositivo(Base, TimestampMixin):

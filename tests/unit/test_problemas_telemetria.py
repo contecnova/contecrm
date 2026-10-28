@@ -42,6 +42,23 @@ def _caso(uow: UnidadDeTrabajo, asunto: str = "No arranca", **kw: Any) -> Any:
 # ── Problemas (CRM-04.01.01.11) ───────────────────────────────────────────
 
 
+def test_la_severidad_de_un_problema_no_es_texto_libre(uow: UnidadDeTrabajo) -> None:
+    """La del caso era lista cerrada y la del problema no, siendo la misma cosa.
+
+    «Alta», «ALTA» y «muy alta» se guardaban las tres. Lo que eso rompe no es
+    el alta —que funciona— sino todo lo que viene después: agrupar problemas por
+    severidad cuenta tres donde hay una, y `problem.opened` sale al bus con un
+    valor que el que lo recibe no sabe interpretar. Es la misma pregunta que la
+    del caso —qué está roto y cuánto—, así que es la misma lista.
+    """
+    with pytest.raises(ErrorValidacion) as e:
+        prb.abrir(uow, titulo="El sensor miente", severidad="muy alta")
+    assert e.value.error_code == "problema.severidad_no_valida"
+    # Y las cuatro de verdad entran.
+    for buena in ("baja", "media", "alta", "critica"):
+        assert prb.abrir(uow, titulo=f"Con {buena}", severidad=buena).severidad == buena
+
+
 def test_un_problema_no_se_resuelve_con_un_apano(uow: UnidadDeTrabajo) -> None:
     """Cerrarlo con «reiniciamos el servicio» lo hace desaparecer de la lista y
     volver dentro de tres semanas con otro nombre."""
