@@ -40,7 +40,13 @@ ahora, para que el siguiente no lo repita:
   * **la conexión llega limpia**: hay una comprobación al entrar que lo dice,
     así que no es una prueba anterior la que envenena;
   * **una pestaña envenena y caen todas las de después**, siempre a partir de
-    una que contestó 200.
+    una que contestó 200. Medido el 28-10-2026 con el rastro ya instrumentado:
+    la última que va bien es «Macros» (`/api/v1/macros`) en `service` y
+    «Papelera» (`/api/v1/marketing/papelera`) en `marketing`. Las dos son
+    `SELECT` planos, sin savepoints, así que el veneno no sale de su consulta;
+    y en la misma tanda cae también una prueba de territorios, que no tiene
+    nada que ver. O sea: el que envenena no es el que falla, y tampoco parece
+    ser el anterior — queda por encontrar.
 
 Por eso esta prueba apunta la pestaña por su nombre cuando revienta, y no deja
 que la excepción suba: el rastro terminaba en `get_db` y no nombraba la ruta.
@@ -198,6 +204,7 @@ def test_las_pestanas_de_la_consola_abren(
     cabeceras = _cabeceras(tenant_id)
     rotas: list[str] = []
     abiertas = 0
+    ultima_buena = "ninguna todavía"
     try:
         with TestClient(importlib.import_module(f"services.{servicio}.main").app) as cli:
             for nombre, ruta in pestanas:
@@ -209,9 +216,17 @@ def test_las_pestanas_de_la_consola_abren(
                 try:
                     respuesta = cli.get(ruta, headers=cabeceras)
                 except Exception as exc:  # noqa: BLE001 — el nombre es el dato
-                    rotas.append(f"«{nombre}» ({ruta}) ha reventado: {type(exc).__name__}: {exc}")
+                    # Y LA ÚLTIMA QUE FUE BIEN, que es el dato que de verdad
+                    # falta: cuando una envenena la sesión caen todas las de
+                    # después, así que la primera que revienta no es la
+                    # culpable — la culpable es la anterior.
+                    rotas.append(
+                        f"«{nombre}» ({ruta}) ha reventado: {type(exc).__name__}: {exc}. "
+                        f"La última que fue bien: «{ultima_buena}»"
+                    )
                     abiertas += 1
                     continue
+                ultima_buena = f"{nombre} ({ruta})"
                 abiertas += 1
                 if respuesta.status_code != 200:
                     rotas.append(
