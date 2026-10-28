@@ -827,7 +827,12 @@ corresponde.
 
 ### Duplicados: el sistema los busca, tú decides
 
-La pestaña de **Duplicados** ya no es un buscador: es una **cola**. El sistema
+Están en **Clientes → Duplicados por resolver**. Es el único sitio, y a
+propósito: hasta el 28-10-2026 había además una pestaña dentro de «Cuentas y
+contactos» que enseñaba las mismas parejas y no dejaba hacer nada con ellas.
+Dos sitios para lo mismo, y en uno de ellos no se podía decidir.
+
+No es un buscador: es una **cola**. El sistema
 recorre tu cartera y propone parejas que podrían ser la misma empresa, cada una
 con su **probabilidad** y con **qué ha coincidido** —el NIF, el dominio de
 correo, el nombre—. Esa última parte es la que permite decidir sin abrir las dos
@@ -836,12 +841,19 @@ fichas: «mismo NIF» y «el nombre se parece» son dos cosas muy distintas.
 De cada pareja se hace una de tres cosas:
 
 - **Fusionar**, diciendo cuál de las dos se queda. Esa es la que conserva el
-  identificador que usan tus otros sistemas, así que la eliges tú.
+  identificador que usan tus otros sistemas, así que la eliges tú. Te avisa con
+  los dos nombres delante antes de hacerlo.
 - **No es un duplicado**, y se recuerda: no te la vuelve a proponer.
 - **Dejarla**, si ahora no toca.
 
 Nada se fusiona solo, ni siquiera cuando la señal es concluyente: mezclar el
 histórico de dos clientes cuesta mucho de deshacer.
+
+**No hay «borrar ésta», y no es un olvido:** borrarla tiraría su histórico —sus
+casos, sus oportunidades, lo que se habló— y dejaría huérfano lo que colgaba de
+ella. Fusionar hace lo que quieres: una desaparece de las listas y lo suyo pasa
+a la que se queda. Y si resulta que son dos empresas distintas que se parecen,
+desde ahí se abre cada ficha para cambiar lo que las distingue.
 
 El buscador de antes sigue estando donde sirve: al dar de alta una ficha, para
 avisarte mientras escribes.

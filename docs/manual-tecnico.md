@@ -101,6 +101,33 @@ todos. Se arreglan en sitios opuestos —el primero en la sesión, el segundo
 borrando— y para distinguirlos compara los nombres, no sólo cuenta tenants por
 tabla: dos tenants con cuentas distintas son dos clientes, no una copia.
 
+### 1.2.1 La misma colección en dos sitios
+
+Pasa, y a veces está bien. La regla para decidirlo es una sola pregunta: **¿qué
+pregunta contesta cada sitio?** Si las dos contestan la misma, es una sola
+pantalla y la otra sobra.
+
+Está bien cuando el segundo sitio cambia la pregunta:
+
+- **otro corte** — la ficha de cliente enseña los casos *de esa cuenta*, el
+  tablero enseña las oportunidades *como embudo*, Inicio enseña las actividades
+  *de hoy*;
+- **entrada, no listado** — el chat pide usuarios *para elegir a alguien*,
+  Nexus pide agentes *para elegir uno*, entornos y despliegue pide entornos
+  *para elegir dónde*.
+
+Está mal cuando el segundo sitio es **la misma lista con menos poder**. El caso
+que lo destapó: la cola de duplicados salía como pestaña del módulo de cuentas
+—que sólo pinta filas— y como pantalla propia, que además deja fusionar
+eligiendo cuál se queda, marcar que no son la misma y dejarlo para luego. Quien
+entraba por la pestaña veía dieciocho parejas, no podía hacer nada y no sabía
+que existía el otro sitio. La pestaña se quitó el 28-10-2026.
+
+Medido ese día, para no decidir por impresión: de 211 pestañas declaradas en
+`recursos.ts`, **una** ruta salía en dos pestañas (`/api/v1/supresiones`) y
+**15** colecciones las pide además una pantalla a medida. De esas 15, casi
+todas cambian la pregunta; la de duplicados era la que no.
+
 ### 1.3 El metamodelo
 
 Los objetos y los campos de cada tenant viven en `metadata` y se aplican en

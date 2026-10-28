@@ -1,5 +1,6 @@
 /**
- * Duplicados: la cola donde se DECIDEN, no donde se miran (CRM-01.01.03.04).
+ * Duplicados: la cola donde se DECIDEN, no donde se miran
+ * (CRM-01.01.04.01, CRM-01.01.04.03).
  *
  * El barrido encontraba las parejas y el listado genérico las pintaba. Eso es
  * todo lo que había: dieciocho tarjetas con dos nombres y una probabilidad, y

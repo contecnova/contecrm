@@ -695,25 +695,17 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "party",
         permiso: "contact:read",
       },
-      {
-        // La COLA, no el buscador. El buscador sigue existiendo y hace falta
-        // —avisa mientras se escribe un alta—, pero como pantalla solo protege
-        // lo que entra desde hoy: obliga a sospechar de una ficha concreta y a
-        // teclear su nombre. Los duplicados no llegan de uno en uno, llegan de
-        // golpe con una importación, y de los que ya están dentro esa pantalla
-        // no decía nada.
-        nombre: "Duplicados",
-        listar: "/api/v1/data-quality/accounts/duplicates/cola",
-        servicio: "party",
-        columnas: [
-          "probabilidad",
-          "a_nombre",
-          "b_nombre",
-          "senales",
-          "concluyente",
-        ],
-        permiso: "account:read",
-      },
+      // LA COLA DE DUPLICADOS NO ES UNA PESTAÑA, y es una decisión, no un
+      // olvido. Estuvo aquí hasta el 28-10-2026 y enseñaba exactamente la
+      // misma colección que la pantalla «Duplicados por resolver», pero sin
+      // poder decidir ninguna: quien entraba por aquí veía dieciocho parejas,
+      // no podía hacer nada con ellas y **no sabía que existía el otro sitio**.
+      //
+      // No eran dos vistas del mismo dato: era la misma vista, una capada. La
+      // misma colección en dos sitios sólo se sostiene cuando cada uno
+      // contesta una pregunta distinta —la ficha enseña los casos DE ESA
+      // CUENTA, el tablero enseña las oportunidades COMO EMBUDO—, y aquí no
+      // la había.
       {
         nombre: "Derechos del interesado",
         objeto: "solicitud_derechos",

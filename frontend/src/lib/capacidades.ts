@@ -184,8 +184,6 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-01.01.02.03",
     "CRM-01.01.02.04",
     "CRM-01.01.02.06",
-    "CRM-01.01.04.01",
-    "CRM-01.01.04.03",
     "CRM-01.01.04.08",
     "CRM-00.06.02.04",
   ],

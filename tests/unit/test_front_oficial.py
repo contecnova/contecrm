@@ -437,7 +437,22 @@ PRESUPUESTO_KB = 118
 #   Medido antes de subirlo: 192,98 kB. Se deja en 198 y no en 193 por lo
 #   mismo que la vez anterior —margen para un par de pantallas— y porque el
 #   tope que se roza se sube cada semana, que es como deja de medir.
-PRESUPUESTO_TOTAL_KB = 198
+#   28-10-2026  198 → 205 kB, y otra vez es producto. Lo que entró ese día:
+#   ------------------------------------------------------------------------
+#   «Nexus» —la pantalla desde la que se le pide algo al agente autónomo, que
+#   estaba entero por debajo y sólo se veía como una fila en un listado de
+#   administración— y «Duplicados por resolver», que convierte la cola de
+#   parejas en algo que se puede decidir: fusionar eligiendo cuál se queda,
+#   decir que no son la misma, o dejarlo para luego. Las dos son diferidas; lo
+#   que crece es el total, no lo que se descarga al abrir.
+#
+#   Y de paso baja algo: la pestaña «Duplicados» del módulo de cuentas sale de
+#   `recursos.ts`, porque enseñaba la misma colección sin poder decidir nada.
+#
+#   Medido antes de subirlo: 199,15 kB. Se deja en 205 por lo mismo de
+#   siempre: margen para un par de pantallas, porque un tope que se roza se
+#   sube cada semana y entonces deja de medir.
+PRESUPUESTO_TOTAL_KB = 205
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

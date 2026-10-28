@@ -339,10 +339,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "contact:read"
     },
     {
-      "r": "/api/v1/data-quality/accounts/duplicates/cola",
-      "p": "account:read"
-    },
-    {
       "r": "/api/v1/data-subject-requests",
       "o": "solicitud_derechos"
     },
