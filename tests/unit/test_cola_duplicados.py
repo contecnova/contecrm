@@ -133,7 +133,9 @@ def test_una_decision_inventada_se_rechaza(uow: Any, dos_iguales: Any) -> None:
 # sin poder aprobar nada. Aquí se entra por la ruta.
 
 
-@pytest.fixture
+# Una sola vez por fichero: arrancar un servicio cuesta un par de segundos y
+# aquí se arrancaba por prueba. Lo que se mide no es el arranque.
+@pytest.fixture(scope="module")
 def cliente_party() -> Any:
     import importlib
     import os

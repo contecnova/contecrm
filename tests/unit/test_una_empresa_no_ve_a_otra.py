@@ -673,7 +673,9 @@ def _cabeceras_de(
     return firmadas
 
 
-@pytest.fixture
+# Una sola vez por fichero: arrancar un servicio cuesta un par de segundos y
+# aquí se arrancaba por prueba. Lo que se mide no es el arranque.
+@pytest.fixture(scope="module")
 def cliente_party() -> Any:
     import importlib
     import os
