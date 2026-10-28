@@ -73,6 +73,51 @@ def test_el_prefijo_de_pais_se_admite_escrito_o_no() -> None:
     assert fiscal.validar("PT502011378", "PT")[0] is True
 
 
+# Un ejemplo válido y uno inválido por cada país que declara algoritmo. Hacen
+# falta los dos: con sólo el válido, un algoritmo que dijera «sí» a todo
+# pasaría la prueba — y sería peor que no tener algoritmo, porque daría una
+# falsa sensación de maestro limpio.
+EJEMPLOS_POR_PAIS = {
+    "ES": ("B12345674", "B12345678"),
+    "PT": ("502011378", "502011379"),
+    "FR": ("40303265045", "40303265046"),
+    "IT": ("00000000000", "00000000001"),
+    "NL": ("004495445B01", "004495446B01"),
+    "BE": ("0776091951", "0776091952"),
+    "DE": ("136695976", "136695977"),
+    "IE": ("6388047V", "6388047X"),
+    "LU": ("26375245", "26375246"),
+    "DK": ("13585628", "13585629"),
+}
+
+
+def test_todos_los_paises_con_algoritmo_tienen_ejemplo_y_funcionan() -> None:
+    """Los diez, recorriendo la lista **declarada**.
+
+    La prueba de arriba cubría seis países escritos a mano; los otros cuatro
+    —Francia, Países Bajos, Irlanda, Luxemburgo, Dinamarca— declaraban
+    algoritmo y no los tocaba nadie. Un algoritmo roto ahí **rechaza un
+    identificador bueno**, que según este mismo módulo es el peor error
+    posible: quien lo sufre no tiene forma de continuar.
+
+    Se recorre `PAISES_CON_ALGORITMO` y no una lista escrita aquí, así que
+    añadir un país obliga a traer su ejemplo: si no, esto lo dice.
+    """
+    faltan = sorted(set(fiscal.PAISES_CON_ALGORITMO) - set(EJEMPLOS_POR_PAIS))
+    assert not faltan, f"países que declaran algoritmo y no tienen ejemplo: {faltan}"
+
+    for pais in fiscal.PAISES_CON_ALGORITMO:
+        bueno, malo = EJEMPLOS_POR_PAIS[pais]
+        assert (
+            fiscal.validar(bueno, pais, tipo="vat")[0] is True
+        ), f"«{pais}» rechaza un identificador bueno, que es el peor error posible"
+        # Y la otra mitad: sin ella, un algoritmo que dijera «sí» a todo
+        # pasaría igual y daría un maestro falsamente limpio.
+        assert (
+            fiscal.validar(malo, pais, tipo="vat")[0] is False
+        ), f"«{pais}» acepta un dígito de control malo"
+
+
 def test_un_digito_de_control_malo_se_rechaza() -> None:
     assert fiscal.validar("B12345678", "ES")[0] is False
     assert fiscal.validar("502011379", "PT")[0] is False

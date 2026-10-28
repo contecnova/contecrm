@@ -170,6 +170,80 @@ def test_no_se_filtra_por_un_campo_que_no_existe(
 
 
 @pytest.mark.db
+def test_cada_operador_declarado_filtra_lo_que_dice(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Los diez operadores, uno a uno y **recorriendo la lista declarada**.
+
+    Que un operador esté implementado no lo prueba: están los diez, porque uno
+    que faltara reventaría con `KeyError`. Lo que no se veía es un operador que
+    filtra **mal** — `>=` que se comporta como `>`, `empieza` que busca por
+    dentro—, y eso no da error: devuelve otras filas. Un listado que enseña las
+    filas equivocadas es peor que uno que falla, porque se usa.
+
+    La lista se recorre de `OPERADORES_FILTRO` y no se escribe aquí: una
+    escrita a mano se queda corta el día que alguien añada un operador, y justo
+    ése sería el que entra sin probar.
+    """
+    from sqlalchemy import select
+
+    from services.party.modelos import Cuenta
+
+    _publicar(db, tenant_id, "cuenta", CAMPOS)
+    for nombre, obra, presupuesto in (
+        ("Alfa", "puente", 10),
+        ("Beta", "puerto", 20),
+        ("Gamma", None, 30),
+    ):
+        db.add(
+            Cuenta(
+                tenant_id=tenant_id,
+                nombre=nombre,
+                clave_canonica=nombre.lower(),
+                campos={"presupuesto": presupuesto}
+                if obra is None
+                else {"obra": obra, "presupuesto": presupuesto},
+            )
+        )
+    db.flush()
+
+    def quienes(**kw: Any) -> set[str]:
+        cond = metamodelo.condicion(db, Cuenta, tenant_id, "cuenta", **kw)
+        return {
+            c.nombre
+            for c in db.execute(select(Cuenta).where(Cuenta.tenant_id == tenant_id, cond)).scalars()
+        }
+
+    # Lo que tiene que devolver cada uno, con los datos de arriba delante.
+    esperado: dict[str, tuple[dict[str, Any], set[str]]] = {
+        "=": ({"campo_nombre": "presupuesto", "op": "=", "valor": 20}, {"Beta"}),
+        "!=": ({"campo_nombre": "presupuesto", "op": "!=", "valor": 20}, {"Alfa", "Gamma"}),
+        ">": ({"campo_nombre": "presupuesto", "op": ">", "valor": 20}, {"Gamma"}),
+        # El que más se confunde con el de al lado: si `>=` se comportara como
+        # `>`, Beta desaparecería y nadie lo notaría.
+        ">=": ({"campo_nombre": "presupuesto", "op": ">=", "valor": 20}, {"Beta", "Gamma"}),
+        "<": ({"campo_nombre": "presupuesto", "op": "<", "valor": 20}, {"Alfa"}),
+        "<=": ({"campo_nombre": "presupuesto", "op": "<=", "valor": 20}, {"Alfa", "Beta"}),
+        "contiene": ({"campo_nombre": "obra", "op": "contiene", "valor": "uert"}, {"Beta"}),
+        # Y éste, al revés: `empieza` que buscara por dentro traería Beta.
+        "empieza": ({"campo_nombre": "obra", "op": "empieza", "valor": "puen"}, {"Alfa"}),
+        "en": (
+            {"campo_nombre": "presupuesto", "op": "en", "valor": [10, 30]},
+            {"Alfa", "Gamma"},
+        ),
+        "vacio": ({"campo_nombre": "obra", "op": "vacio", "valor": None}, {"Gamma"}),
+    }
+
+    # Ninguno sin su caso: si alguien añade un operador y no lo pone aquí, esto
+    # lo dice en vez de dejarlo entrar sin probar.
+    faltan = sorted(set(metamodelo.OPERADORES_FILTRO) - set(esperado))
+    assert not faltan, f"operadores declarados y sin caso de prueba: {faltan}"
+
+    for op, (argumentos, quien) in esperado.items():
+        assert quienes(**argumentos) == quien, f"el operador «{op}» filtra otra cosa"
+
+
+@pytest.mark.db
 def test_la_gramatica_de_operadores_esta_cerrada(
     db: Any, tenant_id: UUID, contexto_tenant: UUID
 ) -> None:
