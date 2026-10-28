@@ -818,3 +818,65 @@ def test_descargar_un_informe_en_csv_no_revienta(uow: UnidadDeTrabajo) -> None:
     )
     assert export["vacio"] is False
     assert "ACME" in export["contenido"]
+
+
+# ── El registro de ejecuciones, que se escribía y no leía nadie ───────────
+
+
+def test_las_ejecuciones_se_pueden_LEER_con_el_peor_caso_al_lado(
+    uow: UnidadDeTrabajo, tenant_id: UUID
+) -> None:
+    """La tabla es append-only y ninguna ruta la devolvía.
+
+    Se escribía en cada ejecución —cuánto tardó, cuántas filas sacó, si se
+    truncó— y no se podía mirar. Un registro de coste que no se consulta es
+    espacio ocupado.
+
+    Y lo que se devuelve además de las filas es lo que de verdad se busca: **el
+    peor caso al lado de la media**. La media esconde justo lo que duele, el
+    informe que tarda dos minutos una vez al día; y las **truncadas aparte**,
+    porque un informe cortado leído como el total es una decisión tomada con la
+    mitad de los datos.
+    """
+    from services.analytics.informes import EjecucionInforme
+
+    informe_id = uuid4()
+    uow.db.add_all(
+        [
+            EjecucionInforme(
+                tenant_id=tenant_id,
+                informe_id=informe_id,
+                origen="interactiva",
+                filas=10,
+                duracion_ms=50,
+                ok=True,
+            ),
+            EjecucionInforme(
+                tenant_id=tenant_id,
+                informe_id=informe_id,
+                origen="programada",
+                filas=5000,
+                duracion_ms=120_000,
+                truncado=True,
+                ok=True,
+            ),
+        ]
+    )
+    uow.db.flush()
+
+    historial = inf.historial_de_ejecuciones(uow.db, tenant_id)
+    assert historial["cuantas"] == 2
+    # El peor caso no es la media: 120 s contra 60 s de media.
+    assert historial["duracion_peor_ms"] == 120_000
+    assert historial["duracion_media_ms"] < historial["duracion_peor_ms"]
+    assert historial["truncadas"] == 1
+
+
+def test_sin_ejecuciones_no_se_dice_que_el_informe_sea_rapido(
+    uow: UnidadDeTrabajo, tenant_id: UUID
+) -> None:
+    """Una lista vacía se lee como «va bien». No es lo mismo que «no se ha
+    corrido nunca», y la diferencia cambia lo que uno hace después."""
+    historial = inf.historial_de_ejecuciones(uow.db, tenant_id)
+    assert historial["cuantas"] == 0
+    assert historial["aviso"], "un cero sin aviso se lee como «es rápido»"

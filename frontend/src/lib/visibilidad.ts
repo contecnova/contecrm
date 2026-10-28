@@ -552,6 +552,9 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/repuestos/reposicion"
     },
     {
+      "r": "/api/v1/repuestos/movimientos"
+    },
+    {
       "r": "/api/v1/activos/garantias/por-vencer"
     },
     {
@@ -588,6 +591,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/ia/modelos",
       "p": "ia:administrar"
+    },
+    {
+      "r": "/api/v1/ia/conversacion/resumenes",
+      "p": "ia:usar"
     },
     {
       "r": "/api/v1/ia/modelos/deriva",
@@ -660,6 +667,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "r": "/api/v1/cuadros-mando/embebidos",
       "p": "informe:read",
       "o": "enlace_embebido"
+    },
+    {
+      "r": "/api/v1/informes/ejecuciones",
+      "p": "informe:read"
     },
     {
       "r": "/api/v1/almacen/frescura"

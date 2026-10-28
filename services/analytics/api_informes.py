@@ -356,6 +356,38 @@ class EditarInforme(BaseModel):
     activo: bool | None = None
 
 
+@router.get(
+    "/ejecuciones",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Cada vez que se corrió un informe, con lo que costó",
+    description=(
+        "**La tabla es append-only y no la leía nadie.** Se escribía en cada "
+        "ejecución y ninguna ruta la devolvía, así que cuánto tardó, cuántas "
+        "filas sacó, si se truncó y qué campos se retiraron se guardaban y no "
+        "se podían mirar. Un registro de coste que no se consulta es espacio "
+        "ocupado.\n\n"
+        "Devuelve **el peor caso al lado de la media**: la media esconde justo "
+        "lo que duele, el informe que tarda dos minutos una vez al día. Y las "
+        "**truncadas aparte**, porque un informe cortado leído como el total es "
+        "una decisión tomada con la mitad de los datos."
+    ),
+)
+def historial_de_ejecuciones(
+    db: DbDep,
+    principal: AutenticadoDep,
+    informe_id: UUID | None = Query(None),
+    solo_fallidas: bool = Query(False),
+    limite: int = Query(200, ge=1, le=1000),
+) -> Any:
+    return inf.historial_de_ejecuciones(
+        db,
+        principal.tenant_id,
+        informe_id=informe_id,
+        solo_fallidas=solo_fallidas,
+        limite=limite,
+    )
+
+
 @router.patch(
     "/{informe_id}",
     dependencies=[Depends(exige_permiso("informe:write"))],

@@ -636,6 +636,18 @@ mismo hilo del mismo caso.
 
 ## Servicio de campo y activos (sección 4.4)
 
+### El histórico del almacén móvil
+
+En **Movimientos de almacén** está cada entrada y salida del furgón, con quién,
+qué, cuánto y **por qué**. Un almacén sin histórico no se puede cuadrar: cuando
+falta una pieza, la pregunta es quién se la llevó y cuándo.
+
+Los movimientos que **dejaron la existencia en negativo** se cuentan aparte: es
+la señal de que el inventario y la realidad dejaron de coincidir, y a partir de
+ahí todo lo que se planifique con esas existencias se planifica sobre un número
+inventado.
+
+
 Órdenes de trabajo, técnicos, rutas y equipos instalados en casa del cliente.
 Cuatro cosas que notarás:
 
@@ -663,6 +675,19 @@ producto vuelve a fallar y nadie puede demostrar que es un patrón.
 ---
 
 ## Informes y cuadros de mando (sección 5.1)
+
+### Qué cuesta cada informe
+
+En **Análisis → Ejecuciones de informe** está cada vez que se corrió uno, con
+lo que tardó, cuántas filas sacó y si se cortó. Se anotaba desde el primer día
+y no había dónde verlo.
+
+Dos cosas que se enseñan a propósito: **el peor caso al lado de la media**
+—porque la media esconde justo lo que molesta, el informe que tarda dos minutos
+una vez al día— y **las que salieron truncadas**, que es lo que convierte un
+informe en una decisión tomada con la mitad de los datos. Sin ninguna ejecución
+registrada no se dice que el informe sea rápido: se dice que no consta ninguna.
+
 
 - **Cualquiera puede construir un informe** sin pedirlo a nadie, y solo verá dentro
   lo que puede ver.

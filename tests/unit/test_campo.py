@@ -677,3 +677,69 @@ def test_el_reloj_del_movil_se_guarda_aparte(uow: UnidadDeTrabajo) -> None:
     assert recargada is not None and recargada.completada_at is not None
     # El trabajo consta hecho cuando dijo el móvil, no cuando llegó la red.
     assert recargada.completada_at.astimezone(timezone.utc) == capturado
+
+
+# ── El histórico del almacén móvil, que se escribía y no leía nadie ───────
+
+
+def test_los_movimientos_de_almacen_se_pueden_LEER(uow: UnidadDeTrabajo, tenant_id: UUID) -> None:
+    """Un almacén sin histórico no se puede cuadrar.
+
+    El movimiento guardaba quién, qué, cuánto, por qué y si dejó la existencia
+    en negativo — y ninguna ruta lo devolvía. Cuando falta una pieza, la
+    pregunta es quién se la llevó y cuándo; sin esto la respuesta es «nadie lo
+    sabe».
+
+    Y los que **dejaron negativo** van contados aparte: es la señal de que el
+    inventario y la realidad dejaron de coincidir, y a partir de ahí todo lo
+    que se planifique con esas existencias se planifica sobre un número
+    inventado.
+    """
+    from decimal import Decimal
+
+    from services.service.campo import MovimientoRepuesto
+
+    tecnico = uuid4()
+    uow.db.add_all(
+        [
+            MovimientoRepuesto(
+                tenant_id=tenant_id,
+                tecnico_id=tecnico,
+                repuesto_id=uuid4(),
+                tipo="salida",
+                cantidad=Decimal("2"),
+                motivo="montada en la orden de ayer",
+            ),
+            MovimientoRepuesto(
+                tenant_id=tenant_id,
+                tecnico_id=tecnico,
+                repuesto_id=uuid4(),
+                tipo="salida",
+                cantidad=Decimal("5"),
+                motivo="no cuadraba el inventario",
+                dejo_negativo=True,
+            ),
+        ]
+    )
+    uow.db.flush()
+
+    historial = campo.movimientos_de_almacen(uow.db, tenant_id)
+    assert historial["cuantos"] == 2
+    assert historial["dejaron_negativo"] == 1
+    # El motivo entero: es lo único que explica una salida sin orden de
+    # trabajo, que es justo la que hay que justificar.
+    assert any(m["motivo"] == "no cuadraba el inventario" for m in historial["movimientos"])
+
+    # Y se pueden pedir sólo los que descuadraron, que es lo que se busca al
+    # cuadrar el almacén.
+    solo = campo.movimientos_de_almacen(uow.db, tenant_id, solo_negativos=True)
+    assert solo["cuantos"] == 1
+
+
+def test_sin_movimientos_no_se_dice_que_el_almacen_cuadra(
+    uow: UnidadDeTrabajo, tenant_id: UUID
+) -> None:
+    """«Está cuadrado» y «aquí no hay registro» no son lo mismo."""
+    historial = campo.movimientos_de_almacen(uow.db, tenant_id)
+    assert historial["cuantos"] == 0
+    assert historial["aviso"]

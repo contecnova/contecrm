@@ -1165,6 +1165,15 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/repuestos/reposicion",
         servicio: "service",
       },
+      // Cada entrada y salida del almacén móvil, con su porqué. Se escribía y
+      // **no lo leía nadie**: un almacén sin histórico no se puede cuadrar, y
+      // cuando falta una pieza la pregunta es quién se la llevó y cuándo.
+      {
+        nombre: "Movimientos de almacén",
+        listar: "/api/v1/repuestos/movimientos",
+        servicio: "service",
+        columnas: ["tipo", "cantidad", "motivo", "dejo_negativo", "cuando"],
+      },
       {
         nombre: "Garantías por vencer",
         listar: "/api/v1/activos/garantias/por-vencer",
@@ -1255,6 +1264,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // anotaban desde el primer día y **no las leía nadie**: había ruta para
       // escribir una y ninguna para verlas, así que se medía la deriva y no se
       // miraba — que es lo contrario de para lo que se mide.
+      // Los resúmenes propuestos de una conversación, con lo que quedó
+      // pendiente. Se escribían y **no los leía nadie**: se generaban, se
+      // pagaban al proveedor de IA y se quedaban en una tabla sin puerta.
+      {
+        nombre: "Resúmenes de conversación",
+        listar: "/api/v1/ia/conversacion/resumenes",
+        servicio: "intelligence",
+        columnas: ["momento", "parcial", "mensajes_usados", "mensajes_totales", "estado"],
+        permiso: "ia:usar",
+      },
       {
         nombre: "Deriva de los modelos",
         listar: "/api/v1/ia/modelos/deriva",
@@ -1419,6 +1438,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         resumen: ["/api/v1/cuadros-mando/componentes"],
         listar: "/api/v1/cuadros-mando/embebidos",
         servicio: "analytics",
+        permiso: "informe:read",
+      },
+      {
+        // Cada vez que se corrió un informe, con lo que costó. La tabla es
+        // append-only y **no la leía nadie**: se escribía en cada ejecución y
+        // ninguna ruta la devolvía, así que el coste se guardaba y no se podía
+        // mirar. El peor caso va al lado de la media, porque la media esconde
+        // justo el informe que tarda dos minutos una vez al día.
+        nombre: "Ejecuciones de informe",
+        listar: "/api/v1/informes/ejecuciones",
+        servicio: "analytics",
+        columnas: ["origen", "filas", "duracion_ms", "truncado", "ok", "cuando"],
         permiso: "informe:read",
       },
       {

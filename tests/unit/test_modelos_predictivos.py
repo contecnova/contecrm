@@ -458,6 +458,46 @@ def test_el_resumen_se_pide_al_dueno_del_caso_y_no_se_escribe(uow: UnidadDeTraba
     assert salida["pendientes"]
 
 
+def test_los_resumenes_se_pueden_LEER_con_sus_pendientes(uow: UnidadDeTrabajo) -> None:
+    """Se escribían y no los leía nadie.
+
+    El resumen existe para que el agente que recoge una conversación no empiece
+    de cero, y ninguna ruta lo devolvía: se generaba, se pagaba al proveedor de
+    IA y se quedaba en una tabla que nadie podía abrir.
+
+    Y lo que viaja aparte del texto es lo que decide si uno se fía: **los
+    pendientes** —lo que el siguiente agente lee primero y lo que más se
+    inventa un modelo— y **de cuántos mensajes salió y cuántos se usaron**. Un
+    resumen hecho con veinte de doscientos mensajes no es el mismo documento, y
+    sin esos dos números los dos se leen igual.
+    """
+    _proveedor(uow)
+    conversacion = uuid4()
+    conv.resumir(
+        uow,
+        conversacion_id=conversacion,
+        mensajes=[{"autor": "cliente", "texto": "Me han cobrado dos veces."}],
+        mensajes_totales=40,
+        principal=Principal(id=uuid4(), permisos=frozenset({"ia:usar"})),
+    )
+
+    historial = conv.resumenes_de(uow.db, uow.tenant_id, conversacion_id=conversacion)
+    assert historial["cuantos"] == 1
+    resumen = historial["resumenes"][0]
+    for campo in ("texto", "pendientes", "mensajes_totales", "mensajes_usados", "parcial"):
+        assert campo in resumen, f"la pantalla lee «{campo}» y no viene"
+    assert resumen["mensajes_totales"] == 40
+    assert resumen["parcial"] is True
+
+
+def test_sin_resumenes_no_se_dice_que_no_hagan_falta(uow: UnidadDeTrabajo) -> None:
+    """Una lista vacía se lee como «no hay nada que resumir», y lo que pasa es
+    que nadie lo ha pedido todavía."""
+    historial = conv.resumenes_de(uow.db, uow.tenant_id)
+    assert historial["cuantos"] == 0
+    assert historial["aviso"]
+
+
 def test_un_resumen_parcial_se_marca_como_parcial(uow: UnidadDeTrabajo) -> None:
     """Un resumen de cuarenta mensajes hecho con cinco es un resumen del final, y
     quien lo lea sin saberlo creerá que tiene toda la conversación."""

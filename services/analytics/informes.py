@@ -1471,3 +1471,75 @@ def cuadros_de(
             }
         )
     return salida
+
+
+def historial_de_ejecuciones(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    informe_id: UUID | None = None,
+    solo_fallidas: bool = False,
+    limite: int = 200,
+) -> dict[str, Any]:
+    """Cada vez que se corrió un informe, con lo que costó.
+
+    **La tabla es append-only y no la leía nadie.** Se escribía en cada
+    ejecución y ninguna ruta la devolvía, así que lo que guarda —cuánto tardó,
+    cuántas filas sacó, si se truncó, qué campos se retiraron— no se podía
+    mirar. Un registro de coste que no se consulta es espacio ocupado.
+
+    Lo que se devuelve además de las filas, porque es lo que se busca al
+    mirarlo:
+
+    - **el tiempo total y el peor caso.** La media esconde justo lo que duele:
+      un informe que tarda dos minutos una vez al día no se nota en la media y
+      es el que bloquea a alguien;
+    - **cuántas salieron truncadas**, que es lo que convierte un informe en una
+      decisión tomada con la mitad de los datos.
+    """
+    consulta = select(EjecucionInforme).where(EjecucionInforme.tenant_id == tenant_id)
+    if informe_id is not None:
+        consulta = consulta.where(EjecucionInforme.informe_id == informe_id)
+    if solo_fallidas:
+        consulta = consulta.where(EjecucionInforme.ok.is_(False))
+    filas = (
+        db.execute(consulta.order_by(EjecucionInforme.created_at.desc()).limit(limite))
+        .scalars()
+        .all()
+    )
+    duraciones = [f.duracion_ms for f in filas]
+    return {
+        "ejecuciones": [
+            {
+                "id": str(f.id),
+                "informe_id": str(f.informe_id),
+                "origen": f.origen,
+                "usuario_id": str(f.usuario_id) if f.usuario_id else None,
+                "filas": f.filas,
+                "duracion_ms": f.duracion_ms,
+                "truncado": f.truncado,
+                "formato": f.formato,
+                "ok": f.ok,
+                "error": f.error,
+                "campos_retirados": list(f.campos_retirados or []),
+                "cuando": f.created_at.isoformat(),
+            }
+            for f in filas
+        ],
+        "cuantas": len(filas),
+        # El peor caso al lado de la media: la media esconde el informe que
+        # tarda dos minutos una vez al día, que es justo el que molesta.
+        "duracion_media_ms": int(sum(duraciones) / len(duraciones)) if duraciones else 0,
+        "duracion_peor_ms": max(duraciones) if duraciones else 0,
+        "fallidas": len([f for f in filas if not f.ok]),
+        # Las truncadas, aparte: un informe cortado que se lee como el total
+        # es una decisión tomada con la mitad de los datos.
+        "truncadas": len([f for f in filas if f.truncado]),
+        "aviso": (
+            ""
+            if filas
+            else "No consta ninguna ejecución con este filtro. Eso no significa "
+            "que el informe sea rápido: significa que no se ha corrido, o que no "
+            "se anotó."
+        ),
+    }

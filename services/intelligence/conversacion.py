@@ -477,3 +477,68 @@ def evolucion(
             for f in filas
         ],
     }
+
+
+def resumenes_de(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    conversacion_id: UUID | None = None,
+    caso_id: UUID | None = None,
+    limite: int = 100,
+) -> dict[str, Any]:
+    """Los resúmenes propuestos, con lo que quedó pendiente y de dónde salen.
+
+    **Se escribían y no los leía nadie.** El resumen existe para que el agente
+    que recoge una conversación no empiece de cero, y ninguna ruta lo
+    devolvía: se generaba, se cobraba al proveedor de IA y se quedaba en una
+    tabla que nadie podía abrir.
+
+    Tres cosas viajan aparte del texto, y las tres deciden si uno se fía:
+
+    - **los pendientes**, que es lo que el siguiente agente lee primero y lo
+      que más se inventa un modelo. Revisables sin releer el resumen entero;
+    - **de cuántos mensajes salió y cuántos se usaron**. Un resumen hecho con
+      veinte de doscientos mensajes no es el mismo documento, y sin esos dos
+      números los dos se leen igual;
+    - **si es parcial**, que es la diferencia entre un resumen y el resumen del
+      final de la conversación.
+    """
+    consulta = select(ResumenConversacion).where(ResumenConversacion.tenant_id == tenant_id)
+    if conversacion_id is not None:
+        consulta = consulta.where(ResumenConversacion.conversacion_id == conversacion_id)
+    if caso_id is not None:
+        consulta = consulta.where(ResumenConversacion.caso_id == caso_id)
+    filas = (
+        db.execute(consulta.order_by(ResumenConversacion.created_at.desc()).limit(limite))
+        .scalars()
+        .all()
+    )
+    return {
+        "resumenes": [
+            {
+                "id": str(f.id),
+                "conversacion_id": str(f.conversacion_id),
+                "caso_id": str(f.caso_id) if f.caso_id else None,
+                "momento": f.momento,
+                "texto": f.texto,
+                "pendientes": list(f.pendientes or []),
+                "mensajes_totales": f.mensajes_totales,
+                "mensajes_usados": f.mensajes_usados,
+                "parcial": f.parcial,
+                "estado": f.estado,
+                "cuando": f.created_at.isoformat(),
+            }
+            for f in filas
+        ],
+        "cuantos": len(filas),
+        # Los que traen compromisos, contados: es lo que hay que revisar antes
+        # de dar el relevo, y lo que un modelo se inventa más a menudo.
+        "con_pendientes": len([f for f in filas if f.pendientes]),
+        "aviso": (
+            ""
+            if filas
+            else "No consta ningún resumen de esta conversación. Eso no significa "
+            "que no haga falta: significa que nadie lo ha pedido todavía."
+        ),
+    }

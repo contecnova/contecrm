@@ -435,6 +435,38 @@ def ficha_de_anomalia(anomalia_id: UUID, db: DbDep, principal: AutenticadoDep) -
     return ano.ficha(db, tenant_id=principal.tenant_id, anomalia_id=anomalia_id)
 
 
+@router_conversacion.get(
+    "/resumenes",
+    dependencies=[Depends(exige_permiso("ia:usar"))],
+    summary="Los resúmenes propuestos, con lo que quedó pendiente",
+    description=(
+        "**Se escribían y no los leía nadie.** El resumen existe para que el "
+        "agente que recoge una conversación no empiece de cero, y ninguna ruta "
+        "lo devolvía: se generaba, se pagaba al proveedor de IA y se quedaba "
+        "en una tabla que nadie podía abrir.\n\n"
+        "Los **pendientes** van aparte del texto porque son lo que el siguiente "
+        "agente lee primero y lo que más se inventa un modelo. Y van **de "
+        "cuántos mensajes salió y cuántos se usaron**: un resumen hecho con "
+        "veinte de doscientos mensajes no es el mismo documento, y sin esos dos "
+        "números los dos se leen igual."
+    ),
+)
+def resumenes_de_conversacion(
+    db: DbDep,
+    principal: AutenticadoDep,
+    conversacion_id: UUID | None = Query(None),
+    caso_id: UUID | None = Query(None),
+    limite: int = Query(100, ge=1, le=500),
+) -> Any:
+    return conv.resumenes_de(
+        db,
+        principal.tenant_id,
+        conversacion_id=conversacion_id,
+        caso_id=caso_id,
+        limite=limite,
+    )
+
+
 @router_conversacion.post(
     "/resumen",
     status_code=status.HTTP_201_CREATED,

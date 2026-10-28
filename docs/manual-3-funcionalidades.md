@@ -10509,6 +10509,8 @@ creerá que tiene toda la conversación. Lo que va al modelo pasa por los mismos
 guardarraíles que cualquier otro contexto, porque una conversación de soporte
 lleva datos personales por definición.
 
+**Y los resúmenes se pueden leer.** Hasta el 28-10-2026 se escribían y ninguna ruta los devolvía: se generaban, se pagaban al proveedor de IA y se quedaban en una tabla sin puerta. Están en la pestaña «Resúmenes de conversación», con **los pendientes aparte** —lo que el siguiente agente lee primero y lo que más se inventa un modelo— y con **de cuántos mensajes salió y cuántos se usaron**: un resumen hecho con veinte de doscientos no es el mismo documento, y sin esos dos números los dos se leen igual.
+
 ### Sentimiento e intención (`CRM-04.02.02.07`)
 
 Un «cliente enfadado» que salta cada vez que alguien escribe en mayúsculas enseña

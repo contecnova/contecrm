@@ -533,6 +533,40 @@ def reposicion(db: DbDep, principal: AutenticadoDep, tecnico_id: UUID | None = Q
     return campo.reposicion(db, principal.tenant_id, tecnico_id=tecnico_id)
 
 
+@router_repuestos.get(
+    "/movimientos",
+    dependencies=[Depends(exige_permiso("case:read"))],
+    summary="Cada entrada y salida del almacén móvil, con su porqué",
+    description=(
+        "**Se escribía y no lo leía nadie.** El movimiento guarda quién, qué, "
+        "cuánto, por qué y si dejó la existencia en negativo, y ninguna ruta lo "
+        "devolvía. Un almacén sin histórico no se puede cuadrar: cuando falta "
+        "una pieza la pregunta es quién se la llevó y cuándo, y sin esto la "
+        "respuesta es «nadie lo sabe».\n\n"
+        "Los que **dejaron negativo** van contados aparte: es la señal de que "
+        "el inventario y la realidad ya no coinciden, y a partir de ahí todo lo "
+        "que se planifique con esas existencias se planifica sobre un número "
+        "inventado."
+    ),
+)
+def movimientos_de_almacen(
+    db: DbDep,
+    principal: AutenticadoDep,
+    tecnico_id: UUID | None = Query(None),
+    repuesto_id: UUID | None = Query(None),
+    solo_negativos: bool = Query(False),
+    limite: int = Query(200, ge=1, le=1000),
+) -> Any:
+    return campo.movimientos_de_almacen(
+        db,
+        principal.tenant_id,
+        tecnico_id=tecnico_id,
+        repuesto_id=repuesto_id,
+        solo_negativos=solo_negativos,
+        limite=limite,
+    )
+
+
 # ── Preventivo ────────────────────────────────────────────────────────────
 
 

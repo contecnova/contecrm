@@ -1778,3 +1778,66 @@ def sincronizar(
         # aplicar. Los conflictos y los rechazos son trabajo real de alguien.
         "todo_aplicado": por_resultado["conflicto"] == 0 and por_resultado["rechazada"] == 0,
     }
+
+
+def movimientos_de_almacen(
+    db: Session,
+    tenant_id: UUID,
+    *,
+    tecnico_id: UUID | None = None,
+    repuesto_id: UUID | None = None,
+    solo_negativos: bool = False,
+    limite: int = 200,
+) -> dict[str, Any]:
+    """Cada entrada y salida del almacén móvil, con su porqué.
+
+    **Se escribía y no lo leía nadie.** El movimiento guarda quién, qué,
+    cuánto, por qué y si dejó la existencia en negativo — y ninguna ruta lo
+    devolvía. Un almacén sin histórico no se puede cuadrar: cuando falta una
+    pieza, la pregunta es quién se la llevó y cuándo, y sin esto la respuesta
+    es «nadie lo sabe».
+
+    Se devuelven aparte **los que dejaron negativo**, que es la señal de que el
+    inventario y la realidad ya no coinciden: a partir de ahí todo lo que se
+    planifique con esas existencias se planifica sobre un número inventado.
+    """
+    consulta = select(MovimientoRepuesto).where(MovimientoRepuesto.tenant_id == tenant_id)
+    if tecnico_id is not None:
+        consulta = consulta.where(MovimientoRepuesto.tecnico_id == tecnico_id)
+    if repuesto_id is not None:
+        consulta = consulta.where(MovimientoRepuesto.repuesto_id == repuesto_id)
+    if solo_negativos:
+        consulta = consulta.where(MovimientoRepuesto.dejo_negativo.is_(True))
+    filas = (
+        db.execute(consulta.order_by(MovimientoRepuesto.created_at.desc()).limit(limite))
+        .scalars()
+        .all()
+    )
+    return {
+        "movimientos": [
+            {
+                "id": str(f.id),
+                "tecnico_id": str(f.tecnico_id),
+                "repuesto_id": str(f.repuesto_id),
+                "tipo": f.tipo,
+                "cantidad": str(f.cantidad),
+                "orden_id": str(f.orden_id) if f.orden_id else None,
+                # El motivo va entero: es lo único que explica una salida sin
+                # orden de trabajo, que es la que hay que justificar.
+                "motivo": f.motivo,
+                "dejo_negativo": f.dejo_negativo,
+                "cuando": f.created_at.isoformat(),
+            }
+            for f in filas
+        ],
+        "cuantos": len(filas),
+        # Los que dejaron negativo, contados aparte: es la señal de que el
+        # inventario y la realidad dejaron de coincidir.
+        "dejaron_negativo": len([f for f in filas if f.dejo_negativo]),
+        "aviso": (
+            ""
+            if filas
+            else "No consta ningún movimiento con este filtro. Eso no significa "
+            "que el almacén esté cuadrado: significa que aquí no hay registro."
+        ),
+    }
