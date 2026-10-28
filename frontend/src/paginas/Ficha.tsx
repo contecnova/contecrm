@@ -16,7 +16,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { Cargando, Error as Fallo, Retenidos, Vacio } from "@/componentes/Estados";
+import {
+  Cargando,
+  Error as Fallo,
+  Retenidos,
+  Vacio,
+} from "@/componentes/Estados";
 import { Celda, Tabla } from "@/componentes/Tabla";
 import {
   BotonesDeRegistro,
@@ -96,7 +101,10 @@ export function Ficha() {
         }
       />
 
-      <nav aria-label={t("ficha.secciones")} className="mt-3 flex flex-wrap gap-1">
+      <nav
+        aria-label={t("ficha.secciones")}
+        className="mt-3 flex flex-wrap gap-1"
+      >
         {pestanas.map((p) => (
           <button
             key={p}
@@ -104,7 +112,9 @@ export function Ficha() {
             onClick={() => setPestana(p)}
             aria-current={p === activa ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-xs ${
-              p === activa ? "bg-paper-light text-ink" : "text-ink-muted hover:bg-paper-light"
+              p === activa
+                ? "bg-paper-light text-ink"
+                : "text-ink-muted hover:bg-paper-light"
             }`}
           >
             {t(`ficha.${p}`)}
@@ -114,7 +124,12 @@ export function Ficha() {
 
       <div className="mt-4">
         {activa === "datos" ? (
-          <Datos modulo={ruta} id={id} objeto={tipo} alSaberNombre={setNombre} />
+          <Datos
+            modulo={ruta}
+            id={id}
+            objeto={tipo}
+            alSaberNombre={setNombre}
+          />
         ) : null}
         {activa === "adjuntos" ? <Adjuntos tipo={tipo} id={id} /> : null}
         {activa === "comentarios" ? <Comentarios tipo={tipo} id={id} /> : null}
@@ -175,7 +190,8 @@ function Datos({
   // Y lo que cuelga de él: líneas, equipo, direcciones, identificadores. Son
   // 196 en el sistema y ninguna se alcanzaba.
   const paneles = useMemo(
-    () => (recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : []),
+    () =>
+      recurso ? subColeccionesDe(superficie, recurso.listar, id, tiene) : [],
     [superficie, recurso, id, tiene],
   );
   const cargar = useCallback(
@@ -213,20 +229,29 @@ function Datos({
     }
   }
 
-  if (fallo && !fila) return <Fallo error={fallo} reintentar={() => cargar()} />;
+  if (fallo && !fila)
+    return <Fallo error={fallo} reintentar={() => cargar()} />;
   if (!fila) return <Cargando />;
 
   return (
     <>
       {!editando ? (
         <>
-          <Acciones acciones={acciones} servicio={recurso?.servicio ?? ""} alTerminar={cargar} />
+          <Acciones
+            acciones={acciones}
+            servicio={recurso?.servicio ?? ""}
+            alTerminar={cargar}
+          />
           {/* Apuntar una llamada o un correo sobre este registro sin salir de
               aquí: antes obligaba a irse a Actividades y teclear a mano el
               identificador para que quedara colgado, y eso no lo hace nadie dos
               veces. */}
           {objeto ? (
-            <RegistrarActividad objeto={objeto} objetoId={id} alRegistrar={cargar} />
+            <RegistrarActividad
+              objeto={objeto}
+              objetoId={id}
+              alRegistrar={cargar}
+            />
           ) : null}
         </>
       ) : null}
@@ -275,7 +300,10 @@ function Datos({
         <>
           <dl className="card grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
             {Object.entries(fila)
-              .filter(([clave]) => clave !== "campos" && !esIdentificadorTecnico(clave))
+              .filter(
+                ([clave]) =>
+                  clave !== "campos" && !esIdentificadorTecnico(clave),
+              )
               .map(([clave, valor]) => (
                 <Campo key={clave} clave={clave} valor={valor} />
               ))}
@@ -292,7 +320,12 @@ function Datos({
               {Object.entries(fila)
                 .filter(([clave]) => esIdentificadorTecnico(clave))
                 .map(([clave, valor]) => (
-                  <Campo key={clave} clave={clave} valor={valor} monoespaciado />
+                  <Campo
+                    key={clave}
+                    clave={clave}
+                    valor={valor}
+                    monoespaciado
+                  />
                 ))}
             </dl>
           </details>
@@ -301,7 +334,11 @@ function Datos({
       <Retenidos campos={retenidos} />
 
       {!editando ? (
-        <SubColecciones paneles={paneles} servicio={recurso?.servicio ?? ""} id={id} />
+        <SubColecciones
+          paneles={paneles}
+          servicio={recurso?.servicio ?? ""}
+          id={id}
+        />
       ) : null}
     </>
   );
@@ -422,7 +459,9 @@ function Comentarios({ tipo, id }: { tipo: string; id: string }) {
 
   const cargar = useCallback(async () => {
     try {
-      const r = await llamar<Record<string, unknown>[]>(`/api/v1/comentarios/${tipo}/${id}`);
+      const r = await llamar<Record<string, unknown>[]>(
+        `/api/v1/comentarios/${tipo}/${id}`,
+      );
       setFilas(r.datos);
     } catch (error) {
       setFallo(error);
@@ -486,7 +525,15 @@ function Comentarios({ tipo, id }: { tipo: string; id: string }) {
   );
 }
 
-function Documentos({ tipo, id, nombre }: { tipo: string; id: string; nombre: string }) {
+function Documentos({
+  tipo,
+  id,
+  nombre,
+}: {
+  tipo: string;
+  id: string;
+  nombre: string;
+}) {
   const { t } = useTranslation();
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -509,8 +556,14 @@ function Documentos({ tipo, id, nombre }: { tipo: string; id: string; nombre: st
       {/* Se dice de dónde sale el estado real: sin esta línea, alguien
           construiría un informe sobre el título creyendo que está al día. El
           documento vive en el gestor, aquí está el enlace y el contexto. */}
-      <p className="mb-2 text-2xs text-ink-faint">{t("ficha.documentosIntro")}</p>
-      {filas.length === 0 ? <Vacio /> : <Tabla filas={filas} titulo={t("ficha.documentos")} />}
+      <p className="mb-2 text-2xs text-ink-faint">
+        {t("ficha.documentosIntro")}
+      </p>
+      {filas.length === 0 ? (
+        <Vacio />
+      ) : (
+        <Tabla filas={filas} titulo={t("ficha.documentos")} />
+      )}
       {filas.length > 0 ? <Aprobacion filas={filas} /> : null}
       <BuscarEnElCorpus
         tipo={tipo}
@@ -539,15 +592,20 @@ function Aprobacion({ filas }: { filas: Record<string, unknown>[] }) {
 
   return (
     <section className="mt-6 border-t border-ink-dim/30 pt-4">
-      <h3 className="mb-2 text-xs font-medium text-ink">{t("ficha.aprobacion")}</h3>
-      <ul className="space-y-1">
+      <h3 className="mb-2 text-xs font-medium text-ink">
+        {t("ficha.aprobacion")}
+      </h3>
+      <ul className="lista-acotada space-y-1 pr-1">
         {filas.map((fila, i) => {
           const id = String(fila.documento_id ?? fila.document_id ?? "");
           const titulo = String(fila.titulo ?? fila.title ?? id);
           if (!id) return null;
           const esta = abierto === id;
           return (
-            <li key={id || i} className="rounded border border-ink-dim/30 px-2 py-1">
+            <li
+              key={id || i}
+              className="rounded border border-ink-dim/30 px-2 py-1"
+            >
               <button
                 type="button"
                 onClick={() => setAbierto(esta ? null : id)}
@@ -598,7 +656,9 @@ function BuscarEnElCorpus({
 }) {
   const { t } = useTranslation();
   const [texto, setTexto] = useState("");
-  const [resultados, setResultados] = useState<Record<string, unknown>[] | null>(null);
+  const [resultados, setResultados] = useState<
+    Record<string, unknown>[] | null
+  >(null);
   const [buscando, setBuscando] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
 
@@ -645,7 +705,9 @@ function BuscarEnElCorpus({
 
   return (
     <section className="mt-6 border-t border-ink-dim/30 pt-4">
-      <h3 className="mb-2 text-xs font-medium text-ink">{t("ficha.buscarCorpus")}</h3>
+      <h3 className="mb-2 text-xs font-medium text-ink">
+        {t("ficha.buscarCorpus")}
+      </h3>
       <div className="flex gap-2">
         <input
           type="search"
@@ -669,10 +731,12 @@ function BuscarEnElCorpus({
       </div>
       {fallo ? <Fallo error={fallo} /> : null}
       {resultados !== null && resultados.length === 0 ? (
-        <p className="mt-2 text-2xs text-ink-faint">{t("ficha.corpusSinResultados")}</p>
+        <p className="mt-2 text-2xs text-ink-faint">
+          {t("ficha.corpusSinResultados")}
+        </p>
       ) : null}
       {resultados !== null && resultados.length > 0 ? (
-        <ul className="mt-2 space-y-1">
+        <ul className="lista-acotada mt-2 space-y-1 pr-1">
           {resultados.map((doc, i) => (
             <li
               key={String(doc.id ?? doc.document_id ?? i)}

@@ -375,6 +375,14 @@ Cada panel lleva además **«Ver todas»**, que abre el listado completo ya
 filtrado por este cliente — también los contactos, que viven dentro del módulo
 de cuentas y abren directamente en su pestaña.
 
+La misma regla vale en **todo el producto**, no sólo aquí: si una pantalla
+enseña más de una lista, ninguna puede quedarse con la pantalla entera. Los
+paneles de plataforma, las secciones del portal del cliente, los componentes de
+un cuadro de mando, las tablas de apoyo de entornos, estado, rendimiento y
+suite, y las columnas del tablero de ventas se recorren por dentro de su caja.
+Antes, con cien trabajos en cola o un informe de quinientas filas, lo que iba
+debajo quedaba a dos pantallas de distancia y no lo veía nadie.
+
 Y las listas **dicen cuándo vienen recortadas**. Donde pone `20+` hay más de
 veinte; donde pone `20` hay veinte. Antes las dos cosas se escribían igual, que
 es como se acaba creyendo que un cliente tiene veinte casos cuando tiene

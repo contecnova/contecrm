@@ -58,6 +58,38 @@ const pantallas = {
       "Es la lista de potencia escondida en la API: capacidades construidas, probadas y documentadas que quien mira el producto concluye que no están.",
     todoEnsenado: "Todo lo publicado tiene pantalla.",
   },
+  duplicados: {
+    titulo: "Duplicados por resolver",
+    entradilla:
+      "Parejas que podrían ser la misma empresa, lo más probable primero y con QUÉ ha coincidido. Desde aquí se deciden: no es una lista para mirar.",
+    buscar: "Buscar duplicados ahora",
+    buscando: "Buscando…",
+    soloPendientes: "Sólo las que faltan por decidir",
+    resultadoBarrido: "Revisadas {{revisadas}} fichas, {{propuestas}} parejas nuevas.",
+    ninguna: "No hay ninguna pareja por decidir",
+    ningunaDetalle:
+      "O no hay duplicados, o nadie ha pasado el barrido todavía. El botón de arriba lo pasa sobre todo el maestro, no sólo sobre lo que entre a partir de ahora.",
+    probabilidad: "{{pct}} % de probabilidad",
+    abrirFicha: "Abrir la ficha",
+    seQuedaEsta: "Se queda ésta",
+    eligeCual: "Elige cuál de las dos se queda para poder fusionarlas.",
+    fusionar: "Fusionar",
+    noSonLaMisma: "No son la misma",
+    paraLuego: "Dejarlo para luego",
+    porQueNoBorrar:
+      "No hay «borrar ésta» a propósito: borrarla tiraría su histórico. Fusionar deja lo suyo en la que se queda.",
+    confirmarTitulo: "Confirmar la fusión",
+    queVaAPasar:
+      "«{{absorbida}}» dejará de aparecer en las listas y todo lo suyo —contactos, oportunidades, casos y lo que se habló— pasará a «{{superviviente}}». Mezclar el histórico de dos clientes es difícil de deshacer.",
+    siFusiona: "Sí, fusiónalas",
+    mejorNo: "Mejor no",
+    decision: {
+      fusionar: "Fusionadas",
+      no_es_duplicado: "No son la misma",
+      descartar: "Dejada para luego",
+    },
+  },
+
   preguntar: {
     titulo: "Nexus",
     entradilla:

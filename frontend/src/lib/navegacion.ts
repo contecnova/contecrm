@@ -176,6 +176,11 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
 
+  // Las parejas que podrían ser la misma ficha, con los botones para
+  // decidirlas. Va en Clientes y no en Configuración: quien resuelve un
+  // duplicado es quien conoce a los dos clientes, no quien administra.
+  { area: "clientes", a: "/duplicados", clave: "nav.duplicados", icono: "join_inner", permiso: "account:write" },
+
   { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read"  },
 
   { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read"  },

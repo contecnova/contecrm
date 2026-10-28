@@ -54,18 +54,24 @@ async function pedir<T>(
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
-      ...(opciones.cuerpo === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(opciones.cuerpo === undefined
+        ? {}
+        : { "Content-Type": "application/json" }),
       ...(opciones.metodo && opciones.metodo !== "GET"
         ? { "Idempotency-Key": crypto.randomUUID() }
         : {}),
     },
-    body: opciones.cuerpo === undefined ? undefined : JSON.stringify(opciones.cuerpo),
+    body:
+      opciones.cuerpo === undefined
+        ? undefined
+        : JSON.stringify(opciones.cuerpo),
   });
   const texto = await respuesta.text();
   const cuerpo = texto ? JSON.parse(texto) : null;
   if (!respuesta.ok) {
     throw new Error(
-      (cuerpo && (cuerpo.detail || cuerpo.title)) || "No se ha podido completar la operación",
+      (cuerpo && (cuerpo.detail || cuerpo.title)) ||
+        "No se ha podido completar la operación",
     );
   }
   return cuerpo as T;
@@ -83,7 +89,13 @@ export function Portal() {
   return <Dentro sesion={sesion} alSalir={() => setSesion(null)} />;
 }
 
-function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => void }) {
+function Entrada({
+  token,
+  alEntrar,
+}: {
+  token: string;
+  alEntrar: (s: Sesion) => void;
+}) {
   const [email, setEmail] = useState("");
   const [estado, setEstado] = useState<"" | "enviando" | "enviado">("");
   const [fallo, setFallo] = useState("");
@@ -91,15 +103,25 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
   const canjear = useCallback(
     async (t: string) => {
       try {
-        const respuesta = await fetch(`${config().apiBase}/api/v1/portal/sesion`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-          body: JSON.stringify({ token: t }),
-        });
+        const respuesta = await fetch(
+          `${config().apiBase}/api/v1/portal/sesion`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": crypto.randomUUID(),
+            },
+            body: JSON.stringify({ token: t }),
+          },
+        );
         if (!respuesta.ok) throw new Error("El enlace ya no vale. Pide otro.");
         alEntrar((await respuesta.json()) as Sesion);
       } catch (error) {
-        setFallo(error instanceof Error ? error.message : "El enlace ya no vale. Pide otro.");
+        setFallo(
+          error instanceof Error
+            ? error.message
+            : "El enlace ya no vale. Pide otro.",
+        );
       }
     },
     [alEntrar],
@@ -116,7 +138,10 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
     try {
       await fetch(`${config().apiBase}/api/v1/portal/enlace`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({ email }),
       });
     } finally {
@@ -128,7 +153,9 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
-      <h1 className="mb-1 text-center text-xl font-semibold text-ink">Tu área de cliente</h1>
+      <h1 className="mb-1 text-center text-xl font-semibold text-ink">
+        Tu área de cliente
+      </h1>
       <p className="mb-6 text-center text-2xs text-ink-faint">
         Tus peticiones y lo que has hablado con nosotros.
       </p>
@@ -136,8 +163,8 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
       <div className="card p-5">
         {estado === "enviado" ? (
           <p role="status" className="text-xs text-ink">
-            Si ese correo es de un cliente nuestro, le hemos mandado un enlace para entrar. El
-            enlace vale una sola vez y caduca pronto.
+            Si ese correo es de un cliente nuestro, le hemos mandado un enlace
+            para entrar. El enlace vale una sola vez y caduca pronto.
           </p>
         ) : (
           <form onSubmit={pedirEnlace}>
@@ -156,8 +183,14 @@ function Entrada({ token, alEntrar }: { token: string; alEntrar: (s: Sesion) => 
             {/* Sin contraseña a propósito: un cliente que entra tres veces al
                 año no recuerda una contraseña, y lo que hace es reutilizar la
                 del correo. El enlace de un solo uso evita las dos cosas. */}
-            <button type="submit" disabled={estado === "enviando"} className="btn-primary w-full">
-              {estado === "enviando" ? "Enviando…" : "Mandarme un enlace para entrar"}
+            <button
+              type="submit"
+              disabled={estado === "enviando"}
+              className="btn-primary w-full"
+            >
+              {estado === "enviando"
+                ? "Enviando…"
+                : "Mandarme un enlace para entrar"}
             </button>
           </form>
         )}
@@ -185,7 +218,9 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
       setCasos(c);
       setHilo(h);
     } catch (error) {
-      setFallo(error instanceof Error ? error.message : "No se ha podido cargar");
+      setFallo(
+        error instanceof Error ? error.message : "No se ha podido cargar",
+      );
     }
   }, [sesion.token]);
 
@@ -197,7 +232,11 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
       <header className="mb-6 flex items-baseline justify-between gap-3">
         <h1 className="text-lg font-semibold text-ink">Tu área de cliente</h1>
-        <button type="button" onClick={alSalir} className="text-2xs text-ink-faint hover:text-ink">
+        <button
+          type="button"
+          onClick={alSalir}
+          className="text-2xs text-ink-faint hover:text-ink"
+        >
           Salir
         </button>
       </header>
@@ -243,7 +282,10 @@ function Dentro({ sesion, alSalir }: { sesion: Sesion; alSalir: () => void }) {
  * `casos` y `conversacion` no están: tienen su propio sitio arriba, con el
  * formulario de pedir y el de escribir.
  */
-const SECCIONES: Record<string, { ruta: string; titulo: string; vacio: string }> = {
+const SECCIONES: Record<
+  string,
+  { ruta: string; titulo: string; vacio: string }
+> = {
   conocimiento: {
     ruta: "/api/v1/portal/mi/conocimiento",
     titulo: "Ayuda",
@@ -277,8 +319,23 @@ const SECCIONES: Record<string, { ruta: string; titulo: string; vacio: string }>
 };
 
 /** Lo que se enseña de una fila, por orden de a qué se mira primero. */
-const TITULO = ["nombre", "titulo", "asunto", "nombre_completo", "codigo", "referencia"];
-const DEBAJO = ["estado", "categoria", "tipo", "email", "numero_serie", "vence_at", "fecha"];
+const TITULO = [
+  "nombre",
+  "titulo",
+  "asunto",
+  "nombre_completo",
+  "codigo",
+  "referencia",
+];
+const DEBAJO = [
+  "estado",
+  "categoria",
+  "tipo",
+  "email",
+  "numero_serie",
+  "vence_at",
+  "fecha",
+];
 
 function texto(fila: Record<string, unknown>, campos: string[]): string {
   for (const campo of campos) {
@@ -313,7 +370,9 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
         // Se dice. Una sección que el acceso concede y no se puede leer es un
         // problema de quien lo dio, y callarlo deja al cliente creyendo que no
         // tiene nada.
-        setFallo(error instanceof Error ? error.message : "No se ha podido cargar");
+        setFallo(
+          error instanceof Error ? error.message : "No se ha podido cargar",
+        );
       });
     return () => {
       vivo = false;
@@ -339,9 +398,12 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
       ) : filas.length === 0 ? (
         <p className="text-2xs text-ink-faint">{definicion.vacio}</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="lista-acotada space-y-2 pr-1">
           {filas.map((fila, i) => (
-            <li key={String(fila.id ?? i)} className="rounded-lg bg-paper-sunk px-3 py-2">
+            <li
+              key={String(fila.id ?? i)}
+              className="rounded-lg bg-paper-sunk px-3 py-2"
+            >
               <p className="text-xs text-ink">{texto(fila, TITULO) || "—"}</p>
               {texto(fila, DEBAJO) ? (
                 <p className="text-3xs text-ink-faint">{texto(fila, DEBAJO)}</p>
@@ -354,7 +416,13 @@ function Seccion({ seccion, sesion }: { seccion: string; sesion: Sesion }) {
   );
 }
 
-function NuevaPeticion({ sesion, alCrear }: { sesion: Sesion; alCrear: () => void }) {
+function NuevaPeticion({
+  sesion,
+  alCrear,
+}: {
+  sesion: Sesion;
+  alCrear: () => void;
+}) {
   const [asunto, setAsunto] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -365,10 +433,14 @@ function NuevaPeticion({ sesion, alCrear }: { sesion: Sesion; alCrear: () => voi
     if (!asunto.trim()) return;
     setEnviando(true);
     try {
-      const caso = await pedir<{ codigo: string }>("/api/v1/portal/mi/casos", sesion.token, {
-        metodo: "POST",
-        cuerpo: { asunto: asunto.trim(), descripcion: descripcion.trim() },
-      });
+      const caso = await pedir<{ codigo: string }>(
+        "/api/v1/portal/mi/casos",
+        sesion.token,
+        {
+          metodo: "POST",
+          cuerpo: { asunto: asunto.trim(), descripcion: descripcion.trim() },
+        },
+      );
       // Se enseña el código: es con lo que el cliente se va a referir a esto
       // cuando llame por teléfono, y sin él tiene que describirlo otra vez.
       setHecho(caso.codigo);
@@ -407,7 +479,11 @@ function NuevaPeticion({ sesion, alCrear }: { sesion: Sesion; alCrear: () => voi
           rows={3}
           className="input-base mb-2"
         />
-        <button type="submit" disabled={enviando || !asunto.trim()} className="btn-primary">
+        <button
+          type="submit"
+          disabled={enviando || !asunto.trim()}
+          className="btn-primary"
+        >
           {enviando ? "Enviando…" : "Enviar la petición"}
         </button>
       </form>
@@ -426,7 +502,7 @@ function MisCasos({ casos }: { casos: Caso[] | null }) {
       ) : casos.length === 0 ? (
         <p className="text-2xs text-ink-faint">Todavía no has pedido nada.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="lista-acotada space-y-2 pr-1">
           {casos.map((c) => (
             <li key={c.caso_id} className="rounded-lg bg-paper-sunk px-3 py-2">
               <p className="text-xs text-ink">{c.asunto}</p>
@@ -477,19 +553,25 @@ function Conversacion({
       {hilo === null ? (
         <p className="mb-3 text-2xs text-ink-faint">Cargando…</p>
       ) : hilo.length === 0 ? (
-        <p className="mb-3 text-2xs text-ink-faint">Aquí aparecerá lo que hablemos.</p>
+        <p className="mb-3 text-2xs text-ink-faint">
+          Aquí aparecerá lo que hablemos.
+        </p>
       ) : (
-        <ul className="mb-3 space-y-2">
+        <ul className="lista-acotada mb-3 space-y-2 pr-1">
           {hilo.map((m, i) => {
             const mio = m.direccion === "entrante";
             return (
               <li
                 key={m.id ?? i}
                 className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${
-                  mio ? "ml-auto bg-accent/10 text-ink" : "bg-paper-sunk text-ink"
+                  mio
+                    ? "ml-auto bg-accent/10 text-ink"
+                    : "bg-paper-sunk text-ink"
                 }`}
               >
-                <p className="mb-0.5 text-3xs text-ink-faint">{mio ? "Tú" : "Nosotros"}</p>
+                <p className="mb-0.5 text-3xs text-ink-faint">
+                  {mio ? "Tú" : "Nosotros"}
+                </p>
                 {m.cuerpo}
               </li>
             );
@@ -504,14 +586,17 @@ function Conversacion({
           aria-label="Escribe aquí"
           className="input-base"
         />
-        <button type="submit" disabled={enviando || !texto.trim()} className="btn-primary shrink-0">
+        <button
+          type="submit"
+          disabled={enviando || !texto.trim()}
+          className="btn-primary shrink-0"
+        >
           Enviar
         </button>
       </form>
     </section>
   );
 }
-
 
 interface Documento {
   clave?: string;
@@ -538,10 +623,10 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
       );
       setEsProveedor(quien.es_proveedor);
       if (!quien.es_proveedor) return;
-      const estado = await pedir<{ vencidos?: Documento[]; por_vencer?: Documento[] }>(
-        "/api/v1/proveedores/mi/documentos",
-        sesion.token,
-      );
+      const estado = await pedir<{
+        vencidos?: Documento[];
+        por_vencer?: Documento[];
+      }>("/api/v1/proveedores/mi/documentos", sesion.token);
       setDocumentos([...(estado.vencidos ?? []), ...(estado.por_vencer ?? [])]);
     } catch {
       // Quien no es proveedor recibe un error aquí, y eso no es un fallo que
@@ -588,11 +673,16 @@ function MisPapeles({ sesion }: { sesion: Sesion }) {
       {documentos === null ? (
         <p className="mb-3 text-2xs text-ink-faint">Cargando…</p>
       ) : documentos.length === 0 ? (
-        <p className="mb-3 text-2xs text-ink-faint">No hay nada pendiente de renovar.</p>
+        <p className="mb-3 text-2xs text-ink-faint">
+          No hay nada pendiente de renovar.
+        </p>
       ) : (
-        <ul className="mb-3 space-y-1.5">
+        <ul className="lista-acotada mb-3 space-y-1.5 pr-1">
           {documentos.map((d, i) => (
-            <li key={d.clave ?? i} className="rounded-lg bg-paper-sunk px-3 py-2 text-xs text-ink">
+            <li
+              key={d.clave ?? i}
+              className="rounded-lg bg-paper-sunk px-3 py-2 text-xs text-ink"
+            >
               {d.nombre || d.clave}
               <span className="ml-2 text-3xs text-ink-faint">
                 {d.vence

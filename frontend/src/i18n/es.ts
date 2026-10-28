@@ -106,6 +106,7 @@ export default {
     coste: "Coste",
     inteligencia: "Inteligencia",
     nexus: "Nexus",
+    duplicados: "Duplicados por resolver",
     puesto: "Puesto",
     alm: "Entornos y despliegue",
     rendimiento: "Rendimiento",

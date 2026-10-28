@@ -22,6 +22,7 @@ export { Consola } from "@/paginas/Consola";
 export { Coste } from "@/paginas/Coste";
 export { Cuadros } from "@/paginas/Cuadros";
 export { Cuenta } from "@/paginas/Cuenta";
+export { Duplicados } from "@/paginas/Duplicados";
 export { Entrar } from "@/paginas/Entrar";
 export { Estado } from "@/paginas/Estado";
 export { Explotacion } from "@/paginas/Explotacion";

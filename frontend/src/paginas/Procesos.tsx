@@ -34,7 +34,11 @@ import {
 const EJEMPLO: Definicion = {
   inicio: "recibir",
   pasos: {
-    recibir: { tipo: "servicio", operacion: "sales.crear_oportunidad", siguiente: "aprobar" },
+    recibir: {
+      tipo: "servicio",
+      operacion: "sales.crear_oportunidad",
+      siguiente: "aprobar",
+    },
     aprobar: { tipo: "humano", rutas: { si: "terminar", no: "terminar" } },
     terminar: { tipo: "fin" },
   },
@@ -46,7 +50,9 @@ export function Procesos() {
   const [clave, setClave] = useState("mi_proceso");
   const [nombre, setNombre] = useState("Mi proceso");
   const [problemas, setProblemas] = useState<string[] | null>(null);
-  const [recorrido, setRecorrido] = useState<Record<string, unknown>[] | null>(null);
+  const [recorrido, setRecorrido] = useState<Record<string, unknown>[] | null>(
+    null,
+  );
   const [fallo, setFallo] = useState<unknown>(null);
 
   // El JSON puede estar a medias mientras se teclea; eso no es un error que
@@ -67,7 +73,8 @@ export function Procesos() {
   const guardarPosiciones = useCallback(
     (nuevos: Nodo[]) => {
       setNodos(nuevos);
-      if (definicion) setTexto(JSON.stringify(conPosiciones(definicion, nuevos), null, 2));
+      if (definicion)
+        setTexto(JSON.stringify(conPosiciones(definicion, nuevos), null, 2));
     },
     [definicion],
   );
@@ -77,10 +84,13 @@ export function Procesos() {
     setFallo(null);
     setRecorrido(null);
     try {
-      const { datos } = await llamar<{ problemas?: string[]; recorrido?: Record<string, unknown>[] }>(
-        ruta,
-        { metodo: "POST", cuerpo: { clave, nombre, definicion, ...extra } },
-      );
+      const { datos } = await llamar<{
+        problemas?: string[];
+        recorrido?: Record<string, unknown>[];
+      }>(ruta, {
+        metodo: "POST",
+        cuerpo: { clave, nombre, definicion, ...extra },
+      });
       setProblemas(datos.problemas ?? []);
       if (datos.recorrido) setRecorrido(datos.recorrido);
     } catch (error) {
@@ -97,21 +107,45 @@ export function Procesos() {
       />
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Campo etiqueta={t("procesos.clave")} valor={clave} alCambiar={setClave} />
-        <Campo etiqueta={t("procesos.nombre")} valor={nombre} alCambiar={setNombre} />
+        <Campo
+          etiqueta={t("procesos.clave")}
+          valor={clave}
+          alCambiar={setClave}
+        />
+        <Campo
+          etiqueta={t("procesos.nombre")}
+          valor={nombre}
+          alCambiar={setNombre}
+        />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Boton texto={t("procesos.validar")} onClick={() => void accion("/api/v1/procesos/definiciones/validar")} />
-        <Boton texto={t("procesos.simular")} onClick={() => void accion("/api/v1/procesos/definiciones/simular", { variables: {} })} />
+        <Boton
+          texto={t("procesos.validar")}
+          onClick={() => void accion("/api/v1/procesos/definiciones/validar")}
+        />
+        <Boton
+          texto={t("procesos.simular")}
+          onClick={() =>
+            void accion("/api/v1/procesos/definiciones/simular", {
+              variables: {},
+            })
+          }
+        />
         <Boton
           texto={t("procesos.guardarBorrador")}
-          onClick={() => void accion("/api/v1/procesos/definiciones", { estado: "borrador" })}
+          onClick={() =>
+            void accion("/api/v1/procesos/definiciones", { estado: "borrador" })
+          }
         />
         <Boton
           texto={t("procesos.publicar")}
           destacado
-          onClick={() => void accion("/api/v1/procesos/definiciones", { estado: "publicada" })}
+          onClick={() =>
+            void accion("/api/v1/procesos/definiciones", {
+              estado: "publicada",
+            })
+          }
         />
       </div>
 
@@ -133,7 +167,7 @@ export function Procesos() {
           {problemas.length === 0 ? (
             t("procesos.valida")
           ) : (
-            <ul className="flex flex-col gap-0.5">
+            <ul className="lista-acotada flex flex-col gap-0.5 pr-1">
               {problemas.map((p) => (
                 <li key={p}>{p}</li>
               ))}
@@ -148,9 +182,15 @@ export function Procesos() {
             {t("procesos.lienzo")}
           </h2>
           {definicion ? (
-            <Lienzo definicion={definicion} nodos={nodos} alMover={guardarPosiciones} />
+            <Lienzo
+              definicion={definicion}
+              nodos={nodos}
+              alMover={guardarPosiciones}
+            />
           ) : (
-            <p className="mt-2 text-2xs text-warning">{t("procesos.jsonAMedias")}</p>
+            <p className="mt-2 text-2xs text-warning">
+              {t("procesos.jsonAMedias")}
+            </p>
           )}
         </section>
 
@@ -177,7 +217,9 @@ export function Procesos() {
           <h2 className="text-2xs font-medium uppercase tracking-wide text-ink-faint">
             {t("procesos.recorrido")}
           </h2>
-          <ol className="mt-2 flex flex-col gap-1">
+          {/* El recorrido de un proceso largo son cientos de pasos, y debajo
+              no quedaba nada visible. */}
+          <ol className="lista-acotada mt-2 flex flex-col gap-1 pr-1">
             {recorrido.map((paso, i) => (
               <li
                 key={`${String(paso.paso)}-${i}`}
@@ -211,14 +253,21 @@ function Lienzo({
   function mover(nombre: string, dx: number, dy: number) {
     alMover(
       nodos.map((n) =>
-        n.nombre === nombre ? { ...n, x: Math.max(0, n.x + dx), y: Math.max(0, n.y + dy) } : n,
+        n.nombre === nombre
+          ? { ...n, x: Math.max(0, n.x + dx), y: Math.max(0, n.y + dy) }
+          : n,
       ),
     );
   }
 
   return (
     <div className="mt-2 overflow-auto rounded-xl border border-ink-dim/60 bg-paper">
-      <svg width={ancho} height={alto} role="img" aria-label={t("procesos.lienzo")}>
+      <svg
+        width={ancho}
+        height={alto}
+        role="img"
+        aria-label={t("procesos.lienzo")}
+      >
         {enlaces.map((a, i) => {
           const desde = porNombre.get(a.desde);
           const hasta = porNombre.get(a.hasta);
@@ -256,10 +305,20 @@ function Lienzo({
               stroke={n.esInicio ? "rgb(var(--accent))" : "rgb(var(--ink-dim))"}
               strokeWidth={n.esInicio ? 2 : 1}
             />
-            <text x={n.x + 10} y={n.y + 15} fill="rgb(var(--ink))" fontSize={11}>
+            <text
+              x={n.x + 10}
+              y={n.y + 15}
+              fill="rgb(var(--ink))"
+              fontSize={11}
+            >
               {n.nombre}
             </text>
-            <text x={n.x + 10} y={n.y + 28} fill="rgb(var(--ink-faint))" fontSize={9}>
+            <text
+              x={n.x + 10}
+              y={n.y + 28}
+              fill="rgb(var(--ink-faint))"
+              fontSize={9}
+            >
               {n.tipo}
             </text>
           </g>
@@ -271,7 +330,10 @@ function Lienzo({
           exactamente el tipo de pantalla donde más se nota. */}
       <div className="flex flex-wrap gap-1 border-t border-ink-dim/30 p-2">
         {nodos.map((n) => (
-          <div key={n.nombre} className="flex items-center gap-1 text-3xs text-ink-faint">
+          <div
+            key={n.nombre}
+            className="flex items-center gap-1 text-3xs text-ink-faint"
+          >
             <span className="font-mono">{n.nombre}</span>
             {(
               [

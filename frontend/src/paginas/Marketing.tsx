@@ -78,11 +78,13 @@ export function Marketing() {
       />
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("marketing.segmentos")}</h2>
+        <h2 className="text-sm font-medium text-ink">
+          {t("marketing.segmentos")}
+        </h2>
         {segmentos.length === 0 ? (
           <Vacio titulo={t("marketing.sinSegmentos")} detalle="" />
         ) : (
-          <ul className="mt-2 flex flex-col gap-2">
+          <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {segmentos.map((s) => (
               <li
                 key={s.id}
@@ -91,7 +93,9 @@ export function Marketing() {
                 <span className="flex-1 text-sm text-ink">{s.nombre}</span>
                 <span className="text-2xs text-ink-muted">{s.tipo}</span>
                 <span className="font-mono text-2xs text-ink">
-                  {s.miembros === null ? t("marketing.sinCalcular") : s.miembros}
+                  {s.miembros === null
+                    ? t("marketing.sinCalcular")
+                    : s.miembros}
                 </span>
                 {/* La fecha del recuento va SIEMPRE: un número sin fecha se lee
                     como el de ahora, y quien va a mandar un correo a 14.000
@@ -110,11 +114,13 @@ export function Marketing() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-ink">{t("marketing.campanas")}</h2>
+        <h2 className="text-sm font-medium text-ink">
+          {t("marketing.campanas")}
+        </h2>
         {campanas.length === 0 ? (
           <Vacio titulo={t("marketing.sinCampanas")} detalle="" />
         ) : (
-          <ul className="mt-2 flex flex-col gap-2">
+          <ul className="lista-acotada mt-2 flex flex-col gap-2 pr-1">
             {campanas.map((c) => (
               <li
                 key={c.id}

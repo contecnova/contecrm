@@ -54,25 +54,25 @@
      `paper-lighter` lo que va encima de todo. En claro el lienzo es MÁS CLARO
      que los paneles, al revés que en oscuro, y por eso el nombre `-dark` es de
      rol: nombra el sitio, no el color. */
-  --paper:         255 255 255;  /* #ffffff — surface-2: paneles, tarjetas */
-  --paper-dark:    248 249 250;     /* #f8f9fa — surface-0: lienzo */
-  --paper-light:   241 243 244;     /* #f1f3f4 — surface-1: hover, elevado */
-  --paper-lighter: 232 234 237;     /* #e8eaed — surface-4: lo de más arriba */
+  --paper: 255 255 255; /* #ffffff — surface-2: paneles, tarjetas */
+  --paper-dark: 248 249 250; /* #f8f9fa — surface-0: lienzo */
+  --paper-light: 241 243 244; /* #f1f3f4 — surface-1: hover, elevado */
+  --paper-lighter: 232 234 237; /* #e8eaed — surface-4: lo de más arriba */
   /* Una superficie HUNDIDA respecto al panel: la cabecera de una tabla, el
      carril de una barra de progreso, la burbuja de lo que dice el otro. No es
      `paper-light` al revés: los papeles suben desde el panel y este baja.
 
      Sobre blanco, bajar es el gris de los paneles. */
-  --paper-sunk:    241 245 249;  /* #f1f5f9 — surface-1 */
+  --paper-sunk: 241 245 249; /* #f1f5f9 — surface-1 */
 
-  --ink:           32 33 36;        /* #202124 — text-1: el cuerpo */
-  --ink-muted:     95 99 104;       /* #5f6368 — text-2: etiquetas y apoyo */
+  --ink: 32 33 36; /* #202124 — text-1: el cuerpo */
+  --ink-muted: 95 99 104; /* #5f6368 — text-2: etiquetas y apoyo */
   /* Su `text-3` es #94a3b8 y da 2.08:1 contra `paper-lighter`: en contecflow es
      explícitamente decorativo, pero aquí `ink-faint` es el token de los pies de
      foto y los marcadores de posición, que SON texto y siempre en 10-12px. Se
      sube al mismo tono hasta 4.61:1. Es la única desviación del tema claro. */
-  --ink-faint:     98 104 111;      /* #62686f */
-  --ink-dim:      218 220 224;     /* #dadce0 — surface-5: bordes y separadores */
+  --ink-faint: 98 104 111; /* #62686f */
+  --ink-dim: 218 220 224; /* #dadce0 — surface-5: bordes y separadores */
 
   /* ── Semánticos: RELLENO y TEXTO son tokens distintos ─────────────────────
      Auditoría 2026-09-02 (#26). Un color no puede servir para las dos cosas,
@@ -106,16 +106,16 @@
      nada, porque quien lo lee deja de mirar. */
 
   /* Rellenos, los suyos. Los `-soft` son el hover y sobre claro OSCURECEN. */
-  --accent:        23 113 232;      /* #1771e8 */
-  --accent-soft:   19 95 195;       /* #135fc3 — su `accent-dim` */
-  --accent-glow:   66 133 244;      /* #4285f4 — solo resaltados */
+  --accent: 23 113 232; /* #1771e8 */
+  --accent-soft: 19 95 195; /* #135fc3 — su `accent-dim` */
+  --accent-glow: 66 133 244; /* #4285f4 — solo resaltados */
 
-  --success:       30 142 62;       /* #1e8e3e */
-  --success-soft:  24 128 56;       /* #188038 */
-  --warning:      249 171 0;       /* #f9ab00 */
-  --warning-soft: 234 154 0;       /* #ea9a00 */
-  --danger:       217 48 37;       /* #d93025 */
-  --danger-soft:  182 40 31;       /* #b6281f */
+  --success: 30 142 62; /* #1e8e3e */
+  --success-soft: 24 128 56; /* #188038 */
+  --warning: 249 171 0; /* #f9ab00 */
+  --warning-soft: 234 154 0; /* #ea9a00 */
+  --danger: 217 48 37; /* #d93025 */
+  --danger-soft: 182 40 31; /* #b6281f */
 
   /* ── Las familias que faltaban ────────────────────────────────────────────
      contecflow distingue cuatro cosas más que aquí se metían en los cuatro
@@ -130,44 +130,44 @@
      Y los de gráfico, que resuelven otro problema: distinguir CATEGORÍAS entre
      sí. Con cuatro tonos semánticos, la quinta serie de un gráfico repite color
      y dos líneas dejan de poder seguirse. */
-  --info:          37 99 235;    /* #2563eb */
-  --purple:       124 58 237;    /* #7c3aed */
-  --orange:       251 146 60;    /* #fb923c */
-  --coral:        244 63 94;     /* #f43f5e */
-  --sky:           56 189 248;   /* #38bdf8 */
-  --chart-teal:    45 212 191;   /* #2dd4bf */
-  --chart-lime:   132 204 22;    /* #84cc16 */
-  --chart-pink:   236 72 153;    /* #ec4899 */
+  --info: 37 99 235; /* #2563eb */
+  --purple: 124 58 237; /* #7c3aed */
+  --orange: 251 146 60; /* #fb923c */
+  --coral: 244 63 94; /* #f43f5e */
+  --sky: 56 189 248; /* #38bdf8 */
+  --chart-teal: 45 212 191; /* #2dd4bf */
+  --chart-lime: 132 204 22; /* #84cc16 */
+  --chart-pink: 236 72 153; /* #ec4899 */
 
   /* El portal del cliente y del proveedor tiene lienzo propio: quien entra ahí
      no es de la casa, y que no se parezca al escritorio interno es
      intencionado. En claro son sus mismos papeles con un punto menos de luz. */
-  --portal-bg:     241 245 249;  /* #f1f5f9 */
+  --portal-bg: 241 245 249; /* #f1f5f9 */
   --portal-surface: 255 255 255; /* #ffffff */
-  --portal-deep:   226 232 240;  /* #e2e8f0 */
+  --portal-deep: 226 232 240; /* #e2e8f0 */
 
   /* Los mismos colores, como TEXTO. `ink-faint` ya llegaba en claro; existe
      aquí porque `.dark` tiene que poder redefinirlo, y una variable declarada
      solo en `:root` conservaría el valor CLARO en tema oscuro. */
-  --ink-faint-text:     98 104 111;      /* #62686f */
-  --accent-text:        21 101 206;      /* #1565ce */
-  --accent-soft-text:   24 101 205;      /* #1865cd */
-  --accent-glow-text:   13 95 229;       /* #0d5fe5 */
-  --success-text:       25 120 52;       /* #197834 */
-  --success-soft-text:  23 120 53;       /* #177835 */
-  --warning-text:      139 95 0;        /* #8b5f00
+  --ink-faint-text: 98 104 111; /* #62686f */
+  --accent-text: 21 101 206; /* #1565ce */
+  --accent-soft-text: 24 101 205; /* #1865cd */
+  --accent-glow-text: 13 95 229; /* #0d5fe5 */
+  --success-text: 25 120 52; /* #197834 */
+  --success-soft-text: 23 120 53; /* #177835 */
+  --warning-text: 139 95 0; /* #8b5f00
                                         sobre blanco es forzosamente un marrón */
-  --warning-soft-text: 143 94 0;        /* #8f5e00 */
-  --danger-text:       198 44 34;       /* #c62c22 */
-  --danger-soft-text:  197 34 31;       /* #c5221f */
-  --info-text:          24 90 234;   /* #185aea — 4.62:1 */
-  --purple-text:       124 58 237;   /* #7c3aed — 4.62:1, ya llegaba */
-  --orange-text:       165 76 3;     /* #a54c03 — 4.69:1 */
-  --coral-text:        205 12 45;    /* #cd0c2d — 4.62:1 */
-  --sky-text:            5 108 154;  /* #056c9a — 4.71:1 */
-  --chart-teal-text:    24 115 104;  /* #187368 — 4.62:1 */
-  --chart-lime-text:    72 112 12;   /* #48700c — 4.73:1 */
-  --chart-pink-text:   196 20 107;   /* #c4146b — 4.65:1 */
+  --warning-soft-text: 143 94 0; /* #8f5e00 */
+  --danger-text: 198 44 34; /* #c62c22 */
+  --danger-soft-text: 197 34 31; /* #c5221f */
+  --info-text: 24 90 234; /* #185aea — 4.62:1 */
+  --purple-text: 124 58 237; /* #7c3aed — 4.62:1, ya llegaba */
+  --orange-text: 165 76 3; /* #a54c03 — 4.69:1 */
+  --coral-text: 205 12 45; /* #cd0c2d — 4.62:1 */
+  --sky-text: 5 108 154; /* #056c9a — 4.71:1 */
+  --chart-teal-text: 24 115 104; /* #187368 — 4.62:1 */
+  --chart-lime-text: 72 112 12; /* #48700c — 4.73:1 */
+  --chart-pink-text: 196 20 107; /* #c4146b — 4.65:1 */
 
   /* ── Categóricos de visualización (auditoría 2026-09-02 #36) ──────────────
      Los grafos y el scatter necesitan distinguir CATEGORÍAS entre sí, que es un
@@ -185,12 +185,18 @@
      paleta oscura pasara a ser la de contecflow; lo que cambia es que ahora son
      un token y no un literal en `tailwind.config.js`, para que cada tema pueda
      dar el suyo. */
-  --shadow-1: 0 1px 2px 0 rgba(60,64,67,0.08), 0 1px 3px 1px rgba(60,64,67,0.06);
-  --shadow-2: 0 1px 2px 0 rgba(60,64,67,0.10), 0 2px 6px 2px rgba(60,64,67,0.08);
-  --shadow-3: 0 4px 8px 3px rgba(60,64,67,0.10), 0 1px 3px 0 rgba(60,64,67,0.12);
-  --shadow-4: 0 6px 10px 4px rgba(60,64,67,0.12), 0 2px 3px 0 rgba(60,64,67,0.14);
-  --shadow-5: 0 8px 12px 6px rgba(60,64,67,0.14), 0 4px 4px 0 rgba(60,64,67,0.16);
-  --shadow-accent: 0 0 0 1px rgba(26,115,232,0.55), 0 0 0 4px rgba(26,115,232,0.12);
+  --shadow-1:
+    0 1px 2px 0 rgba(60, 64, 67, 0.08), 0 1px 3px 1px rgba(60, 64, 67, 0.06);
+  --shadow-2:
+    0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 2px 6px 2px rgba(60, 64, 67, 0.08);
+  --shadow-3:
+    0 4px 8px 3px rgba(60, 64, 67, 0.1), 0 1px 3px 0 rgba(60, 64, 67, 0.12);
+  --shadow-4:
+    0 6px 10px 4px rgba(60, 64, 67, 0.12), 0 2px 3px 0 rgba(60, 64, 67, 0.14);
+  --shadow-5:
+    0 8px 12px 6px rgba(60, 64, 67, 0.14), 0 4px 4px 0 rgba(60, 64, 67, 0.16);
+  --shadow-accent:
+    0 0 0 1px rgba(26, 115, 232, 0.55), 0 0 0 4px rgba(26, 115, 232, 0.12);
 
   /* ── Armazón: las medidas de contecflow ───────────────────────────────────
      No son colores, así que no cambian con el tema y van una sola vez. Salen de
@@ -203,13 +209,13 @@
      `--panel-w` / `--panel-w-plegado`: el panel medía 288px, un 30 % más que el
      suyo, y no se plegaba. Por debajo de `--panel-plegar` se queda en raíl de
      iconos, porque en 1280px un panel de 288 se come el 22 % de la pantalla. */
-  --page-pad-x:  32px;
-  --page-pad-y:  32px;
-  --page-max-w:  1400px;
-  --panel-w:         222px;
+  --page-pad-x: 32px;
+  --page-pad-y: 32px;
+  --page-max-w: 1400px;
+  --panel-w: 222px;
   --panel-w-plegado: 46px;
-  --panel-plegar:    1280px;
-  --barra-h:     48px;
+  --panel-plegar: 1280px;
+  --barra-h: 48px;
 
   /* ── Densidad ────────────────────────────────────────────────────────
      Cuánto cabe en pantalla. Lo elige cada persona y viaja en su perfil, no
@@ -253,20 +259,20 @@
      codificación secundaria**. Por eso la leyenda no es opcional, las series
      llevan etiqueta directa hasta cuatro y los rellenos van separados por 2px
      de superficie. Si alguien quita eso, la paleta deja de ser válida. */
-  --viz-1: 23 113 232;    /* #1771e8 — el azul de la casa */
-  --viz-2: 190 24 93;     /* #be185d */
-  --viz-3: 13 148 136;    /* #0d9488 */
-  --viz-4: 124 58 237;    /* #7c3aed */
-  --viz-5: 8 145 178;     /* #0891b2 */
+  --viz-1: 23 113 232; /* #1771e8 — el azul de la casa */
+  --viz-2: 190 24 93; /* #be185d */
+  --viz-3: 13 148 136; /* #0d9488 */
+  --viz-4: 124 58 237; /* #7c3aed */
+  --viz-5: 8 145 178; /* #0891b2 */
   /* La cola: a partir de la sexta serie NO se inventa un color. Un sexto tono
      generado es indistinguible de otro bajo daltonismo y rompe todas las
      comprobaciones. Lo que sobra se pliega aquí, con su nombre. */
-  --viz-otros: 107 114 128;  /* #6b7280 */
+  --viz-otros: 107 114 128; /* #6b7280 */
   /* Rejilla y ejes: recesivos. Una rejilla que compite con los datos es ruido
      con aspecto de precisión. */
   --viz-grid: 218 220 224;
-  --viz-violet:   124 58 237;    /* #7c3aed — supersedes */
-  --viz-neutral:  107 114 128;   /* #6b7280 — related (sin carga semántica) */
+  --viz-violet: 124 58 237; /* #7c3aed — supersedes */
+  --viz-neutral: 107 114 128; /* #6b7280 — related (sin carga semántica) */
 }
 
 .dark {
@@ -278,77 +284,77 @@
      Los papeles van por ROL, no por nombre: `paper` es la superficie de
      paneles y tarjetas, `paper-dark` el lienzo de debajo, `paper-light` el
      hover y `paper-lighter` lo que va encima de todo —modales—. */
-  --paper:         28 29 38;        /* #1c1d26 — surface-1: paneles, tarjetas */
-  --paper-dark:     19 20 26;        /* #13141a — surface-0: fondo base */
-  --paper-light:   38 40 51;        /* #262833 — surface-3: hover, elevado */
-  --paper-lighter: 50 52 66;        /* #323442 — surface-4: lo de más arriba */
+  --paper: 28 29 38; /* #1c1d26 — surface-1: paneles, tarjetas */
+  --paper-dark: 19 20 26; /* #13141a — surface-0: fondo base */
+  --paper-light: 38 40 51; /* #262833 — surface-3: hover, elevado */
+  --paper-lighter: 50 52 66; /* #323442 — surface-4: lo de más arriba */
   /* Hundido es el `surface-0` de contecflow: el fondo de la aplicación, que
      está por debajo del panel. En oscuro bajar es oscurecer, al revés que en
      claro, y por eso esto es un token y no una clase escrita a mano. */
-  --paper-sunk:    8 12 20;      /* #080c14 — surface-0 */
+  --paper-sunk: 8 12 20; /* #080c14 — surface-0 */
 
-  --ink:          228 230 235;     /* #e4e6eb — text-1 */
-  --ink-muted:    164 168 180;     /* #a4a8b4 — text-2 */
-  --ink-faint:    138 142 156;     /* #8a8e9c — text-3 */
-  --ink-dim:       64 68 86;        /* #404456 — surface-4: bordes y separadores */
+  --ink: 228 230 235; /* #e4e6eb — text-1 */
+  --ink-muted: 164 168 180; /* #a4a8b4 — text-2 */
+  --ink-faint: 138 142 156; /* #8a8e9c — text-3 */
+  --ink-dim: 64 68 86; /* #404456 — surface-4: bordes y separadores */
 
   /* Rellenos. Los `-soft` son el hover y sobre oscuro tienen que ACLARAR:
      oscurecer acerca el botón al fondo, así que al pasar por encima se
      apagaría. */
-  --accent:        66 133 244;      /* #4285f4 */
-  --accent-soft:  105 158 246;     /* #699ef6 — relleno +8% L */
-  --accent-glow:  138 180 248;   /* #8ab4f8 */
+  --accent: 66 133 244; /* #4285f4 */
+  --accent-soft: 105 158 246; /* #699ef6 — relleno +8% L */
+  --accent-glow: 138 180 248; /* #8ab4f8 */
 
-  --success:       52 168 83;       /* #34a853 */
-  --success-soft:  46 148 73;
-  --warning:      251 188 4;       /* #fbbc04 */
+  --success: 52 168 83; /* #34a853 */
+  --success-soft: 46 148 73;
+  --warning: 251 188 4; /* #fbbc04 */
   --warning-soft: 234 154 0;
-  --danger:       242 139 130;     /* #f28b82 */
-  --danger-soft:  246 173 167;
+  --danger: 242 139 130; /* #f28b82 */
+  --danger-soft: 246 173 167;
 
   /* Las familias que faltaban, con sus valores de contecflow. Qué resuelve cada
      una está en `:root`, junto a las del tema claro. */
-  --info:          96 165 250;   /* #60a5fa */
-  --purple:       167 139 250;   /* #a78bfa */
-  --orange:       251 146 60;    /* #fb923c */
-  --coral:        244 63 94;     /* #f43f5e */
-  --sky:           56 189 248;   /* #38bdf8 */
-  --chart-teal:    45 212 191;   /* #2dd4bf */
-  --chart-lime:   132 204 22;    /* #84cc16 */
-  --chart-pink:   236 72 153;    /* #ec4899 */
+  --info: 96 165 250; /* #60a5fa */
+  --purple: 167 139 250; /* #a78bfa */
+  --orange: 251 146 60; /* #fb923c */
+  --coral: 244 63 94; /* #f43f5e */
+  --sky: 56 189 248; /* #38bdf8 */
+  --chart-teal: 45 212 191; /* #2dd4bf */
+  --chart-lime: 132 204 22; /* #84cc16 */
+  --chart-pink: 236 72 153; /* #ec4899 */
 
   /* El lienzo del portal, el suyo tal cual: es un azul más frío y más profundo
      que el del escritorio, para que se note al primer vistazo que se está
      fuera de casa. */
-  --portal-bg:      10 21 37;    /* #0a1525 */
-  --portal-surface: 20 31 50;    /* #141f32 */
-  --portal-deep:    10 17 32;    /* #0a1120 */
+  --portal-bg: 10 21 37; /* #0a1525 */
+  --portal-surface: 20 31 50; /* #141f32 */
+  --portal-deep: 10 17 32; /* #0a1120 */
 
   /* Los mismos colores como TEXTO, medidos contra `paper-lighter` (#1e2d45),
      que es la superficie MÁS CLARA y por tanto el peor caso: las superficies
      se anidan —un modal sobre una tarjeta sobre la página— y nada impide
      ninguna combinación. Los que ya llegaban se dejan iguales, y los dos que
      no —el texto tenue y el acento— suben lo justo. */
-  --ink-faint-text:    155 158 170;     /* #9b9eaa */
-  --accent-text:        106 159 246;     /* #6a9ff6 */
-  --accent-soft-text:  101 161 240;     /* #65a1f0 */
-  --accent-glow-text:  138 180 248;  /* #8ab4f8 — 6.62:1 */
-  --success-text:       56 181 90;       /* #38b55a */
-  --success-soft-text:  56 181 89;       /* #38b559 */
-  --warning-text:      251 188 4;       /* #fbbc04 */
-  --warning-soft-text: 234 154 0;       /* #ea9a00 */
-  --danger-text:       242 139 130;     /* #f28b82 */
-  --danger-soft-text:  240 125 115;     /* #f07d73 */
-  --info-text:          96 165 250;  /* #60a5fa — 5.45:1 */
-  --purple-text:       167 139 250;  /* #a78bfa — 5.09:1 */
-  --orange-text:       251 146 60;   /* #fb923c — 6.12:1 */
-  --coral-text:        247 114 137;  /* #f77289 — aclarado un 9 % al adoptar la
+  --ink-faint-text: 155 158 170; /* #9b9eaa */
+  --accent-text: 106 159 246; /* #6a9ff6 */
+  --accent-soft-text: 101 161 240; /* #65a1f0 */
+  --accent-glow-text: 138 180 248; /* #8ab4f8 — 6.62:1 */
+  --success-text: 56 181 90; /* #38b55a */
+  --success-soft-text: 56 181 89; /* #38b559 */
+  --warning-text: 251 188 4; /* #fbbc04 */
+  --warning-soft-text: 234 154 0; /* #ea9a00 */
+  --danger-text: 242 139 130; /* #f28b82 */
+  --danger-soft-text: 240 125 115; /* #f07d73 */
+  --info-text: 96 165 250; /* #60a5fa — 5.45:1 */
+  --purple-text: 167 139 250; /* #a78bfa — 5.09:1 */
+  --orange-text: 251 146 60; /* #fb923c — 6.12:1 */
+  --coral-text: 247 114 137; /* #f77289 — aclarado un 9 % al adoptar la
                                         superficie de contecmind, que es más clara
                                         y dejaba el original en 4.13:1 */
-  --sky-text:           56 189 248;  /* #38bdf8 — 6.46:1 */
-  --chart-teal-text:    45 212 191;  /* #2dd4bf — 7.44:1 */
-  --chart-lime-text:   132 204 22;   /* #84cc16 — 7.01:1 */
-  --chart-pink-text:   240 114 176;  /* #f072b0 — ídem: 4.14:1 con la superficie
+  --sky-text: 56 189 248; /* #38bdf8 — 6.46:1 */
+  --chart-teal-text: 45 212 191; /* #2dd4bf — 7.44:1 */
+  --chart-lime-text: 132 204 22; /* #84cc16 — 7.01:1 */
+  --chart-pink-text: 240 114 176; /* #f072b0 — ídem: 4.14:1 con la superficie
                                         nueva, aclarado un 9 % */
 
   /* ── Sombras: las de contecflow ───────────────────────────────────────────
@@ -360,24 +366,25 @@
      El anillo de foco se sube al acento de contecflow (#4f8ef7) y se le deja el
      halo de 20px que usan ellos, además del contorno de 1px: el halo solo no
      marca el borde del campo, y el contorno solo no se ve contra `paper-light`. */
-  --shadow-1: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-2: 0 4px 16px rgba(0,0,0,0.5);
-  --shadow-3: 0 8px 32px rgba(0,0,0,0.6);
-  --shadow-4: 0 12px 40px rgba(0,0,0,0.65);
-  --shadow-5: 0 16px 48px rgba(0,0,0,0.7);
-  --shadow-accent: 0 0 0 1px rgba(79,142,247,0.55), 0 0 20px rgba(79,142,247,0.12);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 12px 40px rgba(0, 0, 0, 0.65);
+  --shadow-5: 0 16px 48px rgba(0, 0, 0, 0.7);
+  --shadow-accent:
+    0 0 0 1px rgba(79, 142, 247, 0.55), 0 0 20px rgba(79, 142, 247, 0.12);
 
   /* Categóricos de visualización (#36) — más luminosos para el lienzo oscuro. */
   /* Los pasos propios del oscuro. Mismo orden de entidad que en claro. */
-  --viz-1: 66 133 244;    /* #4285f4 */
-  --viz-2: 219 39 119;    /* #db2777 */
-  --viz-3: 42 168 154;    /* #2aa89a */
-  --viz-4: 139 92 246;    /* #8b5cf6 */
-  --viz-5: 23 162 201;    /* #17a2c9 */
+  --viz-1: 66 133 244; /* #4285f4 */
+  --viz-2: 219 39 119; /* #db2777 */
+  --viz-3: 42 168 154; /* #2aa89a */
+  --viz-4: 139 92 246; /* #8b5cf6 */
+  --viz-5: 23 162 201; /* #17a2c9 */
   --viz-otros: 156 163 175;
   --viz-grid: 50 52 66;
-  --viz-violet:   167 139 250;   /* #a78bfa */
-  --viz-neutral:  156 163 175;   /* #9ca3af */
+  --viz-violet: 167 139 250; /* #a78bfa */
+  --viz-neutral: 156 163 175; /* #9ca3af */
 }
 
 @layer base {
@@ -388,8 +395,12 @@
        light-on-light or dark-on-dark. */
     color-scheme: light dark;
   }
-  html.dark { color-scheme: dark; }
-  html, body, #root {
+  html.dark {
+    color-scheme: dark;
+  }
+  html,
+  body,
+  #root {
     @apply h-full;
   }
   body {
@@ -416,7 +427,9 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -460,8 +473,8 @@
    con `.dark`, que ya usa la clase. Los dos ejes son independientes: hay quien
    quiere oscuro y compacto, y quien quiere claro y cómodo. */
 :root[data-densidad="comoda"] {
-  --page-pad-x:  40px;
-  --page-pad-y:  40px;
+  --page-pad-x: 40px;
+  --page-pad-y: 40px;
   --celda-pad-y: 0.75rem;
   --celda-pad-x: 1rem;
   --celda-texto: 0.8125rem;
@@ -599,6 +612,28 @@
      Tenía más relleno y más radio que un botón —`py-2.5` y `rounded-lg`—, así
      que parecía pulsable y hacía el formulario larguísimo. En un alta de
      treinta campos eso son cientos de píxeles de recorrido por nada. */
+  /* Una lista que puede crecer sin fin, acotada.
+   *
+   * La regla: **si una pantalla tiene más de una lista, ninguna puede empujar
+   * a las demás fuera de la vista.** Con doscientos segmentos, la sección de
+   * campañas quedaba a tres pantallas de distancia y nadie la veía; con un
+   * informe de quinientas filas en un cuadro de mando, los otros cinco
+   * componentes quedaban igual de lejos.
+   *
+   * Está aquí y no repetida en cada pantalla por dos motivos: para que todas
+   * se acoten IGUAL —dos listas del mismo producto que se cortan a alturas
+   * distintas se leen como un fallo— y para poder cambiarlo en un sitio.
+   *
+   * El tope es generoso a propósito: lo normal se lee entero sin tocar nada,
+   * y la barra sólo aparece cuando de verdad hay cola.
+   *
+   * NO se usa cuando la pantalla ES la lista —un listado de módulo, la cola de
+   * duplicados, la búsqueda en conocimiento—: ahí no hay nada a lo que dejar
+   * sitio, y meter una barra dentro de la página es peor. */
+  .lista-acotada {
+    @apply max-h-[28rem] overflow-y-auto;
+  }
+
   .input-base {
     @apply w-full px-3 py-1.5
       bg-paper border border-ink-dim rounded-md
@@ -646,10 +681,18 @@
     content: "";
     @apply absolute top-0 left-0 right-0 h-[3px] bg-accent;
   }
-  .card-stat.stat-success::before { @apply bg-success; }
-  .card-stat.stat-warning::before { @apply bg-warning; }
-  .card-stat.stat-danger::before  { @apply bg-danger; }
-  .card-stat.stat-info::before    { @apply bg-accent-glow; }
+  .card-stat.stat-success::before {
+    @apply bg-success;
+  }
+  .card-stat.stat-warning::before {
+    @apply bg-warning;
+  }
+  .card-stat.stat-danger::before {
+    @apply bg-danger;
+  }
+  .card-stat.stat-info::before {
+    @apply bg-accent-glow;
+  }
 
   /* ── Citation pills (chat answers) ─────────────────────────────────── */
   .citation-pill {
@@ -763,10 +806,18 @@
   }
 
   /* ── Canonical vertical spacing scale ─────────────────────────────── */
-  .stack-tight   { @apply space-y-2; }
-  .stack-normal  { @apply space-y-4; }
-  .stack-section { @apply space-y-6; }
-  .stack-page    { @apply space-y-8; }
+  .stack-tight {
+    @apply space-y-2;
+  }
+  .stack-normal {
+    @apply space-y-4;
+  }
+  .stack-section {
+    @apply space-y-6;
+  }
+  .stack-page {
+    @apply space-y-8;
+  }
 
   /* ── Logo tile (rounded square with the workspace initial) ──────────
      Now a flat Google-blue Material tile, no inner highlight + outer glow. */
@@ -815,10 +866,18 @@
      filtro, una marca al lado de un rótulo de 10px—. Sin este escalón, el más
      pequeño que había eran 18px y el icono salía más grande que la palabra que
      acompaña, que es lo que hace que una pastilla parezca un botón. */
-  .material-symbol--xs { font-size: 14px; }
-  .material-symbol--sm { font-size: 18px; }
-  .material-symbol--lg { font-size: 24px; }
-  .material-symbol--xl { font-size: 32px; }
+  .material-symbol--xs {
+    font-size: 14px;
+  }
+  .material-symbol--sm {
+    font-size: 18px;
+  }
+  .material-symbol--lg {
+    font-size: 24px;
+  }
+  .material-symbol--xl {
+    font-size: 32px;
+  }
 }
 
 /* ── View mode: focus (Ciclo 23) ───────────────────────────────────────
@@ -839,8 +898,14 @@ html[data-view-mode="focus"] .focus-hide {
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  50.1%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.1%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* "Pensando…" indicator: three dots that pulse in sequence. Shown
@@ -854,23 +919,40 @@ html[data-view-mode="focus"] .focus-hide {
 }
 
 @keyframes thinkingDots {
-  0%   { content: ""; }
-  25%  { content: "."; }
-  50%  { content: ".."; }
-  75%  { content: "..."; }
-  100% { content: ""; }
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+  100% {
+    content: "";
+  }
 }
 
 /* Auditoría L16 (2026-05-27): barra indeterminada para uploads sin
    progress real. Material-style — el segmento se desliza de izquierda
    a derecha en bucle. Usado por Sidebar uploads e importación URL. */
 @keyframes slide {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .thinking-dots::after { animation: none; content: "…"; }
+  .thinking-dots::after {
+    animation: none;
+    content: "…";
+  }
 }
 
 /* ── Toast notifications (bottom-right) ────────────────────────────── */
@@ -886,18 +968,32 @@ html[data-view-mode="focus"] .focus-hide {
     border text-sm flex items-start gap-3
     animate-slide-up bg-paper;
 }
-.toast-success { @apply toast border-success/40 text-ink; }
-.toast-error   { @apply toast border-danger/40 text-ink; }
-.toast-warning { @apply toast border-warning/40 text-ink; }
-.toast-info    { @apply toast border-accent/40 text-ink; }
+.toast-success {
+  @apply toast border-success/40 text-ink;
+}
+.toast-error {
+  @apply toast border-danger/40 text-ink;
+}
+.toast-warning {
+  @apply toast border-warning/40 text-ink;
+}
+.toast-info {
+  @apply toast border-accent/40 text-ink;
+}
 
 /* ── Markdown rendering in chat ────────────────────────────────────── */
 .prose-chat {
   @apply text-ink leading-relaxed;
 }
-.prose-chat p { @apply my-3 first:mt-0 last:mb-0; }
-.prose-chat strong { @apply text-ink font-semibold; }
-.prose-chat em { @apply italic text-ink; }
+.prose-chat p {
+  @apply my-3 first:mt-0 last:mb-0;
+}
+.prose-chat strong {
+  @apply text-ink font-semibold;
+}
+.prose-chat em {
+  @apply italic text-ink;
+}
 .prose-chat code {
   @apply px-1.5 py-0.5 rounded-md bg-paper-light text-accent font-mono text-[0.85em];
 }
@@ -907,26 +1003,46 @@ html[data-view-mode="focus"] .focus-hide {
 .prose-chat pre code {
   @apply bg-transparent p-0 text-ink-muted text-sm;
 }
-.prose-chat ul, .prose-chat ol {
+.prose-chat ul,
+.prose-chat ol {
   @apply my-3 pl-6 space-y-1;
 }
-.prose-chat ul { @apply list-disc; }
-.prose-chat ol { @apply list-decimal; }
-.prose-chat li::marker { @apply text-ink-faint; }
+.prose-chat ul {
+  @apply list-disc;
+}
+.prose-chat ol {
+  @apply list-decimal;
+}
+.prose-chat li::marker {
+  @apply text-ink-faint;
+}
 .prose-chat blockquote {
   @apply my-3 pl-4 border-l-2 border-accent/40 text-ink-muted italic;
 }
-.prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 {
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3,
+.prose-chat h4 {
   @apply font-sans font-bold text-ink mt-4 mb-2 first:mt-0;
 }
-.prose-chat h1 { @apply text-2xl; }
-.prose-chat h2 { @apply text-xl; }
-.prose-chat h3 { @apply text-lg; }
-.prose-chat h4 { @apply text-base; }
+.prose-chat h1 {
+  @apply text-2xl;
+}
+.prose-chat h2 {
+  @apply text-xl;
+}
+.prose-chat h3 {
+  @apply text-lg;
+}
+.prose-chat h4 {
+  @apply text-base;
+}
 .prose-chat a {
   @apply text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent;
 }
-.prose-chat hr { @apply my-4 border-ink-dim/60; }
+.prose-chat hr {
+  @apply my-4 border-ink-dim/60;
+}
 
 /* ── Inline figures from extracted PDF/DOCX ─────────────────────────── */
 .prose-chat .doc-figure {

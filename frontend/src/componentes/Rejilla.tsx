@@ -41,8 +41,20 @@ export function Rejilla({
   compacta?: boolean;
 }) {
   return (
+    /* Acotada a lo alto, como el resto de las listas del producto.
+     *
+     * Ésta es la tabla de APOYO: vive dentro de una pantalla que tiene más
+     * cosas —entornos, estado, rendimiento, la suite—, y ahí una tabla que
+     * crece con los datos empuja fuera de la vista todo lo que va debajo. Con
+     * cien trabajos en cola, los paneles siguientes quedaban a dos pantallas.
+     *
+     * No es el caso de la tabla de un LISTADO, que es la pantalla entera: ésa
+     * se recorre con la página, y acotarla metería una barra dentro de otra.
+     *
+     * La cabecera se queda pegada arriba: recorrer una tabla sin cabecera
+     * obliga a subir para saber qué columna se está mirando. */
     <div
-      className={`overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
+      className={`lista-acotada overflow-x-auto rounded-xl border border-ink-dim/60 bg-paper ${className}`}
     >
       {/* El tamaño de letra sale del token de densidad, en `.celda-rejilla`, y
           no de una clase fija: con la densidad por persona, una tabla con
@@ -50,7 +62,7 @@ export function Rejilla({
           modo cómodo — y entonces el interruptor parece que no hace nada. */}
       <table className={`w-full text-left ${compacta ? "es-apoyo" : ""}`}>
         {titulo ? <caption className="sr-only">{titulo}</caption> : null}
-        <thead className="border-b border-ink-dim/30 bg-paper-light">
+        <thead className="sticky top-0 z-10 border-b border-ink-dim/30 bg-paper-light">
           <tr>
             {cabeceras.map((c, i) => (
               <th

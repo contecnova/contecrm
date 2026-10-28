@@ -50,6 +50,7 @@ import { escalar, humanizar, importe } from "@/lib/formato";
 import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
 import { recursoDe } from "@/lib/recursos";
+import { cn } from "@/lib/utiles";
 
 interface Contacto360 {
   id: string;
@@ -113,6 +114,25 @@ interface Vista360 {
  * aviso saldría antes de tiempo, no que se escondiera nada.
  */
 const TOPE_DEL_360 = 20;
+
+/**
+ * A partir de cuántas filas —entre la línea de tiempo y los tres paneles— se
+ * acota la ficha a una pantalla.
+ *
+ * Hace falta el umbral porque las dos formas de acotar fallan en el caso
+ * contrario, y las dos se probaron:
+ *
+ *   · con un alto DEFINIDO siempre, un cliente recién creado enseñaba un
+ *     recuadro vacío de pantalla entera;
+ *   · con un MÁXIMO siempre, la rejilla no comprime sus filas —`max-height`
+ *     acota el contenedor, no la fila— así que con mucha cola el contenido se
+ *     salía por abajo y se pintaba encima de lo que hubiera debajo. Es lo que
+ *     se vio en la ficha de un proveedor con veinte reuniones.
+ *
+ * Así que el alto se fija sólo cuando hay de qué: por debajo, la ficha mide lo
+ * que mide su contenido y no hay nada que acotar.
+ */
+const FILAS_PARA_ACOTAR = 12;
 
 interface Oportunidad {
   id: string;
@@ -280,6 +300,12 @@ export function Cuenta() {
   // Recortarlos aquí dejaría la caja medio vacía en una pantalla alta, que es
   // justo lo que se intentó antes y quedaba peor.
   const alaVista = timeline;
+  // Si hay poco que enseñar no se acota nada: la ficha mide lo suyo. Ver la
+  // nota de `FILAS_PARA_ACOTAR`, que explica por qué no vale ni acotar siempre
+  // ni no acotar nunca.
+  const hayCola =
+    timeline.length + contactos.length + oportunidades.length + casos.length >=
+    FILAS_PARA_ACOTAR;
   const nif = identificadores.find((i) => i.tipo === "nif")?.valor;
 
   return (
@@ -381,7 +407,12 @@ export function Cuenta() {
           **Sólo de `lg` para arriba.** En un móvil hay una sola columna y una
           barra dentro de otra es peor que el problema: el dedo no sabe cuál de
           las dos está moviendo. Ahí se desplaza la página. */}
-      <div className="grid gap-4 lg:max-h-[calc(100vh-15rem)] lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]">
+      <div
+        className={cn(
+          "grid gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,19rem)]",
+          hayCola && "lg:h-[calc(100vh-15rem)]",
+        )}
+      >
         {/* ── Datos ──────────────────────────────────────────────────── */}
         <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <section className="card p-4">

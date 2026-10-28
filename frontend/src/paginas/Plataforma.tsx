@@ -118,7 +118,12 @@ interface Anomalia {
 
 interface Rat {
   completo: boolean;
-  actividades: { objeto: string; finalidad: string; base_legal: string; plazo: string }[];
+  actividades: {
+    objeto: string;
+    finalidad: string;
+    base_legal: string;
+    plazo: string;
+  }[];
   objetos_sin_tratamiento_declarado: string[];
 }
 
@@ -206,13 +211,31 @@ export function Plataforma({ sesion }: { sesion: Sesion | null }) {
       <h2 className="section-label mb-2 mt-6">
         {t("plataforma.deEsteServicio", { servicio })}
       </h2>
-      <Cumplimiento servicio={servicio} puedeVer={puede(sesion, "cumplimiento:leer")} />
-      <Recuperable servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
-      <HastaDondeSeVuelve servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
-      <Aguanta servicio={servicio} puedeVer={puede(sesion, "datos:restaurar")} />
+      <Cumplimiento
+        servicio={servicio}
+        puedeVer={puede(sesion, "cumplimiento:leer")}
+      />
+      <Recuperable
+        servicio={servicio}
+        puedeVer={puede(sesion, "datos:restaurar")}
+      />
+      <HastaDondeSeVuelve
+        servicio={servicio}
+        puedeVer={puede(sesion, "datos:restaurar")}
+      />
+      <Aguanta
+        servicio={servicio}
+        puedeVer={puede(sesion, "datos:restaurar")}
+      />
       <ComoSeCorta servicio={servicio} puedeVer={puede(sesion, "admin:read")} />
-      <RastroCompleto servicio={servicio} puedeVer={puede(sesion, "admin:read")} />
-      <Boveda servicio={servicio} puedeVer={puede(sesion, "tokenizacion:read")} />
+      <RastroCompleto
+        servicio={servicio}
+        puedeVer={puede(sesion, "admin:read")}
+      />
+      <Boveda
+        servicio={servicio}
+        puedeVer={puede(sesion, "tokenizacion:read")}
+      />
     </>
   );
 }
@@ -301,22 +324,33 @@ function Auditoria({ puedeVer }: { puedeVer: boolean }) {
       </div>
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!filas && !fallo ? <Cargando /> : null}
-      {filas && filas.length === 0 ? <Vacio titulo={t("plataforma.sinApuntes")} compacto /> : null}
+      {filas && filas.length === 0 ? (
+        <Vacio titulo={t("plataforma.sinApuntes")} compacto />
+      ) : null}
       {filas && filas.length > 0 ? (
-        <ul className="divide-y divide-ink-dim/30">
+        <ul className="lista-acotada divide-y divide-ink-dim/30 pr-1">
           {filas.map((a) => (
-            <li key={a.secuencia} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={a.secuencia}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span className="text-2xs font-medium text-ink">{a.accion}</span>
               <span className="text-3xs text-ink-muted">{a.objeto}</span>
-              <span className="text-3xs text-ink-faint">{escalar(a.cuando, "cuando")}</span>
+              <span className="text-3xs text-ink-faint">
+                {escalar(a.cuando, "cuando")}
+              </span>
               {/* Quién, y en nombre de quién: una acción hecha por soporte
                   suplantando a alguien es la que más falta hace distinguir, y
                   con un solo identificador no se distingue. */}
               {a.en_nombre_de ? (
                 <span className="chip-dato">{t("plataforma.enNombreDe")}</span>
               ) : null}
-              {a.origen ? <span className="text-3xs text-ink-faint">{a.origen}</span> : null}
-              {a.ip ? <span className="text-3xs text-ink-faint">{a.ip}</span> : null}
+              {a.origen ? (
+                <span className="text-3xs text-ink-faint">{a.origen}</span>
+              ) : null}
+              {a.ip ? (
+                <span className="text-3xs text-ink-faint">{a.ip}</span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -334,7 +368,9 @@ function Anomalias({ puedeVer }: { puedeVer: boolean }) {
   const cargar = useCallback(() => {
     if (!puedeVer) return undefined;
     const control = new AbortController();
-    llamar<Anomalia[]>("/api/v1/grc/anomalias?dias=30", { signal: control.signal })
+    llamar<Anomalia[]>("/api/v1/grc/anomalias?dias=30", {
+      signal: control.signal,
+    })
       .then((r) => setFilas(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -344,22 +380,37 @@ function Anomalias({ puedeVer }: { puedeVer: boolean }) {
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.anomalias")} ayuda={t("plataforma.anomaliasAyuda")}>
+    <Panel
+      titulo={t("plataforma.anomalias")}
+      ayuda={t("plataforma.anomaliasAyuda")}
+    >
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!filas && !fallo ? <Cargando /> : null}
-      {filas && filas.length === 0 ? <Vacio titulo={t("plataforma.sinAnomalias")} compacto /> : null}
+      {filas && filas.length === 0 ? (
+        <Vacio titulo={t("plataforma.sinAnomalias")} compacto />
+      ) : null}
       {filas && filas.length > 0 ? (
-        <ul className="divide-y divide-ink-dim/30">
+        <ul className="lista-acotada divide-y divide-ink-dim/30 pr-1">
           {filas.map((a, i) => (
             <li key={`${a.usuario_id}:${a.cuando}:${i}`} className="py-1.5">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 {/* Cuántos registros salieron, primero: es el número que dice
                     si esto es una consulta grande o una fuga. */}
-                <span className="text-sm font-medium text-ink">{a.registros}</span>
+                <span className="text-sm font-medium text-ink">
+                  {a.registros}
+                </span>
                 <span className="text-2xs text-ink">{a.objeto}</span>
-                <span className="text-3xs text-ink-faint">{escalar(a.cuando, "cuando")}</span>
-                <span className={a.bloqueada ? "chip-dato chip-dato--si" : "chip-dato"}>
-                  {a.bloqueada ? t("plataforma.bloqueada") : t("plataforma.permitida")}
+                <span className="text-3xs text-ink-faint">
+                  {escalar(a.cuando, "cuando")}
+                </span>
+                <span
+                  className={
+                    a.bloqueada ? "chip-dato chip-dato--si" : "chip-dato"
+                  }
+                >
+                  {a.bloqueada
+                    ? t("plataforma.bloqueada")
+                    : t("plataforma.permitida")}
                 </span>
               </div>
               <p className="text-3xs text-ink-muted">{a.motivo}</p>
@@ -372,7 +423,13 @@ function Anomalias({ puedeVer }: { puedeVer: boolean }) {
 }
 
 /** Qué datos personales trata este servicio, y quién puede hacer qué en él. */
-function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function Cumplimiento({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [rat, setRat] = useState<Rat | null>(null);
   const [matriz, setMatriz] = useState<Matriz | null>(null);
@@ -387,7 +444,9 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
     setInforme(null);
     setFallo(null);
     Promise.all([
-      llamar<Rat>(`/api/v1/${servicio}/cumplimiento/rat`, { signal: control.signal }),
+      llamar<Rat>(`/api/v1/${servicio}/cumplimiento/rat`, {
+        signal: control.signal,
+      }),
       llamar<Matriz>(`/api/v1/${servicio}/cumplimiento/matriz-permisos`, {
         signal: control.signal,
       }),
@@ -412,14 +471,19 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.cumplimiento")} ayuda={t("plataforma.cumplimientoAyuda")}>
+    <Panel
+      titulo={t("plataforma.cumplimiento")}
+      ayuda={t("plataforma.cumplimientoAyuda")}
+    >
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!rat && !fallo ? <Cargando /> : null}
       {rat ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-sm font-medium text-ink">
-              {t("plataforma.tratamientos", { cuantos: rat.actividades.length })}
+              {t("plataforma.tratamientos", {
+                cuantos: rat.actividades.length,
+              })}
             </p>
             {/* Los huecos primero: un RAT que se presenta completo sin serlo es
                 peor que no tenerlo, porque nadie vuelve a mirarlo. */}
@@ -439,11 +503,15 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
                 </ul>
               </>
             ) : (
-              <p className="mt-1 text-3xs text-ink-faint">{t("plataforma.ratCompleto")}</p>
+              <p className="mt-1 text-3xs text-ink-faint">
+                {t("plataforma.ratCompleto")}
+              </p>
             )}
           </div>
           <div>
-            <p className="text-sm font-medium text-ink">{t("plataforma.permisos")}</p>
+            <p className="text-sm font-medium text-ink">
+              {t("plataforma.permisos")}
+            </p>
             {/* Los dos huecos son opuestos y los dos importan: un permiso que
                 nadie tiene es funcionalidad muerta; uno que nadie exige es un
                 privilegio dado por si acaso. */}
@@ -458,7 +526,9 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
               })}
             </p>
             {matriz ? (
-              <p className="mt-1 text-3xs text-ink-faint">{matriz.alcance_de_los_roles}</p>
+              <p className="mt-1 text-3xs text-ink-faint">
+                {matriz.alcance_de_los_roles}
+              </p>
             ) : null}
           </div>
         </div>
@@ -483,7 +553,9 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-3xs text-ink-faint">{t("plataforma.sinAvisos")}</p>
+            <p className="mt-1 text-3xs text-ink-faint">
+              {t("plataforma.sinAvisos")}
+            </p>
           )}
         </div>
       ) : null}
@@ -492,7 +564,13 @@ function Cumplimiento({ servicio, puedeVer }: { servicio: string; puedeVer: bool
 }
 
 /** Qué se puede recuperar, y qué está a punto de no poder recuperarse. */
-function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function Recuperable({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [papelera, setPapelera] = useState<EntradaPapelera[] | null>(null);
   const [objetos, setObjetos] = useState<string[] | null>(null);
@@ -504,10 +582,15 @@ function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boole
     setPapelera(null);
     setFallo(null);
     Promise.all([
-      llamar<EntradaPapelera[]>(`/api/v1/${servicio}/papelera`, { signal: control.signal }),
-      llamar<{ objetos: string[] }>(`/api/v1/${servicio}/restauracion/objetos`, {
+      llamar<EntradaPapelera[]>(`/api/v1/${servicio}/papelera`, {
         signal: control.signal,
       }),
+      llamar<{ objetos: string[] }>(
+        `/api/v1/${servicio}/restauracion/objetos`,
+        {
+          signal: control.signal,
+        },
+      ),
     ])
       .then(([p, o]) => {
         setPapelera(p.datos);
@@ -522,22 +605,31 @@ function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boole
   // Lo que menos tiempo le queda, primero: la papelera se mira cuando alguien
   // borró algo sin querer, y lo urgente es lo que está a punto de purgarse.
   const ordenada = useMemo(
-    () => [...(papelera ?? [])].sort((a, b) => a.dias_para_purga - b.dias_para_purga),
+    () =>
+      [...(papelera ?? [])].sort(
+        (a, b) => a.dias_para_purga - b.dias_para_purga,
+      ),
     [papelera],
   );
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.recuperable")} ayuda={t("plataforma.recuperableAyuda")}>
+    <Panel
+      titulo={t("plataforma.recuperable")}
+      ayuda={t("plataforma.recuperableAyuda")}
+    >
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!papelera && !fallo ? <Cargando /> : null}
       {papelera && papelera.length === 0 ? (
         <Vacio titulo={t("plataforma.papeleraVacia")} compacto />
       ) : null}
       {ordenada.length > 0 ? (
-        <ul className="divide-y divide-ink-dim/30">
+        <ul className="lista-acotada divide-y divide-ink-dim/30 pr-1">
           {ordenada.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 py-1.5">
+            <li
+              key={e.id}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
               <span
                 className={
                   e.dias_para_purga <= 7
@@ -547,7 +639,9 @@ function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boole
               >
                 {t("plataforma.diasParaPurga", { dias: e.dias_para_purga })}
               </span>
-              <span className="text-2xs text-ink">{e.etiqueta || e.objeto}</span>
+              <span className="text-2xs text-ink">
+                {e.etiqueta || e.objeto}
+              </span>
               <span className="text-3xs text-ink-faint">{e.objeto}</span>
               {/* Lo que se lleva por delante: restaurar una fila sin sus hijos
                   deja un registro a medias, y eso no se ve hasta abrirlo. */}
@@ -576,7 +670,13 @@ function Recuperable({ servicio, puedeVer }: { servicio: string; puedeVer: boole
  * a leer una API. El RPO que importa es el **real**, no el del contrato: la
  * diferencia entre los dos es lo único que se puede enseñar en una auditoría.
  */
-function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function HastaDondeSeVuelve({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [rpo, setRpo] = useState<Rpo | null>(null);
   const [ventana, setVentana] = useState<Ventana | null>(null);
@@ -588,8 +688,12 @@ function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer
     setRpo(null);
     setFallo(null);
     Promise.all([
-      llamar<Rpo>(`/api/v1/${servicio}/restauracion/rpo`, { signal: control.signal }),
-      llamar<Ventana>(`/api/v1/${servicio}/restauracion/ventana`, { signal: control.signal }),
+      llamar<Rpo>(`/api/v1/${servicio}/restauracion/rpo`, {
+        signal: control.signal,
+      }),
+      llamar<Ventana>(`/api/v1/${servicio}/restauracion/ventana`, {
+        signal: control.signal,
+      }),
     ])
       .then(([r, v]) => {
         setRpo(r.datos);
@@ -603,7 +707,10 @@ function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.volverAtras")} ayuda={t("plataforma.volverAtrasAyuda")}>
+    <Panel
+      titulo={t("plataforma.volverAtras")}
+      ayuda={t("plataforma.volverAtrasAyuda")}
+    >
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!rpo && !fallo ? <Cargando /> : null}
       {rpo ? (
@@ -615,17 +722,25 @@ function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer
             {rpo.medible ? (
               <p
                 className={
-                  rpo.dentro ? "text-sm font-medium text-ink" : "text-sm font-medium text-danger"
+                  rpo.dentro
+                    ? "text-sm font-medium text-ink"
+                    : "text-sm font-medium text-danger"
                 }
               >
-                {t("plataforma.sePerderia", { minutos: rpo.se_perderia_min ?? 0 })}
+                {t("plataforma.sePerderia", {
+                  minutos: rpo.se_perderia_min ?? 0,
+                })}
                 <span className="text-3xs text-ink-faint">
                   {" "}
-                  {t("plataforma.comprometido", { minutos: rpo.rpo_comprometido_min })}
+                  {t("plataforma.comprometido", {
+                    minutos: rpo.rpo_comprometido_min,
+                  })}
                 </span>
               </p>
             ) : (
-              <p className="text-sm font-medium text-ink-muted">{t("plataforma.noMedible")}</p>
+              <p className="text-sm font-medium text-ink-muted">
+                {t("plataforma.noMedible")}
+              </p>
             )}
             <p className="mt-1 text-3xs text-ink-muted">{rpo.porque}</p>
           </div>
@@ -667,7 +782,13 @@ function HastaDondeSeVuelve({ servicio, puedeVer }: { servicio: string; puedeVer
  * sirve, en vez de inventarse un valor y dar una respuesta que no es sobre
  * esta instalación.
  */
-function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function Aguanta({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [ultima, setUltima] = useState(primeroDeEsteMes);
   const [particiones, setParticiones] = useState<Particiones | null>(null);
@@ -691,7 +812,10 @@ function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.volumen")} ayuda={t("plataforma.volumenAyuda")}>
+    <Panel
+      titulo={t("plataforma.volumen")}
+      ayuda={t("plataforma.volumenAyuda")}
+    >
       <label className="mb-3 flex flex-wrap items-center gap-2 text-2xs text-ink-muted">
         {t("plataforma.ultimaParticion")}
         <input
@@ -708,12 +832,16 @@ function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }
         <>
           <p
             className={
-              particiones.urgente ? "text-sm font-medium text-danger" : "text-sm font-medium text-ink"
+              particiones.urgente
+                ? "text-sm font-medium text-danger"
+                : "text-sm font-medium text-ink"
             }
           >
             {particiones.ya_falta_la_de_este_mes
               ? t("plataforma.faltaLaDeEsteMes")
-              : t("plataforma.particionesPorCrear", { cuantas: particiones.faltan.length })}
+              : t("plataforma.particionesPorCrear", {
+                  cuantas: particiones.faltan.length,
+                })}
           </p>
           {particiones.faltan.length > 0 ? (
             <ul className="mt-1 flex flex-wrap gap-1">
@@ -740,7 +868,13 @@ function Aguanta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }
  * posible**: exigía el nombre de la tabla, y la lista de tablas de alto volumen
  * sólo vivía dentro del núcleo.
  */
-function ComoSeCorta({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function ComoSeCorta({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [plan, setPlan] = useState<PlanDeParticion | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -762,19 +896,26 @@ function ComoSeCorta({ servicio, puedeVer }: { servicio: string; puedeVer: boole
 
   if (!puedeVer) return null;
   return (
-    <Panel titulo={t("plataforma.comoSeCorta")} ayuda={t("plataforma.comoSeCortaAyuda")}>
+    <Panel
+      titulo={t("plataforma.comoSeCorta")}
+      ayuda={t("plataforma.comoSeCortaAyuda")}
+    >
       {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
       {!plan && !fallo ? <Cargando /> : null}
       {plan ? (
         <>
-          <ul className="divide-y divide-ink-dim/30">
+          <ul className="lista-acotada divide-y divide-ink-dim/30 pr-1">
             {plan.tablas.map((tabla) => (
               <li key={tabla.tabla} className="py-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-sm font-medium text-ink">{tabla.tabla}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {tabla.tabla}
+                  </span>
                   <span className="chip-dato">{tabla.estrategia}</span>
                   <span className="text-3xs text-ink-muted">
-                    {t("plataforma.mesesEnCaliente", { meses: tabla.meses_en_caliente })}
+                    {t("plataforma.mesesEnCaliente", {
+                      meses: tabla.meses_en_caliente,
+                    })}
                   </span>
                 </div>
                 {/* Por qué crece, dicho por el servidor: sin eso la lista es un
@@ -783,7 +924,9 @@ function ComoSeCorta({ servicio, puedeVer }: { servicio: string; puedeVer: boole
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-3xs text-ink-muted">{plan.porque_solo_estas}</p>
+          <p className="mt-2 text-3xs text-ink-muted">
+            {plan.porque_solo_estas}
+          </p>
         </>
       ) : null}
     </Panel>
@@ -798,7 +941,13 @@ function ComoSeCorta({ servicio, puedeVer }: { servicio: string; puedeVer: boole
  * el porqué y aquí se enseña — un panel vacío sin explicación se lee como algo
  * que falta.
  */
-function RastroCompleto({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function RastroCompleto({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [rastro, setRastro] = useState<Rastro | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -855,7 +1004,13 @@ function RastroCompleto({ servicio, puedeVer }: { servicio: string; puedeVer: bo
  * falso, porque guardar el número «hasta que haya bóveda» mete el sistema en
  * el alcance de PCI sin que nadie lo haya decidido.
  */
-function Boveda({ servicio, puedeVer }: { servicio: string; puedeVer: boolean }) {
+function Boveda({
+  servicio,
+  puedeVer,
+}: {
+  servicio: string;
+  puedeVer: boolean;
+}) {
   const { t } = useTranslation();
   const [estado, setEstado] = useState<Tokenizacion | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
@@ -865,7 +1020,9 @@ function Boveda({ servicio, puedeVer }: { servicio: string; puedeVer: boolean })
     const control = new AbortController();
     setEstado(null);
     setFallo(null);
-    llamar<Tokenizacion>(`/api/v1/${servicio}/tokenizacion`, { signal: control.signal })
+    llamar<Tokenizacion>(`/api/v1/${servicio}/tokenizacion`, {
+      signal: control.signal,
+    })
       .then((r) => setEstado(r.datos))
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -882,10 +1039,14 @@ function Boveda({ servicio, puedeVer }: { servicio: string; puedeVer: boolean })
         <>
           <p
             className={
-              estado.hay_boveda ? "text-sm font-medium text-ink" : "text-sm font-medium text-danger"
+              estado.hay_boveda
+                ? "text-sm font-medium text-ink"
+                : "text-sm font-medium text-danger"
             }
           >
-            {estado.hay_boveda ? t("plataforma.conBoveda") : t("plataforma.sinBoveda")}
+            {estado.hay_boveda
+              ? t("plataforma.conBoveda")
+              : t("plataforma.sinBoveda")}
           </p>
           <p className="mt-1 text-3xs text-ink-muted">{estado.que_significa}</p>
           {estado.tipos.length > 0 ? (

@@ -236,7 +236,6 @@ describe("la ficha de cliente", () => {
     // cliente recién creado —sin actividad, sin contactos, sin oportunidades
     // y sin casos— enseñaba un recuadro vacío de pantalla entera.
     const rejilla = screen.getByText("cuenta.sinTimeline").closest(".grid")!;
-    expect(rejilla.className).toMatch(/lg:max-h-/);
     expect(
       rejilla.className,
       "altura fija: con poco contenido queda un hueco",
@@ -249,6 +248,20 @@ describe("la ficha de cliente", () => {
     expect(screen.getByText("cuenta.sinContactos")).toBeInTheDocument();
     expect(screen.getByText("cuenta.sinOportunidades")).toBeInTheDocument();
     expect(screen.getByText("cuenta.sinCasos")).toBeInTheDocument();
+  });
+
+  it("con cola, la rejilla se acota a una pantalla de verdad", async () => {
+    await montar();
+    await screen.findByText("Hito 0");
+    // Alto DEFINIDO, no un máximo: `max-height` acota el contenedor pero la
+    // rejilla no comprime sus filas, así que el contenido se salía por abajo
+    // y se pintaba encima de lo que hubiera debajo. Se vio en la ficha de un
+    // proveedor con veinte reuniones.
+    const rejilla = screen.getByText("Hito 0").closest(".grid")!;
+    expect(
+      rejilla.className,
+      "sin alto definido la rejilla no comprime",
+    ).toMatch(/lg:h-\[/);
   });
 
   it("se enseña todo lo que ha llegado: lo que no cabe se alcanza con la barra", async () => {

@@ -25,7 +25,11 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { FORMA_DE_TIPO, Grafica, type Forma } from "@/componentes/graficas/Grafica";
+import {
+  FORMA_DE_TIPO,
+  Grafica,
+  type Forma,
+} from "@/componentes/graficas/Grafica";
 import { localizacion } from "@/lib/formato";
 
 export interface Payload {
@@ -36,7 +40,9 @@ export interface Payload {
   xAxis?: { key?: string; label?: string | null } | null;
   unit?: string | null;
   sql?: string | null;
-  meta?: { verification?: Array<{ title: string; status: string; detail?: string }> } | null;
+  meta?: {
+    verification?: Array<{ title: string; status: string; detail?: string }>;
+  } | null;
 }
 
 /* Qué tipo se dibuja de qué forma sale de `FORMA_DE_TIPO`, en las gráficas.
@@ -60,11 +66,18 @@ function formatear(valor: unknown, unidad?: string | null): string {
   return String(valor);
 }
 
-export function RespuestaAnalitica({ payload, texto }: { payload: Payload; texto?: string }) {
+export function RespuestaAnalitica({
+  payload,
+  texto,
+}: {
+  payload: Payload;
+  texto?: string;
+}) {
   const { t } = useTranslation();
   const columnas = useMemo(() => {
     const vistas = new Set<string>();
-    for (const fila of payload.data || []) for (const k of Object.keys(fila)) vistas.add(k);
+    for (const fila of payload.data || [])
+      for (const k of Object.keys(fila)) vistas.add(k);
     return [...vistas];
   }, [payload.data]);
 
@@ -72,7 +85,9 @@ export function RespuestaAnalitica({ payload, texto }: { payload: Payload; texto
 
   return (
     <div className="rounded-xl border border-ink-dim/60 bg-paper p-4">
-      {titulo ? <h3 className="text-sm font-semibold text-ink">{titulo}</h3> : null}
+      {titulo ? (
+        <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
+      ) : null}
 
       {payload.type === "kpi_card" ? (
         <Numero payload={payload} columnas={columnas} />
@@ -94,7 +109,8 @@ export function RespuestaAnalitica({ payload, texto }: { payload: Payload; texto
             <ul className="mt-2 flex flex-col gap-1">
               {payload.meta.verification.map((v) => (
                 <li key={v.title} className="text-3xs text-ink-faint">
-                  <span className="font-medium text-ink-muted">{v.title}:</span> {v.detail || v.status}
+                  <span className="font-medium text-ink-muted">{v.title}:</span>{" "}
+                  {v.detail || v.status}
                 </li>
               ))}
             </ul>
@@ -105,9 +121,18 @@ export function RespuestaAnalitica({ payload, texto }: { payload: Payload; texto
   );
 }
 
-function Numero({ payload, columnas }: { payload: Payload; columnas: string[] }) {
+function Numero({
+  payload,
+  columnas,
+}: {
+  payload: Payload;
+  columnas: string[];
+}) {
   const fila = (payload.data || [])[0] || {};
-  const clave = payload.series?.[0]?.key && clave_en(fila, payload.series[0].key) ? payload.series[0].key : columnas[0];
+  const clave =
+    payload.series?.[0]?.key && clave_en(fila, payload.series[0].key)
+      ? payload.series[0].key
+      : columnas[0];
   return (
     <p className="mt-2 text-3xl font-bold tracking-tight text-ink">
       {formatear(clave ? fila[clave] : undefined, payload.unit)}
@@ -126,22 +151,35 @@ function clave_en(fila: Record<string, unknown>, clave: string): boolean {
  * contrato de contecintelligence: lo que se dibuja son series y categorías, y
  * la próxima fuente que haya traerá las suyas con otros nombres.
  */
-function Dibujo({ payload, columnas }: { payload: Payload; columnas: string[] }) {
+function Dibujo({
+  payload,
+  columnas,
+}: {
+  payload: Payload;
+  columnas: string[];
+}) {
   const filas = payload.data || [];
   const ejeX =
-    payload.xAxis?.key && columnas.includes(payload.xAxis.key) ? payload.xAxis.key : columnas[0];
+    payload.xAxis?.key && columnas.includes(payload.xAxis.key)
+      ? payload.xAxis.key
+      : columnas[0];
   // Las series declaradas que existen de verdad en los datos. Si no declara
   // ninguna, se toman las columnas numéricas que no sean el eje: un informe
   // que se dejó el `series` sin poner se sigue dibujando.
-  const declaradas = (payload.series || []).filter((s) => columnas.includes(s.key));
+  const declaradas = (payload.series || []).filter((s) =>
+    columnas.includes(s.key),
+  );
   const series =
     declaradas.length > 0
       ? declaradas.map((s) => ({ clave: s.key, rotulo: s.label || s.key }))
       : columnas
-          .filter((c) => c !== ejeX && filas.some((f) => typeof f[c] === "number"))
+          .filter(
+            (c) => c !== ejeX && filas.some((f) => typeof f[c] === "number"),
+          )
           .map((c) => ({ clave: c, rotulo: c }));
 
-  if (!ejeX || series.length === 0) return <Tabla columnas={columnas} filas={filas} />;
+  if (!ejeX || series.length === 0)
+    return <Tabla columnas={columnas} filas={filas} />;
 
   return (
     <div className="mt-3">
@@ -160,14 +198,30 @@ function Dibujo({ payload, columnas }: { payload: Payload; columnas: string[] })
   );
 }
 
-function Tabla({ columnas, filas }: { columnas: string[]; filas: Array<Record<string, unknown>> }) {
+function Tabla({
+  columnas,
+  filas,
+}: {
+  columnas: string[];
+  filas: Array<Record<string, unknown>>;
+}) {
   if (filas.length === 0) {
     return <p className="mt-2 text-2xs text-ink-muted">Sin resultados.</p>;
   }
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-ink-dim/30">
+    /* La tabla se recorre **dentro de su recuadro**, a lo alto y a lo ancho.
+       Sin el tope de alto, un informe de quinientas filas estiraba la tarjeta
+       que lo contiene: en un cuadro de mando de seis componentes, uno largo
+       dejaba a los otros cinco perdidos a tres pantallas de distancia, y en
+       «preguntas publicadas» la respuesta empujaba el buscador fuera de la
+       vista. El tope es generoso a propósito —veinticuatro filas largas— para
+       que lo normal se lea entero sin tocar nada.
+
+       Y la cabecera se queda pegada arriba: una tabla que se recorre sin
+       cabecera obliga a subir para saber qué columna se está mirando. */
+    <div className="mt-3 max-h-[28rem] overflow-auto rounded-lg border border-ink-dim/30">
       <table className="w-full text-2xs">
-        <thead className="bg-paper-sunk text-ink-muted">
+        <thead className="sticky top-0 z-10 bg-paper-sunk text-ink-muted">
           <tr>
             {columnas.map((c) => (
               <th key={c} className="px-2 py-1.5 text-left font-medium">

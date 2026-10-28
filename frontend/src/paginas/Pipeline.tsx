@@ -39,6 +39,7 @@ import { filas, llamar, salvoCancelacion } from "@/lib/api";
 import { escalar, importe } from "@/lib/formato";
 import { inicialesDe, nombreDe, usePersonas } from "@/lib/personas";
 import { puede, type Sesion } from "@/lib/sesion";
+import { cn } from "@/lib/utiles";
 
 interface Etapa {
   id: string;
@@ -78,12 +79,17 @@ function vencida(o: Oportunidad): boolean {
   return !Number.isNaN(cierre) && cierre < Date.now();
 }
 
+/** Ver `hayCola`: por debajo de esto no hay nada que acotar. */
+const COLUMNA_LARGA = 12;
+
 export function Pipeline({ sesion }: { sesion: Sesion | null }) {
   const personas = usePersonas();
   const { t } = useTranslation();
   const [pipelines, setPipelines] = useState<PipelineApi[] | null>(null);
   const [abierto, setAbierto] = useState("");
-  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(null);
+  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(
+    null,
+  );
   const [fallo, setFallo] = useState<unknown>(null);
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -121,6 +127,16 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
     [pipeline],
   );
 
+  /**
+   * A partir de cuántas oportunidades se acota el tablero a una pantalla.
+   *
+   * Con pocas, fijar el alto deja un recuadro vacío de pantalla entera; con
+   * muchas, no fijarlo estira el tablero y deja las demás columnas en blanco
+   * durante miles de píxeles. Mismo umbral y mismo motivo que en la ficha de
+   * cliente.
+   */
+  const hayCola = (oportunidades ?? []).length >= COLUMNA_LARGA;
+
   const porEtapa = useMemo(() => {
     const mapa = new Map<string, Oportunidad[]>();
     for (const o of oportunidades ?? []) {
@@ -138,7 +154,9 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
     // Se mueve en pantalla al instante y se deshace si el servidor dice que no:
     // esperar a la respuesta para pintar hace que arrastrar se sienta roto.
     setOportunidades((o) =>
-      (o ?? []).map((x) => (x.id === oportunidadId ? { ...x, etapa_id: etapaId } : x)),
+      (o ?? []).map((x) =>
+        x.id === oportunidadId ? { ...x, etapa_id: etapaId } : x,
+      ),
     );
     try {
       await llamar(`/api/v1/opportunities/${oportunidadId}/etapa`, {
@@ -159,7 +177,8 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
     }
   }
 
-  if (fallo && !oportunidades) return <Fallo error={fallo} reintentar={() => cargar()} />;
+  if (fallo && !oportunidades)
+    return <Fallo error={fallo} reintentar={() => cargar()} />;
   if (!pipelines || !oportunidades) return <Cargando />;
   if (etapas.length === 0) {
     return (
@@ -169,7 +188,10 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
           icono="view_kanban"
           titulo={t("pipeline.sinPipeline")}
           detalle={t("pipeline.sinPipelineDetalle")}
-          accion={{ texto: t("pipeline.irAConfigurar"), a: "/m/oportunidades?r=Pipelines&nuevo=1" }}
+          accion={{
+            texto: t("pipeline.irAConfigurar"),
+            a: "/m/oportunidades?r=Pipelines&nuevo=1",
+          }}
         />
       </>
     );
@@ -210,10 +232,33 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
         </div>
       ) : null}
 
-      <div className="-mx-1 flex gap-3 overflow-x-auto pb-4">
+      {/* El tablero se queda en una pantalla y **cada columna recorre la
+          suya**. Sin esto, una etapa con cincuenta oportunidades estiraba el
+          tablero entero: las demás columnas quedaban vacías durante miles de
+          píxeles y para volver a la cabecera había que subir la página.
+
+          El alto se fija sólo cuando hay de qué (`COLUMNA_LARGA`): con un
+          tablero recién abierto, o con tres oportunidades, fijarlo deja un
+          recuadro vacío de pantalla entera. Y tiene que ser un alto DEFINIDO y
+          no un máximo: con un máximo, los hijos no se comprimen y el contenido
+          se sale por abajo.
+
+          Es la misma regla que la ficha de cliente, y a propósito: dos
+          pantallas que enseñan muchas filas en cajas de al lado se comportan
+          igual. */}
+      <div
+        className={cn(
+          "-mx-1 flex gap-3 overflow-x-auto pb-4",
+          hayCola && "lg:h-[calc(100vh-18rem)]",
+        )}
+      >
         {etapas.map((etapa) => {
           const dentro = porEtapa.get(etapa.id) ?? [];
-          const total = dentro.reduce((suma, o) => suma + Number(o.importe || 0), 0);
+          const total = dentro.reduce(
+            (suma, o) => suma + Number(o.importe || 0),
+            0,
+          );
+
           return (
             <section
               key={etapa.id}
@@ -226,18 +271,23 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
               onDragLeave={() => setSobre((s) => (s === etapa.id ? null : s))}
               onDrop={(e) => {
                 e.preventDefault();
-                if (arrastrando && puedeMover) void mover(arrastrando, etapa.id);
+                if (arrastrando && puedeMover)
+                  void mover(arrastrando, etapa.id);
               }}
-              className={`flex w-72 shrink-0 flex-col rounded-xl border p-2 transition-colors ${
+              className={`flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border p-2 transition-colors ${
                 sobre === etapa.id
                   ? "border-accent bg-accent/5"
                   : "border-ink-dim/60 bg-paper-dark"
               }`}
             >
-              <header className="px-1.5 pb-2 pt-1">
+              <header className="shrink-0 px-1.5 pb-2 pt-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <h2 className="truncate text-xs font-semibold text-ink">{etapa.nombre}</h2>
-                  <span className="shrink-0 text-3xs text-ink-faint">{dentro.length}</span>
+                  <h2 className="truncate text-xs font-semibold text-ink">
+                    {etapa.nombre}
+                  </h2>
+                  <span className="shrink-0 text-3xs text-ink-faint">
+                    {dentro.length}
+                  </span>
                 </div>
                 {/* El total de la columna: sin él hay que contar a ojo, y contar
                     a ojo es cómo se llega a una previsión que no cuadra. */}
@@ -247,7 +297,7 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                 </p>
               </header>
 
-              <div className="flex min-h-24 flex-col gap-2">
+              <div className="flex min-h-24 flex-col gap-2 overflow-y-auto lg:min-h-0 lg:flex-1">
                 {dentro.length === 0 ? (
                   <p className="px-1.5 py-6 text-center text-3xs text-ink-faint">
                     {t("pipeline.columnaVacia")}
@@ -288,7 +338,9 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
                              embudo no está al día, y en gris se pierde. */
                           <span
                             className={`inline-flex items-center gap-1 text-3xs ${
-                              vencida(o) ? "font-medium text-danger" : "text-ink-faint"
+                              vencida(o)
+                                ? "font-medium text-danger"
+                                : "text-ink-faint"
                             }`}
                           >
                             <Icono nombre="event" tamano="sm" />
