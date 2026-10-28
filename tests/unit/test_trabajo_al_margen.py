@@ -105,3 +105,38 @@ def test_sobrevive_cuando_el_fallo_salta_AL_VOLCAR_lo_que_el_ORM_tenia_pendiente
         text("SELECT count(*) FROM agentes_ia WHERE tenant_id = :t"), {"t": tenant_id}
     ).scalar_one()
     assert total == 2, "la operación de después no llegó a ejecutarse"
+
+
+@pytest.mark.db
+def test_si_no_puede_deshacer_lo_dice_en_vez_de_tranquilizar(db: Any, tenant_id: UUID) -> None:
+    """El aviso tranquilizador que escondía la causa.
+
+    Cuando el `ROLLBACK TO SAVEPOINT` **también** falla, el punto ya no existe:
+    la transacción se vino abajo entera o la conexión se cayó. La sesión queda
+    inservible, y seguir como si nada no salva «lo principal» —ya está muerto—:
+    sólo hace que muera unas líneas más abajo con un `PendingRollbackError` que
+    no nombra ni este bloque ni la causa.
+
+    Medido el 28-10-2026: así aparecía en la suite como «fallan las pestañas de
+    la consola», en un servicio distinto cada vez. Lo que impedía verlo era que
+    este bloque escribía su aviso y devolvía el control.
+    """
+
+    class PuntoQueNoSePuedeDeshacer:
+        """Un savepoint que ya no existe, que es el caso real."""
+
+        is_active = False
+
+        def commit(self) -> None:
+            raise RuntimeError("la operación de dentro ha fallado")
+
+        def rollback(self) -> None:
+            raise RuntimeError('savepoint "sa_savepoint_41" does not exist')
+
+    class SesionRota:
+        def begin_nested(self) -> Any:
+            return PuntoQueNoSePuedeDeshacer()
+
+    with pytest.raises(RuntimeError, match="does not exist"):
+        with al_margen(SesionRota(), "prueba.no_se_puede_deshacer"):
+            raise RuntimeError("la operación de dentro ha fallado")

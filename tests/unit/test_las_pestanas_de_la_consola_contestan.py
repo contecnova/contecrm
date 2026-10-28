@@ -51,6 +51,25 @@ ahora, para que el siguiente no lo repita:
 Por eso esta prueba apunta la pestaña por su nombre cuando revienta, y no deja
 que la excepción suba: el rastro terminaba en `get_db` y no nombraba la ruta.
 
+**Y hay reproductor, que es lo que faltaba** (28-10-2026). Bisecado: con la
+tanda completa cae ~1 de cada 2 en 200 s; con esto, cae en 80 s:
+
+    pytest tests/integration $(ls tests/unit/*.py | sort | head -85) \
+           tests/unit/test_las_pestanas_de_la_consola_contestan.py \
+           -m "db and not despliegue" -q
+
+`tests/integration/test_rls_aislamiento.py` hace falta —sin él no cae nunca— y
+hacen falta suficientes pruebas después; ni la primera mitad sola ni el fichero
+de integración solo lo reproducen. Probado a retirar la RLS que ese fichero
+deja encendida: **no es eso**, sigue cayendo.
+
+**La causa real, por fin nombrada:** antes del `PendingRollbackError` aparece
+`savepoint "sa_savepoint_41" does not exist` dentro de
+`proyeccion.formulas_no_resueltas`. El savepoint no existe porque **la conexión
+se cayó**; a partir de ahí todo lo demás es consecuencia. `al_margen` se tragaba
+ese segundo fallo y escribía un aviso tranquilizador, y eso es lo que impedía
+verlo: ya no se lo traga.
+
 Lo que **no** es: un fallo del producto. El arnés ata todas las sesiones a UNA
 conexión; en un despliegue cada petición tiene la suya.
 

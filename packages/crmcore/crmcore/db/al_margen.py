@@ -74,5 +74,28 @@ def al_margen(db: Any, evento: str, **contexto: Any) -> Iterator[None]:
         # Deshacer un savepoint ya deshecho no cuesta nada; dejarlo sin
         # deshacer cuesta la petición siguiente.
         if punto is not None:
-            punto.rollback()
+            try:
+                punto.rollback()
+            except Exception as al_deshacer:  # noqa: BLE001 — el motivo ES el valor
+                # **Si no se puede deshacer, no se calla.**
+                #
+                # Que el `ROLLBACK TO SAVEPOINT` falle significa que el punto ya
+                # no existe: la transacción entera se vino abajo o la conexión
+                # se cayó. La sesión queda inservible, así que seguir como si
+                # nada no salva «lo principal» —lo principal ya está muerto—:
+                # sólo hace que muera unas líneas más abajo con un
+                # `PendingRollbackError` que no nombra ni este bloque ni la
+                # causa.
+                #
+                # Medido el 28-10-2026: así aparecía, en la suite, como «fallan
+                # las pestañas de la consola» de un servicio distinto cada vez.
+                # El aviso tranquilizador de este `except` era justo lo que
+                # impedía ver que la conexión se había caído.
+                logger.error(
+                    f"{evento}.sin_poder_deshacer",
+                    error=f"{type(exc).__name__}: {str(exc)[:200]}",
+                    al_deshacer=f"{type(al_deshacer).__name__}: {str(al_deshacer)[:200]}",
+                    **contexto,
+                )
+                raise
         logger.warning(evento, error=f"{type(exc).__name__}: {str(exc)[:200]}", **contexto)
