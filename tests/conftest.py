@@ -54,6 +54,22 @@ os.environ.setdefault("METRICS_POR_TENANT", "false")
 # es el trabajo, y no a `correr()`, que es el bucle. Lo que se apaga es el
 # bucle.
 os.environ.setdefault("TAREAS_RELEVO_ENABLED", "false")
+# Y EL DEL OUTBOX, POR LO MISMO Y CON EL MISMO SÍNTOMA.
+#
+# El relevo del outbox tiene su propio interruptor y se dejó a cada prueba:
+# nueve ficheros que levantan un cliente no lo apagaban, y basta uno para que su
+# bucle siga vivo abriendo sesiones y confirmando cada vuelta.
+#
+# Medido el 28-10-2026, con la sonda puesta sobre el SQL: el
+# `RELEASE SAVEPOINT sa_savepoint_43` que destruía el savepoint de la petición
+# en curso salía de `crmcore/bus/outbox.py:153`, dentro de `correr()`. El
+# síntoma era `test_las_pestanas_de_la_consola_abren` cayendo en un servicio
+# distinto en cada tanda —y a veces el ETag o los territorios—, nunca al correr
+# el fichero suelto. Tres sesiones persiguiéndolo.
+#
+# El propio comentario de arriba ya avisaba: «el interruptor va aquí y no en los
+# siete sitios que arrancan un relevo». El del outbox se quedó fuera.
+os.environ.setdefault("OUTBOX_ENABLED", "false")
 
 
 # Cuánto puede llevar vivo un Postgres de pruebas antes de darlo por abandonado.

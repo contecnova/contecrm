@@ -26,52 +26,31 @@ quince segundos. Que no saliera ningún roto no es motivo para no tenerlo: lo
 barato es mantenerlo, y lo caro es la pestaña que se rompe el día que alguien
 cambia un permiso.
 
-**Un fallo intermitente que sigue abierto, y lo que se sabe de él (28-10-2026).**
-En la tanda completa esta prueba cae a veces —en un servicio distinto cada vez,
-y nunca al correr el fichero suelto— con `PendingRollbackError`. Lo medido hasta
-ahora, para que el siguiente no lo repita:
+**El intermitente que costó tres sesiones, y cómo se cazó (28-10-2026).**
+Esta prueba caía ~1 de cada 2 tandas completas, en un servicio distinto cada
+vez, nunca al correr el fichero suelto, y arrastraba a veces al ETag o a
+territorios. **Ya está cerrado**, y vale la pena cómo:
 
-  * **no es la máquina llena**: cae igual con la máquina libre y en tiempo normal;
-  * **no es el relevo del outbox ni los barridos de fondo**: los dos se apagan aquí;
-  * **no es el limitador de peticiones**: en pruebas está apagado;
-  * **no es `al_margen`**, aunque ahí había un fallo de verdad —deshacía el
-    savepoint sólo «si seguía activo»— que se arregló el mismo día. Siguió
-    cayendo después;
-  * **la conexión llega limpia**: hay una comprobación al entrar que lo dice,
-    así que no es una prueba anterior la que envenena;
-  * **una pestaña envenena y caen todas las de después**, siempre a partir de
-    una que contestó 200. Medido el 28-10-2026 con el rastro ya instrumentado:
-    la última que va bien es «Macros» (`/api/v1/macros`) en `service` y
-    «Papelera» (`/api/v1/marketing/papelera`) en `marketing`. Las dos son
-    `SELECT` planos, sin savepoints, así que el veneno no sale de su consulta;
-    y en la misma tanda cae también una prueba de territorios, que no tiene
-    nada que ver. O sea: el que envenena no es el que falla, y tampoco parece
-    ser el anterior — queda por encontrar.
+  * primero, un reproductor: bisecando salió que con
+    `tests/integration` + los 85 primeros ficheros + ésta cae en 80 s en vez de
+    una moneda al aire de 200;
+  * después, una sonda sobre el SQL que apuntaba cada `SAVEPOINT`, `RELEASE` y
+    `ROLLBACK` con su pila. El `RELEASE SAVEPOINT` que destruía el savepoint de
+    la petición en curso salía de `crmcore/bus/outbox.py`, dentro de `correr()`:
+    **el relevo del outbox corriendo de fondo**, dejado vivo por un cliente de
+    prueba anterior que no lo apagaba. Nueve ficheros no lo apagaban;
+  * el arreglo es una línea en `conftest`, y el propio `conftest` ya lo decía
+    para los relevos de tareas: «el interruptor va aquí y no en los siete
+    sitios». El del outbox se había quedado fuera.
 
-Por eso esta prueba apunta la pestaña por su nombre cuando revienta, y no deja
-que la excepción suba: el rastro terminaba en `get_db` y no nombraba la ruta.
+Lo que se descartó por el camino, para que nadie lo repita: la máquina llena,
+los barridos de fondo, el relevo de tareas, el limitador —apagado en pruebas—,
+una prueba anterior que ensuciara, el tamaño del pool, los efectos de
+importación, los tiempos de sesión de Postgres y la RLS que el fichero de
+integración deja encendida.
 
-**Y hay reproductor, que es lo que faltaba** (28-10-2026). Bisecado: con la
-tanda completa cae ~1 de cada 2 en 200 s; con esto, cae en 80 s:
-
-    pytest tests/integration $(ls tests/unit/*.py | sort | head -85) \
-           tests/unit/test_las_pestanas_de_la_consola_contestan.py \
-           -m "db and not despliegue" -q
-
-`tests/integration/test_rls_aislamiento.py` hace falta —sin él no cae nunca— y
-hacen falta suficientes pruebas después; ni la primera mitad sola ni el fichero
-de integración solo lo reproducen. Probado a retirar la RLS que ese fichero
-deja encendida: **no es eso**, sigue cayendo.
-
-**La causa real, por fin nombrada:** antes del `PendingRollbackError` aparece
-`savepoint "sa_savepoint_41" does not exist` dentro de
-`proyeccion.formulas_no_resueltas`. El savepoint no existe porque **la conexión
-se cayó**; a partir de ahí todo lo demás es consecuencia. `al_margen` se tragaba
-ese segundo fallo y escribía un aviso tranquilizador, y eso es lo que impedía
-verlo: ya no se lo traga.
-
-Lo que **no** es: un fallo del producto. El arnés ata todas las sesiones a UNA
-conexión; en un despliegue cada petición tiene la suya.
+Y una pieza que no era la causa pero la escondía: `al_margen` se tragaba el
+fallo de su propio `rollback` y escribía un aviso tranquilizador. Ya no.
 
 **Lo que NO hace.** No mira que el dato sea el correcto; eso es de cada prueba
 de dominio. Se abre la pestaña como la abre la consola al entrar —sin filtros,
