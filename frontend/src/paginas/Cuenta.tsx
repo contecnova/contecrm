@@ -420,7 +420,7 @@ export function Cuenta() {
 
         {/* ── Lo que ha pasado ───────────────────────────────────────── */}
         <section
-          className="card flex flex-col p-4 lg:min-h-0"
+          className="card flex flex-col overflow-hidden p-4 lg:min-h-0"
           aria-labelledby="cuenta-timeline"
         >
           <h2 id="cuenta-timeline" className="section-label mb-3">
@@ -630,7 +630,7 @@ function Relacionados({
 }) {
   const { t } = useTranslation();
   return (
-    <section className="card flex flex-col p-4 lg:min-h-0">
+    <section className="card flex flex-col overflow-hidden p-4 lg:min-h-0">
       <h2 className="section-label mb-2 flex shrink-0 items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5">
           <Icono nombre={icono} tamano="sm" />
@@ -650,10 +650,15 @@ function Relacionados({
         <p className="py-2 text-3xs text-ink-faint">{vacio}</p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          {/* La barra, en la caja. Cuántas filas se ven lo decide el alto que
-              la columna le ha repartido, no una constante: así cuadra en una
-              pantalla de portátil y en una de 27 pulgadas. */}
-          <ul className="divide-y divide-ink-dim/30 overflow-y-auto lg:min-h-[7rem]">
+          {/* La barra, en la caja, y la lista es lo ÚNICO que crece y se
+              recorta: el rótulo y el pie no. Cuántas filas se ven lo decide el
+              alto que la columna le ha repartido, no una constante, así que
+              cuadra igual en un portátil que en una pantalla de 27 pulgadas.
+              Tenía aquí un `min-h` y era un error: cuando la columna encogía
+              la caja por debajo de ese mínimo, la lista se salía por el borde
+              y se pintaba ENCIMA de la tarjeta de abajo. Lo que acota es el
+              `overflow-hidden` de la caja, no un mínimo. */}
+          <ul className="min-h-0 flex-1 divide-y divide-ink-dim/30 overflow-y-auto">
             {children}
           </ul>
           {/* Siempre que haya a dónde ir, no sólo cuando la lista viene

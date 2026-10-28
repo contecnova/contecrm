@@ -35,7 +35,9 @@ const CUENTA = {
     roles: [],
     calidad: { puntuacion: 80, faltan: [] },
   },
-  contactos: [{ id: "p1", nombre: "Ana Quintana", cargo: "Compras", email: "a@x.test" }],
+  contactos: [
+    { id: "p1", nombre: "Ana Quintana", cargo: "Compras", email: "a@x.test" },
+  ],
   identificadores: [],
   metricas: { metricas: [], sin_dato: [] },
   // Exactamente el tope del servidor: es la señal de que puede haber más.
@@ -76,7 +78,9 @@ async function montar() {
           return { datos: { items: OPORTUNIDADES, siguiente: null } };
         }
         if (ruta.includes("/casos")) {
-          return { datos: { items: CASOS, siguiente: "cursor-de-la-siguiente" } };
+          return {
+            datos: { items: CASOS, siguiente: "cursor-de-la-siguiente" },
+          };
         }
         return { datos: [] };
       },
@@ -85,11 +89,16 @@ async function montar() {
   // La superficie decide qué acciones se ofrecen; aquí no se está probando
   // eso, y sin ella la pantalla no llega ni a pintar.
   vi.doMock("@/lib/permisos", async () => {
-    const real = await vi.importActual<Record<string, unknown>>("@/lib/permisos");
-    return { ...real, useSuperficie: () => ({ superficie: null, tiene: () => true }) };
+    const real =
+      await vi.importActual<Record<string, unknown>>("@/lib/permisos");
+    return {
+      ...real,
+      useSuperficie: () => ({ superficie: null, tiene: () => true }),
+    };
   });
   vi.doMock("react-router-dom", async () => {
-    const real = await vi.importActual<Record<string, unknown>>("react-router-dom");
+    const real =
+      await vi.importActual<Record<string, unknown>>("react-router-dom");
     return { ...real, useParams: () => ({ id: "c1" }) };
   });
   const { Cuenta } = await import("@/paginas/Cuenta");
@@ -115,9 +124,13 @@ describe("la ficha de cliente", () => {
     // La lista de cada panel se recorre dentro de su tarjeta…
     for (const titulo of ["cuenta.oportunidades", "cuenta.casos"]) {
       const lista = caja(titulo).querySelector("ul");
-      expect(lista!.className, `${titulo} no se recorre sola`).toMatch(/overflow-y-auto/);
+      expect(lista!.className, `${titulo} no se recorre sola`).toMatch(
+        /overflow-y-auto/,
+      );
     }
-    expect(caja("cuenta.timeline").querySelector("ol")!.className).toMatch(/overflow-y-auto/);
+    expect(caja("cuenta.timeline").querySelector("ol")!.className).toMatch(
+      /overflow-y-auto/,
+    );
 
     // …y ninguna columna se lleva una barra que recorra VARIAS tarjetas. La
     // de datos sí la puede llevar: son tres cajas cortas que no se recortan.
@@ -127,12 +140,44 @@ describe("la ficha de cliente", () => {
     );
   });
 
+  it("ninguna caja deja que su contenido se salga del borde", async () => {
+    await montar();
+    await screen.findByText("Hito 0");
+
+    // Pasó de verdad: la caja de contactos, encogida por la columna para
+    // dejar sitio a las de abajo, pintaba su segundo contacto POR ENCIMA de
+    // la tarjeta siguiente. La causa era un alto mínimo en la lista que
+    // peleaba con el encogido; lo que lo impide es que la caja recorte.
+    //
+    // Se comprueba en TODAS las cajas y no en las que hoy tienen listas: con
+    // otro cliente, otros datos o una caja nueva, la que se desborde será
+    // otra. Una regla que sólo vale para las cajas de hoy no es una regla.
+    const cajas = Array.from(document.querySelectorAll("section.card"));
+    expect(cajas.length).toBeGreaterThan(3);
+    for (const c of cajas) {
+      const recorre = c.querySelector(".overflow-y-auto");
+      if (!recorre) continue;
+      expect(
+        c.className,
+        `una caja con lista larga no recorta: ${c.textContent?.slice(0, 40)}`,
+      ).toMatch(/overflow-hidden/);
+      // Y lo que crece es la lista, no el rótulo ni el pie: si creciera otra
+      // cosa, la lista se quedaría sin sitio y volvería a salirse.
+      expect(recorre.className).toMatch(/min-h-0/);
+      expect(recorre.className).toMatch(/flex-1/);
+    }
+  });
+
   it("se enseña todo lo que ha llegado: lo que no cabe se alcanza con la barra", async () => {
     await montar();
     await screen.findByText("Hito 0");
     // Recortar en el cliente dejaría la caja medio vacía en una pantalla alta.
-    expect(within(caja("cuenta.casos")).getAllByText(/^Caso \d+$/)).toHaveLength(20);
-    expect(within(caja("cuenta.timeline")).getAllByText(/^Hito \d+$/)).toHaveLength(20);
+    expect(
+      within(caja("cuenta.casos")).getAllByText(/^Caso \d+$/),
+    ).toHaveLength(20);
+    expect(
+      within(caja("cuenta.timeline")).getAllByText(/^Hito \d+$/),
+    ).toHaveLength(20);
   });
 
   it("una lista recortada dice que lo está, y una completa no", async () => {
@@ -142,7 +187,9 @@ describe("la ficha de cliente", () => {
     // Casos: 20 devueltos y cursor → hay más.
     expect(within(caja("cuenta.casos")).getByText("20+")).toBeInTheDocument();
     // Oportunidades: 9 y sin cursor → son nueve, y no lleva el «+».
-    expect(within(caja("cuenta.oportunidades")).getByText("9")).toBeInTheDocument();
+    expect(
+      within(caja("cuenta.oportunidades")).getByText("9"),
+    ).toBeInTheDocument();
     expect(within(caja("cuenta.oportunidades")).queryByText("9+")).toBeNull();
   });
 
@@ -150,7 +197,11 @@ describe("la ficha de cliente", () => {
     await montar();
     await screen.findByText("Hito 0");
 
-    for (const titulo of ["cuenta.contactos", "cuenta.oportunidades", "cuenta.casos"]) {
+    for (const titulo of [
+      "cuenta.contactos",
+      "cuenta.oportunidades",
+      "cuenta.casos",
+    ]) {
       const enlace = within(caja(titulo)).getByText("cuenta.verTodas");
       expect(enlace, `${titulo} no ofrece ver todas`).toBeInTheDocument();
       // Y filtrado por este cliente: llevar al listado entero sin filtrar
@@ -160,7 +211,9 @@ describe("la ficha de cliente", () => {
 
     // Los contactos viven DENTRO del módulo de cuentas, así que el enlace
     // tiene que decir también la pestaña.
-    const contactos = within(caja("cuenta.contactos")).getByText("cuenta.verTodas");
+    const contactos = within(caja("cuenta.contactos")).getByText(
+      "cuenta.verTodas",
+    );
     expect(contactos.getAttribute("href")).toMatch(/[?&]r=/);
   });
 
@@ -168,7 +221,9 @@ describe("la ficha de cliente", () => {
     await montar();
     await screen.findByText("Hito 0");
     const linea = caja("cuenta.timeline");
-    expect(within(linea).getByText(/cuenta.timelineRecortada/)).toBeInTheDocument();
+    expect(
+      within(linea).getByText(/cuenta.timelineRecortada/),
+    ).toBeInTheDocument();
     expect(
       within(linea).getByRole("button", { name: "cuenta.verTodoLoQuePaso" }),
     ).toBeInTheDocument();
