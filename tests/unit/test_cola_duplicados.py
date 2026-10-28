@@ -121,3 +121,132 @@ def test_una_decision_inventada_se_rechaza(uow: Any, dos_iguales: Any) -> None:
         cd.decidir(uow, candidato_id=UUID(pareja["id"]), decision="borrar", por=None)
 
     assert fallo.value.error_code == "duplicados.decision_invalida"
+
+
+# ── Por la ruta, que es por donde entra la pantalla ───────────────────────
+#
+# Las pruebas de arriba llaman a `cola_duplicados` como módulo, y eso deja un
+# hueco con forma de fallo real: la pantalla «Duplicados por resolver» declara
+# la FORMA de dos respuestas —lo que devuelve el barrido y lo que devuelve una
+# pareja decidida— y, si el servidor dejara de mandar uno de esos campos, la
+# pantalla no daría error: se quedaría sin decir cuántas fichas ha mirado, o
+# sin poder aprobar nada. Aquí se entra por la ruta.
+
+
+@pytest.fixture
+def cliente_party() -> Any:
+    import importlib
+    import os
+
+    from crmcore.config import get_settings
+    from starlette.testclient import TestClient
+
+    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED")}
+    os.environ["OUTBOX_ENABLED"] = "false"
+    os.environ["TAREAS_FONDO_ENABLED"] = "false"
+    get_settings.cache_clear()
+    try:
+        with TestClient(importlib.import_module("services.party.main").app) as cli:
+            yield cli
+    finally:
+        for clave, valor in previo.items():
+            if valor is None:
+                os.environ.pop(clave, None)
+            else:
+                os.environ[clave] = valor
+        get_settings.cache_clear()
+
+
+def _cabeceras(tenant_id: UUID) -> dict[str, str]:
+    from uuid import uuid4
+
+    from crmcore.config import get_settings
+    from crmcore.http.deps import H_PERMISOS, H_TENANT, H_USER, firmar_cabeceras_internas
+
+    return firmar_cabeceras_internas(
+        {H_TENANT: str(tenant_id), H_USER: str(uuid4()), H_PERMISOS: "*:*"},
+        get_settings().secret_key.get_secret_value(),
+    )
+
+
+@pytest.mark.db
+def test_la_pantalla_de_duplicados_recibe_lo_que_pinta(
+    cliente_party: Any, uow: Any, tenant_id: UUID, dos_iguales: Any
+) -> None:
+    """Los campos que `Duplicados.tsx` lee, pedidos por la ruta."""
+    cabeceras = _cabeceras(tenant_id)
+
+    barrido = cliente_party.post(
+        "/api/v1/data-quality/accounts/duplicates/barrido", headers=cabeceras, json={}
+    )
+    assert barrido.status_code == 200, barrido.text
+    # «Hecho» a secas no dice si ha mirado tres fichas o tres mil, y la
+    # pantalla lo enseña: tiene que venir.
+    assert {"revisadas", "propuestas", "umbral"} <= set(barrido.json())
+    assert barrido.json()["revisadas"] >= 2
+
+    cola = cliente_party.get(
+        "/api/v1/data-quality/accounts/duplicates/cola?pendientes=true&limite=100",
+        headers=cabeceras,
+    )
+    assert cola.status_code == 200, cola.text
+    parejas = cola.json()
+    assert parejas, "el barrido ha propuesto y la cola no lo enseña"
+    pareja = parejas[0]
+    # Sin el identificador no se puede decidir nada; sin los dos lados no se
+    # puede elegir cuál se queda; sin las señales hay que abrir las dos fichas
+    # para saber qué se está comparando.
+    assert {"id", "a_id", "b_id", "a_nombre", "b_nombre", "senales", "decision"} <= set(pareja)
+    # Y la probabilidad viene en porcentaje, que es como la pinta la pantalla:
+    # «0,9» obliga a traducirlo mentalmente en cada fila.
+    assert 0 <= pareja["probabilidad"] <= 100
+
+    decidida = cliente_party.post(
+        f"/api/v1/data-quality/accounts/duplicates/cola/{pareja['id']}",
+        headers=cabeceras,
+        json={"decision": "no_es_duplicado", "superviviente_id": None, "nota": ""},
+    )
+    assert decidida.status_code == 200, decidida.text
+    assert decidida.json()["decision"] == "no_es_duplicado"
+
+    # Y ya no está entre las pendientes: es lo que impide que la cola reaparezca
+    # entera y se deje de mirar.
+    quedan = cliente_party.get(
+        "/api/v1/data-quality/accounts/duplicates/cola?pendientes=true&limite=100",
+        headers=cabeceras,
+    )
+    assert pareja["id"] not in [p["id"] for p in quedan.json()]
+
+
+@pytest.mark.db
+def test_fusionar_por_la_ruta_exige_el_superviviente(
+    cliente_party: Any, uow: Any, tenant_id: UUID, dos_iguales: Any
+) -> None:
+    """La pantalla no deja pulsar «fusionar» sin elegir, y el servidor tampoco.
+
+    Las dos mitades, porque si sólo lo exigiera la pantalla bastaría con una
+    llamada a mano para fusionar lo que el servidor eligiera por su cuenta.
+    """
+    cabeceras = _cabeceras(tenant_id)
+    cliente_party.post(
+        "/api/v1/data-quality/accounts/duplicates/barrido", headers=cabeceras, json={}
+    )
+    pareja = cliente_party.get(
+        "/api/v1/data-quality/accounts/duplicates/cola", headers=cabeceras
+    ).json()[0]
+
+    sin_elegir = cliente_party.post(
+        f"/api/v1/data-quality/accounts/duplicates/cola/{pareja['id']}",
+        headers=cabeceras,
+        json={"decision": "fusionar", "superviviente_id": None, "nota": ""},
+    )
+    assert sin_elegir.status_code == 422, sin_elegir.text
+    assert sin_elegir.json()["error_code"] == "duplicados.falta_superviviente"
+
+    bien = cliente_party.post(
+        f"/api/v1/data-quality/accounts/duplicates/cola/{pareja['id']}",
+        headers=cabeceras,
+        json={"decision": "fusionar", "superviviente_id": pareja["a_id"], "nota": ""},
+    )
+    assert bien.status_code == 200, bien.text
+    assert bien.json()["decision"] == "fusionar"
