@@ -539,11 +539,11 @@ def test_un_plan_puede_arrancar_cuando_se_instalo_la_maquina(uow: UnidadDeTrabaj
         activo_id=activo.id,
         cada_dias=180,
         antelacion_dias=15,
-        desde=date.today() - timedelta(days=172),
+        desde=hoy(uow.db) - timedelta(days=172),
     )
     plan = campo.crear_plan(uow, **datos.model_dump())
     # Ocho días vista, no seis meses.
-    assert plan.proxima_fecha == date.today() + timedelta(days=8)
+    assert plan.proxima_fecha == hoy(uow.db) + timedelta(days=8)
     claves = [v["plan_id"] for v in campo.vencimientos(uow.db, uow.tenant_id)["vencimientos"]]
     assert str(plan.id) in claves, "un plan que vence en ocho días tiene que salir"
 

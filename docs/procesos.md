@@ -1236,7 +1236,7 @@ stateDiagram-v2
 | `POST /api/v1/ordenes-trabajo/{orden_id}/iniciar` | Empezar el trabajo | orden_id* | 200, 422 | — |
 | `POST /api/v1/ordenes-trabajo/{orden_id}/lineas` | Apuntar material, tiempo o desplazamiento | orden_id*, tipo*, concepto, cantidad, unidad, repuesto_id, precio, desde, hasta, facturable | 201, 422 | — |
 | `POST /api/v1/ordenes-trabajo/{orden_id}/pausar` | Pausar con motivo | orden_id*, motivo* | 200, 422 | — |
-| `POST /api/v1/planes-preventivos` | Crear un plan preventivo | nombre*, activo_id*, cada_dias, cada_contador, duracion_min, competencias, checklist, antelacion_dias | 201, 422 | — |
+| `POST /api/v1/planes-preventivos` | Crear un plan preventivo | nombre*, activo_id*, cada_dias, cada_contador, duracion_min, competencias, checklist, antelacion_dias, desde | 201, 422 | — |
 | `POST /api/v1/planes-preventivos/generar` | Generar las órdenes preventivas que tocan | — | 200, 422 | `workorder.created` |
 | `POST /api/v1/portal/accesos` | Dar acceso al portal a un contacto | contacto_id*, email*, cuenta_id, nivel, secciones | 201, 422 | — |
 | `POST /api/v1/portal/accesos/{acceso_id}/casos` | El cliente abre un caso desde el portal | acceso_id*, asunto*, descripcion | 201, 422 | `case.created` |
@@ -1260,6 +1260,7 @@ stateDiagram-v2
 | `POST /api/v1/problemas/{problema_id}/comunicaciones` | Registrar lo comunicado a los afectados | problema_id*, mensaje*, tipo | 201, 422 | `problem.communicated` |
 | `POST /api/v1/problemas/{problema_id}/resolver` | Dar el problema por resuelto | problema_id*, solucion_definitiva*, cerrar_casos, motivo_cierre | 200, 422 | `case.closed`, `problem.resolved` |
 | `POST /api/v1/repuestos` | Dar de alta una pieza en el catálogo de repuestos | sku*, nombre*, unidad, producto_id, coste, activo | 201, 422 | — |
+| `PUT /api/v1/repuestos/minimos` | Cuánto tiene que llevar siempre una furgoneta de una referencia | tecnico_id*, repuesto_id*, minimo* | 200, 422 | — |
 | `POST /api/v1/repuestos/movimientos` | Mover stock de la furgoneta | tecnico_id*, repuesto_id*, tipo*, cantidad*, orden_id, motivo | 201, 422 | — |
 | `PATCH /api/v1/repuestos/{repuesto_id}` | Editar repuestos | repuesto_id*, sku, nombre, unidad, producto_id, coste, activo | 200, 422 | — |
 | `DELETE /api/v1/repuestos/{repuesto_id}` | Borrar repuestos | repuesto_id* | 204, 422 | — |
