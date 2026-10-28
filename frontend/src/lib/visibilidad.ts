@@ -609,6 +609,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "ia:usar"
     },
     {
+      "r": "/api/v1/ia/guardias",
+      "p": "ia:administrar"
+    },
+    {
+      "r": "/api/v1/ia/plantillas",
+      "p": "ia:administrar"
+    },
+    {
       "r": "/api/v1/ia/guardias/bloqueos",
       "p": "ia:administrar"
     },

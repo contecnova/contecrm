@@ -1306,6 +1306,29 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "intelligence",
         permiso: "ia:usar",
       },
+      // **Qué dice cada guardarraíl**, no sólo cuántas veces ha saltado
+      // (CRM-05.02.02.07). Se podían declarar y no leer: se veía que algo
+      // había cortado mil peticiones y no qué sensibilidades deja pasar, qué
+      // patrones tapa ni si corta la petición o sólo enmascara el dato — que
+      // no es lo mismo. Sin ninguna regla NO se dice «todo bien»: se dice que
+      // manda el comportamiento por defecto, que es que lo personal y lo
+      // especial no salen.
+      {
+        nombre: "Guardarraíles",
+        listar: "/api/v1/ia/guardias",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
+      // Con qué texto se le pide al modelo, en su versión vigente. La
+      // plantilla ES la instrucción: cuando una respuesta empieza a salir mal,
+      // la primera pregunta es qué se le está pidiendo exactamente, y hasta
+      // hoy había que mirarlo en la base de datos.
+      {
+        nombre: "Plantillas del modelo",
+        listar: "/api/v1/ia/plantillas",
+        servicio: "intelligence",
+        permiso: "ia:administrar",
+      },
       // Lo que las guardias NO dejaron pasar. Una guardia sin registro es una
       // promesa: nadie sabe si ha actuado nunca.
       {

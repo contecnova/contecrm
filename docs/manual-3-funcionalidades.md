@@ -10465,6 +10465,26 @@ avisa de que hace falta base legal y contrato. Además se **tapan patrones en el
 texto libre** —IBAN, tarjeta, NIF, correo—, porque en una nota escrita a mano no
 hay ningún campo que los declare.
 
+**Y la regla se puede leer.** Hasta el 28-10-2026 había cómo saber cuántas
+veces había saltado un guardarraíl y no qué dice: ni qué sensibilidades deja
+pasar, ni qué patrones tapa, ni si **corta** la petición o sólo **enmascara**
+el dato — que no es lo mismo y es lo primero que se pregunta. La propia ruta
+que las crea dice que «que salgan tiene que ser una decisión escrita, no el
+comportamiento por omisión», y una decisión escrita que no se puede leer no se
+revisa nunca.
+
+Sin ninguna regla declarada la pantalla **no dice «todo bien»**: dice que manda
+el comportamiento por defecto, que es que lo personal y lo especial no salen.
+Un vacío en silencio ahí se lee como «no hay restricciones», que es justo lo
+contrario de lo que pasa.
+
+Lo mismo con **las plantillas**: la plantilla ES la instrucción, lo que el
+modelo hace sale de ella, y cuando una respuesta empieza a salir mal la primera
+pregunta es qué se le está pidiendo exactamente. Salen en su **versión
+vigente** —por el campo que lo marca, no por el número más alto, porque volver
+a una versión anterior es justo lo que se hace cuando una plantilla sale mal— y
+con el motivo por el que se cambió.
+
 Y lo que se quita **se dice**: una respuesta más corta sin explicación se lee como
 que no había información. Los bloqueos se cuentan, con las dos lecturas que
 importan y son opuestas: uno que salta mil veces al día estorba; uno que no salta

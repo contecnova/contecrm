@@ -270,6 +270,28 @@ def declarar_guardia(datos: DeclararGuardia, uow: UowDep) -> Any:
 
 
 @router.get(
+    "/guardias",
+    dependencies=[Depends(exige_permiso("ia:administrar"))],
+    summary="Qué se tapa antes de mandar un dato a un modelo",
+    description=(
+        "**Se podían escribir y no leer.** Había cómo saber cuántas veces ha "
+        "saltado un guardarraíl y no qué dice: ni qué sensibilidades deja "
+        "pasar, ni qué patrones tapa, ni si corta la petición o sólo enmascara "
+        "el dato — que no es lo mismo, y es lo primero que se pregunta.\n\n"
+        "La ruta que las crea dice que «que salgan tiene que ser una decisión "
+        "escrita, no el comportamiento por omisión». Una decisión escrita que "
+        "no se puede leer no se revisa nunca.\n\n"
+        "Sin ninguna regla **no se dice «todo bien»**: se dice que manda el "
+        "comportamiento por defecto, que es que lo personal y lo especial no "
+        "salen. Un vacío en silencio se lee como «no hay restricciones», que "
+        "es justo lo contrario."
+    ),
+)
+def listar_guardias(db: DbDep, principal: AutenticadoDep) -> Any:
+    return gua.reglas_declaradas(db, principal.tenant_id)
+
+
+@router.get(
     "/guardias/bloqueos",
     dependencies=[Depends(exige_permiso("ia:administrar"))],
     summary="Cuántas veces y por qué han saltado",
@@ -283,6 +305,66 @@ def bloqueos(db: DbDep, principal: AutenticadoDep, dias: int = Query(7, ge=1, le
 
 
 # ── Generación ────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/plantillas",
+    dependencies=[Depends(exige_permiso("ia:administrar"))],
+    summary="Con qué texto se le pide a un modelo, y en qué versión",
+    description=(
+        "**Se podían escribir y no leer.** La plantilla ES la instrucción: lo "
+        "que el modelo hace sale de ella, y cuando una respuesta empieza a "
+        "salir mal la primera pregunta es qué se le está pidiendo exactamente. "
+        "Sin lectura había que mirarlo en la base de datos.\n\n"
+        "Se devuelve **la versión vigente de cada clave**, no el histórico: lo "
+        "que importa es con qué se está pidiendo hoy, y una lista con todas las "
+        "versiones entierra esa línea entre las viejas."
+    ),
+)
+def listar_plantillas_ia(db: DbDep, principal: AutenticadoDep) -> Any:
+    from sqlalchemy import select as _select
+
+    from services.intelligence.generacion import PlantillaPrompt
+
+    filas = (
+        db.execute(
+            _select(PlantillaPrompt)
+            .where(PlantillaPrompt.tenant_id == principal.tenant_id)
+            .order_by(PlantillaPrompt.clave, PlantillaPrompt.version.desc())
+        )
+        .scalars()
+        .all()
+    )
+    # Por el campo `vigente` y no por «la de número más alto»: cuál manda es un
+    # dato que el producto guarda, y deducirlo haría que volver a una versión
+    # anterior —que es justo lo que se hace cuando una plantilla sale mal— no
+    # se reflejara aquí.
+    vigentes = [
+        {
+            "clave": f.clave,
+            "version": f.version,
+            "tarea": f.tarea,
+            "nombre": f.nombre,
+            "motivo_version": f.motivo_version,
+            # El texto, recortado: una plantilla puede tener miles de caracteres
+            # y lo que se mira en una lista es cuál es, no su texto entero.
+            "sistema": (f.sistema or "")[:400],
+            "cuerpo": (f.cuerpo or "")[:400],
+        }
+        for f in filas
+        if f.vigente
+    ]
+    return {
+        "plantillas": vigentes,
+        "cuantas": len(vigentes),
+        "versiones_guardadas": len(filas),
+        "que_significa": (
+            "No hay ninguna plantilla propia: se usa la que trae el producto."
+            if not vigentes
+            else "Cada clave sale en su versión vigente. Las anteriores siguen "
+            "guardadas y no se usan."
+        ),
+    }
 
 
 @router.post(

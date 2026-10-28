@@ -972,3 +972,45 @@ def test_un_presupuesto_de_cero_para_la_ia(uow: UnidadDeTrabajo) -> None:
     assert estado["agotado"] is True
     with pytest.raises(Conflicto):
         rut.exigir_disponible(uow.db, uow.tenant_id, uso="redaccion")
+
+
+def test_las_guardias_declaradas_se_pueden_LEER(uow: UnidadDeTrabajo) -> None:
+    """Se podía saber cuántas veces había saltado un guardarraíl, y no qué dice.
+
+    Existía `GET /ia/guardias/bloqueos` —cuántas veces y por qué han saltado— y
+    ninguna forma de leer la regla: ni qué sensibilidades deja pasar, ni qué
+    patrones tapa, ni si **corta** la petición o sólo **enmascara** el dato, que
+    no es lo mismo y es lo primero que se pregunta. La ruta que las crea dice
+    que «que salgan tiene que ser una decisión escrita, no el comportamiento
+    por omisión», y una decisión escrita que no se puede leer no se revisa.
+    """
+    gua.declarar_regla(
+        uow,
+        clave="comercial",
+        sensibilidades_permitidas=["interno"],
+        patrones_a_tapar=["iban"],
+        cortar_si_aparece=True,
+    )
+    uow.db.flush()
+
+    salida = gua.reglas_declaradas(uow.db, uow.tenant_id)
+    assert salida["cuantas"] == 1
+    regla = salida["reglas"][0]
+    assert regla["clave"] == "comercial"
+    assert regla["patrones_a_tapar"] == ["iban"]
+    # Cortar y tapar se confunden, y son decisiones distintas: una rechaza la
+    # petición entera y la otra la deja pasar con el dato enmascarado.
+    assert regla["corta"] is True
+
+
+def test_sin_guardias_no_se_dice_que_todo_va_bien(uow: UnidadDeTrabajo) -> None:
+    """**El caso que más engaña.**
+
+    Un vacío en silencio aquí se lee como «no hay restricciones», y es lo
+    contrario: sin regla declarada manda el comportamiento por defecto, que es
+    que lo personal y lo especial NO salen.
+    """
+    salida = gua.reglas_declaradas(uow.db, uow.tenant_id)
+    assert salida["reglas"] == []
+    assert "por defecto" in salida["que_significa"]
+    assert "NO salen" in salida["que_significa"]

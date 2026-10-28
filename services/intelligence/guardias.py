@@ -95,6 +95,56 @@ class ReglaGuardia(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_regla_guardia_ia"),)
 
 
+def reglas_declaradas(db: Session, tenant_id: UUID) -> dict[str, Any]:
+    """Qué se tapa antes de mandar un dato a un modelo, y qué no sale nunca.
+
+    Existía `GET /ia/guardias/bloqueos` —cuántas veces ha saltado cada uno— y
+    **no existía forma de leer la regla**. Se veía que algo había cortado mil
+    peticiones y no qué dice: ni qué sensibilidades deja pasar, ni qué patrones
+    tapa, ni si corta o sólo enmascara. La ruta que las crea dice que «que
+    salgan tiene que ser una decisión escrita, no el comportamiento por
+    omisión», y una decisión escrita que no se puede leer no se revisa nunca.
+
+    Sin ninguna regla declarada **no se dice «todo bien»**: se dice que manda
+    el comportamiento por defecto, que es no dejar salir lo personal ni lo
+    especial. Un vacío en silencio aquí se lee como «no hay restricciones», que
+    es exactamente lo contrario de lo que pasa.
+    """
+    filas = (
+        db.execute(
+            select(ReglaGuardia)
+            .where(ReglaGuardia.tenant_id == tenant_id)
+            .order_by(ReglaGuardia.clave)
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "reglas": [
+            {
+                "clave": f.clave,
+                "sensibilidades_permitidas": list(f.sensibilidades_permitidas or []),
+                "patrones_a_tapar": list(f.patrones_a_tapar or []),
+                # Cortar y tapar no son lo mismo y se confunden: tapar deja
+                # pasar la petición con el dato enmascarado, cortar la rechaza
+                # entera. Quien revisa esto necesita saber cuál de las dos.
+                "corta": f.cortar_si_aparece,
+                "max_caracteres": f.max_caracteres,
+                "activa": f.activa,
+            }
+            for f in filas
+        ],
+        "cuantas": len(filas),
+        "que_significa": (
+            "No hay ninguna regla declarada: manda el comportamiento por "
+            "defecto, que es que lo personal y lo especial NO salen."
+            if not filas
+            else "Cada regla dice qué deja pasar y qué tapa. Lo que no nombra "
+            "ninguna sigue sin salir."
+        ),
+    }
+
+
 class BloqueoIA(Base):
     """Cada vez que un guardarraíl paró algo, y qué paró."""
 
