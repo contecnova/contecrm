@@ -2587,6 +2587,33 @@ parece que algo se ha roto. Y lo que no está puesto no se pinta — una lista c
 cuatro guiones hace creer que faltan datos cuando lo que pasa es que ese caso
 no es de un pedido.
 
+**Y dos preguntas más que la API contestaba y no alcanzaba nadie.**
+
+`GET /colas/explicar/{caso_id}` contesta «¿por qué me ha llegado esto a mí?»,
+que es la pregunta que más se repite en un reparto automático. Sin respuesta,
+la gente deja de fiarse del reparto y empieza a coger los casos a mano — que es
+exactamente lo que el reparto existe para evitar. Va con **cuántas reglas se
+miraron antes**: sin ese número, «ninguna coincidió y cayó a la cola por
+defecto» y «coincidió la primera» se cuentan igual, y significan lo contrario —
+una dice que el reparto funcionó y la otra que no hay reglas que cubran ese
+caso.
+
+`GET /entitlements/{id}/saldo` dice qué derecho cubre el caso y cuánto queda,
+con **las dos bolsas aunque sólo una esté limitada**: enseñar sólo la limitada
+hace que quien mira no sepa si la otra no se cuenta o es que nadie ha gastado,
+y son cosas distintas delante de un cliente que pregunta. Con la caducidad al
+lado del saldo, porque un derecho con doscientas horas libres que vence el
+viernes es tan inservible como uno agotado y el saldo solo lo pinta holgado. El
+derecho se pregunta **por el cliente del caso** y no por el caso: el derecho es
+del contrato.
+
+**Y el mismo fallo de robustez, cometido otra vez.** El panel del reparto hacía
+`.map` sobre lo que llegara, y un doble que devolvía otra forma tumbaba la
+ficha entera — el mismo error que dos bloques antes costó diez pruebas rojas en
+la ficha de cliente. Queda escrito aquí porque la lección no es el `?? []`: es
+que **asumir la forma de lo que llega convierte un campo raro en una pantalla
+en blanco**, y eso no falla, no avisa y no deja traza.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

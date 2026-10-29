@@ -1,6 +1,7 @@
 /**
  * Un caso: con qué tiene que ver, cómo va su reloj y cómo acabó
- * (CRM-04.01.01.03, CRM-04.01.01.04, CRM-04.01.01.09, CRM-04.01.01.10).
+ * (CRM-04.01.01.03, CRM-04.01.01.04, CRM-04.01.01.06, CRM-04.01.01.09,
+ * CRM-04.01.01.10, CRM-04.01.02.06).
  *
  * La bandeja dice qué atender primero; abrir un caso es otra cosa. Lo que se
  * necesita delante es **de qué cliente es, sobre qué producto o activo, de
@@ -37,6 +38,36 @@ import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
+
+interface Asignacion {
+  at: string;
+  regla: string | null;
+  asignado_a: string | null;
+  cola: string | null;
+  estrategia: string | null;
+  motivo: string | null;
+  /** Cuántas reglas se miraron antes de ésta. Sin eso, «ninguna coincidió» y
+   *  «se cogió la primera» se cuentan igual. */
+  evaluadas: number | null;
+}
+
+interface Bolsa {
+  incluidas?: string | null;
+  incluidos?: number | null;
+  consumidas?: string;
+  consumidos?: number;
+  restantes?: string | number | null;
+  sin_limite: boolean;
+  agotado: boolean;
+}
+
+interface Saldo {
+  entitlement: string;
+  al_agotar: string | null;
+  horas: Bolsa;
+  casos: Bolsa;
+  vigente_hasta: string | null;
+}
 
 interface Sla {
   clave: string | null;
@@ -95,6 +126,8 @@ const ADONDE: Record<string, string | null> = {
 export function Caso() {
   const { id = "" } = useParams();
   const [caso, setCaso] = useState<Caso | null>(null);
+  const [porQueAqui, setPorQueAqui] = useState<Asignacion[] | null>(null);
+  const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -110,8 +143,34 @@ export function Caso() {
     const control = new AbortController();
     setFallo(null);
     llamar<Caso>(`/api/v1/casos/${id}`, { signal: control.signal })
-      .then((r) => setCaso(r.datos))
+      .then(({ datos }) => {
+        setCaso(datos);
+        // Qué derecho cubre esto se pregunta POR EL CLIENTE del caso, no por
+        // el caso: el derecho es del contrato, y hasta que no se sabe de quién
+        // es el caso no hay a quién preguntárselo.
+        const cuenta = datos.relacionado_con?.cuenta_id;
+        if (!cuenta) return;
+        void llamar<{ entitlement_id?: string }>(
+          `/api/v1/entitlements/aplicable?cuenta_id=${cuenta}`,
+          { signal: control.signal },
+        )
+          .then((r) => {
+            const cual = r.datos?.entitlement_id;
+            if (!cual) return;
+            return llamar<Saldo>(`/api/v1/entitlements/${cual}/saldo`, {
+              signal: control.signal,
+            }).then((s) => setSaldo(s.datos));
+          })
+          .catch(() => undefined);
+      })
       .catch(salvoCancelacion(setFallo));
+
+    void llamar<Asignacion[]>(`/api/v1/colas/explicar/${id}`, {
+      signal: control.signal,
+    })
+      .then((r) => setPorQueAqui(r.datos))
+      .catch(() => undefined);
+
     return () => control.abort();
   }, [id]);
 
@@ -192,6 +251,8 @@ export function Caso() {
         <ElReloj sla={caso.sla} />
         <DeQuienCuelga arbol={caso.relaciones} />
         <ComoAcabo cierre={caso.cierre} />
+        <PorQueEstaAqui asignaciones={porQueAqui} />
+        <QueDerechoLoCubre saldo={saldo} />
       </div>
 
       <ElHistorial eventos={caso.historial} />
@@ -419,6 +480,117 @@ function ElHistorial({
           ))}
         </ol>
       )}
+    </section>
+  );
+}
+
+/**
+ * Por qué acabó en esta cola (CRM-04.01.01.06).
+ *
+ * «¿Por qué me ha llegado esto a mí?» es la pregunta que más se repite en un
+ * reparto automático, y sin respuesta la gente deja de fiarse del reparto y
+ * empieza a cogerlo todo a mano — que es exactamente lo que el reparto existe
+ * para evitar.
+ *
+ * **Y cuántas reglas se miraron antes.** Sin ese número, «ninguna coincidió y
+ * cayó a la cola por defecto» y «coincidió la primera» se cuentan igual, y son
+ * cosas opuestas: una dice que el reparto funcionó y la otra que no hay reglas
+ * que cubran este caso.
+ */
+function PorQueEstaAqui({ asignaciones }: { asignaciones: Asignacion[] | null }) {
+  const { t } = useTranslation();
+  if (!asignaciones) return null;
+  // `Array.isArray` y no `?? []`: esta ruta devuelve una LISTA, y un doble —o
+  // un error devuelto como objeto— la haría `.map` de algo que no lo es y
+  // tumbaría la ficha entera. Es el mismo fallo que ya costó diez pruebas
+  // rojas en la ficha de cliente, cometido otra vez: asumir la forma de lo
+  // que llega. Un campo con otra forma no puede ser una pantalla en blanco.
+  const cuales = Array.isArray(asignaciones) ? asignaciones : [];
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("caso.porQueAqui")}</h2>
+      {cuales.length === 0 ? (
+        <Vacio titulo={t("caso.sinAsignacion")} compacto />
+      ) : (
+        <ol className="divide-y divide-ink-dim/30">
+          {cuales.map((a, i) => (
+            <li key={`${a.at}-${i}`} className="py-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-3 text-2xs">
+                <span className="font-medium text-ink">{a.cola ?? "—"}</span>
+                {a.regla ? <span className="chip-dato">{a.regla}</span> : null}
+                {a.estrategia ? (
+                  <span className="text-3xs text-ink-faint">{a.estrategia}</span>
+                ) : null}
+                <time className="text-3xs text-ink-faint" dateTime={a.at}>
+                  {a.at.slice(0, 16).replace("T", " ")}
+                </time>
+              </div>
+              {a.motivo ? (
+                <p className="text-3xs text-ink-muted">{a.motivo}</p>
+              ) : null}
+              {typeof a.evaluadas === "number" ? (
+                <p className="text-3xs text-ink-faint">
+                  {t("caso.reglasMiradas", { cuantas: a.evaluadas })}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Qué derecho cubre esto y cuánto queda (CRM-04.01.02.06).
+ *
+ * **Las dos bolsas, aunque sólo una esté limitada.** Enseñar sólo la limitada
+ * hace que quien mira no sepa si la otra no se cuenta o es que nadie ha
+ * gastado, y son cosas distintas delante de un cliente que pregunta.
+ *
+ * **Y la caducidad al lado del saldo**: un derecho con doscientas horas libres
+ * que vence el viernes es tan inservible como uno agotado, y el saldo solo lo
+ * pinta como si estuviera holgado.
+ */
+function QueDerechoLoCubre({ saldo }: { saldo: Saldo | null }) {
+  const { t } = useTranslation();
+  if (!saldo) return null;
+
+  const agotado = saldo.horas?.agotado || saldo.casos?.agotado;
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("caso.derecho")}</h2>
+      <p className="text-2xs font-medium text-ink">{saldo.entitlement}</p>
+      <ul className="mt-2 space-y-1 text-2xs">
+        <li className={saldo.horas?.agotado ? "text-danger" : "text-ink-muted"}>
+          {saldo.horas?.sin_limite
+            ? t("caso.horasSinLimite", { consumidas: saldo.horas?.consumidas })
+            : t("caso.horasRestantes", {
+                restantes: saldo.horas?.restantes,
+                incluidas: saldo.horas?.incluidas,
+              })}
+        </li>
+        <li className={saldo.casos?.agotado ? "text-danger" : "text-ink-muted"}>
+          {saldo.casos?.sin_limite
+            ? t("caso.casosSinLimite", { consumidos: saldo.casos?.consumidos })
+            : t("caso.casosRestantes", {
+                restantes: saldo.casos?.restantes,
+                incluidos: saldo.casos?.incluidos,
+              })}
+        </li>
+      </ul>
+      {saldo.vigente_hasta ? (
+        <p className="mt-2 text-3xs text-ink-faint">
+          {t("caso.vigenteHasta", { cuando: saldo.vigente_hasta })}
+        </p>
+      ) : null}
+      {agotado && saldo.al_agotar ? (
+        <p className="mt-1 text-3xs text-danger">
+          {t("caso.alAgotar", { que: saldo.al_agotar })}
+        </p>
+      ) : null}
     </section>
   );
 }

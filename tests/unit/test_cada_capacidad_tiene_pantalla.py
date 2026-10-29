@@ -620,7 +620,17 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   cerrado por el agente y pendiente de que el cliente lo de por bueno NO
 #   esta cerrado, y en una lista se ve igual que uno que si — con lo que un
 #   informe de cierres dice lo que no es.
-TOPE_SIN_PANTALLA = 268
+#   29-10-2026  266 de 778  dos mas en la ficha del caso: por que acabo en esa
+#   ------------------------------------------------------------------------
+#   cola y que derecho lo cubre.
+#
+#   «¿Por que me ha llegado esto a mi?» es la pregunta que mas se repite en un
+#   reparto automatico, y sin respuesta la gente deja de fiarse del reparto y
+#   empieza a coger los casos a mano —que es lo que el reparto existe para
+#   evitar—. Va con CUANTAS REGLAS SE MIRARON antes: sin ese numero,
+#   «ninguna coincidio y cayo a la cola por defecto» y «coincidio la primera»
+#   se cuentan igual y significan lo contrario.
+TOPE_SIN_PANTALLA = 266
 
 
 def _es_pantalla(p: Path) -> bool:

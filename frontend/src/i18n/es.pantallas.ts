@@ -684,6 +684,17 @@ const pantallas = {
     reaperturas: "Se ha reabierto {{cuantas}} veces. Un caso cerrado tres veces no es un caso resuelto.",
     historial: "Qué le ha pasado",
     sinHistorial: "Sin eventos todavía",
+    porQueAqui: "Por qué está aquí",
+    sinAsignacion: "No consta cómo llegó a su cola",
+    reglasMiradas:
+      "Se miraron {{cuantas}} reglas antes. Si son cero, no hay ninguna que cubra este caso.",
+    derecho: "Qué derecho lo cubre",
+    horasSinLimite: "Horas: sin límite ({{consumidas}} consumidas)",
+    horasRestantes: "Horas: quedan {{restantes}} de {{incluidas}}",
+    casosSinLimite: "Casos: sin límite ({{consumidos}} abiertos)",
+    casosRestantes: "Casos: quedan {{restantes}} de {{incluidos}}",
+    vigenteHasta: "Vigente hasta {{cuando}}.",
+    alAgotar: "Agotado. Al agotarse: {{que}}.",
   },
   plataforma: {
     titulo: "Plataforma y cumplimiento",

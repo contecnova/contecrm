@@ -1439,3 +1439,56 @@ def test_un_caso_pendiente_del_cliente_no_consta_cerrado(
     _campos(cierre, "motivo", "resolucion", "validacion_cliente", "reaperturas")
     assert cierre["validacion_cliente"] == "pendiente"
     assert cierre["reaperturas"] == 2
+
+
+def test_por_que_el_caso_acabo_en_esa_cola_sale_por_http(
+    service: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """«¿Por qué me ha llegado esto a mí?» es la pregunta del reparto.
+
+    Sin respuesta, la gente deja de fiarse del reparto y empieza a coger los
+    casos a mano, que es lo que el reparto existe para evitar. Vacío es una
+    lista, no un 404: un caso sin asignar todavía no es un error.
+    """
+    from services.service.modelos import Caso
+
+    caso = Caso(tenant_id=tenant_id, asunto="Sin asignar")
+    db.add(caso)
+    db.flush()
+
+    r = service.get(f"/api/v1/colas/explicar/{caso.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list), f"la pantalla la recorre: llega {type(r.json())}"
+
+
+def test_el_saldo_del_derecho_trae_LAS_DOS_bolsas(
+    service: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Horas y casos, aunque sólo una esté limitada.
+
+    Enseñar sólo la limitada hace que quien mira no sepa si la otra no se
+    cuenta o es que nadie ha gastado, y son cosas distintas delante de un
+    cliente que pregunta. Y la caducidad al lado del saldo: un derecho con 200
+    horas libres que vence el viernes es tan inservible como uno agotado.
+    """
+    from services.service.modelos import Entitlement
+
+    derecho = Entitlement(
+        tenant_id=tenant_id,
+        clave="oro",
+        nombre="Soporte oro",
+        horas_incluidas=Decimal("200"),
+        vigente_desde=datetime.now(timezone.utc).date(),
+    )
+    db.add(derecho)
+    db.flush()
+
+    r = service.get(f"/api/v1/entitlements/{derecho.id}/saldo", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "entitlement", "al_agotar", "horas", "casos", "vigente_hasta")
+    for bolsa in ("horas", "casos"):
+        _campos(cuerpo[bolsa], "sin_limite", "agotado")
+    # La de casos NO está limitada aquí, y aun así viene: es justo el caso que
+    # se perdería si sólo se devolviera lo limitado.
+    assert cuerpo["casos"]["sin_limite"] is True, cuerpo["casos"]

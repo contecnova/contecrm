@@ -62,16 +62,44 @@ const CASO = {
   ],
 };
 
+const ASIGNACIONES = [
+  {
+    at: "2026-10-18T09:00:00Z",
+    regla: "Máquinas en garantía",
+    asignado_a: null,
+    cola: "campo-norte",
+    estrategia: "menos_carga",
+    motivo: "El activo está en zona norte",
+    evaluadas: 4,
+  },
+];
+
+const SALDO = {
+  entitlement: "Soporte oro 2026",
+  al_agotar: "se factura por horas",
+  horas: {
+    incluidas: "200.00",
+    consumidas: "200.00",
+    restantes: "0.00",
+    sin_limite: false,
+    agotado: true,
+  },
+  casos: { incluidos: null, consumidos: 12, restantes: null, sin_limite: true, agotado: false },
+  vigente_hasta: "2026-12-31",
+};
+
 vi.mock("@/lib/api", async () => {
   const real = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
     ...real,
-    llamar: vi.fn(async () => ({
-      datos: CASO,
-      version: null,
-      retenidos: [],
-      enmascarados: [],
-    })),
+    llamar: vi.fn(async (ruta: string) => {
+      let datos: unknown = CASO;
+      if (ruta.startsWith("/api/v1/colas/explicar/")) datos = ASIGNACIONES;
+      else if (ruta.startsWith("/api/v1/entitlements/aplicable"))
+        datos = { entitlement_id: "e-1" };
+      else if (ruta.startsWith("/api/v1/entitlements/e-1/saldo")) datos = SALDO;
+      return { datos, version: null, retenidos: [], enmascarados: [] };
+    }),
   };
 });
 
@@ -138,5 +166,27 @@ describe("un caso se atiende", () => {
     await montar();
     await waitFor(() => expect(screen.getByText("reabierto")).toBeTruthy());
     expect(screen.getByText(/volvió a fallar/)).toBeTruthy();
+  });
+
+  it("dice por qué está en esta cola, y cuántas reglas se miraron", async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByText("campo-norte")).toBeTruthy());
+    expect(screen.getByText("El activo está en zona norte")).toBeTruthy();
+    // Sin ese número, «ninguna coincidió y cayó a la cola por defecto» y
+    // «coincidió la primera» se cuentan igual, y significan lo contrario.
+    expect(screen.getByText(/caso.reglasMiradas.*"cuantas":4/)).toBeTruthy();
+  });
+
+  it("enseña LAS DOS bolsas del derecho, aunque sólo una esté limitada", async () => {
+    await montar();
+    // Enseñar sólo la limitada hace que quien mira no sepa si la otra no se
+    // cuenta o es que nadie ha gastado, y son cosas distintas delante de un
+    // cliente que pregunta.
+    await waitFor(() =>
+      expect(screen.getByText(/caso.horasRestantes.*"restantes":"0.00"/)).toBeTruthy(),
+    );
+    expect(screen.getByText(/caso.casosSinLimite.*12/)).toBeTruthy();
+    // Y qué pasa al agotarse, que es lo que hay que poder decirle al cliente.
+    expect(screen.getByText(/caso.alAgotar.*factura por horas/)).toBeTruthy();
   });
 });

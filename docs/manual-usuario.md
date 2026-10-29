@@ -914,6 +914,16 @@ que hace falta para atenderlo:
   un caso resuelto.
 - **Y todo lo que le ha pasado, en orden**, que es el rastro de las reaperturas
   y de los cambios de nivel.
+- **Por qué está en esta cola.** Qué regla lo mandó aquí, con qué estrategia y
+  por qué motivo — y cuántas reglas se miraron antes. No es lo mismo que
+  coincidiera la primera que que no coincidiera ninguna y cayera a la cola por
+  defecto: lo segundo quiere decir que no hay ninguna regla que cubra este tipo
+  de caso.
+- **Qué derecho lo cubre y cuánto queda**, con las horas y los casos: salen los
+  dos aunque sólo uno esté limitado, porque si no no se sabe si el otro no se
+  cuenta o es que nadie ha gastado. Y con la fecha de caducidad al lado: un
+  derecho con doscientas horas libres que vence el viernes es tan inservible
+  como uno agotado.
 
 ---
 
