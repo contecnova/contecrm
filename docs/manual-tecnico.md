@@ -1893,6 +1893,35 @@ por qué no hay conexiones, cuál de las dos cosas es este historial vacío— y
 ninguna llegaba a quien la miraba. Un vacío sin porqué se lee como «no hay
 nada», que es justo lo que esas pantallas intentaban no decir.
 
+### 4.6.7 La pantalla que acepta la pregunta y no hace nada
+
+El último de la serie, y el único que se vio **usándolo** y no midiendo: Nexus
+aceptaba la pregunta, el botón se apagaba y ya no volvía. Sin error, sin aviso y
+sin una sola petición saliendo del navegador.
+
+`Preguntar` lleva una bandera de «sigo montado» para no pintar sobre un
+componente desmontado ni seguir gastando presupuesto del agente. Estaba escrita
+así:
+
+```tsx
+const vivo = useRef(true);
+useEffect(() => () => void (vivo.current = false), []);
+```
+
+Sólo la limpieza. En desarrollo, **`StrictMode` monta, desmonta y vuelve a
+montar**, así que el segundo montaje arrancaba con la bandera ya en `false` y se
+quedaba así para siempre. A partir de ahí: el plan llegaba y no se pintaba, y el
+`finally` no quitaba «trabajando», con lo que el botón se apagaba y no volvía.
+
+Lo que hace falta es poner la bandera a `true` **al montar**, no sólo a `false`
+al desmontar.
+
+Y una lección sobre las pruebas, que es la mitad que importa: las de esta
+pantalla **pasaban**. Montaban el componente a pelo, una sola vez, que es algo
+que la aplicación no hace nunca. Al montarlas con `StrictMode` —como `main.tsx`—
+y volver a plantar el fallo, **caen cinco**, cuatro de ellas escritas mucho
+antes. Una prueba que no monta como monta el producto mide otra cosa.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

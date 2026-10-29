@@ -132,7 +132,23 @@ export function Preguntar() {
   // corriendo contra un componente desmontado pinta sobre nada y sigue
   // gastando presupuesto del agente.
   const vivo = useRef(true);
-  useEffect(() => () => void (vivo.current = false), []);
+  useEffect(() => {
+    // **Se vuelve a poner a `true` al montar, no sólo a `false` al desmontar.**
+    //
+    // En desarrollo, `StrictMode` monta, desmonta y vuelve a montar. Con sólo
+    // la limpieza, el segundo montaje arrancaba con `vivo.current` ya en
+    // `false` y se quedaba así para siempre. Consecuencia: la pantalla pedía
+    // el plan, lo recibía y **no lo pintaba**; el `finally` no quitaba
+    // «trabajando», así que el botón se apagaba y no volvía. Quedaba una
+    // pantalla que acepta la pregunta y no hace nada, sin un solo error.
+    //
+    // Medido el 29-10-2026 con la captura de alguien usándolo: «Responde:
+    // asistente» bien, el texto escrito, y el botón gris.
+    vivo.current = true;
+    return () => {
+      vivo.current = false;
+    };
+  }, []);
 
   const cargar = useCallback(() => {
     const control = new AbortController();

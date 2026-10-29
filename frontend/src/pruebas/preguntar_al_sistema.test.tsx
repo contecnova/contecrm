@@ -19,6 +19,7 @@
  * convertiría cualquier retoque de redacción en una prueba roja.
  */
 
+import { StrictMode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,7 +62,15 @@ async function montar() {
     };
   });
   const { Preguntar } = await import("@/paginas/Preguntar");
-  return render(<Preguntar />);
+  // **Con `StrictMode`, como la aplicación de verdad.** En desarrollo monta,
+  // desmonta y vuelve a montar, y eso es lo que destapó que la pantalla se
+  // quedaba muerta después del primer clic: sin esto, la prueba montaba una
+  // sola vez y no reproducía nada.
+  return render(
+    <StrictMode>
+      <Preguntar />
+    </StrictMode>,
+  );
 }
 
 async function preguntar() {
@@ -176,6 +185,36 @@ describe("nexus", () => {
     expect(screen.getByRole("button", { name: "preguntar.deshacer" })).toBeInTheDocument();
     // Y por qué paró, que no es lo mismo que «ya no quedan pasos».
     expect(screen.getByText(/Objetivo cumplido/)).toBeInTheDocument();
+  });
+
+  it("la pantalla sigue viva después del doble montaje de desarrollo", async () => {
+    // `StrictMode` monta, desmonta y vuelve a montar. La bandera de «sigo
+    // vivo» se ponía a `false` en la limpieza y no volvía a `true` al montar,
+    // así que el segundo montaje arrancaba muerto: la pantalla pedía el plan,
+    // lo recibía y **no lo pintaba**, y el botón se apagaba y no volvía. Una
+    // pantalla que acepta la pregunta y no hace nada, sin un solo error.
+    const usuario = userEvent.setup();
+    actuacion = {
+      ejecucion_id: "e1",
+      objetivo: "qué cuentas están en riesgo",
+      estado: "ejecutando",
+      tokens: 10,
+      pasos: [unPaso(1)],
+      reversible_del_todo: true,
+      no_reversibles: [],
+    };
+    await montar();
+    await usuario.type(
+      await screen.findByLabelText("preguntar.quePides"),
+      "qué cuentas están en riesgo",
+    );
+    await usuario.click(screen.getByRole("button", { name: "preguntar.planificar" }));
+
+    // El plan se PINTA: si la bandera estuviera muerta, la respuesta llegaría
+    // y se descartaría.
+    await screen.findByText(/vuelta 1/);
+    // Y el botón vuelve: si no, no se puede preguntar nunca más.
+    expect(screen.getByRole("button", { name: "preguntar.planificar" })).toBeEnabled();
   });
 
   it("no se elige agente: se dice quién responde y se escribe", async () => {

@@ -161,13 +161,43 @@ def test_el_recorrido_mira_de_verdad() -> None:
     assert "/api/v1/casos/bandeja" in _rutas_con_prueba_de_servidor()
 
 
+def _la_recorre_alguna(ruta_pantalla: str, probadas: set[str]) -> bool:
+    """Si alguna prueba recorre esa ruta, admitiendo que fije lo que la pantalla
+    deja variable.
+
+    La pantalla escribe `/api/v1/${servicio}/rastro/campos/${objeto}/${id}` y la
+    prueba lo pide con un objeto concreto —`oportunidad`—, que es lo correcto:
+    una prueba que no fija el objeto no recorre nada. Comparando los textos tal
+    cual no coinciden, y el gate daba rojo por una ruta que **sí** está
+    recorrida. Un guardián que da la alarma por lo correcto se acaba
+    desactivando, y entonces deja de avisar de lo incorrecto.
+
+    Lo que se sigue exigiendo: el mismo número de tramos y que **todos los
+    literales de la pantalla** coincidan. Un `{}` de la pantalla casa con
+    cualquier tramo; uno de la prueba, sólo con otro `{}` — al revés sería
+    admitir que una prueba genérica cubre una ruta concreta que nadie pide.
+    """
+    if ruta_pantalla in probadas:
+        return True
+    suyos = ruta_pantalla.split("/")
+    for probada in probadas:
+        otros = probada.split("/")
+        if len(otros) != len(suyos):
+            continue
+        if all(mio == "{}" or mio == suyo for mio, suyo in zip(suyos, otros, strict=False)):
+            return True
+    return False
+
+
 def test_ninguna_pantalla_pide_una_forma_a_una_ruta_que_nadie_toca() -> None:
     """Es el suelo, no el techo: que ninguna pantalla declare la forma de una
     respuesta que **ninguna** prueba de servidor llega a pedir. Fijar los
     campos es otra cosa, y se hace en las pruebas por contrato."""
     rutas = _rutas_que_piden_un_tipo()
     con_prueba = _rutas_con_prueba_de_servidor()
-    nuevos = sorted(r for r in rutas if r not in con_prueba and r not in SIN_RECORRER_HOY)
+    nuevos = sorted(
+        r for r in rutas if not _la_recorre_alguna(r, con_prueba) and r not in SIN_RECORRER_HOY
+    )
     assert not nuevos, (
         "Pantallas que declaran la forma de una respuesta que ninguna prueba "
         "de servidor llega a pedir. Si el servidor deja de mandar un campo "
