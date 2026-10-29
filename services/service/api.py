@@ -440,6 +440,45 @@ def leer(caso_id: UUID, db: DbDep, principal: AutenticadoDep) -> Any:
         if caso.categoria_id
         else [],
         "campos": dict(caso.campos or {}),
+        # ── Con QUÉ tiene que ver este caso (CRM-04.01.01.03) ─────────────
+        #
+        # Estaban guardados y esta ruta no los devolvía. El listado de la
+        # bandeja sí manda `cuenta_id`, así que el dato llegaba a una pantalla
+        # y no a la otra: **abrir el caso perdía de qué cliente era**, que es
+        # lo primero que se mira al atenderlo.
+        #
+        # Van los seis y no sólo la cuenta: un caso sobre un activo instalado
+        # se atiende distinto que uno sobre un pedido, y sin el activo hay que
+        # preguntárselo al cliente, que ya lo dijo al abrirlo.
+        "relacionado_con": {
+            "cuenta_id": str(caso.cuenta_id) if caso.cuenta_id else None,
+            "contacto_id": str(caso.contacto_id) if caso.contacto_id else None,
+            "producto_id": str(caso.producto_id) if caso.producto_id else None,
+            "activo_id": str(caso.activo_id) if caso.activo_id else None,
+            "contrato_id": str(caso.contrato_id) if caso.contrato_id else None,
+            "pedido_id": str(caso.pedido_id) if caso.pedido_id else None,
+        },
+        # ── Cómo se cerró, y cuántas veces se ha reabierto ────────────────
+        #
+        # (CRM-04.01.01.09, CRM-04.01.01.10.) El motivo tipificado agrupa para
+        # el informe y la resolución explica para la persona: con uno solo, o
+        # no se puede contar o no se puede entender.
+        #
+        # `validacion_cliente` es la mitad que casi nunca se publica: un caso
+        # cerrado por el agente y pendiente de que el cliente lo dé por bueno
+        # **no está cerrado**, y en una lista se ve igual que uno que sí.
+        #
+        # Y `reaperturas` con el cierre, no aparte: un caso cerrado tres veces
+        # no es un caso resuelto, y el número al lado del motivo es lo que
+        # hace que se lea la primera vez.
+        "cierre": {
+            "motivo": caso.motivo_cierre,
+            "resolucion": caso.resolucion,
+            "validacion_cliente": caso.validacion_cliente,
+            "reaperturas": caso.reaperturas,
+            "cerrado_at": caso.cerrado_at.isoformat() if caso.cerrado_at else None,
+            "resuelto_at": caso.resuelto_at.isoformat() if caso.resuelto_at else None,
+        },
         "sla": {
             "clave": caso.sla_clave,
             "version": caso.sla_version,

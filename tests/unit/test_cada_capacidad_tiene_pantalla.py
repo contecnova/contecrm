@@ -606,7 +606,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   tocar hoy, si la cola crece—, que es OTRA pregunta: delante de un cliente
 #   concreto lo que se quiere saber es por que su telefono dice eso y no lo
 #   que dice el ERP. Estaban las dos mitades y no se tocaban.
-TOPE_SIN_PANTALLA = 272
+#   29-10-2026  268 de 778  la ficha de un caso. Cuatro: con que tiene que
+#   ------------------------------------------------------------------------
+#   ver, de que cuelga y que cuelga de el, como se cerro y su trazabilidad.
+#
+#   Y un defecto de la misma familia: la ruta de DETALLE del caso no devolvia
+#   sus propias relaciones —cuenta, contacto, producto, activo, contrato,
+#   pedido— ni el cierre. El LISTADO de la bandeja si manda `cuenta_id`, asi
+#   que el dato llegaba a una pantalla y no a la otra: abrir el caso perdia de
+#   que cliente era, que es lo primero que se mira al atenderlo.
+#
+#   Lo que mas importa de lo que ahora sale: `validacion_cliente`. Un caso
+#   cerrado por el agente y pendiente de que el cliente lo de por bueno NO
+#   esta cerrado, y en una lista se ve igual que uno que si — con lo que un
+#   informe de cierres dice lo que no es.
+TOPE_SIN_PANTALLA = 268
 
 
 def _es_pantalla(p: Path) -> bool:

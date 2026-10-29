@@ -888,6 +888,33 @@ Un caso es una petición de un cliente con un compromiso de tiempo detrás.
 - **La cola no es una lista por orden de llegada**: se ordena por lo que está más
   cerca de incumplir, y se dice por qué está donde está.
 
+### Abrir un caso
+
+La bandeja dice qué atender primero; abrir el caso es otra cosa. Dentro está lo
+que hace falta para atenderlo:
+
+- **Con qué tiene que ver**: el cliente, el contacto, el producto, el activo
+  instalado, el contrato y el pedido. Hasta el 29-10-2026 esto se perdía al
+  abrir el caso aunque se hubiera dicho al crearlo, y había que volver a
+  preguntárselo al cliente. Lo que no esté puesto no sale: una lista de guiones
+  hace creer que faltan datos cuando lo que pasa es que ese caso no es de un
+  pedido.
+- **El reloj, con los dos plazos por separado.** Incumplir la primera respuesta
+  y incumplir la resolución no son lo mismo: lo primero todavía se puede salvar
+  y lo segundo hay que explicarlo. Y si el reloj está parado esperando al
+  cliente, se dice con cuántas horas — un caso que lleva quince horas esperando
+  una respuesta no lleva quince horas sin atenderse.
+- **De qué cuelga y qué cuelga de él**, y de cuál es duplicado. Un duplicado
+  que no dice de cuál lo es obliga a buscarlo, y mientras tanto se contesta dos
+  veces al mismo cliente.
+- **Cómo acabó.** Con el motivo, la resolución y —lo que más importa— **si está
+  pendiente de que el cliente lo dé por bueno**: un caso cerrado por el agente
+  y a falta del visto bueno **no está cerrado**, aunque en una lista se vea
+  igual. Y si se ha reabierto, cuántas veces: un caso cerrado tres veces no es
+  un caso resuelto.
+- **Y todo lo que le ha pasado, en orden**, que es el rastro de las reaperturas
+  y de los cambios de nivel.
+
 ---
 
 ## Por dónde entran los clientes (sección 4.2)

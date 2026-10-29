@@ -138,6 +138,7 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const Caso = pantalla(() => import("@/paginas/Caso"), (m) => m.Caso);
 const Liquidacion = pantalla(
   () => import("@/paginas/Liquidacion"),
   (m) => m.Liquidacion,
@@ -357,6 +358,10 @@ export function App() {
               líneas y las reclamaciones dentro del mismo objeto, y la ficha
               genérica descubre paneles por rutas hijas que aquí no existen. */}
           <Route path="/m/canal/liquidacion/:id" element={<Liquidacion />} />
+          {/* El caso tiene ficha propia: su detalle trae en UNA llamada las
+              relaciones, el árbol, el reloj y el historial, y la ficha
+              genérica los pintaba como campos sueltos —seis UUID y un array—. */}
+          <Route path="/m/casos/caso/:id" element={<Caso />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />

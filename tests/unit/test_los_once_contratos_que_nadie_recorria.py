@@ -1352,3 +1352,90 @@ def test_los_valores_obsoletos_salen_con_su_tope(
     # Sin linaje la lista sale vacía, y eso NO es «está todo al día»: es que no
     # se sabe. El aviso es lo que separa las dos cosas.
     assert str(cuerpo["aviso"] or "").strip() or cuerpo["campos_con_linaje"], cuerpo
+
+
+# ── Y la ficha de un caso: Caso.tsx ──────────────────────────────────────
+#
+# 29-10-2026. El modelo guarda con qué tiene que ver el caso —cuenta,
+# contacto, producto, activo, contrato, pedido— y cómo se cerró, y la ruta de
+# DETALLE no devolvía ninguno de los dos. El listado de la bandeja sí manda
+# `cuenta_id`, así que el dato llegaba a una pantalla y no a la otra.
+
+
+@pytest.fixture
+def service(db: Any) -> Iterator[Any]:
+    yield from _app("services.service.main")
+
+
+def test_la_ficha_de_un_caso_dice_con_que_tiene_que_ver(
+    service: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Abrir un caso no puede perder de qué cliente es.
+
+    Es lo primero que se mira al atenderlo, y lo tenía guardado desde que se
+    abrió. Van los seis y no sólo la cuenta: un caso sobre un activo instalado
+    se atiende distinto que uno sobre un pedido, y sin el activo hay que
+    preguntárselo al cliente, que ya lo dijo.
+    """
+    from services.service.modelos import Caso
+
+    cuenta, activo = uuid4(), uuid4()
+    caso = Caso(
+        tenant_id=tenant_id,
+        asunto="No arranca la máquina 4",
+        cuenta_id=cuenta,
+        activo_id=activo,
+    )
+    db.add(caso)
+    db.flush()
+
+    r = service.get(f"/api/v1/casos/{caso.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "id", "asunto", "estado", "relacionado_con", "cierre", "sla", "relaciones")
+    _campos(
+        cuerpo["relacionado_con"],
+        "cuenta_id",
+        "contacto_id",
+        "producto_id",
+        "activo_id",
+        "contrato_id",
+        "pedido_id",
+    )
+    assert cuerpo["relacionado_con"]["cuenta_id"] == str(cuenta)
+    assert cuerpo["relacionado_con"]["activo_id"] == str(activo)
+
+
+def test_un_caso_pendiente_del_cliente_no_consta_cerrado(
+    service: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """La mitad que casi nunca se publica.
+
+    Un caso cerrado por el agente y pendiente de que el cliente lo dé por
+    bueno **no está cerrado**, y en una lista se ve igual que uno que sí. Si
+    el servidor deja de mandar `validacion_cliente`, el aviso desaparece y un
+    informe de cierres pasa a decir lo que no es.
+
+    Y las reaperturas van con el cierre: un caso cerrado tres veces no es un
+    caso resuelto, y el número al lado del motivo es lo que hace que se lea.
+    """
+    from services.service.modelos import Caso
+
+    caso = Caso(
+        tenant_id=tenant_id,
+        asunto="Factura duplicada",
+        estado="cerrado",
+        motivo_cierre="resuelto",
+        resolucion="Se emitió abono",
+        validacion_cliente="pendiente",
+        reaperturas=2,
+    )
+    db.add(caso)
+    db.flush()
+
+    r = service.get(f"/api/v1/casos/{caso.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cierre = r.json()["cierre"]
+    _campos(cierre, "motivo", "resolucion", "validacion_cliente", "reaperturas")
+    assert cierre["validacion_cliente"] == "pendiente"
+    assert cierre["reaperturas"] == 2

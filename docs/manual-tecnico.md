@@ -2545,6 +2545,48 @@ convertirse en una pantalla en blanco, así que cada lista se lee con su
 servicio caído no deje sin ver los datos del cliente— llevado al campo que
 falta dentro de una respuesta que sí llegó.
 
+### 4.6.22 La ficha de un caso no devolvía sus propias relaciones
+
+El modelo guarda con qué tiene que ver un caso —cuenta, contacto, producto,
+activo, contrato y pedido (`CRM-04.01.01.03`)— y cómo se cerró —motivo
+tipificado, resolución, validación del cliente y reaperturas
+(`CRM-04.01.01.09`, `.10`)—. **La ruta de detalle no devolvía ninguno de los
+dos.**
+
+Y el listado de la bandeja sí manda `cuenta_id`, así que el dato llegaba a una
+pantalla y no a la otra: **abrir el caso perdía de qué cliente era**, que es lo
+primero que se mira al atenderlo.
+
+Van los seis identificadores y no sólo la cuenta: un caso sobre un activo
+instalado se atiende distinto que uno sobre un pedido, y sin el activo hay que
+preguntárselo al cliente, que ya lo dijo al abrirlo.
+
+**Lo que más importa de lo que ahora sale es `validacion_cliente`.** Un caso
+cerrado por el agente y pendiente de que el cliente lo dé por bueno **no está
+cerrado**, y en una lista se ve igual que uno que sí — con lo que un informe de
+cierres dice lo que no es. Las reaperturas van con el cierre y no aparte: un
+caso cerrado tres veces no es un caso resuelto, y el número al lado del motivo
+es lo que hace que se lea la primera vez.
+
+**La ficha**, con lo que decide cómo se atiende:
+
+- **los dos incumplimientos del SLA, separados.** Incumplir la primera
+  respuesta y incumplir la resolución son dos conversaciones distintas con el
+  cliente, y sumarlas en un «SLA incumplido» esconde la primera, que es la que
+  todavía se puede salvar;
+- **el reloj parado, dicho.** Un caso que lleva quince horas esperando al
+  cliente no lleva quince horas sin atenderse, y en una lista se ven igual;
+- **de qué cuelga y de cuál es duplicado.** Un duplicado que no dice de cuál lo
+  es obliga a buscarlo, y mientras tanto se contesta dos veces al mismo
+  cliente;
+- y **el historial**, que es la trazabilidad de la reapertura. Se escribía
+  desde el primer día y la ficha genérica lo pintaba como un campo más.
+
+Sólo se enlaza lo que tiene ficha: un enlace a una pantalla que no existe
+parece que algo se ha roto. Y lo que no está puesto no se pinta — una lista con
+cuatro guiones hace creer que faltan datos cuando lo que pasa es que ese caso
+no es de un pedido.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
