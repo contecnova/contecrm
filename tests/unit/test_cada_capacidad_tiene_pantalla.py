@@ -596,7 +596,17 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   reclamaciones, y no lo ensenaba nadie. Un comercial que no puede
 #   desglosar su comision no se la cree, y la discusion acaba en una hoja de
 #   calculo paralela que nadie concilia.
-TOPE_SIN_PANTALLA = 277
+#   29-10-2026  272 de 778  la calidad del dato de UN cliente. Cinco, todas en
+#   ------------------------------------------------------------------------
+#   su ficha: de que grupo forma parte y en que jerarquia —son varias a la vez,
+#   la legal no es la comercial—, de donde sale cada valor y cual fuente GANA,
+#   que lleva demasiado sin que nadie lo confirme, y como esta de salud.
+#
+#   El modulo de calidad del dato ensena la cola y los agregados —que hay que
+#   tocar hoy, si la cola crece—, que es OTRA pregunta: delante de un cliente
+#   concreto lo que se quiere saber es por que su telefono dice eso y no lo
+#   que dice el ERP. Estaban las dos mitades y no se tocaban.
+TOPE_SIN_PANTALLA = 272
 
 
 def _es_pantalla(p: Path) -> bool:

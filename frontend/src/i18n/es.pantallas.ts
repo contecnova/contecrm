@@ -211,6 +211,23 @@ const pantallas = {
     ignoraFiltros: "No le afectan los filtros del cuadro",
   },
   cuenta: {
+    jerarquia: "De qué grupo forma parte",
+    jerarquiaAyuda:
+      "Jerarquía «{{cual}}». No es la única: la legal no es la comercial ni la de facturación, y una empresa puede depender de la matriz para firmar y de la delegación de aquí para que la atiendan.",
+    sinJerarquia: "No cuelga de ningún grupo",
+    salud: "Cómo está este cliente",
+    saludSirve: "Este número sirve para decidir.",
+    saludNoSirve:
+      "Este número NO sirve para decidir: no es fiable o no está vigente.",
+    saludPuntuacion: "{{puntuacion}} · {{nivel}}",
+    saludMedida: "Medida hace {{dias}} días.",
+    linaje: "De dónde sale cada dato",
+    linajeAyuda:
+      "Qué fuente puso cada valor y cuál manda. Contesta «¿por qué pone esto si el ERP dice otra cosa?», que hoy se pregunta a quien montó la integración.",
+    confianza: "confianza {{valor}}",
+    obsoletos: "Lo que lleva sin confirmarse",
+    sinObsoletos: "Nada lleva más de la cuenta sin confirmarse",
+    sinConfirmar: "{{dias}} días sin confirmar (tope {{tope}})",
     verTodas: "Ver todas",
     timelineRecortada: "Se enseñan los últimos {{cuantos}}.",
     timelineEntera: "Se enseñan {{cuantos}} hitos.",

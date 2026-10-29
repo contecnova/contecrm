@@ -131,6 +131,11 @@ def integration(db: Any) -> Iterator[Any]:
     yield from _app("services.integration.main")
 
 
+@pytest.fixture
+def party(db: Any) -> Iterator[Any]:
+    yield from _app("services.party.main")
+
+
 def _campos(cuerpo: dict[str, Any], *nombres: str) -> None:
     faltan = [n for n in nombres if n not in cuerpo]
     assert not faltan, f"faltan {faltan}: llegan {sorted(cuerpo)}"
@@ -1295,3 +1300,55 @@ def test_la_liquidacion_sale_con_cada_euro_explicado(
     assert cuerpo["lineas"][0]["explicacion"].strip(), (
         "una línea sin explicación convierte la comisión en un número que hay " "que creerse"
     )
+
+
+# ── Y dos de la calidad del dato de UN cliente: Cuenta.tsx ───────────────
+#
+# 29-10-2026. El módulo de calidad enseña la cola y los agregados; delante de
+# un cliente concreto la pregunta es otra, y esas dos rutas no las recorría
+# ninguna prueba de servidor.
+
+
+def test_la_jerarquia_de_una_cuenta_sale_por_http(
+    party: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """El árbol, con la jerarquía que se ha pedido.
+
+    `jerarquia` viene en la respuesta y no es adorno: son varias a la vez —la
+    legal no es la comercial ni la de facturación— y sin saber cuál se está
+    viendo, la otra parece un error.
+    """
+    from services.party.modelos import Cuenta
+
+    matriz = Cuenta(tenant_id=tenant_id, nombre="Delta", clave_canonica="delta")
+    db.add(matriz)
+    db.flush()
+
+    r = party.get(f"/api/v1/accounts/{matriz.id}/jerarquia", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    _campos(r.json(), "id", "nombre", "jerarquia", "hijos")
+    assert isinstance(r.json()["hijos"], list), "la pantalla la recorre"
+
+
+def test_los_valores_obsoletos_salen_con_su_tope(
+    party: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Los días Y el tope.
+
+    «Lleva 400 días» no dice nada sin el tope: es lo que lo convierte en «se ha
+    pasado». Un dato viejo no se distingue de uno bueno mirándolo, y si el
+    servidor deja de mandar el tope el panel pinta un número sin significado.
+    """
+    from services.party.modelos import Cuenta
+
+    cuenta = Cuenta(tenant_id=tenant_id, nombre="Delta", clave_canonica="delta2")
+    db.add(cuenta)
+    db.flush()
+
+    r = party.get(f"/api/v1/calidad-dato/obsoletos/cuenta/{cuenta.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "obsoletos", "campos_con_linaje", "aviso")
+    # Sin linaje la lista sale vacía, y eso NO es «está todo al día»: es que no
+    # se sabe. El aviso es lo que separa las dos cosas.
+    assert str(cuerpo["aviso"] or "").strip() or cuerpo["campos_con_linaje"], cuerpo

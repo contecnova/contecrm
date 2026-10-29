@@ -3,8 +3,17 @@
  *
  * Es donde se ven CRM-01.01.05.01 (la línea de tiempo unificada de todas las
  * interacciones), CRM-01.01.01.10 (el equipo de cuenta con sus roles),
- * CRM-01.01.02.02 (la relación contacto–cuenta con su rol y su vigencia) y
- * CRM-01.01.05.06 (las métricas embebidas del cliente).
+ * CRM-01.01.02.02 (la relación contacto–cuenta con su rol y su vigencia),
+ * CRM-01.01.05.06 (las métricas embebidas del cliente), CRM-01.01.01.02 y
+ * CRM-01.01.01.03 (las jerarquías, y varias a la vez), CRM-01.01.04.07 (de
+ * dónde sale cada valor), CRM-01.01.04.09 (qué lleva demasiado sin que nadie
+ * lo confirme) y CRM-01.01.05.07 (la salud del cliente).
+ *
+ * **Las cuatro últimas son preguntas POR REGISTRO que la API contestaba y no
+ * alcanzaba nadie.** El módulo de calidad del dato enseña la cola y los
+ * agregados —qué hay que tocar hoy, si la cola crece—, que es otra pregunta:
+ * delante de un cliente concreto lo que se quiere saber es por qué su
+ * teléfono dice eso y no lo que dice el ERP.
  *
  * Salesforce y HubSpot llevan años convergiendo en el mismo reparto, y no por
  * copiarse: es lo que hace falta para trabajar con un cliente delante.
@@ -51,6 +60,58 @@ import { moduloDe, moduloDeObjeto } from "@/lib/modulos";
 import { useSuperficie } from "@/lib/permisos";
 import { recursoDe } from "@/lib/recursos";
 import { cn } from "@/lib/utiles";
+
+interface FuenteDeUnValor {
+  fuente: string;
+  valor: unknown;
+  /** Cuál de las fuentes manda. Sin esto, una lista de valores no dice nada. */
+  gana: boolean;
+  cambio_el_valor: string | null;
+  ultimo_mensaje: string;
+  confianza: number;
+}
+
+interface Linaje {
+  campos: Record<string, FuenteDeUnValor[]>;
+  medible: boolean;
+  que_significa: string;
+}
+
+interface Obsoletos {
+  obsoletos: { campo: string; fuente: string; dias_sin_confirmar: number; tope: number }[];
+  campos_con_linaje: string[];
+  aviso: string;
+}
+
+interface RamaDeJerarquia {
+  id: string;
+  nombre: string;
+  rol: string;
+  hijos: RamaDeJerarquia[];
+}
+
+interface Arbol {
+  id: string;
+  nombre: string;
+  jerarquia: string;
+  hijos: RamaDeJerarquia[];
+}
+
+interface Salud {
+  hay: boolean;
+  porque?: string;
+  que_hacer?: string;
+  puntuacion?: number;
+  nivel?: string;
+  fiable?: boolean;
+  vigente?: boolean;
+  medida_hace_dias?: number;
+  motivo?: string;
+  /** Lo único que decide si este número se puede usar para algo. */
+  sirve_para_actuar?: boolean;
+  aviso?: string;
+  de_donde_sale?: string;
+}
 
 interface Contacto360 {
   id: string;
@@ -174,6 +235,11 @@ export function Cuenta() {
   >(null);
   const [pidiendoMas, setPidiendoMas] = useState(false);
   const [fallo, setFallo] = useState<unknown>(null);
+  /** De dónde sale cada valor de esta ficha, y qué lleva sin confirmarse. */
+  const [linaje, setLinaje] = useState<Linaje | null>(null);
+  const [obsoletos, setObsoletos] = useState<Obsoletos | null>(null);
+  const [arbol, setArbol] = useState<Arbol | null>(null);
+  const [salud, setSalud] = useState<Salud | null>(null);
   const { superficie, tiene } = useSuperficie();
   const navegar = useNavigate();
   const [editando, setEditando] = useState(false);
@@ -198,6 +264,21 @@ export function Cuenta() {
       llamar<Vista360>(`/api/v1/accounts/${id}/360`, { signal })
         .then((r) => setVista(r.datos))
         .catch(salvoCancelacion(setFallo));
+
+      // Las cuatro preguntas de calidad del dato de ESTE cliente. Cada una con
+      // su propio fallo: que no haya linaje no puede dejar sin ver la ficha.
+      void llamar<Linaje>(`/api/v1/calidad-dato/linaje/cuenta/${id}`, { signal })
+        .then((r) => setLinaje(r.datos))
+        .catch(() => undefined);
+      void llamar<Obsoletos>(`/api/v1/calidad-dato/obsoletos/cuenta/${id}`, { signal })
+        .then((r) => setObsoletos(r.datos))
+        .catch(() => undefined);
+      void llamar<Arbol>(`/api/v1/accounts/${id}/jerarquia`, { signal })
+        .then((r) => setArbol(r.datos))
+        .catch(() => undefined);
+      void llamar<Salud>(`/api/v1/calidad-dato/salud/${id}`, { signal })
+        .then((r) => setSalud(r.datos))
+        .catch(() => undefined);
       // Oportunidades y casos viven en otros servicios: se piden aparte y **su
       // fallo no tumba la ficha**. Que no responda soporte no puede dejar sin
       // ver los datos del cliente.
@@ -615,6 +696,19 @@ export function Cuenta() {
         </aside>
       </div>
 
+      {/* ── De qué grupo es, de dónde salen sus datos y cómo está ──────
+          Cuatro preguntas POR REGISTRO que la API contestaba y no alcanzaba
+          nadie. El módulo de calidad del dato enseña la cola y los agregados
+          —qué hay que tocar hoy, si la cola crece—, que es otra pregunta:
+          delante de un cliente concreto lo que se quiere saber es por qué su
+          teléfono dice eso y no lo que dice el ERP. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <LaJerarquia arbol={arbol} />
+        <LaSalud salud={salud} />
+        <DeDondeSaleCadaDato linaje={linaje} />
+        <LoQueLlevaSinConfirmarse obsoletos={obsoletos} />
+      </div>
+
       {/* Direcciones, identificadores fiscales, equipo de cuenta, relaciones
           entre empresas: todo lo que cuelga del cliente, con sus altas y sus
           acciones. */}
@@ -778,5 +872,204 @@ function Metricas({ datos }: { datos: Vista360["metricas"] }) {
         </p>
       ) : null}
     </>
+  );
+}
+
+
+/**
+ * De qué grupo forma parte (CRM-01.01.01.02, CRM-01.01.01.03).
+ *
+ * **Y en qué jerarquía**, porque son varias a la vez: la legal no es la
+ * comercial ni la de facturación. Una empresa puede depender de la matriz
+ * francesa para firmar y de la delegación de aquí para que la atiendan, y
+ * enseñar una sola haría que la otra pareciera un error.
+ */
+function LaJerarquia({ arbol }: { arbol: Arbol | null }) {
+  const { t } = useTranslation();
+  // Sin `hijos` no se asume lista vacía por comodidad: un panel que lee
+  // `.length` de algo que no llegó tumba la ficha ENTERA, y eso convierte un
+  // campo que falta en una pantalla en blanco. Es el fallo más caro de los
+  // que no fallan: no hay error, no hay traza, no hay nada.
+  if (!arbol) return null;
+  const ramas = arbol.hijos ?? [];
+
+  function pintar(ramas: RamaDeJerarquia[], nivel: number) {
+    return ramas.map((r) => (
+      <li key={r.id} style={{ paddingLeft: nivel * 12 }}>
+        <div className="flex flex-wrap items-baseline gap-x-2 py-1 text-2xs">
+          <Link to={`/m/cuentas/cuenta/${r.id}`} className="text-ink hover:underline">
+            {r.nombre}
+          </Link>
+          {r.rol ? <span className="chip-dato">{r.rol}</span> : null}
+        </div>
+        {r.hijos?.length ? (
+          <ul>{pintar(r.hijos ?? [], nivel + 1)}</ul>
+        ) : null}
+      </li>
+    ));
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("cuenta.jerarquia")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("cuenta.jerarquiaAyuda", { cual: arbol.jerarquia })}
+      </p>
+      {ramas.length ? (
+        <ul>
+          <li className="text-2xs font-medium text-ink">{arbol.nombre}</li>
+          {pintar(ramas, 1)}
+        </ul>
+      ) : (
+        <Vacio titulo={t("cuenta.sinJerarquia")} compacto />
+      )}
+    </section>
+  );
+}
+
+/**
+ * La salud del cliente (CRM-01.01.05.07).
+ *
+ * **Con `sirve_para_actuar` delante de la puntuación.** Un número que no es
+ * fiable o que se midió hace tres meses no puede mover una decisión, y
+ * pintarlo igual que uno bueno es lo que hace que nadie se crea ninguno. La
+ * puntuación va DESPUÉS del veredicto a propósito.
+ */
+function LaSalud({ salud }: { salud: Salud | null }) {
+  const { t } = useTranslation();
+  if (!salud) return null;
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("cuenta.salud")}</h2>
+      {!salud.hay ? (
+        <>
+          <p className="text-2xs text-ink-muted">{salud.porque}</p>
+          {salud.que_hacer ? (
+            <p className="mt-1 text-3xs text-ink-faint">{salud.que_hacer}</p>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <p
+            className={
+              salud.sirve_para_actuar
+                ? "text-2xs text-success"
+                : "text-2xs text-warning"
+            }
+          >
+            {salud.sirve_para_actuar
+              ? t("cuenta.saludSirve")
+              : t("cuenta.saludNoSirve")}
+          </p>
+          <p className="mt-1 text-sm font-medium text-ink">
+            {t("cuenta.saludPuntuacion", {
+              puntuacion: salud.puntuacion,
+              nivel: salud.nivel,
+            })}
+          </p>
+          <p className="mt-1 text-3xs text-ink-muted">
+            {t("cuenta.saludMedida", { dias: salud.medida_hace_dias })}
+          </p>
+          {salud.motivo ? (
+            <p className="mt-1 text-3xs text-ink-muted">{salud.motivo}</p>
+          ) : null}
+          {salud.aviso ? (
+            <p className="mt-1 text-3xs text-warning">{salud.aviso}</p>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * De dónde sale cada valor (CRM-01.01.04.07).
+ *
+ * Contesta «¿por qué pone esto si el ERP dice otra cosa?», que hoy se contesta
+ * preguntando a quien montó la integración. Cada campo con sus fuentes, **cuál
+ * gana** y con qué confianza: sin el «gana», una lista de valores distintos no
+ * dice cuál se está usando.
+ */
+function DeDondeSaleCadaDato({ linaje }: { linaje: Linaje | null }) {
+  const { t } = useTranslation();
+  if (!linaje) return null;
+  const campos = Object.entries(linaje.campos ?? {});
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("cuenta.linaje")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">{t("cuenta.linajeAyuda")}</p>
+      {!linaje.medible || campos.length === 0 ? (
+        <p className="text-2xs text-ink-muted">{linaje.que_significa}</p>
+      ) : (
+        <ul className="divide-y divide-ink-dim/30">
+          {campos.map(([campo, fuentes]) => (
+            <li key={campo} className="py-1.5">
+              <span className="text-2xs font-medium text-ink">{humanizar(campo)}</span>
+              <ul className="mt-0.5">
+                {(fuentes ?? []).map((f, i) => (
+                  <li
+                    key={`${f.fuente}-${i}`}
+                    className="flex flex-wrap items-baseline gap-x-2 text-3xs"
+                  >
+                    <span className={f.gana ? "chip-dato chip-dato--si" : "chip-dato"}>
+                      {f.fuente}
+                    </span>
+                    <span className="text-ink-muted">{String(f.valor ?? "")}</span>
+                    <span className="text-ink-faint">
+                      {t("cuenta.confianza", { valor: f.confianza })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Qué lleva demasiado sin que nadie lo confirme (CRM-01.01.04.09).
+ *
+ * Un dato viejo no se distingue de uno bueno mirándolo: el teléfono de hace
+ * cuatro años se ve igual que el de ayer. Por eso van los días **y el tope**,
+ * que es lo que convierte «lleva 400 días» en «se ha pasado».
+ */
+function LoQueLlevaSinConfirmarse({ obsoletos }: { obsoletos: Obsoletos | null }) {
+  const { t } = useTranslation();
+  if (!obsoletos) return null;
+  const viejos = obsoletos.obsoletos ?? [];
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("cuenta.obsoletos")}</h2>
+      {viejos.length === 0 ? (
+        <>
+          <Vacio titulo={t("cuenta.sinObsoletos")} compacto />
+          {/* Sin linaje no es que esté todo al día: es que no se sabe. */}
+          {obsoletos.aviso ? (
+            <p className="mt-1 text-3xs text-ink-faint">{obsoletos.aviso}</p>
+          ) : null}
+        </>
+      ) : (
+        <ul className="divide-y divide-ink-dim/30">
+          {viejos.map((o) => (
+            <li
+              key={`${o.campo}-${o.fuente}`}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
+              <span className="text-2xs font-medium text-ink">{humanizar(o.campo)}</span>
+              <span className="chip-dato">{o.fuente}</span>
+              <span className="text-3xs text-warning">
+                {t("cuenta.sinConfirmar", { dias: o.dias_sin_confirmar, tope: o.tope })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

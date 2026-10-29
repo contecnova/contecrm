@@ -2504,6 +2504,47 @@ calculado con cada euro explicado, y poder cambiarlo destruiría justo lo que la
 hace defendible. Corregirla se hace revirtiéndola y volviendo a liquidar, que
 deja una línea de reversión con su porqué.
 
+### 4.6.21 «¿Por qué pone esto si el ERP dice otra cosa?»
+
+Cinco capacidades de calidad del dato estaban publicadas y no se alcanzaban, y
+todas por el mismo motivo: son preguntas **por registro**, y lo que había era
+el módulo de calidad —la cola y los agregados, qué hay que tocar hoy y si la
+cola crece—. Las dos mitades puestas y sin tocarse.
+
+Delante de un cliente concreto la pregunta es otra, y ahora se contesta en su
+ficha:
+
+| Qué contesta | De dónde sale |
+|---|---|
+| De qué grupo forma parte, y **en qué jerarquía** | `GET /accounts/{id}/jerarquia` |
+| De dónde sale cada valor y **cuál fuente gana** | `GET /calidad-dato/linaje/cuenta/{id}` |
+| Qué lleva demasiado sin que nadie lo confirme | `GET /calidad-dato/obsoletos/cuenta/{id}` |
+| Cómo está, y **si ese número sirve para decidir** | `GET /calidad-dato/salud/{id}` |
+
+Cuatro detalles que son la diferencia entre un panel y un volcado:
+
+- **El «gana».** Sin él, una lista de valores distintos no dice cuál se está
+  usando — y es exactamente la pregunta: por qué el teléfono dice eso y no lo
+  que dice el ERP.
+- **El tope, junto a los días.** «Lleva 400 días sin confirmarse» no significa
+  nada hasta que se sabe que el tope son 365. Un dato viejo no se distingue de
+  uno bueno mirándolo.
+- **`sirve_para_actuar` antes que la puntuación.** Una salud que no es fiable o
+  que se midió hace tres meses no puede mover una decisión, y pintarla igual
+  que una buena es lo que hace que nadie se crea ninguna. El veredicto va
+  primero y el número después.
+- **Cuál jerarquía.** Son varias a la vez —legal, comercial, de facturación— y
+  enseñar una sola sin decir cuál hace que la otra parezca un error.
+
+**Y una lección de robustez que costó diez pruebas rojas de golpe.** Los
+paneles leían `.length` de campos que el servidor siempre manda, y un doble de
+prueba que devolvía `[]` para rutas desconocidas los dejaba `undefined`: la
+excepción tumbaba **la ficha entera**, no el panel. Un campo que falta no puede
+convertirse en una pantalla en blanco, así que cada lista se lee con su
+`?? []`. Es el mismo principio que ya aplica el resto de la ficha —que un
+servicio caído no deje sin ver los datos del cliente— llevado al campo que
+falta dentro de una respuesta que sí llegó.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

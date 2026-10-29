@@ -477,6 +477,26 @@ es de la cuenta antigua, y moverla dejaría a esa cuenta sin nada.
 
 ---
 
+### De dónde sale cada dato de un cliente
+
+Dentro de la ficha de un cliente, cuatro cosas que antes no se veían:
+
+- **De qué grupo forma parte**, y en qué sentido: la jerarquía legal no es la
+  comercial ni la de facturación, y una empresa puede depender de la matriz
+  para firmar y de la delegación de aquí para que la atiendan. Se dice cuál se
+  está viendo, porque si no la otra parece un error.
+- **De dónde sale cada valor.** Qué sistema puso el teléfono, qué otro puso uno
+  distinto y **cuál manda**. Es lo que contesta «¿por qué pone esto si el ERP
+  dice otra cosa?», que hasta ahora había que preguntarle a quien montó la
+  integración.
+- **Qué lleva demasiado sin que nadie lo confirme**, con los días y el tope. Un
+  dato viejo no se distingue de uno bueno mirándolo: el teléfono de hace cuatro
+  años se ve igual que el de ayer.
+- **Cómo está el cliente**, y antes del número, **si ese número sirve para
+  decidir**. Una puntuación que no es fiable o que se midió hace tres meses no
+  debería mover ninguna decisión, y enseñarla igual que una buena es lo que
+  hace que al final nadie se crea ninguna.
+
 ### Qué ha cambiado en este registro
 
 Al final de cada ficha hay un desplegable, **«Qué ha cambiado»**. Dentro está,
