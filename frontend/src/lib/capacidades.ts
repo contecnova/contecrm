@@ -316,12 +316,23 @@ export const CAPACIDADES_POR_MODULO: Record<string, readonly string[]> = {
     "CRM-07.03.02.06",
   ],
   // El constructor de segmentos con sus condiciones anidadas, las supresiones
-  // y listas negras, y los modelos de puntuación.
+  // y listas negras, y los modelos de puntuación. Y, desde la ficha de un
+  // segmento y la de la puntuación de un lead, lo que antes sólo tenía API:
+  // dinámico o congelado, el tamaño con su fecha y sus supresiones, el
+  // solapamiento contra otro segmento, los dos ejes del score por separado con
+  // su desglose, el decaimiento y los umbrales que disparan MQL y SQL.
   "segmentos": [
     "CRM-02.01.01.01",
     "CRM-02.01.01.02",
+    "CRM-02.01.01.03",
+    "CRM-02.01.01.04",
     "CRM-02.01.01.06",
+    "CRM-02.01.01.07",
     "CRM-02.01.02.01",
+    "CRM-02.01.02.03",
+    "CRM-02.01.02.04",
+    "CRM-02.01.02.05",
+    "CRM-02.01.02.06",
   ],
   // La jerarquía de campañas con su presupuesto, las reglas de presión y
   // frecuencia de contacto, los rebotes duros y blandos, y la papelera.

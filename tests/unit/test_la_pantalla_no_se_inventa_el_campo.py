@@ -35,8 +35,8 @@ extras declarados, el esquema de salida, la proyección, el diccionario literal
 del manejador, o un salto de delegación a una función con nombre— y lo que no
 cae en ninguno lo cuenta y lo deja fuera en vez de inventarse un veredicto.
 
-Medido al construirlo: **484 rutas resueltas y 120 contratos de pantalla, con
-26 puntos ciegos**. Las tres cifras se comprueban, porque un resolutor que
+Medido: **523 rutas resueltas y 125 contratos de pantalla, con 26 puntos
+ciegos**. Las tres cifras se comprueban, porque un resolutor que
 dejara de ver el servidor pasaría en verde sin mirar nada. Se ha plantado: con
 `_ficheros()` devolviendo la lista vacía, dos de las tres pruebas se ponen
 rojas.
@@ -268,7 +268,10 @@ def _returns_propios(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> list[as
     return salida
 
 
-def _claves_del_literal(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str] | None:
+def _claves_del_literal(
+    funcion: ast.FunctionDef | ast.AsyncFunctionDef,
+    contexto: dict[str, Any] | None = None,
+) -> set[str] | None:
     """Las claves del diccionario que devuelve el manejador, si es literal.
 
     Sólo si **todos** sus `return` con valor son un diccionario literal —o una
@@ -291,9 +294,23 @@ def _claves_del_literal(funcion: ast.FunctionDef | ast.AsyncFunctionDef) -> set[
                 valor = interior.elt
         if not isinstance(valor, ast.Dict):
             return None
-        for clave in valor.keys:
-            if clave is None:  # `**otro`: no se sabe qué mete
-                return None
+        for clave, hijo in zip(valor.keys, valor.values, strict=True):
+            if clave is None:
+                # `**algo()`: se sigue si es una llamada a una función con
+                # nombre que devuelve un literal. `explicar()` mete así los
+                # umbrales, y pararse aquí dejaba ciega la ruta que más forma
+                # tiene de todo el scoring.
+                suyas = (
+                    _claves_del_literal(contexto[_nombre(hijo.func) or ""])
+                    if contexto is not None
+                    and isinstance(hijo, ast.Call)
+                    and _nombre(hijo.func) in contexto
+                    else None
+                )
+                if suyas is None:
+                    return None
+                claves |= suyas
+                continue
             if _texto(clave) is None:
                 return None
             claves.add(_texto(clave) or "")
@@ -340,16 +357,20 @@ def _claves_delegadas(
             return None
 
         destino = None
+        vecinas: dict[str, Any] = locales
         if isinstance(valor.func, ast.Name):
             destino = locales.get(valor.func.id)
         elif isinstance(valor.func, ast.Attribute) and isinstance(valor.func.value, ast.Name):
             modulo = alias.get(valor.func.value.id)
             if modulo is not None:
                 destino = por_modulo.get(modulo, {}).get(valor.func.attr)
+                # Las vecinas de la función de destino son las de SU módulo:
+                # un `**_lo_que_decide(…)` dentro se resuelve ahí, no aquí.
+                vecinas = por_modulo.get(modulo, {})
         if destino is None:
             return None
 
-        suyas = _claves_del_literal(destino)
+        suyas = _claves_del_literal(destino, vecinas)
         if suyas is None:
             return None
         claves |= suyas
@@ -466,6 +487,21 @@ def claves_por_ruta() -> tuple[dict[str, set[str]], set[str]]:
                 columnas[modelo] | rollups.get(objeto or "", set()) | extras
             )
 
+        # Fichas genéricas: la misma fila que el listado, por su id.
+        for nodo in ast.walk(arbol):
+            if not (isinstance(nodo, ast.Call) and _nombre(nodo.func) == "montar_ficha"):
+                continue
+            router = _nombre(nodo.args[0]) if nodo.args else None
+            datos = {c.arg: c for c in nodo.keywords}
+            modelo = _nombre(datos["modelo"].value) if "modelo" in datos else None
+            if router not in prefijos or modelo not in columnas:
+                continue
+            objeto = _texto(datos["objeto"].value) if "objeto" in datos else ""
+            completa = _normalizar(f"{PREFIJO}{prefijos[router]}/{{}}")
+            resueltas.setdefault(completa, set()).update(
+                columnas[modelo] | rollups.get(objeto or "", set())
+            )
+
         # Rutas escritas a mano.
         for nodo in ast.walk(arbol):
             if not isinstance(nodo, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -574,6 +610,12 @@ TOPE_CONTRATOS_ROTOS = 0
 # sano—.
 #
 #   29-10-2026  26 de 120  medido al escribirlo, con 484 rutas resueltas.
+#   29-10-2026  26 de 125  la ficha de un segmento y la de la puntuacion de un
+#                          lead anadieron dos ciegas, y las dos se resolvieron
+#                          en el mismo commit: `montar_ficha` devuelve las
+#                          columnas del modelo igual que el listado, y un
+#                          `**otra_cosa()` dentro del literal se sigue como una
+#                          delegacion mas. 523 rutas resueltas.
 TOPE_SIN_RESOLVER = 26
 
 
@@ -595,6 +637,9 @@ def test_la_resolucion_mira_de_verdad() -> None:
     assert "titulo" in resueltas["/api/v1/conocimiento/articulos"]  # extras declarados
     assert "miembros" in resueltas["/api/v1/campanas"]  # rollup declarado
     assert "tamano_at" in resueltas["/api/v1/segmentos"]  # literal del manejador
+    assert "definicion" in resueltas["/api/v1/segmentos/{}"]  # ficha genérica
+    # Y los umbrales, que `explicar()` mete con `**_lo_que_decide(…)`.
+    assert "umbrales" in resueltas["/api/v1/puntuacion/leads/{}"]
 
 
 def test_ninguna_pantalla_lee_un_campo_que_su_ruta_no_devuelve() -> None:

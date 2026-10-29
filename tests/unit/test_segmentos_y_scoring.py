@@ -632,3 +632,128 @@ def test_una_baja_marca_y_no_borra(db: Any, tenant_id: UUID, contexto_tenant: UU
     assert proy.marcar_baja(db, tenant_id=tenant_id, objeto_id=fila.objeto_id) == 1
     db.flush()
     assert fila.baja is True
+
+
+# ── Los umbrales, al lado del número (CRM-02.01.02.05, CRM-02.01.02.06) ───
+#
+# Se guardaban al publicar el modelo y **no los leía nadie más que
+# `calificar`**: ninguna ruta los devolvía. Así que «este lead es MQL» no se
+# podía contrastar con nada, «qué le falta para SQL» no se podía contestar, y
+# un grado «B» era una letra sin tramo. Escrito y nunca leído, el patrón de
+# siempre.
+
+
+@pytest.mark.db
+def test_la_explicacion_dice_contra_que_umbral_se_mide(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    _modelo(uow, umbral_sql_interes=70, umbral_sql_encaje=50)
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    db.flush()
+    pun.puntuar(uow, lead.objeto_id)
+    db.flush()
+
+    salida = pun.explicar(db, tenant_id, lead.objeto_id)
+    assert salida["umbrales"]["mql"] == {"interes": 20, "encaje": 50}
+    assert salida["umbrales"]["sql"] == {"interes": 70, "encaje": 50}
+    # Y los tramos del grado, de mayor a menor, que es como se aplican.
+    assert [g["grado"] for g in salida["grados"]] == ["A", "B", "C"]
+
+
+@pytest.mark.db
+def test_dice_cuanto_le_falta_para_el_escalon_siguiente(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """«87» no se acciona; «le faltan 40 de interés» sí."""
+    _modelo(uow, umbral_sql_interes=70, umbral_sql_encaje=50)
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    db.flush()
+    fila = pun.puntuar(uow, lead.objeto_id)
+    db.flush()
+    assert fila.calificacion == "mql"
+
+    falta = pun.explicar(db, tenant_id, lead.objeto_id)["le_falta"]
+    assert falta["hasta"] == "sql"
+    assert falta["alcanzable"] is True
+    # Interés 30, umbral 70. Encaje 60, umbral 50: ya lo cumple.
+    assert falta["interes"] == 40
+    assert falta["encaje"] == 0
+    # Y se dice que eso se gana con actividad: lo que falta de ENCAJE no, y
+    # eso cambia qué se hace con el lead —no se le llama más, se descarta o se
+    # cambia el ICP—.
+    assert "actividad" in falta["que_significa"]
+
+
+@pytest.mark.db
+def test_lo_que_falta_de_encaje_no_se_gana_con_actividad(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    _modelo(uow, umbral_mql_interes=10, umbral_mql_encaje=90)
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    db.flush()
+    pun.puntuar(uow, lead.objeto_id)
+    db.flush()
+
+    falta = pun.explicar(db, tenant_id, lead.objeto_id)["le_falta"]
+    assert falta["hasta"] == "mql"
+    assert falta["interes"] == 0
+    assert falta["encaje"] == 30
+    assert "no se gana con actividad" in falta["que_significa"]
+
+
+@pytest.mark.db
+def test_un_escalon_sin_umbral_declarado_se_dice_inalcanzable(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Los dos sin declarar es «no aplica», no cero.
+
+    `calificar` no deja pasar a nadie por ahí —un umbral sin declarar se trata
+    como «no aplica» y no como cero, que dejaría pasar a todo el mundo—, así
+    que decir «le faltan 0» sería exactamente lo contrario de lo que pasa.
+    """
+    _modelo(uow)  # sin umbrales de SQL
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    db.flush()
+    pun.puntuar(uow, lead.objeto_id)
+    db.flush()
+
+    falta = pun.explicar(db, tenant_id, lead.objeto_id)["le_falta"]
+    assert falta["hasta"] == "sql"
+    assert falta["alcanzable"] is False
+    assert "interes" not in falta
+    assert "ningún" in falta["que_significa"]
+
+
+@pytest.mark.db
+def test_un_sql_no_tiene_escalon_por_encima(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    _modelo(uow, umbral_sql_interes=10, umbral_sql_encaje=10)
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    db.flush()
+    assert pun.puntuar(uow, lead.objeto_id).calificacion == "sql"
+    db.flush()
+
+    assert pun.explicar(db, tenant_id, lead.objeto_id)["le_falta"] is None
+
+
+@pytest.mark.db
+def test_la_regla_del_decaimiento_se_enseña_entera(
+    db: Any, tenant_id: UUID, contexto_tenant: UUID, uow: Any
+) -> None:
+    """Sin la regla, «ha perdido 25» no dice si eso es mucho ni desde cuándo."""
+    _modelo(uow, decaimiento_puntos=10, decaimiento_dias=30, interes_minimo=5)
+    lead = _perfil(db, tenant_id, objeto="lead", origen="descarga", sector="obra")
+    lead.ultima_actividad_at = datetime.now(timezone.utc) - timedelta(days=90)
+    db.flush()
+    pun.puntuar(uow, lead.objeto_id)
+    db.flush()
+
+    salida = pun.explicar(db, tenant_id, lead.objeto_id)
+    assert salida["decaimiento"] == {
+        "puntos": 10,
+        "cada_dias": 30,
+        "interes_minimo": 5,
+        "solo_afecta_a": "interes",
+    }
+    assert salida["perdido_por_inactividad"] == 25

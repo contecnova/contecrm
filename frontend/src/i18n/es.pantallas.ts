@@ -138,6 +138,57 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  segmento: {
+    dinamico: "dinámico",
+    congeladoEtiqueta: "foto congelada",
+    cuantos: "A cuánta gente le llega",
+    sinRecuento: "No se ha podido calcular el tamaño ahora mismo",
+    deLosCuales: "de {{bruto}} en bruto; {{suprimidos}} caen por supresión",
+    calculado: "calculado el {{fecha}}",
+    esFoto: "Este número es una foto: el segmento no se recalcula. Lo que ves es lo que se congeló.",
+    congelar: "Congelar en una lista fija",
+    congelando: "Congelando…",
+    congelado: "Congelado con {{cuantos}} miembros. Deja de recalcularse.",
+    porqueCongelar:
+      "Se congela ANTES de un envío, no después: «¿a quién se le mandó?» tiene que poder contestarse en junio con la lista de marzo, y un segmento dinámico en junio devuelve otra gente.",
+    solapamiento: "Cuánta gente comparte con otro",
+    porqueSolape:
+      "La pregunta no es de estadística: es «si lanzo las dos campañas esta semana, ¿a cuánta gente le llegan las dos?».",
+    contra: "Contra qué segmento",
+    elegirOtro: "Elige otro segmento",
+    medir: "Medir",
+    midiendo: "Midiendo…",
+    pctDeCada: "{{a}} % de éste y {{b}} % del otro",
+    solos: "{{a}} sólo en éste · {{b}} sólo en el otro",
+    definicion: "Qué condiciones lo definen",
+    porqueDefinicion:
+      "Un segmento es una definición, no una lista. Guardar la lista parece más rápido y es lo que hace que a la semana esté desfasada sin que nadie lo sepa.",
+    excluye: "Resta los miembros de {{cuantos}} segmento(s)",
+    y: "y",
+    o: "o",
+  },
+  puntuacion: {
+    titulo: "Por qué este lead tiene esta puntuación",
+    interes: "Interés",
+    encaje: "Encaje con el cliente ideal",
+    umbralEs: "umbral: {{umbral}}",
+    sinUmbral: "el modelo no declara umbral en este eje",
+    sinFactores: "Ninguna regla ha sumado por este eje",
+    gradoDesde: "{{grado}} (desde {{desde}} de encaje)",
+    yaEsSql: "Ya es SQL: no hay escalón por encima.",
+    inactividad: "Lo que se ha perdido por inactividad",
+    perdidos:
+      "{{puntos}} puntos de interés perdidos por inactividad. El encaje no decae: sale de quién es, no de lo que hace.",
+    sinDecaer: "No ha perdido nada por inactividad.",
+    reglaDecaimiento:
+      "El modelo resta {{puntos}} puntos de interés cada {{dias}} días sin actividad, y nunca baja de {{minimo}}.",
+    ultimaActividad: "Última actividad: {{fecha}}",
+    sinActividad: "Sin ninguna actividad registrada.",
+    tramos: "Los tramos de encaje",
+    porqueTramos:
+      "Un grado sin sus tramos es una letra. Con ellos se puede discutir si el tramo está bien puesto.",
+    tramo: "{{grado}} desde {{desde}}",
+  },
   conocimiento: {
     titulo: "Conocimiento",
     entradilla:

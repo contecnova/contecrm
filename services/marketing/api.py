@@ -396,6 +396,20 @@ def listar_modelos(db: DbDep, principal: AutenticadoDep) -> Any:
             "reglas_interes": len(m.reglas_interes or []),
             "reglas_encaje": len(m.reglas_encaje or []),
             "decaimiento": f"{m.decaimiento_puntos} cada {m.decaimiento_dias} días",
+            # **Los umbrales y los tramos.** Se guardan al publicar el modelo y
+            # no los devolvía ninguna ruta: quien administra no podía ver qué
+            # hace MQL a un lead en su propio CRM, ni comprobar que lo que
+            # configuró es lo que se aplica.
+            "umbrales": {
+                "mql": {"interes": m.umbral_mql_interes, "encaje": m.umbral_mql_encaje},
+                "sql": {"interes": m.umbral_sql_interes, "encaje": m.umbral_sql_encaje},
+            },
+            "grados": sorted(
+                [g for g in (m.grados or []) if isinstance(g, dict)],
+                key=lambda g: int(g.get("desde", 0)),
+                reverse=True,
+            ),
+            "interes_minimo": m.interes_minimo,
         }
         for m in filas
     ]

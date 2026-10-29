@@ -2744,6 +2744,66 @@ estaba bien.
 Lo que no cae en ningún camino se cuenta y se deja fuera: 484 rutas resueltas,
 120 contratos de pantalla y 26 puntos ciegos, con tope que sólo baja.
 
+### 4.6.26 El segmento antes del envío, y el lead antes de la llamada
+
+Siete capacidades que sólo tenían API. Dos pantallas.
+
+#### Un segmento
+
+Lo que se hace con un segmento no es mirarlo: es mandarle algo. Las tres
+preguntas de antes de un envío no se podían contestar desde ninguna pantalla, y
+ninguna de las tres cabe como panel de la ficha genérica —el recuento devuelve
+un **objeto** y esa ficha sólo descubre paneles que devuelven listas, el
+solapamiento cuelga del prefijo de la colección y se pide **contra otro**
+segmento, y congelar cambia la naturaleza del segmento—.
+
+- **Dinámico o foto congelada.** Un dinámico se recalcula al preguntarlo; un
+  estático devuelve lo que se congeló. Los dos enseñan un número con la misma
+  cara, y sobre el segundo se manda un correo creyendo que es la gente de hoy.
+  Congelar es lo que permite contestar en junio «¿a quién se le mandó?» con la
+  lista de marzo.
+- **El bruto y los alcanzables no son el mismo número**, y el hueco se nombra:
+  entre uno y otro están las supresiones. Planificar un envío a diez mil y que
+  salga a siete mil sin saber por qué faltan tres mil es el caso que esto evita.
+- **El solapamiento, con el porcentaje sobre cada uno de los dos.** Mil personas
+  comunes es mucho si el segmento tiene mil doscientas y poco si tiene cien mil,
+  y con un solo porcentaje la decisión sale al revés.
+
+#### La puntuación de un lead
+
+«Este lead tiene 87» no se acciona. Lo que hace que un comercial llame es saber
+que descargó el comparativo y entró dos veces en la página de contratación.
+
+Los dos ejes salen **separados y nunca sumados**: el encaje dice si es el
+cliente que buscamos y el interés cuánto caso nos hace, y un director de compras
+callado y un estudiante muy activo pueden dar el mismo total sin que se haga lo
+mismo con los dos. El decaimiento va aparte y con su regla, porque sin él un
+lead que hizo mucho y tiene poco interés parece un scoring roto — y sólo decae
+el interés: el encaje sale de quién es.
+
+**Los umbrales se escribían y no los leía nadie.** `umbral_mql_interes`,
+`umbral_mql_encaje`, `umbral_sql_interes`, `umbral_sql_encaje` y los tramos de
+grado se guardan al publicar el modelo y sólo los leía `calificar`: ninguna ruta
+los devolvía. Así que «este lead es MQL» no se podía contrastar con nada, «qué
+le falta para SQL» no se podía contestar, y un grado «B» era una letra sin
+tramo. Ahora `GET /puntuacion/leads/{id}` los devuelve con la cuenta hecha, y
+`GET /puntuacion/modelos` los enseña para que quien administra vea qué hace MQL
+a un lead en su propio CRM.
+
+Dos detalles que no son de presentación:
+
+- **un umbral sin declarar es «no aplica», no cero.** `calificar` no deja pasar
+  a nadie por un escalón sin umbrales, así que decir «le faltan 0» sería
+  exactamente lo contrario de lo que pasa. Se dice que no es alcanzable;
+- **lo que falta de interés se gana con actividad y lo que falta de encaje no.**
+  No es un matiz: al que le falta encaje no se le llama más, se descarta o se
+  cambia el ICP.
+
+La puntuación no se edita, y está escrito en la excepción del gate de edición:
+es un cálculo con cada punto explicado por su regla, y poder cambiarlo a mano
+destruiría lo único para lo que sirve —ordenar leads comparándolos con la misma
+vara—. Lo que se cambia es el modelo, que se publica por versiones.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

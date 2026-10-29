@@ -2033,6 +2033,50 @@ Lo que se arregló el 29 de octubre de 2026, por si te suena:
 - en **Territorios**, todos decían «0 criterios», incluido el que reparte media
   cartera.
 
+### Antes de mandar algo a un segmento
+
+Abre el segmento y mira tres cosas, en este orden:
+
+1. **Si pone «foto congelada»**, el número que ves no es de ahora: es el de
+   cuando se congeló. Sirve para contestar en junio «¿a quién se le mandó en
+   marzo?», y no sirve para decidir un envío de hoy.
+2. **El número grande son los alcanzables**, no todos. Debajo pone cuántos hay
+   en bruto y cuántos se caen por supresión —bajas, rebotes duros, listas
+   negras—. Si planificas sobre el bruto, el envío sale más corto y parece que
+   algo ha fallado.
+3. **Mide el solapamiento contra el otro segmento al que vayas a lanzar esta
+   semana.** La pregunta no es cuánta gente comparten: es a cuánta le van a
+   llegar las dos cosas. Por eso sale el porcentaje **sobre cada uno de los
+   dos**: mil personas comunes es mucho si tu segmento tiene mil doscientas y
+   poco si tiene cien mil.
+
+Congelar es definitivo en un sentido: el segmento deja de recalcularse. Se hace
+**antes** del envío, no después.
+
+### Por qué este lead tiene esta puntuación
+
+El número solo no sirve. Lo que decide a quién llamas primero son los dos ejes
+por separado:
+
+- el **interés** es cuánto caso nos está haciendo, y se gana con actividad;
+- el **encaje** es si es el cliente que buscamos, y **no** se gana con
+  actividad: sale de quién es.
+
+Un director de compras de una empresa objetivo que lleva dos meses callado y un
+estudiante muy activo pueden dar el mismo total, y no se hace lo mismo con los
+dos. Por eso nunca verás los dos sumados.
+
+Debajo de cada eje está **qué regla sumó cada punto**: «descargó el
+comparativo», «sector objetivo». Eso es lo que se dice por teléfono.
+
+Y arriba, **qué le falta para el escalón siguiente**. Si lo que le falta es
+interés, se gana insistiendo. Si lo que le falta es encaje, no: ese lead no va a
+llegar por mucho que se le llame, y lo que hay que revisar es a quién se está
+atrayendo.
+
+Si ves un aviso de que se calculó con una versión anterior del modelo, no
+compares ese número con el de otro lead: no están medidos con la misma vara.
+
 ---
 
 ## Qué hacer cuando algo no sale

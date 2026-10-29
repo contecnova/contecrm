@@ -370,6 +370,12 @@ def explicar(db: Session, tenant_id: UUID, lead_id: UUID) -> dict[str, Any]:
             fila.ultima_actividad_at.isoformat() if fila.ultima_actividad_at else None
         ),
         "calculado_at": fila.calculado_at.isoformat(),
+        # **Los umbrales, al lado del número.** Se guardaban en el modelo y no
+        # los leía nadie más que `calificar`: ninguna ruta los devolvía, así que
+        # «este lead es MQL» no se podía contrastar con nada y «qué le falta
+        # para SQL» no se podía contestar. Un grado «B» sin sus tramos es una
+        # letra, y una calificación sin su umbral es una etiqueta.
+        **_lo_que_decide(modelo_activo(db, tenant_id, fila.modelo), fila),
         # Se dice contra qué versión se calculó: comparar dos leads puntuados con
         # modelos distintos es comparar dos cosas que no son la misma.
         "aviso": (
@@ -378,6 +384,103 @@ def explicar(db: Session, tenant_id: UUID, lead_id: UUID) -> dict[str, Any]:
         )
         if _version_desfasada(db, tenant_id, fila)
         else "",
+    }
+
+
+def _lo_que_decide(modelo: ModeloPuntuacion | None, fila: PuntuacionLead) -> dict[str, Any]:
+    """Los umbrales y los tramos que explican la calificación y el grado.
+
+    Y **qué le falta para el siguiente escalón**, que es la única pregunta que
+    se hace quien mira esto: «87» no se acciona, «le faltan 7 de interés» sí.
+
+    Si el modelo ya no está —se borró después de puntuar— se dice, en vez de
+    devolver ceros: un umbral de cero dejaría pasar a todo el mundo y aquí se
+    leería como que el lead está a nada de ser SQL.
+    """
+    if modelo is None:
+        return {
+            "umbrales": None,
+            "grados": [],
+            "le_falta": None,
+            "porque_no_se_sabe": (
+                "El modelo con el que se puntuó este lead ya no existe, así que "
+                "no se puede decir qué umbral se le aplicó."
+            ),
+        }
+
+    umbrales = {
+        "mql": {"interes": modelo.umbral_mql_interes, "encaje": modelo.umbral_mql_encaje},
+        "sql": {"interes": modelo.umbral_sql_interes, "encaje": modelo.umbral_sql_encaje},
+    }
+    siguiente = {"ninguno": "mql", "mql": "sql"}.get(fila.calificacion)
+    return {
+        "umbrales": umbrales,
+        # Los tramos de encaje, ordenados como se aplican: así el grado deja de
+        # ser una letra y pasa a decir desde qué encaje se gana.
+        "grados": sorted(
+            [t for t in (modelo.grados or []) if isinstance(t, dict)],
+            key=lambda t: int(t.get("desde", 0)),
+            reverse=True,
+        ),
+        "decaimiento": {
+            "puntos": modelo.decaimiento_puntos,
+            "cada_dias": modelo.decaimiento_dias,
+            "interes_minimo": modelo.interes_minimo,
+            # Sólo decae el interés, nunca el encaje: el encaje dice si es el
+            # cliente que buscamos, y eso no cambia porque lleve dos meses
+            # callado.
+            "solo_afecta_a": "interes",
+        },
+        "le_falta": _cuanto_le_falta(umbrales.get(siguiente or ""), fila, siguiente),
+    }
+
+
+def _cuanto_le_falta(
+    umbral: dict[str, int | None] | None, fila: PuntuacionLead, siguiente: str | None
+) -> dict[str, Any] | None:
+    """Cuánto le falta a este lead para el escalón siguiente."""
+    if siguiente is None or umbral is None:
+        return None
+    if umbral["interes"] is None and umbral["encaje"] is None:
+        # Los dos sin declarar es «no aplica», no cero: `calificar` no deja
+        # pasar a nadie por ahí, y decir «le faltan 0» sería lo contrario.
+        return {
+            "hasta": siguiente,
+            "alcanzable": False,
+            "que_significa": (
+                f"El modelo no declara umbral de «{siguiente}», así que ningún "
+                f"lead llega a serlo por puntuación."
+            ),
+        }
+    falta_interes = max(0, (umbral["interes"] or 0) - fila.interes)
+    falta_encaje = max(0, (umbral["encaje"] or 0) - fila.encaje)
+    return {
+        "hasta": siguiente,
+        "alcanzable": True,
+        "interes": falta_interes,
+        "encaje": falta_encaje,
+        # El interés se gana con actividad y el encaje no: el encaje sale de
+        # quién es, no de lo que hace. Decirlo cambia qué se hace con el lead —
+        # al que le falta encaje no se le llama más, se descarta o se cambia el
+        # ICP—.
+        "que_significa": (
+            f"Ya cumple los dos umbrales de «{siguiente}»."
+            if not falta_interes and not falta_encaje
+            else (
+                f"Le faltan {falta_interes} de interés para «{siguiente}», y eso "
+                f"se gana con actividad."
+                if falta_encaje == 0
+                else (
+                    f"Le faltan {falta_encaje} de encaje para «{siguiente}». El "
+                    f"encaje no se gana con actividad: sale de quién es."
+                    if falta_interes == 0
+                    else (
+                        f"Le faltan {falta_interes} de interés y {falta_encaje} "
+                        f"de encaje para «{siguiente}»."
+                    )
+                )
+            )
+        ),
     }
 
 

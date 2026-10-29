@@ -34,7 +34,8 @@ interface Territorio {
   prioridad: number;
   responsable_id: string | null;
   padre_id: string | null;
-  criterios: { campo?: string; operador?: string; valor?: unknown }[];
+  /** La gramática real: `{tipo, condiciones}`, no `{campo, operador, valor}`. */
+  criterios: { tipo?: string; condiciones?: Record<string, unknown>[] }[];
 }
 
 interface Simulacion {

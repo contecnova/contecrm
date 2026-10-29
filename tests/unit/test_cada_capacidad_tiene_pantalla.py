@@ -655,7 +655,26 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   firmado la firma NO se puede comprobar, y eso no se nota mirando el
 #   estado, que pone «firmado» igual. Es la diferencia entre un documento
 #   firmado y uno que PARECE firmado.
-TOPE_SIN_PANTALLA = 262
+#   29-10-2026  255 de 778  la ficha de un segmento y la de la puntuacion de
+#   ------------------------------------------------------------------------
+#   un lead. Siete capacidades que solo tenian API.
+#
+#   Del segmento: si es DINAMICO o una foto congelada —los dos ensenan un
+#   numero con la misma cara, y sobre el segundo se manda un correo creyendo
+#   que es la gente de hoy—; el tamano con su fecha y con el hueco NOMBRADO
+#   entre el bruto y los alcanzables, que son las supresiones; y el
+#   solapamiento contra OTRO segmento con su porcentaje sobre cada uno, porque
+#   mil comunes es mucho si uno tiene mil doscientos y poco si tiene cien mil.
+#
+#   Del lead: los dos ejes SEPARADOS con su desglose, el decaimiento aparte
+#   —sin el, un lead que hizo mucho y tiene poco interes parece un scoring
+#   roto— y los umbrales que disparan MQL y SQL. Los umbrales se guardaban en
+#   el modelo y NO los leia nadie mas que `calificar`: ninguna ruta los
+#   devolvia, asi que «es MQL» no se podia contrastar con nada y «que le falta
+#   para SQL» no se podia contestar. Ahora salen con la cuenta hecha, y
+#   diciendo que lo que falta de interes se gana con actividad y lo que falta
+#   de encaje no.
+TOPE_SIN_PANTALLA = 255
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -151,6 +151,11 @@ const Territorios = pantalla(
   () => import("@/paginas/Territorios"),
   (m) => m.Territorios,
 );
+const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
+const PuntuacionDeLead = pantalla(
+  () => import("@/paginas/PuntuacionDeLead"),
+  (m) => m.PuntuacionDeLead,
+);
 const PeriodoDePrevision = pantalla(
   () => import("@/paginas/PeriodoDePrevision"),
   (m) => m.PeriodoDePrevision,
@@ -371,6 +376,16 @@ export function App() {
               listas: pintarla como panel daría siempre «nada todavía». Y la
               evidencia es justo lo que hace defendible una firma. */}
           <Route path="/m/operacion/sobre_firma/:id" element={<SobreDeFirma />} />
+          {/* El segmento tiene ficha propia porque sus tres preguntas no son
+              paneles: el recuento devuelve un OBJETO —y la ficha genérica sólo
+              descubre lo que devuelve listas—, el solapamiento cuelga del
+              prefijo de la colección y se pide contra otro segmento, y
+              congelar cambia la naturaleza del segmento. */}
+          <Route path="/m/segmentos/segmento/:id" element={<Segmento />} />
+          {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
+              separado: pintarla como campos sueltos los sumaría visualmente,
+              que es justo lo que el modelo evita. */}
+          <Route path="/m/segmentos/lead/:id/puntuacion" element={<PuntuacionDeLead />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />

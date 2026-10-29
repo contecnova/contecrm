@@ -48,6 +48,15 @@ const SIN_EDICION_PORQUE: Record<string, string> = {
     "corregir las variables—, y las tres exigen motivo y quedan auditadas. " +
     "El `PATCH` del contrato es exactamente el de las variables, y ése sí " +
     "está enchufado.",
+  PuntuacionDeLead:
+    "La puntuación de un lead no es un registro que se edita: es un CÁLCULO " +
+    "con cada punto explicado por la regla que lo sumó. Poder cambiar a mano " +
+    "el interés, el encaje o la calificación destruiría justo lo que la hace " +
+    "servir —ordenar leads por prioridad comparándolos entre sí—, porque dos " +
+    "leads dejarían de estar medidos con la misma vara sin que nadie lo " +
+    "supiera. Lo que sí se cambia es el MODELO, que se publica por versiones " +
+    "desde Administración, y volver a puntuar con él. El contrato de " +
+    "`/puntuacion/leads/{id}` sólo declara `GET` y un `POST` que recalcula.",
 };
 
 function fuente(fichero: string): string {
