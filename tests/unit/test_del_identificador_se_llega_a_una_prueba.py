@@ -181,7 +181,13 @@ RAIZ = Path(__file__).resolve().parents[2]
 #                            escrita a mano en la prueba se quedaria corta el
 #                            dia que alguien anada un tipo, y justo ese seria
 #                            el que entra sin probar
-TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 95
+#   29-10-2026  91 de 778  las cuatro del segmento y las cuatro del scoring,
+#                            que ya tenian pantalla y les faltaba la prueba que
+#                            las CITE. Las del segmento se recorren ahora por
+#                            la ruta y no por el modulo —que es por donde no
+#                            entra ninguna pantalla—, y las del scoring por los
+#                            umbrales, que se guardaban y no los leia nadie
+TOPE_SIN_PRUEBA_QUE_LAS_NOMBRE = 91
 
 
 @functools.cache
