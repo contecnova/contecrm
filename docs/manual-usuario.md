@@ -2077,6 +2077,32 @@ atrayendo.
 Si ves un aviso de que se calculó con una versión anterior del modelo, no
 compares ese número con el de otro lead: no están medidos con la misma vara.
 
+### Si sospechas que se están perdiendo correos de clientes
+
+Abre **Canales de entrada**. Cada canal dice cuántos mensajes ha recibido,
+cuántos ha descartado y —esto es lo que importa— **por qué**:
+
+- **respuestas automáticas** y **eco propio** son el canal haciendo su trabajo:
+  está cortando contestadores y sus propias respuestas rebotando. Que haya
+  muchos es normal;
+- **pasados de tope** significa que llegó más de lo que el canal admite por
+  hora. Si pasa a menudo, sube el tope: lo que sobra se está rechazando;
+- **incompletos** son mensajes a los que les faltaba un campo que ese canal
+  exige. Si son muchos, suele ser que el formulario de fuera cambió;
+- **por la trampa** es el que hay que mirar. La trampa es un campo oculto que
+  los robots rellenan y las personas no. Si es el motivo que más descarta, el
+  canal te lo señala: **revisa ese campo**, porque un descarte por trampa
+  responde «recibido» a propósito —para no decirle al robot qué cambiar— y si
+  está mal puesto se está comiendo mensajes de clientes sin que ellos lo sepan
+  ni tú te enteres.
+
+Si un canal pone «sin motivo apuntado», son descartes anteriores a que se
+empezara a guardar el porqué. No se reparten a ojo: se dicen como lo que son.
+
+Y si un canal de correo avisa de que no declara su dirección propia, ponla: sin
+ella no puede distinguir sus propias respuestas de las de un cliente, y el buzón
+puede acabar contestándose a sí mismo.
+
 ---
 
 ## Qué hacer cuando algo no sale

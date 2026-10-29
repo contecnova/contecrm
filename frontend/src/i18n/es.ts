@@ -98,6 +98,7 @@ export default {
     cuadros: "Cuadros de mando",
     casos: "Bandeja de casos",
     consolaAgente: "Consola de agente",
+    canalesDeEntrada: "Canales de entrada",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",
     proveedores: "Proveedores",

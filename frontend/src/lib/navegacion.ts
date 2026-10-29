@@ -193,6 +193,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read"  },
   { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente"] },
   { area: "servicio", a: "/conocimiento", clave: "nav.conocimiento", icono: "menu_book", permiso: "conocimiento:read" , recursos: ["conocimiento"] },
+  // En Servicio y no en Administración: quien mira si la trampa de un canal se
+  // está comiendo correos de clientes es quien atiende, no quien configura.
+  { area: "servicio", a: "/canales-de-entrada", clave: "nav.canalesDeEntrada", icono: "inbox", permiso: "case:read" , recursos: ["canales-servicio"] },
 
   { area: "analisis", a: "/cuadros", clave: "nav.cuadros", icono: "dashboard", permiso: "informe:read" , recursos: ["cuadros-mando", "informes"] },
   { area: "analisis", a: "/explotacion", clave: "nav.explotacion", icono: "query_stats", permiso: "informe:read" , recursos: ["explotacion"] },

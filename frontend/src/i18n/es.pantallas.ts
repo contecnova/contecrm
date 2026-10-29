@@ -138,6 +138,38 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  canales: {
+    titulo: "Por dónde entran los casos",
+    entradilla:
+      "Cada canal es una puerta declarada. Lo que decide no es cuántos han entrado: " +
+      "es qué se ha tirado y por qué.",
+    sinCanales: "No hay ningún canal de entrada declarado",
+    sinCanalesDetalle:
+      "Sin canales, los casos sólo se abren a mano. Un canal declara de dónde llega un mensaje y cómo se traduce en un caso.",
+    escuchando: "escuchando",
+    apagado: "apagado",
+    cifras: "{{recibidos}} recibidos · {{descartados}} descartados",
+    motivo: {
+      trampa: "{{cuantos}} por la trampa",
+      automatico: "{{cuantos}} respuestas automáticas",
+      propio: "{{cuantos}} eco propio",
+      tope: "{{cuantos}} pasados de tope",
+      incompleto: "{{cuantos}} incompletos",
+    },
+    sinMotivo: "{{cuantos}} sin motivo apuntado",
+    trampaManda:
+      "La trampa es lo que más descarta en este canal. Revisa el campo: un descarte por trampa contesta «aceptado» a propósito, así que si está mal puesto se está comiendo mensajes de clientes y nadie lo va a notar.",
+    tope: "Tope por hora",
+    propia: "Dirección propia",
+    sinPropia: "sin declarar",
+    trampa: "Campo trampa",
+    sinTrampa: "sin trampa",
+    obligatorios: "Obligatorios",
+    ninguno: "ninguno",
+    sinEco:
+      "Este canal de correo no declara su propia dirección, así que no puede cortar su propio eco: el buzón puede acabar contestándose a sí mismo.",
+    mapea: "Traduce {{cuantos}} campos de entrada",
+  },
   segmento: {
     dinamico: "dinámico",
     congeladoEtiqueta: "foto congelada",

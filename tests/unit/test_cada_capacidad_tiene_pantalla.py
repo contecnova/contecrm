@@ -674,7 +674,22 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   para SQL» no se podia contestar. Ahora salen con la cuenta hecha, y
 #   diciendo que lo que falta de interes se gana con actividad y lo que falta
 #   de encaje no.
-TOPE_SIN_PANTALLA = 255
+#   29-10-2026  250 de 778  por donde entran los casos: correo con hilo y
+#   ------------------------------------------------------------------------
+#   anti-bucle, formulario y portal, chat y mensajeria social, redes, y el
+#   canal de API para empotrar soporte en el producto del cliente.
+#
+#   El listado generico los ensenaba con su nombre y su tipo. Lo que se decide
+#   delante de un canal es otra cosa: QUE SE ESTA TIRANDO Y POR QUE. El total
+#   de descartados no distingue el caso bueno —el anti-bucle cortando un bucle
+#   de respuestas automaticas, que es para lo que esta— del caro: una TRAMPA
+#   mal puesta comiendose correos de clientes. Y la trampa se descarta
+#   contestando «aceptado» A PROPOSITO, para no decirle al robot que campo
+#   cambiar, asi que un falso positivo no deja rastro de ningun lado.
+#
+#   Los cinco motivos se calculaban y se tiraban en un solo contador. Ahora se
+#   apuntan por separado, y la pantalla senala el canal donde manda la trampa.
+TOPE_SIN_PANTALLA = 250
 
 
 def _es_pantalla(p: Path) -> bool:

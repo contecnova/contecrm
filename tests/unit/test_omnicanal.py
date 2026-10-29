@@ -694,3 +694,118 @@ def test_el_historial_que_pinta_la_pantalla_trae_sus_campos(
 
     sin_cliente = cliente_http.get("/api/v1/conversaciones/historial", headers=cabeceras_http)
     assert sin_cliente.status_code == 422, sin_cliente.text
+
+
+# ── Por qué se descartó cada uno (CRM-04.02.01.01, CRM-04.02.01.02) ───────
+#
+# El total solo no se puede accionar. No distingue el caso bueno —el anti-bucle
+# cortando un bucle de respuestas automáticas, que es exactamente para lo que
+# está— del caro: una TRAMPA mal puesta comiéndose correos de clientes. Y la
+# trampa se descarta contestando «aceptado» A PROPÓSITO, para no decirle al
+# robot qué campo cambiar, así que un falso positivo no deja rastro de ningún
+# lado. Si el único número es el total, nadie se entera nunca.
+
+
+@pytest.mark.db
+def test_cada_descarte_deja_su_motivo(
+    uow: UnidadDeTrabajo, db: Any, tenant_id: UUID, canal: tuple[Any, str]
+) -> None:
+    """Los cinco motivos que `recibir` conoce, cada uno en su contador.
+
+    Se recorren los cinco en la misma prueba a propósito: comprobar uno deja
+    los otros cuatro sin mirar, y el que se quede sin sumar es justo el que
+    nadie echa de menos.
+    """
+    fila, secreto = canal
+    fila.obligatorios = ["body"]
+    db.flush()
+
+    # 1. Trampa: el campo señuelo viene relleno.
+    omni.recibir(uow, canal_clave="soporte", secreto=secreto, entrada=_entrada(web_site="x"))
+    # 2. Respuesta automática, por cabecera.
+    omni.recibir(
+        uow,
+        canal_clave="soporte",
+        secreto=secreto,
+        entrada=_entrada(),
+        cabeceras={"Auto-Submitted": "auto-replied"},
+    )
+    # 3. Nuestro propio eco.
+    omni.recibir(
+        uow,
+        canal_clave="soporte",
+        secreto=secreto,
+        entrada=_entrada(remitente="soporte@nosotros.com"),
+    )
+    # 4. Incompleto: falta un obligatorio.
+    omni.recibir(uow, canal_clave="soporte", secreto=secreto, entrada={"subject": "sin cuerpo"})
+    db.flush()
+
+    assert fila.descartados == 4
+    assert fila.descartados_por == {
+        "trampa": 1,
+        "automatico": 1,
+        "propio": 1,
+        "incompleto": 1,
+    }
+
+
+@pytest.mark.db
+def test_el_desglose_suma_el_total(
+    uow: UnidadDeTrabajo, db: Any, tenant_id: UUID, canal: tuple[Any, str]
+) -> None:
+    """La comprobación que caza la rama que se olvidó de apuntar el motivo.
+
+    Un contador que se incrementa sin motivo deja el desglose por debajo del
+    total, y la pantalla enseñaría «300 descartados» con un desglose que suma
+    120 sin que nada fallara.
+    """
+    fila, secreto = canal
+    for i in range(3):
+        omni.recibir(
+            uow,
+            canal_clave="soporte",
+            secreto=secreto,
+            entrada=_entrada(web_site="x", subject=f"spam {i}"),
+        )
+    db.flush()
+
+    assert fila.descartados == sum(fila.descartados_por.values())
+
+
+@pytest.mark.db
+def test_el_tope_tambien_dice_por_que(
+    uow: UnidadDeTrabajo, db: Any, tenant_id: UUID, canal: tuple[Any, str]
+) -> None:
+    """El tope corta con un error, y aun así el motivo queda apuntado.
+
+    Es la rama fácil de olvidar: las otras cuatro vuelven con un `return` y
+    ésta lanza, así que un `_descartar` puesto después del `raise` no se
+    ejecutaría nunca y el contador saldría siempre a cero.
+    """
+    fila, secreto = canal
+    fila.max_por_hora = 1
+    db.flush()
+
+    omni.recibir(uow, canal_clave="soporte", secreto=secreto, entrada=_entrada())
+    db.flush()
+    with pytest.raises(LimiteExcedido):
+        omni.recibir(uow, canal_clave="soporte", secreto=secreto, entrada=_entrada(subject="dos"))
+
+    assert fila.descartados_por.get("tope") == 1
+
+
+@pytest.mark.db
+def test_un_canal_nuevo_no_inventa_descartes(
+    uow: UnidadDeTrabajo, db: Any, tenant_id: UUID, canal: tuple[Any, str]
+) -> None:
+    """Un canal recién creado arranca sin desglose y sin total.
+
+    Y los que ya existían arrancan con el desglose vacío y el total que
+    tuvieran: repartir lo pasado a ojo sería inventarlo, y la pantalla lo dice
+    como «sin motivo apuntado» en vez de enseñarlo como si se supiera.
+    """
+    fila, _ = canal
+    db.flush()
+    assert fila.descartados == 0
+    assert fila.descartados_por == {}

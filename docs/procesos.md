@@ -1122,7 +1122,7 @@ stateDiagram-v2
 | `PUT /api/v1/agentes` | Capacidad y competencias de un agente | usuario_id*, capacidad, competencias, nivel, activo | 200, 422 | — |
 | `PUT /api/v1/agentes/presencia` | Cambiar mi presencia | presencia*, motivo | 200, 422 | — |
 | `POST /api/v1/canales-servicio` | Declarar un canal de entrada | clave*, nombre*, tipo, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia | 201, 422 | — |
-| `PATCH /api/v1/canales-servicio/{canal_servicio_id}` | Editar canales de servicio | canal_servicio_id*, clave, nombre, tipo, secreto_hash, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia, activo, recibidos, descartados | 200, 422 | — |
+| `PATCH /api/v1/canales-servicio/{canal_servicio_id}` | Editar canales de servicio | canal_servicio_id*, clave, nombre, tipo, secreto_hash, mapeo, fijos, obligatorios, campo_trampa, max_por_hora, direccion_propia, activo, recibidos, descartados, descartados_por | 200, 422 | — |
 | `DELETE /api/v1/canales-servicio/{canal_servicio_id}` | Borrar canales de servicio | canal_servicio_id* | 204, 422 | — |
 | `POST /api/v1/canales-servicio/{canal_servicio_id}/archivar` | Archivar canales de servicio | canal_servicio_id* | 200, 422 | — |
 | `POST /api/v1/casos` | Abrir un caso | asunto*, descripcion, tipo, categoria_id, prioridad, severidad, origen, cuenta_id, contacto_id, producto_id, activo_id, contrato_id, pedido_id, padre_id, owner_id, equipo, tier_cliente, campos | 201, 422 | `case.created` |

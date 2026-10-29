@@ -123,6 +123,19 @@ class CanalServicio(Base, TimestampMixin, SoftDeleteMixin):
 
     recibidos: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     descartados: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # **Por qué se descartó cada uno.** El total solo no se puede accionar: un
+    # canal que dice «1.240 recibidos, 300 descartados» no distingue el caso
+    # bueno —el anti-bucle cortando un bucle de respuestas automáticas— del
+    # caso caro: una TRAMPA mal puesta tragándose clientes de verdad, que
+    # además se descarta contestando «aceptado» a propósito, para no decirle al
+    # robot qué cambiar. Nadie se enteraría nunca.
+    #
+    # Un diccionario y no una columna por motivo: los motivos los decide
+    # `recibir`, y añadir una columna cada vez que aparezca uno es la migración
+    # que no se hace.
+    descartados_por: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
 
     __table_args__ = (UniqueConstraint("tenant_id", "clave", name="uq_canal_servicio"),)
 
@@ -443,6 +456,21 @@ def _conversacion_para(
     return fila, True
 
 
+def _descartar(canal: CanalServicio, motivo: str) -> None:
+    """Apunta un descarte **con su motivo**, en el total y en el desglose.
+
+    En los dos, no en uno: el total es lo que se compara entre canales y el
+    desglose es lo que dice qué hacer. Y aquí y no en cada rama, porque con
+    cinco ramas la que se olvide de sumar es la que nadie echa de menos.
+    """
+    canal.descartados += 1
+    # Se reasigna entero: un `dict` mutado en sitio no siempre lo ve
+    # SQLAlchemy, y el contador se quedaría a cero sin que nada fallara.
+    desglose = dict(canal.descartados_por or {})
+    desglose[motivo] = int(desglose.get(motivo, 0)) + 1
+    canal.descartados_por = desglose
+
+
 def recibir(
     uow: UnidadDeTrabajo,
     *,
@@ -464,26 +492,26 @@ def recibir(
 
     # 1. Trampa. Se descarta con éxito aparente, a propósito.
     if canal.campo_trampa and str(entrada.get(canal.campo_trampa, "")).strip():
-        canal.descartados += 1
+        _descartar(canal, "trampa")
         return {"aceptado": True, "descartado": "trampa", "caso_id": None}
 
     # 2. Anti-bucle. Antes del tope, porque un bucle de respuestas automáticas
     # agota el tope en minutos y dejaría fuera a los clientes de verdad.
     automatico, motivo = es_automatico(cabeceras)
     if automatico:
-        canal.descartados += 1
+        _descartar(canal, "automatico")
         return {"aceptado": True, "descartado": "automatico", "motivo": motivo, "caso_id": None}
 
     remitente = str(entrada.get("remitente") or entrada.get("from") or "").strip().lower()
     if canal.direccion_propia and remitente == canal.direccion_propia.strip().lower():
         # El mensaje viene de nuestra propia dirección: es nuestra respuesta
         # rebotando. Sin esto, el buzón se contesta a sí mismo indefinidamente.
-        canal.descartados += 1
+        _descartar(canal, "propio")
         return {"aceptado": True, "descartado": "propio", "caso_id": None}
 
     # 3. Tope.
     if _pasado_de_tope(uow.db, canal):
-        canal.descartados += 1
+        _descartar(canal, "tope")
         raise LimiteExcedido(
             "Este canal ha superado su tope por hora.",
             error_code="service.canal_tope_superado",
@@ -508,7 +536,7 @@ def recibir(
     datos = _traducir(canal, entrada)
     faltan = [c for c in (canal.obligatorios or []) if not str(entrada.get(str(c), "")).strip()]
     if faltan:
-        canal.descartados += 1
+        _descartar(canal, "incompleto")
         return {
             "aceptado": False,
             "descartado": "incompleto",

@@ -152,6 +152,10 @@ const Territorios = pantalla(
   (m) => m.Territorios,
 );
 const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
+const CanalesDeEntrada = pantalla(
+  () => import("@/paginas/CanalesDeEntrada"),
+  (m) => m.CanalesDeEntrada,
+);
 const PuntuacionDeLead = pantalla(
   () => import("@/paginas/PuntuacionDeLead"),
   (m) => m.PuntuacionDeLead,
@@ -382,6 +386,11 @@ export function App() {
               prefijo de la colección y se pide contra otro segmento, y
               congelar cambia la naturaleza del segmento. */}
           <Route path="/m/segmentos/segmento/:id" element={<Segmento />} />
+          {/* Por dónde entran los casos. El listado genérico enseñaba nombre y
+              tipo; lo que decide es qué se está tirando y POR QUÉ, y el total
+              de descartados no distingue el anti-bucle haciendo su trabajo de
+              una trampa tragándose clientes. */}
+          <Route path="/canales-de-entrada" element={<CanalesDeEntrada />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

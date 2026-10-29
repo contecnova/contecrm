@@ -2804,6 +2804,44 @@ es un cálculo con cada punto explicado por su regla, y poder cambiarlo a mano
 destruiría lo único para lo que sirve —ordenar leads comparándolos con la misma
 vara—. Lo que se cambia es el modelo, que se publica por versiones.
 
+### 4.6.27 Por dónde entran los casos, y qué se queda por el camino
+
+Un canal de entrada es una puerta declarada: de dónde llega un mensaje y cómo
+se traduce en un caso. Los tipos son una lista cerrada —correo, formulario,
+chat, social, api, teléfono, portal— y `recibir()` aplica cinco filtros en
+orden antes de abrir nada: trampa, anti-bucle, eco propio, tope por hora y
+campos obligatorios.
+
+**Los cinco se calculaban y se tiraban en un solo contador.** `descartados` era
+un número, y un número no se puede accionar: no distingue el caso bueno —el
+anti-bucle cortando un bucle de respuestas automáticas, que es exactamente para
+lo que está— del caro, que es una trampa mal puesta comiéndose correos de
+clientes.
+
+Y la trampa es el peor sitio donde perder información, porque se descarta
+**contestando «aceptado» a propósito**: contestar distinto le diría al robot qué
+campo cambiar. Así que un canal mal configurado se come mensajes de clientes,
+contesta que todo bien, y del lado de quien escribió no queda ni rastro.
+
+`CanalServicio` gana `descartados_por`, un diccionario `{motivo: cuántos}`. Un
+diccionario y no una columna por motivo: los motivos los decide `recibir`, y
+añadir una columna cada vez que aparezca uno es la migración que no se hace.
+Los canales anteriores arrancan con `{}` y no con el total repartido a ojo —
+inventar el reparto de lo pasado sería peor que decir que no se sabe, y la
+pantalla lo enseña como «sin motivo apuntado».
+
+Se apunta en **un solo sitio**, `_descartar(canal, motivo)`, que suma el total y
+el desglose a la vez. Con cinco ramas, la que se olvide de sumar una de las dos
+es la que nadie echa de menos; la prueba lo fija exigiendo que el desglose sume
+el total. Y la rama del tope va **antes** del `raise`: puesta después no se
+ejecutaría nunca y su contador saldría siempre a cero.
+
+La pantalla pone las defensas delante de las cifras —el tope, la dirección
+propia, la trampa y los obligatorios—, porque son lo que explica el número. Un
+canal de correo sin dirección propia declarada no puede cortar su propio eco, y
+eso no se ve mirando cuántos entraron: se ve cuando el buzón lleva un mes
+contestándose a sí mismo.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
