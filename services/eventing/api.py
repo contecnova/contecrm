@@ -11,7 +11,7 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha  # noqa: E402
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.red import exigir
 from fastapi import APIRouter, Depends, Query, Request, Response, status
@@ -197,6 +197,7 @@ def listar(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Suscripcion).where(Suscripcion.tenant_id == principal.tenant_id)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -214,6 +215,7 @@ def listar(
         cursor=cursor,
         orden="nombre",
         modelo_salida=SuscripcionOut,
+        contar=contar,
     )
 
 

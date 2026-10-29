@@ -883,6 +883,29 @@ contacto» te da los nombres y te dice con qué lo ha averiguado.
 
 ---
 
+### «¿Y cuántas son?»
+
+Hasta el 29-10-2026, a «cuántas cuentas no tienen web» Nexus contestaba que
+podía enseñártelas pero no contarlas. Era verdad: los listados devolvían una
+página y nunca el total, así que contar significaba ir pasando páginas.
+
+Ahora el total se puede pedir, y **con los filtros que tengas puestos**: si
+estás mirando sólo las activas, el número es el de las activas. Nexus lo usa
+cuando la pregunta es de cuántas, y contesta con la cifra.
+
+Dos cosas que conviene saber:
+
+- **Es lo que tú ves, no lo que hay.** Si hay cuentas que tu perfil no alcanza,
+  no entran en el número. Dos personas pueden ver cifras distintas de la misma
+  lista, y eso es lo correcto: la otra respuesta sería contarte registros que no
+  puedes abrir.
+- **No sale solo, se pide.** Contar de verdad obliga a recorrer la tabla entera,
+  y hacerlo en cada pantalla por un número que casi nadie mira haría todo el
+  producto más lento. Para saber si hay más de lo que ves no hace falta: las
+  listas ya avisan cuando vienen recortadas.
+
+---
+
 ### Nexus
 
 En la barra de arriba, al lado del chat, hay un icono: **Nexus**. Ahí se

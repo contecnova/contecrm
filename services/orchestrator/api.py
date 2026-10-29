@@ -15,7 +15,7 @@ from crmcore.http.listados import (
     montar_exportacion,
     montar_ficha,
 )
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
@@ -330,6 +330,7 @@ def listar_instancias(
     origen_id: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(InstanciaProceso).where(InstanciaProceso.tenant_id == principal.tenant_id)
     if estado:
@@ -346,7 +347,13 @@ def listar_instancias(
         request, InstanciaProceso, consulta, principal=principal, db=db, objeto="instancia_proceso"
     )
     return paginar_consulta(
-        db, InstanciaProceso, consulta, limite=limite, cursor=cursor, modelo_salida=InstanciaOut
+        db,
+        InstanciaProceso,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        modelo_salida=InstanciaOut,
+        contar=contar,
     )
 
 
@@ -468,6 +475,7 @@ def bandeja(
     estado: str = Query("pendiente"),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     from sqlalchemy import or_
 
@@ -496,6 +504,7 @@ def bandeja(
         cursor=cursor,
         orden="vence_at",
         modelo_salida=TareaOut,
+        contar=contar,
     )
 
 
@@ -845,6 +854,7 @@ def listar_sagas(
     clave: str = Query("", description="La clave del proceso"),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(sagas.Saga).where(sagas.Saga.tenant_id == principal.tenant_id)
     if estado:
@@ -859,7 +869,13 @@ def listar_sagas(
         request, sagas.Saga, consulta, principal=principal, db=db, objeto="saga"
     )
     return paginar_consulta(
-        db, sagas.Saga, consulta, limite=limite, cursor=cursor, modelo_salida=SagaOut
+        db,
+        sagas.Saga,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        modelo_salida=SagaOut,
+        contar=contar,
     )
 
 

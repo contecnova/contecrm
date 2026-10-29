@@ -16,7 +16,7 @@ from crmcore.http.deps import (
     exige_permiso,
 )
 from crmcore.http.listados import aplicar_filtros_de_la_url
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -598,6 +598,7 @@ def listar_usuarios(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     # Se une por membresía y no se listan los usuarios a secas: `Usuario` es una
     # de las dos tablas sin `tenant_id`, así que aquí el aislamiento lo pone
@@ -617,7 +618,14 @@ def listar_usuarios(
         request, Usuario, consulta, principal=principal, db=db, objeto="usuario"
     )
     return paginar_consulta(
-        db, Usuario, consulta, limite=limite, cursor=cursor, orden="email", modelo_salida=UsuarioOut
+        db,
+        Usuario,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="email",
+        modelo_salida=UsuarioOut,
+        contar=contar,
     )
 
 
@@ -643,6 +651,7 @@ def listar_roles(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(RolTenant).where(RolTenant.tenant_id == principal.tenant_id)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -653,7 +662,14 @@ def listar_roles(
         request, RolTenant, consulta, principal=principal, db=db, objeto="rol"
     )
     return paginar_consulta(
-        db, RolTenant, consulta, limite=limite, cursor=cursor, orden="nombre", modelo_salida=RolOut
+        db,
+        RolTenant,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="nombre",
+        modelo_salida=RolOut,
+        contar=contar,
     )
 
 
@@ -740,6 +756,7 @@ def mis_sesiones(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Sesion).where(
         Sesion.usuario_id == principal.id,
@@ -784,6 +801,7 @@ def mis_sesiones(
         cursor=cursor,
         orden="-ultima_actividad_at",
         fila_a_dict=_con_enlace,
+        contar=contar,
     )
 
 
@@ -878,6 +896,7 @@ def listar_claves(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(ClaveApi).where(ClaveApi.tenant_id == principal.tenant_id)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -888,7 +907,13 @@ def listar_claves(
         request, ClaveApi, consulta, principal=principal, db=db, objeto="clave_api"
     )
     return paginar_consulta(
-        db, ClaveApi, consulta, limite=limite, cursor=cursor, modelo_salida=ClaveApiOut
+        db,
+        ClaveApi,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        modelo_salida=ClaveApiOut,
+        contar=contar,
     )
 
 
@@ -1145,6 +1170,7 @@ def listar_reglas_comparticion(
     objeto: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     from crmcore.authz.comparticion import ReglaComparticion
 
@@ -1179,6 +1205,7 @@ def listar_reglas_comparticion(
             "condiciones": r.condiciones,
             "activa": r.activa,
         },
+        contar=contar,
     )
 
 

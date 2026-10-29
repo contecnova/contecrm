@@ -9,7 +9,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
@@ -97,6 +97,7 @@ def listar_proveedores(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(enc.Proveedor).where(enc.Proveedor.tenant_id == principal.tenant_id)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -114,6 +115,7 @@ def listar_proveedores(
         cursor=cursor,
         orden="clave",
         modelo_salida=ProveedorOut,
+        contar=contar,
     )
 
 
@@ -264,6 +266,7 @@ def listar(
     solo_mudos: bool = Query(False, description="Los que el proveedor lleva tiempo sin mover"),
     limite: int = Query(100, ge=1, le=500),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(enc.Encargo).where(enc.Encargo.tenant_id == principal.tenant_id)
     if estado:
@@ -280,7 +283,13 @@ def listar(
         request, enc.Encargo, consulta, principal=principal, db=db, objeto="encargo"
     )
     return paginar_consulta(
-        db, enc.Encargo, consulta, limite=limite, cursor=cursor, modelo_salida=EncargoOut
+        db,
+        enc.Encargo,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        modelo_salida=EncargoOut,
+        contar=contar,
     )
 
 

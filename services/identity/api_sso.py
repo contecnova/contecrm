@@ -14,7 +14,7 @@ from uuid import UUID
 from crmcore.errors import Conflicto, ErrorValidacion, NoAutenticado, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha  # noqa: E402
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -332,6 +332,7 @@ def listar(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(ProveedorIdentidad)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -354,6 +355,7 @@ def listar(
         cursor=cursor,
         orden="nombre",
         fila_a_dict=_salida,
+        contar=contar,
     )
 
 

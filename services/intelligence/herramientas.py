@@ -158,6 +158,9 @@ _COMO_SE_FILTRA = (
     "`__vacio=true`, `__no_vacio=true`. **Para saber por qué campos**, usa la "
     "herramienta de filtros de este servicio antes de traerte la lista entera: "
     "filtrar contesta de una lo que mirando fila a fila sale cortado."
+    " · **Para contar, `?contar=true`**: devuelve `total_aprox` con los filtros "
+    "puestos, sin traerse las filas. Contar paginando da el número de la "
+    "primera página y lo cuenta como si fuera el total."
 )
 
 

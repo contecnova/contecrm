@@ -22,9 +22,11 @@ from crmcore.http.deps import (
 )
 from crmcore.http.listados import aplicar_filtros_de_la_url, proyectar_con_esquema
 from crmcore.http.pagination import (
+    CONTAR_TOTAL_DESCRIPCION,
     PaginaDeListado,
     ParametrosPagina,
     construir_pagina,
+    contar_consulta,
     paginar_consulta,
 )
 from crmcore.http.parametros import admite_parametros_abiertos
@@ -126,6 +128,7 @@ def listar_tenants(
     principal: PlataformaDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     estado: str = Query("", description="Filtra por estado"),
     slug: str = Query("", description="Busca por identificador corto, entero o por partes"),
     q: str = Query("", description="Busca en el nombre"),
@@ -151,13 +154,18 @@ def listar_tenants(
     consulta = aplicar_filtros_de_la_url(
         request, Tenant, consulta, principal=principal, db=db, objeto="tenant"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta, Tenant, params, columnas_permitidas={"created_at", "slug", "nombre"}
     )
     # Se pide uno más de los que se van a devolver: esa fila de sobra es cómo se
     # sabe si hay página siguiente sin un `count` que recorra la tabla.
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     # Por la proyección, igual que la ficha: un listado que serializa con el
     # esquema de salida se salta el enmascaramiento por rol, y entonces enseña
     # lo que la ficha de la misma fila tapa.
@@ -234,6 +242,7 @@ def listar_planes(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Plan).where(Plan.activo.is_(True))
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -244,7 +253,14 @@ def listar_planes(
         request, Plan, consulta, principal=principal, db=db, objeto="plan"
     )
     return paginar_consulta(
-        db, Plan, consulta, limite=limite, cursor=cursor, orden="codigo", modelo_salida=PlanOut
+        db,
+        Plan,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        orden="codigo",
+        modelo_salida=PlanOut,
+        contar=contar,
     )
 
 

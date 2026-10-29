@@ -8,7 +8,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
@@ -266,6 +266,7 @@ def listar(
     cuenta_id: UUID | None = Query(None),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Caso).where(Caso.tenant_id == principal.tenant_id, Caso.deleted_at.is_(None))
     if estado:
@@ -300,6 +301,7 @@ def listar(
             ),
             "incumplio_resolucion": f.incumplio_resolucion,
         },
+        contar=contar,
     )
 
 

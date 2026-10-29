@@ -21,7 +21,7 @@ from crmcore.http.deps import (
     UowDep,
     exige_permiso,
 )
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -90,6 +90,7 @@ def listar_plantillas(
     idioma: str | None = Query(None),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Plantilla)
     if tipo:
@@ -111,6 +112,7 @@ def listar_plantillas(
         cursor=cursor,
         orden="clave",
         modelo_salida=PlantillaOut,
+        contar=contar,
     )
 
 
@@ -237,6 +239,7 @@ def listar_calendarios(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(CalendarioLaboral)
     # Y los filtros comunes, con sus rangos. Estar escrito a mano no es motivo
@@ -259,6 +262,7 @@ def listar_calendarios(
         cursor=cursor,
         orden="clave",
         modelo_salida=CalendarioOut,
+        contar=contar,
     )
 
 

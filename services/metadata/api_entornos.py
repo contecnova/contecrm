@@ -73,13 +73,20 @@ class VolverIn(BaseModel):
     ),
 )
 def listar_entornos() -> Any:
+    # `total_aprox` sin pedirlo, y es el único listado que lo hace: en los
+    # demás contarlo cuesta un recorrido de la tabla y por eso va detrás de
+    # `?contar=true`. Aquí la lista está entera en memoria, así que el número
+    # ya se sabe — y esconderlo detrás de un parámetro sería pedir permiso
+    # para algo que no cuesta nada.
+    entornos = [
+        {"nombre": nombre, "orden": i, "es_produccion": nombre == "produccion"}
+        for i, nombre in enumerate(ENTORNOS)
+    ]
     return {
-        "items": [
-            {"nombre": nombre, "orden": i, "es_produccion": nombre == "produccion"}
-            for i, nombre in enumerate(ENTORNOS)
-        ],
+        "items": entornos,
         "siguiente": None,
         "hay_mas": False,
+        "total_aprox": len(entornos),
     }
 
 

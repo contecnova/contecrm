@@ -2116,9 +2116,58 @@ el servidor contesta 422 **con la lista de los que valen**, que es una respuesta
 que enseña; descartarlo en silencio era un acierto que mentía.
 
 Medido después: «hay contactos sin teléfono» → pregunta los filtros, usa
-`telefono__vacio` y contesta. Y a «cuántas cuentas no tienen web» dice que puede
-listarlas pero no contarlas, porque el listado no devuelve total — que es cierto
-y es el siguiente hueco.
+`telefono__vacio` y contesta.
+
+### 4.6.12 El campo que se publicaba y no llegaba nunca: `total_aprox`
+
+El hueco lo destapó la misma conversación: a «cuántas cuentas no tienen web» el
+asistente contestó que puede listarlas pero no contarlas. Y tenía razón.
+
+`total_aprox` está **en el contrato de toda página** del CRM —en `Pagina` y en
+`PaginaDeListado`—, así que un cliente generado del OpenAPI lo espera y una
+pantalla puede pintarlo. **No lo rellenaba ninguna de las treinta y tres rutas
+de listado**: llegaba siempre `null`. Un campo que se declara y no llega es peor
+que uno que falta, porque quien integra lo da por disponible y descubre que no
+cuando ya ha escrito la pantalla.
+
+Ahora se pide: `?contar=true`.
+
+```
+GET /api/v1/accounts?estado=activa&contar=true
+  → { "items": [...], "siguiente": "...", "hay_mas": true, "total_aprox": 412 }
+```
+
+**Por qué detrás de un parámetro y no siempre.** Un recuento exacto cuesta un
+recorrido completo de la tabla, y casi nadie necesita el número: necesita saber
+si hay más, y eso ya lo dice `hay_mas` sin coste, que es para lo que se pide una
+fila de más. Hacerlo de oficio sería cobrarle ese recorrido a cada listado de
+cada pantalla por un número que casi nadie mira.
+
+Tres detalles que parecen pequeños y no lo son:
+
+- **Se cuenta sobre la consulta ya filtrada**, con la compartición y los
+  permisos aplicados. Contar sobre la tabla diría cuántas hay, no cuántas ve
+  quien pregunta: otro número, y además una filtración.
+- **Se cuenta antes del cursor, no después.** Con el cursor puesto, el recuento
+  dice cuántas quedan de aquí en adelante. En la primera página coincide con el
+  total y parece correcto; en la segunda ya miente, y nadie vuelve a mirar la
+  primera. Hay prueba, y se validó plantando justamente ese fallo.
+- **`paginar_consulta` era el peor de los tres caminos.** Contaba y luego armaba
+  el diccionario de respuesta a mano, sin `total_aprox`: pagaba el recorrido
+  completo y tiraba el número en la puerta.
+
+Lo tienen los tres caminos por los que este sistema sirve una página —la
+fábrica, `paginar_consulta` y los siete listados que arman su propia consulta—,
+y un gate sobre la aplicación construida exige que el listado número treinta y
+cuatro nazca sabiendo contar. La única excepción es `GET /entornos`, que no lee
+una tabla: devuelve una lista cerrada en memoria y da el total **siempre**,
+porque ahí no cuesta nada.
+
+De paso cayó un vecino: `total` figuraba como «parámetro que no es un filtro» y
+no lo implementaba nadie. Hay cuatro modelos con columna `total` —cotización,
+pedido, presupuesto, cálculo de comisión—, así que `?total=1000` se descartaba
+en silencio y el listado devolvía todas las filas con cara de estar filtrado.
+Esa reserva muerta ya no está.
 
 ### 4.7 CDC hacia el lago del cliente
 

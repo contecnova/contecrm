@@ -260,11 +260,47 @@ def aplicar_orden_y_cursor(
     return consulta.where(or_(*condiciones))
 
 
+# El texto del parámetro `?contar=true`, en un sitio. Son ocho listados los que
+# lo ofrecen —uno por la fábrica y siete escritos a mano— y la misma explicación
+# copiada ocho veces se queda vieja en siete en cuanto alguien la mejore en una.
+CONTAR_TOTAL_DESCRIPCION = (
+    "Devolver también `total_aprox`: cuántas hay en total con estos filtros. "
+    "**Sólo si se pide**, porque contarlas cuesta un recorrido completo de la "
+    "tabla y casi nadie necesita el número — necesita saber si hay más, y eso "
+    "ya lo dice `hay_mas` sin coste. Se cuenta lo que ve quien pregunta, no lo "
+    "que hay en la tabla."
+)
+
+
+def contar_consulta(db: Any, consulta: Any) -> int:
+    """Cuántas filas devolvería esta consulta, sin traerlas.
+
+    **Sólo cuando alguien lo pide.** Contar exacto en una tabla grande cuesta
+    un recorrido completo, y casi nadie necesita el número: necesita saber si
+    hay más, que ya lo dice el cursor pidiendo una fila de más.
+
+    Pero cuando SÍ hace falta, no había forma. `total_aprox` estaba declarado
+    en el contrato de toda página —así que un cliente generado del OpenAPI lo
+    esperaba— y **no lo rellenaba nadie**: un campo publicado que nunca llega.
+    Medido el 29-10-2026 preguntándole al asistente «cuántas cuentas no tienen
+    web»: supo listarlas y no pudo contarlas, porque la API no lo ofrece.
+
+    Se cuenta sobre la consulta YA FILTRADA, con sus permisos y su compartición
+    aplicados: un total que no pase por lo mismo que la página diría cuántas
+    hay en la tabla y no cuántas ve quien pregunta, que es un número distinto y
+    además una filtración.
+    """
+    from sqlalchemy import func, select
+
+    return int(db.execute(select(func.count()).select_from(consulta.subquery())).scalar() or 0)
+
+
 def construir_pagina(
     filas: list[Any],
     params: ParametrosPagina,
     *,
     campos_orden: list[str],
+    total_aprox: int | None = None,
 ) -> Pagina:
     """Recorta al tamaño pedido y calcula el cursor siguiente.
 
@@ -272,6 +308,8 @@ def construir_pagina(
     es cómo se sabe si hay página siguiente sin hacer una segunda consulta ni un
     `count`.
     """
+    # `total_aprox` lo calcula quien llama —tiene la consulta— y se pasa aquí
+    # para que la página lo lleve. Ver `contar_consulta`.
     hay_mas = len(filas) > params.limite
     items = filas[: params.limite]
     siguiente = None
@@ -282,7 +320,7 @@ def construir_pagina(
             id=str(ultima.id),
             orden=params.orden,
         ).codificar()
-    return Pagina(items=items, siguiente=siguiente)
+    return Pagina(items=items, siguiente=siguiente, total_aprox=total_aprox)
 
 
 def paginar_consulta(
@@ -295,6 +333,7 @@ def paginar_consulta(
     orden: str = "-created_at",
     fila_a_dict: Callable[[Any], dict[str, Any]] | None = None,
     modelo_salida: type | None = None,
+    contar: bool = False,
 ) -> dict[str, Any]:
     """Convierte una consulta ya filtrada en una PÁGINA con cursor.
 
@@ -324,6 +363,15 @@ def paginar_consulta(
     exponía, que es lo que no se nota.
     """
     params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden=orden)
+    # El total sólo si se pide: contarlo cuesta un recorrido completo y casi
+    # nadie lo necesita. Pero `total_aprox` está en el contrato de toda página,
+    # así que cuando hace falta tiene que poder llegar — y antes no llegaba
+    # nunca.
+    #
+    # **Se cuenta ANTES del cursor, no después.** El cursor añade un «y de aquí
+    # en adelante»: contar con él puesto daría cuántas quedan desde esta
+    # página, un número que encoge según avanzas y que se lee como el total.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         modelo,
@@ -331,7 +379,7 @@ def paginar_consulta(
         columnas_permitidas={orden.lstrip("-+")},
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=[orden])
+    pagina = construir_pagina(filas, params, campos_orden=[orden], total_aprox=total)
     if fila_a_dict is None and modelo_salida is not None:
 
         def fila_a_dict(fila: Any) -> dict[str, Any]:
@@ -342,8 +390,7 @@ def paginar_consulta(
             "paginar_consulta necesita `fila_a_dict` o `modelo_salida`: una "
             "página lleva diccionarios, no filas del ORM."
         )
-    return {
-        "items": [fila_a_dict(f) for f in pagina.items],
-        "siguiente": pagina.siguiente,
-        "hay_mas": pagina.siguiente is not None,
-    }
+    # Por `a_dict` y no a mano: el diccionario escrito aquí se olvidaba de
+    # `total_aprox`, así que pedirlo hacía el recorrido completo de la tabla y
+    # tiraba el número en la puerta. Un campo que se calcula y no se devuelve.
+    return pagina.a_dict(fila_a_dict)

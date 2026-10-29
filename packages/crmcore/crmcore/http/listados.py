@@ -37,10 +37,12 @@ from crmcore.datos import rollups as rollups_mod
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso, proyectar_para
 from crmcore.http.etag import comprobar_if_match, comprobar_if_none_match
 from crmcore.http.pagination import (
+    CONTAR_TOTAL_DESCRIPCION,
     PaginaDeListado,
     ParametrosPagina,
     aplicar_orden_y_cursor,
     construir_pagina,
+    contar_consulta,
 )
 from crmcore.http.parametros import admite_parametros_abiertos
 
@@ -48,7 +50,13 @@ from crmcore.http.parametros import admite_parametros_abiertos
 # Los que gobiernan la FORMA de la respuesta, no qué filas salen. Un parámetro
 # que no está aquí y no es columna se rechaza con un 422 a propósito: un filtro
 # que no filtra devuelve filas de más y parece correcto.
-_NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "total", "formato"})
+#
+# `total` **estuvo aquí y no lo implementaba nadie**: una reserva muerta. Y hay
+# cuatro modelos con columna `total` —cotización, pedido, presupuesto, cálculo
+# de comisión—, así que `?total=1000` se descartaba en silencio y el listado
+# devolvía todas las filas con cara de estar filtrado. El parámetro que cuenta
+# se llama `contar`, que además dice lo que hace.
+_NO_SON_FILTROS = frozenset({"limite", "cursor", "orden", "campos", "contar", "formato"})
 
 # ── Operadores de filtro, en la URL ───────────────────────────────────────
 #
@@ -427,6 +435,7 @@ def montar_listado(
         principal: AutenticadoDep,
         limite: int = Query(50, ge=1, le=200),
         cursor: str = Query(""),
+        contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     ) -> Any:
         params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden=orden)
         consulta = select(modelo)
@@ -439,6 +448,11 @@ def montar_listado(
             # Lo borrado no se lista. Sigue estando —el borrado es lógico— pero
             # devolverlo haría que una papelera se pareciera a un listado.
             consulta = consulta.where(modelo.deleted_at.is_(None))
+        # El total se cuenta sobre la consulta ya filtrada y **antes del
+        # cursor**: el cursor añade un «y de aquí en adelante», así que
+        # contarlo después daría cuántas quedan desde esta página —un número
+        # que encoge según avanzas y que se lee como el total.
+        total = contar_consulta(db, consulta) if contar else None
         consulta = aplicar_orden_y_cursor(
             consulta,
             modelo,
@@ -451,7 +465,7 @@ def montar_listado(
         # Una fila de más: es cómo se sabe si hay página siguiente sin un
         # `count` que recorra la tabla entera.
         filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-        pagina = construir_pagina(filas, params, campos_orden=[orden])
+        pagina = construir_pagina(filas, params, campos_orden=[orden], total_aprox=total)
         proyecta = proyectar_para(principal, db, objeto=objeto, modelo=modelo)
 
         # Los agregados sobre los hijos (CRM-00.04.01.04), calculados **de

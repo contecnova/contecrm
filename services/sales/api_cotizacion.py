@@ -10,7 +10,7 @@ from uuid import UUID
 
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso, montar_listado
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -112,6 +112,7 @@ def listar_productos(
     solo_activos: bool = Query(True),
     limite: int = Query(200, ge=1, le=1000),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(cat.Producto).where(cat.Producto.tenant_id == principal.tenant_id)
     if familia:
@@ -133,6 +134,7 @@ def listar_productos(
         cursor=cursor,
         orden="sku",
         modelo_salida=ProductoOut,
+        contar=contar,
     )
 
 

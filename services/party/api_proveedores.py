@@ -20,7 +20,7 @@ from crmcore.http.deps import (
     proyectar_para,
 )
 from crmcore.http.listados import aplicar_filtros_de_la_url, declarar_recurso
-from crmcore.http.pagination import PaginaDeListado
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.portal_deps import PortalDep, exige_seccion_portal
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -492,11 +492,13 @@ def listar_proveedores(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     from crmcore.http.pagination import (
         ParametrosPagina,
         aplicar_orden_y_cursor,
         construir_pagina,
+        contar_consulta,
     )
     from sqlalchemy import select
 
@@ -514,6 +516,11 @@ def listar_proveedores(
     consulta = aplicar_filtros_de_la_url(
         request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Cuenta,
@@ -524,7 +531,7 @@ def listar_proveedores(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     proyecta = proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta)
     return pagina.a_dict(proyecta)
 

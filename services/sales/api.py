@@ -17,10 +17,12 @@ from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.documental_router import crear_router_documental
 from crmcore.http.listados import aplicar_filtros_de_la_url
 from crmcore.http.pagination import (
+    CONTAR_TOTAL_DESCRIPCION,
     PaginaDeListado,
     ParametrosPagina,
     aplicar_orden_y_cursor,
     construir_pagina,
+    contar_consulta,
     paginar_consulta,
 )
 from crmcore.http.parametros import admite_parametros_abiertos
@@ -93,6 +95,7 @@ def listar_leads(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     estado: str = Query(""),
     mios: bool = Query(False),
     sla_en_riesgo: bool = Query(False, description="Sin responder y con el SLA vencido o cerca"),
@@ -127,6 +130,11 @@ def listar_leads(
     consulta = aplicar_filtros_de_la_url(
         request, Lead, consulta, principal=principal, db=db, objeto="lead"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Lead,
@@ -137,7 +145,7 @@ def listar_leads(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     return pagina.a_dict(
         proyectar_con_esquema(proyectar_para(principal, db, objeto="lead", modelo=Lead), LeadOut)
     )
@@ -277,6 +285,7 @@ def listar_pipelines(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     def con_etapas(pipeline: Any) -> dict[str, Any]:
         # Las etapas se piden por pipeline y no de una vez: son pocas por
@@ -314,6 +323,7 @@ def listar_pipelines(
         cursor=cursor,
         orden="nombre",
         fila_a_dict=con_etapas,
+        contar=contar,
     )
 
 
@@ -406,6 +416,7 @@ def listar_oportunidades(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     estado: str = Query("abierta"),
     cuenta_id: UUID | None = Query(None),
     mias: bool = Query(False),
@@ -434,6 +445,11 @@ def listar_oportunidades(
     consulta = aplicar_filtros_de_la_url(
         request, Oportunidad, consulta, principal=principal, db=db, objeto="oportunidad"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Oportunidad,
@@ -444,7 +460,7 @@ def listar_oportunidades(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     nombres_pipeline, nombres_etapa = _nombres_de_etapa(db, filas)
     # POR LA PROYECCIÓN, igual que la ficha. Serializar con el esquema de salida
     # se saltaba el enmascaramiento por rol: la ficha tapaba el importe y el

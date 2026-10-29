@@ -10,7 +10,7 @@ from crmcore.audit.chain import registrar
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url, montar_ficha  # noqa: E402
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
@@ -166,6 +166,7 @@ def listar(
     solo_activas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Automatizacion).where(Automatizacion.tenant_id == principal.tenant_id)
     if objetivo:
@@ -189,6 +190,7 @@ def listar(
         cursor=cursor,
         orden="prioridad",
         modelo_salida=AutomatizacionOut,
+        contar=contar,
     )
 
 

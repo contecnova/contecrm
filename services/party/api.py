@@ -21,10 +21,12 @@ from crmcore.http.deps import (
 )
 from crmcore.http.documental_router import crear_router_documental
 from crmcore.http.pagination import (
+    CONTAR_TOTAL_DESCRIPCION,
     PaginaDeListado,
     ParametrosPagina,
     aplicar_orden_y_cursor,
     construir_pagina,
+    contar_consulta,
     paginar_consulta,
 )
 from crmcore.http.retencion_router import crear_router_retencion
@@ -147,6 +149,7 @@ def listar_cuentas(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     orden: str = Query("-created_at"),
     buscar: str = Query("", description="Busca en nombre y nombre comercial"),
     estado: str = Query(""),
@@ -190,6 +193,11 @@ def listar_cuentas(
     consulta = aplicar_filtros_de_la_url(
         request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Cuenta,
@@ -200,7 +208,7 @@ def listar_cuentas(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=[orden])
+    pagina = construir_pagina(filas, params, campos_orden=[orden], total_aprox=total)
     # POR LA PROYECCIÓN. Serializar con el esquema de salida se saltaba el
     # enmascaramiento por rol: la ficha tapaba el teléfono y el listado de la
     # misma fila lo enseñaba. No daba ningún error — enseñaba el dato.
@@ -245,6 +253,7 @@ def cuentas_sin_contacto(
     dias: int = Query(0, ge=0, le=3650, description="0 = el del ajuste del tenant"),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     from datetime import timedelta
 
@@ -284,6 +293,11 @@ def cuentas_sin_contacto(
     consulta = aplicar_filtros_de_la_url(
         request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Cuenta,
@@ -294,7 +308,7 @@ def cuentas_sin_contacto(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     return pagina.a_dict(
         con_rollups(
             db,
@@ -716,6 +730,7 @@ def listar_contactos(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
     buscar: str = Query(""),
     cuenta_id: UUID | None = Query(None),
 ) -> Any:
@@ -749,6 +764,11 @@ def listar_contactos(
     consulta = aplicar_filtros_de_la_url(
         request, Contacto, consulta, principal=principal, db=db, objeto="contacto"
     )
+    # El total sólo si se pide, y **antes del cursor**: con el cursor puesto
+    # contaría cuántas quedan desde esta página, que encoge al avanzar y se
+    # lee como el total. Sale de la consulta ya acotada por compartición y
+    # filtros: es cuántas ve quien pregunta, no cuántas hay en la tabla.
+    total = contar_consulta(db, consulta) if contar else None
     consulta = aplicar_orden_y_cursor(
         consulta,
         Contacto,
@@ -759,7 +779,7 @@ def listar_contactos(
         db=db,
     )
     filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
-    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"], total_aprox=total)
     return pagina.a_dict(
         proyectar_con_esquema(
             proyectar_para(principal, db, objeto="contacto", modelo=Contacto), ContactoOut
@@ -1003,6 +1023,7 @@ def listar_actividades(
     vencidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Actividad).where(Actividad.deleted_at.is_(None))
     if cuenta_id is not None:
@@ -1041,6 +1062,7 @@ def listar_actividades(
         cursor=cursor,
         orden="vence_at",
         modelo_salida=ActividadOut,
+        contar=contar,
     )
 
 
@@ -1107,6 +1129,7 @@ def listar_solicitudes(
     estado: str = Query(""),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(SolicitudDerechos)
     if estado:
@@ -1133,6 +1156,7 @@ def listar_solicitudes(
         cursor=cursor,
         orden="vence_at",
         fila_a_dict=_solicitud_out,
+        contar=contar,
     )
 
 

@@ -20,7 +20,7 @@ from crmcore.authz.politicas import politica_por_dimension
 from crmcore.authz.proyeccion import fijar_politica_campo
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import aplicar_filtros_de_la_url
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.http.parametros import admite_parametros_abiertos
 from crmcore.http.reverificacion import dependencia as exige_reverificacion
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -93,6 +93,7 @@ def listar_politicas(
     principal: AutenticadoDep,
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     from crmcore.authz.politicas import PoliticaAbac, a_dict
 
@@ -114,6 +115,7 @@ def listar_politicas(
         cursor=cursor,
         orden="prioridad",
         fila_a_dict=a_dict,
+        contar=contar,
     )
 
 

@@ -34,7 +34,7 @@ from crmcore.datos.seguimiento import (
 from crmcore.errors import ErrorValidacion
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
 from crmcore.http.listados import declarar_recurso, montar_ficha  # noqa: E402
-from crmcore.http.pagination import PaginaDeListado, paginar_consulta
+from crmcore.http.pagination import CONTAR_TOTAL_DESCRIPCION, PaginaDeListado, paginar_consulta
 from crmcore.logging import get_logger
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
@@ -387,12 +387,19 @@ def mis_seguimientos(
     objeto_tipo: str | None = Query(None),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Seguimiento).where(Seguimiento.usuario_id == principal.id)
     if objeto_tipo:
         consulta = consulta.where(Seguimiento.objeto_tipo == objeto_tipo)
     return paginar_consulta(
-        db, Seguimiento, consulta, limite=limite, cursor=cursor, modelo_salida=SeguimientoOut
+        db,
+        Seguimiento,
+        consulta,
+        limite=limite,
+        cursor=cursor,
+        modelo_salida=SeguimientoOut,
+        contar=contar,
     )
 
 
@@ -487,6 +494,7 @@ def mi_bandeja(
     solo_no_leidas: bool = Query(False),
     limite: int = Query(50, ge=1, le=200),
     cursor: str = Query(""),
+    contar: bool = Query(False, description=CONTAR_TOTAL_DESCRIPCION),
 ) -> Any:
     consulta = select(Notificacion).where(
         Notificacion.tenant_id == principal.tenant_id,
@@ -501,6 +509,7 @@ def mi_bandeja(
         limite=limite,
         cursor=cursor,
         fila_a_dict=_salida,
+        contar=contar,
     )
 
 
