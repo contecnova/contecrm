@@ -404,3 +404,64 @@ def test_una_replica_vacia_no_es_lo_mismo_que_nadie_con_subordinados(
     salida = frescura(db, tenant_id)
     assert salida["vacia"] is True
     assert "no ha llegado ningún cambio" in salida["que_significa"]
+
+
+def test_clonar_a_una_demo_dice_que_hace_con_los_datos_personales(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """**El clonado no anonimizaba, y el plan no lo decía.**
+
+    El módulo de sandboxes tiene desde el principio el plan de copia
+    anonimizada —con su regla por tipo de dato y su «tal cual» que hay que
+    pedir y explicar— y **no lo llamaba nadie**. El clonado es el único sitio
+    del producto donde los datos salen a un entorno que no es producción, y se
+    podía clonar a «demo» con los contactos de clientes reales dentro sin que
+    el plan lo mencionara.
+
+    A un entorno de pruebas entran el consultor externo, el becario y el
+    proveedor que está integrando algo. Allí no hay ni el mismo cifrado ni el
+    mismo control de acceso.
+    """
+    salida = cv.simular_clonado(
+        uow,
+        origen_id=uow.tenant_id,
+        uso="demo",
+        bloques=["configuracion", "datos"],
+    )
+    texto = " ".join(salida["avisos"]).lower()
+    assert (
+        "anonimiz" in texto or "personal" in texto
+    ), "el plan no dice nada de lo que hace con los datos de personas reales"
+
+
+def test_copiar_sin_anonimizar_queda_escrito(uow: UnidadDeTrabajo) -> None:
+    """Se puede, y por eso hay que decirlo: lo que no vale es que pase en
+    silencio. El aviso nombra **qué bloques** viajan con el dato real, porque
+    «se copia sin anonimizar» sin decir el qué no se puede revisar."""
+    salida = cv.simular_clonado(
+        uow,
+        origen_id=uow.tenant_id,
+        uso="formacion",
+        bloques=["datos", "actividad"],
+        anonimizar=False,
+        motivo_sin_anonimizar="Reproducir una incidencia del cliente con sus datos.",
+        # Con nombre: el producto lo exige, y hace bien. Una decisión así sin
+        # dueño es la que nadie recuerda haber tomado.
+        pedido_por=uuid4(),
+    )
+    texto = " ".join(salida["avisos"])
+    assert "datos" in texto and "actividad" in texto
+    assert "personas reales" in texto
+
+
+def test_a_preproduccion_no_se_avisa_de_lo_mismo(uow: UnidadDeTrabajo) -> None:
+    """Preproducción es el caso en que la copia fiel **es el objetivo**: se
+    prueba una migración contra los datos que van a migrar. Avisar ahí sería
+    ruido, y el ruido es lo que hace que nadie lea los avisos de verdad."""
+    salida = cv.simular_clonado(
+        uow,
+        origen_id=uow.tenant_id,
+        uso="preproduccion",
+        bloques=["datos"],
+    )
+    assert not any("personas reales" in a for a in salida["avisos"])

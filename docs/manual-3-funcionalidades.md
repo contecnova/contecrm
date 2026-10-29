@@ -11552,6 +11552,29 @@ entonces el comercial que la vende depende de una versión.
   sandbox.
 - **Un clon incompleto no se da por bueno**: se comparan los recuentos y, si no
   cuadran, la operación queda fallida.
+- **Y dice qué hace con los datos de personas reales** (`CRM-00.05.03.05`). Los
+  bloques «datos», «actividad» y «usuarios» llevan cuentas, contactos, casos y
+  el historial de lo que se habló con cada uno. Por defecto **se anonimizan**:
+  copiarlos tal cual se puede, pero hay que pedirlo, explicarlo y queda escrito
+  quién lo pidió. A un entorno que no es producción entran el consultor
+  externo, el becario y el proveedor que está integrando algo, y allí no hay ni
+  el mismo cifrado ni el mismo control de acceso — la mayoría de las
+  filtraciones de un CRM no salen de producción, salen de una copia.
+
+  El plan lo dice **también cuando sí se anonimiza**, y eso no es redundante:
+  quien lee un plan de clonado y no ve mencionados los datos personales no
+  concluye que van protegidos, concluye que nadie lo ha mirado.
+
+  A **preproducción** no se le avisa de esto, porque ahí la copia fiel *es* el
+  objetivo: se prueba una migración contra los datos que van a migrar. Avisar
+  también ahí sería ruido, y el ruido es lo que hace que nadie lea los avisos
+  que importan.
+
+  Hasta el 29-10-2026 nada de esto pasaba. El plan de copia anonimizada estaba
+  escrito desde el principio —con su regla por tipo de dato y su «tal cual» que
+  hay que pedir y explicar— y **no lo llamaba nadie**: el clonado, que es el
+  único sitio del producto por donde los datos salen a un entorno que no es
+  producción, no lo usaba.
 
 ### Fusión y escisión (`CRM-00.01.03.06`)
 

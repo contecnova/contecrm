@@ -59,6 +59,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from services.tenancy import sandboxes
+
 logger = get_logger(__name__)
 
 # Para qué se clona. El uso decide qué se copia: una demo no necesita el
@@ -75,6 +77,28 @@ BLOQUES = (
     "usuarios",  # personas y sus permisos
     "integraciones",  # conexiones y credenciales
 )
+
+# Los bloques que llevan **datos de personas reales**. Copiarlos a un entorno
+# que no es producción es la decisión que más caro sale de todas las de este
+# módulo: a pruebas entran el consultor externo, el becario y el proveedor que
+# está integrando algo, y allí no hay ni el mismo cifrado ni el mismo control
+# de acceso.
+#
+# Se declara aquí y no se deduce del nombre: «datos» y «actividad» suenan
+# técnicos y son cuentas, contactos, casos y el historial de lo que se habló
+# con cada uno.
+BLOQUES_CON_DATO_PERSONAL = ("datos", "actividad", "usuarios")
+
+# Para qué se usa un clon, dicho con las palabras del módulo de sandboxes. Son
+# dos vocabularios del mismo producto —aquí «demo» y «formacion», allí
+# «pruebas» y «formacion»— y se traducen en un sitio en vez de renombrarse:
+# cada lado usa la palabra con la que se habla de ello.
+PROPOSITO_POR_USO = {
+    "demo": "pruebas",
+    "sandbox": "desarrollo",
+    "formacion": "formacion",
+    "preproduccion": "migracion",
+}
 
 # Lo que NUNCA se copia, con el motivo. No es una lista de exclusiones técnicas:
 # es la diferencia entre un sandbox y un incidente.
@@ -330,6 +354,15 @@ def simular_clonado(
     origen_id: UUID,
     uso: str,
     bloques: list[str],
+    # Por defecto **se anonimiza**. Lo contrario sería una casilla marcada que
+    # nadie mira, y a un entorno de pruebas entran el consultor externo, el
+    # becario y el proveedor que está integrando algo.
+    anonimizar: bool = True,
+    motivo_sin_anonimizar: str = "",
+    porcentaje: int = 100,
+    # Quién lo pide. Copiar sin anonimizar exige nombre: una decisión así sin
+    # dueño es la que nadie recuerda haber tomado.
+    pedido_por: UUID | None = None,
     recuentos: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Qué se llevaría el clon, y qué no se lleva nunca.
@@ -365,6 +398,35 @@ def simular_clonado(
         avisos.append(
             "Las integraciones se copian APAGADAS: un sandbox que sincroniza con "
             "el ERP de producción no es un sandbox."
+        )
+
+    # **Y lo que copia de personas, que es lo que no se decía.** El módulo de
+    # sandboxes tiene desde el principio el plan de copia anonimizada —con su
+    # regla por tipo de dato y su «tal cual» que hay que pedir y explicar— y
+    # **no lo llamaba nadie**: el clonado, que es el único sitio del producto
+    # donde los datos salen a un entorno que no es producción, no lo usaba. Se
+    # podía clonar a «demo» con los contactos de clientes reales dentro y el
+    # plan no lo mencionaba.
+    personales = [b for b in bloques if b in BLOQUES_CON_DATO_PERSONAL]
+    if personales and uso != "preproduccion":
+        plan_datos = sandboxes.plan_de_copia(
+            proposito=PROPOSITO_POR_USO.get(uso, "pruebas"),
+            porcentaje=porcentaje,
+            anonimizar=anonimizar,
+            motivo_sin_anonimizar=motivo_sin_anonimizar,
+            pedido_por=pedido_por,
+        )
+        avisos.extend(plan_datos.get("avisos", []))
+        # **También cuando sí se anonimiza.** El silencio no tranquiliza: quien
+        # lee un plan de clonado y no ve mencionados los datos personales no
+        # concluye que van protegidos, concluye que nadie lo ha mirado.
+        avisos.append(
+            f"Los bloques {', '.join(personales)} llevan datos de personas "
+            + (
+                "reales y viajan ANONIMIZADOS."
+                if anonimizar
+                else "reales y viajan TAL CUAL. Queda escrito quién lo pidió y por qué."
+            )
         )
 
     fila = OperacionTenant(

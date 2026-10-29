@@ -32,6 +32,15 @@ class ClonadoIn(BaseModel):
     uso: str = Field(..., examples=["formacion"])
     bloques: list[str] = Field(default_factory=list)
     recuentos: dict[str, int] | None = None
+    # **Por defecto se anonimiza.** Lo contrario sería una casilla marcada que
+    # nadie mira, y a un entorno que no es producción entran el consultor
+    # externo, el becario y el proveedor que está integrando algo: allí no hay
+    # ni el mismo cifrado ni el mismo control de acceso.
+    anonimizar: bool = True
+    motivo_sin_anonimizar: str = ""
+    # Se recomienda copia parcial, y no por espacio: con el 5 % de los clientes
+    # se prueba igual de bien y hay veinte veces menos que proteger.
+    porcentaje: int = Field(100, ge=1, le=100)
 
 
 @router_ciclo.post(
@@ -50,6 +59,10 @@ def simular_clonado(cuerpo: ClonadoIn, uow: UowDep, principal: AutenticadoDep) -
         origen_id=cuerpo.origen_id,
         uso=cuerpo.uso,
         bloques=cuerpo.bloques,
+        anonimizar=cuerpo.anonimizar,
+        motivo_sin_anonimizar=cuerpo.motivo_sin_anonimizar,
+        porcentaje=cuerpo.porcentaje,
+        pedido_por=principal.id,
         recuentos=cuerpo.recuentos,
     )
 
