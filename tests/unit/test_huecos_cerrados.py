@@ -438,3 +438,36 @@ def test_los_perfiles_de_proveedor_se_alcanzan_desde_la_api() -> None:
         "PERFILES_SSO" in fuente
     ), "los perfiles no se alcanzan desde ninguna ruta: existen y no los ve nadie"
     assert "perfil_sso(" in fuente, "no hay forma de resolver un perfil con los ajustes encima"
+
+
+def test_si_un_factor_resiste_phishing_lo_sabe_el_servidor() -> None:
+    """Se lo preguntaba a quien llama, y quien llama no puede saberlo.
+
+    La fuerza de cada factor está declarada en `FUERZA`, en el servidor. Para
+    contestar «¿mi llave resiste phishing?» una pantalla tendría que copiarse
+    esa tabla — y dos copias de la misma tabla acaban diciendo cosas
+    distintas, con el agravante de que aquí la segunda decidiría **si se puede
+    quitar la contraseña**.
+
+    Consecuencia práctica: la cuenta estaba servida y la pantalla no podía
+    usarla sin inventarse la mitad de la entrada.
+    """
+    sin_decirlo = fac.puede_entrar_sin_contrasena(factor="webauthn", tiene_respaldo=True)
+    assert sin_decirlo["puede"] is True
+
+    debil = fac.puede_entrar_sin_contrasena(factor="sms", tiene_respaldo=True)
+    assert debil["puede"] is False
+    assert "no resiste phishing" in debil["porque"]
+
+    # Y la lista sale de `FUERZA`, no de una segunda lista escrita a mano.
+    assert fac.RESISTEN_PHISHING == frozenset(f for f, fuerza in fac.FUERZA.items() if fuerza >= 3)
+
+
+def test_se_puede_simular_un_factor_que_todavia_no_se_tiene() -> None:
+    """El único caso en que el servidor no puede deducirlo: «¿y si compro
+    llaves FIDO2?». Por eso el valor explícito se sigue admitiendo, y por eso
+    no se ha quitado el parámetro."""
+    salida = fac.puede_entrar_sin_contrasena(
+        factor="llave-que-aun-no-tenemos", resistente_a_phishing=True, tiene_respaldo=True
+    )
+    assert salida["puede"] is True

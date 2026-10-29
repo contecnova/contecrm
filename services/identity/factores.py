@@ -944,8 +944,20 @@ def cambio_de_dispositivo(*, tiene_respaldo: bool, factor_verificado: bool) -> d
     }
 
 
+# Los factores que están **atados al dominio**, que es lo que hace que una web
+# falsa no pueda usarlos aunque la persona pique. Sale de `FUERZA` y no de una
+# lista aparte: dos listas de lo mismo acaban diciendo cosas distintas, y aquí
+# la segunda decidiría si se puede quitar la contraseña.
+RESISTEN_PHISHING = frozenset(f for f, fuerza in FUERZA.items() if fuerza >= 3)
+
+
+def resiste_phishing(factor: str) -> bool:
+    """Si este factor está atado al dominio. **Lo sabe el servidor.**"""
+    return factor.strip().lower() in RESISTEN_PHISHING
+
+
 def puede_entrar_sin_contrasena(
-    *, factor: str, resistente_a_phishing: bool, tiene_respaldo: bool
+    *, factor: str, resistente_a_phishing: bool | None = None, tiene_respaldo: bool
 ) -> dict[str, Any]:
     """Si este factor vale como método **único** de entrada (CRM-00.05.01.23).
 
@@ -957,7 +969,17 @@ def puede_entrar_sin_contrasena(
 
     Y exige respaldo. Sin contraseña que valga de red, perder la llave deja a la
     persona fuera del todo.
+
+    **Si no se dice, la resistencia al phishing se deduce aquí.** Antes había
+    que pasarla, y eso era preguntarle al que llama algo que sabe el servidor:
+    la fuerza de cada factor está declarada en `FUERZA`. Una pantalla no puede
+    contestar «¿mi llave resiste phishing?» sin reimplementar esa tabla, así
+    que o la copiaba —y se separaban— o no podía usar esta cuenta. Se sigue
+    admitiendo el valor explícito para simular un factor que todavía no se
+    tiene, que es el único caso en el que el servidor no puede saberlo.
     """
+    if resistente_a_phishing is None:
+        resistente_a_phishing = resiste_phishing(factor)
     if not resistente_a_phishing:
         return {
             "puede": False,

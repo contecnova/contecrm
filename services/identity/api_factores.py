@@ -269,13 +269,23 @@ def cambio_de_dispositivo(
         "contraseña y se deja lo más débil de los dos: el SMS se intercepta y se "
         "pide por teléfono, y detrás ya no queda nada.\n\n"
         "Y exige respaldo, por lo mismo que el plan de inscripción: un método "
-        "único sin segunda vía es un único punto de fallo con otro nombre."
+        "único sin segunda vía es un único punto de fallo con otro nombre.\n\n"
+        "**Si no se dice si resiste phishing, se deduce del propio factor.** "
+        "Esa tabla la tiene el servidor; pedírsela a quien llama le obligaba a "
+        "copiarla, y dos copias de la misma tabla acaban diciendo cosas "
+        "distintas — aquí la segunda decidiría si se puede quitar la "
+        "contraseña. Se admite el valor explícito para simular un factor que "
+        "todavía no se tiene, que es el único caso en que el servidor no puede "
+        "saberlo."
     ),
 )
 def vale_como_unico(
     principal: AutenticadoDep,
-    factor: str = Query(..., min_length=1, examples=["passkey"]),
-    resistente_a_phishing: bool = Query(False),
+    factor: str = Query(..., min_length=1, examples=["webauthn"]),
+    # Sin decirlo, lo deduce el servidor de la fuerza declarada del factor.
+    # Pedirlo era preguntarle a la pantalla algo que ella no puede saber sin
+    # copiarse la tabla, y una tabla copiada se separa.
+    resistente_a_phishing: bool | None = Query(None),
     tiene_respaldo: bool = Query(False),
 ) -> Any:
     return factores.puede_entrar_sin_contrasena(

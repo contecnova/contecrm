@@ -11869,6 +11869,21 @@ por teléfono, y ya no hay nada detrás.
 Y exige respaldo, porque sin contraseña no hay red debajo: perder la llave deja a
 la persona fuera del todo.
 
+**Y quién decide si un factor resiste phishing es el servidor.** Hasta el
+29-10-2026 había que pasárselo: la ruta pedía `resistente_a_phishing` como
+dato de entrada. Eso es preguntarle a quien llama algo que sabe el servidor
+—la fuerza de cada factor está declarada en un solo sitio— y obligaba a
+cualquier pantalla a copiarse esa tabla para poder preguntar. Dos copias de la
+misma tabla acaban diciendo cosas distintas, y aquí la segunda decidiría si se
+puede quitar la contraseña. Ahora se deduce del factor; el valor explícito se
+sigue admitiendo para el único caso en que el servidor no puede saberlo:
+simular un factor que todavía no se tiene —«¿y si compramos llaves FIDO2?»—.
+
+En pantalla, la pregunta sale donde están **tus** factores: junto a cada uno,
+si valdría para entrar sin contraseña y por qué. El porqué va también cuando
+la respuesta es que sí, porque un «sí» a secas se lee como permiso y un «no» a
+secas como capricho.
+
 **Cómo funciona una passkey aquí.** El dispositivo guarda una pareja de claves y
 el navegador solo entrega la suya al dominio que la creó: por eso no se puede
 teclear en una página falsa, que es la diferencia de fondo con una contraseña.

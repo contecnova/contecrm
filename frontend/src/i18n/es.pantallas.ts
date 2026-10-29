@@ -522,6 +522,8 @@ const pantallas = {
     },
     mio: {
       titulo: "Tu segundo factor",
+      valeSolo: "Con «{{factor}}» podrías entrar sin contraseña.",
+      noValeSolo: "Con «{{factor}}» no se puede quitar la contraseña.",
       entradaDeHoy: "Has entrado con: {{factores}}",
       passkeys: "{{cuantas}} passkeys registradas",
       sensibles: "Te pedirán verificarte otra vez para",

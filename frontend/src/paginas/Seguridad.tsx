@@ -18,6 +18,17 @@
  * si todo lo demás significa algo. La respuesta se mide en cada carga; no hay
  * ningún visto bueno escrito a mano.
  *
+ * Y **si tu factor valdría para entrar sin contraseña**, junto a los factores
+ * que tienes, que es donde se hace esa pregunta. La cuenta la hace el
+ * servidor: él sabe cuál está atado al dominio. Antes había que pasarle
+ * «¿resiste phishing?», que es justo lo que la pantalla no puede contestar
+ * sin copiarse su tabla — y dos copias de esa tabla acabarían decidiendo
+ * distinto si se puede quitar la contraseña.
+ *
+ * **No declara `CRM-00.05.01.23`**, aunque la enseñe: esa capacidad es entrar
+ * sin contraseña y eso se hace en la pantalla de entrada, que ya la declara.
+ * Aquí se contesta «¿podría?», que es la pregunta previa y no la capacidad.
+ *
  * Y la tercera tanda, del mismo día: **quién ve qué, y por qué**
  * (CRM-00.05.02.02, CRM-00.05.02.03, CRM-00.05.02.05, CRM-00.05.02.08,
  * CRM-00.05.02.18, CRM-00.05.02.20, CRM-00.05.02.21). El explicador contestaba
@@ -368,6 +379,9 @@ function MiSegundoFactor() {
   const [sensibles, setSensibles] = useState<Operacion[] | null>(null);
   const [cambio, setCambio] = useState<Cambio | null>(null);
   const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
+  const [sinContrasena, setSinContrasena] = useState<
+    { factor: string; puede: boolean; porque: string }[]
+  >([]);
 
   useEffect(() => {
     const control = new AbortController();
@@ -375,7 +389,29 @@ function MiSegundoFactor() {
     // Cada una con su fallo: que no se pueda leer el plan no puede dejar sin
     // ver con qué se ha entrado.
     void llamar<Nivel>("/api/v1/factores/nivel", opciones)
-      .then((r) => setNivel(r.datos))
+      .then((r) => {
+        setNivel(r.datos);
+        // **Y si alguno de ellos valdría para entrar sin contraseña.** La
+        // cuenta la hace el servidor, que es quien sabe qué factor está atado
+        // al dominio; aquí sólo se le dicen los factores que esta persona
+        // tiene. Antes había que pasarle «¿resiste phishing?», que es
+        // justamente lo que la pantalla no puede saber sin copiarse su tabla.
+        for (const f of r.datos.factores ?? []) {
+          void llamar<{ puede: boolean; porque: string }>(
+            `/api/v1/factores/vale-como-unico?factor=${encodeURIComponent(f.factor)}&tiene_respaldo=${
+              (r.datos.factores ?? []).length > 1
+            }`,
+            opciones,
+          )
+            .then((v) =>
+              setSinContrasena((previo) => [
+                ...previo.filter((x) => x.factor !== f.factor),
+                { factor: f.factor, ...v.datos },
+              ]),
+            )
+            .catch(() => undefined);
+        }
+      })
       .catch(() => undefined);
     void llamar<Plan>("/api/v1/factores/plan-de-inscripcion", opciones)
       .then((r) => setPlan(r.datos))
@@ -409,6 +445,32 @@ function MiSegundoFactor() {
         >
           {plan.porque}
         </p>
+      ) : null}
+
+      {/* **Si alguno de tus factores valdría para entrar sin contraseña**
+          (CRM-00.05.01.23). Es la pregunta que se hace quien ya tiene passkey
+          y se cansa de escribir la contraseña, y la respuesta no es «sí» a
+          secas: hace falta que el factor esté atado al dominio —una web falsa
+          no puede usarlo— y que haya una segunda vía, porque sin contraseña
+          detrás, perder la llave deja a la persona fuera del todo.
+
+          La cuenta la hace el servidor, que es quien sabe qué factor resiste
+          phishing. Aquí sólo se le dicen los que esta persona tiene. */}
+      {sinContrasena.length ? (
+        <ul className="space-y-1" data-testid="sin-contrasena">
+          {sinContrasena.map((f) => (
+            <li key={f.factor} className="text-2xs">
+              <span className={f.puede ? "text-success" : "text-ink-muted"}>
+                {f.puede
+                  ? t("seguridad.mio.valeSolo", { factor: f.factor })
+                  : t("seguridad.mio.noValeSolo", { factor: f.factor })}
+              </span>
+              {/* El porqué siempre, también cuando la respuesta es que sí: sin
+                  él, un «sí» se lee como permiso y un «no» como capricho. */}
+              <span className="ml-1 text-ink-faint">{f.porque}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {/* Los pasos que faltan, con el porqué de cada uno: «inscribe un
