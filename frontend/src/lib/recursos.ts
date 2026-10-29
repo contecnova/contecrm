@@ -558,6 +558,19 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "integration",
         permiso: "integracion:read",
       },
+      // **Qué se ofertó y qué acabó costando** (CRM-09.02.01.10). El margen
+      // de una oferta es una previsión; el de verdad llega con la factura del
+      // proveedor, y casi nadie vuelve a mirarlo — por eso se descubre que un
+      // tipo de trabajo pierde dinero después de venderlo veinte veces. La
+      // cuenta existía como calculadora en analytics y no la podía alimentar
+      // nadie: quien la publicaba no tiene los encargos. Ahora la hace quien
+      // tiene el dato, y lo que no se ha facturado sale APARTADO.
+      {
+        nombre: "Coste real contra ofertado",
+        listar: "/api/v1/encargos/coste-real",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
       {
         nombre: "Encargos: cumplimiento por proveedor",
         listar: "/api/v1/encargos/cumplimiento",

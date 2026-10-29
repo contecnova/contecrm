@@ -19,6 +19,13 @@ península» cambia la próxima oferta.
 hace que estos informes mientan siempre en la misma dirección: los pedidos que
 todavía no han cerrado se cuentan por su coste previsto y bajan la desviación
 media justo cuando aún puede empeorar.
+
+**Vive en `crmcore` y no en un servicio porque no lee nada**: recibe los
+pedidos y devuelve la cuenta. Estuvo en `analytics`, que es donde se escribió,
+y ahí se quedó sin poder usarse — quien tiene los encargos es `integration`, y
+un servicio no lee la base de otro. Era una calculadora que publicaba su ruta
+y a la que **nadie podía alimentar**: la ofrecía justo quien no tenía los
+datos.
 """
 
 from __future__ import annotations

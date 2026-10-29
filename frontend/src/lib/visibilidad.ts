@@ -269,6 +269,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "p": "integracion:read"
     },
     {
+      "r": "/api/v1/encargos/coste-real",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/encargos/cumplimiento",
       "p": "integracion:read"
     },

@@ -706,3 +706,68 @@ def test_encargar_por_la_ruta_devuelve_el_encargo_entero(
     assert cuerpo["referencia_propia"], "un encargo sin referencia propia no se puede reclamar"
     # El plazo del proveedor, puesto solo: 48 horas en esta ficha.
     assert cuerpo["prometido_para"]
+
+
+@pytest.mark.db
+def test_el_coste_real_lo_cuenta_quien_tiene_los_encargos(
+    cliente_integracion: Any,
+    cabeceras_integracion: dict[str, str],
+    db: Any,
+    gls: Any,
+    contexto_tenant: UUID,
+) -> None:
+    """La cuenta existía y no la podía pedir nadie.
+
+    Vivía como calculadora en `analytics`: recibe los pedidos **en el cuerpo**
+    y devuelve el resultado. Quien la publicaba no tiene los encargos, y quien
+    los tiene no puede leer la base de otro servicio, así que la ruta estaba
+    servida y no había forma de alimentarla. Ahora la hace quien tiene el
+    dato, con la misma función, que vive en `crmcore` porque no lee nada.
+
+    **Por la ruta y no llamando a la función**, y no es un detalle de estilo:
+    el primer intento la llamó directamente y el parámetro opcional llegó como
+    el objeto `Query` de FastAPI en vez de como `None`. Un fallo que sólo
+    aparece por donde entra el producto.
+    """
+    uow = UnidadDeTrabajo(db=db, tenant_id=contexto_tenant)
+    cerrado = enc.crear(uow, proveedor="gls")
+    cerrado.coste_previsto = Decimal("100.00")
+    cerrado.coste_facturado = Decimal("130.00")
+    abierto = enc.crear(uow, proveedor="gls")
+    abierto.coste_previsto = Decimal("50.00")
+    db.commit()
+
+    r = cliente_integracion.get("/api/v1/encargos/coste-real", headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text
+    por_pedido = r.json()["por_pedido"]
+    assert por_pedido["medible"] is True
+    # Lo que aún no se ha facturado queda APARTADO, no contado como acertado
+    # por su coste previsto: contarlo es lo que hace que esta cuenta mienta
+    # siempre hacia el mismo lado.
+    assert por_pedido["pedidos_sin_coste_real"] == 1
+    assert r.json()["por_proveedor"]
+
+
+@pytest.mark.db
+def test_sin_ninguna_factura_todavia_no_se_dice_que_el_coste_cuadra(
+    cliente_integracion: Any,
+    cabeceras_integracion: dict[str, str],
+    db: Any,
+    gls: Any,
+    contexto_tenant: UUID,
+) -> None:
+    """**El caso que más engaña de esta cuenta.**
+
+    Con todos los encargos abiertos, una desviación del 0 % se leería como
+    «vamos clavados» cuando lo que pasa es que no ha llegado ninguna factura.
+    """
+    uow = UnidadDeTrabajo(db=db, tenant_id=contexto_tenant)
+    fila = enc.crear(uow, proveedor="gls")
+    fila.coste_previsto = Decimal("80.00")
+    db.commit()
+
+    r = cliente_integracion.get("/api/v1/encargos/coste-real", headers=cabeceras_integracion)
+    assert r.status_code == 200, r.text
+    por_pedido = r.json()["por_pedido"]
+    assert por_pedido["medible"] is False
+    assert por_pedido["porque"]

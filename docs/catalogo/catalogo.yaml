@@ -1384,7 +1384,7 @@ modulos:
               - {id: CRM-09.02.01.07, c: C, fase: 2, svc: sales, estado: hecho, t: "Plazo del proveedor como dato que decide la fecha que se promete al cliente, y no al revés"}
               - {id: CRM-09.02.01.08, c: A, fase: 4, svc: sales, estado: hecho, t: "Reparto cuando varios proveedores pueden servir: por coste, por capacidad libre o por acuerdo, declarado y no improvisado"}
               - {id: CRM-09.02.01.09, c: A, fase: 4, svc: sales, estado: hecho, t: "Escalados y rappels del proveedor: qué se recupera a final de año y a qué margen pertenece de verdad"}
-              - {id: CRM-09.02.01.10, c: A, fase: 4, svc: analytics, estado: hecho, t: "Coste real frente a coste ofertado, medido, y dónde se fue la diferencia"}
+              - {id: CRM-09.02.01.10, visto: '2026-10-29 CON PANTALLA, y cerrando una calculadora que nadie podia alimentar. La cuenta vivia en `analytics` y recibe los pedidos EN EL CUERPO: quien la publicaba no tiene los encargos y quien los tiene no puede leer la base de otro servicio, asi que la ruta estaba servida y no habia forma de usarla. La funcion no lee nada, asi que se movio a `crmcore` y la ruta la sirve ahora `integration`, que es quien tiene el dato. Criterio general: UNA CALCULADORA VA DONDE ESTA EL DATO QUE CALCULA. Dos pruebas POR LA RUTA —el primer intento llamo a la funcion y el parametro opcional llego como el objeto `Query` en vez de como `None`, un fallo que solo aparece por donde entra el producto—, validadas plantando que lo no facturado cuente como acertado', c: A, fase: 4, svc: analytics, estado: hecho, t: "Coste real frente a coste ofertado, medido, y dónde se fue la diferencia"}
 
 
 # ── ANEXO A — Catálogo mínimo de recursos de API ───────────────────────────

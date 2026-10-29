@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from crmcore import coste_real
 from crmcore.db.session import sesion
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, PlataformaDep, UowDep, exige_permiso
@@ -24,8 +25,6 @@ from services.analytics import cliente
 from services.analytics.modelos import ConsultaAnalitica, OrganizacionExterna
 
 logger = get_logger(__name__)
-
-from services.analytics import coste_real  # noqa: E402
 
 router = APIRouter(prefix="/analitica", tags=["explotación"])
 

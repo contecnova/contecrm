@@ -412,10 +412,17 @@ GATES: list[Gate] = [
 #     mano devuelve 42 de 2.414.
 #
 # Así que el número sube a 240 s, que es el mismo ~1,4× sobre lo medido hoy, y
-# la norma de arriba sigue en pie para la grasa de verdad. Lo que queda
-# pendiente, y es el ahorro real, es que el humo y el fuzzing recorran las
-# rutas **una sola vez** en vez de tres: ahí hay ~30 s, y es un refactor de las
-# dos pruebas más importantes del repositorio, no un ajuste.
+# la norma de arriba sigue en pie para la grasa de verdad.
+#
+# 29-10-2026: dije que el ahorro real era que el humo y el fuzzing recorrieran
+# las rutas una sola vez, «ahí hay ~30 s». **Era falso y lo midió esto**: una
+# petición por `TestClient` cuesta **2 ms**, así que las 1.925 del humo suman
+# ~9 s de CPU en los trece servicios. Fusionar recorridos no puede devolver
+# treinta segundos que no se gastan ahí. Lo que cuesta está repartido —montar
+# el contrato de cada servicio la primera vez y el arranque de la base por
+# prueba— y no hay un sitio gordo que arreglar. El tope se queda en 240 con
+# esta medida detrás, y la estimación anterior queda corregida aquí porque un
+# número inventado en un comentario se cita después como si se hubiera medido.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),

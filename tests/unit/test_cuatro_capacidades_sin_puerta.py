@@ -249,7 +249,7 @@ def test_la_marca_avanza_hasta_el_primer_fallo_y_no_mas() -> None:
 def test_lo_que_no_se_puede_comparar_todavia_no_entra_en_la_media() -> None:
     """Un pedido sin factura no es un pedido con desviación cero, y meterlo en la
     media la aplana justo donde hace falta que se note."""
-    from services.analytics import coste_real
+    from crmcore import coste_real
 
     salida = coste_real.desviacion(
         pedidos=[
@@ -266,7 +266,7 @@ def test_lo_que_no_se_puede_comparar_todavia_no_entra_en_la_media() -> None:
 def test_quien_siempre_factura_por_encima_se_ve_acumulando() -> None:
     """Un proveedor que siempre factura un 20 % por encima no es más caro: es que
     su oferta no vale."""
-    from services.analytics import coste_real
+    from crmcore import coste_real
 
     salida = coste_real.por_proveedor(
         pedidos=[

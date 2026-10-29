@@ -13307,6 +13307,19 @@ hace que nadie se crea el informe. Con datos suficientes, en cambio, la
 conversación cambia: un proveedor que siempre acaba costando un 15 % más no es
 caro, es **impreciso**, y eso es peor — sus ofertas no sirven para decidir.
 
+**Y ahora se puede pedir.** Hasta el 29-10-2026 esta cuenta era una calculadora
+en el servicio de analítica: recibía los pedidos **en el cuerpo de la
+petición** y devolvía el resultado. Quien la publicaba no tiene los encargos, y
+quien los tiene no puede leer la base de otro servicio, así que la ruta estaba
+servida y **no había forma de alimentarla**. La función no lee nada, así que se
+ha movido a `crmcore` —que es donde va lo que no toca base— y la ruta la sirve
+ahora quien tiene el dato, en el módulo de encargos.
+
+El criterio general, por si vuelve a pasar: **una calculadora va donde está el
+dato que calcula**. Una pantalla propia para una calculadora obliga a traerle el
+contexto a mano, y entonces no se usa.
+
+
 ## Modelos entrenados con el histórico (`CRM-02.01.02.02`, `CRM-02.01.02.06`, `CRM-02.01.01.08`)
 
 Un modelo entrenado con el histórico de conversión es lo más útil y lo más

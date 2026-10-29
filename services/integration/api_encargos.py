@@ -471,6 +471,58 @@ def cumplimiento(
     return enc.cumplimiento_proveedor(db, principal.tenant_id, desde=desde, hasta=hasta)
 
 
+@router.get(
+    "/coste-real",
+    dependencies=[Depends(exige_permiso("integracion:read"))],
+    summary="Qué se ofertó y qué acabó costando, por encargo y por proveedor",
+    description=(
+        "El margen de una oferta es una previsión; el de verdad se sabe cuando "
+        "llega la factura del proveedor, y casi nadie vuelve a mirarlo — por "
+        "eso una empresa descubre que un tipo de trabajo pierde dinero después "
+        "de haberlo vendido veinte veces.\n\n"
+        "**La cuenta existía y no la podía pedir nadie.** Vivía como una "
+        "calculadora en `analytics`, que recibe los pedidos en el cuerpo y "
+        "devuelve el resultado: quien la publicaba no tenía los encargos, y "
+        "quien los tiene no podía leer su base. Ahora la hace quien tiene el "
+        "dato, con la misma función, que vive en `crmcore` porque no lee "
+        "nada.\n\n"
+        "**Lo que no se ha facturado todavía no cuenta como acertado**, y sale "
+        "apartado: contarlo por su coste previsto es lo que hace que esta "
+        "cuenta mienta siempre hacia el mismo lado — la desviación media sale "
+        "baja justo mientras todavía puede empeorar."
+    ),
+)
+def coste_real_de_los_encargos(
+    db: DbDep,
+    principal: AutenticadoDep,
+    proveedor: str | None = Query(None),
+) -> Any:
+    from crmcore import coste_real as cr
+
+    consulta = select(enc.Encargo).where(enc.Encargo.tenant_id == principal.tenant_id)
+    if proveedor:
+        consulta = consulta.where(enc.Encargo.proveedor == proveedor)
+    pedidos = [
+        {
+            "referencia": f.referencia_propia,
+            "proveedor": f.proveedor,
+            # Los nombres que la cuenta espera. El encargo los llama
+            # «previsto» y «facturado», que es como los llama quien los
+            # escribe; la cuenta habla de «ofertado» y «real», que es como los
+            # llama quien los mira. Se traducen aquí y no se renombra ninguno
+            # de los dos lados: cada uno usa la palabra de su oficio.
+            "coste_ofertado": f.coste_previsto,
+            "coste_real": f.coste_facturado,
+            "moneda": f.moneda,
+        }
+        for f in db.execute(consulta).scalars()
+    ]
+    return {
+        "por_pedido": cr.desviacion(pedidos=pedidos),
+        "por_proveedor": cr.por_proveedor(pedidos=pedidos),
+    }
+
+
 class ArchivarDocumento(BaseModel):
     documento_id: str = Field(..., min_length=1)
     rol: str = Field("prueba_entrega", examples=["prueba_entrega"])

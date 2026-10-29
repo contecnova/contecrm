@@ -405,7 +405,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            que ya estaba documentado y volvi a pisar; las
 #                            tres rutas se retiraron y se comprobo pidiendolas,
 #                            que es la unica forma
-TOPE_SIN_PANTALLA = 348
+#   29-10-2026  347 de 778  el coste real contra el ofertado de los encargos.
+#                            La cuenta existia y NO LA PODIA PEDIR NADIE:
+#                            vivia como calculadora en `analytics` —recibe los
+#                            pedidos en el cuerpo— y quien la publicaba no
+#                            tiene los encargos, mientras que quien los tiene
+#                            no puede leer la base de otro servicio. La
+#                            funcion se mueve a `crmcore`, que es donde va lo
+#                            que no lee nada, y la ruta la sirve `integration`.
+#                            Lo que no se ha facturado sale APARTADO: contarlo
+#                            por su coste previsto es lo que hace que esta
+#                            cuenta mienta siempre hacia el mismo lado
+TOPE_SIN_PANTALLA = 347
 
 
 def _es_pantalla(p: Path) -> bool:
