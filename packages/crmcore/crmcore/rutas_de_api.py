@@ -312,6 +312,57 @@ OBJETOS_ADJUNTO: dict[str, str] = {
     "orden_trabajo": "service",
 }
 
+# A QUÉ se le puede apuntar una llamada, una reunión, una nota o un correo.
+#
+# **Medido el 29-10-2026**: la ficha los ofrecía sobre los **52** tipos de
+# registro que declara el front, porque el campo `objeto` de una actividad es
+# polimórfico y el servidor no rechaza nada. Resultado: botones de «Llamada» y
+# «Correo» sobre un plan de cuenta, una entrada de papelera, un calendario
+# laboral o una saga. Ofrecer lo que no tiene sentido no es un detalle
+# estético: hace dudar de las que sí lo tienen.
+#
+# La regla, y es lo que separa esta lista de un gusto: **una actividad registra
+# una interacción con una persona**. Va contra aquello de lo que se habla con
+# alguien —un cliente, un proveedor, un partner— y no contra la configuración
+# del sistema ni contra un registro técnico.
+#
+# Sale de `OBJETOS_COMENTARIO`, que es la misma pregunta ya contestada —sobre
+# qué se escribe— más los tres que ahí no estaban y aquí sí tienen interlocutor.
+# Quien no está, no está por un motivo, no por olvido: ver abajo.
+#
+# **El API sigue admitiendo otros.** El modelo dice que una actividad puede
+# colgar de «un objeto propio del tenant», y cerrarlo aquí rompería eso. Esta
+# lista es **lo que el producto ofrece**, no lo que la base acepta.
+OBJETOS_ACTIVIDAD: dict[str, str] = {
+    "cuenta": "party",
+    "contacto": "party",
+    # Al proveedor se le llama tanto como al cliente: una homologación o un
+    # plazo que se escapa se resuelven por teléfono, y si no se puede apuntar
+    # ahí se apunta en un correo que no encuentra nadie.
+    "proveedor": "party",
+    "lead": "sales",
+    "oportunidad": "sales",
+    "presupuesto": "sales",
+    "pedido": "sales",
+    "contrato": "sales",
+    # El canal indirecto es una relación con personas de otra empresa, igual
+    # que la directa.
+    "partner": "sales",
+    "caso": "service",
+    "orden_trabajo": "service",
+    # Una devolución se habla con quien la pide, y casi siempre más de una vez.
+    "devolucion": "service",
+    # Y el activo instalado: la llamada del técnico es sobre la máquina, no
+    # sobre el caso, y colgarla del caso la pierde cuando el caso se cierra.
+    "activo": "service",
+}
+
+# Quién NO está, y por qué. Se escribe para que el siguiente no lo añada por
+# simetría: `actividad` —una llamada sobre una nota no es nada—, y los
+# cuarenta y tantos que son configuración o registro técnico —`modulo`,
+# `saga`, `trabajo`, `entrada_papelera`, `calendario_laboral`, `metrica`,
+# `entorno`, `perfil_suite`…—, que no tienen a nadie al otro lado.
+
 # Y lo mismo con los documentos del corpus (RT-5): el enlace lo guarda el
 # servicio dueño del registro, así que el tipo de objeto vuelve a decidir.
 OBJETOS_DOCUMENTO: dict[str, str] = {

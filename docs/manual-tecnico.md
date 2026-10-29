@@ -537,6 +537,63 @@ queda corta es siempre la del buscador.
 Toda pantalla pone su título con `CabeceraPagina`, que es la que pinta el `<h1>`.
 Hay gate que lo comprueba —y que comprueba que ninguna pantalla ponga dos.
 
+#### Lo que una ficha ofrece sobre su registro
+
+Dos fallos de la misma clase, los dos reportados mirando una ficha de **plan de
+cuenta**: *«¿para qué sale llamada, nota, reunión y correo aquí?»*.
+
+**Se ofrecían sobre los 52 tipos de registro que declara el front.** El campo
+`objeto` de una actividad es polimórfico —puede colgar de una cuenta, un caso o
+de un objeto propio del tenant— y el servidor no rechaza nada, así que la ficha
+los enseñaba en todas partes: «Llamada» sobre un calendario laboral, «Correo»
+sobre una entrada de papelera. Ofrecer lo que no tiene sentido no es un detalle
+estético: **hace dudar de lo que sí lo tiene**.
+
+La pregunta ya estaba contestada tres veces —`OBJETOS_ADJUNTO`,
+`OBJETOS_COMENTARIO`, `OBJETOS_DOCUMENTO`, publicadas en `objetos` de la
+superficie—, así que la cuarta va al mismo sitio: `OBJETOS_ACTIVIDAD`. La regla
+que la separa de un gusto: **una actividad registra una interacción con una
+persona**, así que va contra aquello de lo que se habla con alguien y no contra
+la configuración del sistema. Quedan **13** de 52, y quien no está tiene su
+motivo escrito al lado de la lista, para que el siguiente no lo añada por
+simetría.
+
+Dos matices que importan:
+
+- **El API sigue admitiendo otros.** El modelo dice que una actividad puede
+  colgar de un objeto propio del tenant, y cerrarlo rompería eso. La lista es lo
+  que **el producto ofrece**, no lo que la base acepta.
+- **Mientras la superficie no ha llegado, no se ofrecen** — al revés que las
+  pestañas del menú. Es la regla de la casa para las acciones: un botón que
+  aparece por defecto y luego resulta que no tocaba es un botón que alguien ya
+  ha pulsado.
+
+**Y la ficha abría el registro equivocado.** Reportado abriendo una fila de
+«Estado financiero»: *«dice que no existe»*. La ficha resuelve qué pestaña abre
+una fila **por su `objeto`**, y cuatro módulos tenían dos pestañas declarando el
+mismo: gana la primera, y la segunda pide el id de su registro contra la ruta
+del otro.
+
+| Módulo | Las dos que se pisaban | Lo que pasaba |
+|---|---|---|
+| Cuentas | «Planes de cuenta» y «Estado financiero» | el id de un estado financiero contra `/planes-cuenta/{id}` |
+| Procesos | «Canales de entrada» e «Interacciones por canal» | una interacción no es un canal |
+| Procesos | «Registros recibidos» y «Ejecuciones programadas» | ni siquiera tiene ficha |
+| Explotación | «Tablas del almacén» y «Fuentes federadas» | tipos distintos del mismo almacén |
+
+Las cuatro segundas habían tomado prestado el `objeto` del recurso padre. La
+forma de arreglarlo es **no declararlo**: sin `objeto`, se deriva de la ruta que
+lista —que es única— y la ficha resuelve su ruta de detalle con el contrato
+(`fichaDe`), que busca el `GET {base}/{id}` de verdad. Declarar un nombre nuevo
+sería una segunda lista que mantener.
+
+El `objeto` de `abre: {…}` es otra cosa y ahí repetirlo es lo correcto: dice a
+qué registro lleva una fila —un documento que vence abre a **su proveedor**—.
+
+Gates: `frontend/src/pruebas/solo_donde_hay_alguien_al_otro_lado.test.tsx` y una
+prueba más en `ninguna_opcion_repetida.test.ts`, las dos validadas plantando el
+caso malo.
+
 #### Qué enseña el menú: tres estados, no dos
 
 Lo que se ofrece en la barra, en las pestañas de un módulo y en la paleta no

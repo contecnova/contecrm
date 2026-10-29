@@ -146,7 +146,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/canales-entrada/interacciones",
       "p": "integracion:read",
-      "o": "canal_entrada",
       "s": "integration"
     },
     {
@@ -180,7 +179,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/integraciones/programacion",
       "p": "integracion:read",
-      "o": "registro_recibido",
       "s": "integration"
     },
     {
@@ -409,7 +407,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/planes-cuenta/financiero",
       "p": "party:read",
-      "o": "plan_cuenta",
       "s": "party"
     },
     {
@@ -850,7 +847,6 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/almacen/federadas",
       "p": "informe:read",
-      "o": "tabla_analitica",
       "s": "analytics"
     },
     {

@@ -1062,6 +1062,13 @@ async def superficie_completa(_: AutenticadoDep) -> Any:
             "adjuntos": sorted(rutas.OBJETOS_ADJUNTO),
             "comentarios": sorted(rutas.OBJETOS_COMENTARIO),
             "documentos": sorted(rutas.OBJETOS_DOCUMENTO),
+            # A qué se le puede apuntar una llamada, una reunión, una nota o un
+            # correo. Se publica por lo mismo que las otras tres: el campo
+            # `objeto` de una actividad es polimórfico y el servidor no rechaza
+            # nada, así que sin esto la ficha los ofrecía sobre los 52 tipos de
+            # registro que declara el front — «Llamada» sobre un calendario
+            # laboral o una entrada de papelera.
+            "actividades": sorted(rutas.OBJETOS_ACTIVIDAD),
         },
     }
 

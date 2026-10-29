@@ -410,6 +410,24 @@ histórico. Con la lista vacía se ven igual, y no son lo mismo.
 
 ---
 
+### Llamada, reunión, nota y correo: sólo donde hay alguien al otro lado
+
+En la ficha de un cliente, un contacto, un proveedor, una oportunidad o un caso
+tienes cuatro botones para apuntar lo que ha pasado sin salir de ahí.
+
+Hasta el 29-10-2026 salían en **todas** las fichas, también en las que son
+configuración: un plan de cuenta, un calendario laboral, una entrada de
+papelera. Apuntarle una llamada a un calendario no quiere decir nada, y tener
+botones que no significan nada hace dudar de los que sí.
+
+Ahora salen en trece tipos de registro, y la regla es simple: **aquello de lo
+que se habla con alguien**. Cliente, contacto, proveedor, partner, lead,
+oportunidad, presupuesto, pedido, contrato, caso, orden de trabajo, devolución y
+activo instalado. Si crees que falta alguno, se añade: es una lista del producto,
+no una limitación técnica.
+
+---
+
 ### Las listas largas de la ficha
 
 Una ficha de cliente con mucho recorrido tiene cientos de cosas que enseñar, y

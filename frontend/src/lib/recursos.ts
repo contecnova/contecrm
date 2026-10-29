@@ -207,7 +207,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // Lo que ha entrado por cada canal. Sin esto, un canal configurado y
         // mudo se ve igual que uno que trabaja.
         nombre: "Interacciones por canal",
-        objeto: "canal_entrada",
+        // Sin `objeto`: una interacción no es un canal. Lo tomaba prestado de
+        // «Canales de entrada» y la ficha abría el canal equivocado.
         listar: "/api/v1/canales-entrada/interacciones",
         servicio: "integration",
         permiso: "integracion:read",
@@ -261,7 +262,9 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // algo?»— y ninguna tenía pantalla.
       {
         nombre: "Ejecuciones programadas",
-        objeto: "registro_recibido",
+        // Sin `objeto`: una ejecución programada no es un registro recibido, y
+        // además no tiene ficha —no hay `GET` de detalle—, así que declararlo
+        // sólo servía para chocar con la otra pestaña.
         listar: "/api/v1/integraciones/programacion",
         servicio: "integration",
         permiso: "integracion:read",
@@ -697,7 +700,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // con una foto del ERP de hace tres semanas hace que el comercial
         // deje de creerse el bloqueo.
         nombre: "Estado financiero",
-        objeto: "plan_cuenta",
+        // Sin `objeto` declarado: lo tomaba prestado de «Planes de cuenta» y, al
+        // pinchar una fila, la ficha pedía el id de un estado financiero contra
+        // `/planes-cuenta/{id}` — 404, «no existe». Es OTRO registro: su ruta es
+        // `/planes-cuenta/financiero/{estado_financiero_id}`. Derivado de su
+        // ruta, que es única.
         listar: "/api/v1/planes-cuenta/financiero",
         servicio: "party",
         permiso: "party:read",
@@ -1494,7 +1501,8 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         // Lo que se consulta sin copiarlo: una fuente federada que falla no
         // deja un hueco en una tabla, deja un informe en error.
         nombre: "Fuentes federadas",
-        objeto: "tabla_analitica",
+        // Sin `objeto`: una fuente federada no es una tabla del almacén. Lo tomaba
+        // prestado y la ficha pedía el id contra la ruta de la otra.
         listar: "/api/v1/almacen/federadas",
         servicio: "analytics",
         permiso: "informe:read",

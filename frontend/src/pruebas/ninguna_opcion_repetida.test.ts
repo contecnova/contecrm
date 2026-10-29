@@ -54,6 +54,39 @@ describe("el menú no repite opciones", () => {
     expect(repetidas).toEqual([]);
   });
 
+  it("dos pestañas de un módulo no declaran el mismo tipo de registro", () => {
+    // La ficha resuelve qué pestaña abre una fila **por su `objeto`**, así que
+    // con dos iguales gana la primera y la segunda abre la ficha equivocada:
+    // pide el id de un registro contra la ruta del otro y contesta «no
+    // existe». Reportado así, abriendo una fila de «Estado financiero».
+    //
+    // Medido el 29-10-2026: cuatro módulos lo tenían. Las cuatro pestañas
+    // segundas habían tomado prestado el `objeto` del recurso padre —el
+    // financiero de los planes, la interacción del canal, la fuente federada
+    // de la tabla, la ejecución programada del registro recibido— y las cuatro
+    // son OTRO registro, con su propia ruta de detalle.
+    //
+    // La forma de arreglarlo es **no declararlo**: sin `objeto`, se deriva de
+    // la ruta que lista, que es única, y la ficha resuelve su ruta real con el
+    // contrato. Declarar uno inventado sería una segunda lista que mantener.
+    const repetidos: string[] = [];
+    for (const [modulo, pestanas] of Object.entries(RECURSOS_POR_MODULO)) {
+      const vistos = new Map<string, string>();
+      for (const p of pestanas) {
+        // El `objeto` DE LA PESTAÑA. El de `abre: {...}` es otra cosa: dice a
+        // qué registro lleva una fila —un documento que vence abre a su
+        // proveedor— y ahí repetirlo es lo correcto.
+        if (!p.objeto) continue;
+        const antes = vistos.get(p.objeto);
+        if (antes) {
+          repetidos.push(`${modulo}: «${antes}» y «${p.nombre}» dicen ser «${p.objeto}»`);
+        }
+        vistos.set(p.objeto, p.nombre);
+      }
+    }
+    expect(repetidos).toEqual([]);
+  });
+
   it("el mismo registro no se edita desde dos módulos", () => {
     const donde = new Map<string, string[]>();
     for (const [modulo, pestanas] of Object.entries(RECURSOS_POR_MODULO)) {

@@ -67,7 +67,21 @@ export interface Superficie {
    * peticiones fallidas por ficha abierta y tres pestañas que no podían
    * funcionar.
    */
-  objetos?: { adjuntos: string[]; comentarios: string[]; documentos: string[] };
+  objetos?: {
+    adjuntos: string[];
+    comentarios: string[];
+    documentos: string[];
+    /**
+     * A qué se le puede apuntar una llamada, una reunión, una nota o un correo.
+     *
+     * El campo `objeto` de una actividad es polimórfico y el servidor no
+     * rechaza nada, así que sin esta lista la ficha los ofrecía sobre los 52
+     * tipos de registro que declara el front: «Llamada» sobre un calendario
+     * laboral, «Correo» sobre una entrada de papelera. Ofrecer lo que no tiene
+     * sentido hace dudar de lo que sí lo tiene.
+     */
+    actividades?: string[];
+  };
   total: number;
   administracion: number;
   operaciones: Operacion[];

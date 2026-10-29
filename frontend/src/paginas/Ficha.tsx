@@ -162,6 +162,28 @@ function Datos({
   // pestañas y con la primera se pedía el registro contra la ruta equivocada,
   // así que solo se podía abrir una fila de todo el módulo.
   const recurso = m ? recursoDe(m, objeto) : undefined;
+  /**
+   * Si de este registro se habla con alguien.
+   *
+   * Es lo que decide si tiene sentido apuntarle una llamada, una reunión, una
+   * nota o un correo, y si tiene sentido preguntarle a la IA sobre él. Lo
+   * contesta el servidor —`objetos.actividades` de la superficie— y no una
+   * lista escrita aquí: dos listas acaban diciendo cosas distintas.
+   *
+   * **Medido el 29-10-2026**: se ofrecían sobre los 52 tipos de registro que
+   * declara el front, porque el campo `objeto` de una actividad es polimórfico
+   * y el servidor no rechaza nada. «Llamada» sobre un calendario laboral,
+   * «Correo» sobre una entrada de papelera. Ofrecer lo que no tiene sentido
+   * hace dudar de lo que sí.
+   *
+   * Y mientras la superficie no ha llegado **no se ofrecen**, al revés que las
+   * pestañas de arriba. Es la regla de la casa para las acciones: un botón que
+   * aparece por defecto y luego resulta que no tocaba es un botón que alguien
+   * ya ha pulsado.
+   */
+  const seHablaConAlguien = Boolean(
+    objeto && superficie?.objetos?.actividades?.includes(objeto),
+  );
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
   const [tapados, setTapados] = useState<string[]>([]);
@@ -248,7 +270,7 @@ function Datos({
               aquí: antes obligaba a irse a Actividades y teclear a mano el
               identificador para que quedara colgado, y eso no lo hace nadie dos
               veces. */}
-          {objeto ? (
+          {seHablaConAlguien ? (
             <RegistrarActividad
               objeto={objeto}
               objetoId={id}
@@ -259,7 +281,9 @@ function Datos({
               hace aquí, delante del dato, que es donde se le ocurre a alguien;
               obligar a irse a la pantalla de explotación y volver a escribir de
               qué cuenta se habla es como se deja de preguntar. */}
-          {objeto ? <PreguntarSobreEsto objeto={objeto} objetoId={id} /> : null}
+          {seHablaConAlguien ? (
+            <PreguntarSobreEsto objeto={objeto} objetoId={id} />
+          ) : null}
         </>
       ) : null}
 
