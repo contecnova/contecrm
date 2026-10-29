@@ -8913,6 +8913,18 @@ público, y lo normal es que traiga cifras de negocio.
 La comprobación del dominio es por coincidencia exacta o de subdominio, **nunca
 «contiene»**: con «contiene», `micrm.com.ataque.net` pasaría por `micrm.com`.
 
+**Y la lista de dominios se puede mirar.** Hasta el 29-10-2026 se podía
+declarar dónde se embebe el CRM y no consultarlo, lo cual es grave porque esa
+lista *es* el control: lo que impide que cualquier página lo incruste y le pida
+datos con la sesión de quien la abra. Sin lectura, un origen que alguien puso
+para una prueba hace año y medio sigue valiendo y nadie lo sabe.
+
+Los orígenes salen **nombrados y no contados** —lo que se revisa es si alguno
+sobra, y un «3 orígenes» no deja revisar nada— y al lado **qué bloques** puede
+pedir cada anfitrión, que es la otra mitad del control. Con ninguno declarado
+se dice que ése es el valor por defecto **y el seguro**, para que nadie lo lea
+como «esto está sin configurar» y se ponga a configurarlo.
+
 El enlace **declara a qué persona representa** y se dice cuál. El secreto se
 devuelve una vez y en la base queda su hash; revocar no borra, porque el uso
 queda en el histórico.

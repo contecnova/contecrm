@@ -1452,8 +1452,19 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "analytics",
         permiso: "informe:read",
       },
+      // **Dónde puede vivir el CRM embebido** (CRM-05.01.02.06). Se podía
+      // declarar y no leer, y es un control de seguridad: la lista de orígenes
+      // es lo que impide que cualquier página incruste el CRM y le pida datos
+      // con la sesión de quien la abra. Un origen que alguien puso para una
+      // prueba hace año y medio sigue valiendo y nadie lo sabe. Los orígenes
+      // se nombran, no se cuentan: lo que se revisa es si alguno sobra.
       {
-        // Los enlaces de cuadro incrustado, con los tipos de componente que
+        nombre: "Sitios donde se embebe",
+        listar: "/api/v1/federacion/embebidos",
+        servicio: "integration",
+        permiso: "integracion:read",
+      },
+      {
         // admite: un enlace embebido es una ventana al dato desde fuera, y
         // quién tiene una abierta es justo lo que hay que poder mirar.
         nombre: "Cuadros incrustados",

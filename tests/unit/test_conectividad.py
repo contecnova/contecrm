@@ -1019,3 +1019,53 @@ def test_los_cuatro_componentes_declarados_tienen_extremo_crm_00_02_03_05() -> N
             if "/embebido/" in ruta:
                 servidos.add(ruta.rsplit("/", 1)[-1])
     assert servidos == set(COMPONENTES), (sorted(servidos), sorted(COMPONENTES))
+
+
+def test_los_sitios_donde_se_puede_embeber_se_pueden_LEER(uow: UnidadDeTrabajo) -> None:
+    """Se podían declarar y no consultar, y esto es un control de seguridad.
+
+    La lista de orígenes es lo que impide que cualquier página incruste el CRM
+    y le pida datos con la sesión de quien la abra. Sin forma de leerla, un
+    origen que alguien puso para una prueba hace año y medio sigue valiendo y
+    nadie lo sabe.
+
+    Los orígenes se **nombran**, no se cuentan: lo que se revisa es si alguno
+    sobra, y un «3 orígenes» no deja revisar nada.
+    """
+    from services.integration.api_conectividad import listar_embebidos
+
+    fed.declarar_embebido(
+        uow,
+        clave="erp",
+        anfitrion="ERP del cliente",
+        origenes=["https://erp.cliente.com", "https://pruebas.cliente.com"],
+        bloques=["ficha", "actividades"],
+    )
+    uow.db.flush()
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    salida = listar_embebidos(uow.db, _Principal())  # type: ignore[arg-type]
+    assert salida["cuantos"] == 1
+    fila = salida["embebidos"][0]
+    assert "https://pruebas.cliente.com" in fila["origenes"]
+    # Y qué puede pedir cada uno: la otra mitad del control es que el anfitrión
+    # no pueda pedir lo que sea.
+    assert fila["bloques"] == ["ficha", "actividades"]
+
+
+def test_sin_ningun_sitio_declarado_se_dice_que_ese_es_el_seguro(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """Un vacío aquí es el valor por defecto **y el bueno**: sin orígenes, el
+    CRM no se puede embeber en ninguna página. Decirlo evita que alguien lo lea
+    como «esto no está configurado» y se ponga a configurarlo."""
+    from services.integration.api_conectividad import listar_embebidos
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    salida = listar_embebidos(uow.db, _Principal())  # type: ignore[arg-type]
+    assert salida["cuantos"] == 0
+    assert "seguro" in salida["que_significa"]

@@ -370,7 +370,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            informe no tiene borrado blando, asi que no pueden
 #                            existir — y queda prueba de ESO, para el dia en
 #                            que alguien pase el informe a borrado blando
-TOPE_SIN_PANTALLA = 354
+#   29-10-2026  353 de 778  donde puede vivir el CRM embebido. Se podia
+#                            declarar y no leer, Y ES UN CONTROL DE SEGURIDAD:
+#                            la lista de origenes es lo que impide que
+#                            cualquier pagina lo incruste y le pida datos con
+#                            la sesion de quien la abra. Un origen que alguien
+#                            puso para una prueba hace año y medio sigue
+#                            valiendo y nadie lo sabe. Los origenes se NOMBRAN
+#                            y no se cuentan —lo que se revisa es si alguno
+#                            sobra, y un «3 origenes» no deja revisar nada— y
+#                            se dice que bloques puede pedir cada anfitrion,
+#                            que es la otra mitad del control
+TOPE_SIN_PANTALLA = 353
 
 
 def _es_pantalla(p: Path) -> bool:

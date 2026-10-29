@@ -672,6 +672,10 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
       "o": "tabla_analitica"
     },
     {
+      "r": "/api/v1/federacion/embebidos",
+      "p": "integracion:read"
+    },
+    {
       "r": "/api/v1/cuadros-mando/embebidos",
       "p": "informe:read",
       "o": "enlace_embebido"
