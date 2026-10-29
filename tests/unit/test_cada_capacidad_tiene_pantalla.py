@@ -430,7 +430,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            prueba de que NO se pinta cuando no hay direccion:
 #                            un boton que no lleva a ninguna parte hace que el
 #                            que lo pulsa deje de creerse el resto
-TOPE_SIN_PANTALLA = 341
+#   29-10-2026  337 de 778  el cifrado, en el mismo panel que mide el
+#                            aislamiento: hasta la base y de campo. Y MEDIDO,
+#                            no leido del ajuste —la cadena de conexion puede
+#                            traer su propio `sslmode` y entonces el ajuste
+#                            dice una cosa y la conexion hace otra; la que
+#                            protege es la conexion—. Un socket local sale
+#                            correcto Y DICHO: no sale de la maquina, y
+#                            marcarlo en rojo enseñaria a ignorar el panel
+#                            entero en cualquier portatil. Con el, el
+#                            enmascaramiento por rol —que ya lo enseñaban las
+#                            excepciones de campo— y el comportamiento anomalo
+#                            —que lo enseña el panel de exportaciones y lo
+#                            declara la propia ruta del servidor—
+TOPE_SIN_PANTALLA = 337
 
 
 def _es_pantalla(p: Path) -> bool:

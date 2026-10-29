@@ -69,6 +69,25 @@ consultar en vivo —es un gate que corre antes de empujar—, así que sale dic
 como lo que es, con el fichero donde vive. Pintar un visto bueno que nadie ha
 comprobado hoy sería peor que no pintar nada.
 
+**El mismo panel dice con qué va cifrado el dato** (`CRM-00.05.03.01`,
+`CRM-00.05.03.02`). Dos líneas más, y las dos medidas:
+
+- **hasta la base**, leyendo la conexión de ese mismo proceso y no el ajuste.
+  La diferencia importa: la cadena de conexión puede traer su propio
+  `sslmode` —hay despliegues donde la genera el proveedor de la base y no se
+  puede tocar— y entonces el ajuste dice una cosa y la conexión hace otra. La
+  que protege es la conexión. Un socket local sale como correcto y dicho:
+  no sale de la máquina, así que no hay tránsito que cifrar, y marcarlo en
+  rojo enseñaría a ignorar el panel entero en cualquier portátil;
+- **y de campo**, diciendo si hay **clave propia del tenant**. Con la clave del
+  despliegue también va cifrado, y revocarla es un problema de todos; con la
+  suya, revocar deja ilegible lo suyo y sólo lo suyo. «Está cifrado» y «está
+  cifrado con la tuya» no son la misma frase.
+
+El enmascaramiento por rol (`CRM-00.05.03.03`) ya se lee más abajo, en las
+excepciones de campo: qué campo se ve en claro, cuál enmascarado, cuál no se ve
+y para quién.
+
 Los identificadores son **UUIDv7 opacos** (CRM-00.01.02.07). Un identificador
 secuencial invita a probar el siguiente, y entonces el aislamiento depende por
 entero de que la comprobación de permisos sea perfecta en todos los endpoints.

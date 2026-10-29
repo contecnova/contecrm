@@ -862,3 +862,50 @@ def test_lo_que_no_se_mide_aqui_lo_dice_en_vez_de_darlo_por_bueno(db: Any) -> No
     fuzz = next(c for c in ais.garantias(db)["capas"] if c["clave"] == "fuzzing")
     assert fuzz["medible_aqui"] is False
     assert "pre-push" in fuzz["detalle"]
+
+
+def test_el_cifrado_se_mide_en_la_conexion_y_no_en_el_ajuste(db: Any) -> None:
+    """Un `sslmode` configurado no es un tránsito cifrado.
+
+    La cadena de conexión puede traer el suyo —hay despliegues donde la genera
+    el proveedor de la base y no se toca— y entonces el ajuste dice una cosa y
+    la conexión hace otra. La que protege es la conexión, así que es la que se
+    mide: `pg_stat_ssl` del propio proceso.
+
+    Y un socket de Unix **no sale de la máquina**: exigirle TLS sería pedir
+    cifrar una conversación que ocurre dentro de la misma casa, y marcarlo en
+    rojo enseñaría a ignorar este panel en todo entorno local — que es como se
+    pierde un panel entero.
+    """
+    import sqlalchemy as sa
+
+    from services.tenancy import aislamiento as ais
+
+    capas = {c["clave"]: c for c in ais.garantias(db)["capas"]}
+    assert "transito" in capas, "no se mide el cifrado hasta la base"
+    transito = capas["transito"]
+    assert transito["detalle"] and transito["porque"]
+
+    # Y que **mira la conexión**: se compara con lo que dice Postgres de este
+    # mismo proceso. Si la respuesta saliera del ajuste, estas dos podrían no
+    # coincidir y es justo el caso que este panel existe para no tener.
+    real = db.execute(
+        sa.text("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()")
+    ).scalar_one()
+    por_socket = "socket local" in transito["detalle"]
+    assert por_socket or (bool(real) is ("TLS activo" in transito["detalle"])), (
+        "lo que dice el panel no coincide con lo que dice la conexión: "
+        f"panel «{transito['detalle']}», pg_stat_ssl={real}"
+    )
+
+
+def test_el_cifrado_de_campo_distingue_la_clave_del_cliente(db: Any) -> None:
+    """Sin clave propia del tenant, los campos sensibles se cifran con la del
+    despliegue — que funciona, y hace que revocar sea un problema de todos.
+    Decirlo es la diferencia entre «está cifrado» y «está cifrado con la tuya».
+    """
+    from services.tenancy import aislamiento as ais
+
+    campo = next(c for c in ais.garantias(db)["capas"] if c["clave"] == "campo")
+    assert "clave" in campo["detalle"].lower()
+    assert "revocar" in campo["porque"] or "revocarla" in campo["porque"]

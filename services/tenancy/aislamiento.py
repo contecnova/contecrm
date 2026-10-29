@@ -443,6 +443,26 @@ def garantias(db: Session) -> dict[str, Any]:
     salta_rls = bool(rol[2]) if rol else False
     red_armada = not superusuario and not salta_rls
 
+    # ── Cifrado: en tránsito y de campo ───────────────────────────────────
+    # Lo del tránsito se **mide en la conexión**, no se lee del ajuste: un
+    # `sslmode` configurado y una cadena de conexión que trae el suyo acaban
+    # con el ajuste diciendo una cosa y la conexión haciendo otra.
+    fila_ssl = db.execute(text("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()")).first()
+    cifrado_en_transito = bool(fila_ssl[0]) if fila_ssl else False
+    modo_ssl = str(getattr(get_settings(), "db_sslmode", "") or "sin declarar")
+    # Un socket de Unix no sale de la máquina: exigirle TLS sería pedir cifrar
+    # una conversación que ocurre dentro de la misma casa, y marcarlo en rojo
+    # enseñaría a ignorar este panel en todo entorno local.
+    por_socket = "host=/" in str(getattr(get_settings(), "database_url", ""))
+
+    # Por el modelo y no con SQL a pelo: el nombre de la tabla es suyo y
+    # escribirlo aquí lo convierte en dos sitios que se separan.
+    from crmcore.security.byok import ClaveTenant
+
+    clave_propia = bool(
+        db.execute(select(ClaveTenant.id).where(ClaveTenant.estado == "activa").limit(1)).first()
+    )
+
     capas = [
         {
             "clave": "motor",
@@ -510,6 +530,45 @@ def garantias(db: Session) -> dict[str, Any]:
                 "Sin esto, cada función tendría que ir pasándolo de mano en mano y "
                 "bastaría una que se olvidara. Es local a la transacción: no se hereda "
                 "de la petición anterior por reusar la conexión."
+            ),
+        },
+        {
+            "clave": "transito",
+            "titulo": "El dato va cifrado hasta la base",
+            "ok": bool(cifrado_en_transito) or bool(por_socket),
+            "cuantas": None,
+            "detalle": (
+                "La conexión con la base va por socket local: no sale de la "
+                "máquina, así que no hay tránsito que cifrar."
+                if por_socket
+                else (
+                    f"TLS activo en la conexión (sslmode «{modo_ssl}»)."
+                    if cifrado_en_transito
+                    else f"La conexión NO va cifrada y sslmode es «{modo_ssl}»."
+                )
+            ),
+            "porque": (
+                "Se mide en la conexión y no se lee del ajuste: un `sslmode` "
+                "puesto en la configuración y una cadena de conexión que trae "
+                "el suyo acaban con el ajuste diciendo una cosa y la conexión "
+                "haciendo otra — y la que protege es la conexión."
+            ),
+        },
+        {
+            "clave": "campo",
+            "titulo": "Los campos sensibles van cifrados aparte",
+            "ok": bool(clave_propia),
+            "cuantas": None,
+            "detalle": (
+                "Hay clave de cifrado propia del tenant declarada."
+                if clave_propia
+                else "Sin clave propia: los campos sensibles se cifran con la "
+                "clave del despliegue, no con una del cliente."
+            ),
+            "porque": (
+                "Una clave por tenant es lo que permite que revocarla deje "
+                "ilegible lo suyo y sólo lo suyo. Con la del despliegue, "
+                "revocar es un problema de todos."
             ),
         },
         {

@@ -18,6 +18,17 @@
  * si todo lo demás significa algo. La respuesta se mide en cada carga; no hay
  * ningún visto bueno escrito a mano.
  *
+ * El mismo panel mide ahora **con qué va cifrado el dato** (CRM-00.05.03.01,
+ * CRM-00.05.03.02): si la conexión con la base lleva TLS —medido en la
+ * conexión y no leído del ajuste, porque la cadena puede traer el suyo y
+ * entonces el ajuste dice una cosa y la conexión hace otra— y si hay clave de
+ * cifrado propia del tenant, que es lo que permite que revocarla deje
+ * ilegible lo suyo y sólo lo suyo.
+ *
+ * Y el enmascaramiento por rol (CRM-00.05.03.03) es lo que ya enseñan las
+ * excepciones de campo de más abajo: qué campo se ve en claro, cuál
+ * enmascarado y cuál no se ve, y para quién.
+ *
  * Y **si tu factor valdría para entrar sin contraseña**, junto a los factores
  * que tienes, que es donde se hace esa pregunta. La cuenta la hace el
  * servidor: él sabe cuál está atado al dominio. Antes había que pasarle

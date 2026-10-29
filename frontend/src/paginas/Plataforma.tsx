@@ -2,7 +2,12 @@
  * Lo que la plataforma hace por debajo, con puerta (CRM-00.05.04.01,
  * CRM-00.05.04.03, CRM-00.05.04.04, CRM-00.05.04.05, CRM-00.05.03.06,
  * CRM-07.03.01.04, CRM-07.03.01.07, CRM-07.03.02.09, CRM-00.06.02.03,
- * CRM-00.06.02.02, CRM-00.05.03.04).
+ * CRM-00.06.02.02, CRM-00.05.03.04, CRM-00.05.03.08).
+ *
+ * `CRM-00.05.03.08` —comportamiento anómalo— la enseña el panel de anomalías
+ * de exportación, y la declara también la propia ruta del servidor. Estaba
+ * servida y pintada, y sin declarar aquí: la traza pedía el identificador y
+ * el identificador estaba en el otro lado.
  *
  * Son rutas que el producto publica desde el primer día y a las que **no se
  * llegaba desde ninguna pantalla**: el audit trail, las anomalías de
