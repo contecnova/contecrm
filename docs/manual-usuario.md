@@ -390,6 +390,26 @@ es de la cuenta antigua, y moverla dejaría a esa cuenta sin nada.
 
 ---
 
+### Qué ha cambiado en este registro
+
+Al final de cada ficha hay un desplegable, **«Qué ha cambiado»**. Dentro está,
+campo a campo, qué decía antes, qué dice ahora y **desde dónde se cambió**: la
+pantalla, la API o una automatización.
+
+Eso último es lo que suele zanjar la conversación. No es lo mismo que el precio
+lo bajara una persona a que lo pisara la sincronización nocturna con el ERP, y
+sin saberlo se acaba preguntando a quien no fue.
+
+Se anotaba desde el primer día y no había dónde verlo. Va plegado y sólo se
+pide al abrirlo, porque es para cuando hace falta, no para cada vez que se mira
+una ficha.
+
+Si sale vacío, te dice **cuál de las dos cosas es**: que este registro no se ha
+tocado por ninguna vía que lo anote, o que esa parte del sistema no lleva ese
+histórico. Con la lista vacía se ven igual, y no son lo mismo.
+
+---
+
 ### Las listas largas de la ficha
 
 Una ficha de cliente con mucho recorrido tiene cientos de cosas que enseñar, y

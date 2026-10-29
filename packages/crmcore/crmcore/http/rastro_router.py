@@ -34,6 +34,36 @@ from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, exige_permiso
 
 
+def _que_significa_vacio(db: Any, tenant_id: Any) -> str:
+    """Por qué está vacío: no hay cambios, o este servicio no los anota.
+
+    Son dos cosas muy distintas y con la lista vacía se ven igual. El rastro
+    campo a campo lo escribe quien pasa por `registrar_cambios`, y **no todos
+    los servicios lo hacen**: en los que no, esta ruta contestaría vacío para
+    siempre y quien la mira concluiría que el registro no se ha tocado.
+
+    Se distingue **midiendo**, no con una lista de servicios escrita aquí: si
+    este servicio no tiene ningún cambio de campo de ningún registro de este
+    tenant, lo que falta es el apunte, no el cambio. Una lista a mano se
+    quedaría vieja el día que un sexto servicio empiece a anotarlos.
+    """
+    from sqlalchemy import exists, select
+
+    from crmcore.audit.modelos import CambioCampo
+
+    alguno = db.execute(select(exists().where(CambioCampo.tenant_id == tenant_id))).scalar()
+    if alguno:
+        return (
+            "No consta ningún cambio de campo en este registro. Eso no es que no "
+            "se haya tocado: es que no se ha tocado por una vía que lo anote."
+        )
+    return (
+        "Este servicio no ha anotado ningún cambio de campo de ningún registro, "
+        "así que el vacío no dice nada de ESTE: dice que aquí no se lleva ese "
+        "histórico. Lo escribe quien edita pasando por el registro de cambios."
+    )
+
+
 def crear_router_rastro(servicio: str) -> APIRouter:
     router = APIRouter(prefix=f"/{servicio}/rastro", tags=["rastro de agregados"])
 
@@ -64,6 +94,72 @@ def crear_router_rastro(servicio: str) -> APIRouter:
                 if not declarados
                 else "Cada uno con el motivo por el que se encendió."
             ),
+        }
+
+    @router.get(
+        "/campos/{objeto}/{objeto_id}",
+        dependencies=[Depends(exige_permiso("admin:read"))],
+        summary="Qué cambió campo a campo, con quién y desde dónde",
+        description=(
+            "**Se escribía y no lo leía nadie.** Cada edición anota el campo, "
+            "el valor anterior, el nuevo, quién lo hizo y **desde dónde** —la "
+            "pantalla, la API o una automatización—, y ninguna ruta lo "
+            "devolvía. La pregunta que esto contesta es la primera de "
+            "cualquier discusión sobre un registro: «esto antes no decía "
+            "esto».\n\n"
+            "El **origen** es la mitad que casi nunca se guarda y la que "
+            "resuelve la discusión: no es lo mismo que lo cambiara una persona "
+            "que que lo pisara una sincronización todas las noches, y sin "
+            "saberlo se culpa a quien pasaba por ahí.\n\n"
+            "Va por servicio, como el resto del rastro: el histórico vive en "
+            "el esquema del que guarda ese objeto, y ninguno lee el de otro."
+        ),
+    )
+    def historial_de_campos(
+        objeto: str,
+        objeto_id: str,
+        db: DbDep,
+        principal: AutenticadoDep,
+        campo: str | None = Query(None, description="Sólo este campo"),
+        limite: int = Query(200, ge=1, le=1000),
+    ) -> Any:
+        from sqlalchemy import select
+
+        from crmcore.audit.modelos import CambioCampo
+
+        consulta = (
+            select(CambioCampo)
+            .where(
+                CambioCampo.tenant_id == principal.tenant_id,
+                CambioCampo.objeto == objeto,
+                CambioCampo.objeto_id == str(objeto_id),
+            )
+            .order_by(CambioCampo.created_at.desc())
+            .limit(limite)
+        )
+        if campo:
+            consulta = consulta.where(CambioCampo.campo == campo)
+        filas = db.execute(consulta).scalars().all()
+        return {
+            "objeto": objeto,
+            "objeto_id": str(objeto_id),
+            "cambios": [
+                {
+                    "campo": f.campo,
+                    "valor_anterior": f.valor_anterior,
+                    "valor_nuevo": f.valor_nuevo,
+                    "actor_id": str(f.actor_id) if f.actor_id else None,
+                    # Desde dónde se hizo. Es lo que separa «lo cambió alguien»
+                    # de «lo pisa la sincronización todas las noches».
+                    "origen": f.origen,
+                    "cuando": f.created_at.isoformat() if f.created_at else None,
+                }
+                for f in filas
+            ],
+            "cuantos": len(filas),
+            "que_significa": _que_significa_vacio(db, principal.tenant_id)
+            if not filas
+            else "Cada línea dice qué cambió, quién y desde dónde.",
         }
 
     @router.get(

@@ -164,6 +164,7 @@ function Datos({
   const recurso = m ? recursoDe(m, objeto) : undefined;
   const [fila, setFila] = useState<Record<string, unknown> | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
+  const [tapados, setTapados] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const [editando, setEditando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -201,6 +202,7 @@ function Datos({
         .then((r) => {
           setFila(r.datos);
           setRetenidos(r.retenidos);
+          setTapados(r.enmascarados);
           alSaberNombre(nombreDelRegistro(r.datos));
         })
         .catch(salvoCancelacion(setFallo));
@@ -336,7 +338,21 @@ function Datos({
           </details>
         </>
       )}
-      <Retenidos campos={retenidos} />
+      <Retenidos campos={retenidos} enmascarados={tapados} />
+
+      {/* Qué ha cambiado en ESTE registro, campo a campo. Plegado y cargado
+          sólo al abrirlo: es trazabilidad, no contenido, y pedirlo en cada
+          ficha abierta sería una llamada más por registro que casi nadie mira.
+          Pero cuando hace falta es lo primero que se pregunta —«esto antes no
+          decía esto»—, y hasta el 29-10-2026 se escribía y no lo devolvía
+          ninguna ruta. */}
+      {objeto && recurso?.servicio ? (
+        <HistorialDeCampos
+          servicio={recurso.servicio}
+          objeto={objeto}
+          objetoId={id}
+        />
+      ) : null}
 
       {!editando ? (
         <SubColecciones
@@ -840,5 +856,108 @@ export function PreguntarSobreEsto({ objeto, objetoId }: { objeto: string; objet
         ) : null}
       </div>
     </section>
+  );
+}
+
+interface CambioDeCampo {
+  campo: string;
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
+  actor?: string | null;
+  origen?: string | null;
+  cuando?: string | null;
+}
+
+interface HistorialCampos {
+  cambios: CambioDeCampo[];
+  cuantos: number;
+  que_significa: string;
+}
+
+/**
+ * Qué ha cambiado en este registro, campo a campo.
+ *
+ * **Se escribía y no lo leía nadie.** Cada edición anota el campo, el valor
+ * anterior, el nuevo, quién lo hizo y **desde dónde** —la pantalla, la API o
+ * una automatización—, y ninguna ruta lo devolvía. Es la primera pregunta de
+ * cualquier discusión sobre un registro: «esto antes no decía esto».
+ *
+ * El **origen** es la mitad que casi nunca se guarda y la que la zanja: no es
+ * lo mismo que lo cambiara una persona a que lo pisara una sincronización
+ * todas las noches, y sin saberlo se culpa a quien pasaba por ahí.
+ *
+ * Plegado y cargado **sólo al abrirlo**: es trazabilidad, no contenido, y
+ * pedirlo en cada ficha abierta sería una llamada por registro que casi nadie
+ * mira. Y cuando está vacío, el servidor dice cuál de las dos cosas es —este
+ * registro no se ha tocado, o este servicio no lleva ese histórico—, que con
+ * la lista vacía se ven igual.
+ */
+export function HistorialDeCampos({
+  servicio,
+  objeto,
+  objetoId,
+}: {
+  servicio: string;
+  objeto: string;
+  objetoId: string;
+}) {
+  const { t } = useTranslation();
+  const [abierto, setAbierto] = useState(false);
+  const [datos, setDatos] = useState<HistorialCampos | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  const cargar = useCallback(() => {
+    const control = new AbortController();
+    setFallo(null);
+    llamar<HistorialCampos>(
+      `/api/v1/${servicio}/rastro/campos/${objeto}/${objetoId}`,
+      { signal: control.signal },
+    )
+      .then((r) => setDatos(r.datos))
+      .catch(salvoCancelacion(setFallo));
+    return () => control.abort();
+  }, [servicio, objeto, objetoId]);
+
+  useEffect(() => {
+    if (!abierto || datos) return undefined;
+    return cargar();
+  }, [abierto, datos, cargar]);
+
+  return (
+    <details className="mt-3" onToggle={(e) => setAbierto(e.currentTarget.open)}>
+      <summary className="cursor-pointer text-3xs text-ink-faint">
+        {t("ficha.queHaCambiado")}
+      </summary>
+      {fallo ? <Fallo error={fallo} reintentar={cargar} /> : null}
+      {abierto && !datos && !fallo ? <Cargando /> : null}
+      {datos ? (
+        datos.cambios.length === 0 ? (
+          <Vacio
+            titulo={t("ficha.sinCambios")}
+            detalle={datos.que_significa}
+            compacto
+          />
+        ) : (
+          <ul className="card mt-2 flex flex-col gap-2 p-4">
+            {datos.cambios.map((c, i) => (
+              <li key={`${c.campo}-${i}`} className="text-2xs">
+                <span className="text-ink">{c.campo}</span>:{" "}
+                <span className="text-ink-faint line-through">
+                  {c.valor_anterior ?? "—"}
+                </span>{" "}
+                → <span className="text-ink">{c.valor_nuevo ?? "—"}</span>
+                {/* El origen al lado del cambio, no en otra columna: es lo que
+                    distingue «lo cambió alguien» de «lo pisó una
+                    sincronización», y es la diferencia que zanja la
+                    discusión. */}
+                {c.origen ? (
+                  <span className="ml-2 chip-dato">{c.origen}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+    </details>
   );
 }

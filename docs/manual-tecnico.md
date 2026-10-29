@@ -1863,6 +1863,36 @@ pasaba igual: lo contaba como duplicado y dejaba el tenant sin agente sin decirl
 lo que se declara ahora**, no con lo que tenía — resucitar con la configuración
 vieja sería devolver permisos que alguien quitó.
 
+### 4.6.6 «Esto antes no decía esto»
+
+Cada edición que pasa por `audit.chain.registrar_cambios` anota el campo, el
+valor anterior, el nuevo, quién lo hizo y **desde dónde** —la pantalla, la API
+o una automatización—. Se escribía desde el principio y **no lo devolvía
+ninguna ruta**: la primera pregunta de cualquier discusión sobre un registro no
+se podía contestar sin entrar en la base de datos.
+
+`GET /api/v1/{servicio}/rastro/campos/{objeto}/{objeto_id}` lo devuelve, y la
+ficha del registro lo enseña plegado, cargándolo **sólo al abrirlo**: es
+trazabilidad, no contenido, y pedirlo en cada ficha abierta sería una llamada
+por registro que casi nadie mira.
+
+El **origen** va al lado de cada cambio y no en otra columna: es lo que
+distingue «lo cambió alguien» de «lo pisó una sincronización todas las noches»,
+y sin eso se culpa a quien pasaba por ahí.
+
+Lo escriben hoy `party` y `sales`. En un servicio que no lo haga, esta ruta
+contestaría vacío para siempre y quien la mira concluiría que el registro no se
+ha tocado — así que el vacío **dice cuál de las dos cosas es**, y lo distingue
+midiendo —¿tiene este servicio algún cambio de campo de algún registro?— en vez
+de con una lista de servicios escrita a mano, que se quedaría vieja el día que
+un sexto empiece a anotarlos.
+
+De paso salió uno de los de siempre: `Vacio` en modo `compacto` **tiraba el
+detalle**. Cuatro pantallas le pasaban una explicación —por qué no hay rastro,
+por qué no hay conexiones, cuál de las dos cosas es este historial vacío— y
+ninguna llegaba a quien la miraba. Un vacío sin porqué se lee como «no hay
+nada», que es justo lo que esas pantallas intentaban no decir.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

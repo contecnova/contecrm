@@ -418,6 +418,8 @@ export default {
   },
   ficha: {
     identificadores: "Identificadores técnicos",
+    queHaCambiado: "Qué ha cambiado",
+    sinCambios: "Sin cambios anotados",
     editar: "Editar",
     guardar: "Guardar cambios",
     eliminar: "Eliminar",

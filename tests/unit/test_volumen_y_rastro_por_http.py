@@ -348,6 +348,78 @@ def test_la_purga_de_adjuntos_se_abstiene_con_un_bloqueo_activo(db: Any, tenant_
 # ── Rastro de agregados (CRM-00.05.04.06) ─────────────────────────────────
 
 
+def test_el_historial_de_campos_se_puede_leer_y_dice_de_donde_vino(
+    cliente: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """**Se escribía y no lo leía nadie.**
+
+    Cada edición anota el campo, el valor anterior, el nuevo, quién lo hizo y
+    **desde dónde** —la pantalla, la API o una automatización—, y ninguna ruta
+    lo devolvía. La pregunta que contesta es la primera de cualquier discusión
+    sobre un registro: «esto antes no decía esto».
+
+    El origen es la mitad que casi nunca se guarda y la que zanja la
+    discusión: no es lo mismo que lo cambiara una persona a que lo pisara una
+    sincronización todas las noches.
+    """
+    from crmcore.audit.chain import registrar_cambios
+
+    objeto_id = uuid4()
+    registrar_cambios(
+        db,
+        objeto="oportunidad",
+        objeto_id=objeto_id,
+        anterior={"importe": "1000", "etapa": "analisis"},
+        nuevo={"importe": "2500", "etapa": "analisis"},
+        tenant_id=tenant_id,
+    )
+    db.flush()
+
+    r = cliente.get(f"/api/v1/sales/rastro/campos/oportunidad/{objeto_id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    cambios = {c["campo"]: c for c in cuerpo["cambios"]}
+    # Solo lo que de verdad cambió: anotar los cincuenta campos cada vez que
+    # alguien corrige uno hace el historial ilegible, que es la forma habitual
+    # de que estos historiales acaben sin usarse.
+    assert set(cambios) == {"importe"}
+    assert cambios["importe"]["valor_anterior"] == "1000"
+    assert cambios["importe"]["valor_nuevo"] == "2500"
+    assert "origen" in cambios["importe"]
+
+    # No hay prueba de que la ruta genérica no tape a ésta, y es a propósito:
+    # se escribió, se validó plantando el caso malo —declarando `/campos/…`
+    # después de `/{objeto}/{objeto_id}`— y **pasó igual**. No puede fallar:
+    # `/campos/{objeto}/{objeto_id}` tiene tres tramos y `/{objeto}/{objeto_id}`
+    # dos, así que no compiten. Una comprobación que no puede ponerse roja no
+    # vigila nada y da por cubierto lo que no mira.
+
+
+def test_un_historial_vacio_distingue_sin_cambios_de_sin_anotarlos(
+    cliente: Any, cabeceras: dict[str, str]
+) -> None:
+    """Son dos cosas distintas y con la lista vacía se ven igual.
+
+    El rastro campo a campo lo escribe quien pasa por `registrar_cambios`, y no
+    todos los servicios lo hacen: en los que no, esta ruta contestaría vacío
+    para siempre y quien la mira concluiría que el registro no se ha tocado.
+    """
+    r = cliente.get(f"/api/v1/sales/rastro/campos/oportunidad/{uuid4()}", headers=cabeceras)
+    assert r.status_code == 200
+    cuerpo = r.json()
+    assert cuerpo["cambios"] == []
+    # Dice CUÁL de las dos cosas es, no «no hay nada». Se comprueba que el
+    # texto nombre exactamente una de las dos, no que diga algo: un mensaje
+    # genérico volvería a dejar las dos indistinguibles con otras palabras.
+    dice = cuerpo["que_significa"]
+    este_registro = "no se ha tocado por una vía que lo anote" in dice
+    este_servicio = "ningún cambio de campo de ningún registro" in dice
+    assert este_registro != este_servicio, (
+        "El vacío tiene que decir si es que ESTE registro no se ha tocado o si "
+        f"es que este servicio no lleva ese histórico. Dice: «{dice}»"
+    )
+
+
 def test_se_dice_que_agregados_tienen_el_rastro_encendido(
     cliente: Any, cabeceras: dict[str, str]
 ) -> None:

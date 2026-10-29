@@ -72,10 +72,21 @@ export function Vacio({
 
   if (compacto) {
     return (
-      <p className="flex items-center gap-2 py-4 text-2xs text-ink-faint">
-        <Icono nombre={icono} tamano="sm" />
-        {titulo ?? t("vacio.titulo")}
-      </p>
+      <div className="py-4">
+        <p className="flex items-center gap-2 text-2xs text-ink-faint">
+          <Icono nombre={icono} tamano="sm" />
+          {titulo ?? t("vacio.titulo")}
+        </p>
+        {/* **El porqué también en compacto.** Lo tiraba: cuatro pantallas le
+            pasaban una explicación —por qué no hay rastro, por qué no hay
+            conexiones, si el registro no se ha tocado o si este servicio no
+            lleva ese histórico— y ninguna llegaba a quien la miraba. Medido el
+            29-10-2026. Un vacío sin porqué se lee como «no hay nada», que es
+            justo lo que estas pantallas estaban intentando no decir. */}
+        {detalle ? (
+          <p className="mt-1 text-3xs text-ink-faint">{detalle}</p>
+        ) : null}
+      </div>
     );
   }
 
