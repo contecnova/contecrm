@@ -449,6 +449,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         listar: "/api/v1/claves-api",
         servicio: "identity",
       },
+      // Las sesiones abiertas, y **cuáles son suplantaciones y por qué**
+      // (CRM-00.05.02.10). Entrar como otra persona exige motivo escrito —y
+      // hace bien— pero ese porqué se guardaba y no lo devolvía nadie: en la
+      // lista quedaba un identificador en una columna, y nadie sabe de quién
+      // es un UUID. Una exigencia que no se puede revisar es papeleo.
       { nombre: "Sesiones", listar: "/api/v1/sesiones", servicio: "identity" },
       // A quién se le avisa de qué y por dónde. Los canales de entrega y cuántos
       // llegaron, se abrieron o rebotaron van encima: una preferencia sin saber

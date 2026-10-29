@@ -510,3 +510,53 @@ def test_suplantar_exige_motivo_escrito_crm_00_05_02_10(
         json={"usuario_id": str(uuid4()), "motivo": "ok"},
     )
     assert corto.status_code == 422, corto.text
+
+
+def test_el_motivo_de_una_suplantacion_se_puede_LEER_crm_00_05_02_10(
+    identidad: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """Se exigía escribirlo y **no se podía leer**.
+
+    Entrar como otra persona exige motivo —y hace bien—, pero ese porqué se
+    guardaba y no lo devolvía ninguna ruta: en el listado de sesiones quedaba
+    un identificador en una columna, y nadie sabe de quién es un UUID. Una
+    exigencia que no se puede revisar es papeleo.
+
+    Y la lista dice **cuáles son suplantaciones** en una palabra. Un
+    `actor_real_id` con valor ya lo dice, pero lo dice en un formato que nadie
+    lee de un vistazo, y lo que hay que ver aquí es precisamente eso.
+    """
+    r = identidad.get("/api/v1/sesiones", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    filas = r.json()
+    filas = filas["items"] if isinstance(filas, dict) else filas
+    assert isinstance(filas, list)
+    # El contrato tiene que traer las dos: sin el motivo no se revisa, y sin la
+    # marca hay que mirar UUIDs uno a uno para encontrarlas.
+    campos = set(filas[0]) if filas else set()
+    if filas:
+        assert "motivo_suplantacion" in campos, "el porqué sigue sin salir"
+        assert "suplantada" in campos, "hay que leer UUIDs para saber cuál lo es"
+
+
+def test_una_sesion_normal_no_sale_marcada_como_suplantacion(
+    identidad: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, contexto_tenant: UUID
+) -> None:
+    """**El caso que haría inútil la marca.** Si todas salieran marcadas, la
+    columna no distinguiría nada y se dejaría de mirar."""
+    from datetime import datetime, timezone
+
+    from services.identity.esquemas import SesionOut
+
+    ahora = datetime.now(timezone.utc)
+    normal = SesionOut(id=uuid4(), creada_at=ahora, ultima_actividad_at=ahora, expira_at=ahora)
+    assert normal.suplantada is False
+    suplantada = SesionOut(
+        id=uuid4(),
+        creada_at=ahora,
+        ultima_actividad_at=ahora,
+        expira_at=ahora,
+        actor_real_id=uuid4(),
+        motivo_suplantacion="Reproducir la incidencia 4821 del cliente.",
+    )
+    assert suplantada.suplantada is True

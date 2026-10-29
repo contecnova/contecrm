@@ -443,7 +443,16 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            excepciones de campo— y el comportamiento anomalo
 #                            —que lo enseña el panel de exportaciones y lo
 #                            declara la propia ruta del servidor—
-TOPE_SIN_PANTALLA = 337
+#   29-10-2026  336 de 778  la suplantacion, legible. Entrar como otra
+#                            persona exige motivo escrito —y hace bien— pero
+#                            ese porque SE GUARDABA Y NO LO DEVOLVIA NADIE: en
+#                            el listado de sesiones quedaba un identificador en
+#                            una columna, y nadie sabe de quien es un UUID. Una
+#                            exigencia que no se puede revisar es papeleo.
+#                            Ahora sale el motivo y una marca en una palabra,
+#                            porque `actor_real_id` con valor ya lo dice pero
+#                            lo dice en un formato que nadie lee de un vistazo
+TOPE_SIN_PANTALLA = 336
 
 
 def _es_pantalla(p: Path) -> bool:

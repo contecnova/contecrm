@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class Credenciales(BaseModel):
@@ -171,8 +171,25 @@ class SesionOut(BaseModel):
     expira_at: datetime
     revocada_at: datetime | None = None
     actor_real_id: UUID | None = None
+    # **El motivo de la suplantación, que se guardaba y no se devolvía.**
+    # Entrar como otra persona exige escribir por qué —y hace bien— pero ese
+    # porqué no se podía leer desde ninguna parte: quedaba un identificador en
+    # una columna y nadie sabe de quién es un UUID. Una exigencia que no se
+    # puede revisar es papeleo.
+    motivo_suplantacion: str | None = None
+    # Derivado para que la lista se pueda leer de un vistazo. Un `actor_real_id`
+    # con valor ya lo dice, pero lo dice en un formato que nadie lee.
+    suplantada: bool = False
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def _marcar_suplantada(self) -> "SesionOut":
+        # Se calcula aquí y no en cada consulta: si lo pusiera cada ruta, la
+        # que se olvidara devolvería una suplantación disfrazada de sesión
+        # normal, que es justo lo que no puede pasar.
+        object.__setattr__(self, "suplantada", self.actor_real_id is not None)
+        return self
 
 
 class Suplantar(BaseModel):

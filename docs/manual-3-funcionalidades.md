@@ -390,6 +390,14 @@ se rellena y las listas salen incompletas sin que falle nada.
   corta y rastro. Las tres condiciones juntas; quitar cualquiera la convierte en
   una puerta trasera con buena intención (CRM-00.01.02.06).
 
+  **Y el motivo se lee.** Hasta el 29-10-2026 se exigía escribirlo y no lo
+  devolvía ninguna ruta: en el listado de sesiones quedaba un identificador en
+  una columna, y nadie sabe de quién es un UUID. Una exigencia que no se puede
+  revisar es papeleo con otro nombre. Ahora la lista de sesiones trae el motivo
+  y dice **en una palabra** cuáles son suplantaciones: `actor_real_id` con
+  valor ya lo decía, pero en un formato que nadie lee de un vistazo, y de un
+  vistazo es como se revisa esto.
+
 ### Auditoría
 
 - **Traza encadenada por hash** (CRM-00.05.04.01), una cadena por tenant, con
