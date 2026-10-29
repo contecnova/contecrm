@@ -812,6 +812,14 @@ Si te dice que no hay ningún agente al que preguntar, es que todavía no se ha
 declarado ninguno: se hace en Administración → Agentes autónomos, eligiendo qué
 puede hacer y cuándo tiene que esperarte.
 
+**Y si sólo hay uno declarado, no te pregunta cuál.** Hasta el 29-10-2026 había
+que elegirlo en un desplegable de un solo elemento, con el botón de preparar el
+plan bloqueado hasta hacerlo: eso no es una decisión, es un paso obligatorio
+para llegar a la que sí lo es. Ahora se elige solo y la pantalla **dice quién
+responde**, que no es lo mismo que ocultarlo: el agente decide qué herramientas
+usa y hasta dónde llega, así que saber cuál es forma parte de poder no fiarte de
+la respuesta. En cuanto haya dos, vuelve a preguntarte.
+
 ---
 
 ## Correo, calendario y el resto de tus herramientas (sección 6.1)

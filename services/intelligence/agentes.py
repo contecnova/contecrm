@@ -133,6 +133,20 @@ def registrar_continuador(fn: Callable[..., dict[str, Any]]) -> None:
     _continuador = fn
 
 
+def _porque_rechazo(resultado: dict[str, Any]) -> str:
+    """Por qué el destino ha dicho que no, con lo que él mismo declara.
+
+    «Estado 401» no dice nada que se pueda arreglar; el `detail` y el
+    `error_code` de la respuesta sí nombran qué falta. Se recorta porque es un
+    motivo, no una respuesta.
+    """
+    datos = resultado.get("datos")
+    detalle = ""
+    if isinstance(datos, dict):
+        detalle = str(datos.get("detail") or datos.get("title") or datos.get("texto") or "")
+    return f"El destino ha contestado {resultado.get('estado')}: {detalle}"[:400]
+
+
 def _definicion(agente: "Agente", nombre: str) -> dict[str, Any]:
     """La herramienta tal como la declaró el agente: método, ruta y parámetros.
 
@@ -445,6 +459,27 @@ def lanzar(
         raise Prohibido(
             f"El agente «{clave}» está apagado: {agente.motivo_apagado}",
             error_code="agente.apagado",
+        )
+    # **Un agente sin herramientas no puede hacer nada, y hay que decirlo.**
+    #
+    # Medido el 29-10-2026: ningún agente declarado tenía ninguna. El modelo se
+    # llamaba igual, con la lista vacía, no podía proponer ningún paso, y esto
+    # devolvía 201 con `pasos: []` y el aviso en blanco. Quien lo abría veía
+    # una pantalla que decía que había ido bien y no había hecho nada, y la
+    # llamada se pagaba.
+    #
+    # Las herramientas se derivan del contrato de la API
+    # (`POST /ia/agentes-autonomos/herramientas-desde-contrato`) y se guardan en
+    # el agente. Que eso no esté hecho es configuración incompleta, no un fallo
+    # de ejecución, así que se dice dónde se completa.
+    if not (agente.herramientas or []):
+        raise Conflicto(
+            f"El agente «{clave}» no tiene ninguna herramienta declarada, así que "
+            "no puede hacer nada: se le pediría un plan al modelo y volvería "
+            "vacío. Las herramientas se derivan del contrato de la API y se "
+            "guardan en el agente.",
+            error_code="agente.sin_herramientas",
+            detalle={"agente": clave},
         )
     # El apagado general de la IA del tenant manda sobre el del agente: cuando
     # algo va mal de verdad no hay tiempo de decidir cuál de los seis era.
@@ -770,7 +805,32 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
             permisos=list(agente.permisos or []),
         )
         siguiente.resultado = dict(resultado or {})
-        siguiente.estado = "hecho"
+        # **Una herramienta que contesta 401 no es un paso hecho.**
+        #
+        # Medido el 29-10-2026: el agente llamaba sin identidad, el servicio de
+        # destino contestaba 401, y esto lo marcaba «hecho» con el error dentro
+        # del resultado. La pantalla —cuya promesa entera es poder ver qué ha
+        # hecho— enseñaba el paso en verde, y la auditoría lo guardaba igual.
+        # Lo único que delataba el problema era la conclusión del modelo:
+        # «necesito credenciales válidas», que se lee como un límite del modelo
+        # y es un fallo de configuración.
+        #
+        # El resultado se **conserva** —es información para el agente, que en
+        # modo iterativo puede corregir con él delante—, pero el estado dice lo
+        # que pasó.
+        if resultado and not resultado.get("ok", True):
+            siguiente.estado = "fallido"
+            siguiente.error = _porque_rechazo(resultado)
+            # En modo iterativo la ejecución sigue: el bucle existe justo para
+            # decidir el paso siguiente con el resultado del anterior delante, y
+            # un rechazo es un resultado. En plan cerrado se para, porque los
+            # pasos que vienen detrás se planificaron dando éste por bueno.
+            if agente.modo != "iterativo":
+                ejecucion.estado = "fallida"
+                ejecucion.motivo_fin = f"El paso {siguiente.orden} ha sido rechazado"
+                ejecucion.terminada_at = _ahora()
+        else:
+            siguiente.estado = "hecho"
     except Exception as exc:  # noqa: BLE001 — un paso fallido no tumba la ejecución
         siguiente.error = str(exc)[:400]
         siguiente.estado = "fallido"

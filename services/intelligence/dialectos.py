@@ -68,6 +68,38 @@ _RUTA = {
 _CAMPO_OPT_OUT = {"openai_chat": "store"}
 
 
+# Lo que el catálogo de herramientas anota para USO INTERNO y no puede salir.
+#
+# `in` dice si cada parámetro va en el camino, en la consulta o en el cuerpo, y
+# lo necesita `puerto._repartir_argumentos` para colocar lo que devuelve el
+# modelo. Pero vive dentro del esquema del parámetro, y ese esquema se manda al
+# proveedor tal cual: es JSON Schema, y `in` no es de JSON Schema.
+#
+# Medido el 29-10-2026: dos familias se lo tragan sin decir nada y **Gemini
+# rechaza la llamada entera** con «Unknown name "in" … Cannot find field», una
+# línea por cada parámetro de cada herramienta. Se quita aquí, en la frontera,
+# y no en el catálogo: el dato hace falta dentro.
+_SOLO_NUESTRO = ("in",)
+
+
+def _esquema_hacia_fuera(esquema: Any) -> Any:
+    """El mismo esquema sin lo que es anotación nuestra, a cualquier profundidad.
+
+    Recursivo porque un parámetro puede ser un objeto con propiedades o una
+    lista de objetos, y limpiar solo el primer nivel deja la llamada rechazada
+    igual — con el mismo error y un sitio menos donde buscarlo.
+    """
+    if isinstance(esquema, dict):
+        return {
+            clave: _esquema_hacia_fuera(valor)
+            for clave, valor in esquema.items()
+            if clave not in _SOLO_NUESTRO
+        }
+    if isinstance(esquema, list):
+        return [_esquema_hacia_fuera(x) for x in esquema]
+    return esquema
+
+
 def exigir_dialecto(formato: str) -> str:
     """Comprueba que el dialecto declarado es uno de los que se saben hablar."""
     if formato not in DIALECTOS:
@@ -122,7 +154,9 @@ def peticion(
                     "function": {
                         "name": h["nombre"],
                         "description": h.get("descripcion") or "",
-                        "parameters": h.get("parametros") or {"type": "object", "properties": {}},
+                        "parameters": _esquema_hacia_fuera(
+                            h.get("parametros") or {"type": "object", "properties": {}}
+                        ),
                     },
                 }
                 for h in herramientas
@@ -146,7 +180,9 @@ def peticion(
                 {
                     "name": h["nombre"],
                     "description": h.get("descripcion") or "",
-                    "input_schema": h.get("parametros") or {"type": "object", "properties": {}},
+                    "input_schema": _esquema_hacia_fuera(
+                        h.get("parametros") or {"type": "object", "properties": {}}
+                    ),
                 }
                 for h in herramientas
             ]
@@ -176,8 +212,9 @@ def peticion(
                         {
                             "name": h["nombre"],
                             "description": h.get("descripcion") or "",
-                            "parameters": h.get("parametros")
-                            or {"type": "object", "properties": {}},
+                            "parameters": _esquema_hacia_fuera(
+                                h.get("parametros") or {"type": "object", "properties": {}}
+                            ),
                         }
                         for h in herramientas
                     ]

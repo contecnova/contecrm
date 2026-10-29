@@ -82,6 +82,16 @@ class Api:
             raise SystemExit(f"La respuesta de entrada no trae token: {sorted(cuerpo)}")
         estado, yo = self._llamar("GET", "/api/v1/auth/me")
         self.tenant_id = str((yo or {}).get("tenant_id") or "") if estado == 200 else ""
+        # Quién es, no solo de qué empresa. Lo necesita el agente autónomo: sus
+        # llamadas van firmadas con una identidad, y sin ninguna el servicio de
+        # destino contesta 401 — el agente lee «hace falta autenticación» y
+        # concluye que no puede contestar, que es un fallo de configuración
+        # disfrazado de límite del modelo.
+        # `auth/me` devuelve el usuario ANIDADO —`{"usuario": {...}, "tenant_id": …}`—
+        # y no sus campos en la raíz. Leerlo de la raíz daba cadena vacía, que
+        # es exactamente el agente sin identidad que esto venía a arreglar.
+        usuario = (yo or {}).get("usuario") or {}
+        self.principal_id = str(usuario.get("id") or "") if estado == 200 else ""
 
     def como(self, email: str, contrasena: str, tenant: str) -> "Api":
         """Otra sesión, con los contadores compartidos.
@@ -210,6 +220,21 @@ class Api:
                 return existente
         return None
 
+    def leer(self, ruta: str) -> dict | None:
+        """Un GET, para lo que hay que consultar antes de poder sembrar.
+
+        Las herramientas de un agente se derivan del contrato de cada servicio,
+        así que hay que traérselo primero. Devuelve `None` si no contesta, y
+        quien llama **lo apunta** en vez de seguir como si hubiera venido
+        vacío: un sembrado calculado sobre menos servicios de los que parece es
+        un informe correcto sobre datos incompletos.
+        """
+        estado, cuerpo = self._llamar("GET", ruta)
+        if estado == 200 and isinstance(cuerpo, dict):
+            return cuerpo
+        self.fallos.append(f"GET {ruta} → {estado} {_motivo(cuerpo)}")
+        return None
+
     def crear(self, ruta: str, cuerpo: dict, *, metodo: str = "POST") -> dict | None:
         estado, respuesta = self._llamar(metodo, ruta, cuerpo)
         if estado in (200, 201, 204):
@@ -230,6 +255,67 @@ class Api:
         etiqueta = cuerpo.get("clave") or cuerpo.get("nombre") or cuerpo.get("codigo") or ""
         self.fallos.append(f"{metodo} {ruta} «{etiqueta}» → {estado} {_motivo(respuesta)}")
         return None
+
+
+# Qué puede CONSULTAR el asistente de Nexus.
+#
+# Acotado a propósito, y medido: sin `solo_rutas`, derivar de los contratos de
+# `party`, `sales` y `service` da **428** herramientas de lectura. Eso no cabe
+# en una llamada al modelo —ni en su límite ni en lo que cuesta mandarlo— y
+# además no ayuda: cuatrocientas opciones para contestar «qué cuentas están en
+# riesgo» hacen que elija peor, no mejor. Con estas rutas son 32.
+#
+# Son las que contestan lo que la propia pantalla promete: cuentas, contactos,
+# lo que ha pasado con ellas, oportunidades, leads y casos.
+RUTAS_DEL_ASISTENTE = {
+    "party": ["/api/v1/accounts", "/api/v1/contacts", "/api/v1/activities"],
+    "sales": ["/api/v1/opportunities", "/api/v1/leads"],
+    "service": ["/api/v1/casos"],
+}
+
+# Lo que hace falta para leer eso. Solo lectura: a un asistente al que se le
+# pregunta no se le da con qué escribir, y el día que haga falta se amplía a
+# conciencia en vez de haber venido abierto de serie.
+PERMISOS_DEL_ASISTENTE = [
+    "account:read",
+    "contact:read",
+    "activity:read",
+    "opportunity:read",
+    "lead:read",
+    "case:read",
+]
+
+
+def _herramientas_de_lectura(api: Api) -> list[dict]:
+    """Las herramientas del asistente, derivadas del contrato de cada servicio.
+
+    **Derivadas y no escritas aquí**: las herramientas SON la API, así que una
+    ruta nueva es una herramienta nueva sin que nadie la transcriba, y una
+    retirada deja de existir para el agente el mismo día. Una lista a mano se
+    queda vieja y el síntoma es un agente que intenta algo que ya no está.
+
+    Si un servicio no contesta se apunta en los fallos del sembrado: un agente
+    con un tercio de las herramientas funciona, contesta peor y no hay forma de
+    saber por qué.
+    """
+    herramientas: list[dict] = []
+    for servicio, solo_rutas in RUTAS_DEL_ASISTENTE.items():
+        contrato = api.leer(f"/api/v1/contrato/{servicio}")
+        if contrato is None:
+            continue
+        derivadas = api.crear(
+            "/api/v1/ia/agentes-autonomos/herramientas-desde-contrato",
+            {
+                "contrato": contrato,
+                "permisos": PERMISOS_DEL_ASISTENTE,
+                # Solo lectura. `desde_openapi` ya deja fuera lo destructivo por
+                # defecto, pero la escritura sí entraría: aquí no se quiere.
+                "riesgos_admitidos": ["lectura"],
+                "solo_rutas": solo_rutas,
+            },
+        )
+        herramientas += list((derivadas or {}).get("herramientas") or [])
+    return herramientas
 
 
 # Lo que de verdad quiere decir «esto ya estaba». Un 409 con cualquier otro
@@ -4834,17 +4920,49 @@ def sembrar_lo_que_sale_vacio(api: Api) -> None:
         },
     )
 
-    # ── Un agente de IA y los subprocesadores ─────────────────────────────
-    api.crear(
-        "/api/v1/ia/agentes-autonomos",
+    # ── Los agentes de IA y los subprocesadores ───────────────────────────
+    #
+    # Dos, y el orden importa: el primero es el que contesta en Nexus.
+    #
+    # Hasta el 29-10-2026 solo se sembraba el de soporte. Nexus —«pregúntale al
+    # sistema»— ofrecía entonces un agente de **primera respuesta de un caso**
+    # como único al que preguntar «qué cuentas están en riesgo y por qué», que
+    # es el ejemplo que la propia pantalla sugiere. Encajaba la mecánica y no
+    # la pregunta: quien lo abría leía «primera-respuesta» y no entendía por
+    # qué.
+    herramientas_asistente = _herramientas_de_lectura(api)
+    for agente in (
+        {
+            "clave": "asistente",
+            "tipo": "asistente_conversacional",
+            "herramientas": herramientas_asistente,
+            # Con quién llama. Un agente sin identidad no puede llamar a nada:
+            # el destino contesta 401 y el modelo lo cuenta como que no sabe.
+            "principal_id": api.principal_id,
+            "descripcion": (
+                "Contesta preguntas sobre los datos del CRM: busca, cruza y explica "
+                "con qué lo ha averiguado."
+            ),
+            # Solo lectura. Un asistente al que se le pregunta no tiene por qué
+            # poder escribir, y el día que haga falta se amplía a conciencia.
+            "permisos": ["account:read", "activity:read", "opportunity:read", "case:read"],
+            "max_acciones": 20,
+            # `iterativo` y no `plan_cerrado`: una pregunta de verdad no se
+            # puede planificar entera de antemano —la segunda mitad depende de
+            # lo que devuelva la primera—, y planificar a ciegas produce pasos
+            # que no sirven para lo que se acaba de encontrar.
+            "modo": "iterativo",
+        },
         {
             "clave": "primera-respuesta",
             "tipo": "respuesta_soporte",
             "descripcion": "Propone la primera respuesta de un caso, para que la revise alguien.",
             "permisos": ["account:read", "activity:read"],
+            "principal_id": api.principal_id,
             "max_acciones": 20,
         },
-    )
+    ):
+        api.crear("/api/v1/ia/agentes-autonomos", agente)
     # `trata` no es opcional, y el propio servidor lo explica: «un
     # subprocesador sin eso es un nombre en una lista, y no contesta a lo que
     # pregunta un cliente».

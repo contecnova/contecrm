@@ -124,7 +124,16 @@ export function Preguntar() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     llamar<unknown>("/api/v1/ia/agentes-autonomos", { signal: control.signal })
-      .then((r) => setAgentes(filas<Agente>(r.datos)))
+      .then((r) => {
+        const lista = filas<Agente>(r.datos);
+        setAgentes(lista);
+        // **Con uno solo no se pregunta cuál.** Elegir de una lista de uno no
+        // es una decisión: es un paso que hay que dar para llegar al que sí lo
+        // es, con el botón de planificar bloqueado hasta darlo. Se elige solo
+        // y se dice quién responde, que no es lo mismo que esconderlo.
+        const usables = lista.filter((a) => a.activo !== false);
+        if (usables.length === 1 && usables[0]) setElegido(usables[0].clave);
+      })
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
       });
@@ -264,24 +273,38 @@ export function Preguntar() {
             void preguntar();
           }}
         >
-          <label className="flex flex-col gap-1 text-sm text-ink-muted">
-            {t("preguntar.quienResponde")}
-            <select
-              className="input-base"
-              value={elegido}
-              onChange={(e) => setElegido(e.target.value)}
-            >
-              <option value="">{t("preguntar.elige")}</option>
-              {usables.map((a) => (
-                <option key={a.id} value={a.clave}>
-                  {a.clave}
-                  {a.modo === "iterativo"
-                    ? ` · ${t("preguntar.modoIterativo")}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          {usables.length > 1 ? (
+            <label className="flex flex-col gap-1 text-sm text-ink-muted">
+              {t("preguntar.quienResponde")}
+              <select
+                className="input-base"
+                value={elegido}
+                onChange={(e) => setElegido(e.target.value)}
+              >
+                <option value="">{t("preguntar.elige")}</option>
+                {usables.map((a) => (
+                  <option key={a.id} value={a.clave}>
+                    {a.clave}
+                    {a.modo === "iterativo"
+                      ? ` · ${t("preguntar.modoIterativo")}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            // Se DICE quién responde en vez de callarlo: el agente decide qué
+            // herramientas usa y hasta dónde llega, así que saber cuál es
+            // forma parte de poder no fiarse de la respuesta. Lo que sobra es
+            // el desplegable, no el dato.
+            <p className="text-sm text-ink-muted">
+              {t("preguntar.quienResponde")}:{" "}
+              <span className="text-ink">{usables[0]?.clave}</span>
+              {usables[0]?.modo === "iterativo"
+                ? ` · ${t("preguntar.modoIterativo")}`
+                : ""}
+            </p>
+          )}
           <label className="flex flex-col gap-1 text-sm text-ink-muted">
             {t("preguntar.quePides")}
             <textarea

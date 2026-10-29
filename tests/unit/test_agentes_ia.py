@@ -46,6 +46,10 @@ def puertos(request: Any) -> Any:
         ],
         "invocaciones": [],
         "falla": False,
+        # `falla` es la herramienta que revienta; `rechaza` es el destino que
+        # contesta 4xx. Son dos caminos distintos en `avanzar` y con uno solo
+        # se probaba la mitad.
+        "rechaza": False,
     }
 
     def _planificar(**kw: Any) -> dict[str, Any]:
@@ -56,6 +60,12 @@ def puertos(request: Any) -> Any:
         estado["invocaciones"].append(kw)
         if estado["falla"]:
             raise RuntimeError("la herramienta ha fallado")
+        # El invocador de verdad **no lanza** cuando el destino contesta 4xx:
+        # devuelve `ok: False` con el cuerpo, porque un rechazo es información
+        # para el agente. El doble tiene que poder hacer lo mismo, o se prueba
+        # sólo la mitad.
+        if estado["rechaza"]:
+            return {"estado": 401, "ok": False, "datos": {"detail": "Falta autenticación"}}
         return {"ok": True}
 
     ag.registrar_planificador(_planificar)
@@ -332,6 +342,52 @@ def test_un_paso_fallido_para_la_ejecucion(
     salida = ag.lanzar(uow, clave="califica", objetivo="algo")
     resultado = ag.avanzar(uow, ejecucion_id=UUID(salida["ejecucion_id"]))
     assert resultado["estado"] == "fallido"
+    ejecucion = uow.db.get(ag.EjecucionAgente, UUID(salida["ejecucion_id"]))
+    assert ejecucion.estado == "fallida"
+
+
+@pytest.mark.db
+def test_un_agente_sin_herramientas_lo_dice_en_vez_de_planificar_nada(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any]
+) -> None:
+    """Medido el 29-10-2026: ningún agente declarado tenía herramientas.
+
+    Se llamaba al modelo igual, con la lista vacía; no podía proponer ningún
+    paso; y esto devolvía un plan de cero pasos con el aviso en blanco. La
+    pantalla decía que había ido bien y no se había hecho nada — y la llamada
+    se pagaba.
+    """
+    _proveedor(uow)
+    _agente(uow, clave="pelado", herramientas=[])
+    with pytest.raises(Conflicto) as caso:
+        ag.lanzar(uow, clave="pelado", objetivo="lo que sea")
+    assert caso.value.error_code == "agente.sin_herramientas"
+    # Y ni se ha llegado a invocar nada: no se paga por saber que no puede
+    # haber plan.
+    assert puertos["invocaciones"] == []
+
+
+@pytest.mark.db
+def test_una_herramienta_que_contesta_401_no_es_un_paso_hecho(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any]
+) -> None:
+    """La promesa entera de esta pantalla es poder ver qué ha hecho el agente.
+
+    El destino contestaba 401 —el agente llamaba sin identidad— y el paso se
+    guardaba como «hecho» con el error dentro del resultado: verde en pantalla
+    y verde en la auditoría. Lo único que delataba el problema era la
+    conclusión del modelo, «necesito credenciales válidas», que se lee como un
+    límite del modelo y es un fallo de configuración.
+    """
+    _proveedor(uow)
+    _agente(uow)
+    puertos["rechaza"] = True
+    salida = ag.lanzar(uow, clave="califica", objetivo="algo")
+    resultado = ag.avanzar(uow, ejecucion_id=UUID(salida["ejecucion_id"]))
+    assert resultado["estado"] == "fallido"
+    # Y se dice QUÉ contestó, no sólo que no pudo: «401» a secas no se arregla.
+    assert "401" in resultado["error"]
+    assert "autenticación" in resultado["error"]
     ejecucion = uow.db.get(ag.EjecucionAgente, UUID(salida["ejecucion_id"]))
     assert ejecucion.estado == "fallida"
 

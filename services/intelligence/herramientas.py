@@ -150,11 +150,27 @@ def _parametros_de(operacion: dict[str, Any]) -> dict[str, Any]:
         nombre = str(parametro.get("name") or "")
         if not nombre:
             continue
+        esquema = parametro.get("schema") or {}
+        tipo = str(esquema.get("type") or "string")
         propiedades[nombre] = {
-            "type": str((parametro.get("schema") or {}).get("type") or "string"),
+            "type": tipo,
             "description": str(parametro.get("description") or "")[:200],
             "in": str(parametro.get("in") or "query"),
         }
+        # **Una lista tiene que decir de qué.** Un `{"type": "array"}` a secas
+        # no es un JSON Schema completo: dos familias de proveedor lo aceptan y
+        # **Gemini rechaza la llamada entera** —«parameters.properties[x].items:
+        # missing field»—, con lo que una sola herramienta mal descrita deja al
+        # agente sin ninguna. Se toma lo que diga el contrato y, si no lo dice,
+        # cadena: un parámetro de lista en una URL viaja como texto.
+        if tipo == "array":
+            propiedades[nombre]["items"] = dict(esquema.get("items") or {"type": "string"})
+        # Y si el contrato declara los valores admitidos, viajan. No es adorno:
+        # sin la lista cerrada delante, el modelo escribe un valor plausible y
+        # el servicio contesta 422 — un intento gastado para enterarse de algo
+        # que ya estaba escrito en el contrato.
+        if esquema.get("enum"):
+            propiedades[nombre]["enum"] = list(esquema["enum"])
         if parametro.get("required"):
             obligatorios.append(nombre)
 

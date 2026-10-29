@@ -1770,6 +1770,52 @@ garantía que no viaja.
 existe, un parámetro que esa familia no admite o una cuota agotada — y cada una
 se arregla en un sitio distinto.
 
+### 4.6.4 Nexus: por qué nunca había contestado
+
+El agente autónomo estaba entero —plan, aprobación por riesgo, tope, presupuesto
+y reversión— y **nunca había dado una respuesta**. Al conectar el primer
+proveedor real y probarlo de punta a punta salieron cinco cosas encadenadas, y
+cada una tapaba a la siguiente:
+
+1. **Ningún agente tenía herramientas.** Se llamaba al modelo con la lista
+   vacía, no podía proponer ningún paso, y `lanzar` devolvía 201 con
+   `pasos: []` y el aviso en blanco: una pantalla que dice que ha ido bien y no
+   ha hecho nada, pagando la llamada. Ahora un agente sin herramientas **se
+   para antes de preguntar al modelo** y dice dónde se completa.
+2. **El catálogo metía un campo nuestro en el esquema que sale fuera.** Cada
+   parámetro lleva `in` —camino, consulta o cuerpo— porque lo necesita
+   `puerto._repartir_argumentos`, pero ese esquema se manda al proveedor tal
+   cual y `in` no es de JSON Schema. Dos familias lo toleran; Gemini rechaza la
+   llamada entera. Se limpia en la frontera (`dialectos._esquema_hacia_fuera`),
+   no en el catálogo: el dato hace falta dentro.
+3. **Una lista no decía de qué.** `{"type": "array"}` sin `items` no es un
+   esquema completo, y una sola herramienta mal descrita deja al agente sin
+   ninguna. Ahora se toma del contrato y, si no lo dice, cadena. De paso viajan
+   los `enum`: sin la lista cerrada delante, el modelo escribe un valor
+   plausible y el servicio contesta 422 — un intento gastado para enterarse de
+   algo que ya estaba en el contrato.
+4. **El agente llamaba sin identidad.** `principal_id` venía vacío, el destino
+   contestaba 401 y el modelo concluía «necesito credenciales válidas», que se
+   lee como un límite del modelo y es un fallo de configuración. El sembrado
+   ahora le pone la del usuario con el que siembra.
+5. **Y un 401 se guardaba como paso «hecho».** El resultado llevaba dentro
+   `ok: false` y el estado decía lo contrario: verde en la pantalla y verde en
+   la auditoría, en la pantalla cuya promesa entera es poder ver qué ha hecho.
+   Ahora el estado sale del resultado. El resultado **se conserva** —es
+   información, y en modo iterativo el modelo decide el paso siguiente con ella
+   delante— pero en plan cerrado la ejecución se para, porque los pasos de
+   detrás se planificaron dando éste por bueno.
+
+**Cuántas herramientas.** Derivar de los contratos de `party`, `sales` y
+`service` sin acotar da **428** de lectura. No caben en una llamada ni ayudan:
+cuatrocientas opciones para contestar «qué cuentas están en riesgo» hacen que el
+modelo elija peor. El asistente que se siembra va acotado por `solo_rutas` a
+cuentas, contactos, actividades, oportunidades, leads y casos: **31**.
+
+Medido funcionando el 29-10-2026: objetivo «¿qué actividades están vencidas?» →
+un paso, `get_api_v1_activities_vencidas`, ejecutado contra los datos reales →
+conclusión «No hay actividades vencidas».
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

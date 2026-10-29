@@ -67,9 +67,12 @@ async function montar() {
 async function preguntar() {
   const usuario = userEvent.setup();
   await montar();
-  await screen.findByText("preguntar.elige");
-  await usuario.selectOptions(screen.getByLabelText("preguntar.quienResponde"), "analista");
-  await usuario.type(screen.getByLabelText("preguntar.quePides"), "qué cuentas están en riesgo");
+  const caja = await screen.findByLabelText("preguntar.quePides");
+  // Con varios agentes hay que elegir; con uno solo no hay desplegable que
+  // tocar, y es lo que comprueba su propia prueba más abajo.
+  const selector = screen.queryByLabelText("preguntar.quienResponde");
+  if (selector) await usuario.selectOptions(selector, "analista");
+  await usuario.type(caja, "qué cuentas están en riesgo");
   await usuario.click(screen.getByRole("button", { name: "preguntar.planificar" }));
   return usuario;
 }
@@ -171,6 +174,47 @@ describe("nexus", () => {
     expect(screen.getByRole("button", { name: "preguntar.deshacer" })).toBeInTheDocument();
     // Y por qué paró, que no es lo mismo que «ya no quedan pasos».
     expect(screen.getByText(/Objetivo cumplido/)).toBeInTheDocument();
+  });
+
+  it("con un solo agente no se pregunta cuál, pero se dice quién responde", async () => {
+    // Elegir de una lista de uno no es una decisión: es un paso obligatorio
+    // para llegar al que sí lo es, con el botón bloqueado hasta darlo. Lo que
+    // sobra es el desplegable; el dato no, porque saber qué agente contesta es
+    // parte de poder no fiarse de la respuesta.
+    await montar();
+    await screen.findByLabelText("preguntar.quePides");
+    expect(screen.queryByLabelText("preguntar.quienResponde")).toBeNull();
+    expect(screen.queryByText("preguntar.elige")).toBeNull();
+    expect(screen.getByText("analista")).toBeInTheDocument();
+
+    // Y el botón se desbloquea sólo con escribir lo que se pide.
+    const usuario = userEvent.setup();
+    expect(screen.getByRole("button", { name: "preguntar.planificar" })).toBeDisabled();
+    await usuario.type(screen.getByLabelText("preguntar.quePides"), "qué cuentas peligran");
+    expect(screen.getByRole("button", { name: "preguntar.planificar" })).toBeEnabled();
+  });
+
+  it("con dos agentes sí se pregunta cuál", async () => {
+    agentes = [
+      { id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true },
+      { id: "a2", clave: "soporte", tipo: "respuesta_soporte", activo: true },
+    ];
+    await montar();
+    await screen.findByLabelText("preguntar.quienResponde");
+    expect(screen.getByText("preguntar.elige")).toBeInTheDocument();
+  });
+
+  it("un agente apagado no cuenta para decidir si hace falta elegir", async () => {
+    // Dos filas pero una inactiva siguen siendo una opción de verdad: si se
+    // contaran las dos, volvería el desplegable de un solo elemento usable.
+    agentes = [
+      { id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true },
+      { id: "a2", clave: "apagado", tipo: "respuesta_soporte", activo: false },
+    ];
+    await montar();
+    await screen.findByLabelText("preguntar.quePides");
+    expect(screen.queryByLabelText("preguntar.quienResponde")).toBeNull();
+    expect(screen.getByText("analista")).toBeInTheDocument();
   });
 
   it("sin agentes declarados se dice qué falta, no sólo que no hay", async () => {
