@@ -357,6 +357,75 @@ class EditarInforme(BaseModel):
 
 
 @router.get(
+    "/programaciones",
+    dependencies=[Depends(exige_permiso("informe:read"))],
+    summary="Qué informe sale solo, cuándo y a quién",
+    description=(
+        "**Se podía programar y no leer.** Un informe programado se manda solo "
+        "a unas personas, en un formato y a una hora, y hasta hoy no había "
+        "forma de saber cuáles hay: ni quién los recibe, ni si uno que ya no "
+        "mira nadie se sigue enviando todas las semanas.\n\n"
+        "Los **destinatarios se cuentan y se nombran**, porque la pregunta que "
+        "se hace de verdad es «¿a quién le está llegando esto?» — y un envío "
+        "semanal a una lista que nadie revisó en dos años es la forma más "
+        "habitual de que un dato salga de donde debía quedarse.\n\n"
+        "No hace falta avisar de programaciones huérfanas: la clave ajena "
+        "borra en cascada y el informe no tiene borrado blando, así que una "
+        "programación sin informe **no puede existir**. Hay prueba de eso, "
+        "porque el día que el informe pase a borrarse en blando empezaría a "
+        "poder, y lo haría en silencio."
+    ),
+)
+def listar_programaciones(db: DbDep, principal: AutenticadoDep) -> Any:
+    from services.analytics.informes import Informe, ProgramacionInforme
+
+    filas = (
+        db.execute(
+            select(ProgramacionInforme)
+            .where(ProgramacionInforme.tenant_id == principal.tenant_id)
+            .order_by(ProgramacionInforme.periodicidad, ProgramacionInforme.hora)
+        )
+        .scalars()
+        .all()
+    )
+    vivos = {
+        i.id: i.nombre
+        for i in db.execute(
+            select(Informe).where(Informe.tenant_id == principal.tenant_id)
+        ).scalars()
+    }
+    salida = []
+    for f in filas:
+        destinatarios = [str(d) for d in (f.destinatarios or [])]
+        salida.append(
+            {
+                "id": str(f.id),
+                "nombre": f.nombre,
+                "informe_id": str(f.informe_id),
+                "informe": vivos.get(f.informe_id, ""),
+                "periodicidad": f.periodicidad,
+                "hora": f.hora,
+                "dia_semana": f.dia_semana,
+                "dia_mes": f.dia_mes,
+                "formato": f.formato,
+                "destinatarios": destinatarios,
+                "cuantos_destinatarios": len(destinatarios),
+                "destino_externo": f.destino_externo,
+            }
+        )
+    return {
+        "programaciones": salida,
+        "cuantas": len(salida),
+        "que_significa": (
+            "No hay ningún informe programado: todo lo que se mira, se mira entrando."
+            if not salida
+            else "Cada línea es un envío que sale solo. Revisar a quién le llega "
+            "es parte de revisar quién ve qué."
+        ),
+    }
+
+
+@router.get(
     "/ejecuciones",
     dependencies=[Depends(exige_permiso("informe:read"))],
     summary="Cada vez que se corrió un informe, con lo que costó",

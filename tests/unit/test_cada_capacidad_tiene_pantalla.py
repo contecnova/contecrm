@@ -357,7 +357,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            y es de una cuenta no cuadra con nada en la
 #                            reunion siguiente, y para cuando se descubre ya se
 #                            ha dicho en voz alta
-TOPE_SIN_PANTALLA = 355
+#   28-10-2026  354 de 778  los informes programados. Se podia programar un
+#                            envio y no leer ninguna de sus cuatro cosas: ni
+#                            quien lo recibe, ni cuando, ni en que formato, ni
+#                            si uno que ya no mira nadie se sigue mandando
+#                            todas las semanas. Los destinatarios se cuentan Y
+#                            se nombran, porque la pregunta real es «¿a quien
+#                            le esta llegando esto?» y un numero no la
+#                            contesta. De paso se quito un aviso de
+#                            «programaciones huerfanas» que yo mismo habia
+#                            inventado: la clave ajena borra en cascada y el
+#                            informe no tiene borrado blando, asi que no pueden
+#                            existir — y queda prueba de ESO, para el dia en
+#                            que alguien pase el informe a borrado blando
+TOPE_SIN_PANTALLA = 354
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -880,3 +880,67 @@ def test_sin_ejecuciones_no_se_dice_que_el_informe_sea_rapido(
     historial = inf.historial_de_ejecuciones(uow.db, tenant_id)
     assert historial["cuantas"] == 0
     assert historial["aviso"], "un cero sin aviso se lee como «es rápido»"
+
+
+def test_las_programaciones_se_pueden_LEER(uow: UnidadDeTrabajo) -> None:
+    """Se podía programar un envío y no saber cuáles hay.
+
+    Un informe programado se manda **solo**, a unas personas, en un formato y a
+    una hora. Hasta el 28-10-2026 no había forma de leer ninguna de esas cuatro
+    cosas: ni quién lo recibe, ni si uno que ya no mira nadie se sigue enviando
+    todas las semanas. Un envío semanal a una lista que nadie revisó en dos
+    años es la forma más habitual de que un dato salga de donde debía quedarse.
+    """
+    from crmcore.http.deps import Principal as _P  # noqa: F401  (documenta de dónde sale el tenant)
+
+    from services.analytics.api_informes import listar_programaciones
+
+    informe = _informe(uow)
+    inf.programar(
+        uow,
+        informe.id,
+        periodicidad="semanal",
+        hora=7,
+        dia_semana=1,
+        destinatarios=["direccion@ejemplo.test", "ventas@ejemplo.test"],
+    )
+    uow.db.flush()
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    salida = listar_programaciones(uow.db, _Principal())  # type: ignore[arg-type]
+    assert salida["cuantas"] == 1
+    fila = salida["programaciones"][0]
+    # A quién le llega, contado Y nombrado: la pregunta que se hace es «¿a
+    # quién le está llegando esto?», y un número no la contesta.
+    assert fila["cuantos_destinatarios"] == 2
+    assert "direccion@ejemplo.test" in fila["destinatarios"]
+    assert fila["informe"] == "Pipeline por mes"
+
+
+def test_borrar_un_informe_se_lleva_su_programacion(uow: UnidadDeTrabajo) -> None:
+    """Una programación sin informe **no puede existir**, y conviene fijarlo.
+
+    La clave ajena borra en cascada y el informe no tiene borrado blando, así
+    que no hace falta avisar de huérfanas: no las hay. Esta prueba está para el
+    día en que alguien pase el informe a borrado blando — ese día la
+    programación sobreviviría apuntando a algo que las consultas ya no
+    devuelven, no fallaría, simplemente dejaría de mandar, y nadie echa de
+    menos un correo que no sabía que tenía que llegar.
+    """
+    from services.analytics.api_informes import listar_programaciones
+
+    informe = _informe(uow)
+    inf.programar(uow, informe.id, destinatarios=["alguien@ejemplo.test"])
+    uow.db.flush()
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    assert listar_programaciones(uow.db, _Principal())["cuantas"] == 1  # type: ignore[arg-type]
+    uow.db.delete(informe)
+    uow.db.flush()
+    assert (
+        listar_programaciones(uow.db, _Principal())["cuantas"] == 0  # type: ignore[arg-type]
+    ), "la programación ha sobrevivido al informe: ahora puede haber huérfanas y callan"

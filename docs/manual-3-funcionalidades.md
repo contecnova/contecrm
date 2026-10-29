@@ -8663,6 +8663,20 @@ llena la bandeja de todo el mundo con el mismo error.
 `omitir_si_vacio` viene **apagado** por defecto, por lo mismo: el silencio se lee
 como «no pasa nada» en vez de como «no se ejecutó».
 
+**Y qué hay programado se puede mirar.** Hasta el 28-10-2026 se podía programar
+un envío y no leer ninguna de sus cuatro cosas: ni quién lo recibe, ni cuándo,
+ni en qué formato, ni si uno que ya no mira nadie se sigue mandando todas las
+semanas. Los destinatarios salen **contados y nombrados**, porque la pregunta
+que se hace de verdad es «¿a quién le está llegando esto?» y un número no la
+contesta — un envío semanal a una lista que nadie revisó en dos años es la
+forma más habitual de que un dato salga de donde debía quedarse.
+
+Lo que **no** hace falta avisar: programaciones huérfanas. La clave ajena borra
+en cascada y el informe no tiene borrado blando, así que una programación sin
+informe no puede existir. Hay prueba de eso y no del aviso, porque el día que
+alguien pase el informe a borrado blando sí podrían existir, y lo harían en
+silencio.
+
 ### Instantáneas y tendencia (`CRM-05.01.01.05`)
 
 Es la única forma de contestar «¿cómo íbamos en marzo?»: el dato operativo ya

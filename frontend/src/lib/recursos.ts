@@ -1463,6 +1463,18 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "analytics",
         permiso: "informe:read",
       },
+      // Qué informe sale solo, cuándo y **a quién** (CRM-05.01.01.06). Se
+      // podía programar un envío y no leer ninguna de esas cuatro cosas: ni
+      // quién lo recibe, ni si uno que ya no mira nadie se sigue mandando
+      // todas las semanas. Un envío semanal a una lista que nadie revisó en
+      // dos años es la forma más habitual de que un dato salga de donde debía
+      // quedarse.
+      {
+        nombre: "Informes programados",
+        listar: "/api/v1/informes/programaciones",
+        servicio: "analytics",
+        permiso: "informe:read",
+      },
       {
         // Cada vez que se corrió un informe, con lo que costó. La tabla es
         // append-only y **no la leía nadie**: se escribía en cada ejecución y
