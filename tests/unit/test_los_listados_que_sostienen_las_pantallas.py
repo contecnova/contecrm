@@ -207,3 +207,101 @@ def test_el_listado_de_casos_manda_lo_que_lee_la_ficha_de_cliente(
     assert filas, "el listado de casos del cliente sale vacío"
     for campo in ("id", "codigo", "asunto", "estado", "prioridad"):
         assert campo in filas[0], f"el listado no manda «{campo}»"
+
+
+# ── El segmento, por su ruta (CRM-02.01.01.03, .04, .07) ──────────────────
+#
+# El tamaño y el solapamiento se recorrían por el módulo y no por la ruta, que
+# es por donde entra la pantalla. Lo pidió el guardián de contratos en cuanto
+# la ficha de un segmento declaró su forma.
+
+
+@pytest.fixture
+def marketing(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.marketing.main")
+
+
+def _segmento(marketing: TestClient, cabeceras: dict[str, str], **extra: Any) -> str:
+    creado = marketing.post(
+        "/api/v1/segmentos",
+        headers=cabeceras,
+        json={
+            "clave": f"s{uuid4().hex[:8]}",
+            "nombre": "Segmento de prueba",
+            "objeto": "contacto",
+            "definicion": {"atributo": "contacto.estado", "operador": "=", "valor": "activo"},
+            **extra,
+        },
+    )
+    assert creado.status_code in (200, 201), creado.text
+    return str(creado.json()["id"])
+
+
+def test_el_tamano_llega_con_su_fecha_y_con_lo_suprimido(
+    marketing: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Los tres campos que la ficha necesita para no mentir con el número."""
+    segmento_id = _segmento(marketing, cabeceras)
+
+    respuesta = marketing.get(f"/api/v1/segmentos/{segmento_id}/tamano", headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    datos = respuesta.json()
+    for campo in ("bruto", "alcanzables", "suprimidos", "calculado_at", "es_foto_congelada"):
+        assert campo in datos, f"el recuento no manda «{campo}»"
+    # El bruto nunca es menor que los alcanzables: entre uno y otro sólo se
+    # resta, nunca se suma.
+    assert datos["bruto"] >= datos["alcanzables"]
+    assert datos["es_foto_congelada"] is False
+
+
+def test_un_segmento_congelado_se_declara_como_foto(
+    marketing: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Enseñar una foto igual que un dinámico es sobre lo que se manda un
+    correo creyendo que es la gente de hoy."""
+    segmento_id = _segmento(marketing, cabeceras)
+    congelado = marketing.post(f"/api/v1/segmentos/{segmento_id}/congelar", headers=cabeceras)
+    assert congelado.status_code in (200, 201), congelado.text
+
+    datos = marketing.get(f"/api/v1/segmentos/{segmento_id}/tamano", headers=cabeceras).json()
+    assert datos["es_foto_congelada"] is True
+    assert datos["dinamico"] is False
+
+
+def test_el_solapamiento_llega_con_el_porcentaje_sobre_cada_uno(
+    marketing: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Con un solo porcentaje la decisión sale al revés."""
+    a = _segmento(marketing, cabeceras)
+    b = _segmento(marketing, cabeceras)
+
+    respuesta = marketing.get(f"/api/v1/segmentos/solapamiento?a={a}&b={b}", headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    datos = respuesta.json()
+    for campo in (
+        "a",
+        "b",
+        "tamano_a",
+        "tamano_b",
+        "comunes",
+        "pct_de_a",
+        "pct_de_b",
+        "solo_a",
+        "solo_b",
+    ):
+        assert campo in datos, f"el solapamiento no manda «{campo}»"
+
+
+def test_la_ficha_de_un_segmento_devuelve_su_definicion(
+    marketing: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Un segmento es una definición, no una lista: sin ella la ficha no puede
+    decir por qué alguien está dentro."""
+    segmento_id = _segmento(marketing, cabeceras)
+
+    respuesta = marketing.get(f"/api/v1/segmentos/{segmento_id}", headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    datos = respuesta.json()
+    for campo in ("id", "clave", "nombre", "objeto", "dinamico", "definicion", "excluye"):
+        assert campo in datos, f"la ficha no manda «{campo}»"
+    assert datos["definicion"]["atributo"] == "contacto.estado"
