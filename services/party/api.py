@@ -8,7 +8,7 @@ from uuid import UUID
 
 from crmcore.authz.visibilidad import aplicar_visibilidad
 from crmcore.errors import ErrorValidacion, NoEncontrado
-from crmcore.fechas import hoy
+from crmcore.fechas import ahora_utc, hoy
 from crmcore.http.adjuntos_router import crear_router_adjuntos
 from crmcore.http.busqueda_router import crear_router_busqueda
 from crmcore.http.comentarios_router import crear_router_comentarios
@@ -204,6 +204,97 @@ def listar_cuentas(
     # POR LA PROYECCIÓN. Serializar con el esquema de salida se saltaba el
     # enmascaramiento por rol: la ficha tapaba el teléfono y el listado de la
     # misma fila lo enseñaba. No daba ningún error — enseñaba el dato.
+    return pagina.a_dict(
+        con_rollups(
+            db,
+            "cuenta",
+            filas,
+            proyectar_con_esquema(
+                proyectar_para(principal, db, objeto="cuenta", modelo=Cuenta), CuentaOut
+            ),
+        )
+    )
+
+
+@router_cuentas.get(
+    "/sin-contacto",
+    response_model=PaginaDeListado,
+    dependencies=[Depends(exige_permiso("account:read"))],
+    summary="Cuentas sin contacto desde hace N días",
+    description=(
+        "**La pregunta que el producto ponía de ejemplo y no sabía contestar.** "
+        "La pantalla de Nexus sugiere literalmente «qué cuentas llevan más de "
+        "dos meses sin contacto», y no había forma: la última actividad es un "
+        "campo CALCULADO —el máximo de las actividades de la cuenta— y los "
+        "filtros del listado sólo admiten columnas, así que ni se podía filtrar "
+        "ni ordenar por él. Se descubrió el 29-10-2026 preguntándoselo al "
+        "asistente, que contestó —con razón— que no podía.\n\n"
+        "**Las que no tienen ninguna actividad entran**, y son las que más "
+        "importan: una cuenta con la que no se ha hablado nunca no es lo mismo "
+        "que una con la que se habló hace tres meses, pero dejarla fuera por no "
+        "tener fecha la esconde justo en el listado que existe para encontrarla."
+        "\n\n"
+        "`dias` sale de la configuración del tenant cuando no se dice: el corte "
+        "entre «activa» y «dormida» es del negocio y no de quien escribió esto."
+    ),
+)
+def cuentas_sin_contacto(
+    request: Request,
+    db: DbDep,
+    principal: AutenticadoDep,
+    dias: int = Query(0, ge=0, le=3650, description="0 = el del ajuste del tenant"),
+    limite: int = Query(50, ge=1, le=200),
+    cursor: str = Query(""),
+) -> Any:
+    from datetime import timedelta
+
+    from crmcore.runtime import settings as rt
+    from sqlalchemy import func, or_
+
+    corte_dias = dias or int(rt.efectivo("cuenta_dias_sin_actividad", db) or 90)
+    desde = ahora_utc() - timedelta(days=corte_dias)
+
+    # El máximo por cuenta, en una subconsulta. No se puede filtrar por el
+    # rollup del listado —vive fuera del SQL— así que se repite aquí la misma
+    # cuenta que él hace: `max(created_at)` de las actividades de la cuenta.
+    ultima = (
+        select(
+            Actividad.cuenta_id.label("cuenta_id"),
+            func.max(Actividad.created_at).label("ultima"),
+        )
+        .where(Actividad.deleted_at.is_(None))
+        .group_by(Actividad.cuenta_id)
+        .subquery()
+    )
+
+    params = ParametrosPagina.desde_query(limite=limite, cursor=cursor, orden="-created_at")
+    # La compartición primero, como en el listado de al lado: este endpoint no
+    # puede ser la puerta por la que se vean cuentas que no tocan.
+    consulta = aplicar_visibilidad(
+        select(Cuenta).where(Cuenta.deleted_at.is_(None), Cuenta.fusionada_en_id.is_(None)),
+        Cuenta,
+        db=db,
+        principal=principal,
+        objeto="cuenta",
+        permiso_ver_todo="account:admin",
+    )
+    consulta = consulta.outerjoin(ultima, ultima.c.cuenta_id == Cuenta.id).where(
+        or_(ultima.c.ultima.is_(None), ultima.c.ultima < desde)
+    )
+    consulta = aplicar_filtros_de_la_url(
+        request, Cuenta, consulta, principal=principal, db=db, objeto="cuenta"
+    )
+    consulta = aplicar_orden_y_cursor(
+        consulta,
+        Cuenta,
+        params,
+        columnas_permitidas={"created_at", "nombre"},
+        objeto="cuenta",
+        principal=principal,
+        db=db,
+    )
+    filas = list(db.execute(consulta.limit(params.limite + 1)).scalars().all())
+    pagina = construir_pagina(filas, params, campos_orden=["-created_at"])
     return pagina.a_dict(
         con_rollups(
             db,
@@ -1910,6 +2001,12 @@ montar_exportacion(
 # principal no ve en claro.
 admite_parametros_abiertos(
     listar_cuentas, "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna"
+)
+# Y la de las dormidas, por lo mismo: también los aplica, así que sin esta
+# marca contestaría 422 a sus propios filtros. El gate lo cazó al escribirla.
+admite_parametros_abiertos(
+    cuentas_sin_contacto,
+    "llama a `aplicar_filtros_de_la_url`, que valida los filtros por columna",
 )
 
 

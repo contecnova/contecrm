@@ -841,6 +841,48 @@ mismo**. El primero no viene y se ve el hueco; el segundo viene y engaña. Y
 Nexus también lo recibe, así que ahora te dice que no puede ver ese nombre en
 vez de leerte los puntos.
 
+### Cómo se entra en tu empresa
+
+En **Seguridad** está ahora, en un sitio, cómo se entra: si tu empresa obliga a
+pasar por su proveedor de identidad o si la contraseña local sigue valiendo
+—y si sigue valiendo, quien se va del directorio puede seguir entrando por esa
+puerta—, con qué proveedor y para qué dominios de correo, si da de alta solo a
+quien entra por primera vez, y si el aprovisionamiento automático está activo.
+
+Tres cosas que conviene mirar de vez en cuando y antes no se podían:
+
+- **Si se aceptan entradas que empiezan en el proveedor.** Vienen apagadas por
+  un motivo: sin una petición nuestra a la que atarlas, una autorización robada
+  se puede reenviar. Si está encendido, que sea porque alguien lo decidió.
+- **Si el segundo factor se lo deja al proveedor.** Está bien —pedirlo dos
+  veces enseña a saltárselo— pero hay que saber que aquí ya no se pide.
+- **Quién se salta la contraseña.** Si el acceso por contraseña está cortado,
+  suele haber una o dos cuentas de rescate para el día que el proveedor falle
+  un sábado. Se enseñan **por su nombre**: una excepción que no se ve deja de
+  ser una excepción.
+
+Y en tus sesiones se dice cuáles **no se cerrarán en el proveedor** al salir.
+Cerrar sólo aquí deja la sesión del proveedor viva, y volver a entrar no pide
+credenciales: para ti, el botón de salir no habría hecho nada.
+
+---
+
+### Cuentas con las que hace tiempo que no se habla
+
+En **Clientes** puedes pedir las cuentas que llevan N días sin contacto. El
+corte por defecto lo decide tu empresa en la configuración, no nosotros.
+
+Dos cosas que conviene saber: **las cuentas con las que no se ha hablado nunca
+salen también** —son las que más importan, y dejarlas fuera por no tener fecha
+las escondería justo en la lista que existe para encontrarlas— y la fecha que se
+mira es la de la última actividad registrada, así que una llamada que nadie
+apuntó no cuenta.
+
+Nexus también sabe contestarlo: «qué cuentas llevan más de dos meses sin
+contacto» te da los nombres y te dice con qué lo ha averiguado.
+
+---
+
 ### Nexus
 
 En la barra de arriba, al lado del chat, hay un icono: **Nexus**. Ahí se

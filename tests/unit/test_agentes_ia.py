@@ -621,7 +621,14 @@ def test_un_resultado_enorme_se_recorta_y_se_dice(
     enviado = bucle["recibido"][-1]["hechos"][0]["resultado"]
     assert enviado["recortado"] is True
     assert enviado["aviso"]
-    assert len(enviado["muestra"]) <= 2_000
+    # Contra el AJUSTE, no contra un número escrito aquí. El tope subió de
+    # 2.000 a 20.000 el 29-10-2026 —con 2.000 el agente veía dos cuentas de
+    # sesenta y cinco— y esta prueba se puso roja por duplicar el valor en vez
+    # de leerlo. Una prueba que copia una constante se rompe cada vez que la
+    # constante hace su trabajo.
+    from services.intelligence.ajustes import ajustes
+
+    assert len(enviado["muestra"]) <= ajustes().ia_caracteres_resultado_paso
 
 
 @pytest.mark.db

@@ -86,8 +86,41 @@ class ProveedorOut(BaseModel):
     # falta para saber si está completa.
     claves_config: list[str]
 
+    # ── El gobierno del SSO, que se escribía y no lo leía nadie ───────────
+    #
+    # **Medido el 29-10-2026.** Estos cinco se guardan —tres son columnas del
+    # modelo y dos viven en `config`— y **ninguno salía por la API**: el
+    # listado devolvía el nombre, el tipo y los NOMBRES de las claves de
+    # configuración, con lo que `forzar_sso` se veía como una palabra en una
+    # lista y nunca su valor.
+    #
+    # Lo que eso deja sin poder revisar es lo que más importa de todo esto:
+    #
+    # - si se aceptan aserciones que empiezan en el IdP, que sin `InResponseTo`
+    #   se pueden **reenviar** y por eso vienen apagadas de fábrica;
+    # - si el segundo factor se delega al IdP, o sea si aquí ya no se pide;
+    # - si entrar por contraseña está cortado, y **quiénes** son las cuentas
+    #   que se lo saltan — que la capacidad exige que sean nominales y queden
+    #   escritas, y una excepción que no se ve deja de ser una excepción.
+    dominios: list[str]
+    permite_idp_initiated: bool
+    acr_con_mfa: list[str]
+    forzar_sso: bool
+    # Los correos, no el recuento: «2 cuentas de rescate» no se puede revisar.
+    cuentas_de_rescate: list[str]
 
-def _salida(fila: ProveedorIdentidad) -> ProveedorOut:
+
+def _salida(fila: ProveedorIdentidad) -> dict[str, Any]:
+    """La fila, **como diccionario**.
+
+    `paginar_consulta(fila_a_dict=…)` valida después contra el esquema de la
+    respuesta, así que devolver el modelo tumba la petición entera con «Input
+    should be a valid dictionary» por cada fila. Estuvo así desde siempre y no
+    lo vio nadie **porque la lista estaba vacía en todas las instalaciones que
+    se miraron**: el 500 sólo aparece cuando hay al menos un proveedor
+    declarado, o sea justo en el cliente que de verdad usa SSO. Lo cazó la
+    primera prueba que dio de alta uno, el 29-10-2026.
+    """
     return ProveedorOut(
         id=fila.id,
         nombre=fila.nombre,
@@ -97,7 +130,12 @@ def _salida(fila: ProveedorIdentidad) -> ProveedorOut:
         jit_provisioning=fila.jit_provisioning,
         mapeo_roles=dict(fila.mapeo_roles or {}),
         claves_config=sorted(fila.config or {}),
-    )
+        dominios=[str(d) for d in (fila.dominios or [])],
+        permite_idp_initiated=bool(fila.permite_idp_initiated),
+        acr_con_mfa=[str(a) for a in (fila.acr_con_mfa or [])],
+        forzar_sso=bool((fila.config or {}).get("forzar_sso")),
+        cuentas_de_rescate=[str(c) for c in ((fila.config or {}).get("cuentas_de_rescate") or [])],
+    ).model_dump()
 
 
 # Claves de configuración cuyo valor es un secreto. Se cifran al guardar y no

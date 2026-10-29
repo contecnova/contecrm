@@ -519,6 +519,38 @@ const pantallas = {
       sinContrasenaLocal:
         "Y no puede usar contraseña local: su dominio tiene el SSO forzado, así que no hay vía de escape.",
     },
+    entrada: {
+      titulo: "Cómo se entra en esta empresa",
+      ayuda:
+        "Con qué proveedor de identidad, si la contraseña local está cortada y quién se lo salta, si se aceptan aserciones que empiezan en el proveedor y si el segundo factor se le delega a él.",
+      forzadoSi: "Esta empresa obliga a entrar por su proveedor de identidad.",
+      forzadoNo:
+        "La contraseña local sigue admitiéndose: quien se va del directorio puede seguir entrando por esa puerta.",
+      sinProveedor: "No hay ningún proveedor de identidad declarado",
+      sinProveedorPorque:
+        "Sin proveedor se entra con contraseña local, así que dar de baja a alguien en el directorio de la empresa no le cierra el CRM.",
+      apagado: "apagado",
+      jitSi: "Da de alta al entrar por primera vez.",
+      jitNo: "No da de alta solo: el usuario tiene que existir aquí antes.",
+      idpInitiadoSi:
+        "Acepta aserciones que empiezan en el proveedor. Sin petición nuestra que atarlas, una aserción robada se puede reenviar: conviene que esté así a propósito.",
+      idpInitiadoNo: "Sólo acepta entradas que empiezan aquí.",
+      mfaDelegada: "El segundo factor lo da por cumplido el proveedor",
+      mfaAqui: "El segundo factor se pide aquí.",
+      forzadoEnEste: "Este proveedor corta la contraseña local.",
+      rescate: "se lo saltan",
+      scimSi: "El aprovisionamiento automático está activo.",
+      scimNo:
+        "Sin aprovisionamiento automático: una baja en el directorio no cierra nada aquí.",
+      politicas_one: "{{cuantas}} política de acceso por contexto.",
+      politicas_other: "{{cuantas}} políticas de acceso por contexto.",
+      politicas_zero:
+        "Ninguna política de acceso por contexto: no se mira ni la IP, ni el dispositivo, ni la hora.",
+      sinCierrePropagado_one:
+        "{{cuantas}} de tus sesiones no se cerrará en el proveedor al salir.",
+      sinCierrePropagado_other:
+        "{{cuantas}} de tus sesiones no se cerrarán en el proveedor al salir.",
+    },
     mio: {
       titulo: "Tu segundo factor",
       valeSolo: "Con «{{factor}}» podrías entrar sin contraseña.",

@@ -753,6 +753,29 @@ def mis_sesiones(
     consulta = aplicar_filtros_de_la_url(
         request, Sesion, consulta, principal=principal, db=db, objeto="sesion"
     )
+    # Qué sesiones están atadas a una del proveedor, en UNA consulta. Una por
+    # fila daría tantas consultas como sesiones abiertas tenga alguien, y es
+    # justo el listado que se abre cuando se sospecha de un acceso raro.
+    from services.identity.modelos import SesionIdP
+
+    enlazadas = {
+        fila[0]
+        for fila in db.execute(
+            select(SesionIdP.sesion_id).where(
+                SesionIdP.usuario_id == principal.id,
+                SesionIdP.cerrada_at.is_(None),
+            )
+        ).all()
+    }
+
+    def _con_enlace(fila: Sesion) -> dict[str, Any]:
+        # Un DICCIONARIO, que es lo que el nombre dice y lo que el paginador
+        # valida después contra el esquema. Devolviendo el modelo, la respuesta
+        # entera se cae con «Input should be a valid dictionary» por cada fila.
+        salida = SesionOut.model_validate(fila)
+        object.__setattr__(salida, "enlazada_al_idp", fila.id in enlazadas)
+        return salida.model_dump()
+
     return paginar_consulta(
         db,
         Sesion,
@@ -760,7 +783,7 @@ def mis_sesiones(
         limite=limite,
         cursor=cursor,
         orden="-ultima_actividad_at",
-        modelo_salida=SesionOut,
+        fila_a_dict=_con_enlace,
     )
 
 

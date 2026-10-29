@@ -34,16 +34,18 @@ def _cabeceras(tenant_id: UUID) -> dict[str, str]:
     )
 
 
-def _cliente(nombre: str) -> Any:
+def _cliente(nombre: str, **entorno: str) -> Any:
     import importlib
     import os
 
     from crmcore.config import get_settings
     from starlette.testclient import TestClient
 
-    previo = {k: os.environ.get(k) for k in ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED")}
+    claves = ("OUTBOX_ENABLED", "TAREAS_FONDO_ENABLED", *entorno)
+    previo = {k: os.environ.get(k) for k in claves}
     os.environ["OUTBOX_ENABLED"] = "false"
     os.environ["TAREAS_FONDO_ENABLED"] = "false"
+    os.environ.update(entorno)
     get_settings.cache_clear()
     try:
         with TestClient(importlib.import_module(f"services.{nombre}.main").app) as cli:
@@ -59,7 +61,10 @@ def _cliente(nombre: str) -> Any:
 
 @pytest.fixture(scope="module")
 def identidad() -> Any:
-    yield from _cliente("identity")
+    # Con OIDC encendido: en esta instalación viene apagado —`OIDC_ENABLED`— y
+    # el servidor rechaza declarar un proveedor con «no está activo en esta
+    # instalación», que es lo correcto y no es lo que se está probando aquí.
+    yield from _cliente("identity", OIDC_ENABLED="true")
 
 
 @pytest.fixture(scope="module")
@@ -170,6 +175,194 @@ def test_el_diagnostico_distingue_la_credencial_del_permiso(
     assert r.status_code == 200, r.text
     assert "faltan_alcances" not in r.json(), "no faltan alcances: el problema es otro"
     assert "credencial" in r.json()["que_pasa"].lower()
+
+
+def test_el_gobierno_del_sso_se_devuelve_y_no_solo_se_guarda(
+    identidad: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Cinco ajustes del SSO se escribían y **no los devolvía nadie**.
+
+    El listado daba el nombre, el tipo y los NOMBRES de las claves de
+    configuración, así que `forzar_sso` se veía como una palabra en una lista y
+    nunca su valor. Lo que eso deja sin poder revisar es lo que más importa:
+
+    - si se aceptan aserciones que empiezan en el IdP (CRM-00.05.01.11), que
+      sin `InResponseTo` se pueden **reenviar** y por eso vienen apagadas;
+    - si el segundo factor se delega al proveedor (CRM-00.05.01.24), o sea si
+      aquí ya no se pide;
+    - y si entrar por contraseña está cortado y **quiénes** se lo saltan
+      (CRM-00.05.01.13), que la capacidad exige que sean nominales y queden
+      escritas. Una excepción que no se ve deja de ser una excepción.
+    """
+    cabeceras = _cabeceras(tenant_id)
+    alta = identidad.post(
+        "/api/v1/proveedores-identidad",
+        headers=cabeceras,
+        json={
+            "nombre": "idp-de-prueba",
+            # OIDC y no SAML: SAML es opcional en esta instalación —`xmlsec`
+            # obliga a compilar— y el servidor lo dice con esas palabras. Lo
+            # que se prueba aquí es el gobierno del SSO, que es el mismo para
+            # los dos protocolos.
+            "tipo": "oidc",
+            "dominio_email": "ejemplo.test",
+            "jit_provisioning": True,
+            # La configuración va COMPLETA porque el alta la exige, y hace
+            # bien: un proveedor a medias se guarda y falla el día que alguien
+            # intenta entrar. El servidor dice cuáles faltan.
+            "config": {
+                "issuer_url": "https://idp.ejemplo.test",
+                "client_id": "cliente-de-prueba",
+                "redirect_uri": "https://crm.ejemplo.test/sso/callback",
+                "forzar_sso": True,
+                "cuentas_de_rescate": ["rescate@ejemplo.test"],
+            },
+        },
+    )
+    assert alta.status_code in (200, 201), alta.text
+    proveedor_id = alta.json()["id"]
+
+    editar = identidad.patch(
+        f"/api/v1/proveedores-identidad/{proveedor_id}",
+        headers=cabeceras,
+        json={
+            "permite_idp_initiated": True,
+            "acr_con_mfa": ["urn:mace:incommon:iap:silver"],
+            "dominios": ["ejemplo.test", "otra.test"],
+        },
+    )
+    assert editar.status_code == 200, editar.text
+
+    r = identidad.get("/api/v1/proveedores-identidad", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    fila = next(f for f in r.json()["items"] if f["nombre"] == "idp-de-prueba")
+    assert fila["permite_idp_initiated"] is True
+    assert fila["acr_con_mfa"] == ["urn:mace:incommon:iap:silver"]
+    assert fila["dominios"] == ["ejemplo.test", "otra.test"]
+    assert fila["forzar_sso"] is True
+    # Los correos, no el recuento: «2 cuentas de rescate» no se puede revisar.
+    assert fila["cuentas_de_rescate"] == ["rescate@ejemplo.test"]
+    # Y lo que NO sale sigue sin salir: la configuración lleva secretos dentro.
+    assert "config" not in fila
+
+
+def test_las_cuentas_sin_contacto_se_piden_por_la_ruta(
+    personas: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La pregunta que el producto ponía de ejemplo y no sabía contestar.
+
+    La pantalla de Nexus sugiere literalmente «qué cuentas llevan más de dos
+    meses sin contacto». No había forma: la última actividad es un campo
+    **calculado** —el máximo de las actividades de la cuenta— y los filtros del
+    listado sólo admiten columnas, así que ni se podía filtrar ni ordenar por
+    él. Se descubrió preguntándoselo al asistente, que contestó —con razón— que
+    no podía.
+
+    Lo que se fija aquí es lo que hace útil la respuesta:
+
+      * **las que no tienen NINGUNA actividad entran**, y son las que más
+        importan: dejarlas fuera por no tener fecha las esconde justo en el
+        listado que existe para encontrarlas;
+      * las que la tienen reciente **no** entran;
+      * y la ruta no la tapa la de la ficha, que tiene la misma forma
+        —`/accounts/{id}`— y la convertiría en un 422 por un UUID mal formado.
+    """
+    from datetime import timedelta
+
+    from crmcore.fechas import ahora_utc
+
+    from services.party.modelos import Actividad, Cuenta
+
+    callada = Cuenta(tenant_id=tenant_id, nombre="Callada SL", clave_canonica="callada")
+    hablada = Cuenta(tenant_id=tenant_id, nombre="Hablada SL", clave_canonica="hablada")
+    muda = Cuenta(tenant_id=tenant_id, nombre="Muda SL", clave_canonica="muda")
+    db.add_all([callada, hablada, muda])
+    db.flush()
+    db.add_all(
+        [
+            Actividad(
+                tenant_id=tenant_id,
+                tipo="llamada",
+                asunto="hace mucho",
+                cuenta_id=callada.id,
+                created_at=ahora_utc() - timedelta(days=200),
+            ),
+            Actividad(
+                tenant_id=tenant_id,
+                tipo="llamada",
+                asunto="ayer",
+                cuenta_id=hablada.id,
+                created_at=ahora_utc() - timedelta(days=1),
+            ),
+        ]
+    )
+    db.flush()
+
+    r = personas.get("/api/v1/accounts/sin-contacto?dias=60", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    # Es el LISTADO y no la ficha: si la ruta de `/{cuenta_id}` la tapara,
+    # «sin-contacto» se leería como un identificador y esto sería un 422.
+    assert "items" in cuerpo
+    # **Por identificador y no por nombre.** Esta petición no declara rol, así
+    # que la política de sensibilidad tapa el nombre —«···a SL»— y además lo
+    # tapa igual para «Callada SL» y «Hablada SL», que tienen las mismas
+    # letras: afirmar sobre el nombre haría pasar la prueba con la cuenta
+    # equivocada. El identificador es estructural y nunca se enmascara.
+    ids = {f["id"] for f in cuerpo["items"]}
+    assert str(callada.id) in ids, "una de hace 200 días tiene que salir"
+    assert str(muda.id) in ids, "la que no ha tenido NINGUNA actividad es la que más importa"
+    assert str(hablada.id) not in ids, "una de ayer no lleva dos meses sin contacto"
+
+
+def test_el_ajuste_que_fuerza_el_sso_se_lee_con_su_valor(
+    tenants: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La pantalla lo necesita porque el forzado va por DOS sitios.
+
+    El del tenant y el de cada proveedor. Mirar sólo el del proveedor da por
+    abierta una puerta que está cerrada, y al revés — así que la pantalla
+    enseña los dos y éste sale de aquí.
+
+    Y con su valor, no sólo su nombre: un ajuste que se lista y no se lee no
+    contesta «¿está forzado?», que es la única pregunta que se hace.
+    """
+    # Lo sirve `tenancy`, no `identity`: los ajustes del tenant viven con el
+    # tenant. Pedirlo al cliente equivocado da 404, que es lo que pasó al
+    # escribir esto.
+    r = tenants.get("/api/v1/ajustes", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    ajuste = r.json()["sso_forzado"]
+    assert isinstance(ajuste["valor"], bool)
+    # Y de dónde sale, porque no es lo mismo que lo imponga el despliegue a
+    # que lo haya decidido el cliente.
+    assert ajuste["origen"]
+    assert ajuste["descripcion"]
+
+
+def test_una_sesion_dice_si_al_salir_se_cerrara_tambien_en_el_proveedor(
+    identidad: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Salir aquí y dejar viva la del proveedor es no haber salido
+    (CRM-00.05.01.12).
+
+    La correspondencia entre una sesión de aquí y la del IdP se guarda —es la
+    que hace que el aviso de cierre sepa a quién aplicarse— y **no la devolvía
+    nadie**. Sin ella no hay forma de saber que volver a entrar no va a pedir
+    credenciales.
+
+    Que no esté enlazada no es un fallo de aquí: hay proveedores que no mandan
+    índice de sesión. Es una carencia que hay que poder ver, y el propio código
+    ya la anotaba en la auditoría sin que nadie pudiera consultarla.
+    """
+    r = identidad.get("/api/v1/sesiones", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    # El campo está siempre, no sólo cuando hay enlace: un campo que aparece y
+    # desaparece se lee como «no se sabe» en los dos casos.
+    for fila in items:
+        assert "enlazada_al_idp" in fila
+        assert isinstance(fila["enlazada_al_idp"], bool)
 
 
 def test_lo_que_el_perfil_declara_se_pide_por_la_ruta(

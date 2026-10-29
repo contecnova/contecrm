@@ -1979,6 +1979,102 @@ que la aplicación no hace nunca. Al montarlas con `StrictMode` —como `main.ts
 y volver a plantar el fallo, **caen cinco**, cuatro de ellas escritas mucho
 antes. Una prueba que no monta como monta el producto mide otra cosa.
 
+### 4.6.8 El gobierno del SSO, que se escribía y no se leía
+
+Cinco ajustes del proveedor de identidad se guardaban con un `PATCH` y **no los
+devolvía nadie**: el listado daba el nombre, el tipo y los NOMBRES de las claves
+de configuración, así que `forzar_sso` se veía como una palabra en una lista y
+nunca su valor.
+
+Lo que eso dejaba sin poder revisar es lo que más importa de todo esto:
+
+| Ajuste | Qué deja sin ver |
+|---|---|
+| `permite_idp_initiated` | Si se aceptan aserciones que empiezan en el IdP. Vienen apagadas por un motivo: sin `InResponseTo` que atar a una petición nuestra, **una aserción robada se puede reenviar** |
+| `acr_con_mfa` | Si el segundo factor se da por cumplido con lo que diga el proveedor, o sea si aquí ya no se pide |
+| `forzar_sso` + `cuentas_de_rescate` | Si la contraseña local está cortada y **quiénes** se lo saltan. La capacidad exige que la excepción sea nominal y quede escrita, y una excepción que no se ve deja de ser una excepción |
+| `dominios` | Qué correos atiende cada proveedor cuando una empresa tiene seis tras tres adquisiciones |
+
+Se publican, y se enseñan los **correos** de rescate y no su recuento: «2 cuentas
+de rescate» no se puede revisar. El forzado va por dos sitios —el del tenant y
+el de cada proveedor— así que la pantalla enseña los dos: mirar sólo uno da por
+abierta una puerta cerrada, o al revés.
+
+**Y una sesión dice ahora si al salir se cerrará también en el proveedor**
+(CRM-00.05.01.12). La correspondencia entre una sesión de aquí y la del IdP se
+guardaba —es la que hace que el aviso de cierre sepa a quién aplicarse— y
+tampoco la devolvía nadie. Cerrar sólo aquí deja la del proveedor viva y volver
+a entrar no pide credenciales: para quien lo hace, el botón de salir no ha hecho
+nada. Que no esté enlazada no es un fallo nuestro —hay proveedores que no mandan
+índice de sesión— pero es una carencia que hay que poder ver, y el propio código
+ya la anotaba en la auditoría sin que nadie pudiera consultarla.
+
+**Y de paso, un 500 que llevaba ahí desde siempre.** El listado de proveedores
+devolvía el modelo donde `paginar_consulta(fila_a_dict=…)` espera un
+diccionario, así que reventaba **en cuanto hay un proveedor declarado**. No lo
+vio nadie porque la lista estaba vacía en todas las instalaciones que se
+miraron: el fallo sólo aparece en el cliente que de verdad usa SSO. Lo cazó la
+primera prueba que dio uno de alta.
+
+### 4.6.9 Nexus: una pregunta no se contesta con una línea de código
+
+Dos cosas reportadas usándolo, no midiendo. A *«dame un listado de cuentas»*
+Nexus contestaba con `get_api_v1_accounts` **escrito dos veces** y un botón.
+
+**El paso se leía como código.** Era `porque || herramienta` y debajo
+`herramienta`: cuando el modelo no explica el paso —que es casi siempre en el
+modo iterativo— salía el nombre repetido. La descripción la trae la propia
+declaración del agente («Listar cuentas»), derivada del contrato de la API, así
+que no hay que inventarla ni mantener una segunda lista.
+
+**Y un plan que sólo lee pedía otro clic.** El botón existe porque entre paso y
+paso caben el tope, el apagado y la aprobación, y una pantalla que los disparara
+todos de golpe convertiría esos tres controles en decoración. **Eso vale para lo
+que escribe.** Cuando todo el plan es de lectura no hay nada que aprobar —la
+aprobación va por riesgo— así que el botón sólo añadía un paso entre la pregunta
+y la respuesta. Ahora arranca solo si y sólo si todos los pasos son de lectura,
+y hay una prueba de que **uno que escribe no arranca**: sin ella, el arranque
+automático se come la aprobación el día que alguien lo relaje.
+
+### 4.6.10 Lo que de verdad impedía que Nexus contestara
+
+«No contesta a nada» era cierto, y la causa no era el modelo. Tres cosas, en
+orden de cuánto pesaban:
+
+**1. Veía dos cuentas de sesenta y cinco.** `IA_CARACTERES_RESULTADO_PASO`
+valía **2.000**, y una cuenta de este producto ocupa **826 caracteres** —
+veintiocho campos—. El agente recibía el 4 % de la respuesta y hacía lo
+correcto: decir que la lista venía cortada y no concluir. Sube a **20.000**,
+que son unas veinticuatro cuentas; veinte vueltas de ese tamaño siguen cabiendo
+de sobra en el contexto de los modelos de hoy, y quien despliegue con uno
+pequeño lo baja — para eso es un ajuste.
+
+**2. La pregunta del ejemplo no tenía respuesta en la API.** La pantalla sugiere
+literalmente «qué cuentas llevan más de dos meses sin contacto», y no se podía:
+`ultima_actividad_at` es un **rollup** —el máximo de las actividades de la
+cuenta— y los filtros del listado sólo admiten columnas, así que ni se filtraba
+ni se ordenaba por él. Se añade `GET /api/v1/accounts/sin-contacto?dias=N`, con
+el corte sacado del ajuste del tenant cuando no se dice.
+
+**Las que no tienen ninguna actividad entran**, y son las que más importan: una
+cuenta con la que no se ha hablado nunca no es lo mismo que una de hace tres
+meses, pero dejarla fuera por no tener fecha la esconde justo en el listado que
+existe para encontrarla.
+
+**3. Y el paso se leía como código**, con el nombre de la función repetido.
+
+Medido funcionando después de las tres: «qué cuentas llevan más de dos meses sin
+contacto» → un paso, `get_api_v1_accounts_sin_contacto` con `dias=60` → los
+cuatro nombres, **en tres segundos**, citando la herramienta y el parámetro.
+
+**Lo que queda dicho y no arreglado:** el contrato de un listado declara siete
+parámetros y el servidor acepta filtros sobre unos treinta campos. El integrador
+—y el agente— no pueden descubrirlos: lo averiguan con un 422 que sí los lista.
+No se arregla publicándolos en el OpenAPI porque **el conjunto depende de quién
+pregunta**: por un campo enmascarado no se puede filtrar, y eso se resuelve por
+rol y en caliente. La forma correcta es una ruta que lo conteste por recurso, y
+no está hecha.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

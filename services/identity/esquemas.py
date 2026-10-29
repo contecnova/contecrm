@@ -180,6 +180,19 @@ class SesionOut(BaseModel):
     # Derivado para que la lista se pueda leer de un vistazo. Un `actor_real_id`
     # con valor ya lo dice, pero lo dice en un formato que nadie lee.
     suplantada: bool = False
+    # **Si al salir se cerrará también en el proveedor** (CRM-00.05.01.12).
+    #
+    # La correspondencia entre esta sesión y la del IdP se guarda —es la que
+    # hace que el aviso de cierre del proveedor sepa a quién aplicarse— y **no
+    # la devolvía nadie**. Sin ella, salir cierra aquí y deja la sesión del
+    # proveedor viva: volver a entrar no pide credenciales y, para quien lo
+    # hace, el botón de salir no ha hecho nada.
+    #
+    # Que no esté enlazada no es un fallo de aquí: hay proveedores que no
+    # mandan índice de sesión. Pero es una carencia que hay que poder ver, y
+    # el propio código ya la anotaba en la auditoría sin que nadie pudiera
+    # consultarla.
+    enlazada_al_idp: bool = False
 
     model_config = {"from_attributes": True}
 

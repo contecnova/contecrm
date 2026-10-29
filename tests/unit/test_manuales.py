@@ -129,6 +129,12 @@ def _todos_los_ajustes() -> set[str]:
     return {campo.upper() for clase in clases for campo in clase.model_fields}
 
 
+# Verbos HTTP: se escriben en mayúsculas y entre comillas invertidas en todo el
+# manual, y los de cinco letras o más pasan el filtro de forma. `PATCH` puso el
+# gate en rojo el 29-10-2026 por nombrarlo en una explicación.
+VERBOS_HTTP = frozenset({"PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"})
+
+
 def _constantes_del_codigo() -> set[str]:
     """Las constantes de módulo declaradas en el producto.
 
@@ -178,6 +184,10 @@ def test_el_manual_tecnico_no_describe_ajustes_que_no_existen() -> None:
         if c not in conocidos
         and not any(k.startswith(c.rstrip("*")) for k in conocidos)
         # Palabras que no son ajustes y que salen en un manual técnico.
+        # Lo que se escribe en mayúsculas y entre comillas y NO es un ajuste.
+        # Los verbos HTTP entran por la forma —`PATCH` tiene cinco letras— y
+        # un manual técnico los nombra constantemente.
+        and c not in VERBOS_HTTP
         and c not in {"POSTGRESQL", "GRAPHQL", "OPENAPI", "JSONB", "FORCE", "BYOK"}
     )
 

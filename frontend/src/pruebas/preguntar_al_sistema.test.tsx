@@ -115,6 +115,73 @@ describe("nexus", () => {
     expect(screen.getByText("escritura")).toBeInTheDocument();
   });
 
+  it("un plan que sólo lee arranca solo", async () => {
+    // Reportado así: «dame un listado de cuentas» devolvía una línea con el
+    // nombre de una función y un botón. El botón existe porque entre paso y
+    // paso caben el tope, el apagado y la aprobación — y eso vale para lo que
+    // ESCRIBE. Cuando todo el plan es de lectura no hay nada que aprobar, así
+    // que sólo añadía un paso entre la pregunta y la respuesta.
+    actuacion = {
+      ejecucion_id: "e1",
+      objetivo: "dame un listado de cuentas",
+      estado: "ejecutando",
+      tokens: 10,
+      pasos: [unPaso(1)],
+      reversible_del_todo: true,
+      no_reversibles: [],
+    };
+    vueltas = [{ avanzado: false, terminada: true, conclusion: "Tres cuentas" }];
+    await preguntar();
+    await screen.findByText("Tres cuentas");
+  });
+
+  it("un plan que escribe NO arranca solo", async () => {
+    // El control se mantiene donde importa: lo que toca datos sigue esperando
+    // a que una persona lo mande. Sin esta prueba, el arranque automático se
+    // comería la aprobación el día que alguien lo relaje.
+    actuacion = {
+      ejecucion_id: "e1",
+      objetivo: "actualiza los teléfonos",
+      estado: "ejecutando",
+      tokens: 10,
+      pasos: [unPaso(1), unPaso(2, { riesgo: "escritura" })],
+      reversible_del_todo: true,
+      no_reversibles: [],
+    };
+    vueltas = [{ avanzado: true, estado: "hecho" }];
+    await preguntar();
+    await screen.findByText(/vuelta 1/);
+    expect(pedidas.filter((p) => p.ruta.includes("/avanzar"))).toEqual([]);
+    expect(screen.getByRole("button", { name: "preguntar.seguir" })).toBeEnabled();
+  });
+
+  it("el paso se lee en palabras, no como código dos veces", async () => {
+    // Sin `porque` —que es casi siempre en el modo iterativo— salía
+    // `get_accounts` dos veces. A una pregunta en castellano se contestaba con
+    // una línea de código repetida. La descripción la trae la herramienta.
+    agentes = [
+      {
+        id: "a1",
+        clave: "analista",
+        tipo: "asistente_conversacional",
+        activo: true,
+        herramientas: [{ nombre: "get_accounts", descripcion: "Listar cuentas" }],
+      },
+    ];
+    actuacion = {
+      ejecucion_id: "e1",
+      objetivo: "dame un listado de cuentas",
+      estado: "ejecutando",
+      tokens: 10,
+      pasos: [unPaso(1, { porque: "" })],
+      reversible_del_todo: true,
+      no_reversibles: [],
+    };
+    vueltas = [{ avanzado: false, terminada: true, conclusion: "listo" }];
+    await preguntar();
+    expect(await screen.findByText("Listar cuentas")).toBeInTheDocument();
+  });
+
   it("un paso que espera a una persona para el avance", async () => {
     actuacion = {
       ejecucion_id: "e1",
@@ -157,11 +224,10 @@ describe("nexus", () => {
       { avanzado: true, estado: "hecho" },
       { avanzado: false, terminada: true, conclusion: "Tres cuentas en riesgo" },
     ];
-    const usuario = await preguntar();
-    await screen.findByText(/vuelta 1/);
-    await usuario.click(screen.getByRole("button", { name: "preguntar.seguir" }));
+    await preguntar();
 
-    // Lo que ha hecho el botón se dice: sin esto parece que no ha pasado nada.
+    // **Sin pulsar nada**: el plan es todo de lectura, así que arranca solo.
+    // Lo que ha hecho se dice igual: sin esto parece que no ha pasado nada.
     await screen.findByText("Tres cuentas en riesgo");
     // Tres vueltas pedidas: pensar, ejecutar, terminar. Ni una más — seguir
     // llamando a una ejecución cerrada sería gastar presupuesto del agente.

@@ -481,7 +481,28 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            todas eran casualidad: una politica de acceso
 #                            contextual no la enseña `/api/v1/tenants`. La
 #                            heuristica dice donde mirar y no sustituye a mirar.
-TOPE_SIN_PANTALLA = 324
+#   29-10-2026  315 de 778  como se entra en esta empresa. Nueve, y CINCO de
+#                            ellas ni siquiera salian por la API: se escribian
+#                            con un PATCH y el listado devolvia el nombre, el
+#                            tipo y los NOMBRES de las claves de configuracion,
+#                            asi que `forzar_sso` se veia como una palabra en
+#                            una lista y nunca su valor. Ahora se ve si se
+#                            aceptan aserciones que empiezan en el IdP --que
+#                            sin peticion nuestra se pueden reenviar--, si el
+#                            segundo factor se delega al proveedor, si la
+#                            contrasena local esta cortada y QUIENES se lo
+#                            saltan --nominales, que es lo que la capacidad
+#                            exige--, si el aprovisionamiento automatico esta
+#                            activo y que sesiones NO se cerraran en el
+#                            proveedor al salir.
+#
+#                            De paso, un 500: el listado de proveedores
+#                            devolvia el modelo donde el paginador espera un
+#                            diccionario, asi que reventaba EN CUANTO HAY UNO
+#                            declarado. No lo vio nadie porque la lista estaba
+#                            vacia en todas las instalaciones miradas: el fallo
+#                            solo aparece en el cliente que de verdad usa SSO.
+TOPE_SIN_PANTALLA = 315
 
 
 def _es_pantalla(p: Path) -> bool:

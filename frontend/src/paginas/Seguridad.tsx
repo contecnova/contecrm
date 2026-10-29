@@ -85,6 +85,20 @@
  *
  * Nada de esto decide permisos: los pide, y el servidor contesta 403 a quien no
  * deba verlos. Lo que sí hace es no ofrecer lo que ya se sabe que va a dar 403.
+ * Y desde el 29-10-2026, **cómo se entra en esta empresa**
+ * (CRM-00.05.01.02, CRM-00.05.01.04, CRM-00.05.01.05, CRM-00.05.01.09,
+ * CRM-00.05.01.11, CRM-00.05.01.12, CRM-00.05.01.13, CRM-00.05.01.16,
+ * CRM-00.05.01.24). Nueve capacidades servidas y sin pantalla, y **cinco de
+ * ellas ni siquiera salían por la API**: se escribían con un `PATCH` y el
+ * listado devolvía el nombre, el tipo y los NOMBRES de las claves de
+ * configuración, así que `forzar_sso` se veía como una palabra en una lista y
+ * nunca su valor.
+ *
+ * Lo que eso dejaba sin revisar es lo que más importa: si se aceptan
+ * aserciones que empiezan en el IdP —que sin petición nuestra se pueden
+ * reenviar—, si el segundo factor se delega al proveedor, y si la contraseña
+ * local está cortada y **quiénes** se lo saltan, que la capacidad exige que
+ * sean nominales y queden escritas.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -92,7 +106,7 @@ import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
+import { ErrorApi, filas as filasDe, llamar, salvoCancelacion } from "@/lib/api";
 import { puede, type Sesion } from "@/lib/sesion";
 
 interface CapaDeAislamiento {
@@ -267,6 +281,12 @@ export function Seguridad({ sesion }: { sesion: Sesion | null }) {
           vez, y qué pasa el día que cambie de móvil — que es la llamada que
           más veces acaba en un desbloqueo manual, la puerta de atrás de toda
           la MFA. Las cuatro rutas estaban servidas y sin pantalla. */}
+      {/* Cómo se entra en esta empresa, antes de lo que le falta a cada uno:
+          si el SSO está forzado, con qué proveedor, si se aceptan aserciones
+          que empiezan en el IdP, si el segundo factor se delega y quiénes se
+          saltan la contraseña. Cinco de esos ajustes se escribían y no salían
+          por la API. */}
+      <ComoSeEntra />
       <MiSegundoFactor />
       <Certificados filas={certificados} />
       <Segregacion datos={sod} />
@@ -366,6 +386,229 @@ function Aislamiento() {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+interface ProveedorIdp {
+  id: string;
+  nombre: string;
+  tipo: string;
+  activo: boolean;
+  dominio_email: string | null;
+  dominios: string[];
+  jit_provisioning: boolean;
+  permite_idp_initiated: boolean;
+  acr_con_mfa: string[];
+  forzar_sso: boolean;
+  cuentas_de_rescate: string[];
+}
+
+interface Ajuste {
+  valor: unknown;
+  origen?: string;
+  descripcion?: string;
+}
+
+/**
+ * Cómo se entra en esta empresa.
+ *
+ * Nueve capacidades del bloque de autenticación estaban **servidas y sin
+ * pantalla**, y cinco de ellas ni siquiera salían por la API: se escribían con
+ * un `PATCH` y el listado devolvía el nombre, el tipo y los NOMBRES de las
+ * claves de configuración. `forzar_sso` se veía como una palabra en una lista
+ * y nunca su valor.
+ *
+ * Lo que eso dejaba sin poder revisar es justo lo que más importa:
+ *
+ * - **Si se aceptan aserciones que empiezan en el IdP** (CRM-00.05.01.11).
+ *   Vienen apagadas de fábrica por un motivo: sin `InResponseTo` que atar a una
+ *   petición nuestra, una aserción robada **se puede reenviar**. Encenderlo
+ *   tiene que ser una decisión de alguien, y una decisión que no se ve no se
+ *   revisa.
+ * - **Si el segundo factor se delega al proveedor** (CRM-00.05.01.24): si hay
+ *   valores de `acr`/`amr` aceptados, aquí ya no se pide. Está bien —pedirlo
+ *   dos veces enseña a saltárselo— pero hay que saberlo.
+ * - **Si entrar por contraseña está cortado y quiénes se lo saltan**
+ *   (CRM-00.05.01.13). La capacidad exige que la excepción sea nominal y quede
+ *   escrita; se enseñan **los correos**, porque «2 cuentas de rescate» no se
+ *   puede revisar. Y el forzado va por dos sitios —el del tenant y el del
+ *   proveedor— así que se enseñan los dos: mirar sólo uno da por abierta una
+ *   puerta cerrada, o al revés.
+ * - **Con qué protocolo habla cada proveedor y qué dominios atiende**
+ *   (CRM-00.05.01.02, CRM-00.05.01.16), y **si da de alta solo a quien entra
+ *   por primera vez** (CRM-00.05.01.04) — que es lo que hace que el alta sea
+ *   cosa de sistemas y no del administrador del CRM.
+ * - **Si el aprovisionamiento automático está encendido** (CRM-00.05.01.05):
+ *   con SCIM apagado, una baja en el directorio no cierra nada aquí.
+ * - **Qué condiciones de contexto se exigen** (CRM-00.05.01.09).
+ * - **Y qué sesiones no se cerrarán en el proveedor al salir**
+ *   (CRM-00.05.01.12): cerrar sólo aquí deja la del IdP viva, y volver a entrar
+ *   no pide credenciales. Para quien lo hace, el botón de salir no ha hecho
+ *   nada.
+ */
+function ComoSeEntra() {
+  const { t } = useTranslation();
+  const [proveedores, setProveedores] = useState<ProveedorIdp[] | null>(null);
+  const [forzadoGlobal, setForzadoGlobal] = useState<Ajuste | null>(null);
+  const [scim, setScim] = useState<{ activo: boolean; porque: string } | null>(
+    null,
+  );
+  const [politicas, setPoliticas] = useState<number | null>(null);
+  const [sinEnlace, setSinEnlace] = useState<number | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    const opciones = { signal: control.signal };
+    llamar<unknown>("/api/v1/proveedores-identidad", opciones)
+      .then((r) => setProveedores(filasDe<ProveedorIdp>(r.datos)))
+      .catch(salvoCancelacion(setFallo));
+    // Cada una con su fallo: que no se pueda leer el ajuste global no puede
+    // dejar sin ver los proveedores.
+    void llamar<Record<string, Ajuste>>("/api/v1/ajustes", opciones)
+      .then((r) => setForzadoGlobal(r.datos?.sso_forzado ?? null))
+      .catch(() => undefined);
+    // **El 403 de SCIM es la respuesta, no un error.** «No está activo en esta
+    // instalación» es exactamente lo que hay que enseñar: con SCIM apagado,
+    // una baja en el directorio no cierra nada aquí.
+    void llamar<unknown>("/api/v1/scim/v2/ServiceProviderConfig", opciones)
+      .then(() => setScim({ activo: true, porque: "" }))
+      .catch((e: unknown) =>
+        setScim({
+          activo: false,
+          porque: e instanceof ErrorApi ? e.explicacion || e.titulo : "",
+        }),
+      );
+    void llamar<unknown>("/api/v1/politicas-acceso", opciones)
+      .then((r) => setPoliticas(filasDe<unknown>(r.datos).length))
+      .catch(() => undefined);
+    void llamar<unknown>("/api/v1/sesiones", opciones)
+      .then((r) =>
+        setSinEnlace(
+          filasDe<{ enlazada_al_idp?: boolean }>(r.datos).filter(
+            (s) => s.enlazada_al_idp === false,
+          ).length,
+        ),
+      )
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  if (fallo) return <Fallo error={fallo} />;
+  if (!proveedores) return <Cargando />;
+
+  const forzadoDelTenant = forzadoGlobal?.valor === true;
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("seguridad.entrada.titulo")}</h2>
+      <p className="mb-3 text-3xs text-ink-faint">
+        {t("seguridad.entrada.ayuda")}
+      </p>
+
+      {/* El forzado del tenant, lo primero: manda sobre el de cada proveedor y
+          mirar sólo el del proveedor da por abierta una puerta cerrada. */}
+      <p className={forzadoDelTenant ? "text-2xs text-ink" : "text-2xs text-warning"}>
+        {forzadoDelTenant
+          ? t("seguridad.entrada.forzadoSi")
+          : t("seguridad.entrada.forzadoNo")}
+      </p>
+
+      {proveedores.length === 0 ? (
+        <Vacio
+          titulo={t("seguridad.entrada.sinProveedor")}
+          detalle={t("seguridad.entrada.sinProveedorPorque")}
+          compacto
+        />
+      ) : (
+        <ul className="mt-3 divide-y divide-ink-dim/30">
+          {proveedores.map((p) => (
+            <li key={p.id} className="py-2">
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="text-sm text-ink">{p.nombre}</span>
+                <span className="chip-dato">{p.tipo}</span>
+                {!p.activo ? (
+                  <span className="text-3xs text-ink-faint">
+                    {t("seguridad.entrada.apagado")}
+                  </span>
+                ) : null}
+                {(p.dominios.length ? p.dominios : [p.dominio_email ?? ""])
+                  .filter(Boolean)
+                  .map((d) => (
+                    <span key={d} className="font-mono text-3xs text-ink-faint">
+                      {d}
+                    </span>
+                  ))}
+              </div>
+              <div className="mt-1 flex flex-col gap-0.5 text-3xs">
+                <span className="text-ink-muted">
+                  {p.jit_provisioning
+                    ? t("seguridad.entrada.jitSi")
+                    : t("seguridad.entrada.jitNo")}
+                </span>
+                {/* En aviso cuando está ENCENDIDO, que es el caso que hay que
+                    mirar: apagado es el estado seguro. */}
+                <span
+                  className={
+                    p.permite_idp_initiated ? "text-warning" : "text-ink-muted"
+                  }
+                >
+                  {p.permite_idp_initiated
+                    ? t("seguridad.entrada.idpInitiadoSi")
+                    : t("seguridad.entrada.idpInitiadoNo")}
+                </span>
+                {p.acr_con_mfa.length > 0 ? (
+                  <span className="text-ink-muted">
+                    {t("seguridad.entrada.mfaDelegada")}:{" "}
+                    <span className="font-mono">{p.acr_con_mfa.join(" ")}</span>
+                  </span>
+                ) : (
+                  <span className="text-ink-muted">
+                    {t("seguridad.entrada.mfaAqui")}
+                  </span>
+                )}
+                {p.forzar_sso ? (
+                  <span className="text-ink-muted">
+                    {t("seguridad.entrada.forzadoEnEste")}
+                    {/* Los correos, no el recuento: una excepción que no se ve
+                        deja de ser una excepción. */}
+                    {p.cuentas_de_rescate.length > 0 ? (
+                      <span className="text-warning">
+                        {" · "}
+                        {t("seguridad.entrada.rescate")}:{" "}
+                        <span className="font-mono">
+                          {p.cuentas_de_rescate.join(", ")}
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 flex flex-col gap-1 text-3xs">
+        {scim ? (
+          <span className={scim.activo ? "text-ink-muted" : "text-warning"}>
+            {scim.activo
+              ? t("seguridad.entrada.scimSi")
+              : `${t("seguridad.entrada.scimNo")} ${scim.porque}`}
+          </span>
+        ) : null}
+        {politicas !== null ? (
+          <span className="text-ink-muted">
+            {t("seguridad.entrada.politicas", { cuantas: politicas })}
+          </span>
+        ) : null}
+        {sinEnlace !== null && sinEnlace > 0 ? (
+          <span className="text-warning">
+            {t("seguridad.entrada.sinCierrePropagado", { cuantas: sinEnlace })}
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }

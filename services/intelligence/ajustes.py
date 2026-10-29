@@ -102,7 +102,19 @@ class AjustesIntelligence(Settings):
     # en la quinta vuelta la petición es ese listado cinco veces: el bucle se
     # come el presupuesto antes de llegar al objetivo. Lo que pasa del tope se
     # recorta **diciéndolo**, para que el modelo no concluya que no había más.
-    ia_caracteres_resultado_paso: int = Field(2_000, ge=200, le=200_000)
+    #
+    # **Medido el 29-10-2026, y por eso sube de 2.000 a 20.000.** Una cuenta de
+    # este producto ocupa **826 caracteres** —veintiocho campos— así que con el
+    # tope anterior el agente veía DOS de sesenta y cinco. Y hacía lo correcto:
+    # contestar que la lista venía cortada y que no podía concluir. Se reportó
+    # como «Nexus no contesta a nada», y no era del modelo: era que no le
+    # llegaban los datos.
+    #
+    # 20.000 son unas veinticuatro cuentas, que ya contesta una pregunta de
+    # verdad, y veinte vueltas de ese tamaño siguen cabiendo de sobra en el
+    # contexto de los modelos de hoy. Quien despliegue con uno pequeño lo baja:
+    # para eso es un ajuste y no una constante.
+    ia_caracteres_resultado_paso: int = Field(20_000, ge=200, le=200_000)
 
 
 # ── Cuáles se pueden afinar POR CLIENTE y cuáles no ───────────────────────

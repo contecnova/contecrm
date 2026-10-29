@@ -45,6 +45,14 @@ interface Agente {
   descripcion?: string;
   modo?: string;
   activo?: boolean;
+  /**
+   * Lo que sabe hacer, con el nombre técnico y **qué hace en palabras**.
+   *
+   * La descripción la trae la propia declaración del agente —sale del contrato
+   * de la API al derivarlas— así que la pantalla no la inventa ni mantiene una
+   * segunda lista que se separaría de la suya con la primera ruta nueva.
+   */
+  herramientas?: { nombre?: string; descripcion?: string }[];
 }
 
 interface Paso {
@@ -127,6 +135,8 @@ export function Preguntar() {
   const [actuacion, setActuacion] = useState<Actuacion | null>(null);
   const [ultima, setUltima] = useState<Vuelta | null>(null);
   const [trabajando, setTrabajando] = useState(false);
+  // Qué ejecución acaba de nacer, para arrancarla sola si sólo lee.
+  const [arrancar, setArrancar] = useState("");
   const [fallo, setFallo] = useState<ErrorApi | null>(null);
   // El bucle de vueltas se para si el usuario se va de la pantalla: dejarlo
   // corriendo contra un componente desmontado pinta sobre nada y sigue
@@ -195,6 +205,7 @@ export function Preguntar() {
         { metodo: "POST", cuerpo: { objetivo: objetivo.trim(), contexto: {} } },
       );
       await leerActuacion(r.datos.ejecucion_id);
+      setArrancar(r.datos.ejecucion_id);
     } catch (e: unknown) {
       if (e instanceof ErrorApi) setFallo(e);
     } finally {
@@ -210,6 +221,28 @@ export function Preguntar() {
    * **no** es un atajo para ejecutarlo todo de golpe — es el mismo paso a paso,
    * sin obligar a pulsar un botón por cada uno.
    */
+  /**
+   * **Un plan que sólo lee no espera a que nadie pulse.**
+   *
+   * El botón existe porque entre paso y paso caben el tope, el apagado y la
+   * aprobación, y una pantalla que los disparara todos de golpe convertiría
+   * esos tres controles en decoración. Eso vale para lo que ESCRIBE.
+   *
+   * Cuando todo el plan es de lectura no hay nada que aprobar —la aprobación
+   * va por riesgo y la lectura nunca la pide—, así que el botón sólo añade un
+   * paso entre la pregunta y la respuesta. Reportado así: «dame un listado de
+   * cuentas» devolvía una línea con el nombre de una función y un botón.
+   *
+   * Y el tope y el apagado siguen igual, porque los comprueba el servidor en
+   * cada vuelta: esto no ejecuta más, sólo deja de pedir permiso para leer.
+   */
+  useEffect(() => {
+    if (!arrancar || !actuacion || actuacion.ejecucion_id !== arrancar) return;
+    setArrancar("");
+    const soloLee = actuacion.pasos.every((p) => p.riesgo === "lectura");
+    if (soloLee && actuacion.pasos.length > 0) void seguir();
+  }, [arrancar, actuacion]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function seguir() {
     if (!actuacion) return;
     setTrabajando(true);
@@ -275,6 +308,13 @@ export function Preguntar() {
   if (!agentes) return <Cargando />;
 
   const usables = asistentes(agentes);
+  // Qué hace cada herramienta, en palabras. Sale de la declaración del propio
+  // agente, que ya está cargada: una segunda lista en el front se separaría de
+  // la suya en cuanto alguien añadiera una ruta.
+  const loQueHace = new Map<string, string>();
+  for (const h of usables[0]?.herramientas ?? []) {
+    if (h.nombre && h.descripcion) loQueHace.set(h.nombre, h.descripcion);
+  }
   const esperando = (actuacion?.pasos ?? []).filter(
     (p) => p.estado === "esperando_aprobacion",
   );
@@ -373,7 +413,15 @@ export function Preguntar() {
                     {p.orden}
                   </span>
                   <span className="flex-1 text-sm text-ink">
-                    {p.porque || p.herramienta}
+                    {/* **En palabras, y el nombre técnico detrás.** Antes era
+                        `porque || herramienta` y luego `herramienta`: cuando
+                        el modelo no explica el paso —que es casi siempre en el
+                        modo iterativo— salía `get_api_v1_accounts` DOS VECES.
+                        A una pregunta en castellano se contestaba con una
+                        línea de código repetida. La descripción la trae la
+                        propia herramienta («Listar cuentas»), así que no hay
+                        que inventarla ni mantener una segunda lista. */}
+                    {p.porque || loQueHace.get(p.herramienta) || p.herramienta}
                     <span className="ml-2 font-mono text-2xs text-ink-faint">
                       {p.herramienta}
                     </span>
