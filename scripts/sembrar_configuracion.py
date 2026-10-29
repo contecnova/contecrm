@@ -4961,6 +4961,17 @@ def sembrar_lo_que_sale_vacio(api: Api) -> None:
             # poder escribir, y el día que haga falta se amplía a conciencia.
             "permisos": ["account:read", "activity:read", "opportunity:read", "case:read"],
             "max_acciones": 20,
+            # **Presupuesto del día, medido.** Una pregunta de este asistente
+            # cuesta entre 3.000 y 8.000 tokens —lee listados y decide con el
+            # resultado delante—, así que los 200.000 de fábrica se agotan en
+            # unas treinta preguntas: una tarde de una sola persona. Medido el
+            # 29-10-2026 probándolo, que es como se gastaron.
+            #
+            # Dos millones son unas trescientas preguntas al día. **El guardia
+            # que de verdad importa no es éste**, sino el presupuesto EN EUROS
+            # de la política del tenant: los tokens miden consumo y los euros
+            # miden lo que se paga, y lo segundo es lo que alguien decide.
+            "presupuesto_tokens_dia": 2_000_000,
             # `iterativo` y no `plan_cerrado`: una pregunta de verdad no se
             # puede planificar entera de antemano —la segunda mitad depende de
             # lo que devuelva la primera—, y planificar a ciegas produce pasos

@@ -2067,6 +2067,14 @@ Medido funcionando después de las tres: «qué cuentas llevan más de dos meses
 contacto» → un paso, `get_api_v1_accounts_sin_contacto` con `dias=60` → los
 cuatro nombres, **en tres segundos**, citando la herramienta y el parámetro.
 
+**Y el presupuesto del agente, medido.** Una pregunta de este asistente cuesta
+entre 3.000 y 8.000 tokens —lee listados y decide con el resultado delante—, así
+que los 200.000 de fábrica se agotan en unas treinta: una tarde de una sola
+persona. Se sube el del asistente sembrado a dos millones, unas trescientas
+preguntas al día. **El guardia que de verdad importa no es ése**, sino el
+presupuesto en euros de la política del tenant: los tokens miden consumo y los
+euros miden lo que se paga, y lo segundo es lo que alguien decide.
+
 **Lo que queda dicho y no arreglado:** el contrato de un listado declara siete
 parámetros y el servidor acepta filtros sobre unos treinta campos. El integrador
 —y el agente— no pueden descubrirlos: lo averiguan con un 422 que sí los lista.
