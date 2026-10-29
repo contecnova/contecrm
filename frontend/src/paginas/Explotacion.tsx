@@ -2,6 +2,18 @@
  * La pantalla de explotación (CRM-05.01.04.01, CRM-05.01.04.03,
  * CRM-05.01.04.04, CRM-05.01.04.06, CRM-05.01.04.08).
  *
+ * Y la puerta a lo que se construye allí (CRM-05.01.01.01, CRM-05.01.01.02,
+ * CRM-05.01.01.03, CRM-05.01.01.04, CRM-05.01.02.04, CRM-05.01.02.05). El
+ * catálogo las declara **«delegado, no se reimplementa»** desde el principio
+ * —el constructor de informes, los tipos, los filtros, los campos calculados,
+ * los cuadros con el dato de quien los abre y sus suscripciones viven en
+ * contecintelligence— y desde el CRM no se llegaba a ninguna. Seis
+ * capacidades declaradas suyas y sin una sola puerta.
+ *
+ * Un enlace parece poca cosa y aquí es la diferencia entre **delegar y
+ * abandonar**: sin él, quien busca «hacer un informe» en el CRM no encuentra
+ * nada y concluye que no se puede.
+ *
  * Cuatro de esas cinco las hacía ya y no las declaraba: **canjea la credencial
  * de aplicación por un token del usuario** en el servidor —que es lo que hace
  * que la consulta analítica no devuelva lo que esa persona no podría ver—,
@@ -143,6 +155,36 @@ export function Explotacion() {
       ) : (
         <Preguntar diagnostico={diagnostico} />
       )}
+
+      {/* **Dónde se construyen.** Preguntar se hace aquí; los informes, los
+          cuadros y sus envíos se montan en contecintelligence, que es el
+          producto que los tiene. Hasta hoy eso estaba escrito en el catálogo
+          —«delegado, no se reimplementa»— y desde el CRM no se llegaba: nueve
+          capacidades declaradas suyas sin una sola puerta. Un enlace no es
+          poca cosa aquí, es la diferencia entre delegar y abandonar.
+
+          Se abre en otra pestaña a propósito: quien está preguntando no
+          quiere perder lo que lleva escrito. Y se dice que entra con su
+          identidad, porque la duda de «¿veré lo que no debo?» es la primera
+          que tiene alguien al saltar a otra herramienta. */}
+      {diagnostico.url_publica ? (
+        <section className="card p-4" data-testid="explotacion-donde-se-construyen">
+          <h2 className="text-sm font-medium text-ink">
+            {t("explotacion.dondeSeConstruyen")}
+          </h2>
+          <p className="mt-1 text-2xs text-ink-muted">
+            {t("explotacion.dondeSeConstruyenPorque")}
+          </p>
+          <a
+            className="btn-primary mt-2 inline-block"
+            href={diagnostico.url_publica.replace(/\/$/, "")}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            {t("explotacion.abrirConstructor")}
+          </a>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="text-sm font-medium text-ink">{t("explotacion.publicadas")}</h2>

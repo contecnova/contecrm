@@ -1259,6 +1259,23 @@ separados, y esa separación es la parte que importa:
 2. **En la pantalla**, ese token corto es el único que viaja
    (CRM-05.01.04.03).
 
+**Y desde ahí se llega a lo que se construye allí.** El constructor de
+informes, los tipos, los filtros, los campos calculados, los cuadros de mando
+con el dato de quien los abre y sus suscripciones están declarados en el
+catálogo como *«delegado, no se reimplementa»*: son de contecintelligence y el
+CRM no los copia. Lo que faltaba —y se cerró el 29-10-2026— es que **desde el
+CRM no se llegaba a ninguno**. Seis capacidades declaradas suyas y sin una sola
+puerta.
+
+Un enlace parece poca cosa y aquí es la diferencia entre **delegar y
+abandonar**: sin él, quien busca «hacer un informe» en el CRM no encuentra nada
+y concluye, con razón, que no se puede. Se abre en otra pestaña —quien está
+preguntando no quiere perder lo que lleva escrito— y se dice que entra con su
+identidad, porque «¿veré lo que no debo?» es la primera duda al saltar a otra
+herramienta. Si no hay dirección configurada **no se pinta el botón**: uno que
+no lleva a ninguna parte hace que quien lo pulsa deje de creerse el resto de la
+pantalla.
+
 **Y se pregunta desde donde está el dato** (`CRM-05.01.04.09`). En la ficha de
 cualquier registro hay un recuadro para preguntar sobre él: obligar a irse a la
 pantalla de explotación y volver a escribir de qué cuenta se habla es como se

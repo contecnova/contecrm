@@ -296,6 +296,11 @@ export default {
     cifras: "{{miembros}} miembros · {{enviados}} enviados · {{respuestas}} respuestas",
   },
   explotacion: {
+    dondeSeConstruyen: "¿Y dónde se hacen los informes y los cuadros?",
+    dondeSeConstruyenPorque:
+      "Preguntar se hace aquí. Construir informes, cuadros de mando y sus envíos se hace en contecintelligence, que es el producto que los tiene: se abre con tu identidad, así que ves lo mismo que verías aquí y nada más.",
+    abrirConstructor: "Abrir el constructor",
+
     // La caja de preguntar y el alta de la fuente.
     placeholder: "Pregunta sobre tus datos: «¿cuántas oportunidades hay por etapa?»",
     preguntar: "Preguntar",

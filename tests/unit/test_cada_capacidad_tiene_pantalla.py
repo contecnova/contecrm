@@ -416,7 +416,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            Lo que no se ha facturado sale APARTADO: contarlo
 #                            por su coste previsto es lo que hace que esta
 #                            cuenta mienta siempre hacia el mismo lado
-TOPE_SIN_PANTALLA = 347
+#   29-10-2026  341 de 778  la puerta a lo que se construye en
+#                            contecintelligence. El catalogo declaraba seis
+#                            capacidades «delegado, no se reimplementa» desde
+#                            el principio —el constructor de informes, los
+#                            tipos, los filtros, los campos calculados, los
+#                            cuadros con el dato de quien los abre y sus
+#                            suscripciones— y desde el CRM no se llegaba a
+#                            NINGUNA. Un enlace parece poca cosa y es la
+#                            diferencia entre delegar y abandonar: sin el,
+#                            quien busca «hacer un informe» en el CRM no
+#                            encuentra nada y concluye que no se puede. Con
+#                            prueba de que NO se pinta cuando no hay direccion:
+#                            un boton que no lleva a ninguna parte hace que el
+#                            que lo pulsa deje de creerse el resto
+TOPE_SIN_PANTALLA = 341
 
 
 def _es_pantalla(p: Path) -> bool:
