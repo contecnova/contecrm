@@ -82,6 +82,11 @@ def procesos() -> Any:
     yield from _cliente("orchestrator")
 
 
+@pytest.fixture(scope="module")
+def personas() -> Any:
+    yield from _cliente("party")
+
+
 # ── Seguridad ─────────────────────────────────────────────────────────────
 
 
@@ -324,3 +329,24 @@ def test_las_delegaciones_y_los_enlaces_se_piden_por_la_ruta(
     # Y el token no viaja ni con la lista vacía: lo que hay en la base es su
     # hash, y ése es justo el punto.
     assert "token" not in enlaces.text and "hash_token" not in enlaces.text
+
+
+def test_las_tres_listas_de_cuenta_se_piden_por_la_ruta(
+    personas: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Las tres pestañas nuevas del módulo de cuentas, pedidas por HTTP.
+
+    Las tres las sirve `montar_listado`, la maquinaria genérica, y eso importa
+    para esta prueba: un `grep` de decoradores **no las ve**, así que al
+    buscar «colecciones que se escriben y no se leen» salieron como huérfanas
+    y no lo eran. Se comprobó pidiéndolas, que es la única forma.
+    """
+    cabeceras = _cabeceras(tenant_id)
+    for ruta in (
+        "/api/v1/planes-cuenta",
+        "/api/v1/planes-cuenta/financiero",
+        "/api/v1/cambios-de-empresa",
+    ):
+        r = personas.get(ruta, headers=cabeceras)
+        assert r.status_code == 200, f"{ruta}: {r.text}"
+        assert "items" in r.json(), f"{ruta} no devuelve un listado paginado"

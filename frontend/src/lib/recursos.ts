@@ -643,6 +643,39 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
     ],
   "cuentas": [
+      // **El plan de cada cuenta grande** (CRM-01.01.01.11): a dónde se quiere
+      // llegar y qué falta. Se podía escribir y no leer, que es como se
+      // escribe uno en la reunión de enero y nadie lo mira hasta la de enero
+      // siguiente. Los objetivos y los riesgos van contados aparte: un plan
+      // con cinco objetivos y ningún riesgo es optimista, y uno al revés es
+      // una cuenta en problemas.
+      {
+        nombre: "Planes de cuenta",
+        listar: "/api/v1/planes-cuenta",
+        servicio: "party",
+        permiso: "party:read",
+      },
+      // **El estado financiero replicado** (CRM-01.01.01.12), con la
+      // antigüedad del dato delante: bloquear una oferta con una foto del ERP
+      // de hace tres semanas es casi peor que no bloquear, porque el comercial
+      // deja de creerse el bloqueo y entonces ya no sirve ninguno.
+      {
+        nombre: "Estado financiero",
+        listar: "/api/v1/planes-cuenta/financiero",
+        servicio: "party",
+        permiso: "party:read",
+      },
+      // **Quién parece que ha cambiado de empresa** (CRM-01.01.02.07). Es la
+      // mejor oportunidad que hay —conoce el producto y acaba de llegar a un
+      // sitio donde no está— y el agujero de datos más común. Con su indicio,
+      // porque no es lo mismo que rebote su correo que que alguien lo haya
+      // visto en otra empresa: lo que se hace después es distinto.
+      {
+        nombre: "Cambios de empresa",
+        listar: "/api/v1/cambios-de-empresa",
+        servicio: "party",
+        permiso: "party:read",
+      },
       // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
       // de excepciones de calidad, así que lo primero al entrar en clientes era
       // una lista de problemas.

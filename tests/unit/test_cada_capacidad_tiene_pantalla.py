@@ -393,7 +393,19 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            cazo que `GET /{aprobacion_id}` iba delante y se
 #                            tragaba «delegaciones» con un 422 de UUID: llamando
 #                            a la funcion eso no se ve
-TOPE_SIN_PANTALLA = 351
+#   29-10-2026  348 de 778  el plan de cada cuenta grande, su estado
+#                            financiero replicado y quien parece que ha
+#                            cambiado de empresa. Las tres eran ya legibles
+#                            —las monta `montar_listado`— y lo que faltaba era
+#                            la pestaña. Lo anoto porque antes de verlo escribi
+#                            tres rutas `GET` duplicadas: mi barrido de
+#                            «colecciones que se escriben y no se leen» lee los
+#                            DECORADORES del codigo, y lo que monta la
+#                            maquinaria generica no lo ve. Es el falso positivo
+#                            que ya estaba documentado y volvi a pisar; las
+#                            tres rutas se retiraron y se comprobo pidiendolas,
+#                            que es la unica forma
+TOPE_SIN_PANTALLA = 348
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -310,6 +310,18 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
   ],
   "cuentas": [
     {
+      "r": "/api/v1/planes-cuenta",
+      "p": "party:read"
+    },
+    {
+      "r": "/api/v1/planes-cuenta/financiero",
+      "p": "party:read"
+    },
+    {
+      "r": "/api/v1/cambios-de-empresa",
+      "p": "party:read"
+    },
+    {
       "r": "/api/v1/accounts",
       "p": "account:read",
       "o": "cuenta"
