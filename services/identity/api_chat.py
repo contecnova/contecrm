@@ -20,7 +20,7 @@ from uuid import UUID
 from crmcore.datos.guard_borrados import con_borrados
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -551,6 +551,23 @@ def fijar_presencia(datos: EstadoPresencia, uow: UowDep, principal: AutenticadoD
 # ── Entrega en vivo ───────────────────────────────────────────────────────
 
 
+def _desde_cabecera(valor: str | None) -> datetime | None:
+    """El cursor que devuelve el navegador al reconectar, si es legible.
+
+    Un `Last-Event-ID` corrupto —o de otra versión del formato— no puede
+    tumbar la reconexión: se ignora y se arranca en «ahora», que es lo que
+    pasaba siempre antes de esto. Lo que no puede es reventar el flujo justo
+    cuando alguien está volviendo.
+    """
+    if not valor:
+        return None
+    try:
+        leido = datetime.fromisoformat(valor)
+    except ValueError:
+        return None
+    return leido if leido.tzinfo else leido.replace(tzinfo=timezone.utc)
+
+
 @router_chat.get(
     "/eventos",
     dependencies=[Depends(exige_permiso("user:read"))],
@@ -561,7 +578,14 @@ def fijar_presencia(datos: EstadoPresencia, uow: UowDep, principal: AutenticadoD
         "en una nunca llegaría a quien escucha en la otra, y ese fallo solo "
         "aparece al escalar —con dos personas hablando y una que no recibe—.\n\n"
         "Lleva latido: un flujo sin datos durante minutos lo cierra cualquier "
-        "intermediario, y el cliente cree que el servidor se ha caído."
+        "intermediario, y el cliente cree que el servidor se ha caído.\n\n"
+        "**Y recupera lo que se perdió mientras no había conexión.** Cada "
+        "evento lleva su `id`, que el navegador devuelve en `Last-Event-ID` al "
+        "reconectar —eso es del protocolo y lo hace solo—, y aquí se honra "
+        "como cursor. Sin ello, reconectar arrancaba en «ahora» y todo lo "
+        "escrito durante el corte no llegaba nunca: no falla, no avisa, y a la "
+        "conversación le faltan mensajes que nadie echa de menos. En un "
+        "portátil eso pasa cada vez que se cierra la tapa."
     ),
     # EL CONTRATO TIENE QUE DECIR QUE ESTO ES UN FLUJO, y hasta ahora solo lo
     # decía la descripción en prosa. El contrato publicado anunciaba una
@@ -578,6 +602,7 @@ async def eventos(
     db: DbDep,
     principal: AutenticadoDep,
     desde: datetime | None = Query(None),
+    last_event_id: str | None = Header(None, alias="Last-Event-ID"),
     espera_s: float | None = Query(
         None,
         ge=0.5,
@@ -591,7 +616,21 @@ async def eventos(
     espera = espera_s if espera_s is not None else s.chat_sse_espera_s
     latido_cada = s.chat_sse_latido_s
     usuario_id = principal.id
-    corte = desde or datetime.now(timezone.utc)
+    # **Lo que se perdió mientras no había conexión.**
+    #
+    # `EventSource` se reconecta solo —en un portátil, cada vez que se cierra
+    # la tapa— y al reconectar manda `Last-Event-ID` con el último evento que
+    # recibió. Eso es del protocolo y el navegador lo hace sin que nadie
+    # escriba nada; lo que faltaba era que este flujo **emitiera ese id** y lo
+    # honrara al volver.
+    #
+    # Sin ello, el corte arrancaba en `now()` y todo lo escrito durante la
+    # desconexión no llegaba nunca. No falla, no avisa: la conversación sigue,
+    # le faltan mensajes, y quien mira cree que nadie ha escrito.
+    #
+    # `desde` manda sobre la cabecera: quien la pasa a mano está pidiendo una
+    # posición concreta y no una reanudación.
+    corte = desde or _desde_cabecera(last_event_id) or datetime.now(timezone.utc)
 
     async def flujo() -> AsyncIterator[str]:
         nonlocal corte
@@ -641,7 +680,11 @@ async def eventos(
             )
             for mensaje in nuevos:
                 corte = max(corte, mensaje.created_at)
+                # El `id:` es lo que el navegador devuelve en `Last-Event-ID`
+                # al reconectar. Va el instante del mensaje porque es
+                # exactamente el cursor con el que se sigue leyendo.
                 yield (
+                    f"id: {mensaje.created_at.isoformat()}\n"
                     "event: mensaje\n"
                     f"data: {json.dumps(_mensaje_out(db, mensaje), ensure_ascii=False)}\n\n"
                 )

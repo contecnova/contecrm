@@ -532,6 +532,15 @@ export default {
     "Estos campos se ven tapados y lo que muestran no es su valor: {{campos}}",
 
   chat: {
+    buscar: "Buscar en mis conversaciones",
+    hallazgos: "{{cuantos}} resultados",
+    quienEsta: "Quién está",
+    vistoA: "visto {{cuando}}",
+    miembros: "{{cuantos}} personas:",
+    admin: "admin",
+    queDeciaAntes: "Qué decía antes",
+    sinVersiones: "No queda constancia de versiones anteriores",
+    cerrar: "Cerrar",
     nueva: "Abrir una conversación",
     conAlguien: "Con alguien",
     unCanal: "Un canal",

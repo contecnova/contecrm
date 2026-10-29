@@ -1110,6 +1110,40 @@ Debajo, tres preguntas que se hacen en un momento concreto:
   una pérdida de datos que descubres semanas después—. Y las notificaciones no
   llevan el dato dentro: llegan a una pantalla bloqueada que puede ver cualquiera.
 
+### El chat de equipo
+
+Está en la barra de arriba. Lo que lo distingue de poner un enlace a otra
+herramienta es que **una conversación puede colgar de un registro**: la de
+*esta* oportunidad se abre desde su ficha, con el importe y la etapa al lado.
+Media conversación de un CRM ocurre fuera de él, y lo que queda dentro es una
+etapa cambiada sin el porqué; a los seis meses nadie sabe por qué se bajó aquel
+precio.
+
+Lo que se puede hacer, además de escribir:
+
+- **Buscar**, y sólo dentro de las conversaciones en las que estás. A los seis
+  meses nadie recuerda en qué canal se dijo algo, que es justo lo que hace falta
+  encontrar. No se busca en canales donde no estás: eso sería una puerta de
+  atrás.
+- **Ver quién está**, con **desde cuándo no se le ve**. No es un adorno: la
+  pregunta real es si esperar respuesta o levantar el teléfono, y un punto verde
+  no la contesta.
+- **Ver qué decía antes** un mensaje editado. Donde pone «editado» se pulsa y
+  sale la versión anterior. Lo corregido se ve corregido, no reescrito: una
+  conversación en la que se puede cambiar lo dicho sin rastro no sirve para
+  explicar una decisión, y explicarla es la única razón de guardarla.
+- **Saber quién va a leerlo** antes de escribir. Las personas de la conversación
+  salen en la cabecera.
+
+Y dos cosas que pasan solas:
+
+- **Lo nuevo llega sin recargar.** Un chat que hay que recargar no es un chat.
+- **Y si te quedas sin conexión, al volver llega lo que te perdiste.** Hasta el
+  29-10-2026 no era así: al cerrar la tapa del portátil, la conversación se
+  reanudaba «desde ahora» y lo escrito durante el corte no aparecía nunca. No
+  daba ningún error — simplemente faltaban mensajes, y quien miraba creía que
+  nadie había escrito.
+
 ---
 
 ## Entrar: tres formas

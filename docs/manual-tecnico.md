@@ -2300,6 +2300,57 @@ se equivoca de campos. Lo escrito a mano pasa a ser la excepción —las que
 piden cuerpo y aun así tienen sentido como botón porque el cuerpo es fijo—, no
 la norma.
 
+### 4.6.16 El chat en vivo perdía lo escrito durante el corte
+
+`CRM-06.02.02.07` promete «entrega en vivo por SSE, **con reconexión y
+recuperación de lo perdido por cursor**». La reconexión funcionaba —la hace el
+navegador solo— y la recuperación no existía:
+
+- el servidor aceptaba `?desde=` y **ningún cliente lo mandaba**;
+- no emitía línea `id:`, así que el `Last-Event-ID` que el navegador envía al
+  reconectar **no lo honraba nadie**;
+- y **ninguna prueba cubría el parámetro**.
+
+El resultado: al cerrar la tapa del portátil, el flujo se reabría en `now()` y
+todo lo escrito durante el corte no llegaba nunca. No falla y no avisa — a la
+conversación le faltan mensajes y quien mira cree que nadie ha escrito.
+
+Se arregla **usando el protocolo en vez de inventar uno**: cada evento sale con
+`id: <instante>`, que es exactamente el cursor con el que se sigue leyendo, y
+al volver se honra `Last-Event-ID`. El `EventSource` de siempre se recupera
+solo, sin una línea de código en el cliente. `desde` sigue mandando sobre la
+cabecera: quien lo pasa a mano está pidiendo una posición concreta, no una
+reanudación. Y un `Last-Event-ID` ilegible se ignora en vez de tumbar el flujo:
+reventar ahí sería dejar sin chat justo a quien está volviendo.
+
+**Cómo se prueba un flujo que no termina.** No con un cliente HTTP: este
+endpoint hace `db.rollback()` entre vueltas —a propósito, para no reservar una
+conexión de Postgres por persona conectada— y dentro de la transacción de una
+prueba ese rollback se lleva por delante el escenario, con lo que la prueba
+espera para siempre unos mensajes que acaba de borrar ella misma. Se tira del
+generador y se pide **la primera tanda**, que es anterior al primer rollback,
+con plazo duro. Este flujo ya ha colgado dos barridos de este repositorio.
+
+La prueba lleva **el caso malo dentro**: con cursor llega lo del corte, sin
+cursor no llega nada. Afirmar sólo lo primero no distinguiría entre honrar el
+cursor y mandarlo todo siempre.
+
+Y cuatro cosas del chat que el servidor servía —con dieciocho pruebas de punta
+a punta— y no alcanzaba ninguna pantalla: **buscar** (sólo en las
+conversaciones propias, acotado en el servidor), **quién está** con su «visto
+por última vez», **qué decía antes** un mensaje editado, y **quién hay** en la
+conversación antes de escribir algo delicado.
+
+**De paso, un punto ciego en un gate.** El trinquete que exige que toda ruta de
+la que una pantalla declara la forma esté recorrida por una prueba de servidor
+cortaba la ruta en la primera comilla de una f-string:
+`f"/api/v1/chat/mensajes/{mensaje['id']}/versiones"` le salía como
+`/api/v1/chat/mensajes/{mensaje[`. Pedía una prueba para algo probado desde
+hacía meses — y un punto ciego así es peor que una regla que falta, porque
+manda a escribir una prueba duplicada y sigue en rojo cuando se escribe.
+Arreglado en el patrón, no vaciando las llaves de todo el fichero: eso se probó
+primero y dejó fuera siete rutas que sí estaban recorridas.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

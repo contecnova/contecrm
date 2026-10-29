@@ -136,7 +136,18 @@ def _rutas_con_prueba_de_servidor() -> set[str]:
         if fichero.name == pathlib.Path(__file__).name:
             continue
         texto = fichero.read_text(encoding="utf-8")
-        for ruta in re.findall(r'["\'](/api/v1/[^"\'\s]+)', texto):
+        # **Una llave de f-string puede llevar comillas dentro**, y eso cortaba
+        # la ruta justo ahí: de `f"/api/v1/chat/mensajes/{mensaje[\'id\']}/versiones"`
+        # salía `/api/v1/chat/mensajes/{mensaje[`, que no casa con nada. El
+        # gate pedía entonces una prueba para una ruta que llevaba meses
+        # probada — y un punto ciego así es peor que una regla que falta,
+        # porque manda a escribir una prueba duplicada y sigue en rojo cuando
+        # se escribe. Medido el 29-10-2026 con `/chat/mensajes/{}/versiones`.
+        #
+        # Se arregla en el propio patrón y no vaciando las llaves de todo el
+        # fichero: eso se probó primero y dejó fuera siete rutas que sí
+        # estaban recorridas.
+        for ruta in re.findall(r'["\'](/api/v1/(?:[^"\'\s{]|\{[^}]*\})+)', texto):
             forma = re.sub(r"\{[^}]*\}|\$\{[^}]*\}", "{}", ruta.split("?")[0])
             vistas.add(forma)
             # Las rutas que cada servicio publica en su prefijo —la papelera,

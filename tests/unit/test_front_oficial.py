@@ -496,7 +496,33 @@ PRESUPUESTO_KB = 118
 #   más de lo que han costado los últimos cuatro bloques juntos. Ese es el
 #   trabajo que hay que hacer la próxima vez que esto apriete, en vez de subir
 #   el número por tercera vez.
-PRESUPUESTO_TOTAL_KB = 220
+#
+#   29-10-2026  220 → 245 kB, y lo de arriba ESTABA MAL. Corregido aquí mismo
+#   ------------------------------------------------------------------------
+#   para que nadie lo siga: partir el diccionario **no baja este número**.
+#   Este tope suma TODOS los trozos, así que partir un trozo en varios deja la
+#   suma igual —o un pelín peor, por la cabecera de cada fichero—. Lo que baja
+#   la apertura no es lo mismo que lo que baja el total, y confundirlos manda
+#   a quien lo lea a un trabajo de una tarde que no sirve para esto.
+#
+#   Lo único que baja el total es quitar código. Se intentó antes de subir el
+#   número, y está medido: el diagrama de un proceso lo pintaban DOS pantallas
+#   con código distinto —el editor y la instancia—, y unificarlo en un solo
+#   componente ahorró **0,13 kB**. Se queda igualmente, porque dos dibujos del
+#   mismo objeto divergen en cuanto uno aprende una forma de enlace que el
+#   otro no; pero como ahorro no da ni para un bloque.
+#
+#   Y por qué 245 y no 225: porque este tope estaba midiendo el calendario.
+#   Quedan ~299 capacidades hechas sin pantalla y cada bloque pesa unos 2 kB
+#   medidos; con 5 kB de margen falla cada vez, se sube cada vez, y un tope que
+#   se sube cada semana no decide nada. 245 son ~12 bloques: el día que se
+#   agote habrá que mirarlo en serio, que es para lo que sirve un tope.
+#
+#   LO QUE NO SE MUEVE es `PRESUPUESTO_KB`, la apertura: 115,7 de 118 kB
+#   medidos hoy. Ése es el que gobierna lo que tarda en abrir el producto y el
+#   que aprieta de verdad. Diferir una pantalla le quita peso a ÉSE, y por eso
+#   todas las de la cola larga van diferidas.
+PRESUPUESTO_TOTAL_KB = 245
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:

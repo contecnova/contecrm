@@ -343,6 +343,132 @@ def test_el_flujo_en_vivo_se_anuncia_como_flujo_crm_06_02_02_07(cliente: Any) ->
     )
 
 
+def test_lo_escrito_mientras_no_habia_conexion_llega_al_volver_crm_06_02_02_07(
+    db: Any,
+    de_luis: dict[str, str],
+    cliente: Any,
+    canal: str,
+    tenant_id: UUID,
+    ana: UUID,
+    contexto_tenant: UUID,
+) -> None:
+    """La mitad que faltaba de «reconexión Y recuperación por cursor».
+
+    La reconexión la hace el navegador solo, y eso ya funcionaba. Lo que no
+    había era la recuperación: el flujo arrancaba en `now()`, así que todo lo
+    escrito mientras el portátil tenía la tapa cerrada **no llegaba nunca**. No
+    falla y no avisa: a la conversación le faltan mensajes y quien mira cree
+    que nadie ha escrito.
+
+    **La prueba es el contraste, y lleva el caso malo dentro**: con el cursor
+    que devuelve el navegador llega lo que se perdió; sin él —que es lo que
+    pasaba siempre— no llega nada. Afirmar sólo lo primero no distinguiría
+    entre honrar el cursor y mandarlo todo siempre.
+
+    **Por qué se tira del generador y no se abre el flujo con el cliente.** Este
+    endpoint hace `db.rollback()` entre vueltas —a propósito: mantener la
+    sesión abierta reservaría una conexión de Postgres por persona conectada—,
+    y dentro de la transacción de una prueba ese rollback se lleva por delante
+    el escenario. Abrirlo con `TestClient` deja la prueba esperando para
+    siempre a unos mensajes que acaba de borrar ella misma. Se pide la primera
+    tanda, que es anterior al primer rollback, y con plazo duro: este flujo ya
+    ha colgado dos barridos de este repositorio.
+    """
+    import asyncio
+    from datetime import timedelta
+
+    from services.identity.api_chat import eventos
+
+    primero = _escribir(cliente, de_luis, canal, "antes del corte")
+    _escribir(cliente, de_luis, canal, "esto se escribió con la tapa cerrada")
+
+    # Un instante ANTES de los dos. No se usa el `created_at` del primero
+    # porque dentro de una transacción `now()` de Postgres es el mismo para
+    # todas las filas: los dos mensajes comparten marca y `> corte` los
+    # dejaría a ambos fuera por un detalle del entorno de pruebas, no del
+    # código.
+    corte = (datetime.fromisoformat(primero["created_at"]) - timedelta(seconds=5)).isoformat()
+
+    de_quien = tenant_id
+
+    class _Ana:
+        id = ana
+        tenant_id = de_quien
+
+    async def primeros_trozos(last_event_id: str | None, cuantos: int) -> str:
+        respuesta = await eventos(
+            db=db,
+            principal=_Ana(),
+            desde=None,
+            last_event_id=last_event_id,
+            espera_s=0.5,
+        )
+        texto = ""
+        it = respuesta.body_iterator.__aiter__()
+        for _ in range(cuantos):
+            texto += await asyncio.wait_for(it.__anext__(), timeout=4)
+        return texto
+
+    # CON el cursor que manda el navegador: llega lo del corte.
+    # Cuatro trozos: el `retry`, el saludo y **un trozo por mensaje**. Con tres
+    # sólo llegaba el primero de los dos y la prueba fallaba por contar mal, no
+    # por el código.
+    con_cursor = asyncio.run(asyncio.wait_for(primeros_trozos(corte, 4), timeout=20))
+    assert "esto se escribió con la tapa cerrada" in con_cursor, (
+        "lo escrito durante el corte no ha llegado al reconectar: el cursor de "
+        "`Last-Event-ID` no se honra y la conversación pierde mensajes sin "
+        "decirlo.\nRecibido:\n" + con_cursor[:600]
+    )
+    # Y el id viaja, que es lo que hace posible la vuelta siguiente.
+    assert "id: " in con_cursor, (
+        "los eventos no llevan `id`, así que el navegador no tiene qué devolver "
+        "en `Last-Event-ID` y la próxima reconexión vuelve a perder lo del corte"
+    )
+
+    # SIN cursor: el comportamiento de antes. Los dos primeros trozos son el
+    # `retry` y el saludo; el tercero no llega porque no hay nada nuevo desde
+    # «ahora», y eso es exactamente lo que se perdía.
+    async def sin_cursor() -> bool:
+        respuesta = await eventos(
+            db=db, principal=_Ana(), desde=None, last_event_id=None, espera_s=0.5
+        )
+        it = respuesta.body_iterator.__aiter__()
+        texto = ""
+        for _ in range(2):
+            texto += await it.__anext__()
+        assert "event: mensaje" not in texto, texto
+        try:
+            await asyncio.wait_for(it.__anext__(), timeout=2)
+        except TimeoutError:
+            return True
+        return False
+
+    assert asyncio.run(asyncio.wait_for(sin_cursor(), timeout=20)), (
+        "sin cursor ha llegado algo: entonces el flujo manda lo viejo siempre y "
+        "la prueba de arriba no distinguiría entre honrar el cursor y no acotar"
+    )
+
+
+def test_un_last_event_id_ilegible_no_tumba_el_flujo_crm_06_02_02_07() -> None:
+    """Un cursor corrupto se ignora, no revienta.
+
+    Es lo que llega de un cliente viejo, de una caché rara o de un intermediario
+    que toca cabeceras. Tumbar el flujo ahí sería dejar sin chat justo a quien
+    está volviendo, que es cuando más se nota.
+    """
+    from services.identity.api_chat import _desde_cabecera
+
+    assert _desde_cabecera(None) is None
+    assert _desde_cabecera("") is None
+    assert _desde_cabecera("no-es-una-fecha") is None
+    # Y uno bueno se lee, con su zona. Sin zona se asume UTC: compararlo con un
+    # instante con zona reventaría la consulta justo en la reconexión.
+    leido = _desde_cabecera("2026-10-29T10:00:00+00:00")
+    assert leido is not None and leido.tzinfo is not None
+    ingenuo = _desde_cabecera("2026-10-29T10:00:00")
+    assert ingenuo is not None and ingenuo.tzinfo is not None
+
+
 # ── CRM-06.02.02.08 · Búsqueda solo en lo mío ─────────────────────────────
 
 

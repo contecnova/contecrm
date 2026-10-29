@@ -36,10 +36,8 @@ import { useTranslation } from "react-i18next";
 import { Error as Fallo } from "@/componentes/Estados";
 import { llamar } from "@/lib/api";
 import { CabeceraPagina } from "@/componentes/Pagina";
+import { Diagrama } from "@/componentes/Diagrama";
 import {
-  ALTO,
-  ANCHO,
-  aristas,
   colocar,
   conPosiciones,
   type Definicion,
@@ -356,11 +354,6 @@ function Lienzo({
   alMover: (nodos: Nodo[]) => void;
 }) {
   const { t } = useTranslation();
-  const enlaces = aristas(definicion);
-  const porNombre = new Map(nodos.map((n) => [n.nombre, n]));
-  const ancho = Math.max(400, ...nodos.map((n) => n.x + ANCHO));
-  const alto = Math.max(280, ...nodos.map((n) => n.y + ALTO));
-
   function mover(nombre: string, dx: number, dy: number) {
     alMover(
       nodos.map((n) =>
@@ -373,68 +366,21 @@ function Lienzo({
 
   return (
     <div className="mt-2 overflow-auto rounded-xl border border-ink-dim/60 bg-paper">
-      <svg
-        width={ancho}
-        height={alto}
-        role="img"
-        aria-label={t("procesos.lienzo")}
-      >
-        {enlaces.map((a, i) => {
-          const desde = porNombre.get(a.desde);
-          const hasta = porNombre.get(a.hasta);
-          if (!desde || !hasta) return null;
-          return (
-            <g key={`${a.desde}-${a.hasta}-${a.etiqueta}-${i}`}>
-              <line
-                x1={desde.x + 140}
-                y1={desde.y + 18}
-                x2={hasta.x}
-                y2={hasta.y + 18}
-                stroke="rgb(var(--ink-dim))"
-                strokeWidth={1.5}
-              />
-              <text
-                x={(desde.x + 140 + hasta.x) / 2}
-                y={(desde.y + hasta.y) / 2 + 12}
-                fill="rgb(var(--ink-faint))"
-                fontSize={9}
-              >
-                {a.etiqueta}
-              </text>
-            </g>
-          );
+      {/* El MISMO dibujo que la pantalla de una instancia, con otra forma de
+          pintar las cajas: aquí se marca el inicio, allí por dónde va. Dos
+          diagramas del mismo objeto divergen en cuanto uno aprende una forma
+          de enlace que el otro no. */}
+      <Diagrama
+        definicion={definicion}
+        nodos={nodos}
+        rotulo={t("procesos.lienzo")}
+        conEtiquetas
+        pinta={(n) => ({
+          trazo: n.esInicio ? "rgb(var(--accent))" : "rgb(var(--ink-dim))",
+          grosor: n.esInicio ? 2 : 1,
+          lineas: [n.nombre, n.tipo],
         })}
-        {nodos.map((n) => (
-          <g key={n.nombre}>
-            <rect
-              x={n.x}
-              y={n.y}
-              width={140}
-              height={36}
-              rx={8}
-              fill="rgb(var(--paper-light))"
-              stroke={n.esInicio ? "rgb(var(--accent))" : "rgb(var(--ink-dim))"}
-              strokeWidth={n.esInicio ? 2 : 1}
-            />
-            <text
-              x={n.x + 10}
-              y={n.y + 15}
-              fill="rgb(var(--ink))"
-              fontSize={11}
-            >
-              {n.nombre}
-            </text>
-            <text
-              x={n.x + 10}
-              y={n.y + 28}
-              fill="rgb(var(--ink-faint))"
-              fontSize={9}
-            >
-              {n.tipo}
-            </text>
-          </g>
-        ))}
-      </svg>
+      />
 
       {/* Mover con el teclado y no solo arrastrando: un lienzo que solo
           responde al ratón deja fuera a quien navega con teclado, y es

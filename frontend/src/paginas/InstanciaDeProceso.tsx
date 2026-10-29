@@ -30,13 +30,8 @@ import { useParams } from "react-router-dom";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { llamar, salvoCancelacion } from "@/lib/api";
-import {
-  ALTO,
-  ANCHO,
-  aristas,
-  colocar,
-  type Definicion,
-} from "@/lib/grafo";
+import { Diagrama } from "@/componentes/Diagrama";
+import { colocar, type Definicion } from "@/lib/grafo";
 
 interface NodoDeInstancia {
   paso: string;
@@ -232,10 +227,6 @@ function ElGrafico({
     () => (definicion ? colocar(definicion) : []),
     [definicion],
   );
-  const enlaces = useMemo(
-    () => (definicion ? aristas(definicion) : []),
-    [definicion],
-  );
   const estados = useMemo(
     () => new Map(grafico.nodos.map((n) => [n.paso, n])),
     [grafico.nodos],
@@ -250,60 +241,29 @@ function ElGrafico({
     );
   }
 
-  const porNombre = new Map(nodos.map((n) => [n.nombre, n]));
-  const ancho = Math.max(400, ...nodos.map((n) => n.x + ANCHO));
-  const alto = Math.max(280, ...nodos.map((n) => n.y + ALTO));
-
   return (
     <section className="card p-4">
       <h2 className="section-label mb-1">{t("instancia.grafico")}</h2>
       <p className="mb-2 text-3xs text-ink-faint">{t("instancia.graficoAyuda")}</p>
       <div className="overflow-auto rounded-xl border border-ink-dim/60 bg-paper">
-        <svg width={ancho} height={alto} role="img" aria-label={t("instancia.grafico")}>
-          {enlaces.map((a, i) => {
-            const desde = porNombre.get(a.desde);
-            const hasta = porNombre.get(a.hasta);
-            if (!desde || !hasta) return null;
-            return (
-              <line
-                key={`${a.desde}-${a.hasta}-${i}`}
-                x1={desde.x + 140}
-                y1={desde.y + 18}
-                x2={hasta.x}
-                y2={hasta.y + 18}
-                stroke="rgb(var(--ink-dim))"
-                strokeWidth={1.5}
-              />
-            );
-          })}
-          {nodos.map((n) => {
+        {/* El MISMO dibujo que el editor, con otra forma de pintar las cajas.
+            Dos diagramas del mismo objeto divergen en cuanto uno aprende una
+            forma de enlace que el otro no, y entonces hay que entender el
+            proceso otra vez al cambiar de pantalla. */}
+        <Diagrama
+          definicion={definicion}
+          nodos={nodos}
+          rotulo={t("instancia.grafico")}
+          pinta={(n) => {
             const estado = estados.get(n.nombre)?.estado ?? "pendiente";
-            return (
-              <g key={n.nombre}>
-                <rect
-                  x={n.x}
-                  y={n.y}
-                  width={140}
-                  height={44}
-                  rx={8}
-                  fill="rgb(var(--paper-light))"
-                  stroke={TRAZO[estado] ?? "rgb(var(--ink-dim))"}
-                  strokeWidth={estado === "actual" ? 2.5 : 1.5}
-                />
-                <text x={n.x + 10} y={n.y + 15} fill="rgb(var(--ink))" fontSize={11}>
-                  {n.nombre}
-                </text>
-                {/* El estado ESCRITO, no sólo en el color del borde. */}
-                <text x={n.x + 10} y={n.y + 28} fill="rgb(var(--ink-faint))" fontSize={9}>
-                  {t(`instancia.estado.${estado}`)}
-                </text>
-                <text x={n.x + 10} y={n.y + 39} fill="rgb(var(--ink-faint))" fontSize={9}>
-                  {n.tipo}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+            return {
+              trazo: TRAZO[estado] ?? "rgb(var(--ink-dim))",
+              grosor: estado === "actual" ? 2.5 : 1.5,
+              // El estado ESCRITO, no sólo en el color del borde.
+              lineas: [n.nombre, t(`instancia.estado.${estado}`), n.tipo],
+            };
+          }}
+        />
       </div>
     </section>
   );

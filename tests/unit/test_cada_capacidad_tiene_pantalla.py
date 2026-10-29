@@ -533,7 +533,22 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   citando el esquema de la edicion de variables; y el simulador decia por que
 #   pasos iria un caso y ni por cuantas manos ni en cuanto tiempo. Las dos
 #   escritas, con prueba y validadas plantando el caso malo.
-TOPE_SIN_PANTALLA = 299
+#   29-10-2026  292 de 778  el chat de equipo. Siete, y el servidor estaba
+#   ------------------------------------------------------------------------
+#   entero: dieciocho pruebas de punta a punta y cuatro cosas que no alcanzaba
+#   ninguna pantalla —buscar solo en lo mio, quien esta con su «visto por
+#   ultima vez», que decia antes un mensaje editado, y quien hay en la
+#   conversacion antes de escribir algo delicado—.
+#
+#   Y una que tampoco era pantalla: CRM-06.02.02.07 promete «reconexion Y
+#   recuperacion de lo perdido por cursor». La reconexion la hace el navegador
+#   solo; la recuperacion no existia. El servidor aceptaba `?desde=` y ningun
+#   cliente lo mandaba, no emitia linea `id:` —asi que el `Last-Event-ID` que
+#   el navegador manda al reconectar no lo honraba nadie— y NINGUNA prueba
+#   cubria el parametro. Al cerrar la tapa del portatil, el flujo se reabria
+#   en «ahora» y lo escrito durante el corte no llegaba nunca: no falla, no
+#   avisa, y a la conversacion le faltan mensajes que nadie echa de menos.
+TOPE_SIN_PANTALLA = 292
 
 
 def _es_pantalla(p: Path) -> bool:

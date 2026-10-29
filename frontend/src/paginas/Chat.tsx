@@ -1,5 +1,6 @@
 /**
- * Chat interno (CRM-06.02.02).
+ * Chat interno (CRM-06.02.02.01, CRM-06.02.02.03, CRM-06.02.02.04,
+ * CRM-06.02.02.05, CRM-06.02.02.06, CRM-06.02.02.07, CRM-06.02.02.08).
  *
  * Media conversación de un CRM ocurre fuera de él: se habla de una oportunidad
  * en otra herramienta, se decide algo, y lo que queda dentro es una etapa
@@ -20,6 +21,20 @@
  * **El hilo se abre al lado y no sustituye a la conversación.** Entrar en un
  * hilo y perder de vista lo demás obliga a salir y volver para seguir el resto,
  * que es exactamente lo que un hilo existe para no tener que hacer.
+ *
+ * **Y cuatro cosas que el servidor servía y aquí no se alcanzaban.** Estaban
+ * construidas, probadas de punta a punta y sin puerta:
+ *
+ * - **buscar**, sólo en las conversaciones a las que se pertenece. Un chat sin
+ *   búsqueda obliga a recordar en qué canal se dijo algo, que es justo lo que
+ *   no se recuerda a los seis meses;
+ * - **quién está**, con «visto por última vez». La pregunta no es social: es
+ *   si esperar respuesta o levantar el teléfono;
+ * - **qué decía antes** un mensaje editado. Lo corregido se ve corregido, no
+ *   reescrito: una conversación donde se puede cambiar lo dicho sin rastro no
+ *   sirve para explicar una decisión;
+ * - **quién está en esta conversación**. Antes de escribir algo delicado hay
+ *   que poder saber quién lo va a leer.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -47,6 +62,25 @@ interface Conversacion {
   objeto_id: string | null;
   ultimo_mensaje_at: string | null;
   sin_leer: number;
+}
+
+interface Presencia {
+  usuario_id: string;
+  estado: string;
+  mensaje: string;
+  /** Desde cuándo no se le ve. Es lo que contesta «¿espero o llamo?». */
+  visto_at: string | null;
+}
+
+interface Miembro {
+  usuario_id: string;
+  rol: string;
+  silenciada: boolean;
+}
+
+interface Version {
+  cuerpo: string;
+  editado_at?: string;
 }
 
 interface Mensaje {
@@ -87,6 +121,15 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   const [conversaciones, setConversaciones] = useState<Conversacion[] | null>(null);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [usuarios, setUsuarios] = useState<Record<string, Usuario>>({});
+  /** Lo que se busca, y lo encontrado. Sólo en mis conversaciones. */
+  const [termino, setTermino] = useState("");
+  const [hallazgos, setHallazgos] = useState<Mensaje[] | null>(null);
+  /** Quién está, para saber si esperar respuesta o llamar. */
+  const [presencia, setPresencia] = useState<Presencia[]>([]);
+  /** Las versiones de un mensaje editado, cuando alguien las abre. */
+  const [versiones, setVersiones] = useState<{ de: string; lista: Version[] } | null>(null);
+  /** Quién está en la conversación abierta. */
+  const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -167,6 +210,23 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     abajo.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes.length]);
 
+  // Quién está en esta conversación. Se pide al cambiar de una a otra y no
+  // con la lista: la lista de canales no puede costar traerse los miembros de
+  // todos para enseñar los de uno.
+  useEffect(() => {
+    if (!activa) {
+      setMiembros([]);
+      return;
+    }
+    const control = new AbortController();
+    llamar<{ miembros: Miembro[] }>(`/api/v1/chat/conversaciones/${activa}`, {
+      signal: control.signal,
+    })
+      .then(({ datos }) => setMiembros(datos.miembros ?? []))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [activa]);
+
   const { raiz, respuestas } = useMemo(() => {
     const porPadre = new Map<string, Mensaje[]>();
     const sueltos: Mensaje[] = [];
@@ -179,6 +239,47 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
     }
     return { raiz: sueltos, respuestas: porPadre };
   }, [mensajes]);
+
+  /**
+   * Quién está, y desde cuándo no se le ve.
+   *
+   * Se pide una vez al abrir y no en bucle: un sondeo cada pocos segundos por
+   * un dato que cambia cada media hora es tráfico constante para nada.
+   */
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Presencia[]>("/api/v1/chat/presencia", { signal: control.signal })
+      .then(({ datos }) => setPresencia(datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  /** Buscar, sólo en mis conversaciones. Lo acota el servidor, no la pantalla. */
+  async function buscar() {
+    const limpio = termino.trim();
+    if (limpio.length < 2) {
+      setHallazgos(null);
+      return;
+    }
+    try {
+      const { datos } = await llamar<Mensaje[]>(
+        `/api/v1/chat/buscar?texto=${encodeURIComponent(limpio)}`,
+      );
+      setHallazgos(datos);
+    } catch (error) {
+      setFallo(error);
+    }
+  }
+
+  /** Qué decía antes este mensaje. */
+  async function verVersiones(mensajeId: string) {
+    try {
+      const { datos } = await llamar<Version[]>(`/api/v1/chat/mensajes/${mensajeId}/versiones`);
+      setVersiones({ de: mensajeId, lista: datos });
+    } catch (error) {
+      setFallo(error);
+    }
+  }
 
   async function enviar() {
     if (!texto.trim() || !activa) return;
@@ -289,10 +390,19 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                 minute: "2-digit",
               })}
             </time>
+            {/* «Editado» no es una etiqueta: es la puerta a QUÉ DECÍA ANTES.
+                Una conversación donde se puede cambiar lo dicho sin que se
+                pueda mirar lo anterior no sirve para explicar una decisión, y
+                el servidor lo guardaba sin que nadie pudiera verlo. */}
             {mensaje.ediciones > 0 ? (
-              <span title={t("chat.editadoVeces", { veces: mensaje.ediciones })}>
+              <button
+                type="button"
+                onClick={() => void verVersiones(mensaje.id)}
+                title={t("chat.editadoVeces", { veces: mensaje.ediciones })}
+                className="underline decoration-dotted hover:text-ink"
+              >
                 · {t("chat.editado")}
-              </span>
+              </button>
             ) : null}
           </p>
           {mensaje.borrado ? (
@@ -419,6 +529,86 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
               ))}
             </ul>
           )}
+
+          {/* ── Buscar, sólo en lo mío ──────────────────────────────────
+              A los seis meses nadie recuerda en qué canal se dijo algo, que
+              es justo lo que hace falta encontrar. Lo acota el SERVIDOR a las
+              conversaciones de quien pregunta: buscar en todas devolvería
+              texto de canales en los que no se está. */}
+          <form
+            className="mt-3 border-t border-ink-dim/60 pt-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void buscar();
+            }}
+          >
+            <label htmlFor="buscar-chat" className="sr-only">
+              {t("chat.buscar")}
+            </label>
+            <input
+              id="buscar-chat"
+              value={termino}
+              onChange={(e) => setTermino(e.target.value)}
+              placeholder={t("chat.buscar")}
+              className="input-sm w-full"
+            />
+            {hallazgos ? (
+              <div className="mt-2">
+                <p className="text-3xs text-ink-faint" role="status">
+                  {t("chat.hallazgos", { cuantos: hallazgos.length })}
+                </p>
+                <ul className="lista-acotada mt-1 space-y-1">
+                  {hallazgos.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => setParametros({ c: m.conversacion_id })}
+                        className="w-full rounded-lg px-2 py-1 text-left text-3xs text-ink-muted hover:bg-paper-light"
+                      >
+                        {m.cuerpo.slice(0, 90)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </form>
+
+          {/* ── Quién está ──────────────────────────────────────────────
+              No es un adorno social: contesta «¿espero respuesta o llamo?».
+              Por eso va el «visto por última vez» y no sólo un punto verde. */}
+          {presencia.length > 0 ? (
+            <div className="mt-3 border-t border-ink-dim/60 pt-2">
+              <h2 className="text-3xs font-medium uppercase tracking-wide text-ink-faint">
+                {t("chat.quienEsta")}
+              </h2>
+              <ul className="mt-1 space-y-0.5">
+                {presencia.map((pr) => (
+                  <li key={pr.usuario_id} className="flex items-baseline gap-2 text-3xs">
+                    <span className="text-ink-muted">
+                      {usuarios[pr.usuario_id]?.nombre ?? t("chat.alguien")}
+                    </span>
+                    <span className="chip-dato">{pr.estado}</span>
+                    {pr.mensaje ? (
+                      <span className="text-ink-faint">{pr.mensaje}</span>
+                    ) : null}
+                    {pr.visto_at ? (
+                      <time className="text-ink-faint" dateTime={pr.visto_at}>
+                        {t("chat.vistoA", {
+                          cuando: new Date(pr.visto_at).toLocaleString(localizacion(), {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }),
+                        })}
+                      </time>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </aside>
 
         <section className="flex min-h-[28rem] flex-col rounded-xl border border-ink-dim/60 bg-paper">
@@ -442,6 +632,20 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     <Icono nombre="link" /> {t("chat.sobreEl", { objeto: abierta.objeto_tipo })}
                   </p>
                 ) : null}
+                {/* QUIÉN LO VA A LEER. Antes de escribir algo delicado en un
+                    canal hay que poder saberlo, y el servidor lo devolvía sin
+                    que ninguna pantalla lo enseñara. */}
+                {miembros.length > 0 ? (
+                  <p className="mt-0.5 flex flex-wrap items-baseline gap-1 text-3xs text-ink-faint">
+                    <span>{t("chat.miembros", { cuantos: miembros.length })}</span>
+                    {miembros.map((m) => (
+                      <span key={m.usuario_id} className="chip-dato">
+                        {usuarios[m.usuario_id]?.nombre ?? t("chat.alguien")}
+                        {m.rol === "admin" ? ` · ${t("chat.admin")}` : ""}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
               </header>
 
               {/* En un chat esto no es un requisito que se cumple: es la
@@ -458,6 +662,43 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
                     })
                   : ""}
               </p>
+              {/* ── Qué decía antes ───────────────────────────────────
+                  Lo corregido se ve corregido, no reescrito. Se abre desde el
+                  «editado» del propio mensaje y se cierra: no vive abierto,
+                  porque es una consulta puntual y no parte de la
+                  conversación. */}
+              {versiones ? (
+                <div className="border-b border-ink-dim/60 bg-paper-sunk px-3 py-2">
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="text-3xs font-medium uppercase tracking-wide text-ink-faint">
+                      {t("chat.queDeciaAntes")}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setVersiones(null)}
+                      aria-label={t("chat.cerrar")}
+                      className="text-ink-muted hover:text-ink"
+                    >
+                      <Icono nombre="close" />
+                    </button>
+                  </div>
+                  {versiones.lista.length === 0 ? (
+                    <p className="text-3xs text-ink-faint">{t("chat.sinVersiones")}</p>
+                  ) : (
+                    <ol className="mt-1 space-y-1">
+                      {versiones.lista.map((v, i) => (
+                        <li
+                          key={i}
+                          className="rounded-lg bg-paper px-2 py-1 text-3xs text-ink-muted"
+                        >
+                          {v.cuerpo}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ) : null}
+
               <ul className="flex-1 space-y-2 overflow-y-auto p-3">
                 {raiz.map((m) => (
                   <Burbuja key={m.id} mensaje={m} />
