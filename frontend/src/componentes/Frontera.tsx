@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 
 import { Error as ErrorVisible } from "@/componentes/Estados";
 
@@ -61,4 +62,27 @@ export class Frontera extends Component<Props, Estado> {
     }
     return this.props.children;
   }
+}
+
+/**
+ * La frontera atada a la ruta de verdad.
+ *
+ * **Medido el 29-10-2026.** La frontera sabía olvidarse del error al cambiar
+ * de `clave`, pero quien la montaba le pasaba `window.location.pathname`, que
+ * no es reactivo: el componente que la monta es la raíz y no se suscribe a la
+ * ruta, así que no se volvía a pintar al navegar y la `clave` se quedaba
+ * congelada en la pantalla donde se rompió.
+ *
+ * Y se realimenta: mientras la frontera enseña el error, las rutas de dentro
+ * están desmontadas, así que ya no queda nadie suscrito a la navegación. El
+ * aviso se quedaba puesto **en todas las pantallas hasta recargar a mano** —
+ * que es exactamente como se reportó: «cuando te mueves a cualquier otra
+ * opción sigue apareciendo esto».
+ *
+ * `useLocation` dentro de este envoltorio lo arregla en el único sitio donde
+ * se puede: haciendo que algo por encima de la frontera sí escuche la ruta.
+ */
+export function FronteraDeRuta({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <Frontera clave={pathname}>{children}</Frontera>;
 }

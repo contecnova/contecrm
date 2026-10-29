@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState, type ComponentType } 
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
-import { Frontera } from "@/componentes/Frontera";
+import { FronteraDeRuta } from "@/componentes/Frontera";
 import { cargarTextosDePantallas } from "@/i18n";
 import { Cargando, Error as Fallo } from "@/componentes/Estados";
 import { Marco } from "@/componentes/Marco";
@@ -272,8 +272,13 @@ export function App() {
           pantalla, así que el menú y la barra siguen ahí y el usuario puede
           irse a otro sitio. Sin ella, un error al pintar cualquier pantalla
           dejaba el `<body>` vacío — ni mensaje, ni menú, ni forma de volver.
-          Se midió el 04-10-2026 al montar las pruebas de pantalla. */}
-      <Frontera clave={window.location.pathname}>
+          Se midió el 04-10-2026 al montar las pruebas de pantalla.
+
+          La clave sale de `useLocation` y no de `window.location`: esto es la
+          raíz y no se vuelve a pintar al navegar, así que con la ruta leída a
+          mano la frontera se quedaba abierta y el error de una pantalla se
+          veía en todas las demás. Medido el 29-10-2026. */}
+      <FronteraDeRuta>
         <Suspense fallback={<Cargando />}>
           <Routes>
           <Route path="/" element={<Inicio sesion={sesion} />} />
@@ -343,7 +348,7 @@ export function App() {
           <Route path="*" element={<NoExiste />} />
           </Routes>
         </Suspense>
-      </Frontera>
+      </FronteraDeRuta>
     </Marco>
   );
 }

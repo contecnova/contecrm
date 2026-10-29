@@ -661,39 +661,6 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       },
     ],
   "cuentas": [
-      // **El plan de cada cuenta grande** (CRM-01.01.01.11): a dónde se quiere
-      // llegar y qué falta. Se podía escribir y no leer, que es como se
-      // escribe uno en la reunión de enero y nadie lo mira hasta la de enero
-      // siguiente. Los objetivos y los riesgos van contados aparte: un plan
-      // con cinco objetivos y ningún riesgo es optimista, y uno al revés es
-      // una cuenta en problemas.
-      {
-        nombre: "Planes de cuenta",
-        listar: "/api/v1/planes-cuenta",
-        servicio: "party",
-        permiso: "party:read",
-      },
-      // **El estado financiero replicado** (CRM-01.01.01.12), con la
-      // antigüedad del dato delante: bloquear una oferta con una foto del ERP
-      // de hace tres semanas es casi peor que no bloquear, porque el comercial
-      // deja de creerse el bloqueo y entonces ya no sirve ninguno.
-      {
-        nombre: "Estado financiero",
-        listar: "/api/v1/planes-cuenta/financiero",
-        servicio: "party",
-        permiso: "party:read",
-      },
-      // **Quién parece que ha cambiado de empresa** (CRM-01.01.02.07). Es la
-      // mejor oportunidad que hay —conoce el producto y acaba de llegar a un
-      // sitio donde no está— y el agujero de datos más común. Con su indicio,
-      // porque no es lo mismo que rebote su correo que que alguien lo haya
-      // visto en otra empresa: lo que se hace después es distinto.
-      {
-        nombre: "Cambios de empresa",
-        listar: "/api/v1/cambios-de-empresa",
-        servicio: "party",
-        permiso: "party:read",
-      },
       // Cuentas primero: es el módulo «Cuentas y contactos» y abría por la cola
       // de excepciones de calidad, así que lo primero al entrar en clientes era
       // una lista de problemas.
@@ -706,9 +673,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         columnas: ["nombre", "estado", "sector_codigo", "owner_id"],
         permiso: "account:read",
       },
-      // El plan de cuenta: a qué se ha comprometido el equipo con este cliente
-      // este año. Se publicaba entero —plan, financiero, hitos— y no se llegaba
-      // desde ninguna pantalla.
+      // El plan de cuenta (CRM-01.01.01.11): a qué se ha comprometido el
+      // equipo con este cliente este año. Se publicaba entero —plan,
+      // financiero, hitos— y no se llegaba desde ninguna pantalla. Los
+      // objetivos y los riesgos se miran aparte: uno con cinco objetivos y
+      // ningún riesgo es optimista, al revés es una cuenta en problemas.
       {
         nombre: "Planes de cuenta",
         objeto: "plan_cuenta",
@@ -717,11 +686,16 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "party",
         permiso: "party:read",
       },
-      // Quién ha cambiado de empresa. Es calidad del dato y es una oportunidad:
-      // un contacto que se va a otra cuenta se lleva la relación.
+      // Quién ha cambiado de empresa (CRM-01.01.02.07). Es calidad del dato y
+      // es una oportunidad: conoce el producto y acaba de llegar a un sitio
+      // donde no está. Con su indicio, porque no es lo mismo que rebote su
+      // correo que que alguien lo haya visto en otra empresa.
       {
-        // El estado financiero de la cuenta, que es de donde sale si se le
-        // puede vender más: un plan de cuenta sin eso es una lista de deseos.
+        // El estado financiero de la cuenta (CRM-01.01.01.12), que es de
+        // donde sale si se le puede vender más: un plan de cuenta sin eso es
+        // una lista de deseos. Con la antigüedad del dato delante: bloquear
+        // con una foto del ERP de hace tres semanas hace que el comercial
+        // deje de creerse el bloqueo.
         nombre: "Estado financiero",
         objeto: "plan_cuenta",
         listar: "/api/v1/planes-cuenta/financiero",
@@ -1667,11 +1641,11 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         columnas: ["clave", "nombre", "objeto", "tamano", "tamano_at"],
         permiso: "segmento:read",
       },
-      {
-        nombre: "Supresiones",
-        listar: "/api/v1/supresiones",
-        servicio: "marketing",
-      },
+      // «Supresiones» estaba aquí Y en «Contenido y gobierno»: el mismo
+      // registro, la misma ruta, la misma lista, en dos pantallas distintas.
+      // Se queda allí, con las renovaciones de opt-in y las categorías de
+      // preferencia, porque la pregunta que contesta es de consentimiento —«a
+      // quién no se le puede escribir»— y no de segmentación.
       {
         nombre: "Puntuación",
         listar: "/api/v1/puntuacion/modelos",
@@ -1966,6 +1940,10 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         servicio: "marketing",
         columnas: ["clave", "nombre", "obligatoria"],
       },
+      // A quién no se le puede escribir, pase lo que pase. Vive aquí y no en
+      // «Segmentación» —donde también estaba— porque es consentimiento: va con
+      // las renovaciones de opt-in y las categorías de preferencia, que es
+      // donde alguien lo busca cuando le preguntan por qué no salió un envío.
       {
         nombre: "Supresiones",
         listar: "/api/v1/supresiones",

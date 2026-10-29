@@ -35,7 +35,7 @@ import {
   type Entrada,
 } from "@/lib/navegacion";
 import { usePanel } from "@/lib/panel";
-import { usePermitidas } from "@/lib/permisos";
+import { useVisibilidad } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
@@ -82,7 +82,7 @@ function usePlegado(): [boolean, () => void] {
 export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSalir: () => void }) {
   const { t } = useTranslation();
   const { abierto, fijar } = usePanel();
-  const permitidas = usePermitidas();
+  const visibilidad = useVisibilidad();
   const cerrarRef = useRef<HTMLButtonElement | null>(null);
   const [plegado, alternarPlegado] = usePlegado();
 
@@ -156,8 +156,8 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
   // pestaña de trabajar y el menú parecería estropeado.
   const ambito = ambitoDelCamino(ubicacion.pathname, grupoDelModulo);
   const areas = useMemo(
-    () => menuDe(porGrupoVisible(sesion, permitidas), (e) => entradaVisible(sesion, e), ambito),
-    [sesion, permitidas, ambito],
+    () => menuDe(porGrupoVisible(sesion, visibilidad), (e) => entradaVisible(sesion, e), ambito),
+    [sesion, visibilidad, ambito],
   );
   // Y el destino de cada pestaña: la primera pantalla que esa persona puede
   // ver en ese ámbito. Un enlace fijo mandaría a quien no tiene el permiso a
@@ -166,7 +166,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
     const porAmbito = new Map<string, string>();
     for (const a of AMBITOS) {
       const suyas = menuDe(
-        porGrupoVisible(sesion, permitidas),
+        porGrupoVisible(sesion, visibilidad),
         (e) => entradaVisible(sesion, e),
         a.id,
       );
@@ -174,7 +174,7 @@ export function BarraLateral({ sesion, alSalir }: { sesion: Sesion | null; alSal
       if (primera) porAmbito.set(a.id, a.id === "trabajar" ? "/" : primera);
     }
     return porAmbito;
-  }, [sesion, permitidas]);
+  }, [sesion, visibilidad]);
   // Los accesos rápidos —inicio, puesto, chat— son del trabajo diario. En
   // «Administrar» no pintan nada: son justo lo que se viene a dejar de lado.
   const accesos = useMemo(

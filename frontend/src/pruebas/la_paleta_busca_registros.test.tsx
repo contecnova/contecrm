@@ -35,7 +35,13 @@ vi.mock("@/lib/api", () => ({
   }),
 }));
 
-vi.mock("@/lib/permisos", () => ({ usePermitidas: () => undefined }));
+vi.mock("@/lib/permisos", () => ({
+  useVisibilidad: () => ({
+    rutas: new Set<string>(),
+    cargada: false,
+    sinContestar: new Set<string>(),
+  }),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (clave: string) => clave }),

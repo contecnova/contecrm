@@ -113,6 +113,38 @@ Ahora, cuando no se ha podido ni preguntar quién eres, sale el aviso con lo que
 dijo el servidor y un botón para reintentar. No te pide una credencial que no
 va a poder comprobar.
 
+### Si una pantalla se cae, te puedes ir a otra
+
+Cuando una pantalla no se puede pintar, sale el aviso **en su sitio**: el menú,
+la barra de arriba y el buscador siguen donde estaban, así que te vas a otra
+cosa y sigues trabajando.
+
+Hasta el 29-10-2026 no era así del todo. El aviso aparecía bien, pero **se
+quedaba puesto**: cambiabas de opción y seguías viendo el mismo mensaje en
+todas, y la única salida era recargar la página a mano. Se reportó yendo a
+Inteligencia con su motor apagado. Ya no pasa: al cambiar de pantalla el aviso
+se va solo.
+
+### Las opciones del menú no van y vienen
+
+El menú te enseña lo que puedes abrir, y esconde lo que no: ofrecerte algo que
+al pulsarlo sólo te va a decir que no te toca es hacerte probarlo para
+descubrirlo.
+
+Para saberlo, la aplicación le pregunta al servidor qué permite cada cosa. El
+problema era qué hacía cuando **una parte del servidor no contestaba** —uno de
+los servicios reiniciándose, por ejemplo—: lo tomaba por «no te toca» y
+escondía esas opciones. Como esa pregunta se hace una sola vez al entrar, el
+menú se quedaba corto para el resto de la sesión, y cambiaba de una pantalla a
+otra sin motivo visible.
+
+Ahora distingue las tres situaciones: mientras no se sabe, no esconde nada;
+cuando lo sabe todo, manda lo que diga el servidor; y de la parte que no ha
+contestado **no esconde nada tampoco**, porque no es lo mismo «no te toca» que
+«no se ha podido preguntar». Puedes encontrarte una opción que al abrirla avise
+de que ese servicio no responde: eso es información, y es preferible a que la
+opción desaparezca sin explicación.
+
 ---
 
 ## Tu espacio y el de tu empresa (sección 0.1)
@@ -470,6 +502,16 @@ una imagen.
   por paso. Rechazar exige decir qué hay que cambiar; y al aprobar se registra si
   miraste **qué cambió** respecto de la versión anterior, porque revisarlo todo
   entero cada vez es como se acaba aprobando sin leer.
+
+**Aquí también están las supresiones**: a quién no se le puede escribir, pase lo
+que pase. Van con las renovaciones de opt-in y las categorías de preferencia
+porque son la misma pregunta —qué ha consentido cada persona—, y es donde se
+busca cuando alguien pregunta por qué no le ha llegado un envío.
+
+Hasta el 29-10-2026 salían **también** en Segmentación. Era la misma lista en
+dos sitios, no dos listas, así que daba igual desde cuál se tocara; pero tener
+el mismo registro en dos pantallas es cómo se acaba mirando la que no toca y
+creyendo que falta algo. Se quedan aquí.
 
 ---
 

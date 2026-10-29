@@ -128,6 +128,27 @@ Medido ese día, para no decidir por impresión: de 211 pestañas declaradas en
 **15** colecciones las pide además una pantalla a medida. De esas 15, casi
 todas cambian la pregunta; la de duplicados era la que no.
 
+**Resuelto el 29-10-2026.** «Supresiones» salía en «Segmentación» y en
+«Contenido y gobierno»: la misma ruta, la misma lista, dos sitios desde los que
+editarla. Se queda en «Contenido y gobierno», con las renovaciones de opt-in y
+las categorías de preferencia, porque la pregunta que contesta es de
+consentimiento —«a quién no se le puede escribir»— y no de segmentación. El
+manual de funcionalidades ya la situaba ahí; era la aplicación la que no
+coincidía.
+
+Y el mismo día se cerró la otra forma de que pase, que es **dentro de un
+módulo**: tres pestañas de «Cuentas» —planes de cuenta, estado financiero y
+cambios de empresa— se habían añadido por duplicado sin que nada lo notara,
+porque el fichero tiene dos mil líneas y las pestañas de un módulo no están
+ordenadas por nada.
+
+Ahora hay gate, en `frontend/src/pruebas/ninguna_opcion_repetida.test.ts`, y
+mira las dos cosas: que un módulo no tenga dos pestañas con el mismo nombre ni
+con la misma ruta, y que una ruta no salga en dos módulos. Las excepciones se
+escriben **una a una con su motivo** —hoy no hay ninguna—, en vez de una lista
+de permitidos, que es lo que se queda corto en cuanto alguien añade el
+siguiente. Validado plantando los dos duplicados: los caza y dice cuáles son.
+
 ### 1.3 El metamodelo
 
 Los objetos y los campos de cada tenant viven en `metadata` y se aplican en
@@ -515,6 +536,71 @@ queda corta es siempre la del buscador.
 
 Toda pantalla pone su título con `CabeceraPagina`, que es la que pinta el `<h1>`.
 Hay gate que lo comprueba —y que comprueba que ninguna pantalla ponga dos.
+
+#### Qué enseña el menú: tres estados, no dos
+
+Lo que se ofrece en la barra, en las pestañas de un módulo y en la paleta no
+sale de una lista escrita en el front: sale de `GET /api/v1/superficie`, que es
+donde el servidor publica **qué permiso exige cada operación**. La alternativa
+era declarar el permiso de los ciento doce recursos en `recursos.ts`, o sea una
+segunda lista de permisos que se separaría de la del servidor en cuanto alguien
+cambiara uno, sin que nada lo avisara.
+
+Esa superficie la **agrega el gateway** preguntando a los diez servicios, y
+cuando uno no contesta lo dice: devuelve `completa: false` y nombra a los
+callados en `servicios_sin_contestar`. El front declaraba los dos campos en su
+tipo y **no los leía nadie**.
+
+Esto se decidía con un solo conjunto de rutas y la regla «si está vacío, no se
+esconde nada», que mezcla tres situaciones distintas:
+
+| Estado | Qué hace el menú | Por qué |
+|---|---|---|
+| La superficie no ha llegado | No esconde nada | Esconder por defecto haría que el menú apareciera a trozos al cargar, y un menú que se mueve mientras lo miras es peor que uno con una entrada de más durante medio segundo |
+| Ha llegado entera | Manda ella: lo que no está, no se enseña | Es lo que evita ofrecer lo que va a contestar 403 |
+| Ha llegado **incompleta** | No esconde lo del servicio que calló | De lo suyo no se sabe nada: no es que no te toque, es que no se ha podido preguntar |
+
+El segundo y el tercero se vivían como el mismo conjunto vacío. Un servicio que
+tardara en arrancar aportaba cero operaciones, así que **todas sus pestañas se
+escondían con el mismo gesto con el que se esconde lo prohibido** — y como la
+superficie se pide una vez al entrar, el menú se quedaba mal para toda la
+sesión. Así se reportó: «vas a cuentas y contactos y luego a proveedores y
+aparecen más cosas en esa pantalla de menú».
+
+El estado vive en `lib/permisos.tsx` (`useVisibilidad`) y lo consumen las tres
+pantallas que pintan menú —`BarraLateral`, `Modulo` y `Paleta`— a través de
+`recursoVisible`, para que las tres contesten lo mismo: encontrar por búsqueda
+lo que el menú esconde hace que el sistema parezca contradecirse.
+
+Para saber de quién es cada pestaña, el resumen generado `lib/visibilidad.ts`
+lleva ahora también el servicio (`s`). Sale de `recursos.ts` por
+`scripts/gen-visibilidad.mjs` y hay gate de frescura: dos listas a mano acaban
+diciendo cosas distintas y entonces no se sabe cuál manda.
+
+Gate: `frontend/src/pruebas/el_menu_no_cambia_solo.test.tsx`. Validado plantando
+la lógica anterior — cuatro de sus cinco pruebas se ponen rojas.
+
+#### Un error en una pantalla no se queda puesto en las demás
+
+La frontera de error (`componentes/Frontera.tsx`) va **dentro del marco**: lo
+que se cae es el contenido, así que el menú y la barra siguen ahí y el usuario
+puede irse a otro sitio. Y sabe olvidarse del error al cambiar de ruta,
+comparando su `clave`.
+
+Lo que fallaba el 29-10-2026 era quién se la pasaba: `App` le daba
+`window.location.pathname`, que **no es reactivo**. `App` es la raíz y no se
+suscribe a la navegación, así que no se volvía a pintar al navegar y la clave se
+quedaba congelada en la pantalla donde se rompió. Y se realimenta solo: mientras
+la frontera enseña el error, las rutas de dentro están desmontadas, así que
+tampoco queda nadie escuchando la navegación. El aviso se quedaba puesto en
+**todas** las pantallas hasta recargar a mano.
+
+Lo arregla `FronteraDeRuta`, un envoltorio que llama a `useLocation` por encima
+de la frontera, que es el único sitio donde se puede: hace falta que algo que no
+esté dentro del árbol caído sí escuche la ruta.
+
+Gate: `frontend/src/pruebas/el_error_no_se_queda_pegado.test.tsx`, validado
+plantando la clave no reactiva.
 
 ## 2. Cómo se despliega
 

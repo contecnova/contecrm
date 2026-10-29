@@ -30,7 +30,7 @@ import { llamar } from "@/lib/api";
 import { MODULOS, moduloDeObjeto, recursoVisible } from "@/lib/modulos";
 import { VISIBILIDAD } from "@/lib/visibilidad";
 import { entradaVisible, iconoDeGrupo, todasLasEntradas } from "@/lib/navegacion";
-import { usePermitidas } from "@/lib/permisos";
+import { useVisibilidad } from "@/lib/permisos";
 import type { Sesion } from "@/lib/sesion";
 import { cn } from "@/lib/utiles";
 
@@ -72,7 +72,7 @@ export function Paleta({
 }) {
   const { t } = useTranslation();
   const navegar = useNavigate();
-  const permitidas = usePermitidas();
+  const visibilidad = useVisibilidad();
   const [consulta, setConsulta] = useState("");
   const [indice, setIndice] = useState(0);
   const campoRef = useRef<HTMLInputElement>(null);
@@ -95,7 +95,9 @@ export function Paleta({
     // único que necesita es decidir si el módulo se ofrece.
     const modulos: Destino[] = MODULOS.filter((m) =>
       (VISIBILIDAD[m.ruta] ?? []).some((pe) =>
-        recursoVisible(sesion, { listar: pe.r, permiso: pe.p, solo_plataforma: pe.sp }, permitidas),
+        recursoVisible(sesion, { listar: pe.r, permiso: pe.p, solo_plataforma: pe.sp, servicio: pe.s },
+        visibilidad,
+      ),
       ),
     ).map((m) => ({
       a: `/m/${m.ruta}`,
@@ -104,7 +106,7 @@ export function Paleta({
       icono: iconoDeGrupo(m.grupo),
     }));
     return [...fijas, ...modulos];
-  }, [t, sesion, permitidas]);
+  }, [t, sesion, visibilidad]);
 
   const [registros, setRegistros] = useState<Destino[]>([]);
 

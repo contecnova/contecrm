@@ -50,7 +50,7 @@ import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos"
 import { recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
-import { usePermitidas } from "@/lib/permisos";
+import { useVisibilidad } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { iconoDeGrupo } from "@/lib/navegacion";
 
@@ -68,7 +68,7 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     recursosDe(ruta ?? "").findIndex((r) => r.nombre === pedido) ?? 0,
   );
   const [activo, setActivo] = useState(inicial);
-  const permitidas = usePermitidas();
+  const visibilidad = useVisibilidad();
   /**
    * Las pestañas que esta persona puede abrir, con la papelera al final.
    *
@@ -85,9 +85,9 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
     () =>
       recursosDe(ruta ?? "")
         .map((r, i) => ({ r, i }))
-        .filter(({ r }) => recursoVisible(sesion, r, permitidas))
+        .filter(({ r }) => recursoVisible(sesion, r, visibilidad))
         .sort((a, b) => Number(Boolean(a.r.icono)) - Number(Boolean(b.r.icono))),
-    [ruta, sesion, permitidas],
+    [ruta, sesion, visibilidad],
   );
 
   useEffect(() => setActivo(inicial), [ruta, inicial]);

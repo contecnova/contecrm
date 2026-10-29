@@ -60,7 +60,7 @@ vi.mock("@/lib/api", async () => {
 
 // Lo mismo con los permisos: el módulo real, y dobladas sólo las piezas que
 // leen un contexto de React que aquí no existe. Enumerar los exports a mano fue
-// un error que costó dos vueltas: faltaba `usePermitidas` y las pantallas que
+// un error que costó dos vueltas: faltaba `useVisibilidad` y las pantallas que
 // lo usan reventaban dentro de la frontera, así que el barrido las daba por
 // caídas — el fallo era del andamio, no del producto. Con el módulo real
 // delante, lo que no se dobla sigue funcionando.
@@ -71,11 +71,19 @@ vi.mock("@/lib/permisos", async () => {
     usePuedeOperar: () => () => true,
     usePermisos: () => ({ puede: () => true, permisos: [] }),
     useSuperficie: () => ({ superficie: null, tiene: () => true }),
-    // Devuelve un CONJUNTO de rutas permitidas, no una función. Doblarlo con
-    // lo que uno supone en vez de con lo que el módulo declara es cómo la
-    // sonda acaba diciendo que la pantalla está rota: aquí reventaba con
-    // «Cannot read properties of undefined (reading 'length')».
-    usePermitidas: () => new Set<string>(),
+    // Devuelve el ESTADO de la superficie —rutas, si ya ha llegado y de qué
+    // servicios no se sabe nada—, no una función ni un conjunto suelto.
+    // Doblarlo con lo que uno supone en vez de con lo que el módulo declara es
+    // cómo la sonda acaba diciendo que la pantalla está rota: aquí reventaba
+    // con «Cannot read properties of undefined (reading 'length')».
+    //
+    // `cargada: false` a propósito: estas pruebas miran qué dice cada pantalla,
+    // no quién puede verla, y con la superficie sin llegar no se esconde nada.
+    useVisibilidad: () => ({
+      rutas: new Set<string>(),
+      cargada: false,
+      sinContestar: new Set<string>(),
+    }),
   };
 });
 

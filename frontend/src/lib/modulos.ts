@@ -14,6 +14,7 @@
 import { puede, type Sesion } from "@/lib/sesion";
 import { VISIBILIDAD } from "@/lib/visibilidad";
 import { rutaPermitida } from "@/lib/superficie";
+import type { Visibilidad } from "@/lib/permisos";
 
 export interface Modulo {
   /** Camino en la aplicación. */
@@ -430,28 +431,51 @@ export function recursoVisible(
     permiso?: string;
     solo_plataforma?: boolean;
     por_servicio?: string[];
+    servicio?: string;
   },
-  permitidas?: Set<string>,
+  visibilidad?: Visibilidad,
 ): boolean {
   if (recurso.solo_plataforma && !sesion?.es_admin_plataforma) return false;
   if (!puede(sesion, recurso.permiso)) return false;
+
+  // **Mientras la superficie no ha llegado no se esconde nada.** Es deliberado:
+  // esconder por defecto haría que el menú apareciera a trozos al cargar, y un
+  // menú que se mueve mientras lo miras es peor que uno con una entrada de más
+  // durante medio segundo.
+  //
+  // Esto se decidía antes mirando si el conjunto de rutas estaba vacío, y eso
+  // confundía «todavía no se sabe» con «este usuario no puede nada»: la sesión
+  // sin permisos tiene el conjunto vacío y ahí sí hay que esconder.
+  if (!visibilidad?.cargada) return true;
+
+  // Ha llegado, pero puede haber llegado incompleta. El servicio que no
+  // contestó aportó **cero** operaciones, así que todo lo suyo quedaba fuera
+  // del conjunto de rutas permitidas y se escondía con el mismo gesto con el
+  // que se esconde lo prohibido. Eso es lo que hacía que el menú pareciera
+  // cambiar solo: no es que al usuario no le toque, es que no se ha podido
+  // preguntar.
+  const suyos = recurso.por_servicio?.length
+    ? recurso.por_servicio
+    : recurso.servicio
+      ? [recurso.servicio]
+      : [];
+  if (suyos.some((s) => visibilidad.sinContestar.has(s))) return true;
+
   // Una colección que vive en varios servicios se enseña si se puede ver en
   // ALGUNO: la plantilla `/api/v1/:servicio/…` no casa con ninguna ruta de
   // las que publica el servidor, así que sin esto la pestaña quedaba escondida
-  // para todo el mundo — y es la que acaba de dejar de mentir.
+  // para todo el mundo.
   if (recurso.por_servicio?.length && recurso.listar.includes(":servicio")) {
-    if (!permitidas || permitidas.size === 0) return true;
     return recurso.por_servicio.some((s) =>
-      rutaPermitida(permitidas, recurso.listar.replace(":servicio", s)),
+      rutaPermitida(visibilidad.rutas, recurso.listar.replace(":servicio", s)),
     );
   }
+
   // Lo que de verdad manda es lo que el servidor dice que exige esa ruta. El
   // campo `permiso` de aquí solo lo declaran unos pocos recursos, así que por
   // sí solo no filtra nada: sin la superficie, a un agente de soporte se le
   // seguían enseñando los veintitrés módulos.
-  if (permitidas && permitidas.size > 0)
-    return rutaPermitida(permitidas, recurso.listar);
-  return true;
+  return rutaPermitida(visibilidad.rutas, recurso.listar);
 }
 
 /**
@@ -481,7 +505,7 @@ export function grupoDelModulo(ruta: string): string | undefined {
 
 export function porGrupoVisible(
   sesion: Sesion | null,
-  permitidas?: Set<string>,
+  visibilidad?: Visibilidad,
 ): Map<string, Modulo[]> {
   const grupos = new Map<string, Modulo[]>();
   for (const modulo of MODULOS) {
@@ -490,7 +514,11 @@ export function porGrupoVisible(
     // decidir qué módulos se enseñan costaba 42 kB comprimidos de apertura.
     const pestanas = VISIBILIDAD[modulo.ruta] ?? [];
     const visible = pestanas.some((p) =>
-      recursoVisible(sesion, { listar: p.r, permiso: p.p, solo_plataforma: p.sp }, permitidas),
+      recursoVisible(
+        sesion,
+        { listar: p.r, permiso: p.p, solo_plataforma: p.sp, servicio: p.s },
+        visibilidad,
+      ),
     );
     if (!visible) continue;
     grupos.set(modulo.grupo, [...(grupos.get(modulo.grupo) ?? []), modulo]);

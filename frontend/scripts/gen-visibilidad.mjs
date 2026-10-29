@@ -61,6 +61,12 @@ function visibilidadDe(fuente) {
       const objeto = /objeto:\s*"([^"]+)"/.exec(bloque)?.[1];
       if (objeto) fila.o = objeto;
       if (plataforma) fila.sp = true;
+      // De qué servicio sale. Hace falta para NO esconder una pestaña cuyo
+      // servicio no ha contestado: la superficie se agrega de diez servicios y
+      // el que no contesta aporta cero operaciones, así que sin esto sus
+      // pestañas desaparecen del menú exactamente igual que las prohibidas.
+      const servicio = /servicio:\s*"([^"]+)"/.exec(bloque)?.[1];
+      if (servicio) fila.s = servicio;
       pestañas.push(fila);
     }
     salida[ruta] = pestañas;
@@ -80,9 +86,10 @@ const contenido = `/**
  *
  *     node scripts/gen-visibilidad.mjs
  *
- * De cada pestaña, tres cosas: de dónde lista (\`r\`), qué permiso exige (\`p\`)
- * y si es sólo de quien opera la plataforma (\`sp\`). Nada más — el resto de la
- * tabla son 42 kB comprimidos que no hacen falta para pintar un menú.
+ * De cada pestaña, lo justo: de dónde lista (\`r\`), qué permiso exige (\`p\`),
+ * de qué servicio sale (\`s\`) y si es sólo de quien opera la plataforma
+ * (\`sp\`). Nada más — el resto de la tabla son 42 kB comprimidos que no hacen
+ * falta para pintar un menú.
  *
  * NO se edita a mano: sale de \`recursos.ts\`, que es la fuente. Dos listas a
  * mano acaban diciendo cosas distintas y entonces no se sabe cuál manda.
@@ -95,6 +102,15 @@ export interface PestanaVisible {
   o?: string;
   /** El permiso que declara el recurso, si declara alguno. */
   p?: string;
+  /**
+   * De qué servicio sale.
+   *
+   * Decide si esta pestaña se puede esconder: la superficie se agrega de diez
+   * servicios y el que no contesta aporta cero operaciones. Sin saber de quién
+   * es cada pestaña, un servicio lento al arrancar borra del menú todo lo suyo
+   * y no hay forma de distinguirlo de «no te toca».
+   */
+  s?: string;
   /** Sólo para quien opera la plataforma. */
   sp?: boolean;
 }
