@@ -689,7 +689,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 #   Los cinco motivos se calculaban y se tiraban en un solo contador. Ahora se
 #   apuntan por separado, y la pantalla senala el canal donde manda la trampa.
-TOPE_SIN_PANTALLA = 250
+#   30-10-2026  246 de 778  el ciclo de vida de un cliente: onboarding por
+#   ------------------------------------------------------------------------
+#   industria, clonado, fusion y escision, y la migracion entre modalidades de
+#   aislamiento.
+#
+#   Las tres operaciones mas peligrosas del producto —sacar los datos de un
+#   cliente a otro tenant, juntar dos, partir uno— guardaban su PLAN y sus
+#   CONFLICTOS, y el modelo dice por que: «es lo que alguien tiene que leer
+#   ANTES de aprobar». No habia ninguna ruta que los listara: se leian por
+#   identificador y nada mas, asi que solo podia volver a una quien se hubiera
+#   guardado el id de la respuesta. Nadie podia contestar «que se ha hecho
+#   sobre este cliente».
+#
+#   Las migraciones de modalidad SI se listaban —lo monta un `montar_listado`
+#   generico que no vi al medir, y lo escribi al reves antes de comprobarlo—.
+#   Lo que les faltaba era pantalla: abrir una pone los datos del cliente en
+#   solo lectura, y eso es lo unico de esta familia que pasa AHORA MISMO.
+#
+#   Lo simulado va aparte de lo hecho: una simulada NO ha movido nada, y en una
+#   lista corrida ocupa una linea igual que una ejecutada.
+TOPE_SIN_PANTALLA = 246
 
 
 def _es_pantalla(p: Path) -> bool:

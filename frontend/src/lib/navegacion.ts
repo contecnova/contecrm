@@ -229,6 +229,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   // enseña más o menos lo mismo que Inicio, así que tampoco competía bien.
   { area: "configuracion", a: "/recorrido", clave: "nav.recorrido", icono: "route" },
   { area: "configuracion", a: "/cobertura", clave: "nav.cobertura", icono: "fact_check" },
+  // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
+  // cliente no es quien vende ni quien atiende.
+  { area: "configuracion", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
   { area: "configuracion", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
   { area: "configuracion", a: "/ayuda", clave: "nav.ayuda", icono: "help" },
 ];

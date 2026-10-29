@@ -374,3 +374,67 @@ def test_el_listado_de_canales_trae_el_motivo_de_cada_descarte(
     assert suyo["descartados_por"] == {"trampa": 1}
     # Y el secreto NO sale: está hasheado y no es un campo de pantalla.
     assert "secreto_hash" not in suyo or suyo["secreto_hash"] != secreto
+
+
+# ── El ciclo de vida de un cliente (CRM-00.01.03.03, CRM-00.01.03.10) ─────
+#
+# Un clonado, una fusión y una escisión guardan su plan y sus conflictos —«lo
+# que alguien tiene que leer ANTES de aprobar», dice el modelo— y no había
+# ninguna ruta que los listara: se leían por identificador y nada más. Lo mismo
+# con las migraciones de modalidad.
+
+
+@pytest.fixture
+def tenancy(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.tenancy.main")
+
+
+def test_las_operaciones_sobre_un_cliente_se_pueden_recorrer(
+    tenancy: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Simular un clonado y poder volver a él sin haberse guardado el id."""
+    simulada = tenancy.post(
+        "/api/v1/ciclo-vida/clonado/simular",
+        headers=cabeceras,
+        json={
+            "origen_id": str(tenant_id),
+            "uso": "sandbox",
+            "bloques": ["configuracion"],
+            "recuentos": {"cuentas": 12},
+        },
+    )
+    assert simulada.status_code in (200, 201), simulada.text
+    operacion_id = simulada.json()["operacion_id"]
+
+    listado = tenancy.get("/api/v1/ciclo-vida/operaciones?limite=50", headers=cabeceras)
+    assert listado.status_code == 200, listado.text
+    filas = listado.json()["items"]
+    suya = next(f for f in filas if f["id"] == operacion_id)
+    # Lo que la pantalla lee: sin `plan` y `conflictos` no se puede aprobar
+    # nada, que es justo para lo que el modelo dice que se guardan.
+    for campo in (
+        "id",
+        "tipo",
+        "uso",
+        "estado",
+        "bloques",
+        "plan",
+        "conflictos",
+        "motivo_fin",
+        "created_at",
+    ):
+        assert campo in suya, f"el listado no manda «{campo}»"
+    # Y nace SIMULADA: si naciera ejecutada, la pantalla enseñaría como hecho
+    # algo que no ha movido una fila.
+    assert suya["estado"] == "simulada"
+    assert suya["plan"]["recuentos"] == {"cuentas": 12}
+
+
+def test_las_migraciones_de_modalidad_se_pueden_recorrer(
+    tenancy: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """La ventana de solo lectura es lo único de esta familia que pasa ahora
+    mismo, y la pantalla la lee de aquí."""
+    listado = tenancy.get("/api/v1/aislamiento/migraciones?limite=50", headers=cabeceras)
+    assert listado.status_code == 200, listado.text
+    assert "items" in listado.json()

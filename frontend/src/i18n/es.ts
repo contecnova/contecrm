@@ -99,6 +99,7 @@ export default {
     casos: "Bandeja de casos",
     consolaAgente: "Consola de agente",
     canalesDeEntrada: "Canales de entrada",
+    cicloDeVida: "Ciclo de vida del cliente",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",
     proveedores: "Proveedores",

@@ -624,6 +624,13 @@ NO_EDITABLES = frozenset(
         # ofrecerlo — se cambia desde donde se asigna.
         "business_unit_id",
         "encargo_id",
+        # El origen y el destino de un clonado, una fusión o una escisión: los
+        # pone la simulación, que es la única forma de crear una de estas
+        # operaciones. Tecleados a mano apuntarían a un tenant que la
+        # simulación no miró, y lo que se ejecutaría sería un plan calculado
+        # sobre otros datos — con los datos de un cliente dentro.
+        "origen_id",
+        "destino_id",
     }
 )
 

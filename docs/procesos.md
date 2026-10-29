@@ -76,6 +76,8 @@ stateDiagram-v2
 | `POST /api/v1/ciclo-vida/clonado/simular` | Qué se copiaría y qué no, antes de copiar nada | origen_id*, uso*, bloques, recuentos, anonimizar, motivo_sin_anonimizar, porcentaje | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/escision/simular` | Qué pasa si esta empresa se parte en dos | origen_id*, reparto, inventario | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/fusion/simular` | Qué choca si estas dos empresas se juntan | absorbido_id*, superviviente_id*, choques | 200, 422 | — |
+| `PATCH /api/v1/ciclo-vida/operaciones/{operacion_tenant_id}` | Editar clonados, fusiones y escisiones | operacion_tenant_id*, tipo, uso, bloques, estado, plan, conflictos, resultado, motivo_fin, terminada_at | 200, 422 | — |
+| `POST /api/v1/ciclo-vida/operaciones/{operacion_tenant_id}/archivar` | Archivar clonados, fusiones y escisiones | operacion_tenant_id* | 200, 422 | — |
 | `POST /api/v1/ciclo-vida/perfiles` | Declarar un perfil de industria | clave*, nombre, descripcion, contenido, no_incluye | 201, 422 | — |
 | `POST /api/v1/ciclo-vida/perfiles/aplicar` | Aplicar el perfil, respetando lo que ya hay | clave*, existentes | 200, 422 | — |
 | `POST /api/v1/claves-cifrado` | Aportar o rotar la clave del cliente | material_base64*, origen | 201, 422 | — |
@@ -654,7 +656,7 @@ stateDiagram-v2
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/mapa-personas` | Anotar cómo se relacionan dos personas de la cuenta | origen_id*, destino_id*, tipo*, motivo | 201, 422 | — |
 | `POST /api/v1/mapa-personas/mapa-de-poder` | Quién manda, quién ayuda, quién estorba y con quién no se ha hablado | contactos | 200, 422 | — |
-| `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, origen_id, destino_id, tipo, motivo, anotada_por_id | 200, 422 | — |
+| `PATCH /api/v1/mapa-personas/{relacion_persona_id}` | Editar mapa de personas | relacion_persona_id*, tipo, motivo, anotada_por_id | 200, 422 | — |
 | `DELETE /api/v1/mapa-personas/{relacion_persona_id}` | Borrar mapa de personas | relacion_persona_id* | 204, 422 | — |
 | `POST /api/v1/party-admin/importar/cuentas` | Importar cuentas desde filas | simular, actualizar | 200, 422 | — |
 | `POST /api/v1/party-admin/papelera/purgar` | Destruir definitivamente lo que ya pasó su plazo | motivo* | 200, 422 | — |

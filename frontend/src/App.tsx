@@ -152,6 +152,10 @@ const Territorios = pantalla(
   (m) => m.Territorios,
 );
 const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
+const CicloDeVidaDelCliente = pantalla(
+  () => import("@/paginas/CicloDeVidaDelCliente"),
+  (m) => m.CicloDeVidaDelCliente,
+);
 const CanalesDeEntrada = pantalla(
   () => import("@/paginas/CanalesDeEntrada"),
   (m) => m.CanalesDeEntrada,
@@ -391,6 +395,11 @@ export function App() {
               de descartados no distingue el anti-bucle haciendo su trabajo de
               una trampa tragándose clientes. */}
           <Route path="/canales-de-entrada" element={<CanalesDeEntrada />} />
+          {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
+              conflictos —«lo que alguien tiene que leer ANTES de aprobar»— y no
+              había ruta que los listara: sólo volvía a ellos quien se hubiera
+              guardado el id. Lo mismo con las migraciones de modalidad. */}
+          <Route path="/ciclo-de-vida" element={<CicloDeVidaDelCliente />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

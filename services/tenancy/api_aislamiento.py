@@ -440,5 +440,4 @@ montar_listado(
     nombre="Transferencias internacionales",
 )
 
-
 ROUTERS_AISLAMIENTO = [router_aislamiento, router_residencia]

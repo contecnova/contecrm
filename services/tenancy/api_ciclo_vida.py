@@ -18,11 +18,12 @@ from uuid import UUID
 
 from crmcore.errors import NoEncontrado
 from crmcore.http.deps import AutenticadoDep, DbDep, UowDep, exige_permiso
+from crmcore.http.listados import montar_listado
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from services.tenancy import ciclo_vida as cv
-from services.tenancy.ciclo_vida import PerfilIndustria
+from services.tenancy.ciclo_vida import OperacionTenant, PerfilIndustria
 
 router_ciclo = APIRouter(prefix="/ciclo-vida", tags=["ciclo de vida del tenant"])
 
@@ -282,5 +283,26 @@ def ver_perfil(clave: str, db: DbDep, principal: AutenticadoDep) -> Any:
         "contenido": dict(fila.contenido or {}),
     }
 
+
+# ── Listados ──────────────────────────────────────────────────────────────
+#
+# Un clonado, una fusión y una escisión guardan su PLAN y sus CONFLICTOS —y el
+# modelo dice por qué: «es lo que alguien tiene que leer ANTES de aprobar»—, y
+# no había ninguna ruta que los listara. Se leían por identificador y nada más,
+# así que sólo podía volver a ellos quien se hubiera guardado el id de la
+# respuesta.
+#
+# Son las operaciones más peligrosas del producto: mover los datos de un cliente
+# a otro tenant, juntar dos, partir uno. Que no se puedan recorrer significa que
+# nadie puede contestar «¿qué se ha hecho sobre este cliente?».
+montar_listado(
+    router_ciclo,
+    modelo=OperacionTenant,
+    objeto="operacion_tenant",
+    permiso="tenant:read",
+    permiso_escribir="tenant:write",
+    ruta="/operaciones",
+    nombre="Clonados, fusiones y escisiones",
+)
 
 ROUTERS_CICLO_VIDA = [router_ciclo]

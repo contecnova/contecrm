@@ -138,6 +138,37 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  ciclovida: {
+    titulo: "Ciclo de vida del cliente",
+    entradilla:
+      "Clonar, fusionar o partir un cliente saca sus datos de donde están protegidos. " +
+      "Todo se simula antes, y aquí está lo simulado y lo hecho.",
+    ventanaAbierta:
+      "{{cuantas}} migración(es) con la ventana de solo lectura ABIERTA ahora mismo. Mientras lo esté, ese cliente no puede escribir.",
+    hechas: "Lo que se ha hecho",
+    porqueHechas:
+      "Estas ya movieron datos. Una fallida se queda aquí con su motivo: saber qué se intentó es parte de saber qué hay.",
+    sinHechas: "No se ha ejecutado ninguna operación sobre este cliente",
+    movio: "{{bloques}} bloques · {{filas}} filas",
+    conflictos: "{{cuantos}} conflicto(s) sin resolver",
+    simuladas: "Lo que se ha simulado y no se ha hecho",
+    porqueSimuladas:
+      "Una simulada NO ha movido nada. Va aparte porque en una lista corrida ocupa una línea igual que una ejecutada, y eso se lee mal justo cuando importa.",
+    sinSimuladas: "No hay simulaciones pendientes",
+    sacaria: "sacaría {{bloques}} bloques · {{filas}} filas",
+    migraciones: "Migraciones de modalidad de aislamiento",
+    porqueMigraciones:
+      "Cambiar de modalidad abre una ventana de solo lectura sobre los datos del cliente. Se verifican los recuentos a los dos lados antes de cerrarla.",
+    sinMigraciones: "No hay ninguna migración registrada",
+    deA: "{{desde}} → {{hacia}}",
+    ventanaDesde: "solo lectura desde {{desde}} · {{minutos}} min previstos",
+    ventanaPrevista: "{{minutos}} min de ventana previstos",
+    diferencias: "{{cuantas}} diferencia(s) entre origen y destino",
+    perfiles: "Preconfiguraciones por industria",
+    porquePerfiles:
+      "Lo que se le deja montado a un cliente nuevo. Se aplica sin pisar lo que ya haya: un perfil que sobreescribe es un perfil que nadie se atreve a aplicar dos veces.",
+    sinPerfiles: "No hay ningún perfil de industria declarado",
+  },
   canales: {
     titulo: "Por dónde entran los casos",
     entradilla:

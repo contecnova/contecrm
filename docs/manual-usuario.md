@@ -2103,6 +2103,39 @@ Y si un canal de correo avisa de que no declara su dirección propia, ponla: sin
 ella no puede distinguir sus propias respuestas de las de un cliente, y el buzón
 puede acabar contestándose a sí mismo.
 
+### Antes de clonar, fusionar o partir un cliente
+
+Las tres sacan los datos de un cliente de donde están protegidos, así que el
+CRM obliga a **simular primero**. La simulación no mueve nada: dice qué bloques
+saldrían, cuántas filas y qué no se copia nunca.
+
+En **Ciclo de vida del cliente** está todo lo que se ha simulado y todo lo que
+se ha hecho, en secciones distintas y a propósito: una simulación no ha movido
+nada, y mezclada con las ejecutadas se lee como si sí. Si una salió mal, se
+queda entre las hechas con el motivo: saber qué se intentó es parte de saber
+qué hay.
+
+Dos cosas que conviene mirar antes de aprobar nada:
+
+- **los avisos del plan.** Si la copia no va anonimizada, lo dice ahí. A un
+  entorno que no es producción entran el consultor externo, el becario y el
+  proveedor que está integrando algo;
+- **los conflictos.** Una operación con conflictos sin resolver no es una
+  operación lista.
+
+### Si un cliente no puede escribir
+
+Mira arriba del todo en **Ciclo de vida del cliente**. Cambiar la modalidad de
+aislamiento de un cliente abre una **ventana de solo lectura** sobre sus datos,
+y mientras esté abierta ese cliente no puede guardar nada. La pantalla avisa
+cuando hay alguna abierta, y dice desde cuándo y cuántos minutos estaban
+previstos.
+
+Una migración que pone «verificada» con diferencias no está bien: está
+**medida**. Las diferencias son filas que no cuadran entre el origen y el
+destino, y cerrar la ventana con diferencias sin explicar es dar por bueno algo
+que no se ha comprobado.
+
 ---
 
 ## Qué hacer cuando algo no sale

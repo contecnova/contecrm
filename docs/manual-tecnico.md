@@ -2842,6 +2842,35 @@ canal de correo sin dirección propia declarada no puede cortar su propio eco, y
 eso no se ve mirando cuántos entraron: se ve cuando el buzón lleva un mes
 contestándose a sí mismo.
 
+### 4.6.28 Qué se ha hecho sobre los datos de un cliente
+
+Clonar un tenant, fusionar dos o partir uno son las operaciones más peligrosas
+del producto: sacan los datos de un cliente de donde están protegidos. El
+producto ya lo trataba como tal —obliga a **simular antes de ejecutar**, porque
+«una operación que simula y ejecuta a la vez no es una simulación», y guarda de
+cada una su plan y sus conflictos con el motivo escrito en el modelo: «es lo que
+alguien tiene que leer ANTES de aprobar»—.
+
+Y no había ninguna ruta que los listara. `OperacionTenant` se leía **por
+identificador y nada más**, así que sólo podía volver a una operación quien se
+hubiera guardado el id de la respuesta. Nadie podía contestar «¿qué se ha hecho
+sobre este cliente?», que es la pregunta de cualquier auditoría.
+
+`MigracionAislamiento` **sí** se listaba ya —lo monta un `montar_listado`
+genérico al final de su módulo— y lo que faltaba era enseñarla: la ventana de
+solo lectura es lo único de esta familia que pasa en tiempo real, y mientras
+esté abierta ese cliente no puede escribir.
+
+Así que lo nuevo es sólo el listado de `OperacionTenant`: la tabla, los campos
+y las rutas de acción ya estaban.
+
+En la pantalla, lo **simulado va aparte de lo hecho**. No es presentación: una
+simulada no ha movido una sola fila, y en una lista corrida ocupa una línea
+igual que una ejecutada — justo donde esa confusión sale cara. Una fallida se
+queda entre las hechas con su motivo, porque saber qué se intentó es parte de
+saber qué hay. Y una migración «verificada» con diferencias se señala: verificar
+no es aprobar, es medir.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
