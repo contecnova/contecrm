@@ -421,7 +421,18 @@ def elegir(
         return {
             "elegido": proveedor.clave,
             "proveedor_id": str(proveedor.id),
-            "modelo": str((modelo or {}).get("nombre") or ""),
+            # **La CLAVE, no el nombre.** Esto viaja tal cual al proveedor: es
+            # lo que identifica el modelo en su API, y en algunas familias va
+            # dentro de la URL. El `nombre` es para que lo lea una persona
+            # —«Gemini 2.5 Flash»— y mandarlo como identificador devuelve
+            # «unexpected model name format». No se vio en dos meses porque
+            # los únicos proveedores declarados eran de ejemplo y no se llamó
+            # a ninguno: salió al enchufar el primero de verdad, el 29-10-2026.
+            "modelo": str((modelo or {}).get("clave") or ""),
+            # Y el nombre aparte, porque la pantalla que dice «qué modelo
+            # atendería esto» lo enseña a una persona: ahí «gemini-2.5-flash»
+            # es peor que «Gemini 2.5 Flash».
+            "modelo_nombre": str((modelo or {}).get("nombre") or ""),
             "region": proveedor.region,
             "propio_del_tenant": proveedor.propio,
             "opt_out": proveedor.admite_opt_out,
@@ -657,7 +668,11 @@ def exigir_sin_salida(
         "puede_llamar": True,
         "sin_salida": True,
         "elegido": elegido.clave,
+        # La clave, por lo mismo que arriba: esto se manda al proveedor.
         "modelo": str(
+            next((m.get("clave") for m in (elegido.modelos or []) if m.get("uso") == uso), "")
+        ),
+        "modelo_nombre": str(
             next((m.get("nombre") for m in (elegido.modelos or []) if m.get("uso") == uso), "")
         ),
         "region": elegido.region,

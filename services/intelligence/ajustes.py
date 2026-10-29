@@ -21,11 +21,26 @@ from functools import lru_cache
 from crmcore.config import Settings
 from crmcore.runtime.keys import ClaveAjuste, registrar_claves
 from crmcore.runtime.settings import registrar_ajustes_servicio
-from pydantic import Field
+from pydantic import Field, SecretStr
 
 
 class AjustesIntelligence(Settings):
     """Configuración del servicio `intelligence`."""
+
+    # ── Las credenciales de los proveedores ───────────────────────────────
+    # `clave_del_proveedor=credencial,otra=otra`. Igual que `RUTAS_SERVICIOS`,
+    # y por la misma razón: es un mapa de despliegue, no una lista en el código.
+    #
+    # **Vive en el `.env` y no en la base de datos** aunque el proveedor tenga
+    # un `config` donde cabría. Un secreto guardado ahí se va con cada copia,
+    # con cada volcado, con cada clonado a una demo y con cada exportación de
+    # salida del tenant, y rotarlo obliga a repasar todos esos sitios. En el
+    # fichero sólo está donde se despliega.
+    #
+    # Genérico a propósito: ni una variable por casa ni un `if` por proveedor.
+    # Quien quiera añadir uno declara su dialecto, su dirección y su cabecera de
+    # autenticación por la API, y pone aquí su credencial.
+    ia_credenciales: SecretStr = SecretStr("")
 
     # ── Lo que hace falta para opinar ─────────────────────────────────────
     # Señales mínimas para dar una recomendación de siguiente mejor acción.
@@ -137,6 +152,24 @@ registrar_claves(
         ),
     ]
 )
+
+
+def credencial_de(clave_proveedor: str) -> str:
+    """La credencial de ese proveedor, del `.env`. Cadena vacía si no la hay.
+
+    Vacía y no un error: hay proveedores que no llevan credencial —uno propio
+    en la red interna, por ejemplo— y hacer obligatorio lo que no lo es obliga
+    a inventarse un valor. Si hace falta y no está, quien se queja es el
+    proveedor, con su propio 401, que dice más que un error nuestro adivinando.
+    """
+    crudo = ajustes().ia_credenciales.get_secret_value()
+    for trozo in crudo.replace("\n", "").split(","):
+        if "=" not in trozo:
+            continue
+        nombre, _, valor = trozo.partition("=")
+        if nombre.strip() == clave_proveedor:
+            return valor.strip()
+    return ""
 
 
 @lru_cache(maxsize=1)

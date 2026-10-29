@@ -3747,38 +3747,43 @@ def sembrar_la_plataforma_y_la_ia(api: Api) -> None:
         },
     )
 
-    # 7. Proveedores de IA, uno por región. Y aquí `latam` y `apac` ya se pueden
-    #    escribir: hasta el 28-10-2026 la política de IA no las admitía aunque la
-    #    residencia del tenant sí (ver `crmcore/regiones.py`).
-    for clave, region, base_url, formato, propio in (
-        ("modelo-ue", "ue", "https://ia.ejemplo-ue.test/v1", "openai_chat", False),
-        ("modelo-latam", "latam", "https://ia.ejemplo-latam.test/v1", "anthropic_messages", False),
-        ("modelo-propio", "local", "http://modelo-propio.interno:8000/v1", "openai_chat", True),
-    ):
-        api.crear(
-            "/api/v1/ia/proveedores",
-            {
-                "clave": clave,
-                "base_url": base_url,
-                "region": region,
-                "nombre": f"Proveedor {region.upper()}",
-                "formato": formato,
-                "admite_opt_out": True,
-                "modelos": [{"clave": "estandar", "nombre": "Estándar"}],
-                "coste_entrada_millon": "3.0000",
-                "coste_salida_millon": "15.0000",
-                "solo_este_tenant": propio,
-            },
-        )
+    # 7. Proveedores de IA: **ninguno**, y es deliberado.
+    #
+    # Hasta el 29-10-2026 aquí se sembraban tres —uno por región— apuntando a
+    # `ia.ejemplo-ue.test` y compañía. Dominios que no resuelven: la pantalla
+    # salía poblada, parecía configurada, y la primera vez que alguien pedía un
+    # borrador contestaba un error de red. Poblar con algo que no funciona es
+    # peor que no poblar: una pantalla vacía que dice que no hay proveedor
+    # manda a configurarlo; tres filas verdes mandan a buscar el fallo en otro
+    # sitio.
+    #
+    # Y además estaban **mal declarados**: sus modelos no decían para qué uso
+    # servían, así que el enrutador los descartaba siempre. Nunca se habría
+    # podido elegir ninguno aunque la dirección hubiera sido buena.
+    #
+    # Un proveedor de verdad es configuración de despliegue, no datos de
+    # demostración: se da de alta por `POST /api/v1/ia/proveedores` con su
+    # dialecto, su dirección y qué cabecera lleva la credencial, y el valor de
+    # la credencial va en `IA_CREDENCIALES` del `.env`.
 
-    # 8. Y la política que los gobierna: dónde puede quedarse el dato y cuánto
-    #    se puede gastar al mes.
+    # 8. La política que los gobierna: dónde puede quedarse el dato y cuánto se
+    #    puede gastar al mes.
+    #
+    # Sin `regiones_admitidas` ni `preferencias`: las de antes apuntaban a los
+    # tres proveedores de mentira, así que al declarar uno real quedaba fuera
+    # por región o se prefería a uno que ya no existe. Vacío aquí significa
+    # «sin restricción», que es lo honesto cuando todavía no hay nada declarado.
+    #
+    # `exigir_opt_out` SÍ se siembra en `true`, que es lo que un cliente asume
+    # sin preguntarlo. Si el proveedor que se acabe conectando no tiene un campo
+    # por petición para pedirlo, bajarlo es una decisión que alguien toma y que
+    # queda escrita, no un valor por defecto que nadie eligió.
     api.crear(
         "/api/v1/ia/politica",
         {
-            "regiones_admitidas": ["ue", "local"],
+            "regiones_admitidas": [],
             "exigir_opt_out": True,
-            "preferencias": {"redaccion": "modelo-ue", "extraccion": "modelo-propio"},
+            "preferencias": {},
             "presupuesto_mes": "250.00",
         },
     )

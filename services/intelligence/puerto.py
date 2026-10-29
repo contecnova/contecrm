@@ -48,7 +48,7 @@ def _llamar(
     from sqlalchemy import select
 
     from services.intelligence import dialectos
-    from services.intelligence.ajustes import ajustes
+    from services.intelligence.ajustes import ajustes, credencial_de
     from services.intelligence.enrutador import ProveedorIA
 
     with sesion(sistema=True) as db:
@@ -62,6 +62,12 @@ def _llamar(
         )
 
     config = dict(ficha.config or {})
+    # La credencial, del `.env` y no de la ficha. Un secreto guardado en la
+    # base de datos viaja con cada copia, cada volcado, cada clonado a una demo
+    # y cada exportación de salida del tenant. Lo que la ficha declara es QUÉ
+    # cabecera lleva; el valor lo pone el despliegue.
+    if not config.get("credencial"):
+        config["credencial"] = credencial_de(ficha.clave)
     formato = dialectos.exigir_dialecto(ficha.formato)
     cuerpo = dialectos.peticion(
         formato=formato,
@@ -81,10 +87,20 @@ def _llamar(
     with cliente_seguro(timeout=float(config.get("timeout_s") or 60)) as cli:
         respuesta = cli.post(url, json=cuerpo, headers=cabeceras)
     if respuesta.status_code >= 400:
+        # **Lo que dijo el proveedor, no sólo que dijo que no.** Con el código
+        # HTTP a secas, «400» manda a revisar la credencial cuando lo que falla
+        # es un modelo que no existe, un parámetro que esa familia no admite o
+        # una cuota agotada — y cada una se arregla en un sitio distinto. Se
+        # recorta porque es un mensaje de error, no una respuesta: lo que
+        # interesa es la primera frase.
         raise ErrorDependencia(
             "El proveedor de IA ha rechazado la petición",
             error_code="ia.peticion_rechazada",
-            detalle={"codigo_http": respuesta.status_code},
+            detalle={
+                "codigo_http": respuesta.status_code,
+                "proveedor": proveedor,
+                "dijo": respuesta.text[:500],
+            },
         )
     salida = dialectos.respuesta(formato=formato, datos=respuesta.json(), modelo_pedido=modelo)
     avisos = dialectos.avisos_de(

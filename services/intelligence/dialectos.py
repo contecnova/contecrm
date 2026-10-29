@@ -288,7 +288,19 @@ def respuesta(*, formato: str, datos: dict[str, Any], modelo_pedido: str = "") -
         "texto": "".join(str(p.get("text") or "") for p in partes if "text" in p),
         "modelo": str(datos.get("modelVersion") or modelo_pedido),
         "tokens_entrada": int(uso.get("promptTokenCount") or 0),
-        "tokens_salida": int(uso.get("candidatesTokenCount") or 0),
+        # **Los de razonamiento cuentan como salida, porque se facturan.** Los
+        # modelos que razonan de esta familia declaran aparte lo que han
+        # gastado pensando, y no sale en `candidatesTokenCount`. Medido el
+        # 29-10-2026 en una llamada real: 14 de entrada, 40 de respuesta y
+        # **979 de razonamiento** — contar sólo la respuesta dejaba el coste en
+        # la veinticincoava parte, y con él el presupuesto del tenant, que
+        # entonces no corta nunca.
+        #
+        # La suma cuadra con lo que declara el propio proveedor:
+        # 14 + 40 + 979 = 1033 = `totalTokenCount`.
+        "tokens_salida": (
+            int(uso.get("candidatesTokenCount") or 0) + int(uso.get("thoughtsTokenCount") or 0)
+        ),
         "llamadas": [
             {
                 "id": "",

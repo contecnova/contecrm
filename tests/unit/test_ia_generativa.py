@@ -95,11 +95,16 @@ def _proveedor(uow: UnidadDeTrabajo, **kw: Any) -> rut.ProveedorIA:
         "region": "ue",
         "admite_opt_out": True,
         "modelos": [
-            {"uso": "redaccion", "nombre": "m-redaccion"},
-            {"uso": "resumen", "nombre": "m-resumen"},
-            {"uso": "consulta", "nombre": "m-consulta"},
-            {"uso": "extraccion", "nombre": "m-extraccion"},
-            {"uso": "traduccion", "nombre": "m-traduccion"},
+            # La `clave` y el `nombre` se declaran **distintos a propósito**.
+            # Cuando valían lo mismo, el enrutador podía mandar al proveedor el
+            # nombre legible en vez del identificador y ninguna prueba se
+            # enteraba; en la primera llamada de verdad salió un 400
+            # «unexpected model name format».
+            {"uso": "redaccion", "clave": "m-redaccion", "nombre": "Redacción"},
+            {"uso": "resumen", "clave": "m-resumen", "nombre": "Resumen"},
+            {"uso": "consulta", "clave": "m-consulta", "nombre": "Consulta"},
+            {"uso": "extraccion", "clave": "m-extraccion", "nombre": "Extracción"},
+            {"uso": "traduccion", "clave": "m-traduccion", "nombre": "Traducción"},
         ],
         "coste_entrada_millon": Decimal("1.00"),
         "coste_salida_millon": Decimal("3.00"),
@@ -114,6 +119,28 @@ def _principal(*permisos: str) -> Principal:
 
 
 # ── Enrutado de modelos (CRM-05.02.02.10, .09) ────────────────────────────
+
+
+def test_al_proveedor_se_le_manda_la_clave_del_modelo_y_no_su_nombre(
+    uow: UnidadDeTrabajo,
+) -> None:
+    """El `nombre` es para una persona; la `clave` es lo que entiende la API.
+
+    Medido el 29-10-2026 al enchufar el primer proveedor real: el enrutador
+    devolvía el nombre legible —«Gemini 2.5 Flash»— y eso viaja tal cual al
+    proveedor, que en esa familia lo mete **dentro de la URL**. Respuesta: 400
+    «unexpected model name format». No se vio en dos meses porque los únicos
+    proveedores declarados eran de ejemplo y nunca se llamó a ninguno.
+
+    Las dos cosas se devuelven, porque las dos hacen falta: la pantalla que
+    dice «qué modelo atendería esto» la lee una persona, y ahí
+    «gemini-2.5-flash» es peor que «Gemini 2.5 Flash».
+    """
+    _proveedor(uow)
+    salida = rut.elegir(uow.db, uow.tenant_id, uso="redaccion")
+    assert salida["puede_llamar"] is True
+    assert salida["modelo"] == "m-redaccion"
+    assert salida["modelo_nombre"] == "Redacción"
 
 
 def test_sin_proveedores_se_dice_en_vez_de_fallar_raro(uow: UnidadDeTrabajo) -> None:

@@ -97,6 +97,38 @@ def test_el_manual_de_usuario_cubre_todas_las_areas(catalogo: dict) -> None:
     )
 
 
+def _todos_los_ajustes() -> set[str]:
+    """Los ajustes de **todos** los Settings del producto, no sólo los del base.
+
+    Cinco servicios declaran los suyos en `services/<servicio>/ajustes.py`
+    heredando de `Settings`, y hasta el 29-10-2026 este gate solo miraba la
+    clase base. Consecuencia: documentar en el manual un ajuste propio de un
+    servicio —que es exactamente lo que hay que hacer— ponía el gate en rojo
+    diciendo que no existe. Un guardián que da la alarma por lo correcto se
+    acaba desactivando, y entonces deja de avisar de lo incorrecto.
+
+    Se importan los módulos y se recorren las subclases en vez de leer una
+    lista escrita aquí: una lista a mano se queda corta con el sexto servicio y
+    nadie se entera, porque el síntoma es un falso rojo que alguien silencia.
+    """
+    import importlib
+
+    from crmcore.config import Settings
+
+    raiz = Path(__file__).resolve().parents[2]
+    for modulo in sorted((raiz / "services").glob("*/ajustes.py")):
+        importlib.import_module(f"services.{modulo.parent.name}.ajustes")
+
+    def _con_hijas(clase: type) -> list[type]:
+        return [clase] + [n for h in clase.__subclasses__() for n in _con_hijas(h)]
+
+    clases = _con_hijas(Settings)
+    # Suelo medido: si un cambio de estructura dejara de encontrar las de los
+    # servicios, el gate volvería a dar falsos rojos sin decir por qué.
+    assert len(clases) > 5, f"Solo se han encontrado {len(clases)} clases de ajustes"
+    return {campo.upper() for clase in clases for campo in clase.model_fields}
+
+
 def test_el_manual_tecnico_no_describe_ajustes_que_no_existen() -> None:
     """Un ajuste renombrado o borrado que sigue en el manual es peor que una
     omisión: alguien lo pone en su `.env`, no pasa nada, y deja de fiarse del
@@ -105,11 +137,8 @@ def test_el_manual_tecnico_no_describe_ajustes_que_no_existen() -> None:
     Se comprueban los que el manual escribe en mayúsculas con guion bajo, que es
     como se escriben las variables de entorno, contra los `Settings` reales.
     """
-    from crmcore.config import get_settings
-
     texto = MANUAL_TECNICO.read_text(encoding="utf-8")
-    ajustes = get_settings()
-    conocidos = {campo.upper() for campo in type(ajustes).model_fields}
+    conocidos = _todos_los_ajustes()
 
     # Solo los que aparecen como `CÓDIGO` entre comillas invertidas: el texto
     # normal lleva siglas (API, CRM, SLA) que no son ajustes.

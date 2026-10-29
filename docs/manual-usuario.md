@@ -758,6 +758,33 @@ Además: lo que se transcribe de una llamada **no es un acta** —el reconocimie
 confunde nombres y cifras—, y grabar exige haber avisado. Si algo se propone a
 partir de una transcripción poco fiable, no se propone.
 
+### Hace falta un modelo conectado, y se elige a conciencia
+
+Nada de esto funciona hasta que tu instalación declara **a qué modelo llamar**.
+Se hace en **Inteligencia → Proveedores**: la dirección, de qué familia es, qué
+modelos ofrece y **para qué sirve cada uno** —redactar, resumir, extraer,
+traducir, consultar, clasificar—. Lo que no se declare, no se le pide.
+
+Dos cosas que conviene saber antes de elegir proveedor:
+
+- **Lo que cuesta se mide, y por eso el presupuesto corta de verdad.** El coste
+  por millón de tokens se declara al dar de alta el modelo, y sin él el tope
+  mensual no frena nada. Con los modelos que *razonan* hay una trampa: gastan
+  tokens pensando antes de contestar, y eso se factura. Desde el 29-10-2026 se
+  cuentan; antes no, y una llamada medida gastaba 979 tokens pensando para
+  escribir una respuesta de 40 — el coste salía veinticinco veces por debajo
+  del real.
+- **El «que no entrenen con lo nuestro» es una casilla con consecuencias.** Por
+  defecto tu empresa lo exige, y un proveedor que no pueda garantizarlo por
+  petición **no se usa**: la pantalla dice cuál se ha descartado y por qué, en
+  vez de llamar igual y callárselo. Hay modelos muy buenos que sólo lo ofrecen
+  por contrato, no por petición; usarlos obliga a bajar esa exigencia a
+  propósito, y queda escrito quién lo hizo.
+
+Si no hay ninguno declarado, las pantallas de IA lo dicen y mandan a
+configurarlo. Hasta el 29-10-2026 venían tres de ejemplo que parecían
+configurados y fallaban al primer uso; ya no.
+
 ### Nexus
 
 En la barra de arriba, al lado del chat, hay un icono: **Nexus**. Ahí se

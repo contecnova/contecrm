@@ -41,10 +41,14 @@ class _Respuesta:
 class _Ficha:
     """Una fila de proveedor, con lo poco que el puerto le mira."""
 
-    def __init__(self, formato: str) -> None:
+    def __init__(self, formato: str, clave: str = "el-proveedor") -> None:
         self.formato = formato
         self.base_url = "https://ia.example.com"
         self.config: dict[str, Any] = {}
+        # El puerto la lee para buscar la credencial de ESTE proveedor en el
+        # `.env`. Sin ella aquí, el doble decía que la pantalla está rota
+        # cuando lo que faltaba era el doble.
+        self.clave = clave
 
 
 def _puerto_de_mentira(monkeypatch: pytest.MonkeyPatch, formato: str, devuelve: dict[str, Any]):
@@ -263,6 +267,50 @@ def test_las_tres_familias_se_leen_con_las_mismas_claves() -> None:
         assert salida["modelo"] == "m"
         assert (salida["tokens_entrada"], salida["tokens_salida"]) == (3, 4)
         assert salida["llamadas"] == []
+
+
+def test_los_tokens_de_razonamiento_cuentan_como_salida_porque_se_facturan() -> None:
+    """Medido el 29-10-2026 contra el proveedor de verdad.
+
+    Los modelos que razonan declaran aparte lo que han gastado pensando, y no
+    sale en el contador de la respuesta. Una llamada real dio 14 de entrada, 40
+    de respuesta y **979 de razonamiento**: contar solo la respuesta dejaba el
+    coste en la veinticincoava parte del que se factura, y con él el
+    presupuesto del tenant, que entonces no corta nunca.
+
+    Se comprueba además que la suma cuadra con el total que declara el propio
+    proveedor, que es lo que impide que esto se arregle sumando de más.
+    """
+    salida = dialectos.respuesta(
+        formato="gemini_generate",
+        datos={
+            "modelVersion": "m",
+            "candidates": [{"content": {"parts": [{"text": "hola"}]}}],
+            "usageMetadata": {
+                "promptTokenCount": 14,
+                "candidatesTokenCount": 40,
+                "thoughtsTokenCount": 979,
+                "totalTokenCount": 1033,
+            },
+        },
+    )
+    assert salida["tokens_entrada"] == 14
+    assert salida["tokens_salida"] == 1019
+    assert salida["tokens_entrada"] + salida["tokens_salida"] == 1033
+
+
+def test_sin_razonamiento_declarado_los_tokens_no_cambian() -> None:
+    """Las familias que no razonan no declaran el campo, y sumar `None` no es 0
+    por accidente en ningún sitio: se comprueba."""
+    salida = dialectos.respuesta(
+        formato="gemini_generate",
+        datos={
+            "modelVersion": "m",
+            "candidates": [{"content": {"parts": [{"text": "hola"}]}}],
+            "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 4},
+        },
+    )
+    assert (salida["tokens_entrada"], salida["tokens_salida"]) == (3, 4)
 
 
 def test_la_llamada_a_herramienta_se_lee_igual_venga_de_donde_venga() -> None:

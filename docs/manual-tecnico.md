@@ -1695,6 +1695,81 @@ Hasta el 28-10-2026 `ProveedorIA.formato` se guardaba y **no lo leía nadie**:
 `puerto._llamar` construía siempre el cuerpo de la familia OpenAI. Era el
 circuito abierto de siempre, con las dos mitades puestas y nada que las uniera.
 
+### 4.6.3 Conectar un proveedor de verdad
+
+Hasta el 29-10-2026 **nunca se había llamado a uno**. Los tres declarados eran
+de siembra y apuntaban a `ia.ejemplo-ue.test` y compañía: dominios que no
+resuelven. Al enchufar el primero real salieron cuatro cosas de golpe, y las
+cuatro son del mismo tipo —lo que sólo se descubre usándolo—:
+
+1. **El sembrador poblaba con algo que no funciona.** Tres filas verdes en la
+   pantalla que al primer borrador contestaban un error de red. Una pantalla
+   vacía que dice «no hay proveedor» manda a configurarlo; tres filas verdes
+   mandan a buscar el fallo donde no está. Ya no se siembra ninguno.
+2. **Y los sembraba mal**: sus modelos no declaraban `uso`, así que el
+   enrutador los descartaba siempre. No se habrían podido elegir ni con la
+   dirección buena.
+3. **Al proveedor se le mandaba el nombre legible del modelo.** `elegir()`
+   devolvía `nombre` —«Gemini 2.5 Flash»— donde va la `clave`, y eso viaja tal
+   cual a la API; en la familia de Gemini, dentro de la URL. Respuesta: `400
+   unexpected model name format`. Ahora devuelve las dos: `modelo` es la clave,
+   que es lo que entiende la API, y `modelo_nombre` es lo que lee una persona
+   en la pantalla de «qué modelo atendería esto». La prueba lo fija con una
+   clave y un nombre **distintos**: cuando valían lo mismo, ninguna prueba se
+   enteraba.
+4. **Los tokens de razonamiento no se contaban.** Los modelos que razonan
+   declaran aparte lo que han gastado pensando, y se factura como salida. En
+   una llamada medida: 14 de entrada, 40 de respuesta y **979 de razonamiento**
+   — el coste salía en la veinticincoava parte del real, y con él el
+   presupuesto del tenant, que entonces no corta nunca. La suma cuadra con el
+   total que declara el propio proveedor: 14 + 40 + 979 = 1033.
+
+**Cómo se declara uno.** Es configuración de despliegue, no datos de
+demostración, y no hay nada por casa en el código:
+
+```bash
+POST /api/v1/ia/proveedores
+{
+  "clave": "gemini",
+  "nombre": "Google Gemini",
+  "base_url": "https://generativelanguage.googleapis.com",
+  "formato": "gemini_generate",
+  "region": "ee_uu",
+  "admite_opt_out": false,
+  "modelos": [{"clave": "gemini-2.5-flash", "nombre": "Gemini 2.5 Flash", "uso": "redaccion"}],
+  "coste_entrada_millon": "0.30",
+  "coste_salida_millon": "2.50",
+  "config": {"cabecera_auth": "x-goog-api-key"}
+}
+```
+
+Un modelo por **cada uso** que atienda, de `USOS`: `redaccion`, `resumen`,
+`extraccion`, `traduccion`, `consulta`, `embeddings`, `clasificacion`. Lo que no
+declare no se le pide —los embeddings de Gemini son otro modelo, así que ese uso
+se deja fuera a propósito en vez de mandarle una petición que no sabe atender.
+
+**La credencial va en el `.env`, no en la ficha.** `IA_CREDENCIALES` es un mapa
+`clave_del_proveedor=credencial`, igual que `RUTAS_SERVICIOS` y por lo mismo: es
+un dato de despliegue. La ficha declara **qué cabecera** la lleva
+(`config.cabecera_auth`); el valor lo pone el fichero. Un secreto guardado en la
+base de datos se va con cada copia, cada volcado, cada clonado a una demo y cada
+exportación de salida del tenant, y rotarlo obliga a repasar todos esos sitios.
+
+**El opt-out es una decisión que alguien toma.** Por defecto cada tenant exige
+que se pueda pedir, por petición, que no se entrene con lo enviado, y eso es lo
+que un cliente asume sin preguntarlo. Hay familias que no tienen ese campo: lo
+que ofrezcan será contractual. Entonces el proveedor se declara
+`admite_opt_out: false` —y el enrutador lo descarta, diciendo por qué— hasta que
+alguien baje `exigir_opt_out` en la política del tenant. Se hace así a propósito:
+declarar `true` sin campo mandaría la petición sin él y daría por buena una
+garantía que no viaja.
+
+**Cuando el proveedor rechaza**, el error lleva ahora lo que dijo él
+(`detalle.dijo`, recortado) además del código HTTP. Con el código a secas, un
+`400` manda a revisar la credencial cuando lo que falla es un modelo que no
+existe, un parámetro que esa familia no admite o una cuota agotada — y cada una
+se arregla en un sitio distinto.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
