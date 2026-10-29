@@ -1150,7 +1150,12 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
       // Las liquidaciones cuelgan del canal *y* de la retribución interna: es
       // el mismo motor, y enseñarlas dos veces daría dos listas del mismo dinero.
       {
+        // Con `objeto` para que cada fila se abra: delante de una liquidación
+        // la pregunta no es cuánto, es POR QUÉ ESE NÚMERO. El desglose euro a
+        // euro, el recorte por tope y las reclamaciones viven en su detalle, y
+        // el listado sólo enseñaba el total y el estado.
         nombre: "Liquidaciones",
+        objeto: "liquidacion",
         listar: "/api/v1/liquidaciones",
         servicio: "sales",
         columnas: [

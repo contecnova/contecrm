@@ -663,6 +663,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/liquidaciones",
       "p": "commission:read",
+      "o": "liquidacion",
       "s": "sales"
     },
     {

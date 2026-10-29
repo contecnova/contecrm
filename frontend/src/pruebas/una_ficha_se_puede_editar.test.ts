@@ -31,6 +31,14 @@ const SIN_EDICION_PORQUE: Record<string, string> = {
     "El contrato de `/conversaciones/{id}` no declara `PATCH`: una conversación " +
     "no se edita campo a campo, se responde, se transfiere o se escala a una " +
     "persona, y las tres son acciones que la pantalla ya ofrece.",
+  Liquidacion:
+    "El contrato de `/liquidaciones/{id}` sólo declara `GET`, y no es un " +
+    "olvido: una liquidación de comisión es un número CALCULADO con cada euro " +
+    "explicado, y poder cambiarlo a mano destruiría justo lo que la hace " +
+    "defendible. Lo que sí se puede hacer son las cuatro acciones que el " +
+    "servidor publica —enviar a aprobación, aprobar, reclamar y pagar—, y " +
+    "cada una deja su rastro. Corregirla se hace revirtiéndola y volviendo a " +
+    "liquidar, que es lo que deja una línea de reversión con su porqué.",
   InstanciaDeProceso:
     "Una instancia en marcha NO se edita campo a campo, y no es un olvido: " +
     "poner a mano su estado o su paso actual metería el registro en una rama " +

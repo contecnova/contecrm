@@ -2474,6 +2474,36 @@ la otra es cómo se reparte un mapa que nadie puede cumplir. El objetivo
 prorrateado sale **con el del plan al lado**: quien entra el día 20 no tiene la
 cuota entera, y sin los dos números delante uno de ellos parece un error.
 
+### 4.6.20 Una comisión que no se puede desglosar no se la cree nadie
+
+El listado de liquidaciones enseñaba el total y el estado. Delante de una
+liquidación la pregunta no es cuánto: es **por qué ese número y no otro**. Un
+comercial que no puede desglosar su comisión no se la cree, y la discusión
+acaba en una hoja de cálculo paralela que nadie concilia.
+
+El servidor lo guardaba entero desde el primer día y no lo leía ninguna
+pantalla: cada línea con su **base, su porcentaje y su explicación**, lo
+recortado por el tope, las reversiones y las reclamaciones con su resolución.
+
+Tres avisos que cambian la conversación, y por eso tienen prueba propia:
+
+- **Lo recortado por el tope va arriba.** Una liquidación con techo aplicado
+  parece simplemente más baja, y quien la cobra no tiene forma de saber que le
+  han quitado algo: «he vendido menos» y «he llegado al techo del plan» son dos
+  conversaciones distintas y sólo una se puede negociar.
+- **Las reversiones se marcan.** Una línea negativa sin decir de qué
+  liquidación viene se lee como un error de cálculo, y eso convierte una
+  devolución legítima en una discusión.
+- **Una reclamación sin resolver se dice.** Abierta y resuelta se ven igual si
+  sólo sale el motivo, y sin la resolución la misma reclamación vuelve el
+  trimestre siguiente.
+
+**No se edita a mano**, y está declarado como excepción con su motivo: el
+contrato sólo publica `GET` y eso no es un olvido. Una liquidación es un número
+calculado con cada euro explicado, y poder cambiarlo destruiría justo lo que la
+hace defendible. Corregirla se hace revirtiéndola y volviendo a liquidar, que
+deja una línea de reversión con su porqué.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

@@ -585,7 +585,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   dejan de aplicarse sin avisar, la cuenta vuelve a su territorio de origen
 #   un lunes y quien la llevaba se entera por el pipeline. Ahora se listan, y
 #   las que vencen en 30 dias o menos van contadas aparte.
-TOPE_SIN_PANTALLA = 279
+#   29-10-2026  277 de 778  la liquidacion de comision. Dos: el calculo por
+#   ------------------------------------------------------------------------
+#   periodo con su desglose y la aprobacion, disputa y trazabilidad del pago.
+#
+#   El listado ensenaba el total y el estado, y delante de una liquidacion la
+#   pregunta no es cuanto: es POR QUE ESE NUMERO. El servidor guardaba la
+#   explicacion de cada euro desde el primer dia —con su base y su
+#   porcentaje—, lo recortado por el tope, las reversiones y las
+#   reclamaciones, y no lo ensenaba nadie. Un comercial que no puede
+#   desglosar su comision no se la cree, y la discusion acaba en una hoja de
+#   calculo paralela que nadie concilia.
+TOPE_SIN_PANTALLA = 277
 
 
 def _es_pantalla(p: Path) -> bool:

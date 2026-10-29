@@ -138,6 +138,10 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const Liquidacion = pantalla(
+  () => import("@/paginas/Liquidacion"),
+  (m) => m.Liquidacion,
+);
 const Territorios = pantalla(
   () => import("@/paginas/Territorios"),
   (m) => m.Territorios,
@@ -349,6 +353,10 @@ export function App() {
           <Route path="/chat" element={<Chat sesion={sesion} />} />
           <Route path="/recorrido" element={<Recorrido />} />
           <Route path="/territorios" element={<Territorios />} />
+          {/* La liquidación tiene ficha propia: su detalle devuelve las
+              líneas y las reclamaciones dentro del mismo objeto, y la ficha
+              genérica descubre paneles por rutas hijas que aquí no existen. */}
+          <Route path="/m/canal/liquidacion/:id" element={<Liquidacion />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />

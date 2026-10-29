@@ -741,6 +741,30 @@ La previsión no es la suma del pipeline. Lo que verás:
   y **enseña el número que calcula ese motor**, no otro. Una cifra distinta de la
   que vas a cobrar haría que no te creyeras ninguna de las dos.
 
+### Tu liquidación de comisión
+
+En **Canal › Liquidaciones**, cada fila se abre. Dentro no está el total otra
+vez: está **de dónde sale cada euro**, con la base sobre la que se calculó y el
+porcentaje que se aplicó. Una comisión que no se puede desglosar no se la cree
+nadie, y entonces se lleva en una hoja de cálculo aparte que nunca cuadra con
+la del CRM.
+
+Tres cosas que conviene mirar:
+
+- **Si te han recortado por el tope**, sale arriba y en color. No es lo mismo
+  haber vendido menos que haber llegado al techo del plan: lo primero no se
+  negocia y lo segundo sí.
+- **Las reversiones van marcadas.** Una línea en negativo es casi siempre una
+  devolución o una baja dentro de plazo, no un error de cálculo, y se dice de
+  cuál viene.
+- **Si has reclamado algo**, sale con su estado. Mientras no tenga resolución
+  escrita, lo dice: una reclamación que se da por hablada vuelve el trimestre
+  siguiente.
+
+**No se puede editar a mano**, y es a propósito: el valor de una liquidación es
+que cada euro tiene su porqué. Si hay que corregirla se revierte y se vuelve a
+liquidar, y esa corrección queda como una línea más con su explicación.
+
 ### El mapa de territorios
 
 En **Ventas › Territorios**. Lo que se hace con un mapa de territorios no es

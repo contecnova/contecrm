@@ -619,6 +619,22 @@ const pantallas = {
     logradoDe: "{{logrado}} de {{objetivo}}",
     prorrateada: "Prorrateada: en el plan son {{plan}}.",
   },
+  liquidacion: {
+    periodo: "del {{desde}} al {{hasta}}",
+    recortado:
+      "Se han recortado {{cuanto}} por el tope del plan. No es que se haya vendido menos: es el techo.",
+    lineas: "De dónde sale cada euro",
+    lineasAyuda:
+      "Con la base y el porcentaje de cada línea. Un comercial que no puede " +
+      "desglosar su comisión no se la cree, y la discusión acaba en una hoja " +
+      "de cálculo paralela que nadie concilia.",
+    sinLineas: "Esta liquidación no tiene líneas",
+    baseYPct: "{{base}} al {{pct}} %",
+    reversion: "reversión",
+    disputas: "Reclamaciones",
+    sinDisputas: "Nadie ha reclamado nada",
+    sinResolver: "Sin resolver todavía.",
+  },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:

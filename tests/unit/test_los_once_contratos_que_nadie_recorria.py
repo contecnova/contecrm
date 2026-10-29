@@ -1218,3 +1218,80 @@ def test_las_instantaneas_llevan_cuando_se_tomaron(
     r = sales.get(f"/api/v1/forecast/periodos/{periodo}/instantaneas", headers=cabeceras)
     assert r.status_code == 200, r.text
     assert isinstance(r.json(), list), f"la pantalla las recorre: llega {type(r.json())}"
+
+
+# ── Y la liquidación de comisión: Liquidacion.tsx ────────────────────────
+#
+# 29-10-2026. Delante de una liquidación la pregunta no es cuánto: es por qué
+# ese número y no otro. El detalle lo guardaba entero —cada euro con su
+# explicación, lo recortado por el tope, las reversiones y las reclamaciones—
+# y ninguna prueba de servidor lo pedía por HTTP.
+
+
+def test_la_liquidacion_sale_con_cada_euro_explicado(
+    sales: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Las cuatro cosas que hacen discutible una comisión.
+
+    `explicacion` por línea, `recortado_por_tope` —sin él, una liquidación con
+    techo aplicado parece simplemente más baja—, `reversion_de` —una línea
+    negativa sin decir de dónde viene se lee como un error de cálculo— y las
+    disputas con su resolución.
+    """
+    from services.sales import comisiones as com
+
+    liquidacion = com.Liquidacion(
+        tenant_id=tenant_id,
+        plan_id=uuid4(),
+        usuario_id=uuid4(),
+        desde=datetime.now(timezone.utc).date(),
+        hasta=(datetime.now(timezone.utc) + timedelta(days=90)).date(),
+        total=Decimal("8400"),
+        moneda="EUR",
+        recortado_por_tope=Decimal("1600"),
+        estado="calculada",
+    )
+    db.add(liquidacion)
+    db.flush()
+    db.add(
+        com.LineaComision(
+            tenant_id=tenant_id,
+            liquidacion_id=liquidacion.id,
+            origen="oportunidad",
+            concepto="Acme — cierre",
+            base=Decimal("120000"),
+            porcentaje=Decimal("7"),
+            importe=Decimal("8400"),
+            explicacion="7 % del importe funcional al cerrarse en el tramo alto",
+        )
+    )
+    db.flush()
+
+    r = sales.get(f"/api/v1/liquidaciones/{liquidacion.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(
+        cuerpo,
+        "id",
+        "estado",
+        "desde",
+        "hasta",
+        "total",
+        "moneda",
+        "recortado_por_tope",
+        "lineas",
+        "disputas",
+    )
+    assert cuerpo["recortado_por_tope"] == "1600.00", cuerpo["recortado_por_tope"]
+    _campos(
+        cuerpo["lineas"][0],
+        "concepto",
+        "base",
+        "porcentaje",
+        "importe",
+        "explicacion",
+        "reversion_de",
+    )
+    assert cuerpo["lineas"][0]["explicacion"].strip(), (
+        "una línea sin explicación convierte la comisión en un número que hay " "que creerse"
+    )
