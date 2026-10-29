@@ -758,6 +758,23 @@ Los sobres en sí, con sus firmantes y su evidencia, están en
 **Administrar › Operación › Sobres de firma**, y desde cada uno se puede
 mandar, recordar, cancelar o archivar el documento firmado.
 
+### Si una firma se sostiene, o sólo lo parece
+
+Al abrir un sobre, lo primero que sale no es si está firmado: es **si esa firma
+se puede verificar**. Hacen falta las dos huellas —la de lo que se mandó y la
+de lo que se firmó— y si falta alguna, la firma no se puede comprobar aunque el
+estado ponga «firmado». Es la diferencia entre un documento firmado y uno que
+lo parece, y no se nota mirando el estado.
+
+Lo demás que hay dentro, por el mismo motivo:
+
+- **El nivel de firma** (simple, avanzada, cualificada). En una lista valen lo
+  mismo; ante un juez, no.
+- **Cómo se identificó a cada firmante.** Una firma sin identificación es una
+  casilla marcada por alguien con acceso a ese correo.
+- **Qué pieza de la prueba falta**, dicho con esa palabra. Un hueco en blanco
+  se lee como «aquí no aplica», y lo que significa es que falta un eslabón.
+
 ---
 
 ## Previsión y objetivos (sección 3.2)

@@ -1492,3 +1492,56 @@ def test_el_saldo_del_derecho_trae_LAS_DOS_bolsas(
     # La de casos NO está limitada aquí, y aun así viene: es justo el caso que
     # se perdería si sólo se devolviera lo limitado.
     assert cuerpo["casos"]["sin_limite"] is True, cuerpo["casos"]
+
+
+# ── Y la evidencia de una firma: SobreDeFirma.tsx ────────────────────────
+#
+# 29-10-2026. La ficha genérica no podía enseñarla: la evidencia devuelve un
+# OBJETO, y esa ficha sólo descubre paneles que devuelven listas, así que
+# habría salido siempre «nada todavía».
+
+
+def test_la_evidencia_dice_si_la_firma_se_puede_verificar(
+    integration: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """`verificable` es el campo que separa un documento firmado de uno que
+    PARECE firmado.
+
+    Sin el hash de lo enviado y el de lo firmado, la firma no se puede
+    comprobar — y eso no se nota mirando el estado, que pone «firmado» igual.
+    Si el servidor dejara de mandarlo, la pantalla perdería el único aviso que
+    importa el día que alguien discuta la firma.
+    """
+    from services.integration.firma import Sobre
+
+    sobre = Sobre(
+        tenant_id=tenant_id,
+        referencia="SOB-1",
+        proveedor="proveedor",
+        nivel="avanzada",
+        estado="firmado",
+        hash_enviado="abc123",
+    )
+    db.add(sobre)
+    db.flush()
+
+    r = integration.get(f"/api/v1/firma/sobres/{sobre.id}/evidencia", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(
+        cuerpo,
+        "referencia",
+        "proveedor",
+        "nivel",
+        "estado",
+        "sello_tiempo",
+        "hash_enviado",
+        "hash_firmado",
+        "verificable",
+        "firmantes",
+        "eventos",
+    )
+    # Con sólo uno de los dos hashes NO es verificable, aunque el estado diga
+    # que está firmado. Es justo el caso que la pantalla pinta en rojo.
+    assert cuerpo["estado"] == "firmado"
+    assert cuerpo["verificable"] is False, cuerpo

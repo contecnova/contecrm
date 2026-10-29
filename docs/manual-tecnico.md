@@ -2642,6 +2642,34 @@ plataforma roza esta capacidad y dice explícitamente que no la cubre: reconstru
 pide el identificador de un registro concreto y su sitio es la ficha de ese
 registro. Declararla allí habría sido declarar lo que no se hace.
 
+### 4.6.24 Un documento firmado y uno que parece firmado
+
+El listado de sobres enseñaba el estado y la referencia. Delante de un sobre la
+pregunta no es si está firmado: es **si esa firma se sostiene** el día que
+alguien la discuta.
+
+La ficha genérica no podía contestarla, y por un motivo mecánico: la evidencia
+devuelve un **objeto**, y esa ficha descubre paneles entre lo que devuelve
+listas — lo que devuelve un objeto salía siempre con «nada todavía».
+
+Dentro de la evidencia, el campo que decide es **`verificable`**: sin el hash
+de lo enviado y el de lo firmado la firma no se puede comprobar, y eso no se
+nota mirando el estado, que pone «firmado» igual.
+
+Tres cosas más que la pantalla pone delante:
+
+- **el nivel eIDAS**, porque una firma simple y una cualificada valen lo mismo
+  en una lista y no valen lo mismo ante un juez;
+- **si cada firmante fue identificado y cómo.** Una firma sin identificación es
+  una casilla marcada por alguien con acceso al correo, y en una lista se ve
+  igual que una con DNI y SMS;
+- y **qué dato de la prueba falta**, dicho con esa palabra. Un hueco en blanco
+  se lee como «no aplica», y aquí significa que falta una pieza de la cadena.
+
+La edición se mantiene: existía en la ficha genérica y el contrato publica
+`PATCH`, así que quitarla al traerse el sobre a su propia pantalla habría sido
+retirar algo que funcionaba sin que nadie lo decidiera.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

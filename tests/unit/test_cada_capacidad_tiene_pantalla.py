@@ -644,7 +644,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Va plegado: el rastro completo esta encendido en muy pocos objetos a
 #   proposito, y pedirlo en cada ficha seria una llamada por registro abierto
 #   que casi siempre contestaria «aqui no hay».
-TOPE_SIN_PANTALLA = 264
+#   29-10-2026  262 de 778  el sobre de firma: quien firma y en que orden, y
+#   ------------------------------------------------------------------------
+#   la EVIDENCIA que hace defendible la firma.
+#
+#   La ficha generica no podia ensenarla: la evidencia devuelve un OBJETO, y
+#   esa ficha solo descubre paneles que devuelven listas —lo que devuelve un
+#   objeto salia siempre con «nada todavia»—. Y dentro de la evidencia el
+#   campo que decide es `verificable`: sin el hash de lo enviado y el de lo
+#   firmado la firma NO se puede comprobar, y eso no se nota mirando el
+#   estado, que pone «firmado» igual. Es la diferencia entre un documento
+#   firmado y uno que PARECE firmado.
+TOPE_SIN_PANTALLA = 262
 
 
 def _es_pantalla(p: Path) -> bool:

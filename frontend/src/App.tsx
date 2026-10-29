@@ -138,6 +138,10 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const SobreDeFirma = pantalla(
+  () => import("@/paginas/SobreDeFirma"),
+  (m) => m.SobreDeFirma,
+);
 const Caso = pantalla(() => import("@/paginas/Caso"), (m) => m.Caso);
 const Liquidacion = pantalla(
   () => import("@/paginas/Liquidacion"),
@@ -362,6 +366,11 @@ export function App() {
               relaciones, el árbol, el reloj y el historial, y la ficha
               genérica los pintaba como campos sueltos —seis UUID y un array—. */}
           <Route path="/m/casos/caso/:id" element={<Caso />} />
+          {/* El sobre tiene ficha propia porque su EVIDENCIA devuelve un
+              objeto, y la ficha genérica sólo descubre paneles que devuelven
+              listas: pintarla como panel daría siempre «nada todavía». Y la
+              evidencia es justo lo que hace defendible una firma. */}
+          <Route path="/m/operacion/sobre_firma/:id" element={<SobreDeFirma />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />

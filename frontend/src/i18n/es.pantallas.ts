@@ -703,6 +703,27 @@ const pantallas = {
     vigenteHasta: "Vigente hasta {{cuando}}.",
     alAgotar: "Agotado. Al agotarse: {{que}}.",
   },
+  sobre: {
+    sinReferencia: "Sobre sin referencia",
+    verificable:
+      "Esta firma se puede verificar: están el hash de lo enviado y el de lo firmado.",
+    noVerificable:
+      "Esta firma NO se puede verificar: falta alguno de los dos hashes. El estado pone «firmado» igual.",
+    firmantes: "Quién firma y en qué orden",
+    sinFirmantes: "Este sobre no tiene firmantes",
+    identificado: "Identificado por {{como}}",
+    sinIdentificar:
+      "Sin identificación: es una casilla marcada por alguien con acceso al correo.",
+    prueba: "La prueba",
+    selloTiempo: "Sello de tiempo",
+    hashEnviado: "Hash de lo enviado",
+    hashFirmado: "Hash de lo firmado",
+    certificado: "Certificado",
+    documentoFirmado: "Documento firmado",
+    falta: "falta",
+    eventos: "Qué ha pasado con el sobre",
+    sinEventos: "Sin eventos todavía",
+  },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:
