@@ -35,6 +35,17 @@
  * «para descartar»— y «si lo desconecto, ¿qué me llevo y qué se queda?», que
  * es lo que nadie se atreve a hacer sin saberlo.
  *
+ * Y desde el 29-10-2026, **qué sabe hacer cada suite declarada**
+ * (CRM-06.01.03.01, CRM-06.01.03.02, CRM-06.01.03.04, CRM-06.01.03.06,
+ * CRM-06.01.03.07, CRM-06.01.03.14) y las tres preguntas que se hacen con ella
+ * ya conectada (CRM-06.01.03.11, CRM-06.01.03.13, CRM-06.01.03.19), más la que
+ * va antes de cada vuelta (CRM-06.01.03.15). Diez capacidades servidas y sin
+ * pantalla: el perfil se declaraba, los alcances se concedían, el incremento
+ * funcionaba y la política decidía qué entra — y lo único que se veía de todo
+ * eso era si un buzón estaba parado. Un perfil que no se puede mirar no se
+ * puede revisar, y es donde se cuela que una integración esté leyendo la
+ * agenda personal de alguien.
+ *
  * Y desde el 27-10-2026, la **salud de las suites de productividad**
  * (CRM-06.01.03.16, CRM-06.01.03.03, CRM-06.01.03.05): qué buzón lleva sin
  * sincronizar y por qué, qué credenciales van a dejar de funcionar y qué
@@ -65,7 +76,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { llamar, salvoCancelacion } from "@/lib/api";
+import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
 import { escalar } from "@/lib/formato";
 import { usePuedeOperar } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
@@ -198,6 +209,14 @@ export function SuiteGobierno() {
           están entrando— y juntarlas en el mismo bloque haría creer que una
           baja sin aplicar y un buzón parado se arreglan en el mismo sitio. */}
       <SaludDeLasSuites />
+      {/* Y lo que cada suite declarada SABE HACER, que es de donde sale todo
+          lo anterior: qué recursos trae, en qué sentido, con qué incremento,
+          si trae datos de terceros y qué entra de verdad. Veinte capacidades
+          servidas y sin pantalla: un perfil que no se puede mirar no se puede
+          revisar, y es donde se cuela que una integración lea la agenda
+          personal de alguien. */}
+      <QueSabeHacerCadaSuite />
+      <PreguntasSobreLaSuite />
       {/* Y lo que la suite sabe del cliente como un todo: su identidad tal
           como la ven todas las herramientas, qué cambiaría una aplicación
           antes de aplicarla, quién cambió qué y dónde acabó, y el certificado
@@ -801,6 +820,334 @@ interface Apartado {
  * Y se enseña **lo que se mandó**: sin eso, quien lo mira tiene que adivinar si
  * el problema es el dato o la herramienta.
  */
+interface PerfilSuite {
+  id: string;
+  nombre: string;
+  sistema?: string;
+  protocolo?: string;
+}
+
+interface RecursoDeclarado {
+  recurso: string;
+  sentidos: string[];
+  incremento?: string;
+  trae_dato_de_terceros?: boolean;
+  aviso?: string;
+}
+
+interface CapacidadesDelPerfil {
+  recursos?: string[];
+  /** Puede no venir: se lee con respaldo, no se da por hecho. */
+  detalle?: RecursoDeclarado[];
+}
+
+interface ReglasDeEntrada {
+  criterio: string;
+  nunca_entra: string[];
+  recursos_pedidos_que_no_permite_el_tenant: string[];
+  porque: string;
+}
+
+interface PuedeSincronizar {
+  se_puede: boolean;
+  alcances_concedidos?: string[];
+  porque: string;
+}
+
+interface Consentimiento {
+  id: string;
+  usuario_id: string;
+  perfil: string;
+  recurso: string;
+  sentido: string;
+  alcances: string[];
+  revocado_at?: string | null;
+  tiene_refresco?: boolean;
+}
+
+/**
+ * Qué sabe hacer cada suite declarada, y con qué reglas entra el dato.
+ *
+ * Veinte capacidades de esta familia estaban **hechas y sin pantalla**: el
+ * perfil se declaraba, los alcances se concedían, el incremento funcionaba y la
+ * política decidía qué entra — y lo único que se veía de todo eso era si un
+ * buzón estaba parado. Un perfil que no se puede mirar no se puede revisar, y es
+ * donde se cuela que una integración esté leyendo la agenda personal de alguien.
+ *
+ * Lo que enseña, y por qué cada cosa:
+ *
+ * - **El perfil es configuración, no código** (CRM-06.01.03.01): qué recursos
+ *   trae, de qué sistema y con qué protocolo. No hay un módulo por proveedor,
+ *   así que lo único que distingue a dos suites es lo que se declara aquí.
+ * - **En qué sentido va cada recurso** (CRM-06.01.03.06, CRM-06.01.03.07): los
+ *   contactos y las tareas pueden ir en los dos, y «leer» o «leer y escribir»
+ *   es la diferencia entre mirar la agenda de alguien y cambiarla.
+ * - **Con qué incremento** (CRM-06.01.03.04): `token_delta` quiere decir que se
+ *   reanuda por el token del proveedor y que la marca de agua sólo avanza si la
+ *   vuelta terminó. Sin verlo, nadie puede saber si una sincronización que
+ *   tarda está avanzando o repitiéndose.
+ * - **Y si trae datos de terceros**, con el aviso del propio servidor: una
+ *   agenda personal tiene al médico y a la familia.
+ * - **Qué entra de verdad** (CRM-06.01.03.14): la política de la empresa y la
+ *   preferencia de cada persona, juntas. Lo marcado como privado no entra
+ *   nunca, y se dice.
+ * - **Quién ha conectado y con qué alcances** (CRM-06.01.03.02): el
+ *   consentimiento es por usuario y él lo revoca. Una lista de alcances que no
+ *   se puede mirar es una lista que nadie revisa.
+ */
+export function QueSabeHacerCadaSuite() {
+  const { t } = useTranslation();
+  const [perfiles, setPerfiles] = useState<PerfilSuite[] | null>(null);
+  const [elegido, setElegido] = useState("");
+  const [capacidades, setCapacidades] = useState<CapacidadesDelPerfil | null>(
+    null,
+  );
+  const [reglas, setReglas] = useState<ReglasDeEntrada | null>(null);
+  const [consentimientos, setConsentimientos] = useState<Consentimiento[]>([]);
+  const [puedeYa, setPuedeYa] = useState<Record<string, PuedeSincronizar>>({});
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  async function sePuedeYa(c: Consentimiento) {
+    try {
+      const r = await llamar<PuedeSincronizar>(
+        "/api/v1/suites/antes-de-sincronizar",
+        {
+          metodo: "POST",
+          cuerpo: { usuario_id: c.usuario_id, perfil: c.perfil, recurso: c.recurso },
+        },
+      );
+      setPuedeYa((antes) => ({ ...antes, [c.id]: r.datos }));
+    } catch (e: unknown) {
+      // **El «no» llega como 403, no como un 200 diciendo que no.** Medido al
+      // escribir esto: sin consentimiento vivo para ese recurso y ese sentido,
+      // el servidor contesta `suite.sin_consentimiento` con el porqué en
+      // palabras —«nadie ha autorizado leer correo de esta persona»—. Eso es
+      // exactamente lo que hay que enseñar: tratarlo como un error de la
+      // pantalla lo deja en blanco y esconde la única frase que dice qué
+      // hacer.
+      const porque =
+        e instanceof ErrorApi ? e.explicacion || e.titulo : t("suite.noSeHaPodido");
+      setPuedeYa((antes) => ({
+        ...antes,
+        [c.id]: { se_puede: false, porque },
+      }));
+    }
+  }
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<{ items: PerfilSuite[] }>("/api/v1/suites/perfiles", {
+      signal: control.signal,
+    })
+      .then((r) => {
+        const lista = filas<PerfilSuite>(r.datos);
+        setPerfiles(lista);
+        // Con uno solo no se pregunta cuál: elegir de una lista de uno no es
+        // una decisión, es un paso para llegar a la que sí lo es.
+        if (lista[0]) setElegido(lista[0].nombre);
+      })
+      .catch(salvoCancelacion(setFallo));
+    // Cada uno con su propio fallo: que no se puedan leer las reglas no puede
+    // dejar sin ver los perfiles.
+    void llamar<ReglasDeEntrada>("/api/v1/suites/reglas", {
+      metodo: "POST",
+      cuerpo: {},
+      signal: control.signal,
+    })
+      .then((r) => setReglas(r.datos))
+      .catch(() => undefined);
+    void llamar<{ items: Consentimiento[] }>("/api/v1/suites/consentimiento", {
+      signal: control.signal,
+    })
+      .then((r) => setConsentimientos(filas<Consentimiento>(r.datos)))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!elegido) return undefined;
+    const control = new AbortController();
+    setCapacidades(null);
+    llamar<CapacidadesDelPerfil>(
+      `/api/v1/suites/perfiles/${encodeURIComponent(elegido)}/capacidades`,
+      { signal: control.signal },
+    )
+      .then((r) => setCapacidades(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [elegido]);
+
+  if (fallo) return <Fallo error={fallo} />;
+  if (!perfiles) return <Cargando />;
+
+  const vivos = consentimientos.filter((c) => !c.revocado_at);
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("suite.queSabeHacer")}</h2>
+      <p className="mb-3 text-3xs text-ink-faint">
+        {t("suite.queSabeHacerAyuda")}
+      </p>
+
+      {perfiles.length === 0 ? (
+        <Vacio
+          titulo={t("suite.sinPerfiles")}
+          detalle={t("suite.sinPerfilesPorque")}
+          compacto
+        />
+      ) : (
+        <>
+          {perfiles.length > 1 ? (
+            <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+              {t("suite.quePerfil")}
+              <select
+                className="input-base"
+                value={elegido}
+                onChange={(e) => setElegido(e.target.value)}
+              >
+                {perfiles.map((p) => (
+                  <option key={p.id} value={p.nombre}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="text-2xs text-ink-muted">
+              {t("suite.quePerfil")}:{" "}
+              <span className="text-ink">{perfiles[0]?.nombre}</span>
+              {perfiles[0]?.sistema ? (
+                <span className="ml-2 chip-dato">{perfiles[0].sistema}</span>
+              ) : null}
+            </p>
+          )}
+
+          {/* Recurso a recurso: en qué sentido va y cómo se reanuda. Un
+              «leer y escribir» sobre el calendario de alguien no es lo mismo
+              que un «leer», y es la línea que hay que poder revisar. */}
+          {capacidades ? (
+            // Con respaldo y no `capacidades.detalle.length`: un cuerpo sin
+            // `detalle` tumbaba la sección entera con «reading 'length'», y
+            // una sección caída se lee como que no hay nada declarado.
+            (capacidades.detalle ?? []).length === 0 ? (
+              <Vacio
+                titulo={t("suite.perfilSinRecursos")}
+                detalle={t("suite.perfilSinRecursosPorque")}
+                compacto
+              />
+            ) : (
+              <ul className="mt-3 divide-y divide-ink-dim/30">
+                {(capacidades.detalle ?? []).map((r) => (
+                  <li key={r.recurso} className="py-2">
+                    <div className="flex flex-wrap items-baseline gap-x-3">
+                      <span className="text-sm text-ink">{r.recurso}</span>
+                      {r.sentidos.map((s) => (
+                        <span key={s} className="chip-dato">
+                          {s}
+                        </span>
+                      ))}
+                      {r.incremento ? (
+                        <span className="font-mono text-3xs text-ink-faint">
+                          {r.incremento}
+                        </span>
+                      ) : null}
+                    </div>
+                    {/* El aviso lo escribe el servidor, no esta pantalla: si
+                        mañana cambia lo que trae, cambia aquí sin tocar nada. */}
+                    {r.trae_dato_de_terceros && r.aviso ? (
+                      <p className="mt-1 text-3xs text-warning">{r.aviso}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
+            <p className="mt-3 text-3xs text-ink-faint">
+              {t("suite.leyendoCapacidades")}
+            </p>
+          )}
+
+          {/* Qué entra de verdad: la política de la empresa y la preferencia de
+              cada persona, juntas. La segunda sólo puede estrechar la primera. */}
+          {reglas ? (
+            <div className="mt-4 rounded border border-ink-dim/30 p-3">
+              <p className="text-2xs text-ink">
+                {t("suite.criterioDeEntrada")}:{" "}
+                <span className="font-mono">{reglas.criterio}</span>
+              </p>
+              {reglas.nunca_entra.length > 0 ? (
+                <p className="mt-1 text-2xs text-ink-muted">
+                  {t("suite.nuncaEntra")}: {reglas.nunca_entra.join(", ")}
+                </p>
+              ) : null}
+              {reglas.recursos_pedidos_que_no_permite_el_tenant.length > 0 ? (
+                <p className="mt-1 text-2xs text-warning">
+                  {t("suite.pedidoYNoPermitido")}:{" "}
+                  {reglas.recursos_pedidos_que_no_permite_el_tenant.join(", ")}
+                </p>
+              ) : null}
+              <p className="mt-1 text-3xs text-ink-faint">{reglas.porque}</p>
+            </div>
+          ) : null}
+
+          {/* Quién ha conectado su cuenta y con qué alcances. Sin esto, el
+              alcance concedido sólo se podía mirar en la base de datos. */}
+          <p className="mt-4 text-2xs text-ink-muted">
+            {t("suite.consentimientos", { cuantos: vivos.length })}
+          </p>
+          {vivos.length > 0 ? (
+            <ul className="mt-1 divide-y divide-ink-dim/30">
+              {vivos.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5 text-2xs"
+                >
+                  <span className="text-ink">
+                    {c.recurso} · {c.sentido}
+                  </span>
+                  <span className="font-mono text-3xs text-ink-faint">
+                    {c.alcances.join(" ")}
+                  </span>
+                  {/* Sin refresco, la conexión se cae el día que caduque el
+                      permiso y nadie lo sabrá hasta que falte el correo. */}
+                  {c.tiene_refresco === false ? (
+                    <span className="text-3xs text-warning">
+                      {t("suite.sinRefresco")}
+                    </span>
+                  ) : null}
+                  {/* «¿Se puede sincronizar ya?» (CRM-06.01.03.15) va AQUÍ y no
+                      en un formulario aparte: el servidor exige el usuario, el
+                      perfil y el recurso, y los tres están en esta fila. Un
+                      formulario suelto obligaba a teclearlos —y los pedía en
+                      422 cuando no se acertaba—. */}
+                  <button
+                    type="button"
+                    className="rounded border border-ink-dim/60 px-2 py-0.5 text-3xs text-ink"
+                    onClick={() => void sePuedeYa(c)}
+                  >
+                    {t("suite.sePuedeSincronizar")}
+                  </button>
+                  {puedeYa[c.id] ? (
+                    <span
+                      className={
+                        puedeYa[c.id]?.se_puede
+                          ? "text-3xs text-success"
+                          : "text-3xs text-warning"
+                      }
+                    >
+                      {puedeYa[c.id]?.porque}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
 function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
   const { t } = useTranslation();
   const puedeOperar = usePuedeOperar();
@@ -879,6 +1226,227 @@ function Cuarentena({ alReintentar }: { alReintentar: () => void }) {
         </tr>
       ))}
     </Rejilla>
+  );
+}
+
+interface Resuelto {
+  usuario_id: string | null;
+  es_compartido?: boolean;
+  porque: string;
+}
+
+interface Huecos {
+  fiable: boolean;
+  huecos: { desde: string; hasta: string }[];
+  lo_que_se_lee: string;
+  porque: string;
+  aviso?: string;
+}
+
+interface Importacion {
+  filas: number;
+  entrarian: number;
+  sin_identificador: number;
+  vacias: number;
+  porque_hace_falta_identificador: string;
+  se_importa_ya: boolean;
+  que_hacer: string;
+}
+
+/**
+ * Las cuatro preguntas que se hacen con la suite ya conectada.
+ *
+ * Las contestaba el servidor desde el principio y no había dónde hacerlas.
+ * Cada una es la que alguien se hace **en un momento concreto**, y por eso
+ * están juntas y no repartidas por el producto:
+ *
+ * - **«¿A quién corresponde esta cuenta?»** (CRM-06.01.03.19) — antes de
+ *   atribuir una conversación. El servidor resuelve alias y buzones
+ *   compartidos, y **no adivina**: adivinar aquí le cuelga a alguien una
+ *   conversación que no es suya.
+ * - **«¿Cuándo está libre?»** (CRM-06.01.03.11) — antes de proponer una hora.
+ *   Se lee **si está ocupado, no de qué**: el asunto de una cita puede ser
+ *   «revisión médica» y para proponer una hora no hace ninguna falta.
+ * - **«¿Qué entraría de este fichero?»** (CRM-06.01.03.13) — antes de
+ *   importar. Formatos estándar, sin pasar por ninguna suite, y con el
+ *   recuento delante: deshacer una importación a mano no lo hace nadie.
+ * - **«¿Se puede sincronizar ya?»** (CRM-06.01.03.15) — antes de cada vuelta.
+ *   Mira el consentimiento vivo y la ventana que indique el proveedor, en vez
+ *   de reintentar contra un límite hasta que corta.
+ */
+function PreguntasSobreLaSuite() {
+  const { t } = useTranslation();
+  const [direccion, setDireccion] = useState("");
+  const [resuelto, setResuelto] = useState<Resuelto | null>(null);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [huecos, setHuecos] = useState<Huecos | null>(null);
+  const [formato, setFormato] = useState("vcard");
+  const [importacion, setImportacion] = useState<Importacion | null>(null);
+  const [fallo, setFallo] = useState<unknown>(null);
+
+  async function preguntar<T>(
+    ruta: string,
+    cuerpo: Record<string, unknown>,
+    guardar: (d: T) => void,
+  ) {
+    setFallo(null);
+    try {
+      const r = await llamar<T>(ruta, { metodo: "POST", cuerpo });
+      guardar(r.datos);
+    } catch (e: unknown) {
+      setFallo(e);
+    }
+  }
+
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="section-label mb-1">{t("suite.preguntas")}</h2>
+      <p className="mb-3 text-3xs text-ink-faint">{t("suite.preguntasAyuda")}</p>
+      {fallo ? <Fallo error={fallo} /> : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* A quién corresponde una cuenta del proveedor. */}
+        <div>
+          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+            {t("suite.deQuienEsEstaCuenta")}
+            <input
+              className="input-base"
+              value={direccion}
+              placeholder={t("suite.ejemploDireccion")}
+              onChange={(e) => setDireccion(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="btn-secondary mt-2"
+            disabled={direccion.trim() === ""}
+            onClick={() =>
+              void preguntar<Resuelto>(
+                "/api/v1/suites/cuenta/resolver",
+                { direccion_del_proveedor: direccion.trim() },
+                setResuelto,
+              )
+            }
+          >
+            {t("suite.resolver")}
+          </button>
+          {resuelto ? (
+            <p className="mt-2 text-3xs text-ink-faint">
+              {resuelto.usuario_id ? (
+                <span className="font-mono text-ink">{resuelto.usuario_id}</span>
+              ) : null}
+              {resuelto.es_compartido ? (
+                <span className="ml-2 chip-dato">{t("suite.compartido")}</span>
+              ) : null}
+              <span className="block">{resuelto.porque}</span>
+            </p>
+          ) : null}
+        </div>
+
+        {/* Huecos reales, sin leer de qué es cada cita. */}
+        <div>
+          <p className="text-2xs text-ink-muted">{t("suite.cuandoEstaLibre")}</p>
+          <div className="mt-1 flex gap-2">
+            <input
+              type="datetime-local"
+              className="input-base"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              aria-label={t("suite.desde")}
+            />
+            <input
+              type="datetime-local"
+              className="input-base"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              aria-label={t("suite.hasta")}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn-secondary mt-2"
+            disabled={!desde || !hasta}
+            onClick={() =>
+              void preguntar<Huecos>(
+                "/api/v1/suites/disponibilidad",
+                {
+                  desde: new Date(desde).toISOString(),
+                  hasta: new Date(hasta).toISOString(),
+                },
+                setHuecos,
+              )
+            }
+          >
+            {t("suite.verHuecos")}
+          </button>
+          {huecos ? (
+            <div className="mt-2 text-3xs text-ink-faint">
+              {/* Un tramo sin huecos es un DATO, no una lista vacía: el propio
+                  servidor lo dice con esas palabras. */}
+              {huecos.aviso ? <p className="text-warning">{huecos.aviso}</p> : null}
+              {huecos.huecos.map((h) => (
+                <p key={`${h.desde}-${h.hasta}`} className="text-ink">
+                  {h.desde} → {h.hasta}
+                </p>
+              ))}
+              <p className="mt-1">{huecos.lo_que_se_lee}. {huecos.porque}</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Qué entraría de un fichero estándar, antes de importarlo. */}
+        <div>
+          <label className="flex flex-col gap-1 text-2xs text-ink-muted">
+            {t("suite.queEntrariaDe")}
+            <select
+              className="input-base"
+              value={formato}
+              onChange={(e) => setFormato(e.target.value)}
+            >
+              {["vcard", "icalendar", "eml", "csv"].map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-secondary mt-2"
+            onClick={() =>
+              void preguntar<Importacion>(
+                "/api/v1/suites/importacion/comprobar",
+                { formato },
+                setImportacion,
+              )
+            }
+          >
+            {t("suite.comprobar")}
+          </button>
+          {importacion ? (
+            <div className="mt-2 text-3xs text-ink-faint">
+              <p className="text-ink">
+                {t("suite.entrarianDe", {
+                  entrarian: importacion.entrarian,
+                  filas: importacion.filas,
+                })}
+              </p>
+              {importacion.sin_identificador > 0 ? (
+                <p className="text-warning">
+                  {t("suite.sinIdentificador", {
+                    cuantas: importacion.sin_identificador,
+                  })}{" "}
+                  {importacion.porque_hace_falta_identificador}
+                </p>
+              ) : null}
+              <p className="mt-1">{importacion.que_hacer}</p>
+            </div>
+          ) : null}
+        </div>
+
+      </div>
+    </section>
   );
 }
 

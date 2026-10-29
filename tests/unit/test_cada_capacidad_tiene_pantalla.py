@@ -452,7 +452,20 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            Ahora sale el motivo y una marca en una palabra,
 #                            porque `actor_real_id` con valor ya lo dice pero
 #                            lo dice en un formato que nadie lee de un vistazo
-TOPE_SIN_PANTALLA = 336
+#   29-10-2026  326 de 778  que sabe hacer cada suite de productividad y con
+#                            que reglas entra el dato: el perfil es
+#                            configuracion y no codigo, en que sentido va
+#                            cada recurso, con que incremento se reanuda, si
+#                            trae datos de terceros --con el aviso del propio
+#                            servidor-- y quien ha conectado su cuenta con que
+#                            alcances. Mas las tres preguntas del momento
+#                            concreto --de quien es esta cuenta, cuando esta
+#                            libre, que entraria de este fichero-- y la que va
+#                            antes de cada vuelta, que se pregunta DESDE CADA
+#                            CONSENTIMIENTO: el servidor exige usuario, perfil
+#                            y recurso, y los tres estan en esa fila; un
+#                            formulario suelto los pedia a mano y contestaba 422
+TOPE_SIN_PANTALLA = 326
 
 
 def _es_pantalla(p: Path) -> bool:

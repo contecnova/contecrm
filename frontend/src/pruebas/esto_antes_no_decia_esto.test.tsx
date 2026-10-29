@@ -15,7 +15,7 @@
  *     hay nada».
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -66,7 +66,13 @@ describe("qué ha cambiado en este registro", () => {
     expect(pedidas).toEqual([]);
 
     await userEvent.click(screen.getByText("ficha.queHaCambiado"));
-    expect(pedidas).toEqual(["/api/v1/sales/rastro/campos/oportunidad/op-1"]);
+    // Con espera: el `onToggle` cambia el estado y la llamada la hace el
+    // efecto de la vuelta siguiente. Afirmar justo después del clic pasaba en
+    // una máquina descargada y fallaba en el preflight completo, con la
+    // máquina a 7 de carga. Una prueba que depende de la prisa no mide nada.
+    await waitFor(() =>
+      expect(pedidas).toEqual(["/api/v1/sales/rastro/campos/oportunidad/op-1"]),
+    );
   });
 
   it("el origen sale al lado del cambio", async () => {
@@ -103,6 +109,6 @@ describe("qué ha cambiado en este registro", () => {
     await screen.findByText("importe");
     await userEvent.click(resumen);
     await userEvent.click(resumen);
-    expect(pedidas).toHaveLength(1);
+    await waitFor(() => expect(pedidas).toHaveLength(1));
   });
 });

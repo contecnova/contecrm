@@ -650,6 +650,41 @@ const pantallas = {
       "Qué buzón lleva sin sincronizar y por qué, qué credenciales van a dejar " +
       "de funcionar y qué suscripciones hay que renovar. Las tres se preguntan " +
       "ANTES de que pase algo, que es cuando sirven.",
+    queSabeHacer: "Qué sabe hacer cada suite",
+    queSabeHacerAyuda:
+      "Un perfil de suite es configuración, no código: lo que distingue a dos proveedores es lo que se declara aquí. Qué recursos trae, en qué sentido va cada uno, cómo se reanuda y qué entra de verdad.",
+    quePerfil: "Qué suite",
+    sinPerfiles: "No hay ninguna suite declarada",
+    sinPerfilesPorque:
+      "Un perfil se declara con su dirección, sus alcances y qué recursos trae. Sin ninguno no entra correo ni calendario de nadie, y eso no se nota: simplemente no llega nada.",
+    perfilSinRecursos: "Este perfil no declara ningún recurso",
+    perfilSinRecursosPorque:
+      "Se puede guardar un perfil sin decir qué trae, y entonces se conecta y no sincroniza nada. No es un fallo de la conexión: es que no se le ha pedido nada.",
+    leyendoCapacidades: "Leyendo qué trae…",
+    criterioDeEntrada: "Entra",
+    nuncaEntra: "No entra nunca",
+    pedidoYNoPermitido: "Pedido por la persona y no permitido por la empresa",
+    consentimientos_one: "{{cuantos}} persona ha conectado su cuenta",
+    consentimientos_other: "{{cuantos}} personas han conectado su cuenta",
+    preguntas: "Preguntas sobre la suite conectada",
+    preguntasAyuda:
+      "Tres preguntas que se hacen en un momento concreto y que el servidor contestaba desde el principio sin que hubiera dónde hacerlas.",
+    deQuienEsEstaCuenta: "¿De quién es esta cuenta?",
+    ejemploDireccion: "nombre@empresa.com",
+    resolver: "Resolver",
+    compartido: "buzón compartido",
+    cuandoEstaLibre: "¿Cuándo está libre?",
+    desde: "Desde",
+    hasta: "Hasta",
+    verHuecos: "Ver huecos",
+    queEntrariaDe: "¿Qué entraría de un fichero?",
+    comprobar: "Comprobar",
+    entrarianDe: "Entrarían {{entrarian}} de {{filas}} filas",
+    sinIdentificador_one: "{{cuantas}} fila sin identificador.",
+    sinIdentificador_other: "{{cuantas}} filas sin identificador.",
+    sePuedeSincronizar: "¿Se puede ya?",
+    noSeHaPodido: "No se ha podido comprobar",
+    sinRefresco: "sin refresco: caducará y dejará de entrar",
     sinConexiones: "Ninguna conexión de suite configurada",
     sinConexionesPorque:
       "No es «todo al día»: es que nadie ha conectado su correo ni su calendario.",

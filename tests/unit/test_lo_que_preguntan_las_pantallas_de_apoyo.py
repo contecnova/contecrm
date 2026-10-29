@@ -172,6 +172,115 @@ def test_el_diagnostico_distingue_la_credencial_del_permiso(
     assert "credencial" in r.json()["que_pasa"].lower()
 
 
+def test_lo_que_el_perfil_declara_se_pide_por_la_ruta(
+    integracion: Any, db: Any, tenant_id: UUID
+) -> None:
+    """El perfil de suite es configuración, no código (CRM-06.01.03.01).
+
+    La pantalla enseña recurso a recurso **en qué sentido va** —leer o leer y
+    escribir sobre el calendario de alguien no es lo mismo—, **con qué
+    incremento se reanuda** (CRM-06.01.03.04) y **si trae datos de terceros**,
+    con el aviso que escribe el propio servidor. Pidiéndolo por la ruta: el día
+    que deje de mandar `incremento` o el aviso, la pantalla se queda sin la
+    parte que la hacía revisable y no da ningún error.
+    """
+    # Por la puerta, como lo hace la pantalla: si mañana el alta exige un campo
+    # más, esto se entera. Llamando a la función por dentro, no.
+    alta = integracion.post(
+        "/api/v1/suites/perfiles",
+        headers=_cabeceras(tenant_id),
+        json={
+            "nombre": "suite-de-prueba",
+            "sistema": "m365",
+            # El perfil va COMPLETO porque el alta lo exige, y hace bien: sin
+            # la correspondencia de campos «el dato llegaría y no se sabría
+            # dónde ponerlo», y sin `token_url` no se puede autorizar a nadie.
+            # Lo dijo el propio servidor al rechazar el primer intento.
+            "config": {
+                "clase": "suite_productividad",
+                "base_url": "https://ejemplo.test",
+                "token_url": "https://ejemplo.test/oauth2/token",
+                "alcances": {
+                    "base": "offline_access",
+                    "calendario.leer": "Calendars.Read",
+                    "calendario.escribir": "Calendars.ReadWrite",
+                },
+                "recursos": {
+                    "calendario": {
+                        "endpoint": "/me/events",
+                        "campos": {"asunto": "subject", "inicio": "start.dateTime"},
+                        "sentidos": ["leer", "escribir"],
+                        "incremento": "token_delta",
+                    },
+                },
+            },
+        },
+    )
+    assert alta.status_code in (200, 201), alta.text
+
+    r = integracion.get(
+        "/api/v1/suites/perfiles/suite-de-prueba/capacidades",
+        headers=_cabeceras(tenant_id),
+    )
+    assert r.status_code == 200, r.text
+    datos = r.json()
+    cal = next(d for d in datos["detalle"] if d["recurso"] == "calendario")
+    assert cal["sentidos"] == ["leer", "escribir"]
+    # El incremento: sin verlo nadie sabe si una sincronización que tarda está
+    # avanzando o repitiéndose.
+    assert cal["incremento"] == "token_delta"
+    # Y el aviso de datos de terceros, con sus palabras: una agenda personal
+    # tiene al médico y a la familia.
+    assert cal["trae_dato_de_terceros"] is True
+    assert cal["aviso"]
+
+
+def test_que_entra_de_verdad_se_pide_por_la_ruta(integracion: Any, tenant_id: UUID) -> None:
+    """Qué entra junta la política de la empresa y la preferencia de la persona
+    (CRM-06.01.03.14), y lo marcado como privado no entra nunca.
+
+    Lo que la pantalla enseña es `criterio`, `nunca_entra` y el porqué. Si el
+    servidor dejara de mandar `nunca_entra`, el recuadro diría qué entra y
+    callaría qué no, que es justo la mitad que alguien revisa.
+    """
+    r = integracion.post("/api/v1/suites/reglas", headers=_cabeceras(tenant_id), json={})
+    assert r.status_code == 200, r.text
+    datos = r.json()
+    assert datos["criterio"]
+    assert "marcado_privado" in datos["nunca_entra"]
+    assert datos["porque"]
+
+
+def test_antes_de_sincronizar_se_pide_por_la_ruta(
+    integracion: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La comprobación que va antes de cada vuelta (CRM-06.01.03.15).
+
+    Dos cosas que se midieron al escribir la pantalla, y las dos cambiaron cómo
+    quedó:
+
+    **El servidor exige usuario, perfil y recurso.** La pantalla la pregunta
+    desde cada consentimiento, porque los tres están en esa fila; un formulario
+    suelto los pedía a mano y contestaba 422.
+
+    **Y sin consentimiento contesta 403, no un 200 diciendo que no.** La
+    pantalla tiene que enseñar ese mensaje —«nadie ha autorizado leer correo de
+    esta persona»— en vez de quedarse en blanco: es exactamente lo que hay que
+    hacer, y un recuadro vacío lo esconde.
+    """
+    r = integracion.post(
+        "/api/v1/suites/antes-de-sincronizar",
+        headers=_cabeceras(tenant_id),
+        json={"usuario_id": str(uuid4()), "perfil": "no-declarado", "recurso": "correo"},
+    )
+    assert r.status_code == 403, r.text
+    datos = r.json()
+    assert datos["error_code"] == "suite.sin_consentimiento"
+    # Con el porqué en palabras: «no se puede» a secas manda a revisar la red
+    # cuando lo que falta es que alguien autorice.
+    assert "autoriz" in datos["detail"]
+
+
 def test_el_plan_de_baja_trae_las_dos_mitades(integracion: Any, tenant_id: UUID) -> None:
     """Enseñar sólo lo que desaparece asusta y nadie desconecta; enseñar sólo
     lo que se queda engaña. Y cada línea con su porqué, que es lo que evita que

@@ -909,6 +909,44 @@ electrónica desde cualquier registro.
 
 ---
 
+### Qué sabe hacer la suite que tienes conectada (sección 6.1)
+
+En **Operación → Suite** está, además de si el correo y el calendario de cada
+uno están entrando, **qué hace exactamente** la suite que tienes conectada. Era
+lo que no se podía mirar: la conexión funcionaba o no funcionaba, y por qué era
+cosa de abrir la base de datos.
+
+Lo que ves ahora, y para qué sirve cada cosa:
+
+- **Qué recursos trae y en qué sentido.** «Leer» el calendario de alguien y
+  «leer y escribir» no son lo mismo, y es la línea que conviene revisar de vez
+  en cuando. Un perfil de suite es configuración, no un programa: lo único que
+  distingue a dos proveedores es lo que ahí se declara.
+- **Cómo se reanuda.** Una sincronización que tarda puede estar avanzando o
+  repitiéndose, y sin verlo no hay forma de saber cuál.
+- **Si trae datos de terceros**, con el aviso del propio sistema: una agenda
+  personal tiene al médico y a la familia, y subirla es tratar datos de gente
+  que no es ni cliente ni usuaria.
+- **Qué entra de verdad y qué no entra nunca.** La política de la empresa y la
+  preferencia de cada persona, juntas — la segunda sólo puede estrechar la
+  primera, nunca abrirla. Lo marcado como privado no entra en ningún caso.
+- **Quién ha conectado su cuenta y con qué permisos.** Si alguno está sin
+  refresco se avisa: ése dejará de entrar el día que caduque, y nadie lo sabrá
+  hasta que falte el correo de la semana pasada.
+- Y al lado de cada uno, **«¿se puede ya?»**: la comprobación que va antes de
+  cada vuelta. Si falta una autorización lo dice con esas palabras, en vez de
+  reintentar contra el límite del proveedor hasta que corta.
+
+Debajo, tres preguntas que se hacen en un momento concreto:
+
+| Pregunta | Cuándo se hace |
+|---|---|
+| **¿De quién es esta cuenta?** | Antes de atribuir una conversación. Resuelve alias y buzones compartidos, y **no adivina**: adivinar le cuelga a alguien algo que no es suyo |
+| **¿Cuándo está libre?** | Antes de proponer una hora. Se lee **si está ocupado, no de qué**: el asunto puede ser «revisión médica» y para proponer una hora no hace falta |
+| **¿Qué entraría de este fichero?** | Antes de importar. Formatos estándar, con el recuento delante: deshacer una importación a mano no lo hace nadie |
+
+---
+
 ## Trabajar en equipo y desde el móvil (sección 6.2)
 
 - **Comentarios y menciones** en los registros, con aviso a quien mencionas.
