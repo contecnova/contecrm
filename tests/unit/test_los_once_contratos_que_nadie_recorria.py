@@ -784,3 +784,166 @@ def test_mis_passkeys_se_listan_aunque_no_haya_ninguna(
     r = identity.get("/api/v1/auth/passkeys", headers=cabeceras)
     assert r.status_code == 200, r.text
     assert isinstance(r.json(), list), f"la pantalla las cuenta: llega {type(r.json())}"
+
+
+# ── Y cuatro más, del modelo de datos: ObjetoDelModelo.tsx ───────────────
+#
+# 29-10-2026. La pantalla del objeto del modelo pasó a leer cuatro rutas que
+# ninguna prueba de servidor recorría: el diseño vigente, la semántica con su
+# cobertura, los candidatos a columna y —de otro servicio— el modelo que
+# explota analytics. Es el mismo trinquete que cazó las once de arriba, y lo
+# cazó el día que se escribieron.
+#
+# Van aquí y no en un fichero aparte: es exactamente lo que este fichero hace,
+# y el andamio —cliente por servicio, cabeceras firmadas, buzón apagado— ya
+# está escrito.
+
+
+@pytest.fixture
+def objeto_con_campos(db: Any, tenant_id: UUID) -> Any:
+    """Un objeto del tenant con un campo descrito y otro sin describir.
+
+    Los dos hacen falta: con todos descritos la cobertura sale al 100 % y la
+    prueba no distinguiría un cálculo correcto de una constante.
+    """
+    from services.metadata.modelos import CampoDefinido, Layout, ObjetoDefinido
+
+    objeto = ObjetoDefinido(
+        tenant_id=tenant_id,
+        nombre="encargo_propio",
+        etiqueta="Encargo propio",
+        etiqueta_plural="Encargos propios",
+        origen="tenant",
+        estados={"borrador": ["enviado"], "enviado": []},
+    )
+    db.add(objeto)
+    db.flush()
+    db.add(
+        CampoDefinido(
+            tenant_id=tenant_id,
+            objeto_id=objeto.id,
+            nombre="segmento",
+            etiqueta="Segmento",
+            tipo="texto",
+            descripcion_semantica="En qué tramo de facturación entra el cliente",
+            explotable=True,
+            sensibilidad="interno",
+        )
+    )
+    db.add(
+        CampoDefinido(
+            tenant_id=tenant_id,
+            objeto_id=objeto.id,
+            nombre="cmp_2",
+            etiqueta="cmp_2",
+            tipo="texto",
+            sensibilidad="interno",
+        )
+    )
+    db.add(
+        Layout(
+            tenant_id=tenant_id,
+            objeto_id=objeto.id,
+            nombre="Ficha comercial",
+            rol="comercial",
+            secciones=[{"titulo": "Datos", "campos": ["segmento"]}],
+            es_defecto=True,
+        )
+    )
+    db.flush()
+    return objeto
+
+
+def test_el_diseno_vigente_dice_cual_es_y_por_que_ese(
+    metadata: Any, cabeceras: dict[str, str], objeto_con_campos: Any
+) -> None:
+    """El «por qué» no es adorno: es la respuesta a «¿por qué veo otra pantalla?».
+
+    La pantalla lee `hay_diseno`, `nombre`, `secciones` y `porque`. Si el
+    servidor dejara de mandar `porque`, el panel saldría con su rótulo y sin la
+    única frase que contesta la pregunta por la que existe.
+    """
+    r = metadata.get("/api/v1/metadata/objetos/encargo_propio/diseno", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "objeto", "hay_diseno", "nombre", "secciones", "porque")
+    assert cuerpo["hay_diseno"] is True
+    # Lista, no diccionario: la pantalla le pide `.length`.
+    assert isinstance(cuerpo["secciones"], list), cuerpo["secciones"]
+    assert cuerpo["porque"].strip()
+
+
+def test_la_semantica_llega_con_su_cobertura_y_los_que_faltan(
+    metadata: Any, cabeceras: dict[str, str], objeto_con_campos: Any
+) -> None:
+    """Con el número y con los nombres.
+
+    Un porcentaje dice cuánto queda; `sin_describir` dice qué hacer. Y el
+    porcentaje se comprueba contra un objeto con UN campo descrito de DOS: con
+    todos descritos, un 100 % constante pasaría igual.
+    """
+    r = metadata.get("/api/v1/metadata/objetos/encargo_propio/semantica", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "campos", "fuera_por_sensibles", "fuera_por_internos", "sin_describir")
+    _campos(cuerpo["cobertura"], "medible", "campos", "explotables", "pct", "que_significa")
+    assert cuerpo["cobertura"]["medible"] is True
+    assert cuerpo["cobertura"]["campos"] == 2, cuerpo["cobertura"]
+    assert cuerpo["cobertura"]["pct"] == 50.0, cuerpo["cobertura"]
+    assert "cmp_2" in cuerpo["sin_describir"], cuerpo["sin_describir"]
+
+
+def test_los_candidatos_a_columna_llegan_con_su_medida(
+    metadata: Any, cabeceras: dict[str, str], db: Any, tenant_id: UUID, objeto_con_campos: Any
+) -> None:
+    """La excepción se decide con un número, así que el número tiene que llegar.
+
+    Sin `escrituras` al lado de cada candidato, la pantalla enseñaría una lista
+    de campos sin el dato que justifica materializarlos — y materializar es lo
+    que bloquea a todos los tenants que comparten la tabla.
+    """
+    from crmcore.metamodelo import UsoCampo
+
+    db.add(
+        UsoCampo(
+            tenant_id=tenant_id,
+            objeto="encargo_propio",
+            campo="segmento",
+            escrituras=10_000,
+            materializado=False,
+        )
+    )
+    db.flush()
+
+    r = metadata.get(
+        "/api/v1/metadata/objetos/encargo_propio/candidatos-columna", headers=cabeceras
+    )
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "objeto", "umbral", "candidatos", "por_que_no_siempre")
+    assert cuerpo["candidatos"], "con 10.000 escrituras tiene que salir candidato"
+    _campos(cuerpo["candidatos"][0], "campo", "escrituras")
+    assert cuerpo["candidatos"][0]["escrituras"] == 10_000
+
+
+def test_el_modelo_semantico_de_informes_lo_contesta_analytics(
+    analytics: Any, cabeceras: dict[str, str], objeto_con_campos: Any
+) -> None:
+    """Y lo contesta ÉL, no metadata.
+
+    Es otro servicio el que decide qué se puede explotar en un informe.
+    Preguntárselo al de metadatos sería contestar por él, y el día que cambie
+    el criterio la pantalla seguiría diciendo lo de antes.
+
+    La pantalla lee `objetos[].nombre`, `objetos[].campos` y
+    `excluidos_por_sensibilidad`: sin el último, lo que se deja fuera se calla
+    y alguien busca un campo que existe sin encontrarlo.
+    """
+    r = analytics.get("/api/v1/analitica/modelo-semantico?objeto=encargo_propio", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "objetos", "excluidos_por_sensibilidad", "motivo_exclusion")
+    assert isinstance(cuerpo["objetos"], list), cuerpo["objetos"]
+    if cuerpo["objetos"]:
+        _campos(cuerpo["objetos"][0], "nombre", "campos")
+        assert isinstance(cuerpo["objetos"][0]["campos"], list)

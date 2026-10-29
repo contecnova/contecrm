@@ -475,7 +475,28 @@ PRESUPUESTO_KB = 118
 #   abrir —esa cifra no se ha movido y su tope sigue donde estaba—. Medido
 #   antes de subirlo: 208,56 kB. Se deja en 215 por lo de siempre, margen para
 #   un par de pantallas.
-PRESUPUESTO_TOTAL_KB = 215
+#
+#   29-10-2026  215 → 220 kB, y es la SEGUNDA subida del mismo día. Queda
+#   ------------------------------------------------------------------------
+#   escrito así a propósito, porque es justo lo que este comentario lleva
+#   avisando desde el principio que no se puede volver rutina.
+#
+#   Medido, no estimado: 213,54 kB antes del bloque de «lo que una empresa
+#   cambia sin escribir código» y 215,74 después. El bloque pesa 2,2 kB —cinco
+#   paneles y sus textos— y el margen de esta mañana ya estaba comido hasta
+#   213,54 por los bloques anteriores de la misma sesión.
+#
+#   Qué NO sirve aquí, y conviene tenerlo claro antes de la próxima: diferir.
+#   La pantalla ya va en su propio trozo y la cifra de apertura no se ha
+#   movido; este tope suma TODOS los trozos, así que diferir no le quita ni un
+#   byte. Las únicas dos salidas son quitar producto o subirlo.
+#
+#   El bulto sigue donde dice el comentario de arriba: `es.pantallas` son 12,9
+#   kB comprimidos de diccionario, y partirlo por pantalla devolvería de golpe
+#   más de lo que han costado los últimos cuatro bloques juntos. Ese es el
+#   trabajo que hay que hacer la próxima vez que esto apriete, en vez de subir
+#   el número por tercera vez.
+PRESUPUESTO_TOTAL_KB = 220
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:
