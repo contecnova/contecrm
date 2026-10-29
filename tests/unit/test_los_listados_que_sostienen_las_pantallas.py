@@ -305,3 +305,72 @@ def test_la_ficha_de_un_segmento_devuelve_su_definicion(
     for campo in ("id", "clave", "nombre", "objeto", "dinamico", "definicion", "excluye"):
         assert campo in datos, f"la ficha no manda «{campo}»"
     assert datos["definicion"]["atributo"] == "contacto.estado"
+
+
+# ── Los canales de entrada, por su ruta (CRM-04.02.01.01) ─────────────────
+
+
+@pytest.fixture
+def servicio_http(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.service.main")
+
+
+def test_el_listado_de_canales_trae_el_motivo_de_cada_descarte(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """El total no se puede accionar; el desglose sí.
+
+    Se entra por la ruta porque es por donde entra la pantalla: comprobar el
+    contador en la tabla no diría nada de lo que llega al front, que es donde
+    el dato se usa para decidir si la trampa se está comiendo clientes.
+    """
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import omnicanal as omni
+
+    _, secreto = omni.crear_canal(
+        db,
+        tenant_id=tenant_id,
+        clave="soporte-http",
+        nombre="Soporte por correo",
+        tipo="correo",
+        mapeo={"asunto": "subject", "cuerpo": "body"},
+        fijos={"linea": "soporte"},
+        campo_trampa="web_site",
+        direccion_propia="soporte@nosotros.com",
+    )
+    db.flush()
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    omni.recibir(
+        uow,
+        canal_clave="soporte-http",
+        secreto=secreto,
+        entrada={"subject": "spam", "body": "…", "remitente": "bot@x.test", "web_site": "x"},
+    )
+    db.flush()
+
+    respuesta = servicio_http.get("/api/v1/canales-servicio?limite=50", headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    filas = respuesta.json()["items"]
+    suyo = next(f for f in filas if f["clave"] == "soporte-http")
+    # Lo que la pantalla lee de cada canal.
+    for campo in (
+        "id",
+        "clave",
+        "nombre",
+        "tipo",
+        "activo",
+        "recibidos",
+        "descartados",
+        "descartados_por",
+        "mapeo",
+        "obligatorios",
+        "campo_trampa",
+        "max_por_hora",
+        "direccion_propia",
+    ):
+        assert campo in suyo, f"el listado no manda «{campo}»"
+    assert suyo["descartados"] == 1
+    assert suyo["descartados_por"] == {"trampa": 1}
+    # Y el secreto NO sale: está hasheado y no es un campo de pantalla.
+    assert "secreto_hash" not in suyo or suyo["secreto_hash"] != secreto
