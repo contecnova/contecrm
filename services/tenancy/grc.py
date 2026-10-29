@@ -831,7 +831,19 @@ def panel(db: Session, tenant_id: UUID) -> dict[str, Any]:
         "riesgos_abiertos": len(riesgos),
         "controles_activos": len(controles),
         "controles_evaluados": len(ultimas),
-        "cobertura_pct": datos_cobertura.get("cobertura_pct"),
+        # La clave de `cobertura()` es `pct`. Aquí se pedía `cobertura_pct`,
+        # que esa función no devuelve, así que la cifra de cabecera del panel
+        # salía SIEMPRE vacía — también cuando el propio panel decía
+        # `medible: true`, porque `medible` mira los controles y las
+        # evaluaciones y no esto. El panel afirmaba que se podía medir y el
+        # número no estaba.
+        #
+        # Y **sólo cuando se puede medir**: un 0 % y un «no se ha podido medir»
+        # se leen igual y significan lo contrario, así que sin controles ni
+        # evaluaciones se dice que no hay número en vez de inventar un cero. El
+        # nombre equivocado acertaba por casualidad justo en ese caso, que es
+        # lo que lo mantuvo escondido.
+        "cobertura_pct": datos_cobertura.get("pct") if hay_con_que_medir else None,
         "lo_que_urge": sorted(urgente, key=lambda f: f["orden"]),
         "detalle": datos_vencidos,
         # La diferencia entre «se cumple» y «no hay nada con lo que comprobarlo»,

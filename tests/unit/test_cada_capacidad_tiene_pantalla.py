@@ -709,7 +709,26 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #
 #   Lo simulado va aparte de lo hecho: una simulada NO ha movido nada, y en una
 #   lista corrida ocupa una linea igual que una ejecutada.
-TOPE_SIN_PANTALLA = 246
+#   30-10-2026  240 de 778  el panel de GRC: evaluaciones con evidencia y
+#   ------------------------------------------------------------------------
+#   plan, los controles anclados al catalogo por identificador, el informe de
+#   cobertura, el mapeo a marcos en los dos sentidos y la evidencia
+#   automatica.
+#
+#   El modulo generico ya listaba riesgos y controles, y un GRC que solo lista
+#   es un archivo. Lo que lo hace herramienta son tres cosas que devuelven
+#   OBJETOS y que la ficha generica no sabe pintar: el panel con su `medible`
+#   —un panel vacio en VERDE es el que mas tranquiliza y el que peor informa,
+#   porque «cumple» y «no hay con que comprobarlo» se pintan igual—, el
+#   informe de cobertura contra el catalogo entero, y el mapeo a marcos.
+#
+#   Y un fallo real encontrado al escribirla: `panel()` pedia `cobertura_pct`
+#   a `cobertura()`, que devuelve esa cifra con el nombre `pct`. La cifra de
+#   cabecera del panel salia SIEMPRE vacia, tambien cuando el propio panel
+#   decia `medible: true`. Lo mantuvo escondido que el nombre equivocado
+#   acertaba por casualidad en el unico caso con prueba —el panel vacio, donde
+#   la respuesta correcta ES vacia—.
+TOPE_SIN_PANTALLA = 240
 
 
 def _es_pantalla(p: Path) -> bool:

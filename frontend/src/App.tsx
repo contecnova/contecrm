@@ -152,6 +152,7 @@ const Territorios = pantalla(
   (m) => m.Territorios,
 );
 const Segmento = pantalla(() => import("@/paginas/Segmento"), (m) => m.Segmento);
+const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno);
 const CicloDeVidaDelCliente = pantalla(
   () => import("@/paginas/CicloDeVidaDelCliente"),
   (m) => m.CicloDeVidaDelCliente,
@@ -400,6 +401,11 @@ export function App() {
               había ruta que los listara: sólo volvía a ellos quien se hubiera
               guardado el id. Lo mismo con las migraciones de modalidad. */}
           <Route path="/ciclo-de-vida" element={<CicloDeVidaDelCliente />} />
+          {/* El GRC: el módulo genérico lista riesgos y controles, y un GRC
+              que sólo lista es un archivo. Lo que lo hace herramienta son el
+              panel con su «medible», el informe de cobertura contra el
+              catálogo y el mapeo a marcos — los tres devuelven OBJETOS. */}
+          <Route path="/cumplimiento" element={<Gobierno />} />
           {/* La puntuación de un lead devuelve un objeto con sus dos ejes por
               separado: pintarla como campos sueltos los sumaría visualmente,
               que es justo lo que el modelo evita. */}

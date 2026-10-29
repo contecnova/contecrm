@@ -138,6 +138,34 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  grc: {
+    titulo: "Panel de cumplimiento",
+    entradilla:
+      "El módulo de gobierno lista los riesgos y los controles. Esto contesta otra cosa: " +
+      "si lo que hay se puede medir, qué no cuadra hoy y qué del producto no vigila nadie.",
+    cobertura: "Cobertura",
+    sinMedir: "sin medir",
+    pct: "{{pct}} %",
+    riesgosAbiertos: "Riesgos abiertos",
+    controlesActivos: "Controles activos",
+    controlesEvaluados: "Evaluados",
+    urgente: "Lo que no cuadra hoy",
+    nadaUrgente: "Nada pendiente: todo lo declarado está evaluado y en plazo",
+    nadaQueMirar: "No hay nada que mirar todavía, que no es lo mismo que estar bien",
+    informeCobertura: "Qué capacidades del producto tienen control",
+    sinCobertura: "No se puede medir la cobertura todavía",
+    alcance:
+      "{{alcance}}: {{capacidades}} capacidades, {{con}} con control y {{sin}} sin ninguno",
+    huerfanos:
+      "{{cuantos}} control(es) apuntan a una capacidad que no existe en el catálogo. Constan como cobertura y no cubren nada: es peor que no tener control, porque nadie los echa de menos.",
+    deTotal: "{{con}}/{{total}} · {{pct}} %",
+    marcos: "De la norma al producto",
+    porqueMarcos:
+      "Un auditor pregunta por ISO 27001 A.9 y esto contesta qué controles responden y qué capacidades los sostienen. El camino de vuelta —de una capacidad a sus obligaciones— sale del mismo dato.",
+    sinMarcos: "Ningún control declara a qué marco responde",
+    control: "{{codigo}} ({{capacidades}} capacidades · {{resultado}})",
+    sinEvaluar: "sin evaluar",
+  },
   ciclovida: {
     titulo: "Ciclo de vida del cliente",
     entradilla:

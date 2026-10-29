@@ -2871,6 +2871,44 @@ queda entre las hechas con su motivo, porque saber qué se intentó es parte de
 saber qué hay. Y una migración «verificada» con diferencias se señala: verificar
 no es aprobar, es medir.
 
+### 4.6.29 Un GRC que sólo lista es un archivo
+
+El módulo genérico ya listaba riesgos y controles. Lo que convierte el GRC en
+herramienta son tres cosas que **devuelven objetos** —y que por eso la ficha
+genérica no sabe pintar, porque sólo descubre paneles que devuelven listas—:
+
+**El panel, con su `medible`.** Un panel vacío en verde es el que más
+tranquiliza y el que peor informa: «cumple» y «no hay nada con lo que
+comprobarlo» se pintan igual y significan lo contrario. Y lo urgente sale con
+su **porqué**, no con un color: «control evaluado como no efectivo» no mueve a
+nadie; «está declarado y no protege: peor que no tenerlo, porque consta» sí.
+
+**El informe de cobertura contra el catálogo entero**, por identificador. De
+ahí sale además lo que nadie busca: los controles que apuntan a una capacidad
+**que no existe**. Constan como cobertura y no cubren nada, que es la peor de
+las dos formas de no estar cubierto, porque nadie los echa de menos.
+
+**El mapeo a marcos, recorrible en los dos sentidos.** Un auditor pregunta por
+ISO 27001 A.9 y hay que contestar qué controles responden y qué capacidades los
+sostienen; quien va a tocar el código pregunta lo contrario, qué obligaciones
+responde esta capacidad. Las dos salen del mismo dato.
+
+#### El número de cabecera que nunca estuvo
+
+Encontrado al escribir la pantalla: `panel()` pedía `cobertura_pct` a
+`cobertura()`, y esa función devuelve la cifra con el nombre **`pct`**. La
+cobertura del panel salía `None` **siempre** — también cuando el propio panel
+decía `medible: true`, porque `medible` mira los controles y las evaluaciones y
+no esto. El panel afirmaba que se podía medir y el número no estaba.
+
+Lo que lo mantuvo escondido es fino y conviene recordarlo: el nombre equivocado
+**acertaba por casualidad en el único caso que tenía prueba**. La prueba que
+había comprueba el panel vacío, y ahí la respuesta correcta es justamente
+`None` —«un 0 % y un *no se ha podido medir* se leen igual y significan lo
+contrario»—. Así que el arreglo no es renombrar la clave: es dar la cifra
+**sólo cuando hay con qué medir**, que es lo que la prueba vieja pedía y lo que
+la nueva fija con datos dentro.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

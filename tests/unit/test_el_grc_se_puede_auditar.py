@@ -485,3 +485,40 @@ def test_quien_puede_hacer_que_sale_de_las_rutas_montadas_crm_07_03_02_09(
     )
     texto = str(cuerpo)
     assert "user:read" in texto, "la matriz no ve los permisos que exigen las rutas"
+
+
+def test_el_panel_con_datos_SI_da_la_cobertura_crm_07_03_02_10(
+    cliente: Any, cabeceras: dict[str, str], control: str
+) -> None:
+    """La cifra de cabecera del panel salía siempre vacía.
+
+    `panel()` pedía `cobertura_pct` a `cobertura()`, que devuelve esa clave con
+    el nombre `pct`. Resultado: `None` SIEMPRE, también con el propio panel
+    diciendo `medible: true` —porque `medible` mira los controles y las
+    evaluaciones, no esto—. El panel afirmaba que se podía medir y el número no
+    estaba.
+
+    Lo que lo mantuvo escondido es que el nombre equivocado acertaba por
+    casualidad en el único caso que había prueba: el panel vacío, donde la
+    respuesta correcta ES `None`. Por eso esta prueba va con datos.
+    """
+    evaluado = cliente.post(
+        f"/api/v1/grc/controles/{control}/evaluaciones",
+        headers=cabeceras,
+        json={"resultado": "efectivo", "evidencia": {"nota": "revisado en el volcado"}},
+    )
+    assert evaluado.status_code in (200, 201), evaluado.text
+
+    r = cliente.get("/api/v1/grc/panel", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["medible"] is True, cuerpo
+    assert cuerpo["cobertura_pct"] is not None, (
+        "el panel dice que se puede medir y no da el número: es justo el fallo "
+        "que esta prueba fija"
+    )
+    # Y es el mismo número que da el informe de cobertura: dos cifras distintas
+    # para lo mismo en dos sitios es peor que una sola.
+    informe = cliente.get("/api/v1/grc/cobertura?solo_hechas=true", headers=cabeceras)
+    assert informe.status_code == 200, informe.text
+    assert cuerpo["cobertura_pct"] == informe.json()["pct"]

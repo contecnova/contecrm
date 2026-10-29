@@ -2136,6 +2136,25 @@ Una migración que pone «verificada» con diferencias no está bien: está
 destino, y cerrar la ventana con diferencias sin explicar es dar por bueno algo
 que no se ha comprobado.
 
+### El panel de gobierno, y cuándo no creértelo
+
+En **Gobierno y cumplimiento** hay cuatro cifras arriba. La importante es la
+primera, la cobertura, y lo primero que hay que mirar es **si hay número**.
+
+Si pone «sin medir», no significa que esté mal: significa que todavía no hay
+controles declarados ni evaluaciones con las que comprobar nada. Un panel vacío
+en verde es el que más tranquiliza y el que peor informa, así que aquí no sale
+verde: sale diciendo por qué no se puede medir.
+
+Debajo, **lo que no cuadra hoy**, y cada línea trae su porqué. No es adorno: un
+control evaluado como «no efectivo» está declarado y no protege, que es peor
+que no tenerlo, porque consta como que alguien se ocupa.
+
+Y en el informe de cobertura, si aparece el aviso de **controles que apuntan a
+una capacidad que no existe**, míralo antes que nada. Ese control suma en la
+cobertura y no vigila nada: es la única forma de estar descubierto sin que lo
+parezca.
+
 ---
 
 ## Qué hacer cuando algo no sale

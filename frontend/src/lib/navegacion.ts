@@ -231,6 +231,12 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "configuracion", a: "/cobertura", clave: "nav.cobertura", icono: "fact_check" },
   // En Configuración y con permiso de tenant: quien clona, fusiona o migra un
   // cliente no es quien vende ni quien atiende.
+  // Al lado del módulo «Gobierno y cumplimiento» y no en vez de él: aquel
+  // lista los riesgos y los controles —los registros— y éste contesta si eso
+  // que hay se puede medir y qué no cuadra hoy. Sin `recursos`, porque no
+  // enseña ninguna de sus dos colecciones: decir que sí lo contaría como
+  // enseñado y mandaría aquí a quien busca un riesgo concreto.
+  { area: "configuracion", a: "/cumplimiento", clave: "nav.cumplimiento", icono: "verified_user", permiso: "tenant:read" },
   { area: "configuracion", a: "/ciclo-de-vida", clave: "nav.cicloDeVida", icono: "swap_horiz", permiso: "tenant:read" },
   { area: "configuracion", a: "/estado", clave: "nav.estado", icono: "monitor_heart" },
   { area: "configuracion", a: "/ayuda", clave: "nav.ayuda", icono: "help" },
