@@ -110,8 +110,7 @@ const pantallas = {
     titulo: "Nexus",
     entradilla:
       "Escribe lo que necesitas y el agente propone QUÉ haría para conseguirlo, paso a paso. Primero verás el plan; nada se ejecuta hasta que lo mandas, y lo que toca datos espera a que alguien lo autorice.",
-    quienResponde: "Quién responde",
-    elige: "Elige un agente",
+    quienResponde: "Responde",
     modoIterativo: "decide sobre la marcha",
     quePides: "Qué quieres",
     ejemplo:
@@ -134,9 +133,9 @@ const pantallas = {
     deshacer: "Deshacer lo hecho",
     noTodoSeDeshace:
       "Esto no se deshace del todo. No tiene vuelta atrás, y se quedará como está:",
-    sinAgentes: "Todavía no hay ningún agente al que preguntar",
+    sinAgentes: "Todavía no hay ningún asistente al que preguntar",
     sinAgentesDetalle:
-      "Un agente es configuración: se declara en Administración → Agentes autónomos, con las herramientas que puede usar y cuándo tiene que esperar a una persona.",
+      "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
   conocimiento: {

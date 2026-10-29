@@ -129,6 +129,26 @@ def _todos_los_ajustes() -> set[str]:
     return {campo.upper() for clase in clases for campo in clase.model_fields}
 
 
+def _constantes_del_codigo() -> set[str]:
+    """Las constantes de módulo declaradas en el producto.
+
+    Se leen del texto y no importando: importar todo el árbol para esto costaría
+    segundos en cada pase y arrastraría efectos de carga que no pintan nada en
+    un gate de documentación.
+    """
+    patron = re.compile(r"^([A-Z][A-Z0-9_]{3,})(?:\s*:[^=]+)?\s*=", re.M)
+    nombres: set[str] = set()
+    ficheros = 0
+    for carpeta in ("packages", "services", "scripts"):
+        for fichero in (RAIZ / carpeta).rglob("*.py"):
+            ficheros += 1
+            nombres |= set(patron.findall(fichero.read_text(encoding="utf-8")))
+    # Que diga cuántos ha leído: con cero ficheros, todo lo del manual sería
+    # «desconocido» y el gate daría alarma por lo correcto.
+    assert ficheros > 300, f"solo se han leído {ficheros} ficheros"
+    return nombres
+
+
 def test_el_manual_tecnico_no_describe_ajustes_que_no_existen() -> None:
     """Un ajuste renombrado o borrado que sigue en el manual es peor que una
     omisión: alguien lo pone en su `.env`, no pasa nada, y deja de fiarse del
@@ -138,7 +158,13 @@ def test_el_manual_tecnico_no_describe_ajustes_que_no_existen() -> None:
     como se escriben las variables de entorno, contra los `Settings` reales.
     """
     texto = MANUAL_TECNICO.read_text(encoding="utf-8")
-    conocidos = _todos_los_ajustes()
+    # Los ajustes, **y las constantes del código**. El manual técnico nombra
+    # las dos cosas en mayúsculas y entre comillas invertidas, y no hay forma
+    # de distinguirlas por la forma: `IA_CREDENCIALES` es un ajuste y
+    # `TIPOS_DE_PRINCIPAL` es una tupla de `crmcore.vocabularios`. Lo que este
+    # gate tiene que cazar es que el manual nombre algo **que ya no existe**,
+    # no que no sea un ajuste.
+    conocidos = _todos_los_ajustes() | _constantes_del_codigo()
 
     # Solo los que aparecen como `CÓDIGO` entre comillas invertidas: el texto
     # normal lleva siglas (API, CRM, SLA) que no son ajustes.

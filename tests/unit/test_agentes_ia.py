@@ -347,6 +347,32 @@ def test_un_paso_fallido_para_la_ejecucion(
 
 
 @pytest.mark.db
+def test_una_clave_borrada_se_puede_volver_a_declarar(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any]
+) -> None:
+    """La clave es única por tenant y el índice cuenta las filas borradas.
+
+    Sin mirar la papelera, declarar otra vez no encontraba nada, intentaba
+    insertar y chocaba con un 409 que habla de «un registro que ya existe» y
+    que quien lo lee no puede ver. Al sembrado le pasa igual: lo cuenta como
+    duplicado y deja el tenant sin agente sin que nada lo diga.
+
+    Y vuelve con **lo que se declara ahora**: resucitar con la configuración
+    vieja sería devolver permisos que alguien quitó.
+    """
+    from crmcore.datos.papelera import borrar
+
+    fila = _agente(uow, clave="revivible", permisos=["contact:read", "contact:write"])
+    borrar(uow.db, fila, objeto="agente_ia")
+    uow.db.flush()
+
+    vuelta = _agente(uow, clave="revivible", permisos=["contact:read"])
+    assert vuelta.id == fila.id, "no se ha revivido la misma fila: se ha creado otra"
+    assert vuelta.esta_borrado is False
+    assert vuelta.permisos == ["contact:read"]
+
+
+@pytest.mark.db
 def test_un_agente_sin_herramientas_lo_dice_en_vez_de_planificar_nada(
     uow: UnidadDeTrabajo, contexto_tenant: UUID, puertos: dict[str, Any]
 ) -> None:
@@ -864,6 +890,11 @@ def test_el_agente_llama_con_SU_identidad_y_no_con_la_de_la_casa(
 
     class _Respuesta:
         status_code = 200
+        # La respuesta de verdad trae cabeceras, y de ellas sale lo que el
+        # destino ha tapado o retenido. Un doble sin ellas revienta donde el
+        # código sí mira, y eso dice «la pantalla está rota» cuando lo que
+        # faltaba era el doble.
+        headers: dict[str, str] = {}
 
         def json(self) -> dict[str, Any]:
             return {"items": []}
@@ -894,7 +925,12 @@ def test_el_agente_llama_con_SU_identidad_y_no_con_la_de_la_casa(
     assert cabeceras["x-crm-tenant"] == str(tenant)
     assert cabeceras["x-crm-user"] == str(agente_id)
     assert cabeceras["x-crm-permisos"] == "account:read"
-    assert cabeceras["x-crm-tipo"] == "maquina"
+    # Del vocabulario común, no de una cadena suelta: «maquina» se escribía
+    # aquí y no la miraba ninguno de los dos consumidores, así que el agente
+    # pasaba por persona y la compartición le devolvía cero filas.
+    from crmcore.vocabularios import NO_SON_PERSONAS
+
+    assert cabeceras["x-crm-tipo"] in NO_SON_PERSONAS
     # Nunca admin de plataforma: un error de un agente no puede tener alcance
     # de todos los clientes.
     assert cabeceras["x-crm-plataforma"] == ""
@@ -910,6 +946,7 @@ def test_un_error_del_destino_es_informacion_para_el_agente_no_una_caida(
 
     class _Respuesta:
         status_code = 409
+        headers: dict[str, str] = {}
 
         def json(self) -> dict[str, Any]:
             return {"detail": "Ya existe un contacto con ese correo"}
@@ -929,6 +966,102 @@ def test_un_error_del_destino_es_informacion_para_el_agente_no_una_caida(
     assert salida["ok"] is False
     assert salida["estado"] == 409
     assert "Ya existe" in salida["datos"]["detail"]
+
+
+def test_un_campo_tapado_se_le_dice_al_agente_en_vez_de_colarselo(
+    monkeypatch: Any,
+) -> None:
+    """Un valor enmascarado tiene la FORMA de un dato, y se cita como si lo fuera.
+
+    Medido el 29-10-2026: el agente preguntó por tres cuentas y contestó que se
+    llamaban «··············tora», «··cosa» y «·············elta». Con
+    seguridad, porque nada en el cuerpo decía lo contrario — el aviso viajaba
+    en una cabecera y `invocar` sólo leía el cuerpo.
+
+    Retenido y tapado se dicen **aparte**: lo retenido no viene y se ve el
+    hueco; lo tapado viene y parece bueno.
+    """
+    from crmcore.http import interno
+
+    class _Respuesta:
+        status_code = 200
+        headers = {
+            "x-campos-enmascarados": "nombre,telefono",
+            "x-campos-retenidos": "nif",
+        }
+
+        def json(self) -> dict[str, Any]:
+            return {"items": [{"nombre": "··············tora"}]}
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "request", lambda *a, **k: _Respuesta())
+    monkeypatch.setattr(interno, "direccion_de", lambda _s: "http://party:8000")
+
+    salida = interno.invocar(
+        metodo="GET", ruta="/api/v1/cuentas", tenant_id=uuid4(), principal_id=uuid4()
+    )
+    assert salida["campos_tapados"] == ["nombre", "telefono"]
+    assert salida["campos_no_entregados"] == ["nif"]
+    # Y en palabras, porque lo que lee el modelo es texto.
+    assert "nombre" in salida["aviso"] and "no se puede citar" in salida["aviso"]
+
+
+def test_sin_nada_tapado_no_se_avisa_de_nada(monkeypatch: Any) -> None:
+    """Un aviso que sale siempre deja de leerse."""
+    from crmcore.http import interno
+
+    class _Respuesta:
+        status_code = 200
+        headers: dict[str, str] = {}
+
+        def json(self) -> dict[str, Any]:
+            return {"items": []}
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "request", lambda *a, **k: _Respuesta())
+    monkeypatch.setattr(interno, "direccion_de", lambda _s: "http://party:8000")
+
+    salida = interno.invocar(
+        metodo="GET", ruta="/api/v1/cuentas", tenant_id=uuid4(), principal_id=uuid4()
+    )
+    assert "aviso" not in salida and "campos_tapados" not in salida
+
+
+def test_los_roles_del_agente_viajan_porque_deciden_que_campos_ve(
+    monkeypatch: Any,
+) -> None:
+    """El permiso decide si puede pedir la ruta; el rol, qué ve de la respuesta.
+
+    Sin roles, la política de sensibilidad manda al comodín y devuelve los
+    valores tapados.
+    """
+    from crmcore.http import interno
+
+    visto: dict[str, Any] = {}
+
+    class _Respuesta:
+        status_code = 200
+        headers: dict[str, str] = {}
+
+        def json(self) -> dict[str, Any]:
+            return {}
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "request", lambda m, u, **kw: (visto.update(kw), _Respuesta())[1])
+    monkeypatch.setattr(interno, "direccion_de", lambda _s: "http://party:8000")
+
+    interno.invocar(
+        metodo="GET",
+        ruta="/api/v1/cuentas",
+        tenant_id=uuid4(),
+        principal_id=uuid4(),
+        permisos=["account:read"],
+        roles=["comercial", "admin"],
+    )
+    assert visto["headers"]["x-crm-roles"] == "admin,comercial"
 
 
 def test_una_ruta_que_no_atiende_nadie_no_se_manda_a_ningun_sitio() -> None:

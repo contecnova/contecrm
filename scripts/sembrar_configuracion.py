@@ -276,6 +276,16 @@ RUTAS_DEL_ASISTENTE = {
 # Lo que hace falta para leer eso. Solo lectura: a un asistente al que se le
 # pregunta no se le da con qué escribir, y el día que haga falta se amplía a
 # conciencia en vez de haber venido abierto de serie.
+# Con qué rol lee los campos. El permiso decide si puede pedir una ruta; el rol,
+# qué ve de lo que le devuelven. Se declara `admin` porque es el rol que la
+# política de sensibilidad del tenant reconoce de serie, y un asistente que
+# contesta sobre los datos del CRM tiene que poder leer sus nombres: con el
+# comodín recibía «··············tora» y lo daba por un nombre de cuenta.
+#
+# Lo que acota al asistente **no es esto**: son sus permisos de solo lectura y
+# sus treinta y una herramientas de consulta. El rol no le deja escribir nada.
+ROLES_DEL_ASISTENTE = ["admin"]
+
 PERMISOS_DEL_ASISTENTE = [
     "account:read",
     "contact:read",
@@ -308,6 +318,10 @@ def _herramientas_de_lectura(api: Api) -> list[dict]:
             {
                 "contrato": contrato,
                 "permisos": PERMISOS_DEL_ASISTENTE,
+                # Con qué rol ve los campos. Sin ninguno cae al comodín de la
+                # política de sensibilidad y recibe los valores TAPADOS —que tienen
+                # la forma de un dato— y los cita como si lo fueran.
+                "roles": ROLES_DEL_ASISTENTE,
                 # Solo lectura. `desde_openapi` ya deja fuera lo destructivo por
                 # defecto, pero la escritura sí entraría: aquí no se quiere.
                 "riesgos_admitidos": ["lectura"],

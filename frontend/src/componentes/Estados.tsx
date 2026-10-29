@@ -146,12 +146,36 @@ export function Error({ error, reintentar }: { error: unknown; reintentar?: () =
  * Sin él, el usuario no distingue «este campo está vacío» de «este campo no te
  * lo doy», y esa diferencia cambia lo que hace: rellenarlo o pedir acceso.
  */
-export function Retenidos({ campos }: { campos: string[] }) {
+export function Retenidos({
+  campos,
+  enmascarados = [],
+}: {
+  campos: string[];
+  /**
+   * Los que vienen TAPADOS. Van aparte de los retenidos a propósito: un campo
+   * retenido no viene y se ve el hueco; uno enmascarado viene y tiene la forma
+   * del dato, así que sin decirlo nadie nota que lo que lee no es el valor.
+   * Alguien copia «··············tora» creyendo que es el nombre.
+   */
+  enmascarados?: string[];
+}) {
   const { t } = useTranslation();
-  if (campos.length === 0) return null;
+  if (campos.length === 0 && enmascarados.length === 0) return null;
   return (
-    <p className="mt-2 text-2xs text-warning" role="note">
-      {t("retenidos", { count: campos.length, campos: campos.join(", ") })}
-    </p>
+    <>
+      {campos.length > 0 ? (
+        <p className="mt-2 text-2xs text-warning" role="note">
+          {t("retenidos", { count: campos.length, campos: campos.join(", ") })}
+        </p>
+      ) : null}
+      {enmascarados.length > 0 ? (
+        <p className="mt-2 text-2xs text-warning" role="note">
+          {t("enmascarados", {
+            count: enmascarados.length,
+            campos: enmascarados.join(", "),
+          })}
+        </p>
+      ) : null}
+    </>
   );
 }

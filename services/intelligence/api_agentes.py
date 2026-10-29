@@ -32,6 +32,16 @@ class DeclararAgente(BaseModel):
     tipo: str = Field(..., description="calificacion_leads · respuesta_soporte · …")
     descripcion: str = ""
     permisos: list[str] = Field(default_factory=list)
+    roles: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Con qué roles llama. No es lo mismo que los permisos: el permiso "
+            "decide si puede pedir una ruta, y el rol **qué campos ve de lo que "
+            "le devuelven**. Un agente sin rol cae al comodín de la política de "
+            "sensibilidad y recibe los valores tapados — que tienen la forma de "
+            "un dato y se citan como si lo fueran"
+        ),
+    )
     herramientas: list[dict[str, Any]] = Field(default_factory=list)
     principal_id: UUID | None = None
     max_acciones: int = Field(10, ge=1, le=200)

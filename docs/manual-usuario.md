@@ -785,6 +785,24 @@ Si no hay ninguno declarado, las pantallas de IA lo dicen y mandan a
 configurarlo. Hasta el 29-10-2026 venían tres de ejemplo que parecían
 configurados y fallaban al primer uso; ya no.
 
+### Cuando un campo se ve tapado, se dice
+
+Hay campos que, según tu rol, no se ven en claro: salen con puntos
+—«··············tora»—. Eso **no es un error de datos**: es la política de tu
+empresa sobre qué ve cada rol.
+
+Hasta el 29-10-2026 no se avisaba, y ahí estaba el problema: un valor con puntos
+ocupa el sitio del nombre y tiene su forma, así que alguien lo copia creyendo
+que es el dato. Se descubrió con Nexus, que preguntó por tres cuentas y contestó
+tan tranquilo que se llamaban «··············tora», «··cosa» y
+«·············elta».
+
+Ahora la pantalla lo dice con una frase distinta de la de siempre, y por una
+razón: **«no puedes ver este campo» y «este campo se ve tapado» no son lo
+mismo**. El primero no viene y se ve el hueco; el segundo viene y engaña. Y
+Nexus también lo recibe, así que ahora te dice que no puede ver ese nombre en
+vez de leerte los puntos.
+
 ### Nexus
 
 En la barra de arriba, al lado del chat, hay un icono: **Nexus**. Ahí se

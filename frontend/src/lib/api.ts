@@ -85,6 +85,20 @@ export interface Respuesta<T> {
    * acciones distintas —rellenarlo o pedir acceso—.
    */
   retenidos: string[];
+  /**
+   * Campos que vienen TAPADOS, no en claro (`X-Campos-Enmascarados`).
+   *
+   * Aparte de los retenidos, porque no son lo mismo y la diferencia es justo
+   * la que importa: un campo retenido **no viene**, y el hueco se ve; uno
+   * enmascarado **viene** y tiene la forma de un dato —«··············tora»
+   * ocupa el sitio de un nombre—, así que sin decirlo nadie puede notar que lo
+   * que lee no es el valor.
+   *
+   * Se descubrió el 29-10-2026 con el agente autónomo, que contestó que tres
+   * cuentas se llamaban «··············tora», «··cosa» y «·············elta».
+   * Le pasa igual a la pantalla y a cualquier integración.
+   */
+  enmascarados: string[];
 }
 
 /**
@@ -177,7 +191,7 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
   });
 
   if (respuesta.status === 204) {
-    return { datos: undefined as T, version: null, retenidos: [] };
+    return { datos: undefined as T, version: null, retenidos: [], enmascarados: [] };
   }
 
   const texto = await respuesta.text();
@@ -190,11 +204,17 @@ export async function llamar<T = unknown>(ruta: string, opciones: Opciones = {})
   return {
     datos: cuerpo as T,
     version: respuesta.headers.get("ETag"),
-    retenidos: (respuesta.headers.get("X-Campos-Retenidos") ?? "")
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean),
+    retenidos: lista(respuesta.headers.get("X-Campos-Retenidos")),
+    enmascarados: lista(respuesta.headers.get("X-Campos-Enmascarados")),
   };
+}
+
+/** Una cabecera de nombres separados por coma, como lista limpia. */
+function lista(cabecera: string | null): string[] {
+  return (cabecera ?? "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
 }
 
 function seguroJson(texto: string): unknown {

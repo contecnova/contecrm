@@ -141,4 +141,40 @@ describe("lo que el servidor retiene", () => {
     const { retenidos } = await llamar("/api/v1/accounts");
     expect(retenidos).toEqual(["nif", "telefono"]);
   });
+
+  it("los campos TAPADOS llegan aparte, porque no son lo mismo", async () => {
+    // Un campo retenido no viene y se ve el hueco. Uno enmascarado viene y
+    // tiene la forma del dato: «··············tora» ocupa el sitio de un
+    // nombre. Sin decirlo, nadie nota que lo que lee no es el valor — el
+    // agente autónomo llegó a contestar que una cuenta se llamaba así.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        respuesta([{ id: "1", nombre: "··············tora" }], {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Campos-Retenidos": "nif",
+            "X-Campos-Enmascarados": "nombre, telefono",
+          },
+        }),
+      ),
+    );
+    const { retenidos, enmascarados } = await llamar("/api/v1/accounts");
+    expect(retenidos).toEqual(["nif"]);
+    expect(enmascarados).toEqual(["nombre", "telefono"]);
+  });
+
+  it("sin cabeceras, las dos listas vienen vacías y no indefinidas", async () => {
+    // `undefined` reventaría en quien las pinta con «reading 'length'», que es
+    // cómo una respuesta normal tumba una pantalla entera.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        respuesta([{ id: "1" }], { headers: { "Content-Type": "application/json" } }),
+      ),
+    );
+    const { retenidos, enmascarados } = await llamar("/api/v1/accounts");
+    expect(retenidos).toEqual([]);
+    expect(enmascarados).toEqual([]);
+  });
 });

@@ -129,6 +129,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
   const listado = operacionDeListado(area);
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
+  const [tapados, setTapados] = useState<string[]>([]);
   const [fallo, setFallo] = useState<unknown>(null);
 
   useEffect(() => {
@@ -140,6 +141,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
       .then((r) => {
         setFilas(comoFilas(r.datos));
         setRetenidos(r.retenidos);
+        setTapados(r.enmascarados);
       })
       .catch(salvoCancelacion(setFallo));
     return () => control.abort();
@@ -159,7 +161,7 @@ function AreaVista({ area, sesion }: { area: Area; sesion: Sesion | null }) {
         ) : (
           <div className="mt-3">
             <Tabla filas={filas} titulo={area.nombre} />
-            <Retenidos campos={retenidos} />
+            <Retenidos campos={retenidos} enmascarados={tapados} />
           </div>
         )
       ) : (

@@ -184,6 +184,24 @@ class Agente(Base, TimestampMixin, SoftDeleteMixin):
     permisos: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
+    # Con qué ROLES llama, que no es lo mismo que con qué permisos.
+    #
+    # El permiso decide si puede pedir una ruta; el rol decide **qué campos ve
+    # de lo que le devuelven**: la política de sensibilidad del tenant dice qué
+    # nivel ve cada rol, y un rol que no menciona no ve nada por encima de
+    # `interno`.
+    #
+    # Medido el 29-10-2026: el agente llamaba sin ningún rol, así que caía al
+    # comodín y recibía los nombres de las cuentas tapados — y los daba por
+    # buenos, contestando que una cuenta se llamaba «··············tora». No
+    # fallaba nada: un valor tapado tiene la forma de un dato.
+    #
+    # Se declara y no se hereda de quien lo puso en marcha, por lo mismo que
+    # los permisos: un agente con los del jefe convierte su error en el error
+    # del jefe.
+    roles: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     herramientas: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
@@ -310,6 +328,7 @@ def declarar(
     tipo: str,
     descripcion: str = "",
     permisos: list[str] | None = None,
+    roles: list[str] | None = None,
     herramientas: list[dict[str, Any]] | None = None,
     principal_id: UUID | None = None,
     max_acciones: int = 10,
@@ -343,19 +362,37 @@ def declarar(
             error_code="agente.sin_tope",
         )
 
-    fila = (
-        uow.db.execute(
-            select(Agente).where(Agente.tenant_id == uow.tenant_id, Agente.clave == clave)
+    # **Mirando también la papelera.** La clave es única por tenant y el índice
+    # cuenta las filas borradas, así que un agente que se borró se queda con su
+    # nombre cogido: sin esto, declararlo otra vez no encontraba nada, intentaba
+    # insertar y chocaba con un 409 que habla de «un registro que ya existe» y
+    # que quien lo lee no puede ver. Medido el 29-10-2026 borrando y volviendo
+    # a declarar — y le pasa igual al sembrado, que lo cuenta como duplicado y
+    # deja el tenant sin agente sin que nada lo diga.
+    from crmcore.datos.guard_borrados import con_borrados
+
+    with con_borrados(uow.db):
+        fila = (
+            uow.db.execute(
+                select(Agente).where(Agente.tenant_id == uow.tenant_id, Agente.clave == clave)
+            )
+            .scalars()
+            .first()
         )
-        .scalars()
-        .first()
-    )
     if fila is None:
         fila = Agente(tenant_id=uow.tenant_id, clave=clave, tipo=tipo)
         uow.db.add(fila)
+    elif fila.esta_borrado:
+        # Declarar un agente con una clave que estuvo en la papelera es pedir
+        # que vuelva, y vuelve **con lo que se declara ahora**, no con lo que
+        # tenía: lo de abajo lo sobrescribe entero. Resucitar con la
+        # configuración vieja sería devolver permisos que alguien quitó.
+        fila.deleted_at = None
+        fila.deleted_by = None
     fila.tipo = tipo
     fila.descripcion = descripcion or fila.descripcion
     fila.permisos = sorted(set(permisos or []))
+    fila.roles = sorted(set(roles or []))
     fila.herramientas = list(herramientas or [])
     fila.principal_id = principal_id or fila.principal_id
     fila.max_acciones = int(max_acciones)
@@ -803,6 +840,7 @@ def avanzar(uow: UnidadDeTrabajo, *, ejecucion_id: UUID) -> dict[str, Any]:
             tenant_id=uow.tenant_id,
             principal_id=agente.principal_id,
             permisos=list(agente.permisos or []),
+            roles=list(agente.roles or []),
         )
         siguiente.resultado = dict(resultado or {})
         # **Una herramienta que contesta 401 no es un paso hecho.**
@@ -1188,6 +1226,7 @@ def revertir(
                 tenant_id=uow.tenant_id,
                 principal_id=agente.principal_id,
                 permisos=list(agente.permisos or []),
+                roles=list(agente.roles or []),
             )
             paso.estado = "revertido"
             paso.revertido_at = _ahora()

@@ -679,6 +679,7 @@ def proyectar_para(
         _excepciones,
         _nivel_del_campo,
         _politica_por_rol,
+        anotar_enmascarados,
         anotar_retenidos,
         enmascarable,
     )
@@ -748,6 +749,12 @@ def proyectar_para(
             )
         salida: dict[str, Any] = {}
         retenidos: set[str] = set(por_politica)
+        # Aparte, porque no son lo mismo: lo retenido NO viene y se ve el
+        # hueco; lo enmascarado viene y **parece un dato**. Sin anunciarlo,
+        # quien lee la respuesta no puede notar la diferencia — y el agente
+        # autónomo llegó a contestar que tres cuentas se llamaban
+        # «··············tora», «··cosa» y «·············elta».
+        tapados: set[str] = set()
         for campo, valor in datos.items():
             if campo in por_politica:
                 continue
@@ -759,7 +766,11 @@ def proyectar_para(
                 # tipo. Ver `crmcore.authz.proyeccion.enmascarable`: hacerlo
                 # sobre un número o una lista producía una cadena que rompía el
                 # contrato y devolvía un 500.
-                salida[campo] = enmascarar(valor) if enmascarable(modelo, campo, valor) else valor
+                if enmascarable(modelo, campo, valor):
+                    salida[campo] = enmascarar(valor)
+                    tapados.add(campo)
+                else:
+                    salida[campo] = valor
             else:
                 # Se anota para anunciarlo en la cabecera `X-Campos-Retenidos`.
                 # Sin ese anuncio, el cliente no puede distinguir «este campo
@@ -767,6 +778,7 @@ def proyectar_para(
                 # cambia lo que hace con él: rellenarlo o pedir permiso.
                 retenidos.add(campo)
         anotar_retenidos(retenidos)
+        anotar_enmascarados(tapados)
         return salida
 
     return _proyecta

@@ -274,6 +274,53 @@ def test_el_listado_tapa_lo_mismo_que_la_ficha(db: Any, tenant_id: UUID) -> None
     assert en_ficha == en_listado
 
 
+def test_lo_tapado_se_anuncia_aparte_de_lo_retenido(db: Any, tenant_id: UUID) -> None:
+    """Un valor enmascarado **parece un dato** y hay que decir que no lo es.
+
+    Hasta el 29-10-2026 sólo se anunciaban los campos ocultos. El enmascarado
+    salía sin avisar, y quien lee la respuesta no puede notarlo: «··0111222»
+    ocupa el sitio de un teléfono y tiene su forma. Se descubrió con el agente
+    autónomo, que preguntó por tres cuentas y contestó que se llamaban
+    «··············tora», «··cosa» y «·············elta» — con seguridad.
+
+    Las dos listas van **separadas** porque son dos cosas distintas: lo
+    retenido no viene y se ve el hueco; lo tapado viene y engaña.
+    """
+    from crmcore.authz.proyeccion import enmascarados, limpiar_retenidos, retenidos
+    from crmcore.http.deps import proyectar_para
+
+    from services.party.modelos import Cuenta
+
+    cuenta = Cuenta(
+        tenant_id=tenant_id,
+        nombre="Obras SL",
+        clave_canonica="obras-anuncio",
+        telefono="+34600111222",
+    )
+    db.add(cuenta)
+    db.flush()
+
+    limpiar_retenidos()
+    proyectado = proyectar_para(_principal(tenant_id), db, objeto="cuenta", modelo=Cuenta)(cuenta)
+
+    tapados = enmascarados()
+    # Lo que se comprueba no es una lista concreta —depende de la política del
+    # tenant— sino que lo que SALE tapado esté anunciado y lo que sale en claro
+    # no. Sin esto, la prueba pasaría con la lista siempre vacía.
+    for campo, valor in proyectado.items():
+        if isinstance(valor, str) and "·" in valor:
+            assert campo in tapados, f"«{campo}» sale tapado y no se anuncia"
+    for campo in tapados:
+        assert "·" in str(proyectado.get(campo)), (
+            f"«{campo}» se anuncia como tapado y no lo está: un aviso que sobra " "se deja de leer"
+        )
+    assert set(tapados).isdisjoint(retenidos()), (
+        "Un campo no puede estar a la vez tapado y retenido: son dos cosas "
+        "distintas y se cuentan aparte"
+    )
+    limpiar_retenidos()
+
+
 def _principal(tenant_id: UUID) -> Any:
     from crmcore.authz.principal import Principal
 

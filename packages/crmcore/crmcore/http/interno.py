@@ -56,6 +56,12 @@ def cabeceras_firmadas() -> dict[str, str]:
     return firmar_cabeceras_internas(vacias, get_settings().secret_key.get_secret_value())
 
 
+# Con qué tipo firma el agente autónomo sus llamadas. Del vocabulario común,
+# que es el único sitio donde las dos mitades —quien lo escribe y quien lo
+# mira— pueden coincidir por construcción.
+TIPO_DEL_AGENTE = "agente"
+
+
 def cabeceras_de(
     *,
     tenant_id: Any,
@@ -93,7 +99,13 @@ def cabeceras_de(
         H_USER: str(principal_id or ""),
         # Máquina, no persona: a una credencial de máquina no se le aplica la
         # compartición entre usuarios, porque no posee registros.
-        H_TIPO: "maquina",
+        #
+        # El valor sale del vocabulario y no de una cadena suelta. Aquí ponía
+        # «maquina», que no casaba con ninguna de las dos palabras que miran
+        # los consumidores, así que el agente llamaba como si fuera una
+        # persona: la compartición le aplicaba su filtro, esa persona no posee
+        # registros, y `GET /accounts` devolvía cero filas con un 200.
+        H_TIPO: TIPO_DEL_AGENTE,
         H_PERMISOS: ",".join(sorted(permisos or [])),
         H_ROLES: ",".join(sorted(roles or [])),
         H_SCOPES: "",
@@ -115,6 +127,7 @@ def invocar(
     tenant_id: Any,
     principal_id: Any,
     permisos: list[str] | None = None,
+    roles: list[str] | None = None,
     timeout_s: float = 30.0,
 ) -> dict[str, Any]:
     """Llama a una ruta de la API del CRM con una identidad concreta.
@@ -152,7 +165,9 @@ def invocar(
             detalle={"servicio": servicio, "ruta": ruta},
         )
 
-    cabeceras = cabeceras_de(tenant_id=tenant_id, principal_id=principal_id, permisos=permisos)
+    cabeceras = cabeceras_de(
+        tenant_id=tenant_id, principal_id=principal_id, permisos=permisos, roles=roles
+    )
     try:
         salida = httpx.request(
             metodo.upper(),
@@ -179,7 +194,31 @@ def invocar(
         # que un diccionario vacío: con el vacío, el agente no distingue «no hay
         # nada» de «no he sabido leer la respuesta».
         datos = {"texto": salida.text[:2000]}
-    return {"estado": salida.status_code, "ok": salida.status_code < 400, "datos": datos}
+    # **Lo que el destino ha tapado o retenido viaja con la respuesta.**
+    #
+    # Va en cabeceras, y leer sólo el cuerpo las tiraba. Medido el 29-10-2026:
+    # el agente autónomo preguntó por tres cuentas y contestó que se llamaban
+    # «··············tora», «··cosa» y «·············elta» — con seguridad,
+    # porque un valor enmascarado tiene la forma de un dato y nada en el cuerpo
+    # decía lo contrario. Con esto, el modelo recibe que esos campos están
+    # tapados y puede decir que no los ve en vez de inventárselos.
+    sin_dar = [c for c in (salida.headers.get("x-campos-retenidos") or "").split(",") if c]
+    tapados = [c for c in (salida.headers.get("x-campos-enmascarados") or "").split(",") if c]
+    respuesta: dict[str, Any] = {
+        "estado": salida.status_code,
+        "ok": salida.status_code < 400,
+        "datos": datos,
+    }
+    if sin_dar:
+        respuesta["campos_no_entregados"] = sin_dar
+    if tapados:
+        respuesta["campos_tapados"] = tapados
+        respuesta["aviso"] = (
+            "Estos campos vienen TAPADOS, no en claro: "
+            f"{', '.join(tapados)}. Lo que se ve en ellos no es su valor y no "
+            "se puede citar como tal."
+        )
+    return respuesta
 
 
 def pedir(servicio: str, ruta: str, *, timeout_s: float = 5.0) -> dict[str, Any] | None:

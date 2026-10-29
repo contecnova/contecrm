@@ -38,6 +38,7 @@ from fastapi import Depends
 # daba por hecho que era un parámetro de query y la ruta contestaba «falta el
 # campo principal» — un 422 en una exportación que estaba perfectamente bien.
 from crmcore.http.deps import AutenticadoDep, DbDep
+from crmcore.vocabularios import es_persona
 
 # Qué exige volver a verificarse. Es una tabla de datos y no `if` repartidos por
 # el código: lo que hace que una operación nueva quede cubierta es añadirla aquí,
@@ -110,7 +111,7 @@ def comprobar(principal: Any, operacion: str, *, db: Any = None) -> None:
     # —la exportación nocturna, la purga— parados para siempre y sin nadie a
     # quien pedirle el segundo factor. Lo que la protege es otra cosa: la
     # credencial, su ámbito y el registro de lo que hace.
-    if str(getattr(principal, "tipo", "usuario")) in ("servicio", "automatizacion"):
+    if not es_persona(getattr(principal, "tipo", "usuario")):
         return
 
     validez = minutos_de_validez(db)

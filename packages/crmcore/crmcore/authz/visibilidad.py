@@ -34,6 +34,7 @@ from sqlalchemy import Select, false
 from sqlalchemy.orm import Session
 
 from crmcore.logging import get_logger
+from crmcore.vocabularios import es_persona
 
 logger = get_logger(__name__)
 
@@ -100,7 +101,7 @@ def aplicar_visibilidad(
     #
     # Y lo que la acota es lo que se le dio al crearla: su tenant, su rol de
     # solo lectura y sus alcances. Nada de esto le abre otro tenant.
-    if getattr(principal, "tipo", "") == "servicio":
+    if not es_persona(getattr(principal, "tipo", "")):
         return consulta
 
     try:

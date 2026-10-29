@@ -106,6 +106,19 @@ const COLOR_RIESGO: Record<string, string> = {
   destructivo: "bg-danger/10 text-danger",
 };
 
+/**
+ * Los agentes que contestan en Nexus: los de consulta, y activos.
+ *
+ * Se ordena por clave para que, habiendo varios, conteste **siempre el mismo**:
+ * el orden en que los devuelva el servidor no es una decisión de producto, y
+ * que la respuesta dependa de él sería imposible de explicar.
+ */
+function asistentes(lista: Agente[]): Agente[] {
+  return lista
+    .filter((a) => a.activo !== false && a.tipo === "asistente_conversacional")
+    .sort((a, b) => a.clave.localeCompare(b.clave));
+}
+
 export function Preguntar() {
   const { t } = useTranslation();
   const [agentes, setAgentes] = useState<Agente[] | null>(null);
@@ -127,12 +140,17 @@ export function Preguntar() {
       .then((r) => {
         const lista = filas<Agente>(r.datos);
         setAgentes(lista);
-        // **Con uno solo no se pregunta cuál.** Elegir de una lista de uno no
-        // es una decisión: es un paso que hay que dar para llegar al que sí lo
-        // es, con el botón de planificar bloqueado hasta darlo. Se elige solo
-        // y se dice quién responde, que no es lo mismo que esconderlo.
-        const usables = lista.filter((a) => a.activo !== false);
-        if (usables.length === 1 && usables[0]) setElegido(usables[0].clave);
+        // **Aquí no se elige nunca.** Nexus es la caja de «pregúntale al
+        // sistema», y elegir agente es en realidad elegir con qué permisos y
+        // con qué herramientas se contesta — que no es una pregunta para quien
+        // escribe «qué cuentas están en riesgo».
+        //
+        // Contesta siempre un ASISTENTE. Los demás agentes hacen un trabajo
+        // con un registro delante —proponer la respuesta de un caso, calificar
+        // un lead— y su sitio es la pantalla de ese trabajo: ofrecerlos aquí
+        // era dar a elegir entre cosas que no contestan la misma pregunta.
+        const usables = asistentes(lista);
+        if (usables[0]) setElegido(usables[0].clave);
       })
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
@@ -240,7 +258,7 @@ export function Preguntar() {
   if (fallo && !actuacion) return <Fallo error={fallo} reintentar={cargar} />;
   if (!agentes) return <Cargando />;
 
-  const usables = agentes.filter((a) => a.activo !== false);
+  const usables = asistentes(agentes);
   const esperando = (actuacion?.pasos ?? []).filter(
     (p) => p.estado === "esperando_aprobacion",
   );
@@ -273,38 +291,17 @@ export function Preguntar() {
             void preguntar();
           }}
         >
-          {usables.length > 1 ? (
-            <label className="flex flex-col gap-1 text-sm text-ink-muted">
-              {t("preguntar.quienResponde")}
-              <select
-                className="input-base"
-                value={elegido}
-                onChange={(e) => setElegido(e.target.value)}
-              >
-                <option value="">{t("preguntar.elige")}</option>
-                {usables.map((a) => (
-                  <option key={a.id} value={a.clave}>
-                    {a.clave}
-                    {a.modo === "iterativo"
-                      ? ` · ${t("preguntar.modoIterativo")}`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            // Se DICE quién responde en vez de callarlo: el agente decide qué
-            // herramientas usa y hasta dónde llega, así que saber cuál es
-            // forma parte de poder no fiarse de la respuesta. Lo que sobra es
-            // el desplegable, no el dato.
-            <p className="text-sm text-ink-muted">
-              {t("preguntar.quienResponde")}:{" "}
-              <span className="text-ink">{usables[0]?.clave}</span>
-              {usables[0]?.modo === "iterativo"
-                ? ` · ${t("preguntar.modoIterativo")}`
-                : ""}
-            </p>
-          )}
+          {/* Se DICE quién responde en vez de callarlo: el asistente decide
+              qué herramientas usa y hasta dónde llega, así que saber cuál es
+              forma parte de poder no fiarse de la respuesta. Lo que sobra es
+              el desplegable, no el dato. */}
+          <p className="text-sm text-ink-muted">
+            {t("preguntar.quienResponde")}:{" "}
+            <span className="text-ink">{usables[0]?.clave}</span>
+            {usables[0]?.modo === "iterativo"
+              ? ` · ${t("preguntar.modoIterativo")}`
+              : ""}
+          </p>
           <label className="flex flex-col gap-1 text-sm text-ink-muted">
             {t("preguntar.quePides")}
             <textarea

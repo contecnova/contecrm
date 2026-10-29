@@ -331,6 +331,7 @@ function RecursoVista({
   }, [declarado, servicioElegido]);
   const [filas, setFilas] = useState<Record<string, unknown>[] | null>(null);
   const [retenidos, setRetenidos] = useState<string[]>([]);
+  const [tapados, setTapados] = useState<string[]>([]);
   const [siguiente, setSiguiente] = useState<string | null>(null);
   const [fallo, setFallo] = useState<unknown>(null);
   const [campos, setCampos] = useState<CampoEsquema[] | null>(null);
@@ -541,6 +542,7 @@ function RecursoVista({
         // saltar de página, y la lista perdería lo que el usuario ya miraba.
         setFilas((previas) => (cursor && previas ? [...previas, ...nuevas] : nuevas));
         setRetenidos(respuesta.retenidos);
+        setTapados(respuesta.enmascarados);
         const cuerpo = respuesta.datos as { siguiente?: string | null } | null;
         setSiguiente(cuerpo && typeof cuerpo === "object" ? (cuerpo.siguiente ?? null) : null);
       } catch (error) {
@@ -862,7 +864,7 @@ function RecursoVista({
               }
             />
           )}
-          <Retenidos campos={retenidos} />
+          <Retenidos campos={retenidos} enmascarados={tapados} />
           {siguiente ? (
             <button
               type="button"

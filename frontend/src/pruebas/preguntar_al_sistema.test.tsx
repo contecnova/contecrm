@@ -68,10 +68,7 @@ async function preguntar() {
   const usuario = userEvent.setup();
   await montar();
   const caja = await screen.findByLabelText("preguntar.quePides");
-  // Con varios agentes hay que elegir; con uno solo no hay desplegable que
-  // tocar, y es lo que comprueba su propia prueba más abajo.
-  const selector = screen.queryByLabelText("preguntar.quienResponde");
-  if (selector) await usuario.selectOptions(selector, "analista");
+  // Aquí nunca se elige agente: contesta siempre el asistente.
   await usuario.type(caja, "qué cuentas están en riesgo");
   await usuario.click(screen.getByRole("button", { name: "preguntar.planificar" }));
   return usuario;
@@ -79,7 +76,12 @@ async function preguntar() {
 
 describe("nexus", () => {
   beforeEach(() => {
-    agentes = [{ id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true }];
+    // `tipo` decide quién contesta en Nexus, así que el doble tiene que
+    // declararlo: con un tipo cualquiera, estas pruebas pasarían midiendo otra
+    // pantalla.
+    agentes = [
+      { id: "a1", clave: "analista", tipo: "asistente_conversacional", activo: true },
+    ];
     vueltas = [];
     actuacion = null;
   });
@@ -176,15 +178,16 @@ describe("nexus", () => {
     expect(screen.getByText(/Objetivo cumplido/)).toBeInTheDocument();
   });
 
-  it("con un solo agente no se pregunta cuál, pero se dice quién responde", async () => {
-    // Elegir de una lista de uno no es una decisión: es un paso obligatorio
-    // para llegar al que sí lo es, con el botón bloqueado hasta darlo. Lo que
-    // sobra es el desplegable; el dato no, porque saber qué agente contesta es
-    // parte de poder no fiarse de la respuesta.
+  it("no se elige agente: se dice quién responde y se escribe", async () => {
+    // Elegir agente es, en realidad, elegir con qué permisos y con qué
+    // herramientas se contesta. Eso no es una pregunta para quien escribe
+    // «qué cuentas están en riesgo». Lo que sobra es el desplegable; el dato
+    // no, porque saber qué asistente contesta es parte de poder no fiarse de
+    // la respuesta.
     await montar();
     await screen.findByLabelText("preguntar.quePides");
     expect(screen.queryByLabelText("preguntar.quienResponde")).toBeNull();
-    expect(screen.queryByText("preguntar.elige")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.getByText("analista")).toBeInTheDocument();
 
     // Y el botón se desbloquea sólo con escribir lo que se pide.
@@ -194,27 +197,43 @@ describe("nexus", () => {
     expect(screen.getByRole("button", { name: "preguntar.planificar" })).toBeEnabled();
   });
 
-  it("con dos agentes sí se pregunta cuál", async () => {
+  it("los agentes de tarea no contestan aquí", async () => {
+    // Proponer la respuesta de un caso o calificar un lead son trabajos con un
+    // registro delante: su sitio es la pantalla de ese trabajo. Ofrecerlos en
+    // la caja de «pregúntale al sistema» era dar a elegir entre cosas que no
+    // contestan la misma pregunta.
     agentes = [
-      { id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true },
-      { id: "a2", clave: "soporte", tipo: "respuesta_soporte", activo: true },
+      { id: "a1", clave: "primera-respuesta", tipo: "respuesta_soporte", activo: true },
+      { id: "a2", clave: "califica", tipo: "calificacion_leads", activo: true },
     ];
     await montar();
-    await screen.findByLabelText("preguntar.quienResponde");
-    expect(screen.getByText("preguntar.elige")).toBeInTheDocument();
+    await screen.findByText("preguntar.sinAgentes");
+    expect(screen.queryByText("primera-respuesta")).toBeNull();
+    expect(screen.queryByText("califica")).toBeNull();
   });
 
-  it("un agente apagado no cuenta para decidir si hace falta elegir", async () => {
-    // Dos filas pero una inactiva siguen siendo una opción de verdad: si se
-    // contaran las dos, volvería el desplegable de un solo elemento usable.
+  it("con varios asistentes contesta siempre el mismo", async () => {
+    // El orden en que los devuelva el servidor no es una decisión de producto:
+    // que la respuesta dependa de él sería imposible de explicar.
     agentes = [
-      { id: "a1", clave: "analista", tipo: "calificacion_leads", activo: true },
-      { id: "a2", clave: "apagado", tipo: "respuesta_soporte", activo: false },
+      { id: "a2", clave: "zeta", tipo: "asistente_conversacional", activo: true },
+      { id: "a1", clave: "alfa", tipo: "asistente_conversacional", activo: true },
     ];
     await montar();
     await screen.findByLabelText("preguntar.quePides");
-    expect(screen.queryByLabelText("preguntar.quienResponde")).toBeNull();
+    expect(screen.getByText("alfa")).toBeInTheDocument();
+    expect(screen.queryByText("zeta")).toBeNull();
+  });
+
+  it("un asistente apagado no contesta", async () => {
+    agentes = [
+      { id: "a1", clave: "analista", tipo: "asistente_conversacional", activo: true },
+      { id: "a2", clave: "apagado", tipo: "asistente_conversacional", activo: false },
+    ];
+    await montar();
+    await screen.findByLabelText("preguntar.quePides");
     expect(screen.getByText("analista")).toBeInTheDocument();
+    expect(screen.queryByText("apagado")).toBeNull();
   });
 
   it("sin agentes declarados se dice qué falta, no sólo que no hay", async () => {

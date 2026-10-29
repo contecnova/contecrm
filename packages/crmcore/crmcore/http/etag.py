@@ -189,11 +189,22 @@ class ETagMiddleware:
                     cabeceras = list(inicio.get("headers", []))
                     if version is not None:
                         cabeceras.append((b"etag", f'W/"{version}"'.encode()))
-                    from crmcore.authz.proyeccion import limpiar_retenidos, retenidos
+                    from crmcore.authz.proyeccion import (
+                        enmascarados,
+                        limpiar_retenidos,
+                        retenidos,
+                    )
 
                     ocultos = retenidos()
                     if ocultos:
                         cabeceras.append((b"x-campos-retenidos", ",".join(ocultos).encode()))
+                    # En una cabecera APARTE, no sumados a los retenidos: lo
+                    # retenido no viene y se ve el hueco; lo enmascarado viene
+                    # y parece un dato. Quien lee la respuesta tiene que poder
+                    # distinguir «no te lo doy» de «te doy algo que no es».
+                    tapados = enmascarados()
+                    if tapados:
+                        cabeceras.append((b"x-campos-enmascarados", ",".join(tapados).encode()))
                     # Se limpia SIEMPRE, no solo cuando hay algo: el contextvar
                     # sobrevive a la petición en el hilo del servidor, y sin
                     # limpiarlo la respuesta siguiente anunciaría campos que no

@@ -512,6 +512,12 @@ export default {
   },
   retenidos_uno: "Hay un campo que no puedes ver: {{campos}}",
   retenidos_otros: "Hay campos que no puedes ver: {{campos}}",
+  // Tapado no es lo mismo que retenido, y por eso es otra frase: lo retenido
+  // no viene y se ve el hueco; lo tapado viene y PARECE el dato. Sin decirlo,
+  // alguien copia «··············tora» creyendo que es el nombre.
+  enmascarados_uno: "Un campo se ve tapado y lo que muestra no es su valor: {{campos}}",
+  enmascarados_otros:
+    "Estos campos se ven tapados y lo que muestran no es su valor: {{campos}}",
 
   chat: {
     nueva: "Abrir una conversación",

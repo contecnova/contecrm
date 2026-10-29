@@ -430,6 +430,7 @@ def _invocar_herramienta(
     tenant_id: Any = None,
     principal_id: Any = None,
     permisos: list[str] | None = None,
+    roles: list[str] | None = None,
 ) -> dict[str, Any]:
     """Llama a la herramienta por la API del CRM, con la identidad del agente.
 
@@ -472,6 +473,10 @@ def _invocar_herramienta(
         tenant_id=tenant_id,
         principal_id=principal_id,
         permisos=list(permisos or []),
+        # Los roles deciden QUÉ CAMPOS ve de lo que le devuelvan. Sin ellos,
+        # la política de sensibilidad lo manda al comodín y recibe los valores
+        # tapados — con la forma de un dato.
+        roles=list(roles or []),
     )
 
 

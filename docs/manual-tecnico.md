@@ -1816,6 +1816,53 @@ Medido funcionando el 29-10-2026: objetivo «¿qué actividades están vencidas?
 un paso, `get_api_v1_activities_vencidas`, ejecutado contra los datos reales →
 conclusión «No hay actividades vencidas».
 
+### 4.6.5 Lo que el agente leía, y lo que creía leer
+
+Con Nexus ya planificando y ejecutando, lo que devolvía seguía estando mal. Dos
+fallos más, y los dos de la misma clase: **no fallaba nada, contestaba de menos
+y lo decía con seguridad.**
+
+**Cero filas con un 200.** `http.interno` firmaba las llamadas del agente con
+`x-crm-tipo: maquina`. `authz.visibilidad` preguntaba por `servicio` para
+saltarse la compartición entre personas, y `http.reverificacion` por `servicio`
+o `automatizacion`. Tres palabras para la misma idea, en tres ficheros, y
+«maquina» no casaba con ninguna: el agente pasaba por persona, se le aplicaba el
+filtro de compartición, esa persona no posee ningún registro y `GET /accounts`
+le devolvía **cero filas**. El modelo concluía «no hay cuentas» sobre un tenant
+con sesenta y cinco. Es el mismo agujero que ya se había tapado para las
+credenciales de integración, con otra palabra.
+
+Ahora el vocabulario vive una vez, en `crmcore.vocabularios`
+(`TIPOS_DE_PRINCIPAL`, `NO_SON_PERSONAS`, `es_persona`), junto a las demás listas
+cerradas que cruzan de un servicio a otro. Gate:
+`tests/unit/test_quien_llama_se_dice_igual_en_los_dos_lados.py`, que además
+prohíbe comparar el tipo con una cadena suelta — cada comparación suelta es una
+palabra más que puede no coincidir.
+
+**Y un valor tapado parece un dato.** Resuelto lo anterior, el agente leía las
+cuentas y contestaba que se llamaban «··············tora», «··cosa» y
+«·············elta». Dos cosas a la vez:
+
+- El agente llamaba **sin ningún rol**, y el rol es lo que decide qué campos ve:
+  caía al comodín de la política de sensibilidad del tenant y recibía todo
+  enmascarado. Ahora un agente declara sus `roles`, igual que sus permisos, y no
+  los hereda de quien lo puso en marcha.
+- Y **nadie anunciaba el enmascarado**. `X-Campos-Retenidos` sólo lleva los
+  campos *ocultos*, y la diferencia importa: lo retenido no viene y se ve el
+  hueco; lo tapado viene, tiene la forma del dato y se cita como tal. Se añade
+  `X-Campos-Enmascarados`, aparte y no sumada, y `interno.invocar` la pasa al
+  resultado de la herramienta con un aviso en palabras, que es lo que lee el
+  modelo. La pantalla también lo enseña ahora, con su propia frase.
+
+**Y una clave borrada no se podía volver a usar.** `uq_agente_clave` es
+`(tenant_id, clave)` y cuenta las filas de la papelera, así que declarar otra vez
+un agente borrado no encontraba nada, insertaba y chocaba con un 409 que habla de
+«un registro que ya existe» y que quien lo lee no puede ver. Al sembrado le
+pasaba igual: lo contaba como duplicado y dejaba el tenant sin agente sin decirlo.
+`declarar` mira ahora la papelera con `con_borrados(db)` y revive la fila **con
+lo que se declara ahora**, no con lo que tenía — resucitar con la configuración
+vieja sería devolver permisos que alguien quitó.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

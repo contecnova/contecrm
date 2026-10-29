@@ -62,8 +62,35 @@ def retenidos() -> tuple[str, ...]:
     return tuple(sorted(_retenidos.get() or frozenset()))
 
 
+# Y los ENMASCARADOS, aparte de los retenidos. Son dos cosas distintas y
+# confundirlas es lo que hacía que esto mintiera:
+#
+#   * un campo **retenido** no viene en la respuesta, así que quien la lee ve
+#     un hueco y sabe que hay algo que no se le da;
+#   * un campo **enmascarado** viene, y parece un dato. «··············tora»
+#     ocupa el sitio de un nombre y tiene su forma.
+#
+# Hasta el 29-10-2026 sólo se anunciaban los primeros. Medido con el agente
+# autónomo, que preguntó por tres cuentas y **contestó que se llamaban
+# «··············tora», «··cosa» y «·············elta»** — con seguridad,
+# porque nada en la respuesta decía lo contrario. Le pasa igual a cualquier
+# integración y a la propia pantalla.
+_enmascarados: ContextVar[frozenset[str] | None] = ContextVar("campos_enmascarados", default=None)
+
+
+def anotar_enmascarados(campos: Iterable[str]) -> None:
+    """Apunta que estos campos se han devuelto tapados en esta respuesta."""
+    _enmascarados.set((_enmascarados.get() or frozenset()) | frozenset(campos))
+
+
+def enmascarados() -> tuple[str, ...]:
+    """Los campos tapados, para anunciarlos en la respuesta."""
+    return tuple(sorted(_enmascarados.get() or frozenset()))
+
+
 def limpiar_retenidos() -> None:
     _retenidos.set(None)
+    _enmascarados.set(None)
 
 
 # De menos a más sensible. El orden es lo que permite decir «este rol ve hasta
