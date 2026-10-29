@@ -248,6 +248,38 @@ todo lo que gobierna ese objeto:
 - **Qué se publicó y cuándo**, con cuántos campos llevaba cada versión: es a lo
   que se vuelve cuando algo deja de encajar.
 
+Y desde el 29-10-2026, seis cosas más que se podían hacer y no se podían mirar:
+
+- **Qué formulario te toca, y por qué ése.** Con un diseño distinto por perfil,
+  la pregunta que llega siempre es «¿por qué yo veo otra pantalla?». Aquí sale
+  cuál se te aplica y el motivo — incluido el incómodo: «no hay ninguno marcado
+  por defecto, así que sale el único que hay».
+- **Lo que la inteligencia artificial entiende de este objeto, con el
+  porcentaje delante.** Un campo que nadie ha descrito no entra en el contexto,
+  y quien pregunte por él concluirá que el dato no existe. Los que faltan salen
+  **por su nombre**: un porcentaje dice cuánto queda, una lista dice qué hacer
+  esta tarde. Al lado, cuántos campos de este objeto salen en informes como
+  dimensión o métrica, y cuántos se han dejado fuera por sensibles.
+- **Qué campos ya justifican una columna de verdad**, con las escrituras que lo
+  justifican. No es un botón grande a propósito: hacerlo bloquea a todas las
+  empresas que comparten esa tabla, así que es la excepción y se decide con una
+  medida, no con la sensación de que la lista va lenta.
+- **Por qué estados pasa un registro**, y desde cuál se puede ir a cuál. Sin
+  esto, cualquier estado salta a cualquier otro y el embudo que se mira cada
+  lunes deja de significar nada. Los estados finales salen marcados.
+- **Cuándo se puede retirar un campo renombrado.** Al renombrar, el viejo se
+  queda puesto y recibiendo lo mismo, para que lo que ya llama por el nombre
+  antiguo siga funcionando. Retirarlo no es cuestión de fecha: es que nadie lo
+  escriba, y eso se ve aquí.
+- **Llevarse esta configuración a otro entorno**, en un fichero. Lleva la
+  configuración y **nunca los datos**: un paquete que arrastrara registros
+  convertiría una subida a producción en una fuga, porque los datos de pruebas
+  suelen ser copias a medio anonimizar de clientes reales.
+
+Y los campos que se calculan salen **marcados** en la lista de campos: no se
+teclean, y sin la marca alguien se pasa un rato buscando por qué «no se puede
+rellenar».
+
 ### Campos que se calculan solos
 
 Hay dos clases y conviene no confundirlas:

@@ -1,7 +1,9 @@
 /**
  * Un objeto del modelo de datos, con todo lo suyo (CRM-00.04.01.02,
- * CRM-00.04.01.05, CRM-00.04.01.06, CRM-00.04.01.08, CRM-00.04.01.09,
- * CRM-00.04.03.03, CRM-00.04.03.11, CRM-00.04.03.12).
+ * CRM-00.04.01.04, CRM-00.04.01.05, CRM-00.04.01.06, CRM-00.04.01.07,
+ * CRM-00.04.01.08, CRM-00.04.01.09, CRM-00.04.01.10, CRM-00.04.03.01,
+ * CRM-00.04.03.02, CRM-00.04.03.03, CRM-00.04.03.04, CRM-00.04.03.06,
+ * CRM-00.04.03.07, CRM-00.04.03.10, CRM-00.04.03.11, CRM-00.04.03.12).
  *
  * **La familia entera estaba publicada y sin puerta.** El módulo «Modelo de
  * datos» listaba los objetos y ahí se acababa: las filas no abrían, y como los
@@ -23,6 +25,21 @@
  * trescientos campos de los que nadie recuerda la mitad. Por eso el panel que
  * manda es el de los campos **con sus escrituras al lado**, y los que no se
  * han escrito nunca salen marcados.
+ *
+ * **Y lo que una empresa puede cambiar sin escribir código llegaba hasta
+ * aquí y se paraba.** Estaba todo publicado y sin puerta: el formulario que
+ * le toca a cada rol, lo que la IA entiende de este objeto, qué campos ya
+ * justifican una columna real, la máquina de estados, cómo se renombra un
+ * campo sin romper a quien llama por el nombre viejo, y cómo se lleva esta
+ * configuración a otro entorno. Seis preguntas que se hacen delante de un
+ * modelo de datos y que sólo se podían contestar por API.
+ *
+ * Cada panel enseña **lo que devuelve su ruta**, no una promesa: la cobertura
+ * semántica sale con su porcentaje y con los campos que faltan por nombre, y
+ * los candidatos a columna salen con sus escrituras. Un panel que dijera «la
+ * IA entiende tus datos» sin el número sería justo lo que este producto llama
+ * en otro sitio «la razón de la mayoría de los proyectos de IA
+ * decepcionantes».
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -125,6 +142,42 @@ interface Trazabilidad {
     nota: string;
     campos: number;
   }[];
+}
+
+interface Diseno {
+  hay_diseno: boolean;
+  nombre?: string;
+  secciones?: unknown[];
+  porque: string;
+}
+
+interface Semantica {
+  campos: unknown[];
+  fuera_por_sensibles: string[];
+  fuera_por_internos: string[];
+  sin_describir: string[];
+  aviso: string;
+  cobertura: {
+    medible: boolean;
+    campos?: number;
+    explotables?: number;
+    pct?: number;
+    que_significa?: string;
+    porque?: string;
+  };
+}
+
+interface Candidatos {
+  umbral: number;
+  candidatos: { campo: string; escrituras: number }[];
+  por_que_no_siempre: string;
+}
+
+/** Lo que analytics publica de este objeto para informes. */
+interface ModeloSemantico {
+  objetos: { nombre: string; campos: unknown[] }[];
+  excluidos_por_sensibilidad: string[];
+  motivo_exclusion: string;
 }
 
 interface TipoRegistro {
@@ -336,6 +389,15 @@ export function ObjetoDelModelo() {
                     {campo.nombre}
                   </span>
                   <span className="chip-dato">{campo.tipo}</span>
+                  {/* Un campo CALCULADO no se teclea: su fórmula se valida al
+                      guardarla, no al leer el primer registro. Verlo marcado
+                      es lo que evita que alguien busque por qué «no se puede
+                      rellenar». */}
+                  {campo.tipo === "formula" || campo.tipo === "rollup" ? (
+                    <span className="chip-dato chip-dato--si">
+                      {t("modeloDatos.calculado")}
+                    </span>
+                  ) : null}
                   {campo.obligatorio ? (
                     <span className="chip-dato">
                       {t("modeloDatos.obligatorio")}
@@ -393,6 +455,15 @@ export function ObjetoDelModelo() {
             {t("modeloDatos.sinUsar", { cuantos: rastro.sin_usar.length })}
           </p>
         ) : null}
+        {/* Que un campo añadido aquí entre solo en la API no es una promesa
+            del folleto: las escrituras de arriba las cuenta la API al
+            recibirlas, así que un número mayor que cero ES la prueba. */}
+        <p className="mt-3 text-3xs text-ink-faint">
+          <span className="font-medium text-ink-muted">
+            {t("modeloDatos.yaEstaEnLaApi")}
+          </span>{" "}
+          {t("modeloDatos.yaEstaEnLaApiAyuda")}
+        </p>
       </section>
 
       {/* ── Validaciones y tipos de registro ────────────────────────────── */}
@@ -461,6 +532,18 @@ export function ObjetoDelModelo() {
             ))}
           </ul>
         </section>
+      </div>
+
+      {/* ── Lo que esta empresa puede cambiar sin escribir código ───────
+          Van juntos porque se miran juntos: quién ve qué formulario, qué
+          entiende la IA, qué campo ya pide columna, por qué estados pasa el
+          registro y cómo se lleva todo esto a otro entorno. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <ElDisenoQueTeToca objeto={objeto.nombre} />
+        <LoQueEntiendeLaIa objeto={objeto.nombre} />
+        <CamposQueYaPidenColumna objeto={objeto.nombre} />
+        <LaMaquinaDeEstados estados={objeto.estados} />
+        <RenombrarYLlevarse objeto={objeto.nombre} rastro={rastro} />
       </div>
 
       {/* ── Qué se publicó y cuándo ─────────────────────────────────────── */}
@@ -580,6 +663,389 @@ function QuePasaSiPublico({ objeto }: { objeto: string }) {
           )}
         </>
       )}
+    </section>
+  );
+}
+
+/**
+ * El formulario que le toca a quien mira, y por qué ése (CRM-00.04.03.01).
+ *
+ * El diseñador deja arrastrar campos, secciones, pestañas y condiciones de
+ * visibilidad, y guarda un diseño por rol. Lo que no había era forma de ver
+ * **cuál se aplica**: con dos diseños, la pregunta que llega a soporte es
+ * siempre «¿por qué yo veo otra pantalla?», y contestarla obligaba a mirar la
+ * base de datos.
+ *
+ * El «por qué» viene de la propia ruta y se enseña tal cual, incluido el caso
+ * incómodo —«no hay ninguno marcado por defecto, así que sale el único que
+ * hay»—, que es el que conviene leer antes de que haya dos.
+ */
+function ElDisenoQueTeToca({ objeto }: { objeto: string }) {
+  const { t } = useTranslation();
+  const [diseno, setDiseno] = useState<Diseno | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Diseno>(
+      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/diseno`,
+      { signal: control.signal },
+    )
+      .then((r) => setDiseno(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [objeto]);
+
+  if (!diseno) return null;
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.diseno")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("modeloDatos.disenoAyuda")}
+      </p>
+      {diseno.hay_diseno ? (
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <span className="text-2xs font-medium text-ink">{diseno.nombre}</span>
+          <span className="chip-dato">
+            {t("modeloDatos.secciones", {
+              cuantas: diseno.secciones?.length ?? 0,
+            })}
+          </span>
+        </div>
+      ) : (
+        <Vacio titulo={t("modeloDatos.sinDiseno")} compacto />
+      )}
+      {/* El motivo lo da la ruta: cuál se aplica y por qué ése. */}
+      <p className="mt-2 text-2xs text-ink-muted">{diseno.porque}</p>
+    </section>
+  );
+}
+
+/**
+ * Lo que la IA entiende de este objeto, con su número (CRM-00.04.03.07) y
+ * cómo sale en informes (CRM-00.04.03.06).
+ *
+ * **Con la cobertura delante, no sin ella.** Un campo `cmp_2` de tipo lista
+ * con valores `A`, `B` y `C` es perfecto para el CRM y basura para cualquier
+ * cosa que tenga que razonar sobre él. Con el 30 % de los campos descritos la
+ * IA entiende el 30 %, y la diferencia entre eso y lo que la gente cree que
+ * compró es lo que convierte un proyecto de IA en una decepción.
+ *
+ * Los que faltan salen **por su nombre**: un porcentaje dice cuánto queda, una
+ * lista dice qué hacer esta tarde.
+ */
+function LoQueEntiendeLaIa({ objeto }: { objeto: string }) {
+  const { t } = useTranslation();
+  const [sem, setSem] = useState<Semantica | null>(null);
+  const [informes, setInformes] = useState<ModeloSemantico | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Semantica>(
+      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/semantica`,
+      { signal: control.signal },
+    )
+      .then((r) => setSem(r.datos))
+      .catch(() => undefined);
+    // Y lo mismo visto desde informes: es OTRO servicio el que decide qué
+    // puede explotar, así que preguntárselo a metadata sería contestar por él.
+    llamar<ModeloSemantico>(
+      `/api/v1/analitica/modelo-semantico?objeto=${encodeURIComponent(objeto)}`,
+      { signal: control.signal },
+    )
+      .then((r) => setInformes(r.datos))
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [objeto]);
+
+  if (!sem) return null;
+  const cob = sem.cobertura;
+  const deInformes = informes?.objetos?.find((o) => o.nombre === objeto);
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.ia")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">{t("modeloDatos.iaAyuda")}</p>
+      {!cob.medible ? (
+        <Vacio titulo={t("modeloDatos.iaNoMedible")} compacto />
+      ) : (
+        <>
+          <p
+            className={
+              (cob.pct ?? 0) < 70
+                ? "text-sm font-medium text-warning"
+                : "text-sm font-medium text-ink"
+            }
+          >
+            {t("modeloDatos.iaCobertura", {
+              pct: cob.pct,
+              explotables: cob.explotables,
+              campos: cob.campos,
+            })}
+          </p>
+          <p className="mt-1 text-3xs text-ink-muted">{cob.que_significa}</p>
+        </>
+      )}
+      {/* Lo que se queda fuera, y por qué. Recortarlo en silencio hace que
+          quien pregunte por un campo concluya que el dato no existe. */}
+      {sem.fuera_por_sensibles.length + sem.fuera_por_internos.length > 0 ? (
+        <p className="mt-2 text-3xs text-ink-muted">
+          {t("modeloDatos.iaFuera", {
+            sensibles: sem.fuera_por_sensibles.length,
+            internos: sem.fuera_por_internos.length,
+          })}
+        </p>
+      ) : null}
+      {sem.sin_describir.length > 0 ? (
+        <p className="mt-1 text-3xs text-warning">
+          {t("modeloDatos.iaSinDescribir", {
+            campos: sem.sin_describir.join(", "),
+          })}
+        </p>
+      ) : null}
+
+      {deInformes ? (
+        <div className="mt-3 border-t border-ink-dim/30 pt-2">
+          <h3 className="text-2xs font-medium text-ink">
+            {t("modeloDatos.enInformes")}
+          </h3>
+          <p className="text-3xs text-ink-faint">
+            {t("modeloDatos.enInformesAyuda")}
+          </p>
+          <p className="mt-1 text-2xs text-ink-muted">
+            {t("modeloDatos.enInformesCuantos", {
+              cuantos: deInformes.campos.length,
+            })}
+            {informes && informes.excluidos_por_sensibilidad.length > 0
+              ? ` · ${t("modeloDatos.enInformesFuera", {
+                  cuantos: informes.excluidos_por_sensibilidad.length,
+                })}`
+              : ""}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Qué campos ya justifican una columna de verdad (CRM-00.04.03.04).
+ *
+ * Materializar **no** es la norma y por eso esto es un panel y no un botón
+ * grande: un cambio de tabla compartida por mil empresas las bloquea a todas.
+ * La excepción se decide con una medida —las escrituras— y no con la
+ * intuición de quien nota su lista lenta.
+ *
+ * El umbral viene de la ruta, no de aquí: es configuración del tenant.
+ */
+function CamposQueYaPidenColumna({ objeto }: { objeto: string }) {
+  const { t } = useTranslation();
+  const [datos, setDatos] = useState<Candidatos | null>(null);
+
+  useEffect(() => {
+    const control = new AbortController();
+    llamar<Candidatos>(
+      `/api/v1/metadata/objetos/${encodeURIComponent(objeto)}/candidatos-columna`,
+      { signal: control.signal },
+    )
+      .then((r) => setDatos(r.datos))
+      // Pide `metadata:write`: quien sólo lee no ve este panel, y eso es
+      // correcto — no es información que le sirva de nada.
+      .catch(() => undefined);
+    return () => control.abort();
+  }, [objeto]);
+
+  if (!datos) return null;
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.columna")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("modeloDatos.columnaAyuda")}
+      </p>
+      {datos.candidatos.length === 0 ? (
+        <p className="text-2xs text-ink-muted">
+          {t("modeloDatos.columnaNinguno", { umbral: datos.umbral })}
+        </p>
+      ) : (
+        <ul className="divide-y divide-ink-dim/30">
+          {datos.candidatos.map((c) => (
+            <li
+              key={c.campo}
+              className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+            >
+              <span className="text-2xs font-medium text-ink">{c.campo}</span>
+              <span className="text-3xs text-ink-muted">
+                {t("modeloDatos.columnaEscrituras", { cuantas: c.escrituras })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-3xs text-ink-faint">{datos.por_que_no_siempre}</p>
+    </section>
+  );
+}
+
+/**
+ * La máquina de estados del objeto (CRM-00.04.01.07).
+ *
+ * Se guardaba en el objeto y no se veía en ninguna parte. Sin ella, cualquier
+ * estado salta a cualquier otro y el histórico deja de significar nada: una
+ * oportunidad puede volver de «ganada» a «sin contactar» y nadie se entera de
+ * que el embudo que se mira cada lunes está contando eso.
+ */
+function LaMaquinaDeEstados({ estados }: { estados: Record<string, unknown> }) {
+  const { t } = useTranslation();
+  const claves = Object.keys(estados ?? {});
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.estados")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("modeloDatos.estadosAyuda")}
+      </p>
+      {claves.length === 0 ? (
+        <Vacio titulo={t("modeloDatos.sinEstados")} compacto />
+      ) : (
+        <ul className="divide-y divide-ink-dim/30">
+          {claves.map((estado) => {
+            const destinos = estados[estado];
+            const lista = Array.isArray(destinos) ? destinos.map(String) : [];
+            return (
+              <li
+                key={estado}
+                className="flex flex-wrap items-baseline gap-x-2 py-1.5"
+              >
+                <span className="text-2xs font-medium text-ink">{estado}</span>
+                {/* Un estado sin salidas es final, y decirlo importa: en una
+                    lista de transiciones se lee como un hueco. */}
+                {lista.length === 0 ? (
+                  <span className="chip-dato">
+                    {t("modeloDatos.estadoFinal")}
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-3xs text-ink-faint">
+                      {t("modeloDatos.estadoVaA")}
+                    </span>
+                    {lista.map((d) => (
+                      <span key={d} className="chip-dato">
+                        {d}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Renombrar y retirar sin romper a nadie (CRM-00.04.01.10), y llevarse la
+ * configuración a otro entorno (CRM-00.04.03.10).
+ *
+ * Renombrar un campo deja el viejo puesto y escribiendo en los dos: lo que ya
+ * llama por el nombre antiguo —una integración, un informe guardado, un
+ * script de alguien— sigue funcionando. Lo que faltaba era **saber cuándo se
+ * puede retirar el viejo**, y eso no es una fecha: es que nadie lo escriba.
+ * Sale de la trazabilidad, que ya se lee en esta pantalla.
+ *
+ * El paquete se descarga desde el navegador y lleva **configuración, nunca
+ * datos**: uno que arrastrara registros convertiría una promoción a
+ * producción en una fuga, porque los datos de pruebas suelen ser copias
+ * anonimizadas a medias de clientes reales.
+ */
+function RenombrarYLlevarse({
+  objeto,
+  rastro,
+}: {
+  objeto: string;
+  rastro: Trazabilidad | null;
+}) {
+  const { t } = useTranslation();
+  const [bajando, setBajando] = useState(false);
+  // Qué se ha bajado, para decirlo. Un fichero que aparece en la carpeta de
+  // descargas no es un resultado para quien no ve la pantalla, y tampoco para
+  // quien la ve: sin esto, «¿ha ido bien?» se contesta abriendo el fichero.
+  const [bajado, setBajado] = useState("");
+  const retirables = (rastro?.campos ?? []).filter((c) => c.se_puede_retirar);
+
+  async function descargar() {
+    setBajando(true);
+    try {
+      const { datos } = await llamar<Record<string, unknown>>(
+        `/api/v1/metadata/paquete?objeto=${encodeURIComponent(objeto)}`,
+      );
+      const objetos = Array.isArray(datos.objetos) ? datos.objetos : [];
+      setBajado(
+        t("modeloDatos.paqueteContiene", {
+          objetos: objetos.length,
+          campos: objetos.reduce(
+            (n: number, o: unknown) =>
+              n +
+              (Array.isArray((o as { campos?: unknown[] }).campos)
+                ? (o as { campos: unknown[] }).campos.length
+                : 0),
+            0,
+          ),
+        }),
+      );
+      const blob = new Blob([JSON.stringify(datos, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `paquete-${objeto}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBajando(false);
+    }
+  }
+
+  return (
+    <section className="card p-4">
+      <h2 className="section-label mb-1">{t("modeloDatos.renombrar")}</h2>
+      <p className="mb-2 text-3xs text-ink-faint">
+        {t("modeloDatos.renombrarAyuda")}
+      </p>
+      {retirables.length > 0 ? (
+        <p className="text-2xs text-ink">
+          {t("modeloDatos.sePuedeRetirar", { cuantos: retirables.length })}
+        </p>
+      ) : (
+        <p className="text-2xs text-ink-muted">
+          {t("modeloDatos.noSePuedeRetirarTodavia")}
+        </p>
+      )}
+
+      <div className="mt-3 border-t border-ink-dim/30 pt-2">
+        <h3 className="text-2xs font-medium text-ink">
+          {t("modeloDatos.paquete")}
+        </h3>
+        <p className="text-3xs text-ink-faint">
+          {t("modeloDatos.paqueteAyuda")}
+        </p>
+        <button
+          type="button"
+          className="btn btn-secundario mt-2"
+          onClick={() => void descargar()}
+          disabled={bajando}
+        >
+          <Icono nombre="download" /> {t("modeloDatos.paqueteDescargar")}
+        </button>
+        {/* Qué llevaba el fichero, anunciado: un fichero en la carpeta de
+            descargas no dice si se ha bajado lo que se quería. */}
+        <p role="status" aria-live="polite" className="mt-2 text-2xs text-ink-muted">
+          {bajado}
+        </p>
+      </div>
     </section>
   );
 }

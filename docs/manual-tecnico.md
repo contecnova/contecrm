@@ -2169,6 +2169,58 @@ pedido, presupuesto, cálculo de comisión—, así que `?total=1000` se descart
 en silencio y el listado devolvía todas las filas con cara de estar filtrado.
 Esa reserva muerta ya no está.
 
+### 4.6.13 Lo que el tenant cambia sin escribir código, con puerta
+
+Nueve capacidades de la familia del metamodelo estaban **publicadas y sin
+puerta**: existían por API, tenían prueba y no se alcanzaban desde ninguna
+pantalla. Un cliente que compra «personalizable sin desarrollo» y tiene que
+llamar a la API para ver qué formulario le toca ha comprado otra cosa.
+
+Van todas a la ficha del objeto del modelo, porque son la misma pregunta hecha
+seis veces delante del mismo registro:
+
+| Qué contesta | De dónde sale |
+|---|---|
+| Qué diseño le toca a esta persona y **por qué ése** | `GET /metadata/objetos/{o}/diseno` |
+| Qué entiende la IA de este objeto, con su **cobertura** | `GET /metadata/objetos/{o}/semantica` |
+| Qué campos salen en informes como dimensión o métrica | `GET /analitica/modelo-semantico?objeto={o}` |
+| Qué campos ya justifican una columna real | `GET /metadata/objetos/{o}/candidatos-columna` |
+| Por qué estados pasa el registro | `estados` del objeto |
+| Cuándo se puede retirar un campo renombrado | `GET /metadata/objetos/{o}/trazabilidad` |
+| Llevarse la configuración a otro entorno | `GET /metadata/paquete?objeto={o}` |
+
+Tres decisiones que no son de estilo:
+
+- **La cobertura va con su número, no con una frase.** «La IA entiende tus
+  datos» con el 25 % de los campos descritos es la razón de la mayoría de los
+  proyectos de IA decepcionantes. El panel enseña el porcentaje, los campos que
+  se han dejado fuera y **los que faltan por su nombre**: un porcentaje dice
+  cuánto queda, una lista dice qué hacer.
+- **Lo de informes lo contesta analytics, no metadata.** Es otro servicio el
+  que decide qué puede explotar; preguntárselo al de metadatos sería contestar
+  por él, y el día que cambie el criterio la pantalla seguiría diciendo lo de
+  antes.
+- **Materializar no se ofrece como un botón grande.** Un `ALTER TABLE` en una
+  tabla compartida por mil tenants los bloquea a todos. Es la excepción, se
+  decide con la medida de escrituras y el umbral sale de la ruta, que es
+  configuración del tenant.
+
+**Y dos que NO se cierran, dicho aquí en vez de disimularlo.**
+`CRM-00.04.03.05` —campos propios usables en condiciones, acciones y reglas de
+los flujos— y `CRM-00.04.03.08` —en importación, exportación y plantillas— no
+tienen ninguna ruta que lo conteste: su única constancia es un comentario
+dentro de un servicio. Una pantalla que lo afirmara sería la pantalla diciendo
+que sí, que es exactamente lo que este sistema no acepta como prueba.
+
+**Hallazgo de la misma vuelta, y este es grande.** La familia `CRM-00.04.02`
+—extensiones del tenant: funciones en sandbox, hooks, versiones, firma,
+observabilidad— está marcada hecha y son **seis validadores sin estado**. No
+hay tabla, no hay modelo, no hay migración y no hay ninguna ruta `GET`: no se
+puede listar una extensión, ni instalarla, ni saber cuáles tiene un tenant.
+`POST /extensiones/observabilidad` calcula estadísticas **sobre las ejecuciones
+que le mandas tú**. Son calculadoras correctas que no están enchufadas a nada,
+y por eso ninguna de las siete puede tener pantalla: no hay nada que enseñar.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

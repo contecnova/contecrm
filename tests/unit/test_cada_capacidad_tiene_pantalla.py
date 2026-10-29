@@ -502,7 +502,26 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            declarado. No lo vio nadie porque la lista estaba
 #                            vacia en todas las instalaciones miradas: el fallo
 #                            solo aparece en el cliente que de verdad usa SSO.
-TOPE_SIN_PANTALLA = 315
+#   29-10-2026  306 de 778  lo que una empresa cambia sin escribir codigo.
+#                            Nueve: el formulario que le toca a cada rol y POR
+#                            QUE ese, lo que la IA entiende del objeto con su
+#                            cobertura y los campos que faltan por nombre, que
+#                            campos salen en informes --lo dice analytics, no
+#                            metadata--, cuales ya justifican una columna real
+#                            con sus escrituras, la maquina de estados con sus
+#                            transiciones, los campos calculados marcados,
+#                            cuando se puede retirar un campo renombrado y como
+#                            se lleva la configuracion a otro entorno.
+#
+#                            De la misma familia quedan DOS que no se cierran
+#                            aqui y no por falta de ganas: CRM-00.04.03.05
+#                            --campos propios usables en flujos y reglas-- y
+#                            CRM-00.04.03.08 --en importacion, exportacion y
+#                            plantillas-- no tienen NINGUNA ruta que lo
+#                            conteste: su unica constancia es un comentario
+#                            dentro de un servicio. Una pantalla que lo
+#                            afirmara seria la pantalla diciendo que si.
+TOPE_SIN_PANTALLA = 306
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -374,6 +374,70 @@ const pantallas = {
       "Cada versión del esquema, con quién la publicó y cuántos campos " +
       "llevaba: es a lo que se vuelve cuando algo deja de encajar.",
     camposEnPublicacion: "{{cuantos}} campos",
+    calculado: "Se calcula",
+    yaEstaEnLaApi: "Ya se lee y se escribe por la API",
+    yaEstaEnLaApiAyuda:
+      "Un campo añadido aquí entra solo en la API de este objeto: se lee, se " +
+      "escribe, se valida y sale en su descripción sin que nadie toque " +
+      "código. Las escrituras de al lado son la prueba, no una promesa: " +
+      "cuentan las veces que ha entrado por la API de verdad.",
+    diseno: "El formulario que te toca, y por qué ése",
+    disenoAyuda:
+      "Con varios diseños por rol, la pregunta que llega a soporte es siempre " +
+      "«¿por qué yo veo otra pantalla?». Aquí sale cuál se te aplica y el " +
+      "motivo.",
+    sinDiseno: "Sin formulario diseñado",
+    secciones: "{{cuantas}} secciones",
+    ia: "Lo que la IA entiende de este objeto",
+    iaAyuda:
+      "Un campo sin describir no entra en el contexto, y quien pregunte por " +
+      "él concluirá que el dato no existe. No es lo mismo que no exista a que " +
+      "nadie lo haya explicado.",
+    iaCobertura: "Explotable el {{pct}} % ({{explotables}} de {{campos}})",
+    iaNoMedible: "Sin campos propios: no hay nada que describir",
+    iaFuera:
+      "Fuera del contexto: {{sensibles}} por sensibles y {{internos}} por internos.",
+    iaSinDescribir: "Sin describir: {{campos}}",
+    enInformes: "Y en informes",
+    enInformesAyuda:
+      "Los campos propios salen como dimensión o métrica sin modelar nada " +
+      "aparte. Los personales y de categoría especial se quedan fuera, y se " +
+      "dice cuáles.",
+    enInformesCuantos:
+      "{{cuantos}} campos de este objeto explotables en informes",
+    enInformesFuera: "{{cuantos}} dejados fuera por sensibles",
+    columna: "Campos que ya justifican una columna",
+    columnaAyuda:
+      "Materializar no es la norma: un cambio de tabla compartida por mil " +
+      "empresas las bloquea a todas. Es la excepción, y se decide con una " +
+      "medida, no con una intuición.",
+    columnaNinguno:
+      "Ninguno llega al umbral de {{umbral}} escrituras. El camino normal " +
+      "—JSONB con índice— va bien aquí.",
+    columnaEscrituras: "{{cuantas}} escrituras",
+    estados: "La máquina de estados",
+    estadosAyuda:
+      "Por qué estados pasa un registro y desde cuál se puede ir a cuál. Sin " +
+      "ella, cualquier estado puede saltar a cualquier otro y el histórico " +
+      "deja de significar nada.",
+    sinEstados: "Sin máquina de estados: cualquier valor vale",
+    estadoVaA: "va a",
+    estadoFinal: "es final",
+    renombrar: "Renombrar y retirar sin romper nada",
+    renombrarAyuda:
+      "Renombrar un campo deja el viejo puesto y escribiendo en los dos, " +
+      "para que lo que ya llama por el nombre antiguo siga funcionando. El " +
+      "viejo se retira después, cuando se ve que nadie lo usa — y eso se ve " +
+      "aquí, en las escrituras.",
+    sePuedeRetirar: "{{cuantos}} se pueden retirar ya",
+    noSePuedeRetirarTodavia:
+      "Ninguno se puede retirar todavía: todos siguen recibiendo escrituras.",
+    paquete: "Llevarse esta configuración a otro entorno",
+    paqueteAyuda:
+      "Se lleva la configuración, nunca los datos. Un paquete que arrastrara " +
+      "registros convertiría una promoción a producción en una fuga.",
+    paqueteDescargar: "Descargar el paquete",
+    paqueteContiene: "{{objetos}} objetos y {{campos}} campos",
   },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
