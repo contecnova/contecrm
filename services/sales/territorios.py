@@ -642,6 +642,68 @@ def declarar_excepcion(
     return fila
 
 
+def excepciones_de(
+    db: Session, tenant_id: UUID, *, incluir_vencidas: bool = False
+) -> dict[str, Any]:
+    """Qué cuentas están fuera de su territorio y por qué.
+
+    **Se declaraban y no se podían listar.** El resolutor las lee al asignar
+    —así que funcionan— y ninguna ruta las devolvía, con lo que «¿por qué esta
+    cuenta es de Ana y no de la zona norte?» sólo se podía contestar mirando la
+    base de datos.
+
+    Y las excepciones **caducan**: con `hasta` puesto dejan de aplicarse sin
+    avisar. Sin listado no hay forma de ver cuáles están a punto de vencer, así
+    que la cuenta vuelve a su territorio de origen un lunes y quien la llevaba
+    se entera por el pipeline.
+
+    Por defecto sólo las vigentes, porque es lo que explica el reparto de hoy.
+    Las vencidas se piden aparte: mezclarlas haría que una excepción que ya no
+    hace nada siguiera pareciendo la razón de que una cuenta esté donde está.
+    """
+    from sqlalchemy import or_, select
+
+    hoy = _ahora().date()
+    consulta = select(ExcepcionTerritorio).where(ExcepcionTerritorio.tenant_id == tenant_id)
+    if not incluir_vencidas:
+        consulta = consulta.where(
+            or_(ExcepcionTerritorio.hasta.is_(None), ExcepcionTerritorio.hasta >= hoy)
+        )
+    filas = list(
+        db.execute(consulta.order_by(ExcepcionTerritorio.created_at.desc())).scalars().all()
+    )
+
+    # Las que vencen dentro de treinta días van señaladas: una excepción que
+    # caduca mueve una cuenta de dueño, y eso no puede enterarse nadie el día
+    # que pasa.
+    pronto = [f for f in filas if f.hasta is not None and (f.hasta - hoy).days <= 30]
+    return {
+        "excepciones": [
+            {
+                "id": str(f.id),
+                "cuenta_id": str(f.cuenta_id),
+                "territorio_id": str(f.territorio_id),
+                "motivo": f.motivo,
+                "hasta": f.hasta.isoformat() if f.hasta else None,
+                "creada_por": str(f.creada_por) if f.creada_por else None,
+                # Sin fecha no caduca: es la diferencia entre un arreglo
+                # temporal y una decisión, y se ven igual en una lista.
+                "permanente": f.hasta is None,
+                "dias_para_vencer": (f.hasta - hoy).days if f.hasta else None,
+            }
+            for f in filas
+        ],
+        "cuantas": len(filas),
+        "vencen_pronto": len(pronto),
+        "que_significa": (
+            f"{len(pronto)} excepciones vencen en 30 días o menos. Cuando venzan, "
+            "esas cuentas vuelven a su territorio de origen sin avisar a nadie."
+            if pronto
+            else "Ninguna excepción está a punto de vencer."
+        ),
+    }
+
+
 def aplicar(uow: UnidadDeTrabajo, tenant_id: UUID, cuentas: list[dict[str, Any]]) -> dict[str, Any]:
     """Escribe las asignaciones calculadas."""
     asignadas = 0

@@ -104,6 +104,7 @@ export default {
     chat: "Chat",
     embudo: "Tablero de ventas",
     coste: "Coste",
+    territorios: "Territorios",
     inteligencia: "Inteligencia",
     nexus: "Nexus",
     duplicados: "Duplicados por resolver",

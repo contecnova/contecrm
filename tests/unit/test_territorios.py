@@ -134,6 +134,90 @@ def test_la_excepcion_manda_sobre_la_regla(uow: UnidadDeTrabajo) -> None:
     assert "director" in salida["por_que"]
 
 
+@pytest.mark.db
+def test_las_excepciones_SE_PUEDEN_LISTAR(uow: UnidadDeTrabajo) -> None:
+    """Se declaraban y no las devolvía ninguna ruta.
+
+    El resolutor las lee al asignar —así que funcionaban— y no había forma de
+    contestar «¿qué cuentas están fuera de su territorio y por qué?», que es
+    la pregunta de cuando dos comerciales discuten por una cuenta o de cuando
+    se revisa el reparto antes de fijar las cuotas. Sólo se podía mirar en la
+    base de datos.
+    """
+    sur = _publicado(uow, "sur", ["SE"])
+    ter.declarar_excepcion(
+        uow,
+        cuenta_id=uuid4(),
+        territorio_id=sur.id,
+        motivo="La lleva el director desde antes de la reorganización",
+    )
+    uow.db.flush()
+
+    salida = ter.excepciones_de(uow.db, uow.tenant_id)
+    assert salida["cuantas"] == 1, salida
+    una = salida["excepciones"][0]
+    assert "director" in una["motivo"]
+    # Sin fecha no caduca: es la diferencia entre un arreglo temporal y una
+    # decisión, y en una lista se ven igual si no se dice.
+    assert una["permanente"] is True, una
+    assert una["dias_para_vencer"] is None, una
+
+
+@pytest.mark.db
+def test_una_excepcion_que_esta_a_punto_de_vencer_se_avisa(uow: UnidadDeTrabajo) -> None:
+    """Una excepción que caduca mueve una cuenta de dueño **sin avisar**.
+
+    Con `hasta` puesto deja de aplicarse ese día: la cuenta vuelve a su
+    territorio de origen un lunes y quien la llevaba se entera por el pipeline.
+    Por eso las que vencen en treinta días o menos van contadas aparte, no
+    mezcladas en el total.
+    """
+    sur = _publicado(uow, "sur", ["SE"])
+    ter.declarar_excepcion(
+        uow,
+        cuenta_id=uuid4(),
+        territorio_id=sur.id,
+        motivo="Mientras dure el proyecto de integración",
+        hasta=hoy() + timedelta(days=10),
+    )
+    uow.db.flush()
+
+    salida = ter.excepciones_de(uow.db, uow.tenant_id)
+    assert salida["vencen_pronto"] == 1, salida
+    assert "vuelven a su territorio" in salida["que_significa"], salida["que_significa"]
+    assert salida["excepciones"][0]["dias_para_vencer"] == 10
+    # Y que NO sea permanente, que es la otra mitad. Afirmarlo sólo en el caso
+    # sin fecha dejaba pasar una constante: con `permanente: True` fijo, la
+    # prueba de arriba seguía en verde y una excepción temporal se enseñaría
+    # como una decisión firme.
+    assert salida["excepciones"][0]["permanente"] is False, salida["excepciones"][0]
+
+
+@pytest.mark.db
+def test_una_excepcion_vencida_no_explica_el_reparto_de_hoy(uow: UnidadDeTrabajo) -> None:
+    """Por defecto sólo las vigentes.
+
+    Una excepción que ya no aplica no explica nada de dónde está una cuenta
+    hoy, y mezclarla en la lista haría parecer que sí: alguien buscaría por qué
+    una cuenta está en un territorio y leería el motivo de una excepción
+    muerta.
+    """
+    sur = _publicado(uow, "sur", ["SE"])
+    ter.declarar_excepcion(
+        uow,
+        cuenta_id=uuid4(),
+        territorio_id=sur.id,
+        motivo="Durante la baja de la responsable, que ya ha vuelto",
+        hasta=hoy() - timedelta(days=1),
+    )
+    uow.db.flush()
+
+    assert ter.excepciones_de(uow.db, uow.tenant_id)["cuantas"] == 0
+    # Pero se pueden pedir: hacen falta para explicar un reparto del pasado.
+    con_vencidas = ter.excepciones_de(uow.db, uow.tenant_id, incluir_vencidas=True)
+    assert con_vencidas["cuantas"] == 1, con_vencidas
+
+
 def test_una_excepcion_sin_motivo_se_rechaza(uow: UnidadDeTrabajo) -> None:
     """Es indistinguible de un error, y nadie se atreve a quitarla dos años
     después."""

@@ -2438,6 +2438,42 @@ de `` `${base}/ajustes` `` no puede saber qué ruta es. Un contrato que no se
 puede leer no se puede vigilar, y el gate pasó de señalar cinco rutas falsas a
 señalar las cinco de verdad en cuanto se escribieron enteras.
 
+### 4.6.19 Las excepciones de territorio caducaban sin que nadie pudiera verlas
+
+Otra que se escribía y no leía nadie. `POST /territorios/excepciones` saca una
+cuenta de su territorio por decisión, el resolutor la lee al asignar —así que
+**funciona**— y ninguna ruta la devolvía. «¿Por qué esta cuenta es de Ana y no
+de la zona norte?» sólo se contestaba mirando la base de datos.
+
+Y es peor que un listado que falta, porque **caducan**: con `hasta` puesto
+dejan de aplicarse ese día sin avisar a nadie. La cuenta vuelve a su territorio
+de origen un lunes y quien la llevaba se entera por el pipeline. Por eso
+`GET /territorios/excepciones` cuenta aparte las que vencen en treinta días o
+menos, y marca cuáles no tienen fecha: sin esa distinción, un arreglo temporal
+y una decisión firme se ven igual en una lista.
+
+Por defecto sólo las vigentes. Una excepción vencida no explica nada del
+reparto de hoy, y mezclarlas haría que alguien leyera el motivo de una
+excepción muerta como la razón de que una cuenta esté donde está. Las vencidas
+se piden con `?incluir_vencidas=true`, que hace falta para explicar un reparto
+del pasado.
+
+**La pantalla del mapa**, cuyo panel principal es el simulador. De lo que
+devuelve, lo que decide no es cuántas cuentas cambian de dueño: son las que se
+quedan **sin territorio** y los **solapes** —dos territorios con la misma
+prioridad—, que producen una asignación dependiente del orden alfabético que
+nadie busca hasta que dos comerciales discuten. Las prioridades repetidas se
+señalan en la propia lista de territorios, que es donde se arreglan.
+
+Las cuentas las manda la pantalla porque el servicio de territorios **no lee la
+tabla de cuentas**: vive en otro servicio y ninguno lee el esquema de otro.
+
+Y las cuotas van en la misma pantalla: el territorio decide de quién es una
+cuenta y la cuota decide cuánto tiene que vender quien lo lleva. Mirar una sin
+la otra es cómo se reparte un mapa que nadie puede cumplir. El objetivo
+prorrateado sale **con el del plan al lado**: quien entra el día 20 no tiene la
+cuota entera, y sin los dos números delante uno de ellos parece un error.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

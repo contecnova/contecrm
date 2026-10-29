@@ -138,6 +138,10 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const Territorios = pantalla(
+  () => import("@/paginas/Territorios"),
+  (m) => m.Territorios,
+);
 const PeriodoDePrevision = pantalla(
   () => import("@/paginas/PeriodoDePrevision"),
   (m) => m.PeriodoDePrevision,
@@ -344,6 +348,7 @@ export function App() {
           <Route path="/cobertura" element={<Cobertura />} />
           <Route path="/chat" element={<Chat sesion={sesion} />} />
           <Route path="/recorrido" element={<Recorrido />} />
+          <Route path="/territorios" element={<Territorios />} />
           <Route path="/procesos" element={<Procesos />} />
           <Route path="/aprobaciones" element={<Aprobaciones />} />
           <Route path="/pendiente-de-firma" element={<PendienteDeFirma />} />

@@ -573,7 +573,19 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   que el numero bruto esta empeorando la prevision, y no se entera nadie
 #   porque al cerrar se compara el real con el objetivo, no con lo que se
 #   habria previsto sin tocar nada.
-TOPE_SIN_PANTALLA = 282
+#   29-10-2026  279 de 778  el mapa de territorios. Tres: la jerarquia con sus
+#   ------------------------------------------------------------------------
+#   reglas de excepcion, la simulacion antes de publicar y el prorrateo de la
+#   cuota de quien entra o sale a mitad de periodo.
+#
+#   Y otra que se escribia y no leia nadie: las EXCEPCIONES de territorio. Se
+#   declaran, el resolutor las lee al asignar —asi que funcionan— y ninguna
+#   ruta las devolvia: «¿por que esta cuenta es de Ana y no de la zona norte?»
+#   solo se contestaba mirando la base. Peor aun, CADUCAN: con fecha puesta
+#   dejan de aplicarse sin avisar, la cuenta vuelve a su territorio de origen
+#   un lunes y quien la llevaba se entera por el pipeline. Ahora se listan, y
+#   las que vencen en 30 dias o menos van contadas aparte.
+TOPE_SIN_PANTALLA = 279
 
 
 def _es_pantalla(p: Path) -> bool:

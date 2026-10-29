@@ -741,6 +741,31 @@ La previsión no es la suma del pipeline. Lo que verás:
   y **enseña el número que calcula ese motor**, no otro. Una cifra distinta de la
   que vas a cobrar haría que no te creyeras ninguna de las dos.
 
+### El mapa de territorios
+
+En **Ventas › Territorios**. Lo que se hace con un mapa de territorios no es
+mirarlo: es cambiarlo sin romper el año de nadie. Publicar y ver qué pasa
+significa que cientos de cuentas cambian de dueño el lunes por la mañana, y
+deshacerlo no devuelve las conversaciones que ya se tuvieron.
+
+- **Simula antes de publicar**, contra tus cuentas de verdad y sin escribir
+  nada. Lo que importa del resultado no es cuántas cambian: es cuántas se
+  quedarían **sin territorio** —eso no es un hueco que se rellene solo— y
+  cuántas quedarían en **solape**, que es cuando dos territorios tienen la
+  misma prioridad y acaba decidiendo el orden alfabético. Nadie busca un solape
+  hasta que dos comerciales discuten por una cuenta.
+- **Las prioridades repetidas se señalan en la lista**, que es donde se
+  arreglan.
+- **Las cuentas sacadas de su territorio**, con su motivo y con **cuándo dejan
+  de estarlo**. Esto no se podía ver antes: se declaraba la excepción y no
+  había forma de saber cuáles había. Y caducan — una cuenta sacada «hasta
+  marzo» vuelve sola en marzo sin avisar a nadie, así que las que vencen en un
+  mes o menos salen marcadas.
+- **Las cuotas, con su prorrateo.** Quien entra el día 20 no tiene la cuota
+  entera, y medirle contra ella es garantizarle que no la cumple. Al lado sale
+  el objetivo del plan, el que está en la hoja de alguien: sin los dos
+  delante, uno de los dos parece equivocado.
+
 ### Abrir un periodo
 
 En **Previsión › Periodos**, cada fila se abre. Un periodo no es una línea de

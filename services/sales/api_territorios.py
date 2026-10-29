@@ -259,6 +259,31 @@ class Excepcion(BaseModel):
     hasta: date | None = None
 
 
+@router.get(
+    "/excepciones",
+    dependencies=[Depends(exige_permiso("forecast:read"))],
+    summary="Qué cuentas están fuera de su territorio, y por qué",
+    description=(
+        "**Se declaraban y no se podían listar** (CRM-03.02.02.02). El "
+        "resolutor las lee al asignar una cuenta —así que funcionan— y ninguna "
+        "ruta las devolvía, con lo que «¿por qué esta cuenta es de Ana y no de "
+        "la zona norte?» sólo se contestaba mirando la base de datos.\n\n"
+        "Y caducan. Con `hasta` puesto dejan de aplicarse sin avisar a nadie, "
+        "así que la cuenta vuelve a su territorio de origen un lunes y quien la "
+        "llevaba se entera por el pipeline. Por eso las que vencen en treinta "
+        "días o menos salen contadas aparte.\n\n"
+        "Por defecto sólo las vigentes: una excepción vencida ya no explica "
+        "nada del reparto de hoy, y mezclarlas haría parecer que sí."
+    ),
+)
+def listar_excepciones(
+    db: DbDep,
+    principal: AutenticadoDep,
+    incluir_vencidas: bool = Query(False, description="También las que ya no aplican"),
+) -> Any:
+    return ter.excepciones_de(db, principal.tenant_id, incluir_vencidas=incluir_vencidas)
+
+
 @router.post(
     "/excepciones",
     status_code=status.HTTP_201_CREATED,

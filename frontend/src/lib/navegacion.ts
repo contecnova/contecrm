@@ -175,6 +175,13 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "ventas", a: "/pendiente-de-firma", clave: "nav.firma", icono: "draw", permiso: "integracion:read" , recursos: ["firma"] },
   { area: "ventas", a: "/embudo", clave: "nav.embudo", icono: "view_kanban", permiso: "opportunity:read" , recursos: ["pipeline"] },
   { area: "ventas", a: "/coste", clave: "nav.coste", icono: "payments", permiso: "opportunity:read" , recursos: ["coste"] },
+  // En Ventas y sin `ambito` propio: quien decide un mapa de territorios es
+  // quien lleva el equipo comercial, no quien administra el sistema, y Ventas
+  // entera vive en «trabajar». Se probó marcarlo «administrar» y el gate de
+  // las dos entradas lo rechazó con razón: un área que aparece en las dos
+  // deja de significar nada, y la excepción de las aprobaciones —la única que
+  // hay— está justificada porque aprobar un descuento ES trabajo diario.
+  { area: "ventas", a: "/territorios", clave: "nav.territorios", icono: "map", permiso: "forecast:read" , recursos: ["territorios"] },
 
   // Las parejas que podrían ser la misma ficha, con los botones para
   // decidirlas. Va en Clientes y no en Configuración: quien resuelve un

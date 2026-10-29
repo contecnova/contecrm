@@ -578,6 +578,47 @@ const pantallas = {
     dias: "{{dias}} días",
     veces: "{{veces}} veces",
   },
+  territorios: {
+    titulo: "Mapa de territorios",
+    intro:
+      "Publicar y ver qué pasa significa que cientos de cuentas cambian de " +
+      "dueño el lunes por la mañana, y deshacerlo no devuelve las " +
+      "conversaciones que ya se tuvieron.",
+    queSiPublico: "Qué pasaría si lo publicara",
+    queSiPublicoAyuda:
+      "Se prueba contra las cuentas de verdad, sin escribir nada. Lo que " +
+      "importa no es cuántas cambian: es cuántas se quedan sin territorio y " +
+      "cuántas quedan en solape.",
+    simular: "Simular con mis cuentas",
+    simulando: "Simulando…",
+    simulado: "Simulado contra {{cuantas}} cuentas.",
+    resultado: "{{cambian}} cambiarían de territorio y {{quedan}} se quedarían igual.",
+    sinTerritorio:
+      "{{cuantas}} cuentas se quedarían SIN territorio. Eso no es un hueco que se rellene solo.",
+    solapes:
+      "{{cuantos}} solapes: dos territorios con la misma prioridad. La asignación acabaría dependiendo del orden alfabético.",
+    seguro: "Se puede publicar: ni solapes ni cuentas sin dueño.",
+    noSeguro: "NO conviene publicar todavía: arregla lo de arriba primero.",
+    mapa: "Los territorios",
+    sinTerritorios: "Todavía no hay ningún territorio definido",
+    criterios: "{{cuantos}} criterios",
+    prioridadRepetida:
+      "{{cuantas}} prioridades repetidas: ahí es donde salen los solapes.",
+    excepciones: "Cuentas fuera de su territorio",
+    excepcionesAyuda:
+      "Con su motivo y con cuándo dejan de aplicarse. Una excepción que " +
+      "caduca devuelve la cuenta a su territorio de origen sin avisar a nadie.",
+    sinExcepciones: "Ninguna cuenta está fuera de su territorio",
+    permanente: "sin fecha",
+    vence: "vence en {{dias}} días",
+    cuotas: "Cuotas y su prorrateo",
+    cuotasAyuda:
+      "Quien entra a mitad de periodo no tiene la cuota entera, y medirle " +
+      "contra ella es garantizarle que no la cumple. El objetivo del plan va " +
+      "al lado del efectivo: sin los dos delante, uno parece equivocado.",
+    logradoDe: "{{logrado}} de {{objetivo}}",
+    prorrateada: "Prorrateada: en el plan son {{plan}}.",
+  },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:
