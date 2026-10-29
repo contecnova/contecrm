@@ -886,6 +886,19 @@ def main() -> int:
             + ".\nNo ha engordado el preflight: está compartiendo máquina. El "
             "presupuesto que decide es el de CPU."
         )
+        # **Y SE APUNTA IGUAL.** Esta rama devolvía cero sin apuntar nada, así
+        # que un pase completo con los 22 gates en verde no contaba como pase
+        # en cuanto la máquina estuviera un poco ocupada — que es casi siempre,
+        # porque la pila local no se para. Medido el 29-10-2026: tres pases
+        # completos en verde el mismo día y el apunte seguía con la fecha del
+        # día anterior, con el aviso diciendo «van 46 commits sin un pase».
+        #
+        # Es EXACTAMENTE el fallo que esta misma herramienta dice más arriba
+        # haber arreglado el 06-10, salido otra vez por una rama nueva: el
+        # texto de aquella nota lo explica mejor que esta —«no bajaba de N, y
+        # eso enseña a ignorarlo, que es como se pierde el apunte entero»—.
+        # Un arreglo no cierra la familia: hay que recorrer todas las salidas.
+        _decir_que_falta_por_correr(completo="suite" in tiers)
         return 0
 
     print(

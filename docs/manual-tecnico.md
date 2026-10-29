@@ -2395,6 +2395,49 @@ Tiene pantalla propia y no la ficha genérica por un motivo mecánico: tres de
 sus paneles leen rutas de **otro prefijo** —`/ingresos/…`, `/forecast/…`— y la
 ficha genérica descubre sus paneles por prefijo común, así que no los vería.
 
+### 4.6.18 Un periodo de previsión es un número que alguien defiende
+
+El módulo listaba los periodos y ahí se acababa. Y un periodo de previsión es
+lo contrario de una fila: es **un número que alguien lleva a un comité**. Lo
+que hace falta para defenderlo no se alcanzaba desde ninguna pantalla.
+
+| Qué contesta | De dónde sale |
+|---|---|
+| Quién tocó el número y con qué motivo | `GET /forecast/periodos/{clave}/ajustes` |
+| **Si esos ajustes acercaron o alejaron del real** | `GET …/acierto-ajustes` |
+| Cómo íbamos hace tres semanas | `GET …/instantaneas` |
+| Cuánto se ha movido, y qué se empujó dos veces | `GET …/deslizamiento` |
+| Por producto, familia o tipo de ingreso | `GET …/desglose?por=` |
+
+Tres cosas que son la diferencia entre un panel y un volcado:
+
+- **El acierto de los ajustes es el panel incómodo, a propósito.** Un
+  responsable que ajusta siempre hacia arriba y acierta **menos** que el número
+  bruto está empeorando la previsión, y no se entera nadie: al cerrar el
+  trimestre se compara el real con el objetivo, no con lo que se habría
+  previsto sin tocar nada. Por eso la ruta devuelve **los dos errores** y no
+  sólo el del número ajustado.
+- **Las empujadas más de una vez van aparte.** Una fecha que se mueve dos
+  trimestres seguidos no es un retraso: es una venta que no existe. Dentro del
+  total de «oportunidades con cambio de fecha» se confunde con la que se movió
+  una semana.
+- **Lo que no se ha podido convertir no cuenta como cero**, y el aviso se pinta
+  pegado al número. Un total al que le faltan importes en silencio es peor que
+  uno que avisa, porque nadie lo cuestiona. Igual en el desglose: si falta una
+  familia entera por un tipo de cambio que no estaba, se dice — si no, se lee
+  como «esa familia no vendió nada».
+
+Se abre **por clave** y no por identificador, como el objeto del modelo: sus
+rutas hijas se dirigen por la clave del periodo.
+
+**Y una regla de estilo que es de contrato.** En esta pantalla cada ruta se
+escribe entera en su llamada, en vez de componerla de una variable `base`. No
+es repetición por gusto: el gate que exige que toda ruta de la que una pantalla
+declara la forma esté recorrida por una prueba de servidor **lee el código**, y
+de `` `${base}/ajustes` `` no puede saber qué ruta es. Un contrato que no se
+puede leer no se puede vigilar, y el gate pasó de señalar cinco rutas falsas a
+señalar las cinco de verdad en cuanto se escribieron enteras.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

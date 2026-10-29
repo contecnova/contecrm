@@ -562,7 +562,18 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Se escribio el lado de lectura, con el total del credito calculado y su
 #   veredicto de si cuadra —dejarlo sumar a cada pantalla garantiza que una no
 #   lo sume—.
-TOPE_SIN_PANTALLA = 286
+#   29-10-2026  282 de 778  un periodo de prevision. Cuatro: los ajustes del
+#   ------------------------------------------------------------------------
+#   responsable con su motivo y SI ACERTARON, las fotos del periodo, cuanto se
+#   ha movido —separando las empujadas mas de una vez— y el desglose por
+#   producto, familia o tipo de ingreso.
+#
+#   El panel que justifica la pantalla es el del acierto, y es incomodo a
+#   proposito: un responsable que ajusta siempre hacia arriba y acierta MENOS
+#   que el numero bruto esta empeorando la prevision, y no se entera nadie
+#   porque al cerrar se compara el real con el objetivo, no con lo que se
+#   habria previsto sin tocar nada.
+TOPE_SIN_PANTALLA = 282
 
 
 def _es_pantalla(p: Path) -> bool:

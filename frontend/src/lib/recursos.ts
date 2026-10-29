@@ -1028,7 +1028,14 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
         permiso: "forecast:read",
       },
       {
+        // Con `objeto` para que cada fila abra SU ficha: un periodo de
+        // previsión no es una fila, es un número que alguien defiende en un
+        // comité, y lo que hace falta para defenderlo —quién lo ajustó, si
+        // esos ajustes acercaron al real, qué se ha movido desde la última
+        // foto— vive en sus rutas hijas. Se abre por CLAVE, que es como se
+        // dirigen esas rutas.
         nombre: "Periodos",
+        objeto: "periodo",
         listar: "/api/v1/forecast/periodos",
         servicio: "sales",
         permiso: "forecast:read",

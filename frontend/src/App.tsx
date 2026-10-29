@@ -138,6 +138,10 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const PeriodoDePrevision = pantalla(
+  () => import("@/paginas/PeriodoDePrevision"),
+  (m) => m.PeriodoDePrevision,
+);
 const Oportunidad = pantalla(
   () => import("@/paginas/Oportunidad"),
   (m) => m.Oportunidad,
@@ -312,6 +316,13 @@ export function App() {
               —`/ingresos/…`, `/forecast/…`—, que la ficha genérica no
               descubre porque busca por prefijo común. */}
           <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
+          {/* Por CLAVE y no por identificador: las rutas hijas de un periodo
+              —ajustes, fotos, desglose, deslizamiento— se dirigen por su
+              clave, y pasarles el identificador las deja en 404. */}
+          <Route
+            path="/m/prevision/periodo/:clave"
+            element={<PeriodoDePrevision />}
+          />
           <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
           {/* Una instancia de proceso tiene pantalla propia por lo mismo que
               el objeto del modelo: la ficha genérica enseña columnas —estado,

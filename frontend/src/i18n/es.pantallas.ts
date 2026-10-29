@@ -539,6 +539,45 @@ const pantallas = {
     deslizada: "{{dias}} días más tarde",
     sinMotivo: "Se movió sin motivo escrito: así no se puede discutir en un comité.",
   },
+  prevision: {
+    cuantas: "{{cuantas}} oportunidades",
+    total: "{{total}} · {{ponderado}} ponderado",
+    ponderadoCorto: "{{valor}} ponderado",
+    compromiso: "Comprometido: {{valor}}",
+    ajustes: "Lo que ha tocado el responsable",
+    ajustesAyuda:
+      "Cada ajuste con su autor y su motivo. El motivo es la mitad del ajuste: " +
+      "sin él no se puede juzgar si estaba bien hecho.",
+    sinAjustes: "Nadie ha tocado el número calculado",
+    acierto: "¿Acercaron al real?",
+    contraReal:
+      "Real {{real}} · sin ajustar {{bruto}} · ajustado {{ajustado}}",
+    ajustarAcerco: "Ajustar acercó: error de {{error}}.",
+    ajustarAlejo:
+      "Ajustar ALEJÓ del real: error de {{conAjuste}} ajustando y {{sinAjuste}} sin tocar nada.",
+    desglose: "Por dónde entra",
+    agruparPor: "Agrupar por",
+    porFamilia: "familia",
+    porProducto: "producto",
+    porTipo: "tipo de ingreso",
+    sinDesglose: "Sin líneas que desglosar en este periodo",
+    lineas: "{{cuantas}} líneas",
+    gruposSinCambio:
+      "Sin tipo de cambio y por tanto FUERA del desglose: {{grupos}}. No es que no vendieran.",
+    fotos: "Cómo íbamos antes",
+    fotosAyuda:
+      "Cada foto con cuándo se tomó. Una previsión sin fotos no se puede " +
+      "comparar consigo misma, y «¿cómo íbamos hace tres semanas?» es la " +
+      "pregunta de todos los lunes.",
+    sinFotos: "Todavía no se ha congelado ninguna foto",
+    deslizamiento: "Cuánto se ha movido",
+    sinDeslizamiento: "Ninguna oportunidad ha cambiado de fecha",
+    empujadas: "{{cuantas}} empujadas, {{dias}} días en total",
+    masDeUnaVez:
+      "{{cuantas}} se han empujado MÁS DE UNA VEZ. Eso no es un retraso: es una venta que no existe.",
+    dias: "{{dias}} días",
+    veces: "{{veces}} veces",
+  },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:

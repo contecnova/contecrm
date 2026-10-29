@@ -148,6 +148,21 @@ verde, así que no se escribía ni pasando los veinte gates, y el aviso de «van
 commits sin un pase completo» no bajaba de N por mucho que se corriera. Un aviso
 que no baja nunca se aprende a ignorar, que es como se pierde el apunte entero.
 
+**Y el mismo fallo volvió por otra rama, tres semanas después.** Medido el
+29-10-2026: tres pases completos en verde el mismo día y el apunte seguía con
+la fecha del anterior, con el aviso diciendo «van 46 commits sin un pase». La
+causa era una tercera salida en verde —rápida de CPU pero lenta de reloj, que
+es la que se toma cuando la máquina está ocupada— que devolvía cero **sin
+apuntar nada**. Y como la pila local nunca se para, esa rama es la habitual.
+
+Lo que se aprende no es la rama: es que **un arreglo no cierra la familia**.
+Por eso ahora no se vigila esa salida concreta, sino **todas las salidas en
+verde**, con una sola excepción que se reconoce por lo que ella misma declara
+—la de la máquina apretada, donde el CPU medido no es el trabajo del preflight
+y no cuenta ni como pase ni como rojo—. Validado plantando las dos cosas:
+quitar el apunte de la rama del reloj, y añadir una cuarta rama verde que no
+apunte.
+
 No es una preferencia de estilo. Un preflight que tarda más deja de correrse: se
 pospone «para luego», y luego se empuja sin él. Entonces el coste se paga entero
 y la garantía no llega, que es el peor de los dos mundos. Un gate que no se corre

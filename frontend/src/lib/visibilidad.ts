@@ -591,6 +591,7 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/forecast/periodos",
       "p": "forecast:read",
+      "o": "periodo",
       "s": "sales"
     },
     {

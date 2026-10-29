@@ -51,7 +51,13 @@ def _preflight() -> Any:
 # y el mismo nivel «push»: 146 s de CPU con carga 7 y 252 s con carga 61. El CPU
 # aguanta la contención mucho mejor que el reloj, pero no es inmune, y el
 # preflight decía que sí lo era.
-COSTE_MEDIDO_CPU = {"rapido": 22.0, "push": 139.0, "completo": 354.0}
+#
+# 29-10-2026: el completo pasa de 354 a 560 s, medido con la máquina libre y
+# los 22 gates en verde. No es grasa: son 4.398 pruebas —2.856 con base a 78 ms
+# cada una— contra las que había en octubre. Se actualiza aquí porque un coste
+# viejo hace que la comprobación del margen mida contra un producto que ya no
+# existe, y entonces deja de decir nada.
+COSTE_MEDIDO_CPU = {"rapido": 22.0, "push": 139.0, "completo": 560.0}
 
 
 @pytest.mark.parametrize(
@@ -137,3 +143,72 @@ def test_la_carga_se_mira_en_las_tres_medias_y_no_solo_en_el_minuto() -> None:
     cuerpo = fuente.split("def _carga(")[1].split("\ndef ")[0]
     assert "max(os.getloadavg())" in cuerpo
     assert "os.getloadavg()[0]" not in cuerpo
+
+
+def test_todo_verde_apunta_el_pase_salvo_cuando_la_maquina_manda() -> None:
+    """Un pase completo en verde tiene que CONSTAR, salga por la rama que salga.
+
+    Medido el 29-10-2026: tres `--todo` en verde el mismo día y el apunte
+    seguía con la fecha del anterior, con el aviso diciendo «van 46 commits sin
+    un pase». La causa era una tercera salida —verde, lento de reloj pero no de
+    CPU— que devolvía cero sin apuntar nada. Y como la pila local no se para
+    nunca, esa rama es la que se toma casi siempre.
+
+    Es **el mismo fallo** que este fichero dice arreglado el 06-10, salido otra
+    vez por una rama nueva. Por eso esta prueba no comprueba la rama: comprueba
+    **todas las salidas verdes**, que es lo que impide que vuelva por una
+    cuarta.
+
+    La única exenta es la de la máquina apretada, y lo dice ella misma: ahí el
+    CPU medido no es el trabajo del preflight, así que no cuenta ni como pase
+    ni como rojo.
+    """
+    import ast
+
+    fuente = (RAIZ / "scripts" / "preflight.py").read_text(encoding="utf-8")
+    arbol = ast.parse(fuente)
+    main = next(n for n in ast.walk(arbol) if isinstance(n, ast.FunctionDef) and n.name == "main")
+
+    # Dónde se comprueban los fallos: lo de antes no es «verde», es montaje.
+    linea_fallos = min(
+        n.lineno for n in ast.walk(main) if isinstance(n, ast.Name) and n.id == "fallos"
+    )
+    apuntes = [
+        n.lineno
+        for n in ast.walk(main)
+        if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "_decir_que_falta_por_correr"
+    ]
+    verdes = [
+        n.lineno
+        for n in ast.walk(main)
+        if isinstance(n, ast.Return)
+        and isinstance(n.value, ast.Constant)
+        and n.value.value == 0
+        and n.lineno > linea_fallos
+    ]
+    assert verdes, "no se ha encontrado ninguna salida en verde: la prueba no mira nada"
+
+    lineas = fuente.splitlines()
+    sin_apuntar = []
+    for salida in verdes:
+        # El apunte más cercano por encima, dentro de las veinte líneas
+        # anteriores: cada rama imprime su veredicto y vuelve.
+        if any(0 < salida - a <= 20 for a in apuntes):
+            continue
+        bloque = "\n".join(lineas[max(0, salida - 20) : salida])
+        # La exenta se reconoce por lo que ella misma dice, no por su número de
+        # línea: atarlo a la línea haría que esto se rompiera al mover código.
+        # «NO cuenta como» y no la frase entera: en el código va partida entre
+        # dos líneas —«…NO cuenta como » / «pase ni como rojo…»— y buscarla
+        # completa no la encuentra nunca. Una comprobación que busca un texto
+        # que no existe da por exenta cualquier rama.
+        if "NO cuenta como" in bloque:
+            continue
+        sin_apuntar.append(salida)
+
+    assert not sin_apuntar, (
+        "Hay salidas en verde que no apuntan el pase, en las líneas "
+        f"{sin_apuntar}. Un `--todo` con los 22 gates en verde que no consta "
+        "deja el aviso de «van N commits sin un pase» sin bajar nunca, y un "
+        "aviso que no baja se aprende a ignorar."
+    )

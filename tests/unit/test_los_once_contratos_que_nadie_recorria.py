@@ -1091,3 +1091,130 @@ def test_el_historial_de_prevision_sale_por_http(
     )
     assert r.status_code == 200, r.text
     assert isinstance(r.json(), list), f"la pantalla las cuenta: llega {type(r.json())}"
+
+
+# ── Y cinco de un periodo de previsión: PeriodoDePrevision.tsx ───────────
+#
+# 29-10-2026. Un periodo de previsión es lo contrario de una fila: es un número
+# que alguien defiende en un comité. Lo que hace falta para defenderlo —quién
+# lo ajustó, si esos ajustes acercaron al real, qué se ha movido— vive en sus
+# rutas hijas, y ninguna prueba de servidor las recorría por HTTP.
+
+
+@pytest.fixture
+def periodo(db: Any, tenant_id: UUID) -> str:
+    """Un periodo abierto, que es lo que mira la pantalla."""
+    from services.sales.modelos import PeriodoForecast
+
+    db.add(
+        PeriodoForecast(
+            tenant_id=tenant_id,
+            clave="2026-Q4",
+            nombre="Q4 2026",
+            desde=datetime.now(timezone.utc).date(),
+            hasta=(datetime.now(timezone.utc) + timedelta(days=90)).date(),
+        )
+    )
+    db.flush()
+    return "2026-Q4"
+
+
+def test_la_prevision_del_periodo_avisa_de_lo_que_no_ha_podido_convertir(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """El aviso va EN la respuesta, no en un campo que nadie mira.
+
+    La pantalla lo pinta pegado al número. Si el servidor dejara de mandarlo,
+    un total con importes perdidos se leería como completo — y nadie lo
+    cuestiona, que es lo que lo hace peor que un error.
+    """
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(
+        cuerpo,
+        "periodo",
+        "moneda",
+        "total",
+        "ponderado",
+        "compromiso",
+        "oportunidades",
+        "por_categoria",
+        "sin_tipo_de_cambio",
+        "aviso",
+    )
+
+
+def test_los_ajustes_del_periodo_salen_con_su_motivo(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """El motivo es la mitad del ajuste: sin él no se puede juzgar si estaba
+    bien hecho, y la lista se convierte en un registro de números cambiados."""
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}/ajustes", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list), f"la pantalla los recorre: llega {type(r.json())}"
+
+
+def test_el_acierto_compara_con_lo_que_se_habria_previsto_sin_tocar(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """Los dos errores, no sólo uno.
+
+    Con `error_con_ajuste` solo no se puede saber si ajustar mejoró o empeoró.
+    Es el panel que destapa a un responsable que ajusta siempre hacia arriba y
+    acierta menos que el número bruto, y sin la comparación nadie se entera
+    nunca: al cerrar se mira el real contra el objetivo, no contra lo que se
+    habría previsto sin tocar nada.
+    """
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}/acierto-ajustes", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert "medible" in cuerpo, sorted(cuerpo)
+    if cuerpo["medible"]:
+        _campos(cuerpo, "real", "bruto", "ajustado", "error_sin_ajuste", "error_con_ajuste")
+    else:
+        # Y cuando no se puede medir se dice por qué. Un panel vacío sin motivo
+        # se lee como «los ajustes no sirvieron».
+        assert str(cuerpo.get("motivo") or "").strip(), cuerpo
+
+
+def test_el_deslizamiento_separa_las_empujadas_mas_de_una_vez(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """Lo que importa no es cuántas se movieron.
+
+    Una fecha que se empuja dos trimestres seguidos no es un retraso: es una
+    venta que no existe. En el total de «con cambio de fecha» se confunde con
+    la que se movió una semana, y por eso el campo va aparte.
+    """
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}/deslizamiento", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    _campos(
+        r.json(),
+        "periodo",
+        "oportunidades_con_cambio_de_fecha",
+        "empujadas",
+        "dias_empujados",
+        "empujadas_mas_de_una_vez",
+        "detalle",
+    )
+
+
+def test_el_desglose_dice_que_grupos_se_quedan_fuera(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """Un desglose al que le falta una familia entera por un tipo de cambio que
+    no estaba se lee como «esa familia no vendió nada»."""
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}/desglose?por=familia", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    _campos(r.json(), "periodo", "por", "moneda", "grupos", "grupos_sin_tipo_de_cambio")
+
+
+def test_las_instantaneas_llevan_cuando_se_tomaron(
+    sales: Any, cabeceras: dict[str, str], periodo: str
+) -> None:
+    """Una etiqueta sin fecha no sirve para ordenar nada, y la pregunta es
+    siempre «¿cómo íbamos hace tres semanas?»."""
+    r = sales.get(f"/api/v1/forecast/periodos/{periodo}/instantaneas", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list), f"la pantalla las recorre: llega {type(r.json())}"

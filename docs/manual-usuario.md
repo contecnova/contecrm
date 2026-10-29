@@ -741,6 +741,33 @@ La previsión no es la suma del pipeline. Lo que verás:
   y **enseña el número que calcula ese motor**, no otro. Una cifra distinta de la
   que vas a cobrar haría que no te creyeras ninguna de las dos.
 
+### Abrir un periodo
+
+En **Previsión › Periodos**, cada fila se abre. Un periodo no es una línea de
+una tabla: es el número que alguien lleva a un comité, y dentro está lo que
+hace falta para defenderlo.
+
+- **El total, con el aviso pegado.** Si alguna oportunidad no se ha podido
+  convertir a la moneda del periodo, **no se cuenta como cero**: se dice
+  cuántas son y que no están sumadas. Un total al que le faltan importes en
+  silencio es peor que uno que avisa, porque nadie lo cuestiona.
+- **Quién ha tocado el número y por qué.** Cada ajuste con su autor, su importe
+  antes y después, y su motivo.
+- **Y si esos ajustes acertaron.** Éste es el panel incómodo, y está puesto a
+  propósito: compara el real con lo que se había calculado **sin tocar nada** y
+  con lo ajustado. Si ajustar alejó del real, lo dice en rojo. Sin esta
+  comparación nadie se entera nunca, porque al cerrar el trimestre se mira el
+  real contra el objetivo, no contra lo que se habría previsto sin ajustes.
+- **Cómo íbamos antes**, con las fotos congeladas del periodo y la fecha de
+  cada una.
+- **Cuánto se ha movido**, y aparte **cuántas ventas se han empujado más de una
+  vez**. No es lo mismo: una fecha que se mueve dos trimestres seguidos no es
+  un retraso, es una venta que no existe, y en el total se confunde con la que
+  se retrasó una semana.
+- **Por dónde entra**: el desglose por producto, familia o tipo de ingreso. Si
+  algún grupo se queda fuera por un tipo de cambio que falta, se dice — si no,
+  se leería como que ese grupo no vendió nada.
+
 ---
 
 ## Prospección y trabajo diario (sección 3.3)
