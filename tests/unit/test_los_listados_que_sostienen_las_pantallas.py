@@ -438,3 +438,16 @@ def test_las_migraciones_de_modalidad_se_pueden_recorrer(
     listado = tenancy.get("/api/v1/aislamiento/migraciones?limite=50", headers=cabeceras)
     assert listado.status_code == 200, listado.text
     assert "items" in listado.json()
+
+
+def test_los_perfiles_de_industria_se_listan(
+    tenancy: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Lo que se le deja montado a un cliente nuevo, con su clave y su nombre."""
+    respuesta = tenancy.get("/api/v1/ciclo-vida/perfiles", headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    filas = respuesta.json()
+    assert isinstance(filas, list)
+    for fila in filas:
+        for campo in ("clave", "nombre", "descripcion"):
+            assert campo in fila, f"el perfil no manda «{campo}»"

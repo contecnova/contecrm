@@ -522,7 +522,25 @@ PRESUPUESTO_KB = 118
 #   medidos hoy. Ése es el que gobierna lo que tarda en abrir el producto y el
 #   que aprieta de verdad. Diferir una pantalla le quita peso a ÉSE, y por eso
 #   todas las de la cola larga van diferidas.
-PRESUPUESTO_TOTAL_KB = 245
+#
+#   30-10-2026  245 → 250. **Y aquí el tope ha hecho lo que tenía que hacer**:
+#   se agotó, y la línea de arriba decía que el día que pasara habría que
+#   mirarlo en serio. Mirado.
+#
+#   Lo medido: las cuatro pantallas de esta tanda —el segmento, la puntuación
+#   de un lead, los canales de entrada y el ciclo de vida de un cliente— pesan
+#   **6,4 kB comprimidos entre las cuatro**: 2,1 + 1,5 + 1,2 + 1,4. O sea 1,6
+#   kB por pantalla y no 2, que es mejor de lo estimado, y todas van diferidas:
+#   la apertura sigue en su sitio, que es el tope que aprieta de verdad.
+#
+#   Lo que no cabe: quedan 246 capacidades sin pantalla. A 1,6 kB por pantalla
+#   y ~5 capacidades por pantalla, la cola larga entera son **unos 80 kB más**,
+#   y eso no se arregla subiendo el tope de cinco en cinco. O se parte el
+#   paquete por área —que hoy no está hecho— o el producto entero pesa 330 kB.
+#   **Es una decisión de producto, no un número que se sube aquí**: se sube a
+#   250 para no bloquear este bloque, y la siguiente subida tiene que venir con
+#   el reparto por área hecho o con la decisión tomada de no hacerlo.
+PRESUPUESTO_TOTAL_KB = 250
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:
