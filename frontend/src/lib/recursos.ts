@@ -299,6 +299,28 @@ export const RECURSOS_POR_MODULO: Record<string, Recurso[]> = {
           },
         ],
       },
+      // **Quién decide por quién, y hasta cuándo** (CRM-00.03.05.08). Se podía
+      // delegar la firma y no leerlo: «¿quién tiene hoy la de dirección?» es
+      // la pregunta de cualquier revisión de poderes, y una delegación puesta
+      // para agosto sigue viva en marzo sin que nadie lo note. Las caducadas
+      // salen marcadas y no escondidas: una que acaba de vencer explica por
+      // qué algo que antes salía solo ahora se queda parado.
+      {
+        nombre: "Delegaciones de firma",
+        listar: "/api/v1/aprobaciones/delegaciones",
+        servicio: "orchestrator",
+        permiso: "aprobacion:read",
+      },
+      // Los enlaces que permiten decidir SIN entrar al CRM
+      // (CRM-00.03.05.12): una credencial con patas. No se devuelve el token
+      // —en la base sólo está su hash, y ése es el punto— sino a quién
+      // representa, cuándo caduca y si ya se usó.
+      {
+        nombre: "Enlaces de decisión",
+        listar: "/api/v1/aprobaciones/enlaces",
+        servicio: "orchestrator",
+        permiso: "aprobacion:read",
+      },
     ],
   "modelo": [
       {

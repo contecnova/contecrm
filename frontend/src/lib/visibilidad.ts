@@ -154,6 +154,14 @@ export const VISIBILIDAD: Record<string, PestanaVisible[]> = {
     {
       "r": "/api/v1/aprobaciones",
       "p": "aprobacion:read"
+    },
+    {
+      "r": "/api/v1/aprobaciones/delegaciones",
+      "p": "aprobacion:read"
+    },
+    {
+      "r": "/api/v1/aprobaciones/enlaces",
+      "p": "aprobacion:read"
     }
   ],
   "modelo": [

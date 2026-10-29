@@ -381,7 +381,19 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            sobra, y un «3 origenes» no deja revisar nada— y
 #                            se dice que bloques puede pedir cada anfitrion,
 #                            que es la otra mitad del control
-TOPE_SIN_PANTALLA = 353
+#   29-10-2026  351 de 778  quien decide por quien, y con que enlaces. Dos
+#                            puertas sin vuelta mas: se podia delegar la firma
+#                            y no leerlo —«¿quien tiene hoy la de direccion?»
+#                            es la pregunta de cualquier revision de poderes, y
+#                            una delegacion puesta para agosto sigue viva en
+#                            marzo— y se emitian enlaces que permiten aprobar
+#                            SIN entrar al CRM sin forma de contarlos. El token
+#                            no sale: en la base solo esta su hash, y ese es el
+#                            punto. De paso, la prueba que las pide POR LA RUTA
+#                            cazo que `GET /{aprobacion_id}` iba delante y se
+#                            tragaba «delegaciones» con un 422 de UUID: llamando
+#                            a la funcion eso no se ve
+TOPE_SIN_PANTALLA = 351
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -1850,7 +1850,13 @@ aquello, la definición que se le enseñe tiene que ser la que estuvo vigente.
 - **Delegación y sustitución por ausencia** (`CRM-00.03.05.08`) con vigencia. Y
   la traza guarda **quién decidió de verdad**, no el nombre del titular. Una
   aprobación firmada por un sustituto es válida; una aprobación que parece
-  firmada por quien no estaba, no.
+  firmada por quien no estaba, no. **Y se pueden leer**: hasta el 29-10-2026 se
+  delegaba y no había forma de consultarlo, así que «¿quién tiene hoy la firma
+  de dirección?» —la pregunta de cualquier revisión de poderes— no se podía
+  contestar, y una delegación puesta para unas vacaciones de agosto seguía viva
+  en marzo sin que nadie lo notara. Las caducadas salen **marcadas y no
+  escondidas**: una que acaba de vencer explica por qué una aprobación que
+  antes salía sola ahora se queda parada.
 - **Escalado** (`CRM-00.03.05.09`) por tiempo, por inactividad y por jerarquía,
   **con aviso antes de escalar**. Escalar sin avisar convierte al sistema en
   algo contra lo que se trabaja: la gente descubre que su decisión se le ha
@@ -1874,6 +1880,14 @@ decidir es entrar, la decisión se retrasa hasta la noche.
 Firmado y de un solo uso porque el enlace viaja por correo: sin firma, cualquiera
 que lo reenvíe aprueba; sin un solo uso, el mismo enlace vale para la siguiente
 vez que se pida lo mismo.
+
+**Y cuántos hay sueltos se puede mirar.** Un enlace de éstos es una credencial
+con patas, y hasta el 29-10-2026 se emitían sin forma de contarlos ni de saber
+a nombre de quién. Lo que se devuelve **no es el token** —en la base sólo está
+su hash, y ése es justo el punto: quien lea una copia de seguridad no puede
+aprobar en nombre de nadie— sino a quién representa, cuándo caduca y si ya se
+usó. Los usados salen igual, porque un enlace gastado explica quién decidió
+desde fuera, y esconderlo deja esa decisión sin rastro visible.
 
 `CRM-00.03.05.13` es la otra mitad: una **bandeja única** de todo lo que me toca
 decidir, con el contexto suficiente en la propia bandeja —importe, margen,

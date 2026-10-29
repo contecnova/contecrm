@@ -150,6 +150,134 @@ def bandeja(db: DbDep, principal: AutenticadoDep, limite: int = Query(50, ge=1, 
     return apr.bandeja(db, principal.tenant_id, principal.id, limite=limite)
 
 
+# Estas dos van ANTES de `GET /{aprobacion_id}`, y no es cosmético: con el
+# comodín delante, «delegaciones» y «enlaces» se intentan leer como
+# identificadores y la respuesta es un 422 de UUID mal formado. Lo cazó la
+# prueba que las pide por la ruta; llamando a la función no se ve.
+@router.get(
+    "/delegaciones",
+    dependencies=[Depends(exige_permiso("aprobacion:read"))],
+    summary="Quién decide por quién, y hasta cuándo",
+    description=(
+        "**Se podía delegar y no leer.** Una delegación dice que, mientras "
+        "alguien no está, otro firma por él. Sin forma de consultarlas no se "
+        "puede contestar «¿quién tiene hoy la firma de dirección?», que es la "
+        "pregunta de cualquier revisión de poderes — y una delegación que se "
+        "puso para unas vacaciones de agosto sigue viva en marzo sin que nadie "
+        "lo note.\n\n"
+        "Salen **las vigentes primero y las caducadas detrás, marcadas**, no "
+        "escondidas: una delegación que acaba de caducar explica por qué una "
+        "aprobación que antes salía sola ahora se queda parada. Y con su "
+        "**motivo** y su **política**, porque delegar las vacaciones no es "
+        "delegar la firma de los contratos."
+    ),
+)
+def listar_delegaciones(
+    db: DbDep, principal: AutenticadoDep, incluir_caducadas: bool = True
+) -> Any:
+    from crmcore.fechas import ahora
+    from sqlalchemy import select
+
+    momento = ahora()
+    filas = (
+        db.execute(
+            select(apr.Delegacion)
+            .where(apr.Delegacion.tenant_id == principal.tenant_id)
+            .order_by(apr.Delegacion.hasta.desc())
+        )
+        .scalars()
+        .all()
+    )
+    salida = []
+    for f in filas:
+        vigente = bool(f.activa and f.desde <= momento <= f.hasta)
+        if not vigente and not incluir_caducadas:
+            continue
+        salida.append(
+            {
+                "id": str(f.id),
+                "titular_id": str(f.titular_id),
+                "suplente_id": str(f.suplente_id),
+                "desde": f.desde.isoformat(),
+                "hasta": f.hasta.isoformat(),
+                "vigente": vigente,
+                "motivo": f.motivo,
+                # Acotada o no: delegar las vacaciones no es delegar la firma
+                # de los contratos, y si no se dice se asume lo segundo.
+                "politica": f.politica,
+                "todas_las_politicas": f.politica is None,
+            }
+        )
+    vigentes = [s for s in salida if s["vigente"]]
+    return {
+        "delegaciones": salida,
+        "vigentes": len(vigentes),
+        "que_significa": (
+            "Nadie decide por nadie ahora mismo."
+            if not vigentes
+            else f"{len(vigentes)} personas están firmando por otra. Revisar "
+            "quién y hasta cuándo es parte de revisar quién puede qué."
+        ),
+    }
+
+
+@router.get(
+    "/enlaces",
+    dependencies=[Depends(exige_permiso("aprobacion:read"))],
+    summary="Qué enlaces de decisión siguen vivos",
+    description=(
+        "**Se podían emitir y no leer.** Un enlace de éstos permite aprobar "
+        "sin entrar al CRM: es una credencial con patas, y hasta hoy no había "
+        "forma de saber cuántas hay sueltas ni a nombre de quién.\n\n"
+        "No se devuelve el token —en la base sólo está su hash, y ése es el "
+        "punto—: se devuelve **a quién representa, cuándo caduca y si ya se "
+        "usó**. Los usados salen igual, porque un enlace gastado explica quién "
+        "decidió desde fuera, y esconderlo deja esa decisión sin rastro "
+        "visible.\n\n"
+        "Los **vivos primero**: son los únicos sobre los que se puede actuar."
+    ),
+)
+def listar_enlaces(db: DbDep, principal: AutenticadoDep) -> Any:
+    from crmcore.fechas import ahora
+    from sqlalchemy import select
+
+    momento = ahora()
+    filas = (
+        db.execute(
+            select(apr.EnlaceDecision)
+            .where(apr.EnlaceDecision.tenant_id == principal.tenant_id)
+            .order_by(apr.EnlaceDecision.caduca_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    salida = [
+        {
+            "id": str(f.id),
+            "etapa_id": str(f.etapa_id),
+            "titular_id": str(f.titular_id),
+            "caduca_at": f.caduca_at.isoformat(),
+            "usado_at": f.usado_at.isoformat() if f.usado_at else None,
+            # Vivo es no usado y no caducado: las dos cosas, porque de un solo
+            # uso significa que gastarlo lo mata aunque le quede tiempo.
+            "vivo": f.usado_at is None and f.caduca_at > momento,
+        }
+        for f in filas
+    ]
+    salida.sort(key=lambda e: (not e["vivo"], e["caduca_at"]))
+    vivos = [e for e in salida if e["vivo"]]
+    return {
+        "enlaces": salida,
+        "vivos": len(vivos),
+        "que_significa": (
+            "No hay ningún enlace de decisión suelto."
+            if not vivos
+            else f"{len(vivos)} enlaces permiten decidir sin entrar al CRM. "
+            "Cada uno es de un solo uso y caduca, pero mientras vive vale."
+        ),
+    }
+
+
 @router.get(
     "/{aprobacion_id}",
     dependencies=[Depends(exige_permiso("aprobacion:read"))],

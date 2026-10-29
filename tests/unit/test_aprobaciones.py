@@ -677,3 +677,86 @@ def test_una_instancia_que_ya_no_esta_no_rompe_la_decision(
     solicitud = _crear(uow, plantilla, instancia_id=uuid4())
     salida = apr.decidir(uow, solicitud.id, usuario_id=plantilla["jefe"], decision="aprobar")
     assert salida["estado"] == "aprobada"
+
+
+def test_las_delegaciones_se_pueden_LEER(uow: UnidadDeTrabajo, plantilla: Any) -> None:
+    """Se podía delegar la firma y no saber quién la tiene.
+
+    Una delegación dice que, mientras alguien no está, otro firma por él. Sin
+    forma de consultarlas no se contesta «¿quién tiene hoy la firma de
+    dirección?», que es la pregunta de cualquier revisión de poderes — y una
+    puesta para unas vacaciones de agosto sigue viva en marzo sin que nadie lo
+    note.
+
+    Las caducadas salen **marcadas y no escondidas**: una que acaba de vencer
+    explica por qué una aprobación que antes salía sola ahora se queda parada.
+    """
+    from services.orchestrator.api_aprobaciones import listar_delegaciones
+
+    apr.delegar(
+        uow,
+        titular_id=plantilla["jefe"],
+        suplente_id=plantilla["par1"],
+        desde=_ahora() - timedelta(days=1),
+        hasta=_ahora() + timedelta(days=5),
+        motivo="Vacaciones",
+    )
+    apr.delegar(
+        uow,
+        titular_id=plantilla["jefe"],
+        suplente_id=plantilla["par2"],
+        desde=_ahora() - timedelta(days=40),
+        hasta=_ahora() - timedelta(days=30),
+        motivo="Congreso",
+    )
+    uow.db.flush()
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    salida = listar_delegaciones(uow.db, _Principal())  # type: ignore[arg-type]
+    assert salida["vigentes"] == 1
+    assert len(salida["delegaciones"]) == 2, "la caducada no se esconde: explica cosas"
+    vigente = next(d for d in salida["delegaciones"] if d["vigente"])
+    assert vigente["motivo"] == "Vacaciones"
+    # Sin política acotada, la delegación vale para todo: hay que decirlo,
+    # porque delegar las vacaciones no es delegar la firma de los contratos.
+    assert vigente["todas_las_politicas"] is True
+
+
+def test_los_enlaces_de_decision_vivos_se_pueden_contar(
+    uow: UnidadDeTrabajo, plantilla: Any
+) -> None:
+    """Un enlace de decisión es una credencial con patas.
+
+    Permite aprobar **sin entrar al CRM**, y hasta hoy no había forma de saber
+    cuántos hay sueltos ni a nombre de quién. No se devuelve el token —en la
+    base sólo está su hash, y ése es el punto— sino a quién representa, cuándo
+    caduca y si ya se usó.
+    """
+    from services.orchestrator.api_aprobaciones import listar_enlaces
+
+    class _Principal:
+        tenant_id = uow.tenant_id
+
+    vacio = listar_enlaces(uow.db, _Principal())  # type: ignore[arg-type]
+    assert vacio["vivos"] == 0
+    assert "ningún enlace" in vacio["que_significa"]
+
+    uow.db.add(
+        apr.EnlaceDecision(
+            tenant_id=uow.tenant_id,
+            etapa_id=uuid4(),
+            titular_id=plantilla["jefe"],
+            hash_token="x" * 64,
+            caduca_at=_ahora() + timedelta(hours=48),
+        )
+    )
+    uow.db.flush()
+
+    salida = listar_enlaces(uow.db, _Principal())  # type: ignore[arg-type]
+    assert salida["vivos"] == 1
+    # Y el token NO sale: en la base sólo está su hash, que es lo que impide
+    # que quien lea una copia de seguridad apruebe en nombre de nadie.
+    assert "hash_token" not in salida["enlaces"][0]
+    assert "token" not in salida["enlaces"][0]

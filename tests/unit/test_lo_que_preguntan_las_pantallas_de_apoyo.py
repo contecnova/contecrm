@@ -67,6 +67,21 @@ def integracion() -> Any:
     yield from _cliente("integration")
 
 
+@pytest.fixture(scope="module")
+def tenants() -> Any:
+    yield from _cliente("tenancy")
+
+
+@pytest.fixture(scope="module")
+def modelo() -> Any:
+    yield from _cliente("metadata")
+
+
+@pytest.fixture(scope="module")
+def procesos() -> Any:
+    yield from _cliente("orchestrator")
+
+
 # ── Seguridad ─────────────────────────────────────────────────────────────
 
 
@@ -171,3 +186,141 @@ def test_un_motivo_inventado_no_devuelve_un_plan(integracion: Any, tenant_id: UU
     motivo = "porque-si"
     r = integracion.get(f"/api/v1/suites/baja/{motivo}", headers=_cabeceras(tenant_id))
     assert r.status_code == 422, r.text
+
+
+# ── Lo que se añadió el 28 y el 29-10-2026 ────────────────────────────────
+#
+# Las cinco de abajo las pedía ya una pantalla y **ninguna prueba las pedía
+# por la ruta**: se llamaba a la función del servicio, que es más cómodo y deja
+# justo el hueco que este fichero existe para tapar. El día que el servidor
+# deje de mandar un campo, la pantalla no da error: se queda sin la parte que
+# la hacía útil. Es el mismo descuido que ya apareció con el `desde` de un plan
+# preventivo, una capa más allá.
+
+
+def test_las_garantias_de_aislamiento_se_piden_por_la_ruta(
+    tenants: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La pantalla pinta una línea por capa con su detalle y su porqué.
+
+    Si el servidor dejara de mandar `capas`, la pantalla saldría con el título
+    y nada debajo — y eso, en una pantalla que contesta «¿qué impide que una
+    empresa vea a otra?», se lee como «nada».
+    """
+    r = tenants.get("/api/v1/aislamiento/garantias", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    datos = r.json()
+    assert datos["capas"], "sin capas, la pantalla sale vacía y parece que no hay nada"
+    for capa in datos["capas"]:
+        assert capa["titulo"] and capa["detalle"] and capa["porque"]
+        assert isinstance(capa["ok"], bool)
+    assert datos["que_significa"]
+
+
+def test_las_excepciones_de_campo_se_piden_por_la_ruta(
+    identidad: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Sin excepciones la lista es vacía **y dice qué significa**: ese caso es
+    el bueno, y un hueco se lee como «no está configurado»."""
+    r = identidad.get("/api/v1/politicas-acceso/campos", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    datos = r.json()
+    assert isinstance(datos["campos"], list)
+    assert datos["que_significa"], "un vacío sin explicación se lee como un fallo"
+
+
+MANIFIESTO = {
+    "formato": 1,
+    "clave": "homologaciones",
+    "nombre": "Homologaciones por mercado",
+    "version": "1.0.0",
+    "descripcion": "Seguimiento de homologación de pieza por país.",
+    "objetos": [
+        {
+            "nombre": "homologacion_mercado",
+            "etiqueta": "Homologación por mercado",
+            "campos": [{"nombre": "mercado", "tipo": "texto", "etiqueta": "Mercado"}],
+        }
+    ],
+}
+
+
+def test_la_ficha_de_un_modulo_instalado_se_pide_por_la_ruta(
+    modelo: Any, db: Any, tenant_id: UUID
+) -> None:
+    """La pantalla pinta el manifiesto, el espacio de nombres y la huella.
+
+    Todo eso estaba **guardado** y la ficha devolvía cuatro campos, así que la
+    forma que la pantalla declara es nueva: si el servidor dejara de mandarla,
+    el recuadro «qué declara» saldría con el título y nada debajo.
+    """
+    cabeceras = _cabeceras(tenant_id)
+    alta = modelo.post(
+        "/api/v1/metadata/modulos/instalar",
+        headers=cabeceras,
+        json={"manifiesto": MANIFIESTO, "aplicar": True},
+    )
+    assert alta.status_code in (200, 201, 409), alta.text
+
+    # Con el hueco escrito, como el resto del fichero: la pantalla pide
+    # `${clave}` y el gate compara formas, no cadenas.
+    clave = "homologaciones"
+    r = modelo.get(f"/api/v1/metadata/modulos/{clave}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    ficha = r.json()
+    for campo in ("objetos", "campos", "espacio_de_nombres", "depende_de", "huella"):
+        assert campo in ficha, f"la ficha ya no manda «{campo}» y la pantalla lo pinta"
+
+    # Y las dos que cuelgan de ella, que son las que contestan «¿sigue siendo
+    # el que instalamos?» y «¿sobra?».
+    integridad = modelo.get(f"/api/v1/metadata/modulos/{clave}/integridad", headers=cabeceras)
+    assert integridad.status_code == 200, integridad.text
+    assert "medible" in integridad.json(), (
+        "sin `medible`, la pantalla no puede distinguir «íntegro» de «no se "
+        "puede comparar», que es la distinción que la hace útil"
+    )
+
+    telemetria = modelo.get(f"/api/v1/metadata/modulos/{clave}/telemetria", headers=cabeceras)
+    assert telemetria.status_code == 200, telemetria.text
+    datos = telemetria.json()
+    # `concluyente` es la que evita que alguien decida que algo sobra a los dos
+    # días de instalarlo.
+    assert "concluyente" in datos and "sin_usar" in datos
+
+
+def test_un_modulo_que_no_esta_no_devuelve_una_ficha_en_blanco(
+    modelo: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Una ficha vacía se lee como «este módulo no trae nada», que es muy
+    distinto de «este módulo no está»."""
+    inexistente = "no-instalado"
+    r = modelo.get(f"/api/v1/metadata/modulos/{inexistente}", headers=_cabeceras(tenant_id))
+    assert r.status_code == 404, r.text
+
+
+def test_las_delegaciones_y_los_enlaces_se_piden_por_la_ruta(
+    procesos: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Las dos pestañas nuevas de aprobaciones, pedidas por HTTP.
+
+    Son las dos que contestan quién puede decidir por quién: una delegación
+    cede la firma mientras alguien no está, y un enlace permite decidir sin
+    entrar al CRM. Si el servidor dejara de mandar `vigente` o `vivo`, las dos
+    listas saldrían sin la única columna que distingue lo que está en vigor de
+    lo que ya no.
+    """
+    cabeceras = _cabeceras(tenant_id)
+
+    delegaciones = procesos.get("/api/v1/aprobaciones/delegaciones", headers=cabeceras)
+    assert delegaciones.status_code == 200, delegaciones.text
+    datos = delegaciones.json()
+    assert "vigentes" in datos and isinstance(datos["delegaciones"], list)
+    assert datos["que_significa"]
+
+    enlaces = procesos.get("/api/v1/aprobaciones/enlaces", headers=cabeceras)
+    assert enlaces.status_code == 200, enlaces.text
+    sueltos = enlaces.json()
+    assert "vivos" in sueltos and isinstance(sueltos["enlaces"], list)
+    # Y el token no viaja ni con la lista vacía: lo que hay en la base es su
+    # hash, y ése es justo el punto.
+    assert "token" not in enlaces.text and "hash_token" not in enlaces.text

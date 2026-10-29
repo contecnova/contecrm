@@ -452,7 +452,30 @@ PRESUPUESTO_KB = 118
 #   Medido antes de subirlo: 199,15 kB. Se deja en 205 por lo mismo de
 #   siempre: margen para un par de pantallas, porque un tope que se roza se
 #   sube cada semana y entonces deja de medir.
-PRESUPUESTO_TOTAL_KB = 205
+#
+#   29-10-2026  205 → 215 kB, y es producto otra vez. Seis bloques de la cola
+#   ------------------------------------------------------------------------
+#   larga, todos de pantallas que faltaban para capacidades ya construidas:
+#
+#     · «¿qué impide que una empresa vea a otra?», medido en cada carga, en
+#       Seguridad y arriba del todo;
+#     · la suite por su DECLARACION —organigrama compartido, herramientas con
+#       su direccion y su mapeo de roles, SSO compartido, que se aplicaria en
+#       cada herramienta y el certificado de cierre con sus palabras—;
+#     · «quien ve que»: el simulador separando rol de atributos, con el
+#       contexto con el que se evaluo, y las excepciones de campo;
+#     · la ficha de un modulo vertical instalado, con su manifiesto, su
+#       integridad y su telemetria;
+#     · «con que se firma»: proveedores con sus niveles eIDAS, reglas por
+#       prioridad y plantillas con su plazo;
+#     · y «preguntar sobre este registro», en la ficha, con el filtro a la
+#       vista.
+#
+#   Las seis son diferidas: lo que crece es el total, no lo que se descarga al
+#   abrir —esa cifra no se ha movido y su tope sigue donde estaba—. Medido
+#   antes de subirlo: 208,56 kB. Se deja en 215 por lo de siempre, margen para
+#   un par de pantallas.
+PRESUPUESTO_TOTAL_KB = 215
 
 
 def test_la_consola_sirve_la_api_por_el_mismo_origen() -> None:
