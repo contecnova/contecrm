@@ -138,6 +138,10 @@ const InstanciaDeProceso = pantalla(
   () => import("@/paginas/InstanciaDeProceso"),
   (m) => m.InstanciaDeProceso,
 );
+const Oportunidad = pantalla(
+  () => import("@/paginas/Oportunidad"),
+  (m) => m.Oportunidad,
+);
 const ObjetoDelModelo = pantalla(
   () => import("@/paginas/ObjetoDelModelo"),
   (m) => m.ObjetoDelModelo,
@@ -302,6 +306,12 @@ export function App() {
               y la ficha genérica pasa el identificador, así que cada panel
               habría salido en 404. Ésta abre por identificador, lee el nombre
               y con él pide lo demás. */}
+          {/* La oportunidad tiene ficha propia por lo mismo que el cliente:
+              con un volcado de campos delante no se contesta «¿cómo vamos con
+              esta venta?». Y tres de sus paneles leen rutas de OTRO prefijo
+              —`/ingresos/…`, `/forecast/…`—, que la ficha genérica no
+              descubre porque busca por prefijo común. */}
+          <Route path="/m/oportunidades/oportunidad/:id" element={<Oportunidad />} />
           <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
           {/* Una instancia de proceso tiene pantalla propia por lo mismo que
               el objeto del modelo: la ficha genérica enseña columnas —estado,

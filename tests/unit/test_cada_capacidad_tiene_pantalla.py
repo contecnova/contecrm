@@ -548,7 +548,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   cubria el parametro. Al cerrar la tapa del portatil, el flujo se reabria
 #   en «ahora» y lo escrito durante el corte no llegaba nunca: no falla, no
 #   avisa, y a la conversacion le faltan mensajes que nadie echa de menos.
-TOPE_SIN_PANTALLA = 292
+#   29-10-2026  286 de 778  la ficha de una oportunidad. Seis: que se vende,
+#   ------------------------------------------------------------------------
+#   lo que vale en ARR/MRR/TCV/ACV, quien decide y a quien no se ha visto,
+#   quien se lleva la comision, de donde viene esta venta y que se ha movido.
+#
+#   DOS DE ELLAS ESTABAN ESCRITAS Y NO LAS LEIA NADIE: el reparto entre
+#   comerciales (CRM-03.01.01.08) y las oportunidades relacionadas (.01.11)
+#   se guardaban en su tabla y la consultaba SOLO su propio escritor, para
+#   reemplazar filas. Ninguna ruta las devolvia. Se podia declarar quien se
+#   lleva que parte de una comision y no habia forma de comprobarlo hasta que
+#   llegaba la liquidacion: el que lo declara se va creyendo que esta hecho.
+#   Se escribio el lado de lectura, con el total del credito calculado y su
+#   veredicto de si cuadra —dejarlo sumar a cada pantalla garantiza que una no
+#   lo sume—.
+TOPE_SIN_PANTALLA = 286
 
 
 def _es_pantalla(p: Path) -> bool:

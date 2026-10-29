@@ -26,6 +26,7 @@ incluida: es donde se rompen estas cosas y es lo que lee el navegador.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Iterator
 from uuid import UUID, uuid4
 
@@ -947,3 +948,146 @@ def test_el_modelo_semantico_de_informes_lo_contesta_analytics(
     if cuerpo["objetos"]:
         _campos(cuerpo["objetos"][0], "nombre", "campos")
         assert isinstance(cuerpo["objetos"][0]["campos"], list)
+
+
+# ── Y cuatro del dinero de una venta: Oportunidad.tsx ────────────────────
+#
+# 29-10-2026. La ficha de una oportunidad pasó a leer cuatro rutas que ninguna
+# prueba de servidor recorría POR HTTP. Dos de ellas —el reparto y las
+# relacionadas— ni siquiera se podían leer antes: se escribían en su tabla y la
+# consultaba sólo su propio escritor.
+
+
+@pytest.fixture
+def oportunidad_con_dinero(db: Any, tenant_id: UUID) -> Any:
+    """Una oportunidad con línea, reparto descuadrado y una renovación detrás."""
+    from services.sales import ingresos as ing
+    from services.sales.modelos import Etapa, LineaOportunidad, Oportunidad, Pipeline
+
+    pipeline = Pipeline(tenant_id=tenant_id, nombre="Nuevo negocio", clave="nuevo")
+    db.add(pipeline)
+    db.flush()
+    etapa = Etapa(
+        tenant_id=tenant_id,
+        pipeline_id=pipeline.id,
+        nombre="Propuesta",
+        clave="propuesta",
+        orden=1,
+        probabilidad=60,
+    )
+    db.add(etapa)
+    db.flush()
+    op = Oportunidad(
+        tenant_id=tenant_id,
+        nombre="Renovación Acme",
+        pipeline_id=pipeline.id,
+        etapa_id=etapa.id,
+        importe=Decimal("120000"),
+        moneda="EUR",
+        probabilidad=60,
+    )
+    db.add(op)
+    db.flush()
+    db.add(
+        LineaOportunidad(
+            tenant_id=tenant_id,
+            oportunidad_id=op.id,
+            descripcion="Suscripción anual",
+            cantidad=Decimal("10"),
+            precio_unitario=Decimal("1000"),
+            total=Decimal("10000"),
+        )
+    )
+    # Un reparto que NO cuadra, metido por fuera: es el caso que la pantalla
+    # tiene que poder enseñar en rojo.
+    db.add(
+        ing.ParticipacionComercial(
+            tenant_id=tenant_id,
+            oportunidad_id=op.id,
+            usuario_id=uuid4(),
+            papel="credito",
+            porcentaje=Decimal("60"),
+        )
+    )
+    db.add(
+        ing.RelacionOportunidad(
+            tenant_id=tenant_id, origen_id=op.id, destino_id=uuid4(), tipo="renovacion"
+        )
+    )
+    db.flush()
+    return op
+
+
+def test_el_reparto_y_las_relacionadas_salen_por_http(
+    sales: Any, cabeceras: dict[str, str], oportunidad_con_dinero: Any
+) -> None:
+    """Se escribían y no las leía nadie: ahora hay ruta, y se recorre de verdad.
+
+    La pantalla pinta el total del crédito en rojo cuando no cuadra. Si el
+    servidor dejara de mandar `credito_cuadra`, el aviso desaparecería sin que
+    fallara nada y un reparto al 60 % se vería como correcto.
+    """
+    r = sales.get(f"/api/v1/ingresos/de/{oportunidad_con_dinero.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "reparto", "credito_total", "credito_cuadra", "relacionadas")
+    assert cuerpo["credito_total"] == "60.00", cuerpo
+    assert cuerpo["credito_cuadra"] is False, cuerpo
+    _campos(cuerpo["reparto"][0], "usuario_id", "papel", "porcentaje")
+    # El sentido: sin él, «renovación» no dice si ésta es la que se renueva o
+    # la que renueva a otra, que en el informe son cosas opuestas.
+    _campos(cuerpo["relacionadas"][0], "tipo", "sentido", "otra_id")
+
+
+def test_el_arr_lo_calcula_el_servicio_y_dice_lo_que_deja_fuera(
+    sales: Any, cabeceras: dict[str, str]
+) -> None:
+    """La pantalla manda las líneas y pinta lo que vuelve.
+
+    Lo que no puede faltar es `lo_que_no_cuenta_como_arr`: un ARR sin decir que
+    la implantación queda fuera es el número que acaba en una valoración y que
+    nadie vuelve a mirar cómo se calculó.
+    """
+    r = sales.post(
+        "/api/v1/ingresos/metricas",
+        headers=cabeceras,
+        json={
+            "lineas": [
+                {"tipo": "recurrente", "importe": 10000, "periodicidad": "anual"},
+                {"tipo": "puntual", "importe": 2000},
+            ]
+        },
+    )
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "arr", "mrr", "tcv", "acv", "puntual", "porque")
+    assert "lo_que_no_cuenta_como_arr" in cuerpo, sorted(cuerpo)
+    assert "puntual" in cuerpo["lo_que_no_cuenta_como_arr"], cuerpo
+
+
+def test_el_mapa_de_decision_sale_por_http_con_lo_que_falta(
+    sales: Any, cabeceras: dict[str, str], oportunidad_con_dinero: Any
+) -> None:
+    """Lo útil no es la lista: es lo que falta, y es lo que pinta en ámbar."""
+    r = sales.get(f"/api/v1/ingresos/grupo-compra/{oportunidad_con_dinero.id}", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    _campos(cuerpo, "roles", "faltan_por_identificar", "clave_sin_hablar", "completo")
+    assert str(cuerpo.get("que_mirar") or "").strip(), cuerpo
+
+
+def test_el_historial_de_prevision_sale_por_http(
+    sales: Any, cabeceras: dict[str, str], oportunidad_con_dinero: Any
+) -> None:
+    """Vacío es una lista, no un 404.
+
+    La pantalla cuenta las entradas para decir si la venta se ha movido. Si
+    esto contestara un objeto —o un 404 cuando no hay nada—, el panel saldría
+    en blanco sin decir si es que no se ha movido o que no se puede saber.
+    """
+    r = sales.get(
+        f"/api/v1/forecast/oportunidades/{oportunidad_con_dinero.id}/historial-prevision",
+        headers=cabeceras,
+    )
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list), f"la pantalla las cuenta: llega {type(r.json())}"

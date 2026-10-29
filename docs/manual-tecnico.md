@@ -2351,6 +2351,50 @@ manda a escribir una prueba duplicada y sigue en rojo cuando se escribe.
 Arreglado en el patrón, no vaciando las llaves de todo el fichero: eso se probó
 primero y dejó fuera siete rutas que sí estaban recorridas.
 
+### 4.6.17 El reparto de una comisión se escribía y no lo leía nadie
+
+Dos capacidades de ventas estaban declaradas hechas, escribían su tabla y
+**nadie podía leerlas**: el reparto de crédito entre comerciales
+(`CRM-03.01.01.08`) y el enlace con la renovación o el upsell
+(`CRM-03.01.01.11`). Las dos tablas sólo las consultaba su propio escritor,
+para reemplazar filas. Ninguna ruta las devolvía.
+
+Es el peor de los fallos silenciosos de este sistema: quien declara el reparto
+se va creyendo que está hecho, y a quien le toca cobrar no puede mirarlo hasta
+que llega la liquidación.
+
+`GET /api/v1/ingresos/de/{oportunidad_id}` cierra las dos a la vez, porque se
+miran juntas: delante de una venta las preguntas son «¿quién se lleva esto?» y
+«¿de qué viene y qué sale de aquí?». Dos decisiones del contrato:
+
+- **el total del crédito viene calculado y con un sí o no de si cuadra.** Un
+  reparto al 60/60 cuadra hacia arriba y el descuadre lo encuentra finanzas
+  tres meses después. Dejar que lo sume cada pantalla garantiza que una de
+  ellas no lo sume;
+- **el overlay no entra en esa suma**, y se dice por qué: es apoyo que no resta
+  al titular, así que un overlay al 100 % no descuadra nada. Meterlo haría que
+  un reparto correcto saliera al 150 %;
+- y cada relación lleva **de qué lado está ésta**. Sin el sentido,
+  «renovación» no dice si ésta es la que se renueva o la que renueva a otra, y
+  en el informe de crecimiento son cosas opuestas.
+
+**La ficha de una oportunidad**, con el mismo reparto que la del cliente —dos
+pantallas que enseñan el mismo tipo de cosa lo colocan igual—. Enseña qué se
+vende, lo que vale, quién decide y a quién no se ha visto, quién se lleva la
+comisión, de dónde viene la venta y qué se ha movido.
+
+**El ARR no se calcula en la pantalla.** Las líneas se mandan al servicio que
+sabe qué cuenta como recurrente y se pinta lo que vuelve. Calcularlo en el
+cliente dividiendo el total entre los años mete la implantación dentro —y la
+métrica con la que se valora una empresa sale inflada—, además de dejar dos
+sitios donde se calcula, que acaban diciendo cosas distintas. Va con **lo que
+ha dejado fuera**: un «ARR 120.000» sin decir que la implantación no cuenta es
+el número que acaba en una valoración y que nadie vuelve a mirar.
+
+Tiene pantalla propia y no la ficha genérica por un motivo mecánico: tres de
+sus paneles leen rutas de **otro prefijo** —`/ingresos/…`, `/forecast/…`— y la
+ficha genérica descubre sus paneles por prefijo común, así que no los vería.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

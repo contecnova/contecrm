@@ -160,7 +160,16 @@ FRONT = RAIZ / "frontend/src"
 #   Las que piden cuerpo siguen contadas aquí, y está bien que lo estén: son
 #   el grueso de los ~20 de la primera viñeta y abrirlas es inventarles un
 #   formulario, que es trabajo de cada flujo.
-TOPE_SIN_PUERTA = 40
+#
+#   29-10-2026  40 → 36. Las cuatro del dinero de una venta, que abre la ficha
+#   de oportunidad: el reparto y las relacionadas —que ANTES NO SE PODÍAN
+#   LEER: se escribían en su tabla y la consultaba sólo su propio escritor—,
+#   el mapa de la decisión y el histórico de previsión. Las tres últimas
+#   cuelgan de la oportunidad por OTRO prefijo —`/ingresos/…`, `/forecast/…`—,
+#   que es la segunda viñeta de arriba: la ficha genérica descubre paneles por
+#   prefijo común y no las veía. La salida no fue enseñarle prefijos, sino una
+#   ficha propia, como la del cliente.
+TOPE_SIN_PUERTA = 36
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #

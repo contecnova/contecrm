@@ -423,11 +423,40 @@ GATES: list[Gate] = [
 # prueba— y no hay un sitio gordo que arreglar. El tope se queda en 240 con
 # esta medida detrás, y la estimación anterior queda corregida aquí porque un
 # número inventado en un comentario se cita después como si se hubiera medido.
+#
+# 29-10-2026: le toca al COMPLETO, 500 → 660 s de CPU. Se buscó el gate lento,
+# como manda la norma, y tampoco lo hay. Medido con la máquina libre, 22 gates
+# en verde: **560 s de CPU y 347 s de reloj**, con este reparto:
+#
+#     pruebas-con-bd   222,6 s   2.856 pruebas
+#     pruebas-sin-bd    90,6 s   1.542 pruebas
+#     aislamiento       71,8 s
+#     los demás         <26 s cada uno
+#
+# Lo que importa es el coste POR PRUEBA, y es lo que deja distinguir el
+# crecimiento de la grasa: **78 ms por prueba con base**, y la más lenta de las
+# 2.856 tarda 2,07 s. No hay un sitio gordo: hay 4.398 pruebas. El tope
+# anterior se puso el 06-10 contra 354 s; desde entonces el producto ha ganado
+# cinco bloques de capacidades y sus pruebas.
+#
+# 660 es ~1,18× sobre lo medido, más apretado que el 1,4× de los otros niveles
+# **a propósito**: el nivel completo se corre una vez por bloque y no por
+# commit, así que su ruido medido es menor y un margen grande aquí sería un
+# guardián dormido durante meses. Si vuelve a saltar, lo primero que hay que
+# mirar es si el coste por prueba ha subido de 80 ms —eso sí sería grasa— o si
+# sólo hay más pruebas, que es el producto creciendo.
+#
+# **Y una advertencia que costó cincuenta minutos de reloj aprender ese mismo
+# día.** Un proceso propio colgado al 100 % de un núcleo —una sonda lanzada el
+# día anterior y olvidada— infló este nivel de 347 s a 3.015 s de reloj sin que
+# nadie tocara una línea. Antes de creerse un rojo de presupuesto: mirar qué
+# hay corriendo. La nota de arriba sobre la carga sigue valiendo, y esto es su
+# caso extremo.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
     "push": (120.0, 240.0),
-    "completo": (330.0, 500.0),
+    "completo": (360.0, 660.0),
 }
 
 

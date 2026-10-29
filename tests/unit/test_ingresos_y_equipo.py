@@ -144,6 +144,80 @@ def test_el_overlay_no_resta_al_titular(uow: UnidadDeTrabajo, contexto_tenant: U
     assert len(salida["overlay"]) == 1
 
 
+@pytest.mark.db
+def test_el_reparto_y_las_relacionadas_SE_PUEDEN_LEER(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID
+) -> None:
+    """Se escribían y no las leía nadie.
+
+    Las dos tablas —quién se lleva qué parte y de qué viene esta venta— sólo
+    las consultaba su propio escritor, para reemplazar filas. Ninguna ruta las
+    devolvía y ninguna pantalla las enseñaba, así que se podía declarar un
+    reparto de comisión y **no había forma de comprobar cuál era** hasta que
+    llegaba la liquidación. El que lo declara se va creyendo que está hecho.
+
+    Y se comprueba lo que de verdad se mira: que el total del crédito venga
+    **calculado y con su veredicto**. Dejar que lo sume cada pantalla garantiza
+    que una de ellas no lo sume, y un reparto descuadrado es justo lo que hay
+    que ver de un vistazo.
+    """
+    oportunidad = uuid4()
+    otra = uuid4()
+    titular, apoyo = uuid4(), uuid4()
+    ing.repartir_credito(
+        uow,
+        oportunidad_id=oportunidad,
+        participaciones=[
+            {"usuario_id": titular, "porcentaje": 100, "motivo": "lo cerró"},
+            {"usuario_id": apoyo, "porcentaje": 50, "papel": "overlay"},
+        ],
+    )
+    ing.relacionar(uow, origen_id=oportunidad, destino_id=otra, tipo="renovacion")
+    uow.db.flush()
+
+    leido = ing.lo_de_esta_oportunidad(uow.db, uow.tenant_id, oportunidad_id=oportunidad)
+
+    assert len(leido["reparto"]) == 2, leido["reparto"]
+    quienes = {p["usuario_id"] for p in leido["reparto"]}
+    assert str(titular) in quienes and str(apoyo) in quienes
+    # El overlay NO entra en la suma: es apoyo que no resta al titular, y
+    # meterlo haría que un reparto correcto saliera descuadrado al 150 %.
+    assert leido["credito_total"] == "100.00", leido["credito_total"]
+    assert leido["credito_cuadra"] is True
+
+    assert len(leido["relacionadas"]) == 1, leido["relacionadas"]
+    # De qué lado está ÉSTA: sin el sentido, «renovación» no dice si es la que
+    # se renueva o la que renueva a otra, que son cosas opuestas en el informe.
+    assert leido["relacionadas"][0]["sentido"] == "sale_de_aqui"
+    assert leido["relacionadas"][0]["otra_id"] == str(otra)
+
+
+@pytest.mark.db
+def test_un_reparto_descuadrado_se_ve_descuadrado(
+    uow: UnidadDeTrabajo, contexto_tenant: UUID, db: Any
+) -> None:
+    """Si alguien mete filas por fuera —un arreglo a mano, una migración—, el
+    lector tiene que decirlo. Un total que sólo se calcula al escribir da por
+    bueno para siempre lo que se escribió sin pasar por ahí."""
+    from services.sales.ingresos import ParticipacionComercial
+
+    oportunidad = uuid4()
+    db.add(
+        ParticipacionComercial(
+            tenant_id=uow.tenant_id,
+            oportunidad_id=oportunidad,
+            usuario_id=uuid4(),
+            papel="credito",
+            porcentaje=Decimal("60"),
+        )
+    )
+    db.flush()
+
+    leido = ing.lo_de_esta_oportunidad(db, uow.tenant_id, oportunidad_id=oportunidad)
+    assert leido["credito_total"] == "60.00", leido
+    assert leido["credito_cuadra"] is False, "un 60 % solo no puede salir como que cuadra"
+
+
 # ── Grupo de compra (CRM-03.01.01.10, CRM-01.01.02.04) ────────────────────
 
 

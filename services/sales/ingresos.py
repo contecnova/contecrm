@@ -575,6 +575,89 @@ def relacionar(
     }
 
 
+def lo_de_esta_oportunidad(db: Any, tenant_id: UUID, *, oportunidad_id: UUID) -> dict[str, Any]:
+    """El reparto y las oportunidades relacionadas de una, para poder VERLAS.
+
+    **Se escribían y no las leía nadie.** `repartir_credito` guardaba quién se
+    lleva qué parte y `relacionar` guardaba la renovación o el upsell que cuelga
+    de esta venta, y las dos tablas sólo las consultaba su propio escritor —para
+    reemplazar filas—. Ninguna ruta las devolvía y ninguna pantalla las
+    enseñaba: se podía declarar un reparto de comisión y no había forma de
+    comprobar cuál era.
+
+    Es el peor de los fallos silenciosos de este sistema, porque el que lo
+    declara se va creyendo que está hecho, y al que le toca cobrar no puede
+    mirarlo hasta que llega la liquidación.
+
+    Va junto y no en dos rutas porque se mira junto: delante de una oportunidad
+    las dos preguntas son «¿quién se lleva esto?» y «¿de qué viene y qué sale de
+    aquí?».
+    """
+    from sqlalchemy import or_, select
+
+    participaciones = (
+        db.execute(
+            select(ParticipacionComercial)
+            .where(
+                ParticipacionComercial.tenant_id == tenant_id,
+                ParticipacionComercial.oportunidad_id == oportunidad_id,
+            )
+            .order_by(ParticipacionComercial.papel, ParticipacionComercial.porcentaje.desc())
+        )
+        .scalars()
+        .all()
+    )
+    relaciones = (
+        db.execute(
+            select(RelacionOportunidad).where(
+                RelacionOportunidad.tenant_id == tenant_id,
+                or_(
+                    RelacionOportunidad.origen_id == oportunidad_id,
+                    RelacionOportunidad.destino_id == oportunidad_id,
+                ),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # El crédito tiene que sumar 100; el overlay no, porque es apoyo que no
+    # resta al titular. Se dice el total en vez de dejar que cada pantalla lo
+    # sume: un reparto que no cuadra es lo que hay que ver de un vistazo, y
+    # sumarlo en el cliente garantiza que una de las pantallas no lo sume.
+    credito = sum((p.porcentaje for p in participaciones if p.papel == "credito"), Decimal(0))
+    return {
+        "oportunidad_id": str(oportunidad_id),
+        "reparto": [
+            {
+                "usuario_id": str(p.usuario_id),
+                "papel": p.papel,
+                "porcentaje": str(p.porcentaje),
+                "motivo": p.motivo,
+            }
+            for p in participaciones
+        ],
+        "credito_total": str(credito),
+        "credito_cuadra": credito == Decimal(100) or not participaciones,
+        "porque_el_overlay_no_suma": (
+            "El crédito reparte la comisión y tiene que sumar 100. El overlay es "
+            "apoyo que no resta al titular, así que un overlay al 100 % no "
+            "descuadra nada."
+        ),
+        "relacionadas": [
+            {
+                "tipo": r.tipo,
+                # De qué lado está ESTA: sin eso, «renovación» no dice si ésta
+                # es la que se renueva o la que renueva a otra.
+                "sentido": "sale_de_aqui" if r.origen_id == oportunidad_id else "viene_de",
+                "otra_id": str(r.destino_id if r.origen_id == oportunidad_id else r.origen_id),
+                "datos": r.datos or {},
+            }
+            for r in relaciones
+        ],
+    }
+
+
 def crecimiento_real(*, cerradas: list[dict[str, Any]]) -> dict[str, Any]:
     """Cuánto ha crecido de verdad, descontando lo que solo se mantiene.
 

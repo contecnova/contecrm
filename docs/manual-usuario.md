@@ -668,6 +668,32 @@ Una oportunidad es una venta en marcha. Lo que el CRM te va a pedir y por qué:
   ampliación, venta cruzada o sustitución. Una renovación **no cuenta como ingreso
   nuevo**, y contarla así duplicaría el crecimiento del trimestre.
 
+### Abrir una oportunidad
+
+Hasta el 29-10-2026, al pinchar una fila salía un volcado de campos. Con eso
+delante no se contesta «¿cómo vamos con esta venta?», que es para lo que se
+abre. Ahora dentro está:
+
+- **Qué se vende**, línea a línea, y **lo que vale**: ARR, MRR, TCV y ACV. El
+  cálculo lo hace el sistema, no la pantalla, y dice **qué ha dejado fuera**:
+  un «ARR 120.000» sin advertir que la implantación no cuenta es el número que
+  acaba en una valoración y que nadie vuelve a mirar.
+- **Quién decide**, y sobre todo **a quién no se ha visto**. Esa segunda lista
+  es la que sirve.
+- **Quién se lleva la comisión**, con el total repartido y un aviso en rojo si
+  no cuadra. Esto **no se podía ver antes**: se declaraba el reparto y no había
+  forma de comprobarlo hasta que llegaba la liquidación. Lo mismo con **de
+  dónde viene esta venta y qué sale de ella** — y se dice de qué lado está,
+  porque «renovación» no es lo mismo si ésta es la que se renueva o la que
+  renueva a otra.
+- **Qué se ha movido**: cada cambio de importe o de fecha, con cuántos días se
+  deslizó y **por qué**. Si se movió sin motivo escrito, lo dice: un
+  deslizamiento sin explicación no se puede discutir en un comité, y decirlo es
+  lo que hace que la próxima vez se escriba.
+
+Una venta que ha cambiado tres veces de fecha no es la misma que una que nunca
+se movió, aunque hoy tengan el mismo importe y la misma etapa.
+
 **Lo que ves por tu territorio.** Además de lo tuyo y de lo que te compartan, ves
 las cuentas de los territorios que trabajas — como responsable o como miembro. Dos
 cosas que conviene saber: si te acaban de añadir a un territorio, lo verás en
