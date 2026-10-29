@@ -2003,6 +2003,36 @@ cuando alguien abre esa ficha y el enlace no lleva a ninguna parte.
 Si lo que necesitas enlazar debería estar permitido, es cosa de quien administra
 el CRM: se añade a la lista y vuelve a funcionar.
 
+### Si un dato sale en blanco, díselo a quien administra
+
+Un hueco en blanco en una pantalla no siempre es «no hay nada». A veces es que
+la pantalla está pidiendo un dato con un nombre que el sistema no usa, y
+entonces **el hueco sale vacío aunque el dato esté**. No da error ni aviso: se
+ve como si ese cliente, esa campaña o ese artículo no tuviera ese dato.
+
+Cómo distinguirlo sin saber nada de por dentro: si el hueco sale vacío en
+**todos** los registros de una lista —todos los segmentos «nunca calculados»,
+todos los territorios con «0 criterios», todos los artículos sin título— no es
+que falten los datos. Es la pantalla.
+
+Lo que se arregló el 29 de octubre de 2026, por si te suena:
+
+- en **Marketing**, el tamaño de cada segmento salía vacío y su fecha decía
+  siempre «nunca calculado», que es justo lo que no puede pasar: un recuento sin
+  fecha se lee como el de hoy y sobre eso se decide un envío a catorce mil
+  personas. Ahora sale el número con su fecha, y si el segmento es una foto
+  congelada lo dice;
+- en **Marketing**, cada campaña enseñaba tres cifras vacías. Ahora enseña
+  cuántas personas tiene dentro, y los envíos y las respuestas se miran en el
+  embudo de la campaña, que es donde se cuentan;
+- en **Conocimiento**, la lista de artículos salía sin títulos, y al escribir en
+  el buscador la pantalla se quedaba en blanco del todo. Ahora cada artículo
+  sale con su título, y si lo que se enseña es un borrador y no lo publicado, lo
+  dice: citarle a un cliente un texto que no ha aprobado nadie es el error que
+  esa marca evita;
+- en **Territorios**, todos decían «0 criterios», incluido el que reparte media
+  cartera.
+
 ---
 
 ## Qué hacer cuando algo no sale

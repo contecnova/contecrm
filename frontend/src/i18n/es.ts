@@ -294,7 +294,10 @@ export default {
     sinCalcular: "sin calcular",
     calculado: "calculado el {{fecha}}",
     nuncaCalculado: "nunca calculado",
-    cifras: "{{miembros}} miembros · {{enviados}} enviados · {{respuestas}} respuestas",
+    dinamico: "dinámico",
+    congelado: "foto congelada",
+    miembros: "{{miembros}} miembros",
+    sinMiembros: "sin miembros todavía",
   },
   explotacion: {
     dondeSeConstruyen: "¿Y dónde se hacen los informes y los cuadros?",

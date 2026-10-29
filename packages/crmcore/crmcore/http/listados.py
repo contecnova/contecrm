@@ -371,6 +371,8 @@ def montar_listado(
     filtro: Callable[[Any], Any] | None = None,
     permiso_escribir: str = "",
     ficha: bool = True,
+    extras: Callable[[Any, list[Any]], dict[Any, dict[str, Any]]] | None = None,
+    extras_declara: tuple[str, ...] = (),
 ) -> None:
     """Registra en `router` el listado paginado de `modelo`.
 
@@ -394,8 +396,32 @@ def montar_listado(
     El permiso de escritura se deduce del de lectura (`x:read` → `x:write`)
     cuando no se dice: es la convención de todo el sistema y escribirlo en las
     cincuenta y nueve llamadas solo garantiza que alguna se quede sin él.
+
+    `extras` añade a cada fila lo que **no es una columna del modelo** y hace
+    falta para leer la lista. El caso que lo pide es el del conocimiento: el
+    título de un artículo vive en `versiones_articulo`, así que el listado
+    genérico devolvía filas sin nombre y la pantalla las pintaba en blanco.
+
+    Recibe la página entera y devuelve `{id: {campo: valor}}`, igual que los
+    rollups y por el mismo motivo: por fila sería una consulta por registro.
+    Los rollups no sirven para esto porque sólo saben agregar —`max(titulo)`
+    es el título alfabéticamente mayor, no el de la versión publicada—, y lo
+    que falta aquí es un valor concreto de un hijo concreto.
+
+    `extras_declara` nombra los campos que añade, y es **obligatorio** cuando
+    hay `extras`. No es burocracia: el guardián que comprueba que una pantalla
+    no lee un campo que nadie manda resuelve las claves de un listado leyendo
+    el modelo, y una función que devuelve lo que quiera lo dejaría ciego justo
+    en el listado que acaba de ganar campos nuevos.
     """
     from sqlalchemy import select
+
+    if extras is not None and not extras_declara:
+        raise RuntimeError(
+            f"«{nombre}» añade campos con `extras` y no dice cuáles. Pasa "
+            f"`extras_declara=(…)` con sus nombres: sin eso, el guardián de "
+            f"contratos no puede saber qué devuelve este listado."
+        )
 
     _apuntar_recurso(router, objeto, modelo)
 
@@ -474,7 +500,10 @@ def montar_listado(
         # que los resuelve estaba escrito, probado y sin que lo importara nadie,
         # así que «número de contactos activos» o «importe total de las líneas»
         # no los calculaba nada.
-        return pagina.a_dict(con_rollups(db, objeto, filas, proyecta))
+        proyecta = con_rollups(db, objeto, filas, proyecta)
+        if extras is not None:
+            proyecta = _con_extras(extras(db, filas), proyecta)
+        return pagina.a_dict(proyecta)
 
     # Esta ruta recibe parámetros que NO puede declarar: sus filtros son los
     # nombres de las columnas del modelo y cambian con él. Los valida ella
@@ -994,6 +1023,25 @@ def con_rollups(db: Any, objeto: str, filas: list[Any], proyecta: Any) -> Any:
 
     def _con(fila: Any) -> dict[str, Any]:
         return rollups_mod.aplicar(proyecta(fila), valores.get(fila.id) or {})
+
+    return _con
+
+
+def _con_extras(
+    valores: dict[Any, dict[str, Any]], proyecta: Callable[[Any], dict[str, Any]]
+) -> Callable[[Any], dict[str, Any]]:
+    """Envuelve la proyección para pegarle los campos que no son columnas.
+
+    Los extras **no pisan** lo que ya trae la fila: si una columna y un extra se
+    llaman igual, manda la columna. Al revés, un extra mal nombrado taparía un
+    dato real con otro parecido y nadie lo notaría.
+    """
+
+    def _con(fila: Any) -> dict[str, Any]:
+        visto = proyecta(fila)
+        for clave, valor in (valores.get(getattr(fila, "id", None)) or {}).items():
+            visto.setdefault(clave, valor)
+        return visto
 
     return _con
 

@@ -50,7 +50,8 @@ import {
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion, siguientePagina } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar, listarPagina } from "@/lib/listados";
 import { Acciones } from "@/componentes/Acciones";
 import { RegistrarActividad } from "@/componentes/RegistrarActividad";
 import { SubColecciones } from "@/componentes/SubColecciones";
@@ -285,19 +286,19 @@ export function Cuenta() {
       // `estado=` vacío a propósito: la API filtra por abiertas de serie, y en
       // la ficha de un cliente eso esconde justo lo que se ganó con él. «Cómo
       // vamos con este cliente» incluye lo cerrado.
-      llamar<unknown>(
+      listarPagina<Oportunidad>(
         `/api/v1/opportunities?cuenta_id=${id}&estado=&limite=20`,
         { signal },
       )
-        .then((r) => {
-          setOportunidades(filas<Oportunidad>(r.datos));
-          setHayMasOportunidades(Boolean(siguientePagina(r.datos)));
+        .then((pagina) => {
+          setOportunidades(pagina.filas);
+          setHayMasOportunidades(Boolean(pagina.siguiente));
         })
         .catch(() => undefined);
-      llamar<unknown>(`/api/v1/casos?cuenta_id=${id}&limite=20`, { signal })
-        .then((r) => {
-          setCasos(filas<Caso>(r.datos));
-          setHayMasCasos(Boolean(siguientePagina(r.datos)));
+      listarPagina<Caso>(`/api/v1/casos?cuenta_id=${id}&limite=20`, { signal })
+        .then((pagina) => {
+          setCasos(pagina.filas);
+          setHayMasCasos(Boolean(pagina.siguiente));
         })
         .catch(() => undefined);
     },
@@ -597,12 +598,10 @@ export function Cuenta() {
                   disabled={pidiendoMas}
                   onClick={() => {
                     setPidiendoMas(true);
-                    void llamar<unknown>(
+                    void listar<Record<string, unknown>>(
                       `/api/v1/accounts/${id}/timeline?limite=200`,
                     )
-                      .then((r) =>
-                        setMasTimeline(filas<Record<string, unknown>>(r.datos)),
-                      )
+                      .then(setMasTimeline)
                       .catch(() => undefined)
                       .finally(() => setPidiendoMas(false));
                   }}

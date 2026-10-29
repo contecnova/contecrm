@@ -968,6 +968,11 @@ montar_listado(
     permiso="conocimiento:read",
     ruta="/articulos",
     nombre="Artículos de conocimiento",
+    # El título no es una columna del artículo —vive en la versión—, así que
+    # sin esto el listado devolvía filas sin nombre y la pantalla las pintaba
+    # en blanco. Se resuelve para la página entera en una consulta.
+    extras=kb.titulos_de,
+    extras_declara=("titulo", "resumen", "version_mostrada", "es_borrador", "publico"),
     # La ficha se monta abajo a mano: su permiso de escritura es
     # `knowledge:write`, que no se deduce de `conocimiento:read`.
     ficha=False,

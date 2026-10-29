@@ -37,7 +37,8 @@ import {
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { importe as comoImporte } from "@/lib/formato";
 import { moduloDe } from "@/lib/modulos";
 import { recursoDe } from "@/lib/recursos";
@@ -67,7 +68,8 @@ interface Linea {
   precio_unitario: string;
   descuento_pct: string;
   total: string;
-  tipo?: string;
+  /** `tipo_ingreso` en el servidor. Se llamaba `tipo` aquí y nadie lo mandaba. */
+  tipo_ingreso?: string;
 }
 
 interface Metricas {
@@ -141,9 +143,8 @@ export function Oportunidad() {
 
     // Cada panel con su propio fallo: que no responda el histórico de
     // previsión no puede dejar sin ver las líneas, que es a lo que se entra.
-    llamar<unknown>(`/api/v1/opportunities/${id}/lineas`, { signal: control.signal })
-      .then((r) => {
-        const suyas = filas<Linea>(r.datos);
+    listar<Linea>(`/api/v1/opportunities/${id}/lineas`, { signal: control.signal })
+      .then((suyas) => {
         setLineas(suyas);
         // Las métricas las calcula el servicio que sabe qué es recurrente, con
         // las líneas de verdad. Sin líneas no se pregunta: contestaría ceros y

@@ -35,7 +35,8 @@ import { Link } from "react-router-dom";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { escalar, importe } from "@/lib/formato";
 import { inicialesDe, nombreDe, usePersonas } from "@/lib/personas";
 import { puede, type Sesion } from "@/lib/sesion";
@@ -97,9 +98,8 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
 
   useEffect(() => {
     const control = new AbortController();
-    llamar<unknown>("/api/v1/pipelines", { signal: control.signal })
-      .then((r) => {
-        const lista = filas<PipelineApi>(r.datos);
+    listar<PipelineApi>("/api/v1/pipelines", { signal: control.signal })
+      .then((lista) => {
         setPipelines(lista);
         setAbierto(lista.find((p) => p.por_defecto)?.id ?? lista[0]?.id ?? "");
       })
@@ -110,8 +110,8 @@ export function Pipeline({ sesion }: { sesion: Sesion | null }) {
   const cargar = useCallback((signal?: AbortSignal) => {
     // Se piden muchas porque el tablero es una vista de conjunto: paginarlo
     // haría que una columna enseñara media verdad y el total, otra.
-    llamar<unknown>("/api/v1/opportunities?limite=200", { signal })
-      .then((r) => setOportunidades(filas<Oportunidad>(r.datos)))
+    listar<Oportunidad>("/api/v1/opportunities?limite=200", { signal })
+      .then(setOportunidades)
       .catch(salvoCancelacion(setFallo));
   }, []);
 

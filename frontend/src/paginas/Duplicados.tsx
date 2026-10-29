@@ -41,7 +41,8 @@ import { Link } from "react-router-dom";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, filas, llamar, salvoCancelacion } from "@/lib/api";
+import { ErrorApi, llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { humanizar } from "@/lib/formato";
 
 interface Pareja {
@@ -84,10 +85,10 @@ export function Duplicados() {
   const cargar = useCallback(
     (signal?: AbortSignal) => {
       setFallo(null);
-      llamar<unknown>(`${COLA}?pendientes=${soloPendientes}&limite=100`, {
+      listar<Pareja>(`${COLA}?pendientes=${soloPendientes}&limite=100`, {
         signal,
       })
-        .then((r) => setParejas(filas<Pareja>(r.datos)))
+        .then(setParejas)
         .catch(salvoCancelacion(setFallo));
     },
     [soloPendientes],

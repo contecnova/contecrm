@@ -109,6 +109,14 @@ def listar(db: DbDep, principal: AutenticadoDep) -> Any:
             "estado": f.estado,
             "prioridad": f.prioridad,
             "responsable_id": str(f.responsable_id) if f.responsable_id else None,
+            # Los criterios son **lo que define el territorio**, y el listado no
+            # los devolvía: la pantalla los contaba para decir «3 criterios» y
+            # decía «0» en todos, incluido el que reparte media cartera.
+            "criterios": list(f.criterios or []),
+            # Y de quién cuelga: un mapa de territorios sin el padre es una
+            # lista plana, y la prioridad de un hijo sólo se entiende al lado de
+            # la del padre.
+            "padre_id": str(f.padre_id) if f.padre_id else None,
         }
         for f in filas
     ]

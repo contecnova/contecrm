@@ -2670,6 +2670,80 @@ La edición se mantiene: existía en la ficha genérica y el contrato publica
 `PATCH`, así que quitarla al traerse el sobre a su propia pantalla habría sido
 retirar algo que funcionaba sin que nadie lo decidiera.
 
+### 4.6.25 Cuatro pantallas leían un campo que nadie manda
+
+El fallo más barato de cometer y el más caro de encontrar: una pantalla lee
+`fila.tipo`, el servidor manda `dinamico`, y **no pasa nada**. No hay error, no
+hay traza, no hay 500. El campo llega `undefined`, el hueco sale en blanco y la
+pantalla parece que funciona.
+
+Medido el 29-10-2026 recorriendo las veintiuna rutas que una pantalla tipaba:
+
+| Pantalla | Lo que leía | Lo que manda el servidor |
+|---|---|---|
+| Marketing (segmentos) | `tipo`, `miembros`, `calculado_at` | `dinamico`, `tamano`, `tamano_at` |
+| Marketing (campañas) | `miembros`, `enviados`, `respuestas` | ninguno de los tres existe en la tabla |
+| Conocimiento | `titulo`, `publico` | el título vive en `versiones_articulo` |
+| Territorios | `criterios` | el listado no los devolvía |
+| Ficha de una venta | `tipo` de la línea | `tipo_ingreso` |
+
+La de conocimiento no se quedaba en blanco: **se caía**. `a.titulo.toLowerCase()`
+sobre `undefined` tumba la pantalla entera, y sólo al escribir en el buscador.
+
+#### Por qué ningún guardián las vio
+
+El que ya había mira las llamadas tipadas —`llamar<Tipo>(ruta)`—. Las cuatro
+usaban `llamar<unknown>(ruta)` y le ponían la forma **después**, con
+`filas<Tipo>(r.datos)`: veintiuna rutas de diez pantallas por ese hueco.
+
+Se cierra por construcción, no con una regla: `listar<T>(ruta)` y
+`listarPagina<T>(ruta)` hacen la llamada y le dan forma a la vez, así que la
+ruta y el tipo están en el mismo sitio. Viven en `lib/listados.ts` y no dentro
+de `lib/api.ts` a propósito: una prueba que sustituye `@/lib/api` sustituye el
+módulo para quien lo importa, pero una función **dentro** de `api.ts` seguiría
+llamando a la `llamar` de verdad, que en una prueba sale a la red.
+
+#### El dato que hace falta no siempre es una columna
+
+Tres de los cinco casos son lo mismo: lo que hay que enseñar de una fila no
+está en la fila.
+
+- **los miembros de una campaña** se cuentan en `miembros_campana`: es un
+  agregado, y para eso ya estaban los *rollups*. Se declara uno y el camino de
+  lectura lo pega a toda la página en una consulta;
+- **el título de un artículo** vive en `versiones_articulo` y cambia con cada
+  versión. No es un agregado —`max(titulo)` es el título alfabéticamente mayor,
+  no el de la versión publicada—, así que `montar_listado` gana `extras`: una
+  función que recibe la página entera y devuelve `{id: {campo: valor}}`. Gana
+  siempre la versión publicada y, si no hay ninguna, la última **diciendo que es
+  un borrador**;
+- **los criterios de un territorio** sí eran una columna, y el listado escrito a
+  mano no la devolvía.
+
+`extras` obliga a declarar qué campos añade (`extras_declara`), y el montaje se
+cae si no se dice. No es burocracia: es lo que permite que el guardián sepa qué
+devuelve ese listado.
+
+#### El guardián nuevo
+
+`test_la_pantalla_no_se_inventa_el_campo` resuelve, para cada ruta, **las claves
+que puede devolver**, y las compara con los campos obligatorios que la pantalla
+declara. Resuelve sólo por caminos exactos: el modelo de un listado genérico con
+sus agregados y sus extras declarados, el esquema de salida, la proyección, el
+diccionario literal del manejador, o **un salto** de delegación a una función
+con nombre.
+
+Un salto y acotado, porque la versión suelta se equivocó: buscando por el nombre
+del atributo, `pagina.a_dict(…)` del listado de cuentas casó con una función
+`a_dict()` de previsión y el resolutor contestó que `/accounts` devuelve
+«compromiso» y «ponderado». Lo mismo con los `return` de una función auxiliar
+dentro del manejador, que hicieron denunciar un contrato sano. **Una respuesta
+equivocada aquí es peor que ninguna**: aprueba lo roto y manda a cambiar lo que
+estaba bien.
+
+Lo que no cae en ningún camino se cuenta y se deja fuera: 484 rutas resueltas,
+120 contratos de pantalla y 26 puntos ciegos, con tope que sólo baja.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

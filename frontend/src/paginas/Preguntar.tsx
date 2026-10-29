@@ -36,7 +36,8 @@ import { useTranslation } from "react-i18next";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { ErrorApi, filas, llamar } from "@/lib/api";
+import { ErrorApi, llamar } from "@/lib/api";
+import { listar } from "@/lib/listados";
 
 interface Agente {
   id: string;
@@ -162,9 +163,8 @@ export function Preguntar() {
 
   const cargar = useCallback(() => {
     const control = new AbortController();
-    llamar<unknown>("/api/v1/ia/agentes-autonomos", { signal: control.signal })
-      .then((r) => {
-        const lista = filas<Agente>(r.datos);
+    listar<Agente>("/api/v1/ia/agentes-autonomos", { signal: control.signal })
+      .then((lista) => {
         setAgentes(lista);
         // **Aquí no se elige nunca.** Nexus es la caja de «pregúntale al
         // sistema», y elegir agente es en realidad elegir con qué permisos y

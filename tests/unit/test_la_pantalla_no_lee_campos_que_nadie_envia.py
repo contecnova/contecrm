@@ -58,7 +58,13 @@ SERVICIOS = frozenset(
     }
 )
 
-RE_LLAMAR = re.compile(r'llamar<([A-Za-z0-9_\[\]{}<> ,|]+)>\(\s*[`"\']([^`"\']+)')
+# `listar` y `listarPagina` cuentan igual que `llamar`: las tres llevan la ruta
+# y la forma en la misma llamada. Sin las dos primeras, veintiuna rutas de diez
+# pantallas quedaban fuera — que es por donde entraron las cuatro pantallas que
+# leían campos que nadie manda (29-10-2026).
+RE_LLAMAR = re.compile(
+    r'\b(?:llamar|listar|listarPagina)<([A-Za-z0-9_\[\]{}<> ,|]+)>\(\s*[`"\']([^`"\']+)'
+)
 
 # ── Contratos que una pantalla da por bueno y ninguna prueba recorre ──────
 #
@@ -120,6 +126,11 @@ def _rutas_que_piden_un_tipo() -> dict[str, set[str]]:
         for tipo, ruta in RE_LLAMAR.findall(texto):
             if "unknown" in tipo:
                 continue
+            # Una pantalla puede guardar la ruta en una constante —`${COLA}`—:
+            # sin resolverla, la ruta se normaliza a `{}` y no casa con nada,
+            # así que el gate pedía una prueba para una ruta sin nombre.
+            for nombre_const, valor in re.findall(r'^const (\w+) = "([^"]+)";', texto, re.M):
+                ruta = ruta.replace("${" + nombre_const + "}", valor)
             # Las partes variables se normalizan: `${id}` no distingue rutas.
             limpia = re.sub(r"\$\{[^}]*\}", "{}", ruta.split("?")[0])
             salida.setdefault(limpia, set()).add(fichero.name)

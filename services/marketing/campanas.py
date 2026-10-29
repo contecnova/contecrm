@@ -35,6 +35,7 @@ from typing import Any
 from uuid import UUID
 
 from crmcore.audit import registrar
+from crmcore.datos import rollups as _rollups
 from crmcore.db.base import Base, SoftDeleteMixin, TimestampMixin
 from crmcore.db.uow import UnidadDeTrabajo
 from crmcore.errors import Conflicto, ErrorValidacion, NoEncontrado
@@ -1227,3 +1228,23 @@ def salud_de_envio(db: Session, tenant_id: UUID, *, dias: int = 30) -> dict[str,
         "en_riesgo": bool(enviados and ((_tasa(duros) or 0) > 2.0 or (_tasa(quejas) or 0) > 0.1)),
         "medible": enviados > 0,
     }
+
+
+# Los agregados sobre los hijos de una campaña (CRM-00.04.01.04). El listado
+# devolvía las columnas de la campaña y ya: la pantalla de marketing pintaba
+# «miembros», «enviados» y «respuestas» por fila y ninguno de los tres existe en
+# la tabla, así que los tres salían vacíos en todas las campañas.
+#
+# «Miembros» sí es un agregado y por eso va aquí. «Enviados» y «respuestas» no:
+# se cuentan sobre los envíos y salen del embudo de cada campaña, y pedirlos por
+# fila sería una consulta por campaña — la lista los enseña como enlace a la
+# ficha, no como número inventado.
+_rollups.declarar(
+    "campana",
+    _rollups.Rollup(
+        nombre="miembros",
+        modelo_hijo=MiembroCampana,
+        campo_padre="campana_id",
+        funcion="cuenta",
+    ),
+)

@@ -849,3 +849,60 @@ def anotar_vista(db: Session, tenant_id: UUID, articulo_id: UUID) -> None:
         articulo.vistas += 1
     except Exception:  # noqa: BLE001
         logger.warning("conocimiento.vista_no_anotada", articulo=str(articulo_id))
+
+
+def titulos_de(db: Session, articulos: list[Articulo]) -> dict[UUID, dict[str, Any]]:
+    """El título de cada artículo de una página, de golpe.
+
+    El título **no es una columna del artículo**: vive en `versiones_articulo`,
+    porque cambia con cada versión y el artículo no. Eso hacía que el listado
+    genérico devolviera filas sin nombre, y la pantalla de conocimiento pintaba
+    una lista de artículos en blanco —y se caía entera al escribir en el
+    buscador, porque filtraba por un título que era `undefined`—.
+
+    Se coge la versión publicada; si no hay ninguna publicada todavía, la última
+    escrita, **y se dice cuál de las dos es**: enseñar el borrador con el mismo
+    aspecto que lo publicado haría que alguien citara a un cliente un texto que
+    nadie ha aprobado.
+    """
+    if not articulos:
+        return {}
+    por_id = {a.id: a for a in articulos}
+    filas = db.execute(
+        select(VersionArticulo)
+        .where(VersionArticulo.articulo_id.in_(list(por_id)))
+        .order_by(VersionArticulo.articulo_id, VersionArticulo.version.desc())
+    ).scalars()
+
+    salida: dict[UUID, dict[str, Any]] = {}
+    for version in filas:
+        articulo = por_id[version.articulo_id]
+        publicada = articulo.version_publicada
+        ya = salida.get(articulo.id)
+        es_la_publicada = publicada is not None and version.version == publicada
+        # La publicada gana siempre. Si no, vale la primera que llega, que por
+        # el orden es la más alta.
+        if ya is not None and not es_la_publicada:
+            continue
+        salida[articulo.id] = {
+            "titulo": version.titulo,
+            "resumen": version.resumen,
+            "version_mostrada": version.version,
+            "es_borrador": not es_la_publicada,
+        }
+
+    for identificador, articulo in por_id.items():
+        # Un artículo sin ninguna versión no se queda sin clave: se devuelve su
+        # clave como título. Dejarlo vacío sería devolver una fila que no se
+        # puede ni nombrar ni abrir.
+        salida.setdefault(
+            identificador,
+            {
+                "titulo": articulo.clave,
+                "resumen": "",
+                "version_mostrada": None,
+                "es_borrador": True,
+            },
+        )
+        salida[identificador]["publico"] = articulo.audiencia in ("cliente", "publico")
+    return salida

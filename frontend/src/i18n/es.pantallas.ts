@@ -146,6 +146,7 @@ const pantallas = {
     buscar: "Buscar por título",
     sinResultados: "Ningún artículo coincide",
     enPortal: "En el portal",
+    borrador: "borrador v{{version}}",
     vistas: "{{vistas}} vistas",
   },
   conversacion: {

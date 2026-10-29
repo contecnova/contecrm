@@ -44,7 +44,8 @@ import { useSearchParams } from "react-router-dom";
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { cn } from "@/lib/utiles";
 import type { Sesion } from "@/lib/sesion";
 import { localizacion } from "@/lib/formato";
@@ -140,17 +141,16 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
   const activa = parametros.get("c") ?? "";
 
   const cargarConversaciones = useCallback(async (signal?: AbortSignal) => {
-    const r = await llamar<unknown>("/api/v1/chat/conversaciones", { signal });
-    setConversaciones(filas<Conversacion>(r.datos));
+    setConversaciones(await listar<Conversacion>("/api/v1/chat/conversaciones", { signal }));
   }, []);
 
   useEffect(() => {
     const control = new AbortController();
     void cargarConversaciones(control.signal).catch(salvoCancelacion(setFallo));
-    llamar<unknown>("/api/v1/usuarios?limite=200", { signal: control.signal })
-      .then((r) =>
+    listar<Usuario>("/api/v1/usuarios?limite=200", { signal: control.signal })
+      .then((us) =>
         setUsuarios(
-          Object.fromEntries(filas<Usuario>(r.datos).map((u) => [u.id, u])),
+          Object.fromEntries(us.map((u) => [u.id, u])),
         ),
       )
       .catch(salvoCancelacion(() => undefined));
@@ -164,10 +164,10 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
       return;
     }
     const control = new AbortController();
-    llamar<unknown>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`, {
+    listar<Mensaje>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`, {
       signal: control.signal,
     })
-      .then((r) => setMensajes(filas<Mensaje>(r.datos)))
+      .then(setMensajes)
       .catch(salvoCancelacion(setFallo));
     void llamar(`/api/v1/chat/conversaciones/${activa}/leido`, { metodo: "POST", cuerpo: {} }).catch(
       () => undefined,
@@ -319,8 +319,7 @@ export function Chat({ sesion }: { sesion: Sesion | null }) {
 
   /** Recarga los mensajes de la conversación abierta. */
   async function recargarMensajes() {
-    const r = await llamar<unknown>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`);
-    setMensajes(filas<Mensaje>(r.datos));
+    setMensajes(await listar<Mensaje>(`/api/v1/chat/conversaciones/${activa}/mensajes?limite=200`));
   }
 
   /**

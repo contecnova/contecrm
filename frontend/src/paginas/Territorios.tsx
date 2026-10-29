@@ -24,7 +24,8 @@ import { useTranslation } from "react-i18next";
 
 import { Error as Fallo, Vacio } from "@/componentes/Estados";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 
 interface Territorio {
   id: string;
@@ -89,8 +90,8 @@ export function Territorios() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     setFallo(null);
-    llamar<unknown>("/api/v1/territorios?limite=100", { signal: control.signal })
-      .then((r) => setTerritorios(filas<Territorio>(r.datos)))
+    listar<Territorio>("/api/v1/territorios?limite=100", { signal: control.signal })
+      .then(setTerritorios)
       .catch(salvoCancelacion(setFallo));
     void llamar<Excepciones>("/api/v1/territorios/excepciones", {
       signal: control.signal,
@@ -121,8 +122,9 @@ export function Territorios() {
     setSimulando(true);
     setAviso("");
     try {
-      const { datos } = await llamar<unknown>("/api/v1/accounts?limite=200&estado=");
-      const cuentas = filas<Record<string, unknown>>(datos);
+      const cuentas = await listar<Record<string, unknown>>(
+        "/api/v1/accounts?limite=200&estado=",
+      );
       const r = await llamar<Simulacion>("/api/v1/territorios/simular", {
         metodo: "POST",
         cuerpo: { cuentas },
@@ -257,7 +259,7 @@ function ElMapa({ territorios }: { territorios: Territorio[] }) {
               <span className="text-2xs font-medium text-ink">{x.nombre}</span>
               <span className="text-3xs text-ink-faint">{x.clave}</span>
               <span className="text-3xs text-ink-muted">
-                {t("territorios.criterios", { cuantos: x.criterios?.length ?? 0 })}
+                {t("territorios.criterios", { cuantos: x.criterios.length })}
               </span>
             </li>
           ))}

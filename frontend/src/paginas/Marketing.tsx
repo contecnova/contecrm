@@ -17,15 +17,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Cargando, Error as Fallo, Vacio } from "@/componentes/Estados";
-import { ErrorApi, filas, llamar } from "@/lib/api";
+import { ErrorApi } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { CabeceraPagina } from "@/componentes/Pagina";
 
 interface Segmento {
   id: string;
   nombre: string;
-  tipo: string;
-  miembros: number | null;
-  calculado_at: string | null;
+  /** Dinámico se recalcula al preguntar; estático es una foto congelada. */
+  dinamico: boolean;
+  tamano: number | null;
+  tamano_at: string | null;
 }
 
 interface Campana {
@@ -33,9 +35,8 @@ interface Campana {
   nombre: string;
   estado: string;
   canal: string;
-  miembros: number;
-  enviados: number;
-  respuestas: number;
+  /** Agregado sobre los miembros de la campaña, no una columna suya. */
+  miembros: number | null;
 }
 
 export function Marketing() {
@@ -47,16 +48,17 @@ export function Marketing() {
   const cargar = useCallback(() => {
     const control = new AbortController();
     Promise.all([
-      llamar<unknown>("/api/v1/segmentos", { signal: control.signal }),
-      llamar<unknown>("/api/v1/campanas", { signal: control.signal }),
+      // Por `listar()` y no por `llamar` + `filas`: unos extremos devuelven el
+      // array pelado y otros una página `{items}`, y acertar de memoria en cada
+      // pantalla es cómo se llega a `map is not a function`. Y con la ruta y la
+      // forma juntas, el guardián de contratos las ve: separadas no las veía, y
+      // por ahí entraron los seis campos que esta pantalla se inventaba.
+      listar<Segmento>("/api/v1/segmentos", { signal: control.signal }),
+      listar<Campana>("/api/v1/campanas", { signal: control.signal }),
     ])
       .then(([s, c]) => {
-        // Por `filas()` y no directo: unos extremos devuelven el array
-        // pelado y otros una página `{items}`, y acertar de memoria en
-        // cada pantalla es cómo se llega a `map is not a function` y a la
-        // pantalla en blanco.
-        setSegmentos(filas<Segmento>(s.datos));
-        setCampanas(filas<Campana>(c.datos));
+        setSegmentos(s);
+        setCampanas(c);
       })
       .catch((e: unknown) => {
         if (e instanceof ErrorApi) setFallo(e);
@@ -91,19 +93,19 @@ export function Marketing() {
                 className="flex flex-wrap items-baseline gap-2 rounded-lg border border-ink-dim/40 bg-paper-light p-3"
               >
                 <span className="flex-1 text-sm text-ink">{s.nombre}</span>
-                <span className="text-2xs text-ink-muted">{s.tipo}</span>
+                <span className="text-2xs text-ink-muted">
+                  {t(s.dinamico ? "marketing.dinamico" : "marketing.congelado")}
+                </span>
                 <span className="font-mono text-2xs text-ink">
-                  {s.miembros === null
-                    ? t("marketing.sinCalcular")
-                    : s.miembros}
+                  {s.tamano === null ? t("marketing.sinCalcular") : s.tamano}
                 </span>
                 {/* La fecha del recuento va SIEMPRE: un número sin fecha se lee
                     como el de ahora, y quien va a mandar un correo a 14.000
                     personas merece saber si ese 14.000 es de hoy. */}
                 <span className="text-3xs text-ink-faint">
-                  {s.calculado_at
+                  {s.tamano_at
                     ? t("marketing.calculado", {
-                        fecha: new Date(s.calculado_at).toLocaleDateString(),
+                        fecha: new Date(s.tamano_at).toLocaleDateString(),
                       })
                     : t("marketing.nuncaCalculado")}
                 </span>
@@ -135,13 +137,16 @@ export function Marketing() {
                   <span className="flex-1 text-sm text-ink">{c.nombre}</span>
                   <span className="text-2xs text-ink-muted">{c.canal}</span>
                 </div>
+                {/* Sólo los miembros, que es lo que el listado sabe de
+                    verdad. Enviados y respuestas se cuentan sobre los envíos y
+                    salen del embudo de la campaña: pedirlos por fila sería una
+                    consulta por campaña, y pintarlos sin tenerlos es lo que
+                    hacía esta pantalla —los tres salían vacíos—. */}
                 {c.estado !== "borrador" ? (
                   <p className="mt-1 font-mono text-2xs text-ink-faint">
-                    {t("marketing.cifras", {
-                      miembros: c.miembros,
-                      enviados: c.enviados,
-                      respuestas: c.respuestas,
-                    })}
+                    {c.miembros === null
+                      ? t("marketing.sinMiembros")
+                      : t("marketing.miembros", { miembros: c.miembros })}
                   </p>
                 ) : null}
               </li>

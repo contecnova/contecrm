@@ -35,7 +35,8 @@ import { Link } from "react-router-dom";
 
 import { Icono } from "@/componentes/Icono";
 import { CabeceraPagina } from "@/componentes/Pagina";
-import { filas, llamar, salvoCancelacion } from "@/lib/api";
+import { llamar, salvoCancelacion } from "@/lib/api";
+import { listar } from "@/lib/listados";
 import { ALTAS } from "@/lib/altas";
 import { puede, type Sesion } from "@/lib/sesion";
 import { localizacion } from "@/lib/formato";
@@ -115,11 +116,11 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
     llamar<Actividad[]>("/api/v1/activities/vencidas", { signal })
       .then((r) => setVencidas((r.datos || []).slice(0, 6)))
       .catch(salvoCancelacion(() => setVencidas([])));
-    llamar<unknown>(
+    listar<Actividad>(
       `/api/v1/activities?mias=true&estado__en=pendiente,en_curso&vence_at__hasta=${encodeURIComponent(finDeHoy())}&limite=6`,
       { signal },
     )
-      .then((r) => setHoy(filas<Actividad>(r.datos)))
+      .then(setHoy)
       .catch(salvoCancelacion(() => setHoy([])));
     return () => control.abort();
   }, [veActividades]);
@@ -132,18 +133,17 @@ export function Inicio({ sesion }: { sesion: Sesion | null }) {
     }
     const control = new AbortController();
     const { signal } = control;
-    llamar<unknown>(
+    listar<Oportunidad>(
       `/api/v1/opportunities?mias=true&estado=abierta&fecha_cierre__hasta=${finDeSemana()}&limite=6`,
       { signal },
     )
-      .then((r) => setCierran(filas<Oportunidad>(r.datos)))
+      .then(setCierran)
       .catch(salvoCancelacion(() => setCierran([])));
-    llamar<unknown>("/api/v1/opportunities?mias=true&estado=abierta&limite=200", { signal })
-      .then((r) => setEmbudo(filas<Oportunidad>(r.datos)))
+    listar<Oportunidad>("/api/v1/opportunities?mias=true&estado=abierta&limite=200", { signal })
+      .then(setEmbudo)
       .catch(salvoCancelacion(() => setEmbudo([])));
-    llamar<unknown>("/api/v1/pipelines", { signal })
-      .then((r) => {
-        const lista = filas<{ etapas?: Etapa[] }>(r.datos);
+    listar<{ etapas?: Etapa[] }>("/api/v1/pipelines", { signal })
+      .then((lista) => {
         setEtapas(lista[0]?.etapas || []);
       })
       .catch(salvoCancelacion(() => setEtapas([])));
