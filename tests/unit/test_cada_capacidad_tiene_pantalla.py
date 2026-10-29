@@ -630,7 +630,21 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   evitar—. Va con CUANTAS REGLAS SE MIRARON antes: sin ese numero,
 #   «ninguna coincidio y cayo a la cola por defecto» y «coincidio la primera»
 #   se cuentan igual y significan lo contrario.
-TOPE_SIN_PANTALLA = 266
+#   29-10-2026  264 de 778  el rastro de un registro, en la ficha generica:
+#   ------------------------------------------------------------------------
+#   el historial campo a campo —que ya se ensenaba y no se declaraba— y la
+#   reconstruccion del estado con su COMPROBACION DE QUE CUADRA.
+#
+#   Esa comprobacion es la que casi nadie hace y la unica que detecta lo que
+#   de verdad pasa: alguien escribiendo en la tabla sin pasar por el rastro
+#   —un script de correccion, una migracion, un arreglo a mano un viernes—. A
+#   partir de ahi el rastro deja de ser una prueba y nadie se entera, porque
+#   sigue contestando con la misma seguridad.
+#
+#   Va plegado: el rastro completo esta encendido en muy pocos objetos a
+#   proposito, y pedirlo en cada ficha seria una llamada por registro abierto
+#   que casi siempre contestaria «aqui no hay».
+TOPE_SIN_PANTALLA = 264
 
 
 def _es_pantalla(p: Path) -> bool:

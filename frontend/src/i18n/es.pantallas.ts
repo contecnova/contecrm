@@ -282,6 +282,13 @@ const pantallas = {
     degradadas: "{{cuantas}} consultas van más lentas de lo que deberían.",
   },
   ficha: {
+    comoEstaba: "Cómo estaba esto en un momento dado",
+    sinRastroCompleto:
+      "Este objeto no tiene el rastro completo encendido, así que no hay nada que reconstruir. Encenderlo para todo multiplicaría la escritura por algo que casi nunca se consulta.",
+    hechos: "{{cuantos}} hechos, {{compensados}} de ellos compensados.",
+    cuadra: "La reconstrucción cuadra con lo que hay guardado.",
+    noCuadra:
+      "NO cuadra: alguien ha escrito en la tabla sin pasar por el rastro. A partir de aquí el rastro deja de ser una prueba.",
     preguntarSobreEsto: "Preguntar sobre este registro",
     tuPregunta: "Tu pregunta",
     ejemploPregunta: "¿Cuánto hemos facturado aquí este año?",

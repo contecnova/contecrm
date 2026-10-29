@@ -477,6 +477,20 @@ es de la cuenta antigua, y moverla dejaría a esa cuenta sin nada.
 
 ---
 
+### Cómo estaba un registro en un momento dado
+
+En la ficha de cualquier registro, además de «qué ha cambiado» hay un apartado
+plegado que reconstruye **cómo estaba entero** en una fecha. No sale abierto a
+propósito: sólo unos pocos tipos de registro guardan ese rastro completo
+—guardarlo de todo multiplicaría el trabajo del sistema por algo que casi nadie
+consulta— y para los demás dirá que no está encendido.
+
+Lo que de verdad hay que mirar ahí es **si la reconstrucción cuadra**. Si no
+cuadra, significa que alguien cambió el dato por fuera del sistema —un arreglo
+a mano, una migración— y desde ese momento el rastro ya no sirve como prueba,
+aunque siga contestando con la misma seguridad. Cuando pasa, se dice en rojo y
+con el campo concreto que no coincide.
+
 ### De dónde sale cada dato de un cliente
 
 Dentro de la ficha de un cliente, cuatro cosas que antes no se veían:

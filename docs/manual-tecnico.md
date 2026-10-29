@@ -2614,6 +2614,34 @@ la ficha de cliente. Queda escrito aquí porque la lección no es el `?? []`: es
 que **asumir la forma de lo que llega convierte un campo raro en una pantalla
 en blanco**, y eso no falla, no avisa y no deja traza.
 
+### 4.6.23 «¿Cómo estaba esto el 3 de marzo?»
+
+El historial campo a campo ya se enseñaba en la ficha. Lo que faltaba es la
+otra mitad: **cómo estaba el registro entero** en un momento dado. Encadenar
+cambios a mano para reconstruirlo sale mal en cuanto hay una fusión o un
+borrado por medio.
+
+Y lo que de verdad justifica el panel no es la reconstrucción: es
+`GET /{servicio}/rastro/{objeto}/{id}/cuadra`. **Una reconstrucción que no
+coincide con la tabla viva significa que alguien escribió sin pasar por el
+rastro** —un script de corrección, una migración, un arreglo a mano un
+viernes—. A partir de ahí el rastro deja de ser una prueba y nadie se entera,
+porque sigue contestando con la misma seguridad. Por eso el «no cuadra» sale en
+rojo y **con el campo concreto**: sin la diferencia, «no cuadra» no deja
+empezar a buscar por ningún sitio.
+
+Va plegado y se pide sólo al abrirlo. El rastro completo está encendido en muy
+pocos objetos a propósito —guardar todos los hechos de todo multiplica la
+escritura por algo que casi nadie consulta— y pedirlo en cada ficha sería una
+llamada por registro abierto que casi siempre contestaría «aquí no hay». Un 404
+en esa ruta no es un error: es que nadie lo encendió para ese objeto, y se dice
+con esas palabras.
+
+**Y dónde NO se declara, que es la mitad que suele faltar.** La pantalla de
+plataforma roza esta capacidad y dice explícitamente que no la cubre: reconstruir
+pide el identificador de un registro concreto y su sitio es la ficha de ese
+registro. Declararla allí habría sido declarar lo que no se hace.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
