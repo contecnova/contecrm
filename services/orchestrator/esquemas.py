@@ -127,6 +127,31 @@ class EditarVariables(BaseModel):
     motivo: str = Field(..., min_length=10)
 
 
+class SaltarPaso(BaseModel):
+    """Saltar el paso en el que se ha quedado una instancia (CRM-00.03.02.12).
+
+    La tercera pata del rescate, y la que faltaba: reintentar vuelve a ejecutar
+    lo mismo y editar variables corrige el dato, pero hay pasos que **no se
+    pueden completar nunca** —un servicio de un tercero que ya no existe, una
+    tarea humana de alguien que se fue— y el proceso se queda parado para
+    siempre con todo lo que venía detrás sin hacer.
+
+    **Sólo a un destino que el propio paso declara.** Saltar a cualquier paso
+    convertiría esto en un «ejecuta lo que quieras» sobre un proceso en marcha:
+    se podría meter una instancia en la rama de aprobado sin pasar por la
+    aprobación, y el histórico diría que el proceso se siguió. Los destinos
+    posibles salen de `siguiente`, `si_no`, `al_fallar`, las rutas de una tarea
+    humana y las ramas de una decisión — es decir, de los caminos que su autor
+    escribió.
+
+    Exige motivo y queda auditado, como la edición de variables: cambia el
+    curso de un proceso ya en marcha y hay que poder preguntar después por qué.
+    """
+
+    destino: str = Field(..., min_length=1, max_length=120)
+    motivo: str = Field(..., min_length=10)
+
+
 class SimularProceso(BaseModel):
     """Simulación con datos de ejemplo antes de publicar (CRM-00.03.02.14)."""
 

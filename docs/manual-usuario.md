@@ -205,6 +205,61 @@ Lo que hay que saber:
   mandado no se desmanda—, queda marcado como **atascado** y no como
   «compensado». Es incómodo y es la verdad.
 
+### Cuando un proceso se queda parado
+
+En **Procesos › Instancias**, cada fila se abre. Dentro está lo que hace falta
+para entenderlo y para sacarlo de ahí:
+
+- **Por dónde va, sobre su propio diagrama.** El mismo dibujo que se ve al
+  escribir el proceso, con cada caja marcada: aquí está, hecho, falló, deshecho,
+  pendiente o no se pasó por aquí. Va **escrito debajo de cada caja**, no sólo en
+  el color del borde. Y se dibuja sobre la versión con la que arrancó esta
+  instancia, no sobre la que se publicó después: enseñarla sobre el dibujo nuevo
+  señalaría pasos que este proceso no tiene.
+- **Qué pasó, en orden.** El estado de cada caja dice dónde está; la lista dice
+  en qué orden ocurrió. Con un bucle por medio no es lo mismo: un paso puede
+  estar «hecho» por la tercera vuelta, y lo que importa es qué decidió en cada
+  una.
+- **Tres formas de desatascarlo, y elegir entre ellas es el trabajo:**
+  **reintentar** vuelve a ejecutar lo mismo —sirve si el fallo fue pasajero, y
+  si la causa sigue ahí volverá a fallar igual—; **corregir las variables**
+  arregla un proceso atascado por un dato mal cargado; y **saltar el paso** es
+  para cuando ese paso no se va a poder completar nunca: el servicio de un
+  tercero que ya no existe, la tarea de alguien que se fue de la empresa.
+
+  Saltar sólo ofrece **los caminos que el propio paso tiene escritos**. No se
+  puede saltar a cualquier sitio, y no es una limitación: meter un pedido en la
+  rama de «aprobado» sin que nadie lo aprobara dejaría el histórico diciendo que
+  el proceso se siguió.
+
+  Las tres piden **por qué**, y queda apuntado con tu nombre. Cambiar el curso de
+  un proceso en marcha sin dejar escrito el motivo es una decisión que nadie
+  podrá revisar después.
+- **Y si es éste o es ese paso.** Debajo sale dónde se atasca el proceso en
+  **todas** sus ejecuciones, no sólo en ésta, con el aviso de cuándo el dato
+  todavía no es concluyente: un cuello de botella deducido de tres ejecuciones
+  lleva a rediseñar un flujo que funcionaba.
+
+### Antes de publicar un proceso
+
+En el **editor de procesos**, dos botones que no tocan nada:
+
+- **Validar** busca lo que no se ve leyendo el diagrama: pasos a los que no se
+  llega desde el inicio, pasos desde los que no se llega a ningún final —un
+  bucle sin salida, una rama que se quedó sin enlazar—, ramas que apuntan a un
+  paso que no existe, condiciones mal escritas que se cumplirían siempre, y
+  tareas que no dicen a quién le tocan: ésas no las ve nadie y dejan el proceso
+  parado para siempre.
+- **Simular** recorre el proceso con **datos de ejemplo** que tú pones, sin
+  ejecutar nada de verdad. Dice por qué pasos iría ese caso, **quién lo
+  aprobaría** y **cuánto tardaría**. El plazo es el que está declarado en el
+  proceso, no una predicción, y si alguna tarea humana no tiene plazo puesto se
+  dice: un proceso que espera a una persona sin fecha no tarda cero, tarda lo que
+  tarde.
+
+Un error descubierto aquí es un mensaje. Descubierto en marcha, es un proceso a
+medias en producción.
+
 ---
 
 ## Campos, listas y pantallas a tu medida (sección 0.4)

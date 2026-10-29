@@ -134,6 +134,10 @@ const ModuloInstalado = pantalla(
   () => import("@/paginas/ModuloInstalado"),
   (m) => m.ModuloInstalado,
 );
+const InstanciaDeProceso = pantalla(
+  () => import("@/paginas/InstanciaDeProceso"),
+  (m) => m.InstanciaDeProceso,
+);
 const ObjetoDelModelo = pantalla(
   () => import("@/paginas/ObjetoDelModelo"),
   (m) => m.ObjetoDelModelo,
@@ -299,6 +303,15 @@ export function App() {
               habría salido en 404. Ésta abre por identificador, lee el nombre
               y con él pide lo demás. */}
           <Route path="/m/modelo/objeto/:id" element={<ObjetoDelModelo />} />
+          {/* Una instancia de proceso tiene pantalla propia por lo mismo que
+              el objeto del modelo: la ficha genérica enseña columnas —estado,
+              paso actual— y la pregunta delante de un proceso parado es «¿por
+              dónde va, qué pasó y cómo lo desatasco?». Además el gráfico
+              necesita la definición de SU versión, que la ficha no pide. */}
+          <Route
+            path="/m/procesos/instancia/:id"
+            element={<InstanciaDeProceso />}
+          />
           {/* Por CLAVE y no por identificador: las rutas hijas de un módulo
               —integridad, telemetría— se dirigen por su clave, y pasarles el
               identificador las dejaría en 404, que es peor que no tenerlas. */}

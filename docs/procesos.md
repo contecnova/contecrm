@@ -305,6 +305,7 @@ stateDiagram-v2
 | `POST /api/v1/estado/solo-lectura` | Entrar o salir del modo solo lectura (plataforma) | activo*, motivo | 200, 422 | — |
 | `POST /api/v1/instancias` | Arrancar un proceso | clave*, variables, origen_tipo, origen_id | 201, 422 | — |
 | `POST /api/v1/instancias/{instancia_id}/reintentar` | Reintentar una instancia fallida | instancia_id* | 200, 422 | — |
+| `POST /api/v1/instancias/{instancia_id}/saltar-paso` | Saltar el paso en el que se ha quedado una instancia | instancia_id*, destino*, motivo* | 200, 422 | — |
 | `PATCH /api/v1/instancias/{instancia_id}/variables` | Corregir las variables de una instancia en marcha | instancia_id*, variables*, motivo* | 200, 422 | — |
 | `POST /api/v1/orchestrator/compuesto` | Varias operaciones de «orchestrator» en una llamada | operaciones | 200, 422 | — |
 | `POST /api/v1/orchestrator/movil/sincronizar` | Qué hacer con la cola del móvil para «orchestrator» | operaciones, estrategia | 200, 422 | — |

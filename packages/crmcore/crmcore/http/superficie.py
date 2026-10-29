@@ -140,6 +140,33 @@ def _exige_datos(ruta: Any) -> bool:
     return False
 
 
+def _exige_cuerpo(ruta: Any) -> bool:
+    """¿Hay que mandarle un cuerpo, además de llamarla?
+
+    Es OTRA pregunta que `_exige_datos`, que mira sólo los parámetros de la
+    URL. Y es la que decide si una operación puede ofrecerse como **botón**:
+    una que pide cuerpo y se llama vacía contesta 422, así que un botón suyo
+    sería un botón que no funciona nunca.
+
+    Lo necesita el listado para deducir sus acciones de colección en vez de
+    llevarlas escritas a mano. Medido el 29-10-2026: hay 102 operaciones así y
+    la lista a mano tenía 4; de las 102, trece no piden cuerpo —«genera las
+    recurrentes que tocan», «he perdido el portátil»— y ninguna tenía botón.
+
+    Se mira si el cuerpo es OBLIGATORIO, no si lo admite: un cuerpo opcional se
+    puede llamar vacío, que es justo lo que hace el botón.
+    """
+    from pydantic_core import PydanticUndefined
+
+    dependant = getattr(ruta, "dependant", None)
+    campo = getattr(dependant, "body_params", None)
+    for parametro in campo or []:
+        info = getattr(parametro, "field_info", None)
+        if getattr(info, "default", None) in (PydanticUndefined, Ellipsis):
+            return True
+    return False
+
+
 def _es_de_plataforma(ruta: Any) -> bool:
     """Si esta operación solo la puede hacer quien opera la plataforma.
 
@@ -227,6 +254,10 @@ def montar_superficie(app: FastAPI, nombre: str, prefijo: str) -> None:
                         "solo_plataforma": _es_de_plataforma(ruta),
                         "devuelve_lista": _devuelve_lista(ruta),
                         "exige_datos": _exige_datos(ruta),
+                        # Distinto de lo anterior: eso mira la URL, esto el
+                        # cuerpo. Es lo que separa una operación que se puede
+                        # ofrecer como botón de una que necesita formulario.
+                        "exige_cuerpo": _exige_cuerpo(ruta),
                         # De qué objeto de negocio es este recurso.
                         #
                         # Va aquí porque el registro que lo sabe se llena al

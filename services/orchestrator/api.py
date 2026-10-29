@@ -32,6 +32,7 @@ from services.orchestrator.esquemas import (
     PasoOut,
     PublicarDefinicion,
     ResponderTarea,
+    SaltarPaso,
     SimularProceso,
     TablaEditada,
     TareaOut,
@@ -213,7 +214,17 @@ def validar(datos: PublicarDefinicion) -> Any:
     description=(
         "Recorre el proceso sin tocar nada: las llamadas a servicios se "
         "registran en vez de ejecutarse y las tareas humanas se responden con "
-        "lo que se indique. Sirve para ver por dónde iría un caso concreto."
+        "lo que se indique. Sirve para ver por dónde iría un caso concreto.\n\n"
+        "**Y dice quién aprobaría y cuánto tardaría**, que es la otra mitad de "
+        "la pregunta y la que faltaba. El recorrido decía por qué pasos iría y "
+        "no por cuántas manos ni en cuánto tiempo, así que la respuesta a «si "
+        "publico esto, ¿qué le pasa a un pedido de 30.000 €?» se quedaba a "
+        "medias: la ruta se veía y las dos cosas que decide alguien —a quién le "
+        "cae y cuándo vence— no.\n\n"
+        "El plazo es **el declarado**, no una predicción: suma los "
+        "`vence_en_horas` de las tareas humanas del camino. Un paso sin plazo "
+        "declarado sale dicho como tal, porque un proceso que espera a una "
+        "persona sin fecha no tarda cero: tarda lo que tarde."
     ),
 )
 def simular(datos: SimularProceso, db: DbDep, principal: AutenticadoDep) -> Any:
@@ -263,6 +274,13 @@ def simular(datos: SimularProceso, db: DbDep, principal: AutenticadoDep) -> Any:
         elif tipo == "humano":
             respuesta = datos.respuestas_humanas.get(str(actual), "")
             recorrido[-1]["respuesta_simulada"] = respuesta
+            # QUIÉN y CUÁNTO, que es lo que decide alguien al leer esto. Sale
+            # de la propia definición —`asignada_a`, `asignada_rol` o `cola`—,
+            # que es lo que el motor mirará de verdad al crear la tarea.
+            recorrido[-1]["aprobaria"] = (
+                paso.get("asignada_a") or paso.get("asignada_rol") or paso.get("cola") or ""
+            )
+            recorrido[-1]["vence_en_horas"] = paso.get("vence_en_horas")
             actual = (paso.get("rutas") or {}).get(respuesta)
             if actual is None:
                 recorrido[-1]["nota"] = "sin respuesta simulada: el proceso se detendría aquí"
@@ -272,7 +290,38 @@ def simular(datos: SimularProceso, db: DbDep, principal: AutenticadoDep) -> Any:
         if actual is None:
             break
 
-    return {"valida": True, "problemas": [], "recorrido": recorrido, "variables": variables}
+    # El resumen de manos y plazo del camino simulado. Va aparte del recorrido
+    # porque es lo que se mira primero: «¿por cuántas manos pasa y en cuánto?»
+    # se contesta antes de leer paso a paso.
+    humanos = [p for p in recorrido if p.get("tipo") == "humano"]
+    con_plazo = [p for p in humanos if p.get("vence_en_horas")]
+    sin_plazo = [str(p["paso"]) for p in humanos if not p.get("vence_en_horas")]
+    return {
+        "valida": True,
+        "problemas": [],
+        "recorrido": recorrido,
+        "variables": variables,
+        "quien_aprobaria": [
+            {
+                "paso": str(p["paso"]),
+                "quien": p.get("aprobaria") or "",
+                "horas": p.get("vence_en_horas"),
+            }
+            for p in humanos
+        ],
+        "horas_declaradas": sum(int(p["vence_en_horas"]) for p in con_plazo),
+        # Un paso humano sin plazo NO suma cero: suma lo que tarde. Decirlo es
+        # la diferencia entre un total y un total que engaña.
+        "pasos_sin_plazo": sin_plazo,
+        "que_significa": (
+            "Suma de los plazos DECLARADOS de las tareas humanas del camino. No "
+            "es una predicción."
+            if not sin_plazo
+            else f"{len(sin_plazo)} tarea(s) humanas del camino no declaran plazo, así "
+            "que el total de horas es un suelo y no una estimación: un proceso que "
+            "espera a una persona sin fecha no tarda cero."
+        ),
+    }
 
 
 @router_def.get(
@@ -449,6 +498,79 @@ def editar_variables(
         objeto="instancia_proceso",
         objeto_id=instancia.id,
         datos={"claves": sorted(datos.variables), "anteriores": anteriores},
+        motivo=datos.motivo,
+    )
+    return instancia
+
+
+@router_inst.post(
+    "/{instancia_id}/saltar-paso",
+    response_model=InstanciaOut,
+    dependencies=[Depends(exige_permiso("proceso:admin"))],
+    summary="Saltar el paso en el que se ha quedado una instancia",
+    description=(
+        "La tercera herramienta de rescate, y la que faltaba (CRM-00.03.02.12). "
+        "Reintentar vuelve a ejecutar lo mismo y editar las variables corrige "
+        "el dato, pero hay pasos que **no se pueden completar nunca**: un "
+        "servicio de un tercero que ya no existe, una tarea humana de alguien "
+        "que se fue de la empresa. Sin esto, el proceso se queda parado para "
+        "siempre y todo lo que venía detrás no se hace.\n\n"
+        "**Sólo a un destino que el propio paso declara.** Saltar a cualquier "
+        "paso sería un «ejecuta lo que quieras» sobre un proceso en marcha: se "
+        "podría meter una instancia en la rama de aprobado sin pasar por la "
+        "aprobación, y el histórico diría que el proceso se siguió. Los "
+        "destinos salen de los caminos que escribió el autor de la "
+        "definición.\n\n"
+        "Exige motivo y queda auditado, con el paso del que se salió y al que "
+        "se fue: un salto que no se puede revisar después es una puerta "
+        "trasera con permiso de administrador."
+    ),
+)
+def saltar_paso(instancia_id: UUID, datos: SaltarPaso, db: DbDep, principal: AutenticadoDep) -> Any:
+    instancia = db.get(InstanciaProceso, instancia_id)
+    if instancia is None or instancia.tenant_id != principal.tenant_id:
+        raise NoEncontrado("La instancia no existe", error_code="proceso.no_encontrado")
+    if instancia.estado in ("terminada", "compensada"):
+        raise Conflicto(
+            "La instancia ya ha terminado: saltar un paso de un proceso cerrado "
+            "no lo reabre, lo falsea.",
+            error_code="proceso.no_saltable",
+            detalle={"estado": instancia.estado},
+        )
+
+    definicion = db.get(DefinicionProceso, instancia.definicion_id)
+    pasos = (definicion.definicion.get("pasos") or {}) if definicion else {}
+    actual = instancia.paso_actual
+    paso = pasos.get(actual or "")
+    if paso is None:
+        raise Conflicto(
+            f"La instancia no está parada en ningún paso de su definición "
+            f"(«{actual}»), así que no hay de dónde saltar.",
+            error_code="proceso.sin_paso_actual",
+        )
+
+    # Los destinos los decide la DEFINICIÓN, no quien llama. Ver `destinos_de`.
+    posibles = mtr.destinos_de(paso)
+    if datos.destino not in posibles:
+        raise Conflicto(
+            f"«{datos.destino}» no es un destino de «{actual}». Saltar a un paso "
+            "cualquiera dejaría el histórico diciendo que el proceso se siguió "
+            "cuando no se siguió.",
+            error_code="proceso.destino_no_declarado",
+            detalle={"desde": actual, "destinos": sorted(set(posibles))},
+        )
+
+    instancia.paso_actual = datos.destino
+    instancia.estado = "ejecutando"
+    instancia.error = None
+    instancia.despertar_at = datetime.now(timezone.utc)
+    registrar(
+        db,
+        accion="proceso.paso_saltado",
+        objeto="instancia_proceso",
+        objeto_id=instancia.id,
+        # Los dos extremos: con sólo el destino no se puede saber qué se saltó.
+        datos={"desde": actual, "hasta": datos.destino},
         motivo=datos.motivo,
     )
     return instancia

@@ -303,14 +303,27 @@ def _alcanzables(pasos: dict[str, Any], inicio: str) -> set[str]:
         if actual in vistos or actual not in pasos:
             continue
         vistos.add(actual)
-        paso = pasos[actual]
-        for clave in ("siguiente", "si_no", "al_fallar"):
-            if paso.get(clave):
-                pila.append(paso[clave])
-        pila.extend((paso.get("rutas") or {}).values())
-        pila.extend(c["entonces"] for c in paso.get("condiciones") or [] if c.get("entonces"))
-        pila.extend(paso.get("ramas") or [])
+        pila.extend(destinos_de(pasos[actual]))
     return vistos
+
+
+def destinos_de(paso: dict[str, Any]) -> list[str]:
+    """A qué pasos puede ir éste, según lo que escribió su autor.
+
+    **En un sitio y no en dos.** Lo usan el recorrido de alcanzables, el de
+    «llega a un fin» y el salto de paso del rescate. Teniéndolo repetido, un
+    tipo de enlace nuevo añadido a uno de ellos haría que el salto rechazara
+    un destino legítimo —o, peor, que un bucle sin salida dejara de
+    detectarse— justo cuando más falta hace.
+    """
+    destinos: list[str] = []
+    for clave in ("siguiente", "si_no", "al_fallar"):
+        if paso.get(clave):
+            destinos.append(str(paso[clave]))
+    destinos.extend(str(r) for r in (paso.get("rutas") or {}).values())
+    destinos.extend(str(c["entonces"]) for c in paso.get("condiciones") or [] if c.get("entonces"))
+    destinos.extend(str(r) for r in (paso.get("ramas") or []))
+    return destinos
 
 
 # ── Ejecución ─────────────────────────────────────────────────────────────

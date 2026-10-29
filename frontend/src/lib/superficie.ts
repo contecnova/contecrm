@@ -50,6 +50,14 @@ export interface Operacion {
    * falta contestar.
    */
   exige_datos?: boolean;
+  /**
+   * Si hay que mandarle un cuerpo, además de llamarla.
+   *
+   * Otra pregunta que `exige_datos`, que mira los parámetros de la URL. Es la
+   * que decide si una operación de colección puede ofrecerse como **botón**:
+   * una que pide cuerpo y se llama vacía contesta 422.
+   */
+  exige_cuerpo?: boolean;
   servicio: string;
 }
 

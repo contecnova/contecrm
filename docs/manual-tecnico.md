@@ -2221,6 +2221,85 @@ puede listar una extensión, ni instalarla, ni saber cuáles tiene un tenant.
 que le mandas tú**. Son calculadoras correctas que no están enchufadas a nada,
 y por eso ninguna de las siete puede tener pantalla: no hay nada que enseñar.
 
+### 4.6.14 Un proceso parado: verlo y sacarlo
+
+Siete capacidades de la familia de procesos no se alcanzaban desde ninguna
+pantalla, y **dos de ellas no eran una pantalla que faltaba: era código que
+faltaba**.
+
+**Lo que faltaba de código.** `CRM-00.03.02.12` dice tres cosas —reintento,
+**salto de paso** y edición de variables en caliente— y estaban dos: la
+capacidad constaba hecha citando el esquema de la edición de variables.
+Saltar un paso no existía en ninguna parte. Y no es un adorno: reintentar
+vuelve a ejecutar lo mismo y editar las variables corrige el dato, pero hay
+pasos que **no se pueden completar nunca** —un servicio de un tercero que ya
+no existe, una tarea humana de alguien que se fue— y ahí el proceso se queda
+parado para siempre con todo lo que venía detrás sin hacer.
+
+`POST /instancias/{id}/saltar-paso` lo cierra, con la condición que hace que no
+sea una puerta trasera: **sólo a un destino que el propio paso declara**.
+Saltar a cualquier paso dejaría meter una instancia en la rama de aprobado sin
+pasar por la aprobación, y el histórico diría que el proceso se siguió. Los
+destinos salen de `destinos_de`, que es la misma función que usa el recorrido
+de alcanzables del validador: teniéndolo repetido, un tipo de enlace nuevo
+añadido a uno de los dos haría que el salto rechazara un destino legítimo.
+Exige motivo y queda auditado **con los dos extremos**, de dónde y a dónde:
+sólo con el destino no se puede saber qué se saltó.
+
+Lo segundo: `CRM-00.03.05.04` promete «qué ruta seguiría, **quién aprobaría y
+cuánto tardaría**», y el simulador contestaba sólo lo primero. Ahora devuelve
+`quien_aprobaria` y `horas_declaradas`, sacados de la propia definición
+—`asignada_a` / `asignada_rol` / `cola` y `vence_en_horas`—, que es lo que el
+motor mirará de verdad al crear la tarea. **El plazo es el declarado, no una
+predicción**, y los pasos humanos sin plazo salen listados aparte: un proceso
+que espera a una persona sin fecha no tarda cero, y un total que se calla eso
+es un total que engaña.
+
+**La pantalla.** Una instancia tiene ficha propia, como el objeto del modelo y
+por el mismo motivo: el gráfico necesita la definición **de la versión con la
+que arrancó**, no la publicada, y pintarla sobre la nueva señalaría pasos que
+esa instancia no tiene. Enseña por dónde va sobre su propio diagrama —el mismo
+lienzo que el editor, con el estado escrito debajo de cada caja y no sólo en
+el color—, qué pasó en orden (el depurador: el estado por nodo dice dónde
+está, el orden dice qué decidió en cada vuelta de un bucle), las tres
+herramientas de rescate juntas —elegir entre ellas es el trabajo— y dónde se
+atasca ese proceso en todas sus ejecuciones, con el «no es concluyente»
+delante.
+
+Una instancia **no se edita campo a campo**, y está declarado como excepción
+con su motivo: poner a mano su estado o su paso actual es exactamente lo que
+el salto controlado evita.
+
+### 4.6.15 Las acciones de colección se deducen, no se escriben
+
+El listado ofrecía botones para las acciones sobre la colección entera —«carga
+el almacén», «recalcula»— y **se declaraban a mano**. El comentario que las
+declaraba decía que no se podían deducir: «una acción de fila cuelga del
+identificador y la superficie la delata sola; ésta es hermana del listado, no
+hija suya».
+
+Medido el 29-10-2026: hay **102 `POST` colgando de una colección sin ningún
+parámetro en la ruta, y la lista a mano tenía cuatro**. Trece de las 102 no
+piden cuerpo —son «haz ahora el trabajo que toca»— y **ninguna tenía botón en
+ninguna pantalla**. Entre ellas, `POST /dispositivos-confianza/revocar-todos`,
+cuyo resumen es literalmente «He perdido el portátil».
+
+Es el caso de libro de una lista de los que sí: no falla, no avisa, y lo que
+falta no se nota porque nadie echa de menos un botón que nunca ha visto.
+
+Ahora salen del contrato. Para poder deducirlas hizo falta **un dato nuevo en
+la superficie**: `exige_cuerpo`. Es otra pregunta que `exige_datos`, que mira
+los parámetros de la URL, y es la que separa una acción de un formulario: una
+operación que pide cuerpo y se llama en seco contesta 422, así que su botón
+sería un botón que no funciona nunca.
+
+Las **89 restantes piden cuerpo** y se quedan fuera a propósito: necesitan que
+alguien rellene algo —declarar una regla de reparto, ingerir un evento de un
+proveedor, personalizar una plantilla— y un formulario inventado desde la ruta
+se equivoca de campos. Lo escrito a mano pasa a ser la excepción —las que
+piden cuerpo y aun así tienen sentido como botón porque el cuerpo es fijo—, no
+la norma.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

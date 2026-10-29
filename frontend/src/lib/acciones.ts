@@ -84,6 +84,76 @@ export function accionesDe(
   return salida.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 }
 
+/**
+ * Las acciones que actúan sobre la COLECCIÓN entera, deducidas del contrato.
+ *
+ * **Se declaraban a mano, y una lista a mano siempre se queda corta.** El
+ * comentario que las declaraba decía que no se podían deducir: «una acción de
+ * fila cuelga del identificador y la superficie la delata sola, pero “cargar
+ * el almacén” es hermana del listado». Medido el 29-10-2026: **hay 102 POST
+ * colgando de una colección sin ningún parámetro en la ruta, y la lista a mano
+ * tenía 4**. Trece de ellas no piden cuerpo —son «haz ahora el trabajo que
+ * toca»— y ninguna tenía botón en ninguna pantalla. Entre ellas, «he perdido
+ * el portátil», que revoca todos los dispositivos de confianza.
+ *
+ * **Sólo las que no piden cuerpo obligatorio.** Las otras ochenta y nueve
+ * necesitan que alguien rellene algo —declarar una regla, ingerir un evento,
+ * personalizar una plantilla— y un botón que las llamara vacías contestaría
+ * 422. Eso no es una acción: es un formulario, y un formulario inventado desde
+ * la ruta se equivoca de campos.
+ *
+ * Lo que sigue declarándose a mano son **las excepciones**, no la norma: las
+ * que piden cuerpo y aun así tienen sentido como botón porque el cuerpo es
+ * fijo. Van en `Recurso.acciones` con su motivo.
+ */
+export function accionesDeColeccion(
+  superficie: Superficie | null,
+  rutaBase: string,
+  puede: (permiso: string | null) => boolean,
+): Accion[] {
+  if (!superficie) return [];
+  const base = rutaBase.split("/");
+  const salida: Accion[] = [];
+
+  for (const operacion of superficie.operaciones as Operacion[]) {
+    if (operacion.metodo.toUpperCase() !== "POST") continue;
+    // Sin NINGÚN parámetro: con uno, actúa sobre un registro y su sitio es la
+    // ficha, no la cabecera del listado.
+    if (PARAMETRO.test(operacion.ruta)) {
+      PARAMETRO.lastIndex = 0;
+      continue;
+    }
+    PARAMETRO.lastIndex = 0;
+    const tramos = operacion.ruta.split("/");
+    // Justo un tramo más que la colección: `/recurrencias` + `/generar`. Con
+    // dos —`/sagas/plantillas/clonar`— ya es otra cosa dentro de otra cosa.
+    if (tramos.length !== base.length + 1) continue;
+    if (tramos.slice(0, base.length).join("/") !== rutaBase) continue;
+    // Un POST a la colección sin tramo extra es el ALTA, que ya tiene su
+    // botón; esto exige el tramo, así que no puede colarse.
+    //
+    // Las dos condiciones, que son distintas: `exige_cuerpo` mira el cuerpo y
+    // `exige_datos` los parámetros de la URL. Una operación que necesita
+    // cualquiera de las dos cosas y se llama en seco contesta 422, y un botón
+    // que siempre da 422 es peor que no tener botón.
+    if (operacion.exige_cuerpo || operacion.exige_datos) continue;
+    if (!puede(operacion.permiso)) continue;
+
+    const clave = tramos[tramos.length - 1] ?? "";
+    salida.push({
+      ruta: operacion.ruta,
+      plantilla: operacion.ruta,
+      metodo: operacion.metodo,
+      // El rótulo lo escribe el servicio dueño: «He perdido el portátil» dice
+      // lo que hace mejor que «revocar-todos».
+      nombre: operacion.resumen || clave,
+      permiso: operacion.permiso,
+      clave,
+    });
+  }
+  return salida.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
 export interface SubColeccion {
   /** Último tramo: `lineas`, `equipo`, `direcciones`… */
   clave: string;

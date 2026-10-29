@@ -1,6 +1,7 @@
 /**
  * El editor de procesos: el lienzo ES la definición
- * (CRM-00.03.05.01, CRM-00.03.05.02, CRM-00.03.02.02).
+ * (CRM-00.03.05.01, CRM-00.03.05.02, CRM-00.03.02.02, CRM-00.03.05.03,
+ * CRM-00.03.05.04, CRM-00.03.02.14).
  *
  * No hay dos documentos. El JSON es la definición y el diagrama es una lectura
  * de ese mismo JSON: se puede escribir el proceso a mano y abrirlo como
@@ -13,6 +14,20 @@
  * **Validar y simular no publican nada.** Es el punto entero de esta pantalla:
  * un error descubierto aquí es un mensaje, y descubierto en ejecución es un
  * proceso a medias en producción con su compensación pendiente.
+ *
+ * Validar busca lo que no se ve leyendo el diagrama: pasos a los que no se
+ * llega desde el inicio, pasos desde los que no se llega a ningún final —un
+ * bucle sin salida, una rama que se quedó sin enlazar—, ramas que apuntan a
+ * un paso que no existe, condiciones sin atributo (que se toman SIEMPRE, con
+ * el «si no» de al lado sin usarse nunca) y tareas humanas sin dueño, que
+ * nadie ve y dejan el proceso parado para siempre.
+ *
+ * **Y simular contesta con datos de ejemplo**: qué ruta seguiría este caso,
+ * **quién aprobaría** y **cuánto tardaría**. Las tres, porque las dos últimas
+ * son lo que decide alguien y antes no las decía nadie: el recorrido enseñaba
+ * por qué pasos iría y ni por cuántas manos ni en cuánto tiempo. El plazo es
+ * el DECLARADO, no una predicción, y los pasos humanos que no declaran plazo
+ * salen dichos: un proceso que espera a una persona sin fecha no tarda cero.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -44,6 +59,14 @@ const EJEMPLO: Definicion = {
   },
 };
 
+/** Quién aprobaría y cuánto tardaría el camino simulado (CRM-00.03.05.04). */
+interface Resumen {
+  quien_aprobaria: { paso: string; quien: string; horas: number | null }[];
+  horas_declaradas: number;
+  pasos_sin_plazo: string[];
+  que_significa: string;
+}
+
 export function Procesos() {
   const { t } = useTranslation();
   const [texto, setTexto] = useState(() => JSON.stringify(EJEMPLO, null, 2));
@@ -53,6 +76,11 @@ export function Procesos() {
   const [recorrido, setRecorrido] = useState<Record<string, unknown>[] | null>(
     null,
   );
+  const [resumen, setResumen] = useState<Resumen | null>(null);
+  // Los datos de ejemplo con los que se simula. Simular con el caso vacío
+  // recorre la rama por defecto y deja sin probar justo la que preocupa.
+  const [variables, setVariables] = useState("{}");
+  const [respuestas, setRespuestas] = useState("{}");
   const [fallo, setFallo] = useState<unknown>(null);
 
   // El JSON puede estar a medias mientras se teclea; eso no es un error que
@@ -84,15 +112,27 @@ export function Procesos() {
     setFallo(null);
     setRecorrido(null);
     try {
-      const { datos } = await llamar<{
-        problemas?: string[];
-        recorrido?: Record<string, unknown>[];
-      }>(ruta, {
+      const { datos } = await llamar<
+        {
+          problemas?: string[];
+          recorrido?: Record<string, unknown>[];
+        } & Partial<Resumen>
+      >(ruta, {
         metodo: "POST",
         cuerpo: { clave, nombre, definicion, ...extra },
       });
       setProblemas(datos.problemas ?? []);
       if (datos.recorrido) setRecorrido(datos.recorrido);
+      setResumen(
+        datos.quien_aprobaria
+          ? {
+              quien_aprobaria: datos.quien_aprobaria,
+              horas_declaradas: datos.horas_declaradas ?? 0,
+              pasos_sin_plazo: datos.pasos_sin_plazo ?? [],
+              que_significa: datos.que_significa ?? "",
+            }
+          : null,
+      );
     } catch (error) {
       setFallo(error);
     }
@@ -119,6 +159,21 @@ export function Procesos() {
         />
       </div>
 
+      {/* Los datos de ejemplo con los que se simula. Sin ellos se recorre
+          siempre la rama por defecto, que es justo la que no preocupa. */}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Campo
+          etiqueta={t("procesos.variablesEjemplo")}
+          valor={variables}
+          alCambiar={setVariables}
+        />
+        <Campo
+          etiqueta={t("procesos.respuestasEjemplo")}
+          valor={respuestas}
+          alCambiar={setRespuestas}
+        />
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-2">
         <Boton
           texto={t("procesos.validar")}
@@ -126,11 +181,21 @@ export function Procesos() {
         />
         <Boton
           texto={t("procesos.simular")}
-          onClick={() =>
+          onClick={() => {
+            // Lo que esté a medias se manda como vacío en vez de reventar: el
+            // JSON de un campo que se está tecleando es el estado normal.
+            const leer = (texto: string) => {
+              try {
+                return JSON.parse(texto) as Record<string, unknown>;
+              } catch {
+                return {};
+              }
+            };
             void accion("/api/v1/procesos/definiciones/simular", {
-              variables: {},
-            })
-          }
+              variables: leer(variables),
+              respuestas_humanas: leer(respuestas),
+            });
+          }}
         />
         <Boton
           texto={t("procesos.guardarBorrador")}
@@ -211,6 +276,52 @@ export function Procesos() {
           />
         </section>
       </div>
+
+      {resumen ? (
+        <section className="card mt-6 p-4">
+          <h2 className="section-label mb-1">{t("procesos.quienYCuanto")}</h2>
+          <p className="mb-2 text-3xs text-ink-faint">
+            {t("procesos.quienYCuantoAyuda")}
+          </p>
+          {resumen.quien_aprobaria.length === 0 ? (
+            <p className="text-2xs text-ink-muted">
+              {t("procesos.sinManos")}
+            </p>
+          ) : (
+            <ul className="divide-y divide-ink-dim/30">
+              {resumen.quien_aprobaria.map((m) => (
+                <li
+                  key={m.paso}
+                  className="flex flex-wrap items-baseline gap-x-3 py-1.5"
+                >
+                  <span className="text-2xs font-medium text-ink">{m.paso}</span>
+                  <span className="chip-dato">
+                    {m.quien || t("procesos.sinDueno")}
+                  </span>
+                  <span className="text-3xs text-ink-muted">
+                    {m.horas
+                      ? t("procesos.enHoras", { horas: m.horas })
+                      : t("procesos.sinPlazo")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-2xs text-ink">
+            {t("procesos.totalHoras", { horas: resumen.horas_declaradas })}
+          </p>
+          {/* Un total que no avisa de lo que no sabe es un total que engaña. */}
+          <p
+            className={
+              resumen.pasos_sin_plazo.length
+                ? "mt-1 text-3xs text-warning"
+                : "mt-1 text-3xs text-ink-faint"
+            }
+          >
+            {resumen.que_significa}
+          </p>
+        </section>
+      ) : null}
 
       {recorrido ? (
         <section className="mt-6">

@@ -46,11 +46,12 @@ import {
   type CampoEsquema,
   type Proposito,
 } from "@/lib/contrato";
+import { accionesDeColeccion } from "@/lib/acciones";
 import { moduloDe, objetoDe, recursoVisible, type Recurso } from "@/lib/modulos";
 import { recursosDe } from "@/lib/recursos";
 import { puede, type Sesion } from "@/lib/sesion";
 import { comoFilas } from "@/paginas/Consola";
-import { useVisibilidad } from "@/lib/permisos";
+import { useSuperficie, useVisibilidad } from "@/lib/permisos";
 import { CabeceraPagina } from "@/componentes/Pagina";
 import { iconoDeGrupo } from "@/lib/navegacion";
 
@@ -205,9 +206,16 @@ export function Modulo({ sesion }: { sesion: Sesion | null }) {
 /**
  * Los botones que actúan sobre la colección entera.
  *
- * Se declaran en el recurso porque no se pueden deducir: una acción de fila
- * cuelga del identificador y la superficie la delata sola, pero «cargar el
- * almacén» es hermana del listado, no hija suya.
+ * **Se declaraban a mano, y eso se quedaba corto siempre.** El comentario que
+ * las declaraba decía que no se podían deducir. Medido el 29-10-2026: hay 102
+ * `POST` colgando de una colección sin ningún parámetro, y la lista a mano
+ * tenía **cuatro**. Trece de ellas no piden cuerpo —son «haz ahora el trabajo
+ * que toca»— y ninguna tenía botón en ninguna pantalla; entre ellas, «he
+ * perdido el portátil», que revoca todos los dispositivos de confianza.
+ *
+ * Ahora salen del contrato, como las de fila, y lo escrito a mano son las
+ * excepciones: las que piden cuerpo y aun así tienen sentido como botón
+ * porque el cuerpo es fijo.
  *
  * **Y se dice qué contestó el servidor.** Estas acciones hacen trabajo —traer
  * filas, recalcular— y una que no responde nada deja a quien la pulsa sin saber
@@ -476,6 +484,21 @@ function RecursoVista({
     puede(sesion, recurso.permiso) &&
     (!recurso.solo_plataforma || Boolean(sesion?.es_admin_plataforma));
 
+  // Las acciones sobre la colección entera: las que deduce el contrato más las
+  // declaradas a mano —que son las excepciones, no la norma—. Si una sale por
+  // las dos vías manda la escrita, que lleva su frase de ayuda.
+  const { superficie } = useSuperficie();
+  const accionesDeLaColeccion = useMemo(() => {
+    const aMano = recurso.acciones ?? [];
+    const escritas = new Set(aMano.map((a) => a.ruta));
+    const descubiertas = accionesDeColeccion(superficie, recurso.listar, (permiso) =>
+      puede(sesion, permiso),
+    )
+      .filter((a) => !escritas.has(a.ruta))
+      .map((a) => ({ ruta: a.ruta, nombre: a.nombre, permiso: a.permiso ?? undefined }));
+    return [...aMano, ...descubiertas];
+  }, [superficie, recurso.acciones, recurso.listar, sesion]);
+
   // Solo se enlaza lo que TIENE ficha: un enlace que lleva a una pantalla
   // vacía es peor que no tener enlace, porque parece que algo se ha roto.
   // Un listado derivado puede hablar de un registro que vive en otro módulo:
@@ -737,8 +760,11 @@ function RecursoVista({
           Es donde se preguntan. */}
       {recurso.resumen?.length ? <Medidas rutas={recurso.resumen} /> : null}
 
-      {recurso.acciones?.length ? (
-        <AccionesDeColeccion acciones={recurso.acciones} alTerminar={() => void cargar()} />
+      {accionesDeLaColeccion.length ? (
+        <AccionesDeColeccion
+          acciones={accionesDeLaColeccion}
+          alTerminar={() => void cargar()}
+        />
       ) : null}
 
       {fallo ? <Fallo error={fallo} reintentar={() => void cargar()} /> : null}

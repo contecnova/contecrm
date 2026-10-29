@@ -521,7 +521,19 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            conteste: su unica constancia es un comentario
 #                            dentro de un servicio. Una pantalla que lo
 #                            afirmara seria la pantalla diciendo que si.
-TOPE_SIN_PANTALLA = 306
+#   29-10-2026  299 de 778  una instancia de proceso parada. Siete: por donde
+#   ------------------------------------------------------------------------
+#   va sobre su propio grafico, que paso en orden —el depurador—, las TRES
+#   herramientas de rescate juntas, donde se atasca ese proceso de todas sus
+#   ejecuciones, y en el editor: validar antes de publicar, simular con datos
+#   de ejemplo y el quien aprobaria y cuanto tardaria.
+#
+#   Dos de ellas no eran una pantalla que faltaba: eran CODIGO que faltaba.
+#   «Saltar un paso» no existia en ninguna parte y la capacidad constaba hecha
+#   citando el esquema de la edicion de variables; y el simulador decia por que
+#   pasos iria un caso y ni por cuantas manos ni en cuanto tiempo. Las dos
+#   escritas, con prueba y validadas plantando el caso malo.
+TOPE_SIN_PANTALLA = 299
 
 
 def _es_pantalla(p: Path) -> bool:

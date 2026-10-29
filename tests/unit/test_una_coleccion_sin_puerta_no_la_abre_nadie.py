@@ -148,7 +148,19 @@ FRONT = RAIZ / "frontend/src"
 #     que es una pantalla entera y pide decidir cómo se navega un árbol.
 #   · **3 son del chat** —buscar, presencia, versiones de un mensaje—, que son
 #     mejoras de esa pantalla.
-TOPE_SIN_PUERTA = 44
+#
+#   29-10-2026  44 → 40. Cuatro que no se abrieron una a una: las acciones de
+#   colección pasaron a DEDUCIRSE del contrato en vez de escribirse a mano.
+#   Medido ese día: hay 102 `POST` colgando de una colección sin ningún
+#   parámetro y la lista escrita tenía cuatro. Hizo falta un dato nuevo en la
+#   superficie —`exige_cuerpo`— para separar una acción de un formulario: la
+#   que pide cuerpo y se llama en seco contesta 422, y su botón sería un botón
+#   que no funciona nunca.
+#
+#   Las que piden cuerpo siguen contadas aquí, y está bien que lo estén: son
+#   el grueso de los ~20 de la primera viñeta y abrirlas es inventarles un
+#   formulario, que es trabajo de cada flujo.
+TOPE_SIN_PUERTA = 40
 
 # ── Las que no llevan pantalla A PROPÓSITO ───────────────────────────────
 #

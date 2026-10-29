@@ -31,6 +31,15 @@ const SIN_EDICION_PORQUE: Record<string, string> = {
     "El contrato de `/conversaciones/{id}` no declara `PATCH`: una conversación " +
     "no se edita campo a campo, se responde, se transfiere o se escala a una " +
     "persona, y las tres son acciones que la pantalla ya ofrece.",
+  InstanciaDeProceso:
+    "Una instancia en marcha NO se edita campo a campo, y no es un olvido: " +
+    "poner a mano su estado o su paso actual metería el registro en una rama " +
+    "por la que no pasó, y el histórico diría que el proceso se siguió. Las " +
+    "tres formas legítimas de tocarla son las que ofrece la pantalla —" +
+    "reintentar, saltar el paso a un destino que la definición declara, y " +
+    "corregir las variables—, y las tres exigen motivo y quedan auditadas. " +
+    "El `PATCH` del contrato es exactamente el de las variables, y ése sí " +
+    "está enchufado.",
 };
 
 function fuente(fichero: string): string {

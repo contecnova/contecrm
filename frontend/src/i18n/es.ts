@@ -377,6 +377,16 @@ export default {
     recorrido: "Recorrido simulado",
     jsonAMedias: "El JSON está a medias: el diagrama vuelve en cuanto sea válido.",
     mover: "Mover",
+    variablesEjemplo: "Datos de ejemplo (JSON)",
+    respuestasEjemplo: "Respuestas a las tareas humanas (JSON)",
+    quienYCuanto: "Quién aprobaría y cuánto tardaría",
+    quienYCuantoAyuda:
+      "El recorrido dice por qué pasos iría. Esto dice por cuántas manos y en cuánto tiempo, que es lo que decide alguien. El plazo es el DECLARADO en la definición, no una predicción.",
+    sinManos: "Este camino no pasa por ninguna tarea humana.",
+    sinDueno: "sin dueño declarado",
+    enHoras: "vence en {{horas}} h",
+    sinPlazo: "sin plazo declarado",
+    totalHoras: "Plazo declarado del camino: {{horas}} h",
   },
   aprobaciones: {
     titulo: "Aprobaciones de documentos",

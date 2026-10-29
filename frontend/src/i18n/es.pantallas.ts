@@ -439,6 +439,76 @@ const pantallas = {
     paqueteDescargar: "Descargar el paquete",
     paqueteContiene: "{{objetos}} objetos y {{campos}} campos",
   },
+  instancia: {
+    version: "versión {{version}}",
+    paradaEn: "parada en «{{paso}}»",
+    grafico: "Por dónde va",
+    graficoAyuda:
+      "Sobre la definición con la que arrancó, no la publicada después: " +
+      "pintarla sobre la nueva señalaría pasos que esta instancia no tiene. " +
+      "Cada caja lleva su estado escrito, no sólo en el color.",
+    sinDefinicion:
+      "No se encuentra la definición de esta versión, así que no hay gráfico que pintar",
+    estado: {
+      actual: "aquí está",
+      recorrido: "hecho",
+      fallido: "falló",
+      compensado: "deshecho",
+      pendiente: "pendiente",
+      no_recorrido: "no se pasó por aquí",
+    },
+    camino: "Qué pasó, en orden",
+    caminoAyuda:
+      "El estado de cada paso dice dónde está; esto dice en qué orden pasó. " +
+      "Con un bucle por medio, un paso puede estar «hecho» por la tercera " +
+      "vuelta y lo que importa es qué decidió en cada una.",
+    sinRecorrido: "Todavía no ha ejecutado ningún paso",
+    intento: "intento {{n}}",
+    rescate: "Desatascar",
+    rescateAyuda:
+      "Tres herramientas y elegir entre ellas es el trabajo: reintentar " +
+      "vuelve a ejecutar lo mismo —sirve si el fallo fue pasajero—, corregir " +
+      "las variables arregla el dato, y saltar el paso es para cuando ese " +
+      "paso no se va a poder completar nunca.",
+    motivo: "Por qué",
+    motivoCorto:
+      "Hacen falta diez caracteres: esto cambia el curso de un proceso en " +
+      "marcha y queda escrito para que alguien pueda revisarlo.",
+    reintentar: "Reintentar",
+    reintentarAyuda:
+      "Vuelve a ejecutar el paso que falló. Sólo sirve si el fallo fue " +
+      "pasajero: si la causa sigue ahí, volverá a fallar igual.",
+    saltarA: "Saltar a",
+    eligeDestino: "Elige a dónde",
+    saltarAyuda:
+      "Sólo los destinos que el propio paso declara. Saltar a cualquier otro " +
+      "metería el registro en una rama por la que no pasó, y el histórico " +
+      "diría que el proceso se siguió.",
+    saltar: "Saltar el paso",
+    variables: "Corregir variables (JSON)",
+    variablesAyuda:
+      "Lo que se escriba aquí se mezcla con lo que ya tiene. Es para un " +
+      "proceso atascado por un dato mal cargado.",
+    variablesMal: "Eso no es un JSON válido",
+    corregir: "Corregir",
+    hechoReintento: "Reintentado: vuelve a ejecutar el paso que falló.",
+    hechoSalto: "Saltado. Queda apuntado de qué paso se salió y a cuál se fue.",
+    hechoVariables: "Variables corregidas, con tu motivo en el registro.",
+    atasco: "Dónde se atasca este proceso",
+    atascoAyuda:
+      "De todas sus ejecuciones, no sólo de ésta: lo siguiente que se quiere " +
+      "saber delante de una instancia parada es si es ésta o si ese paso " +
+      "para siempre. El tiempo de un paso humano se cuenta desde que se creó " +
+      "la tarea hasta que alguien respondió.",
+    ejecuciones:
+      "{{cuantas}} ejecuciones · {{terminadas}} terminadas · {{falladas}} falladas",
+    cuello: "Donde más se espera: «{{paso}}»",
+    ciclo: "De principio a fin: {{media}} h de media, {{mediana}} h de mediana",
+    veces: "{{veces}} veces",
+    espera: "espera {{media}} h de media, {{mediana}} de mediana",
+    fallos: "{{cuantos}} fallos",
+    pendientesAhora: "{{cuantas}} pendientes ahora",
+  },
   plataforma: {
     titulo: "Plataforma y cumplimiento",
     entradilla:
