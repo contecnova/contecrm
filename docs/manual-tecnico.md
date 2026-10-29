@@ -2075,13 +2075,50 @@ preguntas al día. **El guardia que de verdad importa no es ése**, sino el
 presupuesto en euros de la política del tenant: los tokens miden consumo y los
 euros miden lo que se paga, y lo segundo es lo que alguien decide.
 
-**Lo que queda dicho y no arreglado:** el contrato de un listado declara siete
-parámetros y el servidor acepta filtros sobre unos treinta campos. El integrador
-—y el agente— no pueden descubrirlos: lo averiguan con un 422 que sí los lista.
-No se arregla publicándolos en el OpenAPI porque **el conjunto depende de quién
-pregunta**: por un campo enmascarado no se puede filtrar, y eso se resuelve por
-rol y en caliente. La forma correcta es una ruta que lo conteste por recurso, y
-no está hecha.
+### 4.6.11 Los filtros que nadie podía descubrir
+
+El contrato de `GET /accounts` declara siete parámetros —`limite`, `cursor`,
+`orden`, `buscar`, `estado`, `owner_id`— y el servidor acepta filtros sobre
+**treinta** columnas con **nueve** operadores: rangos, listas, «vacío» y «no
+vacío». La única forma de enterarse era pedir uno mal y leer el 422, que sí los
+lista. Lo paga todo el que integra.
+
+Se vio con el asistente: a «hay contactos sin teléfono» contestó que la API no
+ofrece manera de filtrar por eso. **Sí la ofrece** —`?telefono__vacio=true`— y
+no tenía cómo saberlo.
+
+**No se arregla publicándolos en el OpenAPI**, y por una razón que conviene
+entender: el conjunto depende de **quién pregunta**. Por un campo que esa
+persona ve enmascarado no se puede filtrar, porque filtrarlo lo reconstruye a
+base de preguntar —«¿empieza por 6?», «¿y por 7?»— sin llegar a verlo nunca. Un
+contrato estático diría que se puede filtrar por el teléfono y para media
+plantilla sería mentira. Se contesta en caliente:
+
+```
+GET /api/v1/{servicio}/filtros            → los objetos que guarda
+GET /api/v1/{servicio}/filtros/{objeto}   → por qué campos puede filtrar QUIEN pregunta
+```
+
+Devuelve también **lo que NO se puede y por qué**: sin eso, quien integra busca
+un campo que ve en la respuesta y no puede usar, sin saber si es que no existe o
+que no le toca.
+
+**Y el eslabón que faltaba, que era el peor.** Con los filtros ya descubribles,
+el agente pidió `telefono__vacio=true` y recibió todos los contactos. La causa
+estaba en el repartidor de argumentos: lo que el contrato no nombra iba al
+cuerpo si la ruta lo admitía y, si no, **se descartaba** — y un `GET` no tiene
+cuerpo. La llamada salía sin acotar y devolvía la tabla entera. Es exactamente
+lo que este sistema llama en otro sitio «un filtro que no filtra, peor que no
+tener filtros, porque el resultado parece correcto».
+
+Ahora, en un `GET`, lo no declarado va a la consulta. Si el nombre es inventado
+el servidor contesta 422 **con la lista de los que valen**, que es una respuesta
+que enseña; descartarlo en silencio era un acierto que mentía.
+
+Medido después: «hay contactos sin teléfono» → pregunta los filtros, usa
+`telefono__vacio` y contesta. Y a «cuántas cuentas no tienen web» dice que puede
+listarlas pero no contarlas, porque el listado no devuelve total — que es cierto
+y es el siguiente hueco.
 
 ### 4.7 CDC hacia el lago del cliente
 

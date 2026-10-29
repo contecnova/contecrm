@@ -461,6 +461,11 @@ RECURSOS_TRANSVERSALES = {
     # servicio que guarda ese objeto, y la comparación con el estado vivo
     # necesita leer su tabla.
     "rastro",
+    # Por qué campos se puede filtrar un listado: lo contesta el servicio que
+    # guarda ese objeto, porque es el único que tiene su modelo delante — y lo
+    # contesta con la identidad de quien pregunta, porque por un campo
+    # enmascarado no se puede filtrar y eso cambia con el rol.
+    "filtros",
     # Tokenizar y recuperar: lo que se tokeniza son datos de registros que viven
     # en el esquema de cada servicio, así que la puerta es la de cada uno.
     "tokenizacion",

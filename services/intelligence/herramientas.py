@@ -102,9 +102,7 @@ def desde_openapi(
                     "nombre": _nombre_de(metodo, ruta),
                     "metodo": metodo,
                     "ruta": ruta,
-                    "descripcion": str(
-                        operacion.get("summary") or operacion.get("description") or ""
-                    )[:400],
+                    "descripcion": _descripcion_de(operacion, metodo, ruta),
                     "riesgo": riesgo,
                     "permiso": exigido,
                     "parametros": _parametros_de(operacion),
@@ -140,6 +138,40 @@ def _permiso_de(operacion: dict[str, Any]) -> str:
     """
     extension = operacion.get("x-permiso") or operacion.get("x-permiso-exigido")
     return str(extension or "")
+
+
+# Lo que se le añade a la descripción de un LISTADO, y por qué no basta con el
+# resumen de la operación.
+#
+# **Medido el 29-10-2026.** El contrato de un listado declara siete parámetros y
+# el servidor acepta filtros sobre treinta columnas con nueve operadores. El
+# agente no tenía cómo enterarse: a «hay contactos sin teléfono» se traía cien
+# contactos y los miraba uno a uno —y avisaba de que la lista venía cortada—
+# cuando `?telefono__vacio=true` lo contesta de una.
+#
+# Se dice aquí y no en el resumen de cada ruta porque es verdad de TODOS los
+# listados: escribirlo ruta por ruta son ciento y pico sitios, y el que se
+# olvide deja al agente adivinando en ése.
+_COMO_SE_FILTRA = (
+    " · Admite filtrar por columna: `?campo=valor`, y con sufijo "
+    "`?campo__desde=…`, `__hasta`, `__mayor`, `__menor`, `__distinto`, `__en`, "
+    "`__vacio=true`, `__no_vacio=true`. **Para saber por qué campos**, usa la "
+    "herramienta de filtros de este servicio antes de traerte la lista entera: "
+    "filtrar contesta de una lo que mirando fila a fila sale cortado."
+)
+
+
+def _es_un_listado(metodo: str, ruta: str) -> bool:
+    """Un `GET` de colección: sin parámetro en el último tramo."""
+    return metodo == "GET" and not ruta.rstrip("/").endswith("}")
+
+
+def _descripcion_de(operacion: dict[str, Any], metodo: str, ruta: str) -> str:
+    """Qué hace la herramienta, y —si es un listado— cómo se le acota."""
+    base = str(operacion.get("summary") or operacion.get("description") or "")[:400]
+    if _es_un_listado(metodo, ruta) and "/filtros" not in ruta:
+        return base + _COMO_SE_FILTRA
+    return base
 
 
 def _parametros_de(operacion: dict[str, Any]) -> dict[str, Any]:

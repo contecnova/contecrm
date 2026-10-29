@@ -1071,6 +1071,56 @@ def test_los_roles_del_agente_viajan_porque_deciden_que_campos_ve(
     assert visto["headers"]["x-crm-roles"] == "admin,comercial"
 
 
+def test_un_filtro_que_el_contrato_no_nombra_va_a_la_CONSULTA_en_un_get(
+    monkeypatch: Any,
+) -> None:
+    """**Un filtro que no filtra es peor que no tener filtros.**
+
+    Los filtros de un listado son nombres de columna —`?telefono__vacio=true`—
+    y el contrato no los puede declarar: el conjunto cambia con el rol. Antes,
+    todo lo que el contrato no nombraba se descartaba en un `GET`, así que la
+    llamada salía **sin acotar** y devolvía la tabla entera. Medido el
+    29-10-2026: el agente pidió los contactos sin teléfono, recibió todos los
+    contactos y concluyó que el filtro estaba roto.
+
+    Mandarlo y recibir un 422 sí dice por qué — el servidor contesta con la
+    lista de los que valen. Un error que enseña es mejor que un acierto que
+    miente.
+    """
+    from services.intelligence import puerto
+
+    ruta, consulta, cuerpo = puerto._repartir_argumentos(
+        {"metodo": "GET", "ruta": "/api/v1/contacts", "parametros": {"properties": {}}},
+        {"telefono__vacio": "true"},
+    )
+    assert consulta == {"telefono__vacio": "true"}
+    assert cuerpo is None
+    assert ruta == "/api/v1/contacts"
+
+
+def test_en_lo_que_escribe_lo_no_declarado_sigue_yendo_al_cuerpo(
+    monkeypatch: Any,
+) -> None:
+    """La regla nueva es sólo para el `GET`, que no tiene cuerpo donde ponerlo.
+
+    Sin esta prueba, el cambio se extiende al `POST` el día que alguien lo
+    simplifique, y entonces un campo de un alta viajaría en la URL — donde se
+    queda escrito en los registros del servidor.
+    """
+    from services.intelligence import puerto
+
+    _, consulta, cuerpo = puerto._repartir_argumentos(
+        {
+            "metodo": "POST",
+            "ruta": "/api/v1/contacts",
+            "parametros": {"properties": {"cuerpo": {"type": "object"}}},
+        },
+        {"nombre": "Alguien"},
+    )
+    assert consulta == {}
+    assert cuerpo == {"nombre": "Alguien"}
+
+
 def test_una_ruta_que_no_atiende_nadie_no_se_manda_a_ningun_sitio() -> None:
     """Y se distingue de «el servicio no responde»: la respuesta al agente —y a
     quien lo audita— no es la misma."""

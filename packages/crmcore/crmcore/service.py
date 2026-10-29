@@ -728,6 +728,17 @@ def crear_servicio(
 
         app.include_router(crear_router_rastro(nombre), prefix=s.api_prefix)
 
+        # Y por qué campos se puede filtrar cada listado, preguntado a él. El
+        # contrato de `GET /accounts` declara siete parámetros y el servidor
+        # acepta filtros sobre treinta columnas con nueve operadores: la única
+        # forma de enterarse era pedir uno mal y leer el 422. No se puede
+        # publicar en el contrato porque el conjunto depende de quién pregunta
+        # —por un campo enmascarado no se filtra—, así que se contesta en
+        # caliente.
+        from crmcore.http.filtros_router import crear_router_filtros
+
+        app.include_router(crear_router_filtros(nombre), prefix=s.api_prefix)
+
         # Y las peticiones compuestas: varias operaciones en una llamada y en
         # una transacción. El módulo que resolvía lo difícil —el tope, las
         # referencias, la validación previa— llevaba desde que se escribió sin

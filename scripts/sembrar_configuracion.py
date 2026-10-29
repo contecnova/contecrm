@@ -268,9 +268,19 @@ class Api:
 # Son las que contestan lo que la propia pantalla promete: cuentas, contactos,
 # lo que ha pasado con ellas, oportunidades, leads y casos.
 RUTAS_DEL_ASISTENTE = {
-    "party": ["/api/v1/accounts", "/api/v1/contacts", "/api/v1/activities"],
-    "sales": ["/api/v1/opportunities", "/api/v1/leads"],
-    "service": ["/api/v1/casos"],
+    # Y la ruta que dice POR QUÉ CAMPOS se puede filtrar cada listado. Sin
+    # ella, a «hay contactos sin teléfono» el asistente se traía cien contactos
+    # y los miraba uno a uno —avisando de que la lista venía cortada— cuando
+    # `?telefono__vacio=true` lo contesta de una. El contrato declara siete
+    # parámetros y el servidor acepta treinta: no hay forma de adivinarlo.
+    "party": [
+        "/api/v1/accounts",
+        "/api/v1/contacts",
+        "/api/v1/activities",
+        "/api/v1/party/filtros",
+    ],
+    "sales": ["/api/v1/opportunities", "/api/v1/leads", "/api/v1/sales/filtros"],
+    "service": ["/api/v1/casos", "/api/v1/service/filtros"],
 }
 
 # Lo que hace falta para leer eso. Solo lectura: a un asistente al que se le

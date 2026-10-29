@@ -490,9 +490,21 @@ def _repartir_argumentos(
     Adivinarlo por el nombre sería el principio de la lista escrita a mano: un
     `cliente_id` que a veces va en el camino y a veces en la consulta.
 
-    Lo que el contrato **no** nombre se manda en el cuerpo si la ruta lo admite,
-    y si no, se descarta — un parámetro inventado en la consulta es un 422 y el
-    agente no sabría por qué.
+    Lo que el contrato **no** nombre se manda en el cuerpo si la ruta lo admite.
+
+    **Y en un `GET`, a la consulta.** Antes se descartaba, con el argumento de
+    que un parámetro inventado da 422 y el agente no sabría por qué. Medido el
+    29-10-2026: es al revés. Los filtros de un listado son nombres de columna
+    —`?telefono__vacio=true`— y el contrato no los puede declarar, así que
+    todos caían aquí y **la llamada salía sin filtro**. El agente pedía los
+    contactos sin teléfono, recibía todos los contactos, y concluía que el
+    filtro no funcionaba. Es exactamente lo que este sistema llama en otro
+    sitio «un filtro que no filtra, peor que no tener filtros, porque el
+    resultado parece correcto».
+
+    Mandarlo y recibir un 422 **sí** dice por qué: el servidor contesta «no se
+    puede filtrar por X» **con la lista de los que valen**. Un error que
+    enseña es mejor que un acierto que miente.
     """
     import re
 
@@ -516,8 +528,13 @@ def _repartir_argumentos(
         else:
             sobrantes[nombre] = valor
 
-    if sobrantes and admite_cuerpo:
-        cuerpo = {**(cuerpo or {}), **sobrantes}
+    if sobrantes:
+        if admite_cuerpo:
+            cuerpo = {**(cuerpo or {}), **sobrantes}
+        elif str(declarada.get("metodo") or "").upper() == "GET":
+            # Un `GET` no tiene cuerpo: o va en la consulta o no va. Y si no
+            # va, la llamada sale sin acotar y devuelve todo.
+            consulta.update(sobrantes)
 
     # Un hueco sin rellenar se dice aquí y no se manda: `/cuentas/{cuenta_id}`
     # tal cual llega al servicio como un identificador literal «{cuenta_id}» y

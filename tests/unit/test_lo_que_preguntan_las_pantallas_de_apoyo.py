@@ -246,6 +246,62 @@ def test_el_gobierno_del_sso_se_devuelve_y_no_solo_se_guarda(
     assert "config" not in fila
 
 
+def test_por_que_campos_se_puede_filtrar_se_puede_preguntar(
+    personas: Any, db: Any, tenant_id: UUID
+) -> None:
+    """El contrato declara siete parámetros y el servidor acepta treinta.
+
+    La única forma de enterarse era pedir uno mal y leer el 422. Lo paga todo
+    el que integra, y se vio con el asistente: a «hay contactos sin teléfono»
+    contestó que la API no ofrece manera de filtrar por eso. **Sí la ofrece**
+    —`?telefono__vacio=true`— y no tenía cómo saberlo.
+
+    No se puede publicar en el OpenAPI: por un campo que esa persona ve
+    enmascarado no se puede filtrar, así que el conjunto cambia con el rol y un
+    contrato estático sería mentira para media plantilla.
+    """
+    r = personas.get("/api/v1/party/filtros/contacto", headers=_cabeceras(tenant_id))
+    assert r.status_code == 200, r.text
+    datos = r.json()
+    puede = set(datos["se_puede_filtrar_por"])
+    no_puede = set(datos["no_se_puede_filtrar_por"])
+    assert puede, "si no sale ningún campo, la ruta no está mirando nada"
+
+    # **Y aquí está la razón de que esto no pueda ir en el contrato.** Esta
+    # petición no declara rol, así que el teléfono se ve enmascarado — y por un
+    # campo enmascarado no se filtra, porque filtrarlo lo reconstruye a base de
+    # preguntar sin llegar a verlo. Un contrato estático diría que se puede, y
+    # para media plantilla sería mentira.
+    assert "telefono" in no_puede
+    assert "telefono" not in puede
+    assert datos["porque_esos_no"], "decir que no sin decir por qué manda a probar"
+
+    # Lo estructural sí: el identificador y las marcas de tiempo no son
+    # contenido del registro y nunca se tapan.
+    assert {"id", "created_at"} <= puede
+
+    # Los operadores también: sin ellos se sabe POR QUÉ campo y no CÓMO, y
+    # «sin teléfono» no se expresa con una igualdad.
+    assert "vacio" in datos["operadores"]
+    assert "desde" in datos["operadores"] and "hasta" in datos["operadores"]
+    assert datos["como_se_escribe"]
+    # Y el tenant nunca, en ninguna de las dos listas por el mismo motivo: lo
+    # pone la RLS, y nombrarlo daría a entender que se puede pedir el de otro.
+    assert "tenant_id" not in puede
+
+
+def test_un_objeto_que_este_servicio_no_guarda_dice_cuales_si(
+    personas: Any, db: Any, tenant_id: UUID
+) -> None:
+    """Un 404 que no dice las alternativas se contesta probando, que es lo que
+    esta ruta viene a evitar."""
+    r = personas.get("/api/v1/party/filtros/oportunidad", headers=_cabeceras(tenant_id))
+    assert r.status_code == 404, r.text
+    datos = r.json()
+    assert datos["error_code"] == "filtros.objeto_desconocido"
+    assert "cuenta" in datos["detalle"]["objetos"]
+
+
 def test_las_cuentas_sin_contacto_se_piden_por_la_ruta(
     personas: Any, db: Any, tenant_id: UUID
 ) -> None:

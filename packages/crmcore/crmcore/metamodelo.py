@@ -1035,6 +1035,17 @@ def servicio_del_objeto(objeto: str) -> str:
     return _SERVICIO_DEL_OBJETO.get(str(objeto), "")
 
 
+def objetos_de_este_servicio(servicio: str) -> list[str]:
+    """Los objetos que guarda este servicio, por su nombre.
+
+    **Del servicio y no del proceso**, por lo mismo que `es_de_este_servicio`:
+    con catorce servicios en un proceso —la suite— el registro es la unión de
+    todos, y devolverlo entero haría que cada uno dijera que guarda los objetos
+    de los demás.
+    """
+    return sorted(o for o in _MODELO_DEL_OBJETO if es_de_este_servicio(o, servicio))
+
+
 def es_de_este_servicio(objeto: str, servicio: str) -> bool:
     """Si este servicio es el dueño de ese objeto.
 
