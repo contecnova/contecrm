@@ -382,6 +382,14 @@ function Aislamiento() {
  * único que demuestra quién es alguien es que otras personas respondan por
  * ella, y el desbloqueo manual es la puerta de atrás de toda la MFA. Decirlo
  * ANTES, en frío, es lo que evita descubrirlo en caliente.
+ *
+ * Esto es, y así consta desde el 29-10-2026, el **ciclo de vida del segundo
+ * factor** (CRM-00.05.01.19) —inscripción guiada paso a paso con el porqué de
+ * cada uno, cambio de dispositivo y desbloqueo asistido con doble aprobación—
+ * y **qué operaciones piden reautenticarse** (CRM-00.05.01.18). Las dos
+ * estaban aquí y el catálogo no lo sabía: se pedían al servidor, se pintaban
+ * con sus palabras, y figuraban como capacidades sin pantalla. Declararlas no
+ * cambia una línea de lo que se ve; cambia que el recuento diga la verdad.
  */
 function MiSegundoFactor() {
   const { t } = useTranslation();

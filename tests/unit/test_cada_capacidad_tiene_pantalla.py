@@ -465,7 +465,23 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #                            CONSENTIMIENTO: el servidor exige usuario, perfil
 #                            y recurso, y los tres estan en esa fila; un
 #                            formulario suelto los pedia a mano y contestaba 422
-TOPE_SIN_PANTALLA = 326
+#   29-10-2026  324 de 778  dos que YA se enseñaban y que el catalogo no
+#                            sabia: el ciclo de vida del segundo factor
+#                            --inscripcion guiada con el porque de cada paso,
+#                            cambio de dispositivo y desbloqueo asistido con
+#                            doble aprobacion-- y que operaciones piden
+#                            reautenticarse. Se piden al servidor y se pintan
+#                            con sus palabras desde hace semanas; declararlas
+#                            no cambia una linea de lo que se ve, cambia que el
+#                            recuento diga la verdad.
+#
+#                            Se intento barrer esto a maquina --que capacidad
+#                            sin pantalla la sirve una ruta que alguna pantalla
+#                            YA pide-- y dio 23 candidatas. Al abrirlas, casi
+#                            todas eran casualidad: una politica de acceso
+#                            contextual no la enseña `/api/v1/tenants`. La
+#                            heuristica dice donde mirar y no sustituye a mirar.
+TOPE_SIN_PANTALLA = 324
 
 
 def _es_pantalla(p: Path) -> bool:
