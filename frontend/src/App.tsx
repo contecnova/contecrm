@@ -158,6 +158,11 @@ const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo)
 const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos);
 const Canales = pantalla(() => import("@/paginas/Canales"), (m) => m.Canales);
 const Menciones = pantalla(() => import("@/paginas/Menciones"), (m) => m.Menciones);
+const Activo = pantalla(() => import("@/paginas/Activo"), (m) => m.Activo);
+const OrdenDeTrabajo = pantalla(
+  () => import("@/paginas/OrdenDeTrabajo"),
+  (m) => m.OrdenDeTrabajo,
+);
 const Presupuesto = pantalla(
   () => import("@/paginas/Presupuesto"),
   (m) => m.Presupuesto,
@@ -413,6 +418,16 @@ export function App() {
               sin esta pantalla la función no existe en la práctica, porque
               nadie abre cuarenta fichas por si acaso. */}
           <Route path="/menciones" element={<Menciones />} />
+          {/* Un activo instalado no es una ficha de inventario: es la máquina
+              que hay en casa del cliente. Su árbol, su historial a través de
+              las sustituciones y su cobertura devuelven OBJETOS, así que la
+              ficha genérica los pintaba como campos sueltos. */}
+          <Route path="/m/campo/activo/:id" element={<Activo />} />
+          {/* La orden de trabajo: el reparto de cobertura va en TRES cestas
+              —lo que paga el cliente, lo que se reclama y lo que no se sabe—,
+              y el parte dice si se tocó después de firmar. Dos objetos que la
+              ficha genérica no sabe pintar. */}
+          <Route path="/m/campo/ordenes-trabajo/:id" element={<OrdenDeTrabajo />} />
           {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
               conflictos —«lo que alguien tiene que leer ANTES de aprobar»— y no
               había ruta que los listara: sólo volvía a ellos quien se hubiera

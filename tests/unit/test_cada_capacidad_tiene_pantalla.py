@@ -892,7 +892,34 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   Se ensena tambien cuantas ventanas se llevan observadas de cada uno: por
 #   debajo del minimo no se evalua a nadie, asi que uno disparado puede no
 #   salir frenado todavia, y eso sin decirlo parece un fallo del freno.
-TOPE_SIN_PANTALLA = 210
+#   30-10-2026  206 de 778  el servicio de campo: la ficha de un activo y la
+#   ------------------------------------------------------------------------
+#   de una orden de trabajo.
+#
+#   Del activo, tres cosas que el servidor ya daba:
+#
+#   - el ARBOL de componentes, con su «truncado» cuando corta a seis niveles.
+#     Un arbol cortado sin avisar se lee como un arbol completo;
+#   - el HISTORIAL siguiendo la cadena de sustituciones: si la maquina se
+#     cambio hace dos anos, su historial empieza en la que estaba antes,
+#     porque la averia de hoy puede venir de aquello. Un historial que arranca
+#     en la sustitucion esconde justo el patron que habia que ver;
+#   - y la cobertura, donde lo que decide no es si o no sino si es
+#     CONCLUYENTE: «no se puede determinar» y «no esta cubierto» se leen igual
+#     y la diferencia es quien paga la reparacion. Mas el contador, que avisa
+#     si RETROCEDE — eso no es un error de lectura.
+#
+#   De la orden, dos:
+#
+#   - el reparto de cobertura en TRES cestas y no dos: lo que paga el cliente,
+#     lo que se reclama al fabricante y lo que NO SE SABE. Fundir la tercera
+#     es facturar de mas o perder una reclamacion, y las dos se descubren
+#     tarde;
+#   - y que el parte diga si se TOCO DESPUES DE FIRMAR. Guarda una huella al
+#     firmarse; si ya no cuadra, alguien lo cambio despues, y eso convierte la
+#     firma del cliente en un papel sin valor. No se nota mirandolo: se ve
+#     igual de completo.
+TOPE_SIN_PANTALLA = 206
 
 
 def _es_pantalla(p: Path) -> bool:

@@ -2326,6 +2326,36 @@ porque se salió de su patrón de uso, y dice **cuánto** —al 75 %, al 50 % o 
 Si sale pero **sin frenar**, con «N de M ventanas observadas», es que todavía
 no hay suficiente historia para evaluarlo: no es que el freno no funcione.
 
+### Antes de ir a reparar algo
+
+Abre el **activo** y mira tres cosas:
+
+- **si lo paga la garantía.** Si pone «no se puede determinar», no es que no
+  esté cubierto: es que nadie ha registrado la garantía todavía. Averiguarlo
+  antes de la reparación cuesta una llamada; después, una discusión;
+- **de qué forma parte.** Una bomba que falla puede ser la bomba o puede ser el
+  equipo. Si el árbol avisa de que hay más componentes por debajo, hay más de
+  lo que ves;
+- **qué le ha pasado.** Si el historial dice que sigue una cadena de
+  sustituciones, lo que ves incluye lo que le pasó a la máquina anterior — y
+  eso suele ser justo el patrón que explica la avería de hoy.
+
+Y mira **de cuándo es la lectura del contador**. Si no tiene fecha, no se sabe
+si ese número es de hoy o del año pasado, y sobre un contador se decide cuándo
+toca el próximo mantenimiento.
+
+### Cerrar una orden de trabajo sin problemas después
+
+Dos cosas en la ficha de la orden:
+
+- **las líneas sin decidir quién las paga.** Ni se facturan ni se reclaman
+  hasta que alguien lo diga. Dejarlas así es facturar de menos hoy o perder la
+  reclamación cuando la garantía venza;
+- **el parte.** Si sale el aviso de que se tocó **después de firmar**, la firma
+  del cliente no vale: el texto que firmó ya no es el que hay. Y «firmado» no
+  es «conforme»: un cliente puede firmar que estuvimos y no estar de acuerdo
+  con el resultado.
+
 ---
 
 ## Qué hacer cuando algo no sale

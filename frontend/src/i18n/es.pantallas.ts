@@ -138,6 +138,62 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  orden: {
+    trabajado: "{{minutos}} min trabajados",
+    alterado:
+      "El parte se ha TOCADO DESPUÉS DE FIRMAR: su huella ya no cuadra con lo que hay escrito. Una firma del cliente sobre un parte que cambió después no vale nada, y no se nota mirándolo — se ve igual de completo.",
+    quienPaga: "Quién paga cada línea",
+    porqueTresCestas:
+      "Tres cestas y no dos: lo que paga el cliente, lo que se le reclama al fabricante y lo que NO SE SABE. Fundir la tercera es facturar de más o perder una reclamación.",
+    cestas: "{{facturar}} a facturar · {{garantia}} a garantía",
+    sinDeterminar:
+      "{{cuantas}} línea(s) sin decidir quién las paga. Ni se facturan ni se reclaman hasta que alguien lo diga.",
+    porDecidir: "por decidir",
+    aGarantia: "garantía",
+    aFacturar: "factura",
+    parte: "El parte de trabajo",
+    sinParte: "Todavía no hay parte",
+    sinParteDetalle:
+      "Sin parte no hay qué firmar ni qué facturar: es lo que deja constancia de lo que se hizo.",
+    evidencias: "{{checklist}} puntos de checklist · {{evidencias}} evidencias",
+    firmado: "Firmado por el cliente y conforme.",
+    firmadoNoConforme:
+      "Firmado, pero el cliente NO está conforme. Firmar es decir que estuvimos; conforme es otra cosa.",
+    sinFirmar: "Sin firmar.",
+    quienPuede: "Quién puede hacerla",
+    porqueDescartados:
+      "La lista de descartados es la mitad del valor: «nadie disponible» no se acciona, y «los tres con la competencia están fuera de zona» sí.",
+    sinCandidatos: "No se ha podido calcular quién puede hacerla",
+    competencias: "Competencias que pide: {{competencias}}",
+    ninguna: "ninguna",
+    nadieApto: "Ningún técnico cumple todo lo que pide esta orden.",
+    aptos: "{{cuantos}} técnico(s) pueden hacerla.",
+    verActivo: "Ver el activo sobre el que se trabaja",
+  },
+  activo: {
+    cobertura: "Si lo paga la garantía",
+    sinCobertura: "No se ha podido consultar la cobertura",
+    noConcluyente:
+      "NO SE PUEDE DETERMINAR si está cubierto. No es lo mismo que no estarlo: aquí todavía no se sabe quién paga.",
+    cubierto: "Cubierto por garantía.",
+    noCubierto: "No está cubierto.",
+    hasta: "hasta el {{fecha}}",
+    exclusiones: "{{cuantas}} exclusión(es) declaradas en esa garantía.",
+    contador: "Lo que lleva andado",
+    sinContador: "Este activo no lleva contador",
+    lectura: "{{contador}} {{unidad}}",
+    leidoEl: "leído el {{fecha}}",
+    sinFechaDeLectura:
+      "Sin fecha de lectura: no se sabe de cuándo es este número, y sobre un contador se decide un mantenimiento.",
+    arbol: "De qué forma parte",
+    porqueArbol:
+      "Una avería en una bomba no se entiende sin saber de qué equipo es: un componente mirado solo lleva a cambiar la pieza y no la causa.",
+    truncado: "(hay más componentes por debajo)",
+    historial: "Qué le ha pasado",
+    cadena:
+      "El historial sigue la cadena de sustituciones: son {{equipos}} equipos. La avería de hoy puede venir del que estaba antes.",
+    sinEventos: "No hay nada anotado todavía",
+  },
   menciones: {
     titulo: "Dónde me han mencionado",
     entradilla:

@@ -967,3 +967,75 @@ def test_el_playbook_de_otra_etapa_no_se_cuela(
     r = ventas_cpq.get("/api/v1/metodologias/playbook?etapa=descubrimiento", headers=cabeceras)
     assert r.status_code == 200, r.text
     assert r.json() is None
+
+
+# ── El servicio de campo (CRM-04.04.01.06, CRM-04.04.02.02, .04) ────────
+
+
+def test_la_cobertura_dice_si_es_concluyente(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """«No se puede determinar» y «no está cubierto» se leen igual en una
+    pantalla, y la diferencia es quién paga la reparación."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import activos as act
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    activo, _ = act.crear(uow, codigo=f"MAQ-{uuid4().hex[:6]}", nombre="Prensa")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/activos/{activo.id}/cobertura", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in ("cubierto", "concluyente", "motivo", "garantias"):
+        assert campo in cuerpo, f"la cobertura no manda «{campo}»"
+    # Sin garantías registradas no se sabe: decir «no cubierto» sería afirmar
+    # algo que no se ha mirado.
+    assert cuerpo["concluyente"] is False
+    assert cuerpo["motivo"], "no dice por qué no se puede determinar"
+
+
+def test_el_arbol_dice_cuando_lo_ha_cortado(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Un árbol truncado sin avisar se lee como un árbol completo."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import activos as act
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    activo, _ = act.crear(uow, codigo=f"MAQ-{uuid4().hex[:6]}", nombre="Prensa")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/activos/{activo.id}/arbol", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in ("id", "codigo", "nombre", "estado", "componentes"):
+        assert campo in cuerpo, f"el árbol no manda «{campo}»"
+
+
+def test_el_historial_sigue_la_cadena_de_sustituciones(
+    servicio_http: TestClient, cabeceras: dict[str, str], db: Any, tenant_id: UUID
+) -> None:
+    """Un historial que arranca en la sustitución esconde justo el patrón que
+    había que ver: la avería de hoy puede venir de la máquina anterior."""
+    from crmcore.db.uow import UnidadDeTrabajo
+
+    from services.service import activos as act
+
+    uow = UnidadDeTrabajo(db=db, tenant_id=tenant_id)
+    activo, _ = act.crear(uow, codigo=f"MAQ-{uuid4().hex[:6]}", nombre="Prensa")
+    db.flush()
+
+    r = servicio_http.get(f"/api/v1/activos/{activo.id}/historial", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in ("activo_id", "equipos_en_la_cadena", "eventos"):
+        assert campo in cuerpo, f"el historial no manda «{campo}»"
+    # **Es una LISTA de identificadores, no un número.** Lo tipé como número
+    # al escribir la pantalla y la comparación `> 1` habría sido siempre
+    # verdadera: una lista nunca es menor que un entero en JavaScript, así que
+    # el aviso de cadena habría salido en todos los activos.
+    assert isinstance(cuerpo["equipos_en_la_cadena"], list)
+    assert len(cuerpo["equipos_en_la_cadena"]) >= 1

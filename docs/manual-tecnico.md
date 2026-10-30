@@ -3157,6 +3157,53 @@ Lo observado vive en la memoria del proceso, así que la lista es la de **ese**
 gateway. Se dice en la respuesta: con varias réplicas, una lista corta no
 significa que no haya nadie frenado.
 
+### 4.6.38 El servicio de campo: el activo y la orden
+
+Un activo instalado no es una ficha de inventario: es la máquina que hay en
+casa del cliente. Tres cosas que el servidor ya daba y nadie enseñaba.
+
+**El árbol de componentes, con su «truncado».** Una avería en una bomba no se
+entiende sin saber de qué equipo es; un componente mirado solo lleva a cambiar
+la pieza y no la causa. El árbol se corta a seis niveles y **lo dice**: uno
+cortado sin avisar se lee como un árbol completo.
+
+**El historial sigue la cadena de sustituciones.** Si la máquina se cambió hace
+dos años, su historial empieza en la que estaba antes — la avería de hoy puede
+venir de aquello, y un historial que arranca en la sustitución esconde justo el
+patrón que había que ver.
+
+**La cobertura, donde lo que decide no es sí o no: es si es concluyente.** «No
+se puede determinar» y «no está cubierto» se leen igual en una pantalla, y la
+diferencia es quién paga una reparación de cuatro mil euros.
+
+**Y el contador, con la fecha de su lectura.** Sale de la ficha del activo y no
+de una ruta propia, porque `leer_contador` **anota** una lectura pese al
+nombre: no hay forma de consultarlo sin escribir una. La fecha va siempre al
+lado — un contador sin ella se lee como el de hoy, y sobre un contador se
+decide un mantenimiento.
+
+De la orden de trabajo, dos:
+
+**El reparto de cobertura va en tres cestas, no en dos.** Lo que paga el
+cliente, lo que se le reclama al fabricante y lo que **no se sabe todavía**.
+Fundir la tercera con cualquiera de las otras es facturar de más o perder una
+reclamación, y las dos se descubren tarde: una en la factura y la otra cuando
+la garantía ya venció.
+
+**El parte dice si se tocó después de firmar.** Guarda una huella de su
+contenido al firmarse; si ya no cuadra, alguien lo cambió después, y eso
+convierte la firma del cliente en un papel sin valor. No se nota mirándolo: se
+ve igual de completo. Y «firmado» y «conforme» son dos cosas: un cliente puede
+firmar que estuvimos y no estar conforme con el resultado.
+
+#### `equipos_en_la_cadena` es una lista, no un número
+
+Lo tipé como número al escribir la pantalla, y en JavaScript una lista nunca
+es menor que un entero: la comparación `> 1` habría sido **siempre verdadera**
+y el aviso de cadena habría salido en todos los activos, también en los que
+nunca se sustituyeron. Lo cazó la prueba de servidor al comparar contra la
+forma de verdad, que es para lo que están.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para
