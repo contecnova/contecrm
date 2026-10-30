@@ -2247,6 +2247,28 @@ Si pone que **no se ha podido medir** si lo han tocado a mano, no lo leas como
 «está bien»: es que no se sabe. Y si dice que **no se puede volver atrás**,
 tenlo en cuenta antes de desplegar encima: no habrá marcha atrás.
 
+### Antes de escribir a alguien por un canal
+
+En **Canales y consentimiento** pones el canal y el destino —el correo, el
+teléfono— y te dice si se le puede escribir y, si no, **por qué no**.
+
+Cuatro cosas que conviene saber:
+
+- el permiso es **por canal y por destino**. Que alguien acepte el boletín no
+  significa que acepte los SMS, y tratarlo como una sola casilla es como una
+  baja acaba en una reclamación;
+- en **WhatsApp**, si han pasado más de 24 horas desde que esa persona te
+  escribió, sólo puedes mandar una plantilla aprobada. Si mandas otra no falla
+  nada: el proveedor la tira y nadie se entera;
+- la **palabra de baja** de cada canal sale en la lista. Tiene que ir dentro
+  del mensaje;
+- si el dominio está **calentando**, sale el tope de hoy. Pasarse quema la IP, y
+  una IP quemada deja semanas sin que llegue nada por ese dominio: ni las
+  campañas ni las facturas, que comparten reputación.
+
+Si un canal aparece **sin forma de baja declarada**, por ahí no se puede mandar
+nada comercial hasta que alguien la configure.
+
 ---
 
 ## Qué hacer cuando algo no sale

@@ -3029,6 +3029,31 @@ exactamente lo que se empaquetó, y la referencia dice qué commit lo generó.
 no funciona es peor que no tenerlo, porque se cuenta con él justo el día que
 hace falta.
 
+### 4.6.34 Por qué canales se le puede escribir a alguien
+
+Los canales estaban declarados y el consentimiento se guardaba **por canal y
+por destino**, y no había ninguna pantalla que contestara la pregunta de antes
+de mandar nada. Que no es una pregunta: son cinco.
+
+- **El consentimiento no es global.** Alguien puede haber aceptado el correo y
+  no el SMS, y tratarlo como una sola casilla es lo que convierte una baja en
+  una denuncia.
+- **En WhatsApp manda la ventana de 24 horas.** Fuera de ella sólo sale una
+  plantilla **aprobada**, y el estado de aprobación lo pone el proveedor y no
+  nosotros. Mandar una no aprobada **no falla**: el proveedor la descarta en
+  silencio, así que se corta antes de salir y la pantalla lo dice.
+- **La baja se da con una palabra y cada canal tiene la suya.** Va en la lista
+  y no escondida en la ficha: quien escribe el mensaje tiene que ponerla
+  dentro, y un canal sin palabra de baja declarada no puede llevar nada
+  comercial.
+- **El calentamiento de un dominio frena.** Cuando hay tope sale el tope; y
+  `calentamiento: null` significa que ese dominio **no** está calentando, no
+  que el tope sea cero — pintarlo como un cero diría «hoy no puedes mandar
+  nada», que es lo contrario.
+
+Y el «no se puede» viene con sus motivos, uno por regla. A secas deja a quien
+escribe el mensaje sin saber qué arreglar.
+
 ### 4.7 CDC hacia el lago del cliente
 
 Se manda **el hecho, no la foto**: qué cambió y de qué a qué, con secuencia para

@@ -810,7 +810,27 @@ RE_ID = re.compile(r"CRM-\d\d\.\d\d\.\d\d\.\d\d")
 #   el v7» no se contrasta con nada. Y si se puede volver atras se dice ANTES
 #   de pulsar, porque un rollback que a veces no funciona es peor que no
 #   tenerlo — se cuenta con el justo el dia que hace falta.
-TOPE_SIN_PANTALLA = 224
+#   30-10-2026  218 de 778  por que canales se le puede escribir a alguien, y
+#   ------------------------------------------------------------------------
+#   con que reglas.
+#
+#   Los canales estaban declarados y el consentimiento se guardaba por canal
+#   Y POR DESTINO, y no habia pantalla que contestara la pregunta de antes de
+#   mandar nada. Que son cinco respuestas y no una:
+#
+#   - el consentimiento no es global: alguien puede haber aceptado el correo
+#     y no el SMS, y tratarlo como una sola casilla convierte una baja en una
+#     denuncia;
+#   - en WhatsApp manda la ventana de 24 h: fuera de ella solo sale plantilla
+#     APROBADA, y mandar una no aprobada NO FALLA —el proveedor la descarta
+#     en silencio—, asi que se corta antes y se dice;
+#   - la baja se da con una palabra y cada canal tiene la suya. Va en la
+#     lista y no escondida: quien escribe el mensaje tiene que ponerla
+#     dentro;
+#   - y el calentamiento de un dominio nuevo FRENA. Cuando hay tope sale el
+#     tope, y `null` significa que ese dominio no esta calentando, no que el
+#     tope sea cero.
+TOPE_SIN_PANTALLA = 218
 
 
 def _es_pantalla(p: Path) -> bool:

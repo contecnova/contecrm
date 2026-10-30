@@ -101,6 +101,7 @@ export default {
     canalesDeEntrada: "Canales de entrada",
     cicloDeVida: "Ciclo de vida del cliente",
     entornos: "Entornos y despliegues",
+    canales: "Canales y consentimiento",
     cumplimiento: "Panel de cumplimiento",
     conocimiento: "Buscar en conocimiento",
     marketing: "Resumen de marketing",

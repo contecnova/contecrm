@@ -138,6 +138,36 @@ const pantallas = {
       "Aquí contesta un asistente, que es un agente de solo consulta. Se declara en Administración → Agentes autónomos, como «asistente conversacional», con las herramientas que puede usar y cuándo tiene que esperar a una persona. Los agentes que hacen una tarea concreta —proponer la respuesta de un caso, calificar un lead— no salen aquí: su sitio es la pantalla de ese trabajo, con el registro delante.",
   },
 
+  canalesmk: {
+    titulo: "Canales y consentimiento",
+    entradilla:
+      "Antes de mandar nada: si se le puede escribir a esa persona por ese canal, " +
+      "y con qué reglas.",
+    comprobar: "¿Se le puede escribir?",
+    porqueComprobar:
+      "El consentimiento es por canal y por destino, no global: alguien puede haber aceptado el correo y no el SMS, y tratarlo como una sola casilla es lo que convierte una baja en una denuncia.",
+    canal: "Canal",
+    elegirCanal: "Elige un canal",
+    destino: "Teléfono, correo o identificador",
+    ver: "Comprobar",
+    comprobando: "Comprobando…",
+    siSePuede: "Sí se le puede escribir por aquí.",
+    noSePuede: "No se le puede escribir por aquí:",
+    necesitaPlantilla:
+      "Fuera de la ventana de 24 h sólo sale una plantilla APROBADA. Mandar una no aprobada no da error: el proveedor la descarta en silencio.",
+    bajaCon: "Se da de baja contestando «{{palabra}}». Esa palabra tiene que ir en el mensaje.",
+    calentando:
+      "El dominio está calentando: hoy como mucho {{tope}} envíos. Pasarse quema la IP, y quemarla deja semanas sin que llegue nada por ese dominio — ni campañas ni facturas.",
+    declarados: "Los canales declarados",
+    sinCanales: "No hay ningún canal declarado",
+    sinCanalesDetalle:
+      "Sin canales declarados no se puede mandar nada: un canal dice por dónde se sale y cómo se da de baja alguien por ahí.",
+    activo: "activo",
+    apagado: "apagado",
+    sedaDeBajaCon: "baja: «{{palabra}}»",
+    sinFormaDeBaja:
+      "sin forma de baja declarada — por este canal no se puede mandar nada comercial",
+  },
   entornos: {
     titulo: "Entornos y despliegues",
     entradilla:

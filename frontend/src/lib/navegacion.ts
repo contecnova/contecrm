@@ -189,6 +189,9 @@ export const TRANSVERSALES: (Entrada & { area: IdArea })[] = [
   { area: "clientes", a: "/duplicados", clave: "nav.duplicados", icono: "join_inner", permiso: "account:write" },
 
   { area: "marketing", a: "/marketing", clave: "nav.marketing", icono: "insights", permiso: "campaign:read"  },
+  // Sin `recursos`: no lista ninguna colección del módulo de canales, lo que
+  // hace es contestar si se le puede escribir a alguien por uno de ellos.
+  { area: "marketing", a: "/canales", clave: "nav.canales", icono: "forum", permiso: "campaign:read" },
 
   { area: "servicio", a: "/casos", clave: "nav.casos", icono: "confirmation_number", permiso: "case:read"  },
   { area: "servicio", a: "/consola-agente", clave: "nav.consolaAgente", icono: "headset_mic", permiso: "case:read" , recursos: ["consola-agente"] },

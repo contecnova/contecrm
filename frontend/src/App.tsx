@@ -156,6 +156,7 @@ const Gobierno = pantalla(() => import("@/paginas/Gobierno"), (m) => m.Gobierno)
 const Campana = pantalla(() => import("@/paginas/Campana"), (m) => m.Campana);
 const Articulo = pantalla(() => import("@/paginas/Articulo"), (m) => m.Articulo);
 const Entornos = pantalla(() => import("@/paginas/Entornos"), (m) => m.Entornos);
+const Canales = pantalla(() => import("@/paginas/Canales"), (m) => m.Canales);
 const Presupuesto = pantalla(
   () => import("@/paginas/Presupuesto"),
   (m) => m.Presupuesto,
@@ -403,6 +404,10 @@ export function App() {
               de descartados no distingue el anti-bucle haciendo su trabajo de
               una trampa tragándose clientes. */}
           <Route path="/canales-de-entrada" element={<CanalesDeEntrada />} />
+          {/* Por dónde se puede SALIR a hablar con alguien, que es la
+              pregunta contraria a la de arriba. El consentimiento es por
+              canal y por destino, y no había pantalla que lo contestara. */}
+          <Route path="/canales" element={<Canales />} />
           {/* Clonar, fusionar y partir un tenant guardaban su plan y sus
               conflictos —«lo que alguien tiene que leer ANTES de aprobar»— y no
               había ruta que los listara: sólo volvía a ellos quien se hubiera

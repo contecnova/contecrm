@@ -727,3 +727,68 @@ def test_un_entorno_que_no_existe_dice_cuales_hay(
         "preproduccion",
         "produccion",
     ]
+
+
+# ── Los canales de salida (CRM-02.03.02.01, .02) ────────────────────────
+
+
+@pytest.fixture
+def marketing_canales(db: Any, contexto_tenant: UUID) -> Any:
+    yield from _cliente("services.marketing.main")
+
+
+def test_el_listado_de_canales_trae_su_palabra_de_baja(
+    marketing_canales: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """Va en la lista y no escondida: quien escribe el mensaje tiene que
+    poner esa palabra dentro."""
+    creado = marketing_canales.post(
+        "/api/v1/canales-marketing",
+        headers=cabeceras,
+        json={"clave": f"c{uuid4().hex[:8]}", "nombre": "Boletín", "tipo": "email"},
+    )
+    assert creado.status_code in (200, 201), creado.text
+
+    r = marketing_canales.get("/api/v1/canales-marketing", headers=cabeceras)
+    assert r.status_code == 200, r.text
+    filas = r.json()
+    assert filas, "el listado de canales sale vacío"
+    for campo in ("id", "clave", "nombre", "tipo", "activo", "como_se_da_de_baja"):
+        assert campo in filas[0], f"el canal no manda «{campo}»"
+
+
+def test_comprobar_un_envio_dice_por_que_no(
+    marketing_canales: TestClient, cabeceras: dict[str, str]
+) -> None:
+    """«No se puede» a secas deja a quien escribe el mensaje sin saber qué
+    arreglar."""
+    clave = f"c{uuid4().hex[:8]}"
+    creado = marketing_canales.post(
+        "/api/v1/canales-marketing",
+        headers=cabeceras,
+        json={"clave": clave, "nombre": "Boletín", "tipo": "email"},
+    )
+    assert creado.status_code in (200, 201), creado.text
+
+    r = marketing_canales.get(
+        f"/api/v1/canales-marketing/comprobar?canal={clave}&destino=ana@cliente.test",
+        headers=cabeceras,
+    )
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    for campo in (
+        "se_puede_mandar",
+        "motivos",
+        "canal",
+        "necesita_plantilla",
+        "ventana_abierta",
+        "como_se_da_de_baja",
+        "calentamiento",
+    ):
+        assert campo in cuerpo, f"la comprobación no manda «{campo}»"
+    # Sin consentimiento no se puede, y se dice con cuántos motivos.
+    assert cuerpo["se_puede_mandar"] is False
+    assert cuerpo["motivos"], "no dice por qué no se puede"
+    # Y `calentamiento` es None cuando ese dominio no calienta: un 0 se
+    # leería como «hoy no puedes mandar nada», que es lo contrario.
+    assert cuerpo["calentamiento"] is None
