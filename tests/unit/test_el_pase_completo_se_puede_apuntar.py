@@ -57,7 +57,18 @@ def _preflight() -> Any:
 # cada una— contra las que había en octubre. Se actualiza aquí porque un coste
 # viejo hace que la comprobación del margen mida contra un producto que ya no
 # existe, y entonces deja de decir nada.
-COSTE_MEDIDO_CPU = {"rapido": 22.0, "push": 139.0, "completo": 560.0}
+#
+# 30-10-2026: el «push» pasa de 139 a 245 s. Medido dos veces seguidas —245 y
+# 253— con la máquina a carga 6 y dos procesos ajenos al 95 %: una máquina
+# virtual y la indexación de Spotlight. Se midió antes de tocar el tope, que
+# es lo que pide el párrafo de arriba, y no es grasa: el gate más caro de ese
+# nivel es `aislamiento`, 177 pruebas en 51 s de reloj con la más lenta en
+# 3,75 s — unos 290 ms por prueba, que es lo que cuesta levantar la aplicación
+# de un servicio y recorrerle las rutas. Hay más rutas, no rutas más caras.
+#
+# El 139 de antes medía un nivel que, además, se salta los gates cuyas
+# entradas no cambiaron: con todo dentro nunca costó eso.
+COSTE_MEDIDO_CPU = {"rapido": 22.0, "push": 245.0, "completo": 560.0}
 
 
 @pytest.mark.parametrize(

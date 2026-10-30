@@ -452,10 +452,30 @@ GATES: list[Gate] = [
 # nadie tocara una línea. Antes de creerse un rojo de presupuesto: mirar qué
 # hay corriendo. La nota de arriba sobre la carga sigue valiendo, y esto es su
 # caso extremo.
+#
+# **30-10-2026, el nivel «push»: 240 → 280 s de CPU.** Saltó a 245-253 s y se
+# midió antes de tocar el número, que es lo que pide el párrafo de arriba.
+#
+# No hay grasa. El gate más caro de este nivel es `aislamiento`, y por dentro
+# son **177 pruebas en 51 s de reloj**: la más lenta tarda 3,75 s y el resto
+# baja de 2 s — unos 290 ms por prueba, que es lo que cuesta levantar la
+# aplicación de un servicio y recorrer sus rutas. No hay un sitio gordo: hay
+# más rutas. En esta tanda entraron los playbooks (cuatro), las menciones de
+# cada servicio (tres) y la que las junta en el gateway.
+#
+# Y **el reloj, que es lo que de verdad decide si esto se sigue corriendo,
+# está en 100 s de los 120** de referencia: lejos de los tres minutos que el
+# párrafo de arriba teme. Lo que se agotó fue el proxy de CPU, no el tiempo
+# que alguien espera.
+#
+# 280 es ~1,14× sobre lo medido, el mismo margen apretado que el nivel
+# completo y por lo mismo: este nivel corre en cada push, así que su ruido
+# medido es bajo. Si vuelve a saltar, mirar primero el coste POR PRUEBA de
+# `aislamiento`: por encima de 300 ms sí sería grasa.
 PRESUPUESTOS: dict[str, tuple[float, float]] = {
     # nivel: (reloj de referencia, tope de CPU)
     "rapido": (35.0, 40.0),
-    "push": (120.0, 240.0),
+    "push": (120.0, 280.0),
     "completo": (360.0, 660.0),
 }
 
